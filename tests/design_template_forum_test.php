@@ -14,8 +14,8 @@
  * value, the unanswered lists, the replies and the feedback drawn by the
  * Comments widget (the threads of the topic and guide pages, the lists of
  * recent replies on the home page, in My topics and on the moderators'
- * dashboard, and the comment e-mails), the comments block the desk, inbox
- * and report pages keep, the e-mail pages, the template's own CSS, its
+ * dashboard, and the comment e-mails), the two-sided threads of the desk,
+ * inbox and report pages, the e-mail pages, the template's own CSS, its
  * landmarks and headings, its Turkish words and the installer preview.
  * Pure: the template file is read as the template loader reads it, the
  * trees are walked and the comments widgets are drawn by the renderer's own
@@ -436,6 +436,44 @@ function _test_forum_threads()
 	);
 }
 
+// The two-sided threads: a conversation's answers, the messages between a
+// guide's author and the moderators, the moderators' notes under a report.
+function _test_forum_two_sided_threads()
+{
+	return array(
+		'conversation_replies' => array(
+			'page' => 'conversation',
+			'rating' => false,
+			'empty' => lang('No replies yet. Our answer will appear here.'),
+			'heading' => lang('Write a reply'),
+			'sign_in' => lang('Sign in to reply.'),
+			'submit' => lang('Send reply'),
+			'close' => lang('Stop new replies'),
+			'reopen' => lang('Allow new replies'),
+		),
+		'doc_messages' => array(
+			'page' => 'doc_submission',
+			'rating' => false,
+			'empty' => lang('No messages yet. Write the first one.'),
+			'heading' => lang('Write a message'),
+			'sign_in' => lang('Sign in to reply.'),
+			'submit' => lang('Send message'),
+			'close' => lang('Stop new messages'),
+			'reopen' => lang('Allow new messages'),
+		),
+		'report_notes' => array(
+			'page' => 'staff_report',
+			'rating' => false,
+			'empty' => lang('No notes yet.'),
+			'heading' => lang('Add a note'),
+			'sign_in' => lang('Sign in to reply.'),
+			'submit' => lang('Add note'),
+			'close' => lang('Stop new comments'),
+			'reopen' => lang('Allow new comments'),
+		),
+	);
+}
+
 // The four lists of recent replies: page, what they show, how many, in
 // which order, whether they read the topic page alone (held to the board
 // the address names).
@@ -476,7 +514,8 @@ function _test_forum_draw_thread($tree, $data)
 // before (2 answers 1, 3 answers 2, 4 answers 3).
 function _test_forum_thread_data($key, $who)
 {
-	$thread = _test_forum_threads()[$key];
+	$threads = _test_forum_threads() + _test_forum_two_sided_threads();
+	$thread = $threads[$key];
 	$cfg = _test_forum_tpl()['widgets'][$key]['config'];
 	$member = ($who !== 'out');
 	$staff = ($who === 'staff');
@@ -803,7 +842,7 @@ function test_forum_template_loads()
 	// 1.1.0: replies and feedback on the Comments widget, the lists of
 	// recent replies and the comment e-mails drawn by it; 1.2.0: the board
 	// page's latest replies, held to the board by a record filter.
-	pg_assert_same('1.2.1', $tpl['version'], 'version 1.2.1');
+	pg_assert_same('1.3.0', $tpl['version'], 'version 1.3.0');
 	pg_assert_same('bootstrap5', $tpl['framework'], 'framework');
 	pg_assert_same(90, $tpl['order'], 'order');
 	pg_assert_same('bi-chat-square-text', $tpl['icon'], 'icon');
@@ -2404,6 +2443,71 @@ function test_forum_reply_widgets_draw()
 	}
 }
 
+// The inbox, the desk and the report page draw their messages and notes
+// with Comments widgets of their own: oldest first, flat, all on one page,
+// never featured, and none of what a public thread has (Reply, Share, the
+// quote, the featured mark, following): the two sides are e-mailed by the
+// page's settings. The moderators keep Edit and the open-or-close form.
+function test_forum_two_sided_threads()
+{
+	$tpl = _test_forum_tpl();
+	$options = array('order' => 'oldest', 'featured' => 'none', 'layout' => 'flat', 'max_depth' => 1, 'per_page' => 0);
+	foreach (_test_forum_two_sided_threads() as $key => $thread) {
+		pg_assert_true(isset($tpl['widgets'][$key]) && is_array($tpl['widgets'][$key]['tree']), $key . ' ships its tree');
+		if (!isset($tpl['widgets'][$key]) || !is_array($tpl['widgets'][$key]['tree'])) {
+			continue;
+		}
+		$w = $tpl['widgets'][$key];
+		$tree = $w['tree'];
+		pg_assert_same($thread['page'], $w['page'], $key . ' page');
+		pg_assert_same(lang('comments'), $w['slug'], $key . ' slug');
+		pg_assert_same('comments', pg_sw_widget_kind($w['config']), $key . ': a thread');
+		pg_assert_same($options, pg_comments_widget_options($w['config']), $key . ' options');
+
+		$forms = _test_forum_bound_items($tree, 'action', 'comment_form');
+		pg_assert_true(count($forms) === 1 && _test_forum_flag($forms[0][0]) === 'can_comment' && !$forms[0][4], $key . ': one comment form, for who may comment, outside the loop');
+		foreach (array('comment_message', 'comment_name', 'comment_name_type', 'comment_file') as $value) {
+			pg_assert_same(1, count(_test_forum_bound_items($tree, 'value', $value)), $key . ' binds ' . $value . ' once');
+		}
+		$submit = _test_forum_bound_items($tree, 'action', 'comment_submit');
+		pg_assert_true(count($submit) === 1 && $submit[0][0]['props']['text'] === $thread['submit'], $key . ': one send button saying ' . $thread['submit']);
+		foreach (array(array('action', 'comment_reply'), array('action', 'comment_share'), array('action', 'comment_reply_cancel'), array('text', '__comment_quote'),
+			array('value', 'comment_watcher'), array('action', 'comment_watch_form'), array('section', 'comment_watchers')) as $part) {
+			pg_assert_same(array(), _test_forum_bound_items($tree, $part[0], $part[1]), $key . ': no ' . $part[1]);
+		}
+		foreach (_test_forum_widget_items($tree) as $item) {
+			pg_assert_false(in_array(_test_forum_flag($item[0]), array('comment_is_featured', 'comment_has_quote', 'is_replying', 'watching_on'), true), $key . ': no part for ' . _test_forum_flag($item[0]));
+		}
+		$edit = _test_forum_bound_items($tree, 'href', '__comment_edit_url');
+		pg_assert_true(count($edit) === 1 && $edit[0][4], $key . ': Edit in the comment');
+		$allow = _test_forum_bound_items($tree, 'action', 'comment_allow_new_form');
+		pg_assert_true(count($allow) === 1 && in_array('is_staff', $allow[0][1], true), $key . ': the moderators\' open-or-close form');
+		foreach (array('empty', 'heading', 'sign_in') as $word) {
+			pg_assert_contains(json_encode($thread[$word], JSON_UNESCAPED_UNICODE), json_encode($tree, JSON_UNESCAPED_UNICODE), $key . ': says ' . $word);
+		}
+
+		$data = _test_forum_thread_data($key, 'member');
+		pg_assert_same(array(0), array_values(array_unique(array_column($data['rows'], 'depth'))), $key . ': every message at the top level');
+		$html = _test_forum_draw_thread($tree, $data);
+		pg_assert_contains('<form id="software_add_comment"', $html, $key . ': the member\'s form');
+		pg_assert_contains(h($thread['submit']), $html, $key . ': its button');
+		pg_assert_false(strpos($html, 'data-pg-comment-reply='), $key . ': no Reply');
+		pg_assert_false(strpos($html, 'data-pg-comment-share='), $key . ': no Share');
+		pg_assert_false(strpos($html, 'software_watcher'), $key . ': no follow form');
+		pg_assert_false(strpos($html, 'edit_comment.php'), $key . ': no Edit for a member');
+		pg_assert_false(strpos($html, '^^'), $key . ': no token left');
+
+		$out = _test_forum_draw_thread($tree, _test_forum_thread_data($key, 'out'));
+		pg_assert_false(strpos($out, '<form'), $key . ': no form until signed in');
+		pg_assert_contains(h($thread['sign_in']), $out, $key . ': asks to sign in');
+
+		$staff = _test_forum_draw_thread($tree, _test_forum_thread_data($key, 'staff'));
+		pg_assert_contains('href="/software/edit_comment.php?id=1"', $staff, $key . ': Edit for a moderator');
+		pg_assert_contains(h($thread['close']), $staff, $key . ': ' . $thread['close']);
+		pg_assert_false(strpos($staff, '^^'), $key . ': no token left');
+	}
+}
+
 // The lists of recent replies: the home page's published ones, the member's
 // own on My topics and the ones awaiting approval on the dashboard, each
 // reading the topic and guide pages, in a layout with nothing a list does
@@ -2727,8 +2831,9 @@ function test_forum_widget_flags_fit_their_mode()
 		}
 	}
 	ksort($checked);
-	pg_assert_same(array('board_latest_replies' => 'comments_recent', 'doc_feedback' => 'comments', 'email_comment' => 'comments', 'home_latest_replies' => 'comments_recent',
-		'my_replies' => 'comments_recent', 'staff_replies_waiting' => 'comments_recent', 'topic_replies' => 'comments'), $checked, 'the seven comments widgets');
+	pg_assert_same(array('board_latest_replies' => 'comments_recent', 'conversation_replies' => 'comments', 'doc_feedback' => 'comments', 'doc_messages' => 'comments',
+		'email_comment' => 'comments', 'home_latest_replies' => 'comments_recent', 'my_replies' => 'comments_recent', 'report_notes' => 'comments',
+		'staff_replies_waiting' => 'comments_recent', 'topic_replies' => 'comments'), $checked, 'the ten comments widgets');
 }
 
 // What the FAQ says about replies: how to follow a topic, how a best answer

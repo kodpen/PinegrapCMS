@@ -43,8 +43,9 @@
  * topic page alone and keeps the replies of the board the address names
  * (its record filters), on the board page. The reply e-mails
  * draw the comment they are about with it too. The desk, the inbox and the
- * report page keep the platform's fixed comments block. Every page keeps its
- * own comment settings ('comments' below).
+ * report page draw their messages and notes with it as well, flat and
+ * two-sided (no Reply, Share or follow box). Every page keeps its own
+ * comment settings ('comments' below).
  *
  * The look ships in the template's User Styles: the template's own rules,
  * all named pf-. Fonts: Figtree for the text and the headings and JetBrains
@@ -713,12 +714,6 @@ $person_fields = function ($prefix) use ($row, $col, $field, $input) {
 $edit_button = function ($text = '') use ($link) {
     return $link($text !== '' ? $text : lang('Edit'), '#', 'btn btn-sm btn-secondary', array(),
         array('_bindings' => array('href' => '__edit_url', 'eo_visible_if' => 'can_edit')));
-};
-// The messages and notes of the desk, the inbox and the report pages: the
-// platform's fixed comments block, placed in the page's own tree. The topic
-// and guide pages draw theirs with the Comments widget ($reply_thread).
-$comments_block = function () {
-    return array('type' => 'region', 'props' => array('regionType' => 'comments_block', 'regionName' => ''), 'children' => array());
 };
 // The notice a record page shows above the record once its form is sent,
 // and ($with_account) the account opened for a visitor who had none.
@@ -1651,39 +1646,45 @@ $feedback_comments = array(
 );
 // The messages between a guide's author and the moderators.
 $doc_desk_comments = array(
-    'label'         => lang('Message'),
-    'allow_new'     => true,
-    'auto_publish'  => true,
-    'show_date'     => true,
-    'login'         => true,
-    'email_page'    => '{{tab:email_doc_message}}',
-    'email_subject' => lang('New message about a guide sent to the docs'),
-    'notify_email'  => '{{site_email}}',
-    'attachments'   => false,
-    'select_name'   => false,
+    'label'          => lang('Message'),
+    'allow_new'      => true,
+    'auto_publish'   => true,
+    'show_date'      => true,
+    'login'          => true,
+    'email_page'     => '{{tab:email_doc_message}}',
+    'email_subject'  => lang('New message about a guide sent to the docs'),
+    'notify_email'   => '{{site_email}}',
+    'attachments'    => false,
+    'select_name'    => false,
+    'message'        => lang('Your message is signed with the name in your profile and appears at once.'),
+    'closed_message' => lang('This guide takes no new messages.'),
 );
 // The answers in a conversation started from the contact page.
 $conversation_comments = array(
-    'label'         => lang('Message'),
-    'allow_new'     => true,
-    'auto_publish'  => true,
-    'show_date'     => true,
-    'login'         => true,
-    'email_page'    => '{{tab:email_reply}}',
-    'email_subject' => lang('There is a new reply to your conversation'),
-    'notify_email'  => '{{site_email}}',
-    'attachments'   => false,
-    'select_name'   => false,
+    'label'          => lang('Message'),
+    'allow_new'      => true,
+    'auto_publish'   => true,
+    'show_date'      => true,
+    'login'          => true,
+    'email_page'     => '{{tab:email_reply}}',
+    'email_subject'  => lang('There is a new reply to your conversation'),
+    'notify_email'   => '{{site_email}}',
+    'attachments'    => false,
+    'select_name'    => false,
+    'message'        => lang('Your reply is signed with the name in your profile and appears at once.'),
+    'closed_message' => lang('This conversation is closed.'),
 );
 // The moderators' notes under a report, for the moderators only.
 $staff_note_comments = array(
-    'label'        => lang('Note'),
-    'allow_new'    => true,
-    'auto_publish' => true,
-    'show_date'    => true,
-    'login'        => true,
-    'attachments'  => false,
-    'select_name'  => false,
+    'label'          => lang('Note'),
+    'allow_new'      => true,
+    'auto_publish'   => true,
+    'show_date'      => true,
+    'login'          => true,
+    'attachments'    => false,
+    'select_name'    => false,
+    'message'        => lang('Notes are for the moderators only: say what you found and what you did.'),
+    'closed_message' => lang('This report takes no new notes.'),
 );
 
 // ── The sample records ──────────────────────────────────────────────────
@@ -3107,7 +3108,7 @@ $pages[] = array(
             $row(array(
                 $col(array(
                     $widget('conversation'),
-                    $el('div', 'pf-replies d-print-none', lang('Replies'), array($comments_block())),
+                    $el('div', 'pf-replies d-print-none', lang('Replies'), array($widget('conversation_replies'))),
                 ), '', '8'),
             ), '', 'center'),
         )),
@@ -3223,7 +3224,7 @@ $pages[] = array(
             $row(array(
                 $col(array(
                     $widget('doc_submission_view'),
-                    $el('div', 'pf-replies d-print-none', lang('Messages'), array($comments_block())),
+                    $el('div', 'pf-replies d-print-none', lang('Messages'), array($widget('doc_messages'))),
                 ), '', '8'),
                 $col(array(
                     $el('aside', 'pf-sticky', lang('Side Column'), array(
@@ -3518,7 +3519,7 @@ $pages[] = array(
             $row(array(
                 $col(array(
                     $widget('staff_report_view'),
-                    $el('div', 'pf-replies d-print-none', lang('Notes'), array($comments_block())),
+                    $el('div', 'pf-replies d-print-none', lang('Notes'), array($widget('report_notes'))),
                 ), '', '8'),
                 $col(array(
                     $el('aside', 'pf-sticky', lang('Side Column'), array(
@@ -3977,16 +3978,23 @@ $messages = function ($class = '') {
 // watch_box, follow, unfollow, close, reopen, featured) and rating, whether
 // the form asks for stars.
 $reply_thread = function ($w) use ($el, $heading, $para, $link, $span, $icon, $attr, $bind, $show_when, $loop, $widget_root, $messages, $people) {
+    // A thread of two sides (the inbox, the desk, the moderators' notes)
+    // turns both off: no Reply, Share, quote or featured mark, and no
+    // follow box (who writes there is e-mailed by the page's settings).
+    $reply = !isset($w['reply']) || $w['reply'];
+    $watch = !isset($w['watch']) || $w['watch'];
     $body = array();
     if ($w['rating']) {
         $body[] = $el('div', 'text-warning small mb-1', lang('Stars'), pg_sw_part_comment_stars(), array('_bindings' => array('eo_visible_if' => 'comment_has_rating')));
     }
-    $body[] = $el('p', 'pf-meta d-flex flex-wrap align-items-center gap-2 mb-2', lang('Name Line'), array(
-        $span($people[1], 'fw-semibold text-body-emphasis', lang('Name'), $bind('__comment_name')),
-        $el('span', 'pf-badge pf-badge-pin', lang('Featured'), array(
+    $name_line = array($span($people[1], 'fw-semibold text-body-emphasis', lang('Name'), $bind('__comment_name')));
+    if ($reply) {
+        $name_line[] = $el('span', 'pf-badge pf-badge-pin', lang('Featured'), array(
             $icon('bi-patch-check-fill'),
             $span($w['featured'], '', lang('Text')),
-        ), $show_when('comment_is_featured')),
+        ), $show_when('comment_is_featured'));
+    }
+    $body[] = $el('p', 'pf-meta d-flex flex-wrap align-items-center gap-2 mb-2', lang('Name Line'), array_merge($name_line, array(
         $span(lang('Moderator'), 'pf-badge', lang('Badge'), array('_bindings' => array('text' => '__comment_badge', 'eo_visible_if' => 'comment_has_badge'))),
         $span(lang('2 hours ago'), 'pg-hide-if-empty', lang('Time'), $bind('__comment_date')),
         // The account behind the post, for the moderators only.
@@ -3994,32 +4002,35 @@ $reply_thread = function ($w) use ($el, $heading, $para, $link, $span, $icon, $a
             $span(lang('Account:'), 'me-1', lang('Label')),
             $span('priya.raman', 'pg-field-value', lang('User Name'), $bind('__comment_staff_name')),
         ), $show_when('is_staff')),
-    ));
+    )));
     $body[] = $el('p', 'small fw-semibold text-danger-emphasis mb-2 pg-hide-if-empty', lang('Comment Status'), array(),
         array('text' => lang('Awaiting approval'), '_bindings' => array('text' => '__comment_status', 'eo_visible_if' => 'comment_is_pending')));
-    $body[] = $el('div', 'pf-post', lang('Message'), array(
-        $el('blockquote', '', lang('Quote'), array(
+    $post = array();
+    if ($reply) {
+        $post[] = $el('blockquote', '', lang('Quote'), array(
             $el('p', 'small mb-1', lang('In reply to'), array(
                 $span(lang('In reply to'), 'me-1', lang('Label')),
                 $link($people[0], '#', 'fw-semibold link-body-emphasis', array(), array('_bindings' => array('href' => '__comment_parent_url', 'text' => '__comment_parent_name'))),
             )),
             $el('p', 'mb-0 pg-hide-if-empty', lang('Quoted text'), array(), array('text' => lang('Quoted text'), '_bindings' => array('text' => '__comment_quote'))),
-        ), $show_when('comment_has_quote')),
-        $el('div', '', lang('Comment text'), array(), array('text' => lang('Comment text'), '_bindings' => array('text' => '__comment_message_html'))),
-    ));
+        ), $show_when('comment_has_quote'));
+    }
+    $post[] = $el('div', '', lang('Comment text'), array(), array('text' => lang('Comment text'), '_bindings' => array('text' => '__comment_message_html')));
+    $body[] = $el('div', 'pf-post', lang('Message'), $post);
     // The file a post carries, while the page takes attachments.
     $body[] = $el('p', 'small mb-2', lang('Attachment'), array(
         $icon('bi-paperclip', 'me-1'),
         $link('screenshot.png', '#', '', array(), array('target' => '_blank', 'rel' => 'noopener', '_bindings' => array('href' => '__comment_file_url', 'text' => '__comment_file_name'))),
         $span('84 KB', 'pf-meta ms-1', lang('Value'), $bind('__comment_file_size')),
     ), $show_when('comment_has_file'));
-    $body[] = $el('div', 'pf-reply-actions', lang('Comment Actions'), array(
-        $link(lang('Reply'), '#', 'link-body-emphasis', array(), array('_bindings' => array('action' => 'comment_reply'))),
-        $link(lang('Share'), '#', '', array(), array('_bindings' => array('action' => 'comment_share'))),
-        // Bound to the post's edit screen, so the list adds no pencil of
-        // its own.
-        $link(lang('Edit'), '#', '', array(), array('_bindings' => array('href' => '__comment_edit_url', 'eo_visible_if' => 'comment_can_edit'))),
-    ));
+    $actions = array();
+    if ($reply) {
+        $actions[] = $link(lang('Reply'), '#', 'link-body-emphasis', array(), array('_bindings' => array('action' => 'comment_reply')));
+        $actions[] = $link(lang('Share'), '#', '', array(), array('_bindings' => array('action' => 'comment_share')));
+    }
+    // Bound to the post's edit screen, so the list adds no pencil of its own.
+    $actions[] = $link(lang('Edit'), '#', '', array(), array('_bindings' => array('href' => '__comment_edit_url', 'eo_visible_if' => 'comment_can_edit')));
+    $body[] = $el('div', 'pf-reply-actions', lang('Comment Actions'), $actions);
 
     $label = function ($for, $text, $class = 'form-label') use ($el, $attr) {
         return $el('label', $class, lang('Label'), array(), array('text' => $text, '_attrs' => array($attr('for', $for))));
@@ -4027,18 +4038,18 @@ $reply_thread = function ($w) use ($el, $heading, $para, $link, $span, $icon, $a
     $control = function ($tag, $class, $id, $value, $attrs = array()) use ($el) {
         return $el($tag, $class, lang('Field'), array(), array('id' => $id, '_attrs' => $attrs, '_bindings' => array('value' => $value)));
     };
-    $fields = array(
-        $messages(),
+    $fields = array($messages());
+    if ($reply) {
         // The post the reply answers, while it answers one. The page keeps
         // the box with the hidden attribute for Reply to show it, so it
         // takes no display utility: d-flex, !important and later in
         // Bootstrap than its [hidden] rule, would keep it on screen, empty.
-        $el('div', 'alert alert-secondary py-2 small', lang('Replying To'), array(
+        $fields[] = $el('div', 'alert alert-secondary py-2 small', lang('Replying To'), array(
             $span(lang('Replying to'), 'me-1', lang('Text')),
             $el('strong', '', lang('Name'), array(), array('text' => $people[1], '_bindings' => array('text' => '__reply_to_name'))),
             $link(lang('Cancel'), '#', 'ms-3 fw-semibold', array(), array('_bindings' => array('action' => 'comment_reply_cancel'))),
-        ), $show_when('is_replying')),
-    );
+        ), $show_when('is_replying'));
+    }
     if ($w['rating']) {
         $fields[] = $el('div', 'mb-3', lang('Rating'), array(
             $el('div', 'form-label', lang('Label'), array(), array('text' => lang('Rating'))),
@@ -4068,10 +4079,12 @@ $reply_thread = function ($w) use ($el, $heading, $para, $link, $span, $icon, $a
         $control('input', 'form-control', 'comment_file', 'comment_file', array($attr('type', 'file'))),
     ), $show_when('files_on'));
     $fields[] = $el('div', 'mb-3 small', lang('Publish'), array(), array('_bindings' => array('section' => 'comment_publish')));
-    $fields[] = $el('div', 'form-check mb-3', lang('Watch'), array(
-        $control('input', 'form-check-input', 'comment_watcher', 'comment_watcher', array($attr('type', 'checkbox'))),
-        $label('comment_watcher', $w['watch_box'], 'form-check-label'),
-    ), $show_when('watching_on'));
+    if ($watch) {
+        $fields[] = $el('div', 'form-check mb-3', lang('Watch'), array(
+            $control('input', 'form-check-input', 'comment_watcher', 'comment_watcher', array($attr('type', 'checkbox'))),
+            $label('comment_watcher', $w['watch_box'], 'form-check-label'),
+        ), $show_when('watching_on'));
+    }
     $fields[] = $el('div', 'mb-3', lang('CAPTCHA'), array(), array('_bindings' => array('section' => 'comment_captcha')));
     $fields[] = $el('div', '', lang('Send Button'), array(
         $el('button', 'btn btn-primary px-4', lang('Send Button'), array(), array('text' => $w['submit'], '_attrs' => array($attr('type', 'submit')), '_bindings' => array('action' => 'comment_submit'))),
@@ -4081,7 +4094,7 @@ $reply_thread = function ($w) use ($el, $heading, $para, $link, $span, $icon, $a
         return $el('button', 'btn btn-sm btn-secondary', lang('Send Button'), array(), array('text' => $text, '_attrs' => array($attr('type', 'submit')), '_bindings' => array('action' => $action)));
     };
 
-    return $widget_root(array(
+    $parts = array(
         $el('div', 'pg-hide-if-empty', lang('Comment List'), array(
             $loop(array($el('article', 'pf-reply', lang('Comment'), array(
                 $el('div', 'pf-reply-rule', lang('Reply Indent'), array(), $show_when('comment_is_reply')),
@@ -4100,9 +4113,11 @@ $reply_thread = function ($w) use ($el, $heading, $para, $link, $span, $icon, $a
             ), $show_when('must_sign_in')),
             $el('form', 'pf-card', lang('Comment Form'), $fields, array('_bindings' => array('action' => 'comment_form', 'eo_visible_if' => 'can_comment'))),
         )),
+    );
+    if ($watch) {
         // Following the thread: how many follow it, and the member's own
         // button; the moderators' list of who follows.
-        $el('div', 'pf-card pf-tint mt-4 pg-hide-if-empty', lang('Watch'), array(
+        $parts[] = $el('div', 'pf-card pf-tint mt-4 pg-hide-if-empty', lang('Watch'), array(
             $el('p', 'pf-meta mb-2 pg-hide-if-empty', lang('Text'), array(), $bind('__watcher_count_text')),
             $el('form', 'd-flex flex-wrap align-items-center gap-2', lang('Watch Form'), array(
                 $messages('w-100'),
@@ -4110,14 +4125,15 @@ $reply_thread = function ($w) use ($el, $heading, $para, $link, $span, $icon, $a
                 $small_button($w['unfollow'], 'comment_unwatch'),
             ), array('_bindings' => array('action' => 'comment_watch_form'))),
             $el('div', '', lang('Watchers'), array(), array('_bindings' => array('section' => 'comment_watchers'))),
-        ), $show_when('watching_on')),
-        $el('div', 'd-flex justify-content-end mt-3', lang('Staff Controls'), array(
-            $el('form', '', lang('Open or Close'), array(
-                $small_button($w['close'], 'comment_close'),
-                $small_button($w['reopen'], 'comment_reopen'),
-            ), array('_bindings' => array('action' => 'comment_allow_new_form'))),
-        ), $show_when('is_staff')),
-    ));
+        ), $show_when('watching_on'));
+    }
+    $parts[] = $el('div', 'd-flex justify-content-end mt-3', lang('Staff Controls'), array(
+        $el('form', '', lang('Open or Close'), array(
+            $small_button($w['close'], 'comment_close'),
+            $small_button($w['reopen'], 'comment_reopen'),
+        ), array('_bindings' => array('action' => 'comment_allow_new_form'))),
+    ), $show_when('is_staff'));
+    return $widget_root($parts);
 };
 // The words of a topic's replies and of a guide's feedback.
 $topic_words = array(
@@ -4147,6 +4163,45 @@ $doc_words = array(
     'reopen'    => lang('Allow new feedback'),
     'featured'  => lang('Featured'),
     'rating'    => true,
+);
+// The words of the two-sided threads: a conversation's answers, the
+// messages between a guide's author and the moderators, the moderators'
+// notes under a report.
+$conversation_words = array(
+    'empty'   => lang('No replies yet. Our answer will appear here.'),
+    'heading' => lang('Write a reply'),
+    'label'   => lang('Your reply'),
+    'sign_in' => lang('Sign in to reply.'),
+    'submit'  => lang('Send reply'),
+    'close'   => lang('Stop new replies'),
+    'reopen'  => lang('Allow new replies'),
+    'rating'  => false,
+    'reply'   => false,
+    'watch'   => false,
+);
+$desk_words = array(
+    'empty'   => lang('No messages yet. Write the first one.'),
+    'heading' => lang('Write a message'),
+    'label'   => lang('Your message'),
+    'sign_in' => lang('Sign in to reply.'),
+    'submit'  => lang('Send message'),
+    'close'   => lang('Stop new messages'),
+    'reopen'  => lang('Allow new messages'),
+    'rating'  => false,
+    'reply'   => false,
+    'watch'   => false,
+);
+$note_words = array(
+    'empty'   => lang('No notes yet.'),
+    'heading' => lang('Add a note'),
+    'label'   => lang('Your note'),
+    'sign_in' => lang('Sign in to reply.'),
+    'submit'  => lang('Add note'),
+    'close'   => lang('Stop new comments'),
+    'reopen'  => lang('Allow new comments'),
+    'rating'  => false,
+    'reply'   => false,
+    'watch'   => false,
 );
 
 // A list of recent replies, in a side card's short rows: whether a reply
@@ -4797,6 +4852,38 @@ $widgets['doc_feedback'] = array(
         'per_page'   => 10,
     ),
     'tree'   => $reply_thread($doc_words),
+);
+// The two-sided threads: the inbox's conversation, the desk's guide and the
+// moderators' report, each under its record view, which shows them only to
+// whoever may read the record. Oldest first, one after another, all on one
+// page, never featured; no Reply, Share or follow box: the sender is
+// e-mailed every answer and the moderators every new message by the page's
+// own settings, and report notes are e-mailed to nobody.
+$two_sided = array(
+    'regionType' => 'comments',
+    'order'      => 'oldest',
+    'featured'   => 'none',
+    'layout'     => 'flat',
+    'max_depth'  => 1,
+    'per_page'   => 0,
+);
+$widgets['conversation_replies'] = array(
+    'page'   => 'conversation',
+    'slug'   => lang('comments'),
+    'config' => $two_sided,
+    'tree'   => $reply_thread($conversation_words),
+);
+$widgets['doc_messages'] = array(
+    'page'   => 'doc_submission',
+    'slug'   => lang('comments'),
+    'config' => $two_sided,
+    'tree'   => $reply_thread($desk_words),
+);
+$widgets['report_notes'] = array(
+    'page'   => 'staff_report',
+    'slug'   => lang('comments'),
+    'config' => $two_sided,
+    'tree'   => $reply_thread($note_words),
 );
 
 // ── The forms ───────────────────────────────────────────────────────────
@@ -5714,7 +5801,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Community Forum & Docs'),
-    'version'     => '1.2.1',
+    'version'     => '1.3.0',
     'framework'   => 'bootstrap5',
     'order'       => 90,
     'icon'        => 'bi-chat-square-text',
