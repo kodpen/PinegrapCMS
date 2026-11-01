@@ -110,6 +110,20 @@ function pg_explorer_handle_upload($type, $request, $user)
 
     $image_report = null;
 
+    // Without Optimize (which has the product ceiling), a picture is shrunk
+    // only when its longest edge is above the site's upload cap, in its own
+    // format, before a WebP conversion the window asked for.
+    if ($is_image && !$optimize) {
+
+        $image_settings = pg_image_settings();
+
+        $cap_report = pg_image_upload_cap_apply($file_path, $image_settings['upload_max_dimension'], $image_settings['resize_quality']);
+
+        if ($cap_report && ($cap_report['status'] === 'success') && $cap_report['resized']) {
+            $image_report = $cap_report;
+        }
+    }
+
     if ($is_image && ($to_webp || $optimize)) {
 
         // A 24 megapixel photo takes a couple of seconds to resample,

@@ -105,6 +105,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-bookshop-events.md: Bookshop template (1.3.0) events as records of a collection form, the Café way: New Event page, sample events dated from today, home and events lists from today on, no fixed dates
 - design-template-cafe.md: Cafe and Clinic templates: event weekdays, price hint, rating numbers, guests pattern, consent privacy link, subject dates, booking links that fill the form.
 - design-template-comment-labels.md: Which comments labels the design templates set (singular nouns; `reply` on the forum topic and every conversation page, tested) and why not the verb key `Reply` (#3453, #4584).
+- design-template-events.md: Events and Conferences template (pinegrap-events): its parts folder, events and registrations as form records, tickets as shop products, what is not built, the pev- look, tests.
 - design-template-forum-blog.md: Forum template 1.3.0: the standard blog pages in the forum's look (blog, blog_post, blog_new, home_posts), the Blog Posts form and its samples, the post comments thread
 - design-template-forum-decisions.md: Owner decisions behind the forum template (2026-10-23): general features only, replies as comments, what is not built, and the general features it was built on, with their PRs
 - design-template-forum-layout.md: Forum template look: pf- User Styles, Figtree and JetBrains Mono, tint after card, count strips, vanishing bands, raised badge and byline links, reply cards, focus rings, light e-mail frames.
@@ -298,7 +299,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - region-node-to-widget.md: "Make designable" on a classic menu, menu sequence, ad or tag cloud region node: the widget kind and setting per type, where the widget goes, what stays the same.
 - responsive-images.md: Designer and widget images with srcset/sizes, AVIF/WebP <picture> on the Image element: which images, sizes rule, widget pass, variant swap, version stamp, e-mail strip (loading order: image-loading)
 - rich-text-profiles.md: pg_sanitize_rich_text() profiles: visitor (default, site output) drops class, layout styles and outside images and marks links ugc; staff keeps the shared allow-list; which callers pass staff.
-- search-index-run-failures.md: How update_search_index.php reports the record lists and records it left out: Site Log line, warning in the finish window
+- search-index-run-failures.md: How update_search_index.php survives a bad page, event, record or file (isolated render, old row kept) and reports failures and an early stop in the Site Log
 - search-results-catalog-detail-page.md: Search Results widget: a product is a result only when a page opens it (chosen, else a Catalog Detail page the visitor can open); the editor names a site without one (#2062, #4453)
 - sentence-with-values.md: Words beside a value (W26): props._sentence draws one translatable sentence, its N-th child at {var:N}; twins, panel row, code view lock, comment stars' label, order view's withdrawal line
 - seo-score-live-check-parity.md: pg_seo_compose() must get all four groups wherever the same SEO score is computed (designer seo_check vs pg_seo_recalculate); which inputs come from where.

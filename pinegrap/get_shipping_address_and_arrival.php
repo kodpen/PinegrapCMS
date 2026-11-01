@@ -339,7 +339,7 @@ function get_shipping_address_and_arrival($properties) {
                 country_id: "country",
                 state_text_box_id: "state_text_box",
                 state_pick_list_id: "state_pick_list",
-                zip_code_id: "zip_code"});
+                zip_code_id: "zip_code"' . pg_address_labels_init_props('city') . '});
         </script>';
 
     if ($layout_type == 'system') {
@@ -383,8 +383,9 @@ function get_shipping_address_and_arrival($properties) {
                 </div>';
         }
         
-        // The optional district, shown by its script while the country is
-        // Turkey or the recipient's carrier asks for it.
+        // The optional district, shown by its script while the recipient's
+        // carrier asks for it and the country is not Turkey (a Turkish
+        // address's city box is its district).
         $output_district_row = '';
 
         if (pg_ship_to_district_ready()) {
@@ -423,7 +424,7 @@ function get_shipping_address_and_arrival($properties) {
                     <td>' . $form->output_field(array('type'=>'text', 'id'=>'address_2', 'name'=>'address_2', 'size'=>'40', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                 </tr>
                 <tr>
-                    <td>City*</td>
+                    <td><label for="city">City*</label></td>
                     <td>' . $form->output_field(array('type'=>'text', 'id'=>'city', 'name'=>'city', 'size'=>'40', 'maxlength'=>'50', 'class'=>'software_input_text', 'required' => 'true')) . '</td>
                 </tr>
                 ' . $output_district_row . '

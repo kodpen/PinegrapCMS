@@ -96,7 +96,8 @@ if (!class_exists('DOMDocument')) {
 // queries, so this is a budget in pages rather than a target. The pass is
 // expected to take several runs to get through a large site the first time;
 // the queue it leaves behind is where the next run starts.
-$time_budget = defined('SEO_ANALYZE_TIME_BUDGET') ? (int) SEO_ANALYZE_TIME_BUDGET : 120;
+// Capped by what is left of the process's time limit (pg_cron_time_left()).
+$time_budget = pg_cron_time_left(defined('SEO_ANALYZE_TIME_BUDGET') ? (int) SEO_ANALYZE_TIME_BUDGET : 120);
 
 // The work itself lives in seo_structure.php, because the button on the Pages
 // screen runs exactly the same pass with a smaller budget.
@@ -110,5 +111,10 @@ if ($run['analyzed']) {
         'suffix' => (($run['analyzed'] > 1) ? 's' : ''))), '');
 }
 
-
-pg_cron_ran('seo_analyze_job');
+// Recorded as run only when the queue is empty; with records left the job is
+// due again in a minute instead of tomorrow.
+if ($run['ready'] && ($run['remaining'] > 0)) {
+    pg_cron_due_again('seo_analyze_job', 60);
+} else {
+    pg_cron_ran('seo_analyze_job');
+}

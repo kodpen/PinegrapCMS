@@ -278,6 +278,7 @@ function _render_system_widget_billing_information($tree_json, $widget_id, $cfg 
         'billing_country'    => _pg_acct_country_options(),
     );
     if ($referral) $selects['referral_source'] = array_merge(array(array('', '')), $referral);
+    pg_sa_address_labels($tree, 'billing_', $values['billing_country']);
     _pg_acct_fill_values($tree, $fill, $selects);
     _pg_sa_state_controls($tree, $values['billing_state'],
         isset($states[$values['billing_country']]) ? $states[$values['billing_country']] : array(), 'billing_state');
@@ -308,7 +309,7 @@ function _render_system_widget_billing_information($tree_json, $widget_id, $cfg 
 
     $form_id = 'pg-bi-form-w' . $widget_id;
     $folder_id = $page_id > 0 ? (int)db_value("SELECT page_folder FROM page WHERE page_id = '" . (int)$page_id . "'") : 0;
-    $scripts .= pg_sa_state_script($form_id, $states, $zip, 'billing_');
+    $scripts .= pg_sa_state_script($form_id, $states, $zip, 'billing_') . pg_ship_to_district_script();
     $next_page_id = isset($settings['next_page_id']) ? (int)$settings['next_page_id'] : 0;
     $hidden = array(
         'page_id'          => $page_id,

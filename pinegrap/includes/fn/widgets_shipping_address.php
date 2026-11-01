@@ -61,6 +61,26 @@ function pg_sa_district_node($id)
 }
 
 /**
+ * Gives the city and state labels of a member widget's address form the
+ * country's words, İlçe and İl for Turkey (pg_address_labels_tree_stamp()),
+ * found by the controls' names. Runs before the state control is split into
+ * its text box and pick list (_pg_sa_state_controls()).
+ *
+ * @param array  $tree
+ * @param string $prefix  the controls' name prefix ('billing_', 'business_' or '')
+ * @param string $country the country the form holds now
+ * @return void
+ */
+function pg_sa_address_labels(&$tree, $prefix, $country)
+{
+    $named = function ($name) {
+        return function ($node) use ($name) { return _pg_member_control_name($node) === $name; };
+    };
+    pg_address_labels_tree_stamp($tree, $named($prefix . 'city'), $named($prefix . 'state'), $prefix . 'country',
+        (string)$country, pg_ship_to_district_tr_codes(), pg_address_label_words());
+}
+
+/**
  * Why the recipient cannot be edited here, as the classic page refuses it,
  * or '' when it can.
  *
@@ -672,6 +692,7 @@ function _render_system_widget_shipping_address_and_arrival($tree_json, $widget_
         $countries = _pg_acct_country_options();
         foreach ((array)db_items("SELECT code FROM countries WHERE zip_code_required = 1") as $c) $zip[] = (string)$c['code'];
 
+        pg_sa_address_labels($tree, '', $values['country']);
         $fill = $values;
         foreach (array('state', 'address_type', 'arrival_date', 'custom_arrival_date', 'shipping_same_as_billing') as $k) unset($fill[$k]);
         _pg_acct_fill_values($tree, $fill, array(
@@ -748,7 +769,7 @@ function _render_system_widget_shipping_address_and_arrival($tree_json, $widget_
     $form_id = 'pg-sa-form-w' . $widget_id;
     $folder_id = $page_id > 0 ? (int)db_value("SELECT page_folder FROM page WHERE page_id = '" . (int)$page_id . "'") : 0;
     $scripts .= pg_sa_state_script($form_id, $states, $zip);
-    if ($district_ready) $scripts .= pg_ship_to_district_script();
+    $scripts .= pg_ship_to_district_script();
     if ($verified) $scripts .= pg_sa_verified_script($form_id, $verified_id, $verified_states, $verified);
     $rendered = _pg_member_form_wrap($rendered . $scripts, _pg_acct_software_path() . '/shipping_address_and_arrival.php', array(
         'page_id'    => $page_id,

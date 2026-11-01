@@ -142,6 +142,7 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
         'Short Links' => lang('Short Links'),
         'Search...' => lang('Search...'),
         'Load More' => lang('Load More'),
+        'No Search Result' => lang('No Search Result'),
         'Please allow pop-up windows for this site.' => lang('Please allow pop-up windows for this site.'),
         'No text yet. Aim for {var:1} to {var:2} characters.' => lang('No text yet. Aim for {var:1} to {var:2} characters.'),
         '{var:1} characters, too short. Aim for {var:2} to {var:3}.' => lang('{var:1} characters, too short. Aim for {var:2} to {var:3}.'),
@@ -1723,6 +1724,7 @@ function pg_css_bundles()
     return array(
         'assets/css/backend.min.css' => 'assets/css/backend.src.css',
         'assets/css/pg_image_editor.min.css' => 'assets/css/pg_image_editor.src.css',
+        'assets/css/pg_dash.min.css' => 'assets/css/pg_dash.src.css',
     );
 }
 
@@ -6907,6 +6909,9 @@ function pg_js_bundles()
         'assets/js/style_designer.min.js'          => array('assets/js/style_designer.src.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
+        // The new dashboard (includes/dashboard/v2/page.php): the grid and
+        // card frame first, then each card group's renderers.
+        'assets/js/pg_dash.min.js'                => array('assets/js/pg_dash.js'),
     );
 }
 

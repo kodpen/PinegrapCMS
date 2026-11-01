@@ -387,6 +387,25 @@ function pg_dashboard_widget_18($request, $user)
         </div>';
     }
 
+    // The upload size cap keeps new heavy pictures from arriving at all
+    // (pg_image_upload_cap_apply()); the widget says whether it is on and
+    // points to the Image Optimization card for whoever may open it.
+    $fm_cap_note = '';
+
+    if (($user['role'] <= 2) && pg_schema_has('config', 'image_upload_max_dimension')) {
+
+        $fm_cap = (int) pg_image_settings()['upload_max_dimension'];
+
+        $fm_cap_text = ($fm_cap > 0)
+            ? lang(array('string' => 'Pictures larger than {var:1} px are shrunk on upload.', 'vars' => array(pg_format_number($fm_cap, 0))))
+            : lang('Pictures are not shrunk on upload.');
+
+        $fm_cap_note = '
+        <div class="px-5 pb-3 fg-secondary" style="font-size:.625rem">' . h($fm_cap_text) . '
+            <a href="settings_features.php#pgset-images" class="text-decoration-none">' . lang('Image Optimization') . '</a>
+        </div>';
+    }
+
     $output_data = '
     <div class="card-body p-0 d-flex flex-column" style="overflow-x:hidden;overflow-y:auto">
         <div class="d-flex align-items-center justify-content-between px-5 pt-3 pb-1">
@@ -400,6 +419,7 @@ function pg_dashboard_widget_18($request, $user)
             <span class="fg-secondary" style="font-size:.625rem">' . lang(array('string' => 'Top {var:1}', 'vars' => pg_format_number($fm_largest_limit, 0))) . '</span>
         </div>
         <div class="px-5 pb-3">' . $fm_largest_rows . '</div>
+        ' . $fm_cap_note . '
     </div>
     <div class="card-footer border-0 bg-reset py-1 text-center">
         <a href="view_files.php" class="text-decoration-none" style="font-size:.6875rem">'

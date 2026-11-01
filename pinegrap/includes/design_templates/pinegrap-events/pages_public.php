@@ -25,7 +25,7 @@ $public_pages = array();
 $speaker_card = function ($key) use ($speakers, $el, $col, $image, $heading, $para, $portrait, $attr) {
     $s = $speakers[$key];
     return $col(array(
-        $el('a', 'card h-100 border-0 text-center bg-transparent text-decoration-none link-body-emphasis', $s['name'], array(
+        $el('a', 'card h-100 border-0 text-center bg-transparent text-decoration-none link-body-emphasis pev-lift', $s['name'], array(
             $el('div', 'card-body p-3', lang('Card Body'), array(
                 $image($portrait($s['name'], 320), $s['name'], 'rounded-circle object-fit-cover mb-3', array('width' => '144', 'height' => '144', '_attrs' => array($attr('loading', 'lazy')))),
                 $heading('h3', $s['name'], 'h6 fw-bold mb-1'),
@@ -108,7 +108,7 @@ $public_pages[] = array(
     'tree'             => $page(array(
         // The conference: what, where, the way to register and a picture of
         // the main hall.
-        $el('section', 'py-5 overflow-hidden', lang('Hero'), array(
+        $el('section', 'py-5 overflow-hidden pev-hero', lang('Hero'), array(
             $container(array(
                 $row(array(
                     $col(array(

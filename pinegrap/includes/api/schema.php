@@ -2698,7 +2698,7 @@ function api_schema() {
 				array('name' => 'content_base64', 'in' => 'body', 'type' => 'string', 'description' => 'The file itself, base64 encoded. Send this or source_url.'),
 				array('name' => 'source_url',     'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'An address for this site to fetch the file from. Send this or content_base64.'),
 				array('name' => 'description',    'in' => 'body', 'type' => 'string', 'max_length' => 500),
-				array('name' => 'image_profile',  'in' => 'body', 'type' => 'enum', 'values' => array('product'), 'description' => 'product scales the image to the shop\'s own dimension and quality, the same as an upload from the product screen. Left out, the file is stored byte for byte.')
+				array('name' => 'image_profile',  'in' => 'body', 'type' => 'enum', 'values' => array('product'), 'description' => 'product scales the image to the shop\'s own dimension and quality, the same as an upload from the product screen. Left out, the file is stored byte for byte, unless the site shrinks pictures above a size on upload (Image Optimization settings).')
 			)
 		),
 

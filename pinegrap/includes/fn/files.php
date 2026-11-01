@@ -1076,6 +1076,28 @@ function pg_file_store_upload($source_path, $file_name, $file_size, $options)
                         convert_bytes_to_string($image_report['bytes_after'], 'auto')))));
             }
         }
+
+    } elseif (!empty($image_settings['upload_max_dimension'])) {
+
+        // Every other picture is shrunk only when its longest edge is above
+        // the site's upload cap, in its own format; one at or under it is
+        // stored byte for byte. Not flagged optimized: only its size was
+        // taken down, not its quality profile.
+        $cap_report = pg_image_upload_cap_apply($file_path, $image_settings['upload_max_dimension'], $image_settings['resize_quality']);
+
+        if ($cap_report && ($cap_report['status'] === 'success') && $cap_report['resized']) {
+
+            $file_size = filesize($file_path);
+
+            $sql_image_1 = "image_width, image_height,";
+            $sql_image_2 =
+                "'" . (int) $cap_report['width'] . "',
+                 '" . (int) $cap_report['height'] . "',";
+
+            log_activity(lang(array(
+                'string' => 'image ({var:1}) was shrunk on upload to {var:2} x {var:3} px',
+                'vars'   => array($file_name, (int) $cap_report['width'], (int) $cap_report['height']))));
+        }
     }
 
     $sql_design_1 = "";

@@ -658,7 +658,9 @@ function _eo_apply_visibility_bindings(&$tree, $context, $row = array())
 // The optional district box of a recipient (ship_tos.district): dropped
 // while the column is missing; once it exists, a tree designed before the
 // box gets one right after City, and the box is marked for the script that
-// shows it only for Turkey or a carrier that asks (pg_ship_to_district_*).
+// shows it only abroad for a carrier that asks (pg_ship_to_district_*). The
+// city and state labels of the shipping and billing address take the
+// country's words, İlçe and İl for Turkey (pg_address_labels_tree_stamp()).
 // Runs before _eo_apply_field_bindings(), which names the controls.
 function _eo_fit_district_field(&$tree, $ship_rid = 0)
 {
@@ -669,6 +671,14 @@ function _eo_fit_district_field(&$tree, $ship_rid = 0)
             return isset($node['props']['_bindings']['eo_field']) && (string)$node['props']['_bindings']['eo_field'] === $field;
         };
     };
+    $recipient = ($ship_rid > 0) ? db_item("SELECT shipping_method_id, country FROM ship_tos WHERE id = '" . (int)$ship_rid . "'") : null;
+    $default_country = _eo_default_country();
+    $words = pg_address_label_words();
+    $tr_codes = pg_ship_to_district_tr_codes();
+    $country = ($ship_rid > 0) ? 'shipping_' . (int)$ship_rid . '_country' : 'shipping_country';
+    $ship_country = (is_array($recipient) && (string)$recipient['country'] !== '') ? (string)$recipient['country'] : $default_country;
+    pg_address_labels_tree_stamp($tree, $bound('shipping_city'), $bound('shipping_state'), $country, $ship_country, $tr_codes, $words);
+    pg_address_labels_tree_stamp($tree, $bound('billing_city'), $bound('billing_state'), 'billing_country', $default_country, $tr_codes, $words);
     $node = _eo_sem('div', 'col-12 col-md-6 mb-3', array(
         _eo_sem('label', 'form-label small fw-semibold', lang('District'),
             array('attrs' => array(array('name' => 'for', 'value' => 'shipping_district')))),
@@ -679,11 +689,17 @@ function _eo_fit_district_field(&$tree, $ship_rid = 0)
     ));
     pg_ship_to_district_tree_fit($tree, $bound('shipping_city'), $bound('shipping_district'), $node, $ready);
     if (!$ready) return;
-    $asks = ($ship_rid > 0)
-        ? pg_ship_to_district_method_asks((int)db_value("SELECT shipping_method_id FROM ship_tos WHERE id = '" . (int)$ship_rid . "'"))
-        : false;
-    $country = ($ship_rid > 0) ? 'shipping_' . (int)$ship_rid . '_country' : 'shipping_country';
-    pg_ship_to_district_tree_mark($tree, $bound('shipping_district'), $country, pg_ship_to_district_tr_codes(), $asks);
+    $asks = is_array($recipient) ? pg_ship_to_district_method_asks((int)$recipient['shipping_method_id']) : false;
+    pg_ship_to_district_tree_mark($tree, $bound('shipping_district'), $country, $tr_codes, $asks);
+}
+
+// The country the checkout's country controls start with: the shop's
+// default (countries.default_selected), '' when none is set.
+function _eo_default_country()
+{
+    static $code = null;
+    if ($code === null) $code = (string)db_value("SELECT code FROM countries WHERE default_selected = 1 ORDER BY id ASC LIMIT 1");
+    return $code;
 }
 
 // ── Designer bindings: `_bindings.eo_field='X'` on input/select/textarea
@@ -2091,11 +2107,15 @@ function _eo_render_billing_address($lf, $totals, $cfg)
     }
 
     // Two-column row helper
-    $row = function ($label, $name, $type = 'text', $value = '', $required = false, $extra = '') {
+    // A city or state row ($slot) takes the country's words, İlçe and İl
+    // for Turkey (pg_address_labels_html()).
+    $row = function ($label, $name, $type = 'text', $value = '', $required = false, $extra = '', $slot = '') use ($get) {
         $req = $required ? ' <span class="text-danger">*</span>' : '';
         $req_attr = $required ? ' required' : '';
+        $lab = ($slot !== '') ? pg_address_labels_html($label, $slot, 'billing_country', ($get('billing_country') !== '') ? $get('billing_country') : _eo_default_country())
+                              : array('text' => h($label), 'attrs' => '');
         return '<div class="col-12 col-md-6 mb-3">'
-             . '<label class="form-label small fw-semibold" for="' . h($name) . '">' . h($label) . $req . '</label>'
+             . '<label class="form-label small fw-semibold" for="' . h($name) . '"' . $lab['attrs'] . '>' . $lab['text'] . $req . '</label>'
              . '<input type="' . h($type) . '" class="form-control" id="' . h($name) . '" name="' . h($name) . '"'
              .   ' value="' . h($value) . '"' . $req_attr . ' ' . $extra . '>'
              . '</div>';
@@ -2113,7 +2133,7 @@ function _eo_render_billing_address($lf, $totals, $cfg)
     $html .= $row(lang('Email'),      'billing_email_address', 'email', $get('billing_email_address'), true);
     $html .= $row(lang('Address 1'),  'billing_address_1',  'text', $get('billing_address_1'), true);
     $html .= $row(lang('Address 2'),  'billing_address_2',  'text', $get('billing_address_2'));
-    $html .= $row(lang('City'),       'billing_city',       'text', $get('billing_city'), true);
+    $html .= $row(lang('City'),       'billing_city',       'text', $get('billing_city'), true, '', 'city');
     // Country select
     $html .= '<div class="col-12 col-md-6 mb-3">'
            . '<label class="form-label small fw-semibold" for="billing_country">' . h(lang('Country')) . ' <span class="text-danger">*</span></label>'
@@ -2128,7 +2148,7 @@ function _eo_render_billing_address($lf, $totals, $cfg)
     // this. Marking them visually-required up front avoids the silent "form
     // looks fine but submit redirects back with state error" symptom — visitor
     // sees the * and HTML5 catches the missing field before POST.
-    $html .= $row(lang('State / Province'), 'billing_state', 'text', $get('billing_state'), true);
+    $html .= $row(lang('State / Province'), 'billing_state', 'text', $get('billing_state'), true, '', 'state');
     $html .= $row(lang('Zip / Postal Code'), 'billing_zip_code', 'text', $get('billing_zip_code'), true);
     $html .= $row(lang('Phone'), 'billing_phone_number', 'tel', $get('billing_phone_number'), true);
     $html .= '</div>';
@@ -3703,12 +3723,17 @@ function _eo_render_shipping_section($recipients, $lf, $form_id, $widget_id, $in
         $addr_type = $get('address_type');
         if (!in_array($addr_type, array('residential', 'business'), true)) $addr_type = 'residential';
 
-        $row = function ($label, $field, $type = 'text', $required = false, $col = '6') use ($rid, $get) {
+        // The city row takes the country's words, İlçe for Turkey
+        // (pg_address_labels_html()).
+        $ship_country = ($get('country') !== '') ? $get('country') : _eo_default_country();
+        $row = function ($label, $field, $type = 'text', $required = false, $col = '6') use ($rid, $get, $ship_country) {
             $name = 'shipping_' . $rid . '_' . $field;
             $req = $required ? ' <span class="text-danger">*</span>' : '';
             $req_attr = $required ? ' required' : '';
+            $lab = ($field === 'city') ? pg_address_labels_html($label, 'city', 'shipping_' . $rid . '_country', $ship_country)
+                                       : array('text' => h($label), 'attrs' => '');
             return '<div class="col-12 col-md-' . h($col) . ' mb-3">'
-                 . '<label class="form-label small fw-semibold" for="' . h($name) . '">' . h($label) . $req . '</label>'
+                 . '<label class="form-label small fw-semibold" for="' . h($name) . '"' . $lab['attrs'] . '>' . $lab['text'] . $req . '</label>'
                  . '<input type="' . h($type) . '" class="form-control" id="' . h($name) . '" name="' . h($name) . '" value="' . h($get($field)) . '"' . $req_attr . '>'
                  . '</div>';
         };
@@ -3739,7 +3764,8 @@ function _eo_render_shipping_section($recipients, $lf, $form_id, $widget_id, $in
             $out .= $row(lang('City'),       'city',       'text', true);
 
             // District: optional, shown by pg_ship_to_district_script() while
-            // the country is Turkey or the carrier asks for it.
+            // the carrier asks for it and the country is not Turkey (a
+            // Turkish address's city box is its district).
             if (pg_ship_to_district_ready()) {
                 $district_name = 'shipping_' . $rid . '_district';
                 $asks = pg_ship_to_district_method_asks(isset($r['shipping_method_id']) ? (int)$r['shipping_method_id'] : 0);
@@ -3767,8 +3793,9 @@ function _eo_render_shipping_section($recipients, $lf, $form_id, $widget_id, $in
             // `get_tax_rate_for_address` look up against `states.code`.
             $sel_state_code = $get('state');
             $state_sel_html = _eo_state_options($sel_state_code, '');  // all countries; JS narrows when country picked
+            $state_label = pg_address_labels_html(lang('State / Province'), 'state', 'shipping_' . $rid . '_country', $ship_country);
             $out .= '<div class="col-12 col-md-6 mb-3">'
-                  . '<label class="form-label small fw-semibold" for="shipping_' . $rid . '_state_text_box">' . h(lang('State / Province')) . '</label>'
+                  . '<label class="form-label small fw-semibold" for="shipping_' . $rid . '_state_text_box"' . $state_label['attrs'] . '>' . $state_label['text'] . '</label>'
                   . '<input type="text" class="form-control pg-eo-state-text" id="shipping_' . $rid . '_state_text_box" name="shipping_' . $rid . '_state" value="' . h($sel_state_code) . '">'
                   . '<select class="form-select pg-eo-state-select" id="shipping_' . $rid . '_state_pick_list" name="shipping_' . $rid . '_state" style="display:none" disabled>' . $state_sel_html . '</select>'
                   . '</div>';

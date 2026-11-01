@@ -29,7 +29,7 @@ description: Steps W1-W10 of plans/webp-same-address.md: negotiation, switches, 
 - W8 (S) Workspace previews. After W7.
   - `ws_file_preview()` (`includes/workspace/files.php`) answers from the derivative cache and widths through `pg_image_derivative()` with the file's `files` id (edges 160 and 320 → 320, 640 → 960, 1280 → 1440); `data/temp/workspace_previews` and its sweep go; Workspace access checks stay in front.
 
-- W9 (S) Upload size cap. `free`.
+- W9 (S) Upload size cap. Done (#4700).
   - "Shrink pictures larger than N px on upload" in the image card (same format, the engine's resize, EXIF applied): `config.image_upload_max_dimension` SMALLINT UNSIGNED NOT NULL DEFAULT 0 (0 = off), step `11.0.142`, 2560 on a new install (the install dumps), off on a running site; the product ceiling stays its own; the heavy-images widget points to it.
 
 - W10 (S) Close-out. After W1-W9.

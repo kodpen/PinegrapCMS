@@ -71,15 +71,15 @@
     </div>
 
     <div class="form-group">
-        <label for="business_city">City</label>
+        <label for="business_city">&#304;l&ccedil;e</label>
         <input type="text" name="business_city" id="business_city">
     </div>
 
     <div class="form-group">
-        <label for="business_state_text_box">State / Province</label>
+        <label for="business_state_text_box">&#304;l</label>
         <input type="text" name="business_state" id="business_state_text_box">
         
-        <label for="business_state_pick_list" style="display: none">State / Province</label>
+        <label for="business_state_pick_list" style="display: none">&#304;l</label>
         <select name="business_state" id="business_state_pick_list" style="display: none"></select>
     </div>
 
