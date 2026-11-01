@@ -1,13 +1,13 @@
 ---
 name: design-template-magazine-issues
-description: Magazine issues: office pick list with the stored default Online only, ?issue= contents, index of live Editor's letters, token hrefs, plain names, launching one.
+description: Magazine issues: office pick list with the stored default Online only, ?issue= contents, index of live Editor's letters, value links, plain names, launching one.
 ---
 
 ## How do issues work?
 - An office pick list `issue` on the Stories form: first option `Online only`, selected, then the issue names (the samples newest first). Every option is a stored value.
 - One archive: `issues?issue=<name>` (a URL-parameter filter, [[form-list-url-filters]]) lists that issue's live stories as numbered contents (`issue_list`, 30/30, `ol.pm-rank`). No filter title: the page title is the name alone, which already says "Issue".
 - The issue index (`issue_index` on `issues`, `home_issues` on home, 3/3) lists the live Editor's letters whose issue is not `Online only`, one per issue: the letter's picture, date and standfirst stand for the issue.
-- The cover card, the story header and the issue cards link `{{page:issues}}?issue=^^issue^^`: a static href whose token `pg_sw_apply_tokens()` fills from the row. Only these four live public views print it (test 23).
+- The cover card, the story header and the issue cards link the issues page with `$issue_page_link`: `__page_link` to `{{tab:issues}}` with `issue` = the record's issue ([[record-value-page-links]]), encoded once and read back by the list's URL filter (1.2.0; before, a `?issue=^^issue^^` token href). Only these four live public views carry it (test 23).
 
 ## Why must an office pick list's default be a stored option?
 - `_pg_cf_controls()` stores no option whose value is `''`, and takes the default from the `selected` option. The panel's edit screen (`edit_submitted_form.php`, opened by the template's Change Status button) prints only stored options, with no blank row.
@@ -15,7 +15,7 @@ description: Magazine issues: office pick list with the stored default Online on
 - Test 5 asserts one selected option and no empty value on every office pick list ([[custom-form-model]]).
 
 ## Why plain issue names?
-- The token value is HTML-escaped, not URL-encoded. A name with `& # ? + % = " ' < >` would cut or break the address; `pg_sw_url_param_value()` keeps 100 characters. The browser percent-encodes spaces and letters such as ü. Test 23 checks every name and its Turkish value; the staff note says so.
+- A value link sends the issue only when `pg_sw_url_param_value()` reads it back unchanged (100 characters, one line), and the list compares it with the stored value. The names stay plain (no `& # ? + % = " ' < >`), as the staff note asks; test 23 checks every name and its Turkish value.
 
 ## How does an operator launch an issue?
 1. An administrator or designer (editors and managers open the visual editor for content only, and a system widget stays closed to them): in the visual editor, add the name to "Part of the issue" on Submit a Story with Add an option (it goes last), check that `Online only` keeps the default star, and publish the design (the panel cannot change a designer form's fields, `edit_field.php`). Not with the bulk edit box: it exports the default as `value|on` and reads that back as label `on`, not selected, so the default is lost (`style_designer.js`, choice options).
