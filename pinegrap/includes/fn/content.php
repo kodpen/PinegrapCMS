@@ -3820,6 +3820,11 @@ function get_variable_submitted_form_data_for_content($current_page_id, $submitt
                 switch ($field_group) {
                     case 'standard':
                         $data = $submitted_form[$field_name] ?? '';
+                        // The newest comment is cut before it is escaped, so the cut
+                        // never splits an entity or a line break's <br />.
+                        if ($field_name == 'newest_comment') {
+                            $data = pg_form_view_newest_comment($data);
+                        }
                         break;
                     case 'custom':
                         // A field the visitor left empty (an unticked box) has no form_data row.
@@ -3850,10 +3855,6 @@ function get_variable_submitted_form_data_for_content($current_page_id, $submitt
                         } else {
                             $data = pg_format_number($data, 0);
                         }
-                    }
-                    // if this is the newest comment field and the message is greater than 100 characters, then shorten message
-                    if (($field_name == 'newest_comment') && (mb_strlen($data) > 100)) {
-                        $data = mb_substr($data, 0, 100) . '...';
                     }
                     // The newest comment's name: no name, or the stored 'Anonymous', reads in the site language.
                     if (($field_name == 'newest_comment_name') && (($data == '') || ($data === 'Anonymous')) && ($submitted_form['newest_comment_id'] != '')) {
