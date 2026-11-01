@@ -18,6 +18,11 @@
 
 include('init.php');
 
+// The stylesheet to load again. A name sent as an array (?name[]=x) counts
+// as not given: h() throws a TypeError on it under PHP 8, and this screen
+// needs no sign-in.
+$theme_file_name = is_scalar($_GET['name'] ?? null) ? (string) $_GET['name'] : '';
+
 // If this screen is loading for the first time, then add JavaScript to reload screen.
 if (isset($_SESSION['software']['theme_reloaded']) == FALSE) {
     $_SESSION['software']['theme_reloaded'] = TRUE;
@@ -55,7 +60,7 @@ echo
     <html lang="en">
         <head>
             <meta charset="utf-8">
-            <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . h($_GET['name'] ?? '') . '" />
+            <link rel="stylesheet" type="text/css" href="' . OUTPUT_PATH . h($theme_file_name) . '" />
             ' . $output_javascript . '
         </head>
         <body style="background-color: black !important; background-image: none !important"></body>
