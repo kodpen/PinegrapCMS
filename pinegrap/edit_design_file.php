@@ -346,6 +346,18 @@ if (empty($_POST['name'])) {
             $sql_theme = "theme = '" . escape($_POST['theme'] ?? '') . "',";
         }
         
+        // Rename the file first when its name changed and it is on the disk
+        // (a file recorded here but missing from the disk has nothing to
+        // rename). A failed rename stops the save, so the record never takes
+        // a name the disk does not have.
+        if (
+            ($name !== $stored_name)
+            && is_file(FILE_DIRECTORY_PATH . '/' . $stored_name)
+            && !@rename(FILE_DIRECTORY_PATH . '/' . $stored_name, FILE_DIRECTORY_PATH . '/' . $name)
+        ) {
+            output_error(lang('The file could not be renamed on the file system. Check write permission for the file directory.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+
         // update file
         $audit_before = pg_audit_fetch('files', (int) $id);
         $query =
@@ -364,11 +376,6 @@ if (empty($_POST['name'])) {
         $result=mysqli_query(db::$con, $query) or output_error('Query failed');
         pg_audit_record('update', 'files', (int) $id, $audit_before);
         
-        // Rename the file when its name changed and it is on the disk (a
-        // file recorded here but missing from the disk has nothing to rename).
-        if (($name !== $stored_name) && is_file(FILE_DIRECTORY_PATH . '/' . $stored_name)) {
-            rename(FILE_DIRECTORY_PATH . '/' . $stored_name, FILE_DIRECTORY_PATH . '/' . $name);
-        }
 
 
         log_activity(lang(array('string'=>'design file ({var:1}) was modified','vars'=>$name)), $_SESSION['sessionusername']);
