@@ -619,7 +619,9 @@ class liveform {
                     $output_size = ' size="' . h($size) . '"';
                 }
 
-                return "<input type=\"password\" name=\"" . h($field) . "\"" . $output_id_attribute . " value=\"" . h($value) . "\" class=\"$class\" style=\"$style\"$output_onclick$output_onfocus" . $output_size . $output_required . $output_aria_label . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . ">" . $output_inline_feedback;
+                $output_placeholder = ($placeholder != '') ? ' placeholder="' . h($placeholder) . '"' : '';
+
+                return "<input type=\"password\" name=\"" . h($field) . "\"" . $output_id_attribute . " value=\"" . h($value) . "\" class=\"$class\" style=\"$style\"$output_onclick$output_onfocus" . $output_size . $output_placeholder . $output_required . $output_aria_label . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . ">" . $output_inline_feedback;
                 break;
                 
             case 'hidden':
