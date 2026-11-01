@@ -668,6 +668,90 @@ function pg_search_index_stage_label($stage)
 }
 
 /**
+ * Whether the next search index run starts a full pass: when none has
+ * finished for a day. Between full passes a dispatched run only re-indexes
+ * what changed since its row (the delta stage). Pure.
+ *
+ * @param int $last_done the end of the last full pass (the job's completion
+ *                       marker), 0 for none
+ * @param int $now
+ * @param int $interval  seconds between full passes
+ * @return bool
+ */
+function pg_search_index_full_due($last_done, $now, $interval = 86400)
+{
+    return ((int) $last_done <= 0) || (((int) $now - (int) $last_done) >= ((int) $interval - 300));
+}
+
+/**
+ * The pages the delta stage re-indexes: those whose own row exists and is
+ * older than the page's last change. A page with no row waits for the full
+ * pass. Pure.
+ *
+ * @param array $pages [{id, url (its indexed address), page_timestamp}]
+ * @param array $rows  url => the row's timestamp
+ * @return int[]
+ */
+function pg_search_index_delta_pages($pages, $rows)
+{
+    $ids = array();
+
+    foreach ((array) $pages as $page) {
+        $url = (string) ($page['url'] ?? '');
+
+        if (($url !== '') && isset($rows[$url]) && ((int) $page['page_timestamp'] > (int) $rows[$url])) {
+            $ids[] = (int) $page['id'];
+        }
+    }
+
+    return $ids;
+}
+
+/**
+ * The reference code a record's indexed address carries in ?r=, '' when it
+ * carries none (a record indexed at its address name waits for the full
+ * pass). Pure.
+ *
+ * @param string $url
+ * @return string
+ */
+function pg_search_index_record_code($url)
+{
+    $query = (string) parse_url('/' . ltrim((string) $url, '/'), PHP_URL_QUERY);
+
+    if ($query === '') {
+        return '';
+    }
+
+    parse_str($query, $params);
+
+    return (isset($params['r']) && is_string($params['r'])) ? trim($params['r']) : '';
+}
+
+/**
+ * The records the delta stage re-indexes: reference code => true for each
+ * record changed after its row was written. Pure.
+ *
+ * @param array $rows  url => the row's timestamp (rows of record addresses)
+ * @param array $forms reference_code => forms.last_modified_timestamp
+ * @return array
+ */
+function pg_search_index_delta_records($rows, $forms)
+{
+    $codes = array();
+
+    foreach ((array) $rows as $url => $timestamp) {
+        $code = pg_search_index_record_code($url);
+
+        if (($code !== '') && isset($forms[$code]) && ((int) $forms[$code] > (int) $timestamp)) {
+            $codes[$code] = true;
+        }
+    }
+
+    return $codes;
+}
+
+/**
  * Where an unfinished search index pass keeps its place. Losing the file (the
  * clean up tool empties data/temp) only starts the pass again.
  *
