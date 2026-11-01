@@ -403,6 +403,8 @@ function pg_panel_shared_component($request, $action)
         // props panel to populate the "which form's submissions to show?" dropdown.
         // JOINs custom_form_pages for form_name (the user-friendly label) — the
         // canonical FK is page.page_id, and custom_form_pages.page_id maps 1:1.
+        // folder_name lets the picker tell same-named forms of different
+        // designs apart (a template's pages live in their own folder).
         case 'list_custom_forms':
             $sc_form_rows = db_items(
                 "SELECT
@@ -410,9 +412,11 @@ function pg_panel_shared_component($request, $action)
                         page.page_name,
                         page.page_title,
                         page.page_folder,
-                        custom_form_pages.form_name
+                        custom_form_pages.form_name,
+                        folder.folder_name
                      FROM page
                      LEFT JOIN custom_form_pages ON custom_form_pages.page_id = page.page_id
+                     LEFT JOIN folder ON folder.folder_id = page.page_folder
                      WHERE " . pg_form_page_sql('page') . "
                      ORDER BY custom_form_pages.form_name ASC, page.page_name ASC"
             );

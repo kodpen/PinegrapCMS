@@ -194,7 +194,7 @@ function test_designer_style_option_labels_placeholder()
 function test_designer_style_option_labels_untranslated_words_kept()
 {
 	$result = _test_sol_run(array(
-		array('', array('fw-lighter', 'text-decoration-none', 'object-fit-scale-down', 'fst-italic', 'lh-sm', 'lh-base'), 'Default'),
+		array('', array('fw-lighter', 'text-decoration-none', 'overflow-auto', 'fst-italic', 'lh-sm', 'lh-base'), 'Default'),
 	), _test_sol_keys());
 
 	if ($result === null) {
@@ -205,10 +205,32 @@ function test_designer_style_option_labels_untranslated_words_kept()
 		array('', 'Varsayılan', false),
 		array('fw-lighter', 'Lighter', false),
 		array('text-decoration-none', 'Decoration none', false),
-		array('object-fit-scale-down', 'Fit scale down', false),
+		array('overflow-auto', 'Auto', false),
 		array('fst-italic', 'Italic', false),
 		array('lh-sm', 'Küçük', false),
 		array('lh-base', 'Base', false),
+	), $result[0]['options']);
+}
+
+// The image's object fit select names each fit by what it does to the
+// picture; its classes used to read "Fit contain", "Fit scale down".
+function test_designer_style_option_labels_object_fit()
+{
+	$result = _test_sol_run(array(
+		array('object-fit-cover', array('object-fit-contain', 'object-fit-cover', 'object-fit-fill', 'object-fit-scale-down', 'object-fit-none'), 'Default'),
+	), array_merge(_test_sol_keys(), array('Contain (whole image)', 'Cover (crop to fill)', 'Stretch to fill', 'Scale down only', 'Natural size')));
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		array('', 'Varsayılan', false),
+		array('object-fit-contain', 'Tamamını sığdır', false),
+		array('object-fit-cover', 'Kırparak doldur', true),
+		array('object-fit-fill', 'Esneterek doldur', false),
+		array('object-fit-scale-down', 'Yalnız küçült', false),
+		array('object-fit-none', 'Doğal boyut', false),
 	), $result[0]['options']);
 }
 
