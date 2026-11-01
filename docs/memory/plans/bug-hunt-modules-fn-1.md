@@ -152,7 +152,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `meta_tags`: open
 
-- `mfa`: open
+- `mfa`: taken by KY
 
 - `not_found_log`: open
 
