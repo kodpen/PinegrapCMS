@@ -30,7 +30,7 @@ description: Steps N1-N14 of plans/new-dashboard.md: size, screens, order, which
 - N7 (M) Visitor and content cards. Screens 03, 04, 18, 19. `free` after N4.
   - `gsearch`, `ga`, `content`, `comments` (Approve, Spam through the comments screen's endpoint), `files`, `activity` with its chips.
 
-- N8 (M) Security and team cards. Screens 04, 18. In progress (draft PR).
+- N8 (M) Security and team cards. Screens 04, 18. done (#4865).
   - `firewall`, `team`, `mytasks` (tick through `ws_task_status`), `waiting`, `week`, `calendars`.
 
 - N9 (M) Shop cards. Screens 16-18. `free` after N4.
