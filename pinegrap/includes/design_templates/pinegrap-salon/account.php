@@ -134,7 +134,7 @@ $account_pages[] = array(
             $container(array(
                 $section_header(lang('Staff'), lang('Shortcuts')),
                 $row(array(
-                    $staff_shortcut('bi-calendar2-week', lang('All Bookings'), lang('Every booking, newest first, with its status.'), '{{page:my_appointments}}'),
+                    $staff_shortcut('bi-calendar2-week', lang('All Bookings'), lang('Every appointment, newest first, with its status.'), '{{page:my_appointments}}'),
                     $staff_shortcut('bi-chat-heart', lang('All Conversations'), lang('Every message from the contact page. Answer below each one.'), '{{page:inbox}}'),
                     $staff_shortcut('bi-journal-plus', lang('New Blog Post'), lang('Write a post; it appears on the blog as soon as you send it.'), '{{page:blog_new}}'),
                     $staff_shortcut('bi-person-plus', lang('Add to the Staff Directory'), lang('Add a colleague to the directory clients see.'), '{{page:staff_entry}}'),

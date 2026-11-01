@@ -413,7 +413,7 @@ function test_salon_assembled_template()
 	pg_assert_same(count($d['booking']['widgets']) + count($d['standard']['widgets']) + count($d['account']['widgets']), count($tpl['widgets']));
 	pg_assert_same(array('account_bar', 'notice', 'header', 'footer', 'staff_bar', 'booking_band', 'email_header', 'email_footer'), array_keys($tpl['shared']));
 	pg_assert_true(isset($tpl['contact_groups']['newsletter']), 'the newsletter contact group');
-	pg_assert_same('1.1.0', $tpl['version']);
+	pg_assert_true(version_compare($tpl['version'], '1.1.1', '>='), 'the version moved');
 
 	// The contact page's details are a search section.
 	foreach ($tpl['pages'] as $p) {
@@ -497,4 +497,25 @@ function test_salon_google_reviews()
 	$sample = strpos($home, lang('“Leyla did my wedding make-up. It looked perfect in every photo and lasted until the last dance.”'));
 	$widget = strpos($home, '"templateWidget":"google_reviews"');
 	pg_assert_true($sample !== false && $widget !== false && $sample < $widget, 'the sample words stay, the widget after them');
+}
+
+// The salon's Turkish says "hizmet" and "randevu" throughout: its booking
+// field, staff shortcut and statuses use keys of their own, not the shared
+// ones translated for other screens ("Servis", "rezervasyon", "Tamamlanmış").
+function test_salon_turkish_words()
+{
+	$map = pg_test_language_map('tr');
+	$text = '';
+	foreach (glob(PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-salon{,/*}.php', GLOB_BRACE) as $file) {
+		$text .= file_get_contents($file);
+	}
+	foreach (array('Service', 'Completed', 'Cancelled', 'Every booking, newest first, with its status.') as $shared) {
+		pg_assert_true(strpos($text, "lang('" . $shared . "')") === false, "the salon does not use the shared key: $shared");
+	}
+	pg_assert_same('Hizmet', $map['Treatment']);
+	pg_assert_same('Tamamlandı', $map['Appointment completed']);
+	pg_assert_same('İptal edildi', $map['Appointment cancelled']);
+	pg_assert_same('Bugünden itibaren randevu yok.', $map['No appointments from today on.']);
+	pg_assert_same(0, strpos($map['email-new-booking'], 'e-posta-'), 'e-mail page names start with e-posta-');
+	pg_assert_same(0, strpos($map['email-booking-received'], 'e-posta-'), 'e-mail page names start with e-posta-');
 }
