@@ -1,6 +1,6 @@
 ---
 name: designer-page-queries
-description: Queries per designer-built page (2026-11-01 sandbox measure, four design templates): what repeated, the request-scope reads that removed it (PR #NNNN), what is left, why no fragment cache yet
+description: Queries per designer-built page (2026-11-01 sandbox measure, four design templates): what repeated, the request-scope reads that removed it (PR #4403), what is left, why no fragment cache yet
 ---
 
 ## How was it measured?
