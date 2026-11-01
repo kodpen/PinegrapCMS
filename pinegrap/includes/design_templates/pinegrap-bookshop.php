@@ -3343,7 +3343,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Bookshop'),
-    'version'     => '1.3.0',
+    'version'     => '1.3.1',
     'framework'   => 'bootstrap5',
     'order'       => 40,
     'icon'        => 'bi-book-half',

@@ -474,3 +474,18 @@ function test_events_headings_never_skip_a_level()
 	}
 	pg_assert_true($checked > 50, 'headings found');
 }
+
+// The events page, menu, footer, form and help topic of the Events and
+// Bookshop templates use the "Events" key, which reads "Etkinlikler" as the
+// rest of those sites do; the API and firewall screens use their own keys so
+// they keep the technical "Olaylar".
+function test_events_key_reads_as_site_events_in_turkish()
+{
+	$map = pg_test_language_map('tr');
+	pg_assert_same('Etkinlikler', $map['Events'], 'Events is the site word');
+	pg_assert_same('Webhook olayları', $map['Webhook events'], 'API events keep their word');
+	pg_assert_same('Kayıtlı olaylar', $map['Logged events'], 'firewall events keep their word');
+	foreach (array('api_settings.php', 'includes/api/console_view.php', 'view_waf_log.php') as $file) {
+		pg_assert_true(strpos(file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), "lang('Events')") === false, "$file uses its own key");
+	}
+}

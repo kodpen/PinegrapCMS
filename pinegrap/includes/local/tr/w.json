@@ -316,6 +316,7 @@
     "Webhook ID": "Webhook Kimliği",
     "Webhook Signing Secret": "Webhook İmzalama Anahtarı",
     "Webhook delivery": "Webhook gönderimi",
+    "Webhook events": "Webhook olayları",
     "Webhook registered. {var:1} now sends new orders to this site as they happen.": "Webhook kaydedildi. {var:1} artık yeni siparişleri gerçekleştikleri anda bu siteye gönderiyor.",
     "Webhook removed. Orders are read every five minutes again.": "Webhook kaldırıldı. Siparişler yeniden beş dakikada bir okunuyor.",
     "Webhooks": "Webhook",

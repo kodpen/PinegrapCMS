@@ -1840,7 +1840,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_security" type="button" id="d_security_label" aria-controls="d_security">' . lang('Security') . '</button></li>
 			<li class="nav-item" id="d_devices_tab"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_devices" type="button" id="d_devices_label" aria-controls="d_devices"
 				data-device="' . h(lang('Devices')) . '" data-oauth="' . h(lang('Connections')) . '">' . lang('Devices') . '</button></li>
-			<li class="nav-item" id="d_hooks_tab"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_hooks" type="button" id="d_hooks_label" aria-controls="d_hooks">' . lang('Events') . '</button></li>
+			<li class="nav-item" id="d_hooks_tab"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_hooks" type="button" id="d_hooks_label" aria-controls="d_hooks">' . lang('Webhook events') . '</button></li>
 			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_log" type="button" id="d_log_label" aria-controls="d_log">' . lang('Log') . '</button></li>
 		</ul>
 
