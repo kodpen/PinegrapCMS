@@ -176,7 +176,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `page_bulk`: open
 
-- `page_cache`: open
+- `page_cache`: clean (gate, serve and store checks, key, pack and write, stale lock, beacon, dirty rules, sweep checked)
 
 - `page_facts`: clean (empty cart '' is the owner's rule)
 
