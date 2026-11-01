@@ -293,3 +293,25 @@ function test_sms_campaign_screen_writes_are_checked()
 	$logged = strpos($source, "'SMS campaign cancelled: {var:1}'");
 	pg_assert_true(($affected !== false) && ($logged !== false) && ($affected < $logged), 'cancel log follows the affected-rows check');
 }
+
+// An edit saved after the job claimed the campaign (or after it was
+// cancelled) changes no row: the save must stop there, not rewrite the
+// groups of a campaign already queued and report the changes as saved.
+function test_sms_campaign_update_landed()
+{
+	pg_assert_true(pg_sms_campaign_update_landed(1, null), 'one row changed');
+	pg_assert_true(pg_sms_campaign_update_landed(0, 'draft'), 'the same values saved again in the same second');
+	pg_assert_true(pg_sms_campaign_update_landed(0, 'ready'), 'still scheduled');
+	pg_assert_false(pg_sms_campaign_update_landed(0, 'queued'), 'claimed by the job meanwhile');
+	pg_assert_false(pg_sms_campaign_update_landed(0, 'cancelled'), 'cancelled meanwhile');
+	pg_assert_false(pg_sms_campaign_update_landed(0, null), 'deleted meanwhile');
+	pg_assert_false(pg_sms_campaign_update_landed(-1, 'draft'), 'the query failed');
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/sms_campaigns.php');
+	$check = strpos($source, 'pg_sms_campaign_update_landed($affected');
+	$delete = strpos($source, 'DELETE FROM contact_groups_sms_campaigns_xref');
+	pg_assert_true(($check !== false) && ($delete !== false) && ($check < $delete), 'the groups are rewritten only after the check');
+
+	$screen = file_get_contents(PG_FUNCTIONS_DIR . '/edit_sms_campaign.php');
+	pg_assert_true(strpos($screen, '$saved === -1') !== false, 'the screen tells a campaign that left the editable states');
+}

@@ -325,7 +325,7 @@
 
     // The answer redraws the panel, keeping the search box's focus.
     Editor.prototype.refreshStickerFiles = function () {
-        if (this.finished || (this.tool !== 'sticker')) {
+        if (this.finished || ((this.tool !== 'sticker') && (this.tool !== 'image'))) {
             return;
         }
 

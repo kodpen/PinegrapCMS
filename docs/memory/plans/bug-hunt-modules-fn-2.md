@@ -4,7 +4,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 ---
 
 ## Which includes/fn/ modules (price_history to wishlist) are hunted?
-- `price_history`: open
+- `price_history`: clean
 
 - `privacy`: clean
 
@@ -60,11 +60,11 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `site_time_sql`: open
 
-- `sms`: taken by LW, #4674
+- `sms`: #4674 (LW; rest clean)
 
-- `sms_campaigns`: open
+- `sms_campaigns`: taken by MC, #4707
 
-- `sms_codes`: clean (LG: hash keep and check, expiry and miss limit, purpose, subject and number binding, queue reference and expiry, send throttle buckets, token check, sign-in offer and number lookup, COD field script and its escaping checked)
+- `sms_codes`: clean (#4614)
 
 - `sms_messages`: open
 
@@ -76,7 +76,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `subscription_renewal`: fault fixed by LN, #4622 (renewals stop at the line's number of payments, decided in #4623)
 
-- `subscriptions`: clean (LJ: period dates and month-end anchor, retry ladder, status moves and the read-status guarded write, sealed card_ref shape and seal/open, line amount, later-start rows and the nothing-today refusal, event de-duplication checked; store-mode renewals never stop at order_items.recurring_number_of_payments, left to the `subscription_renewal` hunt)
+- `subscriptions`: clean (#4621)
 
 - `subscriptions_account`: open
 
@@ -184,7 +184,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `widgets_placement`: open
 
-- `widgets_shipping_address`: open
+- `widgets_shipping_address`: clean (#4727)
 
 - `widgets_shipping_method`: clean (refusals, methods, amounts, remove link)
 

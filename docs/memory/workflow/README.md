@@ -40,8 +40,8 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-13.md: Decisions list, product part 13 (2026-10-31 on): Site Settings group headings, no notes secret feed, no hint on forgot password, IIS preflight nudge
 - decisions-made-product-14.md: Decisions list, product part 14 (2026-10-31 on): own image editor, nothing alone under a screen's title, no PDF of ours for a purchase invoice, Site Settings regrouped
 - decisions-made-product-15.md: Decisions list, product part 15 (2026-10-31 on): affiliate commission voided on cancel; image editor redacted save, retention, site button, SVG animation; P7 api2 key; cash tills never below zero
-- decisions-made-product-16.md: Decisions list, product part 16 (2026-11-01 on): design templates finished (comments, events, testimonials); Turkish address fields (İl and İlçe)
-- decisions-made-product-17.md: Decisions list, product part 17 (2026-11-01 midday on): WebP at a picture's own address (default, convert doors, master file); the new dashboard's storage, visitor map, daily summary, role lock
+- decisions-made-product-16.md: Decisions list, product part 16 (2026-11-01 on): design templates finished (comments, events, testimonials); Turkish address fields (İl and İlçe); image editor animation and video
+- decisions-made-product-17.md: Decisions list, product part 17 (2026-11-01 midday on): WebP at a picture's own address (default, convert doors, master file); the new dashboard's storage, visitor map, daily summary, role lock, gauge
 - decisions-made-product-2.md: Decisions list, product part 2 (2026-10-29 on): guest account and receipt of a webhook-completed order; PayTR instalments; layout editor of a page not on a visual design; carrier drivers
 - decisions-made-product-3.md: Decisions list, product part 3 (2026-10-29 on): SVG and ZPL labels, the first international label driver, get_catalog.php's dead top-item block, the PHP 5 remnants, converted common regions' rows
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch

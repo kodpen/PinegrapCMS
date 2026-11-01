@@ -99,6 +99,16 @@ if ($_POST && !$readonly) {
     if (!$errors) {
         $saved = pg_sms_campaign_save($id, $decision['values'], $user['id']);
 
+        // Queued by the job, cancelled or deleted after this screen read it:
+        // nothing was written, and the campaign is shown as it now stands.
+        if ($saved === -1) {
+            $liveform = new liveform('view_sms_campaigns');
+            $liveform->add_error(lang('The SMS campaign was queued, cancelled or deleted before your changes could be saved. They were not saved.'));
+
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_sms_campaigns.php');
+            exit;
+        }
+
         if (!$saved) {
             output_error('Query failed.');
         }
