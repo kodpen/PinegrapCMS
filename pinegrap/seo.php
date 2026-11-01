@@ -1809,22 +1809,25 @@ function pg_seo_row_scored($row)
 // Color band for a score, shared by every screen that draws one so the bands
 // cannot drift apart. Bootstrap has no orange contextual class, hence the
 // literal orange (the one pg_seo_score_hex() uses) for the third band: the
-// panel defines no orange custom property.
+// panel defines no orange custom property. 'style' is the fill of a bar or
+// dot; 'ink' is the text colour: the orange pulled toward the strongest text
+// colour, so a figure reads 4.5:1 in both themes (the plain orange is 2.4:1
+// on a light row).
 function pg_seo_score_color($score)
 {
     if ($score >= 80) {
-        return array('class' => 'success', 'style' => '');
+        return array('class' => 'success', 'style' => '', 'ink' => '');
     }
 
     if ($score >= 55) {
-        return array('class' => 'warning', 'style' => '');
+        return array('class' => 'warning', 'style' => '', 'ink' => '');
     }
 
     if ($score >= 30) {
-        return array('class' => '', 'style' => '#fd7e14');
+        return array('class' => '', 'style' => '#fd7e14', 'ink' => 'color-mix(in srgb, #fd7e14 55%, var(--pg-fg-emphasis))');
     }
 
-    return array('class' => 'danger', 'style' => '');
+    return array('class' => 'danger', 'style' => '', 'ink' => '');
 }
 
 // Score colour as a literal hex value.
@@ -2354,7 +2357,7 @@ function pg_seo_render_bar($row)
 
     if ($color['style'] !== '') {
         $bar_style .= ';background-color:' . $color['style'];
-        $text_style = ' style="color:' . $color['style'] . '"';
+        $text_style = ' style="color:' . $color['ink'] . '"';
     }
 
     $labels = pg_seo_flag_labels((int) ($row['seo_flags'] ?? 0), 3);
