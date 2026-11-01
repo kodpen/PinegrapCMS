@@ -1577,6 +1577,21 @@
   background: var(--pgie-sel);
 }
 
+/* -- SVG (pg_image_editor_svg.js) -- */
+
+/* The text of an SVG text element, edited in the panel. */
+.pgie .pgie-svgtext {
+  width: 100%;
+  min-height: 72px;
+  padding: 8px 10px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 9px;
+  background: var(--pgie-surface);
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+
 /* Small screens. Below 768 px wide or 500 px tall the dialog fills the
    screen and the panel becomes a sheet: over the right of the stage between
    600 and 767 px and on a phone held sideways, above a bottom tool bar below
