@@ -166,6 +166,7 @@ pg_page_shell([
 
             <div class="card my-7">
                 <div class="card-body row g-5">
+                    <div class="col-6 md:col-3"><div class="small fg-secondary">' . lang('Status') . '</div><div><span class="badge theme-' . h($state[1]) . '">' . h($state[0]) . '</span></div></div>
                     ' . $fact(lang('Direction'), $received ? lang('Taken from a customer') : lang('Given to a supplier')) . '
                     ' . $fact(lang('Account'), (string) $cheque['account_title']) . '
                     ' . $fact(lang('Amount'), erp_money_out_currency((int) $cheque['amount'], (string) $cheque['currency'])) . '

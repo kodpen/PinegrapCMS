@@ -22,4 +22,7 @@ description: Manual invoice form mechanics (lines[n][field] arrays, template row
 ## What was added to document data?
 - Template unchanged, placeholders only: line `unit` (UN/ECE unit code, default `C62`); header `is_purchase`, `supplier_invoice_no`, `supplier_invoice_date` (on a purchase invoice the supplier's number; our own number still comes from the `purchase_invoice` series).
 
+## Why does the line table have a minimum width?
+- `[data-erp-lines-table]` in `includes/erp/invoice_form.php` (invoice, quote and purchase order editors) carries `min-width:60rem`: its columns are percentages, and on a 375 px phone they shrank to 33-40 px boxes (product, unit price, VAT, unit select unreadable). Now the table scrolls sideways at a readable width (#4529, from #4434).
+
 Related: docs/memory/erp/erp-manual-invoice-draft-issue.md
