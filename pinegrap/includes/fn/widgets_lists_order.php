@@ -265,10 +265,13 @@ function pg_sw_list_order_sources()
 
 // "zip city state" of an address row, a state named like its city written
 // once, as the order view writes it.
-function _pg_sw_list_order_city_line($zip, $city, $state)
+function _pg_sw_list_order_city_line($zip, $city, $state, $district = '')
 {
     $state = (mb_strtolower(trim((string)$state)) === mb_strtolower(trim((string)$city))) ? '' : trim((string)$state);
-    return implode(' ', array_filter(array(trim((string)$zip), trim((string)$city), $state)));
+    // The district before the city, left out when it repeats the city, as
+    // the panel's order screen prints it.
+    $district = pg_order_view_district($district, $city);
+    return implode(' ', array_filter(array(trim((string)$zip), $district, trim((string)$city), $state)));
 }
 
 // The allow-listed values (pg_sw_entity_fields($entity)) a row of the
@@ -337,7 +340,7 @@ function pg_sw_list_order_shipment_row($st, $arrival)
     $name = implode(' ', array_filter(array(trim($g('first_name')), trim($g('last_name')))));
     $full = implode(', ', array_filter(array(
         $name, $g('company'), $g('address_1'), $g('address_2'),
-        _pg_sw_list_order_city_line($g('zip_code'), $g('city'), $g('state')), $g('country'),
+        _pg_sw_list_order_city_line($g('zip_code'), $g('city'), $g('state'), $g('district')), $g('country'),
     )));
     $date = $g('arrival_date');
     return array(

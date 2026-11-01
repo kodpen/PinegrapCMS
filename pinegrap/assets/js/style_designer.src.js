@@ -62222,9 +62222,9 @@ const StyleDesigner = (function () {
                                             text: _sdT('Checkout'), cssClass: 'mb-0 fw-semibold' })
                                     ]),
                                     createNode('semantic', { tag: 'div', cssClass: 'card-body' }, [
-                                        // Method
+                                        // Payment method
                                         createNode('content', { contentType: 'paragraph',
-                                            text: _sdT('Method'), cssClass: 'text-muted small mb-1' }),
+                                            text: _sdT('Payment method'), cssClass: 'text-muted small mb-1' }),
                                         createNode('content', { contentType: 'paragraph',
                                             text: _sdT('Credit Card'), cssClass: 'fw-semibold mb-3',
                                             _bindings: { text: '__payment_method_pretty' } }),
@@ -62294,11 +62294,16 @@ const StyleDesigner = (function () {
                                         createNode('content', { contentType: 'paragraph',
                                             text: _sdT('Standard'), cssClass: 'fw-semibold mb-3',
                                             _bindings: { text: '__shipping_method' } }),
-                                        createNode('content', { contentType: 'paragraph',
-                                            text: _sdT('Estimated delivery'), cssClass: 'text-muted small mb-1' }),
-                                        createNode('content', { contentType: 'paragraph',
-                                            text: '—', cssClass: 'fw-semibold mb-3',
-                                            _bindings: { text: '__arrival_date' } }),
+                                        // The arrival date the customer asked for, drawn
+                                        // only when one was asked ("At once" asks none).
+                                        createNode('semantic', { tag: 'div', customName: _sdT('Requested arrival date'),
+                                            _bindings: { eo_visible_if: 'has_arrival_date' } }, [
+                                            createNode('content', { contentType: 'paragraph',
+                                                text: _sdT('Requested arrival date'), cssClass: 'text-muted small mb-1' }),
+                                            createNode('content', { contentType: 'paragraph',
+                                                text: '—', cssClass: 'fw-semibold mb-3',
+                                                _bindings: { text: '__arrival_date' } })
+                                        ]),
                                         // Carrier deep-link — only when BOTH a tracking
                                         // code and a recognised provider resolve, so the
                                         // block never renders a dead "Track Shipment" link.
