@@ -24,6 +24,7 @@ include('init.php');
 // drawing the form again as if nothing had been sent.
 pg_upload_refuse_discarded_body();
 require('url_to_absolute.php');
+require_once('update_imported_items.php');
 
 $user = validate_user();
 validate_area_access($user, 'designer');
@@ -352,18 +353,8 @@ if (!$_POST) {
             // so it is compatible with this system.
             $content = preg_replace('/<meta\s+[^>]*charset.*?>/i', '', $content);
 
-            // Get the title for the page so we can update the page property later.
-            preg_match('/<title\s*>(.*?)<\/title>/i', $content, $matches);
-
-            $title = '';
-
-            // If a title tag was found, then remember title and remove title tags.
-            if (!empty($matches[0])) {
-                $title = unhtmlspecialchars(trim($matches[1]));
-
-                // Remove all title tags from the HTML.
-                $content = preg_replace('/<title>.*?<\/title>/i', '', $content);
-            }
+            // The page's title, taken out of the markup: the page draws its own.
+            list($title, $content) = pg_imported_page_take_title($content);
 
             // Get the meta description for the page so we can update the page property later.
             preg_match('/<meta\s+[^>]*name\s*=\s*["\']\s*description\s*["\'].*?>/i', $content, $matches);
@@ -606,7 +597,6 @@ if (!$_POST) {
 
     $zip->close();
 
-    require('update_imported_items.php');
     update_imported_items($imported_items);
 
     $liveform->remove_form();
