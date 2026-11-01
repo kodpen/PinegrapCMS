@@ -6412,6 +6412,7 @@ function get_style_designer_regions_as_json()
         'menu_regions'         => array(),
         'menu_sequence_regions'=> array(),
         'tag_cloud_regions'    => array(),
+        'tag_cloud_widget_pages' => array(),
         'system_region_pages'  => array(),
     );
 
@@ -6438,6 +6439,16 @@ function get_style_designer_regions_as_json()
 
     $result = mysqli_query(db::$con, "SELECT page_name as name FROM page WHERE page_type = 'search results' ORDER BY page_name ASC") or output_error(lang('Query failed.'));
     while ($row = mysqli_fetch_assoc($result)) { $data['tag_cloud_regions'][] = $row['name']; }
+
+    // Pages built with the Search Results widget: the Tag Cloud widget links
+    // to them too (the classic tag cloud region does not).
+    if (function_exists('pg_sw_widget_pages')) {
+        foreach (pg_sw_widget_pages('search_results') as $row) {
+            $data['tag_cloud_widget_pages'][] = (string)$row['page_name'];
+        }
+        $data['tag_cloud_widget_pages'] = array_values(array_unique($data['tag_cloud_widget_pages']));
+        sort($data['tag_cloud_widget_pages']);
+    }
 
     $result = mysqli_query(db::$con, "SELECT page_name as name FROM page WHERE
             (page_type = 'folder view') OR (page_type = 'photo gallery') OR (page_type = 'custom form') OR

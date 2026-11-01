@@ -57,3 +57,31 @@ function test_tag_cloud_widget_registered()
 	pg_assert_contains("tag_cloud_region:  SW_TAG_CLOUD_TOKEN_GROUPS", $js, 'has a token palette');
 	pg_assert_contains("ad_region: 1, tag_cloud_region: 1", $js, 'draws no Messages block');
 }
+
+function test_tag_cloud_widget_merge_keywords()
+{
+	$rows = pg_tcw_merge_keywords(
+		array('coffee' => 3, 'tea' => 1),
+		array('Tea, cake , cake', 'cake', ' , ', 'coffee')
+	);
+	pg_assert_same(
+		array(array('keyword' => 'coffee', 'count' => 4), array('keyword' => 'cake', 'count' => 2), array('keyword' => 'tea', 'count' => 2)),
+		$rows,
+		'pages counted, each item once per keyword, case folded, most used first then by keyword'
+	);
+	$many = array();
+	for ($i = 0; $i < 30; $i++) $many[] = 'k' . $i;
+	pg_assert_same(25, count(pg_tcw_merge_keywords(array(), $many)), 'the 25 used most');
+	pg_assert_same(array(), pg_tcw_merge_keywords(array(), array()), 'no keywords');
+}
+
+function test_tag_cloud_widget_search_widget_pages()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+	$designer = (string)file_get_contents($root . 'includes/fn/designer.php');
+	pg_assert_contains("pg_sw_widget_pages('search_results')", $designer, 'the editor lists the pages built with the Search Results widget');
+	$js = (string)file_get_contents($root . 'assets/js/style_designer.src.js');
+	pg_assert_contains('regionData.tag_cloud_widget_pages', $js, 'the Tag Cloud picker offers them');
+	$widget = (string)file_get_contents($root . 'includes/fn/widgets_tag_cloud.php');
+	pg_assert_contains('pg_tcw_widget_search_page($name)', $widget, 'the widget reads a Search Results widget page');
+}
