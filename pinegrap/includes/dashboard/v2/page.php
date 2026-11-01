@@ -37,7 +37,7 @@ pg_page_shell(
     ' . $liveform->get_warnings() . '
     ' . $liveform->output_notices() . '
     <div class="pg-dash-top">
-        ' . pg_dashboard_v2_greeting($user) . '
+        ' . pg_dashboard_v2_greeting($user, pg_dashboard_v2_row($user['id'])) . '
     </div>
     ' . pg_dashboard_v2_grid($user) . '
     ' . pg_js_bundle_tags('assets/js/pg_dash.min.js') . '
