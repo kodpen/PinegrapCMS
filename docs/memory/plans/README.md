@@ -70,7 +70,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - new-dashboard-data.md: New dashboard plan: where the switch, layouts, look, role defaults and sign-in times are kept (question 1), the layout JSON, the API actions, the card data contract and gates
 - new-dashboard-edit.md: New dashboard plan: edit mode (bar, presets, cancel and save), card tools, drag and keyboard moves, card settings, the gallery, top-section switches, look options, sharing a layout with a role
 - new-dashboard-presets.md: New dashboard plan: the five preset layouts (Corporate, Blog, Ecommerce, Agency, Simple): their cards and widths, shortcuts, tiles, pipeline, sign-in chips, recommended cards, the first default
-- new-dashboard-steps.md: Steps N1-N14 of plans/new-dashboard.md: size, screens, order, which run side by side, the files each owns; claim as [plan:new-dashboard] N<n>
+- new-dashboard-steps.md: Steps N1-N14 and the visual pass V of plans/new-dashboard.md: size, screens, order, which run side by side, the files each owns; claim as [plan:new-dashboard] N<n> or V<n>
 - new-dashboard-top.md: New dashboard plan: the switch row on both dashboards, the greeting card (sign-in chips, shortcuts, four tiles) and the System Status gauge card; what each shows and where it comes from
 - new-dashboard-visuals.md: The new dashboard design the owner asked for on 2026-11-01: its 22 screens and prototype source in plans/new-dashboard/, what each shows and which step of new-dashboard-steps.md builds it
 - new-dashboard.md: Plan (owner 2026-11-01): a new dashboard from the owner's design, turned on per person by a switch at the top of the current one, which stays as it is; steps N1-N14
