@@ -742,6 +742,14 @@
         return null;
     }
 
+    // Whether x, y lies inside a layer's box by more than margin on every
+    // side, in the layer's own turned frame.
+    function insideBox(l, x, y, margin) {
+        var p = local(l, x, y);
+
+        return (p[0] > margin) && (p[1] > margin) && (p[0] < l.w - margin) && (p[1] < l.h - margin);
+    }
+
     // A box layer resized by dragging handle h (nw, n, ne, e, se, s, sw, w)
     // to x, y: the opposite edge or corner stays where it is in the layer's
     // own turned frame; keep holds the ratio; no side under min.
@@ -991,7 +999,7 @@
         moveCrop: moveCrop, mapLayer: mapLayer, reorient: reorient, turnDocument: turnDocument, flipDocument: flipDocument,
         outputSize: outputSize, ADJUST: ADJUST, FILTERS: FILTERS, FILTER_NAMES: FILTER_NAMES, colorValues: colorValues,
         colorMatrix: colorMatrix, applyColor: applyColor, vignetteStops: vignetteStops, sharpenKernel: sharpenKernel,
-        newId: newId, corners: corners, bounds: bounds, local: local, hitLayer: hitLayer, resizeBox: resizeBox, angleTo: angleTo,
+        newId: newId, corners: corners, bounds: bounds, local: local, hitLayer: hitLayer, insideBox: insideBox, resizeBox: resizeBox, angleTo: angleTo,
         align: align, distribute: distribute, snapBox: snapBox, reorder: reorder,
         ownsKey: ownsKey, focusMatch: focusMatch
     };
