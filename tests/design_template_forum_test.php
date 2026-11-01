@@ -487,9 +487,9 @@ function _test_forum_two_sided_threads()
 			'empty' => lang('No notes yet.'),
 			'heading' => lang('Add a note'),
 			'sign_in' => lang('Sign in to reply.'),
-			'submit' => lang('Add note'),
-			'close' => lang('Stop new comments'),
-			'reopen' => lang('Allow new comments'),
+			'submit' => lang('Add a note'),
+			'close' => lang('Stop new notes'),
+			'reopen' => lang('Allow new notes'),
 		),
 	);
 }
@@ -864,8 +864,9 @@ function test_forum_template_loads()
 	// recent replies and the comment e-mails drawn by it; 1.2.0: the board
 	// page's latest replies, held to the board by a record filter; 1.3.0:
 	// the inbox, desk and report threads on the Comments widget, and the
-	// blog; 1.3.1: the conversation's answers labelled replies.
-	pg_assert_same('1.3.1', $tpl['version'], 'version 1.3.1');
+	// blog; 1.3.1: the conversation's answers labelled replies; 1.3.2: the
+	// report notes' own button words, a guide's byline as its author.
+	pg_assert_same('1.3.2', $tpl['version'], 'version 1.3.2');
 	pg_assert_same('bootstrap5', $tpl['framework'], 'framework');
 	pg_assert_same(90, $tpl['order'], 'order');
 	pg_assert_same('bi-chat-square-text', $tpl['icon'], 'icon');
@@ -3688,6 +3689,7 @@ function test_forum_blog_form()
 	pg_assert_same(lang('The post is published.'), $form['confirmation_message'], 'its confirmation');
 	pg_assert_same('{{tab:blog}}', $form['confirmation_page_id'], 'sent, it opens the blog');
 	pg_assert_same('cover_image', $form['share_image_field'], 'the cover is the picture a shared post shows');
+	pg_assert_same('field:byline', $pages['doc_new']['form']['schema_author'] ?? null, 'a guide\'s structured-data author is the byline the page shows');
 	pg_assert_false(isset($form['notify_page_id']) || isset($form['confirm_page_id']), 'a post sends no e-mail');
 
 	$w = $tpl['widgets']['blog_form'];

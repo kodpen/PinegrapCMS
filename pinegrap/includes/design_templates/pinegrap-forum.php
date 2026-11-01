@@ -2811,6 +2811,9 @@ $pages[] = array(
         'confirm_subject'      => lang('Your guide reached the moderators: ^^title^^'),
         'confirm_page_id'      => '{{tab:email_doc_received}}',
         'pretty_urls'          => 0,
+        // A guide's author in its structured data is the byline the page
+        // shows, not the account that sent it.
+        'schema_author'        => 'field:byline',
         'sample_records'       => $sample_docs,
     ),
     'tree'    => $page(array(
@@ -4460,9 +4463,9 @@ $note_words = array(
     'heading' => lang('Add a note'),
     'label'   => lang('Your note'),
     'sign_in' => lang('Sign in to reply.'),
-    'submit'  => lang('Add note'),
-    'close'   => lang('Stop new comments'),
-    'reopen'  => lang('Allow new comments'),
+    'submit'  => lang('Add a note'),
+    'close'   => lang('Stop new notes'),
+    'reopen'  => lang('Allow new notes'),
     'rating'  => false,
     'reply'   => false,
     'watch'   => false,
@@ -6194,7 +6197,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Community Forum & Docs'),
-    'version'     => '1.3.1',
+    'version'     => '1.3.2',
     'framework'   => 'bootstrap5',
     'order'       => 90,
     'icon'        => 'bi-chat-square-text',

@@ -5,13 +5,13 @@ description: Community Forum & Docs template (pinegrap-forum): what it ships, it
 
 ## What does it ship?
 - 58 pages: home, forum, board, topic, tag, member, unanswered, docs, docs_section, doc, blog, blog_post ([[design-template-forum-blog]]), search, guidelines, FAQ, about, contact, legal, error, sign-in; members' new_topic, doc_new, report, my_topics, my_docs, doc_submission, account, inbox; moderators' pages; 11 e-mails.
-- Version 1.3.0 (1.2.x: no blog, block on 3 private pages; 1.1.0: no board replies list; 1.0.1: replies on the block). Order 90, `minimal` + `aurora`, `_pg_design_thumb_forum()`. Look: [[design-template-forum-layout]]; staff: [[design-template-forum-moderation]]. Tests: `tests/design_template_forum_test.php`. General features only.
+- Version 1.3.2 (1.2.x: no blog, block on 3 private pages; 1.1.0: no board replies list; 1.0.1: replies on the block). Order 90, `minimal` + `aurora`, `_pg_design_thumb_forum()`. Look: [[design-template-forum-layout]]; staff: [[design-template-forum-moderation]]. Tests: `tests/design_template_forum_test.php`.
 
 ## What do the forms hold?
 - Forum Topics (`new_topic`): board (category role), kind (Question or Discussion), title, body (rich), tags, attachment (`public` folder), guidelines box. Office: status Open/Solved/Closed/Hidden, pinned, announcement (No/Yes), staff_note.
-- Community Docs (`doc_new`): section, title, summary, body, version, tags, attachment, byline, rights. Office: the magazine's six desk statuses (Live on the site is the fourth; Withdrawn takes a guide out), featured, doc_order.
+- Community Docs (`doc_new`): section, title, summary, body, version, tags, attachment, byline (JSON-LD author, #4873), rights. Office: the magazine's six desk statuses (Live on the site is the fourth; Withdrawn takes a guide out), featured, doc_order.
 - Forum Reports (`report`): post (`url_param` post), reason, details. Office: status Open/Resolved/Dismissed, staff_note (labelled Moderator note).
-- Office fields alone, first answer selected. `pretty_urls 0`.
+- Office fields alone, first answer selected; `pretty_urls 0`.
 
 ## What keeps a record public?
 - A topic: `status is not equal to Hidden` on every open list and both topic views; live once sent. A guide: `status is equal to Live on the site`. A report: no view outside `private`.
