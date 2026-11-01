@@ -254,7 +254,7 @@ $header = function () use ($el, $link, $icon, $span, $attr) {
             $el('div', 'container', lang('Navbar Container'), array(
                 $el('a', 'navbar-brand d-flex align-items-center gap-2 fw-semibold', lang('Brand'), array(
                     $el('span', 'd-inline-flex p-2 rounded-circle bg-primary-subtle text-primary-emphasis lh-1', lang('Icon Box'), array($icon('bi-flower2', 'fs-5'))),
-                    $span('{{site_name}}', 'ps-brand fs-4', lang('Name')),
+                    $span('{{site_name}}', 'psl-brand fs-4', lang('Name')),
                 ), array('href' => '{{page:home}}')),
                 $el('button', 'navbar-toggler', lang('Toggler'), array(
                     $el('span', 'navbar-toggler-icon', lang('Toggler Icon')),
@@ -416,7 +416,7 @@ $page_header = function ($title, $lead, $more = array()) use ($el, $heading, $pa
 // the rest, and a rule under them.
 $section_header = function ($eyebrow, $title, $more_text = '', $more_href = '') use ($el, $heading, $para, $icon, $span) {
     $children = array($el('div', '', lang('Section Title'), array(
-        $para($eyebrow, 'ps-eyebrow text-uppercase fw-semibold text-primary mb-1'),
+        $para($eyebrow, 'psl-eyebrow text-uppercase fw-semibold text-primary mb-1'),
         $heading('h2', $title, 'h3 fw-semibold mb-0'),
     )));
     if ($more_text !== '') {

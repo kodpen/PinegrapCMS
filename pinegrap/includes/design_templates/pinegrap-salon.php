@@ -122,7 +122,7 @@ $salon_fonts = array(
     array('family' => 'Jost', 'weights' => array('400', '500', '600'), 'enabled' => true),
 );
 
-// The template's own CSS in User Styles. Every class is named ps-; no block
+// The template's own CSS in User Styles. Every class is named psl- (Bootstrap owns ps-, its padding utilities); no block
 // rule's class is named here. Selectors use descendants and pseudo-classes
 // only, so they hold on the editor's canvas too. Colours are tokens only,
 // so they follow any palette in both themes; a tint mixed with
@@ -134,16 +134,16 @@ $salon_css = implode("\n", array(
     'h1,h2,h3,h4,h5,h6,.h1,.h2,.h3,.h4,.h5,.h6,.display-1,.display-2,.display-3,.display-4,.display-5,.display-6{font-family:var(--pg-font-heading)}',
     'body{font-family:var(--pg-font-body)}',
     // The small line over a title: spaced capitals.
-    '.ps-eyebrow{letter-spacing:.14em;font-size:.75rem}',
+    '.psl-eyebrow{letter-spacing:.14em;font-size:.75rem}',
     // The salon's name in the header, in the heading serif.
-    '.ps-brand{font-family:var(--pg-font-heading);letter-spacing:.02em}',
+    '.psl-brand{font-family:var(--pg-font-heading);letter-spacing:.02em}',
     // The home page's first section: a soft wash of the palette's colour.
-    '.ps-hero{background-color:var(--bs-tertiary-bg)}',
-    '@supports (background-color:color-mix(in srgb,red 8%,blue)){.ps-hero{background-image:linear-gradient(160deg,color-mix(in srgb,var(--bs-primary) 10%,var(--bs-body-bg)) 0%,var(--bs-body-bg) 70%);background-color:var(--bs-body-bg)}}',
+    '.psl-hero{background-color:var(--bs-tertiary-bg)}',
+    '@supports (background-color:color-mix(in srgb,red 8%,blue)){.psl-hero{background-image:linear-gradient(160deg,color-mix(in srgb,var(--bs-primary) 10%,var(--bs-body-bg)) 0%,var(--bs-body-bg) 70%);background-color:var(--bs-body-bg)}}',
     // Cards that lead somewhere rise a little under the pointer.
-    '.ps-lift{transition:transform .2s ease,box-shadow .2s ease}',
-    '.ps-lift:hover,.ps-lift:focus-visible{transform:translateY(-3px);box-shadow:var(--bs-box-shadow)}',
-    '@media (prefers-reduced-motion:reduce){.ps-lift{transition:none}.ps-lift:hover,.ps-lift:focus-visible{transform:none}}',
+    '.psl-lift{transition:transform .2s ease,box-shadow .2s ease}',
+    '.psl-lift:hover,.psl-lift:focus-visible{transform:translateY(-3px);box-shadow:var(--bs-box-shadow)}',
+    '@media (prefers-reduced-motion:reduce){.psl-lift{transition:none}.psl-lift:hover,.psl-lift:focus-visible{transform:none}}',
 ));
 
 return array(
@@ -201,7 +201,7 @@ return array(
         'email_footer' => array('name' => lang('Salon E-mail Footer'), 'tree' => $email_footer_tree()),
     ),
 
-    // The template's own look: its ps- rules in one User Styles entry, and
+    // The template's own look: its psl- rules in one User Styles entry, and
     // its two fonts.
     'assets'      => array(
         'css'   => pg_design_template_user_styles(array(), $salon_css),
