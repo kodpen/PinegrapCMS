@@ -813,7 +813,7 @@ $pages[] = array(
                 $row(array(
                     $stat('12+', lang('years of experience')),
                     $stat('350+', lang('finished projects')),
-                    $stat('98%', lang('happy customers')),
+                    $stat(lang(array('string' => '{var:1}%', 'vars' => array('98'))), lang('happy customers')),
                     $stat('24/7', lang('support')),
                 ), '4'),
             )),
@@ -2838,7 +2838,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Say hello to Pinegrap'),
-    'version'     => '2.6.2',
+    'version'     => '2.6.3',
     'framework'   => 'bootstrap5',
     'order'       => 10,
     'icon'        => 'bi-hand-thumbs-up',

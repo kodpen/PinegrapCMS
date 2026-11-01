@@ -946,7 +946,7 @@ $milestone = function ($year, $title, $text) use ($el, $heading, $para, $span) {
 
 $pages[] = array(
     'key'              => 'about',
-    'name'             => lang('about'),
+    'name'             => lang('about-me'),
     'folder'           => 'public',
     'title'            => lang('About me'),
     'meta_description' => lang('Who Jane is, what she is good at and a few things she is very bad at.'),
@@ -2604,7 +2604,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Playground'),
-    'version'     => '1.1.1',
+    'version'     => '1.1.2',
     'framework'   => 'bootstrap5',
     'order'       => 15,
     'icon'        => 'bi-emoji-smile',

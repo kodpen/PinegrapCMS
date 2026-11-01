@@ -21,3 +21,6 @@ description: Text colours and names in the hello-pinegrap and pinegrap-playgroun
 
 ## Which colour does a quote attribution take on a dark band?
 - `blockquote-footer text-body-secondary`: Bootstrap 5.3.8 gives `.blockquote-footer` a fixed `#6c757d`, 3.29:1 under `data-bs-theme="dark"`; the theme class follows the band (Boutique story band, 1.2.3, #4899). The same test checks it.
+
+## Which names and words do the shop templates share? (#4900)
+- The Boutique founder is `lang('Jane Cooper')` inside `{var:1}, founder…` keys; the Boutique says cart (`Shopping Cart`, `Add to cart`, `Your cart`) like the cart widget and product page; blog back link `All posts`; Hello's stat is `{var:1}%` ('%98'); the playground's about page is `about-me` ('hakkimda'); `email-password-reset` is 'e-posta-parola-sifirlama' (new pages only); the product starter's payment table head is `Payment method`.

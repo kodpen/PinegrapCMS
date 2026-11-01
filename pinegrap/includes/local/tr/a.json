@@ -3303,6 +3303,7 @@
     "about us, our story, makers, since 2014": "hakkımızda, hikâyemiz, zanaatkârlar, 2014'ten beri",
     "about us, who we are, company, history": "hakkımızda, biz kimiz, şirket, tarihçe",
     "about {var:1}": "yaklaşık {var:1}",
+    "about-me": "hakkimda",
     "access denied (email or username invalid: {var:1})": "erişim reddedildi (e-posta veya kullanıcı adı geçersiz: {var:1})",
     "access denied (passkey not accepted: {var:1})": "erişim reddedildi (geçiş anahtarı kabul edilmedi: {var:1})",
     "access denied (password invalid) (email or username: {var:1})": "erişim reddedildi (parola geçersiz) (e-posta veya kullanıcı adı: {var:1})",

@@ -149,10 +149,10 @@ $button = function ($text, $variant, $class = '', $extra = array()) {
     return array('type' => 'component', 'props' => array_merge(array('componentType' => 'btn', 'btnElement' => 'button', 'btnType' => 'submit',
         'variant' => $variant, 'text' => $text, 'cssClass' => $class), $extra), 'children' => array());
 };
-// The product card's Add to bag: the listing wraps the card in the form
+// The product card's Add to cart: the listing wraps the card in the form
 // that adds the product.
 $add_to_bag = function ($class = '') use ($button) {
-    return $button(lang('Add to bag'), 'dark', $class, array('size' => 'sm', 'outline' => true, '_bindings' => array('action' => 'catalog_add_to_cart')));
+    return $button(lang('Add to cart'), 'dark', $class, array('size' => 'sm', 'outline' => true, '_bindings' => array('action' => 'catalog_add_to_cart')));
 };
 // The favourite heart in the corner of a product card, above the card's
 // stretched link: the listing marks it with the card's product and draws it
@@ -378,7 +378,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $container
                         $link(lang('Inbox'), '{{page:inbox}}', $plain),
                         $link(lang('Log In'), '{{page:login}}', $plain),
                         $link(lang('Sign Up'), '{{page:register}}', $plain),
-                        $link(lang('Shopping bag'), '{{page:cart}}', $plain),
+                        $link(lang('Shopping Cart'), '{{page:cart}}', $plain),
                         $link(lang('Favourites'), '{{page:favourites}}', $plain),
                     )),
                 ), '4'),
@@ -1033,7 +1033,7 @@ $pages[] = array(
                             $el('blockquote', 'blockquote mb-3', lang('Quote Text'), array(
                                 $para(lang('“We opened the boutique to sell the things we would give our own friends: made with care, fairly priced and wrapped as if it mattered. It still does.”'), 'fs-4 mb-0'),
                             )),
-                            $el('figcaption', 'blockquote-footer text-body-secondary mb-0', lang('Quote Author'), array(), array('text' => lang('Jane Cooper, founder of the boutique'))),
+                            $el('figcaption', 'blockquote-footer text-body-secondary mb-0', lang('Quote Author'), array(), array('text' => lang(array('string' => '{var:1}, founder of the boutique', 'vars' => array(lang('Jane Cooper')))))),
                         )),
                     ), '', '7'),
                     $col(array(
@@ -1307,7 +1307,7 @@ $pages[] = array(
                         $heading('h2', lang('How it started'), 'display-6 mb-4'),
                         $para(lang('The boutique began as a table of rings and cards at a Sunday market. People came back for the wrapping as much as for the rings, so we found a shop with a window and kept wrapping.'), 'mb-3'),
                         $para(lang('Today we work with more than forty small workshops. We visit most of them, we know how each piece is made, and we only sell what we would happily give ourselves.'), 'text-body-secondary mb-4'),
-                        $para(lang('Jane Cooper, founder'), 'fst-italic mb-0'),
+                        $para(lang(array('string' => '{var:1}, founder', 'vars' => array(lang('Jane Cooper')))), 'fst-italic mb-0'),
                     ), '', '6'),
                 ), '4', '', 'g-lg-5 align-items-center'),
             )),
@@ -1470,7 +1470,7 @@ $pages[] = array(
     'requires' => 'ecommerce',
     'name'     => lang('cart'),
     'folder'   => 'public',
-    'title'    => lang('Shopping bag'),
+    'title'    => lang('Shopping Cart'),
     'search'   => false,
     'sitemap'  => false,
     'noindex'  => true,
@@ -2074,7 +2074,7 @@ $widgets = array(
         )),
     ),
 
-    // The way to the shopping bag, beside the login region.
+    // The way to the shopping cart, beside the login region.
     'cart_link' => array(
         'page'     => '',
         'requires' => 'ecommerce',
@@ -2186,7 +2186,7 @@ $widgets = array(
             'next_page_id'                => '{{tab:order}}',
             'order_receipt_email_page_id' => '{{tab:email_order}}',
             'order_receipt_email_subject' => lang('Order Receipt #'),
-            'cart_section_label'          => lang('Your shopping bag'),
+            'cart_section_label'          => lang('Your cart'),
             'purchase_button_label'       => lang('Complete Order'),
             'update_button_label'         => lang('Update'),
         ),
@@ -2330,7 +2330,7 @@ $widgets = array(
                         ), $show_when('record_not_found')),
                         $el('article', '', lang('Post'), array(
                             $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 mb-4', lang('Toolbar'), array(
-                                $link(lang('All entries'), '{{page:blog}}', 'small link-body-emphasis link-offset-2'),
+                                $link(lang('All posts'), '{{page:blog}}', 'small link-body-emphasis link-offset-2'),
                                 $edit_button(),
                             )),
                             $el('header', 'text-center mb-4', lang('Post Header'), array(
@@ -3130,7 +3130,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Boutique'),
-    'version'     => '1.2.3',
+    'version'     => '1.2.4',
     'framework'   => 'bootstrap5',
     'order'       => 30,
     'icon'        => 'bi-gem',
