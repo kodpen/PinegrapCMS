@@ -3215,6 +3215,7 @@
     "Average rating": "Ortalama puan",
     "Average rating (one decimal)": "Ortalama puan (bir ondalık)",
     "Average rating (verified reviews)": "Ortalama puan (doğrulanmış incelemeler)",
+    "Average score {var:1}": "Ortalama puan {var:1}",
     "Average server response: {var:1} ms over {var:2} requests (under 800 ms is the target)": "Ortalama sunucu yanıtı: {var:2} istekte {var:1} ms (hedef 800 ms altı)",
     "Avg CPU": "Ort. CPU",
     "Avg Memory": "Ort. Bellek",

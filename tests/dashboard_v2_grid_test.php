@@ -21,6 +21,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/run.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/page_grid.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/visitors.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/engagement.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/queue.php');
 
 // Unknown ids, repeats and non-arrays are dropped; period and compare are
 // held to 0-2, and a card without a period takes 0.
