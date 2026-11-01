@@ -215,6 +215,12 @@ define('PERF_MONITOR_RETENTION_DAYS', 30);
 // on a busy site; this can. Oldest rows are dropped beyond it.
 define('PERF_MONITOR_MAX_ROWS', 200000);
 
+// Seconds a run of the general job (job.php) may take before the scheduler
+// stops it: a hosting job runner's limit, a Windows task's execution time
+// limit. A resumable pass (SEO structure, accessibility) keeps its place and
+// stops in time. Not set: PHP's max_execution_time, none on the command line.
+// define('JOB_TIME_LIMIT', 300);
+
 // ── SEO structure analysis ───────────────────────────────────────────────
 //
 // seo_analyze_job.php renders every page in process to examine its markup.

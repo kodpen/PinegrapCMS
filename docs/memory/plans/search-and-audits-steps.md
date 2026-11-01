@@ -16,7 +16,7 @@ description: Steps SA1-SA5 of plans/search-and-audits.md: index isolation, overl
   - The sweep deletes `timestamp < $timestamp`: a run started later keeps its rows when an earlier one ends first.
   - Button, crontab and dispatcher claim one `cron_runs` lock row through `pg_cron_claim()` (`includes/fn/cron.php`, the dispatcher's claim moved into it); a second start says a run is going (button) or leaves quietly (job).
 
-- SA3 (M) Time limit, due again, honest health. `free`.
+- SA3 (M) Time limit, due again, honest health. Done (#4744).
   - `job.php` notes its start and its limit: `JOB_TIME_LIMIT` in `data/config.php`, else `max_execution_time` when set. `pg_cron_time_left()` caps every dispatched pass's tick, with a margin for the closing writes.
   - `pg_cron_due_again($name, $seconds)` moves `last_run_at` so the job is due again then; `pg_cron_dispatch_finished()` keeps it instead of stamping now. Jobs that waited longer still go first.
   - `pg_cron_ran($name . '_done')` only at a real end; System Status, `ops_alerts.php` and the accessibility screen's "Last full check" read it when present.

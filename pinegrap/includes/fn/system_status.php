@@ -3147,7 +3147,10 @@ function get_system_status_checks()
     // that does not use that job, or one whose cron was never set up. The
     // penalty is reserved for a job with a recorded run that has since gone
     // quiet, which is unambiguous: it worked, now it doesn't.
-    $cron_runs = function_exists('pg_cron_last_runs') ? pg_cron_last_runs() : null;
+    //
+    // A dispatched job reads its completion marker when it has one: the
+    // dispatcher stamps every tick, finished or not (pg_cron_health_runs()).
+    $cron_runs = function_exists('pg_cron_health_last_runs') ? pg_cron_health_last_runs() : null;
 
     // null means the table is not there yet. Silence beats reporting every job
     // as broken on an installation that has simply not been upgraded.

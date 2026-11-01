@@ -48,7 +48,9 @@ if ($ready && isset($_POST['submit_check'])) {
 }
 
 $code = (isset($_GET['code']) && is_string($_GET['code']) && isset(pg_a11y_rules()[$_GET['code']])) ? $_GET['code'] : '';
-$runs = pg_cron_last_runs();
+// The end of the last full pass: the job's completion marker, which a tick
+// that stopped with pages left does not move.
+$runs = pg_cron_health_last_runs();
 $last_run = isset($runs['seo_a11y_job']) ? (int) $runs['seo_a11y_job'] : 0;
 
 // ---- PDF -------------------------------------------------------------------

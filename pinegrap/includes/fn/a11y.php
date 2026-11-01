@@ -797,8 +797,6 @@ function pg_a11y_run($time_budget)
         }
 
         if ((microtime(true) - $started) > max(1, (int) $time_budget)) {
-            @file_put_contents(pg_a11y_state_path(), json_encode(array('after' => $after)), LOCK_EX);
-
             return array('checked' => $checked, 'failed' => $failed, 'done' => false, 'ready' => true);
         }
 
@@ -808,7 +806,10 @@ function pg_a11y_run($time_budget)
             $failed++;
         }
 
+        // The place is kept after every page: a process stopped from outside
+        // (a runner's time limit) carries on after the last page it checked.
         $after = $page_id;
+        @file_put_contents(pg_a11y_state_path(), json_encode(array('after' => $after)), LOCK_EX);
     }
 
     db(

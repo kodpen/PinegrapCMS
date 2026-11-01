@@ -17,7 +17,7 @@ module: a11y
 
 ## How does the pass run?
 - `seo_a11y_job.php`, dispatcher job `seo_a11y_job` (heavy lane, daily), opt-in like every dispatched job. Pages: public folder, not archived, a type `pg_seo_renderable_page_types()` lists; classic pages are read, never changed. Rendered by `pg_seo_render_page()`, the structure pass's render, through `pg_background_render()` (`background-render.md`).
-- A run stops after `SEO_ANALYZE_TIME_BUDGET` (120 s) and keeps its place in `data/temp/seo_a11y.json` (last page id); a lost file restarts the pass. The run is recorded (`pg_cron_ran()`) only when the pass reaches the end, so the dispatcher hands an unfinished pass out on the next tick. At the end the findings of pages no longer in the report are deleted.
+- A run stops after `SEO_ANALYZE_TIME_BUDGET` (120 s) or the time `job.php` has left, and keeps its place in `data/temp/seo_a11y.json` after every page; a lost file restarts the pass. Only a finished pass records its run and `seo_a11y_job_done` ("Last full check"); an unfinished one is due again in a minute (`scheduled-job-resume.md`). At the end the findings of pages no longer in the report are deleted.
 - A page whose render fails keeps its earlier findings; the run logs how many failed.
 
 ## Where is the report shown?
