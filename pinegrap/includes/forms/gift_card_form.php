@@ -21,6 +21,12 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+// The highest amount or balance gift_cards stores, in minor units: both
+// columns are INT(10) UNSIGNED.
+if (!defined('PG_GIFT_CARD_AMOUNT_MAX')) {
+    define('PG_GIFT_CARD_AMOUNT_MAX', 4294967295);
+}
+
 /**
  * The expiration date a new gift card opens with: the number of validity
  * days from today, written the way the date field takes it; '' when no
@@ -169,6 +175,12 @@ function pg_gift_card_form_check($liveform, $mode)
         $liveform->mark_error($field, ($mode === 'add') ? lang('Please enter a valid amount.') : lang('Please enter a valid balance.'));
     }
 
+    // Above the column's ceiling MySQL keeps the ceiling (or refuses the
+    // write in strict mode) while the screen says the card was saved.
+    if (($liveform->check_field_error($field) == false) && !pg_gift_card_form_amount_fits($amount)) {
+        $liveform->mark_error($field, lang(array('string' => 'The highest amount a gift card holds is {var:1}.', 'vars' => pg_format_input_amount(PG_GIFT_CARD_AMOUNT_MAX / 100))));
+    }
+
     $expiration_date = $liveform->get_field_value('expiration_date');
 
     if (($expiration_date != '') && (validate_date($expiration_date) == false)) {
@@ -200,4 +212,16 @@ function pg_gift_card_form_quantity($value)
     }
 
     return (int) $quantity;
+}
+
+/**
+ * Whether an amount (major units, as pg_normalize_amount() returns it) fits
+ * the gift_cards amount and balance columns once rounded to minor units.
+ *
+ * @param string|float $amount
+ * @return bool
+ */
+function pg_gift_card_form_amount_fits($amount)
+{
+    return round((float) $amount * 100) <= PG_GIFT_CARD_AMOUNT_MAX;
 }
