@@ -1601,6 +1601,8 @@
     "{var:1}, by {var:2}": "{var:1}, {var:2} tarafından",
     "{var:1}, descending": "{var:1}, azalan",
     "{var:1}, else \"{var:2}\"": "{var:1}, yoksa \"{var:2}\"",
+    "{var:1}, founder": "{var:1}, kurucu",
+    "{var:1}, founder of the boutique": "{var:1}, butiğin kurucusu",
     "{var:1}, in {var:2}": "{var:1}, {var:2} kanalında",
     "{var:1}, stock count not changed": "{var:1}, stok sayısı değişmedi",
     "{var:1}, stock now {var:2}": "{var:1}, stok şimdi {var:2}",

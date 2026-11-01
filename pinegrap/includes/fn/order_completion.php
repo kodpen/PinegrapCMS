@@ -1556,7 +1556,9 @@ function pg_order_extended_until($end, $days, $quantity, $today)
 {
     $from = ((string) $end <= (string) $today) ? $today : $end;
 
-    return date('Y-m-d', strtotime($from) + ($days * $quantity * 86400));
+    // Counted in calendar days: a day the clocks go back has 25 hours, so
+    // whole 86400-second days from midnight would end on the day before.
+    return date('Y-m-d', strtotime('+' . ((int) $days * (int) $quantity) . ' day', strtotime($from)));
 }
 
 /**
@@ -3831,7 +3833,8 @@ function pg_order_commission(array $products, $affiliate_rate, $discount, $subto
 function pg_order_recurring_commission_start($period, $start_date, $now)
 {
     if ($start_date <= date('Y-m-d', $now)) {
-        return date('Y-m-d', $now + 86400 * (($period == 'Yearly') ? 365 : 30));
+        // Calendar days, so a clock change on the way moves no date.
+        return date('Y-m-d', strtotime('+' . (($period == 'Yearly') ? 365 : 30) . ' day', $now));
     }
 
     return date('Y-m-d', strtotime($start_date));
