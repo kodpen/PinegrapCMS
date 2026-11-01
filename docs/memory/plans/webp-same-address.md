@@ -18,13 +18,13 @@ description: Plan (owner request 2026-11-01): a JPEG or PNG keeps its address an
 - `webp-same-address-steps.md`: W1-W6, their files, tests and order.
 - `webp-same-address-options.md`: the options weighed and the outside facts behind the choice.
 
-## Which questions are open? (owner, through the architect)
-1. Default: on for new installs, off for running sites until switched on (recommended); or on wherever no CDN is in front.
-2. Convert doors: the batch becomes "Prepare WebP" (makes the copies, renames nothing) and Edit File keeps only "Create a .webp copy" (recommended); or a rename that leaves the old name answering.
-3. Switches: bits 4 (WebP at the own address) and 8 (the CDN keeps a copy per format) of `config.image_derivative_formats`, no schema step (recommended); or two TINYINT columns.
-4. AVIF at the plain address: not now (slow full-size encodes, Safari does not ask for it, social sites do not read it) (recommended).
-5. Cloudflare Tools writes and checks the Cache Rule when its token may (recommended); or a text guide.
-6. The image editor's export format (E13, `image-editor-steps-2.md`): a format other than the file's own is saved as a copy, so Replace never changes a file's format (recommended).
+## Which questions are decided? (owner 2026-11-01, delegated to the architect; `workflow/decisions-made-product-16.md`)
+1. Default: on for a new install; a running site stays off until switched on, and the upgrade note and the System Status line say so (an upgrade starts no encodes on a shared host).
+2. Convert doors: the batch becomes "Prepare WebP" (makes the copies, renames nothing) and Edit File keeps only "Create a .webp copy". No door renames a file.
+3. Switches: bits 4 (WebP at the own address) and 8 (the CDN keeps a copy per format) of `config.image_derivative_formats` (TINYINT UNSIGNED; bits 1 and 2 taken), no schema step; bit 4 counts only while bit 1 is on (`pg_image_delivery_settings()`).
+4. AVIF at the plain address: not now (slow full-size encodes, Safari does not ask for it, social sites do not read it); `?f=avif` stays.
+5. Cloudflare Tools writes the Cache Rule when its token may and checks it; otherwise it shows the steps. Bit 8 is set only by a passed check or by the operator.
+6. The image editor's export format (E13, `image-editor-steps-2.md`): a format other than the file's own is saved as a copy; Replace never changes a file's format.
 
 ## Where does it start?
 - W1. Read `platform/image-derivatives.md`, `image-delivery-settings.md`, `get-file-byte-ranges.md` and `get_file.php` from the access checks to the send.
