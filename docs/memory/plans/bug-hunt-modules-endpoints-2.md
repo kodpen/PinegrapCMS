@@ -106,7 +106,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 
 - Endpoints get_robots.txt, router, send_email_campaign, view_sessions, get_set_password, shipworks: done (#4655)
 
-- Endpoints si, signature_receipt, signin, get_site_icon, get_sitemap_info, get_sitemap.xml: open
+- Endpoints si, signature_receipt, signin, get_site_icon, get_sitemap_info, get_sitemap.xml: done #4758 (si, signature_receipt, signin, get_site_icon, get_sitemap.xml: nothing found)
 
 - Endpoints smtp_settings, stock_notify, submit_order, test_secure_mode, add_to_cart, toolbar: done #4600, #4607, #4618 (stock_notify, test_secure_mode, toolbar: nothing found)
 

@@ -195,21 +195,15 @@ function get_sitemap_info() {
         
         // if there is at least one catalog item, then prepare sitemap URL(s)
         if (count($catalog_items) > 0) {
-            $output_catalog_path = h(PATH . encode_url_path($catalog_page['name']) . '/');
-            $output_catalog_detail_path = h(PATH . encode_url_path($catalog_detail_page_name) . '/');
-            
             // loop through the catalog items in order to prepare sitemap URL's
             foreach ($catalog_items as $catalog_item) {
-                // if this catalog item is a product group with a browse display type, then prepare path to catalog page
-                if (($catalog_item['type'] == 'product_group') && ($catalog_item['display_type'] == 'browse')) {
-                    $output_path = $output_catalog_path;
-                    
-                // else this catalog item is a product group with a select display type or it is a product, so prepare path to catalog detail page
-                } else {
-                    $output_path = $output_catalog_detail_path;
+                $item_path = pg_sitemap_catalog_item_path($catalog_item, PATH, $catalog_page['name'], $catalog_detail_page_name);
+
+                if ($item_path === '') {
+                    continue;
                 }
-                
-                $output_url = URL_SCHEME . HOSTNAME_SETTING . $output_path . h(encode_url_path($catalog_item['address_name']));
+
+                $output_url = URL_SCHEME . HOSTNAME_SETTING . h($item_path);
                 
                 // if this URL has not already been added then add URL to sitemap
                 if (in_array($output_url, $added_urls) == FALSE) {
