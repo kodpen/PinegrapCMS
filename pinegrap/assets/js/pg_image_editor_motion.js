@@ -293,7 +293,7 @@
         var shown = el('span', { class: 'pgie-val', text: seconds(m.duration) });
         var repeat = el('select', { class: 'pgie-select', 'aria-label': t('motionRepeatCount') });
 
-        body.appendChild(el('h3', { class: 'pgie-sh', text: t('motionWhole') }));
+        body.appendChild(el('h3', { class: 'pgie-mwhole', text: t('motionWhole') }));
 
         length.addEventListener('input', function () {
             shown.textContent = seconds(Number(length.value));
