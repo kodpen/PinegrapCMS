@@ -12,7 +12,7 @@ module: privacy_export
 - `pg_privacy_export_find()`: users by id, address or `user_contact`; contacts by id or address (also the users' contacts); then the users of those contacts. One step only, so a shared company address does not pull in a second person through their own records. All addresses found are used for orders, forms, gift cards, watchers, mail and chat; `pg_privacy_export_merge()` is the pure part.
 
 ## What do the sections read?
-- `pg_privacy_export_sections()` pins the 30 keys and their order (the file's format; the test fails on a change). Every section is written, empty ones too; each holds at most 5000 rows (`truncated` when cut).
+- `pg_privacy_export_sections()` pins the 30 keys and their order (the file's format; the test fails on a change). Every section is written, empty ones too; each holds at most 5000 rows (`truncated` when cut); a section read in parts (ERP documents, Workspace) is joined and cut by `pg_privacy_export_join()` (#PR).
 - Orders include carts; a line saved for later is an `order_items` row of the cart (`saved_for_later`), not the wishlist. A product form's answers sit in the order row as `form_answers`; a form submission's fields as `fields`, found also by the address typed in any field (`form_data.data`, prefix index).
 - Favourites (`wishlist`, after `watchers`): the account's `wishlist_items` rows with the product's SKU and name. A visitor's list is keyed by a cookie hash that names nobody; it is found once it joins the account at sign-in (`commerce/wishlist.md`).
 - Back-in-stock requests (`stock_notify`, after `wishlist`): by account or address typed, with SKU and name.
