@@ -9,5 +9,5 @@ module: payments
 - `pg_payment_card_brand_config()` reads them (label => value) and `pg_payment_card_brands_accepted()` (pure) keeps the ones `== true`, in the settings form's order. `pg_payment_builtin_switches(true)` and the express order widget's brand pills use them.
 
 ## What was wrong?
-- `ECOMMERCE_AMERICAN_EXPRESS === true` was never true: a store that accepted only American Express showed no Credit/Debit Card method on the order preview, the express order page and the express order widget, and American Express had no pill. `get_order_preview.php` and `get_express_order.php` now compare it with `==` like the other brands (PR in the payments bug hunt).
+- `ECOMMERCE_AMERICAN_EXPRESS === true` was never true: a store that accepted only American Express showed no Credit/Debit Card method on the order preview, the express order page and the express order widget, and American Express had no pill. `get_order_preview.php` and `get_express_order.php` now compare it with `==` like the other brands (#4629).
 - Never compare a config constant with `=== true`.
