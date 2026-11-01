@@ -60,7 +60,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `contact_list`: open
 
-- `contacts`: open
+- `contacts`: taken by LI, #4624
 
 - `content`: open
 
