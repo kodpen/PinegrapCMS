@@ -186,6 +186,7 @@ function test_bookshop_events_lists()
 function test_bookshop_events_no_fixed_dates()
 {
 	$tpl = _bookshop_events_tpl();
+	$months = '(?:January|February|March|April|May|June|July|August|September|October|November|December)';
 	$trees = array();
 	foreach ($tpl['pages'] as $p) {
 		$trees['page ' . $p['key']] = $p['tree'];
@@ -197,6 +198,8 @@ function test_bookshop_events_no_fixed_dates()
 		$trees['shared ' . $key] = $s['tree'];
 	}
 	foreach ($trees as $where => $tree) {
-		pg_assert_false((bool) preg_match('/\b20\d\d-\d\d-\d\d/', json_encode($tree)), $where . ': no fixed date');
+		$json = json_encode($tree);
+		pg_assert_false((bool) preg_match('/\b20\d\d-\d\d-\d\d/', $json), $where . ': no fixed date');
+		pg_assert_false((bool) preg_match('/\b\d{1,2} ' . $months . '\b|\b' . $months . ' \d{1,2}\b/', $json), $where . ': no day and month name');
 	}
 }
