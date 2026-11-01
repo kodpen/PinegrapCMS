@@ -89,7 +89,7 @@ function test_dark_theme_seo_orange_band_is_a_literal()
 {
 	$seo = dark_theme_leftovers_source('seo.php');
 	pg_assert_false(strpos($seo, '--bs-orange') !== false, 'seo.php reads no undefined --bs-orange');
-	pg_assert_contains("return array('class' => '', 'style' => '#fd7e14');", $seo);
+	pg_assert_contains("return array('class' => '', 'style' => '#fd7e14', 'ink' => ", $seo);
 	pg_assert_contains(
 		'<span class="badge" style="background-color:\' . $color[\'style\'] . \';color:var(--pg-on-accent)" title="',
 		$seo,
