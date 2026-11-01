@@ -13,7 +13,7 @@ description: Umbrella of the Workspace growth plans of 2026-10-23 (CRM seams, MC
 - Quotes: done; sales quote erp/erp-quotes.md, cart quote commerce/cart-quotes.md.
 - Catalogue creates and bulk drafts: done, workspace/workspace-bulk-create.md.
 - Workflow tables, board view, scheduled-actions API: done (workspace/workflow-tables*.md, workflow-table-*.md).
-- plans/workspace-flows.md, plans/workspace-flows-engine.md: Flows (Workspace canvas, rules, process templates), the main use (2026-10-24).
+- Flows (Workspace canvas, rules, process templates), the main use (2026-10-24): built, workspace/workspace-flows-decisions.md.
 - workspace/workspace-flows-scheduled-merge.md: scheduled actions into Flows, no feature lost; plans/graph-canvas-core.md: one canvas core for Flows and the designer.
 - workspace/workspace-composer-later.md (composer tools, done), workspace/workspace-command-registry.md (/ commands, done), plans/workspace-channel-icons.md, workspace/workspace-mcp-servers-card.md (MCP connectors, done), plans/workspace-assistant-key-setup.md.
 - Shared names and single owners: plans/workspace-growth-terms.md. Neighbours: plans/workspace-agent-handles.md, core/ai-prompt-rules.md.

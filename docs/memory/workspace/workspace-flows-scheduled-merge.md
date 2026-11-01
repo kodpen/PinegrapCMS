@@ -4,7 +4,7 @@ description: Scheduled actions moved into Flows (owner, 2026-10-24): what was de
 ---
 
 ## What was asked and decided? (owner, 2026-10-24; answers 1 no, 3 a; 2 b, 7, 8 on 2026-10-27)
-- Scheduled actions ("Programlanmış işler") move into Flows with no feature lost; it replaced answer 8 of plans/workspace-flows.md.
+- Scheduled actions ("Programlanmış işler") move into Flows with no feature lost; it replaced answer 8 of `workspace-flows-decisions.md`.
 - 1. Scheduled messages stay out: staff's actions only; messages keep the composer and their list (?view=scheduled, kind `message`, any member).
 - 2. b: every part a box, all actions converted in the 2026.11.0 upgrade, the form retired; Flows is the one entry.
 - 3. Any staff edits and runs a moved action, as before.

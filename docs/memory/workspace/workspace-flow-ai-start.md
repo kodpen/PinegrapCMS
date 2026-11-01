@@ -18,7 +18,7 @@ description: New flow from a sentence (G1b #3119, #3266): ws_flow_ai_sketch() as
 - `ws_flow_ai_sketch_draft()`: an unreadable answer, a refused graph or problems go back once (the answer as assistant, what is wrong as user); at most two calls. A second flow still with problems is kept and its problems answered; unreadable twice is refused.
 
 ## What is saved?
-- `ws_flow_save()` as a new flow of the person (status draft, home `$channel_id` when given). Never published: publishing stays the person's (answer 6 of plans/workspace-flows.md). Answer: ok, error, flow_id, problems, notes (the reason).
+- `ws_flow_save()` as a new flow of the person (status draft, home `$channel_id` when given). Never published: publishing stays the person's (answer 6 of `workspace-flows-decisions.md`). Answer: ok, error, flow_id, problems, notes (the reason).
 
 ## How does the panel reach it? (#3266)
 - Action `ws_flow_ai_sketch` (`sentence`; a `ws_` row of `pg_panel_actions()`: exempt, token, write) → `ws_action_flow_ai_sketch()` in includes/workspace/actions.php: no home channel from New flow; answer `ws_action_flow_ai_sketch_answer()` (pure): `flow` (`ws_flow_detail()`), `problems`, `notes`; a refusal is an error on field `sentence` in words.
