@@ -314,14 +314,24 @@ var pgLazyOptions = {
 };
 
 // The button the panel's Ctrl+S presses in a form: the one named by the
-// form's submitshortcut attribute, default submit_save. Empty when the form
-// has none; the shortcut then submits nothing and no button gets its hint.
+// form's submitshortcut attribute; without it submit_save, or submit_create
+// on a create screen that has no submit_save. Empty when the form has none;
+// the shortcut then submits nothing and no button gets its hint.
 function pgSaveShortcutButton($form) {
-    var name = $form.attr('submitshortcut') || 'submit_save';
+    var names = $form.attr('submitshortcut') ? [$form.attr('submitshortcut')] : ['submit_save', 'submit_create'];
+    var $buttons = $form.find('button');
 
-    return $form.find('button').filter(function () {
-        return this.name === name;
-    }).first();
+    for (var i = 0; i < names.length; i++) {
+        var $button = $buttons.filter(function () {
+            return this.name === names[i];
+        }).first();
+
+        if ($button.length) {
+            return $button;
+        }
+    }
+
+    return $();
 }
 
 // Swaps the loading.gif of pictures that have not loaded yet for the still

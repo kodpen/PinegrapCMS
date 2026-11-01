@@ -2780,7 +2780,7 @@ if (!$_POST) {
         } elseif ($erp_writes && $erp_order && in_array((string) $erp_order['status'], array('complete', 'exported'), true)) {
             if (((int) $erp_order['contact_id'] > 0) || ((int) $erp_order['erp_account_id'] > 0)) {
                 $output_erp_buttons = '
-            <form method="post" action="add_erp_invoice.php" class="d-inline">
+            <form method="post" action="add_erp_invoice.php" class="d-inline disable_shortcut">
                 ' . get_token_field() . '
                 <input type="hidden" name="order_id" value="' . (int) $_GET['id'] . '" />
                 <input type="hidden" name="from_order_screen" value="1" />
