@@ -32,6 +32,90 @@ function test_photo_gallery_widget_folder_shown()
 	pg_assert_same(1, pg_gal_folder_shown(1, array('2'), $parent_of), 'not an array');
 }
 
+// A gallery whose top is the site's root holds the Recycle Bin: neither the
+// bin nor a folder in it is ever opened.
+function test_photo_gallery_widget_folder_shown_never_opens_the_bin()
+{
+	// 1 the root; 9 the bin under it, 10 binned, 11 below 10; 2 an album.
+	$parents = array(1 => 0, 2 => 1, 9 => 1, 10 => 9, 11 => 10);
+	$parent_of = function ($id) use ($parents) {
+		return isset($parents[$id]) ? $parents[$id] : 0;
+	};
+	pg_assert_same(2, pg_gal_folder_shown(1, '2', $parent_of, 9), 'an album beside the bin');
+	pg_assert_same(1, pg_gal_folder_shown(1, '9', $parent_of, 9), 'not the bin');
+	pg_assert_same(1, pg_gal_folder_shown(1, '10', $parent_of, 9), 'not a binned folder');
+	pg_assert_same(1, pg_gal_folder_shown(1, '11', $parent_of, 9), 'not a folder below a binned one');
+	pg_assert_same(10, pg_gal_folder_shown(1, '10', $parent_of), 'no bin: the walk is as before');
+}
+
+function test_photo_gallery_widget_folder_setting()
+{
+	pg_assert_same(0, pg_gal_folder_setting(array()), 'none chosen');
+	pg_assert_same(0, pg_gal_folder_setting(null), 'no settings');
+	pg_assert_same(7, pg_gal_folder_setting(array('folder_id' => 7)), 'a number');
+	pg_assert_same(7, pg_gal_folder_setting(array('folder_id' => '7')), 'a numeric text');
+	pg_assert_same(0, pg_gal_folder_setting(array('folder_id' => -3)), 'never below 0');
+	pg_assert_same(0, pg_gal_folder_setting(array('folder_id' => '7 OR 1')), 'only digits');
+	pg_assert_same(0, pg_gal_folder_setting(array('folder_id' => '{{folder:photos}}')), 'an unresolved template token');
+	pg_assert_same(0, pg_gal_folder_setting(array('folder_id' => array(7))), 'not a list');
+}
+
+// Empty keeps the page's folder; a chosen folder is the top; a folder that
+// is gone or binned shows nothing, never the page's folder.
+function test_photo_gallery_widget_top_folder()
+{
+	// 1 the root; 3 the page's folder; 5 a chosen folder under 1; 9 the bin, 10 binned.
+	$parents = array(1 => 0, 3 => 1, 5 => 1, 9 => 1, 10 => 9, 20 => 21, 21 => 20);
+	$parent_of = function ($id) use ($parents) {
+		return isset($parents[$id]) ? $parents[$id] : null;
+	};
+	pg_assert_same(3, pg_gal_top_folder(0, 3, $parent_of, 9), 'none chosen: the page\'s folder');
+	pg_assert_same(5, pg_gal_top_folder(5, 3, $parent_of, 9), 'the chosen folder');
+	pg_assert_same(1, pg_gal_top_folder(1, 3, $parent_of, 9), 'the root may be chosen');
+	pg_assert_same(0, pg_gal_top_folder(42, 3, $parent_of, 9), 'a deleted folder shows nothing');
+	pg_assert_same(0, pg_gal_top_folder(10, 3, $parent_of, 9), 'a binned folder shows nothing');
+	pg_assert_same(0, pg_gal_top_folder(9, 3, $parent_of, 9), 'the bin itself shows nothing');
+	pg_assert_same(10, pg_gal_top_folder(10, 3, $parent_of, 0), 'no bin on the site');
+	pg_assert_same(20, pg_gal_top_folder(20, 3, $parent_of, 9), 'a loop in the parents ends the walk');
+	pg_assert_same(0, pg_gal_top_folder(0, 0, $parent_of, 9), 'no page, nothing chosen');
+}
+
+// Where used: the designed pages whose gallery widget shows the file.
+function test_photo_gallery_widget_pages_showing()
+{
+	$chain = array(5, 1);
+	$placements = array(
+		array('page_id' => 11, 'page_name' => 'own-folder', 'page_folder' => 5, 'folder_id' => 0),
+		array('page_id' => 12, 'page_name' => 'chosen', 'page_folder' => 3, 'folder_id' => 5),
+		array('page_id' => 13, 'page_name' => 'elsewhere', 'page_folder' => 5, 'folder_id' => 3),
+		array('page_id' => 14, 'page_name' => 'gone', 'page_folder' => 5, 'folder_id' => 42),
+		array('page_id' => 12, 'page_name' => 'chosen', 'page_folder' => 3, 'folder_id' => 5),
+	);
+	$top_of = function ($folder_id, $page_folder) {
+		if ($folder_id === 42) return 0;
+		return ($folder_id > 0) ? $folder_id : $page_folder;
+	};
+	$pages = pg_gal_pages_showing($chain, $placements, $top_of);
+	$ids = array();
+	foreach ($pages as $p) $ids[] = $p['page_id'];
+	pg_assert_same(array(11, 12), $ids, 'the page\'s folder, a chosen folder; not another folder, not a lost one; a page once');
+	pg_assert_same(array(), pg_gal_pages_showing(array(), $placements, $top_of), 'no folder shows the file');
+}
+
+function test_photo_gallery_widget_folder_choices()
+{
+	$rows = array(
+		array('id' => '1', 'name' => 'Root', 'parent_id' => '0', 'archived' => '0'),
+		array('id' => '5', 'name' => 'Summer', 'parent_id' => '1', 'archived' => '1'),
+		array('id' => '9', 'name' => 'Recycle Bin', 'parent_id' => '1', 'archived' => '1'),
+		array('id' => '10', 'name' => 'Binned', 'parent_id' => '9', 'archived' => '0'),
+	);
+	pg_assert_same(array(
+		array('id' => 1, 'name' => 'Root', 'parent_id' => 0, 'archived' => false),
+		array('id' => 5, 'name' => 'Summer', 'parent_id' => 1, 'archived' => true),
+	), pg_gal_folder_choices($rows, array(9, 10)), 'the bin and what is in it are left out');
+}
+
 function test_photo_gallery_widget_rows()
 {
 	$rows = pg_gal_rows(

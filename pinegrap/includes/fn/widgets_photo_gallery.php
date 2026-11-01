@@ -4,11 +4,12 @@
  *
  * Visual Page Editor - the Photo Gallery system widget (kind
  * 'photo_gallery'): the classic "photo gallery" page drawn by the designer.
- * The page's folder is the gallery: each sub-folder the visitor may view is
- * an album, shown with its first photo and the number of photos in it, and
- * the images of the folder are its photos. An album opens on the same page
- * with ?folder_id=<album>, as on the classic page; a folder outside the
- * page's folder, or one the visitor may not view, is never opened.
+ * The folder chosen in the widget's settings is the gallery, or the page's
+ * folder when none is chosen: each sub-folder the visitor may view is an
+ * album, shown with its first photo and the number of photos in it, and the
+ * images of the folder are its photos. An album opens on the same page with
+ * ?folder_id=<album>, as on the classic page; a folder outside the gallery,
+ * one in the Recycle Bin, or one the visitor may not view, is never opened.
  *
  * The main loop repeats the albums of the folder shown, then its photos.
  *
@@ -86,27 +87,134 @@ function pg_gal_folders_showing($folder_id, $parent_of)
 }
 
 /**
- * The folder a gallery shows: the album asked for when it lies below the
- * page's folder, else the page's folder.
+ * The folder a gallery widget's settings choose (cfg folder_id) as an id;
+ * 0 when none is chosen, and the page's folder is the gallery.
  *
- * @param int      $root_id   the page's folder
- * @param mixed    $requested ?folder_id= ('' or null for none)
- * @param callable $parent_of folder id => its parent id (0 at the top)
+ * @param mixed $cfg the widget's system_region_config
  * @return int
  */
-function pg_gal_folder_shown($root_id, $requested, $parent_of)
+function pg_gal_folder_setting($cfg)
+{
+    $value = (is_array($cfg) && isset($cfg['folder_id'])) ? $cfg['folder_id'] : 0;
+    if (is_int($value)) return max(0, $value);
+    if (is_string($value) && preg_match('/^\d{1,18}$/', $value)) return (int)$value;
+    return 0;
+}
+
+/**
+ * The top folder of a gallery: the folder its settings choose, else the
+ * page's folder. A chosen folder that is gone, or lies in the Recycle Bin,
+ * gives 0 and the gallery shows nothing: the page's folder may be a wide
+ * one (the site's root), and showing it in place of a lost choice would put
+ * every image and album there on the page.
+ *
+ * @param int      $chosen      pg_gal_folder_setting()
+ * @param int      $page_folder the folder of the page placing the widget
+ * @param callable $parent_of   folder id => its parent id (0 at the top),
+ *                              null when the folder does not exist
+ * @param int      $bin_id      the Recycle Bin folder (0 for none)
+ * @return int
+ */
+function pg_gal_top_folder($chosen, $page_folder, $parent_of, $bin_id = 0)
+{
+    $chosen = (int)$chosen;
+    $bin_id = (int)$bin_id;
+    if ($chosen <= 0) return max(0, (int)$page_folder);
+    // Walk up to the top; a loop in the stored parents ends the walk.
+    $seen = array();
+    for ($at = $chosen; $at > 0 && !isset($seen[$at]); ) {
+        if ($at === $bin_id) return 0;
+        $seen[$at] = true;
+        $parent = call_user_func($parent_of, $at);
+        if ($parent === null) return 0;
+        $at = (int)$parent;
+    }
+    return $chosen;
+}
+
+/**
+ * The folder a gallery shows: the album asked for when it lies below the
+ * gallery's top folder (and not in the Recycle Bin on the way), else the
+ * top folder.
+ *
+ * @param int      $root_id   the gallery's top folder (pg_gal_top_folder())
+ * @param mixed    $requested ?folder_id= ('' or null for none)
+ * @param callable $parent_of folder id => its parent id (0 at the top)
+ * @param int      $bin_id    the Recycle Bin folder (0 for none)
+ * @return int
+ */
+function pg_gal_folder_shown($root_id, $requested, $parent_of, $bin_id = 0)
 {
     $root_id = (int)$root_id;
+    $bin_id = (int)$bin_id;
     if (!is_scalar($requested) || !preg_match('/^\d{1,18}$/', (string)$requested)) return $root_id;
     $id = (int)$requested;
-    if ($id === $root_id || $id <= 0) return $root_id;
+    if ($id === $root_id || $id <= 0 || $id === $bin_id) return $root_id;
     // Walk up from the album; a loop in the stored parents ends the walk.
+    // A folder in the Recycle Bin is never opened, even when the gallery's
+    // top holds the bin (the site's root folder).
     $seen = array();
     for ($at = (int)call_user_func($parent_of, $id); $at > 0 && !isset($seen[$at]); $at = (int)call_user_func($parent_of, $at)) {
+        if ($at === $bin_id) return $root_id;
         if ($at === $root_id) return $id;
         $seen[$at] = true;
     }
     return $root_id;
+}
+
+/**
+ * The pages among $placements whose gallery shows a file of one of the
+ * folders in $chain, each page once, in the order given.
+ *
+ * @param int[]    $chain      the file's folder and those above it, the
+ *                             Recycle Bin left out (pg_gal_folders_showing())
+ * @param array    $placements rows of page_id, page_name, page_folder,
+ *                             folder_id (the widget's pg_gal_folder_setting())
+ * @param callable $top_of     function ($folder_id, $page_folder): the
+ *                             gallery's top folder (pg_gal_top_folder())
+ * @return array   the rows of $placements kept
+ */
+function pg_gal_pages_showing($chain, $placements, $top_of)
+{
+    $in_chain = array();
+    foreach ((array)$chain as $id) $in_chain[(int)$id] = true;
+    $out = array();
+    $seen = array();
+    foreach ((array)$placements as $row) {
+        $page_id = isset($row['page_id']) ? (int)$row['page_id'] : 0;
+        if ($page_id <= 0 || isset($seen[$page_id])) continue;
+        $top = (int)call_user_func($top_of, isset($row['folder_id']) ? (int)$row['folder_id'] : 0, isset($row['page_folder']) ? (int)$row['page_folder'] : 0);
+        if ($top <= 0 || !isset($in_chain[$top])) continue;
+        $seen[$page_id] = true;
+        $out[] = $row;
+    }
+    return $out;
+}
+
+/**
+ * The folders a gallery's settings may choose from, as the panel's picker
+ * lists them: every folder but the Recycle Bin and the folders in it.
+ *
+ * @param array $rows    folder rows of id, name, parent_id, archived
+ * @param int[] $bin_ids pg_recycle_bin_folder_ids()
+ * @return array rows of id, name, parent_id (ints), archived (bool)
+ */
+function pg_gal_folder_choices($rows, $bin_ids)
+{
+    $bin = array();
+    foreach ((array)$bin_ids as $id) $bin[(int)$id] = true;
+    $out = array();
+    foreach ((array)$rows as $row) {
+        $id = isset($row['id']) ? (int)$row['id'] : 0;
+        if ($id <= 0 || isset($bin[$id])) continue;
+        $out[] = array(
+            'id'        => $id,
+            'name'      => (string)(isset($row['name']) ? $row['name'] : ''),
+            'parent_id' => isset($row['parent_id']) ? (int)$row['parent_id'] : 0,
+            'archived'  => !empty($row['archived']),
+        );
+    }
+    return $out;
 }
 
 /**
