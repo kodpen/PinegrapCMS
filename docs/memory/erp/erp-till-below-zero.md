@@ -3,7 +3,7 @@ name: erp-till-below-zero
 description: A cash till (drawer, received-cheque portfolio) never goes below zero on a transfer, payment or expense: the one check, where it is asked, who skips it, what an already negative till does
 ---
 
-## Which tills may go below zero? (#4460)
+## Which tills may go below zero? (#4460, PR #4666)
 - Only tills of kind `bank`, `pos` and `credit_card` (an overdraft, card credit). A till of kind `cash` (the drawer, a received-cheque portfolio) refuses an outflow larger than its balance with "Not enough balance in the till." ("Kasada yeterli bakiye yok."); emptying it to exactly zero is allowed.
 - A till already below zero (from before the check) is left as it is; every new outflow from it is refused until money comes in or a correction is posted. No row is rewritten, no schema.
 
