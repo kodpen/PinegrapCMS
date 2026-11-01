@@ -1,6 +1,6 @@
 ---
 name: classic-store-pages-language
-description: Classic cart, express order, order receipt and the checkout steps (order preview, shipping address and arrival, billing information) print every visitor text through lang(); a sentence around a value is one {var:n} key (PR #4472, #4795)
+description: Classic store pages and checkout steps (cart, express order, receipt, order preview, shipping, billing) print every visitor text through lang(); {var:n} keys (PR #4472, #4795)
 ---
 
 ## Which pages, and what changed?
