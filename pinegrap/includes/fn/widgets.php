@@ -5020,7 +5020,7 @@ function pg_sw_widget_page_index()
 
     $not_binned = pg_designer_not_binned_sql('page.page_folder');
     $pages = db_items(
-        "SELECT page.page_id, page.page_name, page.page_title, page.page_folder
+        "SELECT page.page_id, page.page_name, page.page_title, page.page_folder, page.page_style
          FROM page
          INNER JOIN style ON page.page_style = style.style_id
          WHERE 1 = 1" . $not_binned . "
@@ -5094,6 +5094,46 @@ function pg_sw_first_viewable_page(array $pages, $can_view)
     return null;
 }
 
+// The first of $pages (rows with 'page_folder' and 'page_style') whose
+// folder $can_view accepts, a page of design $style_id before the others;
+// otherwise in their order. null when there is none. Pure.
+function pg_sw_pick_viewable_page(array $pages, $can_view, $style_id = 0)
+{
+    $open = array();
+    foreach ($pages as $page) {
+        if (isset($page['page_folder']) && call_user_func($can_view, (int)$page['page_folder'])) $open[] = $page;
+    }
+    if ((int)$style_id > 0) {
+        foreach ($open as $page) {
+            if (isset($page['page_style']) && (int)$page['page_style'] === (int)$style_id) return $page;
+        }
+    }
+    return $open ? $open[0] : null;
+}
+
+// Whether the visitor of this request can open what a folder holds, or
+// could get in (a guest or registration folder counts). Without a visitor
+// (a scheduled job writing a feed or an e-mail) the folder must be open to
+// anyone who signs up.
+function pg_sw_visitor_may_open_folder($folder_id)
+{
+    if (defined('USER_LOGGED_IN')) return (bool)check_view_access($folder_id, true);
+    return in_array(get_access_control_type($folder_id), array('public', 'guest', 'registration'), true);
+}
+
+// The design of the site's home page, the published one, or 0. A site
+// trying another design keeps its pages in a private Drafts folder; the
+// pages chosen automatically come from the home page's design first. Read
+// once per request.
+function pg_sw_home_style_id()
+{
+    static $style_id = null;
+    if ($style_id === null) {
+        $style_id = (int)db_value("SELECT page_style FROM page WHERE page_home = 'yes'" . pg_designer_not_binned_sql('page_folder') . " ORDER BY page_id ASC LIMIT 1");
+    }
+    return $style_id;
+}
+
 // The page product links open when a widget names none: the first designed
 // page carrying a Catalog Detail widget, else the first legacy catalog
 // detail page, that the visitor can open. A page in a private folder (a
@@ -5106,10 +5146,7 @@ function pg_sw_auto_catalog_detail_page()
 {
     static $picked = false;
     if ($picked !== false) return $picked;
-    $can_view = function ($folder_id) {
-        if (defined('USER_LOGGED_IN')) return (bool)check_view_access($folder_id, true);
-        return in_array(get_access_control_type($folder_id), array('public', 'guest', 'registration'), true);
-    };
+    $can_view = 'pg_sw_visitor_may_open_folder';
     $page = pg_sw_first_viewable_page(pg_sw_widget_pages('catalog_item_view'), $can_view);
     if ($page === null) {
         $legacy = db_items("SELECT page_id, page_name, page_folder FROM page WHERE page_type = 'catalog detail' ORDER BY page_id ASC");

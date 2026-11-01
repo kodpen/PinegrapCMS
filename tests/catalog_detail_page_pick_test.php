@@ -53,6 +53,9 @@ function test_auto_detail_page_is_shared_and_checks_access()
 	}
 	$start = strpos($src, 'function pg_sw_auto_catalog_detail_page(');
 	$body = substr($src, (int) $start, (int) strpos($src, "\nfunction ", (int) $start + 10) - (int) $start);
+	pg_assert_contains('pg_sw_visitor_may_open_folder', $body, 'the folder access of the visitor is checked');
+	$start = strpos($src, 'function pg_sw_visitor_may_open_folder(');
+	$body = substr($src, (int) $start, (int) strpos($src, "\nfunction ", (int) $start + 10) - (int) $start);
 	pg_assert_contains('check_view_access(', $body, 'the folder access of the visitor is checked');
 	pg_assert_contains('get_access_control_type(', $body, 'without a visitor, the folder must be open to anyone');
 }

@@ -4,7 +4,7 @@ description: The error page system widget: when it is shown, which block shows f
 ---
 
 ## When is the designed error page shown?
-- `output_error()` records the message and the code (`pg_sw_error_context()`); `get_error_screen()` renders the first designed page carrying an `error_page` widget (`pg_sw_error_page_id()`) before the legacy `error` page type. Opened directly, the widget reads as "not found" and the page answers 404.
+- `output_error()` records the message and the code (`pg_sw_error_context()`); `get_error_screen()` renders the designed page carrying an `error_page` widget that `pg_sw_error_page_id()` picks (see below) before the legacy `error` page type. Opened directly, the widget reads as "not found" and the page answers 404.
 
 ## Which block shows for which error?
 - Flags from `pg_sw_error_flags($code, $maintenance_block)` (`includes/fn/widgets_error.php`): `is_not_found` (404), `is_maintenance` (503; maintenance mode is the only sender), `is_other_error` (any other error), `has_error_code` (code 400 and up).
@@ -19,3 +19,8 @@ description: The error page system widget: when it is shown, which block shows f
 - Tests: `tests/error_page_test.php`.
 
 Related: docs/memory/designer/account-widget-forms.md
+
+## Which page carrying the widget is the error page?
+- `pg_sw_error_page_id()`: only pages whose folder's access type is `public` (`get_access_control_type()`), a page of the home page's design (`pg_sw_home_style_id()`) first, then the lowest `page_id` (`pg_sw_pick_viewable_page()`).
+- Why: `get_error_screen()` draws the page without an access check; the first page by title was taken, so a design tried in the private Drafts folder whose error page sorted first became the whole site's error screen (#4477). Test: `tests/visitor_widget_page_pick_test.php`.
+- The editor's info line still says "the first published page"; the rule above is what runs.

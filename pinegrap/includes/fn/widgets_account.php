@@ -63,10 +63,15 @@ function pg_sw_page_type_widgets()
     );
 }
 
-// Address of the first designed page carrying the widget that stands in for
+// Address of the designed page carrying the widget that stands in for
 // $page_type, or '' when there is none. get_page_type_url() asks this when
 // the site has no page of the legacy type, so a password reset link, a
 // "back to my account" redirect or a logout lands on the designed page.
+// Only a page the visitor can open counts, one of the published (home page)
+// design first: a design tried out in the private Drafts folder carries the
+// same account pages, sorted before the live ones by title, and sent the
+// password reset link and the My Account links to the sign-in page (#4451).
+// A screen for a signed-out visitor needs a page open to anyone.
 function pg_sw_page_type_widget_url($page_type)
 {
     static $cache = array();
@@ -84,8 +89,20 @@ function pg_sw_page_type_widget_url($page_type)
     // The order receipt e-mail page carries an order view too, sits in a
     // private folder and sorts before the public order page by title.
     if ($page_type === 'view order') $pages = pg_sw_pages_without($pages, _pg_sw_order_receipt_email_page_ids());
-    if (!$pages) return '';
-    return $cache[$page_type] = (defined('PATH') ? PATH : '/') . encode_url_path((string)$pages[0]['page_name']);
+    $can_view = pg_sw_page_type_for_signed_out($page_type)
+        ? function ($folder_id) { return get_access_control_type($folder_id) === 'public'; }
+        : 'pg_sw_visitor_may_open_folder';
+    $page = pg_sw_pick_viewable_page($pages, $can_view, pg_sw_home_style_id());
+    if ($page === null) return '';
+    return $cache[$page_type] = (defined('PATH') ? PATH : '/') . encode_url_path((string)$page['page_name']);
+}
+
+// Whether the screen of a legacy page type is one a signed-out visitor
+// opens (signing in, signing up, the password reset e-mail's link), so its
+// page must sit in a public folder. Pure.
+function pg_sw_page_type_for_signed_out($page_type)
+{
+    return in_array((string)$page_type, array('login', 'forgot password', 'set password', 'registration entrance'), true);
 }
 
 // $pages (rows with page_id) without those whose id is in $skip_ids, in the

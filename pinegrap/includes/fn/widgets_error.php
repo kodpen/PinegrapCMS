@@ -37,8 +37,13 @@ function pg_sw_error_context($message = null, $code = null)
     return $stored;
 }
 
-// The first designed page carrying an error page widget, or 0. Pages in the
-// recycle bin do not count (pg_sw_widget_pages() leaves them out).
+// The designed page carrying an error page widget that is the site's error
+// screen, or 0. get_error_screen() draws it for every visitor without an
+// access check, so only a page in a public folder counts, one of the
+// published (home page) design first, then the lowest page id: a design
+// tried out in the private Drafts folder whose error page sorted first by
+// title became the whole site's error screen (#4477). Pages in the recycle
+// bin do not count (pg_sw_widget_pages() leaves them out).
 function pg_sw_error_page_id()
 {
     static $page_id = null;
@@ -48,7 +53,10 @@ function pg_sw_error_page_id()
     // no designed page can carry a widget.
     if (function_exists('pg_multi_page_design_ready') && !pg_multi_page_design_ready()) return $page_id;
     $pages = pg_sw_widget_pages('error_page');
-    if ($pages) $page_id = (int)$pages[0]['page_id'];
+    usort($pages, function ($a, $b) { return (int)$a['page_id'] - (int)$b['page_id']; });
+    $public = function ($folder_id) { return get_access_control_type($folder_id) === 'public'; };
+    $page = pg_sw_pick_viewable_page($pages, $public, pg_sw_home_style_id());
+    if ($page !== null) $page_id = (int)$page['page_id'];
     return $page_id;
 }
 

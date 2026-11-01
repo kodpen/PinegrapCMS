@@ -28,6 +28,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 ## Files
 
 - account-email-pages.md: Designable welcome and password reset e-mails: Account E-mail widget, *_email_page_id settings, resolver, stored recipient, 'secret' mail (#1192).
+- account-page-type-pick.md: Which designed page answers a legacy account page type (password reset link, Change Password, order links, sign-in): a page the visitor can open, the home page's design first (#4451)
 - account-widget-forms.md: Designed account widgets: the login region's two states and per-placement ids, account_security's one form per block, links dropped in a grid, comments on a form detail page, one-screen widget kinds.
 - ad-region-widget.md: Ad Region widget (ad_region, #1836): the classic <ad> region in the designer; which ads show and in which order, the carousel and its rotation, raw ad markup, edit chips, what is left out.
 - affiliate-sign-up-widget.md: The Affiliate Sign Up Form widget (classic "affiliate sign up form" page type): handler and page row, controls by name, prefill, terms, confirmation, what is left out.

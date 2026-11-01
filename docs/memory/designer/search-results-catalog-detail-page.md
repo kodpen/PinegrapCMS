@@ -8,7 +8,7 @@ module: widgets
 `_pg_sw_search_collect()` (`includes/fn/widgets.php`) takes the widget's `catalog_detail_page_id`, else `pg_sw_auto_catalog_detail_page()`: the first page carrying a `catalog_item_view` widget (`pg_sw_widget_pages()`, title order), else the first `page_type = 'catalog detail'` page, that the visitor can open. The link is `/<detail page>/<item address>?previous_url_id=…`; `full_url` drops the query. `pg_sw_catalog_detail_page_name()` (lists, cart, checkout, feeds, sitemap) uses the same picker.
 
 ## Which automatic page counts as one the visitor can open?
-- With a visitor: `check_view_access($folder, true)` on the page's folder, so a guest or registration folder counts (the visitor can get in), a private folder only for its members and for Manager and above.
+- `pg_sw_visitor_may_open_folder()`. With a visitor: `check_view_access($folder, true)` on the page's folder, so a guest or registration folder counts (the visitor can get in), a private folder only for its members and for Manager and above.
 - Without one (`USER_LOGGED_IN` undefined: a scheduled feed or e-mail): the folder's access type must be public, guest or registration.
 - Why: on dev both Catalog Detail pages sat in the private Drafts folder; every product result of the Help Center search linked to one and sent the visitor to `/giris` (#4453). No page the visitor can open means no catalog results, as below.
 - A configured `catalog_detail_page_id` is not checked: the owner chose it. The current design is not preferred (no current-page context reaches the collector).
