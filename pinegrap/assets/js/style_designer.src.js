@@ -34862,7 +34862,7 @@ const StyleDesigner = (function () {
                     ) +
                     row(_sdT('Catalog page'),
                         '<select class="form-control form-control-sm" id="sd-sw-civ-cat-page" data-sw-id="' + sid + '">' + _civCatOpts + '</select>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('Choose the catalog list page to make the breadcrumb crumbs (Catalog → Group → …) clickable. The list holds the pages that carry a <code>catalog_listing</code> widget. Empty = the crumbs are plain text.') + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('Choose the catalog list page to make the breadcrumb crumbs (Catalog → Group → …) clickable. The list holds the pages that carry a Catalog widget. Empty = the crumbs are plain text.') + '</div>'
                     ) +
                     row(_sdT('Variant picker style'),
                         // Widget-level renderStyle for the auto-injected
@@ -34885,7 +34885,7 @@ const StyleDesigner = (function () {
                                 }).join('') +
                             '</select>';
                         })() +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('The interface shape for the variant attributes (Color, Size, …). Leave a <code>variant_attr</code> content type for the designer and that element\'s own style wins.') + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('The interface shape for the variant attributes (Color, Size, …). If you place a Variant Attribute element on the page, that element\'s own look applies.') + '</div>'
                     )
                 );
             }

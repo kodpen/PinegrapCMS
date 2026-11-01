@@ -2290,6 +2290,7 @@
     "The instance of the repeating event has been unremoved.": "Yinelenen etkinliğin bu örneği geri alındı.",
     "The instructors who teach our courses: what they do every day and what they teach.": "Kurslarımızı veren eğitmenler: her gün ne yaptıkları ve ne öğrettikleri.",
     "The integrity reference for this version could not be retrieved from GitHub. The version may not be released yet, or GitHub may be unreachable from this server.": "Bu sürümün bütünlük referansı GitHub'dan alınamadı. Sürüm henüz yayımlanmamış olabilir ya da bu sunucu GitHub'a erişemiyor olabilir.",
+    "The interface shape for the variant attributes (Color, Size, …). If you place a Variant Attribute element on the page, that element's own look applies.": "Varyant özellikleri (Renk, Beden, …) için arayüz şekli. Sayfaya bir Varyant Özelliği öğesi yerleştirirseniz o öğenin kendi görünümü geçerli olur.",
     "The interface shape for the variant attributes (Color, Size, …). Leave a <code>variant_attr</code> content type for the designer and that element's own style wins.": "Varyant özellikleri (Renk, Beden, …) için arayüz şekli. Tasarımcıya <code>variant_attr</code> content type bırakırsanız o öğenin kendi stili öncelikli olur.",
     "The invoice PDF is attached, the copy kept when it was issued.": "Faturanın kesildiği anda saklanan PDF'i eklenir.",
     "The invoice at Paraşüt does not have the same lines as the ERP invoice; nothing was converted.": "Paraşüt'teki faturanın kalemleri ERP faturasınınkiyle aynı değil; hiçbir şey resmileştirilmedi.",
