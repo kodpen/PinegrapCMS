@@ -53,6 +53,33 @@ function pg_calendar_month_padding($start_timestamp, $stop_timestamp, $first_day
     );
 }
 
+/**
+ * The date a calendar view is asked for, as MM-DD-YYYY with a two-digit
+ * month and day and a four-digit year, or '' when it is not a real date in
+ * that order. The monthly and weekly views compare event dates with the
+ * range as text, so an unpadded month or day ("3-1-2026") would leave every
+ * event outside the range.
+ *
+ * @param mixed $date the date from the query string or the session
+ * @return string e.g. '03-01-2026', or ''
+ */
+function pg_calendar_view_date($date)
+{
+    if (!is_string($date) || $date === '') {
+        return '';
+    }
+
+    $parts = explode('-', $date);
+
+    if ((count($parts) != 3)
+        || !ctype_digit($parts[0]) || !ctype_digit($parts[1]) || !ctype_digit($parts[2])
+        || !checkdate((int) $parts[0], (int) $parts[1], (int) $parts[2])) {
+        return '';
+    }
+
+    return sprintf('%02d-%02d-%04d', (int) $parts[0], (int) $parts[1], (int) $parts[2]);
+}
+
 function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $link, $number_of_upcoming_events = '', $return = 'html', $output_minimal_calendar = false)
 {
     $sql_join = '';
@@ -81,17 +108,9 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
         // bad value that stuck in the session would break every later request.
         // A date that is not text (an array kept by an older version) is
         // dropped the same way.
-        if (!is_string($date)) {
-            $date = '';
-        }
-        if ($date) {
-            $date_parts = explode('-', $date);
-            if ((count($date_parts) != 3)
-                || !ctype_digit($date_parts[0]) || !ctype_digit($date_parts[1]) || !ctype_digit($date_parts[2])
-                || !checkdate((int) $date_parts[0], (int) $date_parts[1], (int) $date_parts[2])) {
-                $date = '';
-            }
-        }
+        // The views compare dates as text, so the month and day are written
+        // with two digits ("3-1-2026" showed an empty month).
+        $date = pg_calendar_view_date($date);
         switch ($view) {
             case '':
             case 'monthly':

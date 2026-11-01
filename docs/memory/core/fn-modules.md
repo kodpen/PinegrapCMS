@@ -14,7 +14,7 @@ description: Generated from the module field of the memory files: each includes/
 - `auth`: [[erp-link-rights]], [[filtered-folder-picker-path]], [[link-rights]], [[list-row-names]], [[sign-in-one-message]]
 - `backup`: [[fn-module-errors-mail-backup-consent]]
 - `bundles`: [[product-bundles]], [[product-bundles-storefront]]
-- `calendar`: [[calendar-location-availability]]
+- `calendar`: [[calendar-location-availability]], [[calendar-view-date]]
 - `carrier_labels`: [[carrier-label-drivers]], [[carrier-label-text-cuts]]
 - `carrier_webhook`: [[carrier-webhook]], [[carrier-webhook-basitkargo]], [[carrier-webhook-drivers]]
 - `cart_quotes`: [[cart-quotes]], [[cart-quotes-api]]
