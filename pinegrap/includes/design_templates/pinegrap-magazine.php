@@ -1192,8 +1192,10 @@ $contents_row = function ($s) use ($el, $para, $bind, $attr, $card_kicker, $card
 // happened to it (a message, a change) and the messages under it. Each row
 // shows the last activity, so a story that has gone quiet stands out. The
 // row opens the list's detail page: the submission page on the desks, the
-// public story in "Live now".
-$desk_row = function ($with_writer) use ($el, $span, $icon, $bind, $bind_date, $status_badge, $head, $statuses) {
+// public story in "Live now". The count is the detail page's own comments,
+// so "Live now" ($public) counts the readers' letters under the story, the
+// desks the messages with the writer.
+$desk_row = function ($with_writer, $public = false) use ($el, $span, $icon, $bind, $bind_date, $status_badge, $head, $statuses) {
     $s = $head(3);
     $detail = function ($icon_name, $name, $children, $class = 'd-inline-flex align-items-center gap-1') use ($el, $icon) {
         return $el('span', $class, $name, array_merge(array($icon($icon_name)), $children));
@@ -1217,9 +1219,9 @@ $desk_row = function ($with_writer) use ($el, $span, $icon, $bind, $bind_date, $
         $span(lang('Last activity:'), '', lang('Label')),
         $span(lang('2 hours ago'), '', lang('Time'), $bind_date('newest_activity_date_and_time', 'relative')),
     ));
-    $details[] = $detail('bi-chat-left-text', lang('Messages'), array(
+    $details[] = $detail('bi-chat-left-text', $public ? lang('Letters') : lang('Messages'), array(
         $span('2', 'fw-semibold', lang('Number of Comments'), $bind('number_of_comments')),
-        $span(lang('messages'), '', lang('Label')),
+        $span($public ? lang('letters') : lang('messages'), '', lang('Label')),
     ));
     return $el('a', 'list-group-item list-group-item-action d-flex flex-column gap-1 py-3', lang('Story Row'), array(
         $el('div', 'd-flex align-items-start gap-2', lang('Top Line'), array(
@@ -1643,7 +1645,7 @@ $desk_comments = array(
     'notify_email'  => '{{site_email}}',
 );
 $conversation_comments = array(
-    'label'         => lang('Message'),
+    'label'         => lang('reply'),
     'allow_new'     => true,
     'auto_publish'  => true,
     'show_date'     => true,
@@ -1974,7 +1976,7 @@ $pages[] = array(
         $prose('guidelines', lang('Guidelines'), lang('Guidelines'), array(
             lang('Most of our stories run between one and three thousand words. Send a title, a summary of one or two sentences and the name readers should see.'),
             lang('Send only photos you took yourself or may publish, and say who took them.'),
-            lang('Search engines are also given the name on your account, not only the name you give on your story.'),
+            lang('Search engines are given the name you give on your story as its author.'),
             lang('Nothing you send is shown to readers until an editor sets it live.'),
         ), array($buttons(array(
             $link(lang('Ask for an author account'), '{{page:contact}}', 'btn btn-primary'),
@@ -2513,7 +2515,7 @@ $pages[] = array(
                         $para(lang('Follow your story under My Stories. The editors write to you under the story, and each message also comes by e-mail. To change your story or take it back, write to the editors there.'), 'small'),
                         $para(lang('When an editor sets your story live, the editor tells you so under it: that message is the e-mail you get, and no other e-mail is sent when it goes live.'), 'small'),
                         $para(lang('The name you give decides which contributor page the story joins, and the editors check it.'), 'small'),
-                        $para(lang('Search engines are also given the name on your account, not only the name you write here.'), 'small'),
+                        $para(lang('Search engines are given the name you write here as the story\'s author.'), 'small'),
                         $para(lang('A photo you upload is shown once your story is live. Until then only the editors see it, so under My Stories your story shows a placeholder in its place.'), 'small'),
                         $para(lang('A story taken off the site can still show in the site search until the search index is rebuilt.'), 'small'),
                         $link(lang('My Stories'), '{{page:my_articles}}', 'btn btn-sm btn-secondary'),
@@ -2608,7 +2610,7 @@ $staff_notes = array(
     lang('The home page shows the newest Cover story, the newest Editor\'s letter and the six newest Standard stories; Editors\' picks have their own shelf. Give each issue exactly one Cover story and one Editor\'s letter: the letter is the issue\'s card on Every issue. To launch an issue, give its stories one publication time, the Cover story one minute later and the Editor\'s letter one minute after that: an issue\'s contents put the latest time first, so they open with the letter and then the cover.'),
     lang('A new issue is added by an administrator or designer, because the visual editor opens to editors and managers for content only: add its name to the "Part of the issue" field of the Submit a Story page with Add an option, not with the bulk edit box, check that Online only is still the default, and publish the design. Use letters, digits, spaces and hyphens only: no & # ? + % = or quotes, because the name becomes part of a link.'),
     lang('Site search changes only when the index is rebuilt, which the site\'s scheduled jobs do once a day: after a scheduled story goes live, or after you take a story off the site, ask an administrator, designer or manager to run Update Search Index in the control panel. Until then search shows the old state. A story page is indexed with its More from the magazine and Most read lists, so a search for a title also finds the story pages that showed it there.'),
-    lang('A story\'s structured data and the RSS feeds name the time it reached the editors, not its publication time, and the feeds order stories by that time; the structured data also names the account that sent it, not the name on the story. For a pen name, ask the writer to put the same name on their account.'),
+    lang('A story\'s structured data and the RSS feeds name the time it reached the editors, not its publication time, and the feeds order stories by that time; the structured data gives the name on the story as its author.'),
     lang('Never rename or remove the fields named status, publish_date, placement or issue: a list whose filter names a missing field shows nothing, so every story would leave the site. Keep "Hide from the visitor (staff only)" switched on for the six office fields, or an author could set a story live. Statuses, placements and issues are words the lists filter on: only an administrator or designer can change one, in the visual editor; then publish, and set the new word on the stories that had the old one. A new list or story view of this form on another page needs the same "live" filters.'),
     lang('A photo uploaded with a story opens only for the editors while the story is not live. Before you set a story live, check the name on the story, which decides the contributor page and feed the story joins; then remove pictures that load from other sites and check every link in its text: pictures and links are printed as written, for every reader, and the pictures already load when you open the story.'),
     lang('A reader\'s letter is signed with the first and last name on the reader\'s account, or with Member when the account has no name. Before you publish a letter, open it under Comments in the control panel, check the name and change it if needed, for example to Anonymous.'),
@@ -3688,8 +3690,8 @@ $desk_list = function ($page_key, $ipp, $max, $order, $direction, $filters, $emp
     $config['empty_message'] = $empty;
     return array('page' => $page_key, 'slug' => lang('form-list'), 'config' => array_merge($config, $extra), 'tree' => $widget_root($tree));
 };
-$desk_rows = function ($with_writer) use ($el, $loop, $desk_row) {
-    return array($el('div', 'list-group', lang('List'), array($loop(array($desk_row($with_writer))))));
+$desk_rows = function ($with_writer, $public = false) use ($el, $loop, $desk_row) {
+    return array($el('div', 'list-group', lang('List'), array($loop(array($desk_row($with_writer, $public))))));
 };
 // My Stories shows each author their own stories only: an editor's view of
 // everybody's is the editors' desk.
@@ -3858,7 +3860,7 @@ $widgets['staff_published'] = array(
         'filters'        => $live,
         'empty_message'  => lang('No story is live yet.'),
     )),
-    'tree'   => $widget_root($desk_rows(true)),
+    'tree'   => $widget_root($desk_rows(true, true)),
 );
 // Every story sent to the magazine in any status, newest first, with a
 // search.
@@ -4225,7 +4227,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Long-Read Magazine'),
-    'version'     => '1.2.0',
+    'version'     => '1.2.1',
     'framework'   => 'bootstrap5',
     'order'       => 80,
     'icon'        => 'bi-journal-richtext',

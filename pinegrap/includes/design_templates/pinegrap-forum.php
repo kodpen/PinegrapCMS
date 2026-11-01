@@ -1708,7 +1708,7 @@ $doc_desk_comments = array(
 );
 // The answers in a conversation started from the contact page.
 $conversation_comments = array(
-    'label'          => lang('Message'),
+    'label'          => lang('reply'),
     'allow_new'      => true,
     'auto_publish'   => true,
     'show_date'      => true,
@@ -6194,7 +6194,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Community Forum & Docs'),
-    'version'     => '1.3.0',
+    'version'     => '1.3.1',
     'framework'   => 'bootstrap5',
     'order'       => 90,
     'icon'        => 'bi-chat-square-text',

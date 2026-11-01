@@ -1539,7 +1539,7 @@ function test_magazine_comment_labels()
 	foreach (_test_mag_pages() as $key => $p) {
 		if (isset($p['comments'])) {
 			$found++;
-			pg_assert_true(in_array($p['comments']['label'], array(lang('Letter'), lang('Message')), true), $key . ' comment label');
+			pg_assert_true(in_array($p['comments']['label'], array(lang('Letter'), lang('Message'), lang('reply')), true), $key . ' comment label');
 			pg_assert_true(isset($p['comments']['login']) && $p['comments']['login'] === true, $key . ' comments need sign-in');
 		}
 	}

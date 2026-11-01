@@ -441,6 +441,8 @@
     "Search engines are also given the name on your account, not only the name you give on your story.": "Arama motorlarına yazınızda verdiğiniz adın yanı sıra hesabınızdaki ad da verilir.",
     "Search engines are also given the name on your account, not only the name you write here.": "Arama motorlarına buraya yazdığınız adın yanı sıra hesabınızdaki ad da verilir.",
     "Search engines are asked to list this address instead of the page.": "Arama motorlarından sayfa yerine bu adresi listelemeleri istenir.",
+    "Search engines are given the name you give on your story as its author.": "Arama motorlarına yazar olarak yazınızda verdiğiniz ad verilir.",
+    "Search engines are given the name you write here as the story's author.": "Arama motorlarına yazının yazarı olarak buraya yazdığınız ad verilir.",
     "Search engines index": "Arama motorları indeksler",
     "Search engines may index this page in {var:1}.": "Arama motorları bu sayfayı {var:1} dilinde dizine ekleyebilir.",
     "Search engines read this file as it is; the look is only for reading it in a browser.": "Arama motorları bu dosyayı olduğu gibi okur; bu görünüm yalnız tarayıcıda okumak içindir.",
