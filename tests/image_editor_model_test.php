@@ -291,8 +291,9 @@ function test_image_editor_model_resize_crop()
 }
 
 // A turn to the right moves the crop and the layers clockwise with the
-// picture; an upright layer keeps its size; under a flip the turn is still
-// clockwise on screen; turning swaps the output size.
+// picture; a box keeps its size and takes the turn into its angle, an
+// upright layer only moves; under a flip the turn is still clockwise on
+// screen; turning swaps the output size.
 function test_image_editor_model_turns_move_crop_and_layers()
 {
 	$r = image_editor_model_node(
@@ -315,12 +316,12 @@ function test_image_editor_model_turns_move_crop_and_layers()
 	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
 	pg_assert_same(90, $r['rot'], 'the picture turns a quarter');
 	pg_assert_same(array('x' => 200, 'y' => 0, 'w' => 100, 'h' => 200), $r['crop'], 'the crop box turns with it');
-	pg_assert_same(array('type' => 'rect', 'x' => 250, 'y' => 0, 'w' => 50, 'h' => 100), $r['rect'], 'a box turns with the picture');
+	pg_assert_same(array('type' => 'rect', 'x' => 225, 'y' => 25, 'w' => 100, 'h' => 50, 'rot' => 90), $r['rect'], 'a box turns with the picture');
 	pg_assert_same(array('type' => 'text', 'x' => 240, 'y' => 40, 'w' => 80, 'h' => 20), $r['text'], 'a text moves its centre and stays upright');
 	pg_assert_same(array('w' => 50, 'h' => 100), $r['output'], 'the output size is swapped');
 	pg_assert_same(270, $r['flippedRot'], 'under a flip the picture itself turns the other way');
-	pg_assert_same(array('type' => 'rect', 'x' => 299, 'y' => 0, 'w' => 1, 'h' => 1), $r['flippedRect'], 'the top-left corner still goes to the top right');
-	pg_assert_same(array('type' => 'rect', 'x' => 0, 'y' => 0, 'w' => 100, 'h' => 50), $r['full'], 'four turns bring a layer back');
+	pg_assert_same(array('type' => 'rect', 'x' => 299, 'y' => 0, 'w' => 1, 'h' => 1, 'rot' => 90), $r['flippedRect'], 'the top-left corner still goes to the top right');
+	pg_assert_same(array('type' => 'rect', 'x' => 0, 'y' => 0, 'w' => 100, 'h' => 50, 'rot' => 0), $r['full'], 'four turns bring a layer back');
 	pg_assert_same(0, $r['original'], 'the document turned is a copy');
 }
 

@@ -165,7 +165,7 @@ function test_image_editor_draw_pen_and_eraser()
 		. 'var dot = M.penLayer([[5, 5]]);' . "\n"
 		. 'var cut = M.eraseTrace(pen, 60, 10, 5), miss = M.eraseTrace(pen, 60, 80, 5), all = M.eraseTrace(pen, 60, 10, 80);' . "\n"
 		. 'var long = Object.assign({ id: "q", type: "pen", stroke: 2 }, M.penLayer([[0, 0], [20, 0], [40, 0], [60, 0], [80, 0], [100, 0]]));' . "\n"
-		. 'var split = M.eraseTrace(long, 50, 0, 5);' . "\n"
+		. 'var split = M.eraseTrace(long, 50, 0, 12);' . "\n"
 		. 'console.log(JSON.stringify({ pen: [pen.x, pen.y, pen.w, pen.h], trace: pen.trace, dot: [dot.x, dot.y, dot.w, dot.h, dot.trace],'
 		. ' cut: cut.length, miss: miss, all: all, split: split.map(function (l) { return [r3(l.x), r3(l.w), l.trace.length]; }),'
 		. ' smooth: M.smoothTrace([[0, 0], [10, 10], [20, 0]], 1).map(function (p) { return p.map(r3); }) }));'
@@ -176,13 +176,13 @@ function test_image_editor_draw_pen_and_eraser()
 	}
 
 	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
-	pg_assert_same(array(10, 10, 100, 1), $r['pen'], 'the box around the points, at least a pixel high');
+	pg_assert_same(array(10, 9.5, 100, 1), $r['pen'], 'the box around the points, at least a pixel high around them');
 	pg_assert_same(array(array(0, 0.5), array(0.5, 0.5), array(1, 0.5)), $r['trace'], 'points in parts of the box');
 	pg_assert_same(array(4.5, 4.5, 1, 1, array(array(0.5, 0.5))), $r['dot'], 'a click is a dot');
 	pg_assert_same(2, $r['cut'], 'the eraser through the middle point leaves two ends');
 	pg_assert_same(null, $r['miss'], 'a stroke it does not touch stays');
 	pg_assert_same(array(), $r['all'], 'a stroke under it all goes');
-	pg_assert_same(array(array(0, 40, 3), array(60, 40, 3)), $r['split'], 'the pieces keep their own boxes');
+	pg_assert_same(array(array(0, 20, 2), array(80, 20, 2)), $r['split'], 'the pieces keep their own boxes');
 	pg_assert_same(array(array(0, 0), array(10, 3.333), array(20, 0)), $r['smooth'], 'smoothing averages the middle, keeps the ends');
 }
 

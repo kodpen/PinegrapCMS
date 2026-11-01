@@ -330,8 +330,6 @@
     // Crop ratios (width / height): 0 is free, -1 the picture's own.
     var RATIOS = [['free', 0], ['original', -1], ['1:1', 1], ['4:3', 4 / 3], ['3:2', 3 / 2], ['16:9', 16 / 9], ['4:5', 4 / 5], ['9:16', 9 / 16]];
 
-    // Layers that keep their size and stay upright when the picture turns
-    // or flips: only their centre moves.
     // Layers whose content a turn or a flip of the picture does not turn:
     // only their place follows it.
     var UPRIGHT = ['text', 'sticker', 'image'];
@@ -479,25 +477,37 @@
             });
         }
 
-        // A mirror turns a box's own angle the other way.
-        var o = fn(0, 0), ex = fn(1, 0), ey = fn(0, 1);
-
-        if (l.rot && (UPRIGHT.indexOf(l.type) < 0) && ((ex[0] - o[0]) * (ey[1] - o[1]) - (ex[1] - o[1]) * (ey[0] - o[0]) < 0)) {
-            l.rot = -l.rot;
-        }
-
         if ((typeof l.x === 'number') && (typeof l.w === 'number')) {
             if (UPRIGHT.indexOf(l.type) >= 0) {
                 p = fn(l.x + l.w / 2, l.y + l.h / 2);
                 l.x = p[0] - l.w / 2;
                 l.y = p[1] - l.h / 2;
             } else {
-                p = fn(l.x, l.y);
-                q = fn(l.x + l.w, l.y + l.h);
-                l.x = Math.min(p[0], q[0]);
-                l.y = Math.min(p[1], q[1]);
-                l.w = Math.abs(q[0] - p[0]);
-                l.h = Math.abs(q[1] - p[1]);
+                // Any other box keeps its size around its moved centre and
+                // takes the turn into its angle; a mirror also mirrors its
+                // drawing (mirror) and turns its angle the other way.
+                var o = fn(0, 0), ex = fn(1, 0), ey = fn(0, 1), ax = ex[0] - o[0], ay = ex[1] - o[1];
+                var mirrored = (ax * (ey[1] - o[1]) - ay * (ey[0] - o[0])) < 0;
+                var turn = (mirrored ? Math.atan2(-ay, -ax) : Math.atan2(ay, ax)) * 180 / Math.PI;
+                var rot = Math.round((mirrored ? turn - (l.rot || 0) : turn + (l.rot || 0)) * 1e6) / 1e6;
+
+                rot = ((rot % 360) + 360) % 360;
+                rot = (rot > 180) ? rot - 360 : rot;
+                p = fn(l.x + l.w / 2, l.y + l.h / 2);
+                l.x = p[0] - l.w / 2;
+                l.y = p[1] - l.h / 2;
+
+                if (rot || (l.rot !== undefined)) {
+                    l.rot = rot;
+                }
+
+                if (mirrored) {
+                    if (l.mirror) {
+                        delete l.mirror;
+                    } else {
+                        l.mirror = true;
+                    }
+                }
             }
         }
 
@@ -912,7 +922,443 @@
 
     // -- drawing (pg_image_editor_draw.js) --
 
-    var DRAW = {};
+    // Every drawn layer is a box (x, y, w, h, rot) with its drawing in the
+    // box's own frame, mirrored by mirror, so selecting, moving, resizing,
+    // turning and the picture's turns treat it like any box. A line runs
+    // along its box's middle from the left end to the right one (the head);
+    // a pen stroke keeps its points as parts of the box (trace).
+    // Style: color, stroke (width in picture pixels), fill (none, solid,
+    // soft), dash (solid, dashed, dotted), radius (rect, bubble), sides
+    // (polygon), points and inner (star), heads (end, both) and head (fill,
+    // open, dot) of an arrow, smooth (pen, 0-10).
+
+    var DRAW_KINDS = ['arrow', 'line', 'rect', 'ellipse', 'triangle', 'polygon', 'star', 'bubble', 'pen'];
+    var LINE_KINDS = ['arrow', 'line'];
+    var CLOSED_KINDS = ['rect', 'ellipse', 'triangle', 'polygon', 'star', 'bubble'];
+
+    // Stroke widths in hundredths of the picture's longer side.
+    var STROKES = { thin: 0.22, medium: 0.42, thick: 0.85 };
+
+    function rnd(v) {
+        return Math.round(v * 100) / 100;
+    }
+
+    function strokeFor(preset, w, h) {
+        return Math.max(1, Math.round((STROKES[preset] || STROKES.medium) * Math.max(w, h) / 10) / 10);
+    }
+
+    // The preset nearest to a width.
+    function strokePreset(width, w, h) {
+        var best = 'medium', gap = Infinity;
+
+        Object.keys(STROKES).forEach(function (name) {
+            var d = Math.abs(strokeFor(name, w, h) - width);
+
+            if (d < gap) {
+                gap = d;
+                best = name;
+            }
+        });
+
+        return best;
+    }
+
+    // The box a drag from x0, y0 to x1, y1 draws; square keeps the sides
+    // equal from the corner the drag started at.
+    function shapeBox(x0, y0, x1, y1, square) {
+        var dx = x1 - x0, dy = y1 - y0;
+
+        if (square) {
+            var side = Math.max(Math.abs(dx), Math.abs(dy));
+
+            dx = (dx < 0) ? -side : side;
+            dy = (dy < 0) ? -side : side;
+        }
+
+        return { x: Math.min(x0, x0 + dx), y: Math.min(y0, y0 + dy), w: Math.abs(dx), h: Math.abs(dy), rot: 0 };
+    }
+
+    // An arrow head's length and width for a line of length len.
+    function arrowHead(len, stroke, head) {
+        if (head === 'dot') {
+            return { l: stroke * 1.6, w: stroke * 3.2 };
+        }
+
+        var hl = Math.min(len * 0.6, Math.max(stroke * 3.4, 6));
+
+        return { l: hl, w: hl * 0.62 };
+    }
+
+    // How thick a line's box is: its stroke, or its arrow head.
+    function lineThickness(kind, len, stroke, head) {
+        return (kind === 'arrow') ? Math.max(stroke, arrowHead(len, stroke, head).w) : stroke;
+    }
+
+    // The box of a line from a to b ([x, y]); snap turns it to steps of 45
+    // degrees around a. style: { kind, stroke, head }.
+    function lineBox(a, b, snap, style) {
+        var dx = b[0] - a[0], dy = b[1] - a[1], len = Math.hypot(dx, dy), ang = Math.atan2(dy, dx);
+
+        if (snap) {
+            ang = Math.round(ang / (Math.PI / 4)) * (Math.PI / 4);
+        }
+
+        var deg = Math.round(ang * 180 / Math.PI * 1e6) / 1e6, h = lineThickness(style.kind, len, style.stroke || 1, style.head);
+        var cx = a[0] + Math.cos(ang) * len / 2, cy = a[1] + Math.sin(ang) * len / 2;
+
+        return { x: cx - len / 2, y: cy - h / 2, w: len, h: h, rot: (deg === -180) ? 180 : deg };
+    }
+
+    // A point of a drawn layer's own drawing (u, v from its box's corner)
+    // in the picture's rotated space.
+    function drawnPoint(l, u, v) {
+        var m = mul(translate(l.x + l.w / 2, l.y + l.h / 2), mul(rotate(l.rot || 0), translate(-l.w / 2, -l.h / 2)));
+
+        return apply(m, l.mirror ? l.w - u : u, v);
+    }
+
+    // A point of the rotated space in a drawn layer's drawing.
+    function drawnLocal(l, x, y) {
+        var p = local(l, x, y);
+
+        return [l.mirror ? l.w - p[0] : p[0], p[1]];
+    }
+
+    // A line's start and end (the head's end).
+    function lineEnds(l) {
+        return [drawnPoint(l, 0, l.h / 2), drawnPoint(l, l.w, l.h / 2)];
+    }
+
+    // The corners of a regular polygon (inner 0) or a star (inner: the
+    // inner points' share of the radius), the first at the top, stretched to
+    // fill a w x h box.
+    function regularPoints(w, h, n, inner) {
+        var steps = inner ? n * 2 : n, pts = [], i;
+
+        for (i = 0; i < steps; i++) {
+            var a = -Math.PI / 2 + i * 2 * Math.PI / steps, r = (inner && (i % 2)) ? inner : 1;
+
+            pts.push([Math.cos(a) * r, Math.sin(a) * r]);
+        }
+
+        var xs = pts.map(function (q) { return q[0]; }), ys = pts.map(function (q) { return q[1]; });
+        var x0 = Math.min.apply(null, xs), y0 = Math.min.apply(null, ys);
+        var sx = w / ((Math.max.apply(null, xs) - x0) || 1), sy = h / ((Math.max.apply(null, ys) - y0) || 1);
+
+        return pts.map(function (q) { return [Math.round((q[0] - x0) * sx * 1e6) / 1e6, Math.round((q[1] - y0) * sy * 1e6) / 1e6]; });
+    }
+
+    // The largest corner radius: half the shorter side; a bubble keeps room
+    // for its tail.
+    function maxRadius(l) {
+        return (l.type === 'bubble') ? Math.min(l.w * 0.14, l.h * 0.4) : Math.min(l.w, l.h) / 2;
+    }
+
+    function polyD(pts) {
+        return pts.map(function (p, i) { return (i ? 'L' : 'M') + rnd(p[0]) + ' ' + rnd(p[1]); }).join('') + 'Z';
+    }
+
+    function arcTo(r, x, y) {
+        return r ? 'A' + rnd(r) + ' ' + rnd(r) + ' 0 0 1 ' + rnd(x) + ' ' + rnd(y) : '';
+    }
+
+    function roundedD(w, h, r) {
+        if (!r) {
+            return 'M0 0H' + rnd(w) + 'V' + rnd(h) + 'H0Z';
+        }
+
+        return 'M' + rnd(r) + ' 0H' + rnd(w - r) + arcTo(r, w, r) + 'V' + rnd(h - r) + arcTo(r, w - r, h)
+            + 'H' + rnd(r) + arcTo(r, 0, h - r) + 'V' + rnd(r) + arcTo(r, r, 0) + 'Z';
+    }
+
+    function ellipseD(w, h) {
+        var rx = Math.max(w / 2, 0.1), ry = Math.max(h / 2, 0.1);
+
+        return 'M0 ' + rnd(ry) + 'A' + rnd(rx) + ' ' + rnd(ry) + ' 0 1 0 ' + rnd(2 * rx) + ' ' + rnd(ry)
+            + 'A' + rnd(rx) + ' ' + rnd(ry) + ' 0 1 0 0 ' + rnd(ry) + 'Z';
+    }
+
+    // A speech bubble: a rounded body on the upper 80 % and a tail to the
+    // lower left.
+    function bubbleD(w, h, r) {
+        var b = h * 0.8, t2 = Math.max(r, w * 0.16), t1 = Math.max(t2 + w * 0.12, w * 0.34);
+
+        return 'M' + rnd(r) + ' 0H' + rnd(w - r) + arcTo(r, w, r) + 'V' + rnd(b - r) + arcTo(r, w - r, b)
+            + 'H' + rnd(t1) + 'L' + rnd(w * 0.1) + ' ' + rnd(h) + 'L' + rnd(t2) + ' ' + rnd(b)
+            + 'H' + rnd(r) + arcTo(r, 0, b - r) + 'V' + rnd(r) + arcTo(r, r, 0) + 'Z';
+    }
+
+    // Moving averages over a point list, window 2 * amount + 1; the ends stay.
+    function smoothTrace(pts, amount) {
+        var n = Math.round(clamp(Number(amount) || 0, 0, 10));
+
+        if (!n || (pts.length < 3)) {
+            return pts.slice();
+        }
+
+        return pts.map(function (p, i) {
+            if (!i || (i === pts.length - 1)) {
+                return p;
+            }
+
+            var k = Math.min(n, i, pts.length - 1 - i), x = 0, y = 0, j;
+
+            for (j = i - k; j <= i + k; j++) {
+                x += pts[j][0];
+                y += pts[j][1];
+            }
+
+            return [x / (2 * k + 1), y / (2 * k + 1)];
+        });
+    }
+
+    // A pen stroke's points in its box's frame, smoothed.
+    function tracePoints(l) {
+        return smoothTrace((l.trace || []).map(function (p) { return [p[0] * l.w, p[1] * l.h]; }), l.smooth);
+    }
+
+    // A point list as a curve through the middles of its segments.
+    function traceD(pts) {
+        if (!pts.length) {
+            return '';
+        }
+
+        if (pts.length < 3) {
+            return 'M' + pts.map(function (p) { return rnd(p[0]) + ' ' + rnd(p[1]); }).join('L') + ((pts.length === 1) ? 'h0.01' : '');
+        }
+
+        var d = 'M' + rnd(pts[0][0]) + ' ' + rnd(pts[0][1]), i;
+
+        for (i = 1; i < pts.length - 1; i++) {
+            d += 'Q' + rnd(pts[i][0]) + ' ' + rnd(pts[i][1]) + ' ' + rnd((pts[i][0] + pts[i + 1][0]) / 2) + ' ' + rnd((pts[i][1] + pts[i + 1][1]) / 2);
+        }
+
+        return d + 'L' + rnd(pts[pts.length - 1][0]) + ' ' + rnd(pts[pts.length - 1][1]);
+    }
+
+    // A line and its heads along the box's middle.
+    function lineParts(l) {
+        var w = l.w, y = l.h / 2, s = l.stroke || 1, both = (l.heads === 'both'), head = l.head || 'fill';
+        var hd = arrowHead(w, s, head), cut = (head === 'fill') ? hd.l * 0.7 : ((head === 'dot') ? hd.l : 0);
+        var tip = function (x, dir) {
+            var bx = x - dir * hd.l;
+
+            if (head === 'dot') {
+                return 'M' + rnd(bx - dir * hd.l) + ' ' + rnd(y) + 'A' + rnd(hd.l) + ' ' + rnd(hd.l) + ' 0 1 0 ' + rnd(x) + ' ' + rnd(y)
+                    + 'A' + rnd(hd.l) + ' ' + rnd(hd.l) + ' 0 1 0 ' + rnd(bx - dir * hd.l) + ' ' + rnd(y) + 'Z';
+            }
+
+            return 'M' + rnd(bx) + ' ' + rnd(y - hd.w / 2) + 'L' + rnd(x) + ' ' + rnd(y) + 'L' + rnd(bx) + ' ' + rnd(y + hd.w / 2) + ((head === 'fill') ? 'Z' : '');
+        };
+
+        if (l.type !== 'arrow') {
+            return { d: 'M0 ' + rnd(y) + 'H' + rnd(w), head: null };
+        }
+
+        return {
+            d: 'M' + rnd(both ? cut : 0) + ' ' + rnd(y) + 'H' + rnd(w - cut),
+            head: { d: tip(w, 1) + (both ? tip(0, -1) : ''), fill: head !== 'open', stroke: (head === 'open') ? s : ((head === 'fill') ? s * 0.6 : 0) }
+        };
+    }
+
+    // The one path a drawn layer has in its box's frame (0, 0 its corner),
+    // for the stage's SVG and the save's canvas alike: d, the head's (an
+    // arrow) and whether a fill applies.
+    function shapePath(l) {
+        var w = l.w, h = l.h, r = clamp(Number(l.radius) || 0, 0, maxRadius(l)), d = '';
+
+        if (LINE_KINDS.indexOf(l.type) >= 0) {
+            var parts = lineParts(l);
+
+            return { d: parts.d, head: parts.head, closed: false };
+        }
+
+        if (l.type === 'rect') { d = roundedD(w, h, r); }
+        if (l.type === 'ellipse') { d = ellipseD(w, h); }
+        if (l.type === 'triangle') { d = polyD([[w / 2, 0], [w, h], [0, h]]); }
+        if (l.type === 'polygon') { d = polyD(regularPoints(w, h, clamp(Math.round(l.sides || 6), 3, 12), 0)); }
+        if (l.type === 'star') { d = polyD(regularPoints(w, h, clamp(Math.round(l.points || 5), 4, 12), clamp(Number(l.inner) || 0.48, 0.2, 0.8))); }
+        if (l.type === 'bubble') { d = bubbleD(w, h, r); }
+        if (l.type === 'pen') { d = traceD(tracePoints(l)); }
+
+        return { d: d, head: null, closed: CLOSED_KINDS.indexOf(l.type) >= 0 };
+    }
+
+    // The outline as point lists in the box's frame, for hits: curves are
+    // walked in short steps.
+    function outline(l) {
+        var w = l.w, h = l.h, out = [], i, n = 48;
+
+        if (LINE_KINDS.indexOf(l.type) >= 0) {
+            return [[[0, h / 2], [w, h / 2]]];
+        }
+
+        if (l.type === 'pen') {
+            return [tracePoints(l)];
+        }
+
+        if (l.type === 'ellipse') {
+            for (i = 0; i <= n; i++) {
+                out.push([w / 2 + Math.cos(i * 2 * Math.PI / n) * w / 2, h / 2 + Math.sin(i * 2 * Math.PI / n) * h / 2]);
+            }
+
+            return [out];
+        }
+
+        if (l.type === 'triangle') { out = [[w / 2, 0], [w, h], [0, h]]; }
+        if (l.type === 'polygon') { out = regularPoints(w, h, clamp(Math.round(l.sides || 6), 3, 12), 0); }
+        if (l.type === 'star') { out = regularPoints(w, h, clamp(Math.round(l.points || 5), 4, 12), clamp(Number(l.inner) || 0.48, 0.2, 0.8)); }
+        if (l.type === 'bubble') { out = [[0, 0], [w, 0], [w, h * 0.8], [w * 0.34, h * 0.8], [w * 0.1, h], [w * 0.16, h * 0.8], [0, h * 0.8]]; }
+        if (!out.length) { out = [[0, 0], [w, 0], [w, h], [0, h]]; }
+
+        return [out.concat([out[0]])];
+    }
+
+    function segmentDistance(p, a, b) {
+        var dx = b[0] - a[0], dy = b[1] - a[1], len = dx * dx + dy * dy;
+        var t = len ? clamp(((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / len, 0, 1) : 0;
+
+        return Math.hypot(p[0] - (a[0] + t * dx), p[1] - (a[1] + t * dy));
+    }
+
+    function inside(p, pts) {
+        var hit = false, i, j;
+
+        for (i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+            if (((pts[i][1] > p[1]) !== (pts[j][1] > p[1]))
+                    && (p[0] < (pts[j][0] - pts[i][0]) * (p[1] - pts[i][1]) / ((pts[j][1] - pts[i][1]) || 1e-9) + pts[i][0])) {
+                hit = !hit;
+            }
+        }
+
+        return hit;
+    }
+
+    // Whether p (in the layer's frame, as hitLayer() gives it) touches the
+    // drawing: its outline within half its stroke and slack, or inside it
+    // when it is filled.
+    function hitShape(l, p, slack) {
+        var q = [l.mirror ? l.w - p[0] : p[0], p[1]], reach = (l.stroke || 1) / 2 + slack, lines = outline(l), i, j;
+
+        if ((l.fill === 'solid' || l.fill === 'soft') && (CLOSED_KINDS.indexOf(l.type) >= 0) && inside(q, lines[0])) {
+            return true;
+        }
+
+        if ((l.type === 'arrow') && (q[0] >= l.w - arrowHead(l.w, l.stroke || 1, l.head).l - slack)) {
+            return true;
+        }
+
+        for (i = 0; i < lines.length; i++) {
+            if (lines[i].length === 1) {
+                if (Math.hypot(q[0] - lines[i][0][0], q[1] - lines[i][0][1]) <= reach) {
+                    return true;
+                }
+            }
+
+            for (j = 1; j < lines[i].length; j++) {
+                if (segmentDistance(q, lines[i][j - 1], lines[i][j]) <= reach) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    // A pen stroke's box and trace from points in the rotated space: the
+    // box around them, at least a pixel each way.
+    function penLayer(pts) {
+        var xs = pts.map(function (p) { return p[0]; }), ys = pts.map(function (p) { return p[1]; });
+        var x0 = Math.min.apply(null, xs), y0 = Math.min.apply(null, ys), x1 = Math.max.apply(null, xs), y1 = Math.max.apply(null, ys);
+        var w = Math.max(1, x1 - x0), h = Math.max(1, y1 - y0);
+
+        x0 = (x0 + x1) / 2 - w / 2;
+        y0 = (y0 + y1) / 2 - h / 2;
+
+        return {
+            x: x0,
+            y: y0,
+            w: w,
+            h: h,
+            rot: 0,
+            trace: pts.map(function (p) { return [Math.round((p[0] - x0) / w * 1e4) / 1e4, Math.round((p[1] - y0) / h * 1e4) / 1e4]; })
+        };
+    }
+
+    // A pen stroke after the eraser passed x, y with radius r: null when it
+    // was not touched, else the pieces left (none when all went), each a
+    // new box and trace that keeps the stroke's angle and mirror.
+    function eraseTrace(l, x, y, r) {
+        var c = drawnLocal(l, x, y), reach = r + (l.stroke || 1) / 2, runs = [], run = [], touched = false;
+
+        (l.trace || []).forEach(function (t) {
+            var p = [t[0] * l.w, t[1] * l.h];
+
+            if (Math.hypot(p[0] - c[0], p[1] - c[1]) <= reach) {
+                touched = true;
+
+                if (run.length) {
+                    runs.push(run);
+                }
+
+                run = [];
+            } else {
+                run.push(p);
+            }
+        });
+
+        if (run.length) {
+            runs.push(run);
+        }
+
+        if (!touched) {
+            return null;
+        }
+
+        return runs.map(function (pts) {
+            var piece = penLayer(pts), centre = drawnPoint(l, piece.x + piece.w / 2, piece.y + piece.h / 2);
+
+            return {
+                x: centre[0] - piece.w / 2,
+                y: centre[1] - piece.h / 2,
+                w: piece.w,
+                h: piece.h,
+                rot: l.rot || 0,
+                mirror: !!l.mirror,
+                trace: piece.trace
+            };
+        });
+    }
+
+    // The stroke's dash pattern, or null for a solid line.
+    function dashFor(l) {
+        var s = l.stroke || 1;
+
+        if (l.dash === 'dashed') {
+            return [rnd(s * 2.4), rnd(s * 1.9)];
+        }
+
+        return (l.dash === 'dotted') ? [0.01, rnd(s * 2)] : null;
+    }
+
+    // The fill of a closed shape: its colour, a tint of it, or none.
+    function fillFor(l) {
+        var hex = /^#([0-9a-f]{6})$/i.exec(l.color || ''), n = hex ? parseInt(hex[1], 16) : 0;
+
+        if ((CLOSED_KINDS.indexOf(l.type) < 0) || ((l.fill !== 'solid') && (l.fill !== 'soft'))) {
+            return 'none';
+        }
+
+        return (l.fill === 'solid') ? (l.color || '#000000') : 'rgba(' + ((n >> 16) & 255) + ', ' + ((n >> 8) & 255) + ', ' + (n & 255) + ', 0.28)';
+    }
+
+    var DRAW = {
+        DRAW_KINDS: DRAW_KINDS, LINE_KINDS: LINE_KINDS, CLOSED_KINDS: CLOSED_KINDS, STROKES: STROKES, strokeFor: strokeFor,
+        strokePreset: strokePreset, shapeBox: shapeBox, arrowHead: arrowHead, lineThickness: lineThickness, lineBox: lineBox,
+        drawnPoint: drawnPoint, drawnLocal: drawnLocal, lineEnds: lineEnds, regularPoints: regularPoints, maxRadius: maxRadius,
+        smoothTrace: smoothTrace, shapePath: shapePath, outline: outline, hitShape: hitShape, penLayer: penLayer,
+        eraseTrace: eraseTrace, dashFor: dashFor, fillFor: fillFor
+    };
 
     // -- text (pg_image_editor_text.js) --
 
