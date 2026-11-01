@@ -1139,7 +1139,112 @@ function pg_image_editor_strings_text()
  */
 function pg_image_editor_strings_sticker()
 {
-    return array();
+    return array(
+        'layer_sticker'   => lang('Sticker'),
+        'stickers'        => lang('Stickers'),
+        'stickerNew'      => lang('NEW'),
+        'stickerSale'     => lang('SALE'),
+        'stickerSold'     => lang('SOLD OUT'),
+        'stickerHello'    => lang('Hello!'),
+        'stickerBurst'    => lang('Burst'),
+        'stickerCheck'    => lang('Check mark'),
+        'stickerStar'     => lang('Star'),
+        'stickerHeart'    => lang('Heart'),
+        'stickerColor'    => lang('Sticker color'),
+        'stickerInk'      => lang('Text color'),
+        'stickerLabel'    => lang('Sticker text'),
+        'stickerDetails'  => lang('Details'),
+        'stickerFiles'    => lang('Picture from Files'),
+        'stickerFilesFind' => lang('Search pictures'),
+        'stickerFilesNone' => lang('No pictures found.'),
+        'stickerFilesError' => lang('The pictures could not be loaded.'),
+        'customColor'     => lang('Custom color'),
+        'colorWhite'      => lang('White'),
+        'colorBlack'      => lang('Black'),
+        'colorRed'        => lang('Red'),
+        'colorOrange'     => lang('Orange'),
+        'colorYellow'     => lang('Yellow'),
+        'colorGreen'      => lang('Green'),
+        'colorBlue'       => lang('Blue'),
+        'colorPurple'     => lang('Purple'),
+        'colorTransparent' => lang('Transparent'),
+        'hintSticker'     => lang('Click a sticker, then move it into place'),
+        'frameNone'       => lang('None'),
+        'frameLine'       => lang('Thin line'),
+        'frameThick'      => lang('Thick edge'),
+        'framePolaroid'   => lang('Polaroid'),
+        'frameCorners'    => lang('Corners'),
+        'frameColor'      => lang('Color'),
+        'frameWidth'      => lang('Thickness'),
+        'frameBackground' => lang('Background'),
+        'hintFrame'       => lang('The frame is added to the saved image'),
+    );
+}
+
+/**
+ * The image files a sticker may be made from, out of files rows: the
+ * pictures a browser draws, in the folders the user may reach.
+ *
+ * @param array      $rows    files rows (id, name, type, folder, image_width, image_height)
+ * @param array|null $folders the folder ids a role-3 user may reach; null for every folder
+ * @return array [{ id, name, url, width, height }]
+ */
+function pg_image_editor_sticker_rows($rows, $folders)
+{
+    $types = array('jpg', 'jpeg', 'png', 'gif', 'webp');
+    $list = array();
+
+    foreach ($rows as $row) {
+        if (!in_array(strtolower((string) $row['type']), $types, true)) {
+            continue;
+        }
+
+        if (($folders !== null) && !in_array((int) $row['folder'], array_map('intval', $folders), true)) {
+            continue;
+        }
+
+        $list[] = array(
+            'id'     => (int) $row['id'],
+            'name'   => (string) $row['name'],
+            'url'    => PATH . encode_url_path((string) $row['name']),
+            'width'  => (int) $row['image_width'],
+            'height' => (int) $row['image_height']);
+    }
+
+    return $list;
+}
+
+/**
+ * Action sticker_files: the newest pictures in Files, or those whose name
+ * holds the search, for the sticker panel's "Picture from Files". Read only;
+ * a role-3 user sees the folders they may edit, as the File Manager shows
+ * them.
+ *
+ *   { search?: string } -> { status, files: [{ id, name, url, width, height }] }
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_sticker_files($request, $user)
+{
+    $search = (isset($request['search']) && is_string($request['search'])) ? trim(mb_substr($request['search'], 0, 100)) : '';
+    $where = "(type IN ('jpg', 'jpeg', 'png', 'gif', 'webp')) AND (name != '')";
+
+    if ($search !== '') {
+        $where .= " AND (name LIKE '" . e(pg_list_like_pattern($search)) . "')";
+    }
+
+    $rows = db_items(
+        "SELECT id, name, type, folder, image_width, image_height
+        FROM files
+        WHERE $where
+        ORDER BY timestamp DESC
+        LIMIT 200");
+
+    $folders = ((int) $user['role'] === 3) ? get_folders_that_user_has_access_to($user['id']) : null;
+
+    return array(array(
+        'status' => 'success',
+        'files'  => array_slice(pg_image_editor_sticker_rows(is_array($rows) ? $rows : array(), $folders), 0, 60)), 200);
 }
 
 // -- Redact (pg_image_editor_redact.js) --
