@@ -52,13 +52,19 @@ function pg_test_site_language_literal_texts($file)
 		}
 
 		foreach ($parts as $index => $part) {
-			// The first and last pieces may sit inside a tag or an attribute.
+			// The first piece may close a tag opened in the literal before
+			// (an attribute value joined in), the last may open one: only the
+			// text outside the tag counts.
 			if ($index === 0 && preg_match('~["=]~', $part)) {
-				continue;
+				if (!preg_match('~>([^>]*)$~', $part, $match)) {
+					continue;
+				}
+
+				$part = $match[1];
 			}
 
 			if ($index === $count - 1 && strpos($part, '<') !== false) {
-				continue;
+				$part = substr($part, 0, strpos($part, '<'));
 			}
 
 			$text = trim(html_entity_decode(str_replace('&nbsp;', ' ', $part)));
@@ -94,7 +100,7 @@ function test_site_language_classic_store_pages_values()
 	}
 
 	pg_assert_same(0, substr_count($express, 'value="Apply"'), 'Apply button');
-	pg_assert_same(0, substr_count($express, "'Sorry, this order may not be submitted"), 'no payment method error');
+	pg_assert_same(0, substr_count($express, "mark_error('payment_method', 'Sorry"), 'no payment method error');
 	pg_assert_same(0, substr_count($express, ' (Remaining Balance: '), 'gift card remaining balance');
 }
 

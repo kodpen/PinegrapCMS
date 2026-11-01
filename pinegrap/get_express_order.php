@@ -662,7 +662,7 @@ function get_express_order($properties) {
                     '<tr>
                         <td style="' . $bottom_border . '"><span class="software_highlight"><strong>' . h($pending_offer['description']) . $output_offer_action_name . '</strong></span></td>
                         <td style="white-space: nowrap' . $bottom_border . '">' . $output_select_recipient . '</td>
-                        <td style="text-align: center' . $bottom_border . '"><input type="submit" name="add_pending_offer_' . $pending_offer['id'] . '_' . $offer_action['id'] . '" value="Add" class="software_input_submit_small_primary" /><br /></td>
+                        <td style="text-align: center' . $bottom_border . '"><input type="submit" name="add_pending_offer_' . $pending_offer['id'] . '_' . $offer_action['id'] . '" value="' . h(lang('Add')) . '" class="software_input_submit_small_primary" /><br /></td>
                     </tr>';
                 
                 $count_offer_actions++;
@@ -723,7 +723,7 @@ function get_express_order($properties) {
                     <input type="hidden" name="pending_offers" value="true" />
                     <input type="hidden" name="require_cookies" value="true" />
                     <fieldset class="software_fieldset">
-                        <legend class="software_legend">Special Offers</legend>
+                        <legend class="software_legend">' . h(lang('Special Offers')) . '</legend>
                             <table cellspacing="0" cellpadding="7" border="0" style="width: 100%">
                                 ' . $output_pending_offers . '
                                 ' . $output_upsell_offers . '
@@ -928,7 +928,7 @@ function get_express_order($properties) {
                     
                     $output_ship_to_and_add_name_rows =
                         '<tr id="quick_add_ship_to_row" style="' . $quick_add_ship_to_row_style . '">
-                            <td><strong>Ship to:</strong></td>
+                            <td><strong>' . h(lang('Ship to')) . ':</strong></td>
                             <td>' . $form->output_field(array('type'=>'select', 'name'=>'quick_add_ship_to', 'options'=>$quick_add_ship_to_options, 'class'=>'software_select')) . '</td>
                         </tr>
                         <tr id="quick_add_add_name_row" style="' . $quick_add_add_name_row_style . '">
@@ -941,7 +941,7 @@ function get_express_order($properties) {
                 if ($quantity_products == true) {
                     $output_quantity_row =
                         '<tr id="quick_add_quantity_row" style="' . $quick_add_quantity_row_style . '">
-                            <td><strong>Qty:</strong></td>
+                            <td><strong>' . h(lang('Qty')) . ':</strong></td>
                             <td>' . $form->output_field(array('type'=>'number', 'id'=>'quick_add_quantity', 'name'=>'quick_add_quantity', 'value'=>'1', 'size'=>'3', 'maxlength'=>'9', 'min'=>'1', 'max'=>'999999999', 'class'=>'software_input_text')) . '</td>
                         </tr>';
                 }
@@ -950,7 +950,7 @@ function get_express_order($properties) {
                 if ($donation_products == true) {
                     $output_amount_row =
                         '<tr id="quick_add_amount_row" style="' . $quick_add_amount_row_style . '">
-                            <td><strong>Amount:</strong></td>
+                            <td><strong>' . h(lang('Amount')) . ':</strong></td>
                             <td>' . VISITOR_CURRENCY_SYMBOL . $form->output_field(array('type'=>'text', 'name'=>'quick_add_amount', 'size'=>'5', 'class'=>'software_input_text')) . h(VISITOR_CURRENCY_CODE_FOR_OUTPUT) . '</td>
                         </tr>';
                 }
@@ -962,7 +962,7 @@ function get_express_order($properties) {
                     $output_add_button_row =
                         '<tr>
                             <td>&nbsp;</td>
-                            <td><input type="submit" name="submit" value="Add" class="software_input_submit_small_secondary mobile_right" /></td>
+                            <td><input type="submit" name="submit" value="' . h(lang('Add')) . '" class="software_input_submit_small_secondary mobile_right" /></td>
                         </tr>';
                 }
 
@@ -987,7 +987,7 @@ function get_express_order($properties) {
                             <legend class="software_legend">' . h($quick_add_label) . '</legend>
                                 <table class="quick_add">
                                     <tr>
-                                        <td style="font-weight: bold">Item:</td>
+                                        <td style="font-weight: bold">' . h(lang('Item')) . ':</td>
                                         <td>' . $output_products . '</td>
                                     </tr>
                                     ' . $output_ship_to_and_add_name_rows . '
@@ -1402,7 +1402,7 @@ function get_express_order($properties) {
                         if ((ECOMMERCE_CREDIT_DEBIT_CARD == false) || (ECOMMERCE_PAYMENT_GATEWAY != 'ClearCommerce')) {
                             $output_start_date_row =
                                 '<tr>
-                                    <td>Start Date*:</td>
+                                    <td>' . h(lang('Start Date')) . '*:</td>
                                     <td>
                                         ' . $form->output_field(array('type'=>'text', 'id' => 'recurring_start_date_' . $order_item_id, 'name'=>'recurring_start_date_' . $order_item_id, 'size'=>'10', 'maxlength'=>'10', 'class'=>'software_input_text', 'required' => 'true', 'data-pg-date' => '')) . '
                                     </td>
@@ -1411,14 +1411,14 @@ function get_express_order($properties) {
                         
                         $output_recurring_schedule_fieldset =
                             '<fieldset class="software_fieldset">
-                                <legend class="software_legend">Payment Schedule</legend>
+                                <legend class="software_legend">' . h(lang('Payment Schedule')) . '</legend>
                                     <table>
                                         <tr>
-                                            <td>Frequency*:</td>
+                                            <td>' . h(lang('Frequency')) . '*:</td>
                                             <td>' . $form->output_field(array('type'=>'select', 'name'=>'recurring_payment_period_' . $order_item_id, 'options'=>get_payment_period_options(), 'class'=>'software_select', 'required' => 'true')) . '</td>
                                         </tr>
                                         <tr>
-                                            <td>Number of Payments' . $output_recurring_number_of_payments_required_asterisk . ':</td>
+                                            <td>' . h(lang('Number of Payments')) . $output_recurring_number_of_payments_required_asterisk . ':</td>
                                             <td>' . $form->output_field(array('type'=>'text', 'name'=>'recurring_number_of_payments_' . $order_item_id, 'size'=>'3', 'maxlength'=>'9', 'class'=>'software_input_text', 'required' => $number_of_payments_required)) . get_number_of_payments_message() . '</td>
                                         </tr>
                                         ' . $output_start_date_row . '
@@ -1491,31 +1491,31 @@ function get_express_order($properties) {
                             
                             // If number of gift cards is greater than 1, then add quantity number to legend.
                             if ($number_of_gift_cards > 1) {
-                                $output_legend_quantity_number .= ' (' . $quantity_number . ' of ' . $number_of_gift_cards . ')';
+                                $output_legend_quantity_number .= ' (' . lang(array('string' => '{var:1} of {var:2}', 'vars' => array($quantity_number, $number_of_gift_cards))) . ')';
                             }
                             
                             $output_gift_cards .=
                                 '<fieldset class="software_fieldset" style="margin-bottom: 1em">
-                                    <legend class="software_legend">Gift Card' . $output_legend_quantity_number . '</legend>
+                                    <legend class="software_legend">' . h(lang('Gift Card')) . $output_legend_quantity_number . '</legend>
                                     <table>
                                         <tr>
-                                            <td>Amount:</td>
+                                            <td>' . h(lang('Amount')) . ':</td>
                                             <td><strong>' . prepare_price_for_output($product_price * 100, false, $discounted_price = '', 'html') . '</strong></td>
                                         </tr>
                                         <tr>
-                                            <td>Recipient Email*:</td>
+                                            <td>' . h(lang('Recipient Email')) . '*:</td>
                                             <td>' . $form->output_field(array('type' => 'email', 'name' => 'order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_recipient_email_address', 'placeholder' => 'recipient@example.com', 'size' => '40', 'maxlength' => '100', 'class'=>'software_input_text', 'required' => 'true')) . '</td>
                                         </tr>
                                         <tr>
-                                            <td>Your Name:</td>
-                                            <td>' . $form->output_field(array('type' => 'text', 'name' => 'order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_from_name', 'placeholder' => 'Your name that will appear in the email.', 'size' => '40', 'maxlength' => '100', 'class'=>'software_input_text')) . ' (leave blank if you want to be anonymous)</td>
+                                            <td>' . h(lang('Your Name')) . ':</td>
+                                            <td>' . $form->output_field(array('type' => 'text', 'name' => 'order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_from_name', 'placeholder' => lang('Your name that will appear in the email.'), 'size' => '40', 'maxlength' => '100', 'class'=>'software_input_text')) . ' ' . h(lang('(leave blank if you want to be anonymous)')) . '</td>
                                         </tr>
                                         <tr>
-                                            <td style="vertical-align: top">Message:</td>
-                                            <td>' . $form->output_field(array('type' => 'textarea', 'name' => 'order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_message', 'placeholder' => 'The message that will appear in the email.', 'rows' => '3', 'cols' => '60', 'class' => 'software_textarea')) . '</td>
+                                            <td style="vertical-align: top">' . h(lang('Message')) . ':</td>
+                                            <td>' . $form->output_field(array('type' => 'textarea', 'name' => 'order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_message', 'placeholder' => lang('The message that will appear in the email.'), 'rows' => '3', 'cols' => '60', 'class' => 'software_textarea')) . '</td>
                                         </tr>
                                         <tr>
-                                            <td>Delivery Date:</td>
+                                            <td>' . h(lang('Delivery Date')) . ':</td>
                                             <td>
                                                 ' . $form->output_field(array('type' => 'text', 'id' => 'order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date', 'name' => 'order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date', 'size' => '10', 'maxlength' => '10', 'class' => 'software_input_text', 'data-pg-date' => '')) . '
                                             </td>
@@ -1853,7 +1853,7 @@ function get_express_order($properties) {
                             '<tr class="products data row_' . ($row_count % 2) . '">
                                 <td class="mobile_left" style="vertical-align: top">' . h($name) . '</td>
                                 <td class="mobile_right mobile_width" style="vertical-align: top">' . $output_description . '</td>
-                                <td class="mobile_left" style="vertical-align: top">' . $payment_period . '</td>
+                                <td class="mobile_left" style="vertical-align: top">' . h(lang($payment_period)) . '</td>
                                 <td class="mobile_left" style="vertical-align: top; margin-left: .5em">' . $output_quantity . '</td>
                                 <td class="mobile_left" style="vertical-align: top; text-align: right; margin-left: .5em">' . $output_product_price . '</td>
                                 <td class="mobile_right" style="vertical-align: top; text-align: right; white-space: nowrap; margin-left: .5em">' . $output_total_price_or_donation_amount_text_box . '</td>
@@ -1908,11 +1908,16 @@ function get_express_order($properties) {
                     // If shipping is on and this is a real ship to, then show shipping info
                     if (ECOMMERCE_SHIPPING and $ship_to_id) {
 
-                        $for_ship_to_name = '';
+                        $output_arrival_heading = h(lang('Requested Arrival Date'));
+                        $output_address_heading = h(lang('Shipping Address'));
+                        $output_method_heading = h(lang('Shipping Method'));
 
-                        // if recipient mode is multi-recipient, then prepare "for [ship to name]"
+                        // if recipient mode is multi-recipient, then name the recipient in each heading
                         if (ECOMMERCE_RECIPIENT_MODE == 'multi-recipient') {
-                            $for_ship_to_name = ' for <span class="software_highlight">' . h($ship_to_name) . '</span>';
+                            $output_recipient = '<span class="software_highlight">' . h($ship_to_name) . '</span>';
+                            $output_arrival_heading = lang(array('string' => 'Requested Arrival Date for {var:1}', 'vars' => $output_recipient));
+                            $output_address_heading = lang(array('string' => 'Shipping Address for {var:1}', 'vars' => $output_recipient));
+                            $output_method_heading = lang(array('string' => 'Shipping Method for {var:1}', 'vars' => $output_recipient));
                         }
 
                         // Create a prefix for all shipping fields for this recipient, in order make
@@ -1938,7 +1943,7 @@ function get_express_order($properties) {
                             if ($editable) {
                                 
                                 $output_custom_shipping_form =
-                                    '<div class="edit_mode" style="position: relative; outline: 1px dashed #4780C5; margin: -1px;"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . h($page_id) . '&form_type=shipping&from=pages&send_to=' . h(urlencode(REQUEST_URL)) . '" style="background: #4780C5; position: absolute; display: block;  text-decoration: none; z-index: 10; line-height: normal; padding: 5px 8px; margin: -1px 25px 0 -1px; border: none; -webkit-border-bottom-right-radius: 6px; -moz-border-bottom-right-radius: 6px; border-bottom-right-radius: 6px;" title="Custom Shipping Form">Edit</a>
+                                    '<div class="edit_mode" style="position: relative; outline: 1px dashed #4780C5; margin: -1px;"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . h($page_id) . '&form_type=shipping&from=pages&send_to=' . h(urlencode(REQUEST_URL)) . '" style="background: #4780C5; position: absolute; display: block;  text-decoration: none; z-index: 10; line-height: normal; padding: 5px 8px; margin: -1px 25px 0 -1px; border: none; -webkit-border-bottom-right-radius: 6px; -moz-border-bottom-right-radius: 6px; border-bottom-right-radius: 6px;" title="Custom Shipping Form">' . h(lang('Edit')) . '</a>
                                         ' . $output_custom_shipping_form . '
                                     </div>';
                             }
@@ -1949,12 +1954,12 @@ function get_express_order($properties) {
                         if ($arrival_dates) {
 
                             $output_arrival_dates .=
-                                '<div class="arrival heading">Requested Arrival Date' . $for_ship_to_name . '</div>
+                                '<div class="arrival heading">' . $output_arrival_heading . '</div>
                                 <div class="data">
                                     <table class="arrival_dates" style="margin-bottom: 15px">
                                         <tr>
-                                            <th style="width: 30%;text-align:left;">Select One</th>
-                                            <th style="width: 70%;text-align:left;">Description</th>
+                                            <th style="width: 30%;text-align:left;">' . h(lang('Select One')) . '</th>
+                                            <th style="width: 70%;text-align:left;">' . h(lang('Description')) . '</th>
                                         </tr>';
 
                             foreach ($arrival_dates as $arrival_date) {
@@ -1982,12 +1987,12 @@ function get_express_order($properties) {
                             '<tr class="ship_tos data">
                                 <td colspan="6">
 
-                                    <div class="heading">Shipping Address' . $for_ship_to_name . '</div>
+                                    <div class="heading">' . $output_address_heading . '</div>
 
                                     <div class="data" style="margin-bottom: 1.5em">
                                         <table>
                                             <tr>
-                                                <td><label for="' . $prefix . 'salutation">Salutation</label></td>
+                                                <td><label for="' . $prefix . 'salutation">' . h(lang('Salutation')) . '</label></td>
                                                 <td>' .
                                                     $form->output_field(array(
                                                         'type' => 'select',
@@ -1999,7 +2004,7 @@ function get_express_order($properties) {
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td><label for="' . $prefix . 'first_name">First Name*</label></td>
+                                                <td><label for="' . $prefix . 'first_name">' . h(lang('First Name')) . '*</label></td>
                                                 <td>' .
                                                     $form->output_field(array(
                                                         'type' => 'text',
@@ -2014,7 +2019,7 @@ function get_express_order($properties) {
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td><label for="' . $prefix . 'last_name">Last Name*</label></td>
+                                                <td><label for="' . $prefix . 'last_name">' . h(lang('Last Name')) . '*</label></td>
                                                 <td>' .
                                                     $form->output_field(array(
                                                         'type' => 'text',
@@ -2029,7 +2034,7 @@ function get_express_order($properties) {
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td><label for="' . $prefix . 'company">Company</label></td>
+                                                <td><label for="' . $prefix . 'company">' . h(lang('Company')) . '</label></td>
                                                 <td>' .
                                                     $form->output_field(array(
                                                         'type' => 'text',
@@ -2043,7 +2048,7 @@ function get_express_order($properties) {
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td><label for="' . $prefix . 'address_1">Address 1*</label></td>
+                                                <td><label for="' . $prefix . 'address_1">' . h(lang('Address 1')) . '*</label></td>
                                                 <td>' .
                                                     $form->output_field(array(
                                                         'type' => 'text',
@@ -2058,7 +2063,7 @@ function get_express_order($properties) {
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td><label for="' . $prefix . 'address_2">Address 2</label></td>
+                                                <td><label for="' . $prefix . 'address_2">' . h(lang('Address 2')) . '</label></td>
                                                 <td>' .
                                                     $form->output_field(array(
                                                         'type' => 'text',
@@ -2072,7 +2077,7 @@ function get_express_order($properties) {
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td><label for="' . $prefix . 'city">City*</label></td>
+                                                <td><label for="' . $prefix . 'city">' . h(lang('City')) . '*</label></td>
                                                 <td>' .
                                                     $form->output_field(array(
                                                         'type' => 'text',
@@ -2087,7 +2092,7 @@ function get_express_order($properties) {
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td><label for="' . $prefix . 'country">Country*</label></td>
+                                                <td><label for="' . $prefix . 'country">' . h(lang('Country')) . '*</label></td>
                                                 <td>' .
                                                     $form->output_field(array(
                                                         'type' => 'select',
@@ -2102,11 +2107,11 @@ function get_express_order($properties) {
                                             <tr>
                                                 <td>
                                                     <label for="' . $prefix . 'state_text_box">
-                                                        State / Province
+                                                        ' . h(lang('State / Province')) . '
                                                     </label>
 
                                                     <label for="' . $prefix . 'state_pick_list" style="display: none">
-                                                        State / Province*
+                                                        ' . h(lang('State / Province')) . '*
                                                     </label>
                                                 </td>
                                                 <td>' .
@@ -2142,12 +2147,12 @@ function get_express_order($properties) {
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td>Address Type</td>
-                                                <td style="padding-top: 0.5em; padding-bottom: 0.5em">' . $form->output_field(array('type'=>'radio', 'name'=>$prefix . 'address_type', 'id'=>$prefix . 'address_type_residential', 'value'=>'residential', 'class'=>'software_input_radio', 'required' => 'true')) . '<label for="' . $prefix . 'address_type_residential"> Residential</label>&nbsp;&nbsp;&nbsp;&nbsp;' . $form->output_field(array('type'=>'radio', 'name'=>$prefix . 'address_type', 'id'=>$prefix . 'address_type_business', 'value'=>'business', 'class'=>'software_input_radio')) . '<label for="' . $prefix . 'address_type_business"> Business</label>
+                                                <td>' . h(lang('Address Type')) . '</td>
+                                                <td style="padding-top: 0.5em; padding-bottom: 0.5em">' . $form->output_field(array('type'=>'radio', 'name'=>$prefix . 'address_type', 'id'=>$prefix . 'address_type_residential', 'value'=>'residential', 'class'=>'software_input_radio', 'required' => 'true')) . '<label for="' . $prefix . 'address_type_residential"> ' . h(lang('Residential')) . '</label>&nbsp;&nbsp;&nbsp;&nbsp;' . $form->output_field(array('type'=>'radio', 'name'=>$prefix . 'address_type', 'id'=>$prefix . 'address_type_business', 'value'=>'business', 'class'=>'software_input_radio')) . '<label for="' . $prefix . 'address_type_business"> ' . h(lang('Business')) . '</label>
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td><label for="' . $prefix . 'phone_number">Phone</label></td>
+                                                <td><label for="' . $prefix . 'phone_number">' . h(lang('Phone')) . '</label></td>
                                                 <td>' .
                                                     $form->output_field(array(
                                                         'type' => 'tel',
@@ -2174,7 +2179,7 @@ function get_express_order($properties) {
                                         id="' . $prefix . 'method_heading"
                                         class="heading" style="display: none"
                                     >
-                                        Shipping Method' . $for_ship_to_name . '
+                                        ' . $output_method_heading . '
                                     </div>
 
                                     <table
@@ -2184,11 +2189,11 @@ function get_express_order($properties) {
                                         
                                         <thead>
                                             <tr class="heading" style="border: none">
-                                                <th style="text-align: left">Select One</th>
+                                                <th style="text-align: left">' . h(lang('Select One')) . '</th>
                                                 <th style="text-align: right; padding-right:15px">
-                                                    Cost
+                                                    ' . h(lang('Cost')) . '
                                                 </th>
-                                                <th style="text-align:left">Details</th>
+                                                <th style="text-align:left">' . h(lang('Details')) . '</th>
                                             </tr>
                                         </thead>
                                         
@@ -2206,7 +2211,7 @@ function get_express_order($properties) {
 
                                             <td style="vertical-align: top">
                                                 <div class="delivery_date" style="display: none">
-                                                    Estimated Delivery:
+                                                    ' . h(lang('Estimated Delivery')) . ':
                                                     <strong class="date"></strong>
                                                 </div>
                                                 <div class="description"></div>
@@ -2240,11 +2245,11 @@ function get_express_order($properties) {
                     // prepare output for this ship to
                     $output_ship_tos .=
                         '<tr class="products heading mobile_hide" style="border: none">
-                            <th class="heading_item" style="text-align: left">Item</th>
-                            <th class="heading_description" style="text-align: left">Description</th>
+                            <th class="heading_item" style="text-align: left">' . h(lang('Item')) . '</th>
+                            <th class="heading_description" style="text-align: left">' . h(lang('Description')) . '</th>
                             <th class="heading_selection" style="text-align: left">' . $output_quantity_heading . '</th>
                             <th class="heading_price" style="text-align: right">' . $output_price_heading . '</th>
-                            <th class="heading_amount" style="text-align: right">Amount</th>
+                            <th class="heading_amount" style="text-align: right">' . h(lang('Amount')) . '</th>
                             <th>&nbsp;</th>
                         </tr>
                         ' . $output_products . '
@@ -2285,12 +2290,12 @@ function get_express_order($properties) {
                     // prepare recurring output for this ship to
                     $output_recurring_ship_tos .=
                         '<tr class="products heading mobile_hide" style="border: none">
-                            <th class="heading_item" style="text-align: left">Item</th>
-                            <th class="heading_description" style="text-align: left">Description</th>
-                            <th class="heading_frequency" style="text-align: left">Frequency</th>
+                            <th class="heading_item" style="text-align: left">' . h(lang('Item')) . '</th>
+                            <th class="heading_description" style="text-align: left">' . h(lang('Description')) . '</th>
+                            <th class="heading_frequency" style="text-align: left">' . h(lang('Frequency')) . '</th>
                             <th class="heading_selection" style="text-align: left">' . $output_quantity_heading . '</th>
                             <th class="heading_price" style="text-align: right">' . $output_price_heading . '</th>
-                            <th class="heading_amount" style="text-align: right">Amount</th>
+                            <th class="heading_amount" style="text-align: right">' . h(lang('Amount')) . '</th>
                             <th>&nbsp;</th>
                         </tr>
                         ' . $output_recurring_products . '
@@ -2317,7 +2322,7 @@ function get_express_order($properties) {
                 
                 $output_discount =
                     '<tr class="order_totals data">
-                        <td class="mobile_left" colspan="4" style="text-align: right">Discount:</td>
+                        <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Discount')) . ':</td>
                         <td class="mobile_right" style="text-align: right">-' . prepare_price_for_output($order_discount * 100, FALSE, $discounted_price = '', 'html') . '</td>
                         <td class="mobile_hide">&nbsp;</td>
                     </tr>';
@@ -2345,7 +2350,7 @@ function get_express_order($properties) {
                 
                 $output_grand_tax =
                     '<tr class="order_totals data">
-                        <td class="mobile_left" colspan="4" style="text-align: right">Tax:</td>
+                        <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Tax')) . ':</td>
                         <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($grand_tax * 100, FALSE, $discounted_price = '', 'html') . '</td>
                         <td class="mobile_hide">&nbsp;</td>
                     </tr>';
@@ -2381,7 +2386,7 @@ function get_express_order($properties) {
                 
                 $output_grand_shipping =
                     '<tr class="order_totals data">
-                        <td class="mobile_left" colspan="4" style="text-align: right">Shipping:</td>
+                        <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Shipping')) . ':</td>
                         <td class="mobile_right" style="text-align: right"><span class="shipping">' . prepare_price_for_output($grand_shipping * 100, FALSE, $discounted_price = '', 'html') . '</span></td>
                         <td class="mobile_hide">&nbsp;</td>
                     </tr>';
@@ -2438,7 +2443,7 @@ function get_express_order($properties) {
                     
                     $output_gift_card_discount =
                         '<tr class="gift_card_discount">
-                            <td class="mobile_left" colspan="4" style="text-align: right">Gift Card' . $output_gift_card_label_plural_suffix . ':</td>
+                            <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Gift Card')) . $output_gift_card_label_plural_suffix . ':</td>
                             <td class="mobile_right" style="text-align: right">-' . prepare_price_for_output($gift_card_discount * 100, FALSE, $discounted_price = '', 'html') . '</td>
                         </tr>';
                 }
@@ -2448,7 +2453,7 @@ function get_express_order($properties) {
             if ($output_discount || $output_grand_tax || $output_grand_shipping || $output_gift_card_discount) {
                 $output_subtotal =
                     '<tr class="order_totals data">
-                        <td class="mobile_left" colspan="4" style="text-align: right">Subtotal:</td>
+                        <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Subtotal')) . ':</td>
                         <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($subtotal * 100, FALSE, $discounted_price = '', 'html') . '</td>
                         <td class="mobile_hide">&nbsp;</td>
                     </tr>';
@@ -2494,7 +2499,7 @@ function get_express_order($properties) {
                     if ($payment_period['exists'] == true) {
                         $output_payment_periods .=
                             '<tr class="payment data">
-                                <td class="mobile_left" colspan="5" style="text-align: right">' . $payment_period_name . ' Subtotal:</td>
+                                <td class="mobile_left" colspan="5" style="text-align: right">' . h(lang($payment_period_name)) . ' ' . h(lang('Subtotal')) . ':</td>
                                 <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($payment_period['subtotal'] * 100, FALSE, $discounted_price = '', 'html') . '</td>
                                 <td class="mobile_hide">&nbsp;</td>
                             </tr>';
@@ -2513,7 +2518,7 @@ function get_express_order($properties) {
 
                             $output_payment_periods .=
                                 '<tr class="payment data">
-                                    <td class="mobile_left" colspan="5" style="text-align: right">' . $payment_period_name . ' Tax:</td>
+                                    <td class="mobile_left" colspan="5" style="text-align: right">' . h(lang($payment_period_name)) . ' ' . h(lang('Tax')) . ':</td>
                                     <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($payment_period['tax'] * 100, FALSE, $discounted_price = '', 'html') . '</td>
                                     <td class="mobile_hide">&nbsp;</td>
                                 </tr>';
@@ -2524,7 +2529,7 @@ function get_express_order($properties) {
                         
                         $output_payment_periods .=
                             '<tr class="payment data">
-                                <td class="mobile_left" colspan="5" style="text-align: right"><strong>' . $payment_period_name . ' Total:</strong></td>
+                                <td class="mobile_left" colspan="5" style="text-align: right"><strong>' . h(lang($payment_period_name)) . ' ' . h(lang('Total')) . ':</strong></td>
                                 <td class="mobile_right" style="text-align: right"><strong>' . prepare_price_for_output($payment_period_total * 100, FALSE, $discounted_price = '', 'html') . '</strong></td>
                                 <td class="mobile_hide">&nbsp;</td>
                             </tr>';
@@ -2544,7 +2549,7 @@ function get_express_order($properties) {
                 $output_recurring_products =
                     '<div class="recurring_products">
                     <fieldset style="margin-bottom: 15px" class="software_fieldset">
-                        <legend class="software_legend">Recurring Charges</legend>
+                        <legend class="software_legend">' . h(lang('Recurring Charges')) . '</legend>
                             <table class="products" style="width: 100%">
                                 ' . $output_recurring_ship_tos . '
                                 ' . $output_payment_periods . '
@@ -2819,7 +2824,7 @@ function get_express_order($properties) {
                                 id="billing_same_as_shipping"
                                 class="software_input_checkbox"
                             >
-                            Billing Address Same as Shipping
+                            ' . h(lang('Billing Address Same as Shipping')) . '
                         </label>
                     </div>';
             }
@@ -2915,7 +2920,7 @@ function get_express_order($properties) {
             if ($po_number) {
                 $output_po_number =
                     '<tr>
-                        <td><label for="po_number">PO Number</label></td>
+                        <td><label for="po_number">' . h(lang('PO Number')) . '</label></td>
                         <td>' .
                             $form->output_field(array(
                                 'type' => 'text',
@@ -2943,7 +2948,7 @@ function get_express_order($properties) {
                 
                 $output_referral_source =
                     '<tr>
-                        <td><label for="referral_source">How did you hear about us?</label></td>
+                        <td><label for="referral_source">' . h(lang('How did you hear about us?')) . '</label></td>
                         <td>' .
                             $form->output_field(array(
                                 'type' => 'select',
@@ -2979,7 +2984,7 @@ function get_express_order($properties) {
                             'name' => 'update_contact',
                             'value' => '1',
                             'class' => 'software_input_checkbox')) .
-                        '<label for="update_contact"> Update my contact info with this billing info.</label>
+                        '<label for="update_contact"> ' . h(lang('Update my contact info with this billing info.')) . '</label>
                     </div>';
             }
 
@@ -3031,7 +3036,7 @@ function get_express_order($properties) {
                     }
                     
                     $output_custom_billing_form =
-                        '<div class="edit_mode" style="position: relative; outline: 1px dashed #4780C5; margin: -1px;"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&form_type=billing&from=pages&send_to=' . h(urlencode(REQUEST_URL)) . '" style="background: #4780C5; position: absolute; display: block;  text-decoration: none; z-index: 10; line-height: normal; padding: 5px 8px; margin: -1px 25px 0 -1px; border: none; -webkit-border-bottom-right-radius: 6px; -moz-border-bottom-right-radius: 6px; border-bottom-right-radius: 6px;" title="' . $output_title . '">Edit</a>
+                        '<div class="edit_mode" style="position: relative; outline: 1px dashed #4780C5; margin: -1px;"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&form_type=billing&from=pages&send_to=' . h(urlencode(REQUEST_URL)) . '" style="background: #4780C5; position: absolute; display: block;  text-decoration: none; z-index: 10; line-height: normal; padding: 5px 8px; margin: -1px 25px 0 -1px; border: none; -webkit-border-bottom-right-radius: 6px; -moz-border-bottom-right-radius: 6px; border-bottom-right-radius: 6px;" title="' . $output_title . '">' . h(lang('Edit')) . '</a>
                             ' . $output_custom_billing_form . '
                         </div>';
                 }
@@ -3043,7 +3048,7 @@ function get_express_order($properties) {
             if ((ECOMMERCE_GIFT_CARD == true) && (count($applied_gift_cards) > 0)) {
                 $output_applied_gift_cards =
                     '<div class="applied_gift_cards" style="margin-bottom: 1em">
-                        <div class="heading">Applied Gift Cards</div>
+                        <div class="heading">' . h(lang('Applied Gift Cards')) . '</div>
                         <div class="data">
                         <ul style="margin-top: 0em">';
                 
@@ -3074,7 +3079,7 @@ function get_express_order($properties) {
                         $protected_gift_card_code = protect_givex_gift_card_code($applied_gift_card['code']);
                     }
                     
-                    $output_applied_gift_cards .= '<li>' . h($protected_gift_card_code) . ' (Remaining Balance: ' . prepare_price_for_output($remaining_balance, FALSE, $discounted_price = '', 'html') . ') <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/remove_gift_card_from_order.php?applied_gift_card_id=' . $applied_gift_card['id'] . '&send_to=' . h(urlencode(REQUEST_URL)) . get_token_query_string_field() . '" class="software_button_small_secondary remove_button" title="Remove">X</a></li>';
+                    $output_applied_gift_cards .= '<li>' . h($protected_gift_card_code) . ' (' . lang(array('string' => 'Remaining Balance: {var:1}', 'vars' => prepare_price_for_output($remaining_balance, FALSE, $discounted_price = '', 'html'))) . ') <a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/remove_gift_card_from_order.php?applied_gift_card_id=' . $applied_gift_card['id'] . '&send_to=' . h(urlencode(REQUEST_URL)) . get_token_query_string_field() . '" class="software_button_small_secondary remove_button" title="' . h(lang('Remove')) . '">X</a></li>';
                     
                     $current_redemption_amount = $current_redemption_amount + $amount;
                 }
@@ -3155,7 +3160,7 @@ function get_express_order($properties) {
                 // If gift cards are enabled and if a non-recurring transaction is required,
                 // then the customer might want to add a gift card, so output gift card code field.
                 if ((ECOMMERCE_GIFT_CARD == true) && ($nonrecurring_transaction == true)) {
-                    $output_payment_methods .= '<div style="margin-bottom: 1em">Gift Card Code: ' . $form->output_field(array('type'=>'text', 'name'=>'gift_card_code', 'size'=>'30', 'maxlength'=>'50', 'class'=>'software_input_text mobile_text_width')) . ' <input type="submit" name="submit_apply_gift_card" value="Apply" class="software_input_submit_small_secondary" formnovalidate></div>';
+                    $output_payment_methods .= '<div style="margin-bottom: 1em">' . h(lang('Gift Card Code')) . ': ' . $form->output_field(array('type'=>'text', 'name'=>'gift_card_code', 'size'=>'30', 'maxlength'=>'50', 'class'=>'software_input_text mobile_text_width')) . ' <input type="submit" name="submit_apply_gift_card" value="' . h(lang('Apply')) . '" class="software_input_submit_small_secondary" formnovalidate></div>';
                 }
                 
                 // if the credit/debit card payment method should be shown, then prepare to output it
@@ -3212,7 +3217,7 @@ function get_express_order($properties) {
                         $card_verification_number_page_name = get_page_name($card_verification_number_page_id);
 
                         $output_card_verification_number_help =
-                            '&nbsp; <a href="' . OUTPUT_PATH . h(encode_url_path($card_verification_number_page_name)) . '" target="_blank" style="white-space: nowrap">What is this?</a>';
+                            '&nbsp; <a href="' . OUTPUT_PATH . h(encode_url_path($card_verification_number_page_name)) . '" target="_blank" style="white-space: nowrap">' . h(lang('What is this?')) . '</a>';
                     }
 
                     $output_surcharge_message = '';
@@ -3254,7 +3259,7 @@ function get_express_order($properties) {
 
                         $output_surcharge_rows =
                             '<tr class="order_totals data surcharge_row" id="software_surcharge_row">
-                                <td class="mobile_left" colspan="4" style="text-align: right">Surcharge:</td>
+                                <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Surcharge')) . ':</td>
                                 <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($surcharge * 100, FALSE, $discounted_price = '', 'html') . '</td>
                             </tr>
                             <tr class="order_totals data surcharge_total_row" id="software_surcharge_total_row">
@@ -3282,7 +3287,7 @@ function get_express_order($properties) {
                             )
                         ) {
                             // Output surcharge percentage with unnecessary zeros removed.
-                            $output_surcharge_message = '<div class="software_surcharge_message" style="margin-top: .25em">' . h(floatval(ECOMMERCE_SURCHARGE_PERCENTAGE)) . '% surcharge has been added.</div>';
+                            $output_surcharge_message = '<div class="software_surcharge_message" style="margin-top: .25em">' . lang(array('string' => '{var:1}% surcharge has been added.', 'vars' => h(floatval(ECOMMERCE_SURCHARGE_PERCENTAGE)))) . '</div>';
                         }
                     }
                     
@@ -3299,7 +3304,7 @@ function get_express_order($properties) {
                         '<div class="payment data" style="margin-bottom: 1em">
                             <div style="margin-bottom: 10px">' .
                                 $form->output_field(array('type'=>'radio', 'name'=>'payment_method', 'id'=>'payment_method_credit_debit_card', 'value'=>'Credit/Debit Card', 'checked'=>$credit_debit_card_checked, 'class'=>'software_input_radio', 'required' => 'true')) .
-                                '<label for="payment_method_credit_debit_card"> Credit/Debit Card</label>
+                                '<label for="payment_method_credit_debit_card"> ' . h(lang('Credit/Debit Card')) . '</label>
                             </div>
                             <div id="credit_debit_card_fields" class="credit_debit_card" style="margin-top: .25em">
                                 ' . $output_hosted_card . $output_hosted_card_open . '
@@ -3309,7 +3314,7 @@ function get_express_order($properties) {
                                             class="mobile_left"
                                             style="padding-right: 15px; vertical-align: top"
                                         >
-                                            <label for="card_number">Card Number*</label> ' .
+                                            <label for="card_number">' . h(lang('Card Number')) . '*</label> ' .
 
                                             $form->field(array(
                                                 'type' => 'tel',
@@ -3326,7 +3331,7 @@ function get_express_order($properties) {
                                             class="mobile_left"
                                             style="padding-right: 15px; vertical-align: top"
                                         >
-                                            <label for="expiration">Expiration*</label> ' .
+                                            <label for="expiration">' . h(lang('Expiration')) . '*</label> ' .
 
                                             $form->field(array(
                                                 'type' => 'tel',
@@ -3344,7 +3349,7 @@ function get_express_order($properties) {
                                             class="card_verification_number mobile_left"
                                             style="vertical-align: top"
                                         >
-                                            <label for="card_verification_number">Security Code*</label> ' .
+                                            <label for="card_verification_number">' . h(lang('Security Code')) . '*</label> ' .
 
                                             $form->field(array(
                                                 'type'=>'tel',
@@ -3459,7 +3464,7 @@ function get_express_order($properties) {
 
                 // output the payment information
                 $output_payment_information =
-                    '<div class="heading">Payment Information</div>
+                    '<div class="heading">' . h(lang('Payment Information')) . '</div>
                     ' . $output_payment_methods;
 
                 $system .= '<script>software.init_payment_method()</script>';
@@ -3498,7 +3503,7 @@ function get_express_order($properties) {
                 // output the offline payment option
                 $output_offline_payment_allowed = 
                     '<div class="software_notice">
-                        ' . $form->output_field(array('type'=>'checkbox', 'name'=>'offline_payment_allowed', 'id'=>'offline_payment_allowed', 'value'=>'1', 'class'=>'software_input_checkbox')) . '<label for="offline_payment_allowed"> Allow offline payment option for this ' . $output_shopping_cart_label . ' (and click update to apply)</label>.
+                        ' . $form->output_field(array('type'=>'checkbox', 'name'=>'offline_payment_allowed', 'id'=>'offline_payment_allowed', 'value'=>'1', 'class'=>'software_input_checkbox')) . '<label for="offline_payment_allowed"> ' . lang(array('string' => 'Allow offline payment option for this {var:1} (and click update to apply).', 'vars' => h($output_shopping_cart_label))) . '</label>
                     </div>';
             }
             
@@ -3506,7 +3511,7 @@ function get_express_order($properties) {
             
             // if a terms page was selected for this express order page, prepare to output terms and conditions checkbox
             if ($terms_page_name) {
-                $output_terms = '<div class="order_terms" style="margin-bottom: 15px">' . $form->output_field(array('type'=>'checkbox', 'id'=>'terms', 'name'=>'terms', 'class'=>'software_input_checkbox', 'required' => 'true')) . '<label for="terms"> I agree to the </label><a href="' . OUTPUT_PATH . h($terms_page_name) . '" target="_blank">terms and conditions</a>.</div>';
+                $output_terms = '<div class="order_terms" style="margin-bottom: 15px">' . $form->output_field(array('type'=>'checkbox', 'id'=>'terms', 'name'=>'terms', 'class'=>'software_input_checkbox', 'required' => 'true')) . '<label for="terms"> ' . lang(array('string' => 'I agree to the {var:1}.', 'vars' => '<a href="' . OUTPUT_PATH . h($terms_page_name) . '" target="_blank">' . h(lang('terms and conditions')) . '</a>')) . '</label></div>';
             }
             
             // if the total is greater than 0 and there is not an active payment method, then prepare error and do not show purchase now button
@@ -3537,7 +3542,7 @@ function get_express_order($properties) {
                     )
                 )
             ) {
-                $form->mark_error('payment_method', 'Sorry, this order may not be submitted, because there is not an available payment method.  Please contact the administrator of this website.');
+                $form->mark_error('payment_method', lang('Sorry, this order may not be submitted, because there is not an available payment method. Please contact the administrator of this website.'));
                 
                 $output_purchase_now_button = '';
                 
@@ -3616,7 +3621,7 @@ function get_express_order($properties) {
                             ' . $output_custom_field_2 . '
                             ' . $output_custom_field_spacing . '
                             <tr>
-                                <td><label for="billing_salutation">Salutation</label></td>
+                                <td><label for="billing_salutation">' . h(lang('Salutation')) . '</label></td>
                                 <td>' .
                                     $form->output_field(array(
                                         'type' => 'select',
@@ -3628,7 +3633,7 @@ function get_express_order($properties) {
                                 </td>
                             </tr>
                             <tr>
-                                <td><label for="billing_first_name">First Name*</label></td>
+                                <td><label for="billing_first_name">' . h(lang('First Name')) . '*</label></td>
                                 <td>' .
                                     $form->output_field(array(
                                         'type' => 'text',
@@ -3642,7 +3647,7 @@ function get_express_order($properties) {
                                 </td>
                             </tr>
                             <tr>
-                                <td><label for="billing_last_name">Last Name*</label></td>
+                                <td><label for="billing_last_name">' . h(lang('Last Name')) . '*</label></td>
                                 <td>' .
                                     $form->output_field(array(
                                         'type' => 'text',
@@ -3656,7 +3661,7 @@ function get_express_order($properties) {
                                 </td>
                             </tr>
                             <tr>
-                                <td><label for="billing_company">Company</label></td>
+                                <td><label for="billing_company">' . h(lang('Company')) . '</label></td>
                                 <td>' .
                                     $form->output_field(array(
                                         'type' => 'text',
@@ -3669,7 +3674,7 @@ function get_express_order($properties) {
                                 </td>
                             </tr>
                             <tr>
-                                <td><label for="billing_address_1">Address 1*</label></td>
+                                <td><label for="billing_address_1">' . h(lang('Address 1')) . '*</label></td>
                                 <td>' .
                                     $form->output_field(array(
                                         'type' => 'text',
@@ -3683,7 +3688,7 @@ function get_express_order($properties) {
                                 </td>
                             </tr>
                             <tr>
-                                <td><label for="billing_address_2">Address 2</label></td>
+                                <td><label for="billing_address_2">' . h(lang('Address 2')) . '</label></td>
                                 <td>' .
                                     $form->output_field(array(
                                         'type' => 'text',
@@ -3696,7 +3701,7 @@ function get_express_order($properties) {
                                 </td>
                             </tr>
                             <tr>
-                                <td><label for="billing_city">City*</label></td>
+                                <td><label for="billing_city">' . h(lang('City')) . '*</label></td>
                                 <td>' .
                                     $form->output_field(array(
                                         'type' => 'text',
@@ -3710,7 +3715,7 @@ function get_express_order($properties) {
                                 </td>
                             </tr>
                             <tr>
-                                <td><label for="billing_country">Country*</label></td>
+                                <td><label for="billing_country">' . h(lang('Country')) . '*</label></td>
                                 <td>' .
                                     $form->output_field(array(
                                         'type' => 'select',
@@ -3725,11 +3730,11 @@ function get_express_order($properties) {
                             <tr>
                                 <td>
                                     <label for="billing_state_text_box">
-                                        State / Province
+                                        ' . h(lang('State / Province')) . '
                                     </label>
 
                                     <label for="billing_state_pick_list" style="display: none">
-                                        State / Province*
+                                        ' . h(lang('State / Province')) . '*
                                     </label>
                                 </td>
                                 <td>' .
@@ -3751,7 +3756,7 @@ function get_express_order($properties) {
                                 </td>
                             </tr>
                             <tr>
-                                <td><label for="billing_zip_code">Zip / Postal Code<span id="billing_zip_code_required" style="display: none">*</span></label></td>
+                                <td><label for="billing_zip_code">' . h(lang('Zip / Postal Code')) . '<span id="billing_zip_code_required" style="display: none">*</span></label></td>
                                 <td>' .
                                     $form->output_field(array(
                                         'type' => 'text',
@@ -3764,7 +3769,7 @@ function get_express_order($properties) {
                                 </td>
                             </tr>
                             <tr>
-                                <td><label for="billing_phone_number">Phone*</label></td>
+                                <td><label for="billing_phone_number">' . h(lang('Phone')) . '*</label></td>
                                 <td>' .
                                     $form->output_field(array(
                                         'type' => 'tel',
@@ -3778,7 +3783,7 @@ function get_express_order($properties) {
                                 </td>
                             </tr>
                             <tr>
-                                <td><label for="billing_email_address">Email*</label></td>
+                                <td><label for="billing_email_address">' . h(lang('Email')) . '*</label></td>
                                 <td>' .
                                     $form->output_field(array(
                                         'type' => 'email',
@@ -6069,7 +6074,7 @@ function get_express_order($properties) {
                     )
                 )
             ) {
-                $form->mark_error('payment_method', 'Sorry, this order may not be submitted, because there is not an available payment method.  Please contact the administrator of this website.');
+                $form->mark_error('payment_method', lang('Sorry, this order may not be submitted, because there is not an available payment method. Please contact the administrator of this website.'));
                 
             // else the total is 0 or there is an active payment method, so prepare to output purchase now button
             } else {
