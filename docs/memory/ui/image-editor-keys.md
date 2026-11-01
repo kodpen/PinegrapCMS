@@ -1,6 +1,6 @@
 ---
 name: image-editor-keys
-description: The image editor's keys and gestures: shortcuts, Escape on keydown and the reopened dialog, Enter and Space left to focused buttons (ownsKey), panning, double click
+description: The image editor's keys: shortcuts, Escape on keydown, Enter and Space to focused buttons, arrows to sliders (ownsKey), focus kept after a panel redraw, panning
 module: image_editor
 ---
 
@@ -16,3 +16,9 @@ module: image_editor
 ## When do Enter and Space reach a button?
 - On a focused button, link, chip or text field they press it (`PgImageEditorModel.ownsKey()`, tested in `tests/image_editor_model_test.php`); a checkbox keeps Space only. On the stage, a slider or the dialog Enter applies the crop and Space pans (#4213, #4294).
 - Crop's Cancel brings back the unsaved flag it had on entry, so Escape after a cancelled crop closes without asking when nothing else changed.
+
+## Who gets the arrow keys on a focused slider?
+- A focused slider or radio button keeps the arrows, Home, End and the page keys (`ownsKey()` again; `tests/image_editor_keys_test.php`), so the opacity slider steps instead of nudging the selected layers; Ctrl+Z and the other shortcuts still reach the editor (#4405).
+
+## Where does the focus go after a panel button?
+- `render()` notes the focused panel control before `renderPanel()` rebuilds the panel and focuses its new copy (`PgImageEditorModel.focusMatch()`: same label and occurrence, else the same place with the same tag and classes, as a Hide that now reads Show). Only a control that is gone or disabled sends the focus to the stage (#4406).

@@ -870,14 +870,23 @@
         return list;
     }
 
-    // Whether the focused element uses Enter or Space itself (key ' '), so
-    // the editor leaves the key alone and the element gets pressed: a
-    // button, a link, a text field, a checkbox's Space. On the stage, a
-    // slider or the dialog the keys stay the editor's (apply the crop, pan).
+    // Whether the focused element uses the key itself, so the editor leaves
+    // it alone. Enter and Space (key ' '): a button, a link, a text field, a
+    // checkbox's Space get pressed; on the stage, a slider or the dialog
+    // they stay the editor's (apply the crop, pan). The stepping keys
+    // (arrows, Home, End, Page Up, Page Down) belong to a slider or a radio
+    // button, which change their value with them, instead of nudging the
+    // selected layers.
     // info: { tag, type, role, editable } of the focused element.
     var KEY_ROLES = /^(button|link|menuitem|menuitemradio|menuitemcheckbox|tab|option|checkbox|radio|switch|textbox|combobox)$/;
+    var STEP_KEYS = /^(ArrowLeft|ArrowRight|ArrowUp|ArrowDown|Home|End|PageUp|PageDown)$/;
 
     function ownsKey(info, key) {
+        if (info && STEP_KEYS.test(String(key))) {
+            return (/^(slider|spinbutton|radio)$/.test(String(info.role || '')))
+                || ((String(info.tag || '').toUpperCase() === 'INPUT') && /^(range|radio)$/.test(String(info.type || '').toLowerCase()));
+        }
+
         if (!info || ((key !== 'Enter') && (key !== ' '))) {
             return false;
         }
@@ -901,6 +910,37 @@
         }
 
         return true;
+    }
+
+    // Where the focus goes back after the panel is drawn again: the index in
+    // the new panel's focusable controls of the one that had it, or -1 when
+    // it is gone (the stage takes the focus then). before and after list
+    // the controls as { name, cls }: name is the tag with its label, cls its
+    // tag with its classes. The same name at the same occurrence wins (the
+    // layer list moved); else the control at the old place with the same
+    // tag and classes (a Hide button that now reads Show).
+    function focusMatch(before, index, after) {
+        var was = before && before[index];
+
+        if (!was || !after) {
+            return -1;
+        }
+
+        var nth = 0, i;
+
+        for (i = 0; i < index; i++) {
+            if (before[i].name === was.name) {
+                nth++;
+            }
+        }
+
+        for (i = 0; i < after.length; i++) {
+            if ((after[i].name === was.name) && (nth-- === 0)) {
+                return i;
+            }
+        }
+
+        return (after[index] && (after[index].cls === was.cls)) ? index : -1;
     }
 
     // ---- the tools' own maths ----
@@ -953,7 +993,7 @@
         colorMatrix: colorMatrix, applyColor: applyColor, vignetteStops: vignetteStops, sharpenKernel: sharpenKernel,
         newId: newId, corners: corners, bounds: bounds, local: local, hitLayer: hitLayer, resizeBox: resizeBox, angleTo: angleTo,
         align: align, distribute: distribute, snapBox: snapBox, reorder: reorder,
-        ownsKey: ownsKey
+        ownsKey: ownsKey, focusMatch: focusMatch
     };
 
     // A name taken twice would hide a function: the model refuses to load,
