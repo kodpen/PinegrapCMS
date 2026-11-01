@@ -18,7 +18,7 @@ description: Steps N1-N14 of plans/new-dashboard.md: size, screens, order, which
 - N3 (M) System Status card and look. Screens 01, 12-14. `free` after N1.
   - The current gauge moved out of `widget_2.php` into one function both call (owner, `new-dashboard-top.md`), check chips, Details; card styles, backdrops, compact, lights off, light and dark.
 
-- N4 (L) Card frame and data. Screens 03, 17. `free` after N1.
+- N4 (L) Card frame and data. Screens 03, 17. done (#4768).
   - Grid and widths, card header (icon, title, chip, badge, period pill, "…"), `dashboard_cards` with batch and solo, the card contract, refresh, empty and error states; `visitors` (SVG line with compare) and `engagement`.
 
 - N5 (L) Edit mode. Screens 05-08. `free` after N2, N3 and N4.
