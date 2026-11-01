@@ -100,6 +100,6 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 
 - Endpoints `menu` (7): open
 
-- Endpoints `my` (4): open
+- Endpoints `my` (4): done #4653 (get_my_account, get_my_account_profile, my_account, my_account_profile)
 
 - Endpoints `offer` (5): clean (add_offer, duplicate_offer, edit_offer, edit_offer_f, view_offers)
