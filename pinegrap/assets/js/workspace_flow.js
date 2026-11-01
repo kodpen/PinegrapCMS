@@ -10615,8 +10615,13 @@
     // the flow's own drag (a data thread) and keys in the hooks below.
     var canvas = G.create({
         ui: ui,
-        text: t,
-        boxRole: t('fl_box'),
+        // The kit's t() is lent when the screen starts, after this runs.
+        text: function () {
+            return t.apply(null, arguments);
+        },
+        boxRole: function () {
+            return t('fl_box');
+        },
         item: nodeById,
         editable: function () {
             return !!state.edit;

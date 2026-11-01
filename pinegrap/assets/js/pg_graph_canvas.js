@@ -284,7 +284,7 @@
     //    arrows'), ui.temp (the path of an arrow being drawn) and ui.live
     //    (a polite live region);
     //  - text(key, ...): a text of pg_graph_canvas_js_strings(), its holes
-    //    filled; boxRole: a box's role description (else pgc_box);
+    //    filled; boxRole(): a box's role description (else pgc_box);
     //  - item(id): the box { id, x, y } of that id, null when none;
     //  - editable(): whether the graph may be changed now (boxes move, the
     //    out port draws arrows);
@@ -364,7 +364,7 @@
             node.className = classes.box + (options.className ? ' ' + options.className : '');
             node.tabIndex = 0;
             node.setAttribute('role', 'group');
-            node.setAttribute('aria-roledescription', adapter.boxRole || text('pgc_box'));
+            node.setAttribute('aria-roledescription', adapter.boxRole ? adapter.boxRole() : text('pgc_box'));
             node.setAttribute('data-node', item.id);
             node.setAttribute('data-refocus', 'box-' + item.id);
 
