@@ -113,3 +113,23 @@ function test_dashboard_v2_look_clean()
 		pg_dashboard_v2_look_clean(array('style' => 'glass', 'backdrop' => 'neon', 'dense' => true, 'extra' => 1))
 	);
 }
+
+// The edit mode's script reads only texts the page sends, and is in the
+// dashboard's bundle after the grid it arranges.
+function test_dashboard_v2_edit_script_texts_and_bundle()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/page_grid.php');
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_dash_edit.js');
+	preg_match_all('/\bS(?:\.([a-z_]+)|\["([a-z_]+)"\])/', $source, $found);
+	$used = array_unique(array_filter(array_merge($found[1], $found[2])));
+	$strings = pg_dashboard_v2_edit_strings();
+
+	pg_assert_true(count($used) > 20, 'texts found');
+	foreach ($used as $key) {
+		pg_assert_true(isset($strings[$key]), 'edit text ' . $key);
+	}
+
+	$bundle = pg_js_bundles()['assets/js/pg_dash.min.js'];
+	pg_assert_true(array_search('assets/js/pg_dash_edit.js', $bundle, true) > array_search('assets/js/pg_dash.js', $bundle, true), 'bundle order');
+}

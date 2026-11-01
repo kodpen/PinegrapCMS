@@ -178,7 +178,6 @@ function pg_dashboard_v2_edit_strings()
         'settings'    => lang('Settings'),
         'forward'     => lang('Bring forward'),
         'back'        => lang('Move back'),
-        'remove'      => lang('Remove'),
         'removed'     => lang('{var:1} removed'),
         'per_title'   => lang('Period'),
         'cmp_title'   => lang('Compare'),
