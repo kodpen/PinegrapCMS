@@ -455,6 +455,13 @@
   cursor: grab;
 }
 
+/* A layer type's own handle (a line's end, a box's corner radius): a dot
+   placed by the script. */
+.pgie-sh.pgie-shx {
+  border-radius: 50%;
+  cursor: move;
+}
+
 .pgie-guide {
   position: absolute;
   background: #e5389b;
@@ -1006,6 +1013,26 @@
   justify-content: flex-end;
   gap: 8px;
 }
+
+/* The tools built in their own files (pg_image_editor_<tool>.js): each keeps
+   its rules, its phone sizes included, under its own line below, so tools
+   built side by side do not change the same lines. */
+
+/* -- Draw (pg_image_editor_draw.js) -- */
+
+/* -- Text (pg_image_editor_text.js) -- */
+
+/* -- Stickers and frames (pg_image_editor_sticker.js) -- */
+
+/* -- Redact (pg_image_editor_redact.js) -- */
+
+/* -- Versions (pg_image_editor_versions.js) -- */
+
+/* -- Canvas and artboard (pg_image_editor_artboard.js) -- */
+
+/* -- Export (pg_image_editor_export.js) -- */
+
+/* -- Vector (pg_image_editor_vector.js) -- */
 
 /* Small screens. Below 768 px wide or 500 px tall the dialog fills the
    screen and the panel becomes a sheet: over the right of the stage between

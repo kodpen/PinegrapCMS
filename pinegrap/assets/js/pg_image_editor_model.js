@@ -6,8 +6,9 @@
  * The pure part of the image editor (assets/js/pg_image_editor.js): 2D affine
  * matrices in SVG order [a, b, c, d, e, f], the picture's quarter turns and
  * flips, the cover scale of a straightened crop, the view's fit and zoom, the
- * tool list of a call, the document and its undo history. Nothing here
- * touches the page, so tests/image_editor_model_test.php runs it under Node.
+ * tool list of a call, the document and its undo history, colour, layers, and
+ * at the end each tool's own section. Nothing here touches the page, so
+ * tests/image_editor_model_test.php runs it under Node.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -725,11 +726,15 @@
     }
 
     // The topmost visible, unlocked layer under x, y (slack in document units).
-    function hitLayer(doc, x, y, slack) {
+    // A press inside a layer's box hits it unless test(l, p, slack), given
+    // the point in the layer's own frame, says no: a line is thinner than
+    // its box.
+    function hitLayer(doc, x, y, slack, test) {
         for (var i = doc.layers.length - 1; i >= 0; i--) {
             var l = doc.layers[i], p = local(l, x, y);
 
-            if (!l.hidden && !l.locked && (p[0] >= -slack) && (p[1] >= -slack) && (p[0] <= l.w + slack) && (p[1] <= l.h + slack)) {
+            if (!l.hidden && !l.locked && (p[0] >= -slack) && (p[1] >= -slack) && (p[0] <= l.w + slack) && (p[1] <= l.h + slack)
+                    && (!test || test(l, p, slack))) {
                 return l;
             }
         }
@@ -898,6 +903,45 @@
         return true;
     }
 
+    // ---- the tools' own maths ----
+    // Each tool keeps its pure functions in its section here, so the tests
+    // reach them under Node (tests/image_editor_<tool>_test.php), and names
+    // them in its section's object; the objects join the model's names
+    // below. A tool changes only its own section, so tools built side by
+    // side do not touch the same lines.
+
+    // -- drawing (pg_image_editor_draw.js) --
+
+    var DRAW = {};
+
+    // -- text (pg_image_editor_text.js) --
+
+    var TEXT = {};
+
+    // -- stickers and frames (pg_image_editor_sticker.js) --
+
+    var STICKER = {};
+
+    // -- redaction (pg_image_editor_redact.js) --
+
+    var REDACT = {};
+
+    // -- versions (pg_image_editor_versions.js) --
+
+    var VERSIONS = {};
+
+    // -- canvas and artboard (pg_image_editor_artboard.js) --
+
+    var ARTBOARD = {};
+
+    // -- export (pg_image_editor_export.js) --
+
+    var EXPORT = {};
+
+    // -- vector pen and nodes (pg_image_editor_vector.js) --
+
+    var VECTOR = {};
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -911,6 +955,18 @@
         align: align, distribute: distribute, snapBox: snapBox, reorder: reorder,
         ownsKey: ownsKey
     };
+
+    // A name taken twice would hide a function: the model refuses to load,
+    // so the tests stop it.
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR].forEach(function (part) {
+        Object.keys(part).forEach(function (name) {
+            if (api.hasOwnProperty(name)) {
+                throw new Error('PgImageEditorModel: ' + name + ' is named twice');
+            }
+
+            api[name] = part[name];
+        });
+    });
 
     if ((typeof module === 'object') && module.exports) {
         module.exports = api;

@@ -4,7 +4,7 @@ description: Plan (owner 2026-10-31): Pinegrap's own image editor, a core modal 
 ---
 
 ## What is the status?
-- Held (owner, 2026-10-31): the session the owner handed it to works the steps and claims each with a draft PR `[plan:image-editor] E<n> — <topic>`. Coordinators skip this plan and give no step of it to a worker; a step line that says `free` may be taken by anyone. If the holder stops, the owner names the next one here.
+- Held (owner, 2026-10-31): the session the owner handed it to keeps it and claims its own steps with a draft PR `[plan:image-editor] E<n> — <topic>`. Coordinators give a worker only a step line that says `free`; since 2026-11-01 (owner) the steps go to workers that way and the holder reviews each before it is marked ready (`image-editor-workers.md`). If the holder stops, the owner names the next one here.
 - Every UI step is tried in a browser (pointer and drawing paths are out of a unit test's reach) at desktop size and on a phone (390×844 portrait, 844×390 landscape, touch); its PR says what to try on both.
 
 ## What is it?
@@ -17,13 +17,13 @@ description: Plan (owner 2026-10-31): Pinegrap's own image editor, a core modal 
 - `image-editor-visuals.md`: the prototype screens the owner approved, in `plans/image-editor/`, and the prototype's source. Look at the screen of a step before starting it; the work follows them.
 - `image-editor-design.md`: parts, the call, the look, the document model.
 - `image-editor-server.md`: browser and server work, the save pipeline, versions, security.
-- `image-editor-steps.md` (E1-E10) and `image-editor-steps-2.md` (E11-E20).
+- `image-editor-steps.md` (E1-E10) and `image-editor-steps-2.md` (E11-E20); `image-editor-workers.md`: which steps run side by side, a step's files, the review.
 
 ## Which decisions bind it?
 - Owner, 2026-10-31 (`workflow/decisions-made-product-14.md`; the table in `decisions-made-schema-7.md`, the five answers of 2026-10-31 in `decisions-made-product-15.md`): own code, no engine; core modal with full screen; callable with a tool subset; texts through `lang()`; work on the server where it is efficient, else in JS; a versions table; no video; optimisation inside; ready-made shapes and corner rounding; artboard sizing; File Manager "New image" opens the canvas.
 
 ## Where does it start?
-- E1, after the visuals and the two design files.
+- E1-E5 are done; the core and the tools are in parts (`ui/image-editor-parts.md`). Next: the `free` lines.
 
 ## Which questions were answered? (#4202, #4203, 2026-10-31)
 1. Redacted save (owner): replace in place and strip the served file's metadata; the earlier versions, the original included, stay under the normal retention, read only through the editor API behind `check_edit_access()`; "Save as copy" keeps the original file.

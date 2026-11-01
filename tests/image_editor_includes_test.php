@@ -87,7 +87,13 @@ function test_image_editor_bundles_run_the_model_first()
 	$scripts = pg_js_bundles();
 	$styles = pg_css_bundles();
 
-	pg_assert_same(array('assets/js/pg_image_editor_model.js', 'assets/js/pg_image_editor.js'), $scripts['assets/js/pg_image_editor.min.js'], 'the model, then the modal');
+	$editor = $scripts['assets/js/pg_image_editor.min.js'];
+
+	pg_assert_same(array('assets/js/pg_image_editor_model.js', 'assets/js/pg_image_editor.js'), array_slice($editor, 0, 2), 'the model, then the modal');
+
+	foreach (array_slice($editor, 2) as $file) {
+		pg_assert_true((bool) preg_match('#^assets/js/pg_image_editor_[a-z]+\.js$#', $file) && is_file(PG_FUNCTIONS_DIR . '/' . $file), $file . ' is a tool file');
+	}
 	pg_assert_same('assets/css/pg_image_editor.src.css', $styles['assets/css/pg_image_editor.min.css'], 'the stylesheet source');
 }
 

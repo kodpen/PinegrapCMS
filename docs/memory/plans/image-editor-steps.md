@@ -4,7 +4,7 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
 ---
 
 ## Which steps are there?
-- S under 400 product lines, M about 1,000 (E9's deletion not counted). Screens: `image-editor-visuals.md`. Order: E1, E1b, E2, E3, E4-E8 in any order, E9, E10. Each step's UI works on a phone (E1b layout).
+- S under 400 product lines, M about 1,000 (E9's deletion not counted). Screens: `image-editor-visuals.md`. Order and `free`: `image-editor-workers.md`. Each step's UI works on a phone (E1b layout).
 
 - E1 (M) Core modal. Screens 18, 19, 01, 12, 13. Done in #4122 (`ui/image-editor-modal.md`).
   - Bundle, stylesheet, loader, `pg_image_editor_strings()`, the `<dialog>` with full screen, top bar, rail, panel, zoom and pan (wheel, pinch, keys), document model, undo and redo, profiles and `tools`.
@@ -27,18 +27,18 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
 - E5 (M) Layers and selection. Screen 01. Done in #4327 (`ui/image-editor-layers.md`).
   - Select, move, resize, rotate, align, distribute, order, lock, hide, duplicate, delete, copy and paste, snapping, the list.
 
-- E6 (M) Drawing and ready-made shapes. Screen 04.
+- E6 (M) Drawing and ready-made shapes. Screen 04. `free`
   - Pen with smoothing and eraser, line, arrow (head styles), box with a corner-radius handle and value, ellipse, triangle, polygon (3-12 sides), star (4-12 points, inner ratio), speech bubble; stroke, fill, opacity, dash.
 
-- E7 (M) Text. Screen 05.
+- E7 (M) Text. Screen 05. `free`
   - Typing in place, font (site fonts and system), size, weight, italic, alignment, line height, letter spacing, colour, background box with padding and radius, outline, shadow; one line layout for view and export.
 
-- E8 (S) Stickers and frames. Screens 07, 08.
+- E8 (S) Stickers and frames. Screens 07, 08. `free`
   - Built-in SVG stickers with an editable label, a picture from Files as a sticker, frames (line, thick, polaroid, corners) and background fill.
 
-- E9 (M) Switch and removal.
+- E9 (M) Switch and removal. `free` after E6, E7, E8.
   - The `openImageEditor` alias; callers: `view_folders.php`, `style_designer.src.js`, `workspace.js` (saving through `workspace_file_save.php`), `edit_file.php`, `edit_design_file.php`, `view_files.php`, `view_design_files.php`, `widget_18.php`, `content.php`, `frontend.src.js`, `output.php`; `image_editor_edit.php` becomes a redirect that opens the modal.
   - Delete `assets/lib/image_editor/`, `image_editor_modal.js`, `image_editor_save.php` and the old loader; `clean_up.php` lists the removed names; memory topic files follow; the PR body names the `[NEW]` changelog line.
 
-- E10 (M) Redaction. Screen 06.
+- E10 (M) Redaction. Screen 06. `free` after E11.
   - Pixelate, blur, solid box and brush-shaped areas; browser preview, burned in by server step 4; metadata stripped; the versions stay and the served file loses its metadata (#4203).

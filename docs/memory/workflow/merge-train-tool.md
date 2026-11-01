@@ -10,7 +10,7 @@ description: tools/merge_train.php (#2002): --start (the lock), --list (train or
 - `--land`: HEAD must be the pushed `origin/<train>`, `origin/development` its ancestor and its check runs green; then `git push origin <sha>:refs/heads/development`, a fast-forward ([[merge-train-landing]]).
 
 ## Which conflicts does it settle?
-- Language files: `php tools/tr_resolve.php --development=ours`. Memory `README.md` indexes and `docs/memory/core/fn-modules.md`: `php tools/memory_index.php`, only when no other memory file is in conflict. `.min.js` bundles: `php tools/build_js.php`, only when no `.js` source is in conflict. A path is staged only when no conflict marker is left.
+- Language files: `php tools/tr_resolve.php --development=ours`. Memory `README.md` indexes and `core/fn-modules.md`: `php tools/memory_index.php`, only when no other memory file is in conflict. `.min.js` / `.min.css`: `php tools/build_js.php` / `build_css.php`, only when no `.js` / `.css` is in conflict. A path is staged only when no marker is left.
 - Anything else (logic, a plan file, a key-rules block) stops the run with the merge open and the commands to go on: settle and `git commit -m "<title> (#n)"`, or `git merge --abort` to take the PR out (`merge-review.md`), then `--build` with the PRs left.
 
 ## How is changelog.txt written?

@@ -4,7 +4,7 @@ description: Design of plans/image-editor.md: the parts and file names, the one 
 ---
 
 ## Which parts are there?
-- `assets/js/pg_image_editor.src.js` bundled to `.min.js` through `pg_js_bundles()`, `assets/css/pg_image_editor.src.css` built to `.min.css`; a few-line loader printed by `pg_image_editor_includes()` (new module `includes/fn/image_editor.php`) fetches both on the first open.
+- The model, the core `assets/js/pg_image_editor.js` and one file per tool (`ui/image-editor-parts.md`) bundled to `pg_image_editor.min.js` through `pg_js_bundles()`, `assets/css/pg_image_editor.src.css` built to `.min.css`; a few-line loader printed by `pg_image_editor_includes()` (new module `includes/fn/image_editor.php`) fetches both on the first open.
 - `pg_image_editor_strings()` returns every label as `lang('English')`, printed as JSON with the loader; Turkish through `tools/tr_add.php`. The bundle holds no text.
 - `image_editor_api.php` (root): `open` (file facts, server capabilities, the saved document), `save`, `estimate`, `versions`, `restore`. Old names are not reused: once E9 removes `image_editor_save.php`, `clean_up.php` may list it again (`platform/clean-up-tool-file-list.md`).
 - No jQuery or Bootstrap inside: own `pgie-` classes, colours from the panel's `--pg-*` tokens with fallbacks, so one editor serves panel pages (Bootstrap 6), site pages (5.3.8) and the visual designer.
