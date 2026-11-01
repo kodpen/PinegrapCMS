@@ -15,6 +15,8 @@
  *       tools: ['arrow', ...],                    a subset: the mini bar
  *       theme: 'light' | 'dark',                  default: the panel's
  *       fullscreen: true,                         open filling the window
+ *       ratio: { value: 16 / 9, label: '16:9' },  the shape a page shows it in:
+ *                                                 the crop panel's first ratio
  *       onSave: function (result) {},            result.doc, result.file
  *       onClose: function () {}
  *   }).then(function (result) {});              null when closed unsaved

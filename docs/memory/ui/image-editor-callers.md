@@ -5,7 +5,7 @@ module: image_editor
 ---
 
 ## Which calls open the editor?
-- `pgImageEditor.open(options)` (`image-editor-modal.md`), or the older `window.openImageEditor(o)` that the loader of `pg_image_editor_includes()` maps onto it: `fileId`/`fileName` open the file through the API and save over it (`allowReplace: false` saves a copy); `saveUrl` becomes `save: { mode: 'url', url, label: saveLabel }`; `onSaved` gets `result.file`; `onCancel` is `onClose`. `imageEditorAvailable()` is always true. Tests: `tests/image_editor_switch_test.php`.
+- `pgImageEditor.open(options)` (`image-editor-modal.md`), or the older `window.openImageEditor(o)` that the loader of `pg_image_editor_includes()` maps onto it: `fileId`/`fileName` open the file through the API and save over it (`allowReplace: false` saves a copy); `saveUrl` becomes `save: { mode: 'url', url, label: saveLabel }`; `onSaved` gets `result.file`; `onCancel` is `onClose`; `ratio` is passed on. `imageEditorAvailable()` is always true. Tests: `tests/image_editor_switch_test.php`.
 - A file known only by name (a page's picture, the designer's field) is opened with `{ action: 'open', file_name }`; names are unique in `files`.
 
 ## Which screens call it?

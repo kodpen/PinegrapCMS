@@ -10763,6 +10763,7 @@ const StyleDesigner = (function () {
         _restoreTabState();
         _restoreDetailsState();
         _sdBootModuleWidgets();
+        _sdApplyImageStamps();
         if (_scrollY) {
             if (canvasDoc.documentElement) canvasDoc.documentElement.scrollTop = _scrollY;
             canvasDoc.body.scrollTop = _scrollY;
@@ -76324,14 +76325,58 @@ const StyleDesigner = (function () {
     window.sdOpenImageEditor = function (fieldId) {
         var inp = document.getElementById(fieldId);
         if (!inp) return;
+        // The Image element's own address field: its crop starts on the
+        // shape the page shows it in.
+        var ratio = (fieldId === 'sd-prop-img-src' && selectedNode) ? _sdImageCropRatio(selectedNode.props) : null;
         _sdImageEdit(String(inp.value || '').trim(), function (newUrl) {
             // The input already carries the change handler that writes the
             // node, so a new address is one assignment.
             inp.value = newUrl;
             inp.dispatchEvent(new Event('input',  { bubbles: true }));
             inp.dispatchEvent(new Event('change', { bubbles: true }));
-        });
+        }, ratio);
     };
+
+    // A width / height pair as the image editor's crop ratio
+    // ({ value, label }): reduced when the numbers are small, else the
+    // nearest small fraction, else a decimal to one.
+    function _sdRatioOf(w, h) {
+        var v = w / h;
+        if (!isFinite(v) || v <= 0) return null;
+        if (Math.round(w) === w && Math.round(h) === h) {
+            var a = w, b = h;
+            while (b) { var t = a % b; a = b; b = t; }
+            if (w / a <= 99 && h / a <= 99) return { value: v, label: (w / a) + ':' + (h / a) };
+        }
+        for (var d = 1; d <= 20; d++) {
+            var n = Math.round(v * d);
+            if (n > 0 && Math.abs(n / d - v) / v < 0.005) return { value: v, label: n + ':' + d };
+        }
+        return { value: v, label: (Math.round(v * 100) / 100) + ':1' };
+    }
+
+    // The shape the page shows an Image element in, as the image editor's
+    // crop ratio, or null: its ratio box (a preset '16x9', or the Sizing
+    // panel's custom ratio as a percentage or calc(H / W * 100%), the
+    // --bs-aspect-ratio forms), else whole-number width and height props.
+    function _sdImageCropRatio(p) {
+        if (!p) return null;
+        var ar = String(p.aspectRatio || '');
+        var m = /^(\d+)x(\d+)$/.exec(ar);
+        if (m) return (+m[1] > 0 && +m[2] > 0) ? _sdRatioOf(+m[1], +m[2]) : null;
+        if (ar === 'custom') {
+            if (!p.aspectRatioEnabled) return null;
+            var c = String(p.aspectRatioCustom || '').replace(/\s+/g, '');
+            var pct = /^(\d+(?:\.\d+)?)%$/.exec(c);
+            if (pct) return +pct[1] > 0 ? _sdRatioOf(100, +pct[1]) : null;
+            var calc = /^calc\((\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)\*100%\)$/.exec(c);
+            if (calc) return (+calc[1] > 0 && +calc[2] > 0) ? _sdRatioOf(+calc[2], +calc[1]) : null;
+            return null;
+        }
+        var w = String(p.width || ''), h = String(p.height || '');
+        if (/^\d+$/.test(w) && /^\d+$/.test(h) && +w > 0 && +h > 0) return _sdRatioOf(+w, +h);
+        return null;
+    }
 
     /**
      * The image a node shows, if it shows one.
@@ -76377,6 +76422,7 @@ const StyleDesigner = (function () {
         var hit = _sdNodeImage(node);
         if (!hit) return;
         if (!_sdMayEdit(node, 'image')) return;
+        var ratio = (node.type === 'content') && _sdNodeContentImage(node) ? _sdImageCropRatio(node.props) : null;
         _sdImageEdit(hit.url, function (newUrl) {
             saveState();
             hit.set(newUrl);
@@ -76384,10 +76430,10 @@ const StyleDesigner = (function () {
             if (owner && owner.sid) _sharedDirty[owner.sid] = true;
             render();
             renderProperties();
-        });
+        }, ratio);
     }
 
-    function _sdImageEdit(url, applyNewUrl) {
+    function _sdImageEdit(url, applyNewUrl, ratio) {
         url = String(url || '').trim();
         if (!url) {
             sdToast(_sdT('Pick an image first.'), 'warning', 3000);
@@ -76419,6 +76465,7 @@ const StyleDesigner = (function () {
 
         window.openImageEditor({
             fileName: name,
+            ratio: ratio || undefined,
             onSaved: function (res) {
                 if (res.mode === 'copy') {
                     // A new file, so the page has to be told to use it.
@@ -76427,8 +76474,9 @@ const StyleDesigner = (function () {
                             esc(_sdT('saved. The design still needs saving to keep this address.')), 'success', 6000);
                 } else {
                     // Same name, new pixels: the browser is holding the old
-                    // copy. The cache-buster is put on the rendered <img> only
-                    // — writing it into the tree would store a URL that ages.
+                    // copy. The cache key goes on the drawn canvas only, on
+                    // every redraw; writing it into the tree would store an
+                    // address that ages.
                     _sdBustImageCache(res.url || url);
                     sdToast(esc(_sdT('The image was saved.')), 'success', 4000);
                 }
@@ -76436,21 +76484,88 @@ const StyleDesigner = (function () {
         });
     };
 
-    // Force the canvas to show the file that is on disk now.
-    function _sdBustImageCache(url) {
+    // Files saved over in the image editor during this visit, by path, with
+    // the cache key of the save. The tree keeps the bare address; every
+    // canvas redraw puts the key on the drawn address (_sdApplyImageStamps()),
+    // or the next redraw would show the copy the browser keeps for a week.
+    var _sdEditedImages = {};
+
+    // The path of a same-origin address (decoded), or '' for another site
+    // or something that is no address.
+    function _sdImagePath(raw, base) {
+        raw = String(raw || '').trim();
+        if (!raw || /^(data|blob|javascript):/i.test(raw)) return '';
+        try {
+            var u = new URL(raw, base), b = new URL(base);
+            if (u.origin !== b.origin) return '';
+            return decodeURIComponent(u.pathname);
+        } catch (e) {
+            return '';
+        }
+    }
+
+    // raw with the cache key of its file (_pgv=), or null when its file was
+    // not saved in the editor or the address already carries that key.
+    function _sdStampAddress(raw, base, stamps) {
+        var key = stamps[_sdImagePath(raw, base)];
+        if (!key) return null;
+        var parts = String(raw).trim().split('#');
+        var addr = parts[0].replace(/([?&])_pgv=[^&]*&?/, '$1').replace(/[?&]$/, '');
+        var next = addr + (addr.indexOf('?') === -1 ? '?' : '&') + '_pgv=' + key + (parts.length > 1 ? '#' + parts.slice(1).join('#') : '');
+        return next === String(raw).trim() ? null : next;
+    }
+
+    // Each candidate of a srcset with its file's cache key; null when none changed.
+    function _sdStampSrcset(srcset, base, stamps) {
+        var changed = false;
+        var out = String(srcset).split(',').map(function (c) {
+            var bits = c.trim().split(/\s+/);
+            var next = bits[0] ? _sdStampAddress(bits[0], base, stamps) : null;
+            if (next === null) return c.trim();
+            changed = true;
+            bits[0] = next;
+            return bits.join(' ');
+        });
+        return changed ? out.join(', ') : null;
+    }
+
+    // Puts the cache keys of the files saved in the editor on the canvas:
+    // <img> and <source> addresses and srcsets, inline background images.
+    function _sdApplyImageStamps() {
         var doc = (typeof canvasDoc !== 'undefined') ? canvasDoc : null;
-        if (!doc) return;
-        var bare = String(url).split('?')[0];
-        var stamp = '_pgv=' + Date.now();
-        doc.querySelectorAll('img').forEach(function (im) {
-            if (String(im.getAttribute('src') || '').split('?')[0] !== bare) return;
-            im.src = bare + (bare.indexOf('?') === -1 ? '?' : '&') + stamp;
+        if (!doc || !doc.body || !Object.keys(_sdEditedImages).length) return;
+        var base = doc.baseURI || window.location.href;
+        doc.querySelectorAll('img[src], source[src], img[srcset], source[srcset]').forEach(function (im) {
+            var next = im.hasAttribute('src') ? _sdStampAddress(im.getAttribute('src'), base, _sdEditedImages) : null;
+            if (next !== null) im.setAttribute('src', next);
+            var set = im.hasAttribute('srcset') ? _sdStampSrcset(im.getAttribute('srcset'), base, _sdEditedImages) : null;
+            if (set !== null) im.setAttribute('srcset', set);
         });
-        doc.querySelectorAll('*').forEach(function (el) {
-            var bg = el.style && el.style.backgroundImage;
-            if (!bg || bg.indexOf(bare) === -1) return;
-            el.style.backgroundImage = bg.replace(bare, bare + (bare.indexOf('?') === -1 ? '?' : '&') + stamp);
+        doc.querySelectorAll('[style*="url("]').forEach(function (el) {
+            var bg = el.style.backgroundImage;
+            if (!bg || bg.indexOf('url(') === -1) return;
+            var next = bg.replace(/url\((['"]?)([^'")]+)\1\)/g, function (all, q, addr) {
+                var stamped = _sdStampAddress(addr, base, _sdEditedImages);
+                return stamped === null ? all : 'url(' + q + stamped + q + ')';
+            });
+            if (next !== bg) el.style.backgroundImage = next;
         });
+    }
+
+    // A file saved over in the editor: the canvas shows it now and after
+    // every redraw, and the browser's own copy of the bare address is
+    // fetched again for the preview and other tabs.
+    function _sdBustImageCache(url) {
+        var path = _sdImagePath(url, window.location.href);
+        if (!path) return;
+        _sdEditedImages[path] = String(Date.now());
+        var bare = String(url).split('#')[0].split('?')[0];
+        try {
+            fetch(bare, { cache: 'reload', credentials: 'same-origin' }).catch(function () {});
+        } catch (e) {
+            // No fetch: the canvas still shows the new file through the key.
+        }
+        _sdApplyImageStamps();
     }
 
     window.sdOpenImagePicker = function (fieldId) {

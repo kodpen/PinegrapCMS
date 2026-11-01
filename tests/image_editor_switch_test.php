@@ -93,11 +93,11 @@ function test_image_editor_switch_alias_maps_the_old_options()
 	$res = ($loader === null) ? null : image_editor_switch_node($loader, '', '
 		var got = [];
 		window.openImageEditor({ src: "/a.jpg", fileId: 4, fileName: "a.jpg", onSaved: function (f) { got.push(f); } });
-		window.openImageEditor({ fileName: "b.png", allowReplace: false });
+		window.openImageEditor({ fileName: "b.png", allowReplace: false, ratio: { value: 2, label: "2:1" } });
 		window.openImageEditor({ src: "/c.png", fileName: "c.png", saveUrl: "/ws?message=1", saveLabel: "Send", onCancel: function () {} });
 		setTimeout(function () {
 			opened[0].onSave({ file: { mode: "replace", name: "a.jpg" }, doc: {} });
-			console.log(JSON.stringify({ opened: opened.map(function (o) { return { fileId: o.fileId || 0, fileName: o.fileName || "", src: o.src || "", save: o.save, close: typeof o.onClose }; }), got: got, available: window.imageEditorAvailable() }));
+			console.log(JSON.stringify({ opened: opened.map(function (o) { return { fileId: o.fileId || 0, fileName: o.fileName || "", src: o.src || "", save: o.save, close: typeof o.onClose, ratio: o.ratio || null }; }), got: got, available: window.imageEditorAvailable() }));
 		}, 0);');
 
 	if ($res === null) {
@@ -106,9 +106,10 @@ function test_image_editor_switch_alias_maps_the_old_options()
 	}
 
 	pg_assert_false(isset($res['error']), isset($res['error']) ? $res['error'] : '');
-	pg_assert_same(array('fileId' => 4, 'fileName' => 'a.jpg', 'src' => '', 'save' => array('mode' => 'replace'), 'close' => 'undefined'), $res['opened'][0], 'a file is opened from the server, saved over');
+	pg_assert_same(array('fileId' => 4, 'fileName' => 'a.jpg', 'src' => '', 'save' => array('mode' => 'replace'), 'close' => 'undefined', 'ratio' => null), $res['opened'][0], 'a file is opened from the server, saved over');
 	pg_assert_same(array('mode' => 'copy'), $res['opened'][1]['save'], 'allowReplace false saves a copy');
-	pg_assert_same(array('fileId' => 0, 'fileName' => 'c.png', 'src' => '/c.png', 'save' => array('mode' => 'url', 'url' => '/ws?message=1', 'label' => 'Send'), 'close' => 'function'), $res['opened'][2], 'saveUrl takes the edit elsewhere');
+	pg_assert_same(array('value' => 2, 'label' => '2:1'), $res['opened'][1]['ratio'], 'a crop ratio is handed on');
+	pg_assert_same(array('fileId' => 0, 'fileName' => 'c.png', 'src' => '/c.png', 'save' => array('mode' => 'url', 'url' => '/ws?message=1', 'label' => 'Send'), 'close' => 'function', 'ratio' => null), $res['opened'][2], 'saveUrl takes the edit elsewhere');
 	pg_assert_same(array(array('mode' => 'replace', 'name' => 'a.jpg')), $res['got'], 'onSaved gets the saved file');
 	pg_assert_true($res['available'], 'the editor is always there');
 }

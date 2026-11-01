@@ -97,9 +97,23 @@
 
     // Entering the crop tool remembers the document, so Cancel can bring it
     // back and drop the steps taken since.
+    // A picture with no crop yet starts on the caller's ratio (the shape the
+    // page shows it in); Cancel takes that back too.
     Editor.prototype.enterCrop = function () {
         this.cropEntry = { doc: M.clone(this.doc), depth: this.history.past.length };
         this.cropRatio = 0;
+
+        if (this.doc.geometry.crop) {
+            return;
+        }
+
+        var self = this;
+
+        M.cropRatios(this.opts.ratio).forEach(function (r) {
+            if (r[2]) {
+                self.setRatio(r[1]);
+            }
+        });
     };
 
     // Leaving the crop tool keeps what was done; a box as big as the picture
@@ -211,11 +225,17 @@
         var ratios = el('div', { class: 'pgie-chips', role: 'group', 'aria-label': t('cropRatio') });
         var shapes = el('div', { class: 'pgie-chips', role: 'group', 'aria-label': t('cropShape') });
 
-        M.RATIOS.forEach(function (r) {
+        M.cropRatios(this.opts.ratio).forEach(function (r) {
             var on = ((self.cropRatio || 0) === r[1]);
             var label = (r[0] === 'free') ? t('cropFree') : (r[0] === 'original') ? t('cropOriginal') : r[0];
+            var attrs = { type: 'button', class: 'pgie-chip' + (on ? ' on' : '') + (r[2] ? ' pgie-chip-given' : ''), 'aria-pressed': on ? 'true' : 'false', text: label, onclick: function () { self.setRatio(r[1]); } };
 
-            ratios.appendChild(el('button', { type: 'button', class: 'pgie-chip' + (on ? ' on' : ''), 'aria-pressed': on ? 'true' : 'false', text: label, onclick: function () { self.setRatio(r[1]); } }));
+            if (r[2]) {
+                attrs.title = t('cropGiven');
+                attrs['aria-label'] = label + ', ' + t('cropGiven');
+            }
+
+            ratios.appendChild(el('button', attrs));
         });
 
         [['rect', t('shapeRect')], ['rounded', t('shapeRounded')], ['circle', t('shapeCircle')]].forEach(function (sh) {

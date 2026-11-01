@@ -330,6 +330,37 @@
     // Crop ratios (width / height): 0 is free, -1 the picture's own.
     var RATIOS = [['free', 0], ['original', -1], ['1:1', 1], ['4:3', 4 / 3], ['3:2', 3 / 2], ['16:9', 16 / 9], ['4:5', 4 / 5], ['9:16', 9 / 16]];
 
+    // The ratio a caller gives (options.ratio: { value: width / height,
+    // label }, the shape a page shows the picture in) as a number; 0 when
+    // there is none or it is out of reason.
+    function givenRatio(given) {
+        var v = (given && (typeof given === 'object')) ? Number(given.value) : Number(given);
+
+        return (isFinite(v) && (v >= 0.05) && (v <= 20)) ? v : 0;
+    }
+
+    // The crop panel's ratios: [label, width / height, given]. The caller's
+    // ratio marks the list's own entry of that shape, else it is added after
+    // the picture's own.
+    function cropRatios(given) {
+        var v = givenRatio(given), found = false;
+        var list = RATIOS.map(function (r) {
+            var mine = !!v && (r[1] > 0) && !found && (Math.abs(r[1] - v) / v < 0.005);
+
+            found = found || mine;
+
+            return [r[0], r[1], mine];
+        });
+
+        if (v && !found) {
+            var label = (given && given.label) ? String(given.label) : (Math.round(v * 100) / 100) + ':1';
+
+            list.splice(2, 0, [label, v, true]);
+        }
+
+        return list;
+    }
+
     // Layers whose content a turn or a flip of the picture does not turn:
     // only their place follows it.
     var UPRIGHT = ['text', 'sticker', 'image'];
@@ -2232,7 +2263,7 @@
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
         PROFILES: PROFILES, TOOLS: TOOLS, resolveTools: resolveTools,
         clone: clone, sameDocument: sameDocument, newDocument: newDocument, docSize: docSize, History: History,
-        RATIOS: RATIOS, cropBox: cropBox, pictureMatrix: pictureMatrix, fitRatio: fitRatio, resizeCrop: resizeCrop,
+        RATIOS: RATIOS, givenRatio: givenRatio, cropRatios: cropRatios, cropBox: cropBox, pictureMatrix: pictureMatrix, fitRatio: fitRatio, resizeCrop: resizeCrop,
         moveCrop: moveCrop, mapLayer: mapLayer, reorient: reorient, turnDocument: turnDocument, flipDocument: flipDocument,
         outputSize: outputSize, ADJUST: ADJUST, FILTERS: FILTERS, FILTER_NAMES: FILTER_NAMES, colorValues: colorValues,
         colorMatrix: colorMatrix, applyColor: applyColor, vignetteStops: vignetteStops, sharpenKernel: sharpenKernel,
