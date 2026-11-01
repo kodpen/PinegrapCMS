@@ -3611,6 +3611,27 @@ function _eo_no_shipping_notice_html($detail = '')
     return $html . '</div>';
 }
 
+// A Y-m-d date, or '' for an empty, zero (0000-00-00) or malformed one.
+function _eo_real_date($date)
+{
+    $date = trim((string)$date);
+    if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $m) !== 1) return '';
+    return checkdate((int)$m[2], (int)$m[3], (int)$m[1]) ? $date : '';
+}
+
+// A recipient's custom requested arrival date for the arrival choice $aid:
+// what the visitor last posted ($posted) or else the date stored on the
+// ship_tos row ($r: arrival_date_id, arrival_date) when that row chose $aid.
+// ship_tos has no custom_arrival_date_<id> column; reopening the checkout
+// read one and left the box and the method lookup without a date.
+function _eo_custom_arrival_value($posted, array $r, $aid)
+{
+    $posted = trim((string)$posted);
+    if ($posted !== '') return $posted;
+    if ((string)$aid === '' || (string)($r['arrival_date_id'] ?? '') !== (string)$aid) return '';
+    return _eo_real_date($r['arrival_date'] ?? '');
+}
+
 // $include_address_fields: when TRUE (default), renders the full address
 // form (first_name, last_name, ..., country/state/zip/phone, address_type)
 // followed by arrival-date + shipping-method picker — legacy behaviour for
@@ -3835,8 +3856,8 @@ function _eo_render_shipping_section($recipients, $lf, $form_id, $widget_id, $in
                       . '</div>';
                 if ($is_custom) {
                     $cd_name = 'shipping_' . $rid . '_custom_arrival_date_' . $aid;
-                    $cd_val  = $get('custom_arrival_date_' . $aid);
-                    $cd_max  = isset($ad['custom_maximum_arrival_date']) ? (string)$ad['custom_maximum_arrival_date'] : '';
+                    $cd_val  = _eo_custom_arrival_value($get('custom_arrival_date_' . $aid), $r, $aid);
+                    $cd_max  = _eo_real_date(isset($ad['custom_maximum_arrival_date']) ? $ad['custom_maximum_arrival_date'] : '');
                     $out .= '<div class="ms-4 mt-1 mb-2 pg-eo-custom-arrival" data-pg-eo-arrival-id="' . $aid . '"'
                           .   ($is_sel ? '' : ' style="display:none"') . '>'
                           . '<input type="date" class="form-control form-control-sm" name="' . h($cd_name) . '" value="' . h($cd_val) . '"'
@@ -3881,7 +3902,7 @@ function _eo_render_shipping_section($recipients, $lf, $form_id, $widget_id, $in
                 'zip_code'        => $get('zip_code'),
                 'country'         => $_eo_country,
                 'arrival_date_id' => $_eo_aid,
-                'arrival_date'    => ($_eo_aid !== '') ? $get('custom_arrival_date_' . $_eo_aid) : '',
+                'arrival_date'    => ($_eo_aid !== '') ? _eo_custom_arrival_value($get('custom_arrival_date_' . $_eo_aid), $r, $_eo_aid) : '',
             ));
             if (is_array($_eo_resp) && ($_eo_resp['status'] ?? '') === 'success' && !empty($_eo_resp['shipping_methods'])) {
                 $_eo_methods = array_values($_eo_resp['shipping_methods']);
@@ -3908,6 +3929,10 @@ function _eo_render_shipping_section($recipients, $lf, $form_id, $widget_id, $in
                         . '<div class="ms-3 fw-semibold">' . (((float)$_m['cost'] == 0) ? h(lang('Free')) : $_m['cost_info']) . '</div>'
                         . '</div>';
                 }
+            } elseif (is_array($_eo_resp) && ($_eo_resp['code'] ?? '') === 'arrival_date') {
+                // A missing or past requested arrival date is no address
+                // problem: its own message, not the "cannot ship here" notice.
+                $_eo_status_text = (string)$_eo_resp['message'];
             } else {
                 $_eo_status_html = _eo_no_shipping_notice_html(is_array($_eo_resp) ? (string)($_eo_resp['message'] ?? '') : '');
             }
@@ -4392,10 +4417,17 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
                 // fails at "Complete Order" with no visible reason: say that
                 // this address cannot be shipped to, and why.
                 var detail = (json && json.message) ? String(json.message) : '';
-                statusEl.innerHTML = {$_eo_no_ship_tpl}.replace('<div class="mt-1">__PG_EO_DETAIL__</div>',
-                    detail ? '<div class="mt-1">' + escapeHtml(detail) + '</div>' : '');
                 var hidNone = form.querySelector('.pg-eo-shipping-methods[data-pg-eo-rid="' + rid + '"] .pg-eo-method-input');
                 if (hidNone) hidNone.value = '';
+                statusEl.style.display = '';
+                // A missing or past requested arrival date is no address
+                // problem: its own message, not the "cannot ship here" notice.
+                if (json && json.code === 'arrival_date') {
+                    statusEl.textContent = detail;
+                    return;
+                }
+                statusEl.innerHTML = {$_eo_no_ship_tpl}.replace('<div class="mt-1">__PG_EO_DETAIL__</div>',
+                    detail ? '<div class="mt-1">' + escapeHtml(detail) + '</div>' : '');
                 return;
             }
             statusEl.style.display = 'none';
