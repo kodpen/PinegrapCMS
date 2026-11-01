@@ -48,7 +48,7 @@ function test_country_form_card_prints_stored_values()
 	$empty = pg_country_form_card(null);
 
 	pg_assert_false(strpos($empty, 'checked') !== false, 'the create card has no switch on');
-	pg_assert_contains('maxlength="50" />', $empty, 'the create card prints no name value');
+	pg_assert_contains('maxlength="50" required />', $empty, 'the create card prints no name value');
 }
 
 function test_country_form_both_screens_draw_the_shared_card()

@@ -807,7 +807,9 @@ function pg_geo_label_compare($x, $y)
 /**
  * The rows of a country list in the order of their labels in the current
  * language (pg_geo_label_compare()). $rows is a list of arrays that carry
- * $label_key.
+ * $label_key. Rows with the same label keep their order (usort() is not
+ * stable before PHP 8), so a list already ordered by a second column, such
+ * as states by name, stays ordered within each country.
  *
  * @param array  $rows
  * @param string $label_key
@@ -815,12 +817,21 @@ function pg_geo_label_compare($x, $y)
  */
 function pg_geo_sort_by_label(array $rows, $label_key = 'label')
 {
-    usort($rows, function ($a, $b) use ($label_key) {
-        $x = isset($a[$label_key]) ? (string) $a[$label_key] : '';
-        $y = isset($b[$label_key]) ? (string) $b[$label_key] : '';
+    $keyed = array();
 
-        return pg_geo_label_compare($x, $y);
+    foreach (array_values($rows) as $index => $row) {
+        $keyed[] = array($index, $row);
+    }
+
+    usort($keyed, function ($a, $b) use ($label_key) {
+        $x = isset($a[1][$label_key]) ? (string) $a[1][$label_key] : '';
+        $y = isset($b[1][$label_key]) ? (string) $b[1][$label_key] : '';
+        $compare = pg_geo_label_compare($x, $y);
+
+        return ($compare !== 0) ? $compare : ($a[0] - $b[0]);
     });
 
-    return $rows;
+    return array_map(function ($pair) {
+        return $pair[1];
+    }, $keyed);
 }

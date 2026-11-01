@@ -29,21 +29,43 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM zones WHERE id = '" . $id
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
-if (!$_POST) {
-    // get zone data
-    $query = "SELECT * FROM zones WHERE id = ?";
-    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
-    $row = mysqli_fetch_assoc($result);
+// A save with a blank name draws the form again with what was typed and
+// the message under the name; nothing is written. Delete is never held
+// back by it.
+$selected = null;
+$errors = array();
 
-    $values = array(
-        'name' => $row['name'],
-        'base_rate' => pg_format_input_amount($row['base_rate'] / 100),
-        'primary_weight_rate' => pg_format_input_amount($row['primary_weight_rate'] / 100),
-        'secondary_weight_rate' => pg_format_input_amount($row['secondary_weight_rate'] / 100),
-        'item_rate' => pg_format_input_amount($row['item_rate'] / 100),
-    );
+if ($_POST) {
+    validate_token_field();
 
-    $choices = pg_zone_form_choices($id);
+    if (($_POST['submit_delete'] ?? '') != 'Delete') {
+        $values = pg_zone_form_post_values($_POST);
+        $name_error = pg_zone_form_name_error($values['name']);
+
+        if ($name_error !== '') {
+            $errors['name'] = $name_error;
+            $selected = $values;
+        }
+    }
+}
+
+if (!$_POST || $errors) {
+    if (!$errors) {
+        // get zone data
+        $query = "SELECT * FROM zones WHERE id = ?";
+        $result = db_q($query, array($id)) or output_error('Query failed.');
+        $row = mysqli_fetch_assoc($result);
+
+        $values = array(
+            'name' => $row['name'],
+            'base_rate' => pg_format_input_amount($row['base_rate'] / 100),
+            'primary_weight_rate' => pg_format_input_amount($row['primary_weight_rate'] / 100),
+            'secondary_weight_rate' => pg_format_input_amount($row['secondary_weight_rate'] / 100),
+            'item_rate' => pg_format_input_amount($row['item_rate'] / 100),
+        );
+    }
+
+    $choices = pg_zone_form_choices($id, $selected);
 
     $output =
     pg_page_shell([
@@ -62,7 +84,7 @@ if (!$_POST) {
                 
                 <form name="form" action="edit_zone.php" method="post">
                     ' . get_token_field() . '
-                    ' . pg_zone_form_cards($values, $choices['countries'], $choices['states']) . '
+                    ' . pg_zone_form_cards($values, $choices['countries'], $choices['states'], $errors) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -71,7 +93,7 @@ if (!$_POST) {
                             </div>
                         </div>
                     </nav>
-                    <input type="hidden" name="id" value="' . h($_GET['id']) . '">
+                    <input type="hidden" name="id" value="' . h($id) . '">
                 </form>
             </div>
         </div>
@@ -82,8 +104,6 @@ if (!$_POST) {
     print $output;
 
 } else {
-    validate_token_field();
-    
     // delete zone references in zones_countries_xref (we do this reguardless of whether we are deleting the zone or updating the zone)
     $query = "DELETE FROM zones_countries_xref ".
              "WHERE zone_id = ?";
@@ -128,7 +148,7 @@ if (!$_POST) {
                     user = ?,
                     timestamp = UNIX_TIMESTAMP()
                 WHERE id = ?";
-        $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) $base_rate, (string) $primary_weight_rate, (string) $secondary_weight_rate, (string) $item_rate, (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        $result = db_q($query, array($values['name'], (string) $base_rate, (string) $primary_weight_rate, (string) $secondary_weight_rate, (string) $item_rate, (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         // load all allowed countries in array by exploding string that has allowed country ids separated by commas
         $allowed_countries = (isset($_POST['allowed_countries']) && is_array($_POST['allowed_countries'])) ? $_POST['allowed_countries'] : array();

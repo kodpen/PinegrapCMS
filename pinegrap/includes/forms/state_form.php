@@ -42,6 +42,29 @@ function pg_state_form_values($post)
 }
 
 /**
+ * The required fields left blank, as field => message: a state with no name
+ * prints an empty row in the lists and pickers, and one with no code cannot
+ * be written to an order.
+ *
+ * @param array $values pg_state_form_values()
+ * @return array  'name' and/or 'code' => message
+ */
+function pg_state_form_required_errors($values)
+{
+    $errors = array();
+
+    if (trim((string) ($values['name'] ?? '')) === '') {
+        $errors['name'] = lang('Enter a name.');
+    }
+
+    if (trim((string) ($values['code'] ?? '')) === '') {
+        $errors['code'] = lang('Enter a code.');
+    }
+
+    return $errors;
+}
+
+/**
  * Whether another state of the country already has the code.
  *
  * @param string   $code       The code
@@ -104,11 +127,17 @@ function pg_state_form_code_error($values, $stored, $except_id, $taken = 'pg_sta
  * @param array|null $values 'name', 'code', 'country_id' of a stored state
  *                           or a refused post (plain text); null on create,
  *                           which prints no values
- * @param array      $errors Field => message; 'code' is printed under the code field
+ * @param array      $errors Field => message; 'name' and 'code' are printed
+ *                           under their fields
  * @return string  HTML
  */
 function pg_state_form_card($values, $errors = array())
 {
+    $name_error = isset($errors['name']) ? (string) $errors['name'] : '';
+    $name_class = ($name_error !== '') ? ' is-invalid' : '';
+    $name_aria = ($name_error !== '') ? ' aria-invalid="true" aria-describedby="name-error"' : '';
+    $name_feedback = ($name_error !== '') ? '
+                                                <div id="name-error" class="invalid-feedback d-block">' . h($name_error) . '</div>' : '';
     $code_error = isset($errors['code']) ? (string) $errors['code'] : '';
     $code_class = ($code_error !== '') ? ' is-invalid' : '';
     $code_aria = ($code_error !== '') ? ' aria-invalid="true" aria-describedby="code-error"' : '';
@@ -136,11 +165,11 @@ function pg_state_form_card($values, $errors = array())
                                         <div class="row">
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('State'))) . '</label>
-                                                <input ' . $name_value . 'name="name" id="name" type="text" class="form-control" maxlength="50" />
+                                                <input ' . $name_value . 'name="name" id="name" type="text" class="form-control' . $name_class . '" maxlength="50" required' . $name_aria . ' />' . $name_feedback . '
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label for="code" class="form-label">' . lang('State Code') . '</label>
-                                                <input ' . $code_value . 'name="code" id="code" type="text" class="form-control' . $code_class . '" maxlength="50"' . $code_aria . ' />' . $code_feedback . '
+                                                <input ' . $code_value . 'name="code" id="code" type="text" class="form-control' . $code_class . '" maxlength="50" required' . $code_aria . ' />' . $code_feedback . '
                                                 <div class="text-end form-text">' . lang('New State/Province Code for Order Reporting') . '</div>
                                             </div>
                                             <div class="col-12 md:col-12 lg:col-4 my-3">

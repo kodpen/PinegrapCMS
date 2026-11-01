@@ -54,6 +54,7 @@ $query = "SELECT
             states.name,
             states.code,
             countries.name as country_name,
+            countries.code as country_code,
             user.user_username as user,
             states.timestamp
         FROM states
@@ -62,7 +63,27 @@ $query = "SELECT
         ORDER BY $order_by";
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-while ($row = mysqli_fetch_array($result)) {
+$state_rows = array();
+
+while ($row = mysqli_fetch_assoc($result)) {
+    // The country in the panel's language.
+    $row['country_label'] = ($row['country_name'] !== null) ? pg_geo_country_label($row['country_name'], $row['country_code']) : '';
+    $state_rows[] = $row;
+}
+
+// Sorted by country first: by the country name on screen in the panel
+// language's order, not by the stored English name the query orders by.
+// Rows of one country keep the query's order (the further sort levels);
+// descending reverses around the stable sort so they keep it there too.
+if ((($sort_levels[0]['sort'] ?? '') === 'country') && $state_rows) {
+    if (($sort_levels[0]['order'] ?? 'asc') === 'desc') {
+        $state_rows = array_reverse(pg_geo_sort_by_label(array_reverse($state_rows), 'country_label'));
+    } else {
+        $state_rows = pg_geo_sort_by_label($state_rows, 'country_label');
+    }
+}
+
+foreach ($state_rows as $row) {
 
     // reset for every row, otherwise a row without a user repeats the previous row's user
     $last_modified_username = '';
@@ -70,7 +91,7 @@ while ($row = mysqli_fetch_array($result)) {
     $id = $row['id'];
     $name = h($row['name']);
     $code = h($row['code']);
-    $country_name = $row['country_name'];
+    $country_name = $row['country_label'];
     $username = $row['user'];
     $timestamp = $row['timestamp'];
 

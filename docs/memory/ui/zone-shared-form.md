@@ -8,8 +8,11 @@ description: add_zone.php and edit_zone.php draw the shipping zone form and read
 - A screen keeps its gates, the edit prefill (`pg_format_input_amount()` of the stored rates), the form tag, buttons (edit adds Delete), the edit screen's hidden `id`, the xref rewrite and the INSERT / UPDATE.
 
 ## How are the options ordered?
-- `pg_zone_form_option_list()` (pure, tests in `tests/zone_form_test.php`): the zone's own countries or states first and selected, then the rest, each in name order. The create screen passes no ids, so all come in name order.
+- `pg_zone_form_option_list()` (pure, tests in `tests/zone_form_test.php`): the zone's own countries or states first and selected, then the rest, each in the order given: countries by their label, states by their country's label then name (`commerce/country-names-display.md`).
 - The edit screen used to run one query per country and per state to find its links; `pg_zone_form_choices()` reads each xref table once.
+
+## Is the name required?
+- Yes (#4413, PR #4456): `pg_zone_form_name_error()` refuses a blank name; the screens read the post through `pg_zone_form_post_values()` and draw the form again with what was typed (rates as typed, `pg_zone_form_choices($id, $values)` selects the posted countries and states) and the message under the name; edit's delete is never held back. Before, a nameless zone was written.
 
 ## What changed for a posted rate?
 - Both screens round to minor units (`round()`); the edit screen used to store `rate * 100` unrounded and an empty or non-numeric rate was a TypeError on PHP 8. Now such a rate is 0.

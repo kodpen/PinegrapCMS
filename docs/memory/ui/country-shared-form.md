@@ -15,6 +15,9 @@ description: add_country.php and edit_country.php draw the country options card 
 
 - Only the edit screen deletes: for each state of the country its `zones_states_xref`, `tax_zones_states_xref` and `verified_shipping_addresses` rows, then the `states`, `zones_countries_xref`, `tax_zones_countries_xref` and `countries` rows. Every one of these DELETEs, and the save's reset of `default_selected` on the other countries, carries `or output_error('Query failed.')`: a failure stops before the log line and redirect instead of leaving half a country or two default countries (`tests/checked_writes_country_shipping_currency_test.php`, which also pins Edit Shipping Method's DELETEs).
 
+## Are the name and the code required?
+- Yes (#4413, PR #4456): `pg_country_form_required_errors($values)` answers 'Enter a name.' / 'Enter a code.' for a blank one; both boxes carry `required` and the card prints the message under the field. Edit checks it too; delete is never held back. Why: a nameless country was an empty row in every list and zone picker, and a codeless one cannot be matched by checkout. Create Country now has the back arrow to `view_countries.php`, and its breadcrumb lost a copied `?filter=all_ad_regions`.
+
 ## What changed with the move?
 - `edit_country.php` runs every query through `db_q()` with the integer id from the not-found guard (before: `escape()` concatenation of `$_POST['id']`); the guard loads the row it checks, so the screen reads the country once.
 - A missing or non-scalar posted value is empty (before, an array was saved as "Array" with a notice). The edit card now sits in the same `row` wrapper as the create card.

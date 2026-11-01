@@ -35,9 +35,9 @@ $query = "SELECT * FROM states WHERE id = ?";
 $result = db_q($query, array((int) $id)) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 
-// A save whose code another state of the same country has draws the form
-// again with what was typed and the message under the code field; nothing
-// is written. Delete is never held back by the code.
+// A save with a blank name or code, or a code another state of the same
+// country has, draws the form again with what was typed and the message
+// under the field; nothing is written. Delete is never held back by them.
 $values = array('name' => $row['name'], 'code' => $row['code'], 'country_id' => $row['country_id']);
 $errors = array();
 
@@ -47,9 +47,10 @@ if ($_POST) {
     $values = pg_state_form_values($_POST);
 
     if (($_POST['submit_delete'] ?? '') != 'Delete') {
+        $errors = pg_state_form_required_errors($values);
         $code_error = pg_state_form_code_error($values, $row, $id);
 
-        if ($code_error !== '') {
+        if (($code_error !== '') && !isset($errors['code'])) {
             $errors['code'] = $code_error;
         }
     }
