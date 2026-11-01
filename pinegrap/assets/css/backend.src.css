@@ -4514,6 +4514,23 @@ html[data-bs-theme="dark"] #notifications .pg-bell-glyph {
   visibility: visible;
 }
 
+/* Edit Product Group, Product Attributes: on a phone the "Default Option:"
+   addon left the select about 50px and pushed the move buttons off the page
+   (the input group does not wrap). The attribute name above already labels
+   the select, so the addon goes and the select takes the left corners. */
+@media (max-width: 575.98px) {
+  .pg-attribute-default > .pg-attribute-default-label {
+    display: none;
+  }
+
+  .input-group.pg-attribute-default > .default_option_id.default_option_id {
+    min-width: 0;
+    margin-inline-start: 0;
+    border-start-start-radius: var(--pg-radius);
+    border-end-start-radius: var(--pg-radius);
+  }
+}
+
 /* Chips fields (pg_fields.js): the posted input stays hidden; the Bootstrap 6
    .chip-input box drawn after it is what people see and type in. */
 .tagin {

@@ -1,6 +1,6 @@
 ---
 name: phone-width-rows
-description: Phone-width fixes: v6 .input-group and .btn do not wrap (rate tiers, order documents card, sign-in rows), Login Region code fields, inner flex clusters wrap, marketplace grid minimum
+description: Phone-width fixes: v6 .input-group and .btn do not wrap (rate tiers, documents card, sign-in rows, product group default option), Login Region fields, inner clusters wrap, marketplace grid
 ---
 
 ## Why did the Shipping Method "or" tiers spill past the card on a phone?
@@ -21,6 +21,10 @@ description: Phone-width fixes: v6 .input-group and .btn do not wrap (rate tiers
 ## Why does an inner cluster in a wrapping row carry its own flex-wrap?
 - A row's `flex-wrap` only moves its direct children; a child that is itself `d-flex` without wrap keeps its buttons on one line and pushes the page sideways. So the inner cluster wraps too, with `row-gap-*` when it may break onto two lines.
 - Fixed this way: the visitor report export + pager cluster (403px, page 436px wide at 320 and 390), the firewall log Content Security Policy card header buttons, the system style source Save & Return / Save / Cancel row, and the form item view "Available variables" / "Hints" header.
+
+## Why does Edit Product Group's "Default Option:" add-on hide on a phone?
+- Each Product Attributes row (`init_product_group_attributes()`, `backend.src.js`) is one `.input-group.pg-attribute-default`: add-on, select, two move buttons. At 375 the 163px add-on left the select 50px and the page scrolled sideways (#4448).
+- Below 576px `backend.src.css` hides `.pg-attribute-default-label` (the attribute name above already labels the select) and gives the select the left corners back; the selector repeats a class to beat the panel's doubled `.input-group.input-group` radius rule.
 
 ## Why do marketplace listing cards use minmax(min(280px, 100%), 1fr)?
 - `.mpa-grid` in `marketplace_products.php` (its own `@layer custom` block) had `minmax(280px, 1fr)` in a 256px box at 320, so each listing card ran 9px past the outer card's border. `min(280px, 100%)` lets the single column shrink to the box.
