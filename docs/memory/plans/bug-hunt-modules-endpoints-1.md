@@ -10,7 +10,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 
 - Endpoints `affiliate` (5): open
 
-- Endpoints `api` (5): taken by LF
+- Endpoints `api` (5): taken by LF (api, api_docs, api_settings, api_sync_job, api_webhook_job): #4615; the rest clean
 
 - Endpoints `arrival` (3): open
 
