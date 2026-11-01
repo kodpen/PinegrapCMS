@@ -10,7 +10,7 @@ description: Plan for the Events and Conferences template (pinegrap-events): eve
 - Events are records of an Events form the organiser adds in the panel (`event_new`), the Café's way (`workflow/decisions-made-product-16.md` (b)): samples dated by `$event_on()`, `form_list_view` lists from today on, `event_view` the record's page; no fixed date.
 - Registration is a Registrations form record, as the Salon's booking: the event filled by `_cf.url_param` from the event's Register button, pass, attendee, needs, consent; auto-registration; `registration_view` (`submitter_only`) with messages on the Comments widget; My Registrations; office-use status (Registered, Confirmed, Waitlisted, Cancelled, Attended); staff list `staff_registrations`.
 - Paid passes are products of a Tickets catalog group (SKUs in `$passes`); the `ticket_passes` listing and the product, cart, checkout and receipt pages `requires ecommerce`. The tickets page is always there (what each pass includes, the registration form for free events or invoice), so no link is dead without the shop.
-- The conference (tracks, speakers, programme, venue, sponsors) is template data, no year or date. Not built: session or speaker collections, seat limits, QR check-in (new behaviour).
+- The conference (tracks, speakers, programme, venue, sponsors) is template data, no year or date. Not built: session collections, seat limits, QR check-in (new behaviour).
 
 ## Why parts in a folder?
 - `pg_design_templates()` offers every `includes/design_templates/*.php`; steps 1-4 write `includes/design_templates/pinegrap-events/` (not globbed), step 5 adds `pinegrap-events.php`, the moment it is offered. `tests/design_template_events_test.php` loads the parts the same way.
@@ -18,7 +18,7 @@ description: Plan for the Events and Conferences template (pinegrap-events): eve
 
 ## Which steps are there?
 
-- 1 Data and public pages: `parts.php` (builders, the conference data, notice, account bar, header, footer, register band, page shells, form fields) and `pages_public.php` (home, programme, speakers, venue, about; `google_reviews`); the test. Open.
+- 1 Data and public pages: `parts.php` (builders, the conference data, notice, account bar, header, footer, register band, page shells, form fields) and `pages_public.php` (home, programme, speakers, venue, about; `google_reviews`); the test. **Done (#4595).**
 
 - 2 Events and registration: `events.php` (events, event_view, event_new with samples, registration form, registration_view, my_registrations, `staff_registrations`, `home_events`, `events_list`, privacy, registration e-mails, `email_reply`; the comment thread builder joins parts.php) and `mail.php`. After 1.
 
