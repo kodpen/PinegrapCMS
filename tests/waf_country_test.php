@@ -53,16 +53,22 @@ function test_waf_country_refused_unknown_country()
 	pg_assert_true(waf_country_refused('', 'block', array('TR'), true), 'block, refused');
 }
 
-// robots.txt and .well-known are never restricted; a page is.
+// robots.txt and .well-known are never restricted when router.php answers
+// them (waf_path_is_always_served_for(), tests/waf_always_served_test.php);
+// any other script, here the test runner, is asked by its own name, so the
+// same paths written after it carry no exemption.
 function test_waf_country_exempts_always_served_paths()
 {
 	$saved = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null;
 
+	pg_assert_true(waf_script_name() !== 'router.php', 'the runner is not the router');
+
 	$_SERVER['REQUEST_URI'] = '/.well-known/acme-challenge/abc';
-	pg_assert_true(waf_country_request_exempt(), 'ACME challenge');
+	pg_assert_same(waf_path_is_always_served_for(waf_script_name(), $_SERVER['REQUEST_URI']), waf_country_request_exempt(), 'ACME challenge follows the always-served rule');
+	pg_assert_false(waf_country_request_exempt(), 'ACME challenge path after another script');
 
 	$_SERVER['REQUEST_URI'] = '/robots.txt?x=1';
-	pg_assert_true(waf_country_request_exempt(), 'robots.txt');
+	pg_assert_false(waf_country_request_exempt(), 'robots.txt path after another script');
 
 	if ($saved === null) {
 		unset($_SERVER['REQUEST_URI']);
