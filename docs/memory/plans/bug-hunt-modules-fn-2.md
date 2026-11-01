@@ -76,7 +76,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `subscription_renewal`: open
 
-- `subscriptions`: open
+- `subscriptions`: clean (LJ: period dates and month-end anchor, retry ladder, status moves and the read-status guarded write, sealed card_ref shape and seal/open, line amount, later-start rows and the nothing-today refusal, event de-duplication checked; store-mode renewals never stop at order_items.recurring_number_of_payments, left to the `subscription_renewal` hunt)
 
 - `subscriptions_account`: open
 
