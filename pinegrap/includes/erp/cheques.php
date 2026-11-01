@@ -384,6 +384,36 @@ function erp_cheque_step_note($step)
 }
 
 /**
+ * Why a step cannot carry this date, or '' when it can.
+ *
+ * A step is dated on or after the day the cheque or note was taken or given
+ * (doc_date): dated before it, the money would leave the portfolio before it
+ * came in and the till would read below zero for the days in between.
+ *
+ * @param string $date      Y-m-d
+ * @param string $doc_date  The cheque's own date, Y-m-d
+ * @return string
+ */
+function erp_cheque_step_date_refusal($date, $doc_date)
+{
+    $date = (string) $date;
+    $doc_date = (string) $doc_date;
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+        return lang('Please enter a valid date.');
+    }
+
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $doc_date) && (strcmp($date, $doc_date) < 0)) {
+        return lang(array(
+            'string' => 'The date of a step cannot be before the cheque or note\'s own date ({var:1}).',
+            'vars' => prepare_form_data_for_output($doc_date, 'date', false),
+        ));
+    }
+
+    return '';
+}
+
+/**
  * The next step of a cheque or note.
  *
  * @param int    $id
@@ -412,8 +442,8 @@ function erp_cheque_step($id, $step, $options, $user_id)
     }
 
     $date = (string) ($options['date'] ?? date('Y-m-d'));
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
-        return $fail(lang('Please enter a valid date.'));
+    if (($refusal = erp_cheque_step_date_refusal($date, (string) $cheque['doc_date'])) !== '') {
+        return $fail($refusal);
     }
 
     $kinds = erp_cheque_kinds();

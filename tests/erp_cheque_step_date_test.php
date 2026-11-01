@@ -23,7 +23,7 @@ function test_erp_cheque_step_date_not_before_the_cheque()
 {
 	pg_assert_same('', erp_cheque_step_date_refusal('2026-11-01', '2026-11-01'), 'the same day is allowed');
 	pg_assert_same('', erp_cheque_step_date_refusal('2026-12-15', '2026-11-01'), 'a later day is allowed');
-	pg_assert_contains('01/11/2026', erp_cheque_step_date_refusal('2026-10-01', '2026-11-01'), 'an earlier day is refused, naming the cheque date');
+	pg_assert_contains(prepare_form_data_for_output('2026-11-01', 'date', false), erp_cheque_step_date_refusal('2026-10-01', '2026-11-01'), 'an earlier day is refused, naming the cheque date');
 	pg_assert_contains(lang('Please enter a valid date.'), erp_cheque_step_date_refusal('1/10/2026', '2026-11-01'), 'a malformed date is refused');
 }
 

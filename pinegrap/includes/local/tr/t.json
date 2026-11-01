@@ -1568,6 +1568,7 @@
     "The date could not be changed.": "Tarih değiştirilemedi.",
     "The date has to be after today.": "Tarih bugünden sonra olmalıdır.",
     "The date is not valid.": "Tarih geçerli değil.",
+    "The date of a step cannot be before the cheque or note's own date ({var:1}).": "Bir adımın tarihi çekin ya da senedin kendi tarihinden ({var:1}) önce olamaz.",
     "The date of an expense cannot be after today.": "Giderin tarihi bugünden sonra olamaz.",
     "The date or the time is not valid.": "Tarih ya da saat geçerli değil.",
     "The dates of tastings, workshops and live music": "Tadımların, atölyelerin ve canlı müziğin tarihleri",
