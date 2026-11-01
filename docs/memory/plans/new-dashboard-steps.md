@@ -24,7 +24,7 @@ description: Steps N1-N14 of plans/new-dashboard.md: size, screens, order, which
 - N5 (L) Edit mode. Screens 05-08. done (#4856).
   - Edit bar, `presets.php`, cancel, save, `dashboard_layout_save` and its validation, the leave prompt; greeting and status edit parts; grip and arrow keys with announcements, drag with the touch hold, width, order, remove; card settings.
 
-- N6 (M) Gallery and side panel. Screens 06, 09, 11. `free` after N5.
+- N6 (M) Gallery and side panel. Screens 06, 09, 11. done (#4888).
   - Gallery (search, categories, sketches, tags, add and remove), the Add card tile, top-section switches, the Look section.
 
 - N7 (M) Visitor and content cards. Screens 03, 04, 18, 19. `free` after N4.

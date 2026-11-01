@@ -69,13 +69,22 @@ function pg_dashboard_v2_grid_layout($stored, $visible)
  * layout is the first default preset's.
  *
  * @param array      $user
- * @param array|null $row the person's dashboard_layout row
+ * @param array|null $row  the person's dashboard_layout row
+ * @param array|null $look pg_dashboard_v2_look()'s answer; the defaults when null
  * @return array
  */
-function pg_dashboard_v2_config($user, $row = null)
+function pg_dashboard_v2_config($user, $row = null, $look = null)
 {
     require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/presets.php');
     require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/figures.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/gallery.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/page_status.php');
+
+    if (!is_array($look)) {
+        $look = pg_dashboard_v2_look('', null);
+    }
+
+    $gallery = pg_dashboard_v2_gallery_cards();
 
     $visible = pg_dashboard_v2_cards_for($user);
     $shop = defined('ECOMMERCE') && (ECOMMERCE === true);
@@ -88,6 +97,9 @@ function pg_dashboard_v2_config($user, $row = null)
             'category' => $card['category'],
             'period'   => $card['period'],
             'width'    => $card['width'],
+            'desc'     => isset($gallery[$id]) ? $gallery[$id]['desc'] : '',
+            'new'      => isset($gallery[$id]) ? $gallery[$id]['new'] : 0,
+            'sketch'   => isset($gallery[$id]) ? $gallery[$id]['sketch'] : 'boxes',
         );
     }
 
@@ -103,10 +115,11 @@ function pg_dashboard_v2_config($user, $row = null)
     foreach (pg_dashboard_v2_presets() as $key => $preset) {
         $greeting = pg_dashboard_v2_greeting_preset($key, $shop);
         $presets[$key] = array(
-            'title'   => $preset['title'],
-            'cards'   => pg_dashboard_v2_grid_layout(pg_dashboard_v2_preset_cards($key), $visible),
-            'actions' => $greeting['actions'],
-            'tiles'   => $greeting['tiles'],
+            'title'       => $preset['title'],
+            'cards'       => pg_dashboard_v2_grid_layout(pg_dashboard_v2_preset_cards($key), $visible),
+            'actions'     => $greeting['actions'],
+            'tiles'       => $greeting['tiles'],
+            'recommended' => pg_dashboard_v2_recommended($preset['recommended'], $visible),
         );
     }
 
@@ -139,6 +152,13 @@ function pg_dashboard_v2_config($user, $row = null)
             'shortcuts' => $shortcuts,
             'offer'     => pg_dashboard_v2_shortcut_offer(),
             'figures'   => $figures,
+            'look'      => array(
+                'style'    => $look['style'],
+                'backdrop' => $look['backdrop'],
+                'dense'    => $look['dense'] ? 1 : 0,
+                'calm'     => $look['calm'] ? 1 : 0,
+            ),
+            'choices'   => pg_dashboard_v2_look_choices(),
         ),
         'strings'    => array(
             'empty'   => lang('No cards on your dashboard yet.'),
@@ -147,7 +167,7 @@ function pg_dashboard_v2_config($user, $row = null)
             'loading' => lang('Loading…'),
             'period'  => lang('Period: {var:1}. Choose to change.'),
             'all'     => lang('See all'),
-        ) + pg_dashboard_v2_edit_strings(),
+        ) + pg_dashboard_v2_edit_strings() + pg_dashboard_v2_gallery_strings(),
     );
 }
 
@@ -198,13 +218,14 @@ function pg_dashboard_v2_edit_strings()
  *
  * @param array      $user
  * @param array|null $row
+ * @param array|null $look
  * @return string HTML
  */
-function pg_dashboard_v2_grid($user, $row = null)
+function pg_dashboard_v2_grid($user, $row = null, $look = null)
 {
     return '
         <div class="pg-dash-grid" id="pg_dash_grid" aria-live="polite"></div>
-        <script type="application/json" id="pg_dash_config">' . pg_dashboard_v2_json(pg_dashboard_v2_config($user, $row)) . '</script>';
+        <script type="application/json" id="pg_dash_config">' . pg_dashboard_v2_json(pg_dashboard_v2_config($user, $row, $look)) . '</script>';
 }
 
 /**
