@@ -896,3 +896,16 @@ function test_order_completion_payment_records_the_installment_difference()
 		pg_assert_true(in_array($column, pg_order_complete_columns(), true), $column . ' is a completion column');
 	}
 }
+
+// Two orders redeeming one gift card at the same moment both read a balance
+// that covers them; the decrement itself must refuse the second one, or the
+// unsigned balance stops at 0 and the card pays twice.
+function test_order_completion_gift_card_redemption_guards_the_balance()
+{
+	$body = order_completion_test_function_text(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php', 'pg_order_complete_gift_cards');
+	$update = substr($body, (int) strpos($body, '"UPDATE gift_cards'));
+	$update = substr($update, 0, (int) strpos($update, 'output_error'));
+
+	pg_assert_true(strpos($update, 'AND (balance >= ?)') !== false, 'the decrement runs only while the balance covers the amount');
+	pg_assert_true(preg_match('/UPDATE gift_cards.*?mysqli_affected_rows\(db::\$con\) < 1/s', $body) === 1, 'a decrement that changed no row is a failed card');
+}
