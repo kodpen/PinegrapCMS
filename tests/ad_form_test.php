@@ -102,3 +102,27 @@ function test_ad_form_cards_print_the_region_hint_under_the_select()
 
 	pg_assert_contains('pg_ad_form_region_hint($region_options, $user[\'role\'])', $source, 'the cards print the hint for the signed-in role');
 }
+
+// Sort Order is blank (random order) or a whole number; anything else used
+// to be saved as 0 by MySQL, so the ad silently went back to random order.
+function test_ad_form_sort_order_accepts_blank_and_whole_numbers()
+{
+	foreach (array('', '0', '1', '25', '9999', ' 7 ') as $value) {
+		pg_assert_same('', pg_ad_form_sort_order_error($value), var_export($value, true));
+	}
+}
+
+function test_ad_form_sort_order_refuses_anything_else()
+{
+	foreach (array('abc', '1.5', '-3', '1e3', '0x1A', '+4') as $value) {
+		pg_assert_same(lang('Sort Order must be a whole number, or blank for random order.'), pg_ad_form_sort_order_error($value), var_export($value, true));
+	}
+}
+
+function test_ad_form_validate_checks_the_sort_order()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/ad_form.php');
+
+	pg_assert_contains("pg_ad_form_sort_order_error(\$liveform->get_field_value('sort_order'))", $source);
+	pg_assert_contains("\$liveform->mark_error('sort_order', ", $source);
+}
