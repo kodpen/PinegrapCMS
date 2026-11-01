@@ -63,7 +63,10 @@ function pg_dashboard_v2_grid_layout($stored, $visible)
 }
 
 /**
- * The script's configuration.
+ * The script's configuration: the cards, the drawn layout, and what the edit
+ * mode needs (the presets, the shortcuts and figures the person may pick,
+ * the stored greeting settings and the texts). With nothing stored the
+ * layout is the first default preset's.
  *
  * @param array      $user
  * @param array|null $row the person's dashboard_layout row
@@ -71,7 +74,11 @@ function pg_dashboard_v2_grid_layout($stored, $visible)
  */
 function pg_dashboard_v2_config($user, $row = null)
 {
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/presets.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/figures.php');
+
     $visible = pg_dashboard_v2_cards_for($user);
+    $shop = defined('ECOMMERCE') && (ECOMMERCE === true);
     $cards = array();
 
     foreach ($visible as $id => $card) {
@@ -80,14 +87,39 @@ function pg_dashboard_v2_config($user, $row = null)
             'icon'     => $card['icon'],
             'category' => $card['category'],
             'period'   => $card['period'],
+            'width'    => $card['width'],
         );
     }
 
-    $stored = null;
+    $json = (is_array($row) && isset($row['layout']) && is_string($row['layout'])) ? $row['layout'] : '';
+    $layout = json_decode($json, true);
+    $settings = pg_dashboard_v2_greeting_settings($json, $shop);
 
-    if (is_array($row) && isset($row['layout']) && is_string($row['layout']) && ($row['layout'] !== '')) {
-        $layout = json_decode($row['layout'], true);
-        $stored = (is_array($layout) && isset($layout['cards'])) ? $layout['cards'] : null;
+    $stored = (is_array($layout) && isset($layout['cards']) && is_array($layout['cards']))
+        ? $layout['cards']
+        : pg_dashboard_v2_preset_cards($settings['preset']);
+
+    $presets = array();
+    foreach (pg_dashboard_v2_presets() as $key => $preset) {
+        $greeting = pg_dashboard_v2_greeting_preset($key, $shop);
+        $presets[$key] = array(
+            'title'   => $preset['title'],
+            'cards'   => pg_dashboard_v2_grid_layout(pg_dashboard_v2_preset_cards($key), $visible),
+            'actions' => $greeting['actions'],
+            'tiles'   => $greeting['tiles'],
+        );
+    }
+
+    $shortcuts = array();
+    $pool = pg_dashboard_v2_shortcuts();
+    foreach (pg_dashboard_v2_shortcuts_allowed($user) as $key) {
+        $shortcuts[$key] = array('label' => $pool[$key]['label'], 'icon' => $pool[$key]['icon']);
+    }
+
+    $figures = array();
+    $all = pg_dashboard_v2_figures();
+    foreach (pg_dashboard_v2_figures_allowed($user) as $key) {
+        $figures[$key] = $all[$key]['label'];
     }
 
     return array(
@@ -97,6 +129,17 @@ function pg_dashboard_v2_config($user, $row = null)
         'categories' => pg_dashboard_v2_categories(),
         'periods'    => pg_dashboard_v2_periods(),
         'refresh'    => pg_dashboard_refresh_seconds($_SESSION['software']['welcome']['widget']['refresh'] ?? '', 60),
+        'edit'       => array(
+            'locked'    => pg_dashboard_v2_role_locked((int) $user['role']),
+            'preset'    => $settings['preset'],
+            'top'       => $settings['top'],
+            'actions'   => pg_dashboard_v2_shortcuts_pick($settings['actions'], array_keys($shortcuts)),
+            'tiles'     => pg_dashboard_v2_tiles_resolve($settings['tiles'], array_keys($figures)),
+            'presets'   => $presets,
+            'shortcuts' => $shortcuts,
+            'offer'     => pg_dashboard_v2_shortcut_offer(),
+            'figures'   => $figures,
+        ),
         'strings'    => array(
             'empty'   => lang('No cards on your dashboard yet.'),
             'error'   => lang('This card could not be loaded.'),
@@ -104,7 +147,50 @@ function pg_dashboard_v2_config($user, $row = null)
             'loading' => lang('Loading…'),
             'period'  => lang('Period: {var:1}. Choose to change.'),
             'all'     => lang('See all'),
-        ),
+        ) + pg_dashboard_v2_edit_strings(),
+    );
+}
+
+/**
+ * The edit mode's texts.
+ *
+ * @return array
+ */
+function pg_dashboard_v2_edit_strings()
+{
+    return array(
+        'editing'     => lang('You are editing the dashboard'),
+        'hint'        => lang('Drag a card, or move it with the arrow keys on its grip. Changes are only on your dashboard.'),
+        'preset'      => lang('Preset'),
+        'default'     => lang('Back to default'),
+        'cancel'      => lang('Cancel'),
+        'save'        => lang('Save'),
+        'saved'       => lang('Saved'),
+        'failed'      => lang('The change could not be saved.'),
+        'leave'       => lang('Your dashboard changes are not saved yet.'),
+        'move'        => lang('Move {var:1}'),
+        'moved'       => lang('Moved to place {var:1} of {var:2}'),
+        'edit_card'   => lang('Edit {var:1}'),
+        'width'       => lang('Width'),
+        'narrow'      => lang('Narrow'),
+        'medium'      => lang('Medium'),
+        'full'        => lang('Full'),
+        'settings'    => lang('Settings'),
+        'forward'     => lang('Bring forward'),
+        'back'        => lang('Move back'),
+        'remove'      => lang('Remove'),
+        'removed'     => lang('{var:1} removed'),
+        'per_title'   => lang('Period'),
+        'cmp_title'   => lang('Compare'),
+        'cmp'         => array(lang('Previous period'), lang('Last year'), lang('Off')),
+        'badge'       => lang('Show the "New" badge'),
+        'done'        => lang('Done'),
+        'add_action'  => lang('Add shortcut'),
+        'remove_item' => lang('Remove {var:1}'),
+        'tile'        => lang('Tile {var:1}'),
+        'hide'        => lang('Hide'),
+        'show'        => lang('Show'),
+        'edit'        => lang('Edit dashboard'),
     );
 }
 
