@@ -47,8 +47,8 @@ incomplete, a retry redeemed again).
   the new balance after a redemption (`order_completion.php`).
 - Before, `19.99 * 100` stayed 1998.9999…: a card holding the order total
   left a fraction above zero, so a card payment was still asked
-  (`submit_order()` fixed in #4607; apply and redemption in the follow-up
-  PR). Tests: `tests/givex_gift_card_test.php` checks no file multiplies
+  (`submit_order()` fixed in #4607; apply and redemption in #4626).
+  Tests: `tests/givex_gift_card_test.php` checks no file multiplies
   the reply balance by hand.
 
 ## Which inputs count as not given?
