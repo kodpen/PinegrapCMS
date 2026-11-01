@@ -59,7 +59,7 @@ description: Generated from the module field of the memory files: each includes/
 - `layout_convert`: [[layout-form-converter]]
 - `layouts`: [[layout-code-tab]], [[layout-editor-classic]]
 - `legal_documents`: [[order-documents-address]]
-- `link_resolve`: [[designer-prototype-viewer]]
+- `link_resolve`: [[designer-prototype-viewer]], [[link-resolve-letter-case]]
 - `list_paging`: [[list-label-sort]], [[list-page-number]], [[server-paged-lists]]
 - `list_period`: [[list-period-navigator-and-clock]], [[list-period-order]], [[list-period-week]]
 - `mail`: [[mail-transport-failure]], [[single-email-address-boxes]]
