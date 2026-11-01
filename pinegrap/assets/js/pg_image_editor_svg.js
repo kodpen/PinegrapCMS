@@ -165,6 +165,11 @@
         this.doc.layers = got.layers;
         this.doc.svgDefs = got.defs;
         this.svgFileId = fileId;
+
+        // Versions keep pictures: an SVG file has none to show.
+        if (this.versionsBtn) {
+            this.versionsBtn.hidden = true;
+        }
         this.tools = M.resolveTools('canvas', this.opts.tools);
         this.tool = this.tools.list[0];
         this.sheetOpen = (this.tool !== 'select');
@@ -337,6 +342,26 @@
 
     // ---- saving ----
 
+    // An SVG layer as written to the file: its element with the layer's
+    // matrix as its own transform, so it opens again as the same kind.
+    function svgSaveNode(l) {
+        var n = markupNode(l.markup);
+
+        if (!n) {
+            return null;
+        }
+
+        n.setAttribute('transform', M.svgMatrixText(M.svgMatrix(l)));
+
+        if ((l.opacity !== undefined) && (l.opacity < 1)) {
+            var own = n.hasAttribute('opacity') ? Number(n.getAttribute('opacity')) : 1;
+
+            n.setAttribute('opacity', String(Math.round(l.opacity * (isNaN(own) ? 1 : own) * 1000) / 1000));
+        }
+
+        return n;
+    }
+
     // A picture's address as a data: URL; '' when it cannot be read.
     function embed(src) {
         if (/^data:/i.test(src)) {
@@ -369,7 +394,7 @@
         var self = this, a = this.doc.artboard, nodes = [];
 
         this.doc.layers.forEach(function (l) {
-            var n = l.hidden ? null : self.layerNode(l);
+            var n = l.hidden ? null : ((l.type === 'svg') ? svgSaveNode(l) : self.layerNode(l));
 
             if (n) {
                 nodes.push(n);
