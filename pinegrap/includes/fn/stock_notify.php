@@ -186,6 +186,19 @@ function pg_stock_notify_sms_on()
 }
 
 /**
+ * Whether a notice goes out as a text message now: the SMS event is on and
+ * the general job sends the SMS queue (pg_sms_job_alive()). Without the job
+ * the text would only wait there and expire, so the sender mails instead,
+ * and the visitor's answer has to say so.
+ *
+ * @return bool
+ */
+function pg_stock_notify_sms_sends()
+{
+    return pg_stock_notify_sms_on() && function_exists('pg_sms_job_alive') && pg_sms_job_alive();
+}
+
+/**
  * What a request comes to, in the order it is checked. A mobile number typed
  * is held like the address, whatever address comes with it: one waiting
  * request per product and PG_STOCK_NOTIFY_PENDING_LIMIT products, since each
@@ -551,7 +564,7 @@ function pg_stock_notify_send($product_id)
     $detail_page = function_exists('pg_sw_catalog_detail_page_name') ? (string) pg_sw_catalog_detail_page_name(0) : '';
     $url = pg_stock_notify_url(URL_SCHEME . HOSTNAME_SETTING . PATH, $detail_page, $product['address_name']);
     $mail = pg_stock_notify_mail($name, $url);
-    $sms_on = pg_stock_notify_sms_on() && function_exists('pg_sms_job_alive') && pg_sms_job_alive();
+    $sms_on = pg_stock_notify_sms_sends();
     $provider = $sms_on ? pg_sms_provider() : '';
 
     $mailed = array();

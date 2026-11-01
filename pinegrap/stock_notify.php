@@ -113,7 +113,10 @@ try {
 }
 
 $ok = pg_stock_notify_status_ok($status);
-$message = pg_stock_notify_status_message($status, (pg_stock_notify_phone($phone) !== '') && pg_stock_notify_sms_on());
+
+// A text message is promised only when the sender would send one; on a site
+// whose general job does not run, the notice goes out as the mail.
+$message = pg_stock_notify_status_message($status, (pg_stock_notify_phone($phone) !== '') && pg_stock_notify_sms_sends());
 
 if ($stock_notify_json) {
     stock_notify_answer(array('status' => $status, 'ok' => $ok, 'message' => $message));

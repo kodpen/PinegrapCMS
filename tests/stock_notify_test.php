@@ -328,7 +328,8 @@ function test_stock_notify_sms_wiring()
 	pg_assert_contains("pg_sms_message_queue('stock_back', pg_sms_dial(\$phone)", $send, 'queued, never sent in the request');
 	pg_assert_contains("'stock:' . (int) \$row['id']", $send, 'one text per request');
 	pg_assert_true(strpos($send, 'pg_sms_message_queue(') < strpos($send, 'email(array('), 'the text first, the mail when it is not queued');
-	pg_assert_contains('pg_sms_job_alive()', $send, 'a text only while the general job sends the queue, else the mail');
+	pg_assert_contains('pg_stock_notify_sms_sends()', $send, 'a text only while the general job sends the queue, else the mail');
+	pg_assert_contains('pg_sms_job_alive()', pg_test_function_source('pg_stock_notify_sms_sends'), 'the job is asked');
 
 	$request = pg_test_function_source('pg_stock_notify_request');
 	pg_assert_contains('pg_stock_notify_sms_on()', $request, 'a number is kept only while texts go');
@@ -337,4 +338,14 @@ function test_stock_notify_sms_wiring()
 
 	$endpoint = (string) file_get_contents(PG_FUNCTIONS_DIR . '/stock_notify.php');
 	pg_assert_contains("'phone'", $endpoint, 'the endpoint reads the number');
+}
+
+// The answer promises a text message only when the sender would send one:
+// without the general job the notice goes out as the mail.
+function test_stock_notify_endpoint_promises_what_is_sent()
+{
+	$endpoint = (string) file_get_contents(PG_FUNCTIONS_DIR . '/stock_notify.php');
+
+	pg_assert_contains("(pg_stock_notify_phone(\$phone) !== '') && pg_stock_notify_sms_sends()", $endpoint, 'the same rule as the sender');
+	pg_assert_false(strpos($endpoint, '&& pg_stock_notify_sms_on())') !== false, 'not the SMS event alone');
 }

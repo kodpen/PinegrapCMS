@@ -70,7 +70,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `speculation`: open
 
-- `stock_notify`: open
+- `stock_notify`: LU
 
 - `submitted_form_list`: open
 
