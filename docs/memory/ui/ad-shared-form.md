@@ -12,7 +12,7 @@ description: The ad create and edit screens share includes/forms/ad_form.php: wh
 
 ## What does a save share?
 - `pg_ad_form_validate($liveform, $user, $id)` (`null` on create, the posted id on edit): name and ad region required, the name not used by another ad (edit leaves its own id out), and a user role (3) may only pick an ad region it can edit.
-- Sort Order is blank (random order) or a whole number of up to four digits (`pg_ad_form_sort_order_error()`, bug hunt #PR): the column is an integer, and before the check "abc", "1.5" or "-3" were saved as 0 or cut, so the ad silently went back to random order.
+- Sort Order is blank (random order) or a whole number of up to four digits (`pg_ad_form_sort_order_error()`, bug hunt #4854): the column is an integer, and before the check "abc", "1.5" or "-3" were saved as 0 or cut, so the ad silently went back to random order.
 - `pg_ad_form_values($liveform, $path = null)`: name, content, caption, ad region, label, sort order in INSERT/UPDATE order; content and caption go through `prepare_rich_text_editor_content_for_input()` (site path stored as `{path}`). The screens `array_merge()` their user ids (and the edit id) after it.
 
 ## What stays in the screens?
