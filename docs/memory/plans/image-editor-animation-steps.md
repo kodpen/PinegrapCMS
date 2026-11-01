@@ -6,7 +6,7 @@ description: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion,
 ## Which steps are there?
 - S under 400 product lines, M about 1,000. A step owns its part `assets/js/pg_image_editor_<part>.js`, its model section, labels function, stylesheet section, test and memory topic (`ui/image-editor-parts.md`). Steps run side by side only where a line says so.
 
-- AN0 (S) Screens. The holder. Done (#PRNUM, `image-editor-animation-visuals.md`).
+- AN0 (S) Screens. The holder. Done (#4732, `image-editor-animation-visuals.md`).
   - The Animate panel and play bar (desktop and phone), the Save animation dialog with its progress, the scene strip and Present, as `plans/image-editor/26-*.jpg` to `32-*.jpg`.
 
 - AN1 (M) Motion and preview. `free` after AN0.
