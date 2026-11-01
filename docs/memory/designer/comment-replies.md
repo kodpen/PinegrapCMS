@@ -22,7 +22,7 @@ module: comments
 - A reply to one's own pending comment is stored: a quote or parent name shown to others comes from rows they may see.
 
 ## What does the staff e-mail say?
-- add_comment.php's two administrator bodies and job.php's mail when a scheduled comment is published (`send_comment_email_to_administrators()`) put `pg_comment_parent_mail_line()` after the display name: `In reply to: <name> (#<id>)` on one line, '' for none. No new link (`mail_link_hostname_test` counts 3).
+- add_comment.php's two administrator bodies and job.php's mail when a scheduled comment is published (`send_comment_email_to_administrators()`) put `pg_comment_parent_mail_line()` after the display name: `In reply to: <name> (#<id>)` on one line, '' for none. The name goes through `pg_comment_display_name()`: no name or the stored `Anonymous` reads as the translated "Anonymous" (it printed the raw literal or nothing). No new link (`mail_link_hostname_test` counts 3).
 
 ## What does the API give and take?
 - `parent_id` (`integer?`); `GET /comments?parent_id=0`: comments that answer none, `?parent_id=<id>`: one's replies. The parent is left-joined (`parent_comment`): a reply whose comment was removed reads null, lists under 0. Not writable: no create endpoint; re-parenting could make a cycle.
@@ -44,4 +44,4 @@ module: comments
 
 ## How was it checked?
 - `tests/comment_parent_test.php` (tables, no-db bridge, mail line, copy map, wiring, deletes), `tests/api_comments_test.php`. job.php mail, page copy: source and pure tests only.
-- Sandbox, MariaDB 10.11 (2026-10-24), anonymous on a page thread: replies to a published and to one's own pending comment stored; to another's pending one, another page's, an unknown id, `12abc` refused, text kept. Staff reply to a pending one stored; both mails carried the line. API field, filter, parent delete, dropped column as above.
+- Sandbox, MariaDB 10.11 (2026-10-24): the refusals and stores above, both mails' line, the API field and filter, parent delete, dropped column.
