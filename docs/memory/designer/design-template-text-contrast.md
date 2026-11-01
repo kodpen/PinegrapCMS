@@ -17,7 +17,7 @@ description: Text colours and names in the hello-pinegrap and pinegrap-playgroun
 
 ## Which class does a link inside an alert box take?
 - `alert-link`: Bootstrap 5.3.8 gives an alert's own dark link colour only to `.alert-link`; a plain link measured 3.50:1 on `alert-secondary` and 4.06:1 on `alert-warning` (#4898). The comment widget's sign-in and reply Cancel links (PHP default tree, JS starter, every template tree) and the Set Password token messages (`pg_set_password_token_message()` adds the class; the classic `set_password.php` screens keep the bare keys) use it.
-- `tests/design_template_alert_link_test.php` walks every template; courses, events and salon are listed as pending in it until their sign-in links change.
+- `tests/design_template_alert_link_test.php` walks every template.
 
 ## Which colour does a quote attribution take on a dark band?
 - `blockquote-footer text-body-secondary`: Bootstrap 5.3.8 gives `.blockquote-footer` a fixed `#6c757d`, 3.29:1 under `data-bs-theme="dark"`; the theme class follows the band (Boutique story band, 1.2.3, #4899). The same test checks it.
