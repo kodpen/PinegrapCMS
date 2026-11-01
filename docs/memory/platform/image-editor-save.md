@@ -6,7 +6,7 @@ module: image_editor
 
 ## Where does the editor open and save a file?
 - `image_editor_api.php` (root; JSON in and out, refusals too) runs `pg_image_editor_api()` in `includes/fn/image_editor.php`: POST only; a signed-out request gets 401 `code: session` before `validate_user()`; the token is compared by hand (403, `code: session`, "Your session expired. Reload the page and try again.").
-- `open {file_id}`: name, stamped URL, `replace` (false for an animated file, and for a design file below Designer), `notice`, `versions`, `doc`, `base`. `save {mode, doc, base, file_id | folder_id, overlay, picture, name}` answers the saved file; a replace keeps versions (`ui/image-editor-versions.md`).
+- `open {file_id}`: name, stamped URL, `replace` (false for an animated file, and for a design file below Designer), `notice`, `versions`, `doc`, `base`. `save {mode, doc, base, file_id | folder_id, overlay, picture, name}` answers the saved file (versions: `ui/image-editor-versions.md`).
 
 ## What does a save check before any pixel work?
 - `pg_image_edit_validate($doc)`: version 1; JSON numbers (a numeric string is refused) in the editor's own ranges: quarter turns, flips as booleans, straighten ±45°, a crop inside the turned space with ½ px slack, output 1-8000 px, at most 500 layers, an artboard 16-8000 px. Anything else is "Invalid request." with nothing drawn.
