@@ -1,0 +1,138 @@
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * The new dashboard's stylesheet (includes/dashboard/v2/page.php), one
+ * section per part; built to dashboard_v2.min.css by tools/build_css.php.
+ * The switch row is drawn on the old dashboard too, so its section also
+ * serves welcome.php. Colours come from the panel's --pg-* tokens, light
+ * and dark alike.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+@layer custom {
+
+  /* ── Switch row ───────────────────────────────────────────────────────── */
+
+  .pg-dash-switch {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .25rem .75rem;
+    margin-bottom: 1rem;
+  }
+
+  .pg-dash-switch-label {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    margin: 0;
+    cursor: pointer;
+  }
+
+  .pg-dash-switch-name {
+    font-weight: 600;
+    color: var(--pg-fg-emphasis);
+  }
+
+  .pg-dash-switch-hint {
+    font-size: .875rem;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-switch-end {
+    display: inline-flex;
+    gap: .5rem;
+    margin-inline-start: auto;
+  }
+
+  /* ── Top row ──────────────────────────────────────────────────────────── */
+
+  .pg-dash-top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .pg-dash-card {
+    padding: 1.25rem 1.5rem;
+    border-radius: var(--pg-radius-lg);
+  }
+
+  /* ── Greeting card ────────────────────────────────────────────────────── */
+
+  .pg-dash-greeting-when {
+    margin: 0 0 .25rem;
+    font-size: .875rem;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-greeting-title {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: var(--pg-fg-emphasis);
+  }
+
+  .pg-dash-name {
+    background: var(--clock-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  @media (forced-colors: active) {
+    .pg-dash-name {
+      background: none;
+      color: CanvasText;
+    }
+  }
+
+  /* ── Grid ─────────────────────────────────────────────────────────────── */
+
+  .pg-dash-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-auto-flow: row dense;
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+  }
+
+  @media (min-width: 640px) {
+    .pg-dash-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1000px) {
+    .pg-dash-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .pg-dash-grid > [data-width="M"] {
+    grid-column: span 2;
+  }
+
+  .pg-dash-grid > [data-width="L"] {
+    grid-column: 1 / -1;
+  }
+
+  @media (max-width: 639.98px) {
+    .pg-dash-grid > [data-width="M"] {
+      grid-column: auto;
+    }
+  }
+
+  .pg-dash-empty {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 2rem 1rem;
+    text-align: center;
+    color: var(--pg-fg-2);
+  }
+}
