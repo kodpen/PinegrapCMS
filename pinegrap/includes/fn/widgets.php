@@ -2079,26 +2079,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // so the user keeps their wider page state. Hidden inputs replay the rest.
     $search_html = '';
     if ($search_enabled) {
-        $hidden = '';
-        if (!empty($_GET) && is_array($_GET)) {
-            foreach ($_GET as $k => $v) {
-                if ($k === $query_param || $k === $page_param) continue;
-                if (is_array($v)) continue;  // skip array params; rare and unsafe
-                $hidden .= '<input type="hidden" name="' . h($k) . '" value="' . h((string)$v) . '">';
-            }
-        }
-        $search_html =
-            '<form method="get" class="pg-sw-search mb-3" role="search">' .
-                $hidden .
-                '<div class="input-group input-group-sm ' . $search_width_cls . '">' .
-                    '<input type="text" class="form-control" name="' . h($query_param) . '" ' .
-                           'value="' . h($search_query) . '" placeholder="' . h($search_label) . '" maxlength="100">' .
-                    '<button type="submit" class="btn btn-outline-secondary"><span class="bi bi-search"></span></button>' .
-                    ($search_query !== ''
-                        ? '<a class="btn btn-outline-secondary" href="?' . h(_pg_sw_build_query($query_param, '', $page_param, '')) . '"><span class="bi bi-x-lg"></span></a>'
-                        : '') .
-                '</div>' .
-            '</form>';
+        $search_html = _pg_sw_search_box_html($query_param, $search_query, $search_label, $search_width_cls, $page_param);
     }
 
     // Empty-state HTML used when no records match, as an element the
@@ -5698,6 +5679,33 @@ function _pg_sw_hidden_query_inputs($skip)
         $html .= '<input type="hidden" name="' . h($name) . '" value="' . h((string)$value) . '">';
     }
     return $html;
+}
+
+// The search box a list widget prints above its items (form list, catalog
+// listing). The text box and the icon-only buttons carry accessible names:
+// a placeholder is no label. Hidden inputs replay the visitor's other query
+// parameters, without the router's page name on a pretty address.
+function _pg_sw_search_box_html($query_param, $search_query, $search_label, $width_cls, $page_param)
+{
+    $skip = array((string)$query_param, (string)$page_param);
+    $clear_params = _pg_sw_query_params();
+    foreach ($skip as $key) unset($clear_params[$key]);
+
+    return
+        '<form method="get" class="pg-sw-search mb-3" role="search">' .
+            _pg_sw_hidden_query_inputs($skip) .
+            '<div class="input-group input-group-sm ' . h($width_cls) . '">' .
+                '<input type="text" class="form-control" name="' . h($query_param) . '" ' .
+                       'value="' . h($search_query) . '" placeholder="' . h($search_label) . '" ' .
+                       'aria-label="' . h($search_label) . '" maxlength="100">' .
+                '<button type="submit" class="btn btn-outline-secondary" aria-label="' . h(lang('Search')) . '">' .
+                    '<span class="bi bi-search" aria-hidden="true"></span></button>' .
+                ((string)$search_query !== ''
+                    ? '<a class="btn btn-outline-secondary" href="?' . h(http_build_query($clear_params)) . '" ' .
+                          'aria-label="' . h(lang('Clear search')) . '"><span class="bi bi-x-lg" aria-hidden="true"></span></a>'
+                    : '') .
+            '</div>' .
+        '</form>';
 }
 
 // The designer's search form, bound rather than hand-wired:
