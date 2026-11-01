@@ -9,7 +9,7 @@ description: Steps N1-N14 of plans/new-dashboard.md: size, screens, order, which
 - Each UI step is tried in a browser at 1280 px and 390 px, light and dark; its PR says what was tried.
 
 ## Which steps?
-- N1 (M) Switch and page shell. Screens 21, 22. `free` after question 1.
+- N1 (M) Switch and page shell. Screens 21, 22. `free`.
   - Migration step for the decided storage, rerun twice on a dev DB; the sign-in upsert; `dashboard_switch`; the switch row on the old page (its only change) and the new one; the branch in `welcome.php`; `page.php` with part files, the greeting line and an empty grid; the card list `cards.php` with all 30 entries (built ones marked); empty `dashboard_v2.js` and stylesheet sections.
 
 - N2 (M) Greeting card. Screen 01. `free` after N1.
@@ -37,15 +37,15 @@ description: Steps N1-N14 of plans/new-dashboard.md: size, screens, order, which
   - `shop`, `salesmap`, `ops`, `orders`, `offers`, `fx`.
 
 - N10 (M) Pipeline and queue. Screens 02, 03. `free` after N4.
-  - `pipeline` per preset with sparklines, flags and filtered links; `queue` sources and actions; `visitmap` only once question 2 is answered.
+  - `pipeline` per preset with sparklines, flags and filtered links; `queue` sources and actions; `visitmap` as question 2 decided.
 
 - N11 (M) Assistant and flows. Screens 01, 02, 15. `free` after N4.
-  - `ai` connected and not connected, proposals, giving a job, the daily summary as question 3 decides; `flows` tiles, the current run, last runs with Approve and Retry through the flow endpoints.
+  - `ai` connected and not connected, proposals, giving a job, the daily summary as question 3 decided; `flows` tiles, the current run, last runs with Approve and Retry through the flow endpoints.
 
 - N12 (M) Goals, pins, notes, performance, subscriptions. Screens 01, 04, 18, 19. `free` after N5.
   - `goals` editor and rings, `pins`, `notes`, `perf`, `subs` (hidden until the vendor licence answers).
 
-- N13 (S) Share with the team. Screen 10. `free` after N6 and question 4.
+- N13 (S) Share with the team. Screen 10. `free` after N6.
   - `dashboard_role_default`, the section for role < 2, the lock in read and save, the chip.
 
 - N14 (M) Phone, keyboard and close-out. Screen 20. After N2-N13.
