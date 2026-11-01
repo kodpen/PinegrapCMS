@@ -10045,3 +10045,64 @@ function pg_designer_screen_messages($errors, $warnings, $notices)
     }
     return $out;
 }
+
+/**
+ * The editor's blank tab (sdDesign.pages entry): a page not saved yet,
+ * created by the first save. Opened in add mode, for a design with no page,
+ * and for a classic style opened in the designer that no page names as its
+ * own style; that one starts with the tree placing the style's frame
+ * (pg_classic_style_page_tree()) and is marked converted, so it opens
+ * unsaved and the frame shows on the canvas and in the tree.
+ *
+ * Pure: no query.
+ *
+ * @param int        $draft  1 when the new page starts as a draft
+ * @param array|null $tree   decoded tree, null for an empty canvas
+ * @return array
+ */
+function pg_designer_blank_page($draft, $tree = null)
+{
+    $tree = is_array($tree) ? $tree : null;
+    return array(
+        'key'                   => 'new1',
+        'page_id'               => 0,
+        'page_name'             => '',
+        'page_folder'           => 0,
+        'page_draft'            => $draft ? 1 : 0,
+        'page_title'            => '',
+        'page_meta_description' => '',
+        'page_search'           => 1,
+        'page_search_keywords'  => '',
+        'page_sitemap'          => 1,
+        'page_home'             => 0,
+        'page_noindex'          => 0,
+        'page_nofollow'         => 0,
+        'pg_comments'           => 0,
+        'pg_comments_label'     => '',
+        'pg_comments_allow_new' => 1,
+        'pg_comments_rating'    => 0,
+        'pg_comments_auto_publish' => 0,
+        'pg_comments_show_date'    => 0,
+        'pg_comments_login'        => 0,
+        'pg_comments_email_page'    => 0,
+        'pg_comments_email_subject' => '',
+        'pg_comments_notify_email'  => '',
+        'pg_comments_attachments'      => 0,
+        'pg_comments_select_name'      => 0,
+        'pg_comments_message'          => '',
+        'pg_comments_closed_message'   => '',
+        'pg_comments_watchers_managed' => 0,
+        'page_meta_tags'        => '',
+        'page_custom_jsonld'    => '',
+        'page_canonical_url'    => '',
+        'page_noarchive'        => 0,
+        'page_max_snippet'      => '',
+        'page_publish_at'       => '',
+        'page_unpublish_at'     => '',
+        'tree'                  => $tree,
+        'treeLoadWarning'       => false,
+        'formSettings'          => array(),
+        'access'                => 'edit',
+        'converted'             => $tree !== null ? 1 : 0,
+    );
+}
