@@ -3644,6 +3644,17 @@ function _eo_custom_arrival_value($posted, array $r, $aid)
     return _eo_real_date($r['arrival_date'] ?? '');
 }
 
+// The custom arrival date box's min and max attributes: no day before $today
+// (Y-m-d) can be picked, and none after the choice's latest allowed date
+// ($max) when it has a real one.
+function _eo_custom_arrival_bounds($max, $today)
+{
+    $today = _eo_real_date($today);
+    $max   = _eo_real_date($max);
+    return ($today !== '' ? ' min="' . h($today) . '"' : '')
+         . ($max !== '' ? ' max="' . h($max) . '"' : '');
+}
+
 // $include_address_fields: when TRUE (default), renders the full address
 // form (first_name, last_name, ..., country/state/zip/phone, address_type)
 // followed by arrival-date + shipping-method picker — legacy behaviour for
@@ -3876,11 +3887,14 @@ function _eo_render_shipping_section($recipients, $lf, $form_id, $widget_id, $in
                 if ($is_custom) {
                     $cd_name = 'shipping_' . $rid . '_custom_arrival_date_' . $aid;
                     $cd_val  = _eo_custom_arrival_value($get('custom_arrival_date_' . $aid), $r, $aid);
-                    $cd_max  = _eo_real_date(isset($ad['custom_maximum_arrival_date']) ? $ad['custom_maximum_arrival_date'] : '');
+                    $cd_max  = isset($ad['custom_maximum_arrival_date']) ? $ad['custom_maximum_arrival_date'] : '';
+                    // A hidden box is disabled: its date is not posted, and a
+                    // day outside its bounds cannot block the order's submit.
                     $out .= '<div class="ms-4 mt-1 mb-2 pg-eo-custom-arrival" data-pg-eo-arrival-id="' . $aid . '"'
                           .   ($is_sel ? '' : ' style="display:none"') . '>'
                           . '<input type="date" class="form-control form-control-sm" name="' . h($cd_name) . '" value="' . h($cd_val) . '"'
-                          .   ($cd_max !== '' ? ' max="' . h($cd_max) . '"' : '') . '>'
+                          .   _eo_custom_arrival_bounds($cd_max, date('Y-m-d'))
+                          .   ($is_sel ? '' : ' disabled') . '>'
                           . '</div>';
                 }
             }
@@ -4617,12 +4631,18 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
         // Arrival date radios — refetch + show/hide custom date input
         form.querySelectorAll('input.pg-eo-arrival-radio[data-pg-eo-rid="' + rid + '"]').forEach(function (r) {
             r.addEventListener('change', function () {
-                // Toggle custom date input visibility
+                // Toggle custom date input visibility; a hidden date is not
+                // posted, and a date out of its bounds there would block the
+                // submit with no visible message.
                 form.querySelectorAll('.pg-eo-custom-arrival').forEach(function (cd) {
                     cd.style.display = 'none';
+                    cd.querySelectorAll('input').forEach(function (inp) { inp.disabled = true; });
                 });
                 var custWrap = form.querySelector('.pg-eo-custom-arrival[data-pg-eo-arrival-id="' + r.value + '"]');
-                if (custWrap) custWrap.style.display = '';
+                if (custWrap) {
+                    custWrap.style.display = '';
+                    custWrap.querySelectorAll('input').forEach(function (inp) { inp.disabled = false; });
+                }
                 fetchMethods(rid);
             });
         });
