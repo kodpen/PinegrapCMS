@@ -326,13 +326,13 @@ pg_page_shell([
             ' . $output_notes . '
 
             <div class="row g-5 my-1">
-                <div class="col-12 xl:col-5">
+                <div class="col-12 2xl:col-5">
                     <div class="card h-100">
                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Profit and loss statement') . '</div>
                         <div class="card-body">' . $output_statement . '</div>
                     </div>
                 </div>
-                <div class="col-12 xl:col-7">
+                <div class="col-12 2xl:col-7">
                     <div class="card h-100">
                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('By month') . '</div>
                         <div class="card-body">
