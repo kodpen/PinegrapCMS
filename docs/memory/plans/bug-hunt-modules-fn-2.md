@@ -184,7 +184,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `widgets_placement`: open
 
-- `widgets_shipping_address`: open
+- `widgets_shipping_address`: clean (#4727)
 
 - `widgets_shipping_method`: clean (refusals, methods, amounts, remove link)
 
