@@ -886,6 +886,7 @@
     "A row of a table was changed.": "Bir tablodaki bir satır değiştirildi.",
     "A row was added to a table.": "Bir tabloya satır eklendi.",
     "A run can be about one record of this kind, such as an order or a customer.": "Bir çalışma bu türden tek bir kayıtla ilgili olabilir; örneğin bir sipariş ya da bir müşteri.",
+    "A run ended while reading it": "Bir çalışma bunu okurken sona erdi",
     "A run is started only in a public or private channel you read and the owner of the flow may write in.": "Bir çalıştırma yalnız okuyabildiğiniz ve akışın sahibinin yazabildiği genel ya da özel bir kanalda başlatılır.",
     "A run of your flow ended": "Akışınızın bir çalıştırması bitti",
     "A run of your flow failed": "Akışınızın bir çalıştırması başarısız oldu",

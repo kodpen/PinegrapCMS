@@ -31,10 +31,11 @@ function test_search_index_resume_new_pass()
 
 function test_search_index_resume_keeps_its_place()
 {
-	$next = pg_search_index_next(array('started' => 500, 'stage' => 'records', 'after' => '42', 'current' => '43', 'skipped' => array('pages 7')), 1000);
+	$next = pg_search_index_next(array('started' => 500, 'stage' => 'designer', 'after' => '42', 'current' => '43', 'skipped' => array('pages 7'), 'carry' => array('linked' => array('a.pdf'))), 1000);
 
 	pg_assert_same(500, $next['started'], 'the pass keeps its start time');
-	pg_assert_same('records', $next['stage'], 'stage');
+	pg_assert_same('designer', $next['stage'], 'stage');
+	pg_assert_same(array('linked' => array('a.pdf')), $next['carry'], 'what the stages hand on');
 	pg_assert_same('42', $next['after'], 'last finished item');
 	pg_assert_same('43', $next['current'], 'the unfinished item');
 	pg_assert_same(array('pages 7'), $next['skipped'], 'earlier skips');
@@ -61,7 +62,7 @@ function test_search_index_resume_skips_the_item_a_tick_died_in()
 
 function test_search_index_resume_stages_in_order()
 {
-	pg_assert_same(array('pages', 'events', 'records', 'designer', 'files', 'sweep'), pg_search_index_stages());
+	pg_assert_same(array('pages', 'designer', 'files', 'sweep'), pg_search_index_stages());
 
 	$state = pg_search_index_next(null, 1000);
 	$seen = array($state['stage']);
@@ -75,4 +76,34 @@ function test_search_index_resume_stages_in_order()
 
 	pg_assert_same(pg_search_index_stages(), $seen, 'every stage once, the sweep last');
 	pg_assert_same(1000, $state['started'], 'the start time survives the pass');
+}
+
+function test_search_index_resume_wiring()
+{
+	$src = file_get_contents(PG_FUNCTIONS_DIR . '/update_search_index.php');
+
+	pg_assert_contains('$search_index_state = pg_search_index_next(pg_search_index_state_read(), time());', $src, 'the pass is read back');
+	pg_assert_contains("\$timestamp = \$search_index_state['started'];", $src, 'rows carry the pass start');
+	pg_assert_contains("AND (page.page_id > '\" . (int) \$search_index_state['after'] . \"')", $src, 'pages resume after the last one');
+	pg_assert_contains("AND (files.id > '\" . (int) \$search_index_state['after'] . \"')", $src, 'files resume after the last one');
+	pg_assert_same(3, substr_count($src, '$search_index_step = $search_index_item('), 'each stage loop asks before every item');
+	pg_assert_same(3, substr_count($src, "if (\$search_index_step === 'skip') {"), 'each stage loop skips the item a run ended inside');
+
+	// The cursor is written before an item is read, so a run killed inside
+	// it leaves it named as current.
+	$item = substr($src, strpos($src, '$search_index_item = function'));
+	$item = substr($item, 0, strpos($item, '};'));
+	pg_assert_true(strpos($item, 'pg_search_index_begin(') < strpos($item, '$search_index_save();', strpos($item, 'pg_search_index_begin(')), 'saved after the item is marked started');
+
+	// The sweep, the Site Log line and the completion marker only at the end
+	// of the pass; an unfinished dispatched pass is due again in a minute.
+	$end = substr($src, strpos($src, '$search_index_done = '));
+	$sweep = strpos($end, 'db(pg_search_index_sweep_sql($timestamp));');
+	$ran = strpos($end, "pg_cron_ran('update_search_index');");
+	$again = strpos($end, "pg_cron_due_again('update_search_index', 60);");
+	pg_assert_true($sweep !== false && $ran !== false && $again !== false && $sweep < $ran && $ran < $again, 'sweep and marker in the done branch');
+	pg_assert_contains("if (\$search_index_done) {", $end);
+
+	// The panel window asks for the next request while the pass is unfinished.
+	pg_assert_contains('update_search_index.php?continue=1', $src);
 }

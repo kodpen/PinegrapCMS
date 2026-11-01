@@ -130,13 +130,14 @@ function test_search_index_stop_note()
 function test_search_index_items_render_isolated()
 {
 	$source = _search_index_isolation_source();
-	$designer = strpos($source, '$designer_record_urls = array();');
+	$designer = strpos($source, '$search_index_run[\'stage\'] = \'records\';');
 	$before = substr($source, 0, $designer);
 
 	pg_assert_false(strpos($before, 'get_page_content(') !== false, 'no bare render before the designer branch');
 	pg_assert_same(3, substr_count($before, 'pg_search_index_render('));
 	pg_assert_same(3, substr_count($before, 'pg_search_index_keep_item('));
-	pg_assert_same(3, substr_count($before, 'pg_search_index_failed('));
+	// The three renders, and the page a run ended inside.
+	pg_assert_same(4, substr_count($before, 'pg_search_index_failed('));
 }
 
 // Files: shell_exec only when it exists, each file in its own try, a

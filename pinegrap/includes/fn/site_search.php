@@ -605,7 +605,10 @@ function pg_search_index_stop_note($stage, $item, $error)
  */
 function pg_search_index_stages()
 {
-    return array('pages', 'events', 'records', 'designer', 'files', 'sweep');
+    // A page's calendar events and form records are read with the page, as
+    // one item; the visual editor's records follow all pages, since the
+    // page loop collects the lists they come from.
+    return array('pages', 'designer', 'files', 'sweep');
 }
 
 /**
@@ -617,7 +620,9 @@ function pg_search_index_stages()
  * and the sweep removes the rows older than it), stage, after (the key of the
  * stage's last finished item, '' at its start), current (the item started and
  * not finished: a tick that ended inside it), skipped (notes of the items
- * skipped this pass), done.
+ * skipped this pass), carry (what one stage hands the next: the linked names
+ * the files stage reads, the record lists, the addresses already written),
+ * done.
  *
  * @param mixed $state the decoded cursor file, or null
  * @param int   $now
@@ -628,7 +633,7 @@ function pg_search_index_next($state, $now)
     if (!is_array($state) || !isset($state['stage'], $state['started'])
         || !in_array($state['stage'], pg_search_index_stages(), true)
         || ((int) $state['started'] <= 0) || !empty($state['done'])) {
-        return array('started' => (int) $now, 'stage' => 'pages', 'after' => '', 'current' => '', 'skipped' => array(), 'done' => false);
+        return array('started' => (int) $now, 'stage' => 'pages', 'after' => '', 'current' => '', 'skipped' => array(), 'carry' => array(), 'done' => false);
     }
 
     return array(
@@ -637,8 +642,67 @@ function pg_search_index_next($state, $now)
         'after'   => (string) ($state['after'] ?? ''),
         'current' => (string) ($state['current'] ?? ''),
         'skipped' => array_values(array_slice((array) ($state['skipped'] ?? array()), 0, 50)),
+        'carry'   => (isset($state['carry']) && is_array($state['carry'])) ? $state['carry'] : array(),
         'done'    => false,
     );
+}
+
+/**
+ * A stage's name for the panel window.
+ *
+ * @param string $stage
+ * @return string
+ */
+function pg_search_index_stage_label($stage)
+{
+    switch ((string) $stage) {
+        case 'pages':
+            return lang('pages');
+        case 'designer':
+            return lang('records');
+        case 'files':
+            return lang('files');
+        default:
+            return lang('removing old items');
+    }
+}
+
+/**
+ * Where an unfinished search index pass keeps its place. Losing the file (the
+ * clean up tool empties data/temp) only starts the pass again.
+ *
+ * @return string
+ */
+function pg_search_index_state_path()
+{
+    return PG_FUNCTIONS_DIR . '/data/temp/search_index.json';
+}
+
+/**
+ * The cursor file decoded, or null when there is none to read.
+ *
+ * @return array|null
+ */
+function pg_search_index_state_read()
+{
+    $state = json_decode((string) @file_get_contents(pg_search_index_state_path()), true);
+
+    return is_array($state) ? $state : null;
+}
+
+/**
+ * Write the cursor file; at the end of a pass, remove it.
+ *
+ * @param array $state
+ */
+function pg_search_index_state_write($state)
+{
+    if (!empty($state['done'])) {
+        @unlink(pg_search_index_state_path());
+        return;
+    }
+
+    @file_put_contents(pg_search_index_state_path(), json_encode($state), LOCK_EX);
 }
 
 /**

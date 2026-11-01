@@ -798,6 +798,7 @@
     "The Search Index has been updated successfully! You may {var:1} now.": "Arama Dizini başarıyla güncellendi! Şimdi {var:1}.",
     "The Search Index has been updated, but {var:1} item(s) could not be read. The Site Log names them.": "Arama Dizini güncellendi, ancak {var:1} öğe okunamadı. Site Günlüğü bunları listeler.",
     "The Search Index has been updated, but {var:1} record list(s) or record(s) failed to load and were left out. The Site Log names them.": "Arama Dizini güncellendi, ancak {var:1} kayıt listesi veya kayıt yüklenemediği için dışarıda bırakıldı. Site Günlüğü bunları listeler.",
+    "The Search Index is being updated ({var:1}). This window continues by itself; please leave it open.": "Arama dizini güncelleniyor ({var:1}). Bu pencere kendiliğinden devam eder; lütfen açık bırakın.",
     "The Sendcloud API integration already sends its webhook to another address.": "Sendcloud API entegrasyonu webhook'unu zaten başka bir adrese gönderiyor.",
     "The Site Settings have been saved.": "Site Ayarları kaydedildi.",
     "The Slow Issue": "Yavaşlık Sayısı",
