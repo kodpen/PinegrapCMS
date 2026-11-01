@@ -86,6 +86,7 @@ description: Generated from the module field of the memory files: each includes/
 - `record_revisions`: [[collection-history]], [[collection-revisions]]
 - `returns`: [[bootstrap-6-runtime-markup]]
 - `reviews`: [[product-review-photos]], [[product-reviews-verified]]
+- `search_audits`: [[search-and-audits-screen]]
 - `seo`: [[indexnow-ping-result]], [[list-row-names]], [[main-host-redirect]], [[record-breadcrumb-list-step]], [[record-page-schema-type]], [[recycle-bin-offline]], [[robots-large-image-preview]], [[sitemap-cache]], [[sitemap-listed-pages]]
 - `seo_draft`: [[seo-check-draft-render]]
 - `shipment_labels`: [[shipment-label-api]], [[shipment-label-pickup]], [[shipment-label-pickup-drivers]], [[shipment-label-returns]], [[shipment-labels]]

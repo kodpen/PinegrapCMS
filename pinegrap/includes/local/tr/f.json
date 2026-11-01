@@ -297,6 +297,7 @@
     "Finish with a card written by hand. Two honest lines mean more than a long printed message.": "El yazısıyla bir kartla bitirin. İki samimi satır, uzun bir basılı mesajdan çok daha fazlasını anlatır.",
     "Finished tasks": "Biten görevler",
     "Finished {var:1}": "Bitti: {var:1}",
+    "Finished.": "Tamamlandı.",
     "Finished: {var} translated, {var2} failed. The screen reloads.": "Bitti: {var} çevrildi, {var2} başarısız. Ekran yenileniyor.",
     "Firewall": "Güvenlik Duvarı",
     "Firewall Events": "Güvenlik Duvarı Olayları",

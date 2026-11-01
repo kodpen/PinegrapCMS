@@ -3307,10 +3307,11 @@ function output_menu($properties = false)
         if ($user['role'] >= 2) {
             $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_system_styles.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-magic bi-me-2\'>' . lang('Visual Page Editor') . '</a>';
         }
-        // PAGES > Search Index
-        if ((SEARCH_TYPE == 'advanced') && (USER_ROLE != 3)) {
+        // PAGES > Search and audits (search_audits.php: the search index and
+        // the SEO, structure and accessibility passes, managers and up)
+        if ($user['role'] < 3) {
             $menu_items[2]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-            $menu_items[2]['data-bs-content'] .= '<a  onclick=\'open_search_index_window();\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-arrow-clockwise bi-me-2\'>' . lang('Update Search Index') . '</a>';
+            $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/search_audits.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-activity bi-me-2\'>' . lang('Search and audits') . '</a>';
         }
         // PAGES > Short Links (short links sit outside the folder-based rights, so the screens are gated at manager level and users do not get the entries)
         if ($user['role'] < 3) {
@@ -3998,6 +3999,7 @@ function output_menu($properties = false)
         case 'edit_form_list_view.php':
         case 'edit_form_item_view.php':
         case 'update_search_index.php':
+        case 'search_audits.php':
         case 'toolbar.php':
         case 'generate_layout.php':
         case 'view_short_links.php':

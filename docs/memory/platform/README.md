@@ -111,6 +111,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - router-no-functions-php.md: What runs before functions.php is loaded (router.php, the firewall's router phase, get_file.php), why lang() is unavailable there, and the waf_text() / get_file_text() wrappers.
 - scheduled-job-resume.md: Resumable dispatched passes (#4744): tick budget inside job.php's time limit, pg_cron_due_again(), the _done completion markers the health screens read, minute locks
 - scheduled-jobs-command-line-render.md: Why the search index and SEO structure jobs render pages from the command line (crontab or general job) without PHP warnings, and what a command line render lacks.
+- search-and-audits-screen.md: Search and audits screen (search_audits.php): engine cards, state, progress and failure sources, the job switch, Run now, where it is linked
 - server-config-compression-cache.md: Web-root server rules for compression and browser caching (PR #2848): static files only, a week, IIS clientCache inside the one staticContent, nginx static location after the deny rules
 - server-config-paths-and-detection.md: server_config.php path semantics: patterns carry no PATH but actions do, folder name measured (retarget), server type detection, X-Powered-By removal.
 - server-config-web-root-rules.md: includes/server_config.php: why web-root web.config/.htaccess rules live in one list, how to add a block, default-must-pass-detect invariant, repair rules.
