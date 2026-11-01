@@ -934,6 +934,25 @@ function pg_mfa_verify_code($user_id, $code)
 }
 
 /**
+ * Check a code where only the authenticator app's code is a proof (new
+ * recovery codes while TOTP is on). Anything that is not six digits is
+ * refused before pg_mfa_verify_code() sees it, which would spend a recovery
+ * code typed there and still refuse it.
+ *
+ * @param int    $user_id
+ * @param string $code
+ * @return bool
+ */
+function pg_mfa_verify_totp($user_id, $code)
+{
+    if (pg_mfa_code_kind((string) $code) !== 'totp') {
+        return false;
+    }
+
+    return pg_mfa_verify_code($user_id, (string) $code) === 'totp';
+}
+
+/**
  * Count one second-step attempt and say whether the account or the address
  * is over its allowance: 5 per account and 30 per address in 10 minutes.
  * Every call is an attempt, so it is called right before a code is checked
