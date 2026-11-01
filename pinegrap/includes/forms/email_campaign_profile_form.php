@@ -453,7 +453,8 @@ function pg_email_campaign_profile_follow_problem($profile_id, $pick, $follows, 
 }
 
 /**
- * The five field cards of the form, wrapped in their row.
+ * The form column (four field cards) and the sticky status column (status
+ * and purpose) of the form; the screen wraps them in a row with its save bar.
  *
  * @param liveform $liveform
  * @param array    $user        The signed-in user (validate_user())
@@ -558,102 +559,96 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
             </div>';
     }
 
+    // The form column and the status column of the edit screen layout
+    // (product_builder.php): the trigger, the message, its sender and its
+    // schedule are filled in on the left; whether the profile runs and the
+    // purpose the law reads it by sit in a sticky column on the right. Below
+    // lg the status column follows the form in source order.
     return '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Main Informations') . '
-                                </h2>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 my-1">
-                                            <div class="form-field">
-                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'id'=>'enabled', 'name'=>'enabled', 'value'=>'1', 'checked'=>'checked', 'class'=>'no-bs')) . '</div>
-                                                <label class="" for="enabled">' . lang('Enabled') . '</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 md:col-6 lg:col-4 my-3">
-                                            <label for="name" class="form-label">' . lang('Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'size'=>'60', 'maxlength'=>'100', 'placeholder'=>lang('Campaign Profile Name'), 'class'=>'form-control', 'required'=>'required')) . '
-                                        </div>
-                                        <div class="col-12 md:col-6 lg:col-4 my-3">
-                                            <label for="action" class="form-label">' . lang('Action') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'action', 'id'=>'action', 'class'=>'form-control', 'options'=>$action_options, 'onchange'=>'change_email_campaign_profile_action()')) . '
-                                        </div>
-                                        <div class="col-12 md:col-6 lg:col-4 my-3 collapse ' . $rows['calendar_event_id'] . '" id="calendar_event_id_row">
-                                            <label for="calendar_event_id" class="form-label">' . lang('Calendar Event') . '</label>
-                                            ' . $gone_notices['calendar_event_id'] . '
-                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'calendar_event_id', 'id'=>'calendar_event_id', 'class'=>'form-control', 'options'=>get_calendar_event_options(array('reservations' => true)) )) . '
-                                        </div>
-                                        <div class="col-12 md:col-6 lg:col-4 my-3 collapse ' . $rows['custom_form_page_id'] . '" id="custom_form_page_id_row">
-                                            <label for="custom_form_page_id" class="form-label">' . lang('Custom Form') . '</label>
-                                            ' . $gone_notices['custom_form_page_id'] . '
-                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'custom_form_page_id', 'id'=>'custom_form_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'any form', 'edit', false, $keep_pages['custom_form_page_id'] ?? 0) )) . '
-                                        </div>
-                                        <div class="col-12 md:col-6 lg:col-4 my-3 collapse ' . $rows['email_campaign_profile_id'] . '" id="email_campaign_profile_id_row">
-                                            <label for="email_campaign_profile_id" class="form-label">' . lang('Campaign Profile for Campaign that was sent') . '</label>
-                                            ' . $gone_notices['email_campaign_profile_id'] . '
-                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'email_campaign_profile_id', 'id'=>'email_campaign_profile_id', 'class'=>'form-control', 'options'=>get_email_campaign_profile_options($exclude_ids, $keep_pages['email_campaign_profile_id'] ?? 0) )) . '
-                                        </div>
-                                        ' . $output_product_id_row . '
-                                        ' . $output_subscription_fields_row . '
-                                    </div>
+                <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                    <div class="card mb-7">
+                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            ' . lang('Main Informations') . '
+                        </h2>
+                        <div class="card-body pt-0">
+                            <div class="row">
+                                <div class="col-12 md:col-6 my-3">
+                                    <label for="name" class="form-label">' . lang('Name') . '</label>
+                                    ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'size'=>'60', 'maxlength'=>'100', 'placeholder'=>lang('Campaign Profile Name'), 'class'=>'form-control', 'required'=>'required')) . '
                                 </div>
+                                <div class="col-12 md:col-6 my-3">
+                                    <label for="action" class="form-label">' . lang('Action') . '</label>
+                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'action', 'id'=>'action', 'class'=>'form-control', 'options'=>$action_options, 'onchange'=>'change_email_campaign_profile_action()')) . '
+                                </div>
+                                <div class="col-12 md:col-6 my-3 collapse ' . $rows['calendar_event_id'] . '" id="calendar_event_id_row">
+                                    <label for="calendar_event_id" class="form-label">' . lang('Calendar Event') . '</label>
+                                    ' . $gone_notices['calendar_event_id'] . '
+                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'calendar_event_id', 'id'=>'calendar_event_id', 'class'=>'form-control', 'options'=>get_calendar_event_options(array('reservations' => true)) )) . '
+                                </div>
+                                <div class="col-12 md:col-6 my-3 collapse ' . $rows['custom_form_page_id'] . '" id="custom_form_page_id_row">
+                                    <label for="custom_form_page_id" class="form-label">' . lang('Custom Form') . '</label>
+                                    ' . $gone_notices['custom_form_page_id'] . '
+                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'custom_form_page_id', 'id'=>'custom_form_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'any form', 'edit', false, $keep_pages['custom_form_page_id'] ?? 0) )) . '
+                                </div>
+                                <div class="col-12 md:col-6 my-3 collapse ' . $rows['email_campaign_profile_id'] . '" id="email_campaign_profile_id_row">
+                                    <label for="email_campaign_profile_id" class="form-label">' . lang('Campaign Profile for Campaign that was sent') . '</label>
+                                    ' . $gone_notices['email_campaign_profile_id'] . '
+                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'email_campaign_profile_id', 'id'=>'email_campaign_profile_id', 'class'=>'form-control', 'options'=>get_email_campaign_profile_options($exclude_ids, $keep_pages['email_campaign_profile_id'] ?? 0) )) . '
+                                </div>
+                                ' . $output_product_id_row . '
+                                ' . $output_subscription_fields_row . '
                             </div>
                         </div>
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('E-Mail Message') . '
-                                </h2>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 my-3">
-                                            <label for="subject" class="form-label">' . lang('Subject') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'subject', 'id'=>'subject', 'placeholder'=>lang('Subject'), 'maxlength'=>'255', 'class'=>'form-control', 'required'=>'required')) . '
-                                        </div>
-                                        <div class="col-12 my-1">
-                                            <fieldset>
-                                            <legend class="form-label fs-md">' . lang('Format') . '</legend>
-                                            <div class="form-field  d-inline-grid me-5">
-                                                ' . $liveform->output_field(array('type'=>'radio', 'id'=>'format_plain_text', 'name'=>'format', 'value'=>'plain_text', 'checked'=>'checked', 'class'=>'radio collapse-switcher', 'data-bs-target' => '#email_format_plain_text_row')) . '
-                                                <label for="format_plain_text">' . lang('Plain Text') . '</label>
-                                            </div>
-                                            <div class="form-field  d-inline-grid me-5">
-                                                ' . $liveform->output_field(array('type'=>'radio', 'id'=>'format_html', 'name'=>'format', 'value'=>'html', 'class'=>'radio collapse-switcher', 'data-bs-target' => '#email_format_html_row')) . '
-                                                <label for="format_html">' . lang('HTML') . '</label>
-                                            </div>
-                                            </fieldset>
-                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="email_format_plain_text_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
-                                                <div class="popover-body">
-                                                    <div class="row">
-                                                        <div class="col-12 my-1">
-                                                          <label for="email_body" class="form-label">' . lang('Body') . '</label>
-                                                          ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'body', 'id'=>'email_body', 'class'=>'form-control', 'placeholder'=>lang('Type E-mail body here') )) . '
-                                                        </div>
-                                                    </div>
+                    </div>
+                    <div class="card mb-7">
+                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            ' . lang('E-Mail Message') . '
+                        </h2>
+                        <div class="card-body pt-0">
+                            <div class="row">
+                                <div class="col-12 my-3">
+                                    <label for="subject" class="form-label">' . lang('Subject') . '</label>
+                                    ' . $liveform->output_field(array('type'=>'text', 'name'=>'subject', 'id'=>'subject', 'placeholder'=>lang('Subject'), 'maxlength'=>'255', 'class'=>'form-control', 'required'=>'required')) . '
+                                </div>
+                                <div class="col-12 my-1">
+                                    <fieldset>
+                                    <legend class="form-label fs-md">' . lang('Format') . '</legend>
+                                    <div class="form-field  d-inline-grid me-5">
+                                        ' . $liveform->output_field(array('type'=>'radio', 'id'=>'format_plain_text', 'name'=>'format', 'value'=>'plain_text', 'checked'=>'checked', 'class'=>'radio collapse-switcher', 'data-bs-target' => '#email_format_plain_text_row')) . '
+                                        <label for="format_plain_text">' . lang('Plain Text') . '</label>
+                                    </div>
+                                    <div class="form-field  d-inline-grid me-5">
+                                        ' . $liveform->output_field(array('type'=>'radio', 'id'=>'format_html', 'name'=>'format', 'value'=>'html', 'class'=>'radio collapse-switcher', 'data-bs-target' => '#email_format_html_row')) . '
+                                        <label for="format_html">' . lang('HTML') . '</label>
+                                    </div>
+                                    </fieldset>
+                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="email_format_plain_text_row">
+                                        <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
+                                        <div class="popover-body">
+                                            <div class="row">
+                                                <div class="col-12 my-1">
+                                                  <label for="email_body" class="form-label">' . lang('Body') . '</label>
+                                                  ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'body', 'id'=>'email_body', 'class'=>'form-control', 'placeholder'=>lang('Type E-mail body here') )) . '
                                                 </div>
                                             </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100"  id="email_format_html_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
-                                                <div class="popover-body">
-                                                    <div class="row">
-                                                        <div class="col-12 sm:col-8 my-1">
-                                                            <label class="form-label" for="page_id">' . lang('Page') . '</label>
-                                                            ' . $page_gone_notice . '
-                                                            ' . $liveform->output_field(array('type'=>'select', 'id'=>'page_id', 'name'=>'page_id', 'class'=>'form-control collapse-if-selected', 'options'=>get_page_options('', '', 'view', true, $keep_pages['page_id'] ?? 0), 'data-bs-target'=>'#body_preview_row', 'onchange'=>'document.getElementById(\'body_preview_iframe\').src = \'' . OUTPUT_PATH . '\' + this.options[this.selectedIndex].firstChild.nodeValue + \'?edit=no&email=true\';')) . '
-                                                        </div>
-                                                        <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="body_preview_row">
-                                                            <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                                            <div class="popover-body">
-                                                                <div class="row">
-                                                                    <div class="col-12 my-1">
-                                                                        <div style="margin-bottom: 1em">' . lang('Body Preview') . '</div>
-                                                                        <iframe id="body_preview_iframe" title="' . h(lang('Body Preview')) . '" src="' . $output_body_preview_iframe_source . '" style="min-width:250px;width: 100%;max-width:100%;min-height:300px; height: 500px;resize: both;overflow: auto;"></iframe>
-                                                                    </div>
-                                                                </div>
+                                        </div>
+                                    </div>
+                                    <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100"  id="email_format_html_row">
+                                        <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
+                                        <div class="popover-body">
+                                            <div class="row">
+                                                <div class="col-12 sm:col-8 my-1">
+                                                    <label class="form-label" for="page_id">' . lang('Page') . '</label>
+                                                    ' . $page_gone_notice . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'id'=>'page_id', 'name'=>'page_id', 'class'=>'form-control collapse-if-selected', 'options'=>get_page_options('', '', 'view', true, $keep_pages['page_id'] ?? 0), 'data-bs-target'=>'#body_preview_row', 'onchange'=>'document.getElementById(\'body_preview_iframe\').src = \'' . OUTPUT_PATH . '\' + this.options[this.selectedIndex].firstChild.nodeValue + \'?edit=no&email=true\';')) . '
+                                                </div>
+                                                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="body_preview_row">
+                                                    <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
+                                                    <div class="popover-body">
+                                                        <div class="row">
+                                                            <div class="col-12 my-1">
+                                                                <div style="margin-bottom: 1em">' . lang('Body Preview') . '</div>
+                                                                <iframe id="body_preview_iframe" title="' . h(lang('Body Preview')) . '" src="' . $output_body_preview_iframe_source . '" style="min-width:250px;width: 100%;max-width:100%;min-height:300px; height: 500px;resize: both;overflow: auto;"></iframe>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -664,100 +659,104 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('E-Mail Message From') . '
-                                </h2>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 sm:col-6 xl:col-12 my-3">
-                                            <label class="form-label" for="from_name">' . lang('From Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text','value'=>ORGANIZATION_NAME, 'name'=>'from_name', 'id'=>'from_name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
-                                        </div>
-                                        <div class="col-12">
-                                            <div class="row">
-                                                <div class="col-12 sm:col-6 xl:col-4 my-3">
-                                                    <label class="form-label" for="bcc_email_address">' . lang('BCC E-mail Address') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'text','value'=>'', 'name'=>'bcc_email_address', 'id'=>'bcc_email_address', 'class'=>'form-control text-end', 'maxlength'=>'100', 'inputmode'=>'email', 'data-inputmask-alias'=>'email')) . '
-                                                </div>
-                                                <div class="col-12 sm:col-6 xl:col-4 my-3">
-                                                    <label class="form-label" for="from_email_address">' . lang('From E-mail Address') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'text','value'=>$user['email_address'], 'name'=>'from_email_address', 'id'=>'from_email_address', 'class'=>'form-control text-end', 'maxlength'=>'100', 'required'=>'required', 'inputmode'=>'email', 'data-inputmask-alias'=>'email')) . '
-                                                </div>
-                                                <div class="col-12 sm:col-6 xl:col-4 my-3">
-                                                    <label class="form-label" for="reply_email_address">' . lang('Reply to E-mail Address') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'text','value'=>$user['email_address'], 'name'=>'reply_email_address', 'id'=>'reply_email_address', 'class'=>'form-control text-end', 'maxlength'=>'100', 'inputmode'=>'email', 'data-inputmask-alias'=>'email')) . '
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                    </div>
+                    <div class="card mb-7">
+                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            ' . lang('E-Mail Message From') . '
+                        </h2>
+                        <div class="card-body pt-0">
+                            <div class="row">
+                                <div class="col-12 md:col-6 my-3">
+                                    <label class="form-label" for="from_name">' . lang('From Name') . '</label>
+                                    ' . $liveform->output_field(array('type'=>'text','value'=>ORGANIZATION_NAME, 'name'=>'from_name', 'id'=>'from_name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
+                                </div>
+                                <div class="col-12 md:col-6 my-3">
+                                    <label class="form-label" for="from_email_address">' . lang('From E-mail Address') . '</label>
+                                    ' . $liveform->output_field(array('type'=>'text','value'=>$user['email_address'], 'name'=>'from_email_address', 'id'=>'from_email_address', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required', 'inputmode'=>'email', 'data-inputmask-alias'=>'email')) . '
+                                </div>
+                                <div class="col-12 md:col-6 my-3">
+                                    <label class="form-label" for="reply_email_address">' . lang('Reply to E-mail Address') . '</label>
+                                    ' . $liveform->output_field(array('type'=>'text','value'=>$user['email_address'], 'name'=>'reply_email_address', 'id'=>'reply_email_address', 'class'=>'form-control', 'maxlength'=>'100', 'inputmode'=>'email', 'data-inputmask-alias'=>'email')) . '
+                                </div>
+                                <div class="col-12 md:col-6 my-3">
+                                    <label class="form-label" for="bcc_email_address">' . lang('BCC E-mail Address') . '</label>
+                                    ' . $liveform->output_field(array('type'=>'text','value'=>'', 'name'=>'bcc_email_address', 'id'=>'bcc_email_address', 'class'=>'form-control', 'maxlength'=>'100', 'inputmode'=>'email', 'data-inputmask-alias'=>'email')) . '
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('E-Mail Message Delivery Schedule') . '
-                                </h2>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 my-3">
-                                            <div class="form-label">' . lang('Send e-mail') . '</div>
-                                            <div class="input-group mb-5 ">
-                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'schedule_length', 'aria-label'=>lang('Send e-mail'), 'class'=>'form-control text-end', 'value'=>'1', 'size'=>'3', 'maxlength'=>'9', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'decimal', 'data-inputmask-digits'=>'9', 'data-inputmask-placeholder'=>'1' )) . '
-                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'schedule_unit', 'aria-label'=>lang('Day(s)/Hour(s)'), 'class'=>'form-control', 'options'=>array(lang('day(s)') => 'days', lang('hour(s)') => 'hours'))) . '
-                                                ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-control collapse ' . $rows['calendar_schedule'], 'name'=>'schedule_period', 'aria-label'=>lang('Before/After'), 'id'=>'schedule_period', 'options'=>array('' => '', lang('before') => 'before', lang('after') => 'after'))) . '
-                                                ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-control collapse ' . $rows['calendar_schedule'], 'name'=>'schedule_base', 'aria-label'=>lang('From Action/From Calendar event start time'), 'id'=>'schedule_base', 'options'=>array('' => '', lang('from action') => 'action', lang('from calendar event start time') => 'calendar_event_start_time'))) . '
-                                                <span class="collapse input-group-text ' . $rows['standard_schedule'] . '" id="standard_schedule_period_and_base">&nbsp;' . lang('after action') . '</span>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 md:col-6 lg:col-4 my-3">
-                                            <label class="form-label" for="schedule_time">' . lang('Send at a specific time') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'schedule_time', 'id'=>'schedule_time', 'class'=>'form-control', 'maxlength'=>'8', 'data-pg-time' => '')) . '
-                                            <div class="text-end form-text">' . ((pg_time_format_code() === 'H:i') ? lang('HH:mm, leave blank to send at any time.') : lang('h:mm AM/PM, leave blank to send at any time.')) . '</div>
-                                            ' . get_time_picker_format() . pg_fields_script() . '
-                                        </div>
+                    </div>
+                    <div class="card mb-7">
+                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                            ' . lang('E-Mail Message Delivery Schedule') . '
+                        </h2>
+                        <div class="card-body pt-0">
+                            <div class="row">
+                                <div class="col-12 my-3">
+                                    <div class="form-label">' . lang('Send e-mail') . '</div>
+                                    <div class="input-group">
+                                        ' . $liveform->output_field(array('type'=>'text', 'name'=>'schedule_length', 'aria-label'=>lang('Send e-mail'), 'class'=>'form-control text-end', 'value'=>'1', 'size'=>'3', 'maxlength'=>'9', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'decimal', 'data-inputmask-digits'=>'9', 'data-inputmask-placeholder'=>'1' )) . '
+                                        ' . $liveform->output_field(array('type'=>'select', 'name'=>'schedule_unit', 'aria-label'=>lang('Day(s)/Hour(s)'), 'class'=>'form-control', 'options'=>array(lang('day(s)') => 'days', lang('hour(s)') => 'hours'))) . '
+                                        ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-control collapse ' . $rows['calendar_schedule'], 'name'=>'schedule_period', 'aria-label'=>lang('Before/After'), 'id'=>'schedule_period', 'options'=>array('' => '', lang('before') => 'before', lang('after') => 'after'))) . '
+                                        ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-control collapse ' . $rows['calendar_schedule'], 'name'=>'schedule_base', 'aria-label'=>lang('From Action/From Calendar event start time'), 'id'=>'schedule_base', 'options'=>array('' => '', lang('from action') => 'action', lang('from calendar event start time') => 'calendar_event_start_time'))) . '
+                                        <span class="collapse input-group-text ' . $rows['standard_schedule'] . '" id="standard_schedule_period_and_base">&nbsp;' . lang('after action') . '</span>
                                     </div>
+                                </div>
+                                <div class="col-12 md:col-6 my-3">
+                                    <label class="form-label" for="schedule_time">' . lang('Send at a specific time') . '</label>
+                                    ' . $liveform->output_field(array('type'=>'text', 'name'=>'schedule_time', 'id'=>'schedule_time', 'class'=>'form-control', 'maxlength'=>'8', 'data-pg-time' => '')) . '
+                                    <div class="text-end form-text">' . ((pg_time_format_code() === 'H:i') ? lang('HH:mm, leave blank to send at any time.') : lang('h:mm AM/PM, leave blank to send at any time.')) . '</div>
+                                    ' . get_time_picker_format() . pg_fields_script() . '
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                ' . lang('Purpose') . ' (' . lang('as defined by the CAN-SPAM Act') . ')
-                                </h2>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 my-5">
-                                            <fieldset>
-                                            <legend class="form-label fs-md">' . lang('Purpose') . '</legend>
-                                            <div class="form-field">
-                                                ' . $liveform->output_field(array(
-                                                    'type' => 'radio',
-                                                    'id' => 'purpose_commercial',
-                                                    'name' => 'purpose',
-                                                    'value' => 'commercial',
-                                                    'checked' => 'checked',
-                                                    'class' => 'radio')) . '
-                                                <label class="" for="purpose_commercial">' . lang('Commercial') . ' (' . lang('send email to opted-in contacts only. Example: \'We have an offer for you\'') . ')</label>
-                                            </div>
-                                            <div class="form-field">
-                                                ' . $liveform->output_field(array(
-                                                    'type' => 'radio',
-                                                    'id' => 'purpose_transactional',
-                                                    'name' => 'purpose',
-                                                    'value' => 'transactional',
-                                                    'class' => 'radio')) . '
-                                                <label class="" for="purpose_transactional">' . lang('Transactional') . ' (' . lang('send email, regardless of opt-in. Example: \'Your order has been shipped\'') . ')</label>
-                                            </div>
-                                            </fieldset>
-                                        </div>
-                                    </div>
+                    </div>
+                </div>
+                <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                    <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                    <div class="position-sticky" style="top:3.3rem;">
+                        <div class="card mb-7">
+                            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                ' . lang('Status') . '
+                            </h2>
+                            <div class="card-body pt-0">
+                                <div class="form-field">
+                                    <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'id'=>'enabled', 'name'=>'enabled', 'value'=>'1', 'checked'=>'checked', 'class'=>'no-bs')) . '</div>
+                                    <label for="enabled">' . lang('Enabled') . '</label>
                                 </div>
                             </div>
                         </div>
-                    </div>';
+                        <div class="card mb-7">
+                            <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                ' . lang('Purpose') . '
+                            </h2>
+                            <div class="card-body pt-0">
+                                <p class="form-text mt-0 mb-3">' . lang('as defined by the CAN-SPAM Act') . '</p>
+                                <fieldset>
+                                <legend class="visually-hidden">' . lang('Purpose') . '</legend>
+                                <div class="form-field mb-3">
+                                    ' . $liveform->output_field(array(
+                                        'type' => 'radio',
+                                        'id' => 'purpose_commercial',
+                                        'name' => 'purpose',
+                                        'value' => 'commercial',
+                                        'checked' => 'checked',
+                                        'class' => 'radio')) . '
+                                    <label class="" for="purpose_commercial">' . lang('Commercial') . '<span class="d-block form-text mt-0">' . lang('send email to opted-in contacts only. Example: \'We have an offer for you\'') . '</span></label>
+                                </div>
+                                <div class="form-field">
+                                    ' . $liveform->output_field(array(
+                                        'type' => 'radio',
+                                        'id' => 'purpose_transactional',
+                                        'name' => 'purpose',
+                                        'value' => 'transactional',
+                                        'class' => 'radio')) . '
+                                    <label class="" for="purpose_transactional">' . lang('Transactional') . '<span class="d-block form-text mt-0">' . lang('send email, regardless of opt-in. Example: \'Your order has been shipped\'') . '</span></label>
+                                </div>
+                                </fieldset>
+                            </div>
+                        </div>
+                    </div>
+                </div>';
 }
 
 /**
