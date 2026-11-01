@@ -27,7 +27,7 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
 - E5 (M) Layers and selection. Screen 01. Done in #4327 (`ui/image-editor-layers.md`).
   - Select, move, resize, rotate, align, distribute, order, lock, hide, duplicate, delete, copy and paste, snapping, the list.
 
-- E6 (M) Drawing and ready-made shapes. Screen 04. `free`
+- E6 (M) Drawing and ready-made shapes. Screen 04. Done in #4475 (`ui/image-editor-draw.md`).
   - Pen with smoothing and eraser, line, arrow (head styles), box with a corner-radius handle and value, ellipse, triangle, polygon (3-12 sides), star (4-12 points, inner ratio), speech bubble; stroke, fill, opacity, dash.
 
 - E7 (M) Text. Screen 05. `free`

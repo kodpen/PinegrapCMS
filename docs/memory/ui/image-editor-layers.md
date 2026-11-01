@@ -7,7 +7,7 @@ module: image_editor
 ## What is a layer?
 - An object in `doc.layers` (bottom first) in the rotated space (after quarter turns and flips, before straightening and the crop): `id` (`newId()`), `type`, a box `x, y, w, h`, `rot` (degrees clockwise around its centre), `opacity`, `hidden`, `locked`. A crop never moves a layer; the frame clips what lies outside it.
 - `image` is the first type: a picture pasted with Ctrl+V (a data: URL, kept at most 2000 px), placed in the middle at most 60 % of the canvas. Shapes, text and stickers add their types with their tools (`Editor.layerTypes`, `image-editor-parts.md`); `layerNode()` draws a type as SVG, `paintLayers()` on a canvas.
-- Under a turn or a flip of the picture, `mapLayer()` moves an upright type (text, sticker, image) by its middle and keeps its shape and angle, so a pasted logo stays readable; another box type takes the turned box, and a mirror turns its angle the other way.
+- Under a turn or a flip of the picture, `mapLayer()` moves an upright type (text, sticker, image) by its middle and keeps its shape and angle, so a pasted logo stays readable; another box type keeps its size, takes the turn into its angle and, under a mirror, turns its angle the other way and toggles `mirror` (`image-editor-draw.md`).
 
 ## How does the Select tool work?
 - A press hits the topmost visible, unlocked layer (`hitLayer()`, 4 screen px of slack): it is selected and moves with the rest of the selection; Shift adds or removes; the empty stage clears the selection; Escape clears it before leaving full screen. Locked layers are chosen in the list only.

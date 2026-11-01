@@ -441,6 +441,7 @@
     "Inline Block": "Satır İçi Blok",
     "Inline Flex": "Satır İçi Flex",
     "Inline SVG drawings were saved as files. Colours that relied on currentColor now need to be set in the file itself.": "Satır içi SVG çizimleri dosya olarak kaydedildi. currentColor'a dayanan renklerin artık dosyanın içinde belirlenmesi gerekir.",
+    "Inner ratio": "İç oran",
     "InnoDB": "InnoDB",
     "InnoDB row format": "InnoDB satır biçimi",
     "InnoDB tables cannot be repaired with REPAIR TABLE; InnoDB recovers from its own log, and a damaged InnoDB table is restored from a backup.": "InnoDB tabloları REPAIR TABLE ile onarılamaz; InnoDB kendi günlüğünden kurtarır, bozuk bir InnoDB tablosu yedekten geri yüklenir.",
