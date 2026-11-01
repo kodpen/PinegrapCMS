@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'motion');
 }
 
 /**
@@ -2393,6 +2393,83 @@ function pg_image_editor_strings_vector()
         'pathClosed'     => lang('Closed'),
         'finishPath'     => lang('Finish'),
         'convertToPath'  => lang('Convert to path'),
+    );
+}
+
+// -- Motion (pg_image_editor_motion.js) --
+
+/**
+ * The Animate tool: labels. {from}, {to} and {n} are filled in by the script.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_motion()
+{
+    return array(
+        'tool_motion'          => lang('Animate'),
+        'hintMotion'           => lang('Select a layer and give it an entrance, a loop and an exit. Space: play or pause'),
+        'motionPick'           => lang('Select a layer to give it motion.'),
+        'motionStill'          => lang('A redaction does not move: what it hides would show.'),
+        'motionLayers'         => lang('{n} layers'),
+        'motionIn'             => lang('Entrance'),
+        'motionLoop'           => lang('Loop'),
+        'motionOut'            => lang('Exit'),
+        'motion_inKinds'       => lang('Entrance kinds'),
+        'motion_loopKinds'     => lang('Loop kinds'),
+        'motion_outKinds'      => lang('Exit kinds'),
+        'motion_none'          => lang('None'),
+        'motion_fade'          => lang('Fade'),
+        'motion_slide'         => lang('Sliding'),
+        'motion_rise'          => lang('Rise'),
+        'motion_pop'           => lang('Pop'),
+        'motion_zoom'          => lang('Zooming'),
+        'motion_wipe'          => lang('Wipe'),
+        'motion_spin'          => lang('Spin'),
+        'motion_type'          => lang('Typewriter'),
+        'motion_draw'          => lang('Draw on'),
+        'motion_pulse'         => lang('Pulse'),
+        'motion_float'         => lang('Floating'),
+        'motion_blink'         => lang('Blink'),
+        'motion_wiggle'        => lang('Wiggle'),
+        'motion_swing'         => lang('Swing'),
+        'motionTextOnly'       => lang('Only for a text layer'),
+        'motionShapeOnly'      => lang('Only for a shape, a pen line or a path'),
+        'motionDirection'      => lang('Direction'),
+        'motionDir_left'       => lang('Left'),
+        'motionDir_up'         => lang('Up'),
+        'motionDir_right'      => lang('Right'),
+        'motionDir_down'       => lang('Down'),
+        'motionDelay'          => lang('Delay'),
+        'motionDuration'       => lang('Duration'),
+        'motionPeriod'         => lang('One cycle'),
+        'motionEase'           => lang('Easing'),
+        'motionEase_linear'    => lang('Linear'),
+        'motionEase_out'       => lang('Ease out'),
+        'motionEase_in'        => lang('Ease in'),
+        'motionEase_in-out'    => lang('Gentle'),
+        'motionEase_back'      => lang('Overshoot'),
+        'motionEase_bounce'    => lang('Bounce'),
+        'motionSaysIn'         => lang('Enters {from}–{to}'),
+        'motionSaysLoop'       => lang('loops {from}–{to}'),
+        'motionSaysOut'        => lang('leaves {from}–{to}'),
+        'motionSecondsUnit'    => lang('s'),
+        'motionRemove'         => lang('Remove'),
+        'motionWhole'          => lang('Whole animation'),
+        'motionLength'         => lang('Length'),
+        'motionRepeatCount'    => lang('Repeat'),
+        'motionForever'        => lang('Forever'),
+        'motionTimes'          => lang('{n} times'),
+        'motionBase'           => lang('Picture move'),
+        'motionBase_none'      => lang('None'),
+        'motionBase_zoomin'    => lang('Slow zoom in'),
+        'motionBase_zoomout'   => lang('Slow zoom out'),
+        'motionBase_panleft'   => lang('Pan left'),
+        'motionBase_panright'  => lang('Pan right'),
+        'motionBar'            => lang('Animation preview'),
+        'motionPlay'           => lang('Play'),
+        'motionPause'          => lang('Pause'),
+        'motionScrub'          => lang('Playhead'),
+        'motionRepeat'         => lang('Repeat the preview'),
     );
 }
 

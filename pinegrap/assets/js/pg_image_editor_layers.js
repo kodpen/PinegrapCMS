@@ -93,11 +93,18 @@
             svg.removeChild(svg.firstChild);
         }
 
+        // Each layer in a <g> of its own, by id: the motion part
+        // (pg_image_editor_motion.js) moves, fades and clips the group.
+        this.layerGroups = {};
+
         this.doc.layers.forEach(function (l) {
-            var n = l.hidden ? null : self.layerNode(l);
+            var n = l.hidden ? null : self.layerNode(l), g;
 
             if (n) {
-                svg.appendChild(n);
+                g = document.createElementNS(SVGNS, 'g');
+                g.appendChild(n);
+                svg.appendChild(g);
+                self.layerGroups[l.id] = g;
             }
         });
     };

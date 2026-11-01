@@ -1803,6 +1803,179 @@
   display: none;
 }
 
+
+/* -- Motion (pg_image_editor_motion.js) -- */
+
+.pgie-mlayer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 9px 12px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 10px;
+}
+
+.pgie-mname {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+/* A phase that is set is marked on its tab, not by colour alone. */
+.pgie-seg button.pgie-mhas::after {
+  content: " \2022";
+}
+
+.pgie-mkinds {
+  margin-bottom: 16px;
+}
+
+.pgie .pgie-mkinds .pgie-tile.on {
+  border-color: var(--pgie-sel);
+  background: var(--pgie-pw);
+  color: var(--pgie-ink);
+}
+
+.pgie .pgie-mkinds .pgie-tile:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pgie-msays {
+  margin-top: 4px;
+}
+
+.pgie .pgie-select {
+  width: 100%;
+  height: 34px;
+  padding: 0 8px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 8px;
+  background: var(--pgie-surface);
+  color: var(--pgie-tx);
+  font: inherit;
+  font-size: 13px;
+}
+
+.pgie .pgie-link {
+  padding: 4px 0;
+  border: 0;
+  background: none;
+  color: var(--pgie-ink);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* The play bar: along the stage's bottom, first in the sheet on a phone. */
+.pgie-mbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 6px 12px;
+  background: var(--pgie-surface);
+  border-top: 1px solid var(--pgie-line);
+  font-size: 13px;
+}
+
+.pgie-stage > .pgie-mbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+}
+
+.pgie-pb > .pgie-mbar {
+  margin: -4px -4px 14px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.pgie .pgie-mplay {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--pgie-primary);
+  color: var(--pgie-on-primary);
+  cursor: pointer;
+}
+
+.pgie .pgie-mplay:hover {
+  background: var(--pgie-primary-h);
+}
+
+.pgie-mclock {
+  flex: none;
+  color: var(--pgie-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pgie-mclock strong {
+  color: var(--pgie-tx);
+}
+
+.pgie-mtrack {
+  position: relative;
+  flex: 1;
+  min-width: 60px;
+}
+
+.pgie-mscrub {
+  display: block;
+  width: 100%;
+}
+
+.pgie-mticks {
+  position: relative;
+  height: 6px;
+  pointer-events: none;
+}
+
+.pgie-mticks span {
+  position: absolute;
+  top: 0;
+  width: 1px;
+  height: 6px;
+  background: var(--pgie-muted);
+}
+
+.pgie .pgie-mrepeat.on {
+  border-color: var(--pgie-sel);
+  background: var(--pgie-pw);
+  color: var(--pgie-ink);
+}
+
+.pgie-mlength {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.pgie-mlength .pgie-ic {
+  width: 16px;
+  height: 16px;
+}
+
+.pgie-pb > .pgie-mbar .pgie-mlength {
+  display: none;
+}
+
 @media (max-width: 767.98px), (max-height: 499.98px) {
   .pgie-dialog {
     width: 100vw;
