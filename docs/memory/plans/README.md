@@ -28,7 +28,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bootstrap-6-redesign.md: Steps B10-B11 of plans/bootstrap-6-panel.md: token tuning and the redesign of legacy form screens and tables; both ready to start (owner, 2026-11-01)
 - bug-hunt-modules-endpoints-1.md: Module list of plans/bug-hunt.md, part 3: root endpoint groups account to offer by area word, one line each with its state
 - bug-hunt-modules-endpoints-2.md: Module list of plans/bug-hunt.md, part 4: root endpoint groups optimize to zone by area word and the single endpoints, one line each with its state
-- bug-hunt-modules-fn-1.md: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y to pdf_merge, one line each with its state
+- bug-hunt-modules-fn-1.md: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y to legal_documents, one line each with its state
+- bug-hunt-modules-fn-1b.md: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules link_resolve to pdf_merge, one line each with its state
 - bug-hunt-modules-fn-2.md: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules price_history to wishlist, one line each with its state
 - bug-hunt.md: Plan: module-by-module bug hunt when no plan step is free; how a module is taken, hunted and closed; the module lists are in bug-hunt-modules-*.md
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
