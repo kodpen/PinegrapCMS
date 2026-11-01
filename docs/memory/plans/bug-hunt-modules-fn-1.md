@@ -162,7 +162,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `ops_alerts`: open
 
-- `order_completion`: open
+- `order_completion`: taken by worker of Arzu
 
 - `order_list`: open
 
