@@ -39,7 +39,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-12.md: Decisions list, product part 12 (2026-10-31 on): ERP settings cards for role 3, Trendyol address order, old n11 rows data step, phone toolbar, Trendyol Luxe, shipment rules confirmed
 - decisions-made-product-13.md: Decisions list, product part 13 (2026-10-31 on): Site Settings group headings, no notes secret feed, no hint on forgot password, IIS preflight nudge
 - decisions-made-product-14.md: Decisions list, product part 14 (2026-10-31 on): own image editor, nothing alone under a screen's title, no PDF of ours for a purchase invoice, Site Settings regrouped
-- decisions-made-product-15.md: Decisions list, product part 15 (2026-10-31 on): affiliate commission voided with a cancelled order; image editor redacted save, retention, site button, SVG animation; P7 drops the fixed api2 key
+- decisions-made-product-15.md: Decisions list, product part 15 (2026-10-31 on): affiliate commission voided on cancel; image editor redacted save, retention, site button, SVG animation; P7 api2 key; cash tills never below zero
 - decisions-made-product-2.md: Decisions list, product part 2 (2026-10-29 on): guest account and receipt of a webhook-completed order; PayTR instalments; layout editor of a page not on a visual design; carrier drivers
 - decisions-made-product-3.md: Decisions list, product part 3 (2026-10-29 on): SVG and ZPL labels, the first international label driver, get_catalog.php's dead top-item block, the PHP 5 remnants, converted common regions' rows
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
