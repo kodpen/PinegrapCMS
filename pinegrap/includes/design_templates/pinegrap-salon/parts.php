@@ -168,20 +168,20 @@ $services = array(
 );
 
 // The team, in the order the pages list them, with the categories they work
-// in and the days they are in the salon.
+// in and the days they are in the salon: never a Monday, when it is closed.
 $team = array(
     'selin' => array('name' => lang('Selin Aydın'), 'role' => lang('Founder & Colourist'), 'categories' => array('hair'),
         'bio'  => lang('Twelve years behind the chair; balayage and natural blondes are her signature.'),
         'days' => lang('Tuesday to Saturday')),
     'deniz' => array('name' => lang('Deniz Kaya'), 'role' => lang('Senior Stylist'), 'categories' => array('hair'),
         'bio'  => lang('Precision cuts, short styles and curly hair, cut dry when it suits the curl.'),
-        'days' => lang('Monday to Friday')),
+        'days' => lang('Tuesday to Saturday')),
     'mira'  => array('name' => lang('Mira Demir'), 'role' => lang('Nail Artist'), 'categories' => array('nails'),
         'bio'  => lang('Clean gel work and fine nail art, from a nude finish to hand-painted details.'),
         'days' => lang('Wednesday to Sunday')),
     'leyla' => array('name' => lang('Leyla Şahin'), 'role' => lang('Skin Therapist & Make-up Artist'), 'categories' => array('skin', 'makeup'),
         'bio'  => lang('Facials, brows and lashes during the week; brides and events at weekends.'),
-        'days' => lang('Thursday to Monday')),
+        'days' => lang('Thursday to Sunday')),
 );
 
 // The packages: the middle one is the one most clients choose.
@@ -210,11 +210,13 @@ foreach ($team as $t) $team_choices[] = $t['name'] . ' · ' . $t['role'];
 $appointment_query = function ($params) {
     return http_build_query($params, '', '&', PHP_QUERY_RFC3986);
 };
+// The times of day, inside the opening hours ($hours): the salon opens at
+// 10:00 on weekdays and closes at 20:00 only from Tuesday to Friday.
 $time_windows = array(
-    lang('Morning (09:00–12:00)'),
+    lang('Morning (10:00–12:00)'),
     lang('Midday (12:00–15:00)'),
     lang('Afternoon (15:00–18:00)'),
-    lang('Evening (18:00–20:00)'),
+    lang('Evening (18:00–20:00, Tuesday–Friday)'),
 );
 
 // ── The parts every page repeats ────────────────────────────────────────

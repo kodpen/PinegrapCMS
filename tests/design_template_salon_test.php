@@ -43,6 +43,7 @@ function _test_salon_load()
 		'categories' => $categories,
 		'services'   => $services,
 		'team'       => $team,
+		'times'      => $time_windows,
 		'pages'      => $public,
 		'booking'    => $booking,
 		'standard'   => $standard,
@@ -570,4 +571,34 @@ function test_salon_booking_links_fill_the_form()
 	}
 	pg_assert_same(count($d['team']), $stylists, 'every stylist named as the list names them');
 	pg_assert_same(3, $notes, 'every package goes into the notes');
+}
+
+// The sample words agree with the opening hours (Monday closed, Tuesday to
+// Friday 10:00-20:00, Saturday 09:00-19:00, Sunday 11:00-17:00): no stylist
+// works on a Monday, no time of day starts before 10:00, and one that runs
+// past Saturday's 19:00 says it is Tuesday to Friday only.
+function test_salon_sample_days_and_times_fit_the_hours()
+{
+	$d = _test_salon_load();
+	$week = array('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
+	foreach ($d['team'] as $key => $t) {
+		pg_assert_true((bool)preg_match('/^(\w+) to (\w+)$/', $t['days'], $m), $key . ': days read "X to Y"');
+		$i = array_search($m[1], $week, true);
+		$last = array_search($m[2], $week, true);
+		pg_assert_true($i !== false && $last !== false, $key . ': days are week days');
+		for ($n = 0; $n < 7; $n++) {
+			pg_assert_true($week[$i] !== 'Monday', $key . ' does not work on Monday, when the salon is closed');
+			if ($i === $last) break;
+			$i = ($i + 1) % 7;
+		}
+	}
+	pg_assert_true(count($d['times']) > 0, 'times of day');
+	foreach ($d['times'] as $w) {
+		pg_assert_true((bool)preg_match('/\((\d\d):(\d\d)–(\d\d):(\d\d)/u', $w, $m), $w . ': a time range');
+		pg_assert_true($m[1] . $m[2] >= '1000', $w . ': starts when the salon is open');
+		pg_assert_true($m[3] . $m[4] <= '2000', $w . ': ends by closing time');
+		if ($m[3] . $m[4] > '1900') {
+			pg_assert_true(strpos($w, 'Tuesday–Friday') !== false, $w . ': says it is Tuesday to Friday only');
+		}
+	}
 }
