@@ -125,7 +125,7 @@ function get_update_address_book($properties = array()) {
                 country_id: "country",
                 state_text_box_id: "state_text_box",
                 state_pick_list_id: "state_pick_list",
-                zip_code_id: "zip_code"});
+                zip_code_id: "zip_code"' . pg_address_labels_init_props('city') . '});
         </script>';
 
     // If the layout type is system or if there is no update address book page,
@@ -195,8 +195,8 @@ function get_update_address_book($properties = array()) {
                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'address_2', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                     </tr>
                     <tr>
-                        <td>' . lang('City') . '*</td>
-                        <td>' . $form->output_field(array('type'=>'text', 'name'=>'city', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
+                        <td><label for="city">' . lang('City') . '*</label></td>
+                        <td>' . $form->output_field(array('type'=>'text', 'id'=>'city', 'name'=>'city', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                     </tr>
                     <tr>
                         <td>' . lang('Country') . '*</td>

@@ -426,7 +426,7 @@ function get_express_order($properties) {
                     country_id: "' . $prefix . 'country",
                     state_text_box_id: "' . $prefix . 'state_text_box",
                     state_pick_list_id: "' . $prefix . 'state_pick_list",
-                    zip_code_id: "' . $prefix . 'zip_code"})
+                    zip_code_id: "' . $prefix . 'zip_code"' . pg_address_labels_init_props($prefix . 'city') . '})
             </script>';
 
         // If there is a custom shipping form, then prepare form by prefilling, setting field
@@ -518,7 +518,7 @@ function get_express_order($properties) {
                     country_id: "billing_country",
                     state_text_box_id: "billing_state_text_box",
                     state_pick_list_id: "billing_state_pick_list",
-                    zip_code_id: "billing_zip_code"})
+                    zip_code_id: "billing_zip_code"' . pg_address_labels_init_props('billing_city') . '})
             </script>';
 
         // If there is a custom billing form, then prepare form by prefilling, setting field attributes,

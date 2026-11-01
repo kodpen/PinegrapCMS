@@ -1864,7 +1864,7 @@ if (ECOMMERCE_SHIPPING) {
                 shipping_method_code = '" . e($shipping_method['code'] ?? '') . "',
                 zone_id = '" . e($zone['id'] ?? '') . "',
                 complete = '$complete'"
-                . pg_ship_to_district_address_sql($liveform->get($prefix . 'district'), $liveform->get($prefix . 'country'), $shipping_method['id'] ?? 0) . "
+                . pg_ship_to_district_address_sql($liveform->get($prefix . 'district'), $liveform->get($prefix . 'country'), $shipping_method['id'] ?? 0, $liveform->get($prefix . 'city')) . "
             WHERE id = '" . e($recipient['id']) . "'");
 
         // If the recipient is complete, then update shipping cost for recipient

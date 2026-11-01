@@ -202,6 +202,7 @@ function test_tr_district_box_script()
 	pg_assert_contains('data-pg-district-wrap', $js);
 	pg_assert_contains('data-pg-district-asks', $js);
 	pg_assert_contains('w.hidden=!on', $js);
+	pg_assert_contains('var on=i.hasAttribute("data-pg-district-asks")&&!tr(c,', $js, 'only abroad, when the carrier asks');
 }
 
 // Both twins of each widget draw the box: the express order's PHP default
@@ -229,11 +230,11 @@ function test_tr_district_box_twins()
 function test_tr_district_box_saved_and_shown()
 {
 	$eo = tr_district_box_test_source('express_order.php');
-	pg_assert_contains("pg_ship_to_district_address_sql(\$liveform->get(\$prefix . 'district')", $eo);
+	pg_assert_contains("pg_ship_to_district_address_sql(\$liveform->get(\$prefix . 'district'), \$liveform->get(\$prefix . 'country'), \$shipping_method['id'] ?? 0, \$liveform->get(\$prefix . 'city'))", $eo, 'the city goes with it');
 	pg_assert_contains("\$pg_prefix . 'district'", $eo, 'one value per post');
 
 	$sa = tr_district_box_test_source('shipping_address_and_arrival.php');
-	pg_assert_contains("pg_ship_to_district_save((int) (\$_POST['ship_to_id'] ?? 0), \$liveform->get_field_value('district')", $sa);
+	pg_assert_contains("pg_ship_to_district_save((int) (\$_POST['ship_to_id'] ?? 0), \$liveform->get_field_value('district'), \$liveform->get_field_value('country'), \$liveform->get_field_value('city'));", $sa, 'the city goes with it');
 	pg_assert_contains("'city', 'district', 'state'", $sa, 'one value per post');
 
 	$view = tr_district_box_test_source('view_order.php');

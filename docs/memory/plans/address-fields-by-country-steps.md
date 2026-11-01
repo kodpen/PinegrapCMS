@@ -6,7 +6,7 @@ description: Steps A1-A8 of plans/address-fields-by-country.md: site labels and 
 ## Which steps are there?
 - S under 400 product lines, M about 1,000. A1 first. A2 and A4 after A1, side by side (different files); A3 after A2 (both touch the starters). A5 after A1 and questions 1 and 2.
 
-- A1 (M) Site forms: labels and the district rule in one PR, so the district box never goes before the city box says İlçe. `free`.
+- A1 (M) done (#4709). Site forms: labels and the district rule in one PR, so the district box never goes before the city box says İlçe. Now in `commerce/address-labels-by-country.md`.
   - `includes/fn/shipping.php`: `pg_address_labels($country)` (pure); `pg_ship_to_district_shown()` = the carrier asks and the country is not Turkey; a Turkish recipient's district written from the city (`pg_ship_to_district_address_sql()`, `pg_ship_to_district_save()`); the client script swaps the two labels and the box.
   - Designer widgets stamp both label texts at render (a tree fit beside `pg_ship_to_district_tree_fit()`): express order (default tree, `_eo_render_shipping_section()`, `_eo_render_billing_address()`, `_eo_fit_district_field()`), shipping address and arrival, billing information, account profile and address book, affiliate sign-up.
   - Classic pages: `software.init_country()` swaps default label words (`frontend.src.js` and the hand-patched `frontend.min.js`, which terser cannot rebuild byte for byte); the six `get_*.php` pages and the five generated layouts of `address-fields-by-country-places.md`.
