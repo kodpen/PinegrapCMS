@@ -56,7 +56,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `connect`: open
 
-- `consent`: open
+- `consent`: taken by KX
 
 - `contact_list`: open
 
