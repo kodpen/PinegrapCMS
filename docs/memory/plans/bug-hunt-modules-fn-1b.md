@@ -4,7 +4,7 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 ---
 
 ## Which includes/fn/ modules (link_resolve to pdf_merge) are hunted?
-- `link_resolve`: done (#PRNUM: names in other letter case were broken links)
+- `link_resolve`: done (#4976: names in other letter case were broken links)
 
 - `list_paging`: open
 
