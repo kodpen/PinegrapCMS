@@ -76203,7 +76203,7 @@ const StyleDesigner = (function () {
      * works for the image node's src and for a background-image with one line
      * each.
      *
-     * The file is written by image_editor_save.php the moment the operator
+     * The file is written by image_editor_api.php the moment the operator
      * confirms — it does not wait for the design to be saved. An image is a
      * file on disk, not part of the page tree, and making a photo edit hostage
      * to an unrelated Save button is how edits get lost.
@@ -76305,10 +76305,7 @@ const StyleDesigner = (function () {
         }
 
         window.openImageEditor({
-            src: url,
             fileName: name,
-            token: _pgToken(),
-            saveUrl: ((_design && _design.apiUrl) ? _design.apiUrl.replace(/api\.php$/, '') : '') + 'image_editor_save.php',
             onSaved: function (res) {
                 if (res.mode === 'copy') {
                     // A new file, so the page has to be told to use it.

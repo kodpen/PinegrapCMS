@@ -3,12 +3,13 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Workspace - where the image editor writes a picture edited in a
- * conversation. The editor (assets/js/image_editor_modal.js) posts the
- * picture as JSON; the message and what to do with the picture ride in the
- * address:
+ * conversation. The editor (assets/js/pg_image_editor.js, save.url) posts
+ * what it posts for a save, the document and the overlay, as JSON; the
+ * picture is drawn here from the message's file (pg_image_editor_render())
+ * and the message and what to do with the picture ride in the address:
  *
  *   workspace_file_save.php?message=<id>&as=replace|send
- *     { token, data: '<data: URL>', ... } -> { status, mode, name, url, message_id }
+ *     { token, doc, overlay?, colour? } -> { status, mode, name, url, message_id }
  *
  * 'replace' puts the edited picture in the place of the one in the person's
  * own message and keeps the old one as an earlier version; 'send' posts it as
@@ -87,12 +88,18 @@ if (!is_array($target)) {
 
 list($message, $channel) = $target;
 
-$data = (string) ($request['data'] ?? '');
-$extension = ws_file_image_extension($data);
+$stored_name = (string) db_value("SELECT name FROM files WHERE id = '" . (int) $message['file_id'] . "'");
+$picture = pg_image_editor_render(FILE_DIRECTORY_PATH . '/' . $stored_name, $request);
+unset($request);
 
-if ($extension === '') {
-    ws_file_save_refuse(lang('This file type is not allowed.'));
+if ($picture['error'] !== '') {
+    ws_file_save_refuse($picture['error']);
 }
+
+$extension = $picture['extension'];
+$mime = array('jpg' => 'jpeg', 'png' => 'png', 'webp' => 'webp', 'gif' => 'gif');
+$data = 'data:image/' . $mime[$extension] . ';base64,' . base64_encode($picture['data']);
+unset($picture);
 
 $name = ws_file_edit_name($message['file_name'], $extension);
 $as = (($_GET['as'] ?? '') === 'replace') ? 'replace' : 'send';

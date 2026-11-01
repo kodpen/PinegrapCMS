@@ -12,8 +12,8 @@
  * a copy instead, which is posted as their own message in reply to the
  * original; the original message and its file stay exactly as they were.
  *
- * Pictures are edited in the panel's image editor (Pintura, through
- * workspace_file_save.php); text files - Markdown, plain text, CSV and the
+ * Pictures are edited in the panel's image editor (assets/js/pg_image_editor.js,
+ * saved through workspace_file_save.php); text files - Markdown, plain text, CSV and the
  * like - in the text window of the channel screen, through ws_file_text and
  * ws_file_text_save; the cells of an Excel workbook and the paragraphs of a
  * Word document in their preview window, through ws_file_office and
@@ -293,23 +293,6 @@ function ws_file_edit_name($name, $extension)
     $base = (string) pathinfo((string) $name, PATHINFO_FILENAME);
 
     return (($base !== '') ? $base : 'file') . '.' . $extension;
-}
-
-/**
- * What a picture out of the editor is, from its data: URL.
- *
- * @param string $data
- * @return string jpg | png | webp | gif, or '' for anything else
- */
-function ws_file_image_extension($data)
-{
-    if (!preg_match('#^data:image/(jpeg|jpg|png|webp|gif);base64,#i', substr((string) $data, 0, 40), $match)) {
-        return '';
-    }
-
-    $type = strtolower($match[1]);
-
-    return ($type === 'jpeg') ? 'jpg' : $type;
 }
 
 /**

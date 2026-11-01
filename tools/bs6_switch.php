@@ -81,7 +81,7 @@ const BS6_SWITCH_LAYER_NOTE = '/* Panel rules sit in Bootstrap 6\'s custom layer
 function bs6_switch_style_files()
 {
 	return array(
-		'edit_comment.php', 'editor_select_image.php', 'image_editor_edit.php', 'includes/api/console.php',
+		'edit_comment.php', 'editor_select_image.php', 'includes/api/console.php',
 		'includes/erp/drawer.php', 'install/index.php', 'marketplace_settings.php', 'print_order.php',
 		'print_packing_slip.php', 'product_builder.php', 'router.php', 'theme_designer.php', 'translations.php',
 		'view_folders.php', 'view_log.php',

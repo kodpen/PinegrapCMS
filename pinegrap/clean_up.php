@@ -29,15 +29,19 @@ validate_area_access($user, 'manager');
 //list of files and directories that can be delete securely.
 //
 // A name comes off this list the moment the software starts using it again.
-// image_editor_save.php was here as a LiveSite leftover and the name was then
-// reused for the Pintura editor's endpoint -- so running the cleanup deleted a
-// live part of the software, and every save from the image editor answered 404
-// from then on. Nothing on screen connected the two: the tool said it had
-// tidied up, and the editor said the image could not be saved.
+// image_editor_save.php was once here as a LiveSite leftover while the name
+// served the previous image editor's endpoint -- so running the cleanup
+// deleted a live part of the software, and every save from the image editor
+// answered 404 from then on. That editor is gone now (the image editor is
+// assets/js/pg_image_editor.js, saved through image_editor_api.php), and its
+// files are listed below.
 //
 // Before adding a name here, check that nothing references it:
 // grep -rn "<name>" --include=*.php --include=*.js .
 $file_list = array(
+    'image_editor_save.php',
+    'assets/js/image_editor_modal.js',
+    'assets/lib/image_editor',
     'image_editor_send.php',
     'image_editor_close.php',
     'threeds_payment.php',

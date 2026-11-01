@@ -76,13 +76,3 @@ function test_unsplash_status_is_live_and_counts_in_words()
 	pg_assert_false(strpos($source, "lang('result(s)')") !== false, 'no raw number glued to result(s)');
 }
 
-function test_image_editor_hint_is_live_and_escapes_the_server_message()
-{
-	$js = panel_live_status_local_source('assets/js/image_editor_modal.js');
-	pg_assert_true(
-		(bool) preg_match('/id="pgImageEditorHint"[^\']*role="status"/', $js),
-		'#pgImageEditorHint is a status region'
-	);
-	pg_assert_false(strpos($js, "'<span class=\"fg-danger\">' + msg + '</span>'") !== false, 'the server message is not inserted raw');
-	pg_assert_contains('_footError(msg)', $js, 'the server message goes through the escaping error line');
-}

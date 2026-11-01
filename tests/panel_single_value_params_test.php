@@ -37,7 +37,7 @@ function panel_single_value_params_screens()
 		'editor_select_page_or_file' => array('CKEditorFuncNum'),
 		'generate_layout'            => array('page_id'),
 		'get_theme_designer_module'  => array('file_id', 'module_id'),
-		'image_editor_edit'          => array('file_name', 'object_type', 'object_id', 'column_to_update'),
+		'image_editor_edit'          => array('file_name'),
 		'import_design'              => array('submit_button'),
 		'preview_form'               => array('product_id'),
 		'print_packing_slip'         => array('ship_to_id'),

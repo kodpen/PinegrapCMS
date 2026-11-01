@@ -111,7 +111,6 @@ if (empty($_POST['name'])) {
 
     $optimize_button = '';
     $image_buttons = '';
-    $output_image_edit_link = '' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/image_editor_edit.php?file_name=' . h(urlencode($file_name)) . '&send_to=' . h(urlencode(REQUEST_URL)) . '';
 
     $file['type'] = mb_strtolower($row['type']);
     if ($on_disk && (
@@ -127,7 +126,7 @@ if (empty($_POST['name'])) {
                 $optimize_button =
                     '<a class="btn btn-link pg-link-secondary py-0 mb-3" href="optimize.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-rocket bi-me-2"></i>' . lang('Optimize this image') . '</a>';
             }
-            $image_buttons = $optimize_button . ' <a class="btn btn-link pg-link-secondary py-0 mb-3" href="' . $output_image_edit_link . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</a>';
+            $image_buttons = $optimize_button . ' <button type="button" class="btn btn-link pg-link-secondary py-0 mb-3" data-pg-image-edit="' . h($file_name) . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</button>' . pg_image_editor_includes();
     }
 
     // Both links would lead to the site's 404 page without the file.
