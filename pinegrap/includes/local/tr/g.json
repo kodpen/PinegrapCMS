@@ -239,6 +239,7 @@
     "Google Analytics figures are no longer read. The Google account stays connected until you remove it under Connected accounts.": "Google Analytics rakamları artık okunmuyor. Google hesabı, Bağlı hesaplar altından kaldırılana kadar bağlı kalır.",
     "Google Analytics property": "Google Analytics mülkü",
     "Google Analytics: tells visits apart to measure how the site is used.": "Google Analytics: sitenin nasıl kullanıldığını ölçmek için ziyaretleri birbirinden ayırır.",
+    "Google Calendar could not be written: {var:1}": "Google Takvim'e yazılamadı: {var:1}",
     "Google Client ID": "Google Client ID",
     "Google Client Secret": "Google Client Secret",
     "Google Cloud Translation": "Google Cloud Translation",

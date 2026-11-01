@@ -60,6 +60,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/files.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/library.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/calendar.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/calendar_feed.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/calendar_sync.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/briefing.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/claude.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/claude_setup.php');
