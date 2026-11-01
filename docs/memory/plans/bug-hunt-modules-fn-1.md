@@ -30,7 +30,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `calendar`: open
 
-- `captcha`: open
+- `captcha`: clean (siteverify outcomes, token, widget escaping, settings card and save order checked)
 
 - `carrier_api`: open
 
