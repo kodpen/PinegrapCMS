@@ -19,3 +19,6 @@ description: Performance monitor cost rules (perf_monitor_shutdown()): hourly pe
 ## How do I reduce load on a busy site?
 - Lower `PERF_MONITOR_SAMPLE_RATE` first rather than switching the monitor off (the Site Settings switch, `PERF_MONITOR_ENABLED`; `PERF_MONITOR` false in `data/config.php` stops it before any timer). 10% sampling gives the same averages with a tenth of the writes.
 - The constants are listed with comments in `data/config(default).php`; `PERF_MONITOR_MIN_DURATION_MS` is listed there but nothing reads it.
+
+## Are the status buckets pages?
+- No. A request answering 400 or above is stored under `[<status>]` ("[410]"); `pg_perf_is_status_label()` tells one apart from `[home]` and URLs. The dashboard Performance card grades and names its slowest page with `label NOT LIKE '[___]'`, and its slowest list shows a bucket as "Error responses (410)" (`pg_perf_label_display()`). Before, a 410 bucket was named the slowest page and set the grade (#4421, PR #PRNUM; `tests/dashboard_perf_card_test.php`).

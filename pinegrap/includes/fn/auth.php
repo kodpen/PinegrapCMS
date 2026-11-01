@@ -3043,8 +3043,25 @@ function pg_folder_list_name($folder_name, $access_control_type = '')
 {
     return pg_folder_access_mark($access_control_type) . '<span class="material-icons d-inline" aria-hidden="true">folder</span><span class="badge fw-light fg-reset d-inline text-wrap text-break">' . h($folder_name) . '</span>';
 }
+// The option text of a folder in a filtered picker: the parents the filter
+// left out lead its name ("pinegrap_cafe › private"), so folders sharing a
+// name under different parents can be told apart.
+function pg_folder_option_label($folder_name, $left_out_parents = array())
+{
+    $parts = array();
+
+    foreach ((array) $left_out_parents as $parent_name) {
+        $parts[] = (string) $parent_name;
+    }
+
+    $parts[] = (string) $folder_name;
+
+    return implode(' › ', $parts);
+}
 // You can pass the access control type in order to limit the folders to those with that type of access control.
-function select_folder($folder_id = 0, $parent_folder_id = 0, $excluded_folder_id = 0, $level = 0, $folders = array(), $folders_that_user_has_access_to = array(), $access_control_type = '')
+// $left_out_parents holds the names of the parents above this level that the
+// access type filter did not print; the next printed folder carries them.
+function select_folder($folder_id = 0, $parent_folder_id = 0, $excluded_folder_id = 0, $level = 0, $folders = array(), $folders_that_user_has_access_to = array(), $access_control_type = '', $left_out_parents = array())
 {
     global $user;
     $output = '';
@@ -3092,7 +3109,9 @@ function select_folder($folder_id = 0, $parent_folder_id = 0, $excluded_folder_i
             // If user has access to folder, or if the folder is the selected folder,
             // and the access control type is valid, then output option for folder.
             $next_level = 0;
-            if (((check_folder_access_in_array($folder['id'], $folders_that_user_has_access_to) == true) || ($folder['id'] == $folder_id)) && (($access_control_type == '') || ($access_control_type == get_access_control_type($folder['id'])))) {
+            $child_left_out_parents = array();
+            $has_access = ((check_folder_access_in_array($folder['id'], $folders_that_user_has_access_to) == true) || ($folder['id'] == $folder_id));
+            if ($has_access && (($access_control_type == '') || ($access_control_type == get_access_control_type($folder['id'])))) {
                 // prepare indentation
                 $indentation = '';
                 for ($i = 1; $i <= $level; $i++) {
@@ -3115,10 +3134,17 @@ function select_folder($folder_id = 0, $parent_folder_id = 0, $excluded_folder_i
                     $output_folder_class = 'class="' . $folder['folder_access_control'] . '"';
                 }
                 // output option row
-                $output .= '<option value="' . $folder['id'] . '"' . $selected . ' ' . $output_folder_class . '>' . $indentation . h($folder['name'] . $archived_label) . '</option>';
+                $output .= '<option value="' . $folder['id'] . '"' . $selected . ' ' . $output_folder_class . '>' . $indentation . h(pg_folder_option_label($folder['name'], $left_out_parents) . $archived_label) . '</option>';
+            } elseif ($has_access && ($access_control_type != '') && ($parent_folder_id != 0)) {
+                // Left out by the access type filter only: its name goes
+                // before the folders printed below it. A folder the user has
+                // no access to is never named, nor is the root folder, which
+                // would only lead every path.
+                $child_left_out_parents = $left_out_parents;
+                $child_left_out_parents[] = $folder['name'];
             }
             // get options for child folders
-            $output .= select_folder($folder_id, $folder['id'], $excluded_folder_id, $next_level, $folders, $folders_that_user_has_access_to, $access_control_type);
+            $output .= select_folder($folder_id, $folder['id'], $excluded_folder_id, $next_level, $folders, $folders_that_user_has_access_to, $access_control_type, $child_left_out_parents);
         }
     }
     return $output;
