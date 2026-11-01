@@ -1136,6 +1136,158 @@
 
 /* -- Versions (pg_image_editor_versions.js) -- */
 
+.pgie-vbtn {
+  padding: 0 12px;
+  background: var(--pgie-bg);
+}
+
+.pgie-vbtn.on {
+  border-color: var(--pgie-pline);
+  background: var(--pgie-pw);
+  color: var(--pgie-ink);
+}
+
+.pgie-vcount {
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--pgie-hover);
+  color: var(--pgie-muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+.pgie-vintro {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--pgie-hover);
+  color: var(--pgie-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.pgie-vnote {
+  margin: 0;
+  color: var(--pgie-muted);
+  font-size: 12px;
+}
+
+.pgie-vnote.pgie-error {
+  color: var(--pgie-danger);
+}
+
+.pgie-vlist {
+  margin: 0 -16px;
+  padding: 0;
+  list-style: none;
+}
+
+.pgie-vrow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--pgie-line);
+}
+
+.pgie-vhead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pgie-vbadge {
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--pgie-pw);
+  color: var(--pgie-ink);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.pgie-vmeta,
+.pgie-vkind {
+  color: var(--pgie-muted);
+  font-size: 12px;
+}
+
+.pgie-vkind {
+  color: var(--pgie-tx);
+}
+
+.pgie-vact {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.pgie-vact .pgie-btn {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.pgie-vact .pgie-btn.on {
+  border-color: var(--pgie-pline);
+  background: var(--pgie-pw);
+  color: var(--pgie-ink);
+}
+
+.pgie-vpreview {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--pgie-stage);
+}
+
+.pgie-vpreview img {
+  min-height: 0;
+  max-width: 100%;
+  max-height: calc(100% - 56px);
+  object-fit: contain;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.25);
+}
+
+.pgie-vpbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 6px 6px 14px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 12px;
+  background: var(--pgie-surface);
+  font-size: 13px;
+}
+
+/* On a phone the versions button keeps its icon and count. */
+@media (max-width: 599.98px), (max-height: 499.98px) {
+  .pgie-vlabel {
+    display: none;
+  }
+
+  .pgie-vbtn {
+    padding: 0 8px;
+    gap: 4px;
+  }
+}
+
+@media (pointer: coarse) {
+  .pgie-vact .pgie-btn,
+  .pgie-vact .pgie-ibtn {
+    min-height: 44px;
+  }
+}
+
 /* -- Canvas and artboard (pg_image_editor_artboard.js) -- */
 
 /* -- Export (pg_image_editor_export.js) -- */

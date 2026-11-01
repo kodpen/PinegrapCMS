@@ -705,6 +705,7 @@ $liveform->remove_form('edit_file');
     // DELETE
     if (!empty($_POST['delete'])) {
         db_q("DELETE FROM files WHERE id = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
+        pg_file_versions_delete_file((int) ($_POST['id'] ?? 0));
         db_q("DELETE FROM system_theme_css_rules WHERE file_id = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
         db("DELETE FROM preview_styles WHERE theme_id = '" . $file_id . "'");
         @unlink(FILE_DIRECTORY_PATH . '/' . $row['name']);

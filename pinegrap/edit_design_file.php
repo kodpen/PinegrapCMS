@@ -290,6 +290,7 @@ if (empty($_POST['name'])) {
         $audit_before = pg_audit_fetch('files', (int) $id);
         $query = "DELETE FROM files WHERE id = ?";
         $result=db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed');
+        pg_file_versions_delete_file((int) ($_POST['id'] ?? 0));
         pg_audit_record('delete', 'files', (int) $id, $audit_before);
         
         // check to see if this is a system theme

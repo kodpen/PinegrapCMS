@@ -237,6 +237,7 @@ function pg_explorer_handle_delete_files($type, $request, $user)
         $audit_before = pg_audit_fetch('files', $file_id);
 
         db("DELETE FROM files WHERE id = '" . e($file_id) . "'");
+        pg_file_versions_delete_file($file_id);
 
         pg_audit_record('delete', 'files', (int) $file_id, $audit_before);
 

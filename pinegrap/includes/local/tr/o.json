@@ -1158,6 +1158,7 @@
     "Original price (with symbol, to be struck through)": "Orijinal fiyat (sembollü, üstü çizilecek)",
     "Original row total (when discounted, to be struck through)": "Satır orijinal toplamı (indirim varsa, üstü çizilecek)",
     "Original unit price (when discounted, to be struck through)": "Birim orijinal fiyat (indirim varsa, üstü çizilecek)",
+    "Original upload": "Orijinal yükleme",
     "Origins Row": "Kökenler Satırı",
     "Orphan Pages": "Yetim Sayfalar",
     "Orphan shared component id={var:1} was removed from the tree.": "Ortak bileşen id={var:1} artık veritabanında yok; ağaçtan temizlendi.",

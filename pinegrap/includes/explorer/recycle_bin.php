@@ -178,6 +178,7 @@ function pg_delete_file_record($file)
     $audit_before = pg_audit_fetch('files', $file['id']);
 
     db("DELETE FROM files WHERE id = '" . e($file['id']) . "'");
+    pg_file_versions_delete_file($file['id']);
 
     pg_audit_record('delete', 'files', (int) $file['id'], $audit_before);
     db("DELETE FROM system_theme_css_rules WHERE file_id = '" . e($file['id']) . "'");

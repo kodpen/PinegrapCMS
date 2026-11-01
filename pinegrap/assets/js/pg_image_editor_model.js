@@ -1422,7 +1422,42 @@
 
     // -- versions (pg_image_editor_versions.js) --
 
-    var VERSIONS = {};
+    var VERSIONS = {
+        // A label with its number: 'Version {n}'.
+        versionText: function (label, n) {
+            return String(label).replace('{n}', String(n));
+        },
+
+        // The string key of a version's kind (the server's entry.kind).
+        versionKindKey: function (kind) {
+            return { original: 'versionOriginal', restored: 'versionRestored', redacted: 'versionRedacted' }[kind] || 'versionSaved';
+        },
+
+        // When and by whom: the server leaves user '' for the one asking.
+        versionLine: function (entry, you) {
+            return entry.when + ' · ' + (entry.user || you);
+        },
+
+        // The newest save's document as the editor opens it on the version
+        // it was drawn on: this file's id, no base (the save request names
+        // it), or null when it is no picture's document.
+        versionOpenDoc: function (doc, fileId) {
+            if (!doc || (typeof doc !== 'object') || (doc.v !== 1) || !doc.source || (typeof doc.source !== 'object') || !doc.geometry || doc.artboard) {
+                return null;
+            }
+
+            var next = clone(doc);
+
+            delete next.source.base;
+            next.source.fileId = Number(fileId) || 0;
+            next.adjust = (next.adjust && (typeof next.adjust === 'object') && !Array.isArray(next.adjust)) ? next.adjust : {};
+            next.layers = Array.isArray(next.layers) ? next.layers : [];
+            next.filter = next.filter || 'none';
+            next.frame = (next.frame === undefined) ? null : next.frame;
+
+            return next;
+        }
+    };
 
     // -- canvas and artboard (pg_image_editor_artboard.js) --
 

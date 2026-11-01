@@ -267,7 +267,7 @@ function pg_explorer_handle_list_all_files($type, $request, $user, $folders_that
             // The top folder is the one every page and folder can reach.
             'show_product_images' => (bool) ECOMMERCE_SHOW_PRODUCT_IMAGES,
             'root_folder_id' => (int) pg_explorer_root_folder_id()),
-        'disk_usage' => convert_bytes_to_string(db_value("SELECT SUM(size) FROM files"), 2)));
+        'disk_usage' => convert_bytes_to_string(pg_files_disk_usage(), 2)));
 }
 
 // One folder's folders, pages and files, the folder's summary for the
@@ -498,5 +498,5 @@ function pg_explorer_handle_list($type, $request, $user, $folders_that_user_has_
             'blocked_extensions' => pg_blocked_upload_extensions(),
             'show_product_images' => (bool) ECOMMERCE_SHOW_PRODUCT_IMAGES,
             'root_folder_id' => (int) pg_explorer_root_folder_id()),
-        'disk_usage' => convert_bytes_to_string(db_value("SELECT SUM(size) FROM files"), 2)));
+        'disk_usage' => convert_bytes_to_string(pg_files_disk_usage(), 2)));
 }
