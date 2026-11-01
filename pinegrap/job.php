@@ -579,6 +579,21 @@ if (function_exists('pg_not_found_log_sweep_due') && pg_not_found_log_sweep_due(
     }
 }
 
+// Image versions (includes/fn/image_editor.php): once a day the versions of
+// files deleted where no direct call took them along. A tick with nothing
+// due reads one small file.
+if (function_exists('pg_file_versions_sweep_due') && pg_file_versions_sweep_due()) {
+
+    $file_versions_removed = pg_file_versions_sweep();
+
+    if ($file_versions_removed > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} image version(s) of deleted files',
+            'vars'   => array(pg_format_number($file_versions_removed, 0)),
+        )), 'UNKNOWN');
+    }
+}
+
 // The audit trail past the years of the Security screen and the consent
 // log's history past three years (includes/fn/privacy_retention.php): once a
 // day, five seconds a tick until the pass is through. A tick with nothing

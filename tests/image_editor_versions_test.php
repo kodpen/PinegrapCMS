@@ -23,7 +23,7 @@ function image_editor_versions_rows($count)
 	$rows = array();
 
 	for ($n = 1; $n <= $count; $n++) {
-		$rows[] = array('version_id' => 100 + $n, 'version_no' => $n);
+		$rows[] = array('version_id' => 100 + $n, 'version_no' => $n, 'base_no' => 1);
 	}
 
 	return $rows;
@@ -36,6 +36,30 @@ function test_image_editor_versions_retention_keeps_the_original_and_ten()
 	pg_assert_same(array(102), pg_file_versions_pruned(image_editor_versions_rows(12)), 'twelve rows: version 2 goes');
 	pg_assert_same(array(102, 103, 104), pg_file_versions_pruned(image_editor_versions_rows(14)), 'fourteen rows: versions 2-4 go');
 	pg_assert_same(array(), pg_file_versions_pruned(array()), 'no rows');
+
+	// The file changed outside the editor: version 3 is a base row, the saves
+	// after it are drawn on it and keep it past the newest ten.
+	$rows = image_editor_versions_rows(16);
+	$rows[2]['base_no'] = 3;
+
+	for ($i = 3; $i < 16; $i++) {
+		$rows[$i]['base_no'] = 3;
+	}
+
+	pg_assert_same(array(102, 104, 105, 106), pg_file_versions_pruned($rows), 'the base the kept saves need stays');
+
+	$rows[15]['base_no'] = 0;
+	pg_assert_same(array(102, 104, 105, 106), pg_file_versions_pruned($rows), 'an unknown base keeps nothing more');
+}
+
+// A request decoded once as objects reads as json_decode($body, true) would;
+// the overlay string is the same.
+function test_image_editor_versions_request_arrays()
+{
+	$body = '{"action":"save","doc":{"v":1,"adjust":{},"layers":[{"id":"a","pts":[1,2]}]},"overlay":"data:image/png;base64,AAAA"}';
+
+	pg_assert_same(json_decode($body, true), pg_image_editor_arrays(json_decode($body)), 'arrays as the assoc decode');
+	pg_assert_same('7', pg_image_editor_arrays('7'), 'a scalar as it is');
 }
 
 // A version's file name: file, version, a digest and the format; anything

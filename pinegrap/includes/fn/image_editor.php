@@ -970,6 +970,25 @@ function pg_image_editor_save($request, $user)
     return $record;
 }
 
+// A value of json_decode() without assoc as json_decode($body, true) gives
+// it: objects become arrays. Pure.
+function pg_image_editor_arrays($value)
+{
+    if (is_object($value)) {
+        $value = get_object_vars($value);
+    }
+
+    if (is_array($value)) {
+        foreach ($value as $key => $item) {
+            if (is_object($item) || is_array($item)) {
+                $value[$key] = pg_image_editor_arrays($item);
+            }
+        }
+    }
+
+    return $value;
+}
+
 /**
  * One request of image_editor_api.php: its JSON body, checked and answered.
  * Every answer is JSON, refusals included; a page with a "go back" link is
@@ -1011,11 +1030,17 @@ function pg_image_editor_api($body, $user)
         return pg_image_editor_refusal(lang('Invalid request.'));
     }
 
-    $request = json_decode($body, true);
+    // Decoded once, as objects: a save keeps its document as objects for the
+    // version (an empty {} stays one), the rest is read as arrays. The
+    // overlay and colour strings are shared, not copied.
+    $objects = json_decode($body);
 
-    if (!is_array($request)) {
+    if (!is_object($objects)) {
         return pg_image_editor_refusal(lang('Invalid request.'));
     }
+
+    $request = pg_image_editor_arrays($objects);
+    $request['doc_object'] = isset($objects->doc) ? $objects->doc : null;
 
     // Checked here, not by validate_token_field(), which reads $_POST (a JSON
     // body never fills it) and answers with a page.
@@ -1033,10 +1058,6 @@ function pg_image_editor_api($body, $user)
     }
 
     if ($action === 'save') {
-        // The document once more as objects, as a version keeps it.
-        $objects = json_decode($body);
-        $request['doc_object'] = (is_object($objects) && isset($objects->doc)) ? $objects->doc : null;
-
         return pg_image_editor_save($request, $user);
     }
 
@@ -1249,25 +1270,43 @@ function pg_file_versions_keep()
 }
 
 /**
- * The version ids the retention removes: every row but version 1 and the
- * newest pg_file_versions_keep(). Pure.
+ * The version ids the retention removes: every row but version 1, the newest
+ * pg_file_versions_keep() and the base rows those are drawn on (a save whose
+ * base went would reopen with its layers drawn in). Pure.
  *
- * @param array $rows version_id and version_no of one file's rows
+ * @param array $rows version_id, version_no and base_no (the version_no of
+ *                    the base row it is drawn on; its own for a base row, 0
+ *                    when unknown) of one file's rows
  * @return int[] version ids, oldest first
  */
 function pg_file_versions_pruned($rows)
 {
     $saves = array();
+    $bases = array();
 
     foreach ($rows as $row) {
         if ((int) $row['version_no'] > 1) {
-            $saves[(int) $row['version_no']] = (int) $row['version_id'];
+            $saves[(int) $row['version_no']] = $row;
         }
     }
 
-    ksort($saves);
+    krsort($saves);
 
-    return array_values(array_slice($saves, 0, max(0, count($saves) - pg_file_versions_keep())));
+    foreach (array_slice($saves, 0, pg_file_versions_keep(), true) as $row) {
+        $bases[] = isset($row['base_no']) ? (int) $row['base_no'] : 0;
+    }
+
+    $removed = array();
+
+    foreach (array_slice($saves, pg_file_versions_keep(), null, true) as $no => $row) {
+        if (!in_array($no, $bases, true)) {
+            $removed[$no] = (int) $row['version_id'];
+        }
+    }
+
+    ksort($removed);
+
+    return array_values($removed);
 }
 
 /**
@@ -1448,12 +1487,25 @@ function pg_file_versions_delete_row($row)
     @unlink(pg_file_versions_path($row));
 }
 
-// The retention: the original and the last pg_file_versions_keep() saves.
+// The retention: the original, the last pg_file_versions_keep() saves and
+// the base rows they are drawn on.
 function pg_file_versions_prune($file_id)
 {
-    $ids = pg_file_versions_pruned(pg_file_versions_rows($file_id));
+    $rows = pg_file_versions_rows($file_id);
 
-    foreach (pg_file_versions_rows($file_id) as $row) {
+    if (count($rows) <= pg_file_versions_keep() + 1) {
+        return;
+    }
+
+    foreach ($rows as $i => $row) {
+        $rows[$i]['base_no'] = empty($row['has_doc'])
+            ? (int) $row['version_no']
+            : pg_file_versions_base_no(array('version_no' => $row['version_no'], 'doc_json' => (string) db_value("SELECT doc_json FROM file_versions WHERE version_id = '" . (int) $row['version_id'] . "'")));
+    }
+
+    $ids = pg_file_versions_pruned($rows);
+
+    foreach ($rows as $row) {
         if (in_array((int) $row['version_id'], $ids, true)) {
             pg_file_versions_delete_row($row);
         }
@@ -1474,6 +1526,65 @@ function pg_file_versions_delete_file($file_id)
     foreach (pg_file_versions_rows($file_id) as $row) {
         pg_file_versions_delete_row($row);
     }
+}
+
+// When the sweep of versions whose file is gone last ran (data/temp).
+function pg_file_versions_sweep_file()
+{
+    return PG_FUNCTIONS_DIR . '/data/temp/file_versions_sweep.json';
+}
+
+// Whether the daily sweep is owed: it has not run in the last day.
+function pg_file_versions_sweep_due()
+{
+    if (!pg_file_versions_ready()) {
+        return false;
+    }
+
+    $state = @json_decode((string) @file_get_contents(pg_file_versions_sweep_file()), true);
+    $done = (is_array($state) && isset($state['done_at'])) ? (int) $state['done_at'] : 0;
+
+    return $done < (time() - 86400);
+}
+
+/**
+ * The daily pass (job.php): the versions of files deleted where no direct
+ * call took them along (a design file, a form, comment, chat or Workspace
+ * attachment), rows and pictures, within the time budget. Writes the state
+ * file when through.
+ *
+ * @param int $seconds
+ * @return int rows removed
+ */
+function pg_file_versions_sweep($seconds = 5)
+{
+    if (!pg_file_versions_ready()) {
+        return 0;
+    }
+
+    $removed = 0;
+    $deadline = microtime(true) + max(1, (int) $seconds);
+    $through = false;
+
+    while (microtime(true) < $deadline) {
+        $rows = db_items("SELECT file_versions.version_id, file_versions.stored_name FROM file_versions LEFT JOIN files ON files.id = file_versions.file_id WHERE files.id IS NULL LIMIT 200");
+
+        if (!is_array($rows) || !$rows) {
+            $through = is_array($rows);
+            break;
+        }
+
+        foreach ($rows as $row) {
+            pg_file_versions_delete_row($row);
+            $removed++;
+        }
+    }
+
+    if ($through) {
+        @file_put_contents(pg_file_versions_sweep_file(), json_encode(array('done_at' => time())));
+    }
+
+    return $removed;
 }
 
 // The bytes the files and their versions take, for Disk Usage.
