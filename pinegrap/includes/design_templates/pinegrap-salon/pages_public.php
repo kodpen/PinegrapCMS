@@ -208,7 +208,9 @@ $public_pages[] = array(
             )),
         )),
 
-        // What clients say.
+        // What clients say: sample words for the salon to replace, and beside
+        // them the salon's own Google reviews, which show once Google Reviews
+        // is set up under Site Settings.
         $el('section', 'py-5', lang('Testimonials'), array(
             $container(array(
                 $section_header(lang('Our clients'), lang('What clients say')),
@@ -217,6 +219,7 @@ $public_pages[] = array(
                     $testimonial(lang('“My gel manicure lasted three full weeks. The studio is so calm I nearly fell asleep.”'), lang('Zeynep A.'), lang('Gel Manicure')),
                     $testimonial(lang('“Leyla did my wedding make-up. It looked perfect in every photo and lasted until the last dance.”'), lang('Burcu and Can Y.'), lang('Bridal Make-up')),
                 ), '4'),
+                $widget('google_reviews'),
             )),
         )),
 

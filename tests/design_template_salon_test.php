@@ -9,7 +9,10 @@
  * and the booking form keeps what the Clinic's request flow relies on
  * (field names, the date rule, the office-only status, the consent link,
  * the e-mail pages), and the account and staff parts place only defined
- * widgets and build every page the links name.
+ * widgets and build every page the links name. Its comment threads are
+ * drawn by the Comments widget (a post's comments, a booking's messages, a
+ * conversation's replies, the reply e-mail's card) and a Google Reviews
+ * widget stands beside the sample words of the home page.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -20,6 +23,8 @@
 if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
+
+require_once(__DIR__ . '/helpers/template_threads.php');
 
 // The parts as the template file reads them: parts.php first, then each
 // page file in the same scope. Read once per run.
@@ -408,7 +413,7 @@ function test_salon_assembled_template()
 	pg_assert_same(count($d['booking']['widgets']) + count($d['standard']['widgets']) + count($d['account']['widgets']), count($tpl['widgets']));
 	pg_assert_same(array('account_bar', 'notice', 'header', 'footer', 'staff_bar', 'booking_band', 'email_header', 'email_footer'), array_keys($tpl['shared']));
 	pg_assert_true(isset($tpl['contact_groups']['newsletter']), 'the newsletter contact group');
-	pg_assert_same('1.0.0', $tpl['version']);
+	pg_assert_same('1.1.0', $tpl['version']);
 
 	// The contact page's details are a search section.
 	foreach ($tpl['pages'] as $p) {
@@ -430,4 +435,66 @@ function test_salon_assembled_template()
 	sort($used);
 	pg_assert_same($ruled, $used, 'psl- classes and rules match');
 	pg_assert_same(2, count(json_decode($tpl['assets']['fonts'], true)), 'two fonts');
+}
+
+// The salon's threads: widget key => its page, the record view above it,
+// its options, Reply and Share, the follow boxes.
+function _test_salon_threads()
+{
+	return array(
+		'post_comments' => array('page' => 'blog_post', 'view' => 'blog_post', 'reply' => true, 'watch' => true,
+			'options' => array('order' => 'oldest', 'featured' => 'first', 'layout' => 'threaded', 'max_depth' => 2, 'per_page' => 20)),
+		'appointment_messages' => array('page' => 'appointment_view', 'view' => 'appointment_detail', 'reply' => false, 'watch' => false,
+			'options' => array('order' => 'oldest', 'featured' => 'none', 'layout' => 'flat', 'max_depth' => 1, 'per_page' => 0)),
+		'conversation_replies' => array('page' => 'conversation', 'view' => 'conversation', 'reply' => false, 'watch' => false,
+			'options' => array('order' => 'oldest', 'featured' => 'none', 'layout' => 'flat', 'max_depth' => 1, 'per_page' => 0)),
+	);
+}
+
+// No fixed comments block is left; the widget kinds the salon ships.
+function test_salon_comment_widgets()
+{
+	$tpl = _tpl_threads_tpl('pinegrap-salon');
+	_tpl_threads_check_no_fixed_block('pinegrap-salon', array(
+		'appointment_messages' => 'comments', 'conversation_replies' => 'comments', 'email_comment' => 'comments', 'post_comments' => 'comments',
+	));
+	pg_assert_same('google_reviews', pg_sw_widget_kind($tpl['widgets']['google_reviews']['config']), 'and a Google Reviews widget');
+	// Each thread keeps its page's comment settings: signed-in writers,
+	// published at once, its label and its e-mail.
+	$labels = array('blog_post' => lang('Comment'), 'appointment_view' => lang('Message'), 'conversation' => lang('reply'));
+	foreach ($labels as $key => $label) {
+		$c = _tpl_threads_page($tpl, $key)['comments'];
+		pg_assert_same($label, $c['label'], $key . ': its label');
+		pg_assert_true($c['login'] && $c['auto_publish'], $key . ': signed in, published at once');
+	}
+}
+
+function test_salon_comment_threads()
+{
+	foreach (_test_salon_threads() as $key => $t) {
+		_tpl_threads_check_thread('pinegrap-salon', $key, $t);
+		_tpl_threads_check_draws('pinegrap-salon', $key, $t);
+	}
+	// A booking's messages are as private as the booking: the view above
+	// them shows it to its client only.
+	$tpl = _tpl_threads_tpl('pinegrap-salon');
+	foreach (array('appointment_detail', 'conversation') as $view) {
+		pg_assert_same('submitter_only', $tpl['widgets'][$view]['config']['access_control'], $view . ': the client\'s own');
+	}
+}
+
+function test_salon_comment_email()
+{
+	_tpl_threads_check_email_card('pinegrap-salon', 'email_comment', 'email_reply', array('blog_post', 'appointment_view', 'conversation'));
+}
+
+function test_salon_google_reviews()
+{
+	_tpl_threads_check_google_reviews('pinegrap-salon', 'google_reviews', 'home', lang('Testimonials'));
+	// The sample words stay, before the widget.
+	$tpl = _tpl_threads_tpl('pinegrap-salon');
+	$home = json_encode(_tpl_threads_page($tpl, 'home')['tree'], JSON_UNESCAPED_UNICODE);
+	$sample = strpos($home, lang('“Leyla did my wedding make-up. It looked perfect in every photo and lasted until the last dance.”'));
+	$widget = strpos($home, '"templateWidget":"google_reviews"');
+	pg_assert_true($sample !== false && $widget !== false && $sample < $widget, 'the sample words stay, the widget after them');
 }
