@@ -74,7 +74,11 @@ function pg_explorer_bulk_product_new_price($old_price, $method, $value)
         $new_price = ((100 - $value) / 100) * $old_price;
     }
 
-    return (int) round($new_price);
+    // A float past what products.price holds stays a float for the caller to
+    // refuse: the int cast wraps it on a 32-bit build.
+    $new_price = round($new_price);
+
+    return pg_product_price_too_large($new_price) ? $new_price : (int) $new_price;
 }
 
 // The value of a bulk price change, or null when it is empty, not a number,
@@ -399,6 +403,7 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
     $updated = 0;
     $price_changed = 0;
     $price_skipped = 0;
+    $price_too_large = 0;
     $barcodes_assigned = 0;
     $notes = array();
 
@@ -439,7 +444,11 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
 
             $new_price = pg_explorer_bulk_product_new_price($product_row['price'], $bulk_price_method, $bulk_price_value);
 
-            if ($new_price <= 0) {
+            // A result the column cannot hold is skipped and counted, not
+            // cut to the column's top.
+            if (pg_product_price_too_large($new_price)) {
+                $price_too_large++;
+            } elseif ($new_price <= 0) {
                 $price_skipped++;
             } else {
                 $sql_parts[] = "price = '" . e($new_price) . "'";
@@ -665,13 +674,20 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
             'vars' => $price_skipped));
     }
 
+    if ($price_too_large > 0) {
+        $message .= ' ' . lang(array(
+            'string' => 'The price was left alone on {var:1} of them, because the new price would be too large.',
+            'vars' => $price_too_large));
+    }
+
     log_activity($message, $_SESSION['sessionusername']);
 
     respond(array(
-        'status' => ($price_skipped > 0) ? 'partial' : 'success',
+        'status' => (($price_skipped > 0) || ($price_too_large > 0)) ? 'partial' : 'success',
         'request' => $type,
         'updated' => $updated,
         'price_skipped' => $price_skipped,
+        'price_too_large' => $price_too_large,
         'barcodes' => $barcodes_assigned,
         'message' => $message));
 }

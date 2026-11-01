@@ -1200,6 +1200,7 @@
     "{var:1} product(s) that track stock have no cost yet; a purchase invoice gives them one.": "Stok takibi açık {var:1} ürünün henüz maliyeti yok; bir alış faturası maliyet verir.",
     "{var:1} product(s) were exported": "{var:1} ürün dışa aktarıldı",
     "{var:1} product(s) were moved to the Recycle Bin.": "{var:1} ürün Geri Dönüşüm Kutusuna taşındı.",
+    "{var:1} product(s) were not changed because their new price would be too large.": "{var:1} ürün, yeni fiyatı çok büyük olacağı için değiştirilmedi.",
     "{var:1} product(s) were not changed because their price would fall to zero or below.": "{var:1} ürünün fiyatı sıfıra ya da altına ineceği için değiştirilmedi.",
     "{var:1} product(s) were not changed because they are in the Recycle Bin.": "{var:1} ürün Geri Dönüşüm Kutusunda olduğu için değiştirilmedi.",
     "{var:1} product(s) will be moved to the Recycle Bin.": "{var:1} ürün Geri Dönüşüm Kutusuna taşınacak.",

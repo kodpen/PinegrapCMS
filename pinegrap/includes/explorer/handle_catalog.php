@@ -423,8 +423,23 @@ function pg_explorer_handle_catalog_rename($type, $request, $user)
 
         // The same rule for a product: a binned one is restored before it
         // is edited, and a deleted one has nothing to rename.
-        if (!db_item("SELECT id FROM products WHERE id = '" . e($item_id) . "'" . pg_catalog_live_filter('products'))) {
+        $product_row = db_item("SELECT id, name FROM products WHERE id = '" . e($item_id) . "'" . pg_catalog_live_filter('products'));
+
+        if (!$product_row) {
             respond(array('status' => 'error', 'message' => lang('Sorry, we could not accept your request.')));
+        }
+
+        // The name is the product code (SKU): the product screen's rule,
+        // compared by the column's collation and counting the Recycle Bin.
+        // Checked only when the code changes, so a catalogue that already
+        // holds a duplicate can still save the same name.
+        if ($name !== (string) $product_row['name']) {
+
+            $holder = pg_product_name_holder($name, $item_id);
+
+            if ($holder) {
+                respond(array('status' => 'error', 'message' => pg_product_name_taken_text($name, $holder)));
+            }
         }
 
         $audit_before = pg_audit_fetch('products', $item_id);

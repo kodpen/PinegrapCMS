@@ -8,7 +8,7 @@ description: Bulk price change (edit_products.php, pg_bulk_price_change(), and t
 - The value must be a number above zero, as in the Catalog Manager's bulk price change: an empty, non-numeric, zero or negative value gives "Enter an amount for the price change." (`add_error()`, so a tax rate error beside it does not replace it) and no price is touched (#1296). Before, −150% stored −5.00 for 10.00.
 - Each product's price is `pg_bulk_price_change($price, $method, $value)` (`includes/fn/ecommerce.php`): `['price' => new or old, 'refused' => bool]`. The decrease methods refuse any result at or below zero, a free or negative price included; the increase methods refuse one only when the change lowers the price. A refused product keeps its price and is counted in "{var:1} product(s) were not changed because their price would fall to zero or below." (the broken English key was replaced in #4140).
 - The method labels come from `pg_product_mass_price_method_options()` (`includes/fn/product_list.php`): the sample amount is `pg_format_money(30, BASE_CURRENCY_SYMBOL)` and the percent `lang('{var:1}%')`, so a Turkish panel shows "+ ₺30,00" and "+ %30", not a fixed "30.00"/"30%" (#4140).
-- Percentages round as before (`round((100 ± v) / 100 x price)`).
+- Percentages round as before; past `PG_PRODUCT_PRICE_MAX` is refused (product-price-bound-and-export.md).
 
 ## And the Catalog Manager's bulk price change?
 - `includes/explorer/handle_products_bulk.php` (`price_method` increase, decrease, increase_percent, decrease_percent): `pg_explorer_bulk_price_value()` refuses a value that is empty, non-numeric or at or below zero up front, and the handler skips every product whose result is at or below zero. Both screens now take the same values; on a price already below zero the Catalog Manager skips an increase that the bulk edit writes.
@@ -16,7 +16,7 @@ description: Bulk price change (edit_products.php, pg_bulk_price_change(), and t
 ## How does the Catalog Manager read a typed amount?
 - The bulk increase/decrease by amount and the quick price box (`pg_explorer_catalog_quick_price()`, `includes/explorer/handle_catalog_edit.php`) read the text through `pg_normalize_amount()`, like the product screen (ui/money-field-input-mask.md): `1.250,00` and `1,250.00` are 1250, and a single separator with three digits after it is read by the panel language, so `1.250` on a Turkish panel is 1250. Both boxes post the text as typed; a percentage reads a comma as the decimal point.
 - Products › Modify Selected reads its value with `pg_products_mass_price_value()` (`handle_products_bulk.php`): methods 1-2 by the amount path above, 3-4 by the percent path; its box is a money-masked text field (`pg_money_mask_attributes()`).
-- Before, commas were stripped or turned into a point: Turkish `1.250` saved 1,25 TL with no warning (Modify Selected until #4445).
+- Before, Turkish `1.250` saved 1,25 TL with no warning (Modify Selected until #4445).
 
 ## Why must no writer store a negative price?
 - A negative product becomes a negative order line. Paraşüt refuses such a line outright (live, 2026-10-23): unit price, VAT and discount must be zero or more. The checkout taxes it alone while the ERP groups it, and an ERP return of it refunds too much (erp/erp-negative-price-lines.md).
