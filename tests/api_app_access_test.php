@@ -136,7 +136,7 @@ function test_api_app_access_screen_wiring()
 // range (10.0.0.0/16 -> 10.0.0.0/1) admits half of IPv4.
 function test_api_app_access_text_too_long()
 {
-	$list = str_repeat('192.168.100.200, ', 28) . '10.0.0.0/16';
+	$list = str_repeat('192.168.100.200, ', 30) . '10.0.0.0/16';
 
 	pg_assert_true(strlen($list) > 500, 'the list is longer than the column');
 	pg_assert_same('ip_allowlist', api_app_text_too_long(array('name' => 'Shop', 'ip_allowlist' => $list)), 'long allow list refused');
