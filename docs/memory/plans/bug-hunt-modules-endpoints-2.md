@@ -108,7 +108,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 
 - Endpoints si, signature_receipt, signin, get_site_icon, get_sitemap_info, get_sitemap.xml: open
 
-- Endpoints smtp_settings, stock_notify, submit_order, test_secure_mode, add_to_cart, toolbar: open
+- Endpoints smtp_settings, stock_notify, submit_order, test_secure_mode, add_to_cart, toolbar: taken by bug-hunt-smtp-toolbar
 
 - Endpoints track_shipment, get_update_address_book, url_to_absolute, variant_set_action, welcome, wishlist: open
 

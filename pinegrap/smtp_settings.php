@@ -209,17 +209,22 @@ function smtp_settings_save($liveform_settings) {
 // if the form has not been submitted
 if (!$_POST) {
 
-    // Assign config values
+    // Assign config values. The passwords are left out: a stored secret is
+    // never drawn back into the page (or the form state in the session); an
+    // empty box keeps the saved value, and the placeholder says one is saved.
     $config_keys = [
-        'SYSTEM_SMTP_HOSTNAME','SYSTEM_SMTP_USERNAME','SYSTEM_SMTP_PASSWORD','SYSTEM_SMTP_PORT',
+        'SYSTEM_SMTP_HOSTNAME','SYSTEM_SMTP_USERNAME','SYSTEM_SMTP_PORT',
         'EMAIL_CAMPAIGN_JOB','EMAIL_CAMPAIGN_JOB_NUMBER_OF_EMAILS',
-        'CAMPAIGN_SMTP_HOSTNAME','CAMPAIGN_SMTP_USERNAME','CAMPAIGN_SMTP_PASSWORD','CAMPAIGN_SMTP_PORT',
+        'CAMPAIGN_SMTP_HOSTNAME','CAMPAIGN_SMTP_USERNAME','CAMPAIGN_SMTP_PORT',
         'DKIM_DOMAIN','DKIM_SELECTOR'
     ];
     foreach ($config_keys as $key) {
         $field = strtolower($key);
         $liveform->assign_field_value($field, defined($key) ? constant($key) : '');
     }
+
+    $system_password_placeholder = (defined('SYSTEM_SMTP_PASSWORD') && ((string) SYSTEM_SMTP_PASSWORD !== '')) ? lang('Leave blank to keep the saved secret') : '';
+    $campaign_password_placeholder = (defined('CAMPAIGN_SMTP_PASSWORD') && ((string) CAMPAIGN_SMTP_PASSWORD !== '')) ? lang('Leave blank to keep the saved secret') : '';
 
     $system_connection_field = smtp_settings_connection_field('system_mail_connection', defined('SYSTEM_MAIL_CONNECTION') ? SYSTEM_MAIL_CONNECTION : 0, $mail_accounts);
     $campaign_connection_field = smtp_settings_connection_field('campaign_mail_connection', defined('CAMPAIGN_MAIL_CONNECTION') ? CAMPAIGN_MAIL_CONNECTION : 0, $mail_accounts);
@@ -419,7 +424,7 @@ if (!$_POST) {
                                         </div>
                                         <div class="col-12 lg:col-6 my-3">
                                             <label for="system_smtp_password" class="form-label">' . lang('Password') . '</label>
-                                            ' . $liveform->output_field(['type'=>'password','name'=>'system_smtp_password','id'=>'system_smtp_password','class'=>'form-control','autocomplete'=>'new-password']) . '
+                                            ' . $liveform->output_field(['type'=>'password','name'=>'system_smtp_password','id'=>'system_smtp_password','class'=>'form-control','autocomplete'=>'new-password','placeholder'=>$system_password_placeholder]) . '
                                         </div>
                                     </div>
                                     <div class="mt-5">' . $system_buttons . '</div>
@@ -467,7 +472,7 @@ if (!$_POST) {
                                             </div>
                                             <div class="col-12 lg:col-6 my-3">
                                                 <label for="campaign_smtp_password" class="form-label">' . lang('Password') . '</label>
-                                                ' . $liveform->output_field(['type'=>'password','name'=>'campaign_smtp_password','id'=>'campaign_smtp_password','class'=>'form-control','autocomplete'=>'new-password']) . '
+                                                ' . $liveform->output_field(['type'=>'password','name'=>'campaign_smtp_password','id'=>'campaign_smtp_password','class'=>'form-control','autocomplete'=>'new-password','placeholder'=>$campaign_password_placeholder]) . '
                                             </div>
                                         </div>
                                     </div>
