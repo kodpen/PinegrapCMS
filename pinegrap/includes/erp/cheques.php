@@ -300,6 +300,9 @@ function erp_cheque_create($data, $user_id)
         'payment_method' => ($kind === 'cheque') ? 'cheque' : 'other',
         'description' => mb_substr($description, 0, 255),
         'created_by' => (int) $user_id,
+        // A given cheque leaves its till before the bank pays it, so the
+        // given-cheques till is below zero until then.
+        'allow_below_zero' => true,
     ));
 
     if (empty($posted['success'])) {
@@ -501,6 +504,7 @@ function erp_cheque_step($id, $step, $options, $user_id)
             'doc_date' => $date,
             'description' => mb_substr((($step === 'collect') ? lang(array('string' => '{var:1} collected', 'vars' => $name)) : lang(array('string' => '{var:1} paid by the bank', 'vars' => $name))), 0, 255),
             'created_by' => (int) $user_id,
+            'allow_below_zero' => true,
         ));
 
         if (empty($moved['success'])) {
@@ -541,6 +545,7 @@ function erp_cheque_step($id, $step, $options, $user_id)
                 ? lang(array('string' => '{var:1} passed on', 'vars' => $name))
                 : lang(array('string' => '{var:1} bounced', 'vars' => $name))) . (($reason !== '') ? ': ' . $reason : ''), 0, 255),
             'created_by' => (int) $user_id,
+            'allow_below_zero' => true,
         ));
 
         if (empty($posted['success'])) {

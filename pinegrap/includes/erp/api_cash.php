@@ -197,6 +197,12 @@ function erp_api_cash_transfers_create($params)
         }
     }
 
+    // A cash till pays only what it holds; erp_post_transfer() asks again
+    // under the till's row lock.
+    if (($refusal = erp_till_outflow_row_refusal($from, $amount)) !== '') {
+        api_fail_validation($refusal, 'amount');
+    }
+
     $description = mb_substr(trim((string) ($params['description'] ?? '')), 0, 255);
 
     api_dry_run_stop('created', 'erp_cash_transfer', array(
