@@ -5,7 +5,7 @@ module: comments
 ---
 
 ## Which page is a designed product page?
-- A `standard` page whose top level places a catalog_item_view widget and no form_item_view widget (`pg_sw_page_widgets()`, shared refs of the page tree only). The store, boutique and bookshop templates' product page is one.
+- A `standard` page whose top level places a catalog_item_view widget and no form_item_view widget (`pg_sw_page_widgets()`, shared refs of the page tree only). The store, boutique, bookshop and hello templates' product page is one.
 - `pg_comment_thread_page_type($page_id, $page_type)` answers `'catalog detail'` for it, any other page its own type; the pure rule is `pg_comment_product_view_page_type()` (`includes/fn/comments.php`). A record view decides first, as everywhere.
 
 ## What did it show before, and why change it?
@@ -20,7 +20,7 @@ module: comments
 
 ## What do the canvas, the templates and the markup add? (2c2)
 - Canvas: `_sdCommentsProductViewPage(p)` (same rule, `_swTabHasWidget()`) makes `_sdCommentsPageThread()` answer `product`; Preview says "On this product page it shows the reviews…".
-- The store, boutique and bookshop product page: comments on with stars, sign-in, auto-publish, staff mail; a "Reviews" section (col-lg-8, centred) with widget `product_reviews` (kind `comments`, newest, featured `none`, flat, 10 a page, starter tree, shop only).
+- The store, boutique, bookshop and hello product page: comments on with stars, sign-in, auto-publish, staff mail; a "Reviews" section (col-lg-8, centred) with widget `product_reviews` (kind `comments`, newest, featured `none`, flat, 10 a page, starter tree, shop only).
 - `aggregateRating` in `_pg_build_product_jsonld()` only when `pg_comment_product_view_rating_shown()` (pure `pg_comment_rating_markup_decision()`): comments and stars on, a comments widget on the page, the address thread is this product's (a select group's thread counts in no rating).
 
 ## What is left as it was?
