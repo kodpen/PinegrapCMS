@@ -10,21 +10,22 @@ description: Coordinator session (pilot, 2026-10-26): one per account, keeps its
 - Reads the state from GitHub and the plan files, not its memory: open PRs and drafts, the queue count (Working mode 8); `plans/README.md`, open plan steps and `bug` issues (`test-coordinator.md`) only when a slot is free.
 - Picks work no open PR holds: one plan or area per worker, never two workers on the same files or the same plan (Claim work, step 1); steps of one plan in parallel when the owner assigned them so or when they touch different files.
 - Starts each worker as a cloud session with a short brief: the plan step or task, the memory folder, and "follow CLAUDE.md". The worker claims with its own draft PR and works as every session does, its plan's next steps included (Working mode 2 and 6).
-- Keeps 3 to 6 workers busy (since 2026-10-31); fewer only as `coordinator-limits.md` allows.
+- Keeps 3 to 6 workers busy; fewer only as `coordinator-limits.md` allows.
+- No free plan step: issues, bug hunt, a new design template (`coordinator-no-plans.md`).
 - Keeps a to-do list of its workers' PRs (`coordinator-todo-list.md`).
 - Chooses the work itself, never asking the owner or the architect: which free step, the order, how many workers, which steps run in parallel. Only a decision question goes to an `architect` issue; the architect brings the answer to the PR (`architect.md`).
 - Writes no product code, opens no PR, merges nothing, does not review: the merging session does.
 
 ## What are its limits?
 - It reaches only its own account.
-- `create_session` works on any turn, also one woken by a check-in, an event or another session (tested 2026-10-31): it starts workers and hands over without waiting for the owner.
+- `create_session` works on any turn, also one woken by a check-in, an event or another session: it starts workers and hands over without waiting for the owner.
 - A worker counts once its draft PR is on GitHub.
 
 ## What does a check-in look at?
-- Every 10 minutes (a session cron on off-minutes, such as `3,13,23,33,43,53 * * * *`): one listing of the open PRs, drafts included, against the previous one. Nothing new: no message, no more reading.
+- Every 10 minutes (a session cron on off-minutes): one listing of the open PRs, drafts included, against the previous one. Nothing new: no message, no more reading.
 - Its workers' PRs: merged with no next draft 10 minutes later (its slot is free); sent back by the merging session and not pushed to within 30 minutes (a new worker for that branch); a draft with no push for an hour (named to the owner once: a prompt, limit or error stopped it); a worker with no draft 30 minutes after its start (`get_session`; replace a failed one).
 - The merging session: a `ready` PR with no update for 45 minutes and no `merge-train/*` PR open, or a train PR with none for 45 minutes, means the merger stopped: tell the owner once, with the PR numbers. Also an `architect` issue with no analysis for an hour.
-- Why 10 minutes: at 30 a stuck worker waited half an hour. Quota guard, worker range, decided drafts: `coordinator-limits.md`.
+- Quota guard, worker range, decided drafts: `coordinator-limits.md`.
 
 ## When does it hand over to a fresh coordinator?
 - Past 350k tokens of context (`get_session` `context_usage.used_tokens`, at a check-in): each wake pays for all of it.
