@@ -153,6 +153,24 @@ function test_designer_page_link_spec_max()
 	pg_assert_same('p7', $spec['params'][7]['name'], 'the ninth is the one dropped');
 }
 
+// A value that is fixed text, the same in every record: read only with no
+// token, trimmed, and a blank one is no value.
+function test_designer_page_link_spec_fixed_text()
+{
+	$spec = pg_sw_page_link_spec(array('page_id' => 5, 'params' => array(
+		array('name' => 'topic', 'text' => '  Reserving a seat  '),
+		array('name' => 'event', 'token' => 'title', 'text' => 'ignored'),
+		array('name' => 'blank', 'text' => '   '),
+		array('name' => 'other', 'text' => array('x')),
+		array('name' => 'topic', 'text' => 'second'),
+		array('name' => 'query', 'text' => 'refused name'),
+	)));
+	pg_assert_same(array(
+		array('name' => 'topic', 'text' => 'Reserving a seat'),
+		array('name' => 'event', 'token' => 'title'),
+	), $spec['params'], 'trimmed text; a token wins over text; blank text, a non-string, a repeated or refused name dropped');
+}
+
 // The editor keeps what is being typed and leaves the dropping to the server.
 function test_designer_page_link_editor_spec()
 {
@@ -228,6 +246,40 @@ function test_designer_page_link_editor_repeated_name_follows_server()
 	pg_assert_same(array(array('name' => 'board', 'token' => 'board')), $spec['params']);
 	$spec = pg_sw_page_link_spec(array('page_id' => 4, 'params' => $rows['both sent']));
 	pg_assert_same(array(array('name' => 'board', 'token' => 'board')), $spec['params']);
+}
+
+// The editor keeps a row's fixed text while it has no field, as a string
+// even while empty (the row stays a text row), and drops it once a field is
+// chosen; a text row counts as sent for the repeated-name warning only when
+// its text is not blank.
+function test_designer_page_link_editor_fixed_text()
+{
+	$answer = _page_link_node(
+		'console.log(JSON.stringify({'
+		. ' kept: _swPageLinkSpec({ params: [{ name: "Topic", text: " Seats " }, { name: "e", token: "title", text: "x" }, { name: "b", text: "" }, { name: "n", text: 3 }] }).params,'
+		. ' warn: [_swPageLinkNameWarn([{ name: "topic", token: "", text: "Seats" }, { name: "topic", token: "x" }], 1) !== "",'
+		. '        _swPageLinkNameWarn([{ name: "topic", token: "", text: "  " }, { name: "topic", token: "x" }], 1) !== ""]'
+		. '}));'
+	);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		array('name' => 'topic', 'token' => '', 'text' => ' Seats '),
+		array('name' => 'e', 'token' => 'title'),
+		array('name' => 'b', 'token' => '', 'text' => ''),
+		array('name' => 'n', 'token' => ''),
+	), $answer['kept'], 'text kept as typed with no field, dropped with one');
+	pg_assert_same(array(true, false), $answer['warn'], 'a text row takes its name only when it sends text');
+
+	$js = _page_link_js();
+	$rows = _page_link_js_slice($js, 'function _sdPageLinkRows(n, fields) {', 'var rowsHtml = \'\';');
+	pg_assert_contains("tokenOptions(p.token, typeof p.text === 'string')", $rows, 'the select shows a text row as Fixed text');
+	pg_assert_contains('sd-sw-plink-text', $rows, 'and draws its text box');
+	pg_assert_contains("if (v === ':text') {", $js, 'choosing Fixed text keeps the row a text row');
+	pg_assert_contains("_sdEditRun('plink:text:' + i)", $js, 'the text\'s keystrokes are one undo step');
 }
 
 // The deleted-page warning: a tab of this design is live even when the page
@@ -310,6 +362,28 @@ function test_designer_page_link_bindings_tokens()
 	pg_assert_same('form_item_view', $tree['children'][1]['children'][1]['props']['_bindings']['href'], 'a spec under another binding is left alone');
 	pg_assert_same(array('board' => true, 'submitter_name' => true), pg_sw_page_link_tokens($links), 'the tokens the record query reads');
 	pg_assert_same(array(), pg_sw_page_link_bindings($tree), 'a tree already expanded has nothing left to expand');
+}
+
+// Fixed text reads no field: the record query is not asked for it, and in a
+// list inside the record it is never taken from the row.
+function test_designer_page_link_bindings_fixed_text()
+{
+	$tree = array('type' => 'root', 'props' => array(), 'children' => array(
+		array('type' => 'loop_area', 'props' => array('source' => 'form_record.values', 'field' => 'tags'), 'children' => array(
+			_page_link_node_tree(array('page_id' => 4, 'params' => array(
+				array('name' => 'topic', 'text' => 'Tags'),
+				array('name' => 'tag', 'token' => '__value_param'),
+			))),
+		)),
+	));
+	$links = pg_sw_page_link_bindings($tree);
+
+	pg_assert_same(array(
+		array('name' => 'topic', 'text' => 'Tags'),
+		array('name' => 'tag', 'token' => '__value_param', 'row' => true),
+	), $links['__page_link_0']['params'], 'only the row value is marked');
+	pg_assert_same(array('__value_param' => true), pg_sw_page_link_tokens($links));
+	pg_assert_same(array('__page_link_0'), $tree['children'][0]['props']['_pgRowLinks']);
 }
 
 function test_designer_page_link_base()
@@ -411,6 +485,21 @@ function test_designer_page_link_values_escape_once()
 
 	$html = pg_sw_apply_tokens('<a href="^^__page_link_0^^">x</a>', $row, $custom, $values);
 	pg_assert_same('<a href="/board?board=Tom%20%26%20Jerry&amp;member=Ann">x</a>', $html);
+}
+
+// Fixed text goes into the address as written, encoded once, in its place
+// among the record's values; text the URL filter would not read back is
+// left out.
+function test_designer_page_link_values_fixed_text()
+{
+	$links = array('__page_link_0' => array('page_id' => 4, 'base' => '/contact', 'params' => array(
+		array('name' => 'topic', 'text' => 'Seats & tickets'),
+		array('name' => 'event', 'token' => 'title'),
+		array('name' => 'long', 'text' => str_repeat('a', 101)),
+	)));
+	$custom = array('title' => array('data' => 'Poems', 'type' => 'text box', 'wysiwyg' => 0));
+	pg_assert_same(array('__page_link_0' => h('/contact?topic=Seats%20%26%20tickets&event=Poems')), pg_sw_page_link_values($links, array(), $custom, array()));
+	pg_assert_same(array('__page_link_0' => h('/contact?topic=Seats%20%26%20tickets')), pg_sw_page_link_values($links, array(), array(), array()), 'with no record the text is still sent');
 }
 
 // A value that reads like a token is encoded and can never form one.
