@@ -1357,8 +1357,24 @@ function pg_seo_analyze_page($page_id)
         return NULL;
     }
 
+    $folder_public = (get_access_control_type($page_row['page_folder']) === 'public');
+
+    // The audits judge what a visitor who is not signed in is served: a page
+    // in a private or archived folder, or of a type that cannot be rendered
+    // standalone, is not examined, and what it was told before goes.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/background_render.php');
+
+    if (!pg_render_pass_covers(pg_render_pass_scope('structure'), array(
+        'page_type'       => $page_row['page_type'],
+        'folder_public'   => $folder_public,
+        'folder_archived' => $page_row['folder_archived'],
+    ))) {
+        pg_seo_forget_findings('page', $page_id);
+        return NULL;
+    }
+
     $in_sitemap = (((string) $page_row['sitemap']) === '1')
-        && (get_access_control_type($page_row['page_folder']) === 'public')
+        && $folder_public
         && (((string) $page_row['folder_archived']) !== '1');
 
     $context = array(

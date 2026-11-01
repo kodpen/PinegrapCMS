@@ -707,19 +707,22 @@ function pg_a11y_state_path()
 }
 
 /**
- * The pages the report covers, page_id => row: published (public folder, not
- * archived) and of a type the structure pass can render. Classic pages are
- * read like visual ones; nothing in their markup is changed.
+ * The pages the report covers, page_id => row: the audits' scope
+ * (pg_render_pass_scope('a11y'): public folder, not archived, a type the
+ * structure pass can render). Classic pages are read like visual ones;
+ * nothing in their markup is changed.
  *
  * @return array<int,array>
  */
 function pg_a11y_pages()
 {
-    $types = pg_seo_renderable_page_types();
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/background_render.php');
+
+    $scope = pg_render_pass_scope('a11y');
     $pages = array();
 
     $rows = db_items(
-        "SELECT page.page_id, page.page_name, page.page_type, page.page_folder
+        "SELECT page.page_id, page.page_name, page.page_type, page.page_folder, folder.folder_archived
         FROM page
         LEFT JOIN folder ON page.page_folder = folder.folder_id
         WHERE (folder.folder_archived IS NULL) OR (folder.folder_archived <> '1')
@@ -730,7 +733,7 @@ function pg_a11y_pages()
 
     foreach ($rows as $row) {
 
-        if (!in_array($row['page_type'], $types, true)) {
+        if (!in_array($row['page_type'], $scope['types'], true)) {
             continue;
         }
 
@@ -738,7 +741,9 @@ function pg_a11y_pages()
             $public[$row['page_folder']] = (get_access_control_type($row['page_folder']) === 'public');
         }
 
-        if ($public[$row['page_folder']]) {
+        $row['folder_public'] = $public[$row['page_folder']];
+
+        if (pg_render_pass_covers($scope, $row)) {
             $pages[(int) $row['page_id']] = $row;
         }
     }
