@@ -2,9 +2,9 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The canvas placeholders of the Messages element and of the comments
- * block region are editor chrome (the site prints the messages or the
- * comments instead), so the designer's canvas audit leaves them out: each
+ * The canvas placeholders of the Messages element, of the comments block
+ * region and of the components the site prints only as a marker are
+ * editor chrome (the site prints the real content instead), so the designer's canvas audit leaves them out: each
  * carries the sd-editor-ph class and _SD_CANVAS_AUDIT_SKIP lists it.
  *
  * @author      Erdal Güral (Kodpen)

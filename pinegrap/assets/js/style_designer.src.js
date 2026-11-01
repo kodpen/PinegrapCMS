@@ -5628,7 +5628,9 @@ const StyleDesigner = (function () {
             },
             render: function (doc, p) {
                 var d = doc.createElement('div');
-                d.className = 'border border-secondary border-dashed rounded p-3 text-center';
+                // sd-editor-ph: editor chrome, left out of the canvas audit
+                // (the site prints the marker, then the product gallery).
+                d.className = 'border border-secondary border-dashed rounded p-3 text-center sd-editor-ph';
                 d.style.minHeight = '180px';
                 d.style.opacity = '0.75';
                 var pos = p.thumbsPosition || 'bottom';
@@ -5706,7 +5708,8 @@ const StyleDesigner = (function () {
             defaultProps: { cssClass: '' },
             render: function (doc, p) {
                 var d = doc.createElement('nav');
-                d.className = 'pg-canvas-placeholder ' + (p.cssClass || '');
+                // sd-editor-ph: editor chrome, left out of the canvas audit.
+                d.className = 'pg-canvas-placeholder sd-editor-ph ' + (p.cssClass || '');
                 d.style.cssText = 'border:1px dashed #6366f1;border-radius:4px;padding:8px 12px;'
                                 + 'background:rgba(99,102,241,.06);color:#6366f1;font-size:.8rem;line-height:1.4';
                 d.innerHTML = '<i class="bi bi-signpost-split me-1"></i>'
@@ -5756,7 +5759,8 @@ const StyleDesigner = (function () {
             },
             render: function (doc, p) {
                 var d = doc.createElement('div');
-                d.className = 'border border-primary border-dashed rounded p-2 ' + (p.cssClass || '');
+                // sd-editor-ph: editor chrome, left out of the canvas audit.
+                d.className = 'border border-primary border-dashed rounded p-2 sd-editor-ph ' + (p.cssClass || '');
                 d.style.opacity = '0.85';
                 var styleLabels = {
                     select:       _sdT('Select dropdown'),
@@ -5795,7 +5799,8 @@ const StyleDesigner = (function () {
             defaultProps: { cssClass: '' },
             render: function (doc, p) {
                 var d = doc.createElement('div');
-                d.className = 'alert alert-success py-2 mb-2';
+                // sd-editor-ph: editor chrome, left out of the canvas audit.
+                d.className = 'alert alert-success py-2 mb-2 sd-editor-ph';
                 d.style.borderStyle = 'dashed';
                 d.style.opacity = '0.75';
                 d.innerHTML = '<span class="bi bi-tag-fill me-1"></span>'
