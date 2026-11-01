@@ -112,7 +112,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-customer-card.md: The customer card on a Workspace channel's Summary tab (CRM seams 3, #1666): the customer summary via the ws_channel_customer action, addresses per row, ids kept back, New cart quote (#3197)
 - workspace-customer-history.md: A channel's customer history (CRM seams slice 4, #1681): union read of orders, cart quotes, invoices, quotes, forms and Workspace tags, rights per source, paging, API route, card part
 - workspace-customer-summary.md: A channel's customer summary (GET /workspace/channels/{id}/customer): identity, orders, ERP balance, sales quotes, cart quotes, forms; rights and key scopes per section, money
-- workspace-date-fields.md: Workspace date and time fields on the one control: pgDateField(), the watcher that draws them, script-written values, the control in the lazy record loader (#2867)
+- workspace-date-fields.md: Workspace date and time fields on the one control: pgDateField(), the watcher that draws them, script-written values, the control in the lazy record loader (#2867), the Flows editor's (#4398)
 - workspace-density.md: The Workspace comfortable / compact switch: ws-density key per browser, .ws-compact on <html>, which tokens it narrows, where the switch sits, which screens follow (PR #3733)
 - workspace-discussion-follow-screen.md: Stop / Follow again for the assistant a discussion follows (PR #2997, answer 4a of #2419): header line, channel line, system line, API follow fields and endpoint
 - workspace-discussion-follow.md: The assistant a discussion follows (ws_threads.follow_agent, step 11.0.113, decision #2419, PR #2924): who is followed, which message asks it, the no-pile-up rule, scheduled sends

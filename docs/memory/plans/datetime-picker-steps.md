@@ -28,4 +28,4 @@ description: Panel steps P1-P11 of plans/datetime-picker.md: what each changes, 
 
 - P11 (S) done (#2854). Page schedule boxes and widget filter value boxes on the control (`ui/pg-date-stores.md`); `pgFields.refresh()` for values a script writes.
 
-- F1 (M) Flows editor (`workspace_flow.js`), by the Flows team, after P9.
+- F1 (M) done (#4398). Flows editor (`workspace_flow.js`) through the kit's `dateField` (`workspace/workspace-date-fields.md`).

@@ -24410,6 +24410,8 @@
             button: button,
             viewBack: viewBack,
             select: select,
+            dateField: pgDateField,
+            dateShown: dateShown,
             avatar: avatar,
             avatarStack: avatarStack,
             peoplePicker: peoplePicker,

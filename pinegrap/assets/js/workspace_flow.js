@@ -2106,9 +2106,11 @@
                 row.appendChild(document.createTextNode(member.name));
                 control.appendChild(row);
             });
+        } else if (type === 'time') {
+            control = dateInput('time', value, function (typed) { answers.time = typed; });
         } else {
             control = el('input', 'form-control form-control-sm');
-            control.type = { time: 'time', url: 'url' }[type] || 'text';
+            control.type = (type === 'url') ? 'url' : 'text';
             control.value = value || '';
             control.addEventListener('input', function () { answers[type] = control.value; });
         }
@@ -4486,6 +4488,22 @@
         return input;
     }
 
+    // A date, time or date-and-time input on the panel's one control (the
+    // kit's dateField(), pgDateField() in workspace.js): the native input
+    // keeps the ISO value the step's config stores (2026-10-26, 17:05,
+    // 2026-10-26T17:05) and workspace.js draws the typed box once the input
+    // is in the page. The box writes the input with a change event, never an
+    // input event; a native input fires a change too.
+    function dateInput(type, value, onValue) {
+        var input = el('input', 'form-control form-control-sm');
+
+        K.dateField(input, type);
+        input.value = value || '';
+        input.addEventListener('change', function () { onValue(input.value); });
+
+        return input;
+    }
+
     // ── Values a box writes in ({{node.<id>.<field>}}, {{trigger.<field>}}) ──
 
     // What the server reads as a value (WS_STEP_VALUE_PATTERN, the
@@ -6738,23 +6756,17 @@
     // days of a weekly one and its last day, as a scheduled action's "when".
     function scheduleFields(box, node) {
         var config = node.config;
-        var date = el('input', 'form-control form-control-sm');
-        var clock = el('input', 'form-control form-control-sm');
+        var date = dateInput('date', config.date, function (typed) {
+            config.date = typed;
+            refreshNode(node);
+        });
+        var clock = dateInput('time', config.time, function (typed) {
+            config.time = typed;
+            refreshNode(node);
+        });
         var repeats = stepLists().repeats;
         var repeat = K.select(Object.keys(repeats).map(function (key) { return [key, repeats[key]]; }), config.repeat || 'none');
 
-        date.type = 'date';
-        date.value = config.date || '';
-        date.addEventListener('input', function () {
-            config.date = date.value;
-            refreshNode(node);
-        });
-        clock.type = 'time';
-        clock.value = config.time || '';
-        clock.addEventListener('input', function () {
-            config.time = clock.value;
-            refreshNode(node);
-        });
         repeat.addEventListener('change', function () {
             config.repeat = repeat.value;
             refreshNode(node);
@@ -6808,14 +6820,11 @@
         }
 
         if ((config.repeat || 'none') !== 'none') {
-            var until = el('input', 'form-control form-control-sm');
-
-            until.type = 'date';
-            until.value = config.until || '';
-            until.addEventListener('input', function () {
-                config.until = until.value;
+            var until = dateInput('date', config.until, function (typed) {
+                config.until = typed;
                 refreshNode(node);
             });
+
             box.appendChild(field(t('fl_when_until'), until, t('fl_when_until_help')));
         }
     }
@@ -7346,14 +7355,11 @@
         if (rule.type === 'hours') {
             [['from', 'fl_cond_from'], ['to', 'fl_cond_to']].forEach(function (pair) {
                 var key = pair[0];
-                var clock = el('input', 'form-control form-control-sm');
-
-                clock.type = 'time';
-                clock.value = rule[key] || '';
-                clock.addEventListener('input', function () {
-                    rule[key] = clock.value;
+                var clock = dateInput('time', rule[key], function (typed) {
+                    rule[key] = typed;
                     changed();
                 });
+
                 box.appendChild(field(t(pair[1]), clock));
             });
         }
@@ -7638,11 +7644,13 @@
             return input;
         }
 
-        input = textInput(value, 500, function (typed) {
-            if (kind === 'datetime') {
-                typed = (typed === '') ? '' : typed.replace('T', ' ').slice(0, 16) + ':00';
-            }
+        if ((kind === 'date') || (kind === 'datetime')) {
+            return dateInput((kind === 'date') ? 'date' : 'datetime-local', (kind === 'date') ? value : String(value || '').replace(' ', 'T').slice(0, 16), function (typed) {
+                onChange(((kind === 'date') || (typed === '')) ? typed : typed.replace('T', ' ').slice(0, 16) + ':00');
+            });
+        }
 
+        input = textInput(value, 500, function (typed) {
             if (kind === 'decimal') {
                 typed = (siteNumber(typed) === null) ? typed : siteNumber(typed);
             }
@@ -7652,11 +7660,6 @@
 
         if (kind === 'decimal') {
             input.value = siteShown(value || '');
-        } else if (kind === 'date') {
-            input.type = 'date';
-        } else if (kind === 'datetime') {
-            input.type = 'datetime-local';
-            input.value = String(value || '').replace(' ', 'T').slice(0, 16);
         }
 
         return input;

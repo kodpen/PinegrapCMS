@@ -1,6 +1,6 @@
 ---
 name: workspace-date-fields
-description: Workspace date and time fields on the one control: pgDateField(), the watcher that draws them, script-written values, the control in the lazy record loader (#2867)
+description: Workspace date and time fields on the one control: pgDateField(), the watcher that draws them, script-written values, the control in the lazy record loader (#2867), the Flows editor's (#4398)
 ---
 
 ## How does a Workspace form get a date or time field?
@@ -8,6 +8,11 @@ description: Workspace date and time fields on the one control: pgDateField(), t
 - Never set `.type = 'date'` (or `time`, `datetime-local`) directly: `tests/workspace_datetime_fields_test.php` counts the fields that go through `pgDateField()`.
 - The bundle's modules (approvals, customer, recurrence, task time, task approval) get it as `h.dateField` from `partHelpers()`, `featureHelpers()` and the repeat field's helpers (P10).
 - The timeline toolbar has its own local `dateField(key, label)`; the helper is named `pgDateField` so it is not shadowed there. Its two boxes carry their label as placeholder (they were blank) and share `.ws-tl-dates` (`flex: 0 1 22rem`, each box `flex: 1 1 0`): `w-auto` boxes pushed the page 100px sideways on a phone.
+
+## How does the Flows editor get one?
+- `workspace_flow.js` builds every date, time and date-and-time input with its `dateInput(type, value, onValue)`, which calls the kit's `K.dateField` (`pgDateField()`, lent by `shareKit()` with `dateShown`): the schedule's first day, time and last day, the condition's hours, a record field's date or moment value, the template setup's time answer (F1, #4398). `tests/workspace_flow_date_fields_test.php` counts them.
+- The config keeps what it kept: `2026-10-26`, `17:05`; a moment compared with a record field is still stored `2026-10-26 17:05:00`.
+- `dateInput()` listens to `change`, not `input`: the drawn box writes its native input with a change event only.
 
 ## When is the box drawn?
 - `watchDateFields()`, started by `start()`, observes `document.body`: any added node holding a hooked field is passed to `pgFields.init()`. Forms are built off the page and added later (drawers, dialogs, panels), so no call site draws its own fields.

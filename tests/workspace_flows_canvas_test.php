@@ -992,12 +992,14 @@ JS
 function test_workspace_flows_canvas_condition_values_are_kept_as_the_field_holds_them()
 {
 	$result = ws_flows_canvas_test_node(
-		array('field', 'textInput', 'stepLists', 'changeInput', 'channelPick', 'siteDecimal', 'siteNumber', 'siteShown', 'conditionValue', 'conditionCompare', 'conditionMetric'),
+		array('field', 'textInput', 'dateInput', 'stepLists', 'changeInput', 'channelPick', 'siteDecimal', 'siteNumber', 'siteShown', 'conditionValue', 'conditionCompare', 'conditionMetric'),
 		<<<'JS'
 var uid = 0;
 var FL = {};
 var BOOT = { channels: [] };
 state = { edit: true };
+// workspace.js's pgDateField(): the native type (the control's hook aside).
+K.dateField = function (input, type) { input.type = type; return input; };
 K.select = function (options, value) {
     var node = new FakeNode('select');
     options.forEach(function (option) {
@@ -1014,7 +1016,8 @@ function drawSettings() {}
 function controls(box) { return box.children.map(function (wrap) { return wrap.children[1]; }); }
 function enter(control, value) {
     control.value = value;
-    (control.listeners[(control.tag === 'select') ? 'change' : 'input'] || []).forEach(function (fn) { fn(); });
+    // A select and a date box announce a change, a text box its input.
+    (control.listeners[((control.tag === 'select') || !control.listeners.input) ? 'change' : 'input'] || []).forEach(function (fn) { fn(); });
 }
 // A field of a kind compared by op: the value control as drawn for what is
 // kept, then what is kept once value is entered into it.
