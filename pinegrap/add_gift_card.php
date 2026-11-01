@@ -111,19 +111,11 @@ if (!$_POST) {
 
     $liveform->validate_required_field('quantity', lang(array('string'=>'{var:1} is required','vars'=>lang('Quantity'))) );
 
-    // Remove commas from quantity.
-    $quantity = str_replace(',', '', $quantity);
+    // A whole number of cards above 0 (commas dropped): a fraction would
+    // create only its whole part, 0.5 no card at all.
+    $quantity = pg_gift_card_form_quantity($quantity);
 
-    // If there is not already an error for the quantity field,
-    // and value is not a number greater than 0, then add error.
-    if (
-        ($liveform->check_field_error('quantity') == false)
-        &&
-        (
-            (is_numeric($quantity) == false)
-            || ($quantity <= 0)
-        )
-    ) {
+    if (($liveform->check_field_error('quantity') == false) && ($quantity === false)) {
         $liveform->mark_error('quantity', lang('Please enter a valid quantity.'));
     }
 

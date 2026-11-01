@@ -177,3 +177,27 @@ function pg_gift_card_form_check($liveform, $mode)
 
     return $amount;
 }
+
+/**
+ * The quantity typed on the create screen as a whole number of cards above
+ * 0, or false. Commas (thousands) and spaces around are dropped; a fraction,
+ * an exponent or a sign is refused, since the create loop would make only
+ * the whole part.
+ *
+ * @param mixed $value
+ * @return int|false
+ */
+function pg_gift_card_form_quantity($value)
+{
+    if (!is_scalar($value)) {
+        return false;
+    }
+
+    $quantity = trim(str_replace(',', '', (string) $value));
+
+    if ((preg_match('/^[0-9]{1,9}$/', $quantity) !== 1) || ((int) $quantity < 1)) {
+        return false;
+    }
+
+    return (int) $quantity;
+}
