@@ -2282,7 +2282,8 @@
     // The help sheet's groups for a call's tools: { title, rows: [{ keys,
     // label }] }, keys as tokens (Mod is Ctrl, or Cmd on a Mac; Space,
     // Delete, Arrows and Drag are named by the sheet), title and label as
-    // label keys. Layer keys show only with a tool that makes layers.
+    // label keys. Layer keys show only with a tool that makes layers, Enter
+    // only with Crop.
     var KEY_NOLAYERS = ['crop', 'adjust', 'export'];
 
     function keyMap(list) {
@@ -2306,11 +2307,11 @@
         groups.push({ title: 'keysEdit', rows: [
             { keys: ['Mod', 'Z'], label: 'undo' },
             { keys: ['Mod', 'Shift', 'Z'], label: 'redo' },
-            { keys: ['Mod', 'S'], label: 'save' },
-            { keys: ['Enter'], label: 'keyApply' },
+            { keys: ['Mod', 'S'], label: 'save' }
+        ].concat((list.indexOf('crop') >= 0) ? [{ keys: ['Enter'], label: 'keyApply' }] : [], [
             { keys: ['Esc'], label: 'keyEscape' },
             { keys: ['?'], label: 'keyHelp' }
-        ] });
+        ]) });
 
         if (layers) {
             groups.push({ title: 'keysLayers', rows: [

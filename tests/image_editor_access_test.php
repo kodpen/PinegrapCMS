@@ -126,7 +126,7 @@ function test_image_editor_access_key_map()
 		. 'var photo = M.keyMap(M.PROFILES.photo), opt = M.keyMap(["export"]), ann = M.keyMap(M.PROFILES.annotate);' . "\n"
 		. 'console.log(JSON.stringify({ photo: titles(photo), opt: titles(opt), photoTools: labels(photo, "keysTools"),' . "\n"
 		. ' annTools: labels(ann, "keysTools"), optTouch: labels(opt, "keysTouch"), photoTouch: labels(photo, "keysTouch"),' . "\n"
-		. ' undoKeys: photo[1].rows[0].keys, empty: titles(M.keyMap()) }));'
+		. ' undoKeys: photo[1].rows[0].keys, empty: titles(M.keyMap()), photoEdit: labels(photo, "keysEdit"), canvasEdit: labels(M.keyMap(M.PROFILES.canvas), "keysEdit") }));'
 	);
 
 	if ($r === null) {
@@ -142,4 +142,6 @@ function test_image_editor_access_key_map()
 	pg_assert_same(array('touchPan', 'touchFit', 'touchTwist'), $r['photoTouch'], 'twist with layers');
 	pg_assert_same(array('Mod', 'Z'), $r['undoKeys'], 'undo is Mod+Z');
 	pg_assert_same(array('keysEdit', 'keysView', 'keysTouch'), $r['empty'], 'no tools, no tool group');
+	pg_assert_same(array('undo', 'redo', 'save', 'keyApply', 'keyEscape', 'keyHelp'), $r['photoEdit'], 'Enter applies the crop on a photo');
+	pg_assert_same(array('undo', 'redo', 'save', 'keyEscape', 'keyHelp'), $r['canvasEdit'], 'no crop row without Crop');
 }
