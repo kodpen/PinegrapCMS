@@ -22,7 +22,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 
 - Endpoints `calendar` (13): open
 
-- Endpoints `cart` (4): taken by KR
+- Endpoints `cart` (4): done #4561 (add_cart_quote, cart_action, cart_quote, view_cart_quotes)
 
 - Endpoints `catalog` (4): open
 
