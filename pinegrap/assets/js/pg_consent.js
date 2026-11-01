@@ -202,7 +202,13 @@
         var held = document.querySelectorAll('script[type="text/plain"][data-pg-consent]');
 
         Array.prototype.forEach.call(held, function (node) {
-            if (!choices[node.getAttribute('data-pg-consent')]) {
+            // In any case, as pg_consent_page_services() lists it: a tag
+            // written data-pg-consent="Marketing" is asked about, so it
+            // must start once the visitor allows marketing. Own keys only:
+            // "constructor" is no category.
+            var category = (node.getAttribute('data-pg-consent') || '').toLowerCase();
+
+            if (!LETTERS.hasOwnProperty(category) || !choices[category]) {
                 return;
             }
 
