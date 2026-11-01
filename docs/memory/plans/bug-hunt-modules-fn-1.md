@@ -20,7 +20,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `auth`: done #4523
 
-- `backup`: taken by KS
+- `backup`: done #4563
 
 - `backup_cloud`: open
 
