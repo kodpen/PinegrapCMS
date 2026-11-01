@@ -179,15 +179,16 @@ class liveform {
             }
         }
 
-        // Faz 5b: render aria-invalid directly when the server already knows the field
+        // render aria-invalid directly when the server already knows the field
         // failed validation. This avoids a flash-of-unannounced-error before the JS
         // injector (backend.src.js pgInjectAriaAndRequiredMarkers) runs.
         $output_aria_invalid = '';
         $output_inline_feedback = '';
+        $output_feedback_id = '';
         if (($type != 'hidden') && ($type != 'submit') && $field !== '' && $this->check_field_error($field)) {
             $output_aria_invalid = ' aria-invalid="true"';
 
-            // Faz 7c: render the per-field error message inline next to the input. Mirrors the
+            // render the per-field error message inline next to the input. Mirrors the
             // JS bridge (window.__pgFieldErrors + pgInjectAriaAndRequiredMarkers) so the message
             // is present in the initial HTML response — no FOUC.
             $session_field = isset($_SESSION['software']['liveforms'][$this->form][$this->index][$field])
@@ -202,7 +203,10 @@ class liveform {
                 $feedback_text = function_exists('pg_liveform_message_text')
                     ? pg_liveform_message_text($session_field['error_message'])
                     : $session_field['error_message'];
-                $output_inline_feedback = '<div class="invalid-feedback d-block pg-inline-feedback" data-pg-source="liveform">'
+                // The text gets an id the control names in aria-describedby,
+                // so a screen reader reads it with the field.
+                $output_feedback_id = (((string) $id !== '') ? (string) $id : 'pg-field-' . preg_replace('/[^A-Za-z0-9_-]+/', '-', (string) $field)) . '-feedback';
+                $output_inline_feedback = '<div id="' . h($output_feedback_id) . '" class="invalid-feedback d-block pg-inline-feedback" data-pg-source="liveform">'
                     . htmlspecialchars($feedback_text, ENT_QUOTES, 'UTF-8')
                     . '</div>';
             }
@@ -228,8 +232,12 @@ class liveform {
         }
 
         // A hint printed under the field is tied to it by its id.
-        if (isset($attributes['aria-describedby']) && is_scalar($attributes['aria-describedby']) && (string) $attributes['aria-describedby'] !== '') {
-            $output_aria_label .= ' aria-describedby="' . h((string) $attributes['aria-describedby']) . '"';
+        $described_by = (isset($attributes['aria-describedby']) && is_scalar($attributes['aria-describedby'])) ? trim((string) $attributes['aria-describedby']) : '';
+        if ($output_feedback_id !== '') {
+            $described_by = trim($described_by . ' ' . $output_feedback_id);
+        }
+        if ($described_by !== '') {
+            $output_aria_label .= ' aria-describedby="' . h($described_by) . '"';
         }
 
         $spellcheck = '';
@@ -955,6 +963,30 @@ class liveform {
         }
     }
 
+    // The fields that failed validation, by name, each with its message as
+    // plain text ('' when it has none). The message is alert HTML; its
+    // readers print it in a text context and escape it themselves.
+    function field_error_texts()
+    {
+        $out = array();
+        if (empty($_SESSION['software']['liveforms'][$this->form][$this->index])
+            || !is_array($_SESSION['software']['liveforms'][$this->form][$this->index])) {
+            return $out;
+        }
+        foreach ($_SESSION['software']['liveforms'][$this->form][$this->index] as $field_name => $field_data) {
+            if ((string) $field_name === '' || !is_array($field_data)) continue;
+            if (!isset($field_data['error']) || $field_data['error'] != TRUE) continue;
+            if (!isset($field_data['error_message']) || (string) $field_data['error_message'] === '') {
+                $out[$field_name] = '';
+                continue;
+            }
+            $out[$field_name] = function_exists('pg_liveform_message_text')
+                ? pg_liveform_message_text($field_data['error_message'])
+                : (string) $field_data['error_message'];
+        }
+        return $out;
+    }
+
     function check_field_error($field)
     {
         if (isset($_SESSION['software']['liveforms'][$this->form][$this->index][$field]['error']) && $_SESSION['software']['liveforms'][$this->form][$this->index][$field]['error'] == TRUE) {
@@ -1079,19 +1111,9 @@ class liveform {
                         ' . $output_error_messages . '
                     </div>';
 
-                // Faz 3c: expose per-field error messages so the JS auto-injector can render
+                // expose per-field error messages so the JS auto-injector can render
                 // inline <div class="invalid-feedback"> next to .is-invalid inputs.
-                $field_errors_for_js = array();
-                foreach ($_SESSION['software']['liveforms'][$this->form][$this->index] as $field_name => $field_data) {
-                    if (!is_array($field_data)) continue;
-                    if (!isset($field_data['error']) || $field_data['error'] !== TRUE) continue;
-                    if (!isset($field_data['error_message']) || $field_data['error_message'] === '') continue;
-                    // The JS sets this as textContent, a text context, so hand
-                    // over the message's text rather than its alert HTML.
-                    $field_errors_for_js[$field_name] = function_exists('pg_liveform_message_text')
-                        ? pg_liveform_message_text($field_data['error_message'])
-                        : $field_data['error_message'];
-                }
+                $field_errors_for_js = array_filter($this->field_error_texts(), 'strlen');
                 if ($field_errors_for_js) {
                     $output .= '<script>window.__pgFieldErrors=Object.assign(window.__pgFieldErrors||{},'
                         . json_encode($field_errors_for_js, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT)

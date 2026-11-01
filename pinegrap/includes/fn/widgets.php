@@ -4642,6 +4642,8 @@ function _pg_member_controls($tree)
 // stored value matches its own value (or is truthy when it has none).
 function _pg_member_fill_from_form(&$tree, $form, $skip = array())
 {
+    // The controls the refused attempt failed on are marked, passwords too.
+    if (method_exists($form, 'field_error_texts')) pg_form_mark_invalid_controls($tree, $form->field_error_texts());
     foreach (_pg_member_controls($tree) as $c) {
         if (in_array($c['name'], $skip, true)) continue;
         if (!$form->field_in_session($c['name'])) continue;
@@ -8409,6 +8411,9 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
             }
         }
         pg_cf_apply_field_bindings($tree_decoded, $cf_field_map, $cf_liveform, $cf_folder, $cf_staff, $cf_url_values);
+        // A refused submission marks the controls it failed on (the
+        // bindings renamed them to the field ids the errors are kept by).
+        if ($cf_liveform) pg_form_mark_invalid_controls($tree_decoded, $cf_liveform->field_error_texts());
     }
     // Ids are final now, including the ones invented above, so a label that
     // names nothing can be pointed at the control beside it.
