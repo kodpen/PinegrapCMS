@@ -20,11 +20,11 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 
 - `merchant_center`: open
 
-- `meta_tags`: open
+- `meta_tags`: done (#MTPR: a page `og:image` kept the design's `og:image:alt` and size)
 
 - `mfa`: taken by KY — #4590
 
-- `not_found_log`: open
+- `not_found_log`: clean (name, referrer, decide, write and stale restart, cap, sweep, keyset page, where, redirect URL checked); lead: `pg_not_found_log_answers()` shows `binned` for a name a live pattern now answers (patterns are asked only for names nothing else holds)
 
 - `office`: done (#4946: a run property turned off with `w:val="off"` showed its formatting in the Word preview)
 
