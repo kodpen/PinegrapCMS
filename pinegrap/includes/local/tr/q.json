@@ -127,5 +127,6 @@
     "quantity must be between {var:1} and {var:2}.": "quantity {var:1} ile {var:2} arasında olmalıdır.",
     "quantity must be numeric.": "quantity sayısal olmalıdır.",
     "question": "soru",
+    "questions": "sorular",
     "quote, catering order, offer, event catering, request": "teklif, catering siparişi, fiyat teklifi, etkinlik catering, talep"
 }
