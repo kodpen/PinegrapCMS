@@ -56,7 +56,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `site_log_list`: open
 
-- `site_search`: taken by LX
+- `site_search`: taken by LX, #4678
 
 - `site_time_sql`: open
 
