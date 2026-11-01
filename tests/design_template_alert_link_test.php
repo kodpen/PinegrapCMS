@@ -19,13 +19,6 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
-// Templates whose comment sign-in box still writes a plain link: their
-// files are held by other open changes and follow once those land.
-function _test_tpl_alert_link_pending()
-{
-	return array('pinegrap-courses', 'pinegrap-events', 'pinegrap-salon');
-}
-
 // Calls $fn($node, $ancestors) for every node of the trees in $value.
 function _test_tpl_alert_link_walk($value, $fn, $ancestors = array())
 {
@@ -90,7 +83,6 @@ function test_design_template_alert_links_and_dark_quotes()
 	$checked = 0;
 	foreach (glob($dir . '/*.php') as $file) {
 		$id = basename($file, '.php');
-		if (in_array($id, _test_tpl_alert_link_pending(), true)) continue;
 		$tpl = _pg_tpl_include($file);
 		pg_assert_true(is_array($tpl), $id . ' loaded');
 		pg_assert_same(array(), _test_tpl_alert_link_problems($tpl), $id . ' keeps alert links and dark quotes readable');

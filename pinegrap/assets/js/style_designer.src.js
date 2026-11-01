@@ -61511,7 +61511,7 @@ const StyleDesigner = (function () {
                                     createNode('semantic', { tag: 'table', cssClass: 'table table-striped align-middle mb-0', customName: _sdT('Payment Table') }, [
                                         createNode('semantic', { tag: 'thead', cssClass: '', customName: _sdT('Table Head') }, [
                                             createNode('semantic', { tag: 'tr', cssClass: '', customName: _sdT('Header Row') }, [
-                                                _ciTh(_sdT('Method')),
+                                                _ciTh(_sdT('Payment method')),
                                                 _ciTh(_sdT('Description')),
                                                 _ciTh(_sdT('Fee'), 'text-end')
                                             ])
