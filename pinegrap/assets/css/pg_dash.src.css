@@ -804,6 +804,100 @@
     .pg-dash-queue-row[data-tone="warn"] { border-inline-start-color: CanvasText; }
   }
 
+  /* ── Work cards: Pipeline ─────────────────────────────────────────────── */
+
+  .pg-dash-pipe-sub {
+    margin: 0 0 .75rem;
+    font-size: .8125rem;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-pipe {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: .75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pg-dash-pipe-step {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    height: 100%;
+    padding: .75rem .875rem;
+    border: var(--pg-border-width) solid var(--pg-border-color);
+    border-radius: var(--pg-radius-lg);
+    color: inherit;
+    text-decoration: none;
+  }
+
+  a.pg-dash-pipe-step:hover,
+  a.pg-dash-pipe-step:focus-visible {
+    background: var(--pg-tint-hover);
+  }
+
+  .pg-dash-pipe-label {
+    font-size: .6875rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-pipe-figure {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: .5rem;
+  }
+
+  .pg-dash-pipe-value {
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--pg-fg-emphasis);
+  }
+
+  .pg-dash-pipe-spark {
+    flex: 0 1 5.625rem;
+    min-width: 3rem;
+    height: 1.875rem;
+    color: var(--pg-primary);
+  }
+
+  .pg-dash-pipe-note {
+    font-size: .75rem;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-pipe-note[data-tone="good"] { color: var(--pg-success-fg-emphasis); }
+  .pg-dash-pipe-note[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
+
+  .pg-dash-pipe-flag {
+    align-self: flex-start;
+    margin-top: .25rem;
+    padding: .125rem .5rem;
+    border: var(--pg-border-width) solid color-mix(in srgb, var(--pg-warning) 45%, transparent);
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--pg-warning) 14%, transparent);
+    font-size: .75rem;
+    color: var(--pg-warning-fg-emphasis);
+  }
+
+  .pg-dash-pipe-flag[data-tone="bad"] {
+    border-color: color-mix(in srgb, var(--pg-danger) 45%, transparent);
+    background: color-mix(in srgb, var(--pg-danger) 14%, transparent);
+    color: var(--pg-danger-fg-emphasis);
+  }
+
+  @media (forced-colors: active) {
+    .pg-dash-pipe-spark { color: CanvasText; }
+    .pg-dash-pipe-flag,
+    .pg-dash-pipe-flag[data-tone="bad"] { border-color: CanvasText; }
+  }
+
   /* ── Edit mode ────────────────────────────────────────────────────────── */
 
   .pg-dash-card-edit,
