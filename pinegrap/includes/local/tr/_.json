@@ -1359,6 +1359,7 @@
     "{var:1} tasks here are waiting on something.": "Buradaki {var:1} görev bir şey bekliyor.",
     "{var:1} tasks in this channel are due today.": "Bu kanalda {var:1} görevin son günü bugün.",
     "{var:1} tasks were finished here in the last seven days.": "Son yedi günde burada {var:1} görev bitirildi.",
+    "{var:1} tasks · written {var:2}": "{var:1} görev · yazıldı {var:2}",
     "{var:1} tasks · {var:2} notes": "{var:1} görev · {var:2} not",
     "{var:1} task{suffix:1}": "{var:1} görev",
     "{var:1} task{suffix:1} due today or overdue": "bugüne kadar bitmesi gereken {var:1} görev",

@@ -63,6 +63,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     };
 
+    // The person's tasks written to their Google Calendar.
+    if (ws_gcal_post($user_id, $action, $liveform)) {
+
+        header('Location: ' . $screen_url . '#ws-google-calendar');
+
+        exit();
+
+    }
+
     // The person's own calendars on their Work Calendar.
     if (ws_personal_ical_post($user_id, $action, $liveform)) {
 
@@ -309,6 +318,7 @@ echo pg_page_shell(array(
             ' . $address_card . '
             ' . $manage_card . '
             ' . ws_personal_ical_card($user_id) . '
+            ' . ws_gcal_card($user_id) . '
         </div>
         <div class="col-12 xl:col-5">
             ' . $help . '
@@ -364,6 +374,14 @@ echo pg_page_shell(array(
             }
         });
     }
+
+    // Stopping Google Calendar writing asks first.
+    document.addEventListener("submit", function (e) {
+        var form = e.target.closest(".ws-gcal-confirm");
+        if (form && !window.confirm(form.dataset.confirm)) {
+            e.preventDefault();
+        }
+    });
 
     // Making a new address and ending the subscription post through one form
     // outside the cards, each after a question.
