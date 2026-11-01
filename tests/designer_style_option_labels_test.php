@@ -276,3 +276,54 @@ function test_designer_style_option_labels_colour_row_keys()
 	pg_assert_same(0, preg_match_all("/: 'None';/", $source));
 	pg_assert_same(0, preg_match_all("/\\['top',\\s*'Top'\\]/", $source));
 }
+
+// The Typography selects of every text element: case, display size, weight,
+// style, line height and decoration read in Turkish; they kept the
+// class-derived "Lowercase", "Display 1", "Semibold", "Decoration none".
+function test_designer_style_option_labels_typography()
+{
+	$result = _test_sol_run(array(
+		array('', array('text-lowercase', 'text-uppercase', 'text-capitalize'), 'None'),
+		array('', array('display-1', 'display-6', 'fs-2'), 'Default'),
+		array('fw-semibold', array('fw-lighter', 'fw-light', 'fw-normal', 'fw-medium', 'fw-semibold', 'fw-bold', 'fw-bolder'), 'Default'),
+		array('', array('fst-italic', 'fst-normal'), 'Default'),
+		array('', array('lh-1', 'lh-sm', 'lh-base', 'lh-lg'), 'Default'),
+		array('', array('text-decoration-none', 'text-decoration-underline', 'text-decoration-line-through', 'text-decoration-overline'), 'Default'),
+	), array_merge(_test_sol_keys(), array('lowercase', 'UPPERCASE', 'Capitalize Each Word', 'Display heading', 'Lighter', 'Light weight', 'Normal', 'Medium', 'Semibold', 'Bold', 'Bolder', 'Italic', 'Base', 'No decoration', 'Underline', 'Strikethrough', 'Overline')));
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(array('', 'Hiçbiri', false), array('text-lowercase', 'küçük harf', false), array('text-uppercase', 'BÜYÜK HARF', false), array('text-capitalize', 'İlk Harfler Büyük', false)), $result[0]['options']);
+	pg_assert_same(array(array('', 'Varsayılan', false), array('display-1', 'Büyük başlık 1', false), array('display-6', 'Büyük başlık 6', false), array('fs-2', '2', false)), $result[1]['options']);
+	pg_assert_same(array(
+		array('', 'Varsayılan', false),
+		array('fw-lighter', 'Daha İnce', false),
+		array('fw-light', 'İnce', false),
+		array('fw-normal', 'Normal', false),
+		array('fw-medium', 'Orta', false),
+		array('fw-semibold', 'Yarı kalın', true),
+		array('fw-bold', 'Kalın', false),
+		array('fw-bolder', 'Daha Kalın', false),
+	), $result[2]['options']);
+	pg_assert_same(array(array('', 'Varsayılan', false), array('fst-italic', 'İtalik', false), array('fst-normal', 'Normal', false)), $result[3]['options']);
+	pg_assert_same(array(array('', 'Varsayılan', false), array('lh-1', '1', false), array('lh-sm', 'Küçük', false), array('lh-base', 'Temel', false), array('lh-lg', 'Büyük', false)), $result[4]['options']);
+	pg_assert_same(array(
+		array('', 'Varsayılan', false),
+		array('text-decoration-none', 'Süssüz', false),
+		array('text-decoration-underline', 'Altı Çizili', false),
+		array('text-decoration-line-through', 'Üstü Çizili', false),
+		array('text-decoration-overline', 'Üst Çizgi', false),
+	), $result[5]['options']);
+}
+
+// The Themes panel: the success colour row and the link decoration options
+// go through _sdT(); the stored values stay the CSS keywords.
+function test_designer_style_option_labels_theme_rows()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	pg_assert_contains("{ name: '--bs-success',   label: _sdT('Success'),", $source);
+	pg_assert_same(2, substr_count($source, "opts: ['none','underline','overline','line-through'], optLabels: _sdThemeDecorationLabels(),"));
+	pg_assert_contains("esc(v.optLabels && v.optLabels[o] ? v.optLabels[o] : o)", $source);
+}
