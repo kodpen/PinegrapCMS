@@ -16,6 +16,7 @@ description: The panel loads no jQuery UI (#2762): what is undefined on panel sc
 ## Who still loads jQuery UI?
 - Site pages (`get_page_content.php` and the site renderers, `frontend.src.js`): sites stay on Bootstrap 5.3.8 + jQuery UI. `assets/lib/Jquery/ui` stays.
 - `theme_designer.php` and `get_theme_designer_module.php` call `.dialog()` but are unlinked (#2437, #2512).
+- `theme_designer.php`'s own script functions (`resize_theme_designer()`, `init_theme_designer_accordion()`, `open_theme_designer_accordion_module()`, `open_advanced_styling_from_button_bar()`, `open_view_source()`) are defined nowhere, so its accordion, CSS and View Source buttons do nothing. Cancel no longer needs a script: it is a link to `clear_theme_designer_session.php` with a `data-confirm-content` question (#4775; before it, it called the undefined `theme_designer_cancel_confirm()`).
 
 ## What keeps it out?
 - `tests/bs6_jquery_ui_panel_test.php`: the header prints no `Jquery/ui/` file, and no PHP or JS file outside its site and theme designer list calls a jQuery UI widget chained off a call (`).dialog(`, `).effect(` …) or `$.ui` / `$.widget`. A new site renderer that uses jQuery UI joins the list.
