@@ -16,10 +16,10 @@ description: Plan (owner request 2026-11-01): Turkish addresses as İl and İlç
 - One pure function gives a country's labels: `District` / `Province` for Turkey ("Province" → "İl" through `tr_add.php`), `City` / `State / Province` elsewhere. The server stamps both texts on the city and state labels; one client script swaps them when the country changes and shows the district box by the new rule (`pg_ship_to_district_script()` grows into it).
 - Saved designer trees, template pages and classic custom layouts are not rewritten: the render applies it, as `pg_ship_to_district_tree_fit()` does for the box. Only the default words swap (asterisk, case and spacing ignored); words a designer or a layout changed stay.
 
-## Which questions are open? (owner, through the architect)
-1. Source of the Turkish district list (#3569 (b)): compiled from the official public list into the repository, MIT (recommended); or GeoNames (CC BY 4.0, attribution).
-2. A district not in the list: accepted with a yellow note on the order screen, a matching spelling corrected (recommended); or refused.
-3. Other countries: lists as files contributed per country (recommended now); or a per-country GeoNames download from the panel, as the DB-IP database (`includes/fn/geo.php`).
+## Which questions are decided? (owner 2026-11-01, PR #4683; `workflow/decisions-made-product-17.md`)
+1. Source of the Turkish district list: compiled by us from the official public list into the repository, MIT (81 provinces, 973 districts, 51 "Merkez"); no ready-made compilation and its licence.
+2. A district not in the list: accepted; the order screen shows a yellow note; a spelling that matches a listed name is corrected ("kadikoy" → "Kadıköy"). No district blocks an order.
+3. Other countries: lists as files contributed per country (`includes/geo/places/<CC>.json`); a country without a pack keeps the city as free text. A per-country GeoNames download (A7) is not built.
 
 ## What is not in this plan?
 - Filling `states` for more countries: once a country has states, `get_valid_zones_for_destination()` and `get_tax_rate_for_address()` match a zone by state, so zones listing only the country stop matching.
