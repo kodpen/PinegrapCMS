@@ -12420,12 +12420,12 @@ function pg_carrier_number_field($value)
     if (pg_erp_store_country() === 'TR') {
         return '<label for="carrier_vkn" class="form-label">' . lang('Carrier VKN') . '</label>
             <input value="' . $value . '" type="text" name="carrier_vkn" id="carrier_vkn" class="form-control" maxlength="11" inputmode="numeric" />
-            <div class="form-text text-end">' . lang('Tax number of the carrier (10 digits) or ID number (11 digits)') . '</div>';
+            <div class="form-text">' . lang('Tax number of the carrier (10 digits) or ID number (11 digits)') . '</div>';
     }
 
     return '<label for="carrier_vkn" class="form-label">' . lang('Carrier tax number') . '</label>
         <input value="' . $value . '" type="text" name="carrier_vkn" id="carrier_vkn" class="form-control" maxlength="' . pg_carrier_number_width() . '" />
-        <div class="form-text text-end">' . lang('The tax number of the carrier, as it prints it on its own invoices.') . '</div>';
+        <div class="form-text">' . lang('The tax number of the carrier, as it prints it on its own invoices.') . '</div>';
 }
 
 /**

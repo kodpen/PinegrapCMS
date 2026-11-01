@@ -635,7 +635,7 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                                                 <div class="col-12">
                                                                     <label for="' . $field . '_cutoff_time" class="form-label">' . lang('Cut-off time') . '</label>
                                                                     <input type="text" name="' . $field . '_cutoff_time" id="' . $field . '_cutoff_time" size="8" maxlength="8" value="' . $value($field . '_cutoff_time') . '"  class="form-control" data-pg-time/>
-                                                                    <div class="form-text text-end">' . $time_help . '</div>
+                                                                    <div class="form-text">' . $time_help . '</div>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -667,12 +667,12 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                         <div class="col-12 md:col-6 my-3">
                                             <label for="code" class="form-label">' . lang('Code') . '</label>
                                             <input value="' . $value('code') . '" type="text" name="code" id="code" class="form-control" maxlength="50" />
-                                            <div class="form-text text-end">' . lang('Shipping Method Code for Order Reporting') . '</div>
+                                            <div class="form-text">' . lang('Shipping Method Code for Order Reporting') . '</div>
                                         </div>
                                         <div class="col-12 md:col-6 my-3">
                                             <label for="carrier_title" class="form-label">' . lang('Carrier Title') . '</label>
                                             <input value="' . $value('carrier_title') . '" type="text" name="carrier_title" id="carrier_title" class="form-control" maxlength="255" />
-                                            <div class="form-text text-end">' . lang('Registered company name of the carrier, printed on e-archive invoices for internet sales') . '</div>
+                                            <div class="form-text">' . lang('Registered company name of the carrier, printed on e-archive invoices for internet sales') . '</div>
                                         </div>
                                         <div class="col-12 md:col-6 my-3">
                                             ' . pg_carrier_number_field($value('carrier_vkn')) . '
@@ -680,7 +680,7 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                         <div class="col-12 md:col-6 my-3">
                                             <label for="service" class="form-label">' . lang('Service') . '</label>
                                             ' . render(array('template' => 'shipping_method_service.php')) . $output_service_value . '
-                                            <div class="form-text text-end">' . lang('Service for Real-Time Rate & Delivery') . '</div>
+                                            <div class="form-text">' . lang('Service for Real-Time Rate & Delivery') . '</div>
                                         </div>
                                     </div>
                                 </div>
@@ -756,7 +756,7 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                         <div class="col-12 md:col-6 my-3">
                                             <label for="end_of_day" class="form-label">' . lang('End of Day Time') . '</label>
                                             <input value="' . $value('end_of_day') . '" type="text" name="end_of_day" id="end_of_day" class="form-control" maxlength="8" data-pg-time/>
-                                            <div class="form-text text-end">' . $time_help . '</div>
+                                            <div class="form-text">' . $time_help . '</div>
                                         </div>
                                         <div class="col-12 my-3">
                                             <h3 class="h5 fg-secondary">' . lang('Handling on') . '</h3>
@@ -775,6 +775,7 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                                 <span class="input-group-text" title="' . lang('day(s) from order date') . '">' . lang('day(s)') . '</span>
                                             </div>
                                         </div>
+                                        <div class="w-100"></div>
                                         <div class="col-12 md:col-6 xl:col-4 my-3">
                                             <div class="form-field">
                                                 <div class="switch"><input class="" type="checkbox" id="adjust_transit" name="adjust_transit" value="1"' . $checked('adjust_transit') . '/></div>
@@ -806,7 +807,7 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                             <label for="excluded_transit_dates" class="form-label">' . lang('Excluded Dates') . '</label>
                                             <input value="' . $value('excluded_transit_dates') . '" type="text" name="excluded_transit_dates" id="excluded_transit_dates" class="form-control tagin min-height-tagin" data-pg-chips maxlength="255"/>
                                             <input type="text" id="excluded_transit_date_pick" class="form-control mt-2" data-pg-date data-pg-add-to-chips="excluded_transit_dates" autocomplete="off" placeholder="' . h(lang('Add Date')) . '" aria-label="' . h(lang('Add Date')) . '"/>
-                                            <div class="form-text text-end">' . lang('Excluded Dates for Shipping & Handling (e.g. Holidays). Split dates with enter key or \',\' key') . ' (' . get_date_format_help() . ')</div>
+                                            <div class="form-text">' . lang('Excluded Dates for Shipping & Handling (e.g. Holidays). Split dates with enter key or \',\' key') . ' (' . get_date_format_help() . ')</div>
                                         </div>
                                         <div class="col-12 my-3">
                                             <div class="row">
