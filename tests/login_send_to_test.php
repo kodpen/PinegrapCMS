@@ -20,6 +20,8 @@ function test_login_send_to_is_read_once_as_a_scalar()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_login.php');
 
-	pg_assert_same(1, substr_count($source, "\$_GET['send_to']"), 'get_login() reads send_to from the query string once');
-	pg_assert_contains("\$send_to = is_scalar(\$_GET['send_to'] ?? null) ? (string) \$_GET['send_to'] : '';", $source, 'an array send_to counts as not given');
+	$read = "\$send_to = is_scalar(\$_GET['send_to'] ?? null) ? (string) \$_GET['send_to'] : '';";
+
+	pg_assert_contains($read, $source, 'an array send_to counts as not given');
+	pg_assert_same(0, substr_count(str_replace($read, '', $source), "\$_GET['send_to']"), 'no other line reads send_to from the query string');
 }
