@@ -546,11 +546,12 @@ function pg_explorer_handle_file_usage($type, $request, $user, $folders_that_use
     // pages whose folder holds the file, or a folder above it, use it.
     // A Photo Gallery widget shows the folder its settings choose, or its
     // page's folder when none is chosen (pg_gal_widget_pages_showing()).
-    // A page in the Recycle Bin shows nothing.
+    // A page in the Recycle Bin shows nothing, and no gallery shows a file
+    // in the bin.
     if (in_array(strtolower((string) $usage_file['type']), pg_gal_image_types(), true) && ((int) $usage_file['design'] == 0)) {
         $usage_gallery_folders = pg_gal_folders_showing($usage_file['folder'], function ($folder_id) {
             return (int) db_value("SELECT folder_parent FROM folder WHERE folder_id = '" . (int) $folder_id . "'");
-        });
+        }, (int) pg_recycle_bin_folder_id());
         $usage_gallery_folders = array_values(array_diff($usage_gallery_folders, pg_recycle_bin_folder_ids()));
 
         if ($usage_gallery_folders) {

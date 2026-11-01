@@ -641,6 +641,15 @@ function erp_settlement_allocate($data)
         return $fail($is_payment ? lang('That payment has been cancelled.') : lang('That receipt has been cancelled.'));
     }
 
+    // A bounced cheque's or note's movements cancel each other out
+    // (erp_cheque_allocation_refusal()).
+    $cheque = function_exists('erp_cheque_for_cash') ? erp_cheque_for_cash((int) $txn['doc_id']) : null;
+    $refusal = function_exists('erp_cheque_allocation_refusal') ? erp_cheque_allocation_refusal($cheque) : '';
+
+    if ($refusal !== '') {
+        return $fail($refusal);
+    }
+
     $invoice = db_item("SELECT id, account_id, direction, doc_type, currency, full_number, grand_total, grand_total_base, paid_total, status
         FROM erp_invoices WHERE id = '" . $invoice_id . "' LIMIT 1");
 

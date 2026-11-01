@@ -70,6 +70,24 @@ if (isset($_SERVER['HTTP_HOST']) == true) {
     }
 }
 
+// One run at a time, whoever starts it: the panel button and a crontab entry
+// take the job's lock in cron_runs as the general job's dispatcher does (it
+// has taken it already for a dispatched run, and releases it itself). Two
+// runs side by side wrote the same rows twice and fought in the sweep.
+if (!defined('PG_CRON_DISPATCH')) {
+
+    if (!pg_cron_claim('update_search_index')) {
+
+        if (isset($_SERVER['HTTP_HOST'])) {
+            output_error(lang('The search index is already being updated. Try again when that run has finished.'));
+        }
+
+        exit;
+    }
+
+    register_shutdown_function('pg_cron_release', 'update_search_index');
+}
+
 // The general job files whatever a script it dispatched printed in the site
 // log, as "printed a message while running with the general job", because
 // that is how a job reports its own missing settings. This progress page is
@@ -115,18 +133,62 @@ output_header_secure(array(
     </nav>
     <main id="content" class="container py-3">
         <ul class="list-group list-group-flush">';
-// Store the current timestamp.  We will use this is order to know which search items are old and can be deleted.
-$timestamp = time();
+// The index is one pass in stages (pg_search_index_stages(): pages, the
+// visual editor's records, files, the sweep) that may take several runs:
+// each run works until its time is up and keeps its place in
+// data/temp/search_index.json after every item, and the next run carries on
+// from there. The item a run ended inside (a fatal error, an exit, a killed
+// process) is skipped and named the next time, so no item stops the pass
+// twice. The sweep comes after the last stage and removes the rows older
+// than the pass's start, which every row the pass wrote carries.
+//
+// Between full passes a dispatched run is a delta: the job comes every hour,
+// and while no pass is under way and the last one ended less than a day ago
+// it re-indexes only the pages and the visual editor's records changed since
+// their row (pg_search_index_delta_targets()), keeps no cursor, sweeps
+// nothing and leaves the completion marker as it is. The panel button and a
+// command-line run always do the full pass.
+$search_index_delta = null;
+$search_index_saved_state = pg_search_index_state_read();
 
-// The items the run could not read, every kind together, and the first five
-// named for the run's Site Log line.
-$index_failures = 0;
-$index_failure_notes = array();
+if (defined('PG_CRON_DISPATCH') && ($search_index_saved_state === null)) {
+    $search_index_runs = pg_cron_last_runs();
+
+    if (!pg_search_index_full_due(is_array($search_index_runs) ? (int) ($search_index_runs['update_search_index_done'] ?? 0) : 0, time())) {
+        $search_index_delta = pg_search_index_delta_targets();
+        $search_index_saved_state = null;
+    }
+}
+
+$search_index_state = pg_search_index_next($search_index_saved_state, time());
+$timestamp = $search_index_state['started'];
+
+// How long this run may work: a dispatched tick within job.php's time limit,
+// a panel window request a short while (the window asks again), a command
+// line run until the pass is done.
+if (defined('PG_CRON_DISPATCH')) {
+    $search_index_budget = pg_cron_time_left(defined('SEO_ANALYZE_TIME_BUDGET') ? (int) SEO_ANALYZE_TIME_BUDGET : 120);
+} elseif (isset($_SERVER['HTTP_HOST'])) {
+    $search_index_budget = defined('SEO_ANALYZE_BUTTON_BUDGET') ? (int) SEO_ANALYZE_BUTTON_BUDGET : 20;
+} else {
+    $search_index_budget = 0;
+}
+
+$search_index_deadline = ($search_index_budget > 0) ? (microtime(true) + $search_index_budget) : 0;
+
+// What one stage hands the next, kept with the cursor between runs.
+$search_index_carry = $search_index_state['carry'];
+
+// The items the pass could not read, every kind together, and the first five
+// named for the pass's Site Log line.
+$index_failures = (int) ($search_index_carry['failures'] ?? 0);
+$index_failure_notes = (array) ($search_index_carry['failure_notes'] ?? array());
 
 // What the run is reading, for the Site Log line of a run that stops before
 // its end: a fatal error, an exit or redirect inside a page, a memory or time
 // limit. The line names the stage, the last item started and the fatal error.
-$search_index_run = array('stage' => 'pages', 'item' => '', 'done' => false);
+// A run that stops at its time budget ends normally.
+$search_index_run = array('stage' => $search_index_state['stage'], 'item' => '', 'done' => false);
 
 register_shutdown_function(function () use (&$search_index_run, &$username) {
     if ($search_index_run['done']) {
@@ -141,36 +203,106 @@ register_shutdown_function(function () use (&$search_index_run, &$username) {
 
 // Create array that we will use to store every item name that is linked in the HTML for all pages
 // that are included in the search index.  This will allow us to determine which files should be included in index.
-$linked_item_names = array();
+$linked_item_names = (array) ($search_index_carry['linked'] ?? array());
 
 // Create an array that will hold all added calendar event view URLs so that we don't add duplicates.
 // Different calendar views might link to the same calendar event view, so that is why this is necessary.
-$calendar_event_view_urls = array();
+$calendar_event_view_urls = (array) ($search_index_carry['event_urls'] ?? array());
 
 // Create an array that will hold all added form item view URLs so that we don't add duplicates.
 // Different form list views might link to the same form item view, so that is why this is necessary.
-$form_item_view_urls = array();
+$form_item_view_urls = (array) ($search_index_carry['record_urls'] ?? array());
 
 // The pages built in the visual editor that carry record lists, collected in
 // the page loop: array('page' => page row, 'lists' => list widget configs).
-$designer_hosts = array();
+$designer_hosts = (array) ($search_index_carry['designer_hosts'] ?? array());
 
-// if calendars enabled than output search properties else do not include them because error while update search index.
-$sql_where = "";
-if(defined('CALENDARS') && CALENDARS == 1){
-    $sql_where .= "OR (page.page_type = 'calendar view')";
-}
-// if ecommerce enabled than output search properties else do not include them because error while update search index.
-if(defined('ECOMMERCE') && ECOMMERCE == 1){
-    $sql_where .= "OR (page.page_type = 'catalog')
-            OR (page.page_type = 'express order')
-            OR (page.page_type = 'order form')
-            OR (page.page_type = 'shopping cart')";
-}
+// The visual editor's record addresses already written, and the detail pages
+// already looked up, across the record lists.
+$designer_record_urls = (array) ($search_index_carry['designer_record_urls'] ?? array());
+$designer_detail_pages = array();
 
-// Get pages that should be included in search index.
-// We removed email preferences page types because they caused an error
-// and we did not want to spend time to resolve error.
+// Set when this run's time is up: the remaining stages wait for the next run.
+$search_index_stopped = false;
+// The item this run started and has not yet marked finished.
+$search_index_open = '';
+
+// Keep the cursor, with what the stages hand on.
+$search_index_save = function () use (&$search_index_state, &$linked_item_names, &$calendar_event_view_urls,
+    &$form_item_view_urls, &$designer_hosts, &$designer_record_urls, &$index_failures, &$index_failure_notes, $search_index_delta) {
+    // A delta run keeps no cursor: the full pass's place stays its own.
+    if ($search_index_delta !== null) {
+        return;
+    }
+
+    $search_index_state['carry'] = array(
+        'linked'               => array_values(array_unique($linked_item_names)),
+        'event_urls'           => $calendar_event_view_urls,
+        'record_urls'          => $form_item_view_urls,
+        'designer_hosts'       => $designer_hosts,
+        'designer_record_urls' => $designer_record_urls,
+        'failures'             => $index_failures,
+        'failure_notes'        => $index_failure_notes,
+    );
+    pg_search_index_state_write($search_index_state);
+};
+
+// Called at the top of each item of the current stage: marks the item before
+// it finished, then says whether to read this one ('run'), pass it ('skip':
+// a run ended inside it) or stop here ('stop': the time is up).
+$search_index_item = function ($key) use (&$search_index_state, &$search_index_open, &$search_index_stopped,
+    &$search_index_run, $search_index_deadline, $search_index_save) {
+    if ($search_index_open !== '') {
+        $search_index_state = pg_search_index_finish($search_index_state, $search_index_open);
+        $search_index_open = '';
+    }
+
+    if (($search_index_deadline > 0) && (microtime(true) >= $search_index_deadline)) {
+        $search_index_stopped = true;
+        $search_index_save();
+        return 'stop';
+    }
+
+    $begin = pg_search_index_begin($search_index_state, $key);
+    $search_index_state = $begin['state'];
+    $search_index_save();
+
+    if ($begin['skip']) {
+        $search_index_run['item'] = '';
+        return 'skip';
+    }
+
+    $search_index_open = (string) $key;
+    return 'run';
+};
+
+// Called after a stage's loop: the last item is finished and, unless the
+// time ran out, the pass moves to the next stage.
+$search_index_stage_end = function () use (&$search_index_state, &$search_index_open, &$search_index_stopped, $search_index_save) {
+    if ($search_index_open !== '') {
+        $search_index_state = pg_search_index_finish($search_index_state, $search_index_open);
+        $search_index_open = '';
+    }
+
+    if (!$search_index_stopped) {
+        $search_index_state = pg_search_index_advance($search_index_state);
+    }
+
+    $search_index_save();
+};
+
+// Which pages the index covers is written once, beside the audits' scope
+// (pg_render_pass_scope() in includes/fn/background_render.php): the listed
+// types, private folders included (search filters its rows by folder), no
+// archived folder, and only pages whose own search switch is on.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/background_render.php');
+
+$index_scope = pg_render_pass_scope('index');
+$index_types = array();
+
+foreach ($index_scope['types'] as $index_type) {
+    $index_types[] = "'" . e($index_type) . "'";
+}
 
 $pages = db_items(
     "SELECT
@@ -186,33 +318,33 @@ $pages = db_items(
     WHERE
         (page.page_search = '1')
         AND (folder.folder_archived = '0')
-        AND
-        (
-            (page.page_type = 'standard')
-            OR (page.page_type = 'change password')
-            OR (page.page_type = 'folder view')
-            OR (page.page_type = 'forgot password')
-            OR (page.page_type = 'login')
-            OR (page.page_type = 'logout')
-            OR (page.page_type = 'photo gallery')
-            OR (page.page_type = 'search results')
-            OR (page.page_type = 'registration entrance')
-            OR (page.page_type = 'membership entrance')
-            OR (page.page_type = 'my account')
-            OR (page.page_type = 'my account profile')
-            OR (page.page_type = 'update address book')
-            OR (page.page_type = 'custom form')
-            OR (page.page_type = 'form list view')
-            OR (page.page_type = 'form view directory')
-            $sql_where
-            OR (page.page_type = 'affiliate sign up form')
-        )");
+        AND (page.page_type IN (" . implode(', ', $index_types) . "))
+        AND " . (($search_index_delta !== null)
+            ? "(page.page_id IN ('" . implode("', '", array_merge(array(0), $search_index_delta['pages'])) . "'))"
+            : "(page.page_id > '" . (int) $search_index_state['after'] . "')") . "
+    ORDER BY page.page_id ASC");
+
+// Another stage is under way: the pages are done.
+if ($search_index_state['stage'] !== 'pages') {
+    $pages = array();
+}
 
 
 $count_pages = 1;
 
 // Loop through pages in order to store content in database for searching.
 foreach ($pages as $page) {
+
+    $search_index_step = $search_index_item($page['id']);
+
+    if ($search_index_step === 'stop') {
+        break;
+    }
+
+    if ($search_index_step === 'skip') {
+        pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note($page['name'], '', lang('A run ended while reading it'), 200, lang('Page')));
+        continue;
+    }
 
     $url = encode_url_path($page['name']);
 
@@ -1020,12 +1152,68 @@ foreach ($pages as $page) {
 // show, is left out (and its old item goes with the sweep below) instead of
 // ending the run. Records come before files so the files they link are
 // indexed.
-$designer_record_urls = array();
-$designer_detail_pages = array();
+if ($search_index_state['stage'] === 'pages') {
+    $search_index_stage_end();
+}
+
 $search_index_run['stage'] = 'records';
 $recycle_bin_folder_ids = pg_recycle_bin_folder_ids();
 
-foreach ($designer_hosts as $designer_host) {
+// A delta run reaches a changed record through every page that lists it, not
+// only through the pages it re-indexed: the lists are collected from all the
+// visual editor's pages in site search, without drawing them.
+if (($search_index_delta !== null) && $search_index_delta['records']) {
+    $designer_hosts = array();
+
+    foreach (db_items(
+        "SELECT
+            page.page_id AS id,
+            page.page_name AS name,
+            page.page_folder AS folder_id,
+            page.page_title AS title,
+            page.page_meta_description AS meta_description,
+            page.page_search_keywords AS search_keywords,
+            page.page_type AS type
+        FROM page
+        LEFT JOIN folder ON page.page_folder = folder.folder_id
+        WHERE
+            (page.page_search = '1')
+            AND (folder.folder_archived = '0')
+            AND (page.page_type = 'standard')
+        ORDER BY page.page_id ASC") as $page) {
+        $designer_lists = array();
+
+        foreach (pg_sw_page_widgets($page['id']) as $widget) {
+            if (in_array(isset($widget['cfg']['regionType']) ? (string) $widget['cfg']['regionType'] : '', pg_sw_form_list_types(), true)) {
+                $designer_lists[] = $widget['cfg'];
+            }
+        }
+
+        if ($designer_lists) {
+            $designer_hosts[] = array('page' => $page, 'lists' => $designer_lists);
+        }
+    }
+} elseif ($search_index_delta !== null) {
+    $designer_hosts = array();
+}
+
+foreach ((($search_index_state['stage'] === 'designer') && !$search_index_stopped) ? $designer_hosts : array() as $designer_host_index => $designer_host) {
+    // The hosts in the order the page loop found them, by position.
+    if (($search_index_state['after'] !== '') && ($designer_host_index <= (int) $search_index_state['after'])) {
+        continue;
+    }
+
+    $search_index_step = $search_index_item($designer_host_index);
+
+    if ($search_index_step === 'stop') {
+        break;
+    }
+
+    if ($search_index_step === 'skip') {
+        pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note((string) ($designer_host['page']['name'] ?? ''), '', lang('A run ended while reading it'), 200, lang('Page')));
+        continue;
+    }
+
     $host_page = $designer_host['page'];
 
     foreach ($designer_host['lists'] as $list_cfg) {
@@ -1114,6 +1302,11 @@ foreach ($designer_hosts as $designer_host) {
         $pretty = pg_sw_form_pretty_urls($form_page_id);
 
         foreach ((array) $records as $record) {
+            // A delta run draws only the records changed since their row.
+            if (($search_index_delta !== null) && !isset($search_index_delta['records'][(string) $record['reference_code']])) {
+                continue;
+            }
+
             $url = pg_sw_search_index_record_url($detail_page['page_name'], $record['reference_code'], $record['address_name'], $pretty);
 
             if ($url === '') {
@@ -1244,11 +1437,16 @@ foreach ($designer_hosts as $designer_host) {
     }
 }
 
+if (($search_index_state['stage'] === 'designer') && !$search_index_stopped) {
+    $search_index_stage_end();
+}
+
 $search_index_run['stage'] = 'files';
 
 // Get files that should be included in search index.
-$files = db_items(
+$files = (($search_index_state['stage'] !== 'files') || $search_index_stopped || ($search_index_delta !== null)) ? array() : db_items(
     "SELECT
+        files.id,
         files.name,
         files.folder AS folder_id,
         files.description,
@@ -1257,10 +1455,23 @@ $files = db_items(
     LEFT JOIN folder ON files.folder = folder.folder_id
     WHERE
         (files.design = '0')
-        AND (folder.folder_archived = '0')");
+        AND (folder.folder_archived = '0')
+        AND (files.id > '" . (int) $search_index_state['after'] . "')
+    ORDER BY files.id ASC");
 
 // Loop through files in order to store content in database for searching.
 foreach ($files as $file) {
+    $search_index_step = $search_index_item($file['id']);
+
+    if ($search_index_step === 'stop') {
+        break;
+    }
+
+    if ($search_index_step === 'skip') {
+        pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note($file['name'], '', lang('A run ended while reading it'), 200, lang('File')));
+        continue;
+    }
+
     // If this file was linked in a page, then continue to include it in the index.
     if (in_array(mb_strtolower($file['name']), $linked_item_names) == true) {
         $url = encode_url_path($file['name']);
@@ -1422,32 +1633,71 @@ foreach ($files as $file) {
     }
 }
 
-// Delete old items that no longer exist.
-$search_index_run['stage'] = 'sweep';
-$search_index_run['item'] = '';
-db("DELETE FROM search_items WHERE timestamp != '" . $timestamp . "'");
-
-// One Site Log line per run names what could not be read, so a site owner
-// sees it without reading the PHP error log.
-if ($index_failures > 0) {
-    log_activity(lang(array(
-        'string' => 'The search index could not read {var:1} item(s): {var:2}',
-        'vars' => array($index_failures, implode('; ', $index_failure_notes) . (($index_failures > count($index_failure_notes)) ? '; ...' : '')))),
-        isset($username) ? $username : '');
+if (($search_index_state['stage'] === 'files') && !$search_index_stopped) {
+    $search_index_stage_end();
 }
 
-// Ping IndexNow if the sitemap has changed and at least 12 hours have passed since the last ping.
-// This runs here so the CURL call stays off the interactive page load path.
-if ($timestamp >= (LAST_SITEMAP_CHECK_TIMESTAMP + 43200)) {
-    update_sitemap_and_ping();
-}
+// The pass is done when its last stage is reached in this run.
+$search_index_done = (($search_index_state['stage'] === 'sweep') && !$search_index_stopped);
 
-// Scheduled-task health: record that this job finished. See pg_cron_ran().
-pg_cron_ran('update_search_index');
+if ($search_index_delta !== null) {
+    // A delta run ends here: no sweep, no completion marker, no cursor; what
+    // its time did not reach waits for the next hour or the full pass.
+    $search_index_done = true;
+
+    if ($index_failures > 0) {
+        log_activity(lang(array(
+            'string' => 'The search index could not read {var:1} item(s): {var:2}',
+            'vars' => array($index_failures, implode('; ', $index_failure_notes) . (($index_failures > count($index_failure_notes)) ? '; ...' : '')))),
+            '');
+    }
+} elseif ($search_index_done) {
+    // Delete old items that no longer exist.
+    $search_index_run['stage'] = 'sweep';
+    $search_index_run['item'] = '';
+    db(pg_search_index_sweep_sql($timestamp));
+
+    // One Site Log line per pass names what could not be read, so a site
+    // owner sees it without reading the PHP error log.
+    if ($index_failures > 0) {
+        log_activity(lang(array(
+            'string' => 'The search index could not read {var:1} item(s): {var:2}',
+            'vars' => array($index_failures, implode('; ', $index_failure_notes) . (($index_failures > count($index_failure_notes)) ? '; ...' : '')))),
+            isset($username) ? $username : '');
+    }
+
+    // Ping IndexNow if the sitemap has changed and at least 12 hours have passed since the last ping.
+    // This runs here so the CURL call stays off the interactive page load path.
+    if ($timestamp >= (LAST_SITEMAP_CHECK_TIMESTAMP + 43200)) {
+        update_sitemap_and_ping();
+    }
+
+    $search_index_state = pg_search_index_advance($search_index_state);
+    pg_search_index_state_write($search_index_state);
+
+    // Scheduled-task health: record that this job finished. See pg_cron_ran().
+    pg_cron_ran('update_search_index');
+} elseif (defined('PG_CRON_DISPATCH')) {
+    // An unfinished pass is due again in a minute instead of tomorrow.
+    pg_cron_due_again('update_search_index', 60);
+}
 
 $search_index_run['done'] = true;
 
-if ($index_failures > 0) {
+// The panel window drives an unfinished pass with short requests: this one
+// says how far the pass is and asks for the next.
+$finish_continue = '';
+
+if (!$search_index_done) {
+    $finish_icon = 'bi-arrow-repeat fg-secondary';
+    $finish_message = lang(array(
+        'string' => 'The Search Index is being updated ({var:1}). This window continues by itself; please leave it open.',
+        'vars' => array(pg_search_index_stage_label($search_index_state['stage']))));
+
+    if (isset($_SERVER['HTTP_HOST']) && !defined('PG_CRON_DISPATCH')) {
+        $finish_continue = '<script>setTimeout(function () { window.location.replace(' . json_encode(PATH . SOFTWARE_DIRECTORY . '/update_search_index.php?continue=1') . '); }, 300);</script>';
+    }
+} elseif ($index_failures > 0) {
     $finish_icon = 'bi-exclamation-triangle-fill fg-warning';
     $finish_message = lang(array(
         'string' => 'The Search Index has been updated, but {var:1} item(s) could not be read. The Site Log names them.',
@@ -1468,7 +1718,7 @@ echo '
             <i class="bi bi-x-lg me-1"></i>' . lang('Close') . '
         </button>
     </div>
-</main>' . output_footer_secure();
+</main>' . $finish_continue . output_footer_secure();
 
 if (defined('PG_CRON_DISPATCH')) {
     ob_end_clean();

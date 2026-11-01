@@ -18,7 +18,9 @@
 
 function get_my_account_profile($properties = array()) {
 
-    $page_id = $properties['page_id'];
+    // my_account_profile.php draws this screen with no properties when the
+    // site has no My Account Profile page.
+    $page_id = $properties['page_id'] ?? 0;
 
     $layout_type = get_layout_type($page_id);
 
@@ -190,8 +192,17 @@ function get_my_account_profile($properties = array()) {
     // get countries for country selection
     $countries = db_items("SELECT name, code, zip_code_required AS zip FROM countries ORDER BY name", 'code');
 
+    // Named and ordered in the site's language (pg_geo_country_label()); two
+    // rows that share a label (a duplicate code in the data) keep both options.
+    $country_labels = array();
+
     foreach ($countries as $country) {
-        $business_country_options[$country['name']] = $country['code'];
+        $country_labels[] = array('code' => $country['code'], 'label' => pg_geo_country_label($country['name'], $country['code']));
+    }
+
+    foreach (pg_geo_sort_by_label($country_labels) as $country) {
+        $label = isset($business_country_options[$country['label']]) ? $country['label'] . ' (' . $country['code'] . ')' : $country['label'];
+        $business_country_options[$label] = $country['code'];
     }
 
     $states = db_items(
@@ -251,7 +262,7 @@ function get_my_account_profile($properties = array()) {
                                 <div class="heading" style="margin-bottom: 10px">' . lang('Contact Information') . '</div>
                                 <table class="data">
                                     <tr>
-                                        <td>Salutation</td>
+                                        <td>' . lang('Salutation') . '</td>
                                         <td>' . $form->output_field(array('type'=>'select', 'name'=>'salutation', 'options'=>get_salutation_options(), 'class'=>'software_select')) . '</td>
                                     </tr>
                                     <tr>
@@ -263,7 +274,7 @@ function get_my_account_profile($properties = array()) {
                                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'last_name', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                                     </tr>
                                     <tr>
-                                        <td>Suffix</td>
+                                        <td>' . lang('Suffix') . '</td>
                                         <td>' . $form->output_field(array('type'=>'select', 'name'=>'suffix', 'options'=>get_suffix_options(), 'class'=>'software_select')) . '</td>
                                     </tr>
                                     <tr>
@@ -282,7 +293,7 @@ function get_my_account_profile($properties = array()) {
                                         <td>' . lang('Home Phone') . '</td>
                                         <td>' . $form->output_field(array('type'=>'tel', 'name'=>'home_phone', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                                     </tr>                                <tr>
-                                        <td>Fax</td>
+                                        <td>' . lang('Fax') . '</td>
                                         <td>' . $form->output_field(array('type'=>'tel', 'name'=>'business_fax', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                                     </tr>
                                     <tr>
@@ -299,7 +310,7 @@ function get_my_account_profile($properties = array()) {
                                 <div class="heading" style="margin-bottom: 10px">' . lang('Billing / Mailing Address') . '</div>
                                 <table class="data">
                                     <tr>
-                                        <td>Organization</td>
+                                        <td>' . lang('Organization') . '</td>
                                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'company', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                                     </tr>
                                     <tr>

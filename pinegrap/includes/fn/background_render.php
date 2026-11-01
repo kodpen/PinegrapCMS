@@ -122,3 +122,88 @@ function pg_background_render_error_message($e)
 
     return ($message === '') ? get_class($e) : $message;
 }
+
+/**
+ * The pages a background pass renders: the one place the search index, the
+ * structure pass and the accessibility pass say which page types and folders
+ * they cover.
+ *
+ * The index keeps pages in private folders: site search filters its rows by
+ * the searcher's folder access, so a member finds the member pages. The
+ * audits judge what a visitor who is not signed in is served, so they cover
+ * public folders only, and the page types the structure pass can render
+ * standalone (pg_seo_renderable_page_types()). No pass renders a page of an
+ * archived folder.
+ *
+ * @param string $pass 'index', 'structure' or 'a11y'
+ * @param array $features calendars, ecommerce (bool); the index's types
+ *                        depend on them, defaulting to the site's switches
+ * @return array types, private_folders, search_flag (the index asks the
+ *               page's own "include in site search" switch)
+ */
+function pg_render_pass_scope($pass, $features = array())
+{
+    if ($pass === 'index') {
+        $calendars = array_key_exists('calendars', $features)
+            ? (bool) $features['calendars'] : (defined('CALENDARS') && CALENDARS == 1);
+        $ecommerce = array_key_exists('ecommerce', $features)
+            ? (bool) $features['ecommerce'] : (defined('ECOMMERCE') && ECOMMERCE == 1);
+
+        // Email preferences pages are left out: their render needs the
+        // address the e-mail link carried.
+        $types = array(
+            'standard', 'change password', 'folder view', 'forgot password',
+            'login', 'logout', 'photo gallery', 'search results',
+            'registration entrance', 'membership entrance', 'my account',
+            'my account profile', 'update address book', 'custom form',
+            'form list view', 'form view directory', 'affiliate sign up form',
+        );
+
+        if ($calendars) {
+            $types[] = 'calendar view';
+        }
+
+        if ($ecommerce) {
+            $types = array_merge($types, array('catalog', 'express order', 'order form', 'shopping cart'));
+        }
+
+        return array('types' => $types, 'private_folders' => true, 'search_flag' => true);
+    }
+
+    if (($pass === 'structure') || ($pass === 'a11y')) {
+        $types = function_exists('pg_seo_renderable_page_types') ? pg_seo_renderable_page_types() : array();
+
+        return array('types' => $types, 'private_folders' => false, 'search_flag' => false);
+    }
+
+    return array('types' => array(), 'private_folders' => false, 'search_flag' => false);
+}
+
+/**
+ * Whether a pass's scope covers one page.
+ *
+ * @param array $scope From pg_render_pass_scope().
+ * @param array $page page_type, folder_public (bool: the folder's access
+ *                    control type is public), folder_archived, page_search
+ * @return bool
+ */
+function pg_render_pass_covers($scope, $page)
+{
+    if (!in_array((string) ($page['page_type'] ?? ''), $scope['types'], true)) {
+        return false;
+    }
+
+    if (((string) ($page['folder_archived'] ?? '')) === '1') {
+        return false;
+    }
+
+    if (!$scope['private_folders'] && empty($page['folder_public'])) {
+        return false;
+    }
+
+    if ($scope['search_flag'] && (((string) ($page['page_search'] ?? '')) !== '1')) {
+        return false;
+    }
+
+    return true;
+}

@@ -4376,3 +4376,142 @@ function check_and_repair_database_tables($deep = false)
 
     return $report;
 }
+
+/**
+ * Release notes, the dialog and the button that opens it, drawn on the
+ * System Status header of both dashboards.
+ *
+ * Read here and embedded in the dialog rather than linked, so the browser
+ * never requests changelog.txt over the network. The file sits in the
+ * software directory, which is served directly, and a public release list
+ * tells anyone which version a site runs and which security fixes it is
+ * missing.
+ *
+ * Drawn the way the install screen draws it -- a coloured tag beside each
+ * entry, grouped under its version -- rather than as the raw file in a
+ * <pre>. Same file, same parse; the monospace dump kept the banner and the
+ * column alignment of a text editor, which is exactly what a reader does
+ * not need here. Newest version is open, the rest are folded away.
+ *
+ * @return array button, dialog (HTML; both empty without a changelog) and
+ *               sections (pg_changelog_sections(), which the brief reads too)
+ */
+function pg_changelog_dialog()
+{
+    $output_changelog_button = '';
+$output_changelog_modal = '';
+
+$changelog_sections = pg_changelog_sections();
+
+if (count($changelog_sections) > 0) {
+
+        // The head of the file: the wordmark, the title and the tag key. The
+        // drawing needs a monospace block that does not wrap; the key is drawn with
+        // the same badges the entries below carry, so it reads as a key rather than
+        // as a paragraph about one.
+        $changelog_preamble = pg_changelog_preamble();
+        $output_changelog_head = '';
+
+        if ($changelog_preamble['banner'] != '') {
+            $output_changelog_head .= '
+        <pre class="mb-3 fg-secondary" style="white-space:pre; overflow-x:auto; font-size:.72rem; line-height:1.35; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;">' . h($changelog_preamble['banner']) . '</pre>';
+        }
+
+        if (count($changelog_preamble['legend']) > 0) {
+
+            $output_changelog_legend = '';
+
+            foreach ($changelog_preamble['legend'] as $changelog_legend_row) {
+                $output_changelog_legend .= '
+            <span class="d-inline-flex align-items-center gap-1 me-5">
+                <span class="badge ' . pg_changelog_tag_class($changelog_legend_row['tag']) . '">' . h($changelog_legend_row['tag']) . '</span>
+                <span class="small fg-secondary">' . h($changelog_legend_row['text']) . '</span>
+            </span>';
+            }
+
+            $output_changelog_head .= '
+        <div class="d-flex flex-wrap row-gap-1 pb-5 mb-5 border-bottom">' . $output_changelog_legend . '</div>';
+        }
+
+        $output_changelog_versions = '';
+
+        foreach ($changelog_sections as $changelog_index => $changelog_section) {
+
+            $output_changelog_entries = '';
+            $changelog_group = '';
+
+            foreach ($changelog_section['entries'] as $changelog_entry) {
+
+                // A release big enough to be written under topic headings keeps
+                // them here. Sixty entries in one undifferentiated column is a
+                // list nobody finishes; the heading is what lets a reader skip
+                // the four areas they do not use and stop at the one they do.
+                $changelog_entry_group = isset($changelog_entry['group']) ? $changelog_entry['group'] : '';
+
+                if ($changelog_entry_group != $changelog_group) {
+
+                    $changelog_group = $changelog_entry_group;
+
+                    if ($changelog_group != '') {
+                        $output_changelog_entries .= '
+            <div class="small fw-bold text-uppercase fg-secondary pt-5 pb-1">' . h($changelog_group) . '</div>';
+                    }
+                }
+
+                $output_changelog_tags = '';
+
+                foreach ($changelog_entry['tags'] as $changelog_tag) {
+                    $output_changelog_tags .=
+                        '<span class="badge ' . pg_changelog_tag_class($changelog_tag) . '">'
+                        . h($changelog_tag) . '</span>';
+                }
+
+                $output_changelog_entries .= '
+            <div class="d-flex gap-3 py-3 border-bottom border-1">
+                <div class="d-flex flex-column gap-1 flex-shrink-0" style="width:6.5rem">' . $output_changelog_tags . '</div>
+                <div class="small">' . h($changelog_entry['text']) . '</div>
+            </div>';
+            }
+
+            // Only the newest section is open. A reader who came for "what changed"
+            // wants this version; the older ones are history and would bury it.
+            $changelog_open = ($changelog_index == 0);
+            $changelog_id = 'changelog_v' . preg_replace('/[^0-9]/', '_', $changelog_section['version']);
+
+            $output_changelog_versions .= '
+        <div class="mb-3">
+            <button class="btn btn-link p-0 text-decoration-none fw-bold' . ($changelog_open ? '' : ' collapsed') . '"
+                    type="button" data-bs-toggle="collapse" data-bs-target="#' . $changelog_id . '"
+                    aria-expanded="' . ($changelog_open ? 'true' : 'false') . '" aria-controls="' . $changelog_id . '">
+                <i class="bi bi-chevron-down me-1"></i>' . h($changelog_section['version']) . '
+            </button>
+            <div class="collapse' . ($changelog_open ? ' show' : '') . '" id="' . $changelog_id . '">
+                ' . $output_changelog_entries . '
+            </div>
+        </div>';
+        }
+
+        // The trigger rides the System Status header; the dialog cannot follow it
+        // there, because a widget card clips and scrolls its own content. It is
+        // printed once with the page body instead.
+        $output_changelog_button = '<button title="' . lang('Release Notes') . '" aria-label="' . lang('Release Notes') . '" class="pg-widget-action no-popover" type="button" data-bs-toggle="dialog" data-bs-target="#changelog_modal"><span class="bi bi-card-list"></span></button>';
+
+        $output_changelog_modal = '
+    <dialog class="dialog dialog-lg dialog-scrollable pg-dialog-centered" id="changelog_modal" aria-labelledby="changelog_modal_label">
+                <div class="dialog-header">
+                    <h5 class="dialog-title" id="changelog_modal_label">
+                        <span class="bi bi-card-list me-3"></span>' . lang('Release Notes') . '
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . lang('Close') . '"></button>
+                </div>
+                <div class="dialog-body text-start">
+                    ' . $output_changelog_head . $output_changelog_versions . '
+                </div>
+                <div class="dialog-footer">
+                    <button type="button" class="btn btn-sm btn-solid theme-secondary" data-bs-dismiss="dialog">' . lang('Close') . '</button>
+                </div>
+    </dialog>';
+    }
+
+    return array('button' => $output_changelog_button, 'dialog' => $output_changelog_modal, 'sections' => $changelog_sections);
+}

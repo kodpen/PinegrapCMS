@@ -697,9 +697,7 @@ function _eo_fit_district_field(&$tree, $ship_rid = 0)
 // default (countries.default_selected), '' when none is set.
 function _eo_default_country()
 {
-    static $code = null;
-    if ($code === null) $code = (string)db_value("SELECT code FROM countries WHERE default_selected = 1 ORDER BY id ASC LIMIT 1");
-    return $code;
+    return pg_address_default_country();
 }
 
 // ── Designer bindings: `_bindings.eo_field='X'` on input/select/textarea

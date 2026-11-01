@@ -17,6 +17,8 @@
  *   update_dashboard_widgets     the caller's dashboard widget layout
  *   update_dashboard_appearance  the dashboard's backdrop and look
  *   dashboard_switch             the caller's new dashboard on or off
+ *   dashboard_cards              the new dashboard's card data
+ *                                (includes/dashboard/v2/run.php)
  *                                (includes/dashboard/v2/layout.php)
  *   tour_seen                    a guided tour has been watched or skipped
  *   contact_quick_save           the account menu's quick form for one's own
@@ -262,6 +264,20 @@ function pg_panel_update_dashboard_widgets($request, $action)
     );
     echo encode_json($response);
     exit();
+}
+
+function pg_panel_dashboard_cards($request, $action)
+{
+    // Kept global like get_widget_data: helpers read `global $user`.
+    global $user;
+
+    $user = validate_user();
+    session_write_close();
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/layout.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/run.php');
+
+    respond(pg_dashboard_v2_cards_run($request, $user));
 }
 
 function pg_panel_dashboard_switch($request, $action)

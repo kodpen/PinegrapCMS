@@ -5560,6 +5560,32 @@ function pg_sitemap_page_types()
 }
 
 /**
+ * The address sitemap.xml lists for an item under a legacy catalog page: a
+ * browse product group under the catalog page, a select product group or a
+ * product under its catalog detail page. An item with no address name has no
+ * address of its own (the bare page shows no item), so it is left out.
+ *
+ * @param array  $item              a get_catalog_items_for_sitemap() item
+ * @param string $path              the site path (PATH)
+ * @param string $catalog_page_name the catalog page
+ * @param string $detail_page_name  its catalog detail page
+ * @return string the path, not HTML-escaped, or '' when it is not listed
+ */
+function pg_sitemap_catalog_item_path($item, $path, $catalog_page_name, $detail_page_name)
+{
+    $address_name = isset($item['address_name']) ? (string) $item['address_name'] : '';
+
+    if ($address_name === '') {
+        return '';
+    }
+
+    $browse = isset($item['type'], $item['display_type'])
+        && ($item['type'] == 'product_group') && ($item['display_type'] == 'browse');
+
+    return $path . encode_url_path((string) ($browse ? $catalog_page_name : $detail_page_name)) . '/' . encode_url_path($address_name);
+}
+
+/**
  * The system widgets that make a page built in the visual editor one of the
  * page types sitemap.xml leaves out, so that page is not listed either: the
  * widget standing in for each such legacy type ($page_type_widgets, from

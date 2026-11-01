@@ -225,9 +225,9 @@ function test_designer_search_index_page_loop_skips_record_pages()
 function test_designer_search_index_record_branch()
 {
 	$source = _designer_search_index_source('update_search_index.php');
-	$start  = strpos($source, '$designer_record_urls = array();');
+	$start  = strpos($source, '$search_index_run[\'stage\'] = \'records\';');
 	$files  = strpos($source, '// Get files that should be included in search index.');
-	$sweep  = strpos($source, 'DELETE FROM search_items WHERE timestamp');
+	$sweep  = strpos($source, 'db(pg_search_index_sweep_sql(');
 	pg_assert_true($start !== false && $files !== false && $sweep !== false);
 	pg_assert_true($start < $files && $files < $sweep);
 
@@ -325,16 +325,17 @@ function test_designer_search_index_failure_note_truncates()
 function test_designer_search_index_failures_reported()
 {
 	$source = _designer_search_index_source('update_search_index.php');
-	$start  = strpos($source, '$designer_record_urls = array();');
+	$start  = strpos($source, '$search_index_run[\'stage\'] = \'records\';');
 	$files  = strpos($source, '// Get files that should be included in search index.');
 	$branch = substr($source, $start, $files - $start);
 
-	pg_assert_same(2, substr_count($branch, 'pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note('));
+	// A record list or record that fails to draw, and a host a run ended inside.
+	pg_assert_same(3, substr_count($branch, 'pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note('));
 	pg_assert_contains("\$host_page['page_name'], '', \$throwable->getMessage(), 200, lang('Record list')", $branch);
 	pg_assert_contains("\$detail_page['page_name'], \$record['reference_code'], \$throwable->getMessage(), 200, lang('Record')", $branch);
 	pg_assert_false(strpos($branch, "error_log('Pinegrap: the search index left out") !== false);
 
-	$tail = substr($source, strpos($source, 'DELETE FROM search_items WHERE timestamp'));
+	$tail = substr($source, strpos($source, 'db(pg_search_index_sweep_sql('));
 	pg_assert_contains('log_activity(lang(array(', $tail);
 	pg_assert_contains('{var:1}', $tail);
 

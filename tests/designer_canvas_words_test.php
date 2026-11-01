@@ -49,3 +49,38 @@ function test_designer_canvas_words_turkish_has_no_english_terms()
 		pg_assert_same(0, preg_match('/\b(Attribute|alert|visitor|Upsell|LEGACY|tree|checkbox|modal|radyolar)\b|\.php\b/u', $tr[$key]), 'Turkish wording: ' . $tr[$key]);
 	}
 }
+
+// Every key the visual editor translates: its Turkish wording keeps none of
+// the English terms the panel translates elsewhere and names no file.
+function test_designer_canvas_words_all_editor_keys_turkish()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	preg_match_all("/_sdT\('((?:[^'\\\\]|\\\\.)*)'/", $js, $m);
+	$keys = array_unique(array_map('stripslashes', $m[1]));
+	pg_assert_true(count($keys) > 1000, 'the editor keys are found');
+
+	$tr = pg_test_language_map('tr');
+	foreach ($keys as $key) {
+		if (!isset($tr[$key])) {
+			continue;
+		}
+		pg_assert_same(0, preg_match('/\b(legacy|Legacy|LEGACY|checkbox|alert|Attribute|Breadcrumbs?)\b|\.php\b/u', $tr[$key]), 'Turkish wording: ' . $tr[$key]);
+	}
+}
+
+// The two legacy e-mail controls name no contact column in Turkish.
+function test_designer_canvas_words_legacy_email_names_no_column()
+{
+	$tr = pg_test_language_map('tr');
+	foreach (array('Email (legacy name; contact: email_address)', 'Email again (legacy name; optional, must match when filled in)') as $key) {
+		pg_assert_true(isset($tr[$key]), 'translated: ' . $key);
+		pg_assert_false(isset($tr[$key]) && (strpos($tr[$key], '_') !== false), 'no column name: ' . $key);
+	}
+}
+
+// The Breadcrumb component's canvas placeholder title is translated.
+function test_designer_canvas_words_breadcrumb_placeholder_translated()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	pg_assert_false(strpos($js, "'<strong>Breadcrumb</strong>'") !== false, 'the placeholder title is not translated');
+}

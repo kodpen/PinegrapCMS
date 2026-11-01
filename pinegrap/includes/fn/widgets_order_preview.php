@@ -359,7 +359,7 @@ function pg_op_step_url($key, $query = '')
  */
 function pg_op_change_link_html($url)
 {
-    return $url === '' ? '' : '<a class="software_button_tiny_secondary" href="' . h($url) . '">Change</a>';
+    return $url === '' ? '' : '<a class="software_button_tiny_secondary" href="' . h($url) . '">' . h(lang('Change')) . '</a>';
 }
 
 /**

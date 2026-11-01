@@ -382,21 +382,21 @@ function get_order_preview($properties) {
                         if ((ECOMMERCE_CREDIT_DEBIT_CARD == false) || (ECOMMERCE_PAYMENT_GATEWAY != 'ClearCommerce')) {
                             $output_start_date_row =
                                 '<tr>
-                                    <td>Start Date:</td>
+                                    <td>' . h(lang('Start Date')) . ':</td>
                                     <td>' . get_absolute_time(array('timestamp' => strtotime($recurring_start_date), 'type' => 'date', 'size' => 'long')) . '</td>
                                 </tr>';
                         }
                         
                         $output_recurring_schedule_fieldset =
                             '<fieldset class="software_fieldset">
-                                <legend class="software_legend">Payment Schedule</legend>
+                                <legend class="software_legend">' . h(lang('Payment Schedule')) . '</legend>
                                     <table>
                                         <tr>
-                                            <td>Frequency:</td>
+                                            <td>' . h(lang('Frequency')) . ':</td>
                                             <td>' . $recurring_payment_period . '</td>
                                         </tr>
                                         <tr>
-                                            <td>Number of Payments:</td>
+                                            <td>' . h(lang('Number of Payments')) . ':</td>
                                             <td>' . $output_recurring_number_of_payments . '</td>
                                         </tr>
                                         ' . $output_start_date_row . '
@@ -451,26 +451,26 @@ function get_order_preview($properties) {
                             
                             $output_gift_cards .=
                                 '<fieldset class="software_fieldset" style="margin-bottom: 1em">
-                                    <legend class="software_legend">Gift Card' . $output_legend_quantity_number . '</legend>
+                                    <legend class="software_legend">' . h(lang('Gift Card')) . $output_legend_quantity_number . '</legend>
                                         <table>
                                             <tr>
-                                                <td>Amount:</td>
+                                                <td>' . h(lang('Amount')) . ':</td>
                                                 <td><strong>' . prepare_price_for_output($product_price * 100, false, $discounted_price = '', 'html') . '</strong></td>
                                             </tr>
                                             <tr>
-                                                <td>Recipient Email:</td>
+                                                <td>' . h(lang('Recipient Email')) . ':</td>
                                                 <td>' . h($order_item_gift_card['recipient_email_address']) . '</td>
                                             </tr>
                                             <tr>
-                                                <td>Your Name:</td>
+                                                <td>' . h(lang('Your Name')) . ':</td>
                                                 <td>' . h($order_item_gift_card['from_name']) . '</td>
                                             </tr>
                                             <tr>
-                                                <td style="vertical-align: top">Message:</td>
+                                                <td style="vertical-align: top">' . h(lang('Message')) . ':</td>
                                                 <td>' . nl2br(h($order_item_gift_card['message'])) . '</td>
                                             </tr>
                                             <tr>
-                                                <td>Delivery Date:</td>
+                                                <td>' . h(lang('Delivery Date')) . ':</td>
                                                 <td>' . $output_delivery_date . '</td>
                                             </tr>
                                         </table>
@@ -802,7 +802,7 @@ function get_order_preview($properties) {
                         $output_ship_tos .=
                             '<tr class="ship_tos">
                                 <td colspan="5">
-                                    <div class="heading">Ship to ' . $output_ship_to_name . '' . pg_op_change_link_html(pg_op_step_url('shipping_address_and_arrival_page_id', '?ship_to_id=' . $ship_to_id)) . '</div>
+                                    <div class="heading">' . h(lang('Ship to')) . ' ' . $output_ship_to_name . '' . pg_op_change_link_html(pg_op_step_url('shipping_address_and_arrival_page_id', '?ship_to_id=' . $ship_to_id)) . '</div>
                                     <div class="data">
                                         ' . $address . '
                                         ' . get_submitted_form_content_with_form_fields(array('type' => 'custom_shipping_form', 'ship_to_id' => $ship_to_id)) . '
@@ -882,11 +882,11 @@ function get_order_preview($properties) {
                     // prepare output for this ship to
                     $output_ship_tos .=
                         '<tr class="products heading mobile_hide" style="border: none">
-                            <th class="heading_item" style="text-align: left">Item</th>
-                            <th class="heading_description" style="text-align: left">Description</th>
+                            <th class="heading_item" style="text-align: left">' . h(lang('Item')) . '</th>
+                            <th class="heading_description" style="text-align: left">' . h(lang('Description')) . '</th>
                             <th class="heading_selection" style="text-align: left">' . $output_quantity_heading . '</th>
                             <th class="heading_price" style="text-align: right">' . $output_price_heading . '</th>
-                            <th class="heading_amount" style="text-align: right">Amount</th>
+                            <th class="heading_amount" style="text-align: right">' . h(lang('Amount')) . '</th>
                         </tr>
                         ' . $output_products . '
                         ' . $output_shipping . '
@@ -992,7 +992,7 @@ function get_order_preview($properties) {
                         $output_recurring_ship_tos .=
                             '<tr class="ship_tos">
                                 <td colspan="6">
-                                    <div class="heading">Ship to ' . $output_ship_to_name . '' . pg_op_change_link_html(pg_op_step_url('shipping_address_and_arrival_page_id', '?ship_to_id=' . $ship_to_id)) . '</div>
+                                    <div class="heading">' . h(lang('Ship to')) . ' ' . $output_ship_to_name . '' . pg_op_change_link_html(pg_op_step_url('shipping_address_and_arrival_page_id', '?ship_to_id=' . $ship_to_id)) . '</div>
                                     <div class="data">' . $address . '</div>
                                     ' . get_submitted_form_content_with_form_fields(array('type' => 'custom_shipping_form', 'ship_to_id' => $ship_to_id)) . '
                                 </td>
@@ -1010,12 +1010,12 @@ function get_order_preview($properties) {
                     // prepare recurring output for this ship to
                     $output_recurring_ship_tos .=
                         '<tr class="products heading mobile_hide" style="border: none">
-                            <th class="heading_item" style="text-align: left">Item</th>
-                            <th class="heading_description" style="text-align: left">Description</th>
-                            <th class="heading_frequency" style="text-align: left">Frequency</th>
+                            <th class="heading_item" style="text-align: left">' . h(lang('Item')) . '</th>
+                            <th class="heading_description" style="text-align: left">' . h(lang('Description')) . '</th>
+                            <th class="heading_frequency" style="text-align: left">' . h(lang('Frequency')) . '</th>
                             <th class="heading_selection" style="text-align: left">' . $output_quantity_heading . '</th>
                             <th class="heading_price" style="text-align: right">' . $output_price_heading . '</th>
-                            <th class="heading_amount" style="text-align: right">Amount</th>
+                            <th class="heading_amount" style="text-align: right">' . h(lang('Amount')) . '</th>
                         </tr>
                         ' . $output_recurring_products . '
                         <tr class="ship_tos data">
@@ -1044,7 +1044,7 @@ function get_order_preview($properties) {
             
             $output_discount =
                     '<tr class="order_totals data">
-                        <td class="mobile_left" colspan="4" style="text-align: right">Discount:</td>
+                        <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Discount')) . ':</td>
                         <td class="mobile_right" style="text-align: right">-' . prepare_price_for_output($order_discount * 100, FALSE, $discounted_price = '', 'html') . '</td>
                     </tr>';
         }
@@ -1069,7 +1069,7 @@ function get_order_preview($properties) {
 
             $output_grand_tax =
                     '<tr class="order_totals data">
-                        <td class="mobile_left" colspan="4" style="text-align: right">Tax:</td>
+                        <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Tax')) . ':</td>
                         <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($grand_tax * 100, FALSE, $discounted_price = '', 'html') . '</td>
                     </tr>';
         }
@@ -1089,7 +1089,7 @@ function get_order_preview($properties) {
 
             $output_grand_shipping =
                 '<tr class="order_totals data">
-                    <td class="mobile_left" colspan="4" style="text-align: right">Shipping:</td>
+                    <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Shipping')) . ':</td>
                     <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($grand_shipping * 100, FALSE, $discounted_price = '', 'html') . '</td>
                 </tr>';
         }
@@ -1144,7 +1144,7 @@ function get_order_preview($properties) {
                 
                 $output_gift_card_discount =
                     '<tr class="gift_card_discount">
-                        <td class="mobile_left" colspan="4" style="text-align: right">Gift Card' . $output_gift_card_label_plural_suffix . ':</td>
+                        <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang($output_gift_card_label_plural_suffix !== '' ? 'Gift Cards' : 'Gift Card')) . ':</td>
                         <td class="mobile_right" style="text-align: right; white-space: nowrap">-' . prepare_price_for_output($gift_card_discount * 100, FALSE, $discounted_price = '', 'html') . '</td>
                     </tr>';
             }
@@ -1170,7 +1170,7 @@ function get_order_preview($properties) {
                 if ($payment_period['exists'] == true) {
                     $output_payment_periods .=
                         '<tr class="order_totals data">
-                            <td class="mobile_left" colspan="5" style="text-align: right">' . $payment_period_name . ' Subtotal:</td>
+                            <td class="mobile_left" colspan="5" style="text-align: right">' . h(lang($payment_period_name)) . ' ' . h(lang('Subtotal')) . ':</td>
                             <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($payment_period['subtotal'] * 100, FALSE, $discounted_price = '', 'html') . '</td>
                         </tr>';
                         
@@ -1188,7 +1188,7 @@ function get_order_preview($properties) {
 
                         $output_payment_periods .=
                                 '<tr class="order_totals data">
-                                    <td class="mobile_left" colspan="5" style="text-align: right">' . $payment_period_name . ' Tax:</td>
+                                    <td class="mobile_left" colspan="5" style="text-align: right">' . h(lang($payment_period_name)) . ' ' . h(lang('Tax')) . ':</td>
                                     <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($payment_period['tax'] * 100, FALSE, $discounted_price = '', 'html') . '</td>
                                 </tr>';
                     } else {
@@ -1197,7 +1197,7 @@ function get_order_preview($properties) {
                     
                     $output_payment_periods .=
                         '<tr class="order_totals data">
-                            <td class="mobile_left" colspan="5" style="text-align: right"><strong>' . $payment_period_name . ' Total:</strong></td>
+                            <td class="mobile_left" colspan="5" style="text-align: right"><strong>' . h(lang($payment_period_name)) . ' ' . h(lang('Total')) . ':</strong></td>
                             <td class="mobile_right" style="text-align: right"><strong>' . prepare_price_for_output($payment_period_total * 100, FALSE, $discounted_price = '', 'html') . '</strong></td>
                         </tr>';
                         
@@ -1216,7 +1216,7 @@ function get_order_preview($properties) {
             $output_recurring_products =
                 '<div class="recurring_products">
                 <fieldset style="padding: 0px 10px 10px 10px; margin-bottom: 15px" class="software_fieldset">
-                    <legend class="software_legend">Recurring Charges</legend>
+                    <legend class="software_legend">' . h(lang('Recurring Charges')) . '</legend>
                     <table class="products" width="100%" cellspacing="2" cellpadding="2" border="0">
                         ' . $output_recurring_ship_tos . '
                         ' . $output_payment_periods . '
@@ -1366,10 +1366,10 @@ function get_order_preview($properties) {
         }
 
         $output_billing_information .= h($billing_state) . ' ' . h($billing_zip_code) . '<br />
-            ' . h($billing_country) . '<br />';
+            ' . h(pg_geo_country_label_site($billing_country)) . '<br />';
 
         if ($billing_phone_number) {
-            $output_billing_information .= 'Phone: ' . h($billing_phone_number) . '<br />';
+            $output_billing_information .= h(lang('Phone')) . ': ' . h($billing_phone_number) . '<br />';
         }
 
         if ($billing_fax_number) {
@@ -1385,7 +1385,7 @@ function get_order_preview($properties) {
         if (ECOMMERCE_TAX_EXEMPT == true) {
             // if tax-exempt was checked
             if ($tax_exempt) {
-                $output_billing_information .= 'Tax-Exempt<br />';
+                $output_billing_information .= h(lang('Tax-Exempt')) . '<br />';
             }
         }
 
@@ -1395,7 +1395,7 @@ function get_order_preview($properties) {
         if ((ECOMMERCE_GIFT_CARD == true) && (count($applied_gift_cards) > 0)) {
             $output_applied_gift_cards =
                 '<div class="applied_gift_cards" style="margin-bottom: 1em">
-                    <div class="heading">Applied Gift Cards</div>
+                    <div class="heading">' . h(lang('Applied Gift Cards')) . '</div>
                     <div class="data">
                     <ul style="margin-top: 0em">';
             
@@ -1512,7 +1512,7 @@ function get_order_preview($properties) {
             // If gift cards are enabled and if a non-recurring transaction is required,
             // then the customer might want to add a gift card, so output gift card code field.
             if ((ECOMMERCE_GIFT_CARD == true) && ($nonrecurring_transaction == true)) {
-                $output_payment_methods .= '<div class="apply_gift_cards" style="margin-bottom: 1em">Gift Card Code: ' . $form->output_field(array('type'=>'text', 'name'=>'gift_card_code', 'size'=>'30', 'maxlength'=>'50', 'class'=>'software_input_text mobile_text_width')) . ' <input type="submit" name="submit_apply_gift_card" value="Apply" class="software_input_submit_small_secondary" formnovalidate></div>';
+                $output_payment_methods .= '<div class="apply_gift_cards" style="margin-bottom: 1em">' . h(lang('Gift Card Code')) . ': ' . $form->output_field(array('type'=>'text', 'name'=>'gift_card_code', 'size'=>'30', 'maxlength'=>'50', 'class'=>'software_input_text mobile_text_width')) . ' <input type="submit" name="submit_apply_gift_card" value="' . h(lang('Apply')) . '" class="software_input_submit_small_secondary" formnovalidate></div>';
             }
             
             // if the credit/debit card payment method should be shown, then prepare to output it
@@ -1585,11 +1585,11 @@ function get_order_preview($properties) {
 
                     $output_surcharge_rows =
                         '<tr class="order_totals data surcharge_row" id="software_surcharge_row">
-                            <td class="mobile_left" colspan="4" style="text-align: right">Surcharge:</td>
+                            <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Surcharge')) . ':</td>
                             <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($surcharge * 100, FALSE, $discounted_price = '', 'html') . '</td>
                         </tr>
                         <tr class="order_totals data surcharge_total_row" id="software_surcharge_total_row">
-                            <td class="mobile_left" colspan="4" style="text-align: right"><strong>Total Due:</strong></td>
+                            <td class="mobile_left" colspan="4" style="text-align: right"><strong>' . h(lang('Total Due')) . ':</strong></td>
                             <td class="mobile_right" style="text-align: right">
                                 <strong>' . prepare_price_for_output($grand_total_with_surcharge * 100, FALSE, $discounted_price = '', 'html') . $output_unconverted_total . '</strong>
                                 <input type="hidden" name="total_with_surcharge" value="' . h($grand_total_with_surcharge) . '">
@@ -1669,7 +1669,7 @@ function get_order_preview($properties) {
                     '<div class="payment data" style="margin-bottom: 1em">
                         <div style="margin-bottom: 10px">' .
                             $form->output_field(array('type'=>'radio', 'name'=>'payment_method', 'id'=>'payment_method_credit_debit_card', 'value'=>'Credit/Debit Card', 'checked'=>$credit_debit_card_checked, 'class'=>'software_input_radio', 'required' => 'true')) .
-                            '<label for="payment_method_credit_debit_card"> Credit/Debit Card</label>
+                            '<label for="payment_method_credit_debit_card"> ' . h(lang('Credit/Debit Card')) . '</label>
                         </div>
                         <div id="credit_debit_card_fields" class="credit_debit_card" style="margin-top: .25em">
                             ' . $output_hosted_card . $output_hosted_card_open . '
@@ -1679,7 +1679,7 @@ function get_order_preview($properties) {
                                         class="mobile_left"
                                         style="padding-right: 15px; vertical-align: top"
                                     >
-                                        <label for="card_number">Card Number*</label> ' .
+                                        <label for="card_number">' . h(lang('Card Number')) . '*</label> ' .
 
                                         $form->field(array(
                                             'type' => 'tel',
@@ -1696,7 +1696,7 @@ function get_order_preview($properties) {
                                         class="mobile_left"
                                         style="padding-right: 15px; vertical-align: top"
                                     >
-                                        <label for="expiration">Expiration*</label> ' .
+                                        <label for="expiration">' . h(lang('Expiration')) . '*</label> ' .
 
                                         $form->field(array(
                                             'type' => 'tel',
@@ -1714,7 +1714,7 @@ function get_order_preview($properties) {
                                         class="card_verification_number mobile_left"
                                         style="vertical-align: top"
                                     >
-                                        <label for="card_verification_number">Security Code*</label> ' .
+                                        <label for="card_verification_number">' . h(lang('Security Code')) . '*</label> ' .
 
                                         $form->field(array(
                                             'type'=>'tel',
@@ -1859,7 +1859,7 @@ function get_order_preview($properties) {
 
             // output the payment information
             $output_payment_information =
-                '<div class="payment heading">Payment Information</div>
+                '<div class="payment heading">' . h(lang('Payment Information')) . '</div>
                 ' . $output_payment_methods;
 
             $system .= '<script>software.init_payment_method()</script>';
@@ -1869,7 +1869,7 @@ function get_order_preview($properties) {
         
         // if a terms page was selected for this order preview page, prepare to output terms and conditions checkbox
         if ($terms_page_name) {
-            $output_terms = '<div class="order_terms">' . $form->output_field(array('type'=>'checkbox', 'id'=>'terms', 'name'=>'terms', 'class'=>'software_input_checkbox', 'required' => 'true')) . '<label for="terms"> I agree to the </label><a href="' . OUTPUT_PATH . h($terms_page_name) . '" target="_blank">terms and conditions</a>.</div>';
+            $output_terms = '<div class="order_terms">' . $form->output_field(array('type'=>'checkbox', 'id'=>'terms', 'name'=>'terms', 'class'=>'software_input_checkbox', 'required' => 'true')) . '<label for="terms"> ' . lang(array('string' => 'I agree to the {var:1}.', 'vars' => '<a href="' . OUTPUT_PATH . h($terms_page_name) . '" target="_blank">' . h(lang('terms and conditions')) . '</a>')) . '</label></div>';
         }
         
         $output_unconverted_total = '';
@@ -1918,7 +1918,7 @@ function get_order_preview($properties) {
                 )
             )
         ) {
-            $form->mark_error('payment_method', 'Sorry, this order may not be submitted, because there is not an available payment method.  Please contact the administrator of this website.');
+            $form->mark_error('payment_method', lang('Sorry, this order may not be submitted, because there is not an available payment method. Please contact the administrator of this website.'));
             
             $output_purchase_now_button = '';
             
@@ -1960,7 +1960,7 @@ function get_order_preview($properties) {
                         </td>
                     </tr>
                     <tr class="order_totals data">
-                        <td class="mobile_left" colspan="4" style="text-align: right">Subtotal:</td>
+                        <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Subtotal')) . ':</td>
                         <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($subtotal * 100, FALSE, $discounted_price = '', 'html') . '</td>
                     </tr>
                     ' . $output_discount . '
@@ -1969,14 +1969,14 @@ function get_order_preview($properties) {
                     ' . $output_gift_card_discount . '
                     ' . $output_surcharge_rows . '
                     <tr class="order_totals data total_row" id="software_total_row">
-                        <td class="mobile_left" colspan="4" style="text-align: right"><strong>Total Due:</strong></td>
+                        <td class="mobile_left" colspan="4" style="text-align: right"><strong>' . h(lang('Total Due')) . ':</strong></td>
                         <td class="mobile_right" style="text-align: right"><strong>' . prepare_price_for_output($grand_total * 100, FALSE, $discounted_price = '', 'html') . $output_unconverted_total . '</strong></td>
                     </tr>
                 </table>
                 ' . $output_multicurrency_disclaimer . '
                 ' . $output_recurring_products . '
                 ' . $output_applied_offers . '
-                <div class="billing heading">Billing Information &nbsp;' . pg_op_change_link_html(pg_op_step_url('billing_information_page_id')) . '</div>
+                <div class="billing heading">' . h(lang('Billing Information')) . ' &nbsp;' . pg_op_change_link_html(pg_op_step_url('billing_information_page_id')) . '</div>
                 <div class="billing data" style="margin-bottom: 15px">
                     ' . $output_billing_information . '
                     ' . get_submitted_form_content_with_form_fields(array('type' => 'custom_billing_form', 'order_id' => $order_id)) . '
@@ -3309,7 +3309,7 @@ function get_order_preview($properties) {
                     )
                 )
             ) {
-                $form->mark_error('payment_method', 'Sorry, this order may not be submitted, because there is not an available payment method.  Please contact the administrator of this website.');
+                $form->mark_error('payment_method', lang('Sorry, this order may not be submitted, because there is not an available payment method. Please contact the administrator of this website.'));
                 
             // else the total is 0 or there is an active payment method, so prepare to output purchase now button
             } else {

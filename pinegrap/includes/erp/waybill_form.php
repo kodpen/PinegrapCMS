@@ -425,7 +425,7 @@ function erp_waybill_form_cards($liveform, $options = array())
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-sm align-middle mb-0" data-erp-lines-table>
+                <table class="table table-sm align-middle mb-0" data-erp-lines-table style="min-width:55rem">
                     <thead>
                         <tr>
                             <th style="width:3rem">#</th>

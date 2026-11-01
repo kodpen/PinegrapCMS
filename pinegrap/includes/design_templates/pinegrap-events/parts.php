@@ -414,7 +414,7 @@ $register_band = function () use ($el, $heading, $para, $link, $container, $row,
             $row(array(
                 $col(array(
                     $heading('h2', lang('Save your seat'), 'h3 fw-bold mb-2'),
-                    $para(lang('Register in two minutes; your confirmation and everything you need for the day come by e-mail.'), 'mb-0 opacity-75'),
+                    $para(lang('Register in two minutes; your confirmation and everything you need for the day come by e-mail.'), 'mb-0'),
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(

@@ -5710,7 +5710,7 @@ const StyleDesigner = (function () {
                 d.style.cssText = 'border:1px dashed #6366f1;border-radius:4px;padding:8px 12px;'
                                 + 'background:rgba(99,102,241,.06);color:#6366f1;font-size:.8rem;line-height:1.4';
                 d.innerHTML = '<i class="bi bi-signpost-split me-1"></i>'
-                            + '<strong>Breadcrumb</strong>'
+                            + '<strong>' + esc(_sdT('Breadcrumb')) + '</strong>'
                             + '<span class="ms-2 text-muted small">' + esc(_sdT('Catalog → Group → Subgroup → Product (filled by the backend)')) + '</span>';
                 return d;
             },
@@ -10763,6 +10763,7 @@ const StyleDesigner = (function () {
         _restoreTabState();
         _restoreDetailsState();
         _sdBootModuleWidgets();
+        _sdApplyImageStamps();
         if (_scrollY) {
             if (canvasDoc.documentElement) canvasDoc.documentElement.scrollTop = _scrollY;
             canvasDoc.body.scrollTop = _scrollY;
@@ -13529,6 +13530,10 @@ const StyleDesigner = (function () {
                     // an in-place placeholder so designer doesn't see raw tokens.
                     _semText = _sdResolveAttrTokens(_semText, true);
                     _semIsHtml = /<[a-z]/i.test(_semText);
+                } else {
+                    // An address form's city or state label in the words of
+                    // the store's default country, as the site stamps it.
+                    _semText = _sdAddrCanvasText(node, _semText);
                 }
                 if (_semIsHtml) {
                     // Preview markup has to be parsed, not escaped — otherwise
@@ -15080,6 +15085,74 @@ const StyleDesigner = (function () {
         if (!_sdEntityBox) _sdEntityBox = document.createElement('textarea');
         _sdEntityBox.innerHTML = String(s);
         return _sdEntityBox.value;
+    }
+
+    // ── Address labels that follow the country ─────────────────────────
+    // Twins of pg_address_label_key() / pg_address_label_swap() and of the
+    // render stamp (pg_address_labels_tree_stamp()): a Turkish address is
+    // asked as İl (the state box) and İlçe (the city box). The canvas has
+    // no visitor's country, so it shows the store's default country
+    // (regionData.address_labels: { tr, words: { city|state: { tr, other,
+    // defaults } } }, pg_address_labels_editor_config()). Only a label
+    // holding a default word changes; the tree is never rewritten.
+    var _SD_ADDR_CONTROLS = {
+        city:  ['city', 'billing_city', 'business_city', 'shipping_city'],
+        state: ['state', 'billing_state', 'business_state', 'shipping_state']
+    };
+    function _sdAddrConfig() {
+        var c = regionData && regionData.address_labels;
+        return (c && c.words && c.words.city && c.words.state) ? c : null;
+    }
+    // The words a starter writes on a city or state label: the store's
+    // default country's, as the render would stamp them.
+    function _sdAddrLabel(slot) {
+        var c = _sdAddrConfig();
+        if (!c) return slot === 'city' ? _sdT('City') : _sdT('State / Province');
+        return c.tr ? c.words[slot].tr : c.words[slot].other;
+    }
+    function _sdAddrKey(text) {
+        return String(text).replace(/[*:]/g, '').replace(/\s*\/\s*/g, '/').replace(/\s+/g, ' ').trim().toLowerCase();
+    }
+    function _sdAddrSwap(text, words, isTr) {
+        var m = /^(\s*)([\s\S]*?)(\s*\*?\s*:?\s*)$/.exec(String(text));
+        if (!m || m[2] === '') return null;
+        var key = _sdAddrKey(m[2]);
+        var defaults = words.defaults || [];
+        for (var i = 0; i < defaults.length; i++) {
+            if (_sdAddrKey(defaults[i]) === key) return m[1] + (isTr ? words.tr : words.other) + m[3];
+        }
+        return null;
+    }
+    // 'city', 'state' or '' for a control node: its name, or its express
+    // order field binding.
+    function _sdAddrSlotOf(n) {
+        if (!n || n.type !== 'semantic' || !n.props) return '';
+        var tag = String(n.props.tag || '').toLowerCase();
+        if (tag !== 'input' && tag !== 'select' && tag !== 'textarea') return '';
+        var name = (n.props._bindings && n.props._bindings.eo_field) ? String(n.props._bindings.eo_field) : '';
+        if (!name && Array.isArray(n.props._attrs)) {
+            n.props._attrs.forEach(function (a) {
+                if (!name && a && String(a.name || '').toLowerCase() === 'name') name = String(a.value || '');
+            });
+        }
+        if (_SD_ADDR_CONTROLS.city.indexOf(name) !== -1) return 'city';
+        if (_SD_ADDR_CONTROLS.state.indexOf(name) !== -1) return 'state';
+        return '';
+    }
+    // The canvas text of a label node: a default word beside a city or
+    // state control in the default country's words, else `text` as it is.
+    function _sdAddrCanvasText(node, text) {
+        var c = _sdAddrConfig();
+        if (!c || !text || !node || !node.props || String(node.props.tag || '').toLowerCase() !== 'label') return text;
+        var swapped = { city: _sdAddrSwap(text, c.words.city, c.tr), state: _sdAddrSwap(text, c.words.state, c.tr) };
+        if (swapped.city === null && swapped.state === null) return text;
+        var p = _sdAnyParent(node);
+        var kids = (p && p.parent && p.parent.children) || [];
+        for (var i = 0; i < kids.length; i++) {
+            var slot = _sdAddrSlotOf(kids[i]);
+            if (slot && swapped[slot] !== null) return swapped[slot];
+        }
+        return text;
     }
 
     function _propsWithBindings(node) {
@@ -34789,7 +34862,7 @@ const StyleDesigner = (function () {
                     ) +
                     row(_sdT('Catalog page'),
                         '<select class="form-control form-control-sm" id="sd-sw-civ-cat-page" data-sw-id="' + sid + '">' + _civCatOpts + '</select>' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('Choose the catalog list page to make the breadcrumb crumbs (Catalog → Group → …) clickable. The list holds the pages that carry a <code>catalog_listing</code> widget. Empty = the crumbs are plain text.') + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('Choose the catalog list page to make the breadcrumb crumbs (Catalog → Group → …) clickable. The list holds the pages that carry a Catalog widget. Empty = the crumbs are plain text.') + '</div>'
                     ) +
                     row(_sdT('Variant picker style'),
                         // Widget-level renderStyle for the auto-injected
@@ -34812,7 +34885,7 @@ const StyleDesigner = (function () {
                                 }).join('') +
                             '</select>';
                         })() +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('The interface shape for the variant attributes (Color, Size, …). Leave a <code>variant_attr</code> content type for the designer and that element\'s own style wins.') + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('The interface shape for the variant attributes (Color, Size, …). If you place a Variant Attribute element on the page, that element\'s own look applies.') + '</div>'
                     )
                 );
             }
@@ -35119,7 +35192,7 @@ const StyleDesigner = (function () {
                 var _tcName = typeof _cfg.search_page_name === 'string' ? _cfg.search_page_name : '';
                 var _tcOpts = '<option value="">' + esc(_sdT('— Select —')) + '</option>';
                 _tcNames.forEach(function (nm) {
-                    _tcOpts += '<option value="' + esc(nm) + '"' + (nm === _tcName ? ' selected' : '') + '>' + esc(nm) + '</option>';
+                    _tcOpts += '<option value="' + esc(nm) + '"' + (nm === _tcName ? ' selected' : '') + '>' + esc(_sdTagCloudPageLabel(nm)) + '</option>';
                 });
                 if (_tcName !== '' && _tcNames.indexOf(_tcName) === -1) {
                     _tcOpts += '<option value="' + esc(_tcName) + '" selected>' + esc(_sdT('{var} (not found)', _tcName)) + '</option>';
@@ -38299,9 +38372,9 @@ const StyleDesigner = (function () {
                             _mkField('col-12 col-md-6 mb-2', _sdT('Phone'),  'shipping_phone_number','tel', '', false),
                             _mkField('col-12 col-md-12 mb-2', _sdT('Address 1'), 'shipping_address_1',  'text', '', true),
                             _mkField('col-12 col-md-12 mb-2', _sdT('Address 2'), 'shipping_address_2',  'text', '', false),
-                            _mkField('col-12 col-md-6 mb-2', _sdT('City'),    'shipping_city',       'text', '', true),
+                            _mkField('col-12 col-md-6 mb-2', _sdAddrLabel('city'), 'shipping_city',       'text', '', true),
                             _mkField('col-12 col-md-6 mb-2', _sdT('District'), 'shipping_district',  'text', '', false),
-                            _mkField('col-12 col-md-6 mb-2', _sdT('State'),'shipping_state',      'text', '', true),
+                            _mkField('col-12 col-md-6 mb-2', _sdAddrLabel('state'), 'shipping_state',      'text', '', true),
                             _mkField('col-12 col-md-6 mb-2', _sdT('Zip Code'),'shipping_zip_code',  'text', '', true),
                             createNode('semantic', { tag: 'div', cssClass: 'col-12 col-md-6 mb-2' }, [
                                 _mkLabel('shipping_country', _sdT('Country'), true),
@@ -48727,13 +48800,56 @@ const StyleDesigner = (function () {
     // The pages a Tag Cloud widget can link its keywords to: the classic
     // search results pages and the pages built with the Search Results
     // widget (a site installed from a design template has only those).
+    // Pages of the design being edited come first, then the other designs'
+    // pages; within each, pages everyone can open before drafts and
+    // members-only pages.
     function _sdTagCloudPageNames() {
         var out = [];
         var lists = [(regionData && regionData.tag_cloud_regions) || [], (regionData && regionData.tag_cloud_widget_pages) || []];
         lists.forEach(function (list) {
             list.forEach(function (nm) { if (out.indexOf(nm) === -1) out.push(nm); });
         });
-        return out;
+        var rank = function (nm) {
+            var info = _sdTagCloudPageInfo(nm);
+            return (_sdTagCloudOtherDesign(info) ? 2 : 0) + (info && info.open === false ? 1 : 0);
+        };
+        return out.map(function (nm, i) { return { nm: nm, i: i, r: rank(nm) }; })
+            .sort(function (a, b) { return (a.r - b.r) || (a.i - b.i); })
+            .map(function (e) { return e.nm; });
+    }
+
+    function _sdTagCloudPageInfo(nm) {
+        var all = (regionData && regionData.tag_cloud_page_info) || {};
+        return Object.prototype.hasOwnProperty.call(all, nm) ? all[nm] : null;
+    }
+
+    // A page set in a design other than the one being edited (a page with
+    // no design of its own belongs to none).
+    function _sdTagCloudOtherDesign(info) {
+        var styleId = (_design && _design.styleId) ? parseInt(_design.styleId, 10) : 0;
+        return !!(info && info.style && styleId && parseInt(info.style, 10) !== styleId);
+    }
+
+    // A new widget's page: the first page of this design that everyone can
+    // open; none when there is no such page, so keyword links never send a
+    // visitor to the login page of a draft or of another design's page.
+    function _sdTagCloudDefaultPage() {
+        var names = _sdTagCloudPageNames();
+        for (var i = 0; i < names.length; i++) {
+            var info = _sdTagCloudPageInfo(names[i]);
+            if (info && info.open && !_sdTagCloudOtherDesign(info)) return names[i];
+        }
+        return '';
+    }
+
+    // The picker's text for a page: its name, the other design it is set in
+    // and whether visitors cannot open it.
+    function _sdTagCloudPageLabel(nm) {
+        var info = _sdTagCloudPageInfo(nm);
+        var notes = [];
+        if (_sdTagCloudOtherDesign(info)) notes.push(info.design ? info.design : _sdT('another design'));
+        if (info && info.open === false) notes.push(_sdT('not public'));
+        return notes.length ? nm + ' (' + notes.join(', ') + ')' : nm;
     }
 
     function needsName(t) { return ['ad','common','designer','dynamic','login','menu','menu_sequence','tag_cloud','system'].indexOf(t) !== -1; }
@@ -48785,12 +48901,34 @@ const StyleDesigner = (function () {
     // 'rounded-top-3' → "Top 3"); the bare `shadow` reads "Regular". A
     // label with a word that has no translation keeps its class-derived
     // form in full ('Decoration none'), never half of it.
+    // Labels of the Themes panel's link decoration options; the values stay
+    // the CSS keywords.
+    function _sdThemeDecorationLabels() {
+        return {
+            'none': _sdT('No decoration'), 'underline': _sdT('Underline'),
+            'overline': _sdT('Overline'), 'line-through': _sdT('Strikethrough')
+        };
+    }
     function _sdStyleOptionLabel(cls) {
         var words = {
             'none': _sdT('None'), 'sm': _sdT('Small'), 'lg': _sdT('Large'),
             'circle': _sdT('Circle'), 'pill': _sdT('Pill'),
-            'top': _sdT('Top'), 'end': _sdT('End'), 'bottom': _sdT('Bottom'), 'start': _sdT('Start')
+            'top': _sdT('Top'), 'end': _sdT('End'), 'bottom': _sdT('Bottom'), 'start': _sdT('Start'),
+            'base': _sdT('Base'), 'display': _sdT('Display heading')
         };
+        // Whole classes whose name is no word of the panel's language: the
+        // text case, font weight, font style and decoration families.
+        var named = {
+            'text-lowercase': _sdT('lowercase'), 'text-uppercase': _sdT('UPPERCASE'),
+            'text-capitalize': _sdT('Capitalize Each Word'),
+            'fw-lighter': _sdT('Lighter'), 'fw-light': _sdT('Light weight'), 'fw-normal': _sdT('Normal'),
+            'fw-medium': _sdT('Medium'), 'fw-semibold': _sdT('Semibold'), 'fw-bold': _sdT('Bold'),
+            'fw-bolder': _sdT('Bolder'),
+            'fst-italic': _sdT('Italic'), 'fst-normal': _sdT('Normal'),
+            'text-decoration-none': _sdT('No decoration'), 'text-decoration-underline': _sdT('Underline'),
+            'text-decoration-line-through': _sdT('Strikethrough'), 'text-decoration-overline': _sdT('Overline')
+        };
+        if (Object.prototype.hasOwnProperty.call(named, cls)) return named[cls];
         var fit = {
             'object-fit-contain': _sdT('Contain (whole image)'), 'object-fit-cover': _sdT('Cover (crop to fill)'),
             'object-fit-fill': _sdT('Stretch to fill'), 'object-fit-scale-down': _sdT('Scale down only'),
@@ -53837,7 +53975,7 @@ const StyleDesigner = (function () {
                 vars: [
                     { name: '--bs-primary',   label: _sdT('Primary'),   kind: 'color', theme: true, def: { light: '#0d6efd', dark: '#6ea8fe' } },
                     { name: '--bs-secondary', label: _sdT('Secondary'), kind: 'color', theme: true, def: { light: '#6c757d', dark: '#a7acb1' } },
-                    { name: '--bs-success',   label: 'Success',   kind: 'color', theme: true, def: { light: '#198754', dark: '#75b798' } },
+                    { name: '--bs-success',   label: _sdT('Success'),   kind: 'color', theme: true, def: { light: '#198754', dark: '#75b798' } },
                     { name: '--bs-info',      label: _sdT('Info'),      kind: 'color', theme: true, def: { light: '#0dcaf0', dark: '#6edff6' } },
                     { name: '--bs-warning',   label: _sdT('Warning'),   kind: 'color', theme: true, def: { light: '#ffc107', dark: '#ffda6a' } },
                     { name: '--bs-danger',    label: _sdT('Danger'),    kind: 'color', theme: true, def: { light: '#dc3545', dark: '#ea868f' } },
@@ -53876,8 +54014,8 @@ const StyleDesigner = (function () {
                 vars: [
                     { name: '--bs-link-color',           label: _sdT('Color'),            kind: 'color', def: { light: '#0d6efd', dark: '#6ea8fe' } },
                     { name: '--bs-link-hover-color',     label: _sdT('Hover Color'),      kind: 'color', def: { light: '#0a58ca', dark: '#9ec5fe' } },
-                    { name: '--bs-link-decoration',      label: _sdT('Decoration'),       kind: 'select', opts: ['none','underline','overline','line-through'], def: { light: 'underline', dark: 'underline' } },
-                    { name: '--bs-link-hover-decoration',label: _sdT('Hover Decoration'), kind: 'select', opts: ['none','underline','overline','line-through'], def: { light: 'underline', dark: 'underline' } }
+                    { name: '--bs-link-decoration',      label: _sdT('Decoration'),       kind: 'select', opts: ['none','underline','overline','line-through'], optLabels: _sdThemeDecorationLabels(), def: { light: 'underline', dark: 'underline' } },
+                    { name: '--bs-link-hover-decoration',label: _sdT('Hover Decoration'), kind: 'select', opts: ['none','underline','overline','line-through'], optLabels: _sdThemeDecorationLabels(), def: { light: 'underline', dark: 'underline' } }
                 ]
             },
             {
@@ -54502,7 +54640,7 @@ const StyleDesigner = (function () {
                     } else if (v.kind === 'select') {
                         var opts = (v.opts || []).map(function (o) {
                             var sel = (val === o) || (!val && ph === o);
-                            return '<option value="' + esc(o) + '"' + (sel ? ' selected' : '') + '>' + esc(o) + '</option>';
+                            return '<option value="' + esc(o) + '"' + (sel ? ' selected' : '') + '>' + esc(v.optLabels && v.optLabels[o] ? v.optLabels[o] : o) + '</option>';
                         }).join('');
                         html +=
                             '<div class="sd-theme-row sd-theme-row-select" data-var="' + v.name + '">' +
@@ -56927,8 +57065,8 @@ const StyleDesigner = (function () {
             // panel turns it off.
             if (cfg.show_register_link === undefined) cfg.show_register_link = true;
         } else if (newType === 'tag_cloud_region') {
-            // The site's first search results page, so a new widget shows keywords at once.
-            if (cfg.search_page_name === undefined) cfg.search_page_name = _sdTagCloudPageNames()[0] || '';
+            // An open search results page of this design, so a new widget shows keywords at once.
+            if (cfg.search_page_name === undefined) cfg.search_page_name = _sdTagCloudDefaultPage();
         } else if (newType === 'ad_region') {
             // The site's first ad region, so a new widget shows ads at once.
             if (cfg.ad_region_name === undefined) cfg.ad_region_name = ((regionData && regionData.ad_regions) || [])[0] || '';
@@ -60328,7 +60466,7 @@ const StyleDesigner = (function () {
                                     fld('col-12 col-md-6 mb-3', _sdT('Company'),      'shipping_company',     'text'),
                                     fld('col-12 col-md-6 mb-3', _sdT('Address 1'),    'shipping_address_1',   'text', '', true),
                                     fld('col-12 col-md-6 mb-3', _sdT('Address 2'),    'shipping_address_2',   'text'),
-                                    fld('col-12 col-md-6 mb-3', _sdT('City'),         'shipping_city',        'text', '', true),
+                                    fld('col-12 col-md-6 mb-3', _sdAddrLabel('city'), 'shipping_city',        'text', '', true),
                                     // Optional; the site shows it for a Turkish address.
                                     fld('col-12 col-md-6 mb-3', _sdT('District'),     'shipping_district',    'text'),
                                     sem('div', 'col-12 col-md-6 mb-3', [
@@ -60337,7 +60475,7 @@ const StyleDesigner = (function () {
                                             bindings: { eo_field: 'shipping_country' }
                                         })
                                     ]),
-                                    fld('col-12 col-md-6 mb-3', _sdT('State / Province'), 'shipping_state',    'text', '', true),
+                                    fld('col-12 col-md-6 mb-3', _sdAddrLabel('state'), 'shipping_state',    'text', '', true),
                                     fld('col-12 col-md-6 mb-3', _sdT('Zip Code'),  'shipping_zip_code', 'text', '', true)
                                 ])
                             ], { bindings: { eo_visible_if: 'has_single_recipient' } }),
@@ -60363,7 +60501,7 @@ const StyleDesigner = (function () {
                                 fld('col-12 col-md-6 mb-3', _sdT('Last Name'),  'billing_last_name',  'text', '', true),
                                 fld('col-12 col-md-6 mb-3', _sdT('Address 1'),  'billing_address_1',  'text', '', true),
                                 fld('col-12 col-md-6 mb-3', _sdT('Address 2'),  'billing_address_2',  'text'),
-                                fld('col-12 col-md-6 mb-3', _sdT('City'),       'billing_city',       'text', '', true),
+                                fld('col-12 col-md-6 mb-3', _sdAddrLabel('city'), 'billing_city',       'text', '', true),
                                 sem('div', 'col-12 col-md-6 mb-3', [
                                     lbl('billing_country', _sdT('Country'), true),
                                     // Real <select> bound to billing_country.
@@ -60374,7 +60512,7 @@ const StyleDesigner = (function () {
                                         bindings: { eo_field: 'billing_country' }
                                     })
                                 ]),
-                                fld('col-12 col-md-6 mb-3', _sdT('State / Province'), 'billing_state',    'text', '', true),
+                                fld('col-12 col-md-6 mb-3', _sdAddrLabel('state'), 'billing_state',    'text', '', true),
                                 fld('col-12 col-md-6 mb-3', _sdT('Zip Code'),         'billing_zip_code', 'text', '', true)
                             ])
                         ], { attrs: [{ name: 'data-pg-eo-billing-address', value: '1' }] }),
@@ -62908,8 +63046,8 @@ const StyleDesigner = (function () {
                         _swAcctField(_sdT('Address'), apId + '_addr1', 'text', 'business_address_1', { autocomplete: 'address-line1' }),
                         _swAcctField(_sdT('Address (line 2)'), apId + '_addr2', 'text', 'business_address_2', { autocomplete: 'address-line2' }),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('City') }, [
-                            _swAcctField(_sdT('City'), apId + '_city', 'text', 'business_city', { autocomplete: 'address-level2', colCss: 'col-sm-6' }),
-                            _swAcctField(_sdT('State / Province'), apId + '_state', 'text', 'business_state', { autocomplete: 'address-level1', colCss: 'col-sm-6' })
+                            _swAcctField(_sdAddrLabel('city'), apId + '_city', 'text', 'business_city', { autocomplete: 'address-level2', colCss: 'col-sm-6' }),
+                            _swAcctField(_sdAddrLabel('state'), apId + '_state', 'text', 'business_state', { autocomplete: 'address-level1', colCss: 'col-sm-6' })
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('Country') }, [
                             _swAcctField(_sdT('Zip / Postal Code'), apId + '_zip', 'text', 'business_zip_code', { autocomplete: 'postal-code', colCss: 'col-sm-6' }),
@@ -63018,8 +63156,8 @@ const StyleDesigner = (function () {
                         _swAcctField(_sdT('Address'), abId + '_addr1', 'text', 'address_1', { required: true, autocomplete: 'address-line1' }),
                         _swAcctField(_sdT('Address (line 2)'), abId + '_addr2', 'text', 'address_2', { autocomplete: 'address-line2' }),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('City') }, [
-                            _swAcctField(_sdT('City'), abId + '_city', 'text', 'city', { required: true, autocomplete: 'address-level2', colCss: 'col-sm-6' }),
-                            _swAcctField(_sdT('State / Province'), abId + '_state', 'text', 'state', { autocomplete: 'address-level1', colCss: 'col-sm-6' })
+                            _swAcctField(_sdAddrLabel('city'), abId + '_city', 'text', 'city', { required: true, autocomplete: 'address-level2', colCss: 'col-sm-6' }),
+                            _swAcctField(_sdAddrLabel('state'), abId + '_state', 'text', 'state', { autocomplete: 'address-level1', colCss: 'col-sm-6' })
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('Country') }, [
                             _swAcctField(_sdT('Zip / Postal Code'), abId + '_zip', 'text', 'zip_code', { autocomplete: 'postal-code', colCss: 'col-sm-6' }),
@@ -63525,12 +63663,12 @@ const StyleDesigner = (function () {
                     _swAcctField(_sdT('Address'), biId + '_addr1', 'text', 'billing_address_1', { required: true, autocomplete: 'address-line1', attrs: biMax(50) }),
                     _swAcctField(_sdT('Address (line 2)'), biId + '_addr2', 'text', 'billing_address_2', { autocomplete: 'address-line2', attrs: biMax(50) }),
                     createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('City') }, [
-                        _swAcctField(_sdT('City'), biId + '_city', 'text', 'billing_city', { required: true, autocomplete: 'address-level2', colCss: 'col-sm-6', attrs: biMax(50) }),
+                        _swAcctField(_sdAddrLabel('city'), biId + '_city', 'text', 'billing_city', { required: true, autocomplete: 'address-level2', colCss: 'col-sm-6', attrs: biMax(50) }),
                         biCountry
                     ]),
                     createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('State') }, [
                         createNode('semantic', { tag: 'div', cssClass: 'col-sm-6 mb-3', customName: _sdT('State / Province') }, [
-                            createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdT('State / Province'), customName: _sdT('Label'),
+                            createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdAddrLabel('state'), customName: _sdT('Label'),
                                 _attrs: [{ name: 'for', value: biId + '_state' }] }),
                             createNode('semantic', { tag: 'input', cssClass: 'form-control', id: biId + '_state',
                                 _attrs: [{ name: 'type', value: 'text' }, { name: 'name', value: 'billing_state' },
@@ -63982,12 +64120,12 @@ const StyleDesigner = (function () {
                     afText(_sdT('Address 1'), '_addr1', 'address_1', { required: true, autocomplete: 'address-line1' }),
                     afText(_sdT('Address 2'), '_addr2', 'address_2', { autocomplete: 'address-line2' }),
                     createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('City') }, [
-                        afText(_sdT('City'), '_city', 'city', { required: true, autocomplete: 'address-level2', colCss: 'col-sm-6' }),
+                        afText(_sdAddrLabel('city'), '_city', 'city', { required: true, autocomplete: 'address-level2', colCss: 'col-sm-6' }),
                         afCountry
                     ]),
                     createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('State') }, [
                         createNode('semantic', { tag: 'div', cssClass: 'col-sm-6 mb-3', customName: _sdT('State / Province') }, [
-                            createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdT('State / Province'), customName: _sdT('Label'),
+                            createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdAddrLabel('state'), customName: _sdT('Label'),
                                 _attrs: [{ name: 'for', value: afId + '_state' }] }),
                             createNode('semantic', { tag: 'input', cssClass: 'form-control', id: afId + '_state',
                                 _attrs: [{ name: 'type', value: 'text' }, { name: 'name', value: 'state' },
@@ -64345,14 +64483,14 @@ const StyleDesigner = (function () {
                         _swAcctField(_sdT('Address'), saId + '_addr1', 'text', 'address_1', { required: true, autocomplete: 'address-line1', attrs: [{ name: 'maxlength', value: '50' }] }),
                         _swAcctField(_sdT('Address (line 2)'), saId + '_addr2', 'text', 'address_2', { autocomplete: 'address-line2', attrs: [{ name: 'maxlength', value: '50' }] }),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('City') }, [
-                            _swAcctField(_sdT('City'), saId + '_city', 'text', 'city', { required: true, autocomplete: 'address-level2', colCss: 'col-sm-6', attrs: [{ name: 'maxlength', value: '50' }] }),
+                            _swAcctField(_sdAddrLabel('city'), saId + '_city', 'text', 'city', { required: true, autocomplete: 'address-level2', colCss: 'col-sm-6', attrs: [{ name: 'maxlength', value: '50' }] }),
                             // Optional; the site shows it for a Turkish address.
                             _swAcctField(_sdT('District'), saId + '_district', 'text', 'district', { autocomplete: 'address-level3', colCss: 'col-sm-6', attrs: [{ name: 'maxlength', value: '50' }] }),
                             saCountry
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('State') }, [
                             createNode('semantic', { tag: 'div', cssClass: 'col-sm-6 mb-3', customName: _sdT('State / Province') }, [
-                                createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdT('State / Province'), customName: _sdT('Label'),
+                                createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdAddrLabel('state'), customName: _sdT('Label'),
                                     _attrs: [{ name: 'for', value: saId + '_state' }] }),
                                 createNode('semantic', { tag: 'input', cssClass: 'form-control', id: saId + '_state',
                                     _attrs: [{ name: 'type', value: 'text' }, { name: 'name', value: 'state' },
@@ -72076,6 +72214,13 @@ const StyleDesigner = (function () {
             // A tree loaded back from the History panel is recorded as a
             // restore when it is published (includes/fn/page_revisions.php).
             if (!rec.unchanged && p.restoredFrom) rec.revision_source = 'restore';
+            // What only the browser measures on the canvas (contrast, target
+            // size) goes with the page on the canvas, for the accessibility
+            // report (pg_a11y_store_measured()).
+            if (!rec.unchanged && p.key === _activeKey) {
+                var measured = _sdMeasuredA11y(t);
+                if (measured) rec.a11y_measured = measured;
+            }
             _PG_PAGE_FIELDS.forEach(function (k) { rec[k] = p[k]; });
             // A saved page under a new name: whether its old address sends
             // visitors on (pg_short_link_page_renamed()); on unless it was
@@ -75512,6 +75657,19 @@ const StyleDesigner = (function () {
         return out;
     }
 
+    // The canvas findings the accessibility report keeps for the page on
+    // the canvas: {rule, label} of the browser-only checks; null when the
+    // canvas could not be measured (the save then clears the stored ones).
+    var _SD_MEASURED_RULES = ['low_contrast', 'target_size'];
+    function _sdMeasuredA11y(root) {
+        if (!canvasDoc || !canvasDoc.body || !window.PgContrast) return null;
+        var out = [];
+        _sdCanvasAuditIssues(root).forEach(function (i) {
+            if (_SD_MEASURED_RULES.indexOf(i.rule) !== -1 && out.length < 1000) out.push({ rule: i.rule, label: i.label });
+        });
+        return out;
+    }
+
     // ── Text contrast (WCAG 1.4.3) ───────────────────────────────────
     // Every text the canvas shows against the colour behind it (PgContrast,
     // assets/js/pg_contrast.js); a text with a picture under it is left
@@ -75742,7 +75900,7 @@ const StyleDesigner = (function () {
     function applyIssueBadges() {
         if (!canvasDoc || !canvasDoc.body) return;
         var byId = {};
-        _validationIssues.forEach(function (i) {
+        _validationIssues.concat(_sdServerAuditIssues).forEach(function (i) {
             if (!i.node || !i.node._id) return;
             (byId[i.node._id] = byId[i.node._id] || []).push(i.label);
         });
@@ -75778,6 +75936,7 @@ const StyleDesigner = (function () {
             if (!tree) return;
             _validationIssues = validateTree(tree);
             _seoCheckCache = null;          // the page changed; the score is stale
+            _sdServerAuditIssues = [];      // and so are the draft's findings
             updateValidationChip();
             applyIssueBadges();
         }, 500);
@@ -75808,6 +75967,9 @@ const StyleDesigner = (function () {
     // halves the site-wide score is made of, computed on what is on the
     // canvas now. `keep` re-renders an open panel instead of toggling it.
     var _seoCheckCache = null;
+    // The rendered draft's accessibility findings that name a node
+    // (data-pg-node of the audit render), as canvas badges: {node, label}.
+    var _sdServerAuditIssues = [];
     function openValidationPanel(keep) {
         var old = document.getElementById('sd-validation-panel');
         if (old) { old.remove(); if (!keep) return; }
@@ -75849,6 +76011,11 @@ const StyleDesigner = (function () {
                 '<button type="button" class="sd-val-refresh" id="sd-val-seo-refresh" title="' + esc(_sdT('Recalculate')) + '"><span class="bi bi-arrow-clockwise"></span></button></div>' +
                 '<div id="sd-val-seo"><div class="sd-val-empty"><span class="spinner-border spinner-border-sm me-1"></span>' + esc(_sdT('Calculating…')) + '</div></div>';
 
+        // ── Accessibility ── one row per audit concept, filled with the SEO
+        // answer (_renderAuditConcepts()).
+        html += '<div class="sd-val-sec"><span class="bi bi-universal-access me-1"></span>' + esc(_sdT('Accessibility')) + '</div>' +
+                '<div id="sd-val-a11y"></div>';
+
         panel.innerHTML = html;
         document.body.appendChild(panel);
 
@@ -75873,17 +76040,18 @@ const StyleDesigner = (function () {
         }
 
         panel.querySelector('#sd-val-close').addEventListener('click', function() { panel.remove(); });
-        panel.querySelectorAll('.sd-val-goto').forEach(function(b) {
-            b.addEventListener('click', function() {
-                var hit = _findNodeAnywhereById(this.dataset.nid);
-                if (!hit) return;
-                var n = hit.node;
-                scrollTreeToNode(n);
-                selectedNode = n; selectedNodes = [];
-                render();
-                scrollCanvasToNode(n);
-                panel.remove();
-            });
+        // Delegated: the concept rows arrive with the server's answer.
+        panel.addEventListener('click', function (ev) {
+            var b = ev.target.closest('.sd-val-goto');
+            if (!b || !panel.contains(b)) return;
+            var hit = _findNodeAnywhereById(b.dataset.nid);
+            if (!hit) return;
+            var n = hit.node;
+            scrollTreeToNode(n);
+            selectedNode = n; selectedNodes = [];
+            render();
+            scrollCanvasToNode(n);
+            panel.remove();
         });
         panel.querySelector('#sd-val-seo-refresh').addEventListener('click', function () { _seoCheckCache = null; _renderSeoSection(panel); });
         _renderSeoSection(panel);
@@ -75896,6 +76064,70 @@ const StyleDesigner = (function () {
         setTimeout(function() { document.addEventListener('mousedown', onOutside); }, 0);
     }
 
+    // The audit concepts of the registry (includes/fn/audit_rules.php, sent
+    // as res.concepts): one row per concept the rendered draft's
+    // accessibility checks (res.a11y) or the canvas checks found, with its
+    // SEO severity and WCAG criterion, and the canvas findings of that
+    // concept under it. The draft's findings that name a node badge it.
+    function _renderAuditConcepts(panel, res) {
+        var host = panel.querySelector('#sd-val-a11y');
+        if (!host) return;
+        var concepts = (res && res.concepts) || [];
+        var a11y = (res && Array.isArray(res.a11y)) ? res.a11y : null;
+        var sevIcon = function (sev) {
+            return sev === 'error' ? 'bi-x-circle text-danger' : (sev === 'warning' ? 'bi-exclamation-circle text-warning' : 'bi-info-circle text-info');
+        };
+        var sevText = function (sev) {
+            return sev === 'error' ? _sdT('Error') : (sev === 'warning' ? _sdT('Warning') : _sdT('Notice'));
+        };
+
+        _sdServerAuditIssues = [];
+        (a11y || []).forEach(function (f) {
+            (f.nodes || []).forEach(function (id) {
+                var hit = _findNodeAnywhereById(id);
+                if (hit && hit.node) _sdServerAuditIssues.push({ node: hit.node, label: f.label });
+            });
+        });
+        applyIssueBadges();
+
+        var rows = [];
+        concepts.forEach(function (c) {
+            var found = (a11y || []).filter(function (f) { return f.concept === c.concept; });
+            var canvas = _validationIssues.filter(function (i) { return (c.editor || []).indexOf(i.rule) !== -1; });
+            if (!found.length && !(c.a11y && canvas.length)) return;
+            rows.push({ c: c, found: found, canvas: canvas });
+        });
+
+        var h = '';
+        if (a11y === null) {
+            h += '<div class="sd-val-empty"><span class="bi bi-info-circle me-1"></span>' + esc(_sdT('The accessibility checks run on the page once it is saved.')) + '</div>';
+        }
+        if (!rows.length) {
+            if (a11y !== null) h += '<div class="sd-val-empty"><span class="bi bi-check-circle me-1"></span>' + esc(_sdT('No accessibility issues found')) + '</div>';
+            host.innerHTML = h;
+            return;
+        }
+        h += '<div class="sd-val-list">';
+        rows.forEach(function (r) {
+            var c = r.c;
+            var sev = r.found.length ? r.found[0].severity : (c.a11y_severity || c.seo_severity || 'notice');
+            var label = c.label || (r.canvas.length ? r.canvas[0].label : c.concept);
+            var meta = [];
+            if (c.criterion) meta.push('WCAG ' + c.criterion + ' (' + c.level + ')');
+            if (c.seo_severity) meta.push('SEO: ' + sevText(c.seo_severity));
+            r.found.forEach(function (f) { meta.push(f.occurrences + '×' + (f.detail ? ' · ' + f.detail : '')); });
+            h += '<div class="sd-val-item"><div class="sd-val-rule"><span class="bi ' + sevIcon(sev) + ' sd-val-icon"></span>' + esc(label) + '</div>' +
+                 '<div class="sd-val-node sd-val-detail">' + esc(meta.join(' · ')) + '</div>';
+            r.canvas.forEach(function (i) {
+                h += '<div class="sd-val-node"><span class="bi bi-dot"></span>' + esc(i.label) + (i.node ? ' · ' + esc(i.nodeLabel) : '') +
+                     (i.node ? ' <button class="sd-val-goto" data-nid="' + esc(i.node._id) + '"><span class="bi bi-cursor me-1"></span>' + esc(_sdT('Go')) + '</button>' : '') + '</div>';
+            });
+            h += '</div>';
+        });
+        h += '</div>';
+        host.innerHTML = h;
+    }
+
     // Ask the server for the score of the page as it is now. Cached until
     // the next explicit refresh or the next validation pass, so opening the
     // panel twice does not hit the server twice.
@@ -75903,6 +76135,7 @@ const StyleDesigner = (function () {
         var host = panel.querySelector('#sd-val-seo');
         if (!host) return;
         var draw = function (res) {
+            _renderAuditConcepts(panel, res);
             if (!res || res.status !== 'success') {
                 host.innerHTML = '<div class="sd-val-empty fg-warning"><span class="bi bi-exclamation-triangle me-1"></span>' + esc((res && res.message) || _sdT('The SEO check could not be run.')) + '</div>';
                 return;
@@ -75962,6 +76195,17 @@ const StyleDesigner = (function () {
             page_sitemap: p.page_sitemap ? 1 : 0, page_noindex: p.page_noindex ? 1 : 0,
             html: (typeof generateHTML === 'function') ? generateHTML() : ''
         };
+        // A saved page's draft is rendered by the server as a whole page
+        // (head, shared components, system widgets): its tree and the
+        // system widgets it shows, as the Preview sends them. The markup
+        // above is the fallback the server judges as a fragment.
+        if (body.page_id && tree) {
+            body.tree_json = JSON.stringify(tree);
+            var wp = null;
+            _sdPreviewWidgetMarkers = true;
+            try { wp = _sdPreviewWidgetPayload(generateHTML()); } finally { _sdPreviewWidgetMarkers = false; }
+            body.widgets = wp ? wp.widgets : [];
+        }
         _pgApiPost('seo_check', body).then(function (res) { _seoCheckCache = res; draw(res); })
             .catch(function () { draw(null); });
     }
@@ -76219,14 +76463,58 @@ const StyleDesigner = (function () {
     window.sdOpenImageEditor = function (fieldId) {
         var inp = document.getElementById(fieldId);
         if (!inp) return;
+        // The Image element's own address field: its crop starts on the
+        // shape the page shows it in.
+        var ratio = (fieldId === 'sd-prop-img-src' && selectedNode) ? _sdImageCropRatio(selectedNode.props) : null;
         _sdImageEdit(String(inp.value || '').trim(), function (newUrl) {
             // The input already carries the change handler that writes the
             // node, so a new address is one assignment.
             inp.value = newUrl;
             inp.dispatchEvent(new Event('input',  { bubbles: true }));
             inp.dispatchEvent(new Event('change', { bubbles: true }));
-        });
+        }, ratio);
     };
+
+    // A width / height pair as the image editor's crop ratio
+    // ({ value, label }): reduced when the numbers are small, else the
+    // nearest small fraction, else a decimal to one.
+    function _sdRatioOf(w, h) {
+        var v = w / h;
+        if (!isFinite(v) || v <= 0) return null;
+        if (Math.round(w) === w && Math.round(h) === h) {
+            var a = w, b = h;
+            while (b) { var t = a % b; a = b; b = t; }
+            if (w / a <= 99 && h / a <= 99) return { value: v, label: (w / a) + ':' + (h / a) };
+        }
+        for (var d = 1; d <= 20; d++) {
+            var n = Math.round(v * d);
+            if (n > 0 && Math.abs(n / d - v) / v < 0.005) return { value: v, label: n + ':' + d };
+        }
+        return { value: v, label: (Math.round(v * 100) / 100) + ':1' };
+    }
+
+    // The shape the page shows an Image element in, as the image editor's
+    // crop ratio, or null: its ratio box (a preset '16x9', or the Sizing
+    // panel's custom ratio as a percentage or calc(H / W * 100%), the
+    // --bs-aspect-ratio forms), else whole-number width and height props.
+    function _sdImageCropRatio(p) {
+        if (!p) return null;
+        var ar = String(p.aspectRatio || '');
+        var m = /^(\d+)x(\d+)$/.exec(ar);
+        if (m) return (+m[1] > 0 && +m[2] > 0) ? _sdRatioOf(+m[1], +m[2]) : null;
+        if (ar === 'custom') {
+            if (!p.aspectRatioEnabled) return null;
+            var c = String(p.aspectRatioCustom || '').replace(/\s+/g, '');
+            var pct = /^(\d+(?:\.\d+)?)%$/.exec(c);
+            if (pct) return +pct[1] > 0 ? _sdRatioOf(100, +pct[1]) : null;
+            var calc = /^calc\((\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)\*100%\)$/.exec(c);
+            if (calc) return (+calc[1] > 0 && +calc[2] > 0) ? _sdRatioOf(+calc[2], +calc[1]) : null;
+            return null;
+        }
+        var w = String(p.width || ''), h = String(p.height || '');
+        if (/^\d+$/.test(w) && /^\d+$/.test(h) && +w > 0 && +h > 0) return _sdRatioOf(+w, +h);
+        return null;
+    }
 
     /**
      * The image a node shows, if it shows one.
@@ -76272,6 +76560,7 @@ const StyleDesigner = (function () {
         var hit = _sdNodeImage(node);
         if (!hit) return;
         if (!_sdMayEdit(node, 'image')) return;
+        var ratio = (node.type === 'content') && _sdNodeContentImage(node) ? _sdImageCropRatio(node.props) : null;
         _sdImageEdit(hit.url, function (newUrl) {
             saveState();
             hit.set(newUrl);
@@ -76279,10 +76568,10 @@ const StyleDesigner = (function () {
             if (owner && owner.sid) _sharedDirty[owner.sid] = true;
             render();
             renderProperties();
-        });
+        }, ratio);
     }
 
-    function _sdImageEdit(url, applyNewUrl) {
+    function _sdImageEdit(url, applyNewUrl, ratio) {
         url = String(url || '').trim();
         if (!url) {
             sdToast(_sdT('Pick an image first.'), 'warning', 3000);
@@ -76314,6 +76603,7 @@ const StyleDesigner = (function () {
 
         window.openImageEditor({
             fileName: name,
+            ratio: ratio || undefined,
             onSaved: function (res) {
                 if (res.mode === 'copy') {
                     // A new file, so the page has to be told to use it.
@@ -76322,8 +76612,9 @@ const StyleDesigner = (function () {
                             esc(_sdT('saved. The design still needs saving to keep this address.')), 'success', 6000);
                 } else {
                     // Same name, new pixels: the browser is holding the old
-                    // copy. The cache-buster is put on the rendered <img> only
-                    // — writing it into the tree would store a URL that ages.
+                    // copy. The cache key goes on the drawn canvas only, on
+                    // every redraw; writing it into the tree would store an
+                    // address that ages.
                     _sdBustImageCache(res.url || url);
                     sdToast(esc(_sdT('The image was saved.')), 'success', 4000);
                 }
@@ -76331,21 +76622,88 @@ const StyleDesigner = (function () {
         });
     };
 
-    // Force the canvas to show the file that is on disk now.
-    function _sdBustImageCache(url) {
+    // Files saved over in the image editor during this visit, by path, with
+    // the cache key of the save. The tree keeps the bare address; every
+    // canvas redraw puts the key on the drawn address (_sdApplyImageStamps()),
+    // or the next redraw would show the copy the browser keeps for a week.
+    var _sdEditedImages = {};
+
+    // The path of a same-origin address (decoded), or '' for another site
+    // or something that is no address.
+    function _sdImagePath(raw, base) {
+        raw = String(raw || '').trim();
+        if (!raw || /^(data|blob|javascript):/i.test(raw)) return '';
+        try {
+            var u = new URL(raw, base), b = new URL(base);
+            if (u.origin !== b.origin) return '';
+            return decodeURIComponent(u.pathname);
+        } catch (e) {
+            return '';
+        }
+    }
+
+    // raw with the cache key of its file (_pgv=), or null when its file was
+    // not saved in the editor or the address already carries that key.
+    function _sdStampAddress(raw, base, stamps) {
+        var key = stamps[_sdImagePath(raw, base)];
+        if (!key) return null;
+        var parts = String(raw).trim().split('#');
+        var addr = parts[0].replace(/([?&])_pgv=[^&]*&?/, '$1').replace(/[?&]$/, '');
+        var next = addr + (addr.indexOf('?') === -1 ? '?' : '&') + '_pgv=' + key + (parts.length > 1 ? '#' + parts.slice(1).join('#') : '');
+        return next === String(raw).trim() ? null : next;
+    }
+
+    // Each candidate of a srcset with its file's cache key; null when none changed.
+    function _sdStampSrcset(srcset, base, stamps) {
+        var changed = false;
+        var out = String(srcset).split(',').map(function (c) {
+            var bits = c.trim().split(/\s+/);
+            var next = bits[0] ? _sdStampAddress(bits[0], base, stamps) : null;
+            if (next === null) return c.trim();
+            changed = true;
+            bits[0] = next;
+            return bits.join(' ');
+        });
+        return changed ? out.join(', ') : null;
+    }
+
+    // Puts the cache keys of the files saved in the editor on the canvas:
+    // <img> and <source> addresses and srcsets, inline background images.
+    function _sdApplyImageStamps() {
         var doc = (typeof canvasDoc !== 'undefined') ? canvasDoc : null;
-        if (!doc) return;
-        var bare = String(url).split('?')[0];
-        var stamp = '_pgv=' + Date.now();
-        doc.querySelectorAll('img').forEach(function (im) {
-            if (String(im.getAttribute('src') || '').split('?')[0] !== bare) return;
-            im.src = bare + (bare.indexOf('?') === -1 ? '?' : '&') + stamp;
+        if (!doc || !doc.body || !Object.keys(_sdEditedImages).length) return;
+        var base = doc.baseURI || window.location.href;
+        doc.querySelectorAll('img[src], source[src], img[srcset], source[srcset]').forEach(function (im) {
+            var next = im.hasAttribute('src') ? _sdStampAddress(im.getAttribute('src'), base, _sdEditedImages) : null;
+            if (next !== null) im.setAttribute('src', next);
+            var set = im.hasAttribute('srcset') ? _sdStampSrcset(im.getAttribute('srcset'), base, _sdEditedImages) : null;
+            if (set !== null) im.setAttribute('srcset', set);
         });
-        doc.querySelectorAll('*').forEach(function (el) {
-            var bg = el.style && el.style.backgroundImage;
-            if (!bg || bg.indexOf(bare) === -1) return;
-            el.style.backgroundImage = bg.replace(bare, bare + (bare.indexOf('?') === -1 ? '?' : '&') + stamp);
+        doc.querySelectorAll('[style*="url("]').forEach(function (el) {
+            var bg = el.style.backgroundImage;
+            if (!bg || bg.indexOf('url(') === -1) return;
+            var next = bg.replace(/url\((['"]?)([^'")]+)\1\)/g, function (all, q, addr) {
+                var stamped = _sdStampAddress(addr, base, _sdEditedImages);
+                return stamped === null ? all : 'url(' + q + stamped + q + ')';
+            });
+            if (next !== bg) el.style.backgroundImage = next;
         });
+    }
+
+    // A file saved over in the editor: the canvas shows it now and after
+    // every redraw, and the browser's own copy of the bare address is
+    // fetched again for the preview and other tabs.
+    function _sdBustImageCache(url) {
+        var path = _sdImagePath(url, window.location.href);
+        if (!path) return;
+        _sdEditedImages[path] = String(Date.now());
+        var bare = String(url).split('#')[0].split('?')[0];
+        try {
+            fetch(bare, { cache: 'reload', credentials: 'same-origin' }).catch(function () {});
+        } catch (e) {
+            // No fetch: the canvas still shows the new file through the key.
+        }
+        _sdApplyImageStamps();
     }
 
     window.sdOpenImagePicker = function (fieldId) {

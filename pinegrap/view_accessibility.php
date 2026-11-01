@@ -28,24 +28,9 @@ $ready = pg_seo_structure_schema_ready() && class_exists('DOMDocument');
 
 // ---- Check now -------------------------------------------------------------
 
-// The same pass as the nightly job with a short budget, for a site that has
-// not run the job yet. It carries on where the job stopped and the job
-// carries on where this stopped. POST with the token: it renders pages.
-if ($ready && isset($_POST['submit_check'])) {
-    validate_token_field();
-
-    $check_run = pg_a11y_run(defined('SEO_ANALYZE_BUTTON_BUDGET') ? (int) SEO_ANALYZE_BUTTON_BUDGET : 20);
-
-    if ($check_run['done']) {
-        pg_cron_ran('seo_a11y_job');
-        $liveform->add_notice(lang(array('string' => 'Every published page has been checked ({var:1} in this run).', 'vars' => array($check_run['checked']))));
-    } else {
-        $liveform->add_notice(lang(array('string' => '{var:1} pages were checked. Click again to continue with the rest.', 'vars' => array($check_run['checked']))));
-    }
-
-    log_activity(lang('ran the accessibility check'), $_SESSION['sessionusername']);
-    go(PATH . SOFTWARE_DIRECTORY . '/view_accessibility.php');
-}
+// Check Pages Now posts to audit_run.php: the same pass as the nightly job
+// with a short budget, rendered as a visitor who is not signed in, as the job
+// renders. It carries on where the job stopped and returns here.
 
 $code = (isset($_GET['code']) && is_string($_GET['code']) && isset(pg_a11y_rules()[$_GET['code']])) ? $_GET['code'] : '';
 // The end of the last full pass: the job's completion marker, which a tick
@@ -134,11 +119,13 @@ $severity_badges = array(
 
 foreach (pg_a11y_report_rows($code, $row_limit) as $row) {
     $badge = isset($severity_badges[$row['severity']]) ? $severity_badges[$row['severity']] : $severity_badges['notice'];
+    $note = pg_a11y_measured_note($row['source']);
 
     $output_rows .=
         '<tr>
             <td class="align-middle"><a href="' . OUTPUT_PATH . h(encode_url_path($row['page_name'])) . '" target="_blank" rel="noopener">' . h($row['page_name']) . '</a></td>
-            <td class="align-middle"><span class="badge rounded-pill ' . $badge[0] . ' me-1">' . h($badge[1]) . '</span>' . h(pg_a11y_issue_label($row['code'])) . '</td>
+            <td class="align-middle"><span class="badge rounded-pill ' . $badge[0] . ' me-1">' . h($badge[1]) . '</span>' . h(pg_a11y_issue_label($row['code']))
+                . (($note !== '') ? '<div class="small fg-secondary">' . h($note) . '</div>' : '') . '</td>
             <td class="align-middle">' . (int) $row['occurrences'] . '</td>
             <td class="align-middle small font-monospace text-break">' . h($row['detail']) . '</td>
         </tr>';
@@ -166,8 +153,9 @@ echo pg_page_shell($shell) . '
             ' . $liveform->output_errors() . '
             ' . $liveform->output_notices() . '
             <nav id="button_bar" class="pg-toolbar my-3" aria-label="' . h(lang('Button Bar')) . '">
-                <form method="post" action="view_accessibility.php" class="d-inline">
+                <form method="post" action="audit_run.php" class="d-inline">
                     ' . get_token_field() . '
+                    <input type="hidden" name="pass" value="a11y">
                     <button type="submit" name="submit_check" value="1" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Check Pages Now')) . '</button>
                 </form>
                 <a class="btn btn-sm btn-text theme-secondary" href="view_accessibility.php?pdf=1"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . h(lang('Download PDF')) . '</a>

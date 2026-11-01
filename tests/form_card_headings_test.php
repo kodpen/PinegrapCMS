@@ -56,7 +56,7 @@ function test_form_card_titles_are_h2_with_the_same_look()
 		'arrival_date_form.php' => 3,
 		'calendar_event_form.php' => 5,
 		'contact_form.php' => 7,
-		'email_campaign_profile_form.php' => 5,
+		'email_campaign_profile_form.php' => 6,
 		'page_form.php' => 2,
 		'product_group_form.php' => 5,
 		'shipping_method_form.php' => 4,

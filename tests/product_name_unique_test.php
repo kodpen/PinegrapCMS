@@ -72,6 +72,35 @@ function test_product_name_taken_text()
 		'a binned product still holds its code, and the text says where it is');
 }
 
+// The reverse of a barcode on another product's code: a code that is another
+// product's barcode would scan as that product.
+function test_product_name_taken_by_a_barcode_text()
+{
+	$holder = array('id' => 185, 'name' => 'FD-A', 'short_description' => 'Import A', 'recycled' => '0', 'barcode' => '1');
+
+	$text = pg_product_name_taken_text('8690000000017', $holder);
+
+	pg_assert_contains('8690000000017', $text);
+	pg_assert_contains('Import A', $text);
+	pg_assert_contains('barcode', $text, 'says it is a barcode, not a product code');
+	pg_assert_false(strpos($text, 'Recycle Bin') !== false);
+
+	$binned = pg_product_name_taken_text('8690000000017', array_merge($holder, array('recycled' => '1')));
+	pg_assert_contains('Recycle Bin', $binned);
+	pg_assert_contains('barcode', $binned);
+}
+
+function test_product_name_holder_looks_at_barcodes()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/ecommerce.php');
+	$start = strpos($source, "\nfunction pg_product_name_holder(");
+	$end = strpos($source, "\nfunction ", $start + 10);
+	$body = substr($source, $start, $end - $start);
+
+	pg_assert_contains('FROM product_barcodes', $body, 'another product\'s barcode holds the code too');
+	pg_assert_contains("'1' AS barcode", $body, 'and is told apart from a product code');
+}
+
 function test_product_name_checked_before_anything_is_written()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/product_builder.php');

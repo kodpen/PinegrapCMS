@@ -25,3 +25,6 @@ The document is `lang="en"` on `/en/` (`pg_tr_render_finalize()`), and the forum
 ## What `<html lang>` does an e-mail body carry?
 - An e-mail drawn from a designed page (`get_page_content(..., $email = true)`) never passes `pg_tr_finalize()`, so it kept the stored `lang="en"` of `generate_style_code_from_tree()` (#4546: Turkish form notifications, auto-replies and the order receipt were `lang="en"`).
 - Since PR #4567 the end of `get_page_content()` runs `pg_tr_mail_html_lang($content, pg_tr_mail_language())` for every e-mail: the visitor's language while the request is in another language (their copy, the receipt), else the source language (the administrator's copy under `pg_tr_suspend()`, scheduled jobs). Only `en` or a missing `lang` is replaced (`pg_tr_html_lang()`). Tests: `tests/cafe_clinic_forms_emails_test.php`.
+
+## How does `pg_tr_html_lang()` read the existing attribute?
+- As an HTML parser does: the value double-quoted, single-quoted or bare, with spaces allowed around `=`. Before the bug-hunt fix a hand-written `<html lang=en>` (or `lang = "en"`) was not seen, so a second `lang` was added after it and the browser kept the first, English one. Tests: `tests/translate_html_lang_test.php`.

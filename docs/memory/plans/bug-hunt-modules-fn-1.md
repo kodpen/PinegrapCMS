@@ -176,11 +176,11 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `page_bulk`: open
 
-- `page_cache`: open
+- `page_cache`: clean (gate, serve and store checks, key, pack and write, stale lock, beacon, dirty rules, sweep checked)
 
-- `page_facts`: open
+- `page_facts`: clean (empty cart '' is the owner's rule)
 
-- `page_revisions`: open
+- `page_revisions`: done (panel `revisions_list` reads 51 rows and sends 50 with `more`, #4842)
 
 - `page_schedule`: clean (time parsing and range, save plan, job pass and its overlap guard, API time checks, list chip escaping checked)
 

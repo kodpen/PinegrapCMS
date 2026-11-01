@@ -12,7 +12,7 @@ description: Steps SA1-SA5 of plans/search-and-audits.md: index isolation, overl
   - A shutdown function writes one Site Log line when the run stops before its end: stage, last item started, `error_get_last()`. The finish window counts every kind.
   - `tests/search_index_isolation_test.php`. Memory: `designer/search-index-run-failures.md`.
 
-- SA2 (S) Overlapping runs. After SA1. `free`.
+- SA2 (S) Overlapping runs. Done (#4765).
   - The sweep deletes `timestamp < $timestamp`: a run started later keeps its rows when an earlier one ends first.
   - Button, crontab and dispatcher claim one `cron_runs` lock row through `pg_cron_claim()` (`includes/fn/cron.php`, the dispatcher's claim moved into it); a second start says a run is going (button) or leaves quietly (job).
 
@@ -23,7 +23,7 @@ description: Steps SA1-SA5 of plans/search-and-audits.md: index isolation, overl
   - The accessibility pass writes its cursor after every page; resumable passes lock for minutes, not hours.
   - `tests/cron_resume_test.php`. Memory: `platform/accessibility-report.md` (its "handed out on the next tick" was not true), the `pg_cron_jobs()` comment.
 
-- SA4 (M) Resumable index. After SA1-SA3 and SA5.
+- SA4 (M) Resumable index. After SA1-SA3 and SA5. Done (#4789).
   - Stages (pages, events, classic records, designer records, files, sweep); a cursor in `data/temp/search_index.json` written after every item with the run's start time; the sweep only after the last stage, against that time. The item a killed tick left unfinished is skipped and named next time. Renders through `pg_background_render()`; `UPDATE_SEARCH_INDEX` stays set.
   - The panel window drives the same pass with short requests and shows progress.
   - Tests: the stage and cursor logic pure (`pg_search_index_next()`), the skip rule.

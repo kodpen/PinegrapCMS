@@ -16,6 +16,21 @@
  * the person's own message in reply, the original staying as it is. The rules
  * are in includes/workspace/file_edits.php.
  *
+ * A canvas (includes/workspace/canvas.php) is an artboard the editor draws
+ * itself: its body carries the PNG (picture) in place of the overlay, and
+ * the document is kept beside the file written, so it opens with its layers
+ * again:
+ *
+ *   workspace_file_save.php?channel=<id>   a new canvas posted in a channel
+ *     { token, doc, picture, name? } -> { status, mode: 'new', name, url, message_id }
+ *   workspace_file_save.php?note=<id>      a new canvas kept for a note
+ *     { token, doc, picture, name? } -> { status, mode: 'new', id, name, url }
+ *   workspace_file_save.php?message=<id>   with doc.artboard: as above, the
+ *     canvas drawn again replacing or answering the message's picture
+ *   workspace_file_save.php?message=<id>   { token, action: 'canvas' }
+ *     -> { status, doc }: the canvas document the message's picture was
+ *     drawn from, or null
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -55,7 +70,11 @@ if (trim((string) $body) === '') {
 }
 
 $request = json_decode($body, true);
-unset($body);
+// The document once more as objects, to be kept as the editor sent it (an
+// empty {} stays an object).
+$objects = json_decode($body);
+$doc_object = (is_object($objects) && isset($objects->doc)) ? $objects->doc : null;
+unset($body, $objects);
 
 if (!is_array($request)) {
     ws_file_save_refuse(lang('Invalid request.'));
@@ -80,6 +99,72 @@ if (!$viewer['member']) {
 
 session_write_close();
 
+$canvas = ws_canvas_is_doc($request['doc'] ?? null);
+
+// A new canvas kept for a note: linked in the note by the screen.
+if (isset($_GET['note'])) {
+    $note = ws_note_for($viewer, (int) $_GET['note'], 'edit');
+
+    if (!$note) {
+        ws_file_save_refuse(lang('That note could not be found.'));
+    }
+
+    $picture = $canvas ? ws_canvas_picture($request) : array('error' => lang('Invalid request.'), 'data' => '');
+
+    if ($picture['error'] !== '') {
+        ws_file_save_refuse($picture['error']);
+    }
+
+    $result = ws_note_file_store_bytes($viewer, $note, ws_canvas_file_name($request['name'] ?? ''), $picture['data']);
+
+    if (!$result['ok']) {
+        ws_file_save_refuse($result['error']);
+    }
+
+    ws_canvas_keep($result['id'], $doc_object, $viewer['id']);
+
+    echo encode_json(array('status' => 'success', 'mode' => 'new', 'id' => (int) $result['id'], 'name' => $result['name'], 'url' => $result['url']));
+    exit();
+}
+
+// A new canvas posted in a channel as the person's own message.
+if (isset($_GET['channel'])) {
+    $channel = ws_channel((int) $_GET['channel']);
+
+    if (!$channel || !ws_can_read_channel($viewer, $channel)) {
+        ws_file_save_refuse(lang('Access denied.'), 403);
+    }
+
+    $picture = $canvas ? ws_canvas_picture($request) : array('error' => lang('Invalid request.'), 'data' => '');
+
+    if ($picture['error'] !== '') {
+        ws_file_save_refuse($picture['error']);
+    }
+
+    $result = ws_message_send_file_bytes($viewer, $channel, '', ws_canvas_file_name($request['name'] ?? ''), $picture['data']);
+
+    if (!$result['ok']) {
+        ws_file_save_refuse($result['error']);
+    }
+
+    $saved = ws_message((int) $result['message_id']);
+
+    if ($saved) {
+        ws_canvas_keep((int) $saved['file_id'], $doc_object, $viewer['id']);
+    }
+
+    $stored = $saved ? (string) db_value("SELECT name FROM files WHERE id = '" . (int) $saved['file_id'] . "'") : '';
+
+    echo encode_json(array(
+        'status'     => 'success',
+        'mode'       => 'new',
+        'name'       => $saved ? (string) $saved['file_name'] : '',
+        'url'        => ($stored !== '') ? PATH . encode_url_path($stored) : '',
+        'message_id' => (int) $result['message_id'],
+    ));
+    exit();
+}
+
 $target = ws_file_edit_target($viewer, (int) ($_GET['message'] ?? 0), 'image');
 
 if (!is_array($target)) {
@@ -88,8 +173,22 @@ if (!is_array($target)) {
 
 list($message, $channel) = $target;
 
-$stored_name = (string) db_value("SELECT name FROM files WHERE id = '" . (int) $message['file_id'] . "'");
-$picture = pg_image_editor_render(FILE_DIRECTORY_PATH . '/' . $stored_name, $request);
+// Before the editor opens a picture of the conversation: the canvas it was
+// drawn from, if it was one.
+if (($request['action'] ?? '') === 'canvas') {
+    echo encode_json(array('status' => 'success', 'doc' => ws_canvas_open_doc((int) $message['file_id'])));
+    exit();
+}
+
+if ($canvas) {
+    // The canvas drawn again: its PNG is the picture.
+    $picture = ws_canvas_picture($request);
+    $picture['extension'] = 'png';
+} else {
+    $stored_name = (string) db_value("SELECT name FROM files WHERE id = '" . (int) $message['file_id'] . "'");
+    $picture = pg_image_editor_render(FILE_DIRECTORY_PATH . '/' . $stored_name, $request);
+}
+
 unset($request);
 
 if ($picture['error'] !== '') {
@@ -118,6 +217,10 @@ if (!$result['ok']) {
 
 $saved = ws_message($message_id);
 $stored = $saved ? (string) db_value("SELECT name FROM files WHERE id = '" . (int) $saved['file_id'] . "'") : '';
+
+if ($canvas && $saved) {
+    ws_canvas_keep((int) $saved['file_id'], $doc_object, $viewer['id']);
+}
 
 echo encode_json(array(
     'status'     => 'success',

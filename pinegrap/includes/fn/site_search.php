@@ -242,6 +242,20 @@ function pg_search_fulltext_items($sql, array $params)
 }
 
 /**
+ * The closing sweep of a search index run: every row older than the run's
+ * start goes. Older, not different: a run started later has rewritten its
+ * rows with its own, newer time, and an earlier run that ends first must
+ * leave them (before, the first run to finish deleted them all). Pure.
+ *
+ * @param int $timestamp The run's start time.
+ * @return string
+ */
+function pg_search_index_sweep_sql($timestamp)
+{
+    return "DELETE FROM search_items WHERE timestamp < '" . (int) $timestamp . "'";
+}
+
+/**
  * Make the search index job due now, so the next scheduled tick rebuilds the
  * index instead of the next day's run. It moves the job's last run back by
  * its interval, no further: the maintenance panel still reads it as having
@@ -254,6 +268,13 @@ function pg_search_index_refresh_soon()
     if (!function_exists('pg_cron_jobs') || !pg_schema_has('cron_runs')) return false;
     $jobs = pg_cron_jobs();
     $interval = isset($jobs['update_search_index']['interval']) ? (int) $jobs['update_search_index']['interval'] : 86400;
+    // The new pages have no rows yet, which a delta run leaves to the full
+    // pass: the end of the last full pass moves back a day too, so the next
+    // tick starts one (pg_search_index_full_due()).
+    db_q(
+        "UPDATE cron_runs SET last_run_at = LEAST(last_run_at, UNIX_TIMESTAMP() - 86400)
+         WHERE job_name = 'update_search_index_done'",
+        array());
     // Without a row the job has never run and is due already.
     return db_q(
         "UPDATE cron_runs SET last_run_at = LEAST(last_run_at, UNIX_TIMESTAMP() - ?)
@@ -582,6 +603,330 @@ function pg_search_index_stop_note($stage, $item, $error)
     }
 
     return $note;
+}
+
+/**
+ * The stages of a search index pass, in order. Pure.
+ *
+ * @return string[]
+ */
+function pg_search_index_stages()
+{
+    // A page's calendar events and form records are read with the page, as
+    // one item; the visual editor's records follow all pages, since the
+    // page loop collects the lists they come from.
+    return array('pages', 'designer', 'files', 'sweep');
+}
+
+/**
+ * Where a search index pass stands, as read back from its cursor file: a
+ * state that is missing, unreadable or names no known stage starts a new pass
+ * at $now. Pure.
+ *
+ * The state: started (the pass's start time: every row it writes carries it
+ * and the sweep removes the rows older than it), stage, after (the key of the
+ * stage's last finished item, '' at its start), current (the item started and
+ * not finished: a tick that ended inside it), skipped (notes of the items
+ * skipped this pass), carry (what one stage hands the next: the linked names
+ * the files stage reads, the record lists, the addresses already written),
+ * done.
+ *
+ * @param mixed $state the decoded cursor file, or null
+ * @param int   $now
+ * @return array
+ */
+function pg_search_index_next($state, $now)
+{
+    if (!is_array($state) || !isset($state['stage'], $state['started'])
+        || !in_array($state['stage'], pg_search_index_stages(), true)
+        || ((int) $state['started'] <= 0) || !empty($state['done'])) {
+        return array('started' => (int) $now, 'stage' => 'pages', 'after' => '', 'current' => '', 'skipped' => array(), 'carry' => array(), 'done' => false);
+    }
+
+    return array(
+        'started' => (int) $state['started'],
+        'stage'   => (string) $state['stage'],
+        'after'   => (string) ($state['after'] ?? ''),
+        'current' => (string) ($state['current'] ?? ''),
+        'skipped' => array_values(array_slice((array) ($state['skipped'] ?? array()), 0, 50)),
+        'carry'   => (isset($state['carry']) && is_array($state['carry'])) ? $state['carry'] : array(),
+        'done'    => false,
+    );
+}
+
+/**
+ * A stage's name for the panel window.
+ *
+ * @param string $stage
+ * @return string
+ */
+function pg_search_index_stage_label($stage)
+{
+    switch ((string) $stage) {
+        case 'pages':
+            return lang('pages');
+        case 'designer':
+            return lang('records');
+        case 'files':
+            return lang('files');
+        default:
+            return lang('removing old items');
+    }
+}
+
+/**
+ * Whether the next search index run starts a full pass: when none has
+ * finished for a day. Between full passes a dispatched run only re-indexes
+ * what changed since its row (the delta stage). Pure.
+ *
+ * @param int $last_done the end of the last full pass (the job's completion
+ *                       marker), 0 for none
+ * @param int $now
+ * @param int $interval  seconds between full passes
+ * @return bool
+ */
+function pg_search_index_full_due($last_done, $now, $interval = 86400)
+{
+    return ((int) $last_done <= 0) || (((int) $now - (int) $last_done) >= ((int) $interval - 300));
+}
+
+/**
+ * The pages the delta stage re-indexes: those whose own row exists and is
+ * older than the page's last change. A page with no row waits for the full
+ * pass. Pure.
+ *
+ * @param array $pages [{id, url (its indexed address), page_timestamp}]
+ * @param array $rows  url => the row's timestamp
+ * @return int[]
+ */
+function pg_search_index_delta_pages($pages, $rows)
+{
+    $ids = array();
+
+    foreach ((array) $pages as $page) {
+        $url = (string) ($page['url'] ?? '');
+
+        if (($url !== '') && isset($rows[$url]) && ((int) $page['page_timestamp'] > (int) $rows[$url])) {
+            $ids[] = (int) $page['id'];
+        }
+    }
+
+    return $ids;
+}
+
+/**
+ * The reference code a record's indexed address carries in ?r=, '' when it
+ * carries none (a record indexed at its address name waits for the full
+ * pass). Pure.
+ *
+ * @param string $url
+ * @return string
+ */
+function pg_search_index_record_code($url)
+{
+    $query = (string) parse_url('/' . ltrim((string) $url, '/'), PHP_URL_QUERY);
+
+    if ($query === '') {
+        return '';
+    }
+
+    parse_str($query, $params);
+
+    return (isset($params['r']) && is_string($params['r'])) ? trim($params['r']) : '';
+}
+
+/**
+ * The records the delta stage re-indexes: reference code => true for each
+ * record changed after its row was written. Pure.
+ *
+ * @param array $rows  url => the row's timestamp (rows of record addresses)
+ * @param array $forms reference_code => forms.last_modified_timestamp
+ * @return array
+ */
+function pg_search_index_delta_records($rows, $forms)
+{
+    $codes = array();
+
+    foreach ((array) $rows as $url => $timestamp) {
+        $code = pg_search_index_record_code($url);
+
+        if (($code !== '') && isset($forms[$code]) && ((int) $forms[$code] > (int) $timestamp)) {
+            $codes[$code] = true;
+        }
+    }
+
+    return $codes;
+}
+
+/**
+ * What the delta stage re-indexes now: the pages of the index's scope whose
+ * own row is older than the page's last change, and the reference codes of
+ * the records whose ?r= row is older than the record's last change.
+ *
+ * @return array pages (int[]), records (reference code => true)
+ */
+function pg_search_index_delta_targets()
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/background_render.php');
+
+    $types = array();
+
+    foreach (pg_render_pass_scope('index')['types'] as $type) {
+        $types[] = "'" . e($type) . "'";
+    }
+
+    $pages = array();
+
+    foreach (db_items(
+        "SELECT page.page_id AS id, page.page_name AS name, page.page_timestamp
+        FROM page
+        LEFT JOIN folder ON page.page_folder = folder.folder_id
+        WHERE
+            (page.page_search = '1')
+            AND (folder.folder_archived = '0')
+            AND (page.page_type IN (" . implode(', ', $types) . "))") as $page) {
+        $page['url'] = encode_url_path($page['name']);
+        $pages[(int) $page['id']] = $page;
+    }
+
+    $page_rows = array();
+
+    if ($pages) {
+        foreach (db_items("SELECT url, timestamp FROM search_items WHERE page_id IN (" . implode(', ', array_keys($pages)) . ")") as $row) {
+            $page_rows[$row['url']] = (int) $row['timestamp'];
+        }
+    }
+
+    $record_rows = array();
+    $codes = array();
+
+    foreach (db_items("SELECT url, timestamp FROM search_items WHERE url LIKE '%?r=%' OR url LIKE '%&r=%'") as $row) {
+        $code = pg_search_index_record_code($row['url']);
+
+        if ($code !== '') {
+            $record_rows[$row['url']] = (int) $row['timestamp'];
+            $codes[$code] = "'" . e($code) . "'";
+        }
+    }
+
+    $forms = array();
+
+    foreach (array_chunk(array_values($codes), 500) as $chunk) {
+        foreach (db_items("SELECT reference_code, last_modified_timestamp FROM forms WHERE reference_code IN (" . implode(', ', $chunk) . ")") as $form) {
+            $forms[$form['reference_code']] = (int) $form['last_modified_timestamp'];
+        }
+    }
+
+    return array(
+        'pages'   => pg_search_index_delta_pages($pages, $page_rows),
+        'records' => pg_search_index_delta_records($record_rows, $forms),
+    );
+}
+
+/**
+ * Where an unfinished search index pass keeps its place. Losing the file (the
+ * clean up tool empties data/temp) only starts the pass again.
+ *
+ * @return string
+ */
+function pg_search_index_state_path()
+{
+    return PG_FUNCTIONS_DIR . '/data/temp/search_index.json';
+}
+
+/**
+ * The cursor file decoded, or null when there is none to read.
+ *
+ * @return array|null
+ */
+function pg_search_index_state_read()
+{
+    $state = json_decode((string) @file_get_contents(pg_search_index_state_path()), true);
+
+    return is_array($state) ? $state : null;
+}
+
+/**
+ * Write the cursor file; at the end of a pass, remove it.
+ *
+ * @param array $state
+ */
+function pg_search_index_state_write($state)
+{
+    if (!empty($state['done'])) {
+        @unlink(pg_search_index_state_path());
+        return;
+    }
+
+    @file_put_contents(pg_search_index_state_path(), json_encode($state), LOCK_EX);
+}
+
+/**
+ * Start one item of the stage. When it is the item the state names as
+ * started and not finished, a tick ended inside it (a fatal error, an exit,
+ * a killed process): it is skipped, named in the state's notes, and counted
+ * as finished, so the pass never stops at the same item twice. Pure.
+ *
+ * @param array  $state from pg_search_index_next()
+ * @param string $key   the item's key in its stage
+ * @return array state, skip (bool)
+ */
+function pg_search_index_begin($state, $key)
+{
+    $key = (string) $key;
+
+    if (($state['current'] !== '') && ($state['current'] === $key)) {
+        $state['current'] = '';
+        $state['after'] = $key;
+
+        if (count($state['skipped']) < 50) {
+            $state['skipped'][] = $state['stage'] . ' ' . $key;
+        }
+
+        return array('state' => $state, 'skip' => true);
+    }
+
+    $state['current'] = $key;
+
+    return array('state' => $state, 'skip' => false);
+}
+
+/**
+ * Mark an item of the stage finished. Pure.
+ *
+ * @param array  $state
+ * @param string $key
+ * @return array
+ */
+function pg_search_index_finish($state, $key)
+{
+    $state['after'] = (string) $key;
+    $state['current'] = '';
+
+    return $state;
+}
+
+/**
+ * Move to the next stage; after the sweep the pass is done. Pure.
+ *
+ * @param array $state
+ * @return array
+ */
+function pg_search_index_advance($state)
+{
+    $stages = pg_search_index_stages();
+    $at = array_search($state['stage'], $stages, true);
+
+    $state['after'] = '';
+    $state['current'] = '';
+
+    if (($at === false) || ($at + 1 >= count($stages))) {
+        $state['done'] = true;
+    } else {
+        $state['stage'] = $stages[$at + 1];
+    }
+
+    return $state;
 }
 
 /**

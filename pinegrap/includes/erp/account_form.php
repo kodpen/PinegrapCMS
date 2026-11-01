@@ -72,8 +72,20 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
     if ($country === '') {
         $country_options['—'] = '';
     }
-    foreach ((array) db_items("SELECT code, name FROM countries WHERE code <> '' ORDER BY name ASC") as $country_row) {
-        $country_options[h((string) $country_row['name'])] = strtoupper((string) $country_row['code']);
+    // Named and ordered in the panel language (pg_geo_country_label()); two
+    // rows that share a label keep both options by adding the code.
+    $country_rows = array();
+    foreach ((array) db_items("SELECT code, name FROM countries WHERE code <> ''") as $country_row) {
+        $country_rows[] = array(
+            'code' => strtoupper((string) $country_row['code']),
+            'label' => pg_geo_country_label((string) $country_row['name'], (string) $country_row['code']));
+    }
+    foreach (pg_geo_sort_by_label($country_rows) as $country_row) {
+        $label = h($country_row['label']);
+        if (isset($country_options[$label])) {
+            $label .= ' (' . h($country_row['code']) . ')';
+        }
+        $country_options[$label] = $country_row['code'];
     }
 
     $output = '

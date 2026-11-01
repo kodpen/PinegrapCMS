@@ -403,14 +403,18 @@ function pg_cron_jobs()
         'update_search_index' => array(
             'label'       => lang('Search index'),
             'script'      => 'update_search_index.php',
-            'interval'    => 86400,
+            // Hourly: a run between full passes only re-indexes what changed
+            // since its row; a full pass starts once a day
+            // (pg_search_index_full_due()).
+            'interval'    => 3600,
             'stale_after' => 172800,
             'dispatch'    => true,
             'lane'        => 'heavy',
             // One page render per record of the visual editor's lists can
-            // keep a large site's run past the default hour. An expired lock
-            // starts a second run, and whichever finishes first deletes the
-            // items the other has written in its closing sweep.
+            // keep a large site's run past the default hour. The panel button
+            // and a crontab run take the same lock (pg_cron_claim()); an
+            // expired one lets a second run start, whose rows the first one's
+            // sweep now spares (pg_search_index_sweep_sql()).
             'lock'        => 14400,
         ),
         'seo_score_job' => array(
@@ -1262,36 +1266,7 @@ function pg_cron_dispatch_next()
         return '';
     }
 
-    // The lock expires on its own. pg_cron_dispatch_finished() releases it at
-    // the end of a normal run and after a fatal error, but a process killed
-    // outright runs no shutdown handler, and a lock nothing can clear would
-    // keep the job, and its lane, out of the rotation for good.
-    if (isset($jobs[$selected]['lock'])) {
-        $lock_seconds = (int) $jobs[$selected]['lock'];
-    } else {
-        $lock_seconds = defined('JOB_DISPATCH_LOCK_SECONDS') ? (int) JOB_DISPATCH_LOCK_SECONDS : 3600;
-    }
-
-    if ($lock_seconds < 60) {
-        $lock_seconds = 60;
-    }
-
-    // Claimed in one statement, because a job that never ran has no row yet
-    // and a read followed by a write would let two ticks both take it. The new
-    // row carries last_run_at 0, which every reader takes for "never ran".
-    //
-    // With ON DUPLICATE KEY UPDATE, affected rows is 1 for an insert, 2 for an
-    // update that changed the row, and 0 when the row was left as it was -
-    // here, when the IF() kept an unexpired lock held by another tick. Two
-    // ticks claiming in the same second also see 0 on the second claim,
-    // because the first one's lock has not expired.
-    db(
-        "INSERT INTO cron_runs (job_name, last_run_at, locked_until)
-         VALUES ('" . e($selected) . "', 0, UNIX_TIMESTAMP() + " . (int) $lock_seconds . ")
-         ON DUPLICATE KEY UPDATE
-             locked_until = IF(locked_until < UNIX_TIMESTAMP(), VALUES(locked_until), locked_until)");
-
-    if (mysqli_affected_rows(db::$con) < 1) {
+    if (!pg_cron_claim($selected)) {
         return '';
     }
 
@@ -1321,7 +1296,7 @@ function pg_cron_dispatch_next()
              (job_name IN (" . implode(', ', $lane_mates) . "))
              AND (locked_until > UNIX_TIMESTAMP())")
     ) {
-        db("UPDATE cron_runs SET locked_until = 0 WHERE job_name = '" . e($selected) . "'");
+        pg_cron_release($selected);
 
         return '';
     }
@@ -1329,6 +1304,82 @@ function pg_cron_dispatch_next()
     pg_cron_dispatch_current($selected);
 
     return PG_FUNCTIONS_DIR . '/' . $jobs[$selected]['script'];
+}
+
+/**
+ * Seconds a job's lock lasts: its catalogue 'lock', else
+ * JOB_DISPATCH_LOCK_SECONDS (an hour when not set), at least a minute. Pure.
+ *
+ * @param array $jobs pg_cron_jobs()
+ * @param string $name
+ * @param int|null $default JOB_DISPATCH_LOCK_SECONDS, null when not defined.
+ * @return int
+ */
+function pg_cron_lock_seconds($jobs, $name, $default)
+{
+    if (isset($jobs[$name]['lock'])) {
+        $seconds = (int) $jobs[$name]['lock'];
+    } else {
+        $seconds = ($default !== null) ? (int) $default : 3600;
+    }
+
+    return max(60, $seconds);
+}
+
+/**
+ * Take a job's lock in cron_runs, whoever starts it: the dispatcher, the
+ * panel button or the job's own crontab entry. False when another run holds
+ * an unexpired lock. True without taking anything before the 2026.4.8
+ * upgrade (no locked_until column) or without the table: nothing to lock in.
+ *
+ * The lock expires on its own after pg_cron_lock_seconds(). Release it with
+ * pg_cron_release() from a shutdown handler, which runs after a normal end,
+ * an exit() and a fatal error; a process killed outright runs none, and a
+ * lock nothing can clear would keep the job, and its lane, out for good.
+ *
+ * @param string $name Catalogue name.
+ * @return bool
+ */
+function pg_cron_claim($name)
+{
+    if (!pg_cron_lock_ready()) {
+        return true;
+    }
+
+    $seconds = pg_cron_lock_seconds(pg_cron_jobs(), $name, defined('JOB_DISPATCH_LOCK_SECONDS') ? JOB_DISPATCH_LOCK_SECONDS : null);
+
+    // Claimed in one statement, because a job that never ran has no row yet
+    // and a read followed by a write would let two starts both take it. The
+    // new row carries last_run_at 0, which every reader takes for "never ran".
+    //
+    // With ON DUPLICATE KEY UPDATE, affected rows is 1 for an insert, 2 for an
+    // update that changed the row, and 0 when the row was left as it was -
+    // here, when the IF() kept an unexpired lock held by another run. Two
+    // claims in the same second also see 0 on the second one, because the
+    // first one's lock has not expired.
+    db(
+        "INSERT INTO cron_runs (job_name, last_run_at, locked_until)
+         VALUES ('" . e($name) . "', 0, UNIX_TIMESTAMP() + " . (int) $seconds . ")
+         ON DUPLICATE KEY UPDATE
+             locked_until = IF(locked_until < UNIX_TIMESTAMP(), VALUES(locked_until), locked_until)");
+
+    return mysqli_affected_rows(db::$con) >= 1;
+}
+
+/**
+ * Give a job's lock back (pg_cron_claim()). Clearing a clear lock changes
+ * nothing, so a second call does no harm.
+ *
+ * @param string $name
+ * @return void
+ */
+function pg_cron_release($name)
+{
+    if (!pg_cron_lock_ready()) {
+        return;
+    }
+
+    db("UPDATE cron_runs SET locked_until = 0 WHERE job_name = '" . e($name) . "'");
 }
 
 /**
@@ -1586,7 +1637,7 @@ function pg_cron_dispatch_finished()
     if (pg_cron_lock_ready()) {
 
         if ($name !== '') {
-            db("UPDATE cron_runs SET locked_until = 0 WHERE job_name = '" . e($name) . "'");
+            pg_cron_release($name);
         }
 
         return;

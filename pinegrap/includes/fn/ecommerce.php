@@ -2051,6 +2051,45 @@ function pg_marketplace_product_changed($product_id, $priority = 5)
     return mp_enqueue($product_id, 'stock_price', $priority);
 }
 
+/**
+ * Queues many products for the marketplaces at once, for a writer that
+ * refreshes the bundles itself (the product import's pg_bundle_refresh_all()):
+ * pg_marketplace_product_changed() without its per-product bundle refresh.
+ *
+ * @param array $product_ids
+ * @return int queue rows written
+ */
+function pg_marketplace_products_changed($product_ids)
+{
+    $ids = array();
+
+    foreach ((array) $product_ids as $product_id) {
+        if (is_scalar($product_id) && ((int) $product_id > 0)) {
+            $ids[(int) $product_id] = true;
+        }
+    }
+
+    if (!$ids or !defined('DB_CONNECTED')) {
+        return 0;
+    }
+
+    $connectors = PG_FUNCTIONS_DIR . '/includes/api/outbound/connectors/base.php';
+
+    if (!is_file($connectors)) {
+        return 0;
+    }
+
+    require_once($connectors);
+
+    $written = 0;
+
+    foreach (array_keys($ids) as $product_id) {
+        $written += (int) mp_enqueue($product_id, 'stock_price', 5);
+    }
+
+    return $written;
+}
+
 
 /**
  * The low-stock line this site runs, 0 when it runs none.
@@ -2853,6 +2892,24 @@ function pg_catalog_variant_set_check($data)
         }
     }
 
+    // What the rules give a row is a price too: a factor or a percentage can
+    // take a base the column holds past its top, which the session (not
+    // strict) would store as 2147483647 without a word.
+    if (!$errors && !empty($data['price_rules'])) {
+
+        $base = isset($data['price_base']) ? $data['price_base'] : 0;
+
+        foreach ($variants as $variant) {
+
+            $priced = pg_catalog_variant_set_priced($variant, $base, $data['price_rules']);
+
+            if ($priced['too_large']) {
+                $errors[] = array('field' => 'variants', 'message' => lang(array('string' => 'The price rules give {var:1} a price that is too large.', 'vars' => array(trim((string) $variant['name'])))));
+                break;
+            }
+        }
+    }
+
     return $errors;
 }
 
@@ -2882,19 +2939,35 @@ function pg_catalog_variant_set_name($data)
  */
 function pg_catalog_variant_set_price($variant, $base_cents, $rules)
 {
+    $priced = pg_catalog_variant_set_priced($variant, $base_cents, $rules);
+
+    return $priced['cents'];
+}
+
+/**
+ * One variant's price as pg_variant_price_compute() reports it: the row's
+ * own price when it was typed over the rules or the set has none.
+ *
+ * @param array      $variant    a row, price in minor units
+ * @param int        $base_cents
+ * @param array|null $rules      canonical rules
+ * @return array 'cents' => int, 'clamped' => bool, 'too_large' => bool (the
+ *               rules went past PG_PRODUCT_PRICE_MAX; 'cents' must not be
+ *               written then)
+ */
+function pg_catalog_variant_set_priced($variant, $base_cents, $rules)
+{
     if (!$rules || !empty($variant['price_manual'])) {
-        return $variant['price'];
+        return array('cents' => $variant['price'], 'clamped' => FALSE, 'too_large' => FALSE);
     }
 
     $selection = array();
 
-    foreach ($variant['attributes'] as $pair) {
+    foreach ((isset($variant['attributes']) ? (array) $variant['attributes'] : array()) as $pair) {
         $selection[(int) $pair['attribute_id']] = (int) $pair['option_id'];
     }
 
-    $priced = pg_variant_price_compute($base_cents, $rules, $selection);
-
-    return $priced['cents'];
+    return pg_variant_price_compute($base_cents, $rules, $selection);
 }
 
 /**
@@ -12698,7 +12771,9 @@ function pg_variant_price_rules_owned($rules)
  * @param int   $base_cents the product's price, used unless an option sets it
  * @param array $rules      canonical rules
  * @param array $selection  attribute_id => option_id of the variant
- * @return array 'cents' => int, 'clamped' => bool (the rules went below zero)
+ * @return array 'cents' => int, 'clamped' => bool (the rules went below zero),
+ *               'too_large' => bool (they went past PG_PRODUCT_PRICE_MAX;
+ *               'cents' is then that top, which must not be written)
  */
 function pg_variant_price_compute($base_cents, $rules, $selection)
 {
@@ -12749,13 +12824,20 @@ function pg_variant_price_compute($base_cents, $rules, $selection)
     // The inner round() strips floating-point noise before the cent is
     // decided (0.1 * 3 is 0.30000000000000004); the browser does the same
     // with toFixed(6).
-    $cents = (int) round(round($price, 6));
+    $rounded = round(round($price, 6));
 
-    if ($cents < 0) {
-        return array('cents' => 0, 'clamped' => TRUE);
+    // Compared as a float before the int cast, which wraps on a 32-bit build.
+    if (pg_product_price_too_large($rounded)) {
+        return array('cents' => PG_PRODUCT_PRICE_MAX, 'clamped' => FALSE, 'too_large' => TRUE);
     }
 
-    return array('cents' => $cents, 'clamped' => FALSE);
+    $cents = (int) $rounded;
+
+    if ($cents < 0) {
+        return array('cents' => 0, 'clamped' => TRUE, 'too_large' => FALSE);
+    }
+
+    return array('cents' => $cents, 'clamped' => FALSE, 'too_large' => FALSE);
 }
 
 
@@ -13141,6 +13223,77 @@ function pg_barcode_scan_quantity($value)
 }
 
 /**
+ * Which product a scanned code moves, from the product carrying it as a
+ * barcode and the product whose product code (products.name) it is: the
+ * barcode's, else the code's, which older labels carry. A code that is a
+ * barcode of one product and the code of another moves neither (null): taking
+ * the barcode silently moved the stock of the wrong product.
+ *
+ * @param int $barcode_of the product carrying the code as a barcode, 0 for none
+ * @param int $code_of    the product whose code it is, 0 for none
+ * @return int|null the product id, 0 for none, null when they are two products
+ */
+function pg_barcode_scan_choice($barcode_of, $code_of)
+{
+    $barcode_of = (int) $barcode_of;
+    $code_of = (int) $code_of;
+
+    if ($barcode_of && $code_of && ($barcode_of !== $code_of)) {
+        return null;
+    }
+
+    return $barcode_of ? $barcode_of : $code_of;
+}
+
+/**
+ * The product a scan on the barcode stock screens moves
+ * (barcode_increase_inventory.php, barcode_decrease_inventory.php), or why
+ * none is moved (pg_barcode_scan_choice()).
+ *
+ * @param string $code the scanned code
+ * @return array 'id' => int (0 when no product has the code),
+ *               'refusal' => string ('' unless the code is two products')
+ */
+function pg_barcode_scan_product($code)
+{
+    $code = is_scalar($code) ? (string) $code : '';
+
+    $barcode_of = (int) db_value("SELECT product_id FROM product_barcodes WHERE barcode = '" . e($code) . "' LIMIT 1");
+
+    // Another product than the barcode's, so a product whose own code is its
+    // barcode is not taken for two.
+    $code_of = (int) db_value(
+        "SELECT id FROM products
+        WHERE (name = '" . e($code) . "')" . ($barcode_of ? " AND (id != '" . e($barcode_of) . "')" : '') . "
+        LIMIT 1");
+
+    $id = pg_barcode_scan_choice($barcode_of, $code_of);
+
+    if ($id !== null) {
+        return array('id' => $id, 'refusal' => '');
+    }
+
+    $holder = db_item("SELECT id, short_description FROM products WHERE id = '" . e($barcode_of) . "'");
+
+    return array('id' => 0, 'refusal' => lang(array(
+        'string' => '{var:1} is a barcode of {var:2} and the product code of another product. Change one of them, then scan again.',
+        'vars' => array($code, pg_product_holder_label($holder ? $holder : array('id' => $barcode_of))))));
+}
+
+/**
+ * Whether an import file carries a column the marketplaces receive (price,
+ * extra shipping, stock, tracking or the enabled flag), so the products it
+ * updates are queued for them.
+ *
+ * @param array $column_names the file's column names
+ * @return bool
+ */
+function pg_products_import_marketplace_columns($column_names)
+{
+    return (bool) array_intersect(array('price', 'extra_shipping_cost', 'inventory', 'inventory_quantity', 'enabled'), (array) $column_names);
+}
+
+/**
  * Sets the out-of-stock mark of a product the import has just written, by
  * the product screens' rule (pg_pb_apply_stock_flag(), product_builder.php,
  * which the caller loads): tracked with 0 in stock is marked, stamped only
@@ -13179,11 +13332,17 @@ function pg_products_import_stock_flag($product_id)
  * same code. A product in the Recycle Bin still holds its code, since
  * restoring it brings the code back.
  *
+ * Another product's barcode holds the code too ('barcode' => '1'): a scan
+ * resolves a barcode before a product code (pg_barcode_scan_product()), so
+ * the two would be one label for two products.
+ *
  * @param string $name
  * @param int    $except_id the product being edited
- * @return array|null id, name, short_description, recycled ('0' or '1')
+ * @param bool   $barcodes  false: product codes only (a barcode's own check)
+ * @return array|null id, name, short_description, recycled ('0' or '1'),
+ *                    barcode ('1' when the code is that product's barcode)
  */
-function pg_product_name_holder($name, $except_id = 0)
+function pg_product_name_holder($name, $except_id = 0, $barcodes = true)
 {
     $name = trim((string) $name);
 
@@ -13191,11 +13350,23 @@ function pg_product_name_holder($name, $except_id = 0)
         return null;
     }
 
+    $recycled = pg_catalog_bin_ready() ? "products.recycled" : "'0'";
+    $except = ((int) $except_id > 0) ? " AND (products.id != '" . e((int) $except_id) . "')" : '';
+
     $holder = db_item(
-        "SELECT id, name, short_description, " . (pg_catalog_bin_ready() ? "recycled" : "'0' AS recycled") . "
+        "SELECT products.id, products.name, products.short_description, " . $recycled . " AS recycled, '0' AS barcode
         FROM products
-        WHERE (name = '" . e($name) . "')" . (((int) $except_id > 0) ? " AND (id != '" . e((int) $except_id) . "')" : '') . "
+        WHERE (products.name = '" . e($name) . "')" . $except . "
         LIMIT 1");
+
+    if (!$holder && $barcodes) {
+        $holder = db_item(
+            "SELECT products.id, products.name, products.short_description, " . $recycled . " AS recycled, '1' AS barcode
+            FROM product_barcodes
+            INNER JOIN products ON products.id = product_barcodes.product_id
+            WHERE (product_barcodes.barcode = '" . e($name) . "')" . $except . "
+            LIMIT 1");
+    }
 
     return $holder ? $holder : null;
 }
@@ -13233,8 +13404,9 @@ function pg_product_names_repeated($names)
 
 /**
  * What the product screen says about a code another product holds: the code
- * and the product, by its title, else by its number. With $html the values
- * are escaped for a page.
+ * and the product, by its title, else by its number, and whether the code is
+ * that product's code or its barcode. With $html the values are escaped for a
+ * page.
  *
  * @param string $name   the code as typed
  * @param array  $holder pg_product_name_holder()
@@ -13243,16 +13415,18 @@ function pg_product_names_repeated($names)
  */
 function pg_product_name_taken_text($name, $holder, $html = false)
 {
-    $label = trim((string) $holder['short_description']);
-
-    if ($label === '') {
-        $label = '#' . (int) $holder['id'];
-    }
-
-    $vars = array((string) $name, $label);
+    $vars = array((string) $name, pg_product_holder_label($holder));
 
     if ($html) {
         $vars = array_map('h', $vars);
+    }
+
+    if (!empty($holder['barcode'])) {
+        return lang(array(
+            'string' => !empty($holder['recycled'])
+                ? 'The product code {var:1} is already a barcode of {var:2}, which is in the Recycle Bin. Restore it and change its barcode, or delete it for good.'
+                : 'The product code {var:1} is already a barcode of {var:2}.',
+            'vars' => $vars));
     }
 
     return lang(array(
@@ -13260,6 +13434,44 @@ function pg_product_name_taken_text($name, $holder, $html = false)
             ? 'The product code {var:1} is already used by {var:2}, which is in the Recycle Bin. Restore it and change its code, or delete it for good.'
             : 'The product code {var:1} is already used by {var:2}.',
         'vars' => $vars));
+}
+
+/**
+ * Why a barcode cannot be given to a product: it is the product code of
+ * $holder (pg_product_name_holder() without barcodes), so a scan of it would
+ * move the wrong product.
+ *
+ * @param string $barcode
+ * @param array  $holder  id, short_description, recycled
+ * @param bool   $html    escaped for a page
+ * @return string
+ */
+function pg_barcode_code_taken_text($barcode, $holder, $html = false)
+{
+    $vars = array((string) $barcode, pg_product_holder_label($holder));
+
+    if ($html) {
+        $vars = array_map('h', $vars);
+    }
+
+    return lang(array(
+        'string' => !empty($holder['recycled'])
+            ? 'The barcode {var:1} is the product code of {var:2}, which is in the Recycle Bin.'
+            : 'The barcode {var:1} is the product code of {var:2}.',
+        'vars' => $vars));
+}
+
+/**
+ * A product named in a refusal: its short description, else #id.
+ *
+ * @param array $holder id, short_description
+ * @return string
+ */
+function pg_product_holder_label($holder)
+{
+    $label = isset($holder['short_description']) ? trim((string) $holder['short_description']) : '';
+
+    return ($label !== '') ? $label : '#' . (int) $holder['id'];
 }
 
 /**

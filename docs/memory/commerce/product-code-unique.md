@@ -9,7 +9,7 @@ description: Product screen and Catalog Manager rename refuse a product code (pr
   - on edit, the product's own code, and only when it differs from the stored one, so a catalogue that already holds a duplicate still saves;
   - on create, the typed code or a single matrix row's own code;
   - for a variant set, every row's code. The typed code is then only the rows' prefix and is not checked. Two rows of one code are refused too (`pg_product_names_repeated()`, case aside).
-- `pg_product_name_holder($name, $except_id)` (`includes/fn/ecommerce.php`) compares by the column's collation, like the API's `api_products_name_or_fail()`: a case difference is the same code. A product in the Recycle Bin still holds its code, and the text says so.
+- `pg_product_name_holder($name, $except_id)` (`includes/fn/ecommerce.php`) compares by the column's collation, like the API's `api_products_name_or_fail()`: a case difference is the same code. A product in the Recycle Bin still holds its code, and the text says so. Another product's barcode holds it too (barcode-product-code-overlap.md).
 
 ## And the Catalog Manager's rename?
 - `pg_explorer_handle_catalog_rename()` (`includes/explorer/handle_catalog.php`, F2, the row menu and bulk rename) asks `pg_product_name_holder($name, $item_id)` when the code changes and refuses with `pg_product_name_taken_text()`; the name stays. Bulk rename shows the refusals beside the renamed count (#4442, PR #4515). Before, it wrote any code.

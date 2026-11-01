@@ -48,7 +48,7 @@ command line run still prints the page.
 
 ## Does a web index run render as the manager who started it?
 No (#4207, issue #4144). `initialize_user()` skips the session user while
-`UPDATE_SEARCH_INDEX` is set (`pg_auth_session_user_applies()`, pure), as
+`UPDATE_SEARCH_INDEX` is set (`pg_auth_anonymous_run()`; audit buttons: `background-render.md`), as
 the remember-me branch already did, so `USER_LOGGED_IN` is false for the
 run. Before, the manager's edit access put the classic comments area's
 watcher e-mails in the public index. The job checks the caller's role from

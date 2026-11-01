@@ -191,10 +191,12 @@ function test_db_q_commerce_tail_value_queries_use_db_q()
 // The WHERE clauses built beside their values hold only '?' and column names.
 function test_db_q_commerce_tail_where_clauses_hold_no_values()
 {
-	foreach (array('barcode_increase_inventory.php', 'barcode_decrease_inventory.php', 'edit_featured_and_new_items.php') as $path) {
+	// The scan screens resolve the product first (pg_barcode_scan_product())
+	// and select it by id alone.
+	foreach (array('barcode_increase_inventory.php' => 1, 'barcode_decrease_inventory.php' => 1, 'edit_featured_and_new_items.php' => 2) as $path => $clauses) {
 		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $path);
 
-		pg_assert_true(preg_match_all('/\$sql_where = "[^"]*";/', $source, $matches) >= 2, $path . ' builds its WHERE as a literal');
+		pg_assert_true(preg_match_all('/\$sql_where = "[^"]*";/', $source, $matches) >= $clauses, $path . ' builds its WHERE as a literal');
 
 		foreach ($matches[0] as $clause) {
 			pg_assert_false(strpos($clause, "'") !== false, $path . ' quotes a value in ' . $clause);
