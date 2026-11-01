@@ -17,5 +17,9 @@ module: comments
 ## What agrees with it?
 - `products.rating_avg` / `rating_count` already count only published, starred, verified reviews (`pg_review_rating_sql()`), so the stars never count a comment the list hides. The list may hold more rows than `rating_count`: a verified review without stars.
 
+## Which order counts as bought?
+- `pg_review_bought_sql()`, read by the review form's gate and the review request e-mail: status `complete` or `exported`, and not waiting for its money. Waiting means a payment method of `pg_order_awaiting_payment()` (`Offline Payment` and `pg_order_pending_payment_methods()`, PayPal Checkout) with `paid_at = 0`, unless the order is on the customer's account (`erp_on_account = 1`).
+- Before PR #4597 only `Offline Payment` waited, so a PayPal Checkout payment left pending opened a review and started the review request.
+
 ## What is left?
 - `get_page_content.php`'s comment above its `pg_comments_rows()` call still says "oldest first"; a later PR that touches that file corrects it.

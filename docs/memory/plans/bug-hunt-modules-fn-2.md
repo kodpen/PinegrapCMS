@@ -28,7 +28,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `returns`: open
 
-- `reviews`: open
+- `reviews`: taken by LC, #4597
 
 - `search_console`: open
 
