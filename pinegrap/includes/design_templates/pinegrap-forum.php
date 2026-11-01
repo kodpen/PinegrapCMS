@@ -1220,7 +1220,7 @@ $post_cards = function ($p, $cols, $tag = 'h3') use ($el, $loop, $post_card) {
 // ── The parts every page repeats ────────────────────────────────────────
 
 // The masthead: the skip link; the menu button (phone), the community's
-// name, the main links from lg, then the theme, the language, the sign-in
+// name, the main links from xl, then the theme, the language, the sign-in
 // and Start a Topic; and the menu drawer. Not sticky, so the drawer can
 // live inside it. Left out of a printed page.
 $masthead = function () use ($el, $link, $icon, $span, $attr, $lang_switcher, $widget) {
@@ -1258,19 +1258,22 @@ $masthead = function () use ($el, $link, $icon, $span, $attr, $lang_switcher, $w
         $link(lang('Skip to main content'), '#main', 'visually-hidden-focusable position-absolute p-2 bg-body text-body'),
         $el('div', 'container', lang('Container'), array(
             $el('div', 'd-flex align-items-center gap-2 py-2', lang('Masthead Row'), array(
-                $el('button', 'btn p-2 d-lg-none', lang('Menu Button'), array($icon('bi-list', 'fs-3')), array('_attrs' => array(
+                $el('button', 'btn p-2 d-xl-none', lang('Menu Button'), array($icon('bi-list', 'fs-3')), array('_attrs' => array(
                     $attr('type', 'button'),
                     $attr('data-bs-toggle', 'offcanvas'),
                     $attr('data-bs-target', '#pf-menu'),
                     $attr('aria-controls', 'pf-menu'),
                     $attr('aria-label', lang('Open the menu')),
                 ))),
-                $el('a', 'pf-brand me-auto me-lg-3', lang('Brand'), array(
+                $el('a', 'pf-brand me-auto me-xl-3', lang('Brand'), array(
                     $el('span', 'pf-logo', lang('Logo'), array($icon('bi-chat-square-text'))),
                     $span('{{site_name}}', 'pf-name', lang('Name')),
                 ), array('href' => '{{page:home}}')),
-                // The main links from lg; the current one is marked on the server.
-                $el('nav', 'd-none d-lg-block me-auto', lang('Main Links'), array(
+                // The main links from xl: at lg the five of them beside the
+                // theme, the language, the sign-in and Start a topic wrap to
+                // a second row and cut the site's name. The current one is
+                // marked on the server.
+                $el('nav', 'd-none d-xl-block me-auto', lang('Main Links'), array(
                     $el('ul', 'nav', lang('Nav Menu'), $nav_items, array('smartActive' => true)),
                 ), array('_attrs' => array($attr('aria-label', lang('Main links'))))),
                 $el('div', 'd-flex align-items-center gap-2', lang('Account Links'), array(
@@ -1291,7 +1294,7 @@ $masthead = function () use ($el, $link, $icon, $span, $attr, $lang_switcher, $w
                 )),
             )),
         )),
-        // The menu drawer the phone's button opens.
+        // The menu drawer the menu button opens below xl.
         $el('div', 'offcanvas offcanvas-start', lang('Menu Drawer'), array(
             $el('div', 'offcanvas-header border-bottom', lang('Drawer Header'), array(
                 // Not a heading: the drawer comes before the page's h1, and
@@ -6197,7 +6200,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Community Forum & Docs'),
-    'version'     => '1.3.3',
+    'version'     => '1.3.4',
     'framework'   => 'bootstrap5',
     'order'       => 90,
     'icon'        => 'bi-chat-square-text',

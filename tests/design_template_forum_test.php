@@ -866,8 +866,8 @@ function test_forum_template_loads()
 	// the inbox, desk and report threads on the Comments widget, and the
 	// blog; 1.3.1: the conversation's answers labelled replies; 1.3.2:
 	// readable alert links; 1.3.3: the report notes' own button words, a
-	// guide's byline as its author.
-	pg_assert_same('1.3.3', $tpl['version'], 'version 1.3.3');
+	// guide's byline as its author; 1.3.4: the masthead's links from xl.
+	pg_assert_same('1.3.4', $tpl['version'], 'version 1.3.4');
 	pg_assert_same('bootstrap5', $tpl['framework'], 'framework');
 	pg_assert_same(90, $tpl['order'], 'order');
 	pg_assert_same('bi-chat-square-text', $tpl['icon'], 'icon');
@@ -1469,6 +1469,19 @@ function test_forum_one_vocabulary()
 	foreach (array('forum', 'docs', 'guidelines', 'search') as $key) {
 		pg_assert_true(substr_count($masthead, '"{{page:' . $key . '}}"') >= 2, 'the masthead links ' . $key . ' in the bar and the drawer');
 	}
+	// Five main links, the theme, the language, the sign-in and Start a
+	// topic do not fit one row at lg with a long site name: the bar shows
+	// its links from xl, the menu button stays up to xl.
+	$by_label = array();
+	foreach (_test_forum_nodes($tpl['shared']['masthead']['tree']) as $n) {
+		if (isset($n['props']['_label'])) {
+			$by_label[$n['props']['_label']] = isset($n['props']['cssClass']) ? ' ' . $n['props']['cssClass'] . ' ' : '';
+		}
+	}
+	pg_assert_contains(' d-none d-xl-block ', $by_label[lang('Main Links')] ?? '', 'the main links from xl');
+	pg_assert_contains(' d-xl-none ', $by_label[lang('Menu Button')] ?? '', 'the menu button up to xl');
+	pg_assert_contains(' me-auto me-xl-3 ', $by_label[lang('Brand')] ?? '', 'the brand pushes the account links right up to xl');
+	pg_assert_false(strpos(implode('', $by_label), '-lg-') !== false, 'nothing in the masthead switches at lg');
 	preg_match_all('/\{\{page:([a-z0-9_]+)\}\}/', $masthead . json_encode($tpl['shared']['footer']['tree']), $m);
 	foreach (array_unique($m[1]) as $key) {
 		pg_assert_true(isset($pages[$key]), 'a menu link names a page: ' . $key);
