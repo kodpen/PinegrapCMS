@@ -33,8 +33,8 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
 - E7 (M) Text. Screen 05. Done in #4488 (`ui/image-editor-text.md`).
   - Typing in place, system and site fonts, size, weight, italic, alignment, line and letter spacing, colour, background box (padding, radius), outline, shadow; one layout for view and export.
 
-- E8 (S) Stickers and frames. Screens 07, 08. `free`
-  - Built-in SVG stickers with an editable label, a picture from Files as a sticker, frames (line, thick, polaroid, corners) and background fill.
+- E8 (S) Stickers and frames. Screens 07, 08. Done in #4486 (`ui/image-editor-sticker.md`).
+  - SVG stickers with a label, a picture from Files as a sticker; frames (line, thick, polaroid, corners), fill.
 
 - E9 (M) Switch and removal. `free` after E6, E7, E8.
   - The `openImageEditor` alias; callers: `view_folders.php`, `style_designer.src.js`, `workspace.js` (saving through `workspace_file_save.php`), `edit_file.php`, `edit_design_file.php`, `view_files.php`, `view_design_files.php`, `widget_18.php`, `content.php`, `frontend.src.js`, `output.php`; `image_editor_edit.php` becomes a redirect that opens the modal.

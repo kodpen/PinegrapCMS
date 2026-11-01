@@ -1586,7 +1586,181 @@
 
     // -- stickers and frames (pg_image_editor_sticker.js) --
 
-    var STICKER = {};
+    var STICKER = (function () {
+        // Two decimals are enough for a path in document pixels.
+        function n2(v) {
+            return Math.round(v * 100) / 100;
+        }
+
+        function pt(x, y) {
+            return n2(x) + ' ' + n2(y);
+        }
+
+        function rectD(x, y, w, h, r) {
+            r = Math.max(0, Math.min(r, w / 2, h / 2));
+
+            if (!r) {
+                return 'M' + pt(x, y) + 'H' + n2(x + w) + 'V' + n2(y + h) + 'H' + n2(x) + 'Z';
+            }
+
+            return 'M' + pt(x + r, y) + 'H' + n2(x + w - r) + 'A' + n2(r) + ' ' + n2(r) + ' 0 0 1 ' + pt(x + w, y + r)
+                + 'V' + n2(y + h - r) + 'A' + n2(r) + ' ' + n2(r) + ' 0 0 1 ' + pt(x + w - r, y + h)
+                + 'H' + n2(x + r) + 'A' + n2(r) + ' ' + n2(r) + ' 0 0 1 ' + pt(x, y + h - r)
+                + 'V' + n2(y + r) + 'A' + n2(r) + ' ' + n2(r) + ' 0 0 1 ' + pt(x + r, y) + 'Z';
+        }
+
+        function ellipseD(cx, cy, rx, ry) {
+            return 'M' + pt(cx - rx, cy) + 'A' + n2(rx) + ' ' + n2(ry) + ' 0 1 0 ' + pt(cx + rx, cy)
+                + 'A' + n2(rx) + ' ' + n2(ry) + ' 0 1 0 ' + pt(cx - rx, cy) + 'Z';
+        }
+
+        // A star of n points between two radii, its first point at angle a0.
+        function starD(cx, cy, ro, ri, n, a0) {
+            var d = '', i, a, r;
+
+            for (i = 0; i < n * 2; i++) {
+                a = a0 + i * Math.PI / n;
+                r = (i % 2) ? ri : ro;
+                d += (i ? 'L' : 'M') + pt(cx + r * Math.cos(a), cy + r * Math.sin(a));
+            }
+
+            return d + 'Z';
+        }
+
+        // The built-in stickers, in the panel's order: label is the string
+        // key of a translated label, a fixed text, or '' for none; fill and
+        // ink are the sticker's and its label's colours; w and h its size in
+        // hundredths of the picture's shorter side.
+        var STICKERS = [
+            { kind: 'burst', label: '%20', fill: '#e53935', ink: '#ffffff', w: 16, h: 16 },
+            { kind: 'pill', label: 'stickerNew', fill: '#1e88e5', ink: '#ffffff', w: 18, h: 7 },
+            { kind: 'tag', label: 'stickerSale', fill: '#fb8c00', ink: '#1a1c1e', w: 22, h: 7.5 },
+            { kind: 'stamp', label: 'stickerSold', fill: '#c62828', ink: '#c62828', w: 24, h: 8.5 },
+            { kind: 'bubble', label: 'stickerHello', fill: '#ffffff', ink: '#1a1c1e', w: 24, h: 13 },
+            { kind: 'check', label: '', fill: '#43a047', ink: '#ffffff', w: 9, h: 9 },
+            { kind: 'star', label: '', fill: '#fdd835', ink: '#1a1c1e', w: 10, h: 10 },
+            { kind: 'heart', label: '', fill: '#e53935', ink: '#ffffff', w: 10, h: 9 }
+        ];
+
+        // A sticker layer's drawing in its own box (before its angle):
+        //   d        the filled outline (evenodd: a hole, the tag's eyelet)
+        //   hd       a second path: the stamp's inner ring, the check's tick
+        //   outline  true: d and hd are stroked in the sticker's colour, not
+        //            filled (a stamp)
+        //   tick     the stroke width of the check's tick, in hd
+        //   lb       the box the label is written in, or null
+        function stickerShape(l) {
+            var x = l.x, y = l.y, w = l.w, h = l.h, cx = x + w / 2, cy = y + h / 2, m = Math.min(w, h), bh;
+
+            switch (l.kind) {
+            case 'burst':
+                return { d: starD(cx, cy, m / 2, m / 2 * 0.84, 16, -Math.PI / 2), lb: { x: cx - m / 2, y: cy - m / 2, w: m, h: m } };
+            case 'pill':
+                return { d: rectD(x, y, w, h, h / 2), lb: { x: x, y: y, w: w, h: h } };
+            case 'tag':
+                return {
+                    d: 'M' + pt(x, cy) + 'L' + pt(x + w * 0.2, y) + 'H' + n2(x + w) + 'V' + n2(y + h) + 'H' + n2(x + w * 0.2) + 'Z'
+                        + ellipseD(x + w * 0.16, cy, h * 0.11, h * 0.11),
+                    evenodd: true,
+                    lb: { x: x + w * 0.24, y: y, w: w * 0.74, h: h }
+                };
+            case 'stamp':
+                return {
+                    d: rectD(x + h * 0.03, y + h * 0.03, w - h * 0.06, h - h * 0.06, h * 0.14),
+                    hd: rectD(x + h * 0.12, y + h * 0.12, w - h * 0.24, h - h * 0.24, h * 0.08),
+                    outline: true,
+                    lb: { x: x, y: y, w: w, h: h }
+                };
+            case 'bubble':
+                bh = h * 0.8;
+
+                return {
+                    d: rectD(x, y, w, bh, bh * 0.22) + 'M' + pt(x + w * 0.18, y + bh - 1) + 'L' + pt(x + w * 0.12, y + h) + 'L' + pt(x + w * 0.36, y + bh - 1) + 'Z',
+                    lb: { x: x, y: y, w: w, h: bh }
+                };
+            case 'check':
+                return {
+                    d: ellipseD(cx, cy, w / 2, h / 2),
+                    hd: 'M' + pt(x + w * 0.28, y + h * 0.53) + 'L' + pt(x + w * 0.44, y + h * 0.68) + 'L' + pt(x + w * 0.73, y + h * 0.36),
+                    tick: m * 0.1,
+                    lb: null
+                };
+            case 'star':
+                return { d: starD(cx, cy + m * 0.04, m / 2, m / 2 * 0.45, 5, -Math.PI / 2), lb: null };
+            case 'heart':
+                return {
+                    d: 'M' + pt(cx, y + h * 0.92)
+                        + 'C' + pt(x + w * 0.08, y + h * 0.62) + ' ' + pt(x, y + h * 0.22) + ' ' + pt(x + w * 0.27, y + h * 0.1)
+                        + 'C' + pt(x + w * 0.42, y + h * 0.05) + ' ' + pt(cx, y + h * 0.18) + ' ' + pt(cx, y + h * 0.3)
+                        + 'C' + pt(cx, y + h * 0.18) + ' ' + pt(x + w * 0.58, y + h * 0.05) + ' ' + pt(x + w * 0.73, y + h * 0.1)
+                        + 'C' + pt(x + w, y + h * 0.22) + ' ' + pt(x + w * 0.92, y + h * 0.62) + ' ' + pt(cx, y + h * 0.92) + 'Z',
+                    lb: null
+                };
+            default:
+                return { d: rectD(x, y, w, h, 0), lb: null };
+            }
+        }
+
+        // The label's font in its box: em is the font's width of one
+        // character in ems (measured by the browser), chars the label's
+        // length. The height bounds a short label, the width a long one.
+        function stickerFont(kind, lb, em, chars) {
+            var len = Math.max(1, chars || 0), per = Math.max(0.2, em || 0.5);
+
+            if (kind === 'bubble') {
+                return { weight: 700, size: Math.max(1, Math.min(lb.h * 0.36, (lb.w * 0.86) / (len * per))) };
+            }
+
+            var f = (kind === 'burst') ? 0.46 : 0.56, room = (kind === 'burst') ? 0.66 : 0.84;
+
+            return { weight: 400, size: Math.max(1, Math.min(lb.h * f, (lb.w * room) / (len * per))) };
+        }
+
+        var FRAMES = ['none', 'line', 'thick', 'polaroid', 'corners'];
+
+        // A frame over the box of the saved picture (the crop box in the
+        // rotated space): an even-odd ring filled in the frame's colour, on
+        // the picture's own edge, so the saved size stays. width (1-10) sets
+        // how wide it is, in parts of the shorter side. band: the ring's
+        // width; pads: a polaroid's sides; null for no frame.
+        function frameShape(frame, box) {
+            if (!frame || !frame.kind || (frame.kind === 'none') || (FRAMES.indexOf(frame.kind) < 0)) {
+                return null;
+            }
+
+            var x = box.x, y = box.y, w = box.w, h = box.h, m = Math.min(w, h), k = clamp(Number(frame.width) || 4, 1, 10);
+            var outer = rectD(x, y, w, h, 0), b, p, ins, len, d, s;
+
+            if (frame.kind === 'line' || frame.kind === 'thick') {
+                b = Math.min(m / 4, Math.max(1, m * k * ((frame.kind === 'line') ? 0.002 : 0.008)));
+
+                return { d: outer + rectD(x + b, y + b, w - 2 * b, h - 2 * b, 0), band: b };
+            }
+
+            if (frame.kind === 'polaroid') {
+                s = m * (0.03 + k * 0.004);
+                p = { l: s, r: s, t: s, b: Math.min(h / 3, s * 3.8) };
+
+                return { d: outer + rectD(x + p.l, y + p.t, w - p.l - p.r, h - p.t - p.b, 0), band: s, pads: p };
+            }
+
+            // Corners: four L marks inset from the edge.
+            ins = m * 0.04;
+            len = m * 0.12;
+            b = Math.max(1, m * k * 0.0035);
+            d = '';
+            [[x + ins, y + ins, 1, 1], [x + w - ins, y + ins, -1, 1], [x + w - ins, y + h - ins, -1, -1], [x + ins, y + h - ins, 1, -1]].forEach(function (c) {
+                var cx = c[0], cy = c[1], sx = c[2], sy = c[3];
+
+                d += 'M' + pt(cx, cy) + 'H' + n2(cx + sx * len) + 'V' + n2(cy + sy * b) + 'H' + n2(cx + sx * b)
+                    + 'V' + n2(cy + sy * len) + 'H' + n2(cx) + 'Z';
+            });
+
+            return { d: d, band: b };
+        }
+
+        return { STICKERS: STICKERS, stickerShape: stickerShape, stickerFont: stickerFont, FRAMES: FRAMES, frameShape: frameShape };
+    }());
 
     // -- redaction (pg_image_editor_redact.js) --
 
