@@ -503,6 +503,20 @@ function pg_panel_shared_component($request, $action)
             respond(array('status' => 'success', 'groups' => $sc_pg_rows));
             break;
 
+        // ── LIST FOLDERS ────────────────────────────────────────────────
+        // Every folder but the Recycle Bin and what is in it, for the
+        // Photo Gallery widget's Folder picker (pg_gal_folder_choices()).
+        // Its setting is the widget's, written by administrators and
+        // designers only, so the list is not among the read-only actions.
+        case 'list_folders':
+            $sc_fo_rows = db_items(
+                "SELECT folder_id AS id, folder_name AS name, folder_parent AS parent_id, folder_archived AS archived
+                     FROM folder
+                     ORDER BY folder_level, folder_order, folder_name"
+            );
+            respond(array('status' => 'success', 'folders' => pg_gal_folder_choices(is_array($sc_fo_rows) ? $sc_fo_rows : array(), pg_recycle_bin_folder_ids())));
+            break;
+
         // ── LIST CATALOG PAGES ──────────────────────────────────────────
         // Returns every page with page_type='catalog'. Used by the system
         // widget props panel when group_navigation='page' so the designer
