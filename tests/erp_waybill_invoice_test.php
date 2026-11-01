@@ -43,3 +43,47 @@ function test_erp_waybill_invoice_of_an_order_writes_the_waybill_back()
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_erp_waybill.php');
 	pg_assert_contains("The shipment date and the carrier were written onto the invoice, which had none.", $screen, 'and says so');
 }
+
+// A draft opened from a delivery note goes to the note's account only.
+function test_erp_waybill_account_refusal_names_the_note()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/erp/waybills.php');
+
+	$notes = array(array('id' => 7, 'full_number' => 'PGFS2026000000007', 'account_id' => 23, 'account_title' => 'pg-test Şirket'));
+
+	pg_assert_same('', erp_waybill_account_refusal($notes, 23), 'the note\'s own account');
+	pg_assert_same('', erp_waybill_account_refusal(array(), 18), 'a draft from no note');
+
+	$refusal = erp_waybill_account_refusal($notes, 18);
+	pg_assert_contains('PGFS2026000000007', $refusal, 'another account is refused, naming the note');
+	pg_assert_contains('pg-test Şirket', $refusal, 'and the account it was written for');
+}
+
+// Issuing a draft made from a note asks the account first, takes a number
+// only after, and writes the note's ship date and carrier onto the invoice
+// before it commits, so the e-document is built with them.
+function test_erp_invoice_issue_of_a_waybill_draft_writes_the_waybill_back()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/invoice_manual.php');
+	$issue = substr($source, (int) strpos($source, 'function erp_invoice_issue('));
+	$issue = substr($issue, 0, (int) strpos($issue, 'function erp_invoice_draft_delete('));
+
+	pg_assert_contains("erp_waybill_account_refusal(erp_waybills_for_invoice(\$invoice_id), (int) \$invoice['account_id'])", $issue, 'the issue asks the note\'s account');
+	pg_assert_true(strpos($issue, 'erp_waybill_account_refusal(') < strpos($issue, 'erp_next_number('), 'before the number is taken');
+	pg_assert_contains("erp_waybill_write_back((int) \$waybill['id'])", $issue, 'the note is written back');
+	pg_assert_true(strpos($issue, 'erp_waybill_write_back(') < strpos($issue, 'erp_tx_commit()'), 'inside the issue\'s transaction');
+	pg_assert_contains("'written_back' => \$written_back", $issue, 'and the caller is told what');
+
+	$save = substr($source, (int) strpos($source, 'function erp_invoice_draft_save('));
+	$save = substr($save, 0, (int) strpos($save, 'erp_tx_begin()'));
+	pg_assert_contains("erp_waybill_account_refusal(erp_waybills_for_invoice(\$invoice_id), (int) \$header['account_id'])", $save, 'saving the draft to another account is refused');
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_erp_invoice_draft.php');
+	pg_assert_contains("\$issued['written_back']", $screen, 'the draft screen reads what was written');
+	pg_assert_contains('The shipment date and the carrier were written onto the invoice, which had none.', $screen, 'and says so as the order path does');
+
+	$api = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/api_documents.php');
+	$route = substr($api, (int) strpos($api, 'function erp_api_invoices_issue('));
+	$route = substr($route, 0, (int) strpos($route, 'api_dry_run_stop('));
+	pg_assert_contains('erp_waybill_account_refusal(', $route, 'an API rehearsal meets the same refusal');
+}

@@ -523,6 +523,13 @@ function erp_api_invoices_update($params)
     $data = erp_api_invoice_draft_in($params, $kept);
     $built = erp_api_document_check($data);
 
+    // What erp_invoice_draft_save() refuses for a draft opened from a
+    // delivery note, asked before a rehearsal stops.
+    if (function_exists('erp_waybills_for_invoice')
+        && (($refusal = erp_waybill_account_refusal(erp_waybills_for_invoice((int) $kept['id']), (int) $data['account_id'])) !== '')) {
+        api_fail_validation($refusal, 'account_id');
+    }
+
     api_dry_run_stop('updated', 'erp_invoice', array(
         'id' => (int) $kept['id'],
         'lines' => count($built['lines']),
@@ -585,6 +592,11 @@ function erp_api_invoices_issue($params)
 
     if ((string) $account['status'] !== 'active') {
         api_fail_validation(lang('That account is passive. Make it active before invoicing it.'), 'account_id');
+    }
+
+    if (function_exists('erp_waybills_for_invoice')
+        && (($refusal = erp_waybill_account_refusal(erp_waybills_for_invoice((int) $invoice['id']), (int) $invoice['account_id'])) !== '')) {
+        api_fail_validation($refusal, 'account_id');
     }
 
     $edoc_missing = erp_edoc_invoice_party_missing($invoice);

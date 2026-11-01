@@ -782,12 +782,38 @@ function erp_waybill_data_from_invoice($invoice_id, $created_by = 0, $open_accou
  * The delivery notes written against an invoice, cancelled ones left out.
  *
  * @param int $invoice_id
- * @return array  Rows: id, full_number, status
+ * @return array  Rows: id, full_number, status, account_id, account_title
  */
 function erp_waybills_for_invoice($invoice_id)
 {
-    return (array) db_items("SELECT id, full_number, status FROM erp_waybills
-        WHERE invoice_id = '" . (int) $invoice_id . "' AND status <> 'cancelled' ORDER BY id ASC");
+    return (array) db_items("SELECT w.id, w.full_number, w.status, w.account_id, a.title AS account_title
+        FROM erp_waybills w
+        LEFT JOIN erp_accounts a ON a.id = w.account_id
+        WHERE w.invoice_id = '" . (int) $invoice_id . "' AND w.status <> 'cancelled' ORDER BY w.id ASC");
+}
+
+/**
+ * Why a draft opened from a delivery note cannot go to another account: the
+ * note was written for its account, and the invoice is what that account
+ * owes for the goods on it. Changing the draft's account would tie the note
+ * to another account's invoice. Empty when every note is for the account.
+ *
+ * @param array $waybills    erp_waybills_for_invoice() rows
+ * @param int   $account_id  The draft's account
+ * @return string
+ */
+function erp_waybill_account_refusal($waybills, $account_id)
+{
+    foreach ((array) $waybills as $waybill) {
+        if ((int) ($waybill['account_id'] ?? 0) !== (int) $account_id) {
+            return lang(array(
+                'string' => 'This draft invoices delivery note {var:1}, written for {var:2}. Choose that account again, or delete the draft and invoice the note again.',
+                'vars' => array((string) ($waybill['full_number'] ?? ''), (string) ($waybill['account_title'] ?? '')),
+            ));
+        }
+    }
+
+    return '';
 }
 
 /**

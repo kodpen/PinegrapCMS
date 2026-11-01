@@ -13,12 +13,13 @@ description: ERP detail screens go back to the filtered list they were opened fr
 - The drawer's Open in full (`assets/js/erp_lists.js`, not bundled) appends `send_to = location.pathname + location.search` to the url the drawer endpoint returns, so `includes/erp/drawer.php` keeps returning the bare screen.
 - Each detail screen reads `$send_to = pg_send_to_url('')` once and builds `$send_to_query` (`&send_to=…`) and `$self_action` (`<screen>.php?send_to=…`, escaped). Every `go(...?id=)` self-reload appends `$send_to_query`; every POST form posts to `$self_action`, so `pg_send_to_url()` reads it from `$_REQUEST` on the POST. A closure that prints a form takes `$self_action` in its `use`.
 - A draft invoice that is issued, and an issued invoice opened as a draft, keep `send_to` on the hop.
+- Waybills too: View on `erp_waybills.php` passes `send_to`; the note's arrow, breadcrumb (`pg_send_to_list_url()`), form and reloads keep it. Before, every return showed all notes (`tests/erp_waybill_back_arrow_test.php`).
 
 ## What was the symptom?
 - Accounts filtered to "not ready for e-documents" or "over their credit limit", the Aging links (`erp_invoices.php?account_id=&bucket=`), an expense period, and the Quotes, Purchase orders and Cheques filters were all lost after opening one row: the arrow, breadcrumb and Save went to the bare list.
 
 ## Which ERP links still go to the bare list?
-- Waybills, the e-invoice inbox, `add_order.js`'s own drawer, the account card's and the drawer body's other links, `includes/erp/audit.php`, a cheque created on the Cheques list, and the invoice draft a quote or purchase order turns into.
+- The e-invoice inbox, `add_order.js`'s own drawer, the account card's and the drawer body's other links, `includes/erp/audit.php`, a cheque created on the Cheques list, and the invoice draft a quote or purchase order turns into.
 
 ## Which test pins it?
 - `tests/erp_back_targets_test.php`: every list passes `send_to`, every detail screen's arrow and breadcrumb use it, no form action or `?id=` reload drops it.
