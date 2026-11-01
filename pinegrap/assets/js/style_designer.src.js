@@ -47848,12 +47848,12 @@ const StyleDesigner = (function () {
             if (key === 'cssClass') continue;
             var val = n.props[key] !== undefined ? n.props[key] : dp[key];
             if (typeof val === 'boolean') {
-                h += row(capFirst(key), sw(key, val));
+                h += row(_sdPropLabel(key), sw(key, val));
             } else if (key === 'type' || key === 'variant' || key === 'bg' || key === 'theme') {
                 var opts = key === 'type' || key === 'variant' || key === 'bg' ?
                     [['primary',_sdT('Primary')],['secondary',_sdT('Secondary')],['success',_sdT('Success')],['danger',_sdT('Danger')],['warning',_sdT('Warning')],['info',_sdT('Info')],['light',_sdT('Light')],['dark',_sdT('Dark')]] :
                     [['light',_sdT('Light')],['dark',_sdT('Dark')]];
-                h += row(capFirst(key), sel(key, opts, String(val)));
+                h += row(_sdPropLabel(key), sel(key, opts, String(val)));
             } else if (key === 'expand') {
                 h += row(_sdT('Expand'), sel(key, [['sm','SM'],['md','MD'],['lg','LG'],['xl','XL']], String(val)));
             } else if (key === 'fixed') {
@@ -47870,12 +47870,12 @@ const StyleDesigner = (function () {
             } else if (key === 'iconName') {
                 h += row(_sdT('Icon'), '<div class="input-group input-group-sm"><input type="text" class="form-control" data-prop="' + key + '" value="' + esc(String(val)) + '" placeholder="bi-icon-name"><button class="btn btn-outline theme-secondary sd-icon-trigger" type="button" title="' + esc(_sdT('Browse icons')) + '"><i class="bi bi-grid-3x3-gap"></i></button></div>');
             } else if (typeof val === 'number') {
-                h += row(capFirst(key), '<input type="number" class="form-control form-control-sm" data-prop="' + key + '" value="' + val + '" min="1" max="20">');
+                h += row(_sdPropLabel(key), '<input type="number" class="form-control form-control-sm" data-prop="' + key + '" value="' + val + '" min="1" max="20">');
             } else if (typeof val === 'string' && val.indexOf('\n') !== -1) {
                 // Multi-line string (e.g. pricing.features) → textarea
-                h += '<div class="sd-prop-row"><label class="sd-prop-label">' + capFirst(key) + '</label><div class="sd-prop-control"><textarea class="form-control form-control-sm" data-prop="' + key + '" rows="4">' + esc(String(val)) + '</textarea></div></div>';
+                h += '<div class="sd-prop-row"><label class="sd-prop-label">' + _sdPropLabel(key) + '</label><div class="sd-prop-control"><textarea class="form-control form-control-sm" data-prop="' + key + '" rows="4">' + esc(String(val)) + '</textarea></div></div>';
             } else {
-                h += row(capFirst(key), '<input type="text" class="form-control form-control-sm" data-prop="' + key + '" value="' + esc(String(val)) + '">');
+                h += row(_sdPropLabel(key), '<input type="text" class="form-control form-control-sm" data-prop="' + key + '" value="' + esc(String(val)) + '">');
             }
         }
         return sect(comp.icon, comp.label, h);
@@ -48158,7 +48158,7 @@ const StyleDesigner = (function () {
                 continue;
             }
             if (typeof val === 'boolean') {
-                h += row(capFirst(key), sw(key, val));
+                h += row(_sdPropLabel(key), sw(key, val));
             } else if (key === 'tag') {
                 // Tag options are filtered by content type — structural tags (div/ul/ol) are
                 // never appropriate for heading/paragraph/inline content elements.
@@ -48192,7 +48192,7 @@ const StyleDesigner = (function () {
                     '</div>');
             } else if (ct === 'image' && key === 'src') {
                 // Image src: normal input + separate pick button (Unsplash + library + quick upload)
-                h += row(capFirst(key),
+                h += row(_sdPropLabel(key),
                     '<div class="sd-pick-group">' +
                         '<input type="text" class="form-control form-control-sm" id="sd-prop-img-src" data-prop="src" value="' + esc(String(val)) + '" placeholder="' + esc(_sdT('Image URL')) + '">' +
                         '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" onclick="window.sdOpenImagePicker(\'sd-prop-img-src\')">' + esc(_sdT('Select')) + '</button>' +
@@ -48201,11 +48201,11 @@ const StyleDesigner = (function () {
             } else if (ct === 'image' && key === 'alt') {
                 // The alt text, with "Write with AI" under it where the
                 // browser's model reads images (_sdAiAltButton()).
-                h += row(capFirst(key),
+                h += row(_sdPropLabel(key),
                     '<input type="text" class="form-control form-control-sm" id="sd-prop-img-alt" data-prop="alt" value="' + esc(String(val)) + '">' +
                     '<div class="sd-ai-alt-slot d-none"></div>');
             } else if (key === 'width' || key === 'height') {
-                h += row(capFirst(key), '<input type="text" class="form-control form-control-sm" data-prop="' + key + '" value="' + esc(String(val)) + '" placeholder="' + esc(_sdT('e.g. 100% or 50px')) + '">');
+                h += row(_sdPropLabel(key), '<input type="text" class="form-control form-control-sm" data-prop="' + key + '" value="' + esc(String(val)) + '" placeholder="' + esc(_sdT('e.g. 100% or 50px')) + '">');
             } else if (key === 'html' || key === 'php') {
                 // No visible input — hidden textarea holds the value; "Edit" opens the code editor dialog.
                 var _lineCount = String(val).split('\n').length;
@@ -48225,7 +48225,7 @@ const StyleDesigner = (function () {
             } else if (key === 'text') {
                 h += '<div class="sd-prop-row"><label class="sd-prop-label">' + esc(_sdT('Text')) + '</label><div class="sd-prop-control"><textarea class="form-control form-control-sm" data-prop="' + key + '" rows="3">' + esc(String(val)) + '</textarea></div></div>';
             } else {
-                h += row(capFirst(key), '<input type="text" class="form-control form-control-sm" data-prop="' + key + '" value="' + esc(String(val)) + '">');
+                h += row(_sdPropLabel(key), '<input type="text" class="form-control form-control-sm" data-prop="' + key + '" value="' + esc(String(val)) + '">');
             }
         }
         // Font picker for text content types
@@ -48763,6 +48763,12 @@ const StyleDesigner = (function () {
             'circle': _sdT('Circle'), 'pill': _sdT('Pill'),
             'top': _sdT('Top'), 'end': _sdT('End'), 'bottom': _sdT('Bottom'), 'start': _sdT('Start')
         };
+        var fit = {
+            'object-fit-contain': _sdT('Contain (whole image)'), 'object-fit-cover': _sdT('Cover (crop to fill)'),
+            'object-fit-fill': _sdT('Stretch to fill'), 'object-fit-scale-down': _sdT('Scale down only'),
+            'object-fit-none': _sdT('Natural size')
+        };
+        if (Object.prototype.hasOwnProperty.call(fit, cls)) return fit[cls];
         var lbl = cls.replace(/^(text-opacity|bg-opacity|fst|fs|fw|lh|ff|border|text|object|ratio|overflow|position|w-|h-|shadow|rounded|opacity)-?/, '');
         if (lbl === '') return _sdT('Regular');
         var known = true;
@@ -49887,6 +49893,18 @@ const StyleDesigner = (function () {
         return colorsHtml + lHtml + borderHtml + stylingHtml + spacingHtml + fxHtml + tooltipHtml + accessibilityHtml;
     }
     function capFirst(s) { return s.charAt(0).toUpperCase() + s.slice(1).replace(/([A-Z])/g, ' $1'); }
+    // The Options row label of an element prop drawn by the generic loops:
+    // a translated name for the props elements share, else the prop name
+    // made readable (capFirst()), escaped either way.
+    function _sdPropLabel(key) {
+        var names = {
+            src: _sdT('Source'), alt: _sdT('Alt text'), width: _sdT('Width'), height: _sdT('Height'),
+            fluid: _sdT('Fluid'), rounded: _sdT('Rounded'), title: _sdT('Title'), label: _sdT('Label'),
+            placeholder: _sdT('Placeholder'), name: _sdT('Name'), value: _sdT('Value'), caption: _sdT('Caption'),
+            type: _sdT('Type'), variant: _sdT('Variant'), bg: _sdT('Background'), theme: _sdT('Theme')
+        };
+        return esc(Object.prototype.hasOwnProperty.call(names, key) ? names[key] : capFirst(key));
+    }
 
     // ── Gradient helpers ──
     // Build a CSS gradient string from a {type, c1, p1, c2, p2, angle, shape, pos} config
@@ -59603,19 +59621,49 @@ const StyleDesigner = (function () {
 
     // <option>s of the custom forms (_customFormsCache), `cur` selected and
     // `skip` left out. A form whose page is in the Recycle Bin is offered
-    // only when it is the one chosen, marked as deleted.
+    // only when it is the one chosen, marked as deleted. A form name that
+    // appears more than once gets " — <page name> (<folder>)" so the forms
+    // of different designs can be told apart; a label still equal gets the
+    // form id (the twin of pg_submitted_form_list_labels()).
     function _swFormOptions(cur, skip) {
         cur  = parseInt(cur || 0, 10) || 0;
         skip = parseInt(skip || 0, 10) || 0;
-        return (_customFormsCache || []).map(function (f) {
+        var shown = (_customFormsCache || []).filter(function (f) {
             var fid = parseInt(f.page_id, 10);
-            if (skip && fid === skip) return '';
-            var binned = _swPageBinned(f);
-            if (binned && fid !== cur) return '';
-            var fname = (f.form_name && ('' + f.form_name).trim()) || f.page_title || f.page_name || ('#' + fid);
-            if (binned) fname += ' ' + _sdT('(deleted)');
+            if (skip && fid === skip) return false;
+            return !_swPageBinned(f) || fid === cur;
+        });
+        var labels = _swFormLabels(shown);
+        return shown.map(function (f, i) {
+            var fid = parseInt(f.page_id, 10);
+            var fname = labels[i];
+            if (_swPageBinned(f)) fname += ' ' + _sdT('(deleted)');
             return '<option value="' + fid + '"' + (fid === cur ? ' selected' : '') + '>' + esc(fname) + '</option>';
         }).join('');
+    }
+
+    // The picker labels of a list of custom form rows ({page_id, form_name,
+    // page_title, page_name, folder_name, binned}), in the same order.
+    function _swFormLabels(forms) {
+        var base = function (f) {
+            return (f.form_name && ('' + f.form_name).trim()) || f.page_title || f.page_name || ('#' + parseInt(f.page_id, 10));
+        };
+        var count = {}, seen = {};
+        forms.forEach(function (f) { var k = base(f).toLowerCase(); count[k] = (count[k] || 0) + 1; });
+        var labels = forms.map(function (f) {
+            var name = base(f);
+            if (count[name.toLowerCase()] > 1) {
+                var page = f.page_name ? ('' + f.page_name).trim() : '';
+                var folder = (!_swPageBinned(f) && f.folder_name) ? ('' + f.folder_name).trim() : '';
+                if (page) name += ' \u2014 ' + page;
+                if (folder) name += ' (' + folder + ')';
+            }
+            return name;
+        });
+        labels.forEach(function (l) { var k = l.toLowerCase(); seen[k] = (seen[k] || 0) + 1; });
+        return labels.map(function (l, i) {
+            return seen[l.toLowerCase()] > 1 ? (l + ' (#' + parseInt(forms[i].page_id, 10) + ')') : l;
+        });
     }
 
     // The <option> of a chosen page id that no picker list holds. A tab of
@@ -65256,27 +65304,37 @@ const StyleDesigner = (function () {
     // Called after the regionType dropdown saves successfully.
     // If the widget tree is still in its factory-default state, auto-loads
     // the starter tree for the chosen type. If the user has already built
-    // content, shows a confirm dialog first.
+    // content, asks first in the editor's own dialog (the kind named by its
+    // label) and draws the panel again when the answer is no. Returns false
+    // only when nothing was done or asked, so the caller redraws.
     function _offerStarterTree(sid, regionType) {
         var cached = _sharedCache[sid];
         if (!cached) return false;
-        var isEmpty = _isDefaultEmptyTree(cached.tree);
-        if (!isEmpty) {
-            if (!window.confirm(
-                _sdT('Load the "{var}" starter template for this widget?', regionType) + '\n' +
-                _sdT('The current design will be reset.')
-            )) return false;
+        var load = function () {
+            // Snapshot before first change so undo can recover the original state.
+            if (!_sharedSnapshots[sid]) {
+                _sharedSnapshots[sid] = _sdSharedTreeJSON(cached.tree);
+            }
+            _sharedCache[sid].tree = _buildStarterTree(regionType);
+            _sharedDirty[sid] = true;
+            render();
+            renderProperties();
+            sdToast(_sdT('The starter template was loaded — start customizing it.'), 'success');
+        };
+        if (_isDefaultEmptyTree(cached.tree)) { load(); return true; }
+        var kind = regionType;
+        SW_TYPES.forEach(function (t) { if (t.type === regionType) kind = t.label; });
+        var msg = _sdT('Load the "{var}" starter template for this widget?', kind) + ' ' +
+                  _sdT('The current design will be reset.');
+        if (typeof window.pgConfirm !== 'function') {
+            if (window.confirm(msg)) load(); else return false;
+            return true;
         }
-        // Snapshot before first change so undo can recover the original state.
-        if (!_sharedSnapshots[sid]) {
-            _sharedSnapshots[sid] = _sdSharedTreeJSON(cached.tree);
-        }
-        var newTree = _buildStarterTree(regionType);
-        _sharedCache[sid].tree = newTree;
-        _sharedDirty[sid] = true;
-        render();
-        renderProperties();
-        sdToast(_sdT('The starter template was loaded — start customizing it.'), 'success');
+        window.pgConfirm({ title: _sdT('Load the starter layout'), message: msg,
+                           confirmText: _sdT('Load'), cancelText: _sdT('Cancel'), variant: 'danger' })
+            .then(function (ok) {
+                if (ok) { load(); } else { render(); renderProperties(); }
+            });
         return true;
     }
 

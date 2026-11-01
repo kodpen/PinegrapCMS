@@ -31,12 +31,14 @@ function _test_salon_load()
 	include $dir . '/mail.php';
 	$public = include $dir . '/pages_public.php';
 	$booking = include $dir . '/booking.php';
+	$standard = include $dir . '/standard.php';
 	$out = array(
 		'categories' => $categories,
 		'services'   => $services,
 		'team'       => $team,
 		'pages'      => $public,
 		'booking'    => $booking,
+		'standard'   => $standard,
 		'shared'     => array($account_bar_tree(), $header(), $footer(), $booking_band(), $notice(), $email_header_tree(), $email_footer_tree()),
 	);
 	return $out;
@@ -62,6 +64,8 @@ function _test_salon_page_keys()
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post',
 		'my_account', 'search', 'staff', 'error', 'forgot_password',
 		'email_appointment_new', 'email_appointment_received', 'email_reply',
+		'email_new_message', 'email_message_received', 'email_welcome',
+		'blog_new', 'login', 'register',
 	);
 }
 
@@ -233,4 +237,62 @@ function test_salon_booking_views()
 		if (isset($n['props']['tag']) && $n['props']['tag'] === 'dd' && isset($n['props']['_bindings']['text'])) $bound[] = $n['props']['_bindings']['text'];
 	}
 	pg_assert_same(array('preferred_date', 'preferred_time', 'stylist', 'reference_code'), $bound, 'detail values bound');
+}
+
+// The standard pages of the first part, their folders, and every page or
+// tab placeholder in them names a page of the template; every widget sits
+// on a template page or in a shared part.
+function test_salon_standard_pages()
+{
+	$d = _test_salon_load();
+	$keys = array();
+	foreach ($d['standard']['pages'] as $p) {
+		pg_assert_same('root', $p['tree']['type'], $p['key'] . ': root tree');
+		$keys[$p['key']] = $p['folder'];
+	}
+	pg_assert_same(array(
+		'contact' => 'public', 'newsletter' => 'public', 'blog' => 'public', 'blog_post' => 'public',
+		'inbox' => 'registration', 'conversation' => 'registration', 'search' => 'public', 'error' => 'public',
+		'email_new_message' => 'private', 'email_message_received' => 'private', 'email_welcome' => 'private',
+	), $keys);
+
+	$known = array_flip(_test_salon_page_keys());
+	preg_match_all('/\{\{(?:page|tab):([a-z0-9_]+)\}\}/', json_encode($d['standard']), $m);
+	foreach (array_unique($m[1]) as $key) pg_assert_true(isset($known[$key]), "placeholder names a template page: $key");
+	foreach ($d['standard']['widgets'] as $wkey => $w) {
+		pg_assert_true($w['page'] === '' || isset($known[$w['page']]), "widget $wkey sits on a template page");
+	}
+}
+
+// A message becomes a conversation the sender follows from the inbox; the
+// newsletter's sign-ups land in its contact group, from the page and the
+// band alike.
+function test_salon_contact_and_newsletter()
+{
+	$d = _test_salon_load();
+	$forms = array();
+	foreach ($d['standard']['pages'] as $p) if (isset($p['form'])) $forms[$p['key']] = $p['form'];
+	pg_assert_same(1, $forms['contact']['auto_registration']);
+	pg_assert_same('{{tab:conversation}}', $forms['contact']['confirmation_page_id']);
+	pg_assert_same('{{contact_group:newsletter}}', $forms['newsletter']['contact_group_id']);
+	pg_assert_same('{{tab:email_welcome}}', $forms['newsletter']['confirm_page_id']);
+
+	$w = $d['standard']['widgets'];
+	pg_assert_same('{{tab:newsletter}}', $w['newsletter_band']['config']['form_id'], 'the band posts to the newsletter page form');
+	pg_assert_same('submitter_only', $w['conversation']['config']['access_control']);
+	pg_assert_same('{{tab:contact}}', $w['inbox_list']['config']['custom_form_page_id']);
+	foreach (array('home_posts', 'blog_list', 'blog_post') as $key) {
+		pg_assert_same('{{tab:blog_new}}', $w[$key]['config']['custom_form_page_id'], "$key reads the blog form");
+	}
+}
+
+// No word of the Clinic template the salon parts were shaped after is left
+// in what a visitor reads.
+function test_salon_no_clinic_words()
+{
+	$d = _test_salon_load();
+	$json = json_encode(array($d['pages'], $d['booking'], $d['standard'], $d['shared']), JSON_UNESCAPED_UNICODE);
+	foreach (array('doctor', 'patient', 'practice', 'prescription', 'vaccination', 'clinic', 'health letter', 'cl-') as $word) {
+		pg_assert_true(stripos($json, $word) === false, "no '$word'");
+	}
 }

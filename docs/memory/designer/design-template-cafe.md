@@ -23,4 +23,4 @@ description: Cafe template (and Clinic where shared): sample event weekdays, men
 - Coffee Break price suffix, the book-club summary, the captcha question, and the "Please login or register to add your …" line, which uses its second variable once because `|c` cases every occurrence ([[lang-function-syntax]]).
 
 ## Where are its comment threads and reviews?
-- On the Comments widget since 1.1.0, with Google Reviews beside the sample testimonials: [[design-template-threads]].
+- On the Comments widget since 1.1.0 (Café and Clinic), with Google Reviews beside the sample testimonials: [[design-template-threads]].

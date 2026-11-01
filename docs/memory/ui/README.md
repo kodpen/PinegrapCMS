@@ -166,11 +166,13 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - form-screen-names-escaping.md: Form panel screens escape form names, field labels and pick list choice labels; liveform select option labels are printed raw, option values stay raw
 - form-time-24-hour.md: Form time values: validate_time() and prepare_form_data_for_input() read 12- and 24-hour time (PR #1698); prepare_form_data_for_output() and the time help follow the site clock
 - gift-card-shared-form.md: add_gift_card.php and edit_gift_card.php draw the Gift Card Options card and check its amount and date through includes/forms/gift_card_form.php; what each screen keeps
+- graph-canvas-core-module.md: The graph canvas core (pg_graph_canvas.js, window.PGGraphCanvas, includes/fn/graph_canvas.php): what it owns, its adapter, its texts, its first user the Flows canvas
 - greeting-counts.md: Counts in the dashboard greeting, the Workspace channel greeting and the Ecommerce card: a key for one, nominative vs accusative link phrases, counts inside one key
 - guided-tour.md: The guided tour engine (assets/js/pg_tour.js, pg_tour.css): who uses it, how steps are counted, Back at the start, how a step is read out, where focus goes at the end, the bubble's size
 - icon-ligature-button-names.md: Buttons whose content is a Material Icons ligature (north, south, delete, living) are named by that word; how the product attribute and product group screens name them (#2893)
 - image-editor-adjust.md: The image editor's Adjust tool: eight adjustments, nine filters as fixed values of them, one colour matrix shared by the preview and the server, the vignette and sharpening, the GD colour layer
 - image-editor-crop.md: The image editor's crop tool: geometry in the document, the rotated space, cover scale, crop mode with its undo and Cancel, ratios, handles, turns and flips, shape, output size, keys
+- image-editor-draw.md: The image editor's Draw tool: nine kinds and the eraser, drawn layers as boxes with their drawing inside, line ends, corner radius, style fields, turns and flips
 - image-editor-keys.md: The image editor's keys: shortcuts, Escape on keydown, Enter and Space to focused buttons, arrows to sliders (ownsKey), focus kept after a panel redraw, panning
 - image-editor-layers.md: The image editor's layers and the Select tool: the layer box model, selection and handles, snapping, align, distribute, order, the layers list, keys, pasting a picture, and the overlay a save draws
 - image-editor-modal.md: The image editor core (window.PgImageEditor): files, loader, bundles, the pure model, labels via lang(), options, full screen, the phone layout, recording a change
@@ -277,7 +279,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - pg-field-wrappers.md: pgChips, pgCombobox, pgDatePicker, pgDateTimeField (pg_fields.js): data-pg-* hooks, the posted field as store, own date parse, change event, engines, screens
 - pg-fields-speech.md: Screen readers and panel combobox/chip fields (pg_fields.js v6): toggle name and value, listbox options, no-match line, hidden select out of Tab, focused chip deleted, named remove buttons
 - pg-ui-adapter.md: pgUI (assets/js/pg_ui.js), the panel's one door to Bootstrap's JavaScript on 5.3 and 6: kinds, promises, both event names, dialog markup, overlay host, readiness, the Bootstrap 6 bridge
-- phone-width-rows.md: Phone-width fixes: v6 .input-group and .btn do not wrap (rate tiers, order documents card, sign-in rows), Login Region code fields, inner flex clusters wrap, marketplace grid minimum
+- phone-width-rows.md: Phone-width fixes: v6 .input-group and .btn do not wrap (rate tiers, documents card, sign-in rows, product group default option), Login Region fields, inner clusters wrap, marketplace grid
 - print-order-product-links.md: The order print view's product name and image are real links to edit_product.php, reachable from the keyboard
 - print-views-light-paper.md: The order print view and packing slip force the light theme, carry their own title and the store icon; the packing slip's address lines; the campaign popups' title and icon
 - product-attribute-shared-form.md: The product attribute create and edit screens share includes/forms/product_attribute_form.php: what it holds, what stays in the screens

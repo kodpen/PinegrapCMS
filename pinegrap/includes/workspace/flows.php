@@ -3140,7 +3140,6 @@ function ws_flow_js_strings()
         'fl_add_task'         => lang('Task'),
         'fl_add_end'          => lang('End'),
         'fl_box'              => lang('Flow box'),
-        'fl_port_out'         => lang('Drag to the box that comes after it'),
         'fl_untitled_box'     => lang('No title yet'),
         'fl_manual_meta'      => lang('Starts when somebody runs it'),
         'fl_starts_on'        => ws_js_template('Started on: {var:1}', 1),

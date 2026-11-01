@@ -171,6 +171,7 @@ pg_page_shell([
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
+            <div class="mt-7 mb-0"><span class="small fg-secondary me-2">' . lang('Status') . '</span><span class="badge theme-' . h($status[1]) . '">' . h($status[0]) . '</span></div>
 
             ' . ($open ? '<form method="post" action="erp_stock_count.php" class="card my-7" autocomplete="off">
                 ' . get_token_field() . '

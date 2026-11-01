@@ -29,6 +29,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - api-product-name-and-dimensions.md: External API product name (SKU) rule on create and update (trimmed, required, free: 409 name_taken) and the weight/length/width/height bounds that fit decimal(12,4) unsigned
 - back-in-stock-notices.md: Back-in-stock notices (includes/fn/stock_notify.php, stock_notify.php): who may ask, the request rules, the inventory.changed listener, claim then mail, queue vs inline, trim, export, delete hooks
 - back-in-stock-sms.md: Back-in-stock notice by SMS (PR #1864): kind stock (transactional, owner decision), the stock_back event, the optional number field, text instead of mail, the one-message promise
+- barcode-stock-scan-checks.md: Barcode stock increase/decrease and the product screen's barcode save: whole quantities only (pg_barcode_scan_quantity()), no product in the Recycle Bin or missing (#4447)
 - card-data-manual-processing.md: Card data with no payment gateway (manual processing): the security code never stored, the number encrypted only, masked once the order is processed; refusal without openssl; hourly sweep
 - card-surcharge-rounding.md: Card surcharge (ECOMMERCE_SURCHARGE_PERCENTAGE) as a figure: pg_percent_of() in minor units, the same on every PHP version; the classic pages post what submit_order() charges (PR #1388)
 - carrier-label-aras.md: Aras Kargo label driver (2026.11.0, #3259), the first direct Turkish carrier: SOAP from its WSDL, integration code as reference, Aras's own ZPL/PDF label, cancel, waybill status, unverified points
@@ -67,6 +68,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - counter-sale-keyboard-focus.md: Create Order screen (add_order.js): focus kept on the cart row, quick-amount chip and customer card when a server answer redraws them; Enter in a quantity box keeps the box
 - country-names-display.md: Country names on screen through pg_geo_country_label() and pg_geo_sort_by_label() in the current language; the starter dumps' corrected country rows (#2522)
 - country-names-in-addresses.md: The order view's address blocks and the address book name the stored country code in the site language; the country tokens keep the code
+- currency-names-display.md: Stored currency names shown through pg_currency_label() in the panel language; the currency list's rate with the panel's separators (#4430)
 - edit-product-undrawn-columns-kept.md: Edit Product's save leaves out the shipping, customs, zone, gift card and unlabelled custom-field columns the screen does not draw.
 - exchange-rates-update.md: Update Exchange Rates (button and scheduled job) writes one Site Log line with the count, and a success notice only when a rate was written
 - express-order-notes-address-book.md: Express order (EO) widget bindings for order note (eo_field notes) and address book section, plus the narrow-screen table classes and the three places to update.

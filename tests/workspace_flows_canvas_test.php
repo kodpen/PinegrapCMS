@@ -1923,7 +1923,7 @@ function test_workspace_flows_canvas_every_kind_has_one_group()
 
 	pg_assert_true((bool) preg_match('/\n    var KINDS = \{\n.*?\n    \};\n/s', $source, $kinds), 'KINDS is in the script');
 	pg_assert_true((bool) preg_match('/\n    var PALETTE = \[\n.*?\n    \];\n/s', $source, $palette), 'PALETTE is in the script');
-	pg_assert_contains("el('div', 'wsf-node ' + kindClasses(node.kind))", $source, 'a box takes its group class');
+	pg_assert_contains('className: kindClasses(node.kind)', $source, 'a box takes its group class (canvas.box())');
 	pg_assert_contains("el('li', 'wsf-outline-item ' + kindClasses(node.kind))", $source, 'an outline entry takes its group class');
 
 	$result = ws_flows_canvas_test_node(

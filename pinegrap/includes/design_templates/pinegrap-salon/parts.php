@@ -591,3 +591,119 @@ $comments_section = function ($name) use ($el, $container, $row, $col) {
         )),
     ));
 };
+
+// ── Staff, newsletter and blog parts ────────────────────────────────────
+
+// The staff pages' own menu, under the header: one shared component.
+$staff_bar = function () use ($el, $link, $span) {
+    $item = function ($key, $text) use ($link) {
+        return $link($text, '{{page:' . $key . '}}', 'nav-link px-0');
+    };
+    return $el('div', 'border-bottom small', lang('Staff Bar'), array(
+        $el('div', 'container d-flex flex-wrap align-items-center gap-4 py-2', lang('Staff Bar Container'), array(
+            $span(lang('Staff'), 'badge rounded-pill text-bg-primary', lang('Staff Badge')),
+            $el('nav', 'nav nav-underline gap-4', lang('Staff Links'), array(
+                $item('staff', lang('Staff Area')),
+                $item('my_appointments', lang('All Bookings')),
+                $item('blog_new', lang('New Blog Post')),
+                $item('staff_entry', lang('Add to the Staff Directory')),
+                $item('inbox', lang('Inbox')),
+            ), array('smartActive' => true)),
+        )),
+    ));
+};
+
+// A page of the staff area: the staff bar under the header, no newsletter.
+$staff_page = function ($main) use ($root, $shared, $el) {
+    return $root(array(
+        $shared('account_bar'),
+        $shared('header'),
+        $shared('staff_bar'),
+        $el('main', '', lang('Main Content'), $main),
+        $shared('footer'),
+    ));
+};
+
+// The newsletter's e-mail field and button, in one line. The address is the
+// contact's, so the sign-up becomes a contact of the newsletter's group.
+$newsletter_line = function ($id) use ($el, $attr, $submit) {
+    return $el('div', 'input-group mb-3', lang('E-mail and Button'), array(
+        $el('label', 'visually-hidden', lang('Label'), array(), array('text' => lang('Email'), '_attrs' => array($attr('for', $id)))),
+        $el('input', 'form-control', lang('Field'), array(), array('id' => $id, '_cf' => array('contact_field' => 'email_address'), '_attrs' => array(
+            $attr('type', 'email'), $attr('name', 'email'), $attr('required', ''), $attr('autocomplete', 'email'),
+            $attr('placeholder', lang('Your e-mail address')),
+        ))),
+        $submit(lang('Subscribe')),
+    ));
+};
+$newsletter_consent = function ($id) use ($agree) {
+    return $agree($id, 'consent', lang('I would like to receive the salon\'s beauty letter by e-mail. I can unsubscribe at any time.'));
+};
+
+// A file field; what is sent is kept in the template folder named. One
+// that takes only pictures is a collection's image kind.
+$file = function ($id, $name, $folder, $accept = 'image/*') use ($el, $attr) {
+    return $el('input', 'form-control', '', array(), array('id' => $id, '_attrs' => array(
+        $attr('type', 'file'), $attr('name', $name), $attr('accept', $accept),
+    ), '_cf' => array('upload_folder_id' => '{{folder:' . $folder . '}}')
+            + ($accept === 'image/*' ? array('kind' => 'image') : array())));
+};
+
+
+// A picture that leaves with its row when the record has none (the
+// pg-hide-if-empty row of the form widgets).
+$optional_image = function ($token, $alt_token, $class, $frame, $sample, $alt) use ($el, $image) {
+    return $el('div', 'pg-hide-if-empty', lang('Picture'), array(
+        $el('span', 'pg-field-value d-block ' . $frame, lang('Picture Frame'), array(
+            $image($sample, $alt, $class, array('_bindings' => array('src' => $token, 'alt' => $alt_token))),
+        )),
+    ));
+};
+
+// A blog post card of the lists (the blog page and the home page).
+$post_card = function () use ($el, $para, $span, $link, $col, $optional_image, $bind) {
+    return $col(array(
+        $el('article', 'card h-100 border-0 shadow-sm overflow-hidden', lang('Post Card'), array(
+            $optional_image('cover_image', 'title', 'card-img-top object-fit-cover', 'ratio ratio-16x9 bg-body-tertiary',
+                'https://picsum.photos/seed/pinegrap-salon-post/800/450', lang('Cover Image')),
+            $el('div', 'card-body d-flex flex-column', lang('Card Body'), array(
+                $para(lang('Date'), 'small text-uppercase fw-semibold text-primary mb-2', $bind('submitted_date_and_time')),
+                $el('h3', 'h5 card-title fw-bold position-static', lang('Post Title'), array(
+                    $link(lang('How to make a blow-dry last'), '#', 'stretched-link link-body-emphasis text-decoration-none', array(),
+                        array('_bindings' => array('text' => 'title', 'href' => 'form_item_view'))),
+                )),
+                $para(lang('A short summary of the post. It is what makes a visitor open it, so two sentences are enough.'),
+                    'card-text small text-body-secondary', $bind('summary')),
+                $span(lang('Read More'), 'mt-auto small fw-semibold text-primary', lang('Read More')),
+            )),
+        )),
+    ), '6', '4');
+};
+
+
+// Summarize the post with AI: with the visitor's own assistant (each link
+// opens it with a question about the post's address) or with the browser's
+// built-in model, whose button the browser shows only where it can
+// summarize and whose points come into the box below. Shown for a post
+// anybody may open.
+$ai_summary = function () use ($el, $link, $icon, $span, $attr, $bind, $show_when) {
+    $assistant = function ($text, $token) use ($link, $attr) {
+        return $link($text, '#', 'btn btn-sm btn-outline-primary rounded-pill', array($attr('rel', 'noopener nofollow')),
+            array('target' => '_blank', '_bindings' => array('href' => $token)));
+    };
+    return $el('aside', 'p-3 rounded-4 bg-body-tertiary mb-4', lang('AI Summary'), array(
+        $el('div', 'd-flex flex-wrap align-items-center gap-2', lang('AI Buttons'), array(
+            $icon('bi-stars', 'text-primary'),
+            $span(lang('Summarize this post with AI'), 'small fw-semibold me-1', lang('Label')),
+            $assistant('ChatGPT', '__ai_chatgpt_url'),
+            $assistant('Claude', '__ai_claude_url'),
+            $assistant('Perplexity', '__ai_perplexity_url'),
+            $assistant('Google AI', '__ai_google_url'),
+            $el('button', 'btn btn-sm btn-primary rounded-pill', lang('Summarize Here Button'), array(), array(
+                'text' => lang('Summarize here'), '_bindings' => array('action' => 'ai_summarize'))),
+        )),
+        $el('div', 'small mt-3', lang('Summary Box'), array(), array_merge(
+            array('text' => lang('The main points of the post, written by the visitor\'s browser.')), $bind('__ai_summary'))),
+    ), $show_when('has_ai_links'));
+};
+

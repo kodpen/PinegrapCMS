@@ -15,4 +15,7 @@ Files `includes/erp/cashflow.php`, `erp_cashflow.php` (gate `'cash'`); entry fro
 - Existing `tr.json` entries do not fit as screen labels: `From` → "Şundan", `To` → "Şuna", `Net` → "KDV Hariç", `Method` → "Metod". Use `Start` / `End` / `Net change` / a separate key. Check existing translations before writing a new key.
 - Other ERP traps: docs/memory/erp/erp-translation-traps.md.
 
+## Why do the method cards stack up to 1536 px?
+- The two cards in the "by payment method" row are `2xl:col-8` / `2xl:col-4`. With `xl:` the five-column table (435 px) got a 373 px card at 1280 px and scrolled inside it (#4529, from #4440).
+
 Related: docs/memory/erp/erp-aging-and-due-date.md

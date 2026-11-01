@@ -382,8 +382,7 @@
     }
 
     function announce(text) {
-        ui.live.textContent = '';
-        window.setTimeout(function () { ui.live.textContent = text; }, 30);
+        canvas.announce(text);
     }
 
     // The flow is the person's to change, whether or not a run is shown
@@ -2781,48 +2780,27 @@
         markProblems();
     }
 
-    function port(side) {
-        var dot = el('span', 'wsf-port wsf-port-' + side);
-
-        dot.setAttribute('aria-hidden', 'true');
-
-        return dot;
-    }
-
+    // A box of the core (box()): its ports, focus and name are the core's;
+    // its kind's head, title and line under it are the flow's.
     function boxNode(node) {
         var kind = kindOf(node);
-        var box = el('div', 'wsf-node ' + kindClasses(node.kind));
-        var head = el('div', 'wsf-node-head');
+        var box = canvas.box(node, {
+            className: kindClasses(node.kind),
+            into: kind.into,
+            out: kind.out.length > 0,
+            fill: function (box) {
+                var head = el('div', 'wsf-node-head');
 
-        box.tabIndex = 0;
-        box.setAttribute('role', 'group');
-        box.setAttribute('aria-roledescription', t('fl_box'));
-        box.setAttribute('data-node', node.id);
-        box.setAttribute('data-refocus', 'box-' + node.id);
-
-        if (kind.into) {
-            box.appendChild(port('in'));
-        }
-
-        head.appendChild(K.flowIcon(node.kind));
-        head.appendChild(el('span', 'wsf-node-kind', t(kind.name)));
-        head.appendChild(K.icon('bi-exclamation-triangle-fill', 'wsf-node-warn'));
-        box.appendChild(head);
-        box.appendChild(el('div', 'wsf-node-title'));
-        box.appendChild(el('div', 'wsf-node-meta'));
-
-        if (kind.out.length) {
-            var out = port('out');
-
-            if (state.edit) {
-                out.title = t('fl_port_out');
+                head.appendChild(K.flowIcon(node.kind));
+                head.appendChild(el('span', 'wsf-node-kind', t(kind.name)));
+                head.appendChild(K.icon('bi-exclamation-triangle-fill', 'wsf-node-warn'));
+                box.appendChild(head);
+                box.appendChild(el('div', 'wsf-node-title'));
+                box.appendChild(el('div', 'wsf-node-meta'));
             }
-
-            box.appendChild(out);
-        }
+        });
 
         fillBox(box, node);
-        place(box, node);
 
         return box;
     }
@@ -2884,13 +2862,7 @@
     }
 
     function place(box, item) {
-        box.style.left = item.x + 'px';
-        box.style.top = item.y + 'px';
-
-        // A box moved may change which box is the last.
-        if (ui.flag && (box !== ui.flag)) {
-            placeFlag();
-        }
+        canvas.place(box, item);
     }
 
     // Where a loop's frame goes: around its For each box, its body and its
@@ -2969,12 +2941,9 @@
                 return;
             }
 
-            var path = curve(from.x + BOX_W, from.y + BOX_H / 2, to.x, to.y + BOX_H / 2);
-            var group = svgEl('g', 'wsf-edge');
-            var line = svgEl('path', 'wsf-edge-line');
-            var hit = svgEl('path', 'wsf-edge-hit');
-
-            group.setAttribute('data-edge', String(index));
+            var drawn = canvas.edge(index, from, to);
+            var path = drawn.path;
+            var group = drawn.group;
 
             // In a run, an arrow its box ended on was taken.
             var step = state.run ? stepOf(edge.from) : null;
@@ -2982,11 +2951,6 @@
             if (step && (step.status === 'done') && step.outcome && ((step.outcome === edge.on) || (edge.on === 'always'))) {
                 group.classList.add('wsf-edge-taken');
             }
-
-            line.setAttribute('d', path.d);
-            hit.setAttribute('d', path.d);
-            group.appendChild(line);
-            group.appendChild(hit);
 
             // An arrow taken when a task is cancelled, or a step failed, says
             // so on itself.
@@ -2999,8 +2963,6 @@
                 label.textContent = t(OUTCOMES[edge.on]);
                 group.appendChild(label);
             }
-
-            ui.svg.appendChild(group);
         });
 
         markSelected();
@@ -4260,25 +4222,8 @@
     }
 
     function markSelected() {
-        var selected = state.selected;
-
         drawData();
-
-        Array.prototype.forEach.call(ui.layer.querySelectorAll('.wsf-selected'), function (node) {
-            node.classList.remove('wsf-selected');
-            node.removeAttribute('aria-current');
-        });
-
-        if (!selected) {
-            return;
-        }
-
-        var target = ui.layer.querySelector('[data-' + selected.type + '="' + String(selected.id).replace(/"/g, '') + '"]');
-
-        if (target) {
-            target.classList.add('wsf-selected');
-            target.setAttribute('aria-current', 'true');
-        }
+        canvas.mark(state.selected);
     }
 
     // The draft's problems on its boxes; a run's boxes are those of its
@@ -8136,8 +8081,7 @@
             return;
         }
 
-        state.dirty = true;
-        state.changes++;
+        saver.changed();
 
         // A change that folds (typing, an arrow-key move) is recorded once
         // the changes pause; one that is its own step first records what
@@ -8173,8 +8117,7 @@
         }
 
         drawState();
-        window.clearTimeout(state.saveTimer);
-        state.saveTimer = window.setTimeout(save, SAVE_DELAY);
+        saver.later();
     }
 
     // The changes paused (or something needs them settled now: a step of its
@@ -8554,101 +8497,67 @@
         return data;
     }
 
+    // The draft's autosave (autosave() of the core): its state is kept on
+    // state (dirty, changes, saving, saveError, conflict, leaveSent,
+    // saveTimer), which the bar and the switches read.
+    var saver = G.autosave({
+        record: state,
+        delay: SAVE_DELAY,
+        keepaliveBytes: KEEPALIVE_BYTES,
+        ready: function () {
+            return drafting() && !!state.flow;
+        },
+        send: function (options) {
+            var flow = state.flow;
+
+            return K.api('ws_flow_save', payload(), options).then(function (data) {
+                flow.draft_rev = data.draft_rev;
+                flow.changed = true;
+
+                if (state.flow === flow) {
+                    state.problems = data.problems || [];
+                    state.warnings = data.warnings || [];
+
+                    // A run shown keeps the canvas; the draft's problems are
+                    // drawn once it is closed.
+                    if (!state.run) {
+                        drawProblems();
+                        markProblems();
+                    }
+                }
+            });
+        },
+        size: function () {
+            return bytes(JSON.stringify(payload()));
+        },
+        isConflict: function (error) {
+            return error.field === 'changed_meanwhile';
+        },
+        conflict: function (message) {
+            conflict(message);
+        },
+        failed: function () {
+            return t('fl_unsaved');
+        },
+        drawn: function () {
+            drawState();
+        }
+    });
+
     // options: { keepalive } for the save sent as the page is left.
     function save(options) {
-        window.clearTimeout(state.saveTimer);
-
-        if (!drafting() || !state.flow || state.conflict) {
-            return Promise.resolve();
-        }
-
-        if (state.saving) {
-            return state.saving.then(function () { return state.dirty ? save() : null; });
-        }
-
-        if (!state.dirty) {
-            return Promise.resolve();
-        }
-
-        var flow = state.flow;
-        var keepalive = !!(options && options.keepalive);
-        var sent = state.changes;
-
-        state.dirty = false;
-        state.saveError = '';
-        state.leaveSent = -1;
-        state.saving = K.api('ws_flow_save', payload(), options).then(function (data) {
-            flow.draft_rev = data.draft_rev;
-            flow.changed = true;
-
-            if (state.flow === flow) {
-                state.problems = data.problems || [];
-                state.warnings = data.warnings || [];
-
-                // A run shown keeps the canvas; the draft's problems are
-                // drawn once it is closed.
-                if (!state.run) {
-                    drawProblems();
-                    markProblems();
-                }
-            }
-        }).catch(function (error) {
-            state.dirty = true;
-
-            // A keepalive request is rejected when the page closes under it,
-            // yet the browser still delivers it: no answer (no field) means
-            // the save is on its way. The same changes are not sent again as
-            // the page goes (the server would refuse the stale draft_rev);
-            // a page that stays saves them again after SAVE_DELAY.
-            if (keepalive && (error.field === undefined)) {
-                state.leaveSent = sent;
-                return;
-            }
-
-            if (error.field === 'changed_meanwhile') {
-                conflict(error.message);
-            } else {
-                state.saveError = error.message || t('fl_unsaved');
-            }
-        }).then(function () {
-            state.saving = null;
-            drawState();
-
-            if (state.dirty && !state.conflict && !state.saveError) {
-                state.saveTimer = window.setTimeout(save, SAVE_DELAY);
-            }
-        });
-
-        drawState();
-
-        return state.saving;
+        return saver.save(options);
     }
 
     // What is still unsaved, saved before another flow is opened.
     function flush() {
-        return state.dirty ? save() : (state.saving || Promise.resolve());
+        return saver.flush();
     }
 
-    // The page is hidden or being left: the last changes go out on a
-    // request the browser finishes even after the page is gone (keepalive).
-    // It is an ordinary save otherwise: its answer is read, so a page that
-    // lives on (a tab shown again) holds the draft_rev the server moved to,
-    // and a refusal leaves the changes unsaved. Browsers refuse a keepalive
-    // body over 64 KiB: a larger draft is saved the usual way while the page
-    // is only hidden, and when it is left (leaving) it stays unsaved, which
-    // beforeunload asks about. beforeunload, visibilitychange and pagehide
-    // all come as a page is left: changes whose keepalive save is already on
-    // its way (leaveSent) are sent once.
+    // The page is hidden or being left (leaving): the last changes on a
+    // keepalive request (leave() of the core).
     function saveOnLeave(leaving) {
-        if (!drafting() || !state.flow || !state.dirty || state.saving || state.conflict || (state.leaveSent === state.changes)) {
-            return;
-        }
-
-        var keepalive = bytes(JSON.stringify(payload())) <= KEEPALIVE_BYTES;
-
-        if (keepalive || !leaving) {
-            save({ keepalive: keepalive });
-        }
+        saver.leave(leaving);
     }
 
     function conflict(message) {
@@ -10665,11 +10574,40 @@
     }
 
     // The canvas (create() of the core): pan and zoom on state.view, which
-    // fit(), a pinch and the run view put a new view in; the pointer and the
-    // keys, with the flow's own drags (a box moved, an arrow or a thread
-    // drawn) and keys in the hooks below.
+    // fit(), a pinch and the run view put a new view in; its boxes, arrows,
+    // box moves and arrows drawn from a port; the pointer and the keys, with
+    // the flow's own drag (a data thread) and keys in the hooks below.
     var canvas = G.create({
         ui: ui,
+        // The kit's t() is lent when the screen starts, after this runs.
+        text: function () {
+            return t.apply(null, arguments);
+        },
+        boxRole: function () {
+            return t('fl_box');
+        },
+        item: nodeById,
+        editable: function () {
+            return !!state.edit;
+        },
+        coord: coord,
+        select: function (selected) {
+            select(selected);
+        },
+        // A box moved may change which box is the last.
+        placed: function (node) {
+            if (ui.flag && (node !== ui.flag)) {
+                placeFlag();
+            }
+        },
+        edges: function () {
+            drawEdges();
+        },
+        moved: function () {
+            changed(false, true);
+        },
+        canConnect: canConnect,
+        connected: arrowDrawn,
         view: function (next) {
             if (next) {
                 state.view = next;
@@ -10684,7 +10622,7 @@
         // flag keep their own clicks and keys (Enter follows the link,
         // opens the fold).
         ownClicks: '.wsf-node a[href], .wsf-flag-canvas',
-        classes: { panning: 'wsf-panning', space: 'wsf-space' },
+        classes: { panning: 'wsf-panning', space: 'wsf-space', box: 'wsf-node', port: 'wsf-port', edge: 'wsf-edge', selected: 'wsf-selected', target: 'wsf-target', hidden: 'd-none' },
         press: pointerPress,
         move: pointerDrag,
         release: pointerRelease,
@@ -10742,15 +10680,13 @@
         });
     }
 
-    // A pointer down on the canvas (press() of the core): what the drag
-    // will be. drag.kind stays 'pan' for Space, the middle button and the
-    // empty canvas; false when a thread waiting for its field was put in
-    // the field pressed.
+    // A pointer down on the canvas (press() of the core): a data thread
+    // pressed or drawn; 'pan' for Space and the middle button; a box, its
+    // port, an arrow and the empty canvas are the core's. False when a
+    // thread waiting for its field was put in the field pressed.
     function pointerPress(event, drag, space) {
-        var viewport = ui.viewport;
         var target = event.target;
         var box = target.closest('.wsf-node[data-node]');
-        var edge = target.closest('.wsf-edge');
         var wire = target.closest('[data-thread]');
         var dot = target.closest('.wsf-data-live');
         var bind = target.closest('[data-bind]');
@@ -10787,45 +10723,18 @@
             if (box) {
                 box.focus({ preventScroll: true });
             }
-        } else if (state.edit && target.closest('.wsf-port-out') && box) {
-            drag.kind = 'connect';
-            drag.from = nodeById(box.getAttribute('data-node'));
-            event.preventDefault();
-        } else if (box) {
-            drag.kind = state.edit ? 'move' : 'none';
-            drag.item = nodeById(box.getAttribute('data-node'));
-            drag.ix = drag.item.x;
-            drag.iy = drag.item.y;
-            drag.node = box;
-            // Held before the box takes the focus: its focusin then selects
-            // nothing again.
-            canvas.hold(drag);
-            select({ type: 'node', id: drag.item.id });
-            box.focus({ preventScroll: true });
-        } else if (wire) {
+        } else if (wire && !box) {
             drag.kind = 'none';
             select({ type: 'thread', id: wire.getAttribute('data-thread') });
-            viewport.focus({ preventScroll: true });
-        } else if (edge) {
-            drag.kind = 'none';
-            select({ type: 'edge', id: parseInt(edge.getAttribute('data-edge'), 10) });
-            viewport.focus({ preventScroll: true });
-        } else {
-            drag.kind = 'pan';
-            drag.empty = true;
+            ui.viewport.focus({ preventScroll: true });
         }
 
         return true;
     }
 
-    // A box moved, an arrow or a thread drawn (move() of the core).
-    function pointerDrag(event, drag, dx, dy) {
-        if (drag.kind === 'move') {
-            drag.item.x = coord(drag.ix + dx / state.view.k);
-            drag.item.y = coord(drag.iy + dy / state.view.k);
-            place(drag.node, drag.item);
-            drawEdges();
-        } else if (drag.kind === 'thread') {
+    // A thread drawn (move() of the core).
+    function pointerDrag(event, drag) {
+        if (drag.kind === 'thread') {
             if (!state.binding && !startBinding(drag.from.id, drag.token, true)) {
                 canvas.hold(null);
                 return;
@@ -10842,19 +10751,6 @@
 
             if (hot) {
                 hot.classList.add('wsf-data-hot');
-            }
-        } else if (drag.kind === 'connect') {
-            var point = canvasPoint(event.clientX, event.clientY);
-            var under = document.elementFromPoint(event.clientX, event.clientY);
-            var over = under && under.closest ? under.closest('[data-node]') : null;
-            var to = over ? nodeById(over.getAttribute('data-node')) : null;
-
-            ui.temp.setAttribute('d', curve(drag.from.x + BOX_W, drag.from.y + BOX_H / 2, point.x, point.y).d);
-            ui.temp.classList.remove('d-none');
-            Array.prototype.forEach.call(ui.boxes.querySelectorAll('.wsf-target'), function (node) { node.classList.remove('wsf-target'); });
-
-            if (to && canConnect(drag.from, to)) {
-                over.classList.add('wsf-target');
             }
         }
     }
@@ -10892,30 +10788,7 @@
             return;
         }
 
-        if (drag.kind === 'connect') {
-            var under = document.elementFromPoint(event.clientX, event.clientY);
-            var over = under && under.closest ? under.closest('[data-node]') : null;
-
-            ui.temp.classList.add('d-none');
-            Array.prototype.forEach.call(ui.boxes.querySelectorAll('.wsf-target'), function (node) { node.classList.remove('wsf-target'); });
-
-            // Released on a box: the box the arrow leaves is selected,
-            // whether or not the arrow may go there (itself, the start, an
-            // arrow already drawn), so its highlight and settings show what
-            // the keys now act on.
-            if (over && (event.type === 'pointerup')) {
-                state.selected = { type: 'node', id: drag.from.id };
-
-                if (!connect(drag.from, nodeById(over.getAttribute('data-node')))) {
-                    markSelected();
-                    drawSettings();
-                }
-
-                focusSelected();
-            }
-        } else if ((drag.kind === 'move') && drag.moved) {
-            changed(false, true);
-        } else if (drag.item && !drag.moved) {
+        if (drag.item && !drag.moved) {
             // A second tap on the same box opens its settings (the captured
             // pointer sends no dblclick to the box itself).
             var now = Date.now();
@@ -10932,21 +10805,26 @@
         }
     }
 
-    // A drag cut short (cancel() of the core: Esc, a second finger): a box
-    // being moved goes back to where it was, an arrow being drawn is
-    // dropped.
-    function dropDrag(drag) {
-        ui.temp.classList.add('d-none');
+    // An arrow drawn from a box's port released on a box (connected() of
+    // the core): the box the arrow leaves is selected, whether or not the
+    // arrow may go there (itself, the start, an arrow already drawn), so
+    // its highlight and settings show what the keys now act on.
+    function arrowDrawn(from, to) {
+        state.selected = { type: 'node', id: from.id };
+
+        if (!connect(from, to)) {
+            markSelected();
+            drawSettings();
+        }
+
+        focusSelected();
+    }
+
+    // A drag cut short (cancel() of the core: Esc, a second finger): a
+    // thread being drawn is dropped; the core put back a box being moved.
+    function dropDrag() {
         ui.temp.classList.remove('wsf-temp-thread');
         endBinding();
-        Array.prototype.forEach.call(ui.boxes.querySelectorAll('.wsf-target'), function (node) { node.classList.remove('wsf-target'); });
-
-        if (drag && (drag.kind === 'move') && drag.moved) {
-            drag.item.x = drag.ix;
-            drag.item.y = drag.iy;
-            place(drag.node, drag.item);
-            drawEdges();
-        }
     }
 
     // Enter: the first field of what is selected; in a run, its task, or

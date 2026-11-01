@@ -7842,6 +7842,37 @@ function pg_format_number($amount, $decimals = 2)
 }
 
 /**
+ * A stored currency name for display. The starter data stores the names
+ * below in English (the Turkish starter data too), so they go through lang();
+ * a name the site owner wrote is printed as written. The stored value is
+ * never changed.
+ *
+ * @param string $name
+ * @return string
+ */
+function pg_currency_label($name)
+{
+    $name = (string) $name;
+
+    switch ($name) {
+        case 'US Dollar':
+            return lang('US Dollar');
+        case 'British pound':
+            return lang('British pound');
+        case 'Canadian dollar':
+            return lang('Canadian dollar');
+        case 'Euro':
+            return lang('Euro');
+        case 'Japanese yen':
+            return lang('Japanese yen');
+        case 'Australian dollar':
+            return lang('Australian dollar');
+    }
+
+    return $name;
+}
+
+/**
  * An amount for an input box the person edits: the site's decimal separator
  * and no grouping, so 1250,00 (tr) or 1250.00 (en). pg_parse_amount() reads
  * it back either way.
@@ -13052,6 +13083,37 @@ function pg_products_import_row_decimals_refused($row, $decimal_positions)
     }
 
     return false;
+}
+
+/**
+ * The quantity of a barcode stock scan (barcode_increase_inventory.php,
+ * barcode_decrease_inventory.php): a whole count from 1 to 1000000, read the
+ * panel's way (pg_normalize_amount()), or null. The screen's method gives the
+ * direction, so a minus sign is refused, and so is a fraction: the stock
+ * column is an integer.
+ *
+ * @param mixed $value
+ * @return int|null
+ */
+function pg_barcode_scan_quantity($value)
+{
+    if (!is_scalar($value) || is_bool($value)) {
+        return null;
+    }
+
+    $value = trim((string) $value);
+
+    if (($value === '') || (strpos($value, '-') === 0)) {
+        return null;
+    }
+
+    $value = pg_normalize_amount($value);
+
+    if (!is_numeric($value) || ((float) $value != floor((float) $value)) || ((float) $value < 1) || ((float) $value > 1000000)) {
+        return null;
+    }
+
+    return (int) $value;
 }
 
 /**
