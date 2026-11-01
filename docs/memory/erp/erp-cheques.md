@@ -12,8 +12,8 @@ description: ERP cheques and promissory notes (4.101): the steps, money only thr
 ## What does a bounce do to the invoices the cheque closed? (#4429, PR #4517)
 - In the step's transaction it takes every allocation off the cheque's receipt (`open_cash_id`, `erp_txn_unsettle_all()`, the path `erp_receipt_cancel()` uses) and works each invoice out again, so the returned debt is on open invoices, aging and the overdue view. The note says how many invoices opened again. Before, the invoice stayed "Paid" and the debt showed only on the account balance.
 
-## Can a bounced cheque's movements be allocated afterwards? (#4694)
-- No. Its collection (`open_cash_id`) and the bounce payment (`close_cash_id`) cancel each other out; allocating the first again closed the invoice the bounce had reopened. `erp_cheque_allocation_refusal($cheque)` gives the reason; `erp_settlement_allocate()` refuses with it before writing, and `erp_receipt.php` shows it instead of the allocation form, with Unallocated 0.
+## Can a bounced cheque's movements be allocated afterwards? (#4694, PR #4780)
+- No. Its collection (`open_cash_id`) and the bounce payment (`close_cash_id`) cancel each other out; allocating the first again re-closed the reopened invoice. `erp_cheque_allocation_refusal($cheque)` gives the reason; `erp_settlement_allocate()` refuses with it before writing, and `erp_receipt.php` shows it instead of the allocation form, with Unallocated 0.
 - A cheque bounced before #4429's fix keeps its allocations: `erp_cheque_bounced_allocations()` lists them, the cheque screen names the invoices and links to the receipt, whose Remove opens them. Nothing repairs those rows on its own.
 
 ## Which date may a step carry? (#4436, PR #4517)
