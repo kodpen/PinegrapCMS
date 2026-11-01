@@ -24,6 +24,7 @@ description: W5 layout gallery of a system widget: sources (Default, Starters, F
 - Only the design's own template (`style.style_template`, else `sdDesign.template.id` while it is being opened): its layouts carry that template's styles. `shared_component` `template_layouts` reads the template from the design's row, then `pg_sw_template_layouts()` (`includes/fn/widgets_gallery.php`).
 - Explicit trees of the kind (not `'tree' => 'starter'`, the Default already), whose page the site has. `{{page:}}` and `{{tab:}}` resolve to this design's pages (`pg_sw_template_page_map()`: the template page's name, or the lowest `-2`… suffix opening gave it); site name, e-mail, year are filled.
 - Left out: a page the design lacks; folders, product or contact groups (`_pg_tpl_fill()` would turn them into 0 silently); nested `templateWidget`/`templateShared` parts (they need rows).
+- A placeholder still unfilled after that drops the layout, but a token starting with `__` (`{{__comment_rating}}` of the comment stars) is a runtime token the widget fills when it draws, so it stays; before #4588 every comment layout with stars was dropped and the Comments widget's "From template" was always empty.
 - A form view carries the field names of the template form it was made for (the custom form widget on the page its setting names); offered only when this widget's form has the same names. A custom form: same control names, as on this site.
 
 ## What is not in W5?
