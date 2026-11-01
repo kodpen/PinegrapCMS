@@ -8,7 +8,7 @@ description: Placing a flow template (G2): motion schedule from ws_flow_template
 - With `prefers-reduced-motion: reduce` nothing moves: boxes, arrows and threads are there at once and the panel opens at once (CSS animation off too).
 
 ## Where are the timings?
-- `ws_flow_template_motion($graph)` (pure, `flow_templates.php`), served in each template as `motion`: box n at n × 150 ms, 420 ms each; an arrow at the later end of its two boxes, 200 ms; threads after the last arrow, 200 ms apart, 650 ms each; `panel` when all is in. Numbers from `plans/workspace-flows-visual-spec.md`.
+- `ws_flow_template_motion($graph)` (pure, `flow_templates.php`), served in each template as `motion`: box n at n × 150 ms, 420 ms each; an arrow at the later end of its two boxes, 200 ms; threads after the last arrow, 200 ms apart, 650 ms each; `panel` when all is in. Numbers from `workspace-flows-visual-spec.md`.
 - Threads come from `ws_flow_template_threads()`: one per `{{node.<id>.<field>}}` in a box's setting (from, to, key); the card's `threads` count is their number.
 
 ## How are threads drawn?

@@ -5,7 +5,7 @@ description: A flow run's flag (C1, #2903): state, duration, one-line result fol
 
 ## What is the flag?
 - `runFlag(run, options)` in `assets/js/workspace_flow_flag.js`: the state word with a mark (Completed for `done`, else Waiting, Running, Failed, Cancelled), the run's duration (so far for an open run), one line of its result. A result over 60 characters or of more than one line folds behind ▾; the open part holds the whole text and, with `options.open`, "Open the run". A running run with `can_cancel` gets Stop when `options.stop` is given.
-- Colours: `.wsf-flag-*` in `backend.src.css`; the dark values are those of `plans/workspace-flows-visual-spec.md`, the light theme the same hues on a light ground.
+- Colours: `.wsf-flag-*` in `backend.src.css`; the dark values are those of `workspace-flows-visual-spec.md`, the light theme the same hues on a light ground.
 
 ## Where is it shown?
 - Above the flow's last box on the canvas (the `end` box farthest right, else the rightmost non-value box), only while no run is open on the canvas; its link opens the run with the runs list behind it, Stop asks as "Cancel the run" does.

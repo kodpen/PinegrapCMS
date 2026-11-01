@@ -1877,7 +1877,7 @@ JS
 }
 
 // The groups of the flow boxes and their colours (dark theme as the visual
-// spec gives them; workspace-flows-look.md V1), in their listing order.
+// spec gives them; workspace-flows-visual-spec.md), in their listing order.
 function ws_flows_canvas_test_groups()
 {
 	return array(
