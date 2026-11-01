@@ -1881,15 +1881,22 @@ function pg_address_labels_tree_stamp(&$tree, $is_city, $is_state, $country_name
  * express order's per-recipient form): its text now and both texts for
  * pg_ship_to_district_script(). Null text when $text is not a default word.
  *
- * @param  string $text         the label's default text ('City*')
- * @param  string $slot         'city' or 'state'
- * @param  string $country_name name of the country control
- * @param  string $country      the country the form holds now
+ * The control it follows may be another than the country: the verified
+ * address form follows its state pick list, with the ids of the Turkish
+ * states as $codes.
+ *
+ * @param  string     $text         the label's default text ('City*')
+ * @param  string     $slot         'city' or 'state'
+ * @param  string     $country_name name of the control the label follows
+ * @param  string     $country      the value that control holds now
+ * @param  array|null $codes        values that stand for Turkey; null: pg_ship_to_district_tr_codes(), and $country read as a country
  * @return array  'text' => escaped text, 'attrs' => escaped attributes (leading space)
  */
-function pg_address_labels_html($text, $slot, $country_name, $country)
+function pg_address_labels_html($text, $slot, $country_name, $country, $codes = null)
 {
     $words = pg_address_label_words();
+    $is_tr = ($codes === null) ? pg_ship_to_district_country_is_tr($country) : in_array((string) $country, array_map('strval', (array) $codes), true);
+    $codes = ($codes === null) ? pg_ship_to_district_tr_codes() : (array) $codes;
     $tr = pg_address_label_swap($text, $words[$slot], true);
 
     if ($tr === null) {
@@ -1899,8 +1906,8 @@ function pg_address_labels_html($text, $slot, $country_name, $country)
     $other = (string) pg_address_label_swap($text, $words[$slot], false);
 
     return array(
-        'text' => h(pg_ship_to_district_country_is_tr($country) ? $tr : $other),
-        'attrs' => ' data-pg-addr-label="' . h($country_name) . '" data-pg-addr-codes="' . h(implode(',', pg_ship_to_district_tr_codes())) . '"'
+        'text' => h($is_tr ? $tr : $other),
+        'attrs' => ' data-pg-addr-label="' . h($country_name) . '" data-pg-addr-codes="' . h(implode(',', $codes)) . '"'
             . ' data-pg-addr-tr="' . h($tr) . '" data-pg-addr-other="' . h($other) . '"',
     );
 }

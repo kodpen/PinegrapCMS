@@ -19,7 +19,7 @@ description: Steps A1-A8 of plans/address-fields-by-country.md: site labels and 
 - A3 (S) State pick list in the account profile and address book widgets. After A2.
   - Both draw the state as a text box, their classic pages switch to the pick list: add the list control and `pg_sa_state_script()` (`widgets_account.php`, A2's starters); a saved tree without the list gets it by a fit.
 
-- A4 (S) Panel and ERP labels. After A1.
+- A4 (S) done (#PR). Panel and ERP labels. After A1. Now in `commerce/address-labels-by-country.md`.
   - `verified_shipping_address_form.php`, ERP account and waybill forms: İl/İlçe for Turkey (ERP card fields unchanged: card city = il, district = ilçe). Turkish default layout `1005.php` still says "City" / "State / Province".
 
 - A5 (M) Turkish place list. After A1 and questions 1 and 2.

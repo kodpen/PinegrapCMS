@@ -20,5 +20,11 @@ module: shipping
 ## How do classic pages do it?
 - The six `get_*.php` address pages append `pg_address_labels_init_props($city_id)` to their `software.init_country()` call: `city_id`, `address_labels` (TR codes, words). `software.address_labels()` (`frontend.src.js`, hand-patched in `frontend.min.js`) matches `label[for]` of the city, state text box and pick list, and swaps on each country change. Custom and generated layouts (`includes/templates/*.php`) need a `<label for>` on the city; the default markup got one where it had a bare `<td>`.
 
+## What about the panel and ERP?
+- ERP account card and delivery note keep their columns (card city = il, district = ilçe); only the city field's label says İl for Turkey (`erp_address_city_label_key()`, `data-label-tr` / `-other`, switched by each form's country script). The account card hides the state for Turkey.
+- Verified shipping address (`includes/forms/verified_shipping_address_form.php`) has no country field: its labels follow the state pick list, with the Turkish states' ids as codes (`pg_address_labels_html(…, $codes)`) and the same script.
+- The Turkish default install's layout 1005 (new-conversation form) says İlçe / İl like 975 and 976; the English default keeps City / State / Province.
+
 ## Where is it tested?
+- `tests/address_labels_panel_test.php`: the ERP key and forms, the verified address, layout 1005.
 - `tests/address_labels_test.php`: labels by country, key and swap, tree stamp (own words kept), script, every place by source, init props, the delivery note's district (`erp_address_from_ship_to()`).

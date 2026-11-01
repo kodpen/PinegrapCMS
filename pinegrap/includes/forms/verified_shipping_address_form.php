@@ -39,8 +39,29 @@ function pg_verified_shipping_address_form_state_options($states, $current_state
 }
 
 /**
+ * The ids of the states that belong to a countries row standing for Turkey:
+ * the address has no country field, its state says which country it is in.
+ *
+ * @return array list of states.id as strings
+ */
+function pg_verified_shipping_address_form_tr_state_ids()
+{
+    $ids = array();
+
+    foreach ((array) db_items("SELECT states.id, countries.code, countries.name FROM states LEFT JOIN countries ON countries.id = states.country_id") as $row) {
+        if (pg_ship_to_district_country_is_tr((string) $row['code'], (string) $row['name'])) {
+            $ids[] = (string) $row['id'];
+        }
+    }
+
+    return $ids;
+}
+
+/**
  * The Verified Shipping Address card: company, address 1 and 2, city,
- * state and zip code.
+ * state and zip code. For a Turkish state the city and state labels say
+ * İlçe and İl, and follow the state pick list (pg_address_labels_html(),
+ * pg_ship_to_district_script()).
  *
  * @param liveform $liveform
  * @return string
@@ -48,6 +69,10 @@ function pg_verified_shipping_address_form_state_options($states, $current_state
 function pg_verified_shipping_address_form_card($liveform)
 {
     $output_state_options = pg_verified_shipping_address_form_state_options(get_state_options(), $liveform->get_field_value('state_id'));
+    $tr_state_ids = pg_verified_shipping_address_form_tr_state_ids();
+    $state_id = (string) $liveform->get_field_value('state_id');
+    $city_label = pg_address_labels_html(lang('City'), 'city', 'state_id', $state_id, $tr_state_ids);
+    $state_label = pg_address_labels_html(lang('State'), 'state', 'state_id', $state_id, $tr_state_ids);
 
     return '
                         <div class="row">
@@ -71,12 +96,12 @@ function pg_verified_shipping_address_form_card($liveform)
                                                 <input type="text" name="address_2" id="address_2" maxlength="50" value="' . h($liveform->get_field_value('address_2')) . '" class="form-control' . ($liveform->check_field_error('address_2') ? ' is-invalid' : '') . '" />
                                             </div>
                                             <div class="col-12 lg:col-6 my-3">
-                                                <label for="city" class="form-label">' . lang('City') . '</label>
+                                                <label for="city" class="form-label"' . $city_label['attrs'] . '>' . $city_label['text'] . '</label>
                                                 <input type="text" name="city" id="city" maxlength="50" required value="' . h($liveform->get_field_value('city')) . '" class="form-control' . ($liveform->check_field_error('city') ? ' is-invalid' : '') . '" />
                                             </div>
                                             <div class="col-12 lg:col-4 my-3">
-                                                <label for="state_id" class="form-label">' . lang('State') . '</label>
-                                                <select style="width:100%" data-pg-combobox class="form-control' . ($liveform->check_field_error('state_id') ? ' is-invalid' : '') . '" data-placeholder="' . lang('Click to select state') . '" id="state_id" name="state_id">' . $output_state_options . '</select>' . pg_fields_script() . '
+                                                <label for="state_id" class="form-label"' . $state_label['attrs'] . '>' . $state_label['text'] . '</label>
+                                                <select style="width:100%" data-pg-combobox class="form-control' . ($liveform->check_field_error('state_id') ? ' is-invalid' : '') . '" data-placeholder="' . lang('Click to select state') . '" id="state_id" name="state_id">' . $output_state_options . '</select>' . pg_fields_script() . pg_ship_to_district_script() . '
                                             </div>
                                             <div class="col-12 lg:col-2 my-3">
                                                 <label for="zip_code" class="form-label">' . lang('Zip Code') . '</label>
