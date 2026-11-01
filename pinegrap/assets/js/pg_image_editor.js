@@ -10,7 +10,7 @@
  *   pgImageEditor.open({
  *       src: url, fileId: id, fileName: name,    a picture, or
  *       blank: { width, height, background },    an empty artboard
- *       save: { mode, folderId, name },          how Save writes (below)
+ *       save: { mode, folderId, name, url, label },  how Save writes (below)
  *       profile: 'photo' | 'canvas' | 'annotate' | 'optimise',
  *       tools: ['arrow', ...],                    a subset: the mini bar
  *       theme: 'light' | 'dark',                  default: the panel's
@@ -22,8 +22,11 @@
  * Save goes to image_editor_api.php (pgImageEditorConfig.api): a file
  * (fileId) is written over ('replace', or 'copy' when the server says it may
  * not be) and an artboard given save.folderId becomes a new file ('new');
- * result.file is the saved file. Without either, or with save.mode
- * 'callback', the document goes to onSave and nothing is written.
+ * result.file is the saved file. A file named by fileName alone is looked up
+ * by its name. save.url ('url') sends what a replace sends, the document and
+ * the overlay, to that address instead (Workspace); save.label names its
+ * button. Without any of these, or with save.mode 'callback', the document
+ * goes to onSave and nothing is written.
  *
  * One editor is open at a time. Labels come from
  * window.pgImageEditorConfig.strings, geometry from PgImageEditorModel
@@ -260,9 +263,9 @@
         this.opts = opts;
         this.resolve = resolve;
         // replace, copy, new or callback: see the top of this file.
-        this.saveMode = save.mode || (opts.fileId ? 'replace' : ((opts.blank && save.folderId) ? 'new' : 'callback'));
+        this.saveMode = save.mode || (save.url ? 'url' : (opts.fileId ? 'replace' : ((opts.blank && save.folderId) ? 'new' : 'callback')));
 
-        if (!config().api) {
+        if (!config().api || ((this.saveMode === 'url') && !save.url)) {
             this.saveMode = 'callback';
         }
 
@@ -519,16 +522,18 @@
             return;
         }
 
-        if ((this.saveMode !== 'callback') && this.opts.fileId) {
+        if (((this.saveMode === 'replace') || (this.saveMode === 'copy')) && (this.opts.fileId || this.opts.fileName)) {
             // The server names the file, its address and whether a save may
-            // write over it.
-            this.request({ action: 'open', file_id: this.opts.fileId }).then(function (r) {
+            // write over it; a file asked for by name gets its id here.
+            this.request(this.opts.fileId ? { action: 'open', file_id: this.opts.fileId } : { action: 'open', file_name: this.opts.fileName }).then(function (r) {
                 if (!r || (r.status !== 'success')) {
                     self.fail((r && r.message) || t('loadError'));
                     return;
                 }
 
                 self.file = r.file;
+                self.opts.fileId = r.file.id;
+                self.doc.source.fileId = r.file.id;
 
                 if (!r.file.replace && (self.saveMode === 'replace')) {
                     self.saveMode = 'copy';
@@ -1252,7 +1257,7 @@
 
         this.saveBox.textContent = '';
         this.saveMenu = null;
-        this.saveBtn = button('pgie-btn pgie-primary', mini ? t('done') : t('save'), null, function () { self.save(); }, true);
+        this.saveBtn = button('pgie-btn pgie-primary', this.saveLabel(), null, function () { self.save(); }, true);
         this.saveBox.appendChild(this.saveBtn);
         this.menuBtn = null;
 
@@ -1264,6 +1269,17 @@
         }
 
         this.saveBox.classList.toggle('pgie-split', !!this.menuBtn);
+    };
+
+    // A caller's own word for its save (save.label), else Done or Save.
+    Editor.prototype.saveLabel = function () {
+        var save = this.opts.save || {};
+
+        if ((this.saveMode === 'url') && save.label) {
+            return String(save.label);
+        }
+
+        return this.tools.mini ? t('done') : t('save');
     };
 
     Editor.prototype.toggleSaveMenu = function (open) {
@@ -1296,12 +1312,13 @@
         copy.focus();
     };
 
-    Editor.prototype.request = function (body) {
+    // url: another endpoint that takes the same body (save.url).
+    Editor.prototype.request = function (body, url) {
         var cfg = config();
 
         body.token = cfg.token || '';
 
-        return fetch(cfg.api, {
+        return fetch(url || cfg.api, {
             method: 'POST',
             credentials: 'same-origin',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
@@ -1335,7 +1352,7 @@
         this.root.classList.toggle('pgie-busy', on);
         this.root.setAttribute('aria-busy', on ? 'true' : 'false');
         this.saveBtn.disabled = on;
-        this.saveBtn.lastChild.textContent = on ? t('saving') : (this.tools.mini ? t('done') : t('save'));
+        this.saveBtn.lastChild.textContent = on ? t('saving') : this.saveLabel();
 
         if (this.menuBtn) {
             this.menuBtn.disabled = on;
@@ -1396,7 +1413,7 @@
         }
 
         // Nothing changed is nothing to write over.
-        if ((mode === 'replace') && !this.dirty) {
+        if (((mode === 'replace') || (mode === 'url')) && !this.dirty) {
             this.finish(null);
             return;
         }
@@ -1430,13 +1447,16 @@
             body.name = (this.opts.save && this.opts.save.name) || this.opts.fileName || '';
             body.picture = this.drawArtboard();
         } else {
-            body.file_id = this.opts.fileId;
+            if (mode !== 'url') {
+                body.file_id = this.opts.fileId;
+            }
+
             body.overlay = this.drawOverlay();
         }
 
         Editor.saveHooks.forEach(function (hook) { hook.call(self, body, mode); });
 
-        this.request(body).then(function (r) {
+        this.request(body, (mode === 'url') ? this.opts.save.url : '').then(function (r) {
             if (!r || (r.status !== 'success')) {
                 self.setSaving(false);
                 self.showMessage((r && r.message) || t('saveError'), true);

@@ -219,6 +219,22 @@ function pg_image_editor_includes()
         load: load,
         open: function (options) { return load().then(function (E) { return E.open(options || {}); }); }
     };
+    // The older call: a file by id or name is saved over (or copied when
+    // allowReplace is false), saveUrl takes the edit somewhere else, and
+    // onSaved gets the saved file.
+    window.openImageEditor = function (o) {
+        o = o || {};
+        var options = { fileId: o.fileId, fileName: o.fileName, tools: o.tools, profile: o.profile, onClose: o.onCancel };
+        if (o.saveUrl) {
+            options.src = o.src;
+            options.save = { mode: "url", url: o.saveUrl, label: o.saveLabel };
+        } else {
+            options.save = { mode: (o.allowReplace === false) ? "copy" : "replace" };
+        }
+        options.onSave = function (r) { if (typeof o.onSaved === "function") { o.onSaved(r.file || r); } };
+        return window.pgImageEditor.open(options);
+    };
+    window.imageEditorAvailable = function () { return true; };
 })();</script>';
 }
 
@@ -589,7 +605,16 @@ function pg_image_editor_file($file_id, $user)
  */
 function pg_image_editor_open($request, $user)
 {
-    $file = pg_image_editor_file(isset($request['file_id']) ? $request['file_id'] : 0, $user);
+    $file_id = isset($request['file_id']) ? $request['file_id'] : 0;
+
+    // A caller that knows the file only by its address (a page's picture,
+    // the designer's image field) names it; the name is the files row's
+    // address, so it is unique.
+    if (!$file_id && isset($request['file_name']) && is_string($request['file_name']) && ($request['file_name'] !== '')) {
+        $file_id = (int) db_value("SELECT id FROM files WHERE name = '" . e($request['file_name']) . "' LIMIT 1");
+    }
+
+    $file = pg_image_editor_file($file_id, $user);
 
     if ($file['refusal']) {
         return $file['refusal'];
@@ -1004,7 +1029,7 @@ function pg_image_editor_arrays($value)
  * Every answer is JSON, refusals included; a page with a "go back" link is
  * a syntax error to fetch().
  *
- *   { token, action: 'open', file_id }
+ *   { token, action: 'open', file_id | file_name }
  *       -> { status, file: { id, name, url, replace, notice } }
  *       (and versions, doc, base: the versions this file has)
  *   { token, action: 'save', mode: 'replace'|'copy'|'new', file_id | folder_id,
