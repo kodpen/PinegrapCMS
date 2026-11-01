@@ -146,7 +146,7 @@ function test_shipping_method_form_cards_times()
 	pg_assert_contains('name="end_time" id="end_time" class="form-control" autocomplete="off" data-pg-datetime', $source, 'the end time has no maxlength');
 	pg_assert_false(strpos($source, '>h:mm AM/PM<') !== false, 'no hour format written into a time field\'s help');
 	pg_assert_contains('pg_shipping_method_form_time_help(TIME_FORMAT)', $source, 'the help follows the time format setting');
-	pg_assert_same(2, substr_count($source, '<div class="form-text text-end">\' . $time_help . \'</div>'), 'under the cut-off times and the end of day');
+	pg_assert_same(2, substr_count($source, '<div class="form-text">\' . $time_help . \'</div>'), 'under the cut-off times and the end of day');
 }
 
 function test_shipping_method_amount_cents()
