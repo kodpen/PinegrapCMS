@@ -858,6 +858,39 @@ function pg_tr_html_lang($content, $language)
 }
 
 /**
+ * The <html lang> of an e-mail body drawn from a designed page: the stored
+ * body carries the fixed lang="en" of generate_style_code_from_tree(), and an
+ * e-mail never passes pg_tr_finalize(). $language is the language the e-mail
+ * is written in; '' or 'en' leaves the body as it is.
+ *
+ * @param string $html
+ * @param string $language
+ * @return string
+ */
+function pg_tr_mail_html_lang($html, $language)
+{
+    $language = (string) $language;
+
+    if (($language === '') || ($language === 'en')) {
+        return $html;
+    }
+
+    return pg_tr_html_lang($html, $language);
+}
+
+/**
+ * The language an e-mail drawn now is written in: the visitor's while the
+ * request is in another language (their copy of a form, an order receipt),
+ * else the site's own (an administrator's notification, a scheduled job).
+ *
+ * @return string
+ */
+function pg_tr_mail_language()
+{
+    return pg_tr_active() ? pg_tr_language() : pg_tr_source_language();
+}
+
+/**
  * The assembled page on its way out: the language attributes, the address
  * prefix on the links to pages, the alternates, the language switchers. Also
  * runs for a page in the source language, which gets the alternates and the

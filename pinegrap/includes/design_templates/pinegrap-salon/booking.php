@@ -47,7 +47,8 @@ $booking_pages[] = array(
         'confirmation_page_id' => '{{tab:appointment_view}}',
         'auto_registration'    => 1,
         'notify_email'         => '{{site_email}}',
-        'notify_subject'       => lang('New booking request: ^^service^^, ^^preferred_date^^'),
+        // The date in the site's date format, as the e-mail body writes it.
+        'notify_subject'       => pg_cf_subject_date_format(lang('New booking request: ^^service^^, ^^preferred_date^^'), array('preferred_date'), pg_sw_default_date_format('date')),
         'notify_page_id'       => '{{tab:email_appointment_new}}',
         'confirm_email'        => 1,
         'confirm_subject'      => lang('We received your booking request'),

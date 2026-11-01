@@ -1,6 +1,6 @@
 ---
 name: design-template-cafe
-description: Cafe template (and Clinic where shared): sample event weekdays, menu price hint, rating numbers through lang(), the catering guests pattern, the privacy page the consent boxes link (#3573, #3572).
+description: Cafe and Clinic templates: event weekdays, price hint, rating numbers, guests pattern, consent privacy link, subject dates, booking links that fill the form.
 ---
 
 ## How are the sample event dates chosen?
@@ -24,3 +24,10 @@ description: Cafe template (and Clinic where shared): sample event weekdays, men
 
 ## Where are its comment threads and reviews?
 - On the Comments widget since 1.1.0 (Café and Clinic), with Google Reviews beside the sample testimonials: [[design-template-threads]].
+
+## How is the date written in a notification subject?
+- A bare `^^<date>^^` printed plain `7/11/2026` while the body showed `07.11.2026` (#4545). The Café, Clinic and Salon subjects go through `pg_cf_subject_date_format(lang(...), array('<date field>'), pg_sw_default_date_format('date'))` at publish (PR #4567): the format the body uses is added to the token. Running sites keep their stored subjects.
+
+## Which buttons open a booking form with the choice made?
+- Clinic (PR #4567, #4547): a doctor profile's "Book an Appointment" sends `?department=<service title>&doctor=<name · specialty>`; "Book this check-up" sends `?reason=<package title>` (the form has no package field). The form's Specialty, Doctor and Reason fields carry `_cf.url_param` ([[custom-form-url-prefill]]).
+- Café: an event card's "Book a Table" is a `__page_link` with `cafe` and `day` (row tokens `cafe`, `event_date`; `date` is a reserved name) and the reservation form's Café and Date fields read them.

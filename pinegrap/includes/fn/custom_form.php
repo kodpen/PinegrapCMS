@@ -1750,6 +1750,61 @@ function pg_cf_values_outside_options($value, $option_values)
 }
 
 /**
+ * The message of a required field the visitor left empty, as HTML. A lone
+ * check box (no more than one option) is a consent whose label is a whole
+ * sentence: "<sentence> is required." reads broken, so it gets the short
+ * text the browser gives for the same box. Any other field with a label
+ * says "<label> is required."; a field without a label gets ''.
+ *
+ * @param string $type         form_fields.type
+ * @param string $label        the field's label as shown, not escaped
+ * @param int    $option_count the field's number of options
+ * @return string
+ */
+function pg_cf_required_message($type, $label, $option_count)
+{
+    if (($type === 'check box') && ((int) $option_count <= 1)) {
+        return lang('Check this box to continue.');
+    }
+
+    if ((string) $label === '') {
+        return '';
+    }
+
+    return lang(array('string' => '{var:1} is required.', 'vars' => h((string) $label)));
+}
+
+/**
+ * A notification subject whose date tokens take a date format: each bare
+ * ^^<name>^^ of $names (one with no %%…%% after it) becomes
+ * ^^<name>^^%%<format>%%, so the subject writes the date as the e-mail's body
+ * does instead of the plain day/month/year of an unformatted token. A token
+ * that already has a format, other tokens and an empty format leave the
+ * subject as it is.
+ *
+ * @param string $subject
+ * @param array  $names   field names of the date fields
+ * @param string $format  a PHP date() format
+ * @return string
+ */
+function pg_cf_subject_date_format($subject, $names, $format)
+{
+    $subject = (string) $subject;
+    $format = (string) $format;
+
+    if (($format === '') || (strpos($format, '%') !== false)) {
+        return $subject;
+    }
+
+    foreach ((array) $names as $name) {
+        $token = '^^' . $name . '^^';
+        $subject = preg_replace('/' . preg_quote($token, '/') . '(?!%%)/', $token . '%%' . str_replace(array('\\', '$'), array('\\\\', '\\$'), $format) . '%%', $subject);
+    }
+
+    return $subject;
+}
+
+/**
  * Whether a posted pick list, radio button or check box value holds only
  * values of the field's option list (or nothing). The browser can send only
  * those; anything else was made up outside the form.
@@ -2762,7 +2817,8 @@ function _pg_cf_node_text($node)
 // fields are marked: each control of a failed field gets `is-invalid` and
 // aria-invalid="true", and one `invalid-feedback` text with an id is added
 // after the field's last control (after the label right behind it, so a
-// check box keeps its label beside it) and named by every control's
+// check box keeps its label beside it; at the end of the `form-check` row
+// for a check box or radio inside one) and named by every control's
 // aria-describedby. $errors maps a control's name (a trailing "[]" is
 // ignored) to the message as plain text; an empty message marks the
 // controls without a text. Returns the number of fields marked.
@@ -2782,7 +2838,7 @@ function pg_form_mark_invalid_controls(&$tree, $errors)
             $name  = isset($attrs['name']) ? preg_replace('/\[\]$/', '', (string)$attrs['name']) : '';
             if ($name !== '' && array_key_exists($name, $errors)
                 && !in_array($type, array('hidden', 'submit', 'reset', 'button', 'image'), true)) {
-                $found[$name][] = array('path' => $path, 'id' => isset($attrs['id']) ? $attrs['id'] : '');
+                $found[$name][] = array('path' => $path, 'id' => isset($attrs['id']) ? $attrs['id'] : '', 'type' => $type);
             }
         }
         if (!empty($node['children']) && is_array($node['children'])) {
@@ -2821,7 +2877,24 @@ function pg_form_mark_invalid_controls(&$tree, $errors)
         }
         if ($fb_id !== '') {
             $last = $controls[count($controls) - 1]['path'];
-            $inserts[] = array('path' => $last, 'node' => array(
+            // A check box or radio in a `form-check` row: the text goes last
+            // in that row, after the label and anything after it (a privacy
+            // link), so the sentence and its link stay together.
+            $row_end = false;
+            if (count($last) > 0 && in_array($controls[count($controls) - 1]['type'], array('checkbox', 'radio'), true)) {
+                $parent_path = $last;
+                array_pop($parent_path);
+                $parent = _pg_form_node_at($tree, $parent_path);
+                $pcls = isset($parent['props']['cssClass']) ? (string)$parent['props']['cssClass'] : '';
+                if (preg_match('/(^|\s)form-check(\s|$)/', $pcls) && !empty($parent['children'])) {
+                    $keys = array_keys($parent['children']);
+                    $parent_path[] = end($keys);
+                    $last = $parent_path;
+                    $row_end = true;
+                }
+                unset($parent);
+            }
+            $inserts[] = array('path' => $last, 'row_end' => $row_end, 'node' => array(
                 'type'     => 'semantic',
                 'props'    => array('tag' => 'div', 'id' => $fb_id, 'cssClass' => 'invalid-feedback d-block pg-inline-feedback', 'text' => $text),
                 'children' => array(),
@@ -2845,7 +2918,7 @@ function pg_form_mark_invalid_controls(&$tree, $errors)
         $pos = array_search($index, array_keys($parent['children']), true);
         $children = array_values($parent['children']);
         $at = (int)$pos + 1;
-        if (isset($children[$at]) && is_array($children[$at]) && isset($children[$at]['props']['tag'])
+        if (empty($ins['row_end']) && isset($children[$at]) && is_array($children[$at]) && isset($children[$at]['props']['tag'])
             && strtolower((string)$children[$at]['props']['tag']) === 'label') {
             $at++;
         }
