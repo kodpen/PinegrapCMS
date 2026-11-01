@@ -66,7 +66,7 @@ function pg_dashboard_v2_periods()
 function pg_dashboard_v2_cards()
 {
     // The cards whose function exists.
-    $built = array('visitors', 'engagement');
+    $built = array('visitors', 'engagement', 'gsearch', 'ga', 'content', 'comments', 'files', 'activity', 'firewall', 'team', 'mytasks', 'waiting', 'week', 'calendars');
     $built = array_merge($built, array('shop', 'salesmap', 'orders', 'offers', 'fx'));
 
     $card = function ($title, $icon, $category, $width, $period, $gate) {
@@ -101,7 +101,7 @@ function pg_dashboard_v2_cards()
         'visitmap'   => $card(lang('Visitor map'), 'bi-geo-alt', 'visitors', 'S', 2, 'visitors'),
         'engagement' => $card(lang('Online Engagement'), 'bi-broadcast-pin', 'visitors', 'S', null, 'staff'),
         'gsearch'    => $card(lang('Google Search'), 'bi-google', 'visitors', 'S', 1, 'gsearch'),
-        'ga'         => $card(lang('Google Analytics'), 'bi-bar-chart-line', 'visitors', 'M', 1, 'ga'),
+        'ga'         => $card(lang('Google Analytics'), 'bi-bar-chart-line', 'visitors', 'M', null, 'ga'),
         // Security
         'firewall'   => $card(lang('Firewall'), 'bi-shield-check', 'security', 'S', 0, 'staff'),
         // Team

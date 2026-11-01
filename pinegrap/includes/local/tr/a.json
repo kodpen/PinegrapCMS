@@ -1651,6 +1651,7 @@
     "Add record failed": "Kayıt eklenemedi",
     "Add result": "Sonuç ekle",
     "Add sample rows to a starter": "Başlangıç şablonuna örnek satırlar ekle",
+    "Add shortcut": "Kısayol ekle",
     "Add slide": "Slayt ekle",
     "Add somewhere money is kept: a cash drawer, a bank account or a card terminal.": "Paranın durduğu bir yer ekleyin: kasa, banka hesabı ya da POS.",
     "Add tags": "Etiket Ekle",
@@ -1892,6 +1893,7 @@
     "Afterwards the upgrade screen opens and runs any upgrade steps that are due.": "Ardından yükseltme ekranı açılır ve bekleyen yükseltme adımlarını çalıştırır.",
     "Against Invoice": "Asıl Fatura",
     "Against the 28 days before": "Önceki 28 güne göre",
+    "Agency": "Ajans",
     "Agenda": "Gündem",
     "Aging report": "Yaşlandırma raporu",
     "Agree on a date with the customer": "Müşteriyle tarih belirle",
@@ -3198,6 +3200,7 @@
     "Average of the column above": "Üstteki sütunun ortalaması",
     "Average order": "Ortalama sipariş",
     "Average position": "Ortalama sıra",
+    "Average position {var:1}": "Ortalama sıra {var:1}",
     "Average rating": "Ortalama puan",
     "Average rating (one decimal)": "Ortalama puan (bir ondalık)",
     "Average rating (verified reviews)": "Ortalama puan (doğrulanmış incelemeler)",
@@ -3606,5 +3609,6 @@
     "auto dialog": "otomatik diyalog",
     "average course rating": "ortalama kurs puanı",
     "average rating from our patients": "hastalarımızın ortalama puanı",
-    "awaiting payment": "ödeme bekliyor"
+    "awaiting payment": "ödeme bekliyor",
+    "away": "uzakta"
 }

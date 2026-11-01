@@ -32,7 +32,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `search_console`: #4852
 
-- `seo`: open
+- `seo`: #4870
 
 - `shipment_labels`: open
 

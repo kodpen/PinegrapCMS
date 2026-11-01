@@ -105,7 +105,7 @@ function test_panel_session_refusal_exempt_handlers_refuse_before_validate_user(
 		'includes/panel/explorer.php' => array('pg_panel_file_explorer'),
 		'includes/panel/explorer_side.php' => array('pg_panel_explorer_side'),
 		'includes/panel/software.php' => array('pg_panel_software_backup', 'pg_panel_software_update'),
-		'includes/panel/dashboard.php' => array('pg_panel_contact_quick_save', 'pg_panel_tour_seen', 'pg_panel_user_pinned_app_update'),
+		'includes/panel/dashboard.php' => array('pg_panel_contact_quick_save', 'pg_panel_tour_seen', 'pg_panel_user_pinned_app_update', 'pg_panel_dashboard_layout_save'),
 		'includes/panel/commerce.php' => array('pg_panel_get_unselected_products', 'pg_panel_erp_refund_preview', 'pg_panel_get_product_barcodes'),
 		'includes/panel/system.php' => array(
 			'pg_panel_database_deep_check',

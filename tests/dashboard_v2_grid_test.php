@@ -67,6 +67,7 @@ function test_dashboard_v2_built_cards_have_functions()
 	foreach ($cards as $id => $card) {
 		if ($card['built']) {
 			pg_assert_true(is_file(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/' . $id . '.php'), $id . ' file');
+			require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/' . $id . '.php');
 			pg_assert_true(function_exists('pg_dashboard_v2_card_' . $id), $id . ' function');
 		}
 	}

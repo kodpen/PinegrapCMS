@@ -21,16 +21,16 @@ description: Steps N1-N14 of plans/new-dashboard.md: size, screens, order, which
 - N4 (L) Card frame and data. Screens 03, 17. done (#4768).
   - Grid and widths, card header (icon, title, chip, badge, period pill, "…"), `dashboard_cards` with batch and solo, the card contract, refresh, empty and error states; `visitors` (SVG line with compare) and `engagement`.
 
-- N5 (L) Edit mode. Screens 05-08. `free` after N2, N3 and N4.
+- N5 (L) Edit mode. Screens 05-08. done (#4856).
   - Edit bar, `presets.php`, cancel, save, `dashboard_layout_save` and its validation, the leave prompt; greeting and status edit parts; grip and arrow keys with announcements, drag with the touch hold, width, order, remove; card settings.
 
 - N6 (M) Gallery and side panel. Screens 06, 09, 11. `free` after N5.
   - Gallery (search, categories, sketches, tags, add and remove), the Add card tile, top-section switches, the Look section.
 
-- N7 (M) Visitor and content cards. Screens 03, 04, 18, 19. `free` after N4.
-  - `gsearch`, `ga`, `content`, `comments` (Approve, Spam through the comments screen's endpoint), `files`, `activity` with its chips.
+- N7 (M) Visitor and content cards. Screens 03, 04, 18, 19. done (#4861).
+  - `gsearch`, `ga`, `content`, `comments`, `files`, `activity`; `pg_dash_cards_content.js`.
 
-- N8 (M) Security and team cards. Screens 04, 18. `free` after N4.
+- N8 (M) Security and team cards. Screens 04, 18. done (#4865).
   - `firewall`, `team`, `mytasks` (tick through `ws_task_status`), `waiting`, `week`, `calendars`.
 
 - N9 (M) Shop cards. Screens 16-18. done (#4881).
