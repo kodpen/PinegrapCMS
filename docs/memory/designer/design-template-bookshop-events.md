@@ -15,6 +15,9 @@ description: Bookshop template (1.3.0) events as records of a collection form, t
 - The date leaf binds `event_date` as `d` over `m.Y`: date month and weekday names print in English ([[widget-fill-filters]]), so the weekday the old rows showed is gone.
 - Reserve a seat still opens the contact page. The events page's rows are no longer search sections (`event-<n>`); its "How to reserve" box still is.
 
+## What does the Book Club page say about meetings? (1.3.2, #4809)
+- No date: "We meet on Thursday evenings at 19:00; the next date is on the events page.", and the welcome e-mail's "Meetings" line says the same. Until 1.3.2 both named Thursday 29 October, a past date against the club's sample event. `test_bookshop_events_no_fixed_dates` also refuses a day with a month name.
+
 ## What about older sites?
 - Nothing changes: rows are never reused; a 1.2.x site keeps the fixed events on its pages.
 
