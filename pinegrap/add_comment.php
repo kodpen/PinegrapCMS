@@ -884,7 +884,7 @@ if (count($administrator_email_addresses) > 0) {
                 lang('Display Name') . ': ' . $name . $output_submitter_name . "\n" .
                 "\n" .
                 pg_comment_parent_mail_line($comment_parent) .
-                $comment_label . ': ' . $message . "\n" .
+                pg_comment_label_line_start($comment_label, lang(array('info' => ''))) . ': ' . $message . "\n" .
                 $attachment_line;
             
         // else build a message that tells the administrator that they need to publish the comment
@@ -952,7 +952,7 @@ if (count($administrator_email_addresses) > 0) {
                 lang('Display Name') . ': ' . $name . $output_submitter_name . "\n" .
                 "\n" .
                 pg_comment_parent_mail_line($comment_parent) .
-                $comment_label . ': ' . $message . "\n" .
+                pg_comment_label_line_start($comment_label, lang(array('info' => ''))) . ': ' . $message . "\n" .
                 $attachment_line .
                 "\n" .
                 $output_action . "\n" .

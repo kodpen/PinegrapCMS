@@ -24,7 +24,7 @@ description: Generated from the module field of the memory files: each includes/
 - `cloud_file_picker`: [[cloud-file-picker]], [[cloud-file-picker-onedrive]]
 - `cloudflare_tools`: [[cloudflare-tools-failed-reads]], [[panel-turkish-terms-2]]
 - `collections`: [[collection-references]]
-- `comments`: [[comment-anonymous-name]], [[comment-moderation-recycle-bin]], [[comment-replies]], [[comment-thread-rules]], [[comment-thread-verify]], [[comments-moderation-counters]], [[comments-widget-item-threads]], [[comments-widget-pages]], [[comments-widget-product-page]], [[designed-page-comment-names]], [[product-review-order]]
+- `comments`: [[comment-anonymous-name]], [[comment-label-stored-and-mail-line]], [[comment-moderation-recycle-bin]], [[comment-replies]], [[comment-thread-rules]], [[comment-thread-verify]], [[comments-moderation-counters]], [[comments-widget-item-threads]], [[comments-widget-pages]], [[comments-widget-product-page]], [[designed-page-comment-names]], [[product-review-order]]
 - `commission_list`: [[commission-list-paging]], [[order-cancel-commissions]]
 - `config_text`: [[config-table-no-varchar]]
 - `consent`: [[fn-module-errors-mail-backup-consent]]
