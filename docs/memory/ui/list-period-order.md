@@ -13,6 +13,7 @@ module: list_period
 ## When is the default range a month ago to today?
 - Orders (`view_orders.php`), commissions (`pg_commission_list_range($request)`) and submitted forms (`pg_submitted_form_list_defaults($forms, $request)`) settle their range with `pg_list_period_state($state, $request, $now)`.
 - A date part in the request marks the range as picked (`range_picked` in the session); it stays until `?reset=true` clears the screen's session. Without the mark the six parts are a month ago to today on every request. A non-numeric part of a picked range falls back to the default.
+- Except the whole default range: all six parts equal to today's default (`pg_list_period_default()`), or to yesterday's for a form drawn before midnight and sent after it (`pg_list_period_same_range()`), is not a pick and ends one. The orders' and submitted forms' Advanced Filters send their date pickers filled with the default alongside every filter; before (#4712) a filter by order number alone pinned the range to that day, and after midnight the day's rows were missing again.
 - The rows actions (`includes/panel/lists.php`) pass no request, so they read the range the screen kept.
 - Before (#4415, PR #4463) the default was written to the session once and kept: after midnight an open session left the day's orders, commissions and forms out of the list and the totals.
 
