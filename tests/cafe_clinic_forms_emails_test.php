@@ -126,3 +126,19 @@ function test_ccf_template_links_carry_the_item()
 		pg_assert_same($name, pg_sw_url_param_name($name), $name . ' is a usable address name');
 	}
 }
+
+// The Services sections' "Book this service" and the café cards' "Book a
+// Table" open the form with that department or café chosen (#4806).
+function test_ccf_services_and_cafe_cards_carry_the_item()
+{
+	$dir = PG_FUNCTIONS_DIR . '/includes/design_templates/';
+	$clinic = file_get_contents($dir . 'pinegrap-clinic.php');
+	$cafe = file_get_contents($dir . 'pinegrap-cafe.php');
+
+	pg_assert_contains("\$link(lang('Book this service'), '{{page:appointment}}?' . \$appointment_query(array('department' => \$s['title'])),", $clinic);
+	pg_assert_false(strpos($clinic, "\$link(lang('Book this service'), '{{page:appointment}}',") !== false, 'no Book this service link without the department');
+	pg_assert_contains("\$link(lang('Book a Table'), '{{page:reservation}}?' . \$reservation_query(array('cafe' => \$c['name'])), 'btn btn-primary px-4')", $cafe);
+	pg_assert_same('cafe=Old%20Town', http_build_query(array('cafe' => 'Old Town'), '', '&', PHP_QUERY_RFC3986), 'a space is %20, as the clinic links write it');
+	pg_assert_contains("'version'     => '1.1.1'", $clinic);
+	pg_assert_contains("'version'     => '1.1.1'", $cafe);
+}

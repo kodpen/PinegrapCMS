@@ -217,6 +217,12 @@ $cafes = array(
 );
 $cafe_names = array();
 foreach ($cafes as $c) $cafe_names[] = $c['name'];
+// The query string of a link that opens the reservation form with a café
+// chosen: the form's Café field (?cafe=) starts with that value
+// (_cf.url_param), the name as the field lists it.
+$reservation_query = function ($params) {
+    return http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+};
 
 // The menu's categories, in the order of the menu page's tabs: each tab
 // lists the dishes of its category (a list filtered by it).
@@ -1691,7 +1697,7 @@ foreach ($cafes as $key => $c) {
                     )),
                     $el('ul', 'list-unstyled d-flex flex-wrap column-gap-4 small mb-3', lang('Features'), $features),
                     $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                        $link(lang('Book a Table'), '{{page:reservation}}', 'btn btn-primary px-4'),
+                        $link(lang('Book a Table'), '{{page:reservation}}?' . $reservation_query(array('cafe' => $c['name'])), 'btn btn-primary px-4'),
                         $link(lang('Directions'), 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($c['address']), 'btn btn-outline-primary',
                             array($attr('rel', 'noopener')), array('target' => '_blank')),
                     )),
@@ -4610,7 +4616,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Café'),
-    'version'     => '1.1.0',
+    'version'     => '1.1.1',
     'framework'   => 'bootstrap5',
     'order'       => 60,
     'icon'        => 'bi-cup-hot',
