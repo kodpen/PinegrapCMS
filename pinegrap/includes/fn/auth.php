@@ -2199,6 +2199,21 @@ function pg_email_blocked($email)
     return false;
 }
 
+/**
+ * Whether the block list refuses a password sign-in to an account: a member
+ * (role 3) whose address is listed. Staff are never refused, for the reason
+ * validate_login() gives. Every flow that checks a password asks this, so
+ * the sign-in screens and api.php cannot disagree.
+ *
+ * @param int|string $role          user_role of the account
+ * @param bool       $email_blocked pg_email_blocked() of its address
+ * @return bool
+ */
+function pg_login_email_block_refuses($role, $email_blocked)
+{
+    return $email_blocked && (((int) $role) === 3);
+}
+
 function validate_login($username, $password)
 {
     // $password is now the RAW password, not an MD5. The stored hash is checked
@@ -2235,7 +2250,7 @@ function validate_login($username, $password)
     // the block list would otherwise lock themselves out of the screen that
     // holds the list, and there is no way back in from there. Staff accounts
     // are stopped by deleting or demoting them, which already exists.
-    if ((((int) $row['user_role']) === 3) && pg_email_blocked($row['user_email'])) {
+    if (pg_login_email_block_refuses($row['user_role'], pg_email_blocked($row['user_email']))) {
         log_activity(pg_log_lang(array(
             'string' => 'sign-in refused because the email address is blocked ({var:1})',
             'vars'   => array($row['user_email']))), '');
@@ -4246,11 +4261,29 @@ function initialize_user()
             // The API sends the raw password; verify it against the stored hash.
             // pg_password_verify() also upgrades a legacy row the first time an
             // API client signs in with it.
-            $cred = db_item("SELECT " . pg_password_select_columns() . " FROM user
+            $cred = db_item("SELECT " . pg_password_select_columns() . ", user_email, user_role FROM user
                 WHERE (user_username = '" . e(API_USERNAME) . "') OR (user_email = '" . e(API_USERNAME) . "') LIMIT 1");
 
-            $api_password_ok = is_array($cred) && isset($cred['user_id'])
-                && pg_password_verify($cred['user_id'], API_PASSWORD, $cred['user_password'], pg_password_row_algo($cred));
+            $api_password_ok = false;
+
+            if (is_array($cred) && isset($cred['user_id'])) {
+
+                // A member whose address is blocked cannot sign in here
+                // either, as on the sign-in screens (validate_login()). The
+                // refusal costs what a wrong password costs and is counted
+                // like one.
+                if (pg_login_email_block_refuses($cred['user_role'], pg_email_blocked($cred['user_email']))) {
+                    log_activity(pg_log_lang(array(
+                        'string' => 'sign-in refused because the email address is blocked ({var:1})',
+                        'vars'   => array($cred['user_email']))), '');
+                    pg_password_dummy_verify(API_PASSWORD);
+                } else {
+                    $api_password_ok = pg_password_verify($cred['user_id'], API_PASSWORD, $cred['user_password'], pg_password_row_algo($cred));
+                }
+
+            } else {
+                pg_password_dummy_verify(API_PASSWORD);
+            }
 
             if ($api_password_ok && pg_mfa_has_factor($cred['user_id'])) {
 

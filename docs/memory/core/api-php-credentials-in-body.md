@@ -21,3 +21,6 @@ description: api.php accepting username/password in the request body: API_USERNA
 - Both ends are outside `waf_handle_rate_sensitive()` because each has its OWN bucket: `integration.php` per app (`includes/api/ratelimit.php`), `api.php` per address (`waf_rate_limit_api`, `waf_handle_rate_api()`).
 - `waf_rate_limit_sensitive` is a login/payment measure and does not fit `api.php` (an open chat window alone sends 30 requests/minute). Bot-class exemption stays in both: migration calls come from another server.
 - Adding a new visitor endpoint to `api.php` needs nothing for rate: the bucket is tied to the endpoint, not the action name. An action list would silently drop any unlisted new store action to 30/min.
+
+## Does the block list stop an api.php sign-in?
+- Yes, as on the sign-in screens: `initialize_user()` asks `pg_login_email_block_refuses($role, pg_email_blocked($email))` before the password, the same check `validate_login()` makes. A blocked member (role 3) is refused, logged and counted as a failure; staff are never refused. Before this an `api.php` body with a blocked member's password signed them in.

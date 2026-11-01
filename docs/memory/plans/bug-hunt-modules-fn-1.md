@@ -18,7 +18,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `audit_view`: open
 
-- `auth`: open
+- `auth`: taken by KN
 
 - `backup`: open
 

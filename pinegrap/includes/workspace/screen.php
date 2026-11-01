@@ -809,6 +809,9 @@ function ws_screen_config($viewer, $mode, $extra = array())
     $strings = array_merge($strings, ws_meetings_js_strings());
     // Flows and their canvas (flows.php, assets/js/workspace_flow.js).
     $strings = array_merge($strings, ws_flow_js_strings());
+    // The canvas core under the flow canvas (includes/fn/graph_canvas.php,
+    // assets/js/pg_graph_canvas.js).
+    $strings = array_merge($strings, pg_graph_canvas_js_strings());
 
     return array_merge(array(
         'mode'         => (string) $mode,

@@ -3,8 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the comment threads of the newsroom templates (includes/
- * design_templates/pinegrap-news.php): an article's comments, a
- * conversation's replies and the messages under an article on the desk are
+ * design_templates/pinegrap-news.php, pinegrap-magazine.php): an article's
+ * comments (a story's letters), a conversation's replies and the messages
+ * under a piece on the desk are
  * drawn by the Comments widget, not the fixed comments block; the comment
  * e-mails (new reply, desk message) draw their comment with a Comments
  * widget card before the System region, which stays. Each thread is drawn
@@ -26,6 +27,7 @@ function _newsroom_comments_templates()
 {
 	return array(
 		'pinegrap-news' => '1.1.0',
+		'pinegrap-magazine' => '1.1.0',
 	);
 }
 

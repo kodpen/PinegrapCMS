@@ -14,7 +14,7 @@ description: Long-Read Magazine template (pinegrap-magazine): what it ships, the
 ## What does it add or drop?
 - Adds: the office pick list `issue` and the author's `pull_quote`; placements Cover story, Editor's letter, Editors' pick; a desk list With the writer (`Changes requested`; Being edited is `In review` only); Last activity on every desk row (`newest_activity_date_and_time`, relative).
 - Drops: dateline, breaking strip, tips form, page and e-mails (a pitch is a contact topic), a Standards page (About `#how-we-work`), series.
-- Comment labels: `Letter` on the story (held, sign-in), `Message` on `submission` and `conversation`.
+- Comment labels: `Letter` on the story (held, sign-in), `Message` on `submission` and `conversation`. Threads on the Comments widget since 1.1.0: [[design-template-newsroom-comments]].
 
 ## Why do the samples carry no reading time?
 - 17 stories of about 200 words (three issues of five or six, one Online only). A computed time would say "1 min read" on every cover; an invented one is false data. The "N min read" line shows once an editor fills `reading_time`.
