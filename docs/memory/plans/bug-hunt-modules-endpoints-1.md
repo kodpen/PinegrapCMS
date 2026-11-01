@@ -78,7 +78,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 
 - Endpoints `generate` (3): open
 
-- Endpoints `gift` (3): open
+- Endpoints `gift` (3): taken by KW (add_gift_card, edit_gift_card, view_gift_cards)
 
 - Endpoints `google` (3): open
 

@@ -110,3 +110,22 @@ function test_gift_card_form_edit_keeps_the_balance_guard()
 	pg_assert_contains("\$liveform->assign_field_value('balance_was', (string) \$now);", $edit, 'a stale save takes the current balance');
 	pg_assert_contains("output_error(lang('Record not found.')", $edit, 'the not-found guard');
 }
+
+/**
+ * The quantity of a create is a whole number of cards: a fraction used to
+ * pass the "above 0" check and create the whole part only (0.5 none at all)
+ * while the screen said the cards were created.
+ */
+function test_gift_card_form_quantity_is_a_whole_number()
+{
+	pg_assert_same(1, pg_gift_card_form_quantity('1'), 'one card');
+	pg_assert_same(25, pg_gift_card_form_quantity(' 25 '), 'spaces around');
+	pg_assert_same(1000, pg_gift_card_form_quantity('1,000'), 'thousands comma');
+	pg_assert_same(false, pg_gift_card_form_quantity('0'), 'zero');
+	pg_assert_same(false, pg_gift_card_form_quantity('0.5'), 'a half creates no card');
+	pg_assert_same(false, pg_gift_card_form_quantity('2.5'), 'a fraction');
+	pg_assert_same(false, pg_gift_card_form_quantity('-3'), 'negative');
+	pg_assert_same(false, pg_gift_card_form_quantity('1e3'), 'exponent');
+	pg_assert_same(false, pg_gift_card_form_quantity(''), 'empty');
+	pg_assert_same(false, pg_gift_card_form_quantity(array('2')), 'an array');
+}
