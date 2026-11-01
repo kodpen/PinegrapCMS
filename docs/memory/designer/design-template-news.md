@@ -5,7 +5,7 @@ description: News Portal template (pinegrap-news): what it ships, the Articles f
 
 ## What does it ship?
 - 53 pages: front page, 9 sections, Opinion, `blog`, `blog_post` (article), `author` (`?author=`), search, static and legal pages; accounts; the author desk (`blog_new`, `my_articles`, `submission`) in `contributors`; `staff*` in `private`; 11 e-mail pages.
-- `contributors` is a private child of `private`. Shared: topbar, masthead, sections_nav, breaking, footer, staff_bar, email_header/footer. Tests: `tests/design_template_news_test.php`. Shapes: [[design-template-news-layout]].
+- `contributors` is a private child of `private`. Shared: topbar, masthead, sections_nav, breaking, footer, staff_bar, email_header/footer. Tests: `tests/design_template_news_test.php`. Shapes: [[design-template-news-layout]]. Comment threads (1.1.0, Comments widget): [[design-template-newsroom-comments]].
 
 ## What is the Articles form contract (reused by the magazine)?
 - Form `News Articles`, page `blog_new`, widget `article_form`: section (role category), title (title), summary (description), dateline, body (rich), cover_image (media), image_caption, image_credit, tags, byline, byline_bio, byline_photo, note_to_editors, rights. Office use only: status, publish_date (date and time, not required), placement, breaking, reading_time, correction.

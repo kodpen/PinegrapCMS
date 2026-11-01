@@ -27,12 +27,13 @@ function panel_single_value_params_screens()
 		'add_menu_item'              => array('menu_id'),
 		'add_return'                 => array('order_id', 'order_number', 'ship_to_id', 'reason', 'note'),
 		'add_submitted_form'         => array('page_id'),
-		'add_user'                   => array('contact_id'),
+		'add_user'                   => array('contact_id', 'username', 'email'),
 		'browse_catalog_menu'        => array('current_page_id', 'product_group_id', 'previous_url_id'),
 		'check_if_file_exists'       => array('file_name'),
 		'edit_form_item_view'        => array('page_id'),
 		'edit_form_list_view'        => array('page_id'),
 		'editor_select_image'        => array('CKEditorFuncNum', 'SingleImage', 'file_input_name'),
+		'edit_user'                  => array('username', 'email'),
 		'editor_select_page_or_file' => array('CKEditorFuncNum'),
 		'generate_layout'            => array('page_id'),
 		'get_theme_designer_module'  => array('file_id', 'module_id'),
@@ -71,4 +72,15 @@ function test_panel_single_value_params_dropped_before_first_read()
 			}
 		}
 	}
+}
+
+// delete_users.php reads the posted selection as a list of single ids: a
+// users=5 value or a users[0][]=x entry selects nothing instead of warning
+// on foreach or querying the id "Array".
+function test_panel_single_value_params_delete_users_list()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/delete_users.php');
+
+	pg_assert_contains("isset(\$_POST['users']) && is_array(\$_POST['users'])", $source, 'delete_users list check');
+	pg_assert_contains('if (!is_scalar($user_id)) {', $source, 'delete_users entry check');
 }

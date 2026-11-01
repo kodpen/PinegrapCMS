@@ -3,11 +3,12 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the comment threads of the shop templates (includes/
- * design_templates/pinegrap-store.php): a blog post's comments and a
- * conversation's replies are drawn by the Comments widget, not the fixed
- * comments block; the reply e-mail draws its comment with a Comments widget
- * card before the System region, which stays; the product reviews keep
- * their starter widget. Each thread is drawn by the renderer's own steps for
+ * design_templates/pinegrap-store.php, pinegrap-boutique.php,
+ * pinegrap-bookshop.php): a blog post's comments and a conversation's
+ * replies are drawn by the Comments widget, not the fixed comments block;
+ * the reply e-mail draws its comment with a Comments widget card before the
+ * System region, which stays; the product reviews keep their starter
+ * widget. Each thread is drawn by the renderer's own steps for
  * a member, a visitor and a staff member, and the e-mail card as an e-mail
  * draws it.
  *
@@ -26,6 +27,8 @@ function _shop_comments_templates()
 {
 	return array(
 		'pinegrap-store' => '1.2.0',
+		'pinegrap-boutique' => '1.2.0',
+		'pinegrap-bookshop' => '1.2.0',
 	);
 }
 

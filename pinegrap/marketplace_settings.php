@@ -104,7 +104,8 @@ if ($_POST) {
 
 		$name = isset($_POST['name']) ? trim($_POST['name']) : '';
 
-		if (!mp_provider_is_valid($provider)) {
+		// A managed provider's account is written by its own card, never here.
+		if (!mp_provider_is_valid($provider) || mp_provider_is_managed($provider)) {
 
 			$liveform->mark_error('provider', lang('Choose a marketplace.'));
 
@@ -294,6 +295,18 @@ if ($_POST) {
 		header('Location: ' . $screen_url . '?account=' . $account_id);
 
 			exit();
+
+	}
+
+	// A managed account goes when its card clears it (Merchant Center: the
+	// Product Feeds card); removed here, the card would still show it chosen.
+	if ($action === 'delete' && $account && mp_provider_is_managed($account['provider'])) {
+
+		$liveform->add_warning(h(mp_settings_managed_note($account['provider'])));
+
+		header('Location: ' . $screen_url . '?account=' . $account_id);
+
+		exit();
 
 	}
 
@@ -1645,6 +1658,17 @@ function mp_settings_order_total($row) {
 
 }
 
+// Where a managed account is looked after, for the account drawer and a
+// refused removal.
+function mp_settings_managed_note($provider) {
+
+	return lang(array(
+		'string' => 'The {var:1} account is set up on the Product Feeds card of the e-commerce settings; choose or clear the account there.',
+		'vars'   => array(mp_provider_name($provider))
+	));
+
+}
+
 // The credential fields this provider asks for, read out of the form.
 function mp_settings_credentials_from_post($provider) {
 
@@ -2631,6 +2655,12 @@ $provider_options = '';
 
 foreach ($providers as $key => $meta) {
 
+	if (!empty($meta['managed'])) {
+
+		continue;
+
+	}
+
 	$provider_options .= '<option value="' . h($key) . '"' . (($key === $new_provider) ? ' selected' : '') . '>' . h($meta['name']) . '</option>';
 
 }
@@ -2642,6 +2672,12 @@ foreach ($providers as $key => $meta) {
 $new_fields = '';
 
 foreach ($providers as $key => $meta) {
+
+	if (!empty($meta['managed'])) {
+
+		continue;
+
+	}
 
 	$is_chosen = ($key === $new_provider);
 
@@ -2744,6 +2780,16 @@ if ($selected) {
 
 	}
 
+	$selected_managed = mp_provider_is_managed($selected['provider']);
+
+	if ($selected_managed) {
+
+		$edit_fields .= '
+			<div class="alert theme-info small mb-5"><i class="bi bi-info-circle me-1"></i>' . h(mp_settings_managed_note($selected['provider']))
+				. ' <a href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_commerce.php#pgset-feeds') . '">' . lang('Open the Product Feeds card') . '</a></div>';
+
+	}
+
 	if (!empty($providers[$selected['provider']]['help'])) {
 
 		$edit_fields .= '
@@ -2820,7 +2866,8 @@ if ($selected) {
 					value="' . (int)$edit['preparing_day'] . '" style="max-width:110px">
 				<div class="form-text">' . lang('How long you take to hand a parcel over. It is shown to the buyer.') . '</div>
 			</div>
-			<hr>
+			<hr>'
+			. ($selected_managed ? '' : '
 			<p class="small opacity-75">'
 				. (!empty($selected['credentials']['webhook_id'])
 					? h(lang(array(
@@ -2830,7 +2877,7 @@ if ($selected) {
 					: lang('Removing a marketplace deletes its product matches and its queue. Your products are not touched, and nothing is removed from the marketplace itself.')) . '</p>
 			<button type="submit" class="btn btn-outline theme-danger btn-sm" name="mp_action" value="delete"
 				formnovalidate onclick="return confirm(' . h(json_encode(lang('Remove this marketplace?'))) . ')">
-				<i class="bi bi-trash me-1"></i>' . lang('Remove marketplace') . '</button>'
+				<i class="bi bi-trash me-1"></i>' . lang('Remove marketplace') . '</button>')
 			. (!empty($selected['credentials']['webhook_id']) ? '
 			<div class="form-field small mt-3">
 				<input class="check" type="checkbox" id="edit_webhook_force" name="webhook_force" value="1">

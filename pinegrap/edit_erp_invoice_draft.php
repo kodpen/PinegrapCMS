@@ -167,6 +167,17 @@ if (!$_POST) {
 
     $data = $read['data'];
 
+    // The box shows the stored due date back: one the payment term worked
+    // out for the old date moves with a new date instead of staying behind.
+    $data['due_date'] = erp_invoice_due_date_redated(
+        $data['issue_date'],
+        $data['due_date'],
+        (string) $invoice['issue_date'],
+        (string) $invoice['due_date'],
+        erp_account_due_date((int) $invoice['account_id'], (string) $invoice['issue_date']),
+        erp_account_due_date((int) $data['account_id'], $data['issue_date'])
+    );
+
     if ($read['rate_missing'] && ($action === 'issue')) {
         $liveform->mark_error('exchange_rate', erp_invoice_form_rate_missing_message($data['currency'], $data['issue_date']));
         go($self_url);

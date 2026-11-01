@@ -1542,26 +1542,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // ── Build the search box HTML ─────────────────────────────────────────
     $search_html = '';
     if ($search_enabled) {
-        $hidden = '';
-        if (!empty($_GET) && is_array($_GET)) {
-            foreach ($_GET as $k => $v) {
-                if ($k === $query_param || $k === $page_param) continue;
-                if (is_array($v)) continue;
-                $hidden .= '<input type="hidden" name="' . h($k) . '" value="' . h((string)$v) . '">';
-            }
-        }
-        $search_html =
-            '<form method="get" class="pg-sw-search mb-3" role="search">' .
-                $hidden .
-                '<div class="input-group input-group-sm ' . $search_width_cls . '">' .
-                    '<input type="text" class="form-control" name="' . h($query_param) . '" ' .
-                           'value="' . h($search_query) . '" placeholder="' . h($search_label) . '" maxlength="100">' .
-                    '<button type="submit" class="btn btn-outline-secondary"><span class="bi bi-search"></span></button>' .
-                    ($search_query !== ''
-                        ? '<a class="btn btn-outline-secondary" href="?' . h(_pg_sw_build_query($query_param, '', $page_param, '')) . '"><span class="bi bi-x-lg"></span></a>'
-                        : '') .
-                '</div>' .
-            '</form>';
+        $search_html = _pg_sw_search_box_html($query_param, $search_query, $search_label, $search_width_cls, $page_param);
     }
 
     // As an element the records' parent may hold (an item in a list, a column
@@ -2170,14 +2151,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     $sort_html = '';
     if ($sort_control_enabled) {
         // Build options from the configured whitelist; preserve other GET params.
-        $hidden_for_sort = '';
-        if (!empty($_GET) && is_array($_GET)) {
-            foreach ($_GET as $k => $v) {
-                if ($k === 'sort' || $k === $page_param) continue;  // sort/page set by this form
-                if (is_array($v)) continue;
-                $hidden_for_sort .= '<input type="hidden" name="' . h($k) . '" value="' . h((string)$v) . '">';
-            }
-        }
+        $hidden_for_sort = _pg_sw_hidden_query_inputs(array('sort', (string)$page_param));
         $sort_labels = array(
             'sort_order' => lang('Default order'),
             'name_asc'   => lang('Name: A → Z'),
@@ -2191,11 +2165,14 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             $opts .= '<option value="' . h($key) . '"' . ($sort_url_key === $key ? ' selected' : '') . '>' .
                      h($sort_labels[$key]) . '</option>';
         }
+        // Two listings on one page must not share the select's id.
+        static $sort_seq = 0;
+        $sort_id = 'pg-sw-sort-' . (++$sort_seq);
         $sort_html =
             '<form method="get" class="pg-sw-sort mb-3 d-flex align-items-center gap-2" style="max-width:320px">' .
                 $hidden_for_sort .
-                '<label class="form-label mb-0 small text-muted">' . h(lang('Sort')) . ':</label>' .
-                '<select name="sort" class="form-select form-select-sm" onchange="this.form.submit()">' . $opts . '</select>' .
+                '<label class="form-label mb-0 small text-muted" for="' . $sort_id . '">' . h(lang('Sort')) . ':</label>' .
+                '<select name="sort" id="' . $sort_id . '" class="form-select form-select-sm" onchange="this.form.submit()">' . $opts . '</select>' .
                 '<noscript><button type="submit" class="btn btn-sm btn-outline-secondary">' . h(lang('Apply')) . '</button></noscript>' .
             '</form>';
     }
@@ -2203,24 +2180,17 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // Price filter form ------------------------------------------------------
     $price_filter_html = '';
     if ($price_filter_enabled) {
-        $hidden_for_price = '';
-        if (!empty($_GET) && is_array($_GET)) {
-            foreach ($_GET as $k => $v) {
-                if ($k === 'pmin' || $k === 'pmax' || $k === $page_param) continue;
-                if (is_array($v)) continue;
-                $hidden_for_price .= '<input type="hidden" name="' . h($k) . '" value="' . h((string)$v) . '">';
-            }
-        }
+        $hidden_for_price = _pg_sw_hidden_query_inputs(array('pmin', 'pmax', (string)$page_param));
         $cur_min = ($pmin_param !== null) ? (string)$pmin_param : '';
         $cur_max = ($pmax_param !== null) ? (string)$pmax_param : '';
         $price_filter_html =
             '<form method="get" class="pg-sw-price-filter mb-3 d-flex align-items-center gap-2 flex-wrap">' .
                 $hidden_for_price .
-                '<label class="form-label mb-0 small text-muted">Fiyat:</label>' .
-                '<input type="number" class="form-control form-control-sm" name="pmin" value="' . h($cur_min) . '" placeholder="Min" min="0" step="' . (int)$price_filter_step . '" style="max-width:100px">' .
-                '<span class="text-muted">–</span>' .
-                '<input type="number" class="form-control form-control-sm" name="pmax" value="' . h($cur_max) . '" placeholder="Max" min="0" step="' . (int)$price_filter_step . '" style="max-width:100px">' .
-                '<button type="submit" class="btn btn-sm btn-outline-secondary">Uygula</button>' .
+                '<span class="form-label mb-0 small text-muted">' . h(lang('Price')) . ':</span>' .
+                '<input type="number" class="form-control form-control-sm" name="pmin" value="' . h($cur_min) . '" placeholder="' . h(lang('Min')) . '" aria-label="' . h(lang('Minimum price')) . '" min="0" step="' . (int)$price_filter_step . '" style="max-width:100px">' .
+                '<span class="text-muted" aria-hidden="true">–</span>' .
+                '<input type="number" class="form-control form-control-sm" name="pmax" value="' . h($cur_max) . '" placeholder="' . h(lang('Max')) . '" aria-label="' . h(lang('Maximum price')) . '" min="0" step="' . (int)$price_filter_step . '" style="max-width:100px">' .
+                '<button type="submit" class="btn btn-sm btn-outline-secondary">' . h(lang('Apply')) . '</button>' .
             '</form>';
     }
 

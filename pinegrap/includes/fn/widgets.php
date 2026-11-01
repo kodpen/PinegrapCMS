@@ -2079,26 +2079,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     // so the user keeps their wider page state. Hidden inputs replay the rest.
     $search_html = '';
     if ($search_enabled) {
-        $hidden = '';
-        if (!empty($_GET) && is_array($_GET)) {
-            foreach ($_GET as $k => $v) {
-                if ($k === $query_param || $k === $page_param) continue;
-                if (is_array($v)) continue;  // skip array params; rare and unsafe
-                $hidden .= '<input type="hidden" name="' . h($k) . '" value="' . h((string)$v) . '">';
-            }
-        }
-        $search_html =
-            '<form method="get" class="pg-sw-search mb-3" role="search">' .
-                $hidden .
-                '<div class="input-group input-group-sm ' . $search_width_cls . '">' .
-                    '<input type="text" class="form-control" name="' . h($query_param) . '" ' .
-                           'value="' . h($search_query) . '" placeholder="' . h($search_label) . '" maxlength="100">' .
-                    '<button type="submit" class="btn btn-outline-secondary"><span class="bi bi-search"></span></button>' .
-                    ($search_query !== ''
-                        ? '<a class="btn btn-outline-secondary" href="?' . h(_pg_sw_build_query($query_param, '', $page_param, '')) . '"><span class="bi bi-x-lg"></span></a>'
-                        : '') .
-                '</div>' .
-            '</form>';
+        $search_html = _pg_sw_search_box_html($query_param, $search_query, $search_label, $search_width_cls, $page_param);
     }
 
     // Empty-state HTML used when no records match, as an element the
@@ -5039,7 +5020,7 @@ function pg_sw_widget_page_index()
 
     $not_binned = pg_designer_not_binned_sql('page.page_folder');
     $pages = db_items(
-        "SELECT page.page_id, page.page_name, page.page_title
+        "SELECT page.page_id, page.page_name, page.page_title, page.page_folder
          FROM page
          INNER JOIN style ON page.page_style = style.style_id
          WHERE 1 = 1" . $not_binned . "
@@ -5103,28 +5084,54 @@ function pg_sw_pick_widget_pages(array $pages, array $by_sid, array $sids)
     return $out;
 }
 
-// Name of the page product links open: the configured page, else the first
-// designed page carrying a Catalog Detail widget, else the site's legacy
-// catalog detail page. '' when the site has none. A bare /<product-slug>
-// does not resolve, so the lists, the cart and the checkout all ask here
-// instead of falling back to it.
+// The first of $pages (rows with 'page_folder') whose folder $can_view
+// accepts, in their order; null when there is none. Pure.
+function pg_sw_first_viewable_page(array $pages, $can_view)
+{
+    foreach ($pages as $page) {
+        if (isset($page['page_folder']) && call_user_func($can_view, (int)$page['page_folder'])) return $page;
+    }
+    return null;
+}
+
+// The page product links open when a widget names none: the first designed
+// page carrying a Catalog Detail widget, else the first legacy catalog
+// detail page, that the visitor can open. A page in a private folder (a
+// draft) sent every visitor who clicked a product to the sign-in page, so it
+// is skipped; a guest or registration folder counts, as the visitor can get
+// in. Without a visitor (a scheduled job writing a feed or an e-mail) the
+// page must be open to anyone. array('page_id', 'page_name') or null; read
+// once per request.
+function pg_sw_auto_catalog_detail_page()
+{
+    static $picked = false;
+    if ($picked !== false) return $picked;
+    $can_view = function ($folder_id) {
+        if (defined('USER_LOGGED_IN')) return (bool)check_view_access($folder_id, true);
+        return in_array(get_access_control_type($folder_id), array('public', 'guest', 'registration'), true);
+    };
+    $page = pg_sw_first_viewable_page(pg_sw_widget_pages('catalog_item_view'), $can_view);
+    if ($page === null) {
+        $legacy = db_items("SELECT page_id, page_name, page_folder FROM page WHERE page_type = 'catalog detail' ORDER BY page_id ASC");
+        $page = pg_sw_first_viewable_page(is_array($legacy) ? array_values($legacy) : array(), $can_view);
+    }
+    $picked = ($page === null) ? null : array('page_id' => (int)$page['page_id'], 'page_name' => (string)$page['page_name']);
+    return $picked;
+}
+
+// Name of the page product links open: the configured page, else the one
+// pg_sw_auto_catalog_detail_page() picks. '' when the site has none. A bare
+// /<product-slug> does not resolve, so the lists, the cart and the checkout
+// all ask here instead of falling back to it.
 function pg_sw_catalog_detail_page_name($page_id = 0)
 {
-    static $auto = null;
     $page_id = (int)$page_id;
     if ($page_id > 0) {
         $name = pg_page_name_for_link($page_id);
         if ($name !== '') return $name;
     }
-    if ($auto === null) {
-        $auto  = '';
-        $pages = pg_sw_widget_pages('catalog_item_view');
-        if ($pages) $auto = (string)$pages[0]['page_name'];
-        if ($auto === '') {
-            $auto = (string)db_value("SELECT page_name FROM page WHERE page_type = 'catalog detail' ORDER BY page_id ASC LIMIT 1");
-        }
-    }
-    return $auto;
+    $auto = pg_sw_auto_catalog_detail_page();
+    return ($auto === null) ? '' : $auto['page_name'];
 }
 
 // ============================================================================
@@ -5700,6 +5707,33 @@ function _pg_sw_hidden_query_inputs($skip)
     return $html;
 }
 
+// The search box a list widget prints above its items (form list, catalog
+// listing). The text box and the icon-only buttons carry accessible names:
+// a placeholder is no label. Hidden inputs replay the visitor's other query
+// parameters, without the router's page name on a pretty address.
+function _pg_sw_search_box_html($query_param, $search_query, $search_label, $width_cls, $page_param)
+{
+    $skip = array((string)$query_param, (string)$page_param);
+    $clear_params = _pg_sw_query_params();
+    foreach ($skip as $key) unset($clear_params[$key]);
+
+    return
+        '<form method="get" class="pg-sw-search mb-3" role="search">' .
+            _pg_sw_hidden_query_inputs($skip) .
+            '<div class="input-group input-group-sm ' . h($width_cls) . '">' .
+                '<input type="text" class="form-control" name="' . h($query_param) . '" ' .
+                       'value="' . h($search_query) . '" placeholder="' . h($search_label) . '" ' .
+                       'aria-label="' . h($search_label) . '" maxlength="100">' .
+                '<button type="submit" class="btn btn-outline-secondary" aria-label="' . h(lang('Search')) . '">' .
+                    '<span class="bi bi-search" aria-hidden="true"></span></button>' .
+                ((string)$search_query !== ''
+                    ? '<a class="btn btn-outline-secondary" href="?' . h(http_build_query($clear_params)) . '" ' .
+                          'aria-label="' . h(lang('Clear search')) . '"><span class="bi bi-x-lg" aria-hidden="true"></span></a>'
+                    : '') .
+            '</div>' .
+        '</form>';
+}
+
 // The designer's search form, bound rather than hand-wired:
 //   form   _bindings.action = 'search_form'   → GET to this page (+ carried params)
 //   input  _bindings.value  = 'search_query'  → name=<param>, the current text
@@ -6108,19 +6142,17 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
 
     // ── Catalog ──────────────────────────────────────────────────────────
     // The page a catalog item opens on: the configured detail page, else the
-    // first page with a Catalog Detail widget, else the legacy catalog detail
-    // page. A site without one has no address for an item, so its catalog is
-    // not searched: an item listed with a '#' link would be counted in the
-    // heading and clicked for nothing.
+    // first page with a Catalog Detail widget or the legacy catalog detail
+    // page that the visitor can open (pg_sw_auto_catalog_detail_page()). A
+    // site without one has no address for an item, so its catalog is not
+    // searched: an item listed with a '#' link, or one linking to a private
+    // draft, would be counted in the heading and clicked for nothing.
     $detail_name = '';
     if ($want_catalog) {
         $detail_page_id = isset($cfg['catalog_detail_page_id']) ? (int)$cfg['catalog_detail_page_id'] : 0;
         if ($detail_page_id <= 0) {
-            $pages = pg_sw_widget_pages('catalog_item_view');
-            if ($pages) $detail_page_id = (int)$pages[0]['page_id'];
-        }
-        if ($detail_page_id <= 0) {
-            $detail_page_id = (int)db_value("SELECT page_id FROM page WHERE page_type = 'catalog detail' ORDER BY page_id ASC LIMIT 1");
+            $auto = pg_sw_auto_catalog_detail_page();
+            if ($auto !== null) $detail_page_id = $auto['page_id'];
         }
         $detail_name = ($detail_page_id > 0) ? (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $detail_page_id . "' LIMIT 1") : '';
     }

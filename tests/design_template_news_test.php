@@ -1221,8 +1221,8 @@ function test_news_bare_buttons_have_a_focus_ring()
 
 // The article page: the most read sits beside the article inside the record
 // view's own row (shown with a found article), so the right third is not
-// empty from lg; the comments stay in the article's column below, alone in
-// their row, and the page places the most read once.
+// empty from lg; the comments (post_comments) stay in the article's column
+// below, alone in their row, and the page places the most read once.
 function test_news_article_row()
 {
 	$tpl = _test_news_tpl();
@@ -1283,7 +1283,7 @@ function test_news_article_row()
 	foreach (_test_news_nodes($pages['blog_post']['tree']) as $n) {
 		if (isset($n['type']) && $n['type'] === 'row') {
 			foreach (_test_news_nodes($n) as $m) {
-				if (isset($m['props']['regionType']) && $m['props']['regionType'] === 'comments_block') {
+				if (isset($m['props']['templateWidget']) && $m['props']['templateWidget'] === 'post_comments') {
 					$comment_cols = $n['children'];
 				}
 			}

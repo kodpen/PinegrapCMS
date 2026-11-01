@@ -62,6 +62,8 @@
     "Queue {var:1} article(s) for listing?": "{var:1} ürün grubu ilan için sıraya alınsın mı?",
     "Queued": "Sırada",
     "Queued for sending": "Kuyruğa alındı",
+    "Queued: sent within a few minutes.": "Sıraya alındı: birkaç dakika içinde gönderilir.",
+    "Queued: the price and stock are sent to Merchant Center within a few minutes.": "Sıraya alındı: fiyat ve stok birkaç dakika içinde Merchant Center'a gönderilir.",
     "Quick Actions": "Hızlı İşlemler",
     "Quick Add": "Hızlı Ekle",
     "Quick Add Box (its own form)": "Hızlı Ekle Kutusu (kendi formu)",

@@ -418,6 +418,52 @@ function erp_manual_header_build($data)
 }
 
 /**
+ * Whether a due date falls before the invoice's own date. No due date
+ * (empty or 0000-00-00) is never early.
+ *
+ * @param string $issue_date  Y-m-d
+ * @param string $due_date    Y-m-d
+ * @return bool
+ */
+function erp_invoice_due_before_issue($issue_date, $due_date)
+{
+    $due_date = (string) $due_date;
+
+    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $due_date) !== 1 || ($due_date === '0000-00-00')) {
+        return false;
+    }
+
+    return ($due_date < (string) $issue_date);
+}
+
+/**
+ * The due date a rewritten draft keeps when its date was changed.
+ *
+ * The form shows the stored due date back, so a due date worked out from
+ * the payment term would stay on the old date. When the stored due date is
+ * the one the term gives the stored date and the box still holds it, it
+ * moves with the new date; a due date someone typed stays.
+ *
+ * @param string $issue_date         The date posted now
+ * @param string $due_date           The due date posted now
+ * @param string $stored_issue_date  The draft's stored date
+ * @param string $stored_due_date    The draft's stored due date
+ * @param string $stored_term_due    The term's due date for the stored date
+ * @param string $term_due           The term's due date for the posted date
+ * @return string
+ */
+function erp_invoice_due_date_redated($issue_date, $due_date, $stored_issue_date, $stored_due_date, $stored_term_due, $term_due)
+{
+    if (((string) $issue_date !== (string) $stored_issue_date)
+        && ((string) $due_date === (string) $stored_due_date)
+        && ((string) $stored_due_date === (string) $stored_term_due)) {
+        return (string) $term_due;
+    }
+
+    return (string) $due_date;
+}
+
+/**
  * Save a typed invoice as a draft, or rewrite an existing draft.
  *
  * A draft takes no number and posts nothing: it is the header and the lines,
@@ -451,6 +497,12 @@ function erp_invoice_draft_save($data, $invoice_id = 0)
         return $fail($built_header['error'], $built_header['field']);
     }
     $header = $built_header['header'];
+
+    // An invoice due before its own date would be overdue the day it is
+    // issued, in the reminders and the aging alike.
+    if (erp_invoice_due_before_issue($header['issue_date'], $header['due_date'])) {
+        return $fail(lang('The invoice cannot fall due before its date.'), 'due_date');
+    }
 
     $built = erp_manual_lines_build($data['lines'] ?? array());
     if ($built['error'] !== '') {
@@ -681,6 +733,12 @@ function erp_invoice_issue($invoice_id, $created_by = 0)
     if ((string) $account['status'] !== 'active') {
         erp_tx_rollback();
         return $fail(lang('That account is passive. Make it active before invoicing it.'));
+    }
+
+    // A draft saved before the due date was checked against the date.
+    if (erp_invoice_due_before_issue((string) $invoice['issue_date'], (string) $invoice['due_date'])) {
+        erp_tx_rollback();
+        return $fail(lang('The invoice cannot fall due before its date.'));
     }
 
     // A buyer the e-document provider will refuse is caught here, where

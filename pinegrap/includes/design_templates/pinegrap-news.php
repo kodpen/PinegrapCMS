@@ -630,20 +630,175 @@ $ai_summary = function () use ($el, $link, $icon, $span, $attr, $bind, $show_whe
             array('text' => lang('The main points of the article, written by the visitor\'s browser.')), $bind('__ai_summary'))),
     ), array_merge(array('_attrs' => array($attr('aria-label', lang('Summarize this article with AI')))), $show_when('has_ai_links')));
 };
-// The comments of a record page, on their own: the region alone, for a
-// column the page lays out itself.
-$comments_block = function () {
-    return array('type' => 'region', 'props' => array('regionType' => 'comments_block', 'regionName' => ''), 'children' => array());
-};
-// The comments of a record page in their own band, in the reading column.
-$comments_section = function ($name) use ($el, $container, $row, $col, $comments_block) {
+// The comments of a record page in their own band, in the reading column:
+// the page's Comments widget, which reads the record the page's view above
+// it shows.
+$comments_section = function ($name, $widget_key) use ($el, $container, $row, $col, $widget) {
     return $el('section', 'pb-5', $name, array(
         $container(array(
             $row(array(
-                $col(array($comments_block()), '', '8'),
+                $col(array($widget($widget_key)), '', '8'),
             ), '', 'center'),
         )),
     ));
+};
+// A Messages node: the notices and errors of the form it sits in.
+$messages = function ($class = '') {
+    return array('type' => 'content', 'props' => array('contentType' => 'messages', 'cssClass' => $class), 'children' => array());
+};
+// A thread of the Comments widget: the comments in the widget's order, each
+// a box with its writer, badges, date, the comment it answers where the
+// thread stops going deeper, its words, its file and its links; the page
+// links; the form (its notices first, the comment being answered, the
+// stars while the page asks for them, the words, the name for whoever types
+// one, the file, the staff's publish options, the box to follow the thread,
+// the CAPTCHA); the box to follow or stop following; the staff's Stop and
+// Allow buttons. A part under a flag shows only while it holds for the
+// visitor. $w: the words (title, empty, heading, label, sign_in, submit,
+// watch_box, follow, unfollow, close, reopen), title_tag ('h2' where no
+// heading stands above the thread, 'p' for the count under the record
+// view's own heading), reply (each comment can be answered and shared),
+// watch (the boxes to follow the thread).
+$comment_thread = function ($w) use ($el, $heading, $para, $link, $span, $attr, $bind, $show_when, $loop, $widget_root, $messages) {
+    $actions = array();
+    if ($w['reply']) {
+        $actions[] = $link(lang('Reply'), '#', 'link-primary', array(), array('_bindings' => array('action' => 'comment_reply')));
+        $actions[] = $link(lang('Share'), '#', 'link-secondary', array(), array('_bindings' => array('action' => 'comment_share')));
+    }
+    // Bound to the comment's edit screen, so the list adds no pencil of its own.
+    $actions[] = $link(lang('Edit'), '#', 'link-secondary', array(), array('_bindings' => array('href' => '__comment_edit_url', 'eo_visible_if' => 'comment_can_edit')));
+
+    $badges = array(
+        $span(lang('Jane Cooper'), 'fw-bold', lang('Name'), $bind('__comment_name')),
+        $span('jane', 'small text-body-secondary', lang('User Name'), array('_bindings' => array('text' => '__comment_staff_name', 'eo_visible_if' => 'is_staff'))),
+        $span(lang('Badge'), 'badge text-bg-secondary', lang('Badge'), array('_bindings' => array('text' => '__comment_badge', 'eo_visible_if' => 'comment_has_badge'))),
+    );
+    if ($w['reply']) {
+        $badges[] = $span(lang('Featured'), 'badge text-bg-primary', lang('Featured'), $show_when('comment_is_featured'));
+    }
+    $card = $el('div', 'p-4 bg-body-tertiary border flex-grow-1 pn-min-0', lang('Comment Card'), array(
+        $el('p', 'small fw-semibold text-danger-emphasis mb-2 pg-hide-if-empty', lang('Comment Status'), array(),
+            array('text' => lang('Awaiting approval'), '_bindings' => array('text' => '__comment_status', 'eo_visible_if' => 'comment_is_pending'))),
+        $el('div', 'text-warning mb-1', lang('Stars'), pg_sw_part_comment_stars(), $show_when('comment_has_rating')),
+        $el('div', 'd-flex flex-wrap align-items-center gap-2', lang('Name Line'), $badges),
+        $span(lang('2 days ago'), 'd-block small text-body-secondary pg-hide-if-empty', lang('Time'), $bind('__comment_date')),
+        $el('blockquote', 'border-start border-3 ps-3 my-2 small text-body-secondary', lang('Quote'), array(
+            $el('p', 'mb-1', lang('In reply to'), array(
+                $span(lang('In reply to'), 'me-1', lang('Label')),
+                $link(lang('Jane Cooper'), '#', 'fw-semibold link-body-emphasis', array(), array('_bindings' => array('href' => '__comment_parent_url', 'text' => '__comment_parent_name'))),
+            )),
+            $el('p', 'mb-0 pg-hide-if-empty', lang('Quoted text'), array(), array('text' => lang('Quoted text'), '_bindings' => array('text' => '__comment_quote'))),
+        ), $show_when('comment_has_quote')),
+        $el('div', 'mt-2', lang('Message'), array(), array('text' => lang('Comment text'), '_bindings' => array('text' => '__comment_message_html'))),
+        $el('p', 'small mt-3 mb-0', lang('Attachment'), array(
+            $link('file.pdf', '#', 'me-2', array(), array('target' => '_blank', 'rel' => 'noopener', '_bindings' => array('href' => '__comment_file_url', 'text' => '__comment_file_name'))),
+            $span('12 KB', 'text-body-secondary', lang('Value'), $bind('__comment_file_size')),
+        ), $show_when('comment_has_file')),
+        $el('div', 'd-flex flex-wrap gap-3 mt-3 small fw-semibold', lang('Comment Actions'), $actions),
+    ));
+
+    $label = function ($for, $text, $class = 'form-label') use ($el, $attr) {
+        return $el('label', $class, lang('Label'), array(), array('text' => $text, '_attrs' => array($attr('for', $for))));
+    };
+    $control = function ($tag, $class, $id, $value, $attrs = array()) use ($el) {
+        return $el($tag, $class, lang('Field'), array(), array('id' => $id, '_attrs' => $attrs, '_bindings' => array('value' => $value)));
+    };
+    $fields = array($messages());
+    if ($w['reply']) {
+        // The comment being answered. Reply shows the box by its hidden
+        // attribute, so it takes no display utility (d-flex would keep it
+        // on screen, empty).
+        $fields[] = $el('div', 'alert alert-secondary py-2 small', lang('Replying To'), array(
+            $span(lang('Replying to'), 'me-1', lang('Text')),
+            $el('strong', '', lang('Name'), array(), array('text' => lang('Jane Cooper'), '_bindings' => array('text' => '__reply_to_name'))),
+            $link(lang('Cancel'), '#', 'ms-3 fw-semibold', array(), array('_bindings' => array('action' => 'comment_reply_cancel'))),
+        ), $show_when('is_replying'));
+    }
+    $fields[] = $el('div', 'mb-3', lang('Rating'), array(
+        $el('div', 'form-label', lang('Label'), array(), array('text' => lang('Rating'))),
+        $el('div', '', lang('Stars'), array(), array('_bindings' => array('section' => 'comment_rating_input'))),
+    ), $show_when('rating_on'));
+    $fields[] = $el('div', 'mb-3', lang('Message'), array(
+        $label('comment_message', $w['label']),
+        $control('textarea', 'form-control', 'comment_message', 'comment_message', array($attr('rows', '5'))),
+    ));
+    $fields[] = $el('div', 'mb-3', lang('Your Name'), array(
+        $label('comment_name', lang('Your Name')),
+        $control('input', 'form-control', 'comment_name', 'comment_name', array($attr('type', 'text'))),
+    ), $show_when('name_is_typed'));
+    $fields[] = $el('div', 'mb-3', lang('Your Name'), array(
+        $label('comment_name_type', lang('Your Name')),
+        $control('select', 'form-select', 'comment_name_type', 'comment_name_type'),
+    ), $show_when('name_is_chosen'));
+    $fields[] = $el('p', 'mb-3 small', lang('Posting as'), array(
+        $span(lang('Posting as'), 'me-1', lang('Label')),
+        $el('strong', '', lang('Name'), array(), array('text' => lang('Jane Cooper'), '_bindings' => array('text' => '__comment_author_name'))),
+    ), $show_when('name_is_fixed'));
+    $fields[] = $el('div', 'mb-3', lang('Attach a File'), array(
+        $label('comment_file', lang('Attach a File')),
+        $control('input', 'form-control', 'comment_file', 'comment_file', array($attr('type', 'file'))),
+    ), $show_when('files_on'));
+    $fields[] = $el('div', 'mb-3 small', lang('Publish'), array(), array('_bindings' => array('section' => 'comment_publish')));
+    if ($w['watch']) {
+        $fields[] = $el('div', 'form-check mb-3', lang('Watch'), array(
+            $control('input', 'form-check-input', 'comment_watcher', 'comment_watcher', array($attr('type', 'checkbox'))),
+            $label('comment_watcher', $w['watch_box'], 'form-check-label'),
+        ), $show_when('watching_on'));
+    }
+    $fields[] = $el('div', 'mb-3', lang('CAPTCHA'), array(), array('_bindings' => array('section' => 'comment_captcha')));
+    $fields[] = $el('div', '', lang('Send Button'), array(
+        $el('button', 'btn btn-primary px-4', lang('Send Button'), array(), array('text' => $w['submit'], '_attrs' => array($attr('type', 'submit')), '_bindings' => array('action' => 'comment_submit'))),
+    ));
+
+    $small_button = function ($text, $action) use ($el, $attr) {
+        return $el('button', 'btn btn-sm btn-secondary', lang('Send Button'), array(), array('text' => $text, '_attrs' => array($attr('type', 'submit')), '_bindings' => array('action' => $action)));
+    };
+
+    $title = ($w['title_tag'] === 'h2')
+        ? $heading('h2', $w['title'], 'h4 mb-3', array('_bindings' => array('text' => '__comments_title', 'eo_visible_if' => 'has_comments')))
+        : $el('p', 'small text-body-secondary mb-3', lang('Count'), array(), array('text' => $w['title'], '_bindings' => array('text' => '__comments_title', 'eo_visible_if' => 'has_comments')));
+    $children = array(
+        $title,
+        $el('div', 'pg-hide-if-empty', lang('Comment List'), array(
+            $loop(array($el('div', 'd-flex mb-3', lang('Comment'), array(
+                $el('div', 'flex-shrink-0 border-start border-2 ms-2 me-3', lang('Reply Indent'), array(), $show_when('comment_is_reply')),
+                $card,
+            )))),
+            $el('div', 'mt-3', lang('Pagination'), array(), array('_bindings' => array('section' => 'comment_pagination'))),
+        )),
+        $para($w['empty'], 'text-body-secondary', $show_when('no_comments')),
+        $el('div', 'mt-4', lang('Add a comment'), array(
+            $heading('h3', $w['heading'], 'h5 mb-2', $show_when('comments_open')),
+            $el('p', 'small text-body-secondary mb-3 pg-hide-if-empty', lang('Text'), array(), array('_bindings' => array('text' => '__comments_intro', 'eo_visible_if' => 'comments_open'))),
+            $el('div', 'alert alert-secondary', lang('Closed'), array(), array('_bindings' => array('text' => '__comments_closed_message', 'eo_visible_if' => 'comments_closed'))),
+            $el('div', 'alert alert-secondary d-flex flex-wrap align-items-center gap-2', lang('Sign in'), array(
+                $span($w['sign_in'], '', lang('Text')),
+                $link(lang('Sign in'), '#', 'fw-semibold', array(), array('rel' => 'nofollow', '_bindings' => array('href' => '__login_url'))),
+            ), $show_when('must_sign_in')),
+            $el('form', 'p-4 bg-body-tertiary border', lang('Comment Form'), $fields, array('_bindings' => array('action' => 'comment_form', 'eo_visible_if' => 'can_comment'))),
+        )),
+    );
+    if ($w['watch']) {
+        // Following the thread: how many follow it, the visitor's own
+        // button, and the staff's list of who follows.
+        $children[] = $el('div', 'small border-top pt-3 mt-4 d-flex flex-column gap-2 pg-hide-if-empty', lang('Watch'), array(
+            $el('p', 'mb-0 pg-hide-if-empty', lang('Text'), array(), $bind('__watcher_count_text')),
+            $el('form', 'd-flex flex-wrap align-items-center gap-2', lang('Watch Form'), array(
+                $messages('w-100'),
+                $small_button($w['follow'], 'comment_watch'),
+                $small_button($w['unfollow'], 'comment_unwatch'),
+            ), array('_bindings' => array('action' => 'comment_watch_form'))),
+            $el('div', '', lang('Watchers'), array(), array('_bindings' => array('section' => 'comment_watchers'))),
+        ), $show_when('watching_on'));
+    }
+    $children[] = $el('div', 'd-flex justify-content-end mt-3', lang('Staff Controls'), array(
+        $el('form', 'd-flex gap-2', lang('Open or Close'), array(
+            $small_button($w['close'], 'comment_close'),
+            $small_button($w['reopen'], 'comment_reopen'),
+        ), array('_bindings' => array('action' => 'comment_allow_new_form'))),
+    ), $show_when('is_staff'));
+
+    return $widget_root($children);
 };
 // The notice a record page shows above the record once its form is sent,
 // and the account opened for a visitor who had none.
@@ -1590,7 +1745,7 @@ $pages[] = array(
         $el('section', 'pb-5', lang('Comments'), array(
             $container(array(
                 $row(array(
-                    $col(array($comments_block()), '', '8'),
+                    $col(array($widget('post_comments')), '', '8'),
                 ), '4', '', 'g-lg-5'),
             )),
         )),
@@ -2010,7 +2165,7 @@ $pages[] = array(
                         'notify_email' => '{{site_email}}'),
     'tree'     => $page(array(
         $widget('conversation'),
-        $comments_section(lang('Replies')),
+        $comments_section(lang('Replies'), 'conversation_replies'),
     ), false),
 );
 
@@ -2064,7 +2219,7 @@ $pages[] = array(
                         'notify_email' => '{{site_email}}'),
     'tree'     => $page(array(
         $widget('submission_view'),
-        $comments_section(lang('Messages with the desk')),
+        $comments_section(lang('Messages with the desk'), 'desk_messages'),
     ), false),
 );
 
@@ -2565,9 +2720,50 @@ foreach ($mail_pages as $m) {
         'tree'  => $mail_page(array($widget($m[3]))),
     ));
 }
-// The comment e-mails. The System region carries the comment and its "View
-// or Reply" button. A message on an article on the desk goes to its author
-// and to every editor who follows it, with the same words for both.
+// The comment an e-mail is about, in a box: who wrote it and when, its
+// stars, the comment it answers, its words and its file, then its View or
+// Reply button. The button is bound to the comment's own address, with no
+// flag over it: an e-mail whose card has no such link keeps the fixed
+// comment the System region carries. No form, no control; every colour
+// written for mail programs that drop the stylesheet, with its fallback
+// inside var().
+$mail_comment_tree = $widget_root(array(
+    $el('div', '', lang('Comment List'), array(
+        $loop(array(
+            $mail_box(array(
+                $el('p', 'mb-1', lang('Name Line'), array(
+                    $span(lang('Jane Cooper'), 'fw-bold', lang('Name'), array_merge($bind('__comment_name'), $mail_style('font-weight:700;color:#0e1730'))),
+                    $span('·', '', lang('Separator'), array('_attrs' => array($attr('aria-hidden', 'true'), $attr('style', 'color:#4a5568;margin:0 6px')))),
+                    $span(lang('Date'), 'text-body-secondary', lang('Date'), array_merge($bind('__comment_date'), $mail_style('color:#4a5568'))),
+                ), $mail_style('margin:0 0 8px')),
+                $el('div', '', lang('Stars'), pg_sw_part_comment_stars(), array_merge(
+                    $show_when('comment_has_rating'), $mail_style('color:#b45309;margin:0 0 8px'))),
+                $el('blockquote', '', lang('Quote'), array(
+                    $el('p', 'small mb-1', lang('In reply to'), array(
+                        $span(lang('In reply to'), 'me-1', lang('Label'), $mail_style('margin-right:4px')),
+                        $span(lang('Jane Cooper'), 'fw-semibold', lang('Name'), $bind('__comment_parent_name')),
+                    ), $mail_style('font-size:13px;margin:0 0 4px')),
+                    $el('p', 'mb-0 pg-hide-if-empty', lang('Quoted text'), array(), array_merge(
+                        array('text' => lang('Quoted text'), '_bindings' => array('text' => '__comment_quote')), $mail_style('margin:0'))),
+                ), array_merge($show_when('comment_has_quote'),
+                    $mail_style('margin:0 0 12px;padding:0 0 0 12px;border-left:3px solid #d8dfe9;color:#4a5568'))),
+                $el('div', '', lang('Message'), array(), array('text' => lang('Comment text'), '_bindings' => array('text' => '__comment_message_html'))),
+                $el('p', 'small mt-2 mb-0', lang('Attachment'), array(
+                    $link('file.pdf', '#', '', array($attr('style', 'color:#0047ab;color:var(--bs-link-color,#0047ab)')),
+                        array('target' => '_blank', 'rel' => 'noopener', '_bindings' => array('href' => '__comment_file_url', 'text' => '__comment_file_name'))),
+                ), array_merge($show_when('comment_has_file'), $mail_style('font-size:13px;margin:8px 0 0'))),
+            ), lang('Comment')),
+            $mail_button(lang('View or Reply'), '#', array('_bindings' => array('href' => '__comment_url'))),
+        )),
+    )),
+));
+
+// The comment e-mails. Their Comments widget draws the comment in the
+// layout above, with its "View or Reply" button; the System region after it
+// keeps the fixed comment and its own button for an e-mail the widget does
+// not draw (a card edited so it lost its link to the comment). A message on
+// an article on the desk goes to its author and to every editor who follows
+// it, with the same words for both.
 $pages[] = array_merge($mail_settings, array(
     'key'   => 'email_desk_message',
     'name'  => lang('email-desk-message'),
@@ -2575,6 +2771,7 @@ $pages[] = array_merge($mail_settings, array(
     'tree'  => $mail_page(array(
         $mail_heading(lang('New message about an article')),
         $mail_para(lang('There is a new message on an article on the desk.')),
+        $widget('email_comment'),
         array('type' => 'region', 'props' => array('regionType' => 'system', 'regionName' => ''), 'children' => array()),
     )),
 ));
@@ -2587,6 +2784,7 @@ $pages[] = array_merge($mail_settings, array(
     'tree'  => $mail_page(array(
         $mail_heading(lang('There is a new message')),
         $mail_para(lang('Something new was written on a page you follow: an article you commented on, or your conversation with the newsroom. Read it below and answer on the page.')),
+        $widget('email_comment'),
         array('type' => 'region', 'props' => array('regionType' => 'system', 'regionName' => ''), 'children' => array()),
     )),
 ));
@@ -3537,6 +3735,111 @@ $widgets['blog_post'] = array(
     )),
 );
 
+// ── The comment threads ─────────────────────────────────────────────────
+// Each record page's own Comments widget, right under its view: the thread
+// belongs to the record the view shows, and a hidden or missing record
+// draws none. One kind of widget for the readers' comments and for the two
+// private threads (a conversation, an article on the desk).
+
+// An article's comments, under the article. Oldest first, an answer under
+// the comment it answers and one more level under that; a featured comment
+// comes first. Twenty comments with their answers to a page, each a
+// permalink. Held until an editor approves them (the page's settings).
+$widgets['post_comments'] = array(
+    'page'   => 'blog_post',
+    'slug'   => lang('comments'),
+    'config' => array(
+        'regionType' => 'comments',
+        'order'      => 'oldest',
+        'featured'   => 'first',
+        'layout'     => 'threaded',
+        'max_depth'  => 2,
+        'per_page'   => 20,
+    ),
+    'tree'   => $comment_thread(array(
+        'title'     => lang('Comments'),
+        'title_tag' => 'p',
+        'empty'     => lang('No comments yet. Be the first to share your thoughts.'),
+        'heading'   => lang('Leave a comment'),
+        'label'     => lang('Your comment'),
+        'sign_in'   => lang('Sign in to add your comment.'),
+        'submit'    => lang('Post comment'),
+        'watch_box' => lang('Notify me when a new comment is added.'),
+        'follow'    => lang('Notify me of new comments'),
+        'unfollow'  => lang('Stop notifying me'),
+        'close'     => lang('Stop new comments'),
+        'reopen'    => lang('Allow new comments'),
+        'reply'     => true,
+        'watch'     => true,
+    )),
+);
+// The answers in a conversation, shown only to whoever may read the
+// conversation above them. Oldest first, one after another, all on one
+// page, never pinned. No Reply, Share or follow box: the conversation has
+// two sides, its sender is e-mailed every answer and the newsroom every
+// new message.
+$widgets['conversation_replies'] = array(
+    'page'   => 'conversation',
+    'slug'   => lang('comments'),
+    'config' => array(
+        'regionType' => 'comments',
+        'order'      => 'oldest',
+        'featured'   => 'none',
+        'layout'     => 'flat',
+        'max_depth'  => 1,
+        'per_page'   => 0,
+    ),
+    'tree'   => $comment_thread(array(
+        'title'     => lang('Replies'),
+        'title_tag' => 'h2',
+        'empty'     => lang('No replies yet. Our answer will appear here.'),
+        'heading'   => lang('Write a reply'),
+        'label'     => lang('Your reply'),
+        'sign_in'   => lang('Sign in to reply.'),
+        'submit'    => lang('Send reply'),
+        'watch_box' => '',
+        'follow'    => '',
+        'unfollow'  => '',
+        'close'     => lang('Stop new replies'),
+        'reopen'    => lang('Allow new replies'),
+        'reply'     => false,
+        'watch'     => false,
+    )),
+);
+// The messages between an author and the editors under an article on the
+// desk, shown only to whoever may read the article above them. Oldest
+// first, one after another, all on one page, never pinned, no Reply or
+// Share. The follow box stays: a message is e-mailed to the author and to
+// every editor who follows the article.
+$widgets['desk_messages'] = array(
+    'page'   => 'submission',
+    'slug'   => lang('comments'),
+    'config' => array(
+        'regionType' => 'comments',
+        'order'      => 'oldest',
+        'featured'   => 'none',
+        'layout'     => 'flat',
+        'max_depth'  => 1,
+        'per_page'   => 0,
+    ),
+    'tree'   => $comment_thread(array(
+        'title'     => lang('Messages with the desk'),
+        'title_tag' => 'p',
+        'empty'     => lang('No messages yet.'),
+        'heading'   => lang('Write to the desk'),
+        'label'     => lang('Your message'),
+        'sign_in'   => lang('Sign in to write to the desk.'),
+        'submit'    => lang('Send message'),
+        'watch_box' => lang('Notify me when a new message is written.'),
+        'follow'    => lang('Notify me of new messages'),
+        'unfollow'  => lang('Stop notifying me'),
+        'close'     => lang('Stop new messages'),
+        'reopen'    => lang('Allow new messages'),
+        'reply'     => false,
+        'watch'     => true,
+    )),
+);
+
 // ── The forms ───────────────────────────────────────────────────────────
 
 // A field with a hint under it, which the field names as its description.
@@ -3882,6 +4185,22 @@ $widgets['email_message_sender'] = $mail_widget('email_message_received', 'conta
     $mail_button(lang('Open the conversation'), '{{page:conversation}}?r=^^reference_code^^'),
     $mail_new_account(),
 ));
+// The comment of the comment e-mails: placed on the new reply e-mail and the
+// desk message e-mail, drawn for the comment the e-mail is about, flat and
+// alone. The pages that name these e-mails keep their comment settings.
+$widgets['email_comment'] = array(
+    'page'   => 'email_reply',
+    'slug'   => lang('comments'),
+    'config' => array(
+        'regionType' => 'comments',
+        'order'      => 'oldest',
+        'featured'   => 'none',
+        'layout'     => 'flat',
+        'max_depth'  => 1,
+        'per_page'   => 0,
+    ),
+    'tree'   => $mail_comment_tree,
+);
 
 // ── Search sections ─────────────────────────────────────────────────────
 // The parts of the pages the site search points a result at (Search and
@@ -3959,7 +4278,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('News Portal'),
-    'version'     => '1.0.2',
+    'version'     => '1.1.0',
     'framework'   => 'bootstrap5',
     'order'       => 70,
     'icon'        => 'bi-newspaper',

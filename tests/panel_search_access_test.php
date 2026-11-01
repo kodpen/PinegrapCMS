@@ -64,3 +64,13 @@ function test_search_applies_each_screen_rule()
 	pg_assert_false(strpos($php, "if (\$r['design'] && !\$can_design)") !== false, 'no filter after the query');
 	pg_assert_true((bool) preg_match('/if \(\$can_design\) \{\s*\$rows = db_items\(\s*"SELECT id, name\s*FROM menus/', $php), 'menus for designers');
 }
+
+// Pages, forms and files in the Recycle Bin stay out of the results: a binned
+// page was listed under its parked name (pgbin_<id>_<name>) and opened its
+// edit screen. They are found on the Recycle Bin screen only.
+function test_search_leaves_out_the_recycle_bin()
+{
+	$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/search.php');
+	pg_assert_same(2, substr_count($php, "pg_designer_not_binned_sql('page_folder')"), 'pages and forms');
+	pg_assert_same(1, substr_count($php, "pg_designer_not_binned_sql('folder')"), 'files');
+}

@@ -53,17 +53,35 @@ function test_audit_list_search()
 {
 	pg_assert_same(array('sql' => '', 'params' => array()), pg_audit_list_search(array()), 'no word');
 
-	$search = pg_audit_list_search(array('50%'));
+	$search = pg_audit_list_search(array('50%'), array());
 	pg_assert_same('(username LIKE ? OR label LIKE ? OR ip LIKE ? OR request_id LIKE ? OR action LIKE ? OR entity_type LIKE ?)', $search['sql'], 'a word that is not a number, nor in a label');
 	pg_assert_same('%50\\%%', $search['params'][0], 'wildcards are literal');
 
-	$search = pg_audit_list_search(array('#12'));
+	$search = pg_audit_list_search(array('#12'), array());
 	pg_assert_contains('CAST(entity_id AS CHAR) LIKE ?', $search['sql'], 'the record number');
 	pg_assert_same('%12%', end($search['params']), 'without its #');
 
-	$search = pg_audit_list_search(array(lang('Deleted')));
+	$search = pg_audit_list_search(array(lang('Deleted')), array());
 	pg_assert_contains('action IN (?)', $search['sql'], 'an action by its shown name');
 	pg_assert_same('delete', end($search['params']));
+}
+
+// A settings line shows its category's name and stores its key: the
+// search box finds it by either.
+function test_audit_list_search_settings_by_shown_name()
+{
+	$names = array('general' => 'Genel', 'commerce' => 'E-Ticaret', 'maintenance' => 'Güncellemeler ve Bakım');
+
+	$search = pg_audit_list_search(array('genel'), $names);
+	pg_assert_contains("(CASE WHEN entity_type = 'settings' THEN label END) IN (?)", $search['sql'], 'a category by its shown name');
+	pg_assert_same('general', end($search['params']));
+
+	$search = pg_audit_list_search(array('E-TICARET'), $names);
+	pg_assert_same('commerce', end($search['params']), 'in any case');
+
+	$search = pg_audit_list_search(array('general'), $names);
+	pg_assert_contains('label LIKE ?', $search['sql'], 'the stored key is still searched');
+	pg_assert_true(strpos($search['sql'], 'CASE WHEN') === false, 'no category is named general');
 }
 
 function test_audit_list_row()

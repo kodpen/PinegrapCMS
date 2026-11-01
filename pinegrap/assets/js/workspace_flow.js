@@ -61,23 +61,18 @@
 (function () {
     'use strict';
 
-    var GRID = 16;
-    var BOX_W = 208;
-    var BOX_H = 80;
+    // The canvas core (assets/js/pg_graph_canvas.js): the grid, the box
+    // size, the geometry helpers, the undo history and the viewport.
+    var G = window.PGGraphCanvas;
+    var GRID = G.GRID;
+    var BOX_W = G.BOX_W;
+    var BOX_H = G.BOX_H;
     // The label of each kind of template setting (ws_flow_template_setting_types()).
     var SETTINGS = { channel: 'fl_tpl_set_channel', person: 'fl_tpl_set_person', time: 'fl_tpl_set_time', url: 'fl_tpl_set_url', address: 'fl_tpl_set_address', table: 'fl_tpl_set_table' };
-    var ZOOM_MIN = 0.25;
-    var ZOOM_MAX = 2;
     var SAVE_DELAY = 1500;
     // Browsers refuse a keepalive request body over 64 KiB; the action and
     // the token ride on top of the draft.
     var KEEPALIVE_BYTES = 60000;
-    var SVG_NS = 'http://www.w3.org/2000/svg';
-    // Undo goes back at most HISTORY_MAX steps; a change that is not
-    // structural made within HISTORY_FOLD ms of the one before it (typing,
-    // an arrow-key move) folds into that step.
-    var HISTORY_MAX = 50;
-    var HISTORY_FOLD = 1000;
     // While a box's settings are typed in, the data threads, the outline's
     // reads and the undo step wait until no key came for SETTLE_DELAY ms
     // (settle()): in a big flow each of them takes longer than a keystroke.
@@ -277,10 +272,6 @@
         chip: '',           // the flow list's chip: a way to start, 'draft', '' for all
         query: '',          // what the flow list is searched for
         paletteQuery: '',   // what the palette is searched for
-        space: false,
-        drag: null,
-        pointers: {},
-        pinch: null,
         tap: null,
         panel: '',          // 'runs' while the side panel lists the runs
         section: '',        // 'action' while a scheduled action is drawn read-only, 'templates' in the gallery
@@ -311,28 +302,24 @@
 
     // ── Small helpers ──────────────────────────────────────────────────
 
-    function snap(value) {
-        return Math.round(value / GRID) * GRID;
-    }
+    var snap = G.snap;
+    var clamp = G.clamp;
+    var svgEl = G.svgEl;
+    var curve = G.curve;
+    var freeId = G.freeId;
+    var typing = G.typing;
+    var bytes = G.bytes;
 
-    function clamp(value, min, max) {
-        return Math.max(min, Math.min(max, value));
-    }
+    // Undo and redo: the open flow's graph as JSON text before each change
+    // (historyOf(), historyRecord(), historyStep() of the core).
+    var historyOf = G.historyOf;
+    var historyRecord = G.historyRecord;
+    var historyStep = G.historyStep;
 
     function coord(value) {
         var limit = (FL.limits && FL.limits.coord) || 100000;
 
         return clamp(snap(value), -limit, limit);
-    }
-
-    function svgEl(tag, className) {
-        var node = document.createElementNS(SVG_NS, tag);
-
-        if (className) {
-            node.setAttribute('class', className);
-        }
-
-        return node;
     }
 
     function nodeById(id) {
@@ -394,74 +381,8 @@
         return titleOf(node) || t(kindOf(node).name);
     }
 
-    function freeId(prefix, list) {
-        var n = 1;
-
-        while (list.some(function (item) { return item.id === prefix + '_' + n; })) {
-            n++;
-        }
-
-        return prefix + '_' + n;
-    }
-
     function announce(text) {
-        ui.live.textContent = '';
-        window.setTimeout(function () { ui.live.textContent = text; }, 30);
-    }
-
-    // ── Undo and redo ──────────────────────────────────────────────────
-
-    // The steps of one flow as JSON text of its graph: before each change
-    // (past), those undone (future), and the graph as it is (now).
-    function historyOf(flow, graph) {
-        return { flow: flow, past: [], future: [], now: graph, at: 0, fold: false };
-    }
-
-    // The graph after a change; false when it is the same (the flow's name,
-    // its home). A change undone cannot be redone once another one is made.
-    function historyRecord(history, graph, fold, at) {
-        if (graph === history.now) {
-            return false;
-        }
-
-        if (!(fold && history.fold && ((at - history.at) < HISTORY_FOLD))) {
-            history.past.push(history.now);
-
-            if (history.past.length > HISTORY_MAX) {
-                history.past.shift();
-            }
-        }
-
-        history.future = [];
-        history.now = graph;
-        history.at = at;
-        history.fold = fold;
-
-        return true;
-    }
-
-    // One step back (or forward again): the graph to show, null when there
-    // is none. The change after it starts a step of its own.
-    function historyStep(history, back) {
-        var from = back ? history.past : history.future;
-
-        if (!from.length) {
-            return null;
-        }
-
-        (back ? history.future : history.past).push(history.now);
-        history.now = from.pop();
-        history.fold = false;
-
-        return history.now;
-    }
-
-    function typing(target) {
-        return !!(target && target.closest && target.closest('input, textarea, select, [contenteditable="true"]'));
-    }
-
-    function bytes(text) {
-        return new Blob([text]).size;
+        canvas.announce(text);
     }
 
     // The flow is the person's to change, whether or not a run is shown
@@ -2859,48 +2780,27 @@
         markProblems();
     }
 
-    function port(side) {
-        var dot = el('span', 'wsf-port wsf-port-' + side);
-
-        dot.setAttribute('aria-hidden', 'true');
-
-        return dot;
-    }
-
+    // A box of the core (box()): its ports, focus and name are the core's;
+    // its kind's head, title and line under it are the flow's.
     function boxNode(node) {
         var kind = kindOf(node);
-        var box = el('div', 'wsf-node ' + kindClasses(node.kind));
-        var head = el('div', 'wsf-node-head');
+        var box = canvas.box(node, {
+            className: kindClasses(node.kind),
+            into: kind.into,
+            out: kind.out.length > 0,
+            fill: function (box) {
+                var head = el('div', 'wsf-node-head');
 
-        box.tabIndex = 0;
-        box.setAttribute('role', 'group');
-        box.setAttribute('aria-roledescription', t('fl_box'));
-        box.setAttribute('data-node', node.id);
-        box.setAttribute('data-refocus', 'box-' + node.id);
-
-        if (kind.into) {
-            box.appendChild(port('in'));
-        }
-
-        head.appendChild(K.flowIcon(node.kind));
-        head.appendChild(el('span', 'wsf-node-kind', t(kind.name)));
-        head.appendChild(K.icon('bi-exclamation-triangle-fill', 'wsf-node-warn'));
-        box.appendChild(head);
-        box.appendChild(el('div', 'wsf-node-title'));
-        box.appendChild(el('div', 'wsf-node-meta'));
-
-        if (kind.out.length) {
-            var out = port('out');
-
-            if (state.edit) {
-                out.title = t('fl_port_out');
+                head.appendChild(K.flowIcon(node.kind));
+                head.appendChild(el('span', 'wsf-node-kind', t(kind.name)));
+                head.appendChild(K.icon('bi-exclamation-triangle-fill', 'wsf-node-warn'));
+                box.appendChild(head);
+                box.appendChild(el('div', 'wsf-node-title'));
+                box.appendChild(el('div', 'wsf-node-meta'));
             }
-
-            box.appendChild(out);
-        }
+        });
 
         fillBox(box, node);
-        place(box, node);
 
         return box;
     }
@@ -2962,19 +2862,7 @@
     }
 
     function place(box, item) {
-        box.style.left = item.x + 'px';
-        box.style.top = item.y + 'px';
-
-        // A box moved may change which box is the last.
-        if (ui.flag && (box !== ui.flag)) {
-            placeFlag();
-        }
-    }
-
-    function curve(x1, y1, x2, y2) {
-        var dx = Math.max(48, Math.abs(x2 - x1) / 2);
-
-        return { d: 'M' + x1 + ' ' + y1 + ' C' + (x1 + dx) + ' ' + y1 + ' ' + (x2 - dx) + ' ' + y2 + ' ' + x2 + ' ' + y2, mx: (x1 + x2) / 2, my: (y1 + y2) / 2 };
+        canvas.place(box, item);
     }
 
     // Where a loop's frame goes: around its For each box, its body and its
@@ -3053,12 +2941,9 @@
                 return;
             }
 
-            var path = curve(from.x + BOX_W, from.y + BOX_H / 2, to.x, to.y + BOX_H / 2);
-            var group = svgEl('g', 'wsf-edge');
-            var line = svgEl('path', 'wsf-edge-line');
-            var hit = svgEl('path', 'wsf-edge-hit');
-
-            group.setAttribute('data-edge', String(index));
+            var drawn = canvas.edge(index, from, to);
+            var path = drawn.path;
+            var group = drawn.group;
 
             // In a run, an arrow its box ended on was taken.
             var step = state.run ? stepOf(edge.from) : null;
@@ -3066,11 +2951,6 @@
             if (step && (step.status === 'done') && step.outcome && ((step.outcome === edge.on) || (edge.on === 'always'))) {
                 group.classList.add('wsf-edge-taken');
             }
-
-            line.setAttribute('d', path.d);
-            hit.setAttribute('d', path.d);
-            group.appendChild(line);
-            group.appendChild(hit);
 
             // An arrow taken when a task is cancelled, or a step failed, says
             // so on itself.
@@ -3083,8 +2963,6 @@
                 label.textContent = t(OUTCOMES[edge.on]);
                 group.appendChild(label);
             }
-
-            ui.svg.appendChild(group);
         });
 
         markSelected();
@@ -3760,7 +3638,7 @@
 
     // A thread takes the pointer through a wider path on the same route,
     // invisible: hovered the thread is drawn thicker, clicked it is selected
-    // (canvas pointerDown()) to be removed. The stylesheet keeps .wsf-thread
+    // (canvas pointerPress()) to be removed. The stylesheet keeps .wsf-thread
     // out of the pointer's way, so the hit path takes it inline.
     function threadHit(line, thread) {
         if (!state.edit || state.run) {
@@ -4344,25 +4222,8 @@
     }
 
     function markSelected() {
-        var selected = state.selected;
-
         drawData();
-
-        Array.prototype.forEach.call(ui.layer.querySelectorAll('.wsf-selected'), function (node) {
-            node.classList.remove('wsf-selected');
-            node.removeAttribute('aria-current');
-        });
-
-        if (!selected) {
-            return;
-        }
-
-        var target = ui.layer.querySelector('[data-' + selected.type + '="' + String(selected.id).replace(/"/g, '') + '"]');
-
-        if (target) {
-            target.classList.add('wsf-selected');
-            target.setAttribute('aria-current', 'true');
-        }
+        canvas.mark(state.selected);
     }
 
     // The draft's problems on its boxes; a run's boxes are those of its
@@ -8291,7 +8152,7 @@
 
         // A change waiting to be recorded (settle()) is a step back already
         // and leaves nothing to redo.
-        return !!(state.edit && state.flow && !state.run && !state.drag && history && (history.flow === state.flow.id)
+        return !!(state.edit && state.flow && !state.run && !canvas.dragging() && history && (history.flow === state.flow.id)
             && (back ? (history.past.length || state.settleHistory) : (history.future.length && !state.settleHistory)));
     }
 
@@ -8881,7 +8742,6 @@
             }).catch(K.fail);
         });
     }
-
 
     // ── Shares ─────────────────────────────────────────────────────────
 
@@ -9772,7 +9632,7 @@
         state.poll.delay = POLL_FIRST;
         rememberRun(run);
         ui.app.classList.add('wsf-run-view', 'wsf-readonly');
-        cancelDrag();
+        canvas.cancel();
         drawRunBar();
         drawBar();
         drawAll();
@@ -10746,101 +10606,78 @@
             return;
         }
 
-        var rect = ui.viewport.getBoundingClientRect();
-        var v = state.view;
-        var left = item.x * v.k + v.x;
-        var top = item.y * v.k + v.y;
-        var margin = 32;
-
-        if ((left < margin) || (top < margin) || (left + BOX_W * v.k > rect.width - margin) || (top + BOX_H * v.k > rect.height - margin)) {
-            v.x = rect.width / 2 - (item.x + BOX_W / 2) * v.k;
-            v.y = rect.height / 2 - (item.y + BOX_H / 2) * v.k;
-            applyView();
-        }
+        canvasView.reveal(item);
     }
 
-    function applyView() {
-        var v = state.view;
-        var dots = GRID * v.k;
+    // The canvas (create() of the core): pan and zoom on state.view, which
+    // fit(), a pinch and the run view put a new view in; its boxes, arrows,
+    // box moves and arrows drawn from a port; the pointer and the keys, with
+    // the flow's own drag (a data thread) and keys in the hooks below.
+    var canvas = G.create({
+        ui: ui,
+        // The kit's t() is lent when the screen starts, after this runs.
+        text: function () {
+            return t.apply(null, arguments);
+        },
+        boxRole: function () {
+            return t('fl_box');
+        },
+        item: nodeById,
+        editable: function () {
+            return !!state.edit;
+        },
+        coord: coord,
+        select: function (selected) {
+            select(selected);
+        },
+        // A box moved may change which box is the last.
+        placed: function (node) {
+            if (ui.flag && (node !== ui.flag)) {
+                placeFlag();
+            }
+        },
+        edges: function () {
+            drawEdges();
+        },
+        moved: function () {
+            changed(false, true);
+        },
+        canConnect: canConnect,
+        connected: arrowDrawn,
+        view: function (next) {
+            if (next) {
+                state.view = next;
+            }
 
-        // Zoomed far out, every fourth dot of the grid is drawn.
-        while (dots < 8) {
-            dots *= 4;
-        }
-
-        ui.layer.style.transform = 'translate(' + v.x + 'px, ' + v.y + 'px) scale(' + v.k + ')';
-        ui.viewport.style.backgroundSize = dots + 'px ' + dots + 'px';
-        ui.viewport.style.backgroundPosition = v.x + 'px ' + v.y + 'px';
-        ui.zoomLabel.textContent = Math.round(v.k * 100) + '%';
-    }
-
-    function zoomAt(clientX, clientY, factor) {
-        var rect = ui.viewport.getBoundingClientRect();
-        var v = state.view;
-        var k = clamp(v.k * factor, ZOOM_MIN, ZOOM_MAX);
-        var px = clientX - rect.left;
-        var py = clientY - rect.top;
-
-        v.x = px - (px - v.x) * (k / v.k);
-        v.y = py - (py - v.y) * (k / v.k);
-        v.k = k;
-        applyView();
-    }
-
-    function zoomBy(factor) {
-        var rect = ui.viewport.getBoundingClientRect();
-
-        zoomAt(rect.left + rect.width / 2, rect.top + rect.height / 2, factor);
-    }
-
-    // Everything on the canvas in sight, at most a little larger than life.
-    function fit() {
-        var items = state.graph ? state.graph.nodes : [];
-        var rect = ui.viewport.getBoundingClientRect();
-
-        if (!items.length || !rect.width) {
-            state.view = { x: 40, y: 40, k: 1 };
-            applyView();
-            return;
-        }
-
-        var minX = Math.min.apply(null, items.map(function (item) { return item.x; }));
-        var minY = Math.min.apply(null, items.map(function (item) { return item.y; }));
-        var maxX = Math.max.apply(null, items.map(function (item) { return item.x + BOX_W; }));
-        var maxY = Math.max.apply(null, items.map(function (item) { return item.y + BOX_H; }));
-        var k = clamp(Math.min((rect.width - 96) / Math.max(1, maxX - minX), (rect.height - 96) / Math.max(1, maxY - minY)), ZOOM_MIN, 1.25);
-
-        state.view = { x: (rect.width - (maxX - minX) * k) / 2 - minX * k, y: (rect.height - (maxY - minY) * k) / 2 - minY * k, k: k };
-        applyView();
-    }
-
-    function canvasPoint(clientX, clientY) {
-        var rect = ui.viewport.getBoundingClientRect();
-
-        return { x: (clientX - rect.left - state.view.x) / state.view.k, y: (clientY - rect.top - state.view.y) / state.view.k };
-    }
+            return state.view;
+        },
+        items: function () {
+            return state.graph ? state.graph.nodes : [];
+        },
+        // A link on a box (the task of a waiting box) and the last run's
+        // flag keep their own clicks and keys (Enter follows the link,
+        // opens the fold).
+        ownClicks: '.wsf-node a[href], .wsf-flag-canvas',
+        classes: { panning: 'wsf-panning', space: 'wsf-space', box: 'wsf-node', port: 'wsf-port', edge: 'wsf-edge', selected: 'wsf-selected', target: 'wsf-target', hidden: 'd-none' },
+        press: pointerPress,
+        move: pointerDrag,
+        release: pointerRelease,
+        cancel: dropDrag,
+        key: canvasKey
+    });
+    var canvasView = canvas.view;
+    var applyView = canvasView.apply;
+    var zoomAt = canvasView.zoomAt;
+    var zoomBy = canvasView.zoomBy;
+    var fit = canvasView.fit;
+    var canvasPoint = canvasView.point;
 
     // ── Pointer and keyboard ───────────────────────────────────────────
 
     function bindCanvas() {
         var viewport = ui.viewport;
 
-        viewport.addEventListener('pointerdown', pointerDown);
-        viewport.addEventListener('pointermove', pointerMove);
-        viewport.addEventListener('pointerup', pointerUp);
-        viewport.addEventListener('pointercancel', pointerUp);
-
-        viewport.addEventListener('wheel', function (event) {
-            event.preventDefault();
-
-            if (event.ctrlKey || event.metaKey) {
-                zoomAt(event.clientX, event.clientY, Math.exp(-event.deltaY * 0.002));
-            } else {
-                state.view.x -= event.deltaX;
-                state.view.y -= event.deltaY;
-                applyView();
-            }
-        }, { passive: false });
+        canvas.bind();
 
         viewport.addEventListener('dragover', function (event) {
             if (state.edit) {
@@ -10869,7 +10706,7 @@
         viewport.addEventListener('focusin', function (event) {
             var box = event.target.closest('[data-node]');
 
-            if (box && !state.drag) {
+            if (box && !canvas.dragging()) {
                 var selected = { type: 'node', id: box.getAttribute('data-node') };
 
                 if (!state.selected || (state.selected.type !== selected.type) || (state.selected.id !== selected.id)) {
@@ -10877,66 +10714,36 @@
                 }
             }
         });
-
-        viewport.addEventListener('keydown', canvasKey);
     }
 
-    function pointerDown(event) {
-        var viewport = ui.viewport;
-
-        state.pointers[event.pointerId] = { x: event.clientX, y: event.clientY };
-
-        // A second finger: the drag so far becomes a pinch.
-        if (Object.keys(state.pointers).length === 2) {
-            var points = Object.keys(state.pointers).map(function (id) { return state.pointers[id]; });
-
-            cancelDrag();
-            state.pinch = {
-                d: Math.max(1, Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y)),
-                cx: (points[0].x + points[1].x) / 2,
-                cy: (points[0].y + points[1].y) / 2,
-                view: { x: state.view.x, y: state.view.y, k: state.view.k }
-            };
-            return;
-        }
-
-        if ((event.button !== undefined) && (event.button > 1)) {
-            return;
-        }
-
-        // A link on a box (the task of a waiting box) and the last run's
-        // flag keep their own clicks: the canvas captures no pointer for them.
-        if (event.target.closest && event.target.closest('.wsf-node a[href], .wsf-flag-canvas')) {
-            delete state.pointers[event.pointerId];
-            return;
-        }
-
+    // A pointer down on the canvas (press() of the core): a data thread
+    // pressed or drawn; 'pan' for Space and the middle button; a box, its
+    // port, an arrow and the empty canvas are the core's. False when a
+    // thread waiting for its field was put in the field pressed.
+    function pointerPress(event, drag, space) {
         var target = event.target;
         var box = target.closest('.wsf-node[data-node]');
-        var edge = target.closest('.wsf-edge');
         var wire = target.closest('[data-thread]');
         var dot = target.closest('.wsf-data-live');
         var bind = target.closest('[data-bind]');
         var ring = dot ? dot.querySelector('.wsf-data-ring').getBoundingClientRect() : null;
-        var drag = { id: event.pointerId, sx: event.clientX, sy: event.clientY, moved: false, kind: 'pan', vx: state.view.x, vy: state.view.y };
 
         // A thread waiting for its field: a lit field takes it, anything
         // else lets it go.
-        if (state.binding && bind && !state.space && (event.button !== 1)) {
+        if (state.binding && bind && !space && (event.button !== 1)) {
             var place = bind.getAttribute('data-bind').split(' ');
 
             bindValue(state.binding.from, state.binding.token, place[0], place[1]);
             endBinding();
-            delete state.pointers[event.pointerId];
             event.preventDefault();
-            return;
+            return false;
         }
 
         if (state.binding && !(dot && (dot.getAttribute('data-node') === state.binding.from) && (dot.getAttribute('data-token') === state.binding.token))) {
             endBinding();
         }
 
-        if (state.space || (event.button === 1)) {
+        if (space || (event.button === 1)) {
             drag.kind = 'pan';
         } else if (dot) {
             drag.kind = 'thread';
@@ -10952,97 +10759,20 @@
             if (box) {
                 box.focus({ preventScroll: true });
             }
-        } else if (state.edit && target.closest('.wsf-port-out') && box) {
-            drag.kind = 'connect';
-            drag.from = nodeById(box.getAttribute('data-node'));
-            event.preventDefault();
-        } else if (box) {
-            drag.kind = state.edit ? 'move' : 'none';
-            drag.item = nodeById(box.getAttribute('data-node'));
-            drag.ix = drag.item.x;
-            drag.iy = drag.item.y;
-            drag.node = box;
-            state.drag = drag;
-            select({ type: 'node', id: drag.item.id });
-            box.focus({ preventScroll: true });
-        } else if (wire) {
+        } else if (wire && !box) {
             drag.kind = 'none';
             select({ type: 'thread', id: wire.getAttribute('data-thread') });
-            viewport.focus({ preventScroll: true });
-        } else if (edge) {
-            drag.kind = 'none';
-            select({ type: 'edge', id: parseInt(edge.getAttribute('data-edge'), 10) });
-            viewport.focus({ preventScroll: true });
-        } else {
-            drag.kind = 'pan';
-            drag.empty = true;
+            ui.viewport.focus({ preventScroll: true });
         }
 
-        state.drag = drag;
-
-        try {
-            viewport.setPointerCapture(event.pointerId);
-        } catch (error) {
-            // A pointer that cannot be captured still drags while it stays on the canvas.
-        }
-
-        if (drag.kind === 'pan') {
-            viewport.classList.add('wsf-panning');
-        }
+        return true;
     }
 
-    function pointerMove(event) {
-        if (state.pointers[event.pointerId]) {
-            state.pointers[event.pointerId] = { x: event.clientX, y: event.clientY };
-        }
-
-        if (state.pinch) {
-            var points = Object.keys(state.pointers).map(function (id) { return state.pointers[id]; });
-
-            if (points.length < 2) {
-                return;
-            }
-
-            var pinch = state.pinch;
-            var k = clamp(pinch.view.k * Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y) / pinch.d, ZOOM_MIN, ZOOM_MAX);
-            var rect = ui.viewport.getBoundingClientRect();
-            var cx = (points[0].x + points[1].x) / 2 - rect.left;
-            var cy = (points[0].y + points[1].y) / 2 - rect.top;
-            var px = (pinch.cx - rect.left - pinch.view.x) / pinch.view.k;
-            var py = (pinch.cy - rect.top - pinch.view.y) / pinch.view.k;
-
-            state.view = { x: cx - px * k, y: cy - py * k, k: k };
-            applyView();
-            return;
-        }
-
-        var drag = state.drag;
-
-        if (!drag || (drag.id !== event.pointerId)) {
-            return;
-        }
-
-        var dx = event.clientX - drag.sx;
-        var dy = event.clientY - drag.sy;
-
-        if (!drag.moved && (Math.abs(dx) + Math.abs(dy) < 4)) {
-            return;
-        }
-
-        drag.moved = true;
-
-        if (drag.kind === 'pan') {
-            state.view.x = drag.vx + dx;
-            state.view.y = drag.vy + dy;
-            applyView();
-        } else if (drag.kind === 'move') {
-            drag.item.x = coord(drag.ix + dx / state.view.k);
-            drag.item.y = coord(drag.iy + dy / state.view.k);
-            place(drag.node, drag.item);
-            drawEdges();
-        } else if (drag.kind === 'thread') {
+    // A thread drawn (move() of the core).
+    function pointerDrag(event, drag) {
+        if (drag.kind === 'thread') {
             if (!state.binding && !startBinding(drag.from.id, drag.token, true)) {
-                state.drag = null;
+                canvas.hold(null);
                 return;
             }
 
@@ -11058,42 +10788,11 @@
             if (hot) {
                 hot.classList.add('wsf-data-hot');
             }
-        } else if (drag.kind === 'connect') {
-            var point = canvasPoint(event.clientX, event.clientY);
-            var under = document.elementFromPoint(event.clientX, event.clientY);
-            var over = under && under.closest ? under.closest('[data-node]') : null;
-            var to = over ? nodeById(over.getAttribute('data-node')) : null;
-
-            ui.temp.setAttribute('d', curve(drag.from.x + BOX_W, drag.from.y + BOX_H / 2, point.x, point.y).d);
-            ui.temp.classList.remove('d-none');
-            Array.prototype.forEach.call(ui.boxes.querySelectorAll('.wsf-target'), function (node) { node.classList.remove('wsf-target'); });
-
-            if (to && canConnect(drag.from, to)) {
-                over.classList.add('wsf-target');
-            }
         }
     }
 
-    function pointerUp(event) {
-        delete state.pointers[event.pointerId];
-
-        if (state.pinch) {
-            if (Object.keys(state.pointers).length < 2) {
-                state.pinch = null;
-            }
-
-            return;
-        }
-
-        var drag = state.drag;
-
-        if (!drag || (drag.id !== event.pointerId)) {
-            return;
-        }
-
-        state.drag = null;
-        ui.viewport.classList.remove('wsf-panning');
-
+    // The drag's pointer up (release() of the core).
+    function pointerRelease(event, drag) {
         if (drag.kind === 'thread') {
             ui.temp.classList.add('d-none');
             ui.temp.classList.remove('wsf-temp-thread');
@@ -11125,30 +10824,7 @@
             return;
         }
 
-        if (drag.kind === 'connect') {
-            var under = document.elementFromPoint(event.clientX, event.clientY);
-            var over = under && under.closest ? under.closest('[data-node]') : null;
-
-            ui.temp.classList.add('d-none');
-            Array.prototype.forEach.call(ui.boxes.querySelectorAll('.wsf-target'), function (node) { node.classList.remove('wsf-target'); });
-
-            // Released on a box: the box the arrow leaves is selected,
-            // whether or not the arrow may go there (itself, the start, an
-            // arrow already drawn), so its highlight and settings show what
-            // the keys now act on.
-            if (over && (event.type === 'pointerup')) {
-                state.selected = { type: 'node', id: drag.from.id };
-
-                if (!connect(drag.from, nodeById(over.getAttribute('data-node')))) {
-                    markSelected();
-                    drawSettings();
-                }
-
-                focusSelected();
-            }
-        } else if ((drag.kind === 'move') && drag.moved) {
-            changed(false, true);
-        } else if (drag.item && !drag.moved) {
+        if (drag.item && !drag.moved) {
             // A second tap on the same box opens its settings (the captured
             // pointer sends no dblclick to the box itself).
             var now = Date.now();
@@ -11165,24 +10841,26 @@
         }
     }
 
-    // A drag cut short (Esc, a second finger): a box being moved goes back
-    // to where it was, an arrow being drawn is dropped.
-    function cancelDrag() {
-        var drag = state.drag;
+    // An arrow drawn from a box's port released on a box (connected() of
+    // the core): the box the arrow leaves is selected, whether or not the
+    // arrow may go there (itself, the start, an arrow already drawn), so
+    // its highlight and settings show what the keys now act on.
+    function arrowDrawn(from, to) {
+        state.selected = { type: 'node', id: from.id };
 
-        state.drag = null;
-        ui.temp.classList.add('d-none');
+        if (!connect(from, to)) {
+            markSelected();
+            drawSettings();
+        }
+
+        focusSelected();
+    }
+
+    // A drag cut short (cancel() of the core: Esc, a second finger): a
+    // thread being drawn is dropped; the core put back a box being moved.
+    function dropDrag() {
         ui.temp.classList.remove('wsf-temp-thread');
         endBinding();
-        ui.viewport.classList.remove('wsf-panning');
-        Array.prototype.forEach.call(ui.boxes.querySelectorAll('.wsf-target'), function (node) { node.classList.remove('wsf-target'); });
-
-        if (drag && (drag.kind === 'move') && drag.moved) {
-            drag.item.x = drag.ix;
-            drag.item.y = drag.iy;
-            place(drag.node, drag.item);
-            drawEdges();
-        }
     }
 
     // Enter: the first field of what is selected; in a run, its task, or
@@ -11201,13 +10879,9 @@
         }
     }
 
+    // A key on the canvas (key() of the core, before its own: arrows that
+    // move nothing pan, + and − zoom, 0 fits).
     function canvasKey(event) {
-        // A link on a box and the last run's flag answer their own keys
-        // (Enter follows the link, opens the fold).
-        if (typing(event.target) || event.altKey || (event.target.closest && event.target.closest('.wsf-node a[href], .wsf-flag-canvas'))) {
-            return;
-        }
-
         var key = event.key;
         var step = event.shiftKey ? GRID * 4 : GRID;
         var selected = state.selected;
@@ -11217,14 +10891,9 @@
         // clicks, not the double tap that opens the box's settings.
         state.tap = null;
 
-        if ((key === 'ArrowLeft') || (key === 'ArrowRight') || (key === 'ArrowUp') || (key === 'ArrowDown')) {
-            if (selected && (selected.type === 'node') && state.edit && !event.ctrlKey && !event.metaKey) {
-                moveSelected((key === 'ArrowLeft') ? -step : (key === 'ArrowRight') ? step : 0, (key === 'ArrowUp') ? -step : (key === 'ArrowDown') ? step : 0);
-            } else {
-                state.view.x -= (key === 'ArrowLeft') ? -step * 2 : (key === 'ArrowRight') ? step * 2 : 0;
-                state.view.y -= (key === 'ArrowUp') ? -step * 2 : (key === 'ArrowDown') ? step * 2 : 0;
-                applyView();
-            }
+        if (((key === 'ArrowLeft') || (key === 'ArrowRight') || (key === 'ArrowUp') || (key === 'ArrowDown'))
+            && selected && (selected.type === 'node') && state.edit && !event.ctrlKey && !event.metaKey) {
+            moveSelected((key === 'ArrowLeft') ? -step : (key === 'ArrowRight') ? step : 0, (key === 'ArrowUp') ? -step : (key === 'ArrowDown') ? step : 0);
         } else if ((key === 'Delete') || (key === 'Backspace')) {
             removeSelected();
         } else if (((key === 'c') || (key === 'C')) && !event.ctrlKey && !event.metaKey && selected && (selected.type === 'node')) {
@@ -11235,35 +10904,20 @@
             endBinding();
         } else if ((key === 'Enter') && selected) {
             focusField();
-        } else if ((key === '+') || (key === '=')) {
-            zoomBy(1.2);
-        } else if ((key === '-') || (key === '_')) {
-            zoomBy(1 / 1.2);
-        } else if (key === '0') {
-            fit();
-        } else if ((key === 'Escape') && (state.drag || selected)) {
-            cancelDrag();
+        } else if ((key === 'Escape') && (canvas.dragging() || selected)) {
+            canvas.cancel();
             select(null);
             ui.viewport.focus({ preventScroll: true });
         } else {
             handled = false;
         }
 
-        if (handled) {
-            event.preventDefault();
-        }
+        return handled;
     }
 
     function bindWindow() {
-        // Space held down on the canvas: dragging anywhere on it moves it.
-        // Elsewhere Space keeps its own work (a summary, a button).
+        // Space held on the canvas is the core's (create()).
         document.addEventListener('keydown', function (event) {
-            if ((event.key === ' ') && !typing(event.target) && ui.viewport.contains(event.target)) {
-                state.space = true;
-                ui.viewport.classList.add('wsf-space');
-                event.preventDefault();
-            }
-
             if ((event.ctrlKey || event.metaKey) && ((event.key === 's') || (event.key === 'S')) && drafting()) {
                 event.preventDefault();
                 save();
@@ -11277,13 +10931,6 @@
                 && ((event.target === document.body) || ui.root.contains(event.target)) && !state.section && ui.gallery.classList.contains('d-none') && undoable(!redo)) {
                 event.preventDefault();
                 undo(!redo);
-            }
-        });
-
-        document.addEventListener('keyup', function (event) {
-            if (event.key === ' ') {
-                state.space = false;
-                ui.viewport.classList.remove('wsf-space');
             }
         });
 

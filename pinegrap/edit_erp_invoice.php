@@ -590,7 +590,7 @@ if (!empty($settlements)) {
 
         $output_actions = '';
         if ($can_open_receipt && $is_receipt && ((int) $settlement['cash_id'] > 0)) {
-            $output_actions .= '<a class="btn btn-sm btn-outline theme-secondary" href="erp_receipt.php?id=' . (int) $settlement['cash_id'] . '" title="' . lang('Receipt') . '"><i class="bi bi-receipt"></i></a> ';
+            $output_actions .= '<a class="btn btn-sm btn-outline theme-secondary" href="erp_receipt.php?id=' . (int) $settlement['cash_id'] . '" title="' . (((string) $settlement['source_type'] === 'payment') ? lang('Payment') : lang('Receipt')) . '"><i class="bi bi-receipt"></i></a> ';
         }
         if ($can_unsettle && ((string) $settlement['source_type'] !== 'gift_card')) {
             $output_actions .= '<form method="post" action="' . $self_action . '" class="d-inline">

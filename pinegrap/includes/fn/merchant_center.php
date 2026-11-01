@@ -823,6 +823,12 @@ function pg_merchant_register()
         return array('ok' => false, 'action' => $action, 'error' => $error);
     }
 
+    // The managed marketplace account the changed products are pushed
+    // through, with the feed's products mapped (merchant_center_push.php).
+    if (function_exists('pg_merchant_account_write')) {
+        pg_merchant_account_write(pg_merchant_state());
+    }
+
     return array('ok' => true, 'action' => $action, 'error' => '');
 }
 
@@ -938,6 +944,11 @@ function pg_merchant_save_from_screen($input)
             'checked_at' => 0, 'check_error' => '', 'issues' => pg_merchant_issue_summary(array()),
             'supplement' => '',
         ));
+
+        if (function_exists('pg_merchant_account_remove')) {
+            pg_merchant_account_remove();
+        }
+
         $messages[] = array('notice', lang('Merchant Center is no longer used. The data source stays in the Merchant Center account until you delete it there.'));
 
         return $messages;

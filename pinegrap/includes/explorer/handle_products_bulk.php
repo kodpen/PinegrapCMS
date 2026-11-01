@@ -74,7 +74,11 @@ function pg_explorer_bulk_product_new_price($old_price, $method, $value)
         $new_price = ((100 - $value) / 100) * $old_price;
     }
 
-    return (int) round($new_price);
+    // A float past what products.price holds stays a float for the caller to
+    // refuse: the int cast wraps it on a 32-bit build.
+    $new_price = round($new_price);
+
+    return pg_product_price_too_large($new_price) ? $new_price : (int) $new_price;
 }
 
 // The value of a bulk price change, or null when it is empty, not a number,
@@ -102,6 +106,29 @@ function pg_explorer_bulk_price_value($method, $value)
     }
 
     return $value;
+}
+
+// The value of the product list's Modify Selected price change, read as the
+// Catalog Manager reads it (pg_explorer_bulk_price_value()): methods 1 and 2
+// are an amount, returned in minor units, so 1.250 on a Turkish panel is
+// twelve hundred and fifty, not 1,25; methods 3 and 4 are a percentage. Null
+// for an unknown method or a value that is empty, not a number, zero or below.
+function pg_products_mass_price_value($method, $value)
+{
+    $methods = array('1' => 'increase', '2' => 'decrease', '3' => 'increase_percent', '4' => 'decrease_percent');
+    $method = (string) $method;
+
+    if (!isset($methods[$method])) {
+        return null;
+    }
+
+    $value = pg_explorer_bulk_price_value($methods[$method], $value);
+
+    if ($value === null) {
+        return null;
+    }
+
+    return (($method === '1') || ($method === '2')) ? (int) round($value) : (float) $value;
 }
 
 // The quantity of a bulk stock change in whole units, or null when it is
@@ -376,6 +403,7 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
     $updated = 0;
     $price_changed = 0;
     $price_skipped = 0;
+    $price_too_large = 0;
     $barcodes_assigned = 0;
     $notes = array();
 
@@ -416,7 +444,11 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
 
             $new_price = pg_explorer_bulk_product_new_price($product_row['price'], $bulk_price_method, $bulk_price_value);
 
-            if ($new_price <= 0) {
+            // A result the column cannot hold is skipped and counted, not
+            // cut to the column's top.
+            if (pg_product_price_too_large($new_price)) {
+                $price_too_large++;
+            } elseif ($new_price <= 0) {
                 $price_skipped++;
             } else {
                 $sql_parts[] = "price = '" . e($new_price) . "'";
@@ -642,13 +674,20 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
             'vars' => $price_skipped));
     }
 
+    if ($price_too_large > 0) {
+        $message .= ' ' . lang(array(
+            'string' => 'The price was left alone on {var:1} of them, because the new price would be too large.',
+            'vars' => $price_too_large));
+    }
+
     log_activity($message, $_SESSION['sessionusername']);
 
     respond(array(
-        'status' => ($price_skipped > 0) ? 'partial' : 'success',
+        'status' => (($price_skipped > 0) || ($price_too_large > 0)) ? 'partial' : 'success',
         'request' => $type,
         'updated' => $updated,
         'price_skipped' => $price_skipped,
+        'price_too_large' => $price_too_large,
         'barcodes' => $barcodes_assigned,
         'message' => $message));
 }

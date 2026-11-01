@@ -65,7 +65,7 @@ if ($_POST) {
 
     $step_labels = array('deposit' => lang('At the bank'), 'collect' => lang('Collected'), 'endorse' => lang('Passed on'), 'bounce' => lang('Bounced'), 'pay' => lang('Paid'));
     log_activity(lang(array('string' => 'erp cheque or note (#{var:1}) was marked {var:2}', 'vars' => array($cheque_id, $step_labels[$step] ?? $step))), $_SESSION['sessionusername']);
-    $liveform->add_notice(h(erp_cheque_step_note($step)));
+    $liveform->add_notice(h(erp_cheque_step_note($step, count($done['reopened'] ?? array()))));
     go($self);
 }
 
@@ -105,7 +105,7 @@ $step_form = function ($step, $title, $button, $class, $fields, $note) use ($che
         </form>';
 };
 
-$date_field = '<div class="col-6 md:col-3"><label class="form-label small">' . lang('Date') . '</label><input type="date" data-pg-date class="form-control form-control-sm" name="date" value="' . date('Y-m-d') . '" /></div>';
+$date_field = '<div class="col-6 md:col-3"><label class="form-label small">' . lang('Date') . '</label><input type="date" data-pg-date class="form-control form-control-sm" name="date" value="' . h(max(date('Y-m-d'), (string) $cheque['doc_date'])) . '" min="' . h((string) $cheque['doc_date']) . '" /></div>';
 $bank_field = '<div class="col-6 md:col-4"><label class="form-label small">' . lang('Bank account') . '</label><select class="form-control form-control-sm" name="bank_till_id" aria-label="' . h(lang('Bank account')) . '">' . $tills . '</select>' . erp_no_till_hint($till_count, 'cheque') . '</div>';
 
 $output_steps = '';

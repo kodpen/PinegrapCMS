@@ -145,6 +145,11 @@ if (!$_POST) {
     // load.
     require_once(dirname(__FILE__) . '/product_builder.php');
 
+    // The stock quantity cell is read as the product list's Modify Selected
+    // reads its box (pg_products_mass_quantity_value()): 1.200 on a Turkish
+    // panel is twelve hundred. The non-strict session would store 1.
+    require_once(PG_FUNCTIONS_DIR . '/includes/explorer/handle_products_bulk.php');
+
     if (pg_products_import_is_spreadsheet($_FILES['file']['name'])) {
 
         $import_error = '';
@@ -300,6 +305,12 @@ if (!$_POST) {
         }
     }
 
+    $inventory_quantity_position = array_search('inventory_quantity', $column_names, true);
+
+    // A file with a tracking or a stock column sets the out-of-stock mark of
+    // each product it writes, as the product screens do.
+    $stock_columns_in_file = in_array('inventory', $column_names, true) || ($inventory_quantity_position !== false);
+
     $rows_not_amounts = array();
     $rows_not_numbers = array();
     $rows_not_customs = array();
@@ -329,7 +340,17 @@ if (!$_POST) {
                 continue;
             }
 
-            if (pg_products_import_row_decimals_refused($row, $decimal_positions)) {
+            // The stock quantity as a whole count of zero or more, or null
+            // for an empty cell, which leaves the column as it is.
+            $row_quantity = null;
+            $quantity_cell = ($inventory_quantity_position !== false) ? trim(pg_products_import_row_value($row, $inventory_quantity_position)) : '';
+
+            if ($quantity_cell !== '') {
+                $row_quantity = pg_products_mass_quantity_value($quantity_cell);
+            }
+
+            if (pg_products_import_row_decimals_refused($row, $decimal_positions)
+                || (($quantity_cell !== '') && ($row_quantity === null))) {
                 $rows_not_numbers[] = $row_number . ' (' . htmlspecialchars((string) $row[$name_key], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ')';
                 continue;
             }
@@ -398,6 +419,15 @@ if (!$_POST) {
                                 }
 
                                 $column_value = $row_prices[$column_name];
+                            }
+
+                            // The stock quantity as read above.
+                            if ($column_name == 'inventory_quantity') {
+                                if ($row_quantity === null) {
+                                    continue;
+                                }
+
+                                $column_value = (string) $row_quantity;
                             }
 
                             // The "was" price: 0 takes it off, as an empty cell
@@ -575,6 +605,10 @@ if (!$_POST) {
                         WHERE name = '" . escape($row[$name_key]) . "'";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
+                    if ($stock_columns_in_file) {
+                        pg_products_import_stock_flag($product_id);
+                    }
+
                     pg_price_history_queue($product_id, 'import');
 
                     // If an enabled column exists and the product is disabled, then delete tag cloud keywords.
@@ -669,6 +703,15 @@ if (!$_POST) {
                                 $column_value = $row_prices[$column_name];
                             }
 
+                            // The stock quantity as read above.
+                            if ($column_name == 'inventory_quantity') {
+                                if ($row_quantity === null) {
+                                    continue;
+                                }
+
+                                $column_value = (string) $row_quantity;
+                            }
+
                             // The "was" price, read as on the update above. None (0)
                             // and a figure starting with '-' leave the column out,
                             // which keeps its default: NULL, none. A figure that is
@@ -734,6 +777,10 @@ if (!$_POST) {
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
                 
                 $product_id = mysqli_insert_id(db::$con);
+
+                if ($stock_columns_in_file) {
+                    pg_products_import_stock_flag($product_id);
+                }
 
                 pg_price_history_queue($product_id, 'import');
                 
@@ -905,11 +952,11 @@ if (!$_POST) {
         $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because a price, compare-at price or extra shipping cost in them is not an amount: {var:1}.', 'vars' => array($rows_listed))));
     }
 
-    // Rows left out because a weight, dimension or commission limit cell is
-    // not a number.
+    // Rows left out because a weight, dimension, commission limit or stock
+    // quantity cell is not a number.
     if ($rows_not_numbers) {
         $rows_listed = implode(', ', array_slice($rows_not_numbers, 0, 50)) . ((count($rows_not_numbers) > 50) ? ', ...' : '');
-        $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because a weight, length, width, height or commission rate limit in them is not a number: {var:1}.', 'vars' => array($rows_listed))));
+        $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because a weight, length, width, height, commission rate limit or stock quantity in them is not a number: {var:1}.', 'vars' => array($rows_listed))));
     }
 
     // Rows left out because an HS code or a country of origin cannot be stored.

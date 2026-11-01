@@ -2728,6 +2728,43 @@ function get_catalog_items_that_can_appear_in_search_results($parent_product_gro
     $items_that_can_appear_in_search_results['products'] = array_unique($items_that_can_appear_in_search_results['products']);
     return $items_that_can_appear_in_search_results;
 }
+/**
+ * The condition a product or product group column meets for a catalog search
+ * word ('contains' or 'is equal to'). I, İ, ı and i are one letter: the
+ * column is folded by REPLACE and the word by pg_list_search_fold(), as the
+ * panel lists do, so "LAMBASI" and "lambasi" find "Masa Lambası" and "Işık"
+ * finds "ışık"; utf8mb4_unicode_ci alone folds I with i but keeps ı apart.
+ * Folding only adds matches, so it runs whatever the site's language. Pure.
+ *
+ * @param string $column  SQL column, written into the query as it is
+ * @param string $operator 'contains' or 'is equal to'
+ * @param string $search_query
+ * @param string $charset the connection charset for CONVERT() ('utf8mb4' or
+ *                        'utf8'); '' leaves out the fold
+ * @return array array('sql' => '(…)', 'params' => values for db_q())
+ */
+function pg_catalog_search_condition($column, $operator, $search_query, $charset)
+{
+    $search_query = (string) $search_query;
+    $charset = (string) $charset;
+
+    if ($operator === 'contains') {
+        $where = pg_list_search_where(array($search_query), array($column), array(), $charset);
+
+        return array('sql' => $where['sql'], 'params' => $where['params']);
+    }
+
+    $alternatives = array($column . ' = ?');
+    $params = array($search_query);
+
+    if (($charset !== '') && preg_match('/[iIıİ]/u', $search_query)) {
+        $alternatives[] = 'REPLACE(REPLACE(CONVERT(' . $column . ' USING ' . $charset . "), 'İ', 'i'), 'ı', 'i') = ?";
+        $params[] = pg_list_search_fold($search_query);
+    }
+
+    return array('sql' => '(' . implode(' OR ', $alternatives) . ')', 'params' => $params);
+}
+
 // initialize a function for getting all items for search results for a certain field, operator, and search query
 // we have created a function for this so that we don't have to duplicate this large amount of code for every field that needs to be searched
 function get_catalog_search_results_for_field($field, $operator, $search_query, $items_that_can_appear_in_search_results, $added_items)
@@ -2736,16 +2773,9 @@ function get_catalog_search_results_for_field($field, $operator, $search_query, 
     $items = array();
     // initialize array that will store data for sorting
     $item_names = array();
-    // prepare sql comparison
-    $sql_comparison = "";
-    switch ($operator) {
-        case 'contains':
-            $sql_comparison = "LIKE '%" . escape(escape_like($search_query)) . "%'";
-            break;
-        case 'is equal to':
-            $sql_comparison = "= '" . escape($search_query) . "'";
-            break;
-    }
+    $charset = pg_list_search_connection_charset();
+    $group_condition = pg_catalog_search_condition($field, $operator, $search_query, $charset);
+    $product_condition = pg_catalog_search_condition('products.' . $field, $operator, $search_query, $charset);
     // get all select product groups where the field matches the comparison
     $query = "SELECT
 
@@ -2765,8 +2795,8 @@ function get_catalog_search_results_for_field($field, $operator, $search_query, 
 
             AND (display_type = 'select')
 
-            AND ($field $sql_comparison)";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            AND " . $group_condition['sql'];
+    $result = db_q($query, $group_condition['params']) or output_error(lang('Query failed.'));
     // loop through product groups in order to add them to array
     while ($row = mysqli_fetch_assoc($result)) {
         // if this product group can appear in search results and it has not been added already, then add it
@@ -2825,8 +2855,8 @@ function get_catalog_search_results_for_field($field, $operator, $search_query, 
 
             AND (product_groups.enabled = '1')
 
-            AND (products.$field $sql_comparison)";
-    $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
+            AND " . $product_condition['sql'];
+    $result = db_q($query, $product_condition['params']) or output_error(lang('Query failed.'));
     // loop through products in order to add the product or its product group to the array
     while ($row = mysqli_fetch_assoc($result)) {
         // if this product's product group is a browse product group, then add continue to determine if product should be added to array

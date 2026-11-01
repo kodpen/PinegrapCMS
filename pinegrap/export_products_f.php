@@ -197,6 +197,34 @@ function pg_products_export_value($product, $column)
     return (string) $value;
 }
 
+// The WHERE clause of the Catalog Manager's export: every product when
+// nothing is picked, else the picked products and the products of the picked
+// groups (the ids already include each group's subtree). $live_sql is
+// pg_catalog_bin_live_sql('products') and keeps the Recycle Bin out of every
+// scope, as the Products screen's export does; it is empty before the upgrade
+// that adds the bin.
+function pg_products_export_where($ids, $group_ids, $live_sql)
+{
+    $parts = array();
+
+    if (count($ids) > 0) {
+        $parts[] = 'id IN (' . implode(',', array_map('intval', $ids)) . ')';
+    }
+
+    if (count($group_ids) > 0) {
+        $parts[] = 'id IN (
+            SELECT product
+            FROM products_groups_xref
+            WHERE product_group IN (' . implode(',', array_map('intval', $group_ids)) . '))';
+    }
+
+    if (count($parts) == 0) {
+        return ($live_sql === '') ? '' : 'WHERE (1 = 1)' . $live_sql;
+    }
+
+    return 'WHERE (' . implode(' OR ', $parts) . ')' . $live_sql;
+}
+
 // The whole table: one heading row and one row per product.
 //
 // $where is a WHERE clause including the word WHERE, or an empty string, and
