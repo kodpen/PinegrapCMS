@@ -18,6 +18,7 @@ module: errors, mail_queue, backup, consent
 - Weekly zip (`pg_backup_run_auto()`; a folder if ZipArchive is missing). Retention: `pg_backup_prune_list()` (only `auto_backup_*` names).
 - Remote copy: FTP/FTPS, SigV4-signed S3 PUT, or via a connected account Google Drive / OneDrive / Dropbox (`includes/fn/backup_cloud.php`: 10 MiB chunked upload; retention also applies to the cloud folder).
 - Type is `config.backup_remote_type` VARCHAR(8): `gdrive`/`onedrive`/`dropbox`; its settings are only `connection_id` + `folder`; purpose is `backup`.
+- The dump (`pg_backup_dump_database()`) reads the tables in the site connection's character set, utf8mb4 (`pg_backup_dump_charset()`). Symptom it fixed: Mysqldump's default `SET NAMES utf8` turned every emoji or other four-byte character into `?` in every backup (bug hunt, PR filled in at merge).
 - Settings are encrypted in `config.backup_remote_settings` (`pg_backup_remote_encode/decode()`, per-type key, order `pg_backup_remote_types()`). Gate: `pg_backup_settings_ready()`.
 
 ## What does `consent` (cookie consent) do?

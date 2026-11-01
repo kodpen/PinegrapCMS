@@ -418,15 +418,43 @@ function pg_backup_skipped_tables()
 
 
 /**
+ * The character set the dump reads the tables in, from the site connection's.
+ *
+ * init_mysql_charset() opens the site's connection in utf8mb4 on every server
+ * that has it, and the tables store four-byte characters (emoji, some CJK).
+ * Mysqldump's own default is utf8, three bytes: the server sends each of
+ * those characters as "?" and the backup keeps the "?". Only a connection
+ * that is itself utf8 (a server older than 5.5.3) dumps in utf8; an unknown
+ * one dumps in utf8mb4, which every supported server has.
+ *
+ * @param mixed $connection_charset mysqli_character_set_name() of the site connection
+ * @return string 'utf8mb4' or 'utf8'
+ */
+function pg_backup_dump_charset($connection_charset)
+{
+    $charset = is_string($connection_charset) ? strtolower($connection_charset) : '';
+
+    return (($charset === 'utf8') || ($charset === 'utf8mb3')) ? 'utf8' : 'utf8mb4';
+}
+
+
+/**
  * The settings Mysqldump is given for a backup.
  *
+ * @param string|null $charset the dump's character set; null follows the site connection
  * @return array
  */
-function pg_backup_dump_settings()
+function pg_backup_dump_settings($charset = null)
 {
+    if ($charset === null) {
+        $connected = class_exists('db') && !empty(db::$con);
+        $charset = pg_backup_dump_charset($connected ? @mysqli_character_set_name(db::$con) : '');
+    }
+
     return array(
-        'no-data'        => array_keys(pg_backup_rowless_tables()),
-        'exclude-tables' => pg_backup_skipped_tables(),
+        'no-data'               => array_keys(pg_backup_rowless_tables()),
+        'exclude-tables'        => pg_backup_skipped_tables(),
+        'default-character-set' => $charset,
     );
 }
 
