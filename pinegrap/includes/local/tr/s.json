@@ -2217,6 +2217,7 @@
     "Sort (Shift+click adds a level)": "Sırala (Shift+tık ile düzey ekle)",
     "Sort Items": "Ögeleri Sırala",
     "Sort Order": "Sıralama Düzeni",
+    "Sort Order must be a whole number, or blank for random order.": "Sıralama tam sayı olmalı ya da rastgele sıra için boş bırakılmalıdır.",
     "Sort by": "Sıralama",
     "Sort control": "Sıralama kontrolü",
     "Sort direction": "Sıralama yönü",

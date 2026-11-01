@@ -142,10 +142,36 @@ function pg_ad_form_validate($liveform, $user, $id)
         }
     }
 
+    $sort_order_error = pg_ad_form_sort_order_error($liveform->get_field_value('sort_order'));
+
+    if ($sort_order_error !== '') {
+        $liveform->mark_error('sort_order', $sort_order_error);
+    }
+
     // a user role may only put the ad into an ad region it has access to
     if (($liveform->check_field_error('ad_region_id') == false) && ($user['role'] == 3) && (in_array($liveform->get_field_value('ad_region_id'), get_items_user_can_edit('ad_regions', $user['id'])) == FALSE)) {
         $liveform->mark_error('ad_region_id', lang('You do not have access to the selected Ad Region, so please select a different Ad Region.'));
     }
+}
+
+/**
+ * The error for a Sort Order value, or '' when it is fine: blank (random
+ * order) or a whole number of up to four digits, as the field allows. The
+ * column is an integer, so anything else was stored as 0 or cut, and the
+ * ad went back to random order without a word.
+ *
+ * @param mixed $value  The posted value
+ * @return string
+ */
+function pg_ad_form_sort_order_error($value)
+{
+    $value = trim((string) $value);
+
+    if (($value === '') || preg_match('/^[0-9]{1,4}$/', $value)) {
+        return '';
+    }
+
+    return lang('Sort Order must be a whole number, or blank for random order.');
 }
 
 /**
