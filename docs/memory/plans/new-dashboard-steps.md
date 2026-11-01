@@ -33,9 +33,9 @@ description: Steps N1-N14 of plans/new-dashboard.md: size, screens, order, which
 
 - N10 Pipeline and queue. Screens 02, 03. Cut in four, each `free` after N4 unless said.
   - N10a (M) `pipeline` per preset with sparklines, flags and filtered links. `free`.
-  - N10b (S) `queue`: rows, tags, tones, actions; sources forms (24 h), comments waiting, critical SEO, accessibility, overdue tasks, approvals; renderer file `pg_dash_cards_work.js`. In #PRNUM.
+  - N10b (S) `queue`: rows, tags, tones, actions; sources forms (24 h), comments waiting, critical SEO, accessibility, overdue tasks, approvals; renderer file `pg_dash_cards_work.js`. In #4895.
   - N10c (S) `queue` sources of the shop and accounting (unshipped orders, low stock, refund requests, overdue invoices) and drafts ready, through N9's Operations Desk helpers. `free` after N9.
-  - N10d (S) `visitmap` as question 2 decided. Held: a raw `visitors` count clashes with the `visitors/` key rules; architect issue linked from #PRNUM.
+  - N10d (S) `visitmap` as question 2 decided. Held: a raw `visitors` count clashes with the `visitors/` key rules; architect issue #4896.
 
 - N11 (M) Assistant and flows. Screens 01, 02, 15. `free` after N4.
   - `ai` connected and not connected, proposals, giving a job, the daily summary as question 3 decided; `flows` tiles, the current run, last runs with Approve and Retry through the flow endpoints.
