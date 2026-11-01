@@ -60,14 +60,22 @@ function test_reviews_refusal_messages()
 	pg_assert_same('', pg_review_refusal_message('anything else'));
 }
 
-// A bought order is finished and, when it is a bank transfer, paid or put on
-// the account; a cart line saved for later was not bought.
+// A bought order is finished and, when its money can still be on the way (a
+// bank transfer, a payment its service left pending), paid or put on the
+// account; a cart line saved for later was not bought.
 function test_reviews_purchase_sql()
 {
 	$bought = pg_review_bought_sql();
 
 	pg_assert_contains("orders.status IN ('complete', 'exported')", $bought);
-	pg_assert_contains("orders.payment_method <> 'Offline Payment'", $bought);
+	pg_assert_contains("orders.payment_method NOT IN ('Offline Payment'", $bought);
+
+	// Every method an order can wait on money with, as pg_order_awaiting_payment()
+	// reads them: a pending PayPal Checkout payment is not bought either.
+	foreach (array_merge(array('Offline Payment'), pg_order_pending_payment_methods()) as $method) {
+		pg_assert_true(preg_match("/orders\\.payment_method NOT IN \\([^)]*'" . preg_quote($method, '/') . "'/", $bought) === 1, $method . ' waits for its money');
+	}
+
 	pg_assert_contains('orders.paid_at > 0', $bought);
 	pg_assert_contains('orders.erp_on_account = 1', $bought);
 
