@@ -8,7 +8,7 @@ description: Collection fields in lists and feeds (C4a, C4b2, C5a): numeric sort
 
 ## How does a list filter on a reference?
 - `pg_sw_form_list_filter_sql()`: a reference field (kind and `reference_page_id` from `pg_sw_filter_form_fields()`) compared with "is equal to" / "is not equal to" looks the value up with `pg_coll_reference_lookup()`: a complete record of the target form whose address name or reference code is the value byte for byte (address name first). Found: the code is compared; not found: the value as given (matches nothing, so the page is `empty` and noindex).
-- Pick list, radio button: one row, compared with the code. Check box, multiple pick list: one row per code, counted as before. Text box (several codes joined by ", "): membership, `pg_coll_reference_holds_sql()` (`FIND_IN_SET`, spaces dropped).
+- Pick list, radio button: one row, compared with the code. Check box, multiple pick list: one row per code, counted as before. Text box (several codes joined by ", "): membership, `pg_coll_reference_holds_sql()` (`FIND_IN_SET`, no spaces, #4650).
 - A fixed filter value is looked up too, so a list may name an address name.
 
 ## What does the page print for ?category=news?
