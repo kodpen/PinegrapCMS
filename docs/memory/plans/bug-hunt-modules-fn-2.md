@@ -172,13 +172,13 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `widgets_order_form`: open
 
-- `widgets_order_preview`: open
+- `widgets_order_preview`: clean (flags, method rows and On Account, page row changes, recipients and gift card markup escaping, tokens, form wrapper checked)
 
 - `widgets_parts`: open
 
-- `widgets_parts_anywhere`: open
+- `widgets_parts_anywhere`: clean (marker encode and decode, read-only refusals, injection into the main loop, span take and place counting checked)
 
-- `widgets_parts_forms`: open
+- `widgets_parts_forms`: clean (cancel and return forms against cancel_order.php and order_return.php fields and limits, restored controls, label pairing, cart product form attributes checked)
 
 - `widgets_photo_gallery`: done (#4754)
 
