@@ -8,7 +8,8 @@
  * Each person connects their own account: the calendar is theirs, and nobody
  * writes into a colleague's. Google's calendar.app.created lets the site make
  * a calendar of its own and manage the events in it; it cannot see or change
- * any other calendar of the person.
+ * any other calendar of the person. Microsoft has nothing narrower than
+ * Calendars.ReadWrite; the site keeps to the calendar it made, by its id.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -25,6 +26,7 @@ return array(
     'description' => lang('Writes this person\'s Workspace tasks to a calendar of their own in their account.'),
     'owner'       => 'person',
     'scopes'      => array(
-        'google' => array('https://www.googleapis.com/auth/calendar.app.created'),
+        'google'    => array('https://www.googleapis.com/auth/calendar.app.created'),
+        'microsoft' => array('https://graph.microsoft.com/Calendars.ReadWrite'),
     ),
 );

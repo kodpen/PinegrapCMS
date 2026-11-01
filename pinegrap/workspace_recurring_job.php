@@ -46,10 +46,10 @@ if (ws_enabled() && function_exists('ws_holiday_feeds_tick')) {
     ws_holiday_feeds_tick();
 }
 
-// A person's tasks written to their Google Calendar, one person a run
+// A person's tasks written to their own calendar, one person a run
 // (includes/workspace/calendar_sync.php).
-if (ws_enabled() && function_exists('ws_gcal_tick')) {
-    ws_gcal_tick();
+if (ws_enabled() && function_exists('ws_calsync_tick')) {
+    ws_calsync_tick();
 }
 
 // Requests to Claude that waited through a daily limit or a failed call, and
