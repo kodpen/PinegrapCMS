@@ -876,8 +876,7 @@ function pg_list_state($screen, $columns, $default)
     $_SESSION['software']['list_state'][$screen] = $kept;
 
     // A positive whole number, or the first page: the value reaches LIMIT.
-    $page = $_REQUEST['screen'] ?? '';
-    $page = (is_scalar($page) && is_numeric($page) && ($page > 0) && ($page == round($page))) ? (int) $page : 1;
+    $page = pg_list_page_number($_REQUEST['screen'] ?? '');
 
     return array('sort' => $levels[0]['sort'], 'order' => $levels[0]['order'], 'sorts' => $levels, 'screen' => $page);
 }

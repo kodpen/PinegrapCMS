@@ -201,6 +201,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-and-table-screens.md: Panel list and table rules: the DataTables list markup, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs.
 - list-heading-copies.md: The copies DataTables (scrollX) and FixedHeader make of a panel list's heading: which leave the Tab order, why the sizing copy stays readable, the floating heading no longer aria-hidden
 - list-label-sort.md: List columns that show a label for a stored code sort by that label (pg_list_label_order(), FIELD()); the link picker sorts in PHP with pg_list_sort_items()
+- list-page-number.md: How a panel list screen reads its ?screen= page number (pg_list_page_number()), and why 1e400 no longer breaks the offset
 - list-page-state.md: A paged panel list (table.chart) comes back on its page, length and search after Back (history.state, pgListState/pgListKeep); the pager landmark named from the DataTables language
 - list-period-navigator-and-clock.md: List screens: the month arrows step from the last shown month, the range heading follows the date order (list_period.php), pickers and times follow the 24-hour setting (#2039, #2040, #2058)
 - list-period-order.md: List date ranges: default a month ago to today on every request (pg_list_period_state(), PR #4463), reversed range swapped; Site Log presets in calendar days

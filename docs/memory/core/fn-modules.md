@@ -60,7 +60,7 @@ description: Generated from the module field of the memory files: each includes/
 - `layouts`: [[layout-code-tab]], [[layout-editor-classic]]
 - `legal_documents`: [[order-documents-address]]
 - `link_resolve`: [[designer-prototype-viewer]]
-- `list_paging`: [[list-label-sort]], [[server-paged-lists]]
+- `list_paging`: [[list-label-sort]], [[list-page-number]], [[server-paged-lists]]
 - `list_period`: [[list-period-navigator-and-clock]], [[list-period-order]], [[list-period-week]]
 - `mail`: [[mail-transport-failure]], [[single-email-address-boxes]]
 - `mail_parse`: [[mail-parse]]
