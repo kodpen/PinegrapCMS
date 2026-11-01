@@ -40,7 +40,7 @@ description: Generated from the module field of the memory files: each includes/
 - `events`: [[workspace-flows-event-depth]]
 - `explorer_side`: [[explorer-menu-tree]]
 - `files`: [[name-length-refusal]], [[settings-public-image-pickers]]
-- `forms`: [[csv-import-headings]], [[form-data-output-escape-flag]], [[form-view-newest-comment-cut]], [[report-dynamic-date-filter]]
+- `forms`: [[csv-import-headings]], [[form-data-output-escape-flag]], [[form-view-newest-comment-cut]], [[forms-api-request-checks]], [[report-dynamic-date-filter]]
 - `geo`: [[country-names-in-addresses]], [[panel-script-number-format]]
 - `google_analytics`: [[google-analytics-card]]
 - `google_reviews`: [[google-reviews-widget]]

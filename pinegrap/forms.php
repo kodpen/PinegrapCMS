@@ -27,6 +27,12 @@ function get_forms($request) {
         return error_response('We don\'t know which custom form to return forms for. Please pass the custom form page name via "custom_form" or custom form page ID via "custom_form_page_id".');
     }
 
+    $problem = pg_forms_request_problem($request);
+
+    if ($problem !== '') {
+        return error_response($problem);
+    }
+
     // If a page name was passed, then check that way.
     if ($request['custom_form']) {
 
@@ -356,7 +362,7 @@ function get_forms($request) {
                 return error_response('The offset ("' . $request['offset'] . '") is not valid. Please use a positive integer.');
             }
 
-            $sql_limit .= " " . $request['offset'] . ",";
+            $sql_limit .= " " . (int) $request['offset'] . ",";
         }
 
         // If the limit is not a positive integer, then return error.
@@ -368,7 +374,7 @@ function get_forms($request) {
             return error_response('The limit ("' . $request['limit'] . '") is not valid. Please use a positive integer.');
         }
 
-        $sql_limit .= " " . $request['limit'];
+        $sql_limit .= " " . (int) $request['limit'];
     }
 
     $forms = db_items("

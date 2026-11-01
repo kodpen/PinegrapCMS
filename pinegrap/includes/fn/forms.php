@@ -3667,6 +3667,77 @@ function pg_form_view_newest_comment($message)
     return $message;
 }
 
+/**
+ * The shape checks of a get_forms / get_form request (forms.php), run before
+ * anything reads the database. Returns the error message, or '' when the
+ * request is well formed. A limit or offset must be a positive whole number
+ * in digits: is_numeric() let "1.0", "1e1" and "+5" through into the SQL
+ * LIMIT clause, where they failed with an HTML error page. fields must be a
+ * list of names and each filter or sort entry an object with a name as its
+ * field: anything else reached in_array() or an array key and threw a
+ * TypeError on PHP 8.
+ */
+function pg_forms_request_problem($request)
+{
+    $is_name = function ($value) {
+        return is_string($value) || is_int($value);
+    };
+
+    foreach (array('offset', 'limit') as $key) {
+        $value = $request[$key] ?? '';
+
+        if (($value === '') || ($value === null) || ($value === 0) || ($value === '0') || ($value === false)) {
+            continue;
+        }
+
+        if (!(is_int($value) && ($value > 0)) && !(is_string($value) && ctype_digit($value) && (ltrim($value, '0') !== ''))) {
+            return 'The ' . $key . ' ("' . (is_scalar($value) ? $value : gettype($value)) . '") is not valid. Please use a positive integer.';
+        }
+    }
+
+    if (!empty($request['fields'])) {
+        if (!is_array($request['fields'])) {
+            return 'The fields must be a list of field names.';
+        }
+
+        foreach ($request['fields'] as $field) {
+            if (!$is_name($field)) {
+                return 'The fields must be a list of field names.';
+            }
+        }
+    }
+
+    if (!empty($request['filters']) && is_array($request['filters'])) {
+        foreach ($request['filters'] as $filter) {
+            if (!is_array($filter)) {
+                return 'A filter must be an object with a field, an operator and a value.';
+            }
+
+            if (isset($filter['field']) && !$is_name($filter['field'])) {
+                return 'The field for a filter must be a field name.';
+            }
+        }
+    }
+
+    if (!empty($request['sort'])) {
+        if (is_array($request['sort'])) {
+            foreach ($request['sort'] as $sort_field) {
+                if (!is_array($sort_field)) {
+                    return 'A sort must be an object with a field and an order.';
+                }
+
+                if ((isset($sort_field['field']) && !$is_name($sort_field['field'])) || (isset($sort_field['order']) && !is_string($sort_field['order']))) {
+                    return 'The field for a sort must be a field name.';
+                }
+            }
+        } else if (!$is_name($request['sort']) || (isset($request['sort_order']) && !is_string($request['sort_order']))) {
+            return 'The field for the sort must be a field name.';
+        }
+    }
+
+    return '';
+}
+
 function get_standard_fields_for_view()
 {
     $standard_fields = array(
