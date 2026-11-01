@@ -4717,8 +4717,8 @@ function init_product_group_attributes(properties) {
         $('.attributes').append(
             '<div class="col-12 my-3 attribute attribute_' + attribute.id + '" data-attribute-id="' + attribute.id + '">\
                 <label class="form-label" for="default_option_id_' + attribute.id + '">' + h(attribute.name) + '</label>\
-                <div class="input-group">\
-                    <label class="input-group-text" for="default_option_id_' + attribute.id + '">' + label['Default Option'] + ':</label>\
+                <div class="input-group pg-attribute-default">\
+                    <label class="input-group-text pg-attribute-default-label" for="default_option_id_' + attribute.id + '">' + label['Default Option'] + ':</label>\
                     <select id="default_option_id_' + attribute.id + '" class="default_option_id form-control">\
                         <option value="">-' + label['None'] + '-</option>\
                         ' + output_options + '\
