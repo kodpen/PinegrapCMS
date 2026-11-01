@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-17
-description: Decisions list, product part 17 (2026-11-01 midday on): WebP at a picture's own address (default, convert doors, master file); the new dashboard's storage, visitor map, daily summary, role lock
+description: Decisions list, product part 17 (2026-11-01 midday on): WebP at a picture's own address; the new dashboard's four questions; the Turkish district list and country place packs
 ---
 
 ## Where are the rules and the earlier parts?
@@ -12,3 +12,6 @@ description: Decisions list, product part 17 (2026-11-01 midday on): WebP at a p
 
 ## The new dashboard: storage, visitor map, daily summary, role default and lock (2026-11-01)
 - Owner (2026-11-01, PR #4669, the four questions of `plans/new-dashboard.md`): (1) one new table `dashboard_layout` (step `11.0.141`) holds the switch, the person's layout and look, the sign-in times, the role defaults and the lock; (2) a site behind Cloudflare takes the visitor's city from `CF-IPCity` and writes it on the visit, otherwise the visitor map draws at country level, no schema; (3) the assistant card's daily summary is a setting with an hour, off by default, since each run spends one of the admin's daily Claude runs; (4) a role default reaches people who never saved a layout, and a lock shows everyone in the role the default and blocks editing while their own layouts are kept for when it lifts. The current dashboard and its `dashboard` row stay untouched.
+
+## Address place lists: the Turkish district list, an unknown district, other countries (2026-11-01)
+- Owner (2026-11-01, PR #4683, `plans/address-fields-by-country.md`): (1) the Turkish district list is compiled by us from the official public list into the repository under MIT, never a ready-made compilation with its licence; (2) a district not in the list is accepted, the order screen shows a yellow note and a spelling that matches a listed name is corrected, so a new or renamed district never blocks an order; (3) other countries get lists as files contributed per country, a country without a pack keeps the city as free text, and no GeoNames download from the panel is built.

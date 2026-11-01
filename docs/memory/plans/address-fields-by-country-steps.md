@@ -22,14 +22,13 @@ description: Steps A1-A8 of plans/address-fields-by-country.md: site labels and 
 - A4 (S) Panel and ERP labels. After A1.
   - `verified_shipping_address_form.php`, ERP account and waybill forms: İl/İlçe for Turkey (ERP card fields unchanged: card city = il, district = ilçe). Turkish default layout `1005.php` still says "City" / "State / Province".
 
-- A5 (M) Turkish place list. After A1 and questions 1 and 2.
+- A5 (M) Turkish place list. After A1.
   - `includes/geo/places/TR.json` (`TR-01`…`TR-81` → district names, 973 with the 51 "Merkez"), found by `states.plate_code` or name; the İlçe box suggests "Kadıköy / İstanbul" and fills the İl, so field order does not matter; the server corrects a matching spelling; question 2 for the rest. Tests on the lookup and spelling.
 
-- A6 (S) Lists as country packs. After A5 and question 3.
+- A6 (S) Lists as country packs. After A5.
   - Loader and picker take any `includes/geo/places/<CC>.json`; ERP and panel forms use the picker; the pack format in a memory file.
 
-- A7 (M) Downloaded lists. Only if question 3 says so.
-  - Per-country GeoNames download into `data/geo/`, attribution, suggestions only.
+- A7 Downloaded lists: not built (question 3 chose country packs). A country without a pack keeps free text.
 
 - A8 (S) Close-out.
   - Lasting decisions to `commerce/` and `designer/`; the three plan files deleted.
