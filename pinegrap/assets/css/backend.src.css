@@ -2356,6 +2356,23 @@ body:not(.toolbar) .software-content {
   padding: 0.3em 0.55em;
   pointer-events: none;
 }
+/* The same count on the panel entry it is about (the ERP's Overdue): in
+   the entry's right padding, so the label's ellipsis never cuts it. */
+#menu .menu-body .pg-menu-panel-body > a.pg-menu-has-badge {
+  position: relative;
+  padding-right: 2.75rem;
+}
+#menu .menu-body .pg-menu-panel-body > a .pg-menu-badge {
+  position: absolute;
+  right: 0.625rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.3em 0.55em;
+  pointer-events: none;
+}
 #menu:not(.expanded) .list-group .list-group-item .pg-menu-badge {
   right: 2px;
   top: 2px;
