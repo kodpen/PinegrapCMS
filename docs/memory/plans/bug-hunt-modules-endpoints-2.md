@@ -104,7 +104,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 
 - Endpoints purge_cache, push_job, reload_theme, reserve_calendar_event, reset_password, retrieve_order: open
 
-- Endpoints get_robots.txt, router, send_email_campaign, view_sessions, get_set_password, shipworks: open
+- Endpoints get_robots.txt, router, send_email_campaign, view_sessions, get_set_password, shipworks: taken by a bug-hunt worker
 
 - Endpoints si, signature_receipt, signin, get_site_icon, get_sitemap_info, get_sitemap.xml: open
 
