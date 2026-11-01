@@ -1748,6 +1748,11 @@ function pg_output_email_off_close()
 
 function output_header_secure($properties = false)
 {
+    // Messages printed from here on are panel markup (liveform::panel_output()).
+    if (!defined('PG_PANEL_OUTPUT')) {
+        define('PG_PANEL_OUTPUT', true);
+    }
+
     $software_page_title = '';
     if (isset($properties['title'])) {
         $software_page_title = $properties['title'] . ' - ';
@@ -1813,6 +1818,11 @@ function pg_output_go_script($url)
 
 function output_header($properties = false)
 {
+    // Messages printed from here on are panel markup (liveform::panel_output()).
+    if (!defined('PG_PANEL_OUTPUT')) {
+        define('PG_PANEL_OUTPUT', true);
+    }
+
     //output
     $output = '';
     //user
