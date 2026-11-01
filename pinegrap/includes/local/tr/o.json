@@ -1135,6 +1135,7 @@
     "Orders read up to {var:1}": "Siparişler {var:1} tarihine kadar okundu",
     "Orders retrieved successfully.": "Siparişler başarıyla getirildi.",
     "Orders today": "Bugünkü siparişler",
+    "Orders, books and customers are handled in the control panel. The blog, the events, the staff directory and the conversations with readers are kept here.": "Siparişler, kitaplar ve müşteriler kontrol panelinde yönetilir. Blog, etkinlikler, personel rehberi ve okurlarla görüşmeler burada durur.",
     "Orders, books and customers are handled in the control panel. The blog, the staff directory and the conversations with readers are kept here.": "Siparişler, kitaplar ve müşteriler kontrol panelinde yönetilir. Blog, personel rehberi ve okurlarla görüşmeler burada durur.",
     "Orders, products and customers are handled in the control panel. The blog, the staff directory and the conversations with customers are kept here.": "Siparişler, ürünler ve müşteriler kontrol panelinde yönetilir. Blog, personel rehberi ve müşterilerle görüşmeler burada durur.",
     "Orders, products and customers are handled in the control panel. The journal, the staff directory and the conversations with customers are kept here.": "Siparişler, ürünler ve müşteriler kontrol panelinde yönetilir. Günce, personel rehberi ve müşterilerle görüşmeler burada durur.",
