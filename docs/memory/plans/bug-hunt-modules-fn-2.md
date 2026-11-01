@@ -26,7 +26,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `record_revisions`: open
 
-- `returns`: open
+- `returns`: clean (LH: statuses and moves, held quantities, withdrawal window and refund deadline dates, line and repeat checks, create lock and transaction, refund lock, driver refusal and unclear paths, refund estimate and ERP line map, amount parsing, reminder stages and stamps, customer and panel HTML and mail escaping, column lengths against the schema checked)
 
 - `reviews`: taken by LC, #4597
 
