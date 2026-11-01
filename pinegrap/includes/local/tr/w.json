@@ -263,6 +263,7 @@
     "We work with most private insurers and send the bill to them directly; you pay only what your policy does not cover.": "Çoğu özel sigortayla çalışıyor ve faturayı doğrudan onlara gönderiyoruz; yalnızca poliçenizin karşılamadığı kısmı ödersiniz.",
     "We would like to receive it by {var:1}.": "{var:1} tarihine kadar teslim almak istiyoruz.",
     "We'll be back soon": "Yakında geri döneceğiz",
+    "We're sorry, shipping information can only be gathered during the checkout process.": "Üzgünüz, teslimat bilgileri yalnızca ödeme sırasında alınabilir.",
     "We're sorry, shipping information can only be gathered during the checkout process. <a href=\"javascript:history.go(-1)\">Go back</a>": "Üzgünüz, kargo bilgileri yalnızca ödeme işlemi sırasında toplanabilir. <a href=\"javascript:history.go(-1)\">Geri git</a>",
     "We're sorry, the quantity you entered for {var:1} has been reduced because the availabilty of the item is currently limited.": "Üzgünüz, {var:1} için girdiğiniz miktar düşürüldü çünkü öğenin mevcut durumu şu anda sınırlı.",
     "We're sorry, we allow a maximum quantity of {var:1} for {var:2}, so we have decreased the quantity for you.": "Üzgünüz, {var:2} için maksimum miktar {var:1} olmalıdır, bu nedenle miktarı sizin için azalttık.",

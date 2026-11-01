@@ -113,3 +113,22 @@ function test_site_language_no_image_placeholder_has_no_words()
 	pg_assert_same(0, preg_match('~aria-label=~', $svg), 'aria-label');
 	pg_assert_true(preg_match('~<svg\b[^>]*\baria-hidden="true"~', $svg) === 1, 'hidden from assistive technology');
 }
+
+// The classic checkout steps (order preview, shipping address and arrival,
+// billing information) print their visitor texts through lang() as well.
+function test_site_language_classic_checkout_steps_markup()
+{
+	foreach (array('get_order_preview.php', 'get_shipping_address_and_arrival.php', 'get_billing_information.php') as $file) {
+		pg_assert_same(array(), pg_test_site_language_literal_texts(PG_FUNCTIONS_DIR . '/' . $file), $file);
+	}
+}
+
+// The order preview's Change link and its billing country.
+function test_site_language_order_preview_change_link_and_country()
+{
+	$widgets = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_order_preview.php');
+	$preview = file_get_contents(PG_FUNCTIONS_DIR . '/get_order_preview.php');
+
+	pg_assert_same(0, preg_match('~>Change</~', $widgets), 'fixed Change link');
+	pg_assert_same(0, substr_count($preview, 'h($billing_country)'), 'billing country printed as its code');
+}
