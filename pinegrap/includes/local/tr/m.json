@@ -635,6 +635,7 @@
     "Monday": "Pazartesi",
     "Monday at {var:1}": "Pazartesi {var:1}",
     "Monday to Friday": "Pazartesiden cumaya",
+    "Monday to Friday, 9:00–18:00": "Pazartesi–Cuma, 9:00–18:00",
     "Monday – Friday": "Pazartesi – Cuma",
     "Monday, Wednesday and Friday": "Pazartesi, çarşamba ve cuma",
     "Monday–Friday": "Pazartesi–Cuma",
