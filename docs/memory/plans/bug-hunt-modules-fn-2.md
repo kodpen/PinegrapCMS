@@ -190,7 +190,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `widgets_starters`: open
 
-- `widgets_tag_cloud`: open
+- `widgets_tag_cloud`: clean (classic and Search Results widget keyword reads against the classic sync, merge and case folding, size and weight scale, token escaping and search links checked)
 
 - `widgets_wishlist`: clean (owner-only list read, background renders, token escaping and raw price keys, row action wiring and hidden forms, stock and discount rules against the catalog cards, shop and login links checked)
 
