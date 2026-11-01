@@ -230,6 +230,7 @@ function pg_panel_file_explorer($request, $action)
             }
 
             $result = db_q("DELETE FROM files WHERE id = ?", array((string) $file_id)) or output_error('Query failed');
+            pg_file_versions_delete_file($file_id);
             // delete file's system css properties in case any exist
             $query = "DELETE FROM system_theme_css_rules WHERE file_id = ?";
             $result = db_q($query, array((string) $file_id)) or output_error('Query failed.');

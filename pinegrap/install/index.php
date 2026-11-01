@@ -8919,6 +8919,7 @@ function get_tables() {
 		'erp_waybills',
 		'excluded_transit_dates',
 		'express_order_pages',
+		'file_versions',
 		'files',
 		'folder',
 		'folder_view_pages',

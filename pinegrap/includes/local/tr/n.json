@@ -1060,6 +1060,7 @@
     "No variant set matches the current filters.": "Mevcut filtrelerle eşleşen varyant seti yok.",
     "No variant sets yet. Create a product and tick two or more attribute options to make one.": "Henüz varyant seti yok. Bir ürün oluşturup iki veya daha fazla özellik seçeneği işaretleyin.",
     "No variants to create.": "Oluşturulacak varyant yok.",
+    "No versions yet. The first save keeps the original.": "Henüz sürüm yok. İlk kayıt orijinali saklar.",
     "No viewport tag (mobile rendering)": "Viewport etiketi yok (mobil görünüm)",
     "No walk-in sales account is named on the ERP settings card, so this sale cannot be invoiced unless a customer is picked.": "ERP ayar kartında sıcak satış carisi tanımlı değil; müşteri seçilmezse bu satış faturalanamaz.",
     "No webhook ID is stored for PayPal.": "PayPal için kayıtlı webhook kimliği yok.",

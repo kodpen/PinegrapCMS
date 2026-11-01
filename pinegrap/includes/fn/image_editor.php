@@ -585,6 +585,8 @@ function pg_image_editor_open($request, $user)
         return $file['refusal'];
     }
 
+    $state = pg_file_versions_open_state((int) $file['row']['id'], $file['path']);
+
     return array(array(
         'status' => 'success',
         'file'   => array(
@@ -593,7 +595,12 @@ function pg_image_editor_open($request, $user)
             // Stamped: the browser may keep a file for a week under one address.
             'url'     => PATH . encode_url_path($file['row']['name']) . '?v=' . (int) @filemtime($file['path']),
             'replace' => $file['replace'],
-            'notice'  => $file['animated'] ? lang('An animated image is saved as a still copy.') : '')), 200);
+            'notice'  => $file['animated'] ? lang('An animated image is saved as a still copy.') : ''),
+        // The newest save's document and the version it was drawn on, which
+        // the browser loads instead of the file (action picture).
+        'versions' => $state['count'],
+        'doc'      => $state['doc'],
+        'base'     => $state['base']), 200);
 }
 
 /**
@@ -870,6 +877,36 @@ function pg_image_editor_save($request, $user)
 
     $source = $file['path'];
     $layer = '';
+    $base = null;
+    $base_id = isset($request['base']) ? (int) $request['base'] : 0;
+
+    // The document is drawn on the version the browser opened (the original
+    // when the file has versions): the pixels are made from that one. A
+    // replace keeps the pixels it writes over as a version first.
+    if (pg_file_versions_ready()) {
+        if ($mode === 'replace') {
+            $base = pg_file_versions_before_save((int) $file['row']['id'], $file['path'], $base_id, $user['id']);
+
+            if (!$base) {
+                @unlink($overlay);
+                return pg_image_editor_refusal(($base_id > 0) ? lang('Invalid request.') : lang('Sorry, the file could not be saved.'));
+            }
+        } elseif ($base_id > 0) {
+            $base = pg_file_versions_row((int) $file['row']['id'], $base_id);
+
+            if (!$base || ((string) $base['doc_json'] !== '')) {
+                @unlink($overlay);
+                return pg_image_editor_refusal(lang('Invalid request.'));
+            }
+        }
+
+        if ($base_id > 0) {
+            $source = pg_file_versions_path($base);
+        }
+    } elseif ($base_id > 0) {
+        @unlink($overlay);
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
 
     // A server without Imagick has no colour matrix: the browser sends the
     // picture it loaded with the colour step done (the colour layer), of its
@@ -924,7 +961,13 @@ function pg_image_editor_save($request, $user)
         return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
     }
 
-    return pg_image_editor_record($mode, $name, (int) $file['row']['folder'], (string) $file['row']['type'], $file['row'], $user);
+    $record = pg_image_editor_record($mode, $name, (int) $file['row']['folder'], (string) $file['row']['type'], $file['row'], $user);
+
+    if (($mode === 'replace') && $base && ($record[0]['status'] === 'success')) {
+        pg_file_versions_after_save((int) $file['row']['id'], FILE_DIRECTORY_PATH . '/' . $name, isset($request['doc_object']) ? $request['doc_object'] : null, $base, $user['id']);
+    }
+
+    return $record;
 }
 
 /**
@@ -934,8 +977,10 @@ function pg_image_editor_save($request, $user)
  *
  *   { token, action: 'open', file_id }
  *       -> { status, file: { id, name, url, replace, notice } }
+ *       (and versions, doc, base: the versions this file has)
  *   { token, action: 'save', mode: 'replace'|'copy'|'new', file_id | folder_id,
- *     doc, overlay?, picture? and name? (new) }
+ *     doc, base? (the version the document is drawn on), overlay?, picture?
+ *     and name? (new) }
  *       -> { status, mode, id, name, folder, url, width, height, size }
  *   { token, action: '<name>', … }
  *       -> pg_image_editor_action_<name>($request, $user), a tool's own
@@ -988,6 +1033,10 @@ function pg_image_editor_api($body, $user)
     }
 
     if ($action === 'save') {
+        // The document once more as objects, as a version keeps it.
+        $objects = json_decode($body);
+        $request['doc_object'] = (is_object($objects) && isset($objects->doc)) ? $objects->doc : null;
+
         return pg_image_editor_save($request, $user);
     }
 
@@ -1155,6 +1204,14 @@ function pg_image_editor_strings_redact()
 }
 
 // -- Versions (pg_image_editor_versions.js) --
+// A replace save keeps versions of the file in file_versions (2026.11.0,
+// docs/memory/ui/image-editor-versions.md): a base row holds pixels and no
+// document (version 1, the original, copied before the first save writes
+// over the file; later ones where the file changed outside the editor); a
+// save row holds the result pixels and the document, whose source.base names
+// the base row it was drawn on. Opening loads that base and the document, so
+// layers and texts edit again. The pixels lie under data/file_versions/,
+// served only through this API.
 
 /**
  * The versions drawer: labels.
@@ -1163,7 +1220,544 @@ function pg_image_editor_strings_redact()
  */
 function pg_image_editor_strings_versions()
 {
-    return array();
+    return array(
+        'versions'          => lang('Versions'),
+        'versionsIntro'     => lang('Every save becomes a new version. Texts and shapes are kept as layers, so they can be changed later.'),
+        'versionN'          => lang('Version {n}'),
+        'versionLatest'     => lang('Latest'),
+        'versionOriginal'   => lang('Original upload'),
+        'versionSaved'      => lang('Saved in the image editor'),
+        'versionRestored'   => lang('Restored from an earlier version'),
+        'versionRedacted'   => lang('Saved with redaction'),
+        'versionYou'        => lang('You'),
+        'versionRestore'    => lang('Restore'),
+        'versionRestoreAsk' => lang('Discard changes and restore'),
+        'versionDelete'     => lang('Delete version'),
+        'versionPreview'    => lang('Preview'),
+        'versionPreviewing' => lang('Previewing version {n}'),
+        'versionEndPreview' => lang('Back to editing'),
+        'versionsNone'      => lang('No versions yet. The first save keeps the original.'),
+        'versionsError'     => lang('The versions could not be loaded.'),
+        'versionRestoredMsg' => lang('Version {n} restored.'),
+        'versionsKeep'      => lang('The original and the last 10 saves are kept.'));
+}
+
+// How many saves are kept besides version 1, the original (#4203).
+function pg_file_versions_keep()
+{
+    return 10;
+}
+
+/**
+ * The version ids the retention removes: every row but version 1 and the
+ * newest pg_file_versions_keep(). Pure.
+ *
+ * @param array $rows version_id and version_no of one file's rows
+ * @return int[] version ids, oldest first
+ */
+function pg_file_versions_pruned($rows)
+{
+    $saves = array();
+
+    foreach ($rows as $row) {
+        if ((int) $row['version_no'] > 1) {
+            $saves[(int) $row['version_no']] = (int) $row['version_id'];
+        }
+    }
+
+    ksort($saves);
+
+    return array_values(array_slice($saves, 0, max(0, count($saves) - pg_file_versions_keep())));
+}
+
+/**
+ * A version's file name under data/file_versions/: the file, the version and
+ * a digest, so no name repeats and nothing a user typed reaches the path.
+ * Pure.
+ *
+ * @return string '' for a part that cannot be used
+ */
+function pg_file_versions_stored_name($file_id, $version_no, $format, $digest)
+{
+    $format = strtolower((string) $format);
+
+    if (((int) $file_id <= 0) || ((int) $version_no <= 0) || !preg_match('/^[a-z0-9]{1,8}$/', $format) || !preg_match('/^[a-f0-9]{8,}$/', (string) $digest)) {
+        return '';
+    }
+
+    return (int) $file_id . '-' . (int) $version_no . '-' . substr((string) $digest, 0, 16) . '.' . $format;
+}
+
+/**
+ * Whether a document may be kept in a version row: at most 1 MB and no
+ * picture inside it (a pasted picture is a data: URL). One that may not is
+ * kept as a base row: its pixels, the layers drawn in. Pure.
+ */
+function pg_file_versions_doc_storable($json)
+{
+    $json = (string) $json;
+
+    return ($json !== '') && (strlen($json) <= 1048576) && !preg_match('#data:[a-z]+\\\\?/[a-z0-9.+-]+;base64,#i', $json);
+}
+
+/**
+ * The version_no of the base row a version was drawn on: its own for a base
+ * row, the document's source.base for a save row, 0 when unknown. Pure.
+ */
+function pg_file_versions_base_no($row)
+{
+    if ((string) $row['doc_json'] === '') {
+        return (int) $row['version_no'];
+    }
+
+    $doc = json_decode((string) $row['doc_json'], true);
+
+    return (is_array($doc) && isset($doc['source']['base']) && is_int($doc['source']['base'])) ? $doc['source']['base'] : 0;
+}
+
+/**
+ * The document a save row keeps: the browser's (decoded as objects), with
+ * the base it was drawn on, as JSON; '' when it may not be kept
+ * (pg_file_versions_doc_storable()). Pure.
+ */
+function pg_file_versions_doc_json($doc, $base_no)
+{
+    // An object from json_decode() without assoc keeps an empty {} an object;
+    // as an array it would come back as [] and lose what a tool adds to it.
+    if (!is_object($doc) || !isset($doc->source) || !is_object($doc->source)) {
+        return '';
+    }
+
+    $doc = clone $doc;
+    $doc->source = clone $doc->source;
+    $doc->source->base = (int) $base_no;
+    $json = json_encode($doc, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    return pg_file_versions_doc_storable($json) ? $json : '';
+}
+
+function pg_file_versions_dir()
+{
+    return PG_FUNCTIONS_DIR . '/data/file_versions';
+}
+
+// Before the 2026.11.0 upgrade has run there is no table: saves keep no
+// versions.
+function pg_file_versions_ready()
+{
+    return pg_schema_has('file_versions');
+}
+
+/**
+ * One file's versions, oldest first, without their documents.
+ *
+ * @return array rows
+ */
+function pg_file_versions_rows($file_id)
+{
+    $rows = db_items("SELECT version_id, file_id, version_no, doc_hash, stored_name, format, width, height, size, redacted, user_id, source, created_at, (doc_json <> '') AS has_doc FROM file_versions WHERE file_id = '" . (int) $file_id . "' ORDER BY version_no");
+
+    return is_array($rows) ? $rows : array();
+}
+
+// One version of a file with its document, or null.
+function pg_file_versions_row($file_id, $version_id)
+{
+    $row = db_item("SELECT * FROM file_versions WHERE file_id = '" . (int) $file_id . "' AND version_id = '" . (int) $version_id . "' LIMIT 1");
+
+    return $row ? $row : null;
+}
+
+function pg_file_versions_newest($file_id)
+{
+    $row = db_item("SELECT * FROM file_versions WHERE file_id = '" . (int) $file_id . "' ORDER BY version_no DESC LIMIT 1");
+
+    return $row ? $row : null;
+}
+
+function pg_file_versions_path($row)
+{
+    return pg_file_versions_dir() . '/' . basename((string) $row['stored_name']);
+}
+
+// Whether the file holds the version's pixels, byte for byte: false once
+// the file was changed outside the editor (rotated, optimized, uploaded over).
+function pg_file_versions_matches_file($row, $path)
+{
+    $version = pg_file_versions_path($row);
+
+    clearstatcache();
+
+    return is_file($path) && is_file($version) && ((int) @filesize($path) === (int) @filesize($version)) && (sha1_file($path) === sha1_file($version));
+}
+
+/**
+ * A new version of the file from the picture at $source_path, copied under
+ * data/file_versions/.
+ *
+ * @param int    $file_id
+ * @param string $source_path the pixels
+ * @param string $doc_json    '' for a base row
+ * @param string $source      save, restore, redact, copy or new
+ * @param int    $user_id
+ * @return array|null the row written
+ */
+function pg_file_versions_add($file_id, $source_path, $doc_json, $source, $user_id)
+{
+    $size = @getimagesize($source_path);
+    $bytes = (int) @filesize($source_path);
+    $formats = array(IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_GIF => 'gif', IMAGETYPE_WEBP => 'webp', IMAGETYPE_BMP => 'bmp');
+
+    if (defined('IMAGETYPE_AVIF')) {
+        $formats[IMAGETYPE_AVIF] = 'avif';
+    }
+
+    if (!$size || ($bytes <= 0) || !isset($formats[(int) $size[2]])) {
+        return null;
+    }
+
+    $dir = pg_file_versions_dir();
+
+    if (!is_dir($dir) && !@mkdir($dir, 0755, true) && !is_dir($dir)) {
+        return null;
+    }
+
+    $version_no = (int) db_value("SELECT MAX(version_no) FROM file_versions WHERE file_id = '" . (int) $file_id . "'") + 1;
+    $name = pg_file_versions_stored_name($file_id, $version_no, $formats[(int) $size[2]], sha1(uniqid((string) mt_rand(), true) . $source_path));
+    $path = $dir . '/' . $name;
+
+    if (($name === '') || !@copy($source_path, $path)) {
+        return null;
+    }
+
+    $saved = db_q("INSERT INTO file_versions (file_id, version_no, doc_json, doc_hash, stored_name, format, width, height, size, redacted, user_id, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, UNIX_TIMESTAMP())", array(
+        (int) $file_id, $version_no, (string) $doc_json, ($doc_json === '') ? '' : sha1($doc_json), $name, $formats[(int) $size[2]],
+        (int) $size[0], (int) $size[1], $bytes, (int) $user_id, (string) $source));
+
+    if (!$saved) {
+        @unlink($path);
+        return null;
+    }
+
+    return pg_file_versions_row($file_id, mysqli_insert_id(db::$con));
+}
+
+function pg_file_versions_delete_row($row)
+{
+    db("DELETE FROM file_versions WHERE version_id = '" . (int) $row['version_id'] . "'");
+    @unlink(pg_file_versions_path($row));
+}
+
+// The retention: the original and the last pg_file_versions_keep() saves.
+function pg_file_versions_prune($file_id)
+{
+    $ids = pg_file_versions_pruned(pg_file_versions_rows($file_id));
+
+    foreach (pg_file_versions_rows($file_id) as $row) {
+        if (in_array((int) $row['version_id'], $ids, true)) {
+            pg_file_versions_delete_row($row);
+        }
+    }
+}
+
+/**
+ * A deleted file takes its versions along: the rows and their pictures.
+ * Called where a files row is deleted for good (File Manager, Recycle Bin,
+ * the file and design file screens).
+ */
+function pg_file_versions_delete_file($file_id)
+{
+    if (((int) $file_id <= 0) || !pg_file_versions_ready()) {
+        return;
+    }
+
+    foreach (pg_file_versions_rows($file_id) as $row) {
+        pg_file_versions_delete_row($row);
+    }
+}
+
+// The bytes the files and their versions take, for Disk Usage.
+function pg_files_disk_usage()
+{
+    $bytes = (float) db_value("SELECT SUM(size) FROM files");
+
+    if (pg_file_versions_ready()) {
+        $bytes += (float) db_value("SELECT SUM(size) FROM file_versions");
+    }
+
+    return $bytes;
+}
+
+/**
+ * What opening a file needs from its versions: how many there are, and when
+ * the file still holds the newest save, that save's document and the base
+ * row it was drawn on.
+ *
+ * @return array count, doc (object or null), base (version id, 0 for the file
+ *               itself)
+ */
+function pg_file_versions_open_state($file_id, $path)
+{
+    $state = array('count' => 0, 'doc' => null, 'base' => 0);
+
+    if (!pg_file_versions_ready()) {
+        return $state;
+    }
+
+    $state['count'] = count(pg_file_versions_rows($file_id));
+    $newest = pg_file_versions_newest($file_id);
+
+    if (!$newest || ((string) $newest['doc_json'] === '') || !pg_file_versions_matches_file($newest, $path)) {
+        return $state;
+    }
+
+    // Decoded as objects, so an empty {} goes back to the browser as one.
+    $doc = json_decode((string) $newest['doc_json']);
+    $base_no = pg_file_versions_base_no($newest);
+    $base = ($base_no > 0) ? db_item("SELECT * FROM file_versions WHERE file_id = '" . (int) $file_id . "' AND version_no = '" . $base_no . "' AND doc_json = '' LIMIT 1") : null;
+
+    // A base the retention removed leaves the save's pixels: the file opens
+    // as it is, the layers drawn in.
+    if (!is_object($doc) || !$base || !is_file(pg_file_versions_path($base))) {
+        return $state;
+    }
+
+    $state['doc'] = $doc;
+    $state['base'] = (int) $base['version_id'];
+
+    return $state;
+}
+
+/**
+ * Before a replace save writes over the file: the base row its document is
+ * drawn on, added when needed so the pixels being written over stay.
+ *
+ *   base_id > 0  the version the browser loaded; the file, when it was
+ *                changed outside the editor since its newest version, is
+ *                kept first as a base row of its own
+ *   base_id 0    the file as it is; kept as a base row unless the newest
+ *                version is already a base row holding it (version 1 at the
+ *                first save)
+ *
+ * @return array|null the base row (path of its pixels in 'path'), or null
+ *                    when it cannot be found or written
+ */
+function pg_file_versions_before_save($file_id, $path, $base_id, $user_id)
+{
+    $newest = pg_file_versions_newest($file_id);
+    $same = $newest && pg_file_versions_matches_file($newest, $path);
+
+    if ((int) $base_id > 0) {
+        $base = pg_file_versions_row($file_id, $base_id);
+
+        if (!$base || ((string) $base['doc_json'] !== '') || !is_file(pg_file_versions_path($base))) {
+            return null;
+        }
+
+        if ($newest && !$same && !pg_file_versions_add($file_id, $path, '', 'save', $user_id)) {
+            return null;
+        }
+
+        return $base;
+    }
+
+    if ($same && ((string) $newest['doc_json'] === '')) {
+        return $newest;
+    }
+
+    return pg_file_versions_add($file_id, $path, '', 'save', $user_id);
+}
+
+/**
+ * After a replace save: the result as a save row with its document, unless
+ * the newest version already holds the same document; then the retention.
+ */
+function pg_file_versions_after_save($file_id, $path, $doc, $base, $user_id)
+{
+    $json = pg_file_versions_doc_json($doc, (int) $base['version_no']);
+    $newest = pg_file_versions_newest($file_id);
+
+    if (($json !== '') && $newest && ((string) $newest['doc_hash'] === sha1($json))) {
+        return;
+    }
+
+    pg_file_versions_add($file_id, $path, $json, 'save', $user_id);
+    pg_file_versions_prune($file_id);
+}
+
+// A version as the drawer lists it: kind original, restored, redacted or
+// saved; user '' for the one asking.
+function pg_file_versions_entry($row, $current, $user)
+{
+    $user_id = (int) $row['user_id'];
+
+    if ((int) $row['version_no'] === 1) {
+        $kind = 'original';
+    } elseif ((string) $row['source'] === 'restore') {
+        $kind = 'restored';
+    } elseif ((int) $row['redacted'] === 1) {
+        $kind = 'redacted';
+    } else {
+        $kind = 'saved';
+    }
+
+    return array(
+        'id'      => (int) $row['version_id'],
+        'no'      => (int) $row['version_no'],
+        'kind'    => $kind,
+        'when'    => get_absolute_time(array('timestamp' => (int) $row['created_at'], 'format' => 'plain_text')),
+        'user'    => (!$user_id || ($user_id === (int) $user['id'])) ? '' : (string) db_value("SELECT user_username FROM user WHERE user_id = '" . $user_id . "' LIMIT 1"),
+        'width'   => (int) $row['width'],
+        'height'  => (int) $row['height'],
+        'size'    => convert_bytes_to_string((int) $row['size']),
+        'current' => $current);
+}
+
+/**
+ * Action versions { file_id }: the file's versions, newest first.
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_versions($request, $user)
+{
+    $file = pg_image_editor_file(isset($request['file_id']) ? $request['file_id'] : 0, $user);
+
+    if ($file['refusal']) {
+        return $file['refusal'];
+    }
+
+    $list = array();
+    $rows = pg_file_versions_ready() ? pg_file_versions_rows($file['row']['id']) : array();
+    $newest = $rows ? $rows[count($rows) - 1] : null;
+    $current = $newest && pg_file_versions_matches_file($newest, $file['path']);
+
+    foreach (array_reverse($rows) as $row) {
+        $entry = pg_file_versions_entry($row, $current && ($row === $newest), $user);
+        $entry['delete'] = $file['replace'] && ((int) $row['version_no'] > 1) && ($row !== $newest);
+        $list[] = $entry;
+    }
+
+    return array(array('status' => 'success', 'versions' => $list, 'restore' => $file['replace']), 200);
+}
+
+/**
+ * Action picture { file_id, version_id }: a version's pixels, for the
+ * drawer's preview and for opening the base a document was drawn on.
+ *
+ * @return array array(payload, HTTP status); payload stream names the file
+ *               image_editor_api.php sends instead of JSON
+ */
+function pg_image_editor_action_picture($request, $user)
+{
+    $file = pg_image_editor_file(isset($request['file_id']) ? $request['file_id'] : 0, $user);
+
+    if ($file['refusal']) {
+        return $file['refusal'];
+    }
+
+    $row = pg_file_versions_ready() ? pg_file_versions_row($file['row']['id'], isset($request['version_id']) ? $request['version_id'] : 0) : null;
+    $path = $row ? pg_file_versions_path($row) : '';
+    $size = ($path !== '') ? @getimagesize($path) : false;
+
+    if (!$size) {
+        return pg_image_editor_refusal(lang('Sorry, we could not find the file.'));
+    }
+
+    return array(array('status' => 'success', 'stream' => $path, 'type' => (string) $size['mime']), 200);
+}
+
+/**
+ * Action restore { file_id, version_id }: the version's pixels become the
+ * file again (same id and name) and a new version records it; answers what
+ * opening the file answers, so the editor reloads it.
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_restore($request, $user)
+{
+    $file = pg_image_editor_file(isset($request['file_id']) ? $request['file_id'] : 0, $user);
+
+    if ($file['refusal']) {
+        return $file['refusal'];
+    }
+
+    if (!$file['replace'] || !pg_file_versions_ready()) {
+        return pg_image_editor_refusal(lang('Access denied'), 403);
+    }
+
+    $file_id = (int) $file['row']['id'];
+    $row = pg_file_versions_row($file_id, isset($request['version_id']) ? $request['version_id'] : 0);
+
+    if (!$row || !is_file(pg_file_versions_path($row))) {
+        return pg_image_editor_refusal(lang('Sorry, we could not find the file.'));
+    }
+
+    $newest = pg_file_versions_newest($file_id);
+
+    // The file changed outside the editor since its newest version: kept
+    // first, as a save would keep it.
+    if ($newest && !pg_file_versions_matches_file($newest, $file['path']) && !pg_file_versions_add($file_id, $file['path'], '', 'save', $user['id'])) {
+        return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
+    }
+
+    $data = @file_get_contents(pg_file_versions_path($row));
+
+    if (!is_string($data) || !pg_image_editor_put($file['path'], $data)) {
+        return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
+    }
+
+    $record = pg_image_editor_record('replace', (string) $file['row']['name'], (int) $file['row']['folder'], (string) $file['row']['type'], $file['row'], $user);
+
+    if ($record[0]['status'] !== 'success') {
+        return $record;
+    }
+
+    if ((int) $row['version_id'] !== (int) ($newest ? $newest['version_id'] : 0)) {
+        pg_file_versions_add($file_id, $file['path'], (string) $row['doc_json'], 'restore', $user['id']);
+        pg_file_versions_prune($file_id);
+    }
+
+    $state = pg_file_versions_open_state($file_id, $file['path']);
+
+    return array(array(
+        'status'   => 'success',
+        'no'       => (int) $row['version_no'],
+        'file'     => $record[0],
+        'url'      => $record[0]['url'],
+        'versions' => $state['count'],
+        'doc'      => $state['doc'],
+        'base'     => $state['base']), 200);
+}
+
+/**
+ * Action delete_version { file_id, version_id }: removes a version; never
+ * version 1, the original, nor the newest one, which the file holds.
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_delete_version($request, $user)
+{
+    $file = pg_image_editor_file(isset($request['file_id']) ? $request['file_id'] : 0, $user);
+
+    if ($file['refusal']) {
+        return $file['refusal'];
+    }
+
+    if (!$file['replace'] || !pg_file_versions_ready()) {
+        return pg_image_editor_refusal(lang('Access denied'), 403);
+    }
+
+    $file_id = (int) $file['row']['id'];
+    $row = pg_file_versions_row($file_id, isset($request['version_id']) ? $request['version_id'] : 0);
+    $newest = pg_file_versions_newest($file_id);
+
+    if (!$row || ((int) $row['version_no'] === 1) || ((int) $row['version_id'] === (int) $newest['version_id'])) {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    pg_file_versions_delete_row($row);
+
+    return array(array('status' => 'success', 'versions' => count(pg_file_versions_rows($file_id))), 200);
 }
 
 // -- Canvas and artboard (pg_image_editor_artboard.js) --
