@@ -32,7 +32,7 @@
 
     // Which kinds a style field applies to (all when missing).
     var FIELDS = {
-        fill: M.CLOSED_KINDS,
+        fill: M.CLOSED_KINDS.concat(['path']),
         radius: ['rect', 'bubble'],
         sides: ['polygon'],
         points: ['star'],

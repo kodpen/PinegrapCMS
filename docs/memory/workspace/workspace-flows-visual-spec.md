@@ -17,7 +17,7 @@ description: The Flows canvas look in numbers (owner, 2026-10-27): lines, type c
 ## Which icons? (16 px, 1.5 px stroke)
 - Boxes: manual start play, time start clock, event bolt, join person, web check globe, condition fork, message speech bubble, e-mail envelope, task check square, count summary bar chart, webhook three linked dots, approval shield with a tick, record change pencil, constants tag, derived value sigma.
 - Output dots (#4060, PR #4189): a 14 px ring in the type colour with an 8 px type icon inside (`#` number, `T` text; person, calendar, toggle for the others) and the output's label beside it; the row 14 px high. An invisible 24 × 24 px target (`.wsf-data-ring::before`) takes the pointer, touch long-press included.
-- Arrow ports (#4060, PR #4189): 10 px, 12 px on hover (`scale(1.2)`), 1.5 px ring in the page colour, centred 2 px outside the box's edge; an invisible 24 × 24 px target (`.wsf-port::before`).
+- Arrow ports (#4060, PR #4189): 10 px, 12 px on hover (`scale(1.2)`), 1.5 px ring in the page colour, centred 2 px outside the box's edge; an invisible 24 × 24 px target (`.pgc-port::before`).
 - Mini window (boxes 128 × 60): no ports; thread dots r 2.5 (5 px), already under the canvas ratio (14 / 208 × 128 ≈ 8.6 px), kept.
 
 ## How do run flags look?

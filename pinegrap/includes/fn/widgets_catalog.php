@@ -577,6 +577,15 @@ function _apply_catalog_listing_bindings(&$node, $context, &$bindings_used = nul
         $kept[] = array('name' => 'name',      'value' => isset($context['search_query_param']) ? $context['search_query_param'] : 'query');
         $kept[] = array('name' => 'value',     'value' => isset($context['search_query']) ? $context['search_query'] : '');
         $kept[] = array('name' => 'maxlength', 'value' => '100');
+        // A placeholder is no label: name a box the layout left unnamed.
+        $named = false;
+        foreach ($kept as $a) {
+            if (($a['name'] === 'aria-label' || $a['name'] === 'aria-labelledby')
+                && isset($a['value']) && trim((string)$a['value']) !== '') $named = true;
+        }
+        if (!$named && !empty($context['search_label'])) {
+            $kept[] = array('name' => 'aria-label', 'value' => (string)$context['search_label']);
+        }
         $node['props']['_attrs'] = $kept;
     }
 
@@ -1324,14 +1333,9 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             if (strncmp($_pg_gk, 'pg_attr_', 8) === 0) $_pg_clear_query_keys[] = $_pg_gk;
         }
     }
-    $_pg_search_hidden = '';
-    if (!empty($_GET) && is_array($_GET)) {
-        foreach ($_GET as $_pg_sk => $_pg_sv) {
-            if ($_pg_sk === $query_param || $_pg_sk === $page_param) continue;
-            if (is_array($_pg_sv)) continue;
-            $_pg_search_hidden .= '<input type="hidden" name="' . h($_pg_sk) . '" value="' . h((string)$_pg_sv) . '">';
-        }
-    }
+    // The router's page name on a pretty address is left out, as the
+    // widget's own search box does: it would only repeat the path.
+    $_pg_search_hidden = _pg_sw_hidden_query_inputs(array((string)$query_param, (string)$page_param));
     $_pg_bindings_used = array();
     _apply_catalog_listing_bindings($tree_decoded, array(
         'filters_offcanvas_id' => $_pg_off_id,
@@ -1340,6 +1344,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         'search_query_param'   => $query_param,
         'search_query'         => $search_query,
         'search_hidden_html'   => $_pg_search_hidden,
+        // Accessible name for a bound search box the layout left unnamed.
+        'search_label'         => (string)lang('Search products'),
         // Feature switches — nodes bound to a switched-off feature are
         // dropped from the output entirely (see _pg_catalog_binding_disabled).
         'search_ui_enabled'    => $search_enabled,
@@ -5982,7 +5988,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         $_civ_v_base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
                      . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
                      . '/assets/js/';
-        $_civ_v_v   = '8';  // bump on pg_civ_variants.js source changes
+        $_civ_v_v   = '9';  // bump on pg_civ_variants.js source changes
         $_civ_variant_script = '<script>window.pgCivVariants = window.pgCivVariants || [];'
             . 'window.pgCivVariants.push(' . json_encode($variant_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ');'
             . '</script>'

@@ -74,11 +74,11 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 
 - Endpoints `forgot` (2): open
 
-- Endpoints `form` (6): open
+- Endpoints `form` (6: `edit_form_item_view`, `edit_form_list_view`, `forms`, `get_form_item_view`, `get_form_list_view`, `preview_form`; also `get_form_view_directory_screen_content`): done #4571, #4582
 
 - Endpoints `generate` (3): open
 
-- Endpoints `gift` (3): open
+- Endpoints `gift` (3): done #4576, #4586 (add_gift_card, edit_gift_card, view_gift_cards)
 
 - Endpoints `google` (3): open
 
@@ -86,7 +86,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 
 - Endpoints `key` (5): open
 
-- Endpoints `login` (4): open
+- Endpoints `login` (4): taken by KZ (add_login_region, edit_login_region, get_login, login_as_user): #4594; the rest clean
 
 - Endpoints `logout` (2): open
 

@@ -1056,7 +1056,7 @@ function test_news_comment_labels()
 	foreach (_test_news_pages() as $key => $p) {
 		if (isset($p['comments'])) {
 			$found++;
-			pg_assert_true(in_array($p['comments']['label'], array(lang('Comment'), lang('Message')), true), $key . ' comment label');
+			pg_assert_true(in_array($p['comments']['label'], array(lang('Comment'), lang('Message'), lang('reply')), true), $key . ' comment label');
 			pg_assert_true(isset($p['comments']['login']) && $p['comments']['login'] === true, $key . ' comments need sign-in');
 		}
 	}

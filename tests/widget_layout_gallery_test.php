@@ -106,3 +106,21 @@ function test_widget_layout_gallery_form_fields_need_the_form()
 	$pages = array('home' => array('id' => 11, 'url' => '/home'), 'blog' => array('id' => 12, 'url' => '/blog'));
 	pg_assert_same(array(), pg_sw_template_layouts($tpl, 'form_list_view', $pages), 'a form view whose form the template lacks is not offered');
 }
+
+function test_widget_layout_gallery_keeps_runtime_tokens()
+{
+	$tpl = _gallery_tpl();
+	$tpl['widgets'] = array(
+		'post_comments' => array('page' => 'blog', 'config' => array('regionType' => 'comments'), 'tree' => array('type' => 'root', 'props' => array(), 'children' => array(
+			_gallery_node('div', array('_attrs' => array(array('name' => 'aria-label', 'value' => 'Rated {{__comment_rating}} out of 5')))),
+		))),
+		'unknown_token' => array('page' => 'blog', 'config' => array('regionType' => 'comments'), 'tree' => array('type' => 'root', 'props' => array(), 'children' => array(
+			_gallery_node('p', array('text' => '{{brand_slogan}}')),
+		))),
+	);
+	$pages = array('blog' => array('id' => 12, 'url' => '/blog'));
+	$out = pg_sw_template_layouts($tpl, 'comments', $pages);
+	pg_assert_same(array('post_comments'), array_map(function ($l) { return $l['key']; }, $out),
+		'a comment layout with the star rating token is offered; an unfilled template placeholder still drops one');
+	pg_assert_true(strpos(json_encode($out[0]['tree']), '{{__comment_rating}}') !== false, 'the runtime token is kept for the renderer');
+}

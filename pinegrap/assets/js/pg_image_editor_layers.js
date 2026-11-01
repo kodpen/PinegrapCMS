@@ -267,15 +267,18 @@
         } else if (d.kind === 'resize') {
             // A type with ratio (a picture) keeps its shape from a corner;
             // Shift does the other.
+            // A type's resize(start, box, handle) answers the fields that
+            // change (a text scales its letters).
             var b = M.resizeBox(d.start, d.h, p[0], p[1], e.shiftKey !== !!kind(d.start).ratio, 4 / k);
+
+            if (kind(d.start).resize) {
+                b = kind(d.start).resize.call(this, d.start, b, d.h);
+            }
 
             this.change(function (doc) {
                 var l = find(doc, d.start.id);
 
-                l.x = b.x;
-                l.y = b.y;
-                l.w = b.w;
-                l.h = b.h;
+                Object.keys(b).forEach(function (key) { l[key] = b[key]; });
             }, 'drag', true);
         } else if (d.kind === 'handle') {
             // A type's own handle: its drag() names the fields it changes.

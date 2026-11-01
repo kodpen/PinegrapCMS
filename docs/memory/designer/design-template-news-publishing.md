@@ -23,7 +23,7 @@ description: News template publishing: who may submit, the three-row live rule, 
 - Search noise: the index takes each page's whole text with its widgets, so a headline in the strip or most read matches every page that showed it (follow-up: index no list output).
 
 ## What do the structured data and the feeds reveal?
-- BlogPosting `author` is the sending account's contact name, not the byline (no username fallback: samples print the Organization); `datePublished` is the desk-arrival time.
+- BlogPosting `author` is the byline (`schema_author = field:byline`; empty: the account's name); `datePublished` is the desk-arrival time. The desk note says so (#4584).
 - RSS feeds order and date items by `submitted_timestamp`: a piece set live days later has the old pubDate. Follow-up: author, published date and feed order from fields with roles.
 
 ## What can an author's rich HTML still do?

@@ -331,8 +331,12 @@
     //                             handles [{ h, x, y, title }] in the layer's
     //                             frame from its box's corner; box: false
     //                             leaves out the box's), drag(start, h, x, y,
-    //                             e) (the fields such a handle changes)
+    //                             e) (the fields such a handle changes),
+    //                             resize(start, box, h) (the fields a box
+    //                             handle changes, box from M.resizeBox())
     //   keys                      [fn(e, mod, key)]: true when it used the key
+    //   escapes                   [fn()]: true when it used Escape (ends a
+    //                             tool's own state before the selection)
     //   views                     [fn()]: run by every redraw of the stage
     //   saveHooks                 [fn(body, mode)]: add to a save request
     //   topItems, menuItems       [fn()]: an element for the top bar (before
@@ -345,6 +349,7 @@
     Editor.selectTools = [];
     Editor.layerTypes = {};
     Editor.keys = [];
+    Editor.escapes = [];
     Editor.views = [];
     Editor.saveHooks = [];
     Editor.topItems = [];
@@ -1188,6 +1193,12 @@
     Editor.prototype.onEscape = function () {
         if (this.saving) {
             return;
+        }
+
+        for (var i = 0; i < Editor.escapes.length; i++) {
+            if (!this.confirmBox && Editor.escapes[i].call(this)) {
+                return;
+            }
         }
 
         if (this.confirmBox) {

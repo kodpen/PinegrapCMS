@@ -2018,13 +2018,16 @@ function test_workspace_flows_canvas_group_colours()
 	}
 
 	pg_assert_false((bool) preg_match('/\.wsf-node-(manual|task|end|constants|value) \{ --wsf-kind/', $css), 'no colour per kind');
-	pg_assert_true((bool) preg_match('/\n\.wsf-node \{[^}]*border: 1\.5px solid var\(--wsf-kind/', $css, $box), 'a box has a 1.5 px border in its colour');
+	pg_assert_true((bool) preg_match('/\n\.pgc-node \{[^}]*border: 1\.5px solid var\(--pgc-node-accent/', $css, $box), 'a box has a 1.5 px border in its colour');
 	pg_assert_false(strpos($box[0], 'border-left') !== false, 'no left stripe');
-	pg_assert_contains(".wsf-node.wsf-group-values {\n  border-style: dashed;\n}", $css, 'a value box is dashed');
-	pg_assert_contains('html[data-bs-theme="dark"] .wsf-node { --wsf-ring: #a78bfa; }', $css, 'the selection ring');
-	pg_assert_contains(".wsf-edge-line {\n  fill: none;\n  stroke: #7d8696;\n  stroke-width: 2;\n  marker-end: url(#wsf-arrow);\n}", $css, 'control arrows');
-	pg_assert_contains('.wsf-arrowhead { fill: #7d8696; }', $css, 'a filled head');
-	pg_assert_contains('.wsf-edge.wsf-edge-taken .wsf-edge-line', $css, 'the run view keeps its taken arrows');
+	pg_assert_contains('.pgc-node[class*="wsf-group-"] { --pgc-node-accent: var(--wsf-kind); }', $css, "a box's border and ports take its group's colour");
+	pg_assert_contains(".pgc-node.wsf-group-values {\n  border-style: dashed;\n}", $css, 'a value box is dashed');
+	pg_assert_contains('  --pgc-ring: #7c3aed;', $css, 'the selection ring');
+	pg_assert_contains('  --pgc-ring: #a78bfa;', $css, 'the dark selection ring');
+	pg_assert_contains(".pgc-edge-line {\n  fill: none;\n  stroke: var(--pgc-line, #7d8696);\n  stroke-width: 2;\n  marker-end: var(--pgc-marker, none);\n}", $css, 'control arrows');
+	pg_assert_contains("  --pgc-marker: url(#wsf-arrow);\n", $css, "the Flows canvas's arrowhead");
+	pg_assert_contains('.pgc-arrowhead { fill: var(--pgc-line, #7d8696); }', $css, 'a filled head');
+	pg_assert_contains('.pgc-edge.wsf-edge-taken .pgc-edge-line', $css, 'the run view keeps its taken arrows');
 
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
 	pg_assert_true((bool) preg_match('/var ACTION_KINDS = \{(.*?)\};/s', $source, $actions), 'ACTION_KINDS is in the script');
@@ -2149,11 +2152,11 @@ function test_workspace_flows_canvas_dots_are_small_with_a_large_target()
 		return preg_match('/\n  ' . preg_quote($property, '/') . ': (-?[0-9.]+)px;/', $body, $found) ? (float) $found[1] : null;
 	};
 
-	$port = $rule('.wsf-port');
+	$port = $rule('.pgc-port');
 	pg_assert_same(10.0, $px($port, 'width'), 'an arrow port is 10 px wide');
 	pg_assert_same(10.0, $px($port, 'height'), 'and 10 px high');
-	pg_assert_contains('transform: scale(1.2);', $rule('.wsf-port-out:hover'), '12 px on hover');
-	$inset = -$px($rule('.wsf-port::before'), 'inset');
+	pg_assert_contains('transform: scale(1.2);', $rule('.pgc-port-out:hover'), '12 px on hover');
+	$inset = -$px($rule('.pgc-port::before'), 'inset');
 	pg_assert_true(10 + 2 * $inset >= 24, 'the port is taken by a 24 px target');
 
 	$ring = $rule('.wsf-data-ring');
@@ -2239,7 +2242,7 @@ ui.layer = new FakeNode('div');
 ui.svg = new FakeNode('svg');
 ui.boxes.querySelector = function (selector) {
     var id = /data-node="([^"]+)"/.exec(selector)[1];
-    return (drawn[id] = drawn[id] || new FakeNode('div', 'wsf-node'));
+    return (drawn[id] = drawn[id] || new FakeNode('div', 'pgc-node'));
 };
 var made = el;
 el = function (tag, className, text) {

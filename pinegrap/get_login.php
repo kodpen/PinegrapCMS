@@ -24,6 +24,11 @@ function get_login($properties = array()) {
     $layout_type = get_layout_type($page_id);
 
     $form = new liveform('login');
+
+    // Where to go after signing in. A send_to sent as an array
+    // (?send_to[]=x) counts as not given: urlencode() and h() throw a
+    // TypeError on it under PHP 8 and the login screen became a 500 page.
+    $send_to = is_scalar($_GET['send_to'] ?? null) ? (string) $_GET['send_to'] : '';
     
     // if software is in secure mode, then make sure that form is submitted to a secure URL
     if (URL_SCHEME == 'https://') {
@@ -52,8 +57,8 @@ function get_login($properties = array()) {
     $output_send_to = '';
     if (FORGOT_PASSWORD_LINK == true) {
         // If there is a send to, then prepare it.
-        if ((isset($_GET['send_to']) == TRUE) && (($_GET['send_to'] ?? '') != '')) {
-            $output_send_to = h(urlencode(($_GET['send_to'] ?? '')));
+        if ($send_to != '') {
+            $output_send_to = h(urlencode($send_to));
 
         // Otherwise there is not a send to, so create send to based on the screen that the visitor is currently on.
         } else {
@@ -92,7 +97,7 @@ function get_login($properties = array()) {
             $output_forgot_password_link = '<a class="text-center" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/forgot_password.php?send_to=' . $output_send_to . '">' . lang('Forgot password?') . '</a>';
         }
 
-        $output_google_signin = pg_signin_buttons(($_GET['send_to'] ?? ''), false);
+        $output_google_signin = pg_signin_buttons($send_to, false);
 
         $output_links = '';
         if (($output_forgot_password_link != '') || ($output_google_signin != '')) {
@@ -112,7 +117,7 @@ function get_login($properties = array()) {
                         ' . $form->output_errors() . $form->output_notices() . '
                         <form name="login" action="' . $action_url . '" method="post">
                             ' . get_token_field() . '
-                            <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
+                            <input type="hidden" name="send_to" value="' . h($send_to) . '" />
                             <input type="hidden" name="require_cookies" value="true" />
                             <div class="mb-5">
                                 <label for="email" class="form-label">' . lang('Email or username') . '</label>
@@ -171,7 +176,7 @@ function get_login($properties = array()) {
             $form->output_errors() . $form->output_notices() . '
             <form name="login" action="' . $action_url . '" method="post">
                 ' . get_token_field() . '
-                <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
+                <input type="hidden" name="send_to" value="' . h($send_to) . '" />
                 <input type="hidden" name="require_cookies" value="true" />
                 <table style="margin-bottom: 1em">
                     <tr>
@@ -210,7 +215,7 @@ function get_login($properties = array()) {
                 <br />
                 <br />
                 ' . $output_forgot_password_link . '
-                ' . pg_signin_buttons(($_GET['send_to'] ?? ''), false) . '
+                ' . pg_signin_buttons($send_to, false) . '
             </form>';
 
     // Otherwise the layout is custom.
@@ -235,14 +240,14 @@ function get_login($properties = array()) {
 
         $system =
             get_token_field() . '
-            <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '">
+            <input type="hidden" name="send_to" value="' . h($send_to) . '">
             <input type="hidden" name="require_cookies" value="true">';
 
         if (FORGOT_PASSWORD_LINK) {
             $forgot_password_url = PATH . SOFTWARE_DIRECTORY . '/forgot_password.php?send_to=';
 
-            if (($_GET['send_to'] ?? '') != '') {
-                $forgot_password_url .= urlencode(($_GET['send_to'] ?? ''));
+            if ($send_to != '') {
+                $forgot_password_url .= urlencode($send_to);
             } else {
                 $forgot_password_url .= urlencode(REQUEST_URL);
             }
@@ -258,7 +263,7 @@ function get_login($properties = array()) {
             'attributes' => $attributes,
             'system' => $system,
             'forgot_password_url' => $forgot_password_url,
-            'google_signin' => pg_signin_buttons(($_GET['send_to'] ?? ''), false)));
+            'google_signin' => pg_signin_buttons($send_to, false)));
 
         $output = $form->prepare($output);
         

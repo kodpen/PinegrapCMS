@@ -229,7 +229,11 @@ function pg_totp_verify($secret, $code, $now, $last_step, $window = 1)
  * Format published with Google Authenticator), with the defaults spelled out
  * so no app has to guess: SHA1, six digits, 30 seconds.
  *
- * The secret goes without '=' padding, which several apps refuse.
+ * The secret goes without '=' padding, which several apps refuse. The label
+ * is "issuer:account" and apps split it at its first colon, encoded or not,
+ * so colons are dropped from both parts (a site title like "Acme: Shop"
+ * would otherwise show as issuer "Acme"); the issuer parameter carries the
+ * same text as the label's prefix.
  *
  * @param string $issuer  Site name shown in the app.
  * @param string $account Account label, usually the e-mail address.
@@ -238,7 +242,14 @@ function pg_totp_verify($secret, $code, $now, $last_step, $window = 1)
  */
 function pg_totp_uri($issuer, $account, $secret)
 {
-    return 'otpauth://totp/' . rawurlencode((string) $issuer) . ':' . rawurlencode((string) $account)
+    $clean = function ($text) {
+        return trim(preg_replace('/[ \t\r\n]+/', ' ', str_replace(':', '', (string) $text)));
+    };
+
+    $issuer = $clean($issuer);
+    $account = $clean($account);
+
+    return 'otpauth://totp/' . rawurlencode($issuer) . ':' . rawurlencode($account)
         . '?secret=' . rtrim(pg_base32_encode($secret), '=')
         . '&issuer=' . rawurlencode((string) $issuer)
         . '&algorithm=SHA1&digits=6&period=30';

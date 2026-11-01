@@ -209,11 +209,11 @@ function get_delivery_date($properties) {
     // to calculate a general delivery date from liveSite, if there is an issue with carrier.
     // This is used on express order to show delivery date, because we only want to show an exact
     // delivery date.
-    $only_from_carrier = $properties['only_from_carrier'];
+    $only_from_carrier = $properties['only_from_carrier'] ?? false;
 
     // Allows you to set that you also want a formatted date returned (e.g. "Mon Jul 1 2017" and not
     // just "2017-07-01").
-    $formatted = $properties['formatted'];
+    $formatted = $properties['formatted'] ?? false;
 
     // If there is not shipping method info, then get info.
     if (!isset($shipping_method['service'])) {
@@ -1589,7 +1589,8 @@ function get_shipping_methods($properties) {
                 if (!validate_date($arrival_date)) {
                     return array(
                         'status' => 'error',
-                        'message' => 'Sorry, the requested arrival date is not valid.');
+                        'code' => 'arrival_date',
+                        'message' => lang('Sorry, the requested arrival date is not valid.'));
                 }
 
                 // Convert arrival date to y-m-d, because code below requires that

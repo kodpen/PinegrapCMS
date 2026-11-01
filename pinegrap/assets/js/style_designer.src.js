@@ -33704,7 +33704,7 @@ const StyleDesigner = (function () {
               'padding:8px 10px;border-radius:4px;line-height:1.45;border-left:3px solid #0d9488">' +
                 '<strong><span class="bi bi-people me-1"></span>' + esc(_sdT('This area is shown again for every recipient.')) + '</strong><br>' +
                 '<span style="color:#555;font-size:.72rem">' +
-                    _sdT('The design inside it is cloned for every ship_to (recipient). On the form inputs use the eo_field binding — <code>shipping_first_name</code>, <code>shipping_last_name</code> and so on — and the server renames each one to <code>shipping_&lt;rid&gt;_first_name</code> per recipient.') + ' ' +
+                    _sdT('The design inside it is repeated for every recipient. Bind the form inputs to the shipping address fields (first name, last name and so on); each recipient gets its own copy of them.') + ' ' +
                     esc(_sdT('For text, bind an element to "{var:1}", "{var:2}" or "{var:3}".', [_swBindLabel('express_order', '__recipient_name'), _swBindLabel('express_order', '__recipient_index'), _swBindLabel('express_order', '__recipient_id')])) +
                 '</span>' +
             '</div>';
@@ -33713,7 +33713,7 @@ const StyleDesigner = (function () {
             '<div style="font-size:.7rem;color:#6366f1;background:rgba(99,102,241,.06);' +
               'padding:6px 10px;margin-top:6px;border-radius:3px;line-height:1.4">' +
                 '<span class="bi bi-info-circle me-1"></span>' +
-                _sdT('Without multiple recipients (a single ship_to in the cart) this area is still rendered, but only once. To show it only for multiple recipients, add the <code>eo_visible_if=is_multi_recipient</code> visibility binding to its parent.') +
+                _sdT('With a single recipient in the cart this area is still drawn, but only once. To show it only for several recipients, give its parent the "Several recipients" visibility condition.') +
             '</div>';
 
         return sect('bi-people', _sdT('Recipient List (Recipient Loop)'),
@@ -34763,13 +34763,13 @@ const StyleDesigner = (function () {
                     ) +
                     row(_sdT('Quantity — maximum'),
                         '<input type="number" class="form-control form-control-sm" id="sd-sw-civ-q-max" data-sw-id="' + sid + '" value="' + (_civQMax > 0 ? _civQMax : '') + '" min="0" placeholder="' + esc(_sdT('Based on stock')) + '">' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('Empty = <code>inventory_quantity</code> when stock is tracked &amp; backorder is off; unlimited otherwise.') + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('Empty = the product\'s stock quantity when stock is tracked &amp; backorder is off; unlimited otherwise.') + '</div>'
                     ) +
                     row(_sdT('Quantity — default'),
                         '<input type="number" class="form-control form-control-sm" id="sd-sw-civ-q-default" data-sw-id="' + sid + '" value="' + (_civQDef > 0 ? _civQDef : '') + '" min="1" placeholder="' + esc(_sdT('Take it from the product')) + '">' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('Empty = the product\'s <code>default_quantity</code> field (or 1 when it has none).') + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('Empty = the product\'s default quantity (or 1 when it has none).') + '</div>'
                     ) +
-                    row(_sdT('Cross-sell on'),
+                    row(_sdT('Show products bought together'),
                         '<label class="sd-prop-switch">' +
                             '<input type="checkbox" class="sd-sw-inp" id="sd-sw-civ-crosssell" data-sw-id="' + sid + '"' + (_civCsOn ? ' checked' : '') + '>' +
                             '<span class="sd-sw-track"><span class="sd-sw-thumb"></span></span>' +
@@ -34780,7 +34780,7 @@ const StyleDesigner = (function () {
                         '<select class="form-control form-control-sm" id="sd-sw-civ-cat-page" data-sw-id="' + sid + '">' + _civCatOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('Choose the catalog list page to make the breadcrumb crumbs (Catalog → Group → …) clickable. The list holds the pages that carry a <code>catalog_listing</code> widget. Empty = the crumbs are plain text.') + '</div>'
                     ) +
-                    row(_sdT('Variant attribute style'),
+                    row(_sdT('Variant picker style'),
                         // Widget-level renderStyle for the auto-injected
                         // variant picker. When the designer hasn't placed
                         // a variant_attr content type explicitly, the
@@ -35104,7 +35104,7 @@ const StyleDesigner = (function () {
 
             // ── tag_cloud_region settings ────────────────────────────────────
             if (_isTagCloud) {
-                var _tcNames = (regionData && regionData.tag_cloud_regions) || [];
+                var _tcNames = _sdTagCloudPageNames();
                 var _tcName = typeof _cfg.search_page_name === 'string' ? _cfg.search_page_name : '';
                 var _tcOpts = '<option value="">' + esc(_sdT('— Select —')) + '</option>';
                 _tcNames.forEach(function (nm) {
@@ -35601,7 +35601,7 @@ const StyleDesigner = (function () {
                     ) +
                     row(_sdT('Currency symbol'),
                         '<input type="text" class="form-control form-control-sm" id="sd-sw-sc-currency" data-sw-id="' + sid + '" value="' + esc(_scCurrency) + '" maxlength="10" placeholder="' + esc(_sdT('{var:1} (from the site setting)', [_sdCurrencySymbol()])) + '">' +
-                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('When left empty, VISITOR_CURRENCY_SYMBOL from the site settings is used.')) + '</div>'
+                        '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('When left empty, the currency symbol in Site Settings is used.')) + '</div>'
                     )
                 );
             }
@@ -35764,7 +35764,7 @@ const StyleDesigner = (function () {
                 var _eoBody = ''
                     + '<div class="sd-prop-row"><label class="sd-prop-label">' + esc(_sdT('Next Page (once the order is complete)')) + '</label><div class="sd-prop-control">'
                     +   '<select class="form-control form-control-sm" id="sd-sw-eo-next-page" data-sw-id="' + sid + '">' + _eoNextOpts + '</select>'
-                    +   '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('The user is sent here once the payment succeeds. A thank-you page holding an Order View (order_view) widget is the usual choice; <code>?order_id=N</code> is appended to the URL automatically.') + '</div>'
+                    +   '<div style="font-size:.66rem;color:#888;margin-top:3px">' + _sdT('The user is sent here once the payment succeeds. A thank-you page holding an Order View widget is the usual choice; <code>?order_id=N</code> is appended to the URL automatically.') + '</div>'
                     + '</div></div>'
                     // The order receipt e-mail: a page sent to the billing
                     // address when the order is placed; its Order View widget
@@ -35807,7 +35807,7 @@ const StyleDesigner = (function () {
                         +     '<i class="bi bi-people me-1"></i>' + esc(_sdT('Add a Recipient List Block'))
                         +   '</button>'
                         +   '<div style="font-size:.66rem;color:#888;margin-top:3px">'
-                        +     _sdT('Adds a designer template that repeats for every ship_to in a multi-recipient cart. Use the eo_field bindings inside it — <code>shipping_first_name</code>, <code>shipping_last_name</code> and so on — and the server renames each one to <code>shipping_&lt;rid&gt;_*</code> per recipient. Once added, a <strong>Recipient List</strong> element appears at the widget root and you can move it anywhere.')
+                        +     _sdT('Adds a designer template that repeats for every recipient in a multi-recipient cart. Bind the inputs inside it to the shipping address fields (first name, last name and so on); each recipient gets its own copy of them. Once added, a <strong>Recipient List</strong> element appears at the widget root and you can move it anywhere.')
                         +   '</div>'
                         + '</div></div>';
                 } else {
@@ -48712,6 +48712,18 @@ const StyleDesigner = (function () {
             .catch(function () { sdToast(esc(_sdT('Network error')), 'error'); });
     }
 
+    // The pages a Tag Cloud widget can link its keywords to: the classic
+    // search results pages and the pages built with the Search Results
+    // widget (a site installed from a design template has only those).
+    function _sdTagCloudPageNames() {
+        var out = [];
+        var lists = [(regionData && regionData.tag_cloud_regions) || [], (regionData && regionData.tag_cloud_widget_pages) || []];
+        lists.forEach(function (list) {
+            list.forEach(function (nm) { if (out.indexOf(nm) === -1) out.push(nm); });
+        });
+        return out;
+    }
+
     function needsName(t) { return ['ad','common','designer','dynamic','login','menu','menu_sequence','tag_cloud','system'].indexOf(t) !== -1; }
 
     function buildRegionNames(type) {
@@ -56904,7 +56916,7 @@ const StyleDesigner = (function () {
             if (cfg.show_register_link === undefined) cfg.show_register_link = true;
         } else if (newType === 'tag_cloud_region') {
             // The site's first search results page, so a new widget shows keywords at once.
-            if (cfg.search_page_name === undefined) cfg.search_page_name = ((regionData && regionData.tag_cloud_regions) || [])[0] || '';
+            if (cfg.search_page_name === undefined) cfg.search_page_name = _sdTagCloudPageNames()[0] || '';
         } else if (newType === 'ad_region') {
             // The site's first ad region, so a new widget shows ads at once.
             if (cfg.ad_region_name === undefined) cfg.ad_region_name = ((regionData && regionData.ad_regions) || [])[0] || '';
@@ -59486,6 +59498,39 @@ const StyleDesigner = (function () {
     // The line under a detail page picker: where the links lead, or what is
     // missing for them to work. `types`/`test` say what makes a page a
     // detail page (as for _swPageOptions); `widget` names that widget.
+    // Components a tab places whose row the editor has not loaded yet: the
+    // editor loads only the open tab's rows, so a widget on another tab is
+    // unknown until then, not missing. Each id is asked for once
+    // (_swDetailHintAsked); one the server did not return counts as loaded.
+    var _swDetailHintAsked = {};
+    function _swTabUnloadedShared(p) {
+        var t = (typeof _pgTreeOf === 'function') ? _pgTreeOf(p) : p.tree;
+        var out = [];
+        (function walk(n) {
+            if (!n) return;
+            if (n.type === 'shared_ref') {
+                var sid = parseInt(n.props && n.props.sharedId, 10) || 0;
+                var c = sid ? _sharedCache[sid] : null;
+                if (sid && !(c && (c.system_region_config || c.tree)) && _swDetailHintAsked[sid] !== 'done' &&
+                    out.indexOf(sid) === -1) out.push(sid);
+                return;
+            }
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        })(t);
+        return out;
+    }
+    // Ask for the rows of `ids` not asked for yet and draw the panel again
+    // when they arrive.
+    function _swDetailHintLoad(ids) {
+        var ask = ids.filter(function (sid) { return !_swDetailHintAsked[sid]; });
+        if (!ask.length) return;
+        ask.forEach(function (sid) { _swDetailHintAsked[sid] = 'pending'; });
+        prefetchShared(ask, function () {
+            ask.forEach(function (sid) { _swDetailHintAsked[sid] = 'done'; });
+            renderProperties();
+        });
+    }
+
     function _swDetailPageHint(cur, serverPages, types, test, widget, bindLabel) {
         cur = (cur == null) ? '' : String(cur);
         var tabs = (typeof _pages !== 'undefined' && _pages) ? _pages : [];
@@ -59495,14 +59540,23 @@ const StyleDesigner = (function () {
             return '<div style="font-size:.66rem;margin-top:3px;line-height:1.4;color:' + (warn ? '#b45309' : '#888') + '">' +
                        (warn ? '<span class="bi bi-exclamation-triangle me-1"></span>' : '') + esc(text) + '</div>';
         };
+        var linked = note(_sdT('Links bound to "{var}" open the page chosen here.', bindLabel), false);
         if (chosen && !_swTabHasWidget(chosen, types, test)) {
+            // Not known yet while a component of that tab is still unloaded.
+            var unloaded = _swTabUnloadedShared(chosen);
+            if (unloaded.length) { _swDetailHintLoad(unloaded); return linked; }
             return note(_sdT('"{var:1}" has no {var:2} widget for this yet. Add one to that page, or the links open a page that does not show the record.', [chosen.page_name || _sdT('New Page'), widget]), true);
         }
         if (cur === '' || cur === '0') {
             var any = tabs.some(function (p) { return _swTabHasWidget(p, types, test); }) || (serverPages && serverPages.length);
-            if (!any) return note(_sdT('No page shows these records yet. Pick a page of this design and add a {var} widget to it; the links then open it.', widget), false);
+            if (!any) {
+                var pending = [];
+                tabs.forEach(function (p) { pending = pending.concat(_swTabUnloadedShared(p)); });
+                if (pending.length) { _swDetailHintLoad(pending); return linked; }
+                return note(_sdT('No page shows these records yet. Pick a page of this design and add a {var} widget to it; the links then open it.', widget), false);
+            }
         }
-        return note(_sdT('Links bound to "{var}" open the page chosen here.', bindLabel), false);
+        return linked;
     }
 
     // The setting row of an account e-mail: the page sent as the welcome
@@ -62222,9 +62276,9 @@ const StyleDesigner = (function () {
                                             text: _sdT('Checkout'), cssClass: 'mb-0 fw-semibold' })
                                     ]),
                                     createNode('semantic', { tag: 'div', cssClass: 'card-body' }, [
-                                        // Method
+                                        // Payment method
                                         createNode('content', { contentType: 'paragraph',
-                                            text: _sdT('Method'), cssClass: 'text-muted small mb-1' }),
+                                            text: _sdT('Payment method'), cssClass: 'text-muted small mb-1' }),
                                         createNode('content', { contentType: 'paragraph',
                                             text: _sdT('Credit Card'), cssClass: 'fw-semibold mb-3',
                                             _bindings: { text: '__payment_method_pretty' } }),
@@ -62294,11 +62348,16 @@ const StyleDesigner = (function () {
                                         createNode('content', { contentType: 'paragraph',
                                             text: _sdT('Standard'), cssClass: 'fw-semibold mb-3',
                                             _bindings: { text: '__shipping_method' } }),
-                                        createNode('content', { contentType: 'paragraph',
-                                            text: _sdT('Estimated delivery'), cssClass: 'text-muted small mb-1' }),
-                                        createNode('content', { contentType: 'paragraph',
-                                            text: '—', cssClass: 'fw-semibold mb-3',
-                                            _bindings: { text: '__arrival_date' } }),
+                                        // The arrival date the customer asked for, drawn
+                                        // only when one was asked ("At once" asks none).
+                                        createNode('semantic', { tag: 'div', customName: _sdT('Requested arrival date'),
+                                            _bindings: { eo_visible_if: 'has_arrival_date' } }, [
+                                            createNode('content', { contentType: 'paragraph',
+                                                text: _sdT('Requested arrival date'), cssClass: 'text-muted small mb-1' }),
+                                            createNode('content', { contentType: 'paragraph',
+                                                text: '—', cssClass: 'fw-semibold mb-3',
+                                                _bindings: { text: '__arrival_date' } })
+                                        ]),
                                         // Carrier deep-link — only when BOTH a tracking
                                         // code and a recognised provider resolve, so the
                                         // block never renders a dead "Track Shipment" link.
@@ -68450,7 +68509,9 @@ const StyleDesigner = (function () {
             var msg = (res.data && res.data.message)
                         ? res.data.message
                         : (res.ok ? _sdT('Publishing failed.') : _sdT('Server error ({var}).', res.status));
-            sdToast('<strong>' + esc(_asDraft ? _sdT('It could not be saved:') : _sdT('It could not be published:')) + '</strong><br>' + esc(msg), 'error', 5000);
+            // Stays until closed: the message can list many pages and is
+            // what the user needs to fix before saving again.
+            sdToast('<strong>' + esc(_asDraft ? _sdT('It could not be saved:') : _sdT('It could not be published:')) + '</strong><br>' + esc(msg), 'error');
             _abandon();
         })
         .catch(function () {

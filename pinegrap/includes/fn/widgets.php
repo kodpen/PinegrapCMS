@@ -7330,7 +7330,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         "SELECT ship_tos.first_name, ship_tos.last_name, ship_tos.company,
                 ship_tos.phone_number, ship_tos.address_1, ship_tos.address_2,
                 ship_tos.city, ship_tos.state, ship_tos.zip_code, ship_tos.country,
-                ship_tos.arrival_date" . pg_sw_entity_select('ship_to', 'ship_tos') . ",
+                ship_tos.arrival_date" . (pg_ship_to_district_ready() ? ", ship_tos.district" : "") . pg_sw_entity_select('ship_to', 'ship_tos') . ",
                 shipping_methods.name AS shipping_method
          FROM ship_tos
          LEFT JOIN shipping_methods ON ship_tos.shipping_method_id = shipping_methods.id
@@ -7344,13 +7344,13 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         trim((string)($ship_to['last_name']  ?? '')),
     ));
     $shipping_name = implode(' ', $shipping_name_parts);
-    $shipping_city_line_parts = array_filter(array(
-        trim((string)($ship_to['zip_code'] ?? '')),
-        trim((string)($ship_to['city']     ?? '')),
-        (mb_strtolower(trim((string)($ship_to['state'] ?? ''))) === mb_strtolower(trim((string)($ship_to['city'] ?? ''))))
-            ? '' : trim((string)($ship_to['state'] ?? '')),
-    ));
-    $shipping_city_line = implode(' ', $shipping_city_line_parts);
+    // "zip district city state", the district only when it differs from the city.
+    $shipping_city_line = _pg_sw_list_order_city_line(
+        (string)($ship_to['zip_code'] ?? ''),
+        (string)($ship_to['city'] ?? ''),
+        (string)($ship_to['state'] ?? ''),
+        (string)($ship_to['district'] ?? '')
+    );
     $shipping_full_parts = array_filter(array(
         $shipping_name,
         (string)($ship_to['company']   ?? ''),
@@ -7950,7 +7950,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 "SELECT ship_tos.id, ship_tos.first_name, ship_tos.last_name, ship_tos.company,
                         ship_tos.phone_number, ship_tos.address_1, ship_tos.address_2,
                         ship_tos.city, ship_tos.state, ship_tos.zip_code, ship_tos.country,
-                        ship_tos.arrival_date" . pg_sw_entity_select('ship_to', 'ship_tos') . ",
+                        ship_tos.arrival_date" . (pg_ship_to_district_ready() ? ", ship_tos.district" : "") . pg_sw_entity_select('ship_to', 'ship_tos') . ",
                         shipping_methods.name AS shipping_method
                  FROM ship_tos
                  LEFT JOIN shipping_methods ON ship_tos.shipping_method_id = shipping_methods.id

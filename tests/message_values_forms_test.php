@@ -22,7 +22,7 @@ if (!defined('PG_TEST_RUNNER')) {
 function test_message_values_forms_are_escaped()
 {
 	$lines = array(
-		array('custom_form.php', '$error_message = lang(array(\'string\'=>\'{var:1} is required.\',\'vars\'=>h(function_exists(\'pg_tr_label\') ? pg_tr_label($field[\'label\']) : $field[\'label\'])));', 2),
+		array('includes/fn/custom_form.php', 'return lang(array(\'string\' => \'{var:1} is required.\', \'vars\' => h((string) $label)));', 1),
 		array('custom_form.php', '$liveform->mark_error($field[\'id\'], lang(array(\'string\'=>\'Please enter a valid date for {var:1}\',\'vars\'=>h(function_exists(\'pg_tr_label\') ? pg_tr_label($field[\'label\']) : $field[\'label\']))) );', 1),
 		array('custom_form.php', '$liveform->mark_error($field[\'id\'], lang(array(\'string\'=>\'Please enter a valid date & time for {var:1}\',\'vars\'=>h(function_exists(\'pg_tr_label\') ? pg_tr_label($field[\'label\']) : $field[\'label\']))) );', 1),
 		array('custom_form.php', '$liveform->mark_error($field[\'id\'], lang(array(\'string\'=>\'Please enter a valid e-mail address for {var:1}\',\'vars\'=>h(function_exists(\'pg_tr_label\') ? pg_tr_label($field[\'label\']) : $field[\'label\']))) );', 1),

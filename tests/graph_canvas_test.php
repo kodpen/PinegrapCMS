@@ -56,6 +56,40 @@ function test_graph_canvas_flow_canvas_keeps_no_copy()
 	}
 }
 
+// The core's own class names are pgc-, each styled in the pgc- block of
+// backend.src.css on --pgc-* tokens; the Workspace maps the tokens to its
+// --ws-* scale, and the flow canvas keeps no wsf- name for what the core
+// draws.
+function test_graph_canvas_css_on_pgc_tokens()
+{
+	$core = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_graph_canvas.js');
+	$css = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css'));
+	$flow = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+
+	pg_assert_true((bool) preg_match('/var CLASSES = \{(.*?)\};/s', $core, $block), 'the core names its classes');
+	preg_match_all("/(\w+): '([\w-]+)'/", $block[1], $names, PREG_SET_ORDER);
+	pg_assert_same(8, count($names), 'eight class names');
+
+	foreach ($names as $name) {
+		pg_assert_same(0, strpos($name[2], 'pgc-'), $name[1] . ' is a pgc- class');
+		pg_assert_true((bool) preg_match('/\.' . preg_quote($name[2], '/') . '[ .:,{]/', $css), $name[2] . ' has a rule');
+	}
+
+	$start = strpos($css, '/* Graph canvas core (pg_graph_canvas.js)');
+	$end = strpos($css, '/* The Flows canvas on the core:', (int) $start);
+	pg_assert_true($start !== false && $end !== false, 'the core block is in backend.src.css');
+	$block = substr($css, (int) $start, (int) $end - (int) $start);
+	pg_assert_false((bool) preg_match('/var\(--(ws|wsf|bs)-/', $block), 'the core block reads no Workspace or Bootstrap variable');
+	pg_assert_false(strpos($block, '.wsf-') !== false, 'and no Flows class');
+
+	foreach (array('accent', 'soft', 'radius', 'radius-sm', 'shadow', 'shadow-accent') as $token) {
+		pg_assert_contains('  --pgc-' . $token . ': var(--ws-' . $token . ');', $css, 'the Workspace maps --pgc-' . $token);
+	}
+
+	pg_assert_false(strpos($flow, "classes: {") !== false, 'the flow canvas takes the core\'s class names');
+	pg_assert_false((bool) preg_match('/wsf-(node|edge|edges|port|stage|viewport|layer|boxes|selected|target)(?![\w-])/', $flow), 'and keeps no wsf- name for them');
+}
+
 // Runs the core in Node with a stand-in viewport 800 x 600 at (100, 50) and
 // the script given; null when Node cannot run.
 function graph_canvas_test_node($script)

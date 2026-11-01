@@ -1044,7 +1044,7 @@ function pg_privacy_export_collect(array $found)
         $sections['erp_accounts'] = _pg_privacy_export_select("SELECT * FROM erp_accounts WHERE " . $account_where . " ORDER BY id", ($account_where !== '') ? array(1) : array());
         $account_ids = _pg_privacy_export_column($sections['erp_accounts']['rows'], 'id');
 
-        $documents = array('rows' => array(), 'truncated' => false);
+        $documents = array();
 
         foreach (
             array(
@@ -1057,29 +1057,23 @@ function pg_privacy_export_collect(array $found)
                 continue;
             }
 
-            $part = _pg_privacy_export_select("SELECT '" . $kind . "' AS document, " . $source[1] . " FROM " . $source[0] . " WHERE " . _pg_privacy_export_in('account_id', $account_ids) . " ORDER BY issue_date, id", $account_ids);
-            $documents['rows'] = array_merge($documents['rows'], $part['rows']);
-            $documents['truncated'] = $documents['truncated'] || $part['truncated'];
+            $documents[] = _pg_privacy_export_select("SELECT '" . $kind . "' AS document, " . $source[1] . " FROM " . $source[0] . " WHERE " . _pg_privacy_export_in('account_id', $account_ids) . " ORDER BY issue_date, id", $account_ids);
         }
 
-        $sections['erp_documents'] = $documents;
+        $sections['erp_documents'] = pg_privacy_export_join($documents);
     }
 
     // Workspace: the channels kept about the person (by reference), the
     // approvals they were asked for by e-mail and the workflow table cells
     // naming them.
-    $workspace = array('rows' => array(), 'truncated' => false);
+    $workspace = array();
 
     if (pg_schema_has('ws_channels', 'contact_id')) {
-        $part = _pg_privacy_export_select("SELECT 'channel' AS record, id, name, kind, created_at, last_message_at, archived_at FROM ws_channels WHERE " . _pg_privacy_export_in('contact_id', $contact_ids) . " ORDER BY id", $contact_ids);
-        $workspace['rows'] = array_merge($workspace['rows'], $part['rows']);
-        $workspace['truncated'] = $part['truncated'];
+        $workspace[] = _pg_privacy_export_select("SELECT 'channel' AS record, id, name, kind, created_at, last_message_at, archived_at FROM ws_channels WHERE " . _pg_privacy_export_in('contact_id', $contact_ids) . " ORDER BY id", $contact_ids);
     }
 
     if (pg_schema_has('ws_approval_guests', 'email')) {
-        $part = _pg_privacy_export_select("SELECT 'approval' AS record, id, approval_id, name, email, sent_at, expires_at, decision, note, decided_at, decided_ip, decided_agent FROM ws_approval_guests WHERE " . _pg_privacy_export_in('email', $emails) . " ORDER BY id", $emails);
-        $workspace['rows'] = array_merge($workspace['rows'], $part['rows']);
-        $workspace['truncated'] = $workspace['truncated'] || $part['truncated'];
+        $workspace[] = _pg_privacy_export_select("SELECT 'approval' AS record, id, approval_id, name, email, sent_at, expires_at, decision, note, decided_at, decided_ip, decided_agent FROM ws_approval_guests WHERE " . _pg_privacy_export_in('email', $emails) . " ORDER BY id", $emails);
     }
 
     // Workflow table rows with a cell naming the person or their records.
@@ -1099,16 +1093,48 @@ function pg_privacy_export_collect(array $found)
             }
         }
 
+        $table_rows = array();
+
         foreach ($read['rows'] as $row) {
-            $workspace['rows'][] = pg_privacy_export_wtable_row($row, isset($names[$row['table_id']]) ? $names[$row['table_id']] : '', $read['columns'][$row['table_id']]);
+            $table_rows[] = pg_privacy_export_wtable_row($row, isset($names[$row['table_id']]) ? $names[$row['table_id']] : '', $read['columns'][$row['table_id']]);
         }
 
-        $workspace['truncated'] = $workspace['truncated'] || $read['truncated'];
+        $workspace[] = array('rows' => $table_rows, 'truncated' => $read['truncated']);
     }
 
-    $sections['workspace'] = $workspace;
+    $sections['workspace'] = pg_privacy_export_join($workspace);
 
     return $sections;
+}
+
+/**
+ * A section read in parts (one read per table), joined in the order given
+ * and cut at pg_privacy_export_row_limit() like a section read at once:
+ * each part may hold the limit itself, so the parts together could hold
+ * several times it. Pure.
+ *
+ * @param array[] $parts  each rows, truncated
+ * @return array  rows, truncated
+ */
+function pg_privacy_export_join(array $parts)
+{
+    $limit = pg_privacy_export_row_limit();
+    $rows = array();
+    $truncated = false;
+
+    foreach ($parts as $part) {
+        $truncated = $truncated || !empty($part['truncated']);
+
+        foreach ((isset($part['rows']) && is_array($part['rows'])) ? $part['rows'] : array() as $row) {
+            if (count($rows) >= $limit) {
+                return array('rows' => $rows, 'truncated' => true);
+            }
+
+            $rows[] = $row;
+        }
+    }
+
+    return array('rows' => $rows, 'truncated' => $truncated);
 }
 
 /**

@@ -581,11 +581,11 @@ function test_wishlist_widget_my_account_link()
 
 // -- the shop templates ----------------------------------------------------
 
-// The store, boutique and bookshop templates carry a Favourites page any
-// visitor can open, holding the widget, and link it from My Account.
+// The store, boutique, bookshop and hello templates carry a Favourites page
+// any visitor can open, holding the widget, and link it from My Account.
 function test_wishlist_widget_templates()
 {
-	foreach (array('pinegrap-store', 'pinegrap-boutique', 'pinegrap-bookshop') as $id) {
+	foreach (array('pinegrap-store', 'pinegrap-boutique', 'pinegrap-bookshop', 'hello-pinegrap') as $id) {
 		$tpl = _pg_tpl_include(PG_FUNCTIONS_DIR . '/includes/design_templates/' . $id . '.php');
 		pg_assert_true(is_array($tpl), $id . ' loaded');
 		if (!is_array($tpl)) {

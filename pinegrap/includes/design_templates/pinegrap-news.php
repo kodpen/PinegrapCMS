@@ -1019,8 +1019,10 @@ $stack_item = function ($s = array()) use ($el, $photo, $cover, $card_headline, 
 // section, the byline ($with_writer: the newsroom's lists), when it was
 // sent, its publication time once an editor set one, and the messages under
 // it. The row opens the list's detail page: the submission page on the
-// desks, the public article in the newsroom's "Live now".
-$desk_row = function ($with_writer) use ($el, $span, $icon, $bind, $bind_date, $status_badge, $sections, $writer_name, $statuses) {
+// desks, the public article in the newsroom's "Live now". The count is the
+// detail page's own comments, so "Live now" ($public) counts the readers'
+// comments under the article, the desks the messages with the writer.
+$desk_row = function ($with_writer, $public = false) use ($el, $span, $icon, $bind, $bind_date, $status_badge, $sections, $writer_name, $statuses) {
     $detail = function ($icon_name, $name, $children, $class = 'd-inline-flex align-items-center gap-1') use ($el, $icon) {
         return $el('span', $class, $name, array_merge(array($icon($icon_name)), $children));
     };
@@ -1036,9 +1038,9 @@ $desk_row = function ($with_writer) use ($el, $span, $icon, $bind, $bind_date, $
         $span(lang('Goes live:'), '', lang('Label')),
         $span(lang('Date'), 'pg-field-value', lang('Value'), $bind('publish_date')),
     ), 'pg-hide-if-empty d-inline-flex align-items-center gap-1');
-    $details[] = $detail('bi-chat-left-text', lang('Messages'), array(
+    $details[] = $detail('bi-chat-left-text', $public ? lang('Reader comments') : lang('Messages'), array(
         $span('2', 'fw-semibold', lang('Number'), $bind('number_of_comments')),
-        $span(lang('messages'), '', lang('Label')),
+        $span($public ? lang('reader comments') : lang('messages'), '', lang('Label')),
     ));
     return $el('a', 'list-group-item list-group-item-action d-flex flex-column gap-1 py-3', lang('News article'), array(
         $el('div', 'd-flex align-items-start gap-2', lang('Top Line'), array(
@@ -2190,7 +2192,7 @@ $pages[] = array(
     'title'    => lang('Conversation'),
     'search'   => false,
     'sitemap'  => false,
-    'comments' => array('label' => lang('Message'), 'allow_new' => true, 'auto_publish' => true, 'show_date' => true, 'login' => true,
+    'comments' => array('label' => lang('reply'), 'allow_new' => true, 'auto_publish' => true, 'show_date' => true, 'login' => true,
                         'email_page' => '{{tab:email_reply}}', 'email_subject' => lang('There is a new reply to your conversation'),
                         'notify_email' => '{{site_email}}'),
     'tree'     => $page(array(
@@ -2308,7 +2310,7 @@ $pages[] = array(
                                 $el('li', 'mb-2', lang('Note'), array(), array('text' => lang('The newest Lead Story is the large one on the front page.'))),
                                 $el('li', 'mb-2', lang('Note'), array(), array('text' => lang('If you rename a status in the control panel, change the list filters with it; otherwise articles leave the site.'))),
                                 $el('li', 'mb-2', lang('Note'), array(), array('text' => lang('Site search changes only when the index is rebuilt: after a scheduled article goes live, and after you take an article off the site, run Update Search Index in the control panel. Until then search shows the old state, and an old headline also matches every page that showed it in the breaking strip, the most read box or the newest articles.'))),
-                                $el('li', 'mb-2', lang('Note'), array(), array('text' => lang('The article\'s structured data and the RSS feeds name the time it reached the desk, not the publication time, and feeds order articles by that time; the structured data also names the account that sent it, not the byline.'))),
+                                $el('li', 'mb-2', lang('Note'), array(), array('text' => lang('The article\'s structured data and the RSS feeds name the time it reached the desk, not the publication time, and feeds order articles by that time; the structured data names the byline as the author.'))),
                                 $el('li', '', lang('Note'), array(), array('text' => lang('A photo uploaded with an article opens only for the newsroom while the article is not live. Pictures that an author\'s text loads from other sites are fetched when you open the piece.'))),
                             )),
                         )),
@@ -3119,7 +3121,7 @@ $widgets = array(
             'filters'        => $live,
             'empty_message'  => lang('Nothing is live yet.'),
         )),
-        'tree'   => $widget_root(array($el('div', 'list-group', lang('News Article List'), array($loop(array($desk_row(true))))))),
+        'tree'   => $widget_root(array($el('div', 'list-group', lang('News Article List'), array($loop(array($desk_row(true, true))))))),
     ),
     // The tips readers sent, newest first, each with its whole text and a
     // link to its attachment. Editors read them here: the tip form sits in
@@ -4308,7 +4310,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('News Portal'),
-    'version'     => '1.2.0',
+    'version'     => '1.2.1',
     'framework'   => 'bootstrap5',
     'order'       => 70,
     'icon'        => 'bi-newspaper',

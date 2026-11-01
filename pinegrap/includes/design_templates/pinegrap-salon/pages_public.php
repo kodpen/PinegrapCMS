@@ -29,7 +29,7 @@ $public_pages = array();
 $category_cards = array();
 foreach ($categories as $key => $c) {
     $category_cards[] = $col(array(
-        $el('a', 'card h-100 border-0 bg-body-tertiary rounded-4 text-decoration-none link-body-emphasis', $c['title'], array(
+        $el('a', 'psl-lift card h-100 border-0 bg-body-tertiary rounded-4 text-decoration-none link-body-emphasis', $c['title'], array(
             $el('div', 'card-body p-4', lang('Card Body'), array(
                 $icon_tile($c['icon'], 'mb-3'),
                 $heading('h3', $c['title'], 'h5 fw-semibold mb-2'),
@@ -47,7 +47,7 @@ foreach ($categories as $key => $c) {
 $member_cards = array();
 foreach ($team as $key => $t) {
     $member_cards[] = $col(array(
-        $el('a', 'card h-100 border-0 text-center bg-transparent text-decoration-none link-body-emphasis', $t['name'], array(
+        $el('a', 'psl-lift card h-100 border-0 text-center bg-transparent text-decoration-none link-body-emphasis rounded-4', $t['name'], array(
             $el('div', 'card-body p-3', lang('Card Body'), array(
                 $image($portrait($t['name'], 320), $t['name'], 'rounded-circle object-fit-cover mb-3', array('width' => '144', 'height' => '144', '_attrs' => array($attr('loading', 'lazy')))),
                 $heading('h3', $t['name'], 'h6 fw-semibold mb-1'),
@@ -103,11 +103,11 @@ $public_pages[] = array(
     'tree'             => $page(array(
         // The way to book: the words and buttons on the left, a picture of
         // the studio with the hours on the right.
-        $el('section', 'py-5 overflow-hidden', lang('Hero'), array(
+        $el('section', 'psl-hero py-5 overflow-hidden', lang('Hero'), array(
             $container(array(
                 $row(array(
                     $col(array(
-                        $para(lang('Hair · Nails · Skin · Make-up'), 'small text-uppercase fw-semibold text-primary mb-3'),
+                        $para(lang('Hair · Nails · Skin · Make-up'), 'psl-eyebrow text-uppercase fw-semibold text-primary mb-3'),
                         $heading('h1', lang('Feel like yourself, only more so'), 'display-4 fw-semibold mb-3'),
                         $para(lang('A calm studio and a small team who listen first. Choose your service and stylist online; we confirm your time by e-mail.'), 'lead text-body-secondary mb-4'),
                         $el('div', 'd-flex flex-wrap gap-2 mb-4', lang('Buttons'), array(

@@ -8,7 +8,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `privacy`: open
 
-- `privacy_export`: open
+- `privacy_export`: taken by LA, #4589
 
 - `privacy_retention`: open
 
@@ -192,6 +192,6 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `widgets_tag_cloud`: open
 
-- `widgets_wishlist`: open
+- `widgets_wishlist`: clean (owner-only list read, background renders, token escaping and raw price keys, row action wiring and hidden forms, stock and discount rules against the catalog cards, shop and login links checked)
 
-- `wishlist`: open
+- `wishlist`: clean (wishlist.php token, method and throttle checks, cookie hashing and merge, owner SQL, trim batches, page script and its injection checked)

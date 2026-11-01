@@ -91,6 +91,147 @@ function pg_tcw_keywords($page)
         LIMIT 25");
 }
 
+/**
+ * Keyword counts merged and cut to the 25 used most: $counts holds
+ * keywords already counted (keyword => count, the pages' keywords as the
+ * database groups them), each entry of $lists is one item's comma
+ * separated keywords, counted once per item. Keywords differing only in
+ * case count as one, written as first seen. Most used first, then by
+ * keyword, as pg_tcw_keywords() returns them. Pure.
+ *
+ * @param array $counts keyword => count
+ * @param array $lists  comma separated keyword lists, one per item
+ * @param int   $limit  the number of keywords kept
+ * @return array rows (keyword, count)
+ */
+function pg_tcw_merge_keywords(array $counts, array $lists, $limit = 25)
+{
+    $fold = function ($word) {
+        return function_exists('mb_strtolower') ? mb_strtolower($word, 'UTF-8') : strtolower($word);
+    };
+    $total = array();
+    $shown = array();
+    $add = function ($word, $n) use (&$total, &$shown, $fold) {
+        $word = trim((string)$word);
+        if ($word === '' || $n <= 0) return;
+        $key = $fold($word);
+        if (!isset($total[$key])) {
+            $total[$key] = 0;
+            $shown[$key] = $word;
+        }
+        $total[$key] += $n;
+    };
+    foreach ($counts as $word => $n) $add((string)$word, (int)$n);
+    foreach ($lists as $list) {
+        $seen = array();
+        foreach (explode(',', (string)$list) as $word) {
+            $word = trim($word);
+            if ($word === '' || isset($seen[$fold($word)])) continue;
+            $seen[$fold($word)] = true;
+            $add($word, 1);
+        }
+    }
+    $rows = array();
+    foreach ($total as $key => $n) $rows[] = array('keyword' => $shown[$key], 'count' => $n);
+    usort($rows, function ($a, $b) {
+        if ($a['count'] !== $b['count']) return ($a['count'] > $b['count']) ? -1 : 1;
+        return strcmp($a['keyword'], $b['keyword']);
+    });
+    return array_slice($rows, 0, max(0, (int)$limit));
+}
+
+/**
+ * The Search Results widget's settings on the page named $name, for a page
+ * built with the widget instead of a classic search results page: the
+ * first such widget the page carries, by shared component id.
+ *
+ * @param string $name the page's name
+ * @return array|null array('page_id', 'page_name', 'cfg') or null
+ */
+function pg_tcw_widget_search_page($name)
+{
+    $name = trim((string)$name);
+    if ($name === '' || !function_exists('pg_sw_widget_page_index')) return null;
+    $page = db_item("SELECT page_id, page_name FROM page WHERE page_name = '" . e($name) . "' LIMIT 1");
+    if (!is_array($page)) return null;
+    $rows = db_items(
+        "SELECT id, system_region_config FROM shared_components
+         WHERE system_region_config LIKE '%\"regionType\":\"search_results\"%'
+         ORDER BY id ASC");
+    if (!$rows) return null;
+    $index = pg_sw_widget_page_index();
+    foreach ((array)$rows as $row) {
+        $cfg = json_decode((string)$row['system_region_config'], true);
+        if (!is_array($cfg) || !isset($cfg['regionType']) || $cfg['regionType'] !== 'search_results') continue;
+        $sid = (int)$row['id'];
+        if (!isset($index['by_sid'][$sid])) continue;
+        foreach ($index['by_sid'][$sid] as $i) {
+            if (isset($index['pages'][$i]) && (int)$index['pages'][$i]['page_id'] === (int)$page['page_id']) {
+                return array('page_id' => (int)$page['page_id'], 'page_name' => (string)$page['page_name'], 'cfg' => $cfg);
+            }
+        }
+    }
+    return null;
+}
+
+/**
+ * The 25 keywords used most by what a Search Results widget searches
+ * (its search_scope): the site's pages (tag_cloud_keywords, as the
+ * classic region reads them) and the catalog under its product group
+ * (the root group when none is set), read from the products and the
+ * product groups themselves, as the classic search results page's
+ * keyword sync (update_tag_cloud_keywords_for_search_results_page_product_group())
+ * collects them: product groups shown as a selection, and the enabled
+ * products of the groups shown for browsing.
+ *
+ * @param array $cfg the Search Results widget's settings
+ * @return array rows (keyword, count)
+ */
+function pg_tcw_widget_keywords($cfg)
+{
+    if (!is_array($cfg)) $cfg = array();
+    $scope = (isset($cfg['search_scope']) && in_array($cfg['search_scope'], array('all', 'pages', 'products'), true))
+        ? $cfg['search_scope'] : 'all';
+
+    $counts = array();
+    if ($scope !== 'products') {
+        foreach ((array)db_items(
+            "SELECT keyword, COUNT(keyword) AS count FROM tag_cloud_keywords
+             WHERE item_type = 'page' GROUP BY keyword") as $row) {
+            $counts[(string)$row['keyword']] = (int)$row['count'];
+        }
+    }
+
+    $lists = array();
+    if ($scope !== 'pages' && defined('ECOMMERCE') && ECOMMERCE) {
+        $group_id = isset($cfg['product_group_id']) ? (int)$cfg['product_group_id'] : 0;
+        if ($group_id <= 0) $group_id = (int)db_value("SELECT id FROM product_groups WHERE parent_id = '0' LIMIT 1");
+        $select = array();
+        $browse = array();
+        foreach ((array)get_product_groups_in_product_group_tree($group_id) as $group) {
+            if ($group['display_type'] === 'browse') $browse[] = (int)$group['id'];
+            else $select[] = (int)$group['id'];
+        }
+        if ($select) {
+            foreach ((array)db_items(
+                "SELECT keywords FROM product_groups
+                 WHERE display_type = 'select' AND id IN (" . implode(',', $select) . ")") as $row) {
+                $lists[] = (string)$row['keywords'];
+            }
+        }
+        if ($browse) {
+            foreach ((array)db_items(
+                "SELECT DISTINCT products.id, products.keywords FROM products_groups_xref
+                 INNER JOIN products ON products.id = products_groups_xref.product
+                 WHERE products.enabled = '1'
+                   AND products_groups_xref.product_group IN (" . implode(',', $browse) . ")") as $row) {
+                $lists[] = (string)$row['keywords'];
+            }
+        }
+    }
+    return pg_tcw_merge_keywords($counts, $lists);
+}
+
 // Render a 'tag_cloud_region' system widget.
 //
 // loop_area: one row per keyword (pg_tcw_rows()). Row tokens:
@@ -101,7 +242,7 @@ function pg_tcw_keywords($page)
 // Tokens: ^^__search_page_name^^, ^^__tag_total^^.
 // Flags: has_tags, no_tags. Messages: 'tag_cloud_region'.
 // cfg: search_page_name (the search results page, by its name as the
-// classic tag names it).
+// classic tag names it, or a page carrying the Search Results widget).
 function _render_system_widget_tag_cloud_region($tree_json, $widget_id, $cfg = array(), $mode = 'preview')
 {
     static $placement = 0;
@@ -117,7 +258,14 @@ function _render_system_widget_tag_cloud_region($tree_json, $widget_id, $cfg = a
         FROM search_results_pages
         LEFT JOIN page ON page.page_id = search_results_pages.page_id
         WHERE page.page_name = '" . e($name) . "'") : null;
-    $rows = is_array($page) ? pg_tcw_rows(pg_tcw_keywords($page), (string)$page['page_name'],
+    $keywords = is_array($page) ? pg_tcw_keywords($page) : array();
+    if (!is_array($page) && $name !== '') {
+        // A page built with the Search Results widget: the keywords of what
+        // that widget searches.
+        $page = pg_tcw_widget_search_page($name);
+        if (is_array($page)) $keywords = pg_tcw_widget_keywords($page['cfg']);
+    }
+    $rows = is_array($page) ? pg_tcw_rows($keywords, (string)$page['page_name'],
         defined('FRONTEND_LANGUAGE') ? function ($word) { return pg_tr_text($word, 'text'); } : null) : array();
 
     _eo_apply_visibility_bindings($tree, array('has_tags' => (bool)$rows, 'no_tags' => !$rows));

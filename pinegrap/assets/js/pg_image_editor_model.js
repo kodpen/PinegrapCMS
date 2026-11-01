@@ -1215,6 +1215,10 @@
     function shapePath(l) {
         var w = l.w, h = l.h, r = clamp(Number(l.radius) || 0, 0, maxRadius(l)), d = '';
 
+        if (l.type === 'path') {
+            return pathShape(l);
+        }
+
         if (LINE_KINDS.indexOf(l.type) >= 0) {
             var parts = lineParts(l);
 
@@ -1239,6 +1243,10 @@
 
         if (LINE_KINDS.indexOf(l.type) >= 0) {
             return [[[0, h / 2], [w, h / 2]]];
+        }
+
+        if (l.type === 'path') {
+            return [curvePoints(pathKnots(l), !!l.closed, 16)];
         }
 
         if (l.type === 'pen') {
@@ -1288,7 +1296,7 @@
     function hitShape(l, p, slack) {
         var q = [l.mirror ? l.w - p[0] : p[0], p[1]], reach = (l.stroke || 1) / 2 + slack, lines = outline(l), i, j;
 
-        if ((l.fill === 'solid' || l.fill === 'soft') && (CLOSED_KINDS.indexOf(l.type) >= 0) && inside(q, lines[0])) {
+        if ((l.fill === 'solid' || l.fill === 'soft') && isClosed(l) && inside(q, lines[0])) {
             return true;
         }
 
@@ -1378,6 +1386,11 @@
         });
     }
 
+    // Whether a fill applies: a closed kind, or a closed vector path.
+    function isClosed(l) {
+        return (CLOSED_KINDS.indexOf(l.type) >= 0) || ((l.type === 'path') && !!l.closed);
+    }
+
     // The stroke's dash pattern, or null for a solid line.
     function dashFor(l) {
         var s = l.stroke || 1;
@@ -1393,7 +1406,7 @@
     function fillFor(l) {
         var hex = /^#([0-9a-f]{6})$/i.exec(l.color || ''), n = hex ? parseInt(hex[1], 16) : 0;
 
-        if ((CLOSED_KINDS.indexOf(l.type) < 0) || ((l.fill !== 'solid') && (l.fill !== 'soft'))) {
+        if (!isClosed(l) || ((l.fill !== 'solid') && (l.fill !== 'soft'))) {
             return 'none';
         }
 
@@ -1410,11 +1423,344 @@
 
     // -- text (pg_image_editor_text.js) --
 
-    var TEXT = {};
+    // A text layer: its box (x, y, w, h, rot), text, font (a key of
+    // TEXT_FONTS or 'g:' and a site font's family), size (px of the rotated
+    // space), weight, italic, align, lineHeight (times the size), spacing,
+    // pad, radius, outline and shadow sizes (em: times the size, so a resize
+    // scales them with the letters), colour, bg (a colour or ''), outline
+    // ({ color, width } or null), shadow ({ color, blur, dx, dy } or null).
+    var TEXT_FONTS = {
+        sans: 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+        serif: 'Georgia, "Times New Roman", Times, serif',
+        hand: '"Segoe Print", "Bradley Hand", "Comic Sans MS", "Chalkboard SE", cursive',
+        display: 'Impact, Haettenschweiler, "Arial Narrow Bold", "Franklin Gothic Bold", sans-serif',
+        mono: 'ui-monospace, Menlo, Consolas, "Liberation Mono", monospace'
+    };
+
+    var TEXT_WEIGHTS = [300, 400, 600, 700, 900];
+
+    // size 0: the editor picks one from the picture's size.
+    function textDefaults() {
+        return {
+            text: '', font: 'sans', size: 0, weight: 700, italic: false, align: 'left', lineHeight: 1.25, spacing: 0,
+            color: '#ffffff', bg: '', pad: 0.3, radius: 0.16, outline: null, shadow: null
+        };
+    }
+
+    // A site font's family as typed in a style: letters, digits, spaces and
+    // a few marks, so it can sit quoted in a font string.
+    function textFamilyName(name) {
+        var s = String(name || '').replace(/[^A-Za-z0-9 _\-.]/g, '').replace(/\s+/g, ' ').trim();
+
+        return s.slice(0, 60);
+    }
+
+    // The CSS family list of a layer's font.
+    function textFamily(font) {
+        var f = String(font || '');
+
+        if (f.slice(0, 2) === 'g:' && textFamilyName(f.slice(2))) {
+            return '"' + textFamilyName(f.slice(2)) + '", ' + TEXT_FONTS.sans;
+        }
+
+        return TEXT_FONTS[f] || TEXT_FONTS.sans;
+    }
+
+    // The canvas font string of a layer (also what document.fonts loads).
+    function textFont(l) {
+        var w = Number(l.weight) || 400;
+
+        return (l.italic ? 'italic ' : '') + w + ' ' + textRound(Math.max(0.5, Number(l.size) || 1)) + 'px ' + textFamily(l.font);
+    }
+
+    function textRound(n) {
+        return Math.round(n * 100) / 100;
+    }
+
+    // The one line layout the stage and the saved overlay both draw:
+    // measure(font, string) is the width of a string, metrics(font, size)
+    // the font's { ascent, descent } in px (else 0.8 and 0.2 of the size).
+    // Lines break only at a new line. Letter spacing goes after each
+    // character but the last; with it every character gets its own x,
+    // measured over the line up to it so kerning stays.
+    // Answers the box size (w, h), the padding and, per line, its text, x
+    // from the box's left, baseline y and width, and chars [[c, x]] when
+    // spaced.
+    function textLayout(l, measure, metrics) {
+        var size = Math.max(0.5, Number(l.size) || 1), font = textFont(l);
+        var lh = size * (Number(l.lineHeight) || 1.25), spacing = (Number(l.spacing) || 0) * size;
+        var pad = l.bg ? Math.max(0, Number(l.pad) || 0) * size : 0;
+        var m = metrics ? metrics(font, size) : null;
+        var asc = (m && m.ascent > 0) ? m.ascent : size * 0.8, desc = (m && m.descent >= 0) ? m.descent : size * 0.2;
+        var lines = String(l.text || '').split('\n'), widest = 0;
+
+        var out = lines.map(function (text, i) {
+            var chars = null, width;
+
+            if (spacing && text.length) {
+                var list = Array.from(text), at = '';
+
+                chars = list.map(function (c, j) {
+                    var x = measure(font, at) + j * spacing;
+
+                    at += c;
+
+                    return [c, textRound(x)];
+                });
+                width = measure(font, text) + (list.length - 1) * spacing;
+            } else {
+                width = text.length ? measure(font, text) : 0;
+            }
+
+            width = Math.max(0, width);
+            widest = Math.max(widest, width);
+
+            return { text: text, width: width, chars: chars, base: textRound(pad + i * lh + (lh - asc - desc) / 2 + asc) };
+        });
+
+        // An empty text keeps room for the caret.
+        var inner = Math.max(widest, size * 0.6);
+
+        out.forEach(function (line) {
+            var free = inner - line.width;
+
+            line.x = textRound(pad + ((l.align === 'center') ? free / 2 : ((l.align === 'right') ? free : 0)));
+            line.width = textRound(line.width);
+        });
+
+        return { w: textRound(inner + 2 * pad), h: textRound(lines.length * lh + 2 * pad), pad: textRound(pad), lineHeight: textRound(lh), size: size, font: font, lines: out };
+    }
+
+    // The layer's box for a new layout, kept where it was: the side the
+    // text is aligned to stays (the middle for centred text), the top too.
+    function textFit(l, layout) {
+        var w0 = Number(l.w) || 0, x = Number(l.x) || 0;
+
+        if (w0 && (l.align === 'center')) {
+            x += (w0 - layout.w) / 2;
+        } else if (w0 && (l.align === 'right')) {
+            x += w0 - layout.w;
+        }
+
+        return { x: textRound(x), y: Number(l.y) || 0, w: layout.w, h: layout.h };
+    }
+
+    // A handle of a text's box dragged to box (M.resizeBox()): the letters
+    // scale, by the height from a corner or a top or bottom side, by the
+    // width from a left or right side; the opposite corner or side stays
+    // put in the layer's turned frame. Answers the fields that change.
+    function textResize(start, box, h) {
+        var w0 = Number(start.w) || 1, h0 = Number(start.h) || 1;
+        var k = /^[ew]$/.test(h) ? box.w / w0 : box.h / h0;
+        var size = clamp((Number(start.size) || 1) * k, 2, 4000);
+
+        k = size / (Number(start.size) || 1);
+
+        var fx = (h.indexOf('e') >= 0) ? -1 : ((h.indexOf('w') >= 0) ? 1 : 0);
+        var fy = (h.indexOf('s') >= 0) ? -1 : ((h.indexOf('n') >= 0) ? 1 : 0);
+        var a = (Number(start.rot) || 0) * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
+        var turn = function (x, y) { return [x * cos - y * sin, x * sin + y * cos]; };
+        var w1 = w0 * k, h1 = h0 * k;
+        var o = turn(fx * w0 / 2, fy * h0 / 2), n = turn(fx * w1 / 2, fy * h1 / 2);
+        var cx = start.x + w0 / 2 + o[0] - n[0], cy = start.y + h0 / 2 + o[1] - n[1];
+
+        return { x: textRound(cx - w1 / 2), y: textRound(cy - h1 / 2), w: textRound(w1), h: textRound(h1), size: textRound(size) };
+    }
+
+    // A shadow or an outline of a layer in px of the rotated space.
+    function textEffects(l) {
+        var size = Math.max(0.5, Number(l.size) || 1), o = l.outline, s = l.shadow;
+
+        return {
+            outline: (o && o.color && (Number(o.width) > 0)) ? { color: o.color, width: textRound(Number(o.width) * size) } : null,
+            shadow: (s && s.color) ? { color: s.color, blur: textRound(Math.max(0, Number(s.blur) || 0) * size), dx: textRound((Number(s.dx) || 0) * size), dy: textRound((Number(s.dy) || 0) * size) } : null,
+            radius: l.bg ? textRound(Math.max(0, Number(l.radius) || 0) * size) : 0
+        };
+    }
+
+    var TEXT = {
+        TEXT_FONTS: TEXT_FONTS, TEXT_WEIGHTS: TEXT_WEIGHTS, textDefaults: textDefaults, textFamilyName: textFamilyName,
+        textFamily: textFamily, textFont: textFont, textLayout: textLayout, textFit: textFit, textResize: textResize,
+        textEffects: textEffects
+    };
 
     // -- stickers and frames (pg_image_editor_sticker.js) --
 
-    var STICKER = {};
+    var STICKER = (function () {
+        // Two decimals are enough for a path in document pixels.
+        function n2(v) {
+            return Math.round(v * 100) / 100;
+        }
+
+        function pt(x, y) {
+            return n2(x) + ' ' + n2(y);
+        }
+
+        function rectD(x, y, w, h, r) {
+            r = Math.max(0, Math.min(r, w / 2, h / 2));
+
+            if (!r) {
+                return 'M' + pt(x, y) + 'H' + n2(x + w) + 'V' + n2(y + h) + 'H' + n2(x) + 'Z';
+            }
+
+            return 'M' + pt(x + r, y) + 'H' + n2(x + w - r) + 'A' + n2(r) + ' ' + n2(r) + ' 0 0 1 ' + pt(x + w, y + r)
+                + 'V' + n2(y + h - r) + 'A' + n2(r) + ' ' + n2(r) + ' 0 0 1 ' + pt(x + w - r, y + h)
+                + 'H' + n2(x + r) + 'A' + n2(r) + ' ' + n2(r) + ' 0 0 1 ' + pt(x, y + h - r)
+                + 'V' + n2(y + r) + 'A' + n2(r) + ' ' + n2(r) + ' 0 0 1 ' + pt(x + r, y) + 'Z';
+        }
+
+        function ellipseD(cx, cy, rx, ry) {
+            return 'M' + pt(cx - rx, cy) + 'A' + n2(rx) + ' ' + n2(ry) + ' 0 1 0 ' + pt(cx + rx, cy)
+                + 'A' + n2(rx) + ' ' + n2(ry) + ' 0 1 0 ' + pt(cx - rx, cy) + 'Z';
+        }
+
+        // A star of n points between two radii, its first point at angle a0.
+        function starD(cx, cy, ro, ri, n, a0) {
+            var d = '', i, a, r;
+
+            for (i = 0; i < n * 2; i++) {
+                a = a0 + i * Math.PI / n;
+                r = (i % 2) ? ri : ro;
+                d += (i ? 'L' : 'M') + pt(cx + r * Math.cos(a), cy + r * Math.sin(a));
+            }
+
+            return d + 'Z';
+        }
+
+        // The built-in stickers, in the panel's order: label is the string
+        // key of a translated label, a fixed text, or '' for none; fill and
+        // ink are the sticker's and its label's colours; w and h its size in
+        // hundredths of the picture's shorter side.
+        var STICKERS = [
+            { kind: 'burst', label: '%20', fill: '#e53935', ink: '#ffffff', w: 16, h: 16 },
+            { kind: 'pill', label: 'stickerNew', fill: '#1e88e5', ink: '#ffffff', w: 18, h: 7 },
+            { kind: 'tag', label: 'stickerSale', fill: '#fb8c00', ink: '#1a1c1e', w: 22, h: 7.5 },
+            { kind: 'stamp', label: 'stickerSold', fill: '#c62828', ink: '#c62828', w: 24, h: 8.5 },
+            { kind: 'bubble', label: 'stickerHello', fill: '#ffffff', ink: '#1a1c1e', w: 24, h: 13 },
+            { kind: 'check', label: '', fill: '#43a047', ink: '#ffffff', w: 9, h: 9 },
+            { kind: 'star', label: '', fill: '#fdd835', ink: '#1a1c1e', w: 10, h: 10 },
+            { kind: 'heart', label: '', fill: '#e53935', ink: '#ffffff', w: 10, h: 9 }
+        ];
+
+        // A sticker layer's drawing in its own box (before its angle):
+        //   d        the filled outline (evenodd: a hole, the tag's eyelet)
+        //   hd       a second path: the stamp's inner ring, the check's tick
+        //   outline  true: d and hd are stroked in the sticker's colour, not
+        //            filled (a stamp)
+        //   tick     the stroke width of the check's tick, in hd
+        //   lb       the box the label is written in, or null
+        function stickerShape(l) {
+            var x = l.x, y = l.y, w = l.w, h = l.h, cx = x + w / 2, cy = y + h / 2, m = Math.min(w, h), bh;
+
+            switch (l.kind) {
+            case 'burst':
+                return { d: starD(cx, cy, m / 2, m / 2 * 0.84, 16, -Math.PI / 2), lb: { x: cx - m / 2, y: cy - m / 2, w: m, h: m } };
+            case 'pill':
+                return { d: rectD(x, y, w, h, h / 2), lb: { x: x, y: y, w: w, h: h } };
+            case 'tag':
+                return {
+                    d: 'M' + pt(x, cy) + 'L' + pt(x + w * 0.2, y) + 'H' + n2(x + w) + 'V' + n2(y + h) + 'H' + n2(x + w * 0.2) + 'Z'
+                        + ellipseD(x + w * 0.16, cy, h * 0.11, h * 0.11),
+                    evenodd: true,
+                    lb: { x: x + w * 0.24, y: y, w: w * 0.74, h: h }
+                };
+            case 'stamp':
+                return {
+                    d: rectD(x + h * 0.03, y + h * 0.03, w - h * 0.06, h - h * 0.06, h * 0.14),
+                    hd: rectD(x + h * 0.12, y + h * 0.12, w - h * 0.24, h - h * 0.24, h * 0.08),
+                    outline: true,
+                    lb: { x: x, y: y, w: w, h: h }
+                };
+            case 'bubble':
+                bh = h * 0.8;
+
+                return {
+                    d: rectD(x, y, w, bh, bh * 0.22) + 'M' + pt(x + w * 0.18, y + bh - 1) + 'L' + pt(x + w * 0.12, y + h) + 'L' + pt(x + w * 0.36, y + bh - 1) + 'Z',
+                    lb: { x: x, y: y, w: w, h: bh }
+                };
+            case 'check':
+                return {
+                    d: ellipseD(cx, cy, w / 2, h / 2),
+                    hd: 'M' + pt(x + w * 0.28, y + h * 0.53) + 'L' + pt(x + w * 0.44, y + h * 0.68) + 'L' + pt(x + w * 0.73, y + h * 0.36),
+                    tick: m * 0.1,
+                    lb: null
+                };
+            case 'star':
+                return { d: starD(cx, cy + m * 0.04, m / 2, m / 2 * 0.45, 5, -Math.PI / 2), lb: null };
+            case 'heart':
+                return {
+                    d: 'M' + pt(cx, y + h * 0.92)
+                        + 'C' + pt(x + w * 0.08, y + h * 0.62) + ' ' + pt(x, y + h * 0.22) + ' ' + pt(x + w * 0.27, y + h * 0.1)
+                        + 'C' + pt(x + w * 0.42, y + h * 0.05) + ' ' + pt(cx, y + h * 0.18) + ' ' + pt(cx, y + h * 0.3)
+                        + 'C' + pt(cx, y + h * 0.18) + ' ' + pt(x + w * 0.58, y + h * 0.05) + ' ' + pt(x + w * 0.73, y + h * 0.1)
+                        + 'C' + pt(x + w, y + h * 0.22) + ' ' + pt(x + w * 0.92, y + h * 0.62) + ' ' + pt(cx, y + h * 0.92) + 'Z',
+                    lb: null
+                };
+            default:
+                return { d: rectD(x, y, w, h, 0), lb: null };
+            }
+        }
+
+        // The label's font in its box: em is the font's width of one
+        // character in ems (measured by the browser), chars the label's
+        // length. The height bounds a short label, the width a long one.
+        function stickerFont(kind, lb, em, chars) {
+            var len = Math.max(1, chars || 0), per = Math.max(0.2, em || 0.5);
+
+            if (kind === 'bubble') {
+                return { weight: 700, size: Math.max(1, Math.min(lb.h * 0.36, (lb.w * 0.86) / (len * per))) };
+            }
+
+            var f = (kind === 'burst') ? 0.46 : 0.56, room = (kind === 'burst') ? 0.66 : 0.84;
+
+            return { weight: 400, size: Math.max(1, Math.min(lb.h * f, (lb.w * room) / (len * per))) };
+        }
+
+        var FRAMES = ['none', 'line', 'thick', 'polaroid', 'corners'];
+
+        // A frame over the box of the saved picture (the crop box in the
+        // rotated space): an even-odd ring filled in the frame's colour, on
+        // the picture's own edge, so the saved size stays. width (1-10) sets
+        // how wide it is, in parts of the shorter side. band: the ring's
+        // width; pads: a polaroid's sides; null for no frame.
+        function frameShape(frame, box) {
+            if (!frame || !frame.kind || (frame.kind === 'none') || (FRAMES.indexOf(frame.kind) < 0)) {
+                return null;
+            }
+
+            var x = box.x, y = box.y, w = box.w, h = box.h, m = Math.min(w, h), k = clamp(Number(frame.width) || 4, 1, 10);
+            var outer = rectD(x, y, w, h, 0), b, p, ins, len, d, s;
+
+            if (frame.kind === 'line' || frame.kind === 'thick') {
+                b = Math.min(m / 4, Math.max(1, m * k * ((frame.kind === 'line') ? 0.002 : 0.008)));
+
+                return { d: outer + rectD(x + b, y + b, w - 2 * b, h - 2 * b, 0), band: b };
+            }
+
+            if (frame.kind === 'polaroid') {
+                s = m * (0.03 + k * 0.004);
+                p = { l: s, r: s, t: s, b: Math.min(h / 3, s * 3.8) };
+
+                return { d: outer + rectD(x + p.l, y + p.t, w - p.l - p.r, h - p.t - p.b, 0), band: s, pads: p };
+            }
+
+            // Corners: four L marks inset from the edge.
+            ins = m * 0.04;
+            len = m * 0.12;
+            b = Math.max(1, m * k * 0.0035);
+            d = '';
+            [[x + ins, y + ins, 1, 1], [x + w - ins, y + ins, -1, 1], [x + w - ins, y + h - ins, -1, -1], [x + ins, y + h - ins, 1, -1]].forEach(function (c) {
+                var cx = c[0], cy = c[1], sx = c[2], sy = c[3];
+
+                d += 'M' + pt(cx, cy) + 'H' + n2(cx + sx * len) + 'V' + n2(cy + sy * b) + 'H' + n2(cx + sx * b)
+                    + 'V' + n2(cy + sy * len) + 'H' + n2(cx) + 'Z';
+            });
+
+            return { d: d, band: b };
+        }
+
+        return { STICKERS: STICKERS, stickerShape: stickerShape, stickerFont: stickerFont, FRAMES: FRAMES, frameShape: frameShape };
+    }());
 
     // -- redaction (pg_image_editor_redact.js) --
 
@@ -1515,7 +1861,251 @@
 
     // -- vector pen and nodes (pg_image_editor_vector.js) --
 
-    var VECTOR = {};
+    // A vector path is a box layer like a drawn one (type path): its knots
+    // are kept as parts of the box (knots: [{ x, y, ix, iy, ox, oy, s }],
+    // the point, the handle in, the handle out, s for a smooth knot), so
+    // moving, resizing, turning and the picture's turns carry it; closed
+    // joins the last knot to the first. Its style is a drawn layer's.
+
+    var KAPPA = 0.5523;
+
+    function knot(x, y, s) {
+        return { x: x, y: y, ix: x, iy: y, ox: x, oy: y, s: !!s };
+    }
+
+    function segments(knots, closed) {
+        var out = [], i;
+
+        for (i = 1; i < knots.length; i++) {
+            out.push([knots[i - 1], knots[i]]);
+        }
+
+        if (closed && (knots.length > 2)) {
+            out.push([knots[knots.length - 1], knots[0]]);
+        }
+
+        return out;
+    }
+
+    // The point at t of the curve from knot a to knot b.
+    function cubicAt(a, b, t) {
+        var m = 1 - t;
+
+        return [m * m * m * a.x + 3 * m * m * t * a.ox + 3 * m * t * t * b.ix + t * t * t * b.x,
+            m * m * m * a.y + 3 * m * m * t * a.oy + 3 * m * t * t * b.iy + t * t * t * b.y];
+    }
+
+    function knotsD(knots, closed) {
+        if (!knots.length) {
+            return '';
+        }
+
+        var d = 'M' + rnd(knots[0].x) + ' ' + rnd(knots[0].y);
+
+        segments(knots, closed).forEach(function (s) {
+            d += 'C' + rnd(s[0].ox) + ' ' + rnd(s[0].oy) + ' ' + rnd(s[1].ix) + ' ' + rnd(s[1].iy) + ' ' + rnd(s[1].x) + ' ' + rnd(s[1].y);
+        });
+
+        return d + ((closed && (knots.length > 2)) ? 'Z' : ((knots.length === 1) ? 'h0.01' : ''));
+    }
+
+    // Points along the curve, n per segment.
+    function curvePoints(knots, closed, n) {
+        var pts = knots.length ? [[knots[0].x, knots[0].y]] : [];
+
+        segments(knots, closed).forEach(function (s) {
+            for (var k = 1; k <= n; k++) {
+                pts.push(cubicAt(s[0], s[1], k / n));
+            }
+        });
+
+        return pts;
+    }
+
+    function knotBounds(knots, closed) {
+        var pts = curvePoints(knots, closed, 24), xs = pts.map(function (p) { return p[0]; }), ys = pts.map(function (p) { return p[1]; });
+        var r6 = function (v) { return Math.round(v * 1e6) / 1e6; }, x = r6(Math.min.apply(null, xs)), y = r6(Math.min.apply(null, ys));
+
+        return { x: x, y: y, w: r6(Math.max.apply(null, xs)) - x, h: r6(Math.max.apply(null, ys)) - y };
+    }
+
+    function moveKnots(knots, fx, fy) {
+        return knots.map(function (k) {
+            var a = fx(k.x, k.y), i = fx(k.ix, k.iy), o = fx(k.ox, k.oy);
+
+            return { x: a[0], y: a[1], ix: i[0], iy: i[1], ox: o[0], oy: o[1], s: !!k.s };
+        });
+    }
+
+    function frac(v, size) {
+        return Math.round(v / size * 1e5) / 1e5;
+    }
+
+    // A new path's box from knots in the rotated space: the box around its
+    // curve, at least a pixel each way.
+    function pathLayer(knots, closed) {
+        var b = knotBounds(knots, closed), w = Math.max(1, b.w), h = Math.max(1, b.h), x = b.x + b.w / 2 - w / 2, y = b.y + b.h / 2 - h / 2;
+
+        return {
+            x: x, y: y, w: w, h: h, rot: 0, closed: !!closed,
+            knots: moveKnots(knots, function (px, py) { return [frac(px - x, w), frac(py - y, h)]; })
+        };
+    }
+
+    // A path's knots in its box's frame (pixels, 0, 0 its corner).
+    function pathKnots(l) {
+        return moveKnots(l.knots || [], function (u, v) { return [u * l.w, v * l.h]; });
+    }
+
+    // A path's box and knots after its knots (in its box's frame) changed:
+    // the box fits the curve again, its angle and mirror kept.
+    function refitPath(l, knots) {
+        var b = knotBounds(knots, l.closed), w = Math.max(1, b.w), h = Math.max(1, b.h);
+        var x0 = b.x + b.w / 2 - w / 2, y0 = b.y + b.h / 2 - h / 2, c = drawnPoint(l, x0 + w / 2, y0 + h / 2);
+
+        return {
+            x: c[0] - w / 2, y: c[1] - h / 2, w: w, h: h,
+            knots: moveKnots(knots, function (px, py) { return [frac(px - x0, w), frac(py - y0, h)]; })
+        };
+    }
+
+    function pathShape(l) {
+        return { d: knotsD(pathKnots(l), !!l.closed), head: null, closed: !!l.closed };
+    }
+
+    // Knot i made smooth (handles along its neighbours' direction, a sixth
+    // of their distance each way) or a corner (handles on the point).
+    function smoothKnot(knots, i, closed) {
+        var n = knots.length, k = knots[i], prev = knots[i - 1] || (closed ? knots[n - 1] : k), next = knots[i + 1] || (closed ? knots[0] : k);
+        var tx = (next.x - prev.x) / 6, ty = (next.y - prev.y) / 6, out = knots.slice();
+
+        out[i] = { x: k.x, y: k.y, ix: k.x - tx, iy: k.y - ty, ox: k.x + tx, oy: k.y + ty, s: true };
+
+        return out;
+    }
+
+    function cornerKnot(knots, i) {
+        var out = knots.slice();
+
+        out[i] = knot(knots[i].x, knots[i].y, false);
+
+        return out;
+    }
+
+    // A knot's point moved to x, y, its handles with it.
+    function moveKnot(k, x, y) {
+        var dx = x - k.x, dy = y - k.y;
+
+        return { x: x, y: y, ix: k.ix + dx, iy: k.iy + dy, ox: k.ox + dx, oy: k.oy + dy, s: !!k.s };
+    }
+
+    // A knot's handle (which: 'i' or 'o') moved to x, y; a smooth knot turns
+    // the other handle to stay in line, keeping its length.
+    function moveHandle(k, which, x, y) {
+        var out = { x: k.x, y: k.y, ix: k.ix, iy: k.iy, ox: k.ox, oy: k.oy, s: !!k.s }, other = (which === 'i') ? 'o' : 'i';
+
+        out[which + 'x'] = x;
+        out[which + 'y'] = y;
+
+        if (k.s) {
+            var len = Math.hypot(k[other + 'x'] - k.x, k[other + 'y'] - k.y), dx = k.x - x, dy = k.y - y, d = Math.hypot(dx, dy);
+
+            if (d > 1e-9) {
+                out[other + 'x'] = k.x + dx / d * len;
+                out[other + 'y'] = k.y + dy / d * len;
+            }
+        }
+
+        return out;
+    }
+
+    // The nearest point of the curve to p: its segment, t and distance.
+    function nearestOnPath(knots, closed, p) {
+        var best = { seg: -1, t: 0, d: Infinity };
+
+        segments(knots, closed).forEach(function (s, i) {
+            for (var k = 0; k <= 32; k++) {
+                var q = cubicAt(s[0], s[1], k / 32), d = Math.hypot(q[0] - p[0], q[1] - p[1]);
+
+                if (d < best.d) {
+                    best = { seg: i, t: k / 32, d: d };
+                }
+            }
+        });
+
+        return best;
+    }
+
+    // A knot added at t of segment seg without changing the curve.
+    function splitAt(knots, closed, seg, t) {
+        var a = knots[seg], j = (seg + 1) % knots.length, b = knots[j];
+        var lerp = function (p, q) { return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]; };
+        var p0 = [a.x, a.y], p1 = [a.ox, a.oy], p2 = [b.ix, b.iy], p3 = [b.x, b.y];
+        var q0 = lerp(p0, p1), q1 = lerp(p1, p2), q2 = lerp(p2, p3), r0 = lerp(q0, q1), r1 = lerp(q1, q2), s = lerp(r0, r1);
+        var out = knots.slice();
+
+        out[seg] = { x: a.x, y: a.y, ix: a.ix, iy: a.iy, ox: q0[0], oy: q0[1], s: !!a.s };
+        out[j] = { x: b.x, y: b.y, ix: q2[0], iy: q2[1], ox: b.ox, oy: b.oy, s: !!b.s };
+        out.splice(seg + 1, 0, { x: s[0], y: s[1], ix: r0[0], iy: r0[1], ox: r1[0], oy: r1[1], s: true });
+
+        return out;
+    }
+
+    // A drawn layer's outline as knots in its box's frame, and whether it
+    // closes: "convert to path". Curves keep their shape (an ellipse, a
+    // rounded box); a line keeps its ends, a pen stroke its smoothed points.
+    function shapeKnots(l) {
+        var w = l.w, h = l.h, r = clamp(Number(l.radius) || 0, 0, Math.min(w, h) / 2), c = KAPPA, pts, ks, i;
+
+        if (l.type === 'ellipse') {
+            var rx = w / 2, ry = h / 2;
+
+            return { closed: true, knots: [
+                { x: rx, y: 0, ix: rx - rx * c, iy: 0, ox: rx + rx * c, oy: 0, s: true },
+                { x: w, y: ry, ix: w, iy: ry - ry * c, ox: w, oy: ry + ry * c, s: true },
+                { x: rx, y: h, ix: rx + rx * c, iy: h, ox: rx - rx * c, oy: h, s: true },
+                { x: 0, y: ry, ix: 0, iy: ry + ry * c, ox: 0, oy: ry - ry * c, s: true }
+            ] };
+        }
+
+        if ((l.type === 'rect') && r) {
+            var corner = function (ax, ay, bx, by, cx, cy) {
+                // From (ax, ay) round the corner (bx, by) to (cx, cy).
+                return [
+                    { x: ax, y: ay, ix: ax, iy: ay, ox: ax + (bx - ax) * c, oy: ay + (by - ay) * c, s: false },
+                    { x: cx, y: cy, ix: cx + (bx - cx) * c, iy: cy + (by - cy) * c, ox: cx, oy: cy, s: false }
+                ];
+            };
+
+            return { closed: true, knots: [].concat(
+                corner(w - r, 0, w, 0, w, r), corner(w, h - r, w, h, w - r, h), corner(r, h, 0, h, 0, h - r), corner(0, r, 0, 0, r, 0)) };
+        }
+
+        if (LINE_KINDS.indexOf(l.type) >= 0) {
+            return { closed: false, knots: [knot(0, h / 2), knot(w, h / 2)] };
+        }
+
+        if (l.type === 'pen') {
+            pts = tracePoints(l);
+            ks = pts.map(function (p) { return knot(p[0], p[1]); });
+
+            for (i = 0; i < ks.length; i++) {
+                ks = smoothKnot(ks, i, false);
+            }
+
+            return { closed: false, knots: ks };
+        }
+
+        pts = outline(l)[0].slice(0, -1);
+
+        return { closed: true, knots: pts.map(function (p) { return knot(p[0], p[1]); }) };
+    }
+
+    var VECTOR = {
+        segments: segments, cubicAt: cubicAt, knotsD: knotsD, curvePoints: curvePoints, knotBounds: knotBounds, pathLayer: pathLayer,
+        pathKnots: pathKnots, refitPath: refitPath, pathShape: pathShape, smoothKnot: smoothKnot, cornerKnot: cornerKnot,
+        moveKnot: moveKnot, moveHandle: moveHandle, nearestOnPath: nearestOnPath, splitAt: splitAt, shapeKnots: shapeKnots
+    };
 
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,

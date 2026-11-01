@@ -155,6 +155,7 @@ function test_design_template_cafe_clinic_privacy_page()
 	$consents = array(
 		'pinegrap-cafe'   => array('cf-res-consent', 'cf-quote-consent'),
 		'pinegrap-clinic' => array('cl-appt-consent'),
+		'pinegrap-salon'  => array('sl-book-consent'),
 	);
 	foreach ($consents as $id => $boxes) {
 		$tpl = _test_tpl_cafe_load($id);

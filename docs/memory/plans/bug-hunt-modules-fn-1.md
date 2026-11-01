@@ -20,7 +20,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `auth`: done #4523
 
-- `backup`: open
+- `backup`: done #4563
 
 - `backup_cloud`: open
 
@@ -56,7 +56,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `connect`: open
 
-- `consent`: open
+- `consent`: done #4577, #4587
 
 - `contact_list`: open
 
@@ -152,7 +152,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `meta_tags`: open
 
-- `mfa`: open
+- `mfa`: taken by KY — #4590
 
 - `not_found_log`: open
 

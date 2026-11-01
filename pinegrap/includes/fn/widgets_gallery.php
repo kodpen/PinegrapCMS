@@ -86,7 +86,9 @@ function pg_sw_template_layouts($tpl, $kind, $pages)
         }
         $tree = _pg_tpl_fill($tree, $vars);
         $json = json_encode($tree);
-        if (!is_string($json) || preg_match('/\{\{[a-z_]+(:[a-z0-9_-]+)?\}\}/', $json)) continue;
+        // A token starting with `__` (`{{__comment_rating}}`) is filled when
+        // the widget draws, not a template placeholder left unfilled.
+        if (!is_string($json) || preg_match('/\{\{(?!__)[a-z_]+(:[a-z0-9_-]+)?\}\}/', $json)) continue;
 
         $fields = null;
         if (($kind === 'form_list_view') || ($kind === 'form_item_view')) {

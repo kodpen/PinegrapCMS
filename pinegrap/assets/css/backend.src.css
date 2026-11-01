@@ -11336,6 +11336,15 @@ body.workspace,
   --ws-avatar-lg: 3rem;
   --ws-shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 10px 30px -14px rgba(0, 0, 0, .16);
   --ws-shadow-accent: 0 .75rem 1.5rem -.75rem rgba(var(--ws-accent-rgb), .45);
+  /* The graph canvas core's tokens (pgc-) on the Workspace's scale; set
+     beside the --ws-* names so the dark values below reach them too. */
+  --pgc-accent: var(--ws-accent);
+  --pgc-soft: var(--ws-soft);
+  --pgc-radius: var(--ws-radius);
+  --pgc-radius-sm: var(--ws-radius-sm);
+  --pgc-shadow: var(--ws-shadow);
+  --pgc-shadow-accent: var(--ws-shadow-accent);
+  --pgc-ring: #7c3aed;
 }
 html[data-bs-theme="dark"] body.workspace,
 html[data-bs-theme="dark"] .ws-app,
@@ -11345,6 +11354,7 @@ html[data-bs-theme="dark"] [id^="ws-"] {
   --ws-soft: rgba(var(--ws-accent-rgb), .1);
   --ws-shadow: 0 1px 2px rgba(0, 0, 0, .2), 0 10px 30px -14px rgba(0, 0, 0, .5);
   --ws-shadow-accent: 0 .75rem 1.5rem -.75rem rgba(var(--ws-accent-rgb), .35);
+  --pgc-ring: #a78bfa;
 }
 /* Compact density, chosen per browser in the overview's header
    (workspace.js sets the class on <html> before the first draw): the same
@@ -20240,82 +20250,154 @@ button.ws-ack-count:hover {
   min-width: 0;
   min-height: 0;
 }
-.wsf-stage {
+/* Graph canvas core (pg_graph_canvas.js): the stage, the viewport that pans
+   and zooms, the layer it moves, the arrows under the boxes, the boxes and
+   their ports, whatever the boxes mean. Every colour, radius and shadow is a
+   --pgc-* token with a panel fallback; a user maps the tokens to its own
+   (the Workspace in its token block) and themes its boxes with modifier
+   classes of its own prefix. Tokens: --pgc-accent, --pgc-soft (target fill),
+   --pgc-radius, --pgc-radius-sm, --pgc-shadow, --pgc-shadow-accent,
+   --pgc-line (arrows), --pgc-ring (selection ring), --pgc-node-accent (a
+   box's border and ports), --pgc-marker and --pgc-marker-on (the url() of
+   the arrowhead markers the user draws). */
+.pgc-stage {
   position: relative;
   height: 100%;
   overflow: hidden;
   border: 1px solid var(--pg-border-color-translucent);
-  border-radius: var(--ws-radius);
+  border-radius: var(--pgc-radius, var(--pg-radius));
   background: var(--pg-bg-1);
 }
 /* The grid's dots move and scale with the layer (the script sets their
    size and position). */
-.wsf-viewport {
+.pgc-viewport {
   position: absolute;
   inset: 0;
   overflow: hidden;
   touch-action: none;
   background-image: radial-gradient(circle, color-mix(in srgb, var(--pg-fg-body) 16%, transparent) 1px, transparent 1.25px);
 }
-.wsf-viewport.wsf-space,
-.wsf-viewport.wsf-panning {
+.pgc-viewport.pgc-space,
+.pgc-viewport.pgc-panning {
   cursor: grabbing;
 }
-.wsf-viewport:focus-visible {
+.pgc-viewport:focus-visible {
   outline: 0;
-  box-shadow: inset 0 0 0 2px var(--ws-accent);
+  box-shadow: inset 0 0 0 2px var(--pgc-accent, var(--pg-primary));
 }
-.wsf-layer {
+.pgc-layer {
   position: absolute;
   top: 0;
   left: 0;
   transform-origin: 0 0;
 }
-.wsf-edges {
+.pgc-edges {
   position: absolute;
   top: 0;
   left: 0;
   overflow: visible;
   pointer-events: none;
 }
-.wsf-edge-line {
+.pgc-edge-line {
   fill: none;
-  stroke: #7d8696;
+  stroke: var(--pgc-line, #7d8696);
   stroke-width: 2;
-  marker-end: url(#wsf-arrow);
+  marker-end: var(--pgc-marker, none);
 }
-.wsf-edge-hit {
+.pgc-edge-hit {
   fill: none;
   stroke: transparent;
   stroke-width: 14;
   pointer-events: stroke;
   cursor: pointer;
 }
-.wsf-arrowhead { fill: #7d8696; }
-.wsf-arrowhead-on { fill: var(--ws-accent); }
-.wsf-arrowhead-bad { fill: var(--pg-danger); }
-.wsf-edge.wsf-selected .wsf-edge-line {
-  stroke: var(--ws-accent);
+.pgc-arrowhead { fill: var(--pgc-line, #7d8696); }
+.pgc-arrowhead-on { fill: var(--pgc-accent, var(--pg-primary)); }
+.pgc-edge.pgc-selected .pgc-edge-line {
+  stroke: var(--pgc-accent, var(--pg-primary));
   stroke-width: 3;
-  marker-end: url(#wsf-arrow-on);
+  marker-end: var(--pgc-marker-on, var(--pgc-marker, none));
 }
-.wsf-edge.wsf-bad .wsf-edge-line {
-  stroke: var(--pg-danger);
-  stroke-dasharray: 6 4;
-  marker-end: url(#wsf-arrow-bad);
-}
-.wsf-edge-label {
+.pgc-edge-label {
   font-size: 11px;
   fill: var(--pg-fg-2);
   paint-order: stroke;
   stroke: var(--pg-bg-1);
   stroke-width: 3px;
 }
-.wsf-edge-temp {
+.pgc-edge-temp {
   fill: none;
-  stroke: var(--ws-accent);
+  stroke: var(--pgc-accent, var(--pg-primary));
   stroke-width: 2;
   stroke-dasharray: 5 4;
+}
+.pgc-edge-temp.pgc-hidden {
+  display: none;
+}
+.pgc-node {
+  position: absolute;
+  width: 208px;
+  height: 80px;
+  padding: 8px 12px;
+  border: 1.5px solid var(--pgc-node-accent, var(--pg-border-color));
+  border-radius: var(--pgc-radius-sm, var(--pg-radius-sm));
+  background: var(--pg-bg-body);
+  box-shadow: var(--pgc-shadow, var(--pg-shadow));
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+/* The selection ring outside the box's border. */
+.pgc-node.pgc-selected {
+  box-shadow: 0 0 0 1.5px var(--pg-bg-body), 0 0 0 3.5px var(--pgc-ring, var(--pgc-accent, var(--pg-primary))), var(--pgc-shadow-accent, none);
+}
+/* The box an arrow being drawn would end on; the layer's class makes it
+   win over a user's state border (a box with a problem). */
+.pgc-boxes .pgc-node.pgc-target {
+  border-color: var(--pgc-accent, var(--pg-primary));
+  background: var(--pgc-soft, color-mix(in srgb, var(--pgc-accent, var(--pg-primary)) 8%, transparent));
+}
+/* An arrow port is drawn 10 px (12 px on hover) but taken by a 24 x 24 px
+   target around it, so drawing an arrow, by mouse or by a long press, is as
+   easy as with a larger dot. */
+.pgc-port {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin-top: -5px;
+  border: 1.5px solid var(--pg-bg-body);
+  border-radius: 50%;
+  background: var(--pgc-node-accent, var(--pg-fg-2));
+}
+.pgc-port::before {
+  content: "";
+  position: absolute;
+  inset: -8.5px;
+  border-radius: 50%;
+}
+.pgc-port-in {
+  left: -7px;
+}
+.pgc-port-out {
+  right: -7px;
+  cursor: crosshair;
+}
+.pgc-port-out:hover {
+  transform: scale(1.2);
+}
+/* The Flows canvas on the core: its arrowhead markers, a box's border and
+   ports in its group's colour (kindClasses() in workspace_flow.js), its
+   problem state. */
+.wsf-app {
+  --pgc-marker: url(#wsf-arrow);
+  --pgc-marker-on: url(#wsf-arrow-on);
+}
+.wsf-arrowhead-bad { fill: var(--pg-danger); }
+.pgc-edge.wsf-bad .pgc-edge-line {
+  stroke: var(--pg-danger);
+  stroke-dasharray: 6 4;
+  marker-end: url(#wsf-arrow-bad);
 }
 /* A box: its group's colour on its border, kind label and icon, the ports
    on the sides (kindClasses() in workspace_flow.js). The light theme takes
@@ -20332,8 +20414,9 @@ html[data-bs-theme="dark"] .wsf-group-logic { --wsf-kind: #e9b44c; }
 html[data-bs-theme="dark"] .wsf-group-message { --wsf-kind: #6ea8ff; }
 html[data-bs-theme="dark"] .wsf-group-people { --wsf-kind: #b49cff; }
 html[data-bs-theme="dark"] .wsf-group-values { --wsf-kind: #e58fd0; }
+.pgc-node[class*="wsf-group-"] { --pgc-node-accent: var(--wsf-kind); }
 /* A value box: no arrows, a dashed border. */
-.wsf-node.wsf-group-values {
+.pgc-node.wsf-group-values {
   border-style: dashed;
 }
 .wsf-constant {
@@ -20343,41 +20426,22 @@ html[data-bs-theme="dark"] .wsf-group-values { --wsf-kind: #e58fd0; }
   align-items: center;
   margin-bottom: var(--ws-space-1);
 }
-.wsf-node {
-  position: absolute;
-  width: 208px;
-  height: 80px;
-  padding: 8px 12px;
-  border: 1.5px solid var(--wsf-kind, var(--pg-border-color));
-  border-radius: var(--ws-radius-sm);
-  --wsf-ring: #7c3aed;
-  background: var(--pg-bg-body);
-  box-shadow: var(--ws-shadow);
-  cursor: grab;
-  user-select: none;
-  touch-action: none;
-}
-.wsf-readonly .wsf-node {
+.wsf-readonly .pgc-node {
   cursor: pointer;
 }
-html[data-bs-theme="dark"] .wsf-node { --wsf-ring: #a78bfa; }
-/* The selection ring outside the group's border. */
-.wsf-node.wsf-selected {
-  box-shadow: 0 0 0 1.5px var(--pg-bg-body), 0 0 0 3.5px var(--wsf-ring), var(--ws-shadow-accent);
-}
-.wsf-node.wsf-bad {
+.pgc-node.wsf-bad {
   border-color: var(--pg-danger);
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--pg-danger) 30%, transparent);
 }
 /* A box a patch of Pinegrap AI added or changed: a dashed ring outside the
    border, so selection and problems still show on the box itself. */
-.wsf-node.wsf-ai-added,
+.pgc-node.wsf-ai-added,
 .wsf-outline-item.wsf-ai-added {
   --wsf-ai: var(--pg-success);
   outline: 2px dashed var(--wsf-ai);
   outline-offset: 3px;
 }
-.wsf-node.wsf-ai-changed,
+.pgc-node.wsf-ai-changed,
 .wsf-outline-item.wsf-ai-changed {
   --wsf-ai: var(--pg-info);
   outline: 2px dashed var(--wsf-ai);
@@ -20400,7 +20464,7 @@ html[data-bs-theme="dark"] .wsf-node { --wsf-ring: #a78bfa; }
   text-transform: none;
   white-space: nowrap;
 }
-.wsf-node.wsf-bad .wsf-ai-badge {
+.pgc-node.wsf-bad .wsf-ai-badge {
   margin-left: 0;
 }
 .wsf-outline-head .wsf-ai-badge {
@@ -20425,10 +20489,6 @@ html[data-bs-theme="dark"] .wsf-node { --wsf-ring: #a78bfa; }
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.wsf-node.wsf-target {
-  border-color: var(--ws-accent);
-  background: var(--ws-soft);
-}
 .wsf-node-head {
   display: flex;
   align-items: center;
@@ -20444,7 +20504,7 @@ html[data-bs-theme="dark"] .wsf-node { --wsf-ring: #a78bfa; }
   margin-left: auto;
   color: var(--pg-danger);
 }
-.wsf-node.wsf-bad .wsf-node-warn {
+.pgc-node.wsf-bad .wsf-node-warn {
   display: inline-block;
 }
 .wsf-node-title,
@@ -20467,36 +20527,7 @@ html[data-bs-theme="dark"] .wsf-node { --wsf-ring: #a78bfa; }
   font-style: italic;
   font-weight: 400;
 }
-/* An arrow port is drawn 10 px (12 px on hover) but taken by a 24 x 24 px
-   target around it, so drawing an arrow, by mouse or by a long press, is as
-   easy as with a larger dot. */
-.wsf-port {
-  position: absolute;
-  top: 50%;
-  width: 10px;
-  height: 10px;
-  margin-top: -5px;
-  border: 1.5px solid var(--pg-bg-body);
-  border-radius: 50%;
-  background: var(--wsf-kind, var(--pg-fg-2));
-}
-.wsf-port::before {
-  content: "";
-  position: absolute;
-  inset: -8.5px;
-  border-radius: 50%;
-}
-.wsf-port-in {
-  left: -7px;
-}
-.wsf-port-out {
-  right: -7px;
-  cursor: crosshair;
-}
-.wsf-port-out:hover {
-  transform: scale(1.2);
-}
-.wsf-readonly .wsf-port-out {
+.wsf-readonly .pgc-port-out {
   cursor: inherit;
   transform: none;
 }
@@ -20672,7 +20703,7 @@ html[data-bs-theme="dark"] .wsf-node { --wsf-ring: #a78bfa; }
    rises and grows from 92 %, its data threads are drawn in the text type's
    colour, then the setup panel slides in over the canvas. Without motion
    (prefers-reduced-motion) all of it is there at once. */
-.wsf-node.wsf-arrive {
+.pgc-node.wsf-arrive {
   animation-name: wsf-arrive;
   animation-timing-function: cubic-bezier(.2, .7, .3, 1);
   animation-fill-mode: both;
@@ -20681,7 +20712,7 @@ html[data-bs-theme="dark"] .wsf-node { --wsf-ring: #a78bfa; }
   from { opacity: 0; transform: translateY(10px) scale(.92); }
   to { opacity: 1; transform: none; }
 }
-.wsf-edge-line.wsf-arrow-hold {
+.pgc-edge-line.wsf-arrow-hold {
   marker-end: none;
 }
 /* Data threads (drawData()): 1 px from a value's dot under the box that
@@ -20828,7 +20859,7 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
 .wsf-binding .wsf-data.wsf-dim.wsf-data-target {
   opacity: 1;
 }
-.wsf-edge-temp.wsf-temp-thread {
+.pgc-edge-temp.wsf-temp-thread {
   stroke: var(--ws-accent);
   stroke-width: 1;
   stroke-dasharray: none;
@@ -20904,7 +20935,7 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
   gap: var(--ws-space-2);
 }
 @media (prefers-reduced-motion: reduce) {
-  .wsf-node.wsf-arrive,
+  .pgc-node.wsf-arrive,
   .wsf-setup {
     animation: none;
   }
@@ -21130,7 +21161,7 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
   text-transform: none;
   white-space: nowrap;
 }
-.wsf-node .wsf-run-badge {
+.pgc-node .wsf-run-badge {
   margin-left: auto;
   font-size: 10px;
 }
@@ -21211,19 +21242,19 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.wsf-run-view .wsf-node {
+.wsf-run-view .pgc-node {
   border-color: var(--wsf-run-line, var(--pg-border-color));
   background: linear-gradient(var(--wsf-run-bg, transparent), var(--wsf-run-bg, transparent)), var(--pg-bg-body);
 }
-.wsf-run-view .wsf-node.wsf-run-none {
+.wsf-run-view .pgc-node.wsf-run-none {
   border-style: dashed;
   box-shadow: none;
 }
-.wsf-run-view .wsf-node.wsf-run-none .wsf-node-title {
+.wsf-run-view .pgc-node.wsf-run-none .wsf-node-title {
   color: var(--pg-fg-2);
 }
-.wsf-run-view .wsf-node.wsf-selected {
-  box-shadow: 0 0 0 1.5px var(--pg-bg-body), 0 0 0 3.5px var(--wsf-ring);
+.wsf-run-view .pgc-node.pgc-selected {
+  box-shadow: 0 0 0 1.5px var(--pg-bg-body), 0 0 0 3.5px var(--pgc-ring);
 }
 .wsf-run-task {
   position: relative;
@@ -21231,10 +21262,10 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   font-weight: 600;
   cursor: pointer;
 }
-.wsf-run-view .wsf-edge-line {
+.wsf-run-view .pgc-edge-line {
   opacity: .45;
 }
-.wsf-run-view .wsf-edge.wsf-edge-taken .wsf-edge-line {
+.wsf-run-view .pgc-edge.wsf-edge-taken .pgc-edge-line {
   stroke: var(--pg-success);
   opacity: 1;
   marker-end: url(#wsf-arrow-taken);
@@ -21335,7 +21366,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   }
   .wsf-app.wsf-no-palette { grid-template-columns: minmax(0, 1fr); }
   .wsf-palette { display: none; }
-  .wsf-stage { height: 60vh; }
+  .pgc-stage { height: 60vh; }
   .wsf-outline { height: auto; overflow: visible; }
   .wsf-bar .wsf-name { flex: 1 1 8rem; min-width: 0; }
   .wsf-bar .wsf-unpublished { display: none; }
@@ -21359,16 +21390,16 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 .ws-sa-graph-layer {
   position: relative;
 }
-.ws-sa-graph .wsf-node {
+.ws-sa-graph .pgc-node {
   cursor: default;
   touch-action: auto;
   user-select: text;
 }
-.ws-sa-graph .wsf-node:focus-visible {
+.ws-sa-graph .pgc-node:focus-visible {
   outline: 0;
   box-shadow: 0 0 0 2px var(--ws-accent);
 }
-.ws-sa-graph .wsf-port-out {
+.ws-sa-graph .pgc-port-out {
   cursor: inherit;
 }
 .ws-sa-graph-chips {

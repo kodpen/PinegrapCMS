@@ -864,8 +864,8 @@ function test_forum_template_loads()
 	// recent replies and the comment e-mails drawn by it; 1.2.0: the board
 	// page's latest replies, held to the board by a record filter; 1.3.0:
 	// the inbox, desk and report threads on the Comments widget, and the
-	// blog.
-	pg_assert_same('1.3.0', $tpl['version'], 'version 1.3.0');
+	// blog; 1.3.1: the conversation's answers labelled replies.
+	pg_assert_same('1.3.1', $tpl['version'], 'version 1.3.1');
 	pg_assert_same('bootstrap5', $tpl['framework'], 'framework');
 	pg_assert_same(90, $tpl['order'], 'order');
 	pg_assert_same('bi-chat-square-text', $tpl['icon'], 'icon');
@@ -2059,7 +2059,7 @@ function test_forum_comments()
 		'topic' => array(lang('reply'), 'topic_view', lang('Replies'), 'topic_replies'),
 		'doc' => array(lang('Feedback'), 'doc_view', lang('Feedback'), 'doc_feedback'),
 		'doc_submission' => array(lang('Message'), 'doc_submission_view', lang('Messages with the moderators'), 'doc_messages'),
-		'conversation' => array(lang('Message'), 'conversation', lang('Replies'), 'conversation_replies'),
+		'conversation' => array(lang('reply'), 'conversation', lang('Replies'), 'conversation_replies'),
 		'staff_report' => array(lang('Note'), 'staff_report_view', lang('Notes'), 'report_notes'),
 		'blog_post' => array(lang('Comment'), 'blog_post', lang('Comments'), 'post_comments'),
 	);

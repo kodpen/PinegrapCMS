@@ -1269,7 +1269,100 @@ function pg_image_editor_strings_draw()
  */
 function pg_image_editor_strings_text()
 {
-    return array();
+    return array(
+        'layer_text'          => lang('Text'),
+        'hintText'            => lang('Click to add a text there. Double-click a text to change it; the handles size and turn it.'),
+        'textPlaceholder'     => lang('Type here'),
+        'textNoteAdd'         => lang('Click anywhere on the image to add text.'),
+        'textNoteEdit'        => lang('Text stays a layer; double-click it to change it later.'),
+        'textAdd'             => lang('Add text'),
+        'textColor'           => lang('Text color'),
+        'textFont'            => lang('Font'),
+        'textFontSans'        => lang('Clean'),
+        'textFontSerif'       => lang('Classic'),
+        'textFontHand'        => lang('Handwritten'),
+        'textFontDisplay'     => lang('Poster'),
+        'textFontMono'        => lang('Monospace'),
+        'textSize'            => lang('Size'),
+        'textStyle'           => lang('Style and alignment'),
+        'textBold'            => lang('Bold'),
+        'textItalic'          => lang('Italic'),
+        'textAlignLeft'       => lang('Align text left'),
+        'textAlignCenter'     => lang('Center text'),
+        'textAlignRight'      => lang('Align text right'),
+        'textBackground'      => lang('Text background'),
+        'textNone'            => lang('None'),
+        'textSoft'            => lang('Soft'),
+        'textWeight'          => lang('Font weight'),
+        'textWeight300'       => lang('Light (300)'),
+        'textWeight400'       => lang('Regular (400)'),
+        'textWeight600'       => lang('Semibold (600)'),
+        'textWeight700'       => lang('Bold (700)'),
+        'textWeight900'       => lang('Heavy (900)'),
+        'textLineHeight'      => lang('Line height'),
+        'textSpacing'         => lang('Letter spacing'),
+        'textPadding'         => lang('Padding'),
+        'textRadius'          => lang('Corner radius'),
+        'textOutline'         => lang('Text outline'),
+        'textOutlineWidth'    => lang('Outline width'),
+        'textShadow'          => lang('Shadow'),
+        'textShadowHard'      => lang('Hard'),
+        'textShadowGlow'      => lang('Glow'),
+    );
+}
+
+/**
+ * Action text_fonts: the font families the site's styles load from Google
+ * Fonts (style_custom_fonts, the JSON list the designer writes), for the
+ * text tool's font list. Families only, cleaned as the editor quotes them.
+ *
+ *   { token, action: 'text_fonts' } -> { status, fonts: [family, ...] }
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_text_fonts($request, $user)
+{
+    $fonts = array();
+
+    if (pg_schema_has('style', 'style_custom_fonts')) {
+        $rows = db_values("SELECT DISTINCT style_custom_fonts FROM style WHERE style_custom_fonts != ''");
+
+        foreach (is_array($rows) ? $rows : array() as $json) {
+            foreach (pg_image_editor_text_families($json) as $family) {
+                $fonts[strtolower($family)] = $family;
+            }
+        }
+    }
+
+    natcasesort($fonts);
+
+    return array(array('status' => 'success', 'fonts' => array_values(array_slice($fonts, 0, 60))), 200);
+}
+
+/**
+ * The enabled families of one style_custom_fonts value: the JSON list of
+ * { family, weights, enabled }; the older one-URL-a-line form names none.
+ *
+ * @return array families, cleaned to letters, digits, spaces and - _ .
+ */
+function pg_image_editor_text_families($json)
+{
+    $list = json_decode((string) $json, true);
+    $out = array();
+
+    foreach (is_array($list) ? $list : array() as $font) {
+        if (!is_array($font) || (isset($font['enabled']) && ($font['enabled'] === false)) || empty($font['family']) || !is_string($font['family'])) {
+            continue;
+        }
+
+        $family = trim(preg_replace('/\s+/', ' ', preg_replace('/[^A-Za-z0-9 _\-.]/', '', $font['family'])));
+
+        if ($family !== '') {
+            $out[] = mb_substr($family, 0, 60);
+        }
+    }
+
+    return $out;
 }
 
 // -- Stickers and frames (pg_image_editor_sticker.js) --
@@ -1281,7 +1374,133 @@ function pg_image_editor_strings_text()
  */
 function pg_image_editor_strings_sticker()
 {
-    return array();
+    return array(
+        'layer_sticker'   => lang('Sticker'),
+        'stickerNew'      => lang('NEW'),
+        'stickerSale'     => lang('SALE'),
+        'stickerSold'     => lang('SOLD OUT'),
+        'stickerHello'    => lang('Hello!'),
+        'stickerBurst'    => lang('Burst'),
+        'stickerCheck'    => lang('Check mark'),
+        'stickerStar'     => lang('Star'),
+        'stickerHeart'    => lang('Heart'),
+        'stickerColor'    => lang('Sticker color'),
+        'stickerInk'      => lang('Text color'),
+        'stickerLabel'    => lang('Sticker text'),
+        'stickerDetails'  => lang('Details'),
+        'stickerFiles'    => lang('Picture from Files'),
+        'stickerFilesFind' => lang('Search pictures'),
+        'stickerFilesNone' => lang('No pictures found.'),
+        'stickerFilesError' => lang('The pictures could not be loaded.'),
+        'hintSticker'     => lang('Click a sticker, then move it into place'),
+        'frameNone'       => lang('None'),
+        'frameLine'       => lang('Thin line'),
+        'frameThick'      => lang('Thick edge'),
+        'framePolaroid'   => lang('Polaroid'),
+        'frameCorners'    => lang('Corners'),
+        'frameColor'      => lang('Color'),
+        'frameWidth'      => lang('Thickness'),
+        'frameBackground' => lang('Background'),
+        'hintFrame'       => lang('The frame is added to the saved image'),
+    );
+}
+
+/**
+ * The image files a sticker may be made from, out of files rows: the
+ * pictures a browser draws, in the folders the user may reach.
+ *
+ * @param array      $rows    files rows (id, name, type, folder, image_width, image_height)
+ * @param array|null $folders the folder ids a role-3 user may reach; null for every folder
+ * @return array [{ id, name, url, width, height }]
+ */
+function pg_image_editor_sticker_rows($rows, $folders)
+{
+    $types = array('jpg', 'jpeg', 'png', 'gif', 'webp');
+    $list = array();
+
+    foreach ($rows as $row) {
+        if (!in_array(strtolower((string) $row['type']), $types, true)) {
+            continue;
+        }
+
+        if (($folders !== null) && !in_array((int) $row['folder'], array_map('intval', $folders), true)) {
+            continue;
+        }
+
+        $list[] = array(
+            'id'     => (int) $row['id'],
+            'name'   => (string) $row['name'],
+            'url'    => PATH . encode_url_path((string) $row['name']),
+            'width'  => (int) $row['image_width'],
+            'height' => (int) $row['image_height']);
+    }
+
+    return $list;
+}
+
+/**
+ * The WHERE clause of the sticker panel's listing: pictures only, none in
+ * the Recycle Bin (pg_image_editor_file() treats those as offline), a
+ * role-3 user's folders only, and the name search. The folders are filtered
+ * here, before the LIMIT, so a user whose folders hold none of the newest
+ * pictures still sees theirs.
+ *
+ * @param string     $search  the name search ('' for none)
+ * @param array|null $folders the folder ids a role-3 user may reach; null for every folder
+ * @param array      $bin     the Recycle Bin's folder ids
+ * @return string|null the clause, or null when the user may reach no folder
+ */
+function pg_image_editor_sticker_where($search, $folders, $bin)
+{
+    $where = "(type IN ('jpg', 'jpeg', 'png', 'gif', 'webp')) AND (name != '')";
+    $ids = function ($list) {
+        return implode(', ', array_map(function ($id) { return "'" . (int) $id . "'"; }, $list));
+    };
+
+    if ($folders !== null) {
+        $folders = array_values(array_diff(array_map('intval', $folders), array_map('intval', $bin)));
+
+        if (!$folders) {
+            return null;
+        }
+
+        $where .= ' AND (folder IN (' . $ids($folders) . '))';
+    } elseif ($bin) {
+        $where .= ' AND (folder NOT IN (' . $ids($bin) . '))';
+    }
+
+    if ($search !== '') {
+        $where .= " AND (name LIKE '" . e(pg_list_like_pattern($search)) . "')";
+    }
+
+    return $where;
+}
+
+/**
+ * Action sticker_files: the newest pictures in Files, or those whose name
+ * holds the search, for the sticker panel's "Picture from Files". Read only;
+ * a role-3 user sees the folders they may edit, as the File Manager shows
+ * them.
+ *
+ *   { search?: string } -> { status, files: [{ id, name, url, width, height }] }
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_sticker_files($request, $user)
+{
+    $search = (isset($request['search']) && is_string($request['search'])) ? trim(mb_substr($request['search'], 0, 100)) : '';
+    $folders = ((int) $user['role'] === 3) ? get_folders_that_user_has_access_to($user['id']) : null;
+    $where = pg_image_editor_sticker_where($search, $folders, pg_recycle_bin_folder_ids());
+    $rows = ($where === null) ? array() : db_items(
+        "SELECT id, name, type, folder, image_width, image_height
+        FROM files
+        WHERE $where
+        ORDER BY timestamp DESC
+        LIMIT 60");
+
+    return array(array(
+        'status' => 'success',
+        'files'  => pg_image_editor_sticker_rows(is_array($rows) ? $rows : array(), $folders)), 200);
 }
 
 // -- Redact (pg_image_editor_redact.js) --
@@ -2078,5 +2297,18 @@ function pg_image_editor_strings_export()
  */
 function pg_image_editor_strings_vector()
 {
-    return array();
+    return array(
+        'hintVector'     => lang('Click: point. Drag: curve. Enter: finish. Esc: cancel.'),
+        'hintNodes'      => lang('Drag points and handles. Double-click the path: add a point. Delete: remove the point. Esc: done.'),
+        'vectorNote'     => lang('Click to place corner points, drag to pull curves. Click the first point to close the path; double-click or Enter ends it.'),
+        'nodesNote'      => lang('Alt while dragging a handle breaks a smooth point into a corner.'),
+        'layer_path'     => lang('Vector path'),
+        'editPoints'     => lang('Edit points'),
+        'stopEditing'    => lang('Stop editing'),
+        'knotSmooth'     => lang('Smooth'),
+        'knotSharp'      => lang('Sharp'),
+        'pathClosed'     => lang('Closed'),
+        'finishPath'     => lang('Finish'),
+        'convertToPath'  => lang('Convert to path'),
+    );
 }

@@ -802,25 +802,25 @@
 
         // The canvas: a viewport, the layer it moves and scales, and on the
         // layer the arrows under the boxes.
-        ui.viewport = el('div', 'wsf-viewport');
+        ui.viewport = el('div', 'pgc-viewport');
         ui.viewport.tabIndex = -1;
         ui.viewport.setAttribute('role', 'application');
         ui.viewport.setAttribute('aria-roledescription', t('fl_canvas'));
         ui.viewport.setAttribute('aria-label', t('fl_canvas_help'));
-        ui.layer = el('div', 'wsf-layer');
-        ui.svg = svgEl('svg', 'wsf-edges');
+        ui.layer = el('div', 'pgc-layer');
+        ui.svg = svgEl('svg', 'pgc-edges');
         ui.svg.setAttribute('aria-hidden', 'true');
         ui.svg.setAttribute('width', '1');
         ui.svg.setAttribute('height', '1');
         ui.svg.innerHTML = '<defs>'
-            + '<marker id="wsf-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="wsf-arrowhead" d="M0 0L10 5L0 10z"/></marker>'
-            + '<marker id="wsf-arrow-on" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="wsf-arrowhead-on" d="M0 0L10 5L0 10z"/></marker>'
+            + '<marker id="wsf-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="pgc-arrowhead" d="M0 0L10 5L0 10z"/></marker>'
+            + '<marker id="wsf-arrow-on" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="pgc-arrowhead-on" d="M0 0L10 5L0 10z"/></marker>'
             + '<marker id="wsf-arrow-bad" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="wsf-arrowhead-bad" d="M0 0L10 5L0 10z"/></marker>'
             + '<marker id="wsf-arrow-taken" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="wsf-arrowhead-taken" d="M0 0L10 5L0 10z"/></marker>'
             + '</defs>';
-        ui.temp = svgEl('path', 'wsf-edge-temp d-none');
+        ui.temp = svgEl('path', 'pgc-edge-temp pgc-hidden');
         ui.svg.appendChild(ui.temp);
-        ui.boxes = el('div', 'wsf-boxes');
+        ui.boxes = el('div', 'pgc-boxes');
         ui.layer.appendChild(ui.svg);
         ui.layer.appendChild(ui.boxes);
         ui.viewport.appendChild(ui.layer);
@@ -842,7 +842,7 @@
             ui.zoom.appendChild(control);
         });
 
-        ui.stage = el('div', 'wsf-stage');
+        ui.stage = el('div', 'pgc-stage');
         ui.stage.appendChild(ui.viewport);
         ui.stage.appendChild(ui.empty);
         ui.stage.appendChild(ui.zoom);
@@ -1914,7 +1914,7 @@
 
         if (!still) {
             motion.boxes.forEach(function (item) {
-                var box = ui.boxes.querySelector('.wsf-node[data-node="' + item.id + '"]');
+                var box = ui.boxes.querySelector('.pgc-node[data-node="' + item.id + '"]');
 
                 if (box) {
                     box.style.animationDelay = item.at + 'ms';
@@ -1929,7 +1929,7 @@
             });
 
             motion.arrows.forEach(function (item) {
-                var line = ui.svg.querySelector('.wsf-edge[data-edge="' + item.edge + '"] .wsf-edge-line');
+                var line = ui.svg.querySelector('.pgc-edge[data-edge="' + item.edge + '"] .pgc-edge-line');
 
                 if (line) {
                     line.classList.add('wsf-arrow-hold');
@@ -2225,9 +2225,9 @@
             ui.scheduled.appendChild(chipRow);
         }
 
-        var stage = el('div', 'wsf-stage ws-sa-graph');
+        var stage = el('div', 'pgc-stage ws-sa-graph');
         var layer = el('div', 'ws-sa-graph-layer');
-        var svg = svgEl('svg', 'wsf-edges');
+        var svg = svgEl('svg', 'pgc-edges');
         var boxes = el('div');
 
         stage.style.height = Math.min(height + 2, 560) + 'px';
@@ -2236,12 +2236,12 @@
         svg.setAttribute('aria-hidden', 'true');
         svg.setAttribute('width', String(width));
         svg.setAttribute('height', String(height));
-        svg.innerHTML = '<defs><marker id="ws-sa-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="wsf-arrowhead" d="M0 0L10 5L0 10z"/></marker></defs>';
+        svg.innerHTML = '<defs><marker id="ws-sa-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="pgc-arrowhead" d="M0 0L10 5L0 10z"/></marker></defs>';
         boxes.setAttribute('role', 'list');
         boxes.setAttribute('aria-label', t('sa_canvas_label'));
 
         nodes.forEach(function (node) {
-            var box = el('div', 'wsf-node ' + (ACTION_KINDS[node.kind] || ''));
+            var box = el('div', 'pgc-node ' + (ACTION_KINDS[node.kind] || ''));
             var head = el('div', 'wsf-node-head');
             var text = node.kind_label + ': ' + node.label + (node.meta ? '. ' + node.meta : '');
 
@@ -2278,7 +2278,7 @@
             }
 
             var path = curve(from.x + pad + BOX_W, from.y + pad + BOX_H / 2, to.x + pad, to.y + pad + BOX_H / 2);
-            var line = svgEl('path', 'wsf-edge-line');
+            var line = svgEl('path', 'pgc-edge-line');
 
             line.setAttribute('d', path.d);
             line.style.markerEnd = 'url(#ws-sa-arrow)';
@@ -2287,7 +2287,7 @@
             // A follow-up's arrow says on which outcome it is taken, beside
             // the box it leads to.
             if (edge.label) {
-                var label = svgEl('text', 'wsf-edge-label');
+                var label = svgEl('text', 'pgc-edge-label');
 
                 label.setAttribute('x', String(to.x + pad - 8));
                 label.setAttribute('y', String(to.y + pad + BOX_H / 2 - 8));
@@ -2927,7 +2927,7 @@
     }
 
     function drawEdges() {
-        Array.prototype.slice.call(ui.svg.querySelectorAll('.wsf-edge, .wsf-thread, .wsf-loop')).forEach(function (node) {
+        Array.prototype.slice.call(ui.svg.querySelectorAll('.pgc-edge, .wsf-thread, .wsf-loop')).forEach(function (node) {
             node.remove();
         });
 
@@ -2955,7 +2955,7 @@
             // An arrow taken when a task is cancelled, or a step failed, says
             // so on itself.
             if ((edge.on === 'cancelled') || (edge.on === 'failed') || (edge.on === 'always') || (edge.on === 'each')) {
-                var label = svgEl('text', 'wsf-edge-label');
+                var label = svgEl('text', 'pgc-edge-label');
 
                 label.setAttribute('x', String(path.mx));
                 label.setAttribute('y', String(path.my - 6));
@@ -3507,7 +3507,7 @@
 
         Object.keys(rows).forEach(function (id) {
             var node = nodeById(id);
-            var box = ui.boxes.querySelector('.wsf-node[data-node="' + id + '"]');
+            var box = ui.boxes.querySelector('.pgc-node[data-node="' + id + '"]');
 
             if (!node || !box) {
                 return;
@@ -4262,7 +4262,7 @@
             }
         });
 
-        Array.prototype.forEach.call(ui.svg.querySelectorAll('.wsf-edge'), function (group) {
+        Array.prototype.forEach.call(ui.svg.querySelectorAll('.pgc-edge'), function (group) {
             group.classList.toggle('wsf-bad', !!byEdge[group.getAttribute('data-edge')]);
         });
     }
@@ -8041,7 +8041,7 @@
     function refreshNode(node) {
         var name = nameOf(node);
 
-        Array.prototype.forEach.call(ui.root.querySelectorAll('.wsf-node[data-node="' + node.id + '"]'), function (box) {
+        Array.prototype.forEach.call(ui.root.querySelectorAll('.pgc-node[data-node="' + node.id + '"]'), function (box) {
             fillBox(box, node);
         });
 
@@ -9318,7 +9318,7 @@
         var keys = [];
 
         if (active && (active !== document.body) && ui.root.contains(active)) {
-            var box = active.closest('.wsf-node[data-node]');
+            var box = active.closest('.pgc-node[data-node]');
             var item = active.closest('.wsf-outline-item[data-node]');
 
             if (active.getAttribute('data-refocus')) {
@@ -10091,7 +10091,7 @@
     // The run read again drawn where it shows: the boxes in place, the
     // arrows, the outline, the side panel and the bar over the canvas.
     function drawRunViews() {
-        Array.prototype.forEach.call(ui.boxes.querySelectorAll('.wsf-node[data-node]'), function (box) {
+        Array.prototype.forEach.call(ui.boxes.querySelectorAll('.pgc-node[data-node]'), function (box) {
             var node = nodeById(box.getAttribute('data-node'));
 
             if (node) {
@@ -10621,8 +10621,7 @@
         // A link on a box (the task of a waiting box) and the last run's
         // flag keep their own clicks and keys (Enter follows the link,
         // opens the fold).
-        ownClicks: '.wsf-node a[href], .wsf-flag-canvas',
-        classes: { panning: 'wsf-panning', space: 'wsf-space', box: 'wsf-node', port: 'wsf-port', edge: 'wsf-edge', selected: 'wsf-selected', target: 'wsf-target', hidden: 'd-none' },
+        ownClicks: '.pgc-node a[href], .wsf-flag-canvas',
         press: pointerPress,
         move: pointerDrag,
         release: pointerRelease,
@@ -10686,7 +10685,7 @@
     // thread waiting for its field was put in the field pressed.
     function pointerPress(event, drag, space) {
         var target = event.target;
-        var box = target.closest('.wsf-node[data-node]');
+        var box = target.closest('.pgc-node[data-node]');
         var wire = target.closest('[data-thread]');
         var dot = target.closest('.wsf-data-live');
         var bind = target.closest('[data-bind]');
@@ -10746,7 +10745,7 @@
 
             ui.temp.setAttribute('d', hangingPath(drag.start.x, drag.start.y, end.x, end.y));
             ui.temp.classList.add('wsf-temp-thread');
-            ui.temp.classList.remove('d-none');
+            ui.temp.classList.remove('pgc-hidden');
             Array.prototype.forEach.call(ui.boxes.querySelectorAll('.wsf-data-target.wsf-data-hot'), function (node) { node.classList.remove('wsf-data-hot'); });
 
             if (hot) {
@@ -10758,7 +10757,7 @@
     // The drag's pointer up (release() of the core).
     function pointerRelease(event, drag) {
         if (drag.kind === 'thread') {
-            ui.temp.classList.add('d-none');
+            ui.temp.classList.add('pgc-hidden');
             ui.temp.classList.remove('wsf-temp-thread');
 
             if (drag.moved) {

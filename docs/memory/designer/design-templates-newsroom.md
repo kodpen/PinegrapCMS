@@ -17,3 +17,6 @@ description: News Portal and Magazine templates as one effort: the owner's decis
 - Search noise: Update Search Index takes each page's whole text, so a headline shown in Most read or a "more" list also finds every page that listed it.
 - Feeds date and order items by `submitted_timestamp`, not the publish time.
 - `get_file.php` sends an attachment opened through edit access or Manage Forms with `Cache-Control: public`: behind a shared cache an editor's view of a draft photo could be kept for visitors. Designed-page grants already send `private`.
+
+## What does the count on a desk list row count?
+- `number_of_comments` of the list's detail page. On the desks that is `submission`: the messages with the writer ("N messages"). "Live now" (`staff_published`) opens the public article, so it counts the readers' comments: the row says "N reader comments" in News, "N letters" in the Magazine (`$desk_row($with_writer, true)`; #4554, PR #4584). The desk messages of a live piece show only on its submission page.
