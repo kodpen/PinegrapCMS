@@ -272,7 +272,7 @@ foreach ($programme as $key => $day) {
     $rows = array();
     foreach ($day['sessions'] as $s) $rows[] = $session_row($s);
     $day_panes[] = $el('div', 'tab-pane fade' . ($first ? ' show active' : ''), $day['title'], array(
-        $para($day['theme'], 'small text-uppercase fw-semibold text-primary mb-2'),
+        $heading('h2', $day['theme'], 'small text-uppercase fw-semibold text-primary mb-2'),
         $el('ul', 'list-group list-group-flush', lang('Sessions'), $rows),
     ), array_merge($searchable($key, $day['theme']), array('_attrs' => array(
         $attr('role', 'tabpanel'), $attr('aria-labelledby', $key . '-tab'), $attr('tabindex', '0'),

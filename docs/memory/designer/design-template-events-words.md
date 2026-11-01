@@ -1,6 +1,6 @@
 ---
 name: design-template-events-words
-description: Events template Turkish wording (1.0.1, #4825): bilet, oturum dizisi, own keys for the registration pages, cancelled status and speakers address; breadcrumb left open.
+description: Events template wording (1.0.1, #4825: bilet, oturum dizisi, own keys for registration pages, cancelled status, speakers address) and heading order (1.0.2, #4824).
 ---
 
 ## Which Turkish words does it use?
@@ -13,3 +13,6 @@ description: Events template Turkish wording (1.0.1, #4825): bilet, oturum dizis
 ## Which test checks it?
 - `test_events_turkish_words_name_one_thing_one_way` checks every Turkish value of the template's keys.
 
+
+## How are its headings ordered? (1.0.2, #4824)
+- Never more than one level down: the programme's day theme is an `h2` between the page `h1` and the sessions' `h3`, a ticket card's title an `h2`. `test_events_headings_never_skip_a_level` walks every page tree (widget trees not included).

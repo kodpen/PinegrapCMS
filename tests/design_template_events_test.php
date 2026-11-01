@@ -449,3 +449,28 @@ function test_events_turkish_words_name_one_thing_one_way()
 	pg_assert_true($map[$speakers['name']] !== $map['speakers'], 'the speakers page address is not the figure label');
 	pg_assert_same('Haberler', $map['News'], 'the news page and menu item are plural');
 }
+
+// On every page of the template a heading is at most one level below the
+// heading before it (the designer audit's heading order check): the
+// programme's day theme is the h2 between the page's h1 and the sessions'
+// h3.
+function test_events_headings_never_skip_a_level()
+{
+	$tpl = _pg_tpl_include(PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-events.php');
+	$checked = 0;
+	foreach ($tpl['pages'] as $page) {
+		if (!isset($page['tree']) || !is_array($page['tree'])) continue;
+		$nodes = array();
+		_test_events_nodes($page['tree'], $nodes);
+		$prev = 0;
+		foreach ($nodes as $n) {
+			if (!isset($n['props']['contentType']) || $n['props']['contentType'] !== 'heading') continue;
+			if (!preg_match('/^h([1-6])$/', (string)$n['props']['tag'], $m)) continue;
+			$level = (int)$m[1];
+			pg_assert_true($prev === 0 || $level <= $prev + 1, $page['key'] . ': h' . $level . ' after h' . $prev);
+			$prev = $level;
+			$checked++;
+		}
+	}
+	pg_assert_true($checked > 50, 'headings found');
+}
