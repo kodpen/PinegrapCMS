@@ -129,3 +129,30 @@ function test_api_app_access_screen_wiring()
 	pg_assert_true(strpos($screen, 'api_app_oauth_create_refusal(') < strpos($screen, '$made = api_app_create('), 'refused before the row is made');
 	pg_assert_contains('api_app_oauth_unused(', $screen, 'an unused OAuth row is marked');
 }
+
+// The drawer's text fields are refused when longer than their api_apps
+// column (name 190, description 500, ip_allowlist 500): the non-strict
+// session would cut them in silence, and an allow list cut inside its last
+// range (10.0.0.0/16 -> 10.0.0.0/1) admits half of IPv4.
+function test_api_app_access_text_too_long()
+{
+	$list = str_repeat('192.168.100.200, ', 30) . '10.0.0.0/16';
+
+	pg_assert_true(strlen($list) > 500, 'the list is longer than the column');
+	pg_assert_same('ip_allowlist', api_app_text_too_long(array('name' => 'Shop', 'ip_allowlist' => $list)), 'long allow list refused');
+	pg_assert_same('', api_app_text_too_long(array('name' => str_repeat('ş', 190), 'description' => str_repeat('a', 500), 'ip_allowlist' => substr($list, 0, 500))), 'at the limit, counted in characters');
+	pg_assert_same('name', api_app_text_too_long(array('name' => str_repeat('a', 191))), 'long name refused');
+	pg_assert_same('description', api_app_text_too_long(array('description' => str_repeat('a', 501))), 'long description refused');
+	pg_assert_same('', api_app_text_too_long(array('other' => str_repeat('a', 900))), 'unknown fields are not measured');
+}
+
+// The update refuses a too-long field before the row is written.
+function test_api_app_access_update_checks_length()
+{
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/api_settings.php');
+
+	$check = strpos($screen, 'api_app_text_too_long(');
+
+	pg_assert_true($check !== false, 'update measures its text fields');
+	pg_assert_true($check < strpos($screen, 'db("UPDATE api_apps SET'), 'measured before the row is written');
+}

@@ -87,6 +87,30 @@ function api_app_oauth_create_refusal($kind, $existing_name) {
 
 }
 
+// The first of the drawer's text fields that is longer than its api_apps
+// column, or '' when all fit. The session is non-strict, so MySQL would cut
+// a longer value without an error; for the IP allow list a cut inside its
+// last range (10.0.0.0/16 -> 10.0.0.0/1) admits addresses never listed.
+// Counted in characters, as varchar(N) in utf8mb4 is.
+function api_app_text_too_long($fields) {
+
+	$widths = array('name' => 190, 'description' => 500, 'ip_allowlist' => 500);
+
+	foreach ($widths as $field => $width) {
+
+		if (isset($fields[$field]) && is_string($fields[$field])
+			&& (mb_strlen($fields[$field], 'UTF-8') > $width)) {
+
+			return $field;
+
+		}
+
+	}
+
+	return '';
+
+}
+
 // One query for the drawer's Logs tab: for every application its own latest
 // requests and its own latest errors, each a bounded subquery read backwards
 // on the (app_id, timestamp) index, so a busy application cannot push the

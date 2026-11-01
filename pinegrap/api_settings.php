@@ -222,6 +222,31 @@ if ($_POST) {
 
 		}
 
+		// A value longer than its column would be cut by MySQL without an
+		// error; for the IP allow list a cut range can admit every address
+		// (api_app_text_too_long()). Nothing is written.
+		$too_long = $existing ? api_app_text_too_long(array(
+			'name'         => $name,
+			'description'  => isset($_POST['description']) ? $_POST['description'] : '',
+			'ip_allowlist' => isset($_POST['ip_allowlist']) ? $_POST['ip_allowlist'] : ''
+		)) : '';
+
+		if ($too_long !== '') {
+
+			if ($too_long === 'name') {
+				$liveform->add_error(lang(array('string' => 'The name can be at most {var:1} characters long.', 'vars' => 190)));
+			} elseif ($too_long === 'description') {
+				$liveform->add_error(lang(array('string' => 'The description can be at most {var:1} characters long.', 'vars' => 500)));
+			} else {
+				$liveform->add_error(lang(array('string' => 'The list of allowed IP addresses can be at most {var:1} characters long. Use a range (CIDR) to cover several addresses.', 'vars' => 500)));
+			}
+
+			header('Location: ' . $screen_url);
+
+			exit();
+
+		}
+
 		if ($existing) {
 
 			$audit_before = pg_audit_fetch('api_apps', $app_id);
