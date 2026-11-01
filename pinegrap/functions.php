@@ -203,3 +203,4 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_icon.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/speculation.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_customs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/text_search.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/graph_canvas.php');

@@ -44,6 +44,7 @@ description: Generated from the module field of the memory files: each includes/
 - `geo`: [[country-names-in-addresses]], [[panel-script-number-format]]
 - `google_analytics`: [[google-analytics-card]]
 - `google_reviews`: [[google-reviews-widget]]
+- `graph_canvas`: [[graph-canvas-core-module]]
 - `image_editor`: [[image-editor-adjust]], [[image-editor-keys]], [[image-editor-layers]], [[image-editor-modal]], [[image-editor-parts]], [[image-editor-recycle-bin]], [[image-editor-save]]
 - `imap_client`: [[mail-imap-client]]
 - `innodb`: [[panel-script-number-format]]
