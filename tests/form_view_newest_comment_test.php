@@ -35,10 +35,10 @@ function test_form_view_newest_comment_long_message_cut()
 // An "&" near the cut is escaped whole: "&amp;", never "&am".
 function test_form_view_newest_comment_cut_keeps_entity_whole()
 {
-	$message = str_repeat('a', 97) . ' & b and more text after the cut';
+	$message = str_repeat('a', 98) . ' & b and more text after the cut';
 	$output = prepare_form_data_for_output(pg_form_view_newest_comment($message), '', true);
 
-	pg_assert_same(str_repeat('a', 97) . ' &amp;...', $output, 'entity whole');
+	pg_assert_same(str_repeat('a', 98) . ' &amp;...', $output, 'entity whole');
 }
 
 // A line break near the cut prints a whole <br />, not a broken "<br" tag

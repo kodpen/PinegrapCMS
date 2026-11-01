@@ -1243,6 +1243,11 @@ function get_form_item_view($properties) {
                     switch ($field_group) {
                         case 'standard':
                             $data = $submitted_form[$field_name] ?? '';
+                            // The newest comment is cut before it is escaped, so the cut
+                            // never splits an entity or a line break's <br />.
+                            if ($field_name == 'newest_comment') {
+                                $data = pg_form_view_newest_comment($data);
+                            }
                             break;
                         
                         case 'custom':
@@ -1287,10 +1292,6 @@ function get_form_item_view($properties) {
                             }
                         }
                         
-                        // if this is the newest comment field and the message is greater than 100 characters, then shorten message
-                        if (($field_name == 'newest_comment') && (mb_strlen($data) > 100)) {
-                            $data = mb_substr($data, 0, 100) . '...';
-                        }
                         
                         // The newest comment's name: no name, or the stored 'Anonymous', reads in the site language.
                         if (($field_name == 'newest_comment_name') && (($data == '') || ($data === 'Anonymous')) && ($submitted_form['newest_comment_id'] != '')) {
