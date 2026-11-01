@@ -103,7 +103,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-asset-records.md: The design's CSS/JS asset rows (style_custom_css / style_custom_js JSON): module scripts, the per-page `pages` list and its tab:/key: references, where they are resolved, the Bootstrap Icons sheet.
 - design-framework.md: A visual design's framework (style.style_framework, bootstrap5 or custom): the pg_design_frameworks() registry, written once at creation, what a custom design does without, the new-design question.
 - design-template-cafe.md: Cafe and Clinic templates: event weekdays, price hint, rating numbers, guests pattern, consent privacy link, subject dates, booking links that fill the form.
-- design-template-comment-labels.md: Which comments labels the design templates set (singular nouns; `reply` on the forum topic and every conversation page) and why not the verb key `Reply` (#3453).
+- design-template-comment-labels.md: Which comments labels the design templates set (singular nouns; `reply` on the forum topic and every conversation page, tested) and why not the verb key `Reply` (#3453, #4584).
 - design-template-forum-blog.md: Forum template 1.3.0: the standard blog pages in the forum's look (blog, blog_post, blog_new, home_posts), the Blog Posts form and its samples, the post comments thread
 - design-template-forum-decisions.md: Owner decisions behind the forum template (2026-10-23): general features only, replies as comments, what is not built, and the general features it was built on, with their PRs
 - design-template-forum-layout.md: Forum template look: pf- User Styles, Figtree and JetBrains Mono, tint after card, count strips, vanishing bands, raised badge and byline links, reply cards, focus rings, light e-mail frames.
