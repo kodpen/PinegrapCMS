@@ -720,6 +720,90 @@
     .pg-dash-row-bar { background: CanvasText; forced-color-adjust: none; }
   }
 
+  /* ── Work cards: Next up ──────────────────────────────────────────────── */
+
+  .pg-dash-queue-sub {
+    margin: 0;
+    font-size: .8125rem;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-queue {
+    display: flex;
+    flex-direction: column;
+    gap: .375rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pg-dash-queue-row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: .625rem;
+    padding: .5rem .625rem;
+    border: var(--pg-border-width) solid var(--pg-border-color);
+    border-inline-start-width: .25rem;
+    border-radius: var(--pg-radius);
+  }
+
+  .pg-dash-queue-row[data-tone="bad"] { border-inline-start-color: var(--pg-danger); }
+  .pg-dash-queue-row[data-tone="warn"] { border-inline-start-color: var(--pg-warning); }
+
+  .pg-dash-queue-tag {
+    min-width: 4.5rem;
+    padding: .125rem .375rem;
+    border-radius: 999px;
+    background: var(--pg-tint);
+    font-size: .6875rem;
+    font-weight: 600;
+    text-align: center;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-queue-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .pg-dash-queue-title {
+    overflow: hidden;
+    font-size: .875rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--pg-fg-emphasis);
+  }
+
+  .pg-dash-queue-note {
+    font-size: .75rem;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-queue-row[data-tone="bad"] .pg-dash-queue-note { color: var(--pg-danger-fg-emphasis); }
+  .pg-dash-queue-row[data-tone="warn"] .pg-dash-queue-note { color: var(--pg-warning-fg-emphasis); }
+
+  @media (max-width: 639.98px) {
+    .pg-dash-queue-row {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
+    .pg-dash-queue-tag {
+      grid-column: 1 / -1;
+      justify-self: start;
+    }
+
+    .pg-dash-queue-title {
+      white-space: normal;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .pg-dash-queue-row[data-tone="bad"],
+    .pg-dash-queue-row[data-tone="warn"] { border-inline-start-color: CanvasText; }
+  }
+
   /* ── Edit mode ────────────────────────────────────────────────────────── */
 
   .pg-dash-card-edit,
