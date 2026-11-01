@@ -332,7 +332,11 @@ function pg_load_user_row($user_id)
 // travels in a Set-Cookie header); when either is missing the identity is
 // still written and the id is left as it was - PHP would only warn and keep
 // the old id anyway.
-function pg_session_sign_in($user_id, $username)
+//
+// $mark_sign_in false leaves the new dashboard's sign-in times alone: an
+// administrator signing in as someone else (login_as_user.php) is not that
+// person signing in.
+function pg_session_sign_in($user_id, $username, $mark_sign_in = true)
 {
     if ((session_status() === PHP_SESSION_ACTIVE) && !headers_sent()) {
         session_regenerate_id(true);
@@ -350,6 +354,10 @@ function pg_session_sign_in($user_id, $username)
     $_SESSION['sessionuserid']  = $user_id;
     $_SESSION['sessionusername'] = $username;
 
+    if ($mark_sign_in) {
+        pg_dashboard_sign_in_mark($user_id);
+    }
+
     // The form token is renewed with the identity: a token that was handed
     // out while the visitor was anonymous must not keep authorising the
     // signed-in account's forms. initialize_token() lives behind
@@ -359,6 +367,34 @@ function pg_session_sign_in($user_id, $username)
         unset($_SESSION['software']['token']);
         initialize_token();
     }
+}
+
+// The upsert behind the new dashboard's "since your last sign-in" line: the
+// person's dashboard_layout row (role 0) gets this sign-in in signed_in_at and
+// the one before it in signed_in_before; a first sign-in creates the row with
+// the switch off. MySQL applies the ON DUPLICATE KEY assignments left to
+// right, so signed_in_before takes the old signed_in_at before it is
+// overwritten.
+function pg_dashboard_sign_in_query($user_id, $now)
+{
+    return "INSERT INTO dashboard_layout (user_id, role, enabled, layout, signed_in_at, signed_in_before)
+        VALUES (" . (int) $user_id . ", 0, 0, '', " . (int) $now . ", 0)
+        ON DUPLICATE KEY UPDATE
+            signed_in_before = signed_in_at,
+            signed_in_at = VALUES(signed_in_at)";
+}
+
+// Called by pg_session_sign_in(). Asked directly and silenced rather than
+// through db(): this file runs without functions.php on the get_file.php path,
+// and before the 2026.11.0 upgrade the table does not exist yet, where a
+// sign-in must still work (upgrade bridge).
+function pg_dashboard_sign_in_mark($user_id)
+{
+    if (((int) $user_id <= 0) || !class_exists('db') || empty(db::$con)) {
+        return;
+    }
+
+    @mysqli_query(db::$con, pg_dashboard_sign_in_query($user_id, time()));
 }
 
 // Bind the session to the auth_tokens row that identifies this device.

@@ -7884,6 +7884,43 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
   margin: 0.25rem 0 2rem;
   padding: 0.85rem 1rem 0.85rem 1.1rem;
 }
+/* The new dashboard's switch row, the first row of both dashboards
+   (includes/dashboard/v2/layout.php): the switch, its label and a hint, and
+   on the new page what goes at the right end. The hint wraps under the label
+   on a phone. */
+.pg-dash-switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin: 0.25rem 0 0.75rem;
+}
+.pg-dash-switch-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.6rem;
+  min-width: 0;
+}
+.pg-dash-switch-toggle .switch {
+  margin: 0;
+}
+.pg-dash-switch-label {
+  font-weight: 600;
+  color: var(--pg-fg-emphasis);
+  cursor: pointer;
+}
+.pg-dash-switch-hint {
+  color: var(--pg-fg-2);
+  font-size: 0.875rem;
+}
+.pg-dash-switch-aside {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-inline-start: auto;
+}
 /* A thin stroke of the clock's gradient down the left edge, inset from the
    corners so it does not have to follow the radius. Positioned rather than
    clipped: overflow on the card would also clip the mark's ring. */

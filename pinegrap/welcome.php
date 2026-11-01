@@ -77,6 +77,18 @@ $dashboard_appearance = pg_dashboard_appearance($dashboard);
 $widget_theme = $dashboard_appearance['widget_theme'];
 $panel_backdrop = $dashboard_appearance['backdrop'];
 
+// The new dashboard (includes/dashboard/v2/): a person who switched it on gets
+// that page instead of this one; the switch row below lets anyone try it.
+require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/layout.php');
+
+$dashboard_v2_row = pg_dashboard_v2_person_row($user['id']);
+
+if (pg_dashboard_v2_is_enabled($dashboard_v2_row)) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/page.php');
+    print pg_dashboard_v2_page($user, $dashboard_v2_row, $dashboard_appearance);
+    exit;
+}
+
 $output_header_includes = '';
 
 // Release notes.
@@ -1007,6 +1019,7 @@ $output_header_includes .
         }
     }
 </style>
+    ' . pg_dashboard_v2_switch_row(false) . pg_js_bundle_tags('assets/js/dashboard_switch.min.js') . '
     <section class="card pg-clockbar" aria-label="' . h(lang('Welcome')) . '">
         <div class="pg-brief" id="pg_brief">
             <!-- One mark, not two. The hour already had an icon in front of the

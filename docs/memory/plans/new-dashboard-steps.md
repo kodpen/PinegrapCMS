@@ -11,6 +11,7 @@ description: Steps N1-N14 of plans/new-dashboard.md: size, screens, order, which
 ## Which steps?
 - N1 (M) Switch and page shell. Screens 21, 22. `free` after question 1.
   - Migration step for the decided storage, rerun twice on a dev DB; the sign-in upsert; `dashboard_switch`; the switch row on the old page (its only change) and the new one; the branch in `welcome.php`; `page.php` with part files, the greeting line and an empty grid; the card list `cards.php` with all 30 entries (built ones marked); empty `dashboard_v2.js` and stylesheet sections.
+  - Done: #N1PR, `ui/dashboard-new-switch.md`.
 
 - N2 (M) Greeting card. Screen 01. `free` after N1.
   - Sign-in chips per preset, the shortcut pool with gates, four tiles, `figures.php` with the eleven figures and their tests.

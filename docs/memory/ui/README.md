@@ -108,6 +108,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dashboard-keyboard.md: Dashboard keyboard and screen-reader access: Online Engagement rows, focusable System Status chips and their links, focus kept across the refresh
 - dashboard-list-links.md: Dashboard greeting and card links open their list on the period and filters they counted; dashboard day windows step calendar days
 - dashboard-module-switches.md: The dashboard and the Users list follow the Site Settings module switches (CALENDARS, FORMS, ECOMMERCE) and the greeting's feature lines link only to screens the reader can open
+- dashboard-new-switch.md: The new dashboard's switch row on both dashboards, the welcome.php branch, the dashboard_layout row (step 11.0.143), the sign-in upsert and the dashboard_switch action
 - dashboard-percent-and-empty-text.md: Dashboard wording: '{var:1}%' percentage figures and the whole-sentence empty states of each card
 - dashboard-pill-contrast.md: Dashboard cards: tinted pills mixed 50% toward the text colour, zero-count rows on .fg-2 instead of opacity, the headline arrow's direction in words
 - dashboard-sales-map-data.md: Dashboard sales map widget 1 data side: files, map assets, adding a country, region-name resolution, matching, opening view, number definition, quantile steps.

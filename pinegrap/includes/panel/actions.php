@@ -96,6 +96,9 @@ function pg_panel_actions()
         // Arranging the dashboard is open to every backend role; the handler
         // checks the session and the token for itself.
         'update_dashboard_widgets' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_update_dashboard_widgets', 'exempt' => true, 'token' => true, 'write' => true),
+        // The new dashboard's switch is each person's own; the handler
+        // checks the session and the token for itself.
+        'dashboard_switch' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_dashboard_switch', 'exempt' => true, 'token' => true, 'write' => true),
         // Site-wide, so it keeps the general gate.
         'update_dashboard_appearance' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_update_dashboard_appearance', 'exempt' => false, 'token' => true, 'write' => true),
         // Noting that someone has watched a guided tour is theirs to do

@@ -130,6 +130,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_n11_old_address_order(); // 11.0.138
 	upgrade_2026_11_0_commission_cancel_marker(); // 11.0.139
 	upgrade_2026_11_0_file_versions();           // 11.0.140
+	upgrade_2026_11_0_dashboard_layout();        // 11.0.143
 
 }
 
@@ -4168,5 +4169,37 @@ function upgrade_2026_11_0_file_versions() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Image versions: every save in the image editor keeps a version of the picture; the original and the last 10 saves can be previewed and restored from the editor.');
+
+}
+
+// The new dashboard (2026.11.0, 11.0.143; includes/dashboard/v2/). One row per
+// person who signed in or flipped the dashboard switch, and one per role
+// default. A person's row has their user_id and role 0; a role default row
+// has user_id 0 and role 0-3, or 9 for everyone. role is NOT NULL because a
+// NULL inside the unique key would let a person have two rows. enabled is
+// the switch (off: the current dashboard), layout and look are JSON written
+// by the dashboard ('' until the person saves), locked only means something
+// on a role row. Every sign-in moves signed_in_at into signed_in_before, so
+// the "since your last sign-in" chips count from the sign-in before this one.
+// The current dashboard's own row (table dashboard) is not touched.
+function upgrade_2026_11_0_dashboard_layout() {
+
+	install_create_table('dashboard_layout', "CREATE TABLE dashboard_layout (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id           INT UNSIGNED NOT NULL DEFAULT 0,
+		role              TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		enabled           TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		layout            MEDIUMTEXT NOT NULL,
+		look              VARCHAR(255) NOT NULL DEFAULT '',
+		locked            TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		signed_in_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		signed_in_before  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_user_role (user_id, role)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('New dashboard: a switch at the top of the dashboard lets each person try the new design; the current dashboard stays as it is.');
 
 }

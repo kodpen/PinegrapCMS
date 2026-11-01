@@ -67,7 +67,7 @@ function test_css_minify_reads_nested_and_layered_rules()
 function test_css_bundles_are_built_from_sources_in_the_tree()
 {
 	foreach (pg_css_bundles() as $bundle => $source) {
-		pg_assert_true((bool) preg_match('#^assets/css/[a-z_]+\.min\.css$#', $bundle), $bundle . ' is a .min.css under assets/css/');
+		pg_assert_true((bool) preg_match('#^assets/css/[a-z0-9_]+\.min\.css$#', $bundle), $bundle . ' is a .min.css under assets/css/');
 		pg_assert_true(is_file(PG_FUNCTIONS_DIR . '/' . $bundle), $bundle . ' is built');
 		pg_assert_true(is_file(PG_FUNCTIONS_DIR . '/' . $source), $bundle . ': ' . $source . ' exists');
 		pg_assert_false((bool) preg_match('#\.min\.css$#', $source), $bundle . ': ' . $source . ' is a source');

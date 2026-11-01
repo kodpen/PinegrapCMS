@@ -22,7 +22,7 @@ if (!defined('PG_TEST_RUNNER')) {
 function test_js_bundles_name_files_that_exist()
 {
 	foreach (pg_js_bundles() as $bundle => $sources) {
-		pg_assert_true((bool) preg_match('#^assets/js/[a-z_]+\.min\.js$#', $bundle), $bundle . ' is a .min.js under assets/js/');
+		pg_assert_true((bool) preg_match('#^assets/js/[a-z0-9_]+\.min\.js$#', $bundle), $bundle . ' is a .min.js under assets/js/');
 		pg_assert_true(is_file(PG_FUNCTIONS_DIR . '/' . $bundle), $bundle . ' is built');
 		pg_assert_true(is_array($sources) && (count($sources) > 0), $bundle . ' has sources');
 

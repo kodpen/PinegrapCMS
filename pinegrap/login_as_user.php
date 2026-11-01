@@ -74,7 +74,7 @@ setcookie('software[affiliate_code]', '', time() - 1000, '/');
 session_start();
 
 // Update session so that editor will be logged in as different user.
-pg_session_sign_in($login_as_user_id, $user['username']);
+pg_session_sign_in($login_as_user_id, $user['username'], false);
 
 // Remember that user is logged in as a different user, so we don't remove remember me login cookies
 // when the user logs out from this different user account.

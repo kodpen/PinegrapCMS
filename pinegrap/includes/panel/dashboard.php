@@ -16,6 +16,8 @@
  *   user_pinned_app_update       the apps pinned to the caller's own menu
  *   update_dashboard_widgets     the caller's dashboard widget layout
  *   update_dashboard_appearance  the dashboard's backdrop and look
+ *   dashboard_switch             the caller's new dashboard switch
+ *                                (includes/dashboard/v2/layout.php)
  *   tour_seen                    a guided tour has been watched or skipped
  *   contact_quick_save           the account menu's quick form for one's own
  *                                name
@@ -184,6 +186,37 @@ function pg_panel_user_pinned_app_update($request, $action)
     );
     echo encode_json($response);
     exit();
+}
+
+function pg_panel_dashboard_switch($request, $action)
+{
+    // Kept global: helpers read the session user through `global $user`;
+    // see includes/panel/actions.php.
+    global $user;
+
+    // Exempt from the general gate so every backend role reaches it; the
+    // write touches only the caller's own row.
+    if (!USER_LOGGED_IN) {
+        respond(panel_login_refusal());
+    }
+    $user = validate_user();
+    validate_token();
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/layout.php');
+
+    $on = !empty($request['on']);
+
+    if (!pg_dashboard_v2_set_enabled($user['id'], $on)) {
+        respond(array(
+            'status' => 'error',
+            'message' => lang('The change could not be saved. Please try again.'),
+        ));
+    }
+
+    respond(array(
+        'status' => 'success',
+        'on' => $on,
+    ));
 }
 
 function pg_panel_update_dashboard_widgets($request, $action)

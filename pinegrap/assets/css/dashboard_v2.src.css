@@ -1,0 +1,104 @@
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * The new dashboard's stylesheet (includes/dashboard/v2/page.php), built to
+ * dashboard_v2.min.css by tools/build_css.php. One section per part: the
+ * page and top row, the grid, then one per card group, each appended by the
+ * step that builds it. Colours come from the panel's --pg-* tokens, so light
+ * and dark follow [data-bs-theme]. The switch row's own rules are in
+ * backend.src.css, as the current dashboard draws it too.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+@layer custom {
+
+/* ── Page and top row ───────────────────────────────────────────────────── */
+
+.pg-dash-v2 {
+  --pg-dash-gap: 1.25rem;
+  --pg-dash-pad: 1.25rem;
+}
+
+.pg-dash-card {
+  position: relative;
+  min-width: 0;
+  padding: var(--pg-dash-pad);
+  border: var(--pg-border-width) solid var(--pg-border-color-translucent);
+  border-radius: var(--pg-radius-lg);
+  background: var(--pg-card-bg, var(--pg-bg-body));
+  color: var(--pg-fg-body);
+}
+
+.pg-dash-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--pg-dash-gap);
+  margin-bottom: var(--pg-dash-gap);
+}
+
+/* The status card takes about 340 px beside the greeting from about
+   1000 px; under that it goes below. */
+@media (min-width: 1000px) {
+  .pg-dash-top:has(> .pg-dash-status) {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+}
+
+.pg-dash-when {
+  margin: 0 0 0.35rem;
+  color: var(--pg-fg-2);
+  font-size: 0.875rem;
+}
+
+.pg-dash-greet {
+  margin: 0;
+  color: var(--pg-fg-emphasis);
+  font-size: clamp(1.5rem, 1.2rem + 1.2vw, 2rem);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* The name in the accent gradient where text clipping is supported. */
+.pg-dash-greet-name {
+  color: var(--pg-primary-ink);
+}
+
+@supports ((-webkit-background-clip: text) or (background-clip: text)) {
+  .pg-dash-greet-name {
+    background: var(--clock-gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+}
+
+/* ── Grid ───────────────────────────────────────────────────────────────── */
+
+/* Three tracks over about 1000 px, two to 640 px, one below; dense packing
+   fills a gap a wide card left with a narrower one after it. */
+.pg-dash-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-flow: row dense;
+  gap: var(--pg-dash-gap);
+  margin-bottom: var(--pg-dash-gap);
+}
+
+@media (min-width: 640px) {
+  .pg-dash-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1000px) {
+  .pg-dash-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+}

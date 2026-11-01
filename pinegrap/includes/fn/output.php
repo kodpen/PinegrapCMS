@@ -1723,6 +1723,9 @@ function pg_css_bundles()
     return array(
         'assets/css/backend.min.css' => 'assets/css/backend.src.css',
         'assets/css/pg_image_editor.min.css' => 'assets/css/pg_image_editor.src.css',
+        // The new dashboard (includes/dashboard/v2/page.php), one section
+        // per card group.
+        'assets/css/dashboard_v2.min.css' => 'assets/css/dashboard_v2.src.css',
     );
 }
 
@@ -6907,6 +6910,12 @@ function pg_js_bundles()
         'assets/js/style_designer.min.js'          => array('assets/js/style_designer.src.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
+        // The switch row at the top of both dashboards.
+        'assets/js/dashboard_switch.min.js'        => array('assets/js/dashboard_switch.js'),
+        // The new dashboard (includes/dashboard/v2/page.php): the grid and
+        // card frame first, then edit mode and one renderer file per card
+        // group, each appended by the step that adds it.
+        'assets/js/dashboard_v2.min.js'            => array('assets/js/dashboard_v2.js'),
     );
 }
 
