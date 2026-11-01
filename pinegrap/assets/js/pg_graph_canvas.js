@@ -425,12 +425,13 @@
     //    out port released on a box (to is null on no box of the graph);
     //  - ownClicks: a selector of what keeps its own clicks and keys (a link
     //    on a box): the canvas takes no pointer and no key from it;
-    //  - classes: { panning, space } put on the viewport while it pans and
-    //    while Space is held; box, port, edge (a box, its ports
-    //    <port>-in and <port>-out, an arrow's group with its <edge>-line and
-    //    <edge>-hit paths), selected (what is selected), target (the box an
-    //    arrow being drawn may go to), hidden (ui.temp while no arrow is
-    //    drawn);
+    //  - classes (optional, each name else its CLASSES default, styled by
+    //    the pgc- block of backend.src.css): { panning, space } put on the
+    //    viewport while it pans and while Space is held; box, port, edge (a
+    //    box, its ports <port>-in and <port>-out, an arrow's group with its
+    //    <edge>-line and <edge>-hit paths), selected (what is selected),
+    //    target (the box an arrow being drawn may go to), hidden (ui.temp
+    //    while no arrow is drawn);
     //  - press(event, drag, space): a pointer went down on the canvas; it
     //    sets drag.kind and what its own kinds need, or answers false when
     //    it took the press itself (the pointer is then forgotten). A kind
@@ -446,6 +447,28 @@
     //    null when there was none; a box moved is back at its place first;
     //  - key(event): a key on the canvas, first; true when it handled it.
     //    Arrows the adapter does not take pan, + and − zoom, 0 fits.
+    // The class names create() puts on what it draws and marks.
+    var CLASSES = {
+        panning: 'pgc-panning',
+        space: 'pgc-space',
+        box: 'pgc-node',
+        port: 'pgc-port',
+        edge: 'pgc-edge',
+        selected: 'pgc-selected',
+        target: 'pgc-target',
+        hidden: 'pgc-hidden'
+    };
+
+    function merge(base, over) {
+        var out = {};
+
+        Object.keys(base).forEach(function (key) {
+            out[key] = (over && over[key]) ? over[key] : base[key];
+        });
+
+        return out;
+    }
+
     function create(adapter) {
         var ui = adapter.ui;
         var view = viewport({ ui: ui, view: adapter.view, items: adapter.items });
@@ -454,7 +477,7 @@
         var drag = null;
         var space = false;
         var bound = [];
-        var classes = adapter.classes;
+        var classes = merge(CLASSES, adapter.classes);
 
         function text() {
             return adapter.text.apply(null, arguments);

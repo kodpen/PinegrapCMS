@@ -24,4 +24,4 @@ description: Browser harness of the Flows canvas (tests/js/flows_canvas.js, #316
 - Seen: after Fit the first boxes sit under the palette (`fit()` ignores it); the no-flow screen shows an empty palette frame.
 
 ## What keeps it in step?
-- A bundle the flows screen adds goes into `SCREEN_BUNDLES`, in order (`pg_graph_canvas.min.js` before `workspace_flow.min.js`). On 2026-11-01 30 of 30 pass, from sources and with `--min`. Scenarios find controls by their texts (`h.t()`), the `wsf-` classes, `data-node`, `data-edge` and `data-refocus`; a refactor that renames them changes the scenarios with it.
+- A bundle the flows screen adds goes into `SCREEN_BUNDLES`, in order (`pg_graph_canvas.min.js` before `workspace_flow.min.js`). On 2026-11-01 30 of 30 pass, from sources and with `--min`. Scenarios find controls by their texts (`h.t()`), the `pgc-` and `wsf-` classes, `data-node`, `data-edge` and `data-refocus`; a refactor that renames them changes the scenarios with it.

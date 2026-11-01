@@ -29,9 +29,9 @@ const BOX_W = 208;
 const BOX_H = 80;
 const SAVE_DELAY = 1500;
 
-const BOX = (id) => '#ws-root .wsf-node[data-node="' + id + '"]';
-const PORT = (id, side) => BOX(id) + ' .wsf-port-' + side;
-const ARROW = (index) => '#ws-root .wsf-edge[data-edge="' + index + '"] .wsf-edge-hit';
+const BOX = (id) => '#ws-root .pgc-node[data-node="' + id + '"]';
+const PORT = (id, side) => BOX(id) + ' .pgc-port-' + side;
+const ARROW = (index) => '#ws-root .pgc-edge[data-edge="' + index + '"] .pgc-edge-hit';
 const VIEWPORT = '#ws-root [role="application"]';
 const SIDE = '#wsf-side';
 const BAR = '#ws-root .wsf-bar';
@@ -574,19 +574,19 @@ module.exports = [
         run: async (h) => {
             await h.open();
 
-            const threads = () => h.page(() => Array.prototype.map.call(document.querySelectorAll('#ws-root .wsf-edges .wsf-thread:not(.wsf-thread-hit)'), (path) => [path.getAttribute('data-from'), path.getAttribute('data-to'), path.getAttribute('data-field'), path.classList.contains('wsf-dim')]));
+            const threads = () => h.page(() => Array.prototype.map.call(document.querySelectorAll('#ws-root .pgc-edges .wsf-thread:not(.wsf-thread-hit)'), (path) => [path.getAttribute('data-from'), path.getAttribute('data-to'), path.getAttribute('data-field'), path.classList.contains('wsf-dim')]));
 
             h.same('one thread, from the task to the field reading it', await threads(), [['task_1', 'task_2', 'description', false]]);
             h.ok('the field shows as a chip under the box', !!(await h.probe('find', { css: BOX('task_2') + ' .wsf-data-field', text: h.t('fl_description') })));
             h.ok('the value as a dot under the box giving it', !!(await h.probe('find', { css: BOX('task_1') + ' .wsf-data-out' })));
 
             const ends = await h.page(() => {
-                const path = document.querySelector('#ws-root .wsf-edges .wsf-thread:not(.wsf-thread-hit)');
+                const path = document.querySelector('#ws-root .pgc-edges .wsf-thread:not(.wsf-thread-hit)');
                 const matrix = path.getScreenCTM();
                 const a = new DOMPoint(path.getPointAtLength(0).x, path.getPointAtLength(0).y).matrixTransform(matrix);
                 const b = new DOMPoint(path.getPointAtLength(path.getTotalLength()).x, path.getPointAtLength(path.getTotalLength()).y).matrixTransform(matrix);
-                const dot = document.querySelector('#ws-root .wsf-node[data-node="task_1"] .wsf-data-out .wsf-data-ring').getBoundingClientRect();
-                const chip = document.querySelector('#ws-root .wsf-node[data-node="task_2"] .wsf-data-field').getBoundingClientRect();
+                const dot = document.querySelector('#ws-root .pgc-node[data-node="task_1"] .wsf-data-out .wsf-data-ring').getBoundingClientRect();
+                const chip = document.querySelector('#ws-root .pgc-node[data-node="task_2"] .wsf-data-field').getBoundingClientRect();
 
                 return { from: Math.hypot(a.x - (dot.left + dot.width / 2), a.y - dot.bottom), to: Math.hypot(b.x - (chip.left + chip.width / 2), b.y - chip.bottom) };
             });
@@ -609,7 +609,7 @@ module.exports = [
             h.same('only fields of the boxes after it, not one holding it already', await h.page(() => Array.prototype.map.call(document.querySelectorAll('#ws-root .wsf-data-target[data-bind]'), (chip) => chip.getAttribute('data-bind'))), ['task_2 title']);
             await h.moveTo('#ws-root .wsf-data-target[data-bind="task_2 title"]', { steps: 6 });
             await h.release();
-            await h.waitFor('a second thread', (harness) => document.querySelectorAll('#ws-root .wsf-edges .wsf-thread:not(.wsf-thread-hit)').length === 2, 3000);
+            await h.waitFor('a second thread', (harness) => document.querySelectorAll('#ws-root .pgc-edges .wsf-thread:not(.wsf-thread-hit)').length === 2, 3000);
 
             const save = await saveNumber(h, 1);
 
@@ -617,9 +617,9 @@ module.exports = [
             h.same('the server finds nothing wrong with it', (await h.state()).problems.text, h.t('fl_no_problems'));
 
             await h.click({ text: h.t('fl_threads'), within: BAR });
-            h.ok('the toggle hides them', await h.page(() => document.querySelector('#ws-root .wsf-stage').classList.contains('wsf-threads-off')));
+            h.ok('the toggle hides them', await h.page(() => document.querySelector('#ws-root .pgc-stage').classList.contains('wsf-threads-off')));
             await h.open();
-            h.ok('still hidden when the screen is opened again', await h.page(() => document.querySelector('#ws-root .wsf-stage').classList.contains('wsf-threads-off')));
+            h.ok('still hidden when the screen is opened again', await h.page(() => document.querySelector('#ws-root .pgc-stage').classList.contains('wsf-threads-off')));
             h.same('the toggle says so', await h.page((harness, text) => harness.find({ text: text, within: '#ws-root .wsf-bar' }).getAttribute('aria-pressed'), h.t('fl_threads')), 'false');
         }
     },

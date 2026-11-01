@@ -1,6 +1,6 @@
 ---
 name: graph-canvas-core-module
-description: The graph canvas core (pg_graph_canvas.js, window.PGGraphCanvas, includes/fn/graph_canvas.php): what it owns, its adapter, its texts, its first user the Flows canvas
+description: The graph canvas core (pg_graph_canvas.js, window.PGGraphCanvas, includes/fn/graph_canvas.php): what it owns, its adapter, its texts, its pgc- CSS and tokens, its first user the Flows canvas
 module: graph_canvas
 ---
 
@@ -20,3 +20,8 @@ module: graph_canvas
 ## How does autosave work (2d, #4557)?
 - `G.autosave(host)` (not tied to `create()`): `changed()`, `later()` (save after `host.delay`), `save({keepalive})`, `flush()`, `leave(leaving)`. Its state is kept on `host.record`; Flows passes its `state`, so `state.dirty`, `saving`, `saveError`, `conflict`, `leaveSent` keep their readers.
 - `host.send(options)` applies the server's answer itself and rejects with `{ field, message }`; `isConflict(error)` names the 409, `conflict(message)` shows it.
+
+## How is it styled (slice 3)?
+- What the core draws carries `pgc-` classes: `pgc-stage`, `-viewport`, `-layer`, `-edges`, `-boxes`, `-node`, `-port(-in|-out)`, `-edge(-line|-hit|-temp|-label)`, `-arrowhead(-on)`, states `-selected`, `-target`, `-panning`, `-space`, `-hidden`. `create()` uses its `CLASSES` unless the adapter's `classes` names one.
+- The "Graph canvas core" block of backend.src.css reads only `--pgc-*` tokens with `--pg-*` fallbacks: accent, soft, radius(-sm), shadow(-accent), line, ring, node-accent, marker(-on). No `--ws-*`, no `wsf-` in it (`test_graph_canvas_css_on_pgc_tokens`).
+- The Workspace token block maps them to `--ws-*` (and sets the ring per theme) on the same selectors, so its dark values reach them. Flows sets `--pgc-marker: url(#wsf-arrow)` on `.wsf-app`, `--pgc-node-accent` from its group colour, and keeps its states (`wsf-bad`, run view, AI marks) as `wsf-` modifiers on `pgc-` boxes.

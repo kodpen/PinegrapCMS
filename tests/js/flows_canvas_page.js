@@ -208,7 +208,7 @@
 
         var origin = viewport().getBoundingClientRect();
 
-        return Array.prototype.map.call(viewport().querySelectorAll('.wsf-node[data-node]'), function (box) {
+        return Array.prototype.map.call(viewport().querySelectorAll('.pgc-node[data-node]'), function (box) {
             var rect = box.getBoundingClientRect();
 
             return {
@@ -237,8 +237,8 @@
     // outlined for a problem or taken in the run shown, their label, and
     // where they start and end on the screen.
     harness.edges = function () {
-        return Array.prototype.map.call(document.querySelectorAll('#ws-root [role="application"] .wsf-edge[data-edge]'), function (edge) {
-            var line = edge.querySelector('.wsf-edge-line');
+        return Array.prototype.map.call(document.querySelectorAll('#ws-root [role="application"] .pgc-edge[data-edge]'), function (edge) {
+            var line = edge.querySelector('.pgc-edge-line');
             var matrix = line.getScreenCTM();
             var from = new DOMPoint(line.getPointAtLength(0).x, line.getPointAtLength(0).y).matrixTransform(matrix);
             var to = new DOMPoint(line.getPointAtLength(line.getTotalLength()).x, line.getPointAtLength(line.getTotalLength()).y).matrixTransform(matrix);
@@ -248,7 +248,7 @@
                 current: edge.getAttribute('aria-current') === 'true',
                 bad: edge.classList.contains('wsf-bad'),
                 taken: edge.classList.contains('wsf-edge-taken'),
-                label: words(edge.querySelector('.wsf-edge-label')),
+                label: words(edge.querySelector('.pgc-edge-label')),
                 from: { x: Math.round(from.x), y: Math.round(from.y) },
                 to: { x: Math.round(to.x), y: Math.round(to.y) }
             };
@@ -262,8 +262,8 @@
         var bare = function (x, y) {
             var there = document.elementFromPoint(x, y);
 
-            return (there === viewport()) || (there === viewport().firstElementChild) || (!!there && there.classList.contains('wsf-boxes'))
-                || (!!there && (there.tagName.toLowerCase() === 'svg') && there.classList.contains('wsf-edges'));
+            return (there === viewport()) || (there === viewport().firstElementChild) || (!!there && there.classList.contains('pgc-boxes'))
+                || (!!there && (there.tagName.toLowerCase() === 'svg') && there.classList.contains('pgc-edges'));
         };
         var places = [];
 
@@ -357,7 +357,7 @@
             problems: problems ? { text: words(problems), disabled: problems.disabled, expanded: problems.getAttribute('aria-expanded') === 'true' } : null,
             problemList: shown(document.getElementById('wsf-problems')) ? Array.prototype.map.call(document.querySelectorAll('#wsf-problems .wsf-problem'), words) : [],
             zoom: words(document.querySelector('#ws-root .wsf-zoom-label')),
-            canvas: shown(document.querySelector('#ws-root .wsf-stage')),
+            canvas: shown(document.querySelector('#ws-root .pgc-stage')),
             outline: shown(document.querySelector('#ws-root .wsf-outline')),
             palette: shown(document.querySelector('#ws-root .wsf-palette')),
             readOnly: !!document.querySelector('#ws-root .wsf-app.wsf-readonly'),
