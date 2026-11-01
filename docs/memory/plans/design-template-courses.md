@@ -23,7 +23,7 @@ description: Plan for the Online Courses template (pinegrap-courses): courses as
 - 1-4 done: engine and `parts.php` (#4770), `pages_public.php` (#4788), `learn.php` (#4838), `assignments.php` and `mail.php` (#4849).
 - 5a Shop: `shop.php` (catalog: Courses group, a group per course `courses_<key>` and `membership`, one product each; buy boxes, product, cart, checkout, order, `email_order`). **Done (#4912).**
 - 5b Standard: `standard.php`, test `…_standard_test.php`. **Done (#4880).**
-- 6 Account and staff: `account.php`; test `…_account_test.php`.
+- 6 Account and staff: `account.php`; test `…_account_test.php`. **Done (#4930).**
 - 7 Assembly: `pinegrap-courses.php` (header, order, icon `bi-mortarboard`, highlights, look, palette, contact group, folders, catalog, `pco-` User Styles, search map), shared tests' lists, `designer/design-template-courses.md`, plan deleted; PR body names `[NEW] Added the Online Courses design template`.
 
 ## Where to start?
