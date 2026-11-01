@@ -13,6 +13,9 @@ description: Tag Cloud widget (tag_cloud_region): the classic <tcloud> region in
 ## What if the page is built with the Search Results widget?
 - A site installed from a design template has no classic search results page, so the picker was empty and the widget drew nothing (#4480, PR #4575). When the name is not a classic page, `pg_tcw_widget_search_page()` finds the page's Search Results widget and `pg_tcw_widget_keywords()` reads by its `search_scope`: the pages' keywords (`tag_cloud_keywords`, `item_type = 'page'`) and, for products, the keywords on the product groups shown as a selection and on the enabled products of the browse groups under its `product_group_id` (root when 0), read live, since the xref rows exist only for classic pages. `pg_tcw_merge_keywords()` (pure) adds them, case folded, and keeps the 25 used most. Links go to that page with `?query=`.
 
+## Which page does a new widget take?
+- An open page (`public`, `registration` or `guest` folder) of the design being edited, `_sdTagCloudDefaultPage()`; none when there is none. Taking the first name sent keyword links to another design's draft and visitors to the login page (#4818). `pg_tcw_page_info()` (pure) gives the picker each page's design and audience (`regionData.tag_cloud_page_info`); the picker lists this design's pages first and marks the others with the design name and "not public".
+
 ## What does a row hold?
 - `__tag_name` (translated with `pg_tr_text()` on a page in another language), `__tag_keyword` (as stored), `__tag_url` (`OUTPUT_PATH` + page name + `?query=` stored keyword: the search matches the stored word), `__tag_count`, `__tag_size` (the classic size, 100-200 percent), `__tag_weight` (1-5 from the size, steps of 25).
 - Flags `has_tags`, `no_tags`. Static tokens `__search_page_name`, `__tag_total`.

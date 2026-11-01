@@ -3531,6 +3531,7 @@
     "and {var:1} more line(s) that could not be used.": "ve kullanılamayan {var:1} satır daha.",
     "and {var:1} {var:2} {var:3}": "ve {var:1} {var:3} {var:2}",
     "and/or": "ve/veya",
+    "another design": "başka bir tasarım",
     "another user": "başka bir kullanıcı",
     "answer, reply, conversation, inbox": "cevap, yanıt, yazışma, gelen kutusu",
     "answered through the link {var:1}… from {var:2}": "{var:1}… bağlantısıyla {var:2} adresinden yanıtlandı",

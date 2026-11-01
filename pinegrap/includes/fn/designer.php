@@ -6394,6 +6394,7 @@ function get_style_designer_regions_as_json()
         'menu_sequence_regions'=> array(),
         'tag_cloud_regions'    => array(),
         'tag_cloud_widget_pages' => array(),
+        'tag_cloud_page_info'  => array(),
         'system_region_pages'  => array(),
     );
 
@@ -6418,8 +6419,12 @@ function get_style_designer_regions_as_json()
         $data['menu_sequence_regions'][]   = $row['name'];
     }
 
-    $result = mysqli_query(db::$con, "SELECT page_name as name FROM page WHERE page_type = 'search results' ORDER BY page_name ASC") or output_error(lang('Query failed.'));
-    while ($row = mysqli_fetch_assoc($result)) { $data['tag_cloud_regions'][] = $row['name']; }
+    $result = mysqli_query(db::$con, "SELECT page_name, page_folder, page_style FROM page WHERE page_type = 'search results' ORDER BY page_name ASC") or output_error(lang('Query failed.'));
+    $tag_cloud_pages = array();
+    while ($row = mysqli_fetch_assoc($result)) {
+        $data['tag_cloud_regions'][] = $row['page_name'];
+        $tag_cloud_pages[] = $row;
+    }
 
     // Pages built with the Search Results widget: the Tag Cloud widget links
     // to them too (the classic tag cloud region does not).
@@ -6429,6 +6434,19 @@ function get_style_designer_regions_as_json()
         }
         $data['tag_cloud_widget_pages'] = array_values(array_unique($data['tag_cloud_widget_pages']));
         sort($data['tag_cloud_widget_pages']);
+    }
+
+    // The design and the audience of each of those pages, so the picker
+    // can mark another design's page or a draft, and a new widget takes an
+    // open page of the design being edited.
+    if (function_exists('pg_tcw_page_info')) {
+        $styles = array();
+        $result = mysqli_query(db::$con, "SELECT style_id, style_name FROM style") or output_error(lang('Query failed.'));
+        while ($row = mysqli_fetch_assoc($result)) { $styles[(int)$row['style_id']] = (string)$row['style_name']; }
+        if (function_exists('pg_sw_widget_pages')) {
+            $tag_cloud_pages = array_merge($tag_cloud_pages, pg_sw_widget_pages('search_results'));
+        }
+        $data['tag_cloud_page_info'] = (object)pg_tcw_page_info($tag_cloud_pages, $styles, 'get_access_control_type');
     }
 
     $result = mysqli_query(db::$con, "SELECT page_name as name FROM page WHERE

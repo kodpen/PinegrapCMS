@@ -35191,7 +35191,7 @@ const StyleDesigner = (function () {
                 var _tcName = typeof _cfg.search_page_name === 'string' ? _cfg.search_page_name : '';
                 var _tcOpts = '<option value="">' + esc(_sdT('— Select —')) + '</option>';
                 _tcNames.forEach(function (nm) {
-                    _tcOpts += '<option value="' + esc(nm) + '"' + (nm === _tcName ? ' selected' : '') + '>' + esc(nm) + '</option>';
+                    _tcOpts += '<option value="' + esc(nm) + '"' + (nm === _tcName ? ' selected' : '') + '>' + esc(_sdTagCloudPageLabel(nm)) + '</option>';
                 });
                 if (_tcName !== '' && _tcNames.indexOf(_tcName) === -1) {
                     _tcOpts += '<option value="' + esc(_tcName) + '" selected>' + esc(_sdT('{var} (not found)', _tcName)) + '</option>';
@@ -48799,13 +48799,56 @@ const StyleDesigner = (function () {
     // The pages a Tag Cloud widget can link its keywords to: the classic
     // search results pages and the pages built with the Search Results
     // widget (a site installed from a design template has only those).
+    // Pages of the design being edited come first, then the other designs'
+    // pages; within each, pages everyone can open before drafts and
+    // members-only pages.
     function _sdTagCloudPageNames() {
         var out = [];
         var lists = [(regionData && regionData.tag_cloud_regions) || [], (regionData && regionData.tag_cloud_widget_pages) || []];
         lists.forEach(function (list) {
             list.forEach(function (nm) { if (out.indexOf(nm) === -1) out.push(nm); });
         });
-        return out;
+        var rank = function (nm) {
+            var info = _sdTagCloudPageInfo(nm);
+            return (_sdTagCloudOtherDesign(info) ? 2 : 0) + (info && info.open === false ? 1 : 0);
+        };
+        return out.map(function (nm, i) { return { nm: nm, i: i, r: rank(nm) }; })
+            .sort(function (a, b) { return (a.r - b.r) || (a.i - b.i); })
+            .map(function (e) { return e.nm; });
+    }
+
+    function _sdTagCloudPageInfo(nm) {
+        var all = (regionData && regionData.tag_cloud_page_info) || {};
+        return Object.prototype.hasOwnProperty.call(all, nm) ? all[nm] : null;
+    }
+
+    // A page set in a design other than the one being edited (a page with
+    // no design of its own belongs to none).
+    function _sdTagCloudOtherDesign(info) {
+        var styleId = (_design && _design.styleId) ? parseInt(_design.styleId, 10) : 0;
+        return !!(info && info.style && styleId && parseInt(info.style, 10) !== styleId);
+    }
+
+    // A new widget's page: the first page of this design that everyone can
+    // open; none when there is no such page, so keyword links never send a
+    // visitor to the login page of a draft or of another design's page.
+    function _sdTagCloudDefaultPage() {
+        var names = _sdTagCloudPageNames();
+        for (var i = 0; i < names.length; i++) {
+            var info = _sdTagCloudPageInfo(names[i]);
+            if (info && info.open && !_sdTagCloudOtherDesign(info)) return names[i];
+        }
+        return '';
+    }
+
+    // The picker's text for a page: its name, the other design it is set in
+    // and whether visitors cannot open it.
+    function _sdTagCloudPageLabel(nm) {
+        var info = _sdTagCloudPageInfo(nm);
+        var notes = [];
+        if (_sdTagCloudOtherDesign(info)) notes.push(info.design ? info.design : _sdT('another design'));
+        if (info && info.open === false) notes.push(_sdT('not public'));
+        return notes.length ? nm + ' (' + notes.join(', ') + ')' : nm;
     }
 
     function needsName(t) { return ['ad','common','designer','dynamic','login','menu','menu_sequence','tag_cloud','system'].indexOf(t) !== -1; }
@@ -57021,8 +57064,8 @@ const StyleDesigner = (function () {
             // panel turns it off.
             if (cfg.show_register_link === undefined) cfg.show_register_link = true;
         } else if (newType === 'tag_cloud_region') {
-            // The site's first search results page, so a new widget shows keywords at once.
-            if (cfg.search_page_name === undefined) cfg.search_page_name = _sdTagCloudPageNames()[0] || '';
+            // An open search results page of this design, so a new widget shows keywords at once.
+            if (cfg.search_page_name === undefined) cfg.search_page_name = _sdTagCloudDefaultPage();
         } else if (newType === 'ad_region') {
             // The site's first ad region, so a new widget shows ads at once.
             if (cfg.ad_region_name === undefined) cfg.ad_region_name = ((regionData && regionData.ad_regions) || [])[0] || '';
