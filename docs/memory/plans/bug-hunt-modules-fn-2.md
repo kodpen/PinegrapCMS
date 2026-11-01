@@ -60,7 +60,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `site_time_sql`: open
 
-- `sms`: taken by LW, #4674
+- `sms`: #4674 (LW; rest clean)
 
 - `sms_campaigns`: open
 
