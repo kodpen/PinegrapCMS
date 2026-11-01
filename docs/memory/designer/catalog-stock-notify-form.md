@@ -19,7 +19,8 @@ description: The back-in-stock form of the catalog item view: stock_notify_email
 
 ## What happens on a select group's page?
 - When the variants differ in stock (`_pg_catalog_stock_states_differ()`: some `out_of_stock` '1', some not), `can_notify` is switched like the rating: both states kept, marked `data-pg-variant-flag="can_notify"`, the one that is off `hidden` (`_pg_catalog_variant_flags_keep($html, $flags, $switched)`, [[catalog-rating-tokens]]).
-- `applyVariant()` in `pg_civ_variants.js` (version stamp 6) hides or shows them from the variant's `out_of_stock` and moves the request form's `product_id` to the variant picked.
+- `applyVariant()` in `pg_civ_variants.js` hides or shows them from the variant's `out_of_stock` and moves the request form's `product_id` to the variant picked.
+- The script's Add to Cart switch (`addBtns`: disabled while no full variant is chosen, on no match, on `out_of_stock=1`) takes only the submit buttons whose `b.form` is the add-to-cart form. The "Notify me" button sits inside that form in the page but submits the request form; taking every submit inside left it disabled exactly on an out-of-stock variant (#4796).
 
 ## How is it tested?
 - `tests/stock_notify_item_view_test.php`: the binding pass on fake trees (attributes, the account's address, flags, drops), the stock switch, the renderer's pins (flag, form, token, placement), the variant script and the designer's offer and starter.
