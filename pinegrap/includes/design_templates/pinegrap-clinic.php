@@ -1143,7 +1143,7 @@ foreach ($services as $key => $s) {
                         $el('span', 'd-inline-flex align-items-center gap-1', lang('Duration'), array($icon('bi-clock', 'text-primary'), $span($s['duration'], '', lang('Text')))),
                         $el('span', 'd-inline-flex align-items-center gap-1', lang('Price'), array($icon('bi-receipt', 'text-primary'), $span($s['price'], 'fw-semibold', lang('Text')))),
                     )),
-                    $link(lang('Book this service'), '{{page:appointment}}', 'btn btn-primary px-4'),
+                    $link(lang('Book this service'), '{{page:appointment}}?' . $appointment_query(array('department' => $s['title'])), 'btn btn-primary px-4'),
                 ), '', '6'),
                 $col(array(
                     $el('div', 'p-4 rounded-4 border bg-body', lang('What It Covers'), array(
@@ -3486,7 +3486,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Clinic'),
-    'version'     => '1.1.0',
+    'version'     => '1.1.1',
     'framework'   => 'bootstrap5',
     'order'       => 50,
     'icon'        => 'bi-heart-pulse',
