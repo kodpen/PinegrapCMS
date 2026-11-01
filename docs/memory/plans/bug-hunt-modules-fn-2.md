@@ -40,7 +40,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `shipment_tracking`: open
 
-- `shipping`: open
+- `shipping`: taken by LL
 
 - `shipping_import`: open
 
