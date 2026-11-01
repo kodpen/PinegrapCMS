@@ -4,11 +4,12 @@ description: The panel's --pg-* CSS token layer (Bootstrap 6 step B3): names rul
 ---
 
 ## What may a panel rule read?
+- Values since B10 colours: `panel-colour-tokens.md`.
 - Only `--pg-*` tokens, never Bootstrap's `--bs-*` variables directly (`check_bs6.php` counts what is left): Bootstrap 6 renamed or dropped most v5 variables.
-- Accent fills: the palette `--pg-primary`, `--pg-secondary`, `--pg-success`, `--pg-danger`, `--pg-warning`, `--pg-info` (the bridge fills `--bs-<colour>` from them).
+- Accent fills: the palette `--pg-primary`, `--pg-secondary`, `--pg-success`, `--pg-danger`, `--pg-warning`, `--pg-info`.
 - Accent text, surface, line: `--pg-<colour>-fg-emphasis`, `-bg-subtle`, `-border-subtle` (v5 `-text-emphasis`, `-bg-subtle`, `-border-subtle`). The palette's `-ink`, `-subtle`, `-line` are inputs of the bridge, not names for rules.
 - Neutrals: `--pg-bg-body`, `--pg-bg-1` (v5 tertiary-bg), `--pg-bg-2` (secondary-bg), `--pg-fg-body`, `--pg-fg-emphasis`, `--pg-fg-2` (secondary-color), `--pg-fg-3` (tertiary-color), `--pg-border-color`, `--pg-border-color-translucent`, `--pg-border-width`, `--pg-border-style`, `--pg-radius-sm` / `--pg-radius` / `-lg` / `-xl` / `-2xl` / `-pill`, `--pg-font-mono`, `--pg-link-color`, `--pg-shadow`, `--pg-shadow-lg`, `--pg-navbar-bg`.
-- Missing a name? Add it to the token block, never read `--bs-*` in a rule.
+- Missing a name? Add it to the token block.
 - Invalid/valid field colours: `panel-validation-state.md`.
 
 ## How is a colour with alpha written?
@@ -32,3 +33,4 @@ description: The panel's --pg-* CSS token layer (Bootstrap 6 step B3): names rul
 - B3c (#1723): the other panel stylesheets and the panel files' inline styles.
 - B7b (#1841): `style_designer.css` and `page_designer.css`.
 - Left on `--bs-*` on purpose: component-scoped variables (`--bs-card-*`, `--bs-modal-*`, `--bs-gutter-x`, opacities, `--bs-dropdown-border-radius`) and the guest page's `--bs-dark`.
+

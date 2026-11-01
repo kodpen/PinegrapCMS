@@ -39,9 +39,11 @@ function test_bs6_colour_tokens_text_and_lines_are_bootstraps()
 {
 	$css = bs6_colour_tokens_test_code();
 
-	foreach (array('--bs-fg-body', '--bs-fg-2', '--bs-fg-3', '--bs-border-color', '--bs-border-color-translucent') as $name) {
+	foreach (array('--bs-fg-body', '--bs-fg-2', '--bs-fg-3', '--bs-border-color-translucent') as $name) {
 		pg_assert_same(0, preg_match_all('/' . preg_quote($name, '/') . ':/', $css), $name . ' is left to Bootstrap 6');
 	}
+	// The only border colour set is the navbar separator's, on the gray scale.
+	pg_assert_same(0, preg_match_all('/--bs-border-color:\s*+(?!var\(--bs-gray-)/', $css), 'border colour only from the gray scale');
 	// No Bootstrap 5 grey literal is left in a neutral declaration.
 	foreach (array('#f8f9fa', '#e9ecef', '#2b3035', '#343a40', '#212529', '#dee2e6', '#495057') as $hex) {
 		pg_assert_same(0, preg_match_all('/--bs-(bg|fg|border)[a-z0-9-]*:[^;]*' . $hex . '/i', $css), $hex . ' not in a neutral');

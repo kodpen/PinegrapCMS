@@ -116,7 +116,7 @@
 }
 
 .sdh-start:focus-visible {
-  outline: var(--pg-focus-ring-width) solid var(--pg-focus-ring-color);
+  outline: var(--pg-focus-ring-width) solid var(--pg-primary-ink);
   outline-offset: var(--pg-focus-ring-offset);
   border-color: var(--sdh-hover-line);
 }
@@ -489,7 +489,7 @@ button.sdh-page:hover {
 }
 
 .sdh-page:focus-visible {
-  outline: var(--pg-focus-ring-width) solid var(--pg-focus-ring-color);
+  outline: var(--pg-focus-ring-width) solid var(--pg-primary-ink);
   outline-offset: var(--pg-focus-ring-offset);
 }
 
