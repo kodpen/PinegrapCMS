@@ -209,7 +209,7 @@ function test_stock_writers_refuse_a_count_past_the_column()
 	$import = (string) file_get_contents(PG_FUNCTIONS_DIR . '/import_products.php');
 
 	pg_assert_contains('pg_inventory_quantity_too_large($row_quantity)', $import, 'import: the row is left out');
-	pg_assert_contains('$rows_quantity_too_large[] = $row_number', $import, 'named by its number');
+	pg_assert_contains('$rows_quantity_too_large[] = $row_label', $import, 'named by its number');
 
 	$scan = (string) file_get_contents(PG_FUNCTIONS_DIR . '/barcode_increase_inventory.php');
 
