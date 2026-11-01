@@ -735,6 +735,7 @@
     "{var:1} for order #{var:2}, which was still incomplete. The order was completed from the message. Order number: {var:3}.": "{var:1} - henüz tamamlanmamış #{var:2} numaralı sipariş için. Sipariş bu bildirimle tamamlandı. Sipariş numarası: {var:3}.",
     "{var:1} for order #{var:2}, which was still incomplete. The order was not completed: {var:3}. Check the payment on {var:4}'s own screen.": "{var:1} - henüz tamamlanmamış #{var:2} numaralı sipariş için. Sipariş tamamlanmadı: {var:3}. Ödemeyi {var:4} ekranında kontrol edin.",
     "{var:1} for order #{var:2}. The order was not changed.": "{var:1} - #{var:2} numaralı sipariş için. Sipariş değiştirilmedi.",
+    "{var:1} for {var:2}": "{var:2} için {var:1}",
     "{var:1} form field{suffix:1} deleted, along with {var:2} submitted value{suffix:2}.": "{var:1} form alanı silindi; bu alanlara gelmiş {var:2} yanıt da silindi.",
     "{var:1} form field{suffix:1} on \"{var:2}\" no longer appear on the page. They were kept with their submissions and are no longer required; remove them from the form screen when you are done with them.": "\"{var:2}\" sayfasında {var:1} form alanı artık sayfada yok. Gönderimleriyle birlikte korundu ve zorunluluğu kaldırıldı; işiniz bitince form ekranından silebilirsiniz.",
     "{var:1} form field{suffix:1} without a label": "{var:1} form alanının etiketi yok",
