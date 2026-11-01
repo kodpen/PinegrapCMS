@@ -4,8 +4,9 @@
  *
  * Tests for the graph canvas core (assets/js/pg_graph_canvas.js,
  * window.PGGraphCanvas): it is bundled and printed before the flow canvas
- * that uses it, the flow canvas keeps no copy of what moved into it, and its
- * viewport pans and zooms as the flow canvas did.
+ * that uses it, the flow canvas keeps no copy of what moved into it, its
+ * viewport pans and zooms as the flow canvas did, and create() routes the
+ * pointer and the keys.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -46,7 +47,7 @@ function test_graph_canvas_flow_canvas_keeps_no_copy()
 
 	pg_assert_contains('    var G = window.PGGraphCanvas;', $flow, 'the flow canvas reads the core');
 
-	foreach (array('snap', 'clamp', 'svgEl', 'curve', 'freeId', 'typing', 'bytes', 'historyOf', 'historyRecord', 'historyStep', 'applyView', 'zoomAt', 'zoomBy', 'fit', 'canvasPoint') as $name) {
+	foreach (array('snap', 'clamp', 'svgEl', 'curve', 'freeId', 'typing', 'bytes', 'historyOf', 'historyRecord', 'historyStep', 'applyView', 'zoomAt', 'zoomBy', 'fit', 'canvasPoint', 'pointerDown', 'pointerMove', 'pointerUp', 'cancelDrag') as $name) {
 		pg_assert_false((bool) preg_match('/^ *function ' . $name . '\(/m', $flow), 'no ' . $name . '() of its own');
 	}
 
@@ -168,4 +169,119 @@ JS
 	pg_assert_same(array(-155, -107, true), $result['wheel'], 'the wheel pans');
 	pg_assert_same(array('a', 'b'), $result['history'], 'undo and redo');
 	pg_assert_same(array(16, 32, 3, 'task_2', 'M0 0 C48 0 -38 20 10 20'), $result['helpers'], 'the geometry helpers');
+}
+
+// The canvas's pointer and keys (create()): a drag on the empty canvas pans
+// once it passes 4 px; the adapter's own kind goes to its move and release;
+// a press the adapter takes is forgotten; a second finger cancels the drag
+// and pinches; arrows the adapter leaves pan, + zooms, 0 fits; Space held
+// on the canvas is passed to the next press; destroy() removes every
+// listener it added.
+function test_graph_canvas_pointer_and_keys()
+{
+	$result = graph_canvas_test_node(<<<'JS'
+function Target(name) { this.name = name; }
+Target.prototype.closest = function (selector) { return (this.name === 'link') && (selector === 'a[href]') ? this : null; };
+function listenable(node) {
+    node.listeners = {};
+    node.addEventListener = function (type, handler) { (node.listeners[type] = node.listeners[type] || []).push(handler); };
+    node.removeEventListener = function (type, handler) { node.listeners[type] = (node.listeners[type] || []).filter(function (item) { return item !== handler; }); };
+    node.fire = function (type, event) { (node.listeners[type] || []).slice().forEach(function (handler) { handler(event); }); };
+    return node;
+}
+var document = listenable({});
+listenable(ui.viewport);
+ui.viewport.classes = {};
+ui.viewport.classList = { add: function (name) { ui.viewport.classes[name] = true; }, remove: function (name) { delete ui.viewport.classes[name]; } };
+ui.viewport.setPointerCapture = function () {};
+ui.viewport.contains = function (target) { return target.name !== 'outside'; };
+var log = [];
+var canvas = G.create({
+    ui: ui,
+    view: function (next) { if (next) { state.view = next; } return state.view; },
+    items: function () { return state.nodes; },
+    ownClicks: 'a[href]',
+    classes: { panning: 'is-panning', space: 'is-space' },
+    press: function (event, drag, space) {
+        log.push('press ' + event.target.name + (space ? ' space' : ''));
+        if (event.target.name === 'field') { return false; }
+        if (event.target.name === 'box') { drag.kind = 'move'; }
+        return true;
+    },
+    move: function (event, drag, dx, dy) { log.push('move ' + dx + ',' + dy); },
+    release: function (event, drag) { log.push('release ' + drag.kind + ' ' + drag.moved); },
+    cancel: function (drag) { log.push('cancel ' + (drag ? drag.kind : 'none')); },
+    key: function (event) { log.push('key ' + event.key); return event.key === 'Delete'; }
+});
+canvas.bind();
+function pointer(type, id, x, y, name) {
+    ui.viewport.fire(type, { type: type, pointerId: id, clientX: x, clientY: y, button: 0, target: new Target(name || 'empty'), preventDefault: function () {} });
+}
+function key(name, target) {
+    var event = { key: name, target: new Target(target || 'canvas'), shiftKey: false, altKey: false, prevented: false, preventDefault: function () { event.prevented = true; } };
+    ui.viewport.fire('keydown', event);
+    return event.prevented;
+}
+var out = {};
+state.view = { x: 0, y: 0, k: 1 };
+pointer('pointerdown', 1, 200, 200);
+out.panning = !!ui.viewport.classes['is-panning'];
+pointer('pointermove', 1, 202, 201);
+out.small = [state.view.x, state.view.y];
+pointer('pointermove', 1, 230, 210);
+out.pan = [state.view.x, state.view.y];
+pointer('pointerup', 1, 230, 210);
+out.panEnd = [!!ui.viewport.classes['is-panning'], canvas.dragging()];
+pointer('pointerdown', 2, 300, 300, 'box');
+pointer('pointermove', 2, 310, 300, 'box');
+pointer('pointerup', 2, 310, 300, 'box');
+out.box = [state.view.x, canvas.dragging()];
+pointer('pointerdown', 3, 300, 300, 'field');
+out.taken = canvas.dragging();
+pointer('pointerdown', 4, 300, 300, 'link');
+pointer('pointerdown', 5, 300, 300, 'box');
+pointer('pointerdown', 6, 400, 300);
+pointer('pointermove', 6, 450, 300);
+out.pinch = [canvas.dragging(), state.view.k];
+pointer('pointerup', 6, 450, 300);
+pointer('pointerup', 5, 300, 300);
+state.view = { x: 0, y: 0, k: 1 };
+out.keys = [key('Delete'), key('ArrowRight'), state.view.x, key('+'), state.view.k, key('x'), key('ArrowLeft', 'link')];
+document.fire('keydown', { key: ' ', target: new Target('canvas'), preventDefault: function () {} });
+out.space = !!ui.viewport.classes['is-space'];
+pointer('pointerdown', 7, 10, 10, 'box');
+pointer('pointerup', 7, 10, 10, 'box');
+document.fire('keyup', { key: ' ' });
+out.spaceUp = !!ui.viewport.classes['is-space'];
+out.log = log;
+canvas.destroy();
+out.left = Object.keys(ui.viewport.listeners).concat(Object.keys(document.listeners)).filter(function (type) {
+    return ((ui.viewport.listeners[type] || []).length + (document.listeners[type] || []).length) > 0;
+});
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_true($result['panning'], 'the empty canvas pans');
+	pg_assert_same(array(0, 0), $result['small'], 'nothing moves within 4 px');
+	pg_assert_same(array(30, 10), $result['pan'], 'the view follows the pointer');
+	pg_assert_same(array(false, null), $result['panEnd'], 'the pan ends with its pointer');
+	pg_assert_same(array(30, null), $result['box'], 'the adapter\'s drag moves no view');
+	pg_assert_same(null, $result['taken'], 'a press the adapter took is no drag');
+	pg_assert_same(array(null, 1.5), $result['pinch'], 'a second finger cancels the drag and pinches');
+	pg_assert_same(array(true, true, -32, true, 1.2, false, false), $result['keys'], 'the adapter\'s key, then arrows pan, + zooms; other keys and a link\'s keys are left');
+	pg_assert_same(array(true, false), array($result['space'], $result['spaceUp']), 'Space held on the canvas');
+	pg_assert_same(array(
+		'press empty', 'release pan true',
+		'press box', 'move 10,0', 'release move true',
+		'press field',
+		'press box', 'cancel move',
+		'key Delete', 'key ArrowRight', 'key +', 'key x',
+		'press box space', 'release move false',
+	), $result['log'], 'the adapter hears each press, drag, release, cancel and key');
+	pg_assert_same(array(), $result['left'], 'destroy() removes every listener');
 }

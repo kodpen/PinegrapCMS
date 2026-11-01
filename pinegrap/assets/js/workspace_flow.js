@@ -272,10 +272,6 @@
         chip: '',           // the flow list's chip: a way to start, 'draft', '' for all
         query: '',          // what the flow list is searched for
         paletteQuery: '',   // what the palette is searched for
-        space: false,
-        drag: null,
-        pointers: {},
-        pinch: null,
         tap: null,
         panel: '',          // 'runs' while the side panel lists the runs
         section: '',        // 'action' while a scheduled action is drawn read-only, 'templates' in the gallery
@@ -3680,7 +3676,7 @@
 
     // A thread takes the pointer through a wider path on the same route,
     // invisible: hovered the thread is drawn thicker, clicked it is selected
-    // (canvas pointerDown()) to be removed. The stylesheet keeps .wsf-thread
+    // (canvas pointerPress()) to be removed. The stylesheet keeps .wsf-thread
     // out of the pointer's way, so the hit path takes it inline.
     function threadHit(line, thread) {
         if (!state.edit || state.run) {
@@ -8211,7 +8207,7 @@
 
         // A change waiting to be recorded (settle()) is a step back already
         // and leaves nothing to redo.
-        return !!(state.edit && state.flow && !state.run && !state.drag && history && (history.flow === state.flow.id)
+        return !!(state.edit && state.flow && !state.run && !canvas.dragging() && history && (history.flow === state.flow.id)
             && (back ? (history.past.length || state.settleHistory) : (history.future.length && !state.settleHistory)));
     }
 
@@ -9691,7 +9687,7 @@
         state.poll.delay = POLL_FIRST;
         rememberRun(run);
         ui.app.classList.add('wsf-run-view', 'wsf-readonly');
-        cancelDrag();
+        canvas.cancel();
         drawRunBar();
         drawBar();
         drawAll();
@@ -10668,9 +10664,11 @@
         canvasView.reveal(item);
     }
 
-    // Pan and zoom (viewport() of the core) on state.view, which fit(), a
-    // pinch and the run view put a new view in.
-    var canvasView = G.viewport({
+    // The canvas (create() of the core): pan and zoom on state.view, which
+    // fit(), a pinch and the run view put a new view in; the pointer and the
+    // keys, with the flow's own drags (a box moved, an arrow or a thread
+    // drawn) and keys in the hooks below.
+    var canvas = G.create({
         ui: ui,
         view: function (next) {
             if (next) {
@@ -10681,8 +10679,19 @@
         },
         items: function () {
             return state.graph ? state.graph.nodes : [];
-        }
+        },
+        // A link on a box (the task of a waiting box) and the last run's
+        // flag keep their own clicks and keys (Enter follows the link,
+        // opens the fold).
+        ownClicks: '.wsf-node a[href], .wsf-flag-canvas',
+        classes: { panning: 'wsf-panning', space: 'wsf-space' },
+        press: pointerPress,
+        move: pointerDrag,
+        release: pointerRelease,
+        cancel: dropDrag,
+        key: canvasKey
     });
+    var canvasView = canvas.view;
     var applyView = canvasView.apply;
     var zoomAt = canvasView.zoomAt;
     var zoomBy = canvasView.zoomBy;
@@ -10694,12 +10703,7 @@
     function bindCanvas() {
         var viewport = ui.viewport;
 
-        viewport.addEventListener('pointerdown', pointerDown);
-        viewport.addEventListener('pointermove', pointerMove);
-        viewport.addEventListener('pointerup', pointerUp);
-        viewport.addEventListener('pointercancel', pointerUp);
-
-        viewport.addEventListener('wheel', canvasView.wheel, { passive: false });
+        canvas.bind();
 
         viewport.addEventListener('dragover', function (event) {
             if (state.edit) {
@@ -10728,7 +10732,7 @@
         viewport.addEventListener('focusin', function (event) {
             var box = event.target.closest('[data-node]');
 
-            if (box && !state.drag) {
+            if (box && !canvas.dragging()) {
                 var selected = { type: 'node', id: box.getAttribute('data-node') };
 
                 if (!state.selected || (state.selected.type !== selected.type) || (state.selected.id !== selected.id)) {
@@ -10736,35 +10740,14 @@
                 }
             }
         });
-
-        viewport.addEventListener('keydown', canvasKey);
     }
 
-    function pointerDown(event) {
+    // A pointer down on the canvas (press() of the core): what the drag
+    // will be. drag.kind stays 'pan' for Space, the middle button and the
+    // empty canvas; false when a thread waiting for its field was put in
+    // the field pressed.
+    function pointerPress(event, drag, space) {
         var viewport = ui.viewport;
-
-        state.pointers[event.pointerId] = { x: event.clientX, y: event.clientY };
-
-        // A second finger: the drag so far becomes a pinch.
-        if (Object.keys(state.pointers).length === 2) {
-            var points = Object.keys(state.pointers).map(function (id) { return state.pointers[id]; });
-
-            cancelDrag();
-            state.pinch = canvasView.pinchStart(points);
-            return;
-        }
-
-        if ((event.button !== undefined) && (event.button > 1)) {
-            return;
-        }
-
-        // A link on a box (the task of a waiting box) and the last run's
-        // flag keep their own clicks: the canvas captures no pointer for them.
-        if (event.target.closest && event.target.closest('.wsf-node a[href], .wsf-flag-canvas')) {
-            delete state.pointers[event.pointerId];
-            return;
-        }
-
         var target = event.target;
         var box = target.closest('.wsf-node[data-node]');
         var edge = target.closest('.wsf-edge');
@@ -10772,25 +10755,23 @@
         var dot = target.closest('.wsf-data-live');
         var bind = target.closest('[data-bind]');
         var ring = dot ? dot.querySelector('.wsf-data-ring').getBoundingClientRect() : null;
-        var drag = { id: event.pointerId, sx: event.clientX, sy: event.clientY, moved: false, kind: 'pan', vx: state.view.x, vy: state.view.y };
 
         // A thread waiting for its field: a lit field takes it, anything
         // else lets it go.
-        if (state.binding && bind && !state.space && (event.button !== 1)) {
+        if (state.binding && bind && !space && (event.button !== 1)) {
             var place = bind.getAttribute('data-bind').split(' ');
 
             bindValue(state.binding.from, state.binding.token, place[0], place[1]);
             endBinding();
-            delete state.pointers[event.pointerId];
             event.preventDefault();
-            return;
+            return false;
         }
 
         if (state.binding && !(dot && (dot.getAttribute('data-node') === state.binding.from) && (dot.getAttribute('data-token') === state.binding.token))) {
             endBinding();
         }
 
-        if (state.space || (event.button === 1)) {
+        if (space || (event.button === 1)) {
             drag.kind = 'pan';
         } else if (dot) {
             drag.kind = 'thread';
@@ -10816,7 +10797,9 @@
             drag.ix = drag.item.x;
             drag.iy = drag.item.y;
             drag.node = box;
-            state.drag = drag;
+            // Held before the box takes the focus: its focusin then selects
+            // nothing again.
+            canvas.hold(drag);
             select({ type: 'node', id: drag.item.id });
             box.focus({ preventScroll: true });
         } else if (wire) {
@@ -10832,62 +10815,19 @@
             drag.empty = true;
         }
 
-        state.drag = drag;
-
-        try {
-            viewport.setPointerCapture(event.pointerId);
-        } catch (error) {
-            // A pointer that cannot be captured still drags while it stays on the canvas.
-        }
-
-        if (drag.kind === 'pan') {
-            viewport.classList.add('wsf-panning');
-        }
+        return true;
     }
 
-    function pointerMove(event) {
-        if (state.pointers[event.pointerId]) {
-            state.pointers[event.pointerId] = { x: event.clientX, y: event.clientY };
-        }
-
-        if (state.pinch) {
-            var points = Object.keys(state.pointers).map(function (id) { return state.pointers[id]; });
-
-            if (points.length < 2) {
-                return;
-            }
-
-            canvasView.pinchMove(state.pinch, points);
-            return;
-        }
-
-        var drag = state.drag;
-
-        if (!drag || (drag.id !== event.pointerId)) {
-            return;
-        }
-
-        var dx = event.clientX - drag.sx;
-        var dy = event.clientY - drag.sy;
-
-        if (!drag.moved && (Math.abs(dx) + Math.abs(dy) < 4)) {
-            return;
-        }
-
-        drag.moved = true;
-
-        if (drag.kind === 'pan') {
-            state.view.x = drag.vx + dx;
-            state.view.y = drag.vy + dy;
-            applyView();
-        } else if (drag.kind === 'move') {
+    // A box moved, an arrow or a thread drawn (move() of the core).
+    function pointerDrag(event, drag, dx, dy) {
+        if (drag.kind === 'move') {
             drag.item.x = coord(drag.ix + dx / state.view.k);
             drag.item.y = coord(drag.iy + dy / state.view.k);
             place(drag.node, drag.item);
             drawEdges();
         } else if (drag.kind === 'thread') {
             if (!state.binding && !startBinding(drag.from.id, drag.token, true)) {
-                state.drag = null;
+                canvas.hold(null);
                 return;
             }
 
@@ -10919,26 +10859,8 @@
         }
     }
 
-    function pointerUp(event) {
-        delete state.pointers[event.pointerId];
-
-        if (state.pinch) {
-            if (Object.keys(state.pointers).length < 2) {
-                state.pinch = null;
-            }
-
-            return;
-        }
-
-        var drag = state.drag;
-
-        if (!drag || (drag.id !== event.pointerId)) {
-            return;
-        }
-
-        state.drag = null;
-        ui.viewport.classList.remove('wsf-panning');
-
+    // The drag's pointer up (release() of the core).
+    function pointerRelease(event, drag) {
         if (drag.kind === 'thread') {
             ui.temp.classList.add('d-none');
             ui.temp.classList.remove('wsf-temp-thread');
@@ -11010,16 +10932,13 @@
         }
     }
 
-    // A drag cut short (Esc, a second finger): a box being moved goes back
-    // to where it was, an arrow being drawn is dropped.
-    function cancelDrag() {
-        var drag = state.drag;
-
-        state.drag = null;
+    // A drag cut short (cancel() of the core: Esc, a second finger): a box
+    // being moved goes back to where it was, an arrow being drawn is
+    // dropped.
+    function dropDrag(drag) {
         ui.temp.classList.add('d-none');
         ui.temp.classList.remove('wsf-temp-thread');
         endBinding();
-        ui.viewport.classList.remove('wsf-panning');
         Array.prototype.forEach.call(ui.boxes.querySelectorAll('.wsf-target'), function (node) { node.classList.remove('wsf-target'); });
 
         if (drag && (drag.kind === 'move') && drag.moved) {
@@ -11046,13 +10965,9 @@
         }
     }
 
+    // A key on the canvas (key() of the core, before its own: arrows that
+    // move nothing pan, + and − zoom, 0 fits).
     function canvasKey(event) {
-        // A link on a box and the last run's flag answer their own keys
-        // (Enter follows the link, opens the fold).
-        if (typing(event.target) || event.altKey || (event.target.closest && event.target.closest('.wsf-node a[href], .wsf-flag-canvas'))) {
-            return;
-        }
-
         var key = event.key;
         var step = event.shiftKey ? GRID * 4 : GRID;
         var selected = state.selected;
@@ -11062,14 +10977,9 @@
         // clicks, not the double tap that opens the box's settings.
         state.tap = null;
 
-        if ((key === 'ArrowLeft') || (key === 'ArrowRight') || (key === 'ArrowUp') || (key === 'ArrowDown')) {
-            if (selected && (selected.type === 'node') && state.edit && !event.ctrlKey && !event.metaKey) {
-                moveSelected((key === 'ArrowLeft') ? -step : (key === 'ArrowRight') ? step : 0, (key === 'ArrowUp') ? -step : (key === 'ArrowDown') ? step : 0);
-            } else {
-                state.view.x -= (key === 'ArrowLeft') ? -step * 2 : (key === 'ArrowRight') ? step * 2 : 0;
-                state.view.y -= (key === 'ArrowUp') ? -step * 2 : (key === 'ArrowDown') ? step * 2 : 0;
-                applyView();
-            }
+        if (((key === 'ArrowLeft') || (key === 'ArrowRight') || (key === 'ArrowUp') || (key === 'ArrowDown'))
+            && selected && (selected.type === 'node') && state.edit && !event.ctrlKey && !event.metaKey) {
+            moveSelected((key === 'ArrowLeft') ? -step : (key === 'ArrowRight') ? step : 0, (key === 'ArrowUp') ? -step : (key === 'ArrowDown') ? step : 0);
         } else if ((key === 'Delete') || (key === 'Backspace')) {
             removeSelected();
         } else if (((key === 'c') || (key === 'C')) && !event.ctrlKey && !event.metaKey && selected && (selected.type === 'node')) {
@@ -11080,35 +10990,20 @@
             endBinding();
         } else if ((key === 'Enter') && selected) {
             focusField();
-        } else if ((key === '+') || (key === '=')) {
-            zoomBy(1.2);
-        } else if ((key === '-') || (key === '_')) {
-            zoomBy(1 / 1.2);
-        } else if (key === '0') {
-            fit();
-        } else if ((key === 'Escape') && (state.drag || selected)) {
-            cancelDrag();
+        } else if ((key === 'Escape') && (canvas.dragging() || selected)) {
+            canvas.cancel();
             select(null);
             ui.viewport.focus({ preventScroll: true });
         } else {
             handled = false;
         }
 
-        if (handled) {
-            event.preventDefault();
-        }
+        return handled;
     }
 
     function bindWindow() {
-        // Space held down on the canvas: dragging anywhere on it moves it.
-        // Elsewhere Space keeps its own work (a summary, a button).
+        // Space held on the canvas is the core's (create()).
         document.addEventListener('keydown', function (event) {
-            if ((event.key === ' ') && !typing(event.target) && ui.viewport.contains(event.target)) {
-                state.space = true;
-                ui.viewport.classList.add('wsf-space');
-                event.preventDefault();
-            }
-
             if ((event.ctrlKey || event.metaKey) && ((event.key === 's') || (event.key === 'S')) && drafting()) {
                 event.preventDefault();
                 save();
@@ -11122,13 +11017,6 @@
                 && ((event.target === document.body) || ui.root.contains(event.target)) && !state.section && ui.gallery.classList.contains('d-none') && undoable(!redo)) {
                 event.preventDefault();
                 undo(!redo);
-            }
-        });
-
-        document.addEventListener('keyup', function (event) {
-            if (event.key === ' ') {
-                state.space = false;
-                ui.viewport.classList.remove('wsf-space');
             }
         });
 
