@@ -43,10 +43,14 @@ function test_calendar_session_params_get_calendar_drops_non_text_date()
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/calendar.php');
 
-	$guard = strpos($source, 'if (!is_string($date)) {');
-	$split = strpos($source, "explode('-', \$date)");
+	// The check lives in pg_calendar_view_date() (calendar_view_date_test.php
+	// covers an array date); get_calendar() must pass the date through it
+	// before splitting it.
+	$body = substr($source, strpos($source, 'function get_calendar('));
+	$guard = strpos($body, '$date = pg_calendar_view_date($date);');
+	$split = strpos($body, "explode('-', \$date)");
 
-	pg_assert_true($guard !== false, 'get_calendar(): no is_string() check on the date');
-	pg_assert_true(($split !== false) && ($guard < $split), 'get_calendar(): date split before the is_string() check');
+	pg_assert_true($guard !== false, 'get_calendar(): the date is not checked by pg_calendar_view_date()');
+	pg_assert_true(($split !== false) && ($guard < $split), 'get_calendar(): date split before pg_calendar_view_date()');
 	pg_assert_false(strpos($source, '(string) $date') !== false, 'get_calendar(): date cast with (string)');
 }
