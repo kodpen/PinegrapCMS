@@ -115,6 +115,50 @@ function pg_a11y_issue_label($code)
 }
 
 /**
+ * One example of a finding, and the editor node it was drawn from: the
+ * nearest element at or above $element carrying data-pg-node (the editor's
+ * audit render writes it; a served page has none) is noted for
+ * pg_a11y_example_nodes().
+ *
+ * @param DOMNode $element
+ * @param string  $text the example
+ * @return string $text
+ */
+function pg_a11y_example($element, $text)
+{
+    for ($n = $element; $n instanceof DOMElement; $n = $n->parentNode) {
+        if ($n->hasAttribute('data-pg-node')) {
+            pg_a11y_example_nodes(false, $n->getAttribute('data-pg-node'));
+            break;
+        }
+    }
+
+    return $text;
+}
+
+/**
+ * The node ids noted by pg_a11y_example() since the last reset, once each,
+ * in the order found.
+ *
+ * @param bool        $reset start a new list
+ * @param string|null $add   a node id to note
+ * @return string[]
+ */
+function pg_a11y_example_nodes($reset = false, $add = null)
+{
+    static $nodes = array();
+
+    if ($reset) {
+        $nodes = array();
+    }
+    if (($add !== null) && ($add !== '') && !in_array($add, $nodes, true)) {
+        $nodes[] = (string) $add;
+    }
+
+    return $nodes;
+}
+
+/**
  * Every finding of the checks over one piece of markup, keyed by code: code,
  * severity, occurrences and the first example as detail.
  *
@@ -153,7 +197,9 @@ function pg_a11y_check_html($html)
             continue;
         }
 
+        pg_a11y_example_nodes(true);
         $examples = call_user_func('pg_a11y_rule_' . substr($code, 5), $xpath);
+        $nodes = pg_a11y_example_nodes();
 
         if ($examples) {
             $findings[$code] = array(
@@ -162,6 +208,11 @@ function pg_a11y_check_html($html)
                 'occurrences' => count($examples),
                 'detail'      => mb_substr((string) $examples[0], 0, 250),
             );
+            // The editor's audit render marks elements with their node
+            // (data-pg-node); the finding names them for the canvas badges.
+            if ($nodes) {
+                $findings[$code]['nodes'] = array_slice($nodes, 0, 50);
+            }
         }
     }
 
@@ -330,7 +381,7 @@ function pg_a11y_rule_heading_order($xpath)
         }
 
         if ($previous && ($level > $previous + 1)) {
-            $examples[] = 'h' . $previous . ' → h' . $level . ': ' . mb_substr(pg_a11y_text($heading), 0, 80);
+            $examples[] = pg_a11y_example($heading, 'h' . $previous . ' → h' . $level . ': ' . mb_substr(pg_a11y_text($heading), 0, 80));
         }
 
         $previous = $level;
@@ -358,7 +409,7 @@ function pg_a11y_rule_img_alt($xpath)
             continue;
         }
 
-        $examples[] = $image->hasAttribute('src') ? $image->getAttribute('src') : $image->getAttribute('href');
+        $examples[] = pg_a11y_example($image, $image->hasAttribute('src') ? $image->getAttribute('src') : $image->getAttribute('href'));
     }
 
     return $examples;
@@ -394,7 +445,7 @@ function pg_a11y_rule_form_label($xpath)
             continue;
         }
 
-        $examples[] = ($control->getAttribute('name') !== '') ? $control->getAttribute('name') : $control->nodeName;
+        $examples[] = pg_a11y_example($control, ($control->getAttribute('name') !== '') ? $control->getAttribute('name') : $control->nodeName);
     }
 
     return $examples;
@@ -408,7 +459,7 @@ function pg_a11y_rule_idref_broken($xpath)
 
     foreach ($xpath->query('//label[@for]') as $label) {
         if ((trim($label->getAttribute('for')) !== '') && !pg_a11y_by_id($xpath, $label->getAttribute('for'))) {
-            $examples[] = 'for="' . $label->getAttribute('for') . '"';
+            $examples[] = pg_a11y_example($label, 'for="' . $label->getAttribute('for') . '"');
         }
     }
 
@@ -416,7 +467,7 @@ function pg_a11y_rule_idref_broken($xpath)
         foreach (array('aria-labelledby', 'aria-describedby', 'aria-errormessage') as $attribute) {
             foreach (pg_a11y_idrefs($element->getAttribute($attribute)) as $id) {
                 if (!pg_a11y_by_id($xpath, $id)) {
-                    $examples[] = $attribute . '="' . $id . '"';
+                    $examples[] = pg_a11y_example($element, $attribute . '="' . $id . '"');
                 }
             }
         }
@@ -445,7 +496,7 @@ function pg_a11y_rule_error_association($xpath)
         }
 
         if (!$described) {
-            $examples[] = ($control->getAttribute('name') !== '') ? $control->getAttribute('name') : $control->nodeName;
+            $examples[] = pg_a11y_example($control, ($control->getAttribute('name') !== '') ? $control->getAttribute('name') : $control->nodeName);
         }
     }
 
@@ -459,7 +510,7 @@ function pg_a11y_rule_link_name($xpath)
 
     foreach ($xpath->query('//a[@href]') as $link) {
         if (!pg_a11y_hidden($link) && (pg_a11y_name($xpath, $link) === '')) {
-            $examples[] = $link->getAttribute('href');
+            $examples[] = pg_a11y_example($link, $link->getAttribute('href'));
         }
     }
 
@@ -483,7 +534,7 @@ function pg_a11y_rule_link_generic($xpath)
         $name = mb_strtolower(trim(pg_a11y_name($xpath, $link), " \t\n.…:»›>→"));
 
         if (($name !== '') && isset($generic[$name]) && !pg_a11y_hidden($link)) {
-            $examples[] = $name;
+            $examples[] = pg_a11y_example($link, $name);
         }
     }
 
@@ -504,7 +555,7 @@ function pg_a11y_rule_button_name($xpath)
         $name = ($button->nodeName === 'input') ? trim($button->getAttribute('value')) : '';
 
         if (($name === '') && (pg_a11y_name($xpath, $button) === '')) {
-            $examples[] = ($button->getAttribute('class') !== '') ? $button->nodeName . '.' . preg_replace('/\s+/', '.', trim($button->getAttribute('class'))) : $button->nodeName;
+            $examples[] = pg_a11y_example($button, ($button->getAttribute('class') !== '') ? $button->nodeName . '.' . preg_replace('/\s+/', '.', trim($button->getAttribute('class'))) : $button->nodeName);
         }
     }
 
@@ -523,7 +574,7 @@ function pg_a11y_rule_frame_title($xpath)
         $named = (trim($frame->getAttribute('title')) !== '') || (trim($frame->getAttribute('aria-label')) !== '') || $frame->hasAttribute('aria-labelledby');
 
         if (!$named && !pg_a11y_hidden($frame)) {
-            $examples[] = $frame->getAttribute('src');
+            $examples[] = pg_a11y_example($frame, $frame->getAttribute('src'));
         }
     }
 
@@ -544,7 +595,7 @@ function pg_a11y_rule_media_autoplay($xpath)
             $source = $inner ? $inner->getAttribute('src') : $media->nodeName;
         }
 
-        $examples[] = $source;
+        $examples[] = pg_a11y_example($media, $source);
     }
 
     return $examples;
@@ -665,7 +716,7 @@ function pg_a11y_rule_contrast($xpath)
         $ratio = _pg_theme_contrast($foreground, $background);
 
         if ($ratio < ($large ? 3 : 4.5)) {
-            $examples[] = sprintf('%.2f:1 %s / %s', floor($ratio * 100) / 100, _pg_theme_hex($foreground), _pg_theme_hex($background));
+            $examples[] = pg_a11y_example($element, sprintf('%.2f:1 %s / %s', floor($ratio * 100) / 100, _pg_theme_hex($foreground), _pg_theme_hex($background)));
         }
     }
 
@@ -690,7 +741,7 @@ function pg_a11y_rule_target_size($xpath)
         }
 
         if ((((float) $w[1] < 24) || ((float) $h[1] < 24)) && !pg_a11y_hidden($target)) {
-            $examples[] = $w[1] . '×' . $h[1];
+            $examples[] = pg_a11y_example($target, $w[1] . '×' . $h[1]);
         }
     }
 

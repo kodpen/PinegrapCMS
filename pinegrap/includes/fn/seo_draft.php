@@ -184,7 +184,15 @@ function pg_seo_check_draft_render($page_id, $fields, $tree_json, $widgets, $use
     _sanitize_dynamic_placeholders($tree);
 
     $abc = (string)db_value("SELECT additional_body_classes FROM style WHERE style_id = '" . (int)$page_row['page_style'] . "' LIMIT 1");
-    $draft = array('page_id' => $page_id, 'page_tree_code' => generate_style_code_from_tree($tree, $page_row['page_name'], $abc));
+    // Elements carry their node ids in this render (data-pg-node), so a
+    // finding badges its node on the canvas; the page tree and every widget
+    // and shared component drawn into it alike.
+    pg_designer_audit_render(true);
+    try {
+        $draft = array('page_id' => $page_id, 'page_tree_code' => generate_style_code_from_tree($tree, $page_row['page_name'], $abc));
+    } finally {
+        pg_designer_audit_render(false);
+    }
     foreach (array('page_title', 'page_meta_description', 'page_search_keywords', 'noindex', 'nofollow') as $key) {
         if (array_key_exists($key, (array)$fields)) {
             $draft[$key] = (string)$fields[$key];
@@ -201,10 +209,12 @@ function pg_seo_check_draft_render($page_id, $fields, $tree_json, $widgets, $use
     $saved_session = isset($_SESSION) ? $_SESSION : null;
     $_SESSION = array();
     pg_seo_draft_override($draft);
+    pg_designer_audit_render(true);
     pg_sw_preview_overrides($overrides);
     try {
         $render = pg_seo_render_page($page_id, $page_row);
     } finally {
+        pg_designer_audit_render(false);
         pg_seo_draft_override(array());
         pg_sw_preview_overrides(array());
         if ($saved_session === null) {
@@ -220,4 +230,80 @@ function pg_seo_check_draft_render($page_id, $fields, $tree_json, $widgets, $use
     $render['page_type'] = (string)$page_row['page_type'];
 
     return $render;
+}
+
+/**
+ * The audit rule registry as the editor's audit panel lists it: one row per
+ * concept with its label (the accessibility report's wording, else the SEO
+ * one; '' for a concept only the editor checks, which it labels itself), the
+ * SEO and accessibility codes and severities, the WCAG criterion and level,
+ * the editor rule ids and whether only a browser measures it in full.
+ *
+ * @return array[]
+ */
+function pg_seo_check_concepts()
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/audit_rules.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/a11y.php');
+
+    $rows = array();
+
+    foreach (pg_audit_rules() as $concept => $rule) {
+        $label = '';
+        if ($rule['a11y'] !== '') {
+            $label = pg_a11y_issue_label($rule['a11y']);
+        } elseif ($rule['seo'] !== '' && function_exists('pg_seo_issue_label')) {
+            $label = pg_seo_issue_label($rule['seo'], 1, '');
+        }
+        $rows[] = array(
+            'concept'       => $concept,
+            'label'         => $label,
+            'seo'           => $rule['seo'],
+            'seo_severity'  => isset($rule['severity']['seo']) ? $rule['severity']['seo'] : '',
+            'a11y'          => $rule['a11y'],
+            'a11y_severity' => isset($rule['severity']['a11y']) ? $rule['severity']['a11y'] : '',
+            'criterion'     => $rule['criterion'],
+            'level'         => $rule['level'],
+            'editor'        => $rule['editor'],
+            'browser'       => $rule['browser'],
+        );
+    }
+
+    return $rows;
+}
+
+/**
+ * The draft's accessibility findings (pg_a11y_check_html()) as the panel
+ * lists them: concept, code, label, severity, WCAG criterion and level,
+ * occurrences, the first example and the editor nodes they were found on.
+ *
+ * @param array $findings code => finding
+ * @return array[]
+ */
+function pg_seo_check_a11y_rows($findings)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/audit_rules.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/a11y.php');
+
+    $rules = pg_a11y_rules();
+    $rows = array();
+
+    foreach ((array) $findings as $code => $f) {
+        if (!isset($rules[$code])) {
+            continue;
+        }
+        $rows[] = array(
+            'concept'     => pg_audit_rule_concept('a11y', $code),
+            'code'        => $code,
+            'label'       => pg_a11y_issue_label($code),
+            'severity'    => (string) $f['severity'],
+            'criterion'   => $rules[$code]['criterion'],
+            'level'       => $rules[$code]['level'],
+            'occurrences' => (int) $f['occurrences'],
+            'detail'      => (string) $f['detail'],
+            'nodes'       => isset($f['nodes']) ? array_values((array) $f['nodes']) : array(),
+        );
+    }
+
+    return $rows;
 }

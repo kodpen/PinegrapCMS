@@ -17,7 +17,7 @@ description: Steps SA6-SA13 of plans/search-and-audits.md: rule registry, same i
   - `seo_check` renders the draft on the server (its tree, widgets as the Preview draws them with `pg_designer_preview_widgets()`, shared components, the head) under the background renderer's rules and runs the structure rules in `document` mode with the page's Open Graph and JSON-LD context. The document-only findings carried over from the stored ones go; link and speed stay read from the saved page.
   - Tests: the draft render and the endpoint's composition beside the parity checks of `designer/seo-score-live-check-parity.md`.
 
-- SA9 (M) The editor's audit panel. After SA8.
+- SA9 (M) The editor's audit panel. After SA8. Done (#4839).
   - The draft's accessibility findings beside SEO, one row per registry concept (label, SEO severity, WCAG criterion); badges through a `data-pg-node` attribute written only in the audit render; the canvas checks listed under the same concepts. `php tools/build_js.php`.
 
 - SA10 (S) Editor measurements kept. After SA9.

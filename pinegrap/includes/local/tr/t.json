@@ -846,6 +846,7 @@
     "The access token is not valid. Renew it, or sign in again.": "Erişim jetonu geçerli değil. Yenileyin ya da yeniden oturum açın.",
     "The access token was not issued for this address.": "Erişim jetonu bu adres için verilmemiş.",
     "The accessibility check needs the software upgrade and the PHP DOM extension.": "Erişilebilirlik denetimi için yazılım güncellemesi ve PHP DOM eklentisi gerekir.",
+    "The accessibility checks run on the page once it is saved.": "Erişilebilirlik denetimleri sayfa kaydedildikten sonra çalışır.",
     "The account and the card agree on every field that is compared.": "Cari ile kart karşılaştırılan her alanda aynı.",
     "The account code is optional: the number the accountant books the category under (for example 770 for general expenses). It goes into the accountant's pack with each expense. A category switched off is no longer offered for new expenses; the ones already in it keep it.": "Hesap kodu isteğe bağlıdır: muhasebecinin bu kategoriyi işlediği hesap numarası (örneğin genel yönetim giderleri için 770). Her giderle birlikte muhasebeci paketine gider. Kapatılan kategori yeni giderlerde sunulmaz; içindeki giderler kategorilerini korur.",
     "The account comes from the invoice or the order, so account_id is not sent with them.": "Cari, faturadan ya da siparişten gelir; bu yüzden onlarla birlikte account_id gönderilmez.",

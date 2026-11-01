@@ -75880,7 +75880,7 @@ const StyleDesigner = (function () {
     function applyIssueBadges() {
         if (!canvasDoc || !canvasDoc.body) return;
         var byId = {};
-        _validationIssues.forEach(function (i) {
+        _validationIssues.concat(_sdServerAuditIssues).forEach(function (i) {
             if (!i.node || !i.node._id) return;
             (byId[i.node._id] = byId[i.node._id] || []).push(i.label);
         });
@@ -75916,6 +75916,7 @@ const StyleDesigner = (function () {
             if (!tree) return;
             _validationIssues = validateTree(tree);
             _seoCheckCache = null;          // the page changed; the score is stale
+            _sdServerAuditIssues = [];      // and so are the draft's findings
             updateValidationChip();
             applyIssueBadges();
         }, 500);
@@ -75946,6 +75947,9 @@ const StyleDesigner = (function () {
     // halves the site-wide score is made of, computed on what is on the
     // canvas now. `keep` re-renders an open panel instead of toggling it.
     var _seoCheckCache = null;
+    // The rendered draft's accessibility findings that name a node
+    // (data-pg-node of the audit render), as canvas badges: {node, label}.
+    var _sdServerAuditIssues = [];
     function openValidationPanel(keep) {
         var old = document.getElementById('sd-validation-panel');
         if (old) { old.remove(); if (!keep) return; }
@@ -75987,6 +75991,11 @@ const StyleDesigner = (function () {
                 '<button type="button" class="sd-val-refresh" id="sd-val-seo-refresh" title="' + esc(_sdT('Recalculate')) + '"><span class="bi bi-arrow-clockwise"></span></button></div>' +
                 '<div id="sd-val-seo"><div class="sd-val-empty"><span class="spinner-border spinner-border-sm me-1"></span>' + esc(_sdT('Calculating…')) + '</div></div>';
 
+        // ── Accessibility ── one row per audit concept, filled with the SEO
+        // answer (_renderAuditConcepts()).
+        html += '<div class="sd-val-sec"><span class="bi bi-universal-access me-1"></span>' + esc(_sdT('Accessibility')) + '</div>' +
+                '<div id="sd-val-a11y"></div>';
+
         panel.innerHTML = html;
         document.body.appendChild(panel);
 
@@ -76011,17 +76020,18 @@ const StyleDesigner = (function () {
         }
 
         panel.querySelector('#sd-val-close').addEventListener('click', function() { panel.remove(); });
-        panel.querySelectorAll('.sd-val-goto').forEach(function(b) {
-            b.addEventListener('click', function() {
-                var hit = _findNodeAnywhereById(this.dataset.nid);
-                if (!hit) return;
-                var n = hit.node;
-                scrollTreeToNode(n);
-                selectedNode = n; selectedNodes = [];
-                render();
-                scrollCanvasToNode(n);
-                panel.remove();
-            });
+        // Delegated: the concept rows arrive with the server's answer.
+        panel.addEventListener('click', function (ev) {
+            var b = ev.target.closest('.sd-val-goto');
+            if (!b || !panel.contains(b)) return;
+            var hit = _findNodeAnywhereById(b.dataset.nid);
+            if (!hit) return;
+            var n = hit.node;
+            scrollTreeToNode(n);
+            selectedNode = n; selectedNodes = [];
+            render();
+            scrollCanvasToNode(n);
+            panel.remove();
         });
         panel.querySelector('#sd-val-seo-refresh').addEventListener('click', function () { _seoCheckCache = null; _renderSeoSection(panel); });
         _renderSeoSection(panel);
@@ -76034,6 +76044,70 @@ const StyleDesigner = (function () {
         setTimeout(function() { document.addEventListener('mousedown', onOutside); }, 0);
     }
 
+    // The audit concepts of the registry (includes/fn/audit_rules.php, sent
+    // as res.concepts): one row per concept the rendered draft's
+    // accessibility checks (res.a11y) or the canvas checks found, with its
+    // SEO severity and WCAG criterion, and the canvas findings of that
+    // concept under it. The draft's findings that name a node badge it.
+    function _renderAuditConcepts(panel, res) {
+        var host = panel.querySelector('#sd-val-a11y');
+        if (!host) return;
+        var concepts = (res && res.concepts) || [];
+        var a11y = (res && Array.isArray(res.a11y)) ? res.a11y : null;
+        var sevIcon = function (sev) {
+            return sev === 'error' ? 'bi-x-circle text-danger' : (sev === 'warning' ? 'bi-exclamation-circle text-warning' : 'bi-info-circle text-info');
+        };
+        var sevText = function (sev) {
+            return sev === 'error' ? _sdT('Error') : (sev === 'warning' ? _sdT('Warning') : _sdT('Notice'));
+        };
+
+        _sdServerAuditIssues = [];
+        (a11y || []).forEach(function (f) {
+            (f.nodes || []).forEach(function (id) {
+                var hit = _findNodeAnywhereById(id);
+                if (hit && hit.node) _sdServerAuditIssues.push({ node: hit.node, label: f.label });
+            });
+        });
+        applyIssueBadges();
+
+        var rows = [];
+        concepts.forEach(function (c) {
+            var found = (a11y || []).filter(function (f) { return f.concept === c.concept; });
+            var canvas = _validationIssues.filter(function (i) { return (c.editor || []).indexOf(i.rule) !== -1; });
+            if (!found.length && !(c.a11y && canvas.length)) return;
+            rows.push({ c: c, found: found, canvas: canvas });
+        });
+
+        var h = '';
+        if (a11y === null) {
+            h += '<div class="sd-val-empty"><span class="bi bi-info-circle me-1"></span>' + esc(_sdT('The accessibility checks run on the page once it is saved.')) + '</div>';
+        }
+        if (!rows.length) {
+            if (a11y !== null) h += '<div class="sd-val-empty"><span class="bi bi-check-circle me-1"></span>' + esc(_sdT('No accessibility issues found')) + '</div>';
+            host.innerHTML = h;
+            return;
+        }
+        h += '<div class="sd-val-list">';
+        rows.forEach(function (r) {
+            var c = r.c;
+            var sev = r.found.length ? r.found[0].severity : (c.a11y_severity || c.seo_severity || 'notice');
+            var label = c.label || (r.canvas.length ? r.canvas[0].label : c.concept);
+            var meta = [];
+            if (c.criterion) meta.push('WCAG ' + c.criterion + ' (' + c.level + ')');
+            if (c.seo_severity) meta.push('SEO: ' + sevText(c.seo_severity));
+            r.found.forEach(function (f) { meta.push(f.occurrences + '×' + (f.detail ? ' · ' + f.detail : '')); });
+            h += '<div class="sd-val-item"><div class="sd-val-rule"><span class="bi ' + sevIcon(sev) + ' sd-val-icon"></span>' + esc(label) + '</div>' +
+                 '<div class="sd-val-node sd-val-detail">' + esc(meta.join(' · ')) + '</div>';
+            r.canvas.forEach(function (i) {
+                h += '<div class="sd-val-node"><span class="bi bi-dot"></span>' + esc(i.label) + (i.node ? ' · ' + esc(i.nodeLabel) : '') +
+                     (i.node ? ' <button class="sd-val-goto" data-nid="' + esc(i.node._id) + '"><span class="bi bi-cursor me-1"></span>' + esc(_sdT('Go')) + '</button>' : '') + '</div>';
+            });
+            h += '</div>';
+        });
+        h += '</div>';
+        host.innerHTML = h;
+    }
+
     // Ask the server for the score of the page as it is now. Cached until
     // the next explicit refresh or the next validation pass, so opening the
     // panel twice does not hit the server twice.
@@ -76041,6 +76115,7 @@ const StyleDesigner = (function () {
         var host = panel.querySelector('#sd-val-seo');
         if (!host) return;
         var draw = function (res) {
+            _renderAuditConcepts(panel, res);
             if (!res || res.status !== 'success') {
                 host.innerHTML = '<div class="sd-val-empty fg-warning"><span class="bi bi-exclamation-triangle me-1"></span>' + esc((res && res.message) || _sdT('The SEO check could not be run.')) + '</div>';
                 return;
