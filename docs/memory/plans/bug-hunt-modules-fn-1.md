@@ -188,8 +188,8 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `parasut`: open
 
-- `passkeys`: open
+- `passkeys`: clean
 
-- `payments`: taken by bug-hunt-payments
+- `payments`: done (#4629)
 
 - `pdf_merge`: done (#4610)
