@@ -37,8 +37,9 @@ if (!defined('REQUEST_URL')) {
     define('REQUEST_URL', defined('PATH') ? PATH : '/');
 }
 
-// Pages are rendered as for the SEO structure pass, so the same budget.
-$a11y_run = pg_a11y_run(defined('SEO_ANALYZE_TIME_BUDGET') ? (int) SEO_ANALYZE_TIME_BUDGET : 120);
+// Pages are rendered as for the SEO structure pass, so the same budget,
+// capped by what is left of the process's time limit.
+$a11y_run = pg_a11y_run(pg_cron_time_left(defined('SEO_ANALYZE_TIME_BUDGET') ? (int) SEO_ANALYZE_TIME_BUDGET : 120));
 
 if ($a11y_run['failed']) {
     log_activity(lang(array(
@@ -47,6 +48,10 @@ if ($a11y_run['failed']) {
         'suffix' => (($a11y_run['failed'] > 1) ? 's' : ''))), '');
 }
 
+// The run (and its completion marker) is recorded only at the end of a pass;
+// an unfinished pass is due again in a minute instead of tomorrow.
 if ($a11y_run['done']) {
     pg_cron_ran('seo_a11y_job');
+} else {
+    pg_cron_due_again('seo_a11y_job', 60);
 }

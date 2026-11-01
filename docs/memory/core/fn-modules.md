@@ -29,6 +29,7 @@ description: Generated from the module field of the memory files: each includes/
 - `contact_list`: [[contact-list-names]], [[contact-user-list-view-kept]], [[panel-image-alt]], [[server-paged-lists]]
 - `contacts`: [[contact-holders]], [[contact-lead-source]], [[deleted-picture-fallback]], [[panel-avatar]], [[panel-avatar-sites]]
 - `core`: [[error-screen-language-and-status]], [[send-to-url-safety]], [[time-zone-list-labels]]
+- `cron`: [[scheduled-job-resume]]
 - `currency_rates`: [[exchange-rates-update]]
 - `custom_form`: [[collection-template-refs]], [[custom-form-field-rules]], [[form-field-errors]], [[sms-consent-custom-form]]
 - `designer_fx`: [[designer-interactions]]
