@@ -100,13 +100,13 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 
 - Endpoints add_or_remove_watcher, organize_contacts, print_packing_slip, passkey, set_password, payment_callback: open
 
-- Endpoints pclzip.lib, view_performance_log, get_photo_gallery, pi, private_label, prototype: done #4773 (pclzip.lib bundled library, not hunted; view_performance_log, pi, private_label, prototype: nothing found)
+- Endpoints pclzip.lib, view_performance_log, get_photo_gallery, pi, private_label, prototype: done #4773 (pclzip.lib bundled, rest clean)
 
 - Endpoints purge_cache, push_job, reload_theme, reserve_calendar_event, reset_password, retrieve_order: done (#4672, #4691, #4740)
 
 - Endpoints get_robots.txt, router, send_email_campaign, view_sessions, get_set_password, shipworks: done (#4655)
 
-- Endpoints si, signature_receipt, signin, get_site_icon, get_sitemap_info, get_sitemap.xml: done #4758 (si, signature_receipt, signin, get_site_icon, get_sitemap.xml: nothing found)
+- Endpoints si, signature_receipt, signin, get_site_icon, get_sitemap_info, get_sitemap.xml: done #4758 (rest clean)
 
 - Endpoints smtp_settings, stock_notify, submit_order, test_secure_mode, add_to_cart, toolbar: done #4600, #4607, #4618 (stock_notify, test_secure_mode, toolbar: nothing found)
 
