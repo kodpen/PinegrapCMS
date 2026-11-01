@@ -68559,6 +68559,42 @@ const StyleDesigner = (function () {
         });
     }
 
+    // A save's warnings (a page saved under another name, a form notice not
+    // sent) stay until closed: they say what changed without the user's
+    // doing. Its notes (a renamed page's old address sent on) fade.
+    function _sdShowSaveMessages(warnings, notes) {
+        if (warnings && warnings.length) sdToast(warnings.map(esc).join('<br>'), 'warning', 0);
+        if (notes && notes.length) sdToast(notes.map(esc).join('<br>'), 'info', 7000);
+    }
+
+    var SD_CARRIED_SAVE_KEY = 'pg_sd_save_messages';
+
+    // The messages of a save that is followed by a redirect, kept in this
+    // tab for the editor the redirect opens (_sdShowCarriedSaveMessages()).
+    function _sdCarrySaveMessages(warnings, notes) {
+        if (!(warnings && warnings.length) && !(notes && notes.length)) return;
+        try {
+            window.sessionStorage.setItem(SD_CARRIED_SAVE_KEY, JSON.stringify({ warnings: warnings || [], notes: notes || [] }));
+        } catch (e) {
+            // No storage: show them here, and they last until the redirect.
+            _sdShowSaveMessages(warnings, notes);
+        }
+    }
+
+    function _sdShowCarriedSaveMessages() {
+        var raw = null;
+        try {
+            raw = window.sessionStorage.getItem(SD_CARRIED_SAVE_KEY);
+            if (raw !== null) window.sessionStorage.removeItem(SD_CARRIED_SAVE_KEY);
+        } catch (e) { return; }
+        if (!raw) return;
+        var data = null;
+        try { data = JSON.parse(raw); } catch (e) { return; }
+        if (!data || typeof data !== 'object') return;
+        var list = function (v) { return Array.isArray(v) ? v.filter(function (x) { return typeof x === 'string'; }) : []; };
+        _sdShowSaveMessages(list(data.warnings), list(data.notes));
+    }
+
     function _saveAjaxImpl(opts, form) {
         // prepareFormData() runs the same validation + serialisation pipeline
         // as the legacy submit handler. A `false` return means a hard error
@@ -68572,7 +68608,9 @@ const StyleDesigner = (function () {
         _sdSharedCatchEdits();
         var _asDraft  = _pgActiveIsDraft();
         var _asKey    = _activeKey;
-        var _liveToo  = _asDraft && (_pages.some(function (p) {
+        // A design never saved has nothing on the site yet: its template's
+        // widgets and style count as changed but go live nowhere.
+        var _liveToo  = _asDraft && !!(_design && _design.styleId) && (_pages.some(function (p) {
                             return !p.page_draft && p.access !== 'locked' && _pgPageDirty(p);
                         }) || (_styleBaseline !== null && _pgStyleJSON() !== _styleBaseline)
                            || Object.keys(_sharedDirty).length > 0);
@@ -68635,17 +68673,16 @@ const StyleDesigner = (function () {
                 // New tabs learn their page ids, every baseline resets, the
                 // dirty dots clear.
                 _pgTabsAfterSave(res.data);
-                if (Array.isArray(res.data.warnings) && res.data.warnings.length) {
-                    sdToast(res.data.warnings.map(esc).join('<br>'), 'warning', 7000);
-                }
-                // A renamed page's old address, sent on to the new one.
-                if (Array.isArray(res.data.notes) && res.data.notes.length) {
-                    sdToast(res.data.notes.map(esc).join('<br>'), 'info', 7000);
-                }
-                if (typeof opts.onSuccess === 'function') opts.onSuccess(res.data);
+                var _warnings = Array.isArray(res.data.warnings) ? res.data.warnings : [];
+                var _notes = Array.isArray(res.data.notes) ? res.data.notes : [];
                 // Server may request a redirect (used by add_system_style after creating
-                // a new record so the user lands on the edit page). Skip the unload-warn
-                // dialog — everything was just saved.
+                // a new record so the user lands on the edit page). The warnings and
+                // notes are shown there, since a toast here lives only until the
+                // page goes (a page saved under another address than its tab's).
+                if (res.data.redirect_url) _sdCarrySaveMessages(_warnings, _notes);
+                else _sdShowSaveMessages(_warnings, _notes);
+                if (typeof opts.onSuccess === 'function') opts.onSuccess(res.data);
+                // Skip the unload-warn dialog — everything was just saved.
                 if (res.data.redirect_url) {
                     _suppressUnloadWarn = true;
                     setTimeout(function () { window.location.href = res.data.redirect_url; }, 400);
@@ -73163,6 +73200,8 @@ const StyleDesigner = (function () {
             a.treeLoadWarning = false;
             setTimeout(function () { sdToast(_sdT('This page\'s saved design could not be read — an empty canvas was opened.'), 'warning', 6000); }, 600);
         }
+        // The warnings of the first save, which redirected here.
+        setTimeout(_sdShowCarriedSaveMessages, 600);
     }
 
     // ── Protect the main form against accidental native submission ──────────
