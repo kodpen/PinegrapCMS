@@ -5737,6 +5737,7 @@
     "Traffic is up on yesterday and orders have moved up with it.": "Trafik dünden yüksek ve sipariş de onunla birlikte artmış.",
     "Traffic is up on yesterday and the pages are holding at {var:1} ms.": "Trafik dünden yüksek ve sayfalar {var:1} ms'de tutunuyor.",
     "Traffic is up on yesterday, and the firewall turned away {var:1} request{suffix:1} over the same day.": "Trafik düne göre arttı; güvenlik duvarı da aynı gün içinde {var:1} isteği geri çevirdi.",
+    "Traffic sources": "Trafik kaynakları",
     "Training": "Eğitim",
     "Training for a team": "Ekip için eğitim",
     "Training for teams": "Ekipler için eğitim",

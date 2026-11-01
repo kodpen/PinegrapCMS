@@ -1000,6 +1000,7 @@
     "does not contain the text": "metni içermiyor",
     "dog, pets, animals": "köpek, evcil hayvan, hayvanlar",
     "done": "biten",
+    "down {var:1} places": "{var:1} sıra düştü",
     "down {var:1}%": "%{var:1} azaldı",
     "download failed": "indirilemedi",
     "downloads the figures of the last 90 days, and from then on every day.": "son 90 günün verilerini, sonra her gün yenilerini indirir.",
