@@ -17,8 +17,8 @@ description: Steps W1-W10 of plans/webp-same-address.md: negotiation, switches, 
 - W3 (M) Encode cap and warm-up. Done (#4688).
   - At most N encodes at once for every derivative (lock slots beside `data/cache/img/formats.json`, `busy` when all are taken), so a page of forty new pictures does not start forty encodes on a shared host; a warm-up pass in `job.php` beside the sweep: largest JPEG and PNG first, seconds a tick, a cursor file. Tests on the slots and the cursor.
 
-- W4 (S) Convert doors, downloads, mails. After W1.
-  - `pg_explorer_handle_webp()` becomes "Prepare WebP" (copies, no rename), Edit File keeps only "Create a .webp copy" (question 2); the file window shows the copy's size and saving; File Manager Download and the mail pass (`get_page_content()` with `$email`) ask for `f=original`.
+- W4 (S) Convert doors, downloads, mails. After W1. Claimed.
+  - `pg_explorer_handle_webp()` becomes "Prepare WebP" (copies, no rename), Edit File keeps only "Create a .webp copy"; the file window shows the copy's size and saving; File Manager Download and the mail pass (`get_page_content()` with `$email`) ask for `f=original`.
 
 - W5 (S) Cloudflare rule. After W2.
   - Cloudflare Tools writes the Cache Rule (phase `http_request_cache_settings`; jpg, jpeg, png; Vary `accept` normalize, media type `image/webp`) when the token may, else shows the steps; a check fetches one picture through the edge with two `Accept` values and sets the confirmation only when each gets its own type.
