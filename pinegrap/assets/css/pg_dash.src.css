@@ -2,7 +2,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The new dashboard's stylesheet (includes/dashboard/v2/page.php), one
- * section per part; built to dashboard_v2.min.css by tools/build_css.php.
+ * section per part; built to pg_dash.min.css by tools/build_css.php.
  * The switch row is drawn on the old dashboard too, so its section also
  * serves welcome.php. Colours come from the panel's --pg-* tokens, light
  * and dark alike.

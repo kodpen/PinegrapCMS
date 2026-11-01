@@ -97,7 +97,7 @@ function pg_dashboard_v2_set_enabled($user_id, $on)
  */
 function pg_dashboard_v2_style_url()
 {
-    $minified = 'assets/css/dashboard_v2.min.css';
+    $minified = 'assets/css/pg_dash.min.css';
     $bundles = pg_css_bundles();
     $file = $minified;
 

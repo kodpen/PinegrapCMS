@@ -40,7 +40,7 @@ pg_page_shell(
         ' . pg_dashboard_v2_greeting($user) . '
     </div>
     ' . pg_dashboard_v2_grid($user) . '
-    ' . pg_js_bundle_tags('assets/js/dashboard_v2.min.js') . '
+    ' . pg_js_bundle_tags('assets/js/pg_dash.min.js') . '
 </main>' .
 output_footer();
 $liveform->remove_form();
