@@ -13529,6 +13529,10 @@ const StyleDesigner = (function () {
                     // an in-place placeholder so designer doesn't see raw tokens.
                     _semText = _sdResolveAttrTokens(_semText, true);
                     _semIsHtml = /<[a-z]/i.test(_semText);
+                } else {
+                    // An address form's city or state label in the words of
+                    // the store's default country, as the site stamps it.
+                    _semText = _sdAddrCanvasText(node, _semText);
                 }
                 if (_semIsHtml) {
                     // Preview markup has to be parsed, not escaped — otherwise
@@ -15080,6 +15084,74 @@ const StyleDesigner = (function () {
         if (!_sdEntityBox) _sdEntityBox = document.createElement('textarea');
         _sdEntityBox.innerHTML = String(s);
         return _sdEntityBox.value;
+    }
+
+    // ── Address labels that follow the country ─────────────────────────
+    // Twins of pg_address_label_key() / pg_address_label_swap() and of the
+    // render stamp (pg_address_labels_tree_stamp()): a Turkish address is
+    // asked as İl (the state box) and İlçe (the city box). The canvas has
+    // no visitor's country, so it shows the store's default country
+    // (regionData.address_labels: { tr, words: { city|state: { tr, other,
+    // defaults } } }, pg_address_labels_editor_config()). Only a label
+    // holding a default word changes; the tree is never rewritten.
+    var _SD_ADDR_CONTROLS = {
+        city:  ['city', 'billing_city', 'business_city', 'shipping_city'],
+        state: ['state', 'billing_state', 'business_state', 'shipping_state']
+    };
+    function _sdAddrConfig() {
+        var c = regionData && regionData.address_labels;
+        return (c && c.words && c.words.city && c.words.state) ? c : null;
+    }
+    // The words a starter writes on a city or state label: the store's
+    // default country's, as the render would stamp them.
+    function _sdAddrLabel(slot) {
+        var c = _sdAddrConfig();
+        if (!c) return slot === 'city' ? _sdT('City') : _sdT('State / Province');
+        return c.tr ? c.words[slot].tr : c.words[slot].other;
+    }
+    function _sdAddrKey(text) {
+        return String(text).replace(/[*:]/g, '').replace(/\s*\/\s*/g, '/').replace(/\s+/g, ' ').trim().toLowerCase();
+    }
+    function _sdAddrSwap(text, words, isTr) {
+        var m = /^(\s*)([\s\S]*?)(\s*\*?\s*:?\s*)$/.exec(String(text));
+        if (!m || m[2] === '') return null;
+        var key = _sdAddrKey(m[2]);
+        var defaults = words.defaults || [];
+        for (var i = 0; i < defaults.length; i++) {
+            if (_sdAddrKey(defaults[i]) === key) return m[1] + (isTr ? words.tr : words.other) + m[3];
+        }
+        return null;
+    }
+    // 'city', 'state' or '' for a control node: its name, or its express
+    // order field binding.
+    function _sdAddrSlotOf(n) {
+        if (!n || n.type !== 'semantic' || !n.props) return '';
+        var tag = String(n.props.tag || '').toLowerCase();
+        if (tag !== 'input' && tag !== 'select' && tag !== 'textarea') return '';
+        var name = (n.props._bindings && n.props._bindings.eo_field) ? String(n.props._bindings.eo_field) : '';
+        if (!name && Array.isArray(n.props._attrs)) {
+            n.props._attrs.forEach(function (a) {
+                if (!name && a && String(a.name || '').toLowerCase() === 'name') name = String(a.value || '');
+            });
+        }
+        if (_SD_ADDR_CONTROLS.city.indexOf(name) !== -1) return 'city';
+        if (_SD_ADDR_CONTROLS.state.indexOf(name) !== -1) return 'state';
+        return '';
+    }
+    // The canvas text of a label node: a default word beside a city or
+    // state control in the default country's words, else `text` as it is.
+    function _sdAddrCanvasText(node, text) {
+        var c = _sdAddrConfig();
+        if (!c || !text || !node || !node.props || String(node.props.tag || '').toLowerCase() !== 'label') return text;
+        var swapped = { city: _sdAddrSwap(text, c.words.city, c.tr), state: _sdAddrSwap(text, c.words.state, c.tr) };
+        if (swapped.city === null && swapped.state === null) return text;
+        var p = _sdAnyParent(node);
+        var kids = (p && p.parent && p.parent.children) || [];
+        for (var i = 0; i < kids.length; i++) {
+            var slot = _sdAddrSlotOf(kids[i]);
+            if (slot && swapped[slot] !== null) return swapped[slot];
+        }
+        return text;
     }
 
     function _propsWithBindings(node) {
@@ -38299,9 +38371,9 @@ const StyleDesigner = (function () {
                             _mkField('col-12 col-md-6 mb-2', _sdT('Phone'),  'shipping_phone_number','tel', '', false),
                             _mkField('col-12 col-md-12 mb-2', _sdT('Address 1'), 'shipping_address_1',  'text', '', true),
                             _mkField('col-12 col-md-12 mb-2', _sdT('Address 2'), 'shipping_address_2',  'text', '', false),
-                            _mkField('col-12 col-md-6 mb-2', _sdT('City'),    'shipping_city',       'text', '', true),
+                            _mkField('col-12 col-md-6 mb-2', _sdAddrLabel('city'), 'shipping_city',       'text', '', true),
                             _mkField('col-12 col-md-6 mb-2', _sdT('District'), 'shipping_district',  'text', '', false),
-                            _mkField('col-12 col-md-6 mb-2', _sdT('State'),'shipping_state',      'text', '', true),
+                            _mkField('col-12 col-md-6 mb-2', _sdAddrLabel('state'), 'shipping_state',      'text', '', true),
                             _mkField('col-12 col-md-6 mb-2', _sdT('Zip Code'),'shipping_zip_code',  'text', '', true),
                             createNode('semantic', { tag: 'div', cssClass: 'col-12 col-md-6 mb-2' }, [
                                 _mkLabel('shipping_country', _sdT('Country'), true),
@@ -60328,7 +60400,7 @@ const StyleDesigner = (function () {
                                     fld('col-12 col-md-6 mb-3', _sdT('Company'),      'shipping_company',     'text'),
                                     fld('col-12 col-md-6 mb-3', _sdT('Address 1'),    'shipping_address_1',   'text', '', true),
                                     fld('col-12 col-md-6 mb-3', _sdT('Address 2'),    'shipping_address_2',   'text'),
-                                    fld('col-12 col-md-6 mb-3', _sdT('City'),         'shipping_city',        'text', '', true),
+                                    fld('col-12 col-md-6 mb-3', _sdAddrLabel('city'), 'shipping_city',        'text', '', true),
                                     // Optional; the site shows it for a Turkish address.
                                     fld('col-12 col-md-6 mb-3', _sdT('District'),     'shipping_district',    'text'),
                                     sem('div', 'col-12 col-md-6 mb-3', [
@@ -60337,7 +60409,7 @@ const StyleDesigner = (function () {
                                             bindings: { eo_field: 'shipping_country' }
                                         })
                                     ]),
-                                    fld('col-12 col-md-6 mb-3', _sdT('State / Province'), 'shipping_state',    'text', '', true),
+                                    fld('col-12 col-md-6 mb-3', _sdAddrLabel('state'), 'shipping_state',    'text', '', true),
                                     fld('col-12 col-md-6 mb-3', _sdT('Zip Code'),  'shipping_zip_code', 'text', '', true)
                                 ])
                             ], { bindings: { eo_visible_if: 'has_single_recipient' } }),
@@ -60363,7 +60435,7 @@ const StyleDesigner = (function () {
                                 fld('col-12 col-md-6 mb-3', _sdT('Last Name'),  'billing_last_name',  'text', '', true),
                                 fld('col-12 col-md-6 mb-3', _sdT('Address 1'),  'billing_address_1',  'text', '', true),
                                 fld('col-12 col-md-6 mb-3', _sdT('Address 2'),  'billing_address_2',  'text'),
-                                fld('col-12 col-md-6 mb-3', _sdT('City'),       'billing_city',       'text', '', true),
+                                fld('col-12 col-md-6 mb-3', _sdAddrLabel('city'), 'billing_city',       'text', '', true),
                                 sem('div', 'col-12 col-md-6 mb-3', [
                                     lbl('billing_country', _sdT('Country'), true),
                                     // Real <select> bound to billing_country.
@@ -60374,7 +60446,7 @@ const StyleDesigner = (function () {
                                         bindings: { eo_field: 'billing_country' }
                                     })
                                 ]),
-                                fld('col-12 col-md-6 mb-3', _sdT('State / Province'), 'billing_state',    'text', '', true),
+                                fld('col-12 col-md-6 mb-3', _sdAddrLabel('state'), 'billing_state',    'text', '', true),
                                 fld('col-12 col-md-6 mb-3', _sdT('Zip Code'),         'billing_zip_code', 'text', '', true)
                             ])
                         ], { attrs: [{ name: 'data-pg-eo-billing-address', value: '1' }] }),
@@ -62908,8 +62980,8 @@ const StyleDesigner = (function () {
                         _swAcctField(_sdT('Address'), apId + '_addr1', 'text', 'business_address_1', { autocomplete: 'address-line1' }),
                         _swAcctField(_sdT('Address (line 2)'), apId + '_addr2', 'text', 'business_address_2', { autocomplete: 'address-line2' }),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('City') }, [
-                            _swAcctField(_sdT('City'), apId + '_city', 'text', 'business_city', { autocomplete: 'address-level2', colCss: 'col-sm-6' }),
-                            _swAcctField(_sdT('State / Province'), apId + '_state', 'text', 'business_state', { autocomplete: 'address-level1', colCss: 'col-sm-6' })
+                            _swAcctField(_sdAddrLabel('city'), apId + '_city', 'text', 'business_city', { autocomplete: 'address-level2', colCss: 'col-sm-6' }),
+                            _swAcctField(_sdAddrLabel('state'), apId + '_state', 'text', 'business_state', { autocomplete: 'address-level1', colCss: 'col-sm-6' })
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('Country') }, [
                             _swAcctField(_sdT('Zip / Postal Code'), apId + '_zip', 'text', 'business_zip_code', { autocomplete: 'postal-code', colCss: 'col-sm-6' }),
@@ -63018,8 +63090,8 @@ const StyleDesigner = (function () {
                         _swAcctField(_sdT('Address'), abId + '_addr1', 'text', 'address_1', { required: true, autocomplete: 'address-line1' }),
                         _swAcctField(_sdT('Address (line 2)'), abId + '_addr2', 'text', 'address_2', { autocomplete: 'address-line2' }),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('City') }, [
-                            _swAcctField(_sdT('City'), abId + '_city', 'text', 'city', { required: true, autocomplete: 'address-level2', colCss: 'col-sm-6' }),
-                            _swAcctField(_sdT('State / Province'), abId + '_state', 'text', 'state', { autocomplete: 'address-level1', colCss: 'col-sm-6' })
+                            _swAcctField(_sdAddrLabel('city'), abId + '_city', 'text', 'city', { required: true, autocomplete: 'address-level2', colCss: 'col-sm-6' }),
+                            _swAcctField(_sdAddrLabel('state'), abId + '_state', 'text', 'state', { autocomplete: 'address-level1', colCss: 'col-sm-6' })
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('Country') }, [
                             _swAcctField(_sdT('Zip / Postal Code'), abId + '_zip', 'text', 'zip_code', { autocomplete: 'postal-code', colCss: 'col-sm-6' }),
@@ -63525,12 +63597,12 @@ const StyleDesigner = (function () {
                     _swAcctField(_sdT('Address'), biId + '_addr1', 'text', 'billing_address_1', { required: true, autocomplete: 'address-line1', attrs: biMax(50) }),
                     _swAcctField(_sdT('Address (line 2)'), biId + '_addr2', 'text', 'billing_address_2', { autocomplete: 'address-line2', attrs: biMax(50) }),
                     createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('City') }, [
-                        _swAcctField(_sdT('City'), biId + '_city', 'text', 'billing_city', { required: true, autocomplete: 'address-level2', colCss: 'col-sm-6', attrs: biMax(50) }),
+                        _swAcctField(_sdAddrLabel('city'), biId + '_city', 'text', 'billing_city', { required: true, autocomplete: 'address-level2', colCss: 'col-sm-6', attrs: biMax(50) }),
                         biCountry
                     ]),
                     createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('State') }, [
                         createNode('semantic', { tag: 'div', cssClass: 'col-sm-6 mb-3', customName: _sdT('State / Province') }, [
-                            createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdT('State / Province'), customName: _sdT('Label'),
+                            createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdAddrLabel('state'), customName: _sdT('Label'),
                                 _attrs: [{ name: 'for', value: biId + '_state' }] }),
                             createNode('semantic', { tag: 'input', cssClass: 'form-control', id: biId + '_state',
                                 _attrs: [{ name: 'type', value: 'text' }, { name: 'name', value: 'billing_state' },
@@ -63982,12 +64054,12 @@ const StyleDesigner = (function () {
                     afText(_sdT('Address 1'), '_addr1', 'address_1', { required: true, autocomplete: 'address-line1' }),
                     afText(_sdT('Address 2'), '_addr2', 'address_2', { autocomplete: 'address-line2' }),
                     createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('City') }, [
-                        afText(_sdT('City'), '_city', 'city', { required: true, autocomplete: 'address-level2', colCss: 'col-sm-6' }),
+                        afText(_sdAddrLabel('city'), '_city', 'city', { required: true, autocomplete: 'address-level2', colCss: 'col-sm-6' }),
                         afCountry
                     ]),
                     createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('State') }, [
                         createNode('semantic', { tag: 'div', cssClass: 'col-sm-6 mb-3', customName: _sdT('State / Province') }, [
-                            createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdT('State / Province'), customName: _sdT('Label'),
+                            createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdAddrLabel('state'), customName: _sdT('Label'),
                                 _attrs: [{ name: 'for', value: afId + '_state' }] }),
                             createNode('semantic', { tag: 'input', cssClass: 'form-control', id: afId + '_state',
                                 _attrs: [{ name: 'type', value: 'text' }, { name: 'name', value: 'state' },
@@ -64345,14 +64417,14 @@ const StyleDesigner = (function () {
                         _swAcctField(_sdT('Address'), saId + '_addr1', 'text', 'address_1', { required: true, autocomplete: 'address-line1', attrs: [{ name: 'maxlength', value: '50' }] }),
                         _swAcctField(_sdT('Address (line 2)'), saId + '_addr2', 'text', 'address_2', { autocomplete: 'address-line2', attrs: [{ name: 'maxlength', value: '50' }] }),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('City') }, [
-                            _swAcctField(_sdT('City'), saId + '_city', 'text', 'city', { required: true, autocomplete: 'address-level2', colCss: 'col-sm-6', attrs: [{ name: 'maxlength', value: '50' }] }),
+                            _swAcctField(_sdAddrLabel('city'), saId + '_city', 'text', 'city', { required: true, autocomplete: 'address-level2', colCss: 'col-sm-6', attrs: [{ name: 'maxlength', value: '50' }] }),
                             // Optional; the site shows it for a Turkish address.
                             _swAcctField(_sdT('District'), saId + '_district', 'text', 'district', { autocomplete: 'address-level3', colCss: 'col-sm-6', attrs: [{ name: 'maxlength', value: '50' }] }),
                             saCountry
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('State') }, [
                             createNode('semantic', { tag: 'div', cssClass: 'col-sm-6 mb-3', customName: _sdT('State / Province') }, [
-                                createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdT('State / Province'), customName: _sdT('Label'),
+                                createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdAddrLabel('state'), customName: _sdT('Label'),
                                     _attrs: [{ name: 'for', value: saId + '_state' }] }),
                                 createNode('semantic', { tag: 'input', cssClass: 'form-control', id: saId + '_state',
                                     _attrs: [{ name: 'type', value: 'text' }, { name: 'name', value: 'state' },

@@ -1934,6 +1934,41 @@ function pg_address_labels_init_props($city_id, $tr_codes = null, $words = null)
 }
 
 /**
+ * What the visual editor needs to draw address labels as the site does: the
+ * words of pg_address_label_words() and whether the store's default country
+ * (countries.default_selected) is Turkey. Its starters write those words
+ * and its canvas shows a default-word city or state label in them. Pure.
+ *
+ * @param  string     $country the store's default country code ('' for none)
+ * @param  array|null $words   pg_address_label_words(), asked when null
+ * @return array 'tr' => bool, 'words' => pg_address_label_words()
+ */
+function pg_address_labels_editor_config($country, $words = null)
+{
+    return array(
+        'tr' => pg_ship_to_district_country_is_tr($country),
+        'words' => ($words === null) ? pg_address_label_words() : $words,
+    );
+}
+
+/**
+ * The store's default country code (countries.default_selected), '' when
+ * none is set.
+ *
+ * @return string
+ */
+function pg_address_default_country()
+{
+    static $code = null;
+
+    if ($code === null) {
+        $code = (string) db_value("SELECT code FROM countries WHERE default_selected = 1 ORDER BY id ASC LIMIT 1");
+    }
+
+    return $code;
+}
+
+/**
  * A Turkish province's licence plate number from its name ('İstanbul' ->
  * '34'), or '' for a name no province carries. Accents, case and spacing are
  * folded the way the sales map folds them, so 'IĞDIR', 'Iğdır' and the older

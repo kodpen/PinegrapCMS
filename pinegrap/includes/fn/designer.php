@@ -6460,6 +6460,10 @@ function get_style_designer_regions_as_json()
         ORDER BY page_name ASC") or output_error(lang('Query failed.'));
     while ($row = mysqli_fetch_assoc($result)) { $data['system_region_pages'][] = $row['name']; }
 
+    // The city and state label words of the store's default country, for
+    // the address widgets' starters and canvas (İlçe and İl for Turkey).
+    $data['address_labels'] = pg_address_labels_editor_config(pg_address_default_country());
+
     // JSON_HEX_TAG ensures < and > are Unicode-escaped (\u003C / \u003E),
     // so a value containing "</script>" never closes the surrounding <script> tag.
     return json_encode($data, JSON_HEX_TAG | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

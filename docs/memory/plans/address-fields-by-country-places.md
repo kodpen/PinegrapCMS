@@ -7,7 +7,7 @@ description: Every place an address's city, state or district is asked, shown or
 - Express order (`widgets_express_order.php`): default tree `_eo_default_designer_tree()` (shipping City, District, State / Province; billing City, State / Province), server parts `_eo_render_shipping_section()` and `_eo_render_billing_address()`, box fit `_eo_fit_district_field()`; JS twins `_buildExpressOrderStarterTree()` and the recipient list block ("Add Recipient List Block").
 - Shipping address and arrival (`widgets_shipping_address.php`: `pg_sa_district_node()`, `_pg_sa_state_controls()`, `pg_sa_state_script()`), billing information (`widgets_billing_information.php`, the same script with `billing_`), affiliate sign-up (`widgets_affiliate_sign_up.php`, the same script).
 - Account profile (business city/state) and address book (`widgets_account.php`): the state is a text box with no pick list (A3).
-- JS starters of all five: `_buildStarterTree()` cases in `style_designer.src.js`.
+- JS starters of all five: `_buildStarterTree()` cases in `style_designer.src.js` (A2: default country's words).
 - Showing only: order view and its lists, shipping method, order preview, cart (`pg_order_view_district()` already drops a district equal to the city). Registration and my account ask for no address.
 
 ## Which design templates hold address forms?
