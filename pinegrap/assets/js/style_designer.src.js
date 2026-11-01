@@ -19969,7 +19969,7 @@ const StyleDesigner = (function () {
                         return _bkSection('py-5', _sdT('Services (Price List)'), [
                             _bkIntro(_sdT('Fees'), _sdT('Clear prices before you book. Your insurance may change what you pay.')),
                             _bkRow(_sdT('Price Row'), [
-                                _splList(_sdT('Visits'), [
+                                _splList(_sdT('Doctor visits'), [
                                     _splItem(_sdT('First visit'),         _sdT('30 min · history and exam'), _sdT('$80')),
                                     _splItem(_sdT('Follow-up visit'),     _sdT('20 min'),                     _sdT('$45')),
                                     _splItem(_sdT('Online consultation'), _sdT('15 min · video call'),        _sdT('$35')),
