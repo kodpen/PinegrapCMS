@@ -48,3 +48,32 @@ function test_designer_audit_editor_placeholder_comments_marked()
 	$before = substr($source, $at - 600, 600);
 	pg_assert_true(strpos($before, '<div class="sd-editor-ph"') !== false, 'the comments block placeholder carries sd-editor-ph');
 }
+
+// The class names a render() gives the placeholder it draws before $text.
+function designer_audit_editor_placeholder_test_render_class($text)
+{
+	$source = designer_audit_editor_placeholder_test_source();
+	$at = strpos($source, $text);
+	pg_assert_true($at !== false, 'the placeholder is in the designer: ' . $text);
+	$render = substr($source, strrpos(substr($source, 0, $at), 'render: function'), $at);
+	$render = substr($render, 0, strpos($render, $text));
+
+	return preg_match("/d\\.className = ([^;]+);/", $render, $m) ? $m[1] : '';
+}
+
+// Placeholders the site prints only as a marker (<!--pg-carousel:…-->,
+// <!--pg-variant-attr:…-->, the breadcrumb and applied offers markers):
+// the product detail page opened with low-contrast badges on them.
+function test_designer_audit_editor_placeholder_marker_components_marked()
+{
+	$texts = array(
+		"esc(_sdT('The slides come from the product images at render time'))",
+		"esc(_sdT('Variant Attribute Template'))",
+		"esc(_sdT('Catalog → Group → Subgroup → Product (filled by the backend)'))",
+		"esc(_sdT('The active offer/discount descriptions are listed here.'))",
+	);
+
+	foreach ($texts as $text) {
+		pg_assert_true(strpos(designer_audit_editor_placeholder_test_render_class($text), 'sd-editor-ph') !== false, 'carries sd-editor-ph: ' . $text);
+	}
+}
