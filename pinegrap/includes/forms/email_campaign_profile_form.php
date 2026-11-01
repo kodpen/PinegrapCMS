@@ -628,7 +628,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
                                             <div class="row">
                                                 <div class="col-12 my-1">
                                                   <label for="email_body" class="form-label">' . lang('Body') . '</label>
-                                                  ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'body', 'id'=>'email_body', 'class'=>'form-control', 'placeholder'=>lang('Type E-mail body here') )) . '
+                                                  ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'body', 'id'=>'email_body', 'rows'=>'10', 'class'=>'form-control', 'placeholder'=>lang('Type E-mail body here') )) . '
                                                 </div>
                                             </div>
                                         </div>
@@ -704,7 +704,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
                                 <div class="col-12 md:col-6 my-3">
                                     <label class="form-label" for="schedule_time">' . lang('Send at a specific time') . '</label>
                                     ' . $liveform->output_field(array('type'=>'text', 'name'=>'schedule_time', 'id'=>'schedule_time', 'class'=>'form-control', 'maxlength'=>'8', 'data-pg-time' => '')) . '
-                                    <div class="text-end form-text">' . ((pg_time_format_code() === 'H:i') ? lang('HH:mm, leave blank to send at any time.') : lang('h:mm AM/PM, leave blank to send at any time.')) . '</div>
+                                    <div class="form-text">' . ((pg_time_format_code() === 'H:i') ? lang('HH:mm, leave blank to send at any time.') : lang('h:mm AM/PM, leave blank to send at any time.')) . '</div>
                                     ' . get_time_picker_format() . pg_fields_script() . '
                                 </div>
                             </div>
