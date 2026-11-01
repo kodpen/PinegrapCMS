@@ -38,7 +38,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `carrier_webhook`: open
 
-- `cart_quotes`: open
+- `cart_quotes`: clean (line cleaning, plan against stock/minimum/maximum/bin, create and open checks, apply and its repeat guard, completion, link page escaping checked)
 
 - `classic_style_design`: open
 
