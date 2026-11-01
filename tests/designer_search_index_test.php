@@ -227,7 +227,7 @@ function test_designer_search_index_record_branch()
 	$source = _designer_search_index_source('update_search_index.php');
 	$start  = strpos($source, '$designer_record_urls = array();');
 	$files  = strpos($source, '// Get files that should be included in search index.');
-	$sweep  = strpos($source, 'DELETE FROM search_items WHERE timestamp');
+	$sweep  = strpos($source, 'db(pg_search_index_sweep_sql(');
 	pg_assert_true($start !== false && $files !== false && $sweep !== false);
 	pg_assert_true($start < $files && $files < $sweep);
 

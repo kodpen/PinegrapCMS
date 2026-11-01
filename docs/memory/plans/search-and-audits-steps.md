@@ -12,7 +12,7 @@ description: Steps SA1-SA5 of plans/search-and-audits.md: index isolation, overl
   - A shutdown function writes one Site Log line when the run stops before its end: stage, last item started, `error_get_last()`. The finish window counts every kind.
   - `tests/search_index_isolation_test.php`. Memory: `designer/search-index-run-failures.md`.
 
-- SA2 (S) Overlapping runs. After SA1. `free`.
+- SA2 (S) Overlapping runs. Done (#PR).
   - The sweep deletes `timestamp < $timestamp`: a run started later keeps its rows when an earlier one ends first.
   - Button, crontab and dispatcher claim one `cron_runs` lock row through `pg_cron_claim()` (`includes/fn/cron.php`, the dispatcher's claim moved into it); a second start says a run is going (button) or leaves quietly (job).
 

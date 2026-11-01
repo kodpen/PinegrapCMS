@@ -22,3 +22,9 @@ description: How update_search_index.php survives a bad page, event, record or f
 
 ## Which tests cover it?
 `tests/search_index_isolation_test.php` (render isolation with an `Error` and `output_error()`, notes, file reader, stop note, source checks); `tests/designer_search_index_test.php` (designer branch).
+
+## What if two runs overlap?
+- One lock for every start (#PR): the dispatcher, the panel button and a crontab run claim the `update_search_index` row of `cron_runs` through `pg_cron_claim()` (4 h, released by a shutdown function with `pg_cron_release()`). A second button start gets "The search index is already being updated…"; a second crontab start leaves quietly. Before the 2026.4.8 upgrade (no `locked_until`) there is nothing to claim.
+- The sweep deletes `timestamp < $timestamp` (`pg_search_index_sweep_sql()`): a run started later keeps its rows when an earlier one ends first. Before (`!=`), the first run to finish deleted every row the other had rewritten and pages left the search until the next run.
+
+Test: `tests/search_index_overlap_test.php` (sweep, lock length).
