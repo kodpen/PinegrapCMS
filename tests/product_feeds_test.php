@@ -113,6 +113,17 @@ function test_product_feeds_plain_text()
 	pg_assert_same('', pg_product_feed_plain_text(''), 'empty');
 }
 
+// Text before a block's start is a word apart from the block: a list after a
+// line of text, or paragraphs whose closing tags the editor left out.
+function test_product_feeds_plain_text_block_start()
+{
+	pg_assert_same('Özellikler: Pamuk Yıkanabilir', pg_product_feed_plain_text('Özellikler:<ul><li>Pamuk</li><li>Yıkanabilir</li></ul>'), 'text before a list');
+	pg_assert_same('Bir İki', pg_product_feed_plain_text('<p>Bir<p>İki'), 'unclosed paragraphs');
+	pg_assert_same('Başlık Metin', pg_product_feed_plain_text('<div>Başlık<div class="x">Metin</div></div>'), 'nested blocks');
+	pg_assert_same('Kalın yazı', pg_product_feed_plain_text('<b>Kalın</b> <i>yazı</i>'), 'inline tags add no space');
+	pg_assert_same('a<b>c', pg_product_feed_plain_text('a&lt;b&gt;c'), 'an encoded tag stays text');
+}
+
 // A text field is not HTML: a "<" stays.
 function test_product_feeds_text_keeps_angle_brackets()
 {
