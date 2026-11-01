@@ -8,7 +8,11 @@
  * lessons, the membership), every course names its own folder and a unique
  * SKU, lesson keys are unique, and every page link of the shared parts
  * names a page of the finished template; the shared parts carry no class
- * of another template.
+ * of another template. The public pages load with their keys and root
+ * trees, link only template pages and anchors that exist, place only
+ * widgets the template defines, give each course a page with its free
+ * lesson, buy box and enrolment request, and place the Google Reviews
+ * widget on the home page.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -28,6 +32,7 @@ function _test_courses_load()
 	if ($out !== null) return $out;
 	$dir = PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-courses';
 	include $dir . '/parts.php';
+	$public = include $dir . '/pages_public.php';
 	$lessons = array();
 	foreach (array_keys($courses) as $key) $lessons[$key] = $course_lessons($key);
 	$out = array(
@@ -39,6 +44,8 @@ function _test_courses_load()
 		'lessons'     => $lessons,
 		'membership'  => $membership,
 		'library'     => $library,
+		'pages'       => $public['pages'],
+		'widgets'     => $public['widgets'],
 		'shared'      => array($account_bar_tree(), $header(), $footer(), $enrol_band(), $notice(), $staff_bar()),
 	);
 	return $out;
@@ -132,4 +139,95 @@ function test_courses_shared_parts_link_template_pages()
 		pg_assert_false((bool)preg_match('/\b(pev|pe)-[a-z]/', $class) && !preg_match('/\bpe-[0-9]/', $class), 'no class of another template: ' . $class);
 	}
 	pg_assert_true($links > 20, 'the shared parts link the pages');
+}
+
+// The widgets the finished template defines (this step's and the later
+// steps' keys), so a page may place them already.
+function _test_courses_widget_keys()
+{
+	$d = _test_courses_load();
+	$keys = array_merge(array_keys($d['widgets']), array('home_posts', 'login_region', 'cart_link', 'newsletter_band', 'buy_membership'));
+	foreach (array_keys($d['courses']) as $key) $keys[] = 'buy_' . $key;
+	return $keys;
+}
+
+function test_courses_public_pages_load()
+{
+	$d = _test_courses_load();
+	$keys = array();
+	foreach ($d['pages'] as $p) {
+		pg_assert_true(isset($p['key'], $p['name'], $p['title'], $p['tree'], $p['meta_description']), 'page has key, name, title, tree, description');
+		pg_assert_same('root', $p['tree']['type'], $p['key'] . ': root tree');
+		pg_assert_same('public', $p['folder'], $p['key'] . ': public folder');
+		pg_assert_true((bool)preg_match('/^[a-z0-9-]+$/', $p['name']), $p['key'] . ': page name is an address');
+		$keys[] = $p['key'];
+	}
+	pg_assert_same(count($keys), count(array_unique($keys)), 'page keys are unique');
+	$expected = array('home', 'courses', 'instructors', 'pricing', 'about', 'faq');
+	foreach (array_keys($d['courses']) as $key) $expected[] = 'course_' . $key;
+	sort($expected);
+	sort($keys);
+	pg_assert_same($expected, $keys, 'the public pages of the plan');
+}
+
+function test_courses_public_pages_links_anchors_widgets()
+{
+	$d = _test_courses_load();
+	$known = array_flip(_test_courses_page_keys());
+	$widgets = array_flip(_test_courses_widget_keys());
+	$ids = array();
+	$nodes_by_page = array();
+	foreach ($d['pages'] as $p) {
+		$nodes = array();
+		_test_courses_nodes($p['tree'], $nodes);
+		$nodes_by_page[$p['key']] = $nodes;
+		$ids[$p['key']] = array();
+		foreach ($nodes as $node) {
+			if (!empty($node['props']['id'])) {
+				pg_assert_false(isset($ids[$p['key']][$node['props']['id']]), $p['key'] . ': id ' . $node['props']['id'] . ' is unique');
+				$ids[$p['key']][$node['props']['id']] = true;
+			}
+		}
+	}
+	foreach ($nodes_by_page as $page_key => $nodes) {
+		foreach ($nodes as $node) {
+			if (!empty($node['props']['templateWidget'])) {
+				pg_assert_true(isset($widgets[$node['props']['templateWidget']]), "$page_key places a known widget: " . $node['props']['templateWidget']);
+			}
+			$href = isset($node['props']['href']) ? (string)$node['props']['href'] : '';
+			if (!preg_match('/^\{\{page:([a-z0-9_]+)\}\}(?:#([a-z0-9-]+))?/', $href, $m)) continue;
+			pg_assert_true(isset($known[$m[1]]), "$page_key links a page of the template: " . $m[1]);
+			if (!empty($m[2]) && isset($ids[$m[1]])) {
+				pg_assert_true(isset($ids[$m[1]][$m[2]]), "$page_key: anchor #" . $m[2] . ' exists on ' . $m[1]);
+			}
+		}
+	}
+}
+
+function test_courses_course_pages_offer_the_ways_in()
+{
+	$d = _test_courses_load();
+	foreach ($d['courses'] as $key => $c) {
+		$page = null;
+		foreach ($d['pages'] as $p) if ($p['key'] === 'course_' . $key) $page = $p;
+		pg_assert_true($page !== null, "course $key has its page");
+		$nodes = array();
+		_test_courses_nodes($page['tree'], $nodes);
+		$hrefs = array();
+		$placed = array();
+		foreach ($nodes as $n) {
+			if (isset($n['props']['href'])) $hrefs[] = (string)$n['props']['href'];
+			if (!empty($n['props']['templateWidget'])) $placed[] = $n['props']['templateWidget'];
+		}
+		pg_assert_true(in_array('{{page:lesson_' . $d['lessons'][$key][0]['key'] . '}}', $hrefs, true), "course $key: free lesson");
+		pg_assert_true(in_array('{{page:enrolment}}?course=' . rawurlencode($c['title']), $hrefs, true), "course $key: enrolment request names the course");
+		pg_assert_true(in_array('{{page:learn_' . $key . '}}', $hrefs, true), "course $key: classroom");
+		pg_assert_true(in_array('buy_' . $key, $placed, true), "course $key: buy box");
+	}
+	$home = array();
+	_test_courses_nodes($d['pages'][0]['tree'], $home);
+	$placed = array();
+	foreach ($home as $n) if (!empty($n['props']['templateWidget'])) $placed[] = $n['props']['templateWidget'];
+	pg_assert_true(in_array('google_reviews', $placed, true), 'home places the Google Reviews widget');
+	pg_assert_same('google_reviews', $d['widgets']['google_reviews']['config']['regionType'], 'Google Reviews widget kind');
 }

@@ -24,7 +24,7 @@ description: Plan for the Online Courses template (pinegrap-courses): courses as
 
 ## Which steps are there?
 - 1 Engine and data: the engine additions above with tests; `parts.php` (builders, courses, instructors, lessons data, shared header/footer/notice); test `design_template_courses_test.php`. **Done (#4770).**
-- 2 Public pages: `pages_public.php` (home with `google_reviews`, courses, three course overviews, instructors, pricing, about, FAQ).
+- 2 Public pages: `pages_public.php` (home, courses, course pages, instructors, pricing, about, FAQ). **Done (#4788).**
 - 3 Learning: `learn.php` (classroom and lesson pages per course folder, free previews, lesson questions, members' library).
 - 4 Enrolment and assignments: `assignments.php`, `mail.php` (enrolment request, assignment, views, My Assignments, staff lists, notify e-mails).
 - 5a Shop: `shop.php` (Courses group, course and membership products, listing, product, cart, checkout, order, `email_order`; `requires ecommerce`).

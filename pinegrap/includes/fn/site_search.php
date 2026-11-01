@@ -599,6 +599,181 @@ function pg_search_index_stop_note($stage, $item, $error)
 }
 
 /**
+ * The stages of a search index pass, in order. Pure.
+ *
+ * @return string[]
+ */
+function pg_search_index_stages()
+{
+    // A page's calendar events and form records are read with the page, as
+    // one item; the visual editor's records follow all pages, since the
+    // page loop collects the lists they come from.
+    return array('pages', 'designer', 'files', 'sweep');
+}
+
+/**
+ * Where a search index pass stands, as read back from its cursor file: a
+ * state that is missing, unreadable or names no known stage starts a new pass
+ * at $now. Pure.
+ *
+ * The state: started (the pass's start time: every row it writes carries it
+ * and the sweep removes the rows older than it), stage, after (the key of the
+ * stage's last finished item, '' at its start), current (the item started and
+ * not finished: a tick that ended inside it), skipped (notes of the items
+ * skipped this pass), carry (what one stage hands the next: the linked names
+ * the files stage reads, the record lists, the addresses already written),
+ * done.
+ *
+ * @param mixed $state the decoded cursor file, or null
+ * @param int   $now
+ * @return array
+ */
+function pg_search_index_next($state, $now)
+{
+    if (!is_array($state) || !isset($state['stage'], $state['started'])
+        || !in_array($state['stage'], pg_search_index_stages(), true)
+        || ((int) $state['started'] <= 0) || !empty($state['done'])) {
+        return array('started' => (int) $now, 'stage' => 'pages', 'after' => '', 'current' => '', 'skipped' => array(), 'carry' => array(), 'done' => false);
+    }
+
+    return array(
+        'started' => (int) $state['started'],
+        'stage'   => (string) $state['stage'],
+        'after'   => (string) ($state['after'] ?? ''),
+        'current' => (string) ($state['current'] ?? ''),
+        'skipped' => array_values(array_slice((array) ($state['skipped'] ?? array()), 0, 50)),
+        'carry'   => (isset($state['carry']) && is_array($state['carry'])) ? $state['carry'] : array(),
+        'done'    => false,
+    );
+}
+
+/**
+ * A stage's name for the panel window.
+ *
+ * @param string $stage
+ * @return string
+ */
+function pg_search_index_stage_label($stage)
+{
+    switch ((string) $stage) {
+        case 'pages':
+            return lang('pages');
+        case 'designer':
+            return lang('records');
+        case 'files':
+            return lang('files');
+        default:
+            return lang('removing old items');
+    }
+}
+
+/**
+ * Where an unfinished search index pass keeps its place. Losing the file (the
+ * clean up tool empties data/temp) only starts the pass again.
+ *
+ * @return string
+ */
+function pg_search_index_state_path()
+{
+    return PG_FUNCTIONS_DIR . '/data/temp/search_index.json';
+}
+
+/**
+ * The cursor file decoded, or null when there is none to read.
+ *
+ * @return array|null
+ */
+function pg_search_index_state_read()
+{
+    $state = json_decode((string) @file_get_contents(pg_search_index_state_path()), true);
+
+    return is_array($state) ? $state : null;
+}
+
+/**
+ * Write the cursor file; at the end of a pass, remove it.
+ *
+ * @param array $state
+ */
+function pg_search_index_state_write($state)
+{
+    if (!empty($state['done'])) {
+        @unlink(pg_search_index_state_path());
+        return;
+    }
+
+    @file_put_contents(pg_search_index_state_path(), json_encode($state), LOCK_EX);
+}
+
+/**
+ * Start one item of the stage. When it is the item the state names as
+ * started and not finished, a tick ended inside it (a fatal error, an exit,
+ * a killed process): it is skipped, named in the state's notes, and counted
+ * as finished, so the pass never stops at the same item twice. Pure.
+ *
+ * @param array  $state from pg_search_index_next()
+ * @param string $key   the item's key in its stage
+ * @return array state, skip (bool)
+ */
+function pg_search_index_begin($state, $key)
+{
+    $key = (string) $key;
+
+    if (($state['current'] !== '') && ($state['current'] === $key)) {
+        $state['current'] = '';
+        $state['after'] = $key;
+
+        if (count($state['skipped']) < 50) {
+            $state['skipped'][] = $state['stage'] . ' ' . $key;
+        }
+
+        return array('state' => $state, 'skip' => true);
+    }
+
+    $state['current'] = $key;
+
+    return array('state' => $state, 'skip' => false);
+}
+
+/**
+ * Mark an item of the stage finished. Pure.
+ *
+ * @param array  $state
+ * @param string $key
+ * @return array
+ */
+function pg_search_index_finish($state, $key)
+{
+    $state['after'] = (string) $key;
+    $state['current'] = '';
+
+    return $state;
+}
+
+/**
+ * Move to the next stage; after the sweep the pass is done. Pure.
+ *
+ * @param array $state
+ * @return array
+ */
+function pg_search_index_advance($state)
+{
+    $stages = pg_search_index_stages();
+    $at = array_search($state['stage'], $stages, true);
+
+    $state['after'] = '';
+    $state['current'] = '';
+
+    if (($at === false) || ($at + 1 >= count($stages))) {
+        $state['done'] = true;
+    } else {
+        $state['stage'] = $stages[$at + 1];
+    }
+
+    return $state;
+}
+
+/**
  * A visit's site search terms with one more search added, separated by "|"
  * as the visitor report and the visit detail split them. An empty term adds
  * nothing; a "|" in the term becomes a space, so it stays one term.
