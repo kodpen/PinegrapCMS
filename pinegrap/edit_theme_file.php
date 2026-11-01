@@ -312,6 +312,24 @@ if (!$_POST) {
             exit();
         }
         
+        // Rename the file first when its name changed and it is on the disk,
+        // before any record changes. A theme recorded here but missing from
+        // the disk has nothing to rename; the record is still saved and the
+        // themes list says the file is missing. A failed rename sends the
+        // user back with the error, so the record never takes a name the
+        // disk does not have.
+        $theme_file_missing = !is_file(FILE_DIRECTORY_PATH . '/' . $original_name);
+
+        if (
+            ($name !== $original_name)
+            && !$theme_file_missing
+            && !@rename(FILE_DIRECTORY_PATH . '/' . $original_name, FILE_DIRECTORY_PATH . '/' . $name)
+        ) {
+            $liveform->mark_error('name', lang('The file could not be renamed on the file system. Check write permission for the file directory.'));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_theme_file.php?id=' . $liveform->get_field_value('id'));
+            exit();
+        }
+
         // get file extension
         $array_file_extension = explode('.', $name);
         $size_of_array = count($array_file_extension);
@@ -451,16 +469,6 @@ if (!$_POST) {
         $result = db_q($query, array((string) $name, (string) $liveform->get_field_value('folder'), (string) $liveform->get_field_value('description'), (string) $file_extension, (string) $liveform->get_field_value('activated_desktop_theme'), (string) $liveform->get_field_value('activated_mobile_theme'), (string) $user['id'], (string) $liveform->get_field_value('id'))) or output_error('Query failed.');
         pg_audit_record('update', 'files', $audit_id, $audit_before);
         
-        // Rename the file when its name changed and it is on the disk. A theme
-        // recorded here but missing from the disk has nothing to rename (that
-        // rename() wrote a PHP warning on every save); the record is still
-        // saved and the themes list says the file is missing.
-        $theme_file_missing = !is_file(FILE_DIRECTORY_PATH . '/' . $original_name);
-
-        if (($name !== $original_name) && !$theme_file_missing) {
-            rename(FILE_DIRECTORY_PATH . '/' . $original_name, FILE_DIRECTORY_PATH . '/' . $name);
-        }
-
         log_activity(lang(array('string' => 'theme file ({var:1}) was modified', 'vars' => array($name))), $_SESSION['sessionusername']);
 
         // If this theme was activated as a desktop or mobile theme,
