@@ -1,6 +1,6 @@
 ---
 name: graph-canvas-core
-description: Plan (2026-10-24, answers #2445, 1, 2a-2c done): a box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
+description: Plan (2026-10-24, answers #2445, 1, 2a-2d done): a box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
 ---
 
 ## What is asked? (owner, 2026-10-24)
@@ -26,7 +26,7 @@ description: Plan (2026-10-24, answers #2445, 1, 2a-2c done): a box-and-arrow ca
    - 2a done #4402: the core file and bundle, printed first; helpers, undo history, `viewport(host)` moved; workspace_flow.js aliases them (`var x = G.x`; `ws_flows_canvas_test_node()` searches the core too).
    - 2b done #4497: `create(adapter)`: pointers, pinch, Space, zoom keys, `destroy()`.
    - 2c done #4518: `box()`, `place()`, `edge()`, `mark()`, `announce()`, box move and connect drags; texts `pgc_*` (`ui/graph-canvas-core-module.md`). The outline stays in Flows (its forms, nothing generic yet).
-   - 2d: autosave (keepalive, 409) behind `adapter.save`.
+   - 2d done #4557: `autosave(host)`, its state on the host's record; Flows' host sends `ws_flow_save`.
 3. CSS to `pgc-` with tokens.
 4. Only when a second user starts: size per node, lower minimum zoom, named ports (`{from, port, to}`), arrows into one frame spread out, non-box targets, stable arrow ids, a thumbnail hook, partial redraw, load without defer.
 
@@ -37,4 +37,4 @@ description: Plan (2026-10-24, answers #2445, 1, 2a-2c done): a box-and-arrow ca
 4. Designer texts: `lang()` via `pg_graph_canvas_js_strings()`; the scan reads style_designer.js only, and the core is the designer's first bundle.
 
 ## Where to start?
-- Slice 2's next part (2d) once the one before it is merged; claim with a draft PR. Harness before and after; read workspace/workspace-flows-canvas.md.
+- Slice 3 (CSS to `pgc-`) now that slice 2 is merged; claim with a draft PR. Harness before and after (`--shots` to compare); read workspace/workspace-flows-canvas.md.

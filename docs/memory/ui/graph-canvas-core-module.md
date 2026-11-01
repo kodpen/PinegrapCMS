@@ -16,3 +16,7 @@ module: graph_canvas
 - `box(item, {className, into, out, fill})`: focus, role, `data-node`, `data-refocus`, in port, the adapter's content, out port (titled while `editable()`); `place()` calls `adapter.placed()`; `edge(index, from, to)` adds the arrow's group to `ui.svg`; `mark(selected)`; `announce(text)` on `ui.live`.
 - A press the adapter's `press()` leaves without a kind is the core's: out port → `connect` (`canConnect()`, `connected(from, to)`), box → `move` (`moved(item)`; `none` read-only), arrow → selected, else pan. `cancel()` puts a moved box back. Flows keeps its data threads, the double tap and the empty-canvas click in its hooks.
 - The adapter is built before the Workspace lends its `t()`: give `text` and `boxRole` as functions that read it late (the harness caught `t is not a function`).
+
+## How does autosave work (2d, #4557)?
+- `G.autosave(host)` (not tied to `create()`): `changed()`, `later()` (save after `host.delay`), `save({keepalive})`, `flush()`, `leave(leaving)`. Its state is kept on `host.record`; Flows passes its `state`, so `state.dirty`, `saving`, `saveError`, `conflict`, `leaveSent` keep their readers.
+- `host.send(options)` applies the server's answer itself and rejects with `{ field, message }`; `isConflict(error)` names the 409, `conflict(message)` shows it.
