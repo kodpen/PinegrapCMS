@@ -127,6 +127,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - speculation-prefetch-left-out.md: What the Speculation Rules block leaves out: link paths, page types, and designer pages whose system widget signs in or out, runs cart or checkout or shows an account
 - speculation-prefetch.md: Speculation Rules prefetch of menu links (2026.11.0, 11.0.127, #3184): what the block lists, what is left out, who gets none, the Features switch, counting and the page cache
 - starter-site-defaults.md: Starter dump defaults corrected by #3330 (PR #3581): empty AddThis sharing code plus the 11.0.133 data step, Turkish title 'Web Sitem', AT-ONCE named 'En kısa sürede'.
+- stored-file-name-upload-rule.md: prepare_file_name() applies the upload rule (pg_upload_neutralize_name()) after the 100-character cut, so a cut never leaves a refused extension such as .php
 - structured-data-open-graph.md: Rules for JSON-LD and Open Graph (2026.4.4): no invented data, json_encode only, custom JSON-LD, merchant parts, OG image resolvers, SEO card key.
 - system-status-ca-bundle.md: The "CA Certificate Bundle" system status check (CURL_CA_BUNDLE age) - when it runs, how age is read from the mk-ca-bundle header, thresholds, weight and cache.
 - system-status-check-rules.md: System Status rules - a check row and its button share one read, the cache dropped by pg_system_status_forget() after a save, per-check detail boxes, confirm tiles on buttons.

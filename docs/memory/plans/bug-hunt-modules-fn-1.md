@@ -102,7 +102,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `explorer_side`: open
 
-- `files`: open
+- `files`: taken by LE, #4613
 
 - `form_subscription`: open
 
