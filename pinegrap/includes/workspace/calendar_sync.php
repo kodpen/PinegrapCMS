@@ -27,6 +27,15 @@
  * longest ago, at most WS_CALSYNC_WRITES_MAX calls; the person's Write now
  * button does the same at once.
  *
+ * Before writing, a run reads back what changed in that calendar since the
+ * last read (Google events.list with a syncToken, Graph calendarView/delta;
+ * the token is kept in the same sealed entry). A task's event the person
+ * moved writes the task's due date and time through the task drawer's own
+ * check (ws_task_update_check(), ws_task_update()); a move that check refuses
+ * is written back as it was and the person gets one bell line. Copies of
+ * repeating tasks and done tasks are not moved; a deleted or renamed event
+ * changes nothing and the next write of it restores it.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -54,6 +63,12 @@ define('WS_CALSYNC_JOB_EVERY', 3600);
 
 /** The connected account's purpose. */
 define('WS_CALSYNC_PURPOSE', 'calendar_sync');
+
+/** The most pages of changes one run reads back. */
+define('WS_CALSYNC_READ_PAGES', 10);
+
+/** How long one read-back token is followed before a full read starts again, in seconds. */
+define('WS_CALSYNC_READ_ROUND', 2592000);
 
 
 /* ---------------------------------------------------------------------------
@@ -228,7 +243,8 @@ function ws_calsync_plan($bodies, $written, $limit)
  *
  * @param array $state as unsealed
  * @return array provider, connection_id, calendar_id, written (id => hash),
- *               remote (id => provider's id), synced_at, error, left
+ *               remote (id => provider's id), synced_at, error, left,
+ *               read_token (Google syncToken or Graph deltaLink), read_started
  */
 function ws_calsync_state_clean($state)
 {
@@ -255,7 +271,162 @@ function ws_calsync_state_clean($state)
         'synced_at'     => (int) ($state['synced_at'] ?? 0),
         'error'         => (string) ($state['error'] ?? ''),
         'left'          => (int) ($state['left'] ?? 0),
+        'read_token'    => is_string($state['read_token'] ?? null) ? $state['read_token'] : '',
+        'read_started'  => (int) ($state['read_started'] ?? 0),
     );
+}
+
+/**
+ * The day and time an event of the site's Google calendar starts on, in the
+ * site's zone; a Google body (ws_calsync_google_body()) reads the same way.
+ *
+ * @param array  $start    the event's start (date, or dateTime and timeZone)
+ * @param string $timezone the site's zone
+ * @return array|null date (Y-m-d), time (H:i, '' for a whole day)
+ */
+function ws_calsync_google_when($start, $timezone)
+{
+    if (!is_array($start)) {
+        return null;
+    }
+
+    if (isset($start['date']) && is_string($start['date']) && preg_match('/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/', $start['date'])) {
+        return array('date' => $start['date'], 'time' => '');
+    }
+
+    if (!isset($start['dateTime']) || !is_string($start['dateTime'])) {
+        return null;
+    }
+
+    try {
+        $moment = new DateTime($start['dateTime']);
+        $moment->setTimezone(new DateTimeZone((string) $timezone));
+    } catch (Exception $e) {
+        return null;
+    }
+
+    return array('date' => $moment->format('Y-m-d'), 'time' => $moment->format('H:i'));
+}
+
+/**
+ * The day and time a Graph event starts on, in the site's zone; a Graph body
+ * (ws_calsync_graph_body()) reads the same way. Graph answers in UTC unless
+ * asked otherwise; a whole-day event is read by its date alone.
+ *
+ * @param array  $start    the event's start (dateTime, timeZone)
+ * @param bool   $all_day
+ * @param string $timezone the site's zone
+ * @return array|null date (Y-m-d), time (H:i, '' for a whole day)
+ */
+function ws_calsync_graph_when($start, $all_day, $timezone)
+{
+    if (!is_array($start) || !isset($start['dateTime']) || !is_string($start['dateTime'])
+        || !preg_match('/^([0-9]{4}-[0-9]{2}-[0-9]{2})T([0-9]{2}:[0-9]{2}:[0-9]{2})/', $start['dateTime'], $match)) {
+        return null;
+    }
+
+    if ($all_day) {
+        return array('date' => $match[1], 'time' => '');
+    }
+
+    try {
+        $moment = new DateTime($match[1] . ' ' . $match[2], new DateTimeZone((string) ($start['timeZone'] ?? 'UTC') ?: 'UTC'));
+        $moment->setTimezone(new DateTimeZone((string) $timezone));
+    } catch (Exception $e) {
+        return null;
+    }
+
+    return array('date' => $moment->format('Y-m-d'), 'time' => $moment->format('H:i'));
+}
+
+/**
+ * When a body written by the site starts.
+ *
+ * @param string $provider
+ * @param array  $body
+ * @param string $timezone
+ * @return array|null ws_calsync_google_when()
+ */
+function ws_calsync_body_when($provider, $body, $timezone)
+{
+    return ($provider === 'microsoft')
+        ? ws_calsync_graph_when($body['start'] ?? null, !empty($body['isAllDay']), $timezone)
+        : ws_calsync_google_when($body['start'] ?? null, $timezone);
+}
+
+/**
+ * The events the person moved, out of the changes read back: an event of a
+ * task (not a coming copy of a repeating one) whose calendar still held what
+ * the site wrote last and that starts on another day or time now. A task
+ * changed on the site since that write is left to the write that follows:
+ * the site's date wins. A deleted or renamed event is no move.
+ *
+ * @param array  $changes  derived id => when (ws_calsync_google_when()), null for a deleted event
+ * @param array  $bodies   derived id => body, what the calendar should carry
+ * @param array  $written  derived id => body hash, what was written before
+ * @param array  $tasks    derived id => task id, the tasks among the bodies
+ * @param string $provider
+ * @param string $timezone
+ * @return array derived id => task_id, when
+ */
+function ws_calsync_moves($changes, $bodies, $written, $tasks, $provider, $timezone)
+{
+    $moves = array();
+
+    foreach ($changes as $id => $when) {
+        if (!is_array($when) || !isset($tasks[$id], $bodies[$id], $written[$id])
+            || ((string) $written[$id] !== ws_calsync_body_hash($bodies[$id]))) {
+            continue;
+        }
+
+        $was = ws_calsync_body_when($provider, $bodies[$id], $timezone);
+
+        // The site's own write read back, or a new title only.
+        if (!$was || ($was === $when)) {
+            continue;
+        }
+
+        $moves[$id] = array('task_id' => (int) $tasks[$id], 'when' => $when);
+    }
+
+    return $moves;
+}
+
+/**
+ * The task fields a move in the calendar writes, as the board's drag onto
+ * another day moves them: the due date, a start date by as many days (a task
+ * with only a start date gets the day as its due date), and the due time
+ * when the task has that field (a whole-day event clears it).
+ *
+ * @param array $task
+ * @param array $when date, time (ws_calsync_google_when())
+ * @return array empty when nothing changes
+ */
+function ws_calsync_move_fields($task, $when)
+{
+    $date = (string) $when['date'];
+    $due = (string) ($task['due_date'] ?? '');
+    $start = (string) ($task['start_date'] ?? '');
+    $due = ($due > '0000-00-00') ? $due : '';
+    $start = ($start > '0000-00-00') ? $start : '';
+    $fields = array();
+
+    if ($date !== $due) {
+        $fields['due_date'] = $date;
+
+        if (($start !== '') && ($due !== '')) {
+            $shift = (int) round((strtotime($date . ' 12:00:00') - strtotime($due . ' 12:00:00')) / 86400);
+            $fields['start_date'] = date('Y-m-d', strtotime($start . ' 12:00:00 ' . (($shift >= 0) ? '+' : '') . $shift . ' days'));
+        } elseif ($start !== '') {
+            $fields['start_date'] = null;
+        }
+    }
+
+    if (array_key_exists('due_time', $task) && ((string) $when['time'] !== substr((string) $task['due_time'], 0, 5))) {
+        $fields['due_time'] = (string) $when['time'];
+    }
+
+    return $fields;
 }
 
 
@@ -375,10 +546,252 @@ function ws_calsync_call($provider, $connection_id, $method, $path, $body = null
     }
 
     if ($provider === 'microsoft') {
-        return pg_connect_api((int) $connection_id, $method, WS_GRAPH_ME_API . $path, $options, array(WS_GRAPH_CAL_SCOPE));
+        // A page or delta link Graph handed back is followed as it is.
+        $url = (strpos($path, 'https://graph.microsoft.com/') === 0) ? $path : WS_GRAPH_ME_API . $path;
+
+        return pg_connect_api((int) $connection_id, $method, $url, $options, array(WS_GRAPH_CAL_SCOPE));
     }
 
     return pg_connect_api((int) $connection_id, $method, WS_GCAL_API . $path, $options);
+}
+
+
+/* ---------------------------------------------------------------------------
+   Reading changes back
+   --------------------------------------------------------------------------- */
+
+/**
+ * What changed in the site's calendar since the last read: Google's
+ * events.list with the syncToken, Graph's calendarView/delta with its delta
+ * link. Without a token (the first read, or one the provider let expire) the
+ * whole calendar is read and the token it ends with is kept; a token older
+ * than WS_CALSYNC_READ_ROUND starts a full read again, which also moves
+ * Graph's window on with the days.
+ *
+ * @param array  $state    changed: read_token, read_started, remote ids of events gone
+ * @param int    $connection_id
+ * @param string $since    Y-m-d, Graph's window
+ * @param string $until    Y-m-d
+ * @param string $timezone the site's zone
+ * @return array ok, error, changes (derived id => when, null for a deleted event)
+ */
+function ws_calsync_read(&$state, $connection_id, $since, $until, $timezone)
+{
+    if ($state['read_started'] < time() - WS_CALSYNC_READ_ROUND) {
+        $state['read_token'] = '';
+    }
+
+    for ($round = 0; $round < 2; $round++) {
+        $read = ($state['provider'] === 'microsoft')
+            ? ws_calsync_read_graph($state, $connection_id, $since, $until, $timezone)
+            : ws_calsync_read_google($state, $connection_id, $timezone);
+
+        // The token expired (410 on both): read everything once more.
+        if (!$read['ok'] && ($read['status'] === 410) && ($state['read_token'] !== '')) {
+            $state['read_token'] = '';
+            continue;
+        }
+
+        break;
+    }
+
+    if ($read['ok'] && ($read['token'] !== '')) {
+        if ($state['read_token'] === '') {
+            $state['read_started'] = time();
+        }
+
+        $state['read_token'] = $read['token'];
+    }
+
+    return array('ok' => $read['ok'], 'error' => $read['error'], 'changes' => $read['changes']);
+}
+
+/**
+ * @param array  $state
+ * @param int    $connection_id
+ * @param string $timezone
+ * @return array ok, status, error, changes, token
+ */
+function ws_calsync_read_google($state, $connection_id, $timezone)
+{
+    $answer = array('ok' => false, 'status' => 0, 'error' => '', 'changes' => array(), 'token' => '');
+    $path = '/calendars/' . rawurlencode($state['calendar_id']) . '/events';
+    $query = array('maxResults' => 250);
+
+    if ($state['read_token'] !== '') {
+        $query['syncToken'] = $state['read_token'];
+    }
+
+    for ($page = 0; $page < WS_CALSYNC_READ_PAGES; $page++) {
+        $done = ws_calsync_call('google', $connection_id, 'GET', $path . '?' . http_build_query($query));
+
+        if (!$done['ok'] || !is_array($done['data'])) {
+            return array('status' => (int) $done['status'], 'error' => ws_calsync_error($done)) + $answer;
+        }
+
+        foreach ((is_array($done['data']['items'] ?? null) ? $done['data']['items'] : array()) as $event) {
+            if (!is_array($event) || !isset($event['id']) || !is_string($event['id'])) {
+                continue;
+            }
+
+            $answer['changes'][$event['id']] = ((string) ($event['status'] ?? '') === 'cancelled')
+                ? null
+                : ws_calsync_google_when($event['start'] ?? null, $timezone);
+        }
+
+        if (!empty($done['data']['nextPageToken']) && is_string($done['data']['nextPageToken'])) {
+            $query['pageToken'] = $done['data']['nextPageToken'];
+            continue;
+        }
+
+        $answer['token'] = (string) ($done['data']['nextSyncToken'] ?? '');
+        break;
+    }
+
+    $answer['ok'] = true;
+
+    return $answer;
+}
+
+/**
+ * @param array  $state
+ * @param int    $connection_id
+ * @param string $since
+ * @param string $until
+ * @param string $timezone
+ * @return array ok, status, error, changes, token
+ */
+function ws_calsync_read_graph($state, $connection_id, $since, $until, $timezone)
+{
+    $answer = array('ok' => false, 'status' => 0, 'error' => '', 'changes' => array(), 'token' => '');
+    $derived = array_flip($state['remote']);
+    $link = ($state['read_token'] !== '')
+        ? $state['read_token']
+        : '/calendars/' . rawurlencode($state['calendar_id']) . '/calendarView/delta?' . http_build_query(array(
+            'startDateTime' => $since . 'T00:00:00Z',
+            'endDateTime'   => $until . 'T23:59:59Z',
+        ));
+
+    for ($page = 0; $page < WS_CALSYNC_READ_PAGES; $page++) {
+        $done = ws_calsync_call('microsoft', $connection_id, 'GET', $link);
+
+        if (!$done['ok'] || !is_array($done['data'])) {
+            return array('status' => (int) $done['status'], 'error' => ws_calsync_error($done)) + $answer;
+        }
+
+        foreach ((is_array($done['data']['value'] ?? null) ? $done['data']['value'] : array()) as $event) {
+            // Only the events the site made, by the ids Graph gave them.
+            if (!is_array($event) || !isset($event['id']) || !is_string($event['id']) || !isset($derived[$event['id']])) {
+                continue;
+            }
+
+            $answer['changes'][$derived[$event['id']]] = isset($event['@removed'])
+                ? null
+                : ws_calsync_graph_when($event['start'] ?? null, !empty($event['isAllDay']), $timezone);
+        }
+
+        $next = (string) ($done['data']['@odata.nextLink'] ?? '');
+
+        if ($next !== '') {
+            $link = $next;
+            continue;
+        }
+
+        $answer['token'] = (string) ($done['data']['@odata.deltaLink'] ?? '');
+        break;
+    }
+
+    // A link from elsewhere is never followed.
+    if (strpos($answer['token'], 'https://graph.microsoft.com/') !== 0) {
+        $answer['token'] = '';
+    }
+
+    $answer['ok'] = true;
+
+    return $answer;
+}
+
+/**
+ * Writes one move made in the calendar to its task, through the task
+ * drawer's own check, as the person who owns the calendar.
+ *
+ * @param array $viewer ws_viewer()
+ * @param array $user   the person's user row
+ * @param int   $task_id
+ * @param array $when   date, time
+ * @return string kept | refused | skipped (a done task, a copy of a repeating one, nothing to change)
+ */
+function ws_calsync_apply_move($viewer, $user, $task_id, $when)
+{
+    $task = ws_task((int) $task_id);
+
+    if (!$task || ((string) $task['status'] === 'done') || ((int) ($task['recurrence_id'] ?? 0) > 0)) {
+        return 'skipped';
+    }
+
+    $fields = ws_calsync_move_fields($task, $when);
+
+    if (!$fields) {
+        return 'skipped';
+    }
+
+    $check = ws_task_update_check($viewer, $task, $fields);
+    $result = $check['ok'] ? ws_task_update($viewer, $task, $fields) : $check;
+
+    if (!$result['ok']) {
+        ws_notify($viewer['id'], 'calendar_refused', array('task_id' => (int) $task['id'], 'actor_id' => 0));
+
+        return 'refused';
+    }
+
+    $after = ws_task($task['id']);
+
+    log_activity(lang(array(
+        'string' => 'moved workspace task {var:1} to {var:2} from their calendar',
+        'vars'   => array(ws_task_number($task['id']), ws_task_due_label($after)),
+    )), (string) ($user['username'] ?? ''));
+
+    // The task's card in its channel is drawn again where it is open.
+    if (((int) ($task['source_message_id'] ?? 0) > 0) && function_exists('ws_message_touch')) {
+        ws_message_touch($task['source_message_id']);
+    }
+
+    return 'kept';
+}
+
+/**
+ * What the person's calendar should carry, as event bodies, and which of
+ * them are tasks.
+ *
+ * @param array  $viewer
+ * @param string $provider
+ * @param string $since    Y-m-d
+ * @param string $until    Y-m-d
+ * @param string $timezone
+ * @return array bodies (derived id => body), tasks (derived id => task id)
+ */
+function ws_calsync_bodies($viewer, $provider, $since, $until, $timezone)
+{
+    $items = array_merge(
+        ws_calendar_feed_task_items($viewer, false, $since, $until),
+        ws_calendar_feed_copy_items($viewer, date('Y-m-d'))
+    );
+
+    $bodies = array();
+    $tasks = array();
+
+    foreach (array_slice($items, 0, WS_CALENDAR_FEED_LIMIT) as $item) {
+        $id = ws_calsync_event_id(HOSTNAME_SETTING, (string) $item['uid']);
+        $bodies[$id] = ($provider === 'microsoft')
+            ? ws_calsync_graph_body($item)
+            : ws_calsync_google_body($item, $timezone);
+
+        if (preg_match('/^ws-task-([0-9]+)$/', (string) $item['uid'], $match)) {
+            $tasks[$id] = (int) $match[1];
+        }
+    }
+
+    return array('bodies' => $bodies, 'tasks' => $tasks);
 }
 
 
@@ -525,11 +938,11 @@ function ws_calsync_put_event(&$state, $connection_id, $id, $body)
  * deletes those no longer carried, up to WS_CALSYNC_WRITES_MAX calls.
  *
  * @param int $user_id
- * @return array ok, error, written, deleted, left
+ * @return array ok, error, written, deleted, left, moved (tasks moved from the calendar)
  */
 function ws_calsync_sync($user_id)
 {
-    $answer = array('ok' => false, 'error' => '', 'written' => 0, 'deleted' => 0, 'left' => 0);
+    $answer = array('ok' => false, 'error' => '', 'written' => 0, 'deleted' => 0, 'left' => 0, 'moved' => 0);
     $state = ws_calsync_state($user_id);
 
     if (!$state) {
@@ -567,19 +980,32 @@ function ws_calsync_sync($user_id)
     $today = date('Y-m-d');
     $since = date('Y-m-d', strtotime($today . ' 12:00:00 -' . WS_CALENDAR_FEED_PAST_DAYS . ' days'));
     $until = date('Y-m-d', strtotime($today . ' 12:00:00 +' . WS_CALENDAR_FEED_AHEAD_DAYS . ' days'));
-    $items = array_merge(
-        ws_calendar_feed_task_items($viewer, false, $since, $until),
-        ws_calendar_feed_copy_items($viewer, $today)
-    );
-
     $timezone = date_default_timezone_get();
-    $bodies = array();
+    $wanted = ws_calsync_bodies($viewer, $provider, $since, $until, $timezone);
 
-    foreach (array_slice($items, 0, WS_CALENDAR_FEED_LIMIT) as $item) {
-        $bodies[ws_calsync_event_id(HOSTNAME_SETTING, (string) $item['uid'])] = ($provider === 'microsoft')
-            ? ws_calsync_graph_body($item)
-            : ws_calsync_google_body($item, $timezone);
+    // What the person moved in the calendar comes in before anything is
+    // written over it. A refused or skipped move is forgotten as written, so
+    // the event is written back as the task stands.
+    $read = ws_calsync_read($state, $account['id'], $since, $until, $timezone);
+    $moved = 0;
+
+    if ($read['ok']) {
+        foreach (ws_calsync_moves($read['changes'], $wanted['bodies'], $state['written'], $wanted['tasks'], $provider, $timezone) as $id => $move) {
+            if (ws_calsync_apply_move($viewer, $user, $move['task_id'], $move['when']) === 'kept') {
+                $moved++;
+            } else {
+                unset($state['written'][$id]);
+            }
+        }
     }
+
+    $answer['moved'] = $moved;
+
+    if ($moved > 0) {
+        $wanted = ws_calsync_bodies($viewer, $provider, $since, $until, $timezone);
+    }
+
+    $bodies = $wanted['bodies'];
 
     $plan = ws_calsync_plan($bodies, $state['written'], WS_CALSYNC_WRITES_MAX);
     $error = '';
@@ -610,9 +1036,15 @@ function ws_calsync_sync($user_id)
         }
     }
 
+    $state['left'] = ($error === '') ? (int) $plan['left'] : 0;
+
+    // A read that failed is said on the card once the writes went well.
+    if (($error === '') && !$read['ok']) {
+        $error = $read['error'];
+    }
+
     $state['synced_at'] = time();
     $state['error'] = $error;
-    $state['left'] = ($error === '') ? (int) $plan['left'] : 0;
     ws_calsync_state_save($user_id, $state);
 
     $answer['ok'] = ($error === '');

@@ -630,10 +630,10 @@ function erp_expense_till_row_refusal($till, $currency)
 
 /**
  * Why an expense cannot be paid this way, or '': the payment method, the
- * period lock on the day, a day before the expense or after today, and the
- * till.
+ * period lock on the day, a day before the expense or after today, the till,
+ * and whether a cash till holds the amount (erp_till_outflow_refusal()).
  *
- * @param array $expense  expense_date, currency
+ * @param array $expense  expense_date, currency, total_amount
  * @param array $payment  cash_account_id, paid_date, payment_method
  * @return string
  */
@@ -658,7 +658,13 @@ function erp_expense_payment_refusal($expense, $payment)
         return lang('The payment cannot be dated before the expense.');
     }
 
-    return erp_expense_till_refusal((int) ($payment['cash_account_id'] ?? 0), (string) $expense['currency']);
+    if (($refusal = erp_expense_till_refusal((int) ($payment['cash_account_id'] ?? 0), (string) $expense['currency'])) !== '') {
+        return $refusal;
+    }
+
+    // Inside the payment's transaction this read locks the till row, so two
+    // expenses paid at once cannot both take the same money.
+    return erp_till_outflow_refusal((int) ($payment['cash_account_id'] ?? 0), (int) ($expense['total_amount'] ?? 0));
 }
 
 /**
@@ -867,6 +873,7 @@ function erp_expense_save_check($data, $id = 0)
         $refusal = erp_expense_payment_refusal(array(
             'expense_date' => $columns['expense_date'],
             'currency' => $columns['currency'],
+            'total_amount' => $columns['total_amount'],
         ), erp_expense_save_payment($data, $columns['expense_date']));
 
         if ($refusal !== '') {

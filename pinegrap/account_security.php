@@ -267,7 +267,7 @@ if (strpos($action, 'mfa_') === 0) {
     }
 
     if ($action === 'mfa_recovery_regenerate') {
-        if (pg_mfa_verify_code($user_id, $mfa_code) !== 'totp') {
+        if (!pg_mfa_verify_totp($user_id, $mfa_code)) {
             $mfa_messages->add_error(lang('That code was not accepted. Each code works once: wait for the next one, and check the time on your phone.'));
             go($mfa_back);
         }

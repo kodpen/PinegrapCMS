@@ -20,7 +20,7 @@ description: Plan (owner request 2026-11-01): a JPEG or PNG keeps its address an
 - `webp-same-address-steps.md`: W1-W10, their files, tests and order.
 - `webp-same-address-options.md`: the options weighed and the outside facts behind the choice.
 
-## Which questions are decided? (owner 2026-11-01, delegated to the architect; #4676 1-6, #4677 7-9; `workflow/decisions-made-product-16.md`)
+## Which questions are decided? (owner 2026-11-01, delegated to the architect; #4676 1-6, #4677 7-9; `workflow/decisions-made-product-17.md`)
 1. Default: on for a new install; off on a running site until switched on (the upgrade note and System Status say so).
 2. Convert doors: the batch becomes "Prepare WebP" (copies, no rename); Edit File keeps only "Create a .webp copy". No door renames a file.
 3. Switches: bits 4 (own address) and 8 (CDN confirmed) of `config.image_derivative_formats`, no schema; bit 4 needs bit 1.

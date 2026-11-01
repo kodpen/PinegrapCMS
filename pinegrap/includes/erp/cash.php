@@ -161,6 +161,53 @@ function erp_cash_refresh_balance($cash_account_id)
 }
 
 /**
+ * Why a till cannot pay an amount out, or ''.
+ *
+ * A till of kind cash (the drawer, a received-cheque portfolio) holds
+ * physical money or papers and cannot hold less than nothing, so an outflow
+ * larger than its balance is refused, and a till already below zero pays
+ * nothing until money comes in. Bank, POS and credit card tills may run
+ * below zero (an overdraft, card credit). A missing till passes: the till
+ * checks of each door refuse it with their own words.
+ *
+ * @param array|null $till    erp_cash_accounts row: kind, balance
+ * @param int        $amount  minor units leaving the till, in its currency
+ * @return string
+ */
+function erp_till_outflow_row_refusal($till, $amount)
+{
+    if (!is_array($till) || ((string) ($till['kind'] ?? '') !== 'cash')) {
+        return '';
+    }
+
+    if (((int) ($till['balance'] ?? 0) - (int) $amount) >= 0) {
+        return '';
+    }
+
+    return lang('Not enough balance in the till.');
+}
+
+/**
+ * erp_till_outflow_row_refusal() for a till by its id.
+ *
+ * The row is read locked: inside the caller's transaction the lock holds to
+ * the commit, so two outflows at once cannot both pass on the same balance;
+ * outside one (a rehearsal) it is a plain read. The balance is the cached
+ * one, which erp_cash_refresh_balance() rewrites in the same transaction as
+ * every movement, and the figure the Cash and Bank screen shows.
+ *
+ * @param int $cash_account_id
+ * @param int $amount  minor units leaving the till
+ * @return string
+ */
+function erp_till_outflow_refusal($cash_account_id, $amount)
+{
+    $till = db_item("SELECT kind, balance FROM erp_cash_accounts WHERE id = '" . (int) $cash_account_id . "' LIMIT 1 FOR UPDATE");
+
+    return erp_till_outflow_row_refusal($till, $amount);
+}
+
+/**
  * Take money in against a customer, or pay money out to a supplier.
  *
  * The one door for both, because they are the same two rows with the arrows
@@ -182,7 +229,9 @@ function erp_cash_refresh_balance($cash_account_id)
  *                     exchange_rate, exchange_rate_date, exchange_rate_source,
  *                     payment_method, description, created_by, and optionally
  *                     invoice_id to close that invoice with this money (never
- *                     more than it is short of)
+ *                     more than it is short of); allow_below_zero lets a
+ *                     payment take a cash till below zero, for the cheque
+ *                     module's own postings only
  * @return array ['success' => bool, 'cash_id' => int, 'account_id' => int,
  *                'settled' => int, 'error' => string]
  */
@@ -255,7 +304,16 @@ function erp_post_receipt_check($data)
         $invoice = db_item("SELECT id, account_id, direction, doc_type, currency, full_number, grand_total, grand_total_base, paid_total, status
             FROM erp_invoices WHERE id = '" . $invoice_id . "' LIMIT 1");
 
-        return erp_receipt_invoice_refusal($invoice, $account_id, $currency, $is_collection);
+        if (($refusal = erp_receipt_invoice_refusal($invoice, $account_id, $currency, $is_collection)) !== '') {
+            return $refusal;
+        }
+    }
+
+    // A payment leaves the till; a cash till pays only what it holds. The
+    // cheque module's postings skip this: the given-cheques till is below
+    // zero by design between the giving and the bank's payment.
+    if (!$is_collection && empty($data['allow_below_zero'])) {
+        return erp_till_outflow_refusal($cash_account_id, $amount);
     }
 
     return '';
@@ -335,6 +393,14 @@ function erp_post_receipt($data)
 
     if (!erp_tx_begin()) {
         return $fail(lang('Could not start a database transaction.'));
+    }
+
+    // Asked again under the till's row lock: another payment may have taken
+    // the money since erp_post_receipt_check() read the balance.
+    if (!$is_collection && empty($data['allow_below_zero'])
+        && (($refusal = erp_till_outflow_refusal($cash_account_id, $amount)) !== '')) {
+        erp_tx_rollback();
+        return $fail($refusal);
     }
 
     $shared = array(
@@ -469,7 +535,9 @@ function erp_post_receipt($data)
  * moved. They point at each other through transfer_pair_id so the pair reads as
  * one move and can be undone as one.
  *
- * @param array $data  from_id, to_id, amount (kurus), doc_date, description, created_by
+ * @param array $data  from_id, to_id, amount (kurus), doc_date, description,
+ *                     created_by; allow_below_zero lets the transfer take a
+ *                     cash till below zero, for the cheque module only
  * @return array ['success' => bool, 'out_id' => int, 'in_id' => int, 'error' => string]
  */
 function erp_post_transfer($data)
@@ -525,6 +593,14 @@ function erp_post_transfer($data)
 
     if (!erp_tx_begin()) {
         return $fail(lang('Could not start a database transaction.'));
+    }
+
+    // A cash till pays only what it holds, read under its row lock; the
+    // cheque module's own transfers skip this (erp_post_receipt_check()).
+    if (empty($data['allow_below_zero'])
+        && (($refusal = erp_till_outflow_refusal($from_id, $amount)) !== '')) {
+        erp_tx_rollback();
+        return $fail($refusal);
     }
 
     $shared = array(

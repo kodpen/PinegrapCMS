@@ -24,7 +24,7 @@ description: Plan (owner 2026-11-01): a new dashboard from the owner's design, t
 - The current dashboard: markup, script, site-wide order (`dashboard.order_widgets`), the Appearance card, widget ids and API actions. It gains only the switch row; `welcome.php` only that row and an early branch that draws the new page for a person who has it on.
 - Widget numbers stay permanent; new cards have string ids (`ai`, `goals`, …) and never take a widget number.
 
-## Which questions are decided? (owner 2026-11-01, #4669; `workflow/decisions-made-product-16.md`)
+## Which questions are decided? (owner 2026-11-01, #4669; `workflow/decisions-made-product-17.md`)
 1. Schema: one new table `dashboard_layout` (step `11.0.141`) for the switch, layouts, look, sign-in times, role defaults and the lock (`new-dashboard-data.md`).
 2. Visitor map: a site behind Cloudflare takes the city from `CF-IPCity` and writes it on the visit; otherwise the card draws at country level (home / abroad, countries). No schema (`visitors.city` exists).
 3. Assistant daily summary: a setting with an hour, off by default; proposals, waiting approvals and "Give Claude a job" stay while off.

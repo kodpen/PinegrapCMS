@@ -20,5 +20,6 @@ description: ERP cheques and promissory notes (4.101): the steps, money only thr
 
 ## Which tills hold them?
 - Ordinary ERP tills the user opens under Cash and Bank: a portfolio for the ones taken, one for the ones given. Nothing special marks them; the form says to add one first when there is none.
+- Their postings pass `'allow_below_zero' => true`, so the balance check a cash till meets elsewhere (erp-till-below-zero.md, #4460, PR #4666) does not stop the given-cheques till going below zero until the bank pays.
 - The cash forecast leaves these tills out of today's cash and counts the cheques on their own dates (erp-cash-forecast.md).
 - Screens `erp_cheques.php`, `erp_cheque.php`; API writes (`api_cash.php`) need `erp_cash:write` and the owner's cash right (`erp_api_expense_cash_gate()`).
