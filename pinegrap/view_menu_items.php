@@ -59,6 +59,8 @@ if ($user['role'] < 2) {
     $output_subheading = '<span class="small fg-secondary">' . lang('Page Style Body Tag') . ': <code>' . h('<menu>' . $menu_name . '</menu>') . '</code></span>';
 }
 
+// Written into the back button's onclick: the browser decodes the attribute
+// before the script runs, so it is escaped for JavaScript as well as for HTML.
 $back_button_url = escape_url(($_GET['send_to'] ?? ''));
 // if the user came from the pages tab, then prepare back button label
 if (($_GET['from'] ?? '') == 'pages') {
@@ -253,7 +255,7 @@ pg_page_shell( array(
     'title' => h($menu_name) . ' | ' . lang('Edit Menu'),
     'icon' => 'design',
     'heading' => lang('Edit Menu'),
-    'cancel'=>array('enable'=>true,'title'=>$output_back_button_label, 'onclick'=>'window.location.href=\'' . h($back_button_url) . '\'') ) ) . '
+    'cancel'=>array('enable'=>true,'title'=>$output_back_button_label, 'onclick'=>'window.location.href=\'' . h(escape_javascript($back_button_url)) . '\'') ) ) . '
 <main id="content" class="container-fluid">
     ' . pg_screen_toolbar(array(
         'primary'   => array('label' => lang('Create'), 'url' => 'add_menu_item.php?menu_id=' . urlencode($_GET['id']) . '&from=' . urlencode(($_GET['from'] ?? '')) . '&send_to=' . urlencode(($_GET['send_to'] ?? '')), 'icon' => 'bi-plus-circle'),

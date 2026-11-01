@@ -98,7 +98,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 
 - Endpoints `membership` (5): open
 
-- Endpoints `menu` (7): open
+- Endpoints `menu` (7): done #4673 (add_menu, add_menu_item, duplicate_menu, edit_menu, edit_menu_item, view_menu_items, view_menus)
 
 - Endpoints `my` (4): done #4653 (get_my_account, get_my_account_profile, my_account, my_account_profile)
 
