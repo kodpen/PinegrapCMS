@@ -21,12 +21,12 @@ description: Plan for the Online Courses template (pinegrap-courses): courses as
 
 ## Which steps are there?
 - 1-4 done: engine and `parts.php` (#4770), `pages_public.php` (#4788), `learn.php` (#4838), `assignments.php` and `mail.php` (#4849).
-- 5a Shop: `shop.php` (Courses group, course and membership products, listing, product, cart, checkout, order, `email_order`; `requires ecommerce`).
+- 5a Shop: `shop.php` (catalog: Courses group, a group per course `courses_<key>` and `membership`, one product each; buy boxes, product, cart, checkout, order, `email_order`). **Done (#4912).**
 - 5b Standard: `standard.php`, test `…_standard_test.php`. **Done (#4880).**
 - 6 Account and staff: `account.php`; test `…_account_test.php`.
 - 7 Assembly: `pinegrap-courses.php` (header, order, icon `bi-mortarboard`, highlights, look, palette, contact group, folders, catalog, `pco-` User Styles, search map), shared tests' lists, `designer/design-template-courses.md`, plan deleted; PR body names `[NEW] Added the Online Courses design template`.
 
 ## Where to start?
-- Step 5a, then 6. Already named: pages `enrolment`, `enrolment_view`, `assignment`, `assignment_view`, `my_assignments`, `staff_enrolments`, `staff_assignments`, `email_reply` and four form e-mails (`assignments.php`, also widget `email_comment`); `standard.php` has contact, inbox, conversation, newsletter, blog, blog_post, search, privacy, error and their e-mails, widgets `home_posts`, `newsletter_band`; lists read `{{tab:blog_new}}` (6); widgets `buy_<course>`, `buy_membership`, `cart_link` (5a), `login_region` (6); folders `public`, `registration`, `private`, `course_<key>` (private), `members` (membership). `tests/design_template_courses_test.php` lists the page and widget keys.
+- Step 6, then 7. Already named: pages `enrolment`, `enrolment_view`, `assignment`, `assignment_view`, `my_assignments`, `staff_enrolments`, `staff_assignments`, `email_reply` and four form e-mails (`assignments.php`, also widget `email_comment`); `standard.php` has contact, inbox, conversation, newsletter, blog, blog_post, search, privacy, error and their e-mails, widgets `home_posts`, `newsletter_band`; lists read `{{tab:blog_new}}` (6); `shop.php` has `buy_<course>`, `buy_membership`, `cart_link` and the shop pages; widget `login_region` (6); folders `public`, `registration`, `private`, `course_<key>` (private), `members` (membership). `tests/design_template_courses_test.php` lists the page and widget keys.
 - `mail.php`: the `$mail_*` builders, `$email_header_tree`, `$email_footer_tree`; inline colours are teal (`#0f766e`), so step 7 should suggest a teal palette (`ocean`) or change them.
-- Copy from `pinegrap-events/` (`tickets.php`, `account.php`).
+- Copy from `pinegrap-events/` (`account.php`; step 7 from `pinegrap-events.php`, taking `catalog` from `shop.php`).
