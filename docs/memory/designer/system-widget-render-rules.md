@@ -6,7 +6,7 @@ description: System widget renderer rules: Messages node named after the livefor
 ## How must a renderer name its Messages node?
 - Every renderer calls `_pg_inject_messages_node($tree, '<liveform name>')`, never with `''` (one deliberate exception: the custom form widget before a form is bound, `_render_system_widget_custom_form()`). An unnamed node prints every form's messages on the page and uses them up, so the widget drawn first takes the other's error (on My Account the `my_account` widget printed the security card's error at the top).
 - The name is the classic page's liveform name; a widget whose classic page prints no messages uses its own name (`calendar_view`, `logout`, `error_page`). Test: `tests/designer_messages_test.php`.
-- E-mail and background renders (`pg_seo_rendering()`: Preview, SEO pass) skip the node, never printing or using up messages (#PR). The custom form is named by `pg_sw_drawn_page_id()` (context `page_id` in Preview).
+- E-mail and background renders (`pg_seo_rendering()`: Preview, SEO pass) skip the node, never printing or using up messages (#4608). The custom form is named by `pg_sw_drawn_page_id()` (context `page_id` in Preview).
 - The account-band widgets (`cart_link`, `login_region`, `language_switcher`) and `account_invoices` (submits nothing) are named with a name nothing submits and show no messages. In JS they are `_SW_NO_MESSAGES`: their starter tree gets no "PHP Messages" node, and one an older tree carries is dropped on load (`prefetchShared()`). A new such type goes into both sides. Member widgets: member-widgets-rendering.md.
 
 ## Where does a state message go?
