@@ -55,9 +55,12 @@ function test_a11y_findings_name_the_marked_nodes()
 
 	$findings = pg_a11y_check_html($html);
 
-	pg_assert_same(array('n_box', 'n_img'), $findings['a11y_img_alt']['nodes'], 'the nearest marked element, once each');
-	pg_assert_same(3, $findings['a11y_img_alt']['occurrences'], 'an unmarked image still counts');
+	pg_assert_same(array('n_box', 'n_img', 'n_main'), $findings['a11y_img_alt']['nodes'], 'the nearest marked element, once each');
+	pg_assert_same(3, $findings['a11y_img_alt']['occurrences']);
+
 	pg_assert_same(array('n_link'), $findings['a11y_link_name']['nodes']);
+	$findings = pg_a11y_check_html('<p><img src="a.jpg"></p><p data-pg-node="n_p">x</p>');
+	pg_assert_true(!isset($findings['a11y_img_alt']['nodes']), 'an element with no marked ancestor names no node');
 }
 
 function test_a11y_findings_without_marks_keep_their_shape()

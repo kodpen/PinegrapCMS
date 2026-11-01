@@ -573,6 +573,7 @@
     "No Web Browser Title property found for {var:1}": "{var:1} için Web Tarayıcı Başlığı özelliği bulunamadı",
     "No Wrap": "Satır Kaydırma Yok",
     "No access to the update server.": "Güncelleme sunucusuna erişilemiyor.",
+    "No accessibility issues found": "Erişilebilirlik sorunu bulunmadı",
     "No account": "Cari yok",
     "No account has this tax number yet.": "Bu vergi numarasıyla açılmış bir cari yok.",
     "No account is connected for backups yet.": "Yedekler için henüz bağlı hesap yok.",

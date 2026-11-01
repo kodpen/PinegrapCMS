@@ -650,6 +650,7 @@ function pg_panel_designer($request, $action)
             // back to the markup the editor generates, judged as a fragment.
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/seo_draft.php');
             $document = false;
+            $a11y = null;
             $tree_json = (isset($request['tree_json']) && is_string($request['tree_json'])) ? $request['tree_json'] : '';
             if ($page_id > 0 && $tree_json !== '' && strlen($tree_json) <= 4000000) {
                 $draft = pg_seo_check_draft_render($page_id, array(
@@ -660,6 +661,10 @@ function pg_panel_designer($request, $action)
                 ), $tree_json, (isset($request['widgets']) && is_array($request['widgets'])) ? $request['widgets'] : array(), $user);
                 if ($draft !== null && $draft['error'] === '' && stripos((string)$draft['html'], '<html') !== false) {
                     $document = true;
+                    // The accessibility report's checks on the same render,
+                    // each finding naming the editor nodes it was found on.
+                    require_once(PG_FUNCTIONS_DIR . '/includes/fn/a11y.php');
+                    $a11y = pg_seo_check_a11y_rows(pg_a11y_check_html($draft['html']));
                     $raw = pg_seo_analyze_html($draft['html'], 'document',
                         pg_seo_check_draft_context($row, $draft['page_type']));
                 }
@@ -738,6 +743,10 @@ function pg_panel_designer($request, $action)
                 'checks'          => $checks,
                 'findings'        => $findings,
                 'mode'            => $document ? 'document' : 'fragment',
+                // The accessibility findings of the rendered draft (null on a
+                // fragment) and the registry the panel groups everything by.
+                'a11y'            => $a11y,
+                'concepts'        => pg_seo_check_concepts(),
             ));
             break;
 

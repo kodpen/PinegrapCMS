@@ -4825,6 +4825,14 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
             && in_array(isset($props['contentType']) ? $props['contentType'] : '', array('heading', 'link', 'paragraph', 'span', 'text'), true));
     }
 
+    // The editor's audit render marks every element with the node it was
+    // drawn from, so a finding on the rendered page badges that node on the
+    // canvas (pg_designer_audit_render()). Never on a stored or served page.
+    if (pg_designer_audit_render() && !empty($node['_id']) && $type !== 'root') {
+        if (!isset($props['_attrs']) || !is_array($props['_attrs'])) $props['_attrs'] = array();
+        $props['_attrs'][] = array('name' => 'data-pg-node', 'value' => (string)$node['_id']);
+    }
+
     // A stretched link covers the nearest positioned element around it; when
     // nothing above is positioned, the box the link reaches takes
     // position-relative (see _pg_stretch_claims()).
@@ -9514,6 +9522,21 @@ function pg_designer_preview_input($page_id, $settings, $access)
         'page_id'          => $page_id,
         'comment_settings' => ($page_id > 0 && $access === 'edit' && is_array($settings)) ? $settings : array(),
     );
+}
+
+/**
+ * Whether the tree renderer marks elements with their node ids
+ * (data-pg-node): on only while the editor's SEO check renders a draft
+ * (pg_seo_check_draft_render()), whose findings badge the canvas by them.
+ *
+ * @param bool|null $set true/false to switch, null to read
+ * @return bool
+ */
+function pg_designer_audit_render($set = null)
+{
+    static $on = false;
+    if ($set !== null) $on = (bool)$set;
+    return $on;
 }
 
 /**
