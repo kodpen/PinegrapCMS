@@ -996,8 +996,9 @@ function pg_panel_designer($request, $action)
                 respond(array('status' => 'success', 'ready' => false, 'revisions' => array(), 'more' => false));
             }
             $rv_before = isset($request['before_no']) ? (int)$request['before_no'] : 0;
-            $rv_list   = pg_page_revisions_list($rv_page, 50, $rv_before);
-            respond(array('status' => 'success', 'ready' => true, 'revisions' => $rv_list, 'more' => (count($rv_list) === 50)));
+            // One row over the page size tells whether older ones remain.
+            list($rv_list, $rv_more) = pg_page_revisions_page(pg_page_revisions_list($rv_page, 51, $rv_before), 50);
+            respond(array('status' => 'success', 'ready' => true, 'revisions' => $rv_list, 'more' => $rv_more));
             break;
 
         case 'revision_get':
