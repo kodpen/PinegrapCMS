@@ -160,9 +160,9 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `office_edit`: open
 
-- `ops_alerts`: open
+- `ops_alerts`: clean; lead: webhook_failing mails raw webhook URLs
 
-- `order_completion`: done (#4884, gift card decrement guarded by the balance); stock, commission, key code checked; receipt, ship dates, line forms, comments, rewards, from_payment not read
+- `order_completion`: done (#4884); receipt, ship dates, line forms, rewards, from_payment not read
 
 - `order_list`: clean
 
