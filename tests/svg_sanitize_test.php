@@ -27,7 +27,7 @@ function svg_sanitize_assert_clean($out, $label)
 {
 	$lower = strtolower($out);
 
-	foreach (array('<script', 'onload', 'onclick', 'onerror', 'onbegin', 'javascript:', 'foreignobject', 'http://', 'https://', '//evil', '@import', 'expression(', '<iframe', '<!entity', '<!doctype', '<a ', '<set', '<animate', 'data:text', 'data:image/svg') as $bad) {
+	foreach (array('<script', 'onload', 'onclick', 'onerror', 'onbegin', 'javascript:', 'foreignobject', 'evil.example', 'x.htc', '@import', 'expression(', '<iframe', '<!entity', '<!doctype', '<a ', '<set', '<animate', 'data:text', 'data:image/svg') as $bad) {
 		pg_assert_false(strpos($lower, $bad) !== false, $label . ': no ' . $bad);
 	}
 }

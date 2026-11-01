@@ -101,6 +101,7 @@ description: Generated from the module field of the memory files: each includes/
 - `subscriptions`: [[subscriptions]], [[subscriptions-iyzico]], [[subscriptions-later-start]], [[subscriptions-stripe]]
 - `subscriptions_account`: [[subscriptions-account]]
 - `subscriptions_operator`: [[subscriptions-operator-screen]]
+- `svg_sanitize`: [[image-editor-svg]]
 - `text_search`: [[capital-i-search-term]]
 - `translate`: [[error-screen-language-and-status]]
 - `user_list`: [[server-paged-lists]], [[user-screens-names-and-dates]]
