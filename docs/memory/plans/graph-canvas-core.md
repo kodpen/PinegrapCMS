@@ -1,6 +1,6 @@
 ---
 name: graph-canvas-core
-description: Plan (2026-10-24, answers #2445, 1, 2a-2d done): a box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
+description: Plan (2026-10-24, answers #2445; 1-3 done, 4 ready): a box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
 ---
 
 ## What is asked? (owner, 2026-10-24)
@@ -14,7 +14,7 @@ description: Plan (2026-10-24, answers #2445, 1, 2a-2d done): a box-and-arrow ca
 - Fixed: box 208x80, one port in and out, arrows `{from, to, on}` by index, zoom 0.25-2, global ids (`#wsf-arrow*`), document listeners kept, Ctrl+S taken.
 - Checks: tests/workspace_flows_canvas_test.php reads workspace_flow.js (keyboard rows, `RUN_STATES`, `STEP_STATES`, each `'fl_*'` literal) and extracts functions by name; harness tests/js/flows_canvas.js.
 
-## What is proposed? (not approved yet)
+## What is planned? (approved)
 - `PGGraphCanvas` in assets/js/pg_graph_canvas.js, bundle pg_graph_canvas.min.js, CSS `pgc-` on `--pgc-*` tokens with Bootstrap fallbacks (the Workspace maps them to `--ws-*`), texts from `pg_graph_canvas_js_strings()` in a new includes/fn/graph_canvas.php.
 - `PGGraphCanvas.create(root, adapter)` returns load, graph, select, readOnly, overlay, destroy; ids per instance, arrowheads set from JS, listeners removed on destroy, Ctrl+S optional.
 - Adapter: kit, texts, kinds (icon, name, arrows in, outcomes, size), ports, canConnect, isStart, node renderer, forms, palette, save(graph, {keepalive}) giving problems or a conflict, a state overlay (tone, badge, taken arrows, focus keys), onSelect, onOpen.
@@ -37,4 +37,4 @@ description: Plan (2026-10-24, answers #2445, 1, 2a-2d done): a box-and-arrow ca
 4. Designer texts: `lang()` via `pg_graph_canvas_js_strings()`; the scan reads style_designer.js only, and the core is the designer's first bundle.
 
 ## Where to start?
-- Slices 1-3 are done; slice 4 waits for a second user (plans/designer-prototype-links.md), and starts there.
+- Slices 1-3 are done; slice 4 is ready now (owner, 2026-11-01): the first PR of plans/designer-prototype-links.md slice 1, which is its second user.
