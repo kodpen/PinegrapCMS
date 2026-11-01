@@ -2009,6 +2009,7 @@
     "Sorry, that image ({var:1}) is too large ({var:2}).  Image optimization service requires that images be less than 5 MB.": "Maalesef bu görsel ({var:1}) çok büyük ({var:2}). Görsel optimizasyon hizmeti, görüntülerin 5 MB'den az olmasını gerektirir.",
     "Sorry, that menu could not be found.": "Üzgünüz, bu menü bulunamadı.",
     "Sorry, that name is not allowed here.": "Üzgünüz, bu ad burada kullanılamaz.",
+    "Sorry, that product could not be added. The product might no longer exist or might have recently been disabled.": "Üzgünüz, bu ürün eklenemedi. Ürün artık mevcut olmayabilir ya da kısa süre önce devre dışı bırakılmış olabilir.",
     "Sorry, that product group could not be found.": "Üzgünüz, bu ürün grubu bulunamadı.",
     "Sorry, that recipient belongs to a different order, so we can't allow you to update that recipient.  This might happen if your session expired and you started a new order, and then you used the back button to go back to a recipient for an old order.": "Üzgünüz, bu alıcı farklı bir siparişe ait, bu nedenle o alıcıyı güncellemenize izin veremiyoruz. Oturumunuz sona erip yeni bir sipariş oluşturduktan sonra eski bir sipariş için alıcıya geri dönmek üzere geri düğmesini kullandıysanız bu olabilir.",
     "Sorry, that recipient could not be found.  This might happen if you used the back button to go back to a recipient that no longer exists in the order.": "Üzgünüz, bu alıcı bulunamadı. Siparişte artık mevcut olmayan bir alıcıya geri dönmek için geri düğmesini kullandıysanız bu olabilir.",
