@@ -138,7 +138,7 @@ function pg_dashboard_v2_card_files($user, $period, $compare)
         'rows_title' => lang('Last uploads'),
         'rows'       => $rows,
         'empty'      => (empty($rows) && ($ring['used'] <= 0)) ? lang('No files yet.') : '',
-        'url'        => 'view_files.php',
+        'url'        => 'view_folders.php?view=files',
         'link'       => lang('Go to files'),
     ));
 }
