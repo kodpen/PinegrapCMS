@@ -109,6 +109,19 @@ $pg_settings_cards[] = '
     </div>';
 
 // ── Software ──
+// With the Kodpen API on, the licence binds to the Hostname: a name only this
+// machine or its network knows still spends a site right, and no valid name
+// fails every check.
+$license_site_warning = (defined('PG_VENDOR_API_V1') && (PG_VENDOR_API_V1 === true) && (SUBSCRIPTION_KEY !== ''))
+    ? pg_license_site_warning(HOSTNAME_SETTING)
+    : '';
+$license_site_warning_html = '';
+if ($license_site_warning === 'local') {
+    $license_site_warning_html = '<div id="subscription_key_site" class="form-text fg-warning">' . lang('This Hostname is known only on this machine or its network; the license check will still spend one of the license\'s site rights on it.') . '</div>';
+} elseif ($license_site_warning === 'none') {
+    $license_site_warning_html = '<div id="subscription_key_site" class="form-text fg-danger">' . lang('The Hostname is not a valid site name, so license checks will fail until it is corrected.') . '</div>';
+}
+
 $pg_settings_cards[] = '
     <div id="pgset-software" class="pg-set-card">
         <div class="card">
@@ -124,7 +137,7 @@ $pg_settings_cards[] = '
                     </div>
                     <div class="pg-f-lg">
                         <label for="subscription_key" class="form-label">' . lang('Subscription Key') . '</label>
-                        <input type="text" name="subscription_key" id="subscription_key" maxlength="19" autocomplete="false" class="form-control input-mask-key-code" value="' . SUBSCRIPTION_KEY . '" />
+                        <input type="text" name="subscription_key" id="subscription_key" maxlength="19" autocomplete="false" spellcheck="false" autocapitalize="characters" class="form-control input-mask-key-code" value="' . h(SUBSCRIPTION_KEY) . '"' . (($license_site_warning !== '') ? ' aria-describedby="subscription_key_site"' : '') . ' />' . $license_site_warning_html . '
                     </div>
                     <div class="col-12">
                         <div class="form-field">

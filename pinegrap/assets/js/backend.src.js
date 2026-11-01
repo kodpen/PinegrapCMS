@@ -7,6 +7,21 @@ window.pgLang = function (key) {
     return (v !== undefined && v !== null) ? String(v) : key;
 };
 
+// The licence key field: four groups of four of 0-9 and A-Z without I, L, O
+// and U, typed in any case and shown in upper case; the dashes are added by
+// the mask and dropped again when Site Settings saves the key.
+window.pgLicenseKeyMask = function () {
+    return {
+        mask: 'KKKK-KKKK-KKKK-KKKK',
+        definitions: {
+            K: { validator: '[0-9A-HJKMNP-TV-Za-hjkmnp-tv-z]', casing: 'upper' }
+        },
+        placeholder: '****-****-****-****',
+        showMaskOnHover: false,
+        showMaskOnFocus: false
+    };
+};
+
 // Folds text for the panel's live filters: lowercase, then the dot that
 // toLowerCase() leaves on a capital İ (i + U+0307) removed and ı, ğ, ü, ş, ö,
 // ç folded to their plain letters, so "ist" finds "İstanbul" and "cerez"
@@ -2373,12 +2388,7 @@ $(document).ready(function () {
     });
 
     if ($(".input-mask-key-code").length) {
-        $(".input-mask-key-code").inputmask({
-            mask: '9999-9999-9999-9999',
-            placeholder: '****-****-****-****',
-            showMaskOnHover: false,
-            showMaskOnFocus: false
-        });
+        $(".input-mask-key-code").inputmask(pgLicenseKeyMask());
     };
 
 
@@ -10864,12 +10874,7 @@ function pgInitInjected(scope) {
     pgBindRanges($scope);
 
     if ($.fn.inputmask) {
-        $scope.find('.input-mask-key-code').inputmask({
-            mask: '9999-9999-9999-9999',
-            placeholder: '****-****-****-****',
-            showMaskOnHover: false,
-            showMaskOnFocus: false
-        });
+        $scope.find('.input-mask-key-code').inputmask(pgLicenseKeyMask());
     }
 
     // Field help read with its field; before pgFields.init, so a combobox

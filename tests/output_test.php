@@ -6,7 +6,8 @@
  * (pg_filter_select() - the selected option, the values carried along from
  * the address, escaping), the period navigator (pg_period_unit(),
  * pg_period_nav()), the cancel button's handler (pg_output_go_script()) and
- * when the licence check asks the server again (pg_license_check_due()).
+ * when the licence check asks the server again (pg_license_check_due()) and
+ * what its card shows for the states of the Kodpen API.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -158,4 +159,88 @@ function test_output_license_check_button_only_for_managers()
 	pg_assert_contains("if (\$output_check_license_button && isset(\$user['role']) && ((int) \$user['role'] <= 2)) {", $source, 'the card asks the role');
 	pg_assert_contains("<a href=\"' . h(pg_license_check_again_url(\$_GET)) . '\"", $source, 'a link keeping the query');
 	pg_assert_same(0, substr_count($source, '<input type="hidden" name="check_license_again"'), 'no GET form drops the query any more');
+}
+
+// The licence card drawn from a state the session already holds (checked a
+// moment ago, so nothing is asked): each refusal of the Kodpen API keeps its
+// own text and Check License, and an answer shows the type and site rights.
+function output_test_license_card($state)
+{
+	global $user;
+
+	if (!defined('SUBSCRIPTION_KEY')) {
+		define('SUBSCRIPTION_KEY', 'ABCD2345EFGH6789');
+	}
+
+	$saved_user = isset($user) ? $user : null;
+	$saved_session = isset($_SESSION) ? $_SESSION : null;
+	$user = array('role' => 1);
+	$_SESSION = array('software' => array('settings' => array('license' => array_merge(array(
+		'status' => '', 'error_code' => '', 'countdown' => '', 'expiration_date_formatted' => '',
+		'type' => '', 'sites_used' => null, 'sites_total' => null, 'source' => 'v1', 'last_check' => time(),
+	), $state))));
+
+	$html = license_check(array('output' => 'bar'));
+
+	$user = $saved_user;
+	$_SESSION = $saved_session;
+
+	return $html;
+}
+
+function test_output_license_card_refusals_of_the_kodpen_api()
+{
+	$texts = array(
+		'suspended' => 'Your license is suspended. You cannot benefit from some features.',
+		'seats_full' => 'Every site right of this license is in use; to use it on a new site, first have one of its sites released.',
+		'access_blocked' => 'Service access is closed for this site.',
+		'no_match' => 'Your license is not valid. You cannot benefit from some features.',
+	);
+
+	foreach ($texts as $code => $text) {
+		$html = output_test_license_card(array('status' => 'error', 'error_code' => $code));
+
+		pg_assert_contains(h(lang($text)), $html, $code . ': its own text');
+		pg_assert_contains('check_license_again=1', $html, $code . ': Check License');
+	}
+
+	pg_assert_contains(lang('Suspended'), output_test_license_card(array('status' => 'error', 'error_code' => 'suspended', 'type' => 'premium', 'sites_used' => 1, 'sites_total' => 1)), 'suspended state');
+	pg_assert_contains(lang('Premium'), output_test_license_card(array('status' => 'error', 'error_code' => 'suspended', 'type' => 'premium', 'sites_used' => 1, 'sites_total' => 1)), 'a suspended licence keeps its type');
+	pg_assert_contains(lang('Buy License'), output_test_license_card(array('status' => 'error', 'error_code' => 'seats_full')), 'no free right: buy one');
+	pg_assert_same(false, strpos(output_test_license_card(array('status' => 'error', 'error_code' => 'access_blocked')), lang('Buy License')), 'closed access: nothing to buy');
+
+	$unusable = output_test_license_card(array());
+	pg_assert_contains(h(lang('License verification failed due to technical reason. You cannot benefit from some features.')), $unusable, 'unusable: the technical text');
+	pg_assert_contains('check_license_again=1', $unusable, 'unusable: Check License');
+	pg_assert_contains(lang('Unavailable'), $unusable, 'unusable state');
+}
+
+function test_output_license_card_shows_type_and_site_rights()
+{
+	$valid = new DateTime('today');
+	$valid->modify('+200 days');
+
+	$html = output_test_license_card(array('status' => 'success', 'expiration_date_formatted' => $valid, 'countdown' => 200,
+		'type' => 'enterprise', 'sites_used' => 3, 'sites_total' => 5));
+
+	pg_assert_contains(lang('Enterprise'), $html, 'the type');
+	pg_assert_contains('3 / 5', $html, 'the site rights');
+	pg_assert_contains(lang('Active'), $html, 'still active');
+
+	$old = output_test_license_card(array('status' => 'success', 'expiration_date_formatted' => $valid, 'countdown' => 200, 'source' => null));
+	pg_assert_same(false, strpos($old, 'pg-lic-type'), 'an answer of the old server: no type line');
+}
+
+// With the switch on, a state without source 'v1' is asked again at once;
+// the old server's call stays as it was behind the switch.
+function test_output_license_check_v1_branch_behind_the_switch()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/output.php');
+
+	pg_assert_contains("\$license_v1 = defined('PG_VENDOR_API_V1') && (PG_VENDOR_API_V1 === true);", $source, 'read from the switch');
+	pg_assert_contains("if (\$license_v1 && ((\$_SESSION['software']['settings']['license']['source'] ?? '') !== 'v1')) {", $source, 'an old state is asked again');
+	pg_assert_contains("pg_vendor_api_request('POST', pg_vendor_api_url('/licenses/verify'),", $source, 'the v1 call');
+	pg_assert_contains('$decoded = pg_license_map_v1($answer);', $source, 'read by the mapping');
+	pg_assert_contains('if (pg_license_key_valid($license_key)) {', $source, 'a key outside the alphabet is not sent');
+	pg_assert_contains("'https://www.kodpen.com/api2?", $source, 'the old server while the switch is off');
 }

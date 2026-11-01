@@ -367,6 +367,7 @@
     "Delivery problem": "Teslimat sorunu",
     "Delivery time depends on the carrier you choose and on your address. Your tracking number is emailed to you once the order is confirmed.": "Kargo süresi seçilen kargo firmasına ve adresinize göre değişir. Sipariş onayı sonrasında e-posta ile takip numaranız iletilir.",
     "Delivery {var:1}": "{var:1}. teslimat",
+    "Demo": "Demo",
     "Denim": "Kot mavisi",
     "Deniz Y.": "Deniz Y.",
     "Density": "Yoğunluk",

@@ -58,17 +58,15 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $sql_software_language ="software_language = '" . escape($_POST['software_language'] ?? '') . "',";
     }
    
-    // prepare subscription_key for write to db
-    $subscription_key_posted = post_value('subscription_key');
-    $subscription_key = str_replace('-', '', (string) $subscription_key_posted);
-    // check if subscription_key was posted and differs from the stored key
-    if (($subscription_key_posted !== null) && ($subscription_key_posted != SUBSCRIPTION_KEY)) {
-        //remove all session about license, we will set it from license_check() again.
-        unset($_SESSION['software']['settings']['license']['last_check']);
-        unset($_SESSION['software']['settings']['license']['countdown']);
-        unset($_SESSION['software']['settings']['license']['expiration_date_formatted']);
-        unset($_SESSION['software']['settings']['license']['status']);
-        unset($_SESSION['software']['settings']['license']['error_code']);
+    // The licence key in its one form (dashes and blanks out, upper case);
+    // nothing is refused here, the licence check judges the key.
+    $subscription_key = pg_license_key_normalize((string) post_value('subscription_key'));
+
+    // A real key change, or a new Hostname the licence binds to, forgets
+    // the licence state, so the next page asks again.
+    if (($subscription_key !== pg_license_key_normalize((string) SUBSCRIPTION_KEY))
+        || (strtolower($hostname) !== strtolower((string) HOSTNAME_SETTING))) {
+        unset($_SESSION['software']['settings']['license']);
     }
 
     // The seller's tax number, kept the way the store's country writes it:
@@ -129,7 +127,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // Pinegrap AI sends this key to its gateway (includes/workspace/ai.php).
     // What the gateway said about the old key is forgotten with it: a key it
     // turned down is otherwise never asked about again.
-    if (($subscription_key !== str_replace('-', '', (string) SUBSCRIPTION_KEY))
+    if (($subscription_key !== pg_license_key_normalize((string) SUBSCRIPTION_KEY))
         && function_exists('waf_table_has_column') && waf_table_has_column('config', 'ws_ai_license_state')) {
         db("UPDATE config SET ws_ai_license_state = '', ws_ai_license_checked = 0, ws_ai_license_expires = 0, ws_ai_error = ''");
     }

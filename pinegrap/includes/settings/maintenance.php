@@ -36,7 +36,10 @@ $pg_settings_cards[] = '
                     </div>
                     <div class="col-12">
                         <div class="alert' . (($software_update_channel === 'beta') ? ' theme-warning' : ' theme-secondary') . ' mb-0 py-3 small">' . lang('Stable is the release everyone runs. Beta receives new versions earlier, before they have been through as many sites; use it on a test installation or when you are working with us on a fix. Switching back to stable does not remove a beta already installed — the site stays on it until a stable release passes it.') . '</div>
-                    </div>' . ($update_backup_ready ? '
+                    </div>' . ((defined('PG_VENDOR_API_V1') && (PG_VENDOR_API_V1 === true)) ? '
+                    <div class="col-12">
+                        <div class="form-text">' . lang('License and update checks send Kodpen this site\'s Hostname, the server\'s IP address and the versions of the software, PHP, the database and the web server.') . '</div>
+                    </div>' : '') . ($update_backup_ready ? '
                     <div class="col-12">
                         <div class="form-field">
                             <div class="switch"><input value="1"' . ($update_backup ? ' checked="checked"' : '') . ' class="" type="checkbox" id="update_backup" name="update_backup"/></div>
