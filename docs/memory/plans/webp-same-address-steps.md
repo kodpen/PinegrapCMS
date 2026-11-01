@@ -1,6 +1,6 @@
 ---
 name: webp-same-address-steps
-description: Steps W1-W6 of plans/webp-same-address.md: negotiation, switches and status, encode cap and warm-up, convert doors, Cloudflare rule, close-out; claim as [plan:webp-same-address] W<n>
+description: Steps W1-W10 of plans/webp-same-address.md: negotiation, switches, encode cap, convert doors, Cloudflare rule, panel thumbnails, Workspace previews, upload cap; claim as [plan:webp-same-address] W<n>
 ---
 
 ## Which steps are there?
@@ -23,5 +23,14 @@ description: Steps W1-W6 of plans/webp-same-address.md: negotiation, switches an
 - W5 (S) Cloudflare rule. After W2 and question 5.
   - Cloudflare Tools writes the Cache Rule (phase `http_request_cache_settings`; jpg, jpeg, png; Vary `accept` normalize, media type `image/webp`) when the token may, else shows the steps; a check fetches one picture through the edge with two `Accept` values and sets the confirmation only when each gets its own type.
 
-- W6 (S) Close-out.
+- W7 (S) Panel thumbnails. After W3 and question 7.
+  - 320 in `pg_image_derivative_widths()`; File Manager tiles and list, the product table and the image pickers ask for `?w=320&f=webp`; W3's warm-up makes the 320 copies of the newest files first (Imagick reads a JPEG at a reduced scale, `jpeg:size`).
+
+- W8 (S) Workspace previews. After W7 and question 8.
+  - `ws_file_preview()` (`includes/workspace/files.php`) answers from the derivative cache and widths; `data/temp/workspace_previews` and its sweep go; Workspace access checks stay in front.
+
+- W9 (S) Upload size cap. After question 9.
+  - "Shrink pictures larger than N px on upload" in the image card (same format, the engine's resize), the default of question 9; the heavy-images widget points to it.
+
+- W10 (S) Close-out.
   - Lasting decisions to `platform/` (the extension rule as a key rule of `platform/README.md`); the three plan files deleted.
