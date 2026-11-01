@@ -48,7 +48,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `collections`: open
 
-- `comments`: open
+- `comments`: taken by LB
 
 - `commission_list`: open
 

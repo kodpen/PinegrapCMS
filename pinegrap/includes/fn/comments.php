@@ -1189,8 +1189,10 @@ function pg_comment_reply_to($value, $page_id, $item_type, $item_id, $viewer)
 /**
  * The line of the staff e-mail about a new comment that names the comment it
  * answers, "In reply to: <name> (#<id>)" and a blank line, or '' for a
- * comment that answers none. Plain text: the stored name has its line breaks
- * turned into spaces, so it cannot add lines of its own to the e-mail.
+ * comment that answers none. The name reads as pg_comment_display_name()
+ * shows it: no name, or the literal 'Anonymous' the name choice stores, is
+ * the translated "Anonymous". Plain text: the name has its line breaks turned
+ * into spaces, so it cannot add lines of its own to the e-mail.
  *
  * @param mixed $parent the parent's row (pg_comment_parent_row()), or null
  * @return string
@@ -1202,7 +1204,7 @@ function pg_comment_parent_mail_line($parent)
     }
 
     $name = (isset($parent['name']) && is_scalar($parent['name'])) ? (string) $parent['name'] : '';
-    $name = str_replace(array("\r", "\n"), ' ', $name);
+    $name = str_replace(array("\r", "\n"), ' ', pg_comment_display_name($name));
 
     return lang('In reply to') . ': ' . $name . ' (#' . (int) $parent['id'] . ')' . "\n\n";
 }
