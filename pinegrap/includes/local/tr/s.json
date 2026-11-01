@@ -89,6 +89,7 @@
     "Sales Map": "Satış Haritası",
     "Sales Teams": "Satış Ekipleri",
     "Sales and purchase invoices, their e-document status and their returns.": "Satış ve alış faturaları, e-belge durumları ve iadeleri.",
+    "Sales by region in {var:1}, last 30 days": "{var:1} bölgelerine göre satışlar, son 30 gün",
     "Sales history lists for local sales tracking.": "Yerel satış takibi için satış geçmişi listeme.",
     "Sales invoice": "Satış faturası",
     "Sales invoice created (ID: {var:1}) but e-document failed: {var:2}": "Satış faturası oluşturuldu (ID: {var:1}) ancak e-belge başarısız oldu: {var:2}",

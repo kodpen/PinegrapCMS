@@ -67,6 +67,7 @@ function pg_dashboard_v2_cards()
 {
     // The cards whose function exists.
     $built = array('visitors', 'engagement');
+    $built = array_merge($built, array('shop', 'salesmap', 'orders', 'offers', 'fx'));
 
     $card = function ($title, $icon, $category, $width, $period, $gate) {
         return array(
@@ -111,7 +112,7 @@ function pg_dashboard_v2_cards()
         'calendars'  => $card(lang('Calendars'), 'bi-calendar3', 'team', 'S', null, 'calendars'),
         // Ecommerce
         'shop'       => $card(lang('Ecommerce Summary'), 'bi-cash-stack', 'shop', 'M', 2, 'shop_summary'),
-        'salesmap'   => $card(lang('Sales Map'), 'bi-map', 'shop', 'M', 2, 'shop_reports'),
+        'salesmap'   => $card(lang('Sales Map'), 'bi-map', 'shop', 'M', null, 'shop_reports'),
         'ops'        => $card(lang('Operations Desk'), 'bi-clipboard-check', 'shop', 'M', null, 'shop'),
         'orders'     => $card(lang('Orders'), 'bi-cart4', 'shop', 'S', null, 'shop'),
         'offers'     => $card(lang('Offers'), 'bi-tag', 'shop', 'S', null, 'shop'),

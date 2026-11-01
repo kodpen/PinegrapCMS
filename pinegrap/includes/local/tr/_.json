@@ -603,6 +603,7 @@
     "{var:1} days overdue": "{var:1} gün gecikmiş",
     "{var:1} day{suffix:1}": "{var:1} gün",
     "{var:1} day{suffix:1} ago": "{var:1} gün önce",
+    "{var:1} day{suffix:1} left": "{var:1} gün kaldı",
     "{var:1} day{suffix:1} overdue": "{var:1} gün gecikmiş",
     "{var:1} day{suffix:1} {var:2}": "{var:1} gün {var:2}",
     "{var:1} day{suffix} earlier": "{var:1} gün önce",

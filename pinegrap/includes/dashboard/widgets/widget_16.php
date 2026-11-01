@@ -23,27 +23,8 @@ function pg_dashboard_widget_16($request, $user)
     // if e-commerce is enabled and the user has access to manage e-commerce
     if ((ECOMMERCE == true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))) {
 
-        // get all of the currency information. Join user_id with username
-        $query = "SELECT
-            currencies.id,
-            currencies.name,
-            currencies.base,
-            currencies.code,
-            currencies.symbol,
-            currencies.exchange_rate,
-            currencies.created_user_id,
-            currencies.created_timestamp,
-            currencies.last_modified_user_id,
-            currencies.last_modified_timestamp,
-            last_modified_user.user_username as last_modified_username
-        FROM currencies
-        LEFT JOIN user as last_modified_user ON currencies.last_modified_user_id = last_modified_user.user_id
-        ORDER BY base DESC,name DESC,currencies.id DESC LIMIT 20";
+        $currencies = pg_dashboard_currencies();
 
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        while ($row = mysqli_fetch_assoc($result)) {
-            $currencies[] = $row;
-        }
         if (!empty($currencies)) {
             // if there is at least one result to display  
             foreach ($currencies as $currency) {
@@ -90,4 +71,39 @@ function pg_dashboard_widget_16($request, $user)
         );
         return $response;
     }
+}
+
+/**
+ * The store's currencies, base first, at most 20, with who changed each
+ * last. Shared by this card and the new dashboard's Exchange rates card.
+ *
+ * @return array[] currency rows
+ */
+function pg_dashboard_currencies()
+{
+    $currencies = array();
+
+    // get all of the currency information. Join user_id with username
+    $query = "SELECT
+        currencies.id,
+        currencies.name,
+        currencies.base,
+        currencies.code,
+        currencies.symbol,
+        currencies.exchange_rate,
+        currencies.created_user_id,
+        currencies.created_timestamp,
+        currencies.last_modified_user_id,
+        currencies.last_modified_timestamp,
+        last_modified_user.user_username as last_modified_username
+    FROM currencies
+    LEFT JOIN user as last_modified_user ON currencies.last_modified_user_id = last_modified_user.user_id
+    ORDER BY base DESC,name DESC,currencies.id DESC LIMIT 20";
+
+    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    while ($row = mysqli_fetch_assoc($result)) {
+        $currencies[] = $row;
+    }
+
+    return $currencies;
 }
