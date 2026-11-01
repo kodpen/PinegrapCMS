@@ -944,7 +944,8 @@
             return;
         }
 
-        var title = (this.tool === 'select') ? t('layers') : t('tool_' + this.tool);
+        // Select with nothing selected on a canvas shows the canvas first.
+        var title = (this.tool !== 'select') ? t('tool_' + this.tool) : ((this.doc.artboard && !this.sel.length) ? t('tool_artboard') : t('layers'));
         var body = el('div', { class: 'pgie-pb' });
 
         if (Editor.panels[this.tool]) {
