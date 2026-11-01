@@ -72,7 +72,7 @@ function test_button_bar_placement_view_pages_four_buttons_and_one_menu()
 	}
 	pg_assert_true($buttons >= 1 && $buttons <= 4, 'view_pages.php: one to four buttons in the bar (' . $buttons . ')');
 
-	foreach (array('Add Page (Legacy)', 'Update Search Index', 'Refresh SEO Scores', 'Analyze HTML Structure', 'Accessibility report') as $label) {
+	foreach (array('Add Page (Legacy)', 'Search and audits', 'Refresh SEO Scores', 'Analyze HTML Structure', 'Accessibility report') as $label) {
 		$found = false;
 		foreach (explode("\n", $block) as $line) {
 			if ((strpos($line, $label) !== false) && (strpos(ltrim($line), '//') !== 0)) {

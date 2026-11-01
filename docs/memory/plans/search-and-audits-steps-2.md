@@ -23,7 +23,7 @@ description: Steps SA6-SA13 of plans/search-and-audits.md: rule registry, same i
 - SA10 (S) Editor measurements kept. After SA9. Done (#4851).
   - On save the editor posts its browser-only findings (contrast, target size); they are stored as `a11y_` rows marked as measured in the editor, replaced on each save, left alone by the nightly pass. The report and its PDF say where and when.
 
-- SA11 (M) The screen. After SA3 and SA4.
+- SA11 (M) The screen. After SA3 and SA4. Done (#4850).
   - Per engine (index, SEO scores, structure, accessibility): last full run, running or due, progress, failures named, its switch, Run now (short requests); the Pages tools menu, the main menu and the panel search open it.
 
 - SA12 (S) Delta stage. After SA4. Done (#4837).

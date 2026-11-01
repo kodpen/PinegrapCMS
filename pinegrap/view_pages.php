@@ -277,9 +277,10 @@ if (($user['role'] < '3') || ($user['create_pages'] == TRUE)) {
         $view_pages_primary = array('label' => lang('Add Page'), 'url' => 'add_page.php', 'icon' => 'bi-plus-circle');
     }
 
-    // If advanced search is enabled and the user is a manager or above then offer "Update Search Index".
-    if ((SEARCH_TYPE == 'advanced') && (USER_ROLE != 3)) {
-        $view_pages_tools[] = '<li><button type="button" class="menu-item pg-link-body-emphasis" onclick="window.open(\'update_search_index.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\');"><i class="bi bi-search me-3" aria-hidden="true"></i>' . lang('Update Search Index') . '</button></li>';
+    // The search index, SEO scores, structure and accessibility passes on one
+    // screen (search_audits.php), managers and above.
+    if (USER_ROLE < 3) {
+        $view_pages_tools[] = '<li><a class="menu-item pg-link-body-emphasis" href="search_audits.php"><i class="bi bi-activity me-3" aria-hidden="true"></i>' . lang('Search and audits') . '</a></li>';
     }
 
     // SEO score refresh sits with the other maintenance tools. Managers and

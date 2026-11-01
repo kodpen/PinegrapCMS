@@ -247,9 +247,6 @@ function getCookie(cname) {
     }
     return "";
 }
-function open_search_index_window() {
-    window.open('update_search_index.php', 'popup', 'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500');
-}
 function lang($string) {
     return window.pgLang($string);
 }

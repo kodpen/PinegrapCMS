@@ -881,6 +881,8 @@
     "Due after (days)": "Vade (gün sonra)",
     "Due date": "Vade tarihi",
     "Due in days": "Kaç gün içinde bitecek",
+    "Due now": "Sırası geldi",
+    "Due now: it runs on the next tick of the general job.": "Sırası geldi: genel görevin bir sonraki çalışmasında çalışır.",
     "Due this week": "Bu hafta vadesi gelen",
     "Due time": "Bitiş saati",
     "Due today": "Vadesi bugün",

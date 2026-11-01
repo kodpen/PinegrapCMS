@@ -1011,6 +1011,7 @@
     "Please only enter letters, numbers, or dashes for the name.": "Lütfen ad için yalnızca harf, sayı veya tire girin.",
     "Please pick an arrival date.": "Lütfen bir teslimat tarihi seçin.",
     "Please reply within {var:1} days, by {var:2}. If we receive no reply by that date, we will take the balance as agreed.": "Lütfen {var:1} gün içinde, en geç {var:2} tarihine kadar yanıtlayın. Bu tarihe kadar yanıt alınmazsa bakiye mutabık sayılacaktır.",
+    "Please run the software upgrade first.": "Lütfen önce yazılım güncellemesini çalıştırın.",
     "Please run the software upgrade to enable SEO scores.": "SEO skorlarını etkinleştirmek için lütfen yazılım yükseltmesini çalıştırın.",
     "Please run the software upgrade to open shared components to content editors.": "Ortak bileşenleri içerik düzenleyicilere açmak için lütfen yazılım yükseltmesini çalıştırın.",
     "Please say why you reject it.": "Lütfen neden reddettiğinizi yazın.",

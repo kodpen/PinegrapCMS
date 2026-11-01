@@ -196,6 +196,7 @@ function get_help_url($properties = array())
         'view_visitor'         => 'visitors#visit-details',
         'search_console'       => 'visitors#google-search-console',
         'view_accessibility'   => 'seo#accessibility-check',
+        'search_audits'        => 'seo#seo-checks',
 
         // Contacts
         'view_contacts' => array(
