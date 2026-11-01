@@ -1223,7 +1223,8 @@ function pg_comments_component_census($ids)
  *   component that holds a comments widget count that widget once: the
  *   number is an approximation that errs on the low side.
  * - blocks: the fixed comments blocks of the page and of the components it
- *   reaches.
+ *   reaches, except a Catalog Detail's own when a comments widget sits on
+ *   the page itself: the Catalog Detail drops that block's frame then.
  * - nested_record: a form_item_view widget below the top level
  *   (pg_comments_nested_record_decision()).
  * - top_record: a form_item_view widget placed on the page itself, the one
@@ -1285,10 +1286,15 @@ function pg_comments_page_census_facts($top, $components)
         $queue[] = array($id, 0);
     }
 
+    // A Catalog Detail leaves its own fixed block out while a comments
+    // widget placed on the page itself shows the thread
+    // (_pg_civ_comments_block_will_draw()), so that block is not counted.
+    $civ_drops_block = ($widgets > 0);
+
     for ($i = 0; $i < count($queue); $i++) {
         list($id, $depth) = $queue[$i];
 
-        if (isset($components[$id]['census'])) {
+        if (isset($components[$id]['census']) && !($civ_drops_block && $type($id) === 'catalog_item_view')) {
             $blocks += $blocks_of($components[$id]['census']);
         }
 

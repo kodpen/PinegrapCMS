@@ -1307,6 +1307,14 @@ function test_comments_widget_designer_census_facts()
 	pg_assert_same(1, pg_comments_page_census_facts($top(array(9 => 2)), $components)['widgets'], 'a header placed twice counts its widget once');
 	pg_assert_same(1, pg_comments_page_census_facts($top(array(5 => 1), 1), $components)['blocks'], 'a block on the page');
 	pg_assert_same(1, pg_comments_page_census_facts($top(array(20 => 1)), $components)['blocks'], 'a block in a product widget');
+	// A product page with a comments widget on it: the Catalog Detail drops
+	// its own Reviews block, so the first Publish of a shop template's
+	// product page warns of nothing (#4901).
+	$product_page = pg_comments_page_census_facts($top(array(20 => 1, 5 => 1)), $components);
+	pg_assert_same(0, $product_page['blocks'], 'the product widget block is dropped beside a widget on the page');
+	pg_assert_same(array(), pg_comments_save_warning_codes($product_page + array('comments_on' => true)), 'no warning on the product page');
+	pg_assert_same(1, pg_comments_page_census_facts($top(array(20 => 1, 9 => 1)), $components)['blocks'], 'a widget only in a header: the product widget does not see it, its block counts');
+	pg_assert_same(1, pg_comments_page_census_facts($top(array(20 => 1, 5 => 1), 1), $components)['blocks'], 'a block on the page itself still counts');
 	pg_assert_true(pg_comments_page_census_facts($top(array(40 => 1)), $components)['nested_record'], 'a record widget in a header');
 	pg_assert_false(pg_comments_page_census_facts($top(array(30 => 1)), $components)['nested_record'], 'a record widget on the page');
 	pg_assert_true(pg_comments_page_census_facts($top(array(30 => 1)), $components)['top_record'], 'which decides the thread');

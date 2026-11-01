@@ -493,3 +493,41 @@ function test_shop_comments_product_reviews_say_review()
 		}
 	}
 }
+
+// A page whose Catalog Detail opens with the starter (whose Reviews tab holds
+// the fixed comments block) places a comments widget on the page itself, so
+// the Catalog Detail drops that tab and the save census does not warn of a
+// block beside the widget (#4901).
+function test_shop_comments_starter_product_page_saves_without_warning()
+{
+	foreach (array_keys(_shop_comments_templates()) as $id) {
+		$tpl = _shop_comments_tpl($id);
+		$found = 0;
+		foreach ($tpl['pages'] as $p) {
+			$refs = array();
+			foreach (_shop_comments_nodes($p['tree']) as $n) {
+				if ($n['type'] === 'shared_ref' && isset($n['props']['templateWidget'])) $refs[] = $n['props']['templateWidget'];
+			}
+			$starter = array();
+			$thread = 0;
+			foreach ($refs as $key) {
+				$w = $tpl['widgets'][$key];
+				$type = isset($w['config']['regionType']) ? pg_sw_widget_kind($w['config']) : '';
+				if ($type === 'catalog_item_view' && $w['tree'] === 'starter') $starter[] = $key;
+				if ($type === 'comments') $thread++;
+			}
+			if (!$starter) continue;
+			$found++;
+			pg_assert_true($thread > 0, $id . ': page ' . $p['key'] . ' places a comments widget beside the starter product view');
+
+			// The census of the saved page: the starter's block counted in the
+			// product view, the widget on the page.
+			$facts = pg_comments_page_census_facts(array('refs' => array(1 => 1, 2 => 1), 'blocks' => 0), array(
+				1 => array('type' => 'catalog_item_view', 'census' => array('refs' => array(), 'blocks' => 1)),
+				2 => array('type' => 'comments', 'census' => array('refs' => array(), 'blocks' => 0)),
+			));
+			pg_assert_same(array(), pg_comments_save_warning_codes($facts + array('comments_on' => true)), $id . ': page ' . $p['key'] . ' saves without the block warning');
+		}
+		pg_assert_true($found > 0, $id . ': a product page with the starter product view');
+	}
+}
