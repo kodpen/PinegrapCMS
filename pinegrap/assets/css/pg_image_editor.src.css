@@ -1337,6 +1337,14 @@
 
 /* -- Redact (pg_image_editor_redact.js) -- */
 
+.pgie-note.pgie-warn {
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, #f9a825 45%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, #f9a825 14%, transparent);
+  color: var(--pgie-tx);
+}
+
 /* -- Versions (pg_image_editor_versions.js) -- */
 
 .pgie-vbtn {

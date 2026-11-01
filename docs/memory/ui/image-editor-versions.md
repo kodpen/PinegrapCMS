@@ -24,7 +24,7 @@ module: image_editor
 ## How many are kept and where are they counted?
 - The original plus the last 10 saves (#4203), and the base rows those saves are drawn on (`pg_file_versions_pruned()`, pure): pruning a base made the newest document open with its layers burned in.
 - Deleting a file for good deletes its rows and pictures: `pg_file_versions_delete_file()` in the File Manager, the Recycle Bin, edit_file.php, edit_files.php, edit_design_file.php; the general job's daily `pg_file_versions_sweep()` takes the versions of files deleted elsewhere (designer, theme files, attachments). `pg_files_disk_usage()` adds their bytes to Disk Usage.
-- Redacted saves (`redacted = 1`) are E10's: the column is written 0 until then.
+- A redacted save writes `redacted = 1`, `source = 'redact'` (`ui/image-editor-redact.md`).
 
 ## What does the drawer show?
 - The top bar's Versions button with the count (icon only on a phone) opens the panel as the drawer (screen 10): each version with when, who ("You" for the one asking), kind, size, Preview (the picture over the stage, Back to editing), Restore, Delete. Picking a tool closes it.
