@@ -66,7 +66,7 @@ function add_to_cart($request) {
 
     if (!$item['id']) {
 
-        $message = 'Sorry, that product could not be added. The product might no longer exist or might have recently been disabled.';
+        $message = lang('Sorry, that product could not be added. The product might no longer exist or might have recently been disabled.');
 
         if ($form) {
             $form->mark_error('', $message);
