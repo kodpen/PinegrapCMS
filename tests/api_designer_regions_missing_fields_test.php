@@ -143,3 +143,22 @@ function test_api_designer_regions_search_filters()
 
 	pg_assert_contains("cregion_name LIKE '%head%'", $run['queries'][0]);
 }
+
+// A search sent as a list is read as no search.
+function test_api_designer_regions_search_list_is_ignored()
+{
+	$run = api_designer_regions_missing_fields_run(array('action' => 'get_designer_regions', 'search' => array('x')));
+
+	if ($run === null) {
+		pg_assert_true(true, 'PHP cannot be started again here');
+		return;
+	}
+
+	pg_assert_false(isset($run['error']), isset($run['error']) ? $run['error'] : '');
+
+	if (isset($run['error'])) {
+		return;
+	}
+
+	pg_assert_false(strpos($run['queries'][0], 'LIKE') !== false, 'a search filter from a list');
+}

@@ -37,14 +37,18 @@ function pg_panel_get_designer_regions($request, $action)
 {
     $sql_content = "";
 
-    if ($request['content'] == true) {
+    if (!empty($request['content'])) {
         $sql_content = ", cregion_content AS content";
     }
 
+    // The LiveSite migration sends only "content"; a missing or non-text
+    // search means no filter.
+    $search = (isset($request['search']) && is_scalar($request['search'])) ? (string) $request['search'] : '';
+
     $sql_search = "";
 
-    if ($request['search'] != '') {
-        $sql_search = "AND (cregion_name LIKE '%" . escape(escape_like($request['search'])) . "%')";
+    if ($search != '') {
+        $sql_search = "AND (cregion_name LIKE '%" . escape(escape_like($search)) . "%')";
     }
 
     $designer_regions = db_items(
