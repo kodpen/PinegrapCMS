@@ -7543,6 +7543,13 @@ function send_givex_request($type, $gift_card_code, $amount = 0)
     $result['curl_error'] = $response['error'];
     return $result;
 }
+// Turns a Givex amount (a decimal string in major units) into integer minor units. The
+// product is rounded: 19.99 * 100 is 1998.999... as a float, and kept as it was it left a
+// fraction of the order to charge after a card that covered the whole total.
+function pg_givex_minor_units($amount)
+{
+    return (int) round((float) $amount * 100);
+}
 // Reads a Givex reply: a list of strings, the transaction code, the result (0 for success),
 // then the balance of a balance check, or the authorization number and the new balance of a
 // redemption; a failure has the error text third, a non-standard reply first. The result has

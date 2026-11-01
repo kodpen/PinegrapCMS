@@ -41,11 +41,15 @@ submit check, and at redemption after Givex had taken the amount (order left
 incomplete, a retry redeemed again).
 
 ## How is a Givex balance turned into minor units?
-- `submit_order()` keeps the checked balance as `(int) round($balance * 100)`.
-  Before (#4607), `19.99 * 100` stayed 1998.9999…: a card
-  holding the order total left a total above zero, so a card payment was
-  still asked. `order_preview.php`, `express_order.php` and the redemption
-  still multiply without rounding (other files; not yet fixed).
+- Only through `pg_givex_minor_units()` (`includes/fn/ecommerce.php`):
+  `(int) round($amount * 100)`. Used by the balance check at apply
+  (`order_preview.php`, `express_order.php`), in `submit_order()` and for
+  the new balance after a redemption (`order_completion.php`).
+- Before, `19.99 * 100` stayed 1998.9999…: a card holding the order total
+  left a fraction above zero, so a card payment was still asked
+  (`submit_order()` fixed in #4607; apply and redemption in #4626).
+  Tests: `tests/givex_gift_card_test.php` checks no file multiplies
+  the reply balance by hand.
 
 ## Which inputs count as not given?
 - A code that is empty once dashes and spaces are stripped (`----`) is "could
