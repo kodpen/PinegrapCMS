@@ -239,6 +239,7 @@ $ticket_widgets = array(
             'product_group_id'        => 0,
             'next_page_id'            => '{{tab:cart}}',
             'catalog_listing_page_id' => '{{tab:tickets}}',
+            'catalog_root_label'      => lang('Tickets'),
             'not_found_message'       => lang('Product not found.'),
         ),
         'tree'     => 'starter',

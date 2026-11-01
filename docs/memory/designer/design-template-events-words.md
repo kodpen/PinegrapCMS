@@ -1,17 +1,17 @@
 ---
 name: design-template-events-words
-description: Events template wording: "Events" is Etkinlikler (1.0.3, #4810), bilet, oturum dizisi, own keys for registration pages (1.0.1, #4825), heading order (1.0.2, #4824).
+description: Events template wording: "Events" is Etkinlikler (1.0.3, #4810), bilet, oturum dizisi, own keys for registration pages (1.0.1, #4825), ticket breadcrumb Biletler (1.0.4), heading order (1.0.2, #4824).
 ---
 
 ## Which Turkish words does it use?
 - One word per thing: a pass is "bilet" (never "geçiş"), a track "oturum dizisi" (never "kol"); the help center's FAQ sends a visitor to "Etkinliğe Kayıt", not to Sign Up ("Kayıt Ol", the account page).
 - Own keys where a shared key read wrong: the form page is `Register for an Event` ("Etkinliğe Kayıt"), a registration's page `My Registration` ("Kaydım"), the status `Registration cancelled` ("İptal edildi"; `Cancelled` is the panel's "İptal Edildi" in 68 places), the speakers address `our-speakers` ("konusmacilar"; `speakers` is also the "40+ konuşmacı" figure). `News` itself is "Haberler" everywhere.
 
-## What is still open?
-- The ticket product's breadcrumb still starts with "Main Catalog" (`pg_sw_list_crumb_rows_item()` has no root label): a platform change, not part of 1.0.1.
+## Why does the ticket product's breadcrumb start with "Biletler"? (1.0.4, #4825)
+- It read "Ana Katalog" while linking to the tickets page. `catalog_item_view` takes an optional `catalog_root_label` (no editor field; blank keeps "Main Catalog", so other sites are unchanged), passed through `_civ_breadcrumb_rows()` to `pg_sw_list_crumb_rows_item()`; the template sets `lang('Tickets')`. Installed sites keep their stored widget config.
 
 ## Which test checks it?
-- `test_events_turkish_words_name_one_thing_one_way` checks every Turkish value of the template's keys.
+- `test_events_turkish_words_name_one_thing_one_way` checks every Turkish value of the template's keys; `test_events_tickets_catalog_and_shop_pages` the root label, `test_widget_parts_breadcrumb_rows` the label itself.
 
 
 ## How are its headings ordered? (1.0.2, #4824)
