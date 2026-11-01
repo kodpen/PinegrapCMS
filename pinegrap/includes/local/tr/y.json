@@ -578,6 +578,8 @@
     "years caring for the neighbourhood": "yıldır mahallemizin sağlığı için",
     "years of experience": "yıllık deneyim",
     "years on the same street": "yıldır aynı sokakta",
+    "yesterday": "dün",
+    "yesterday {var:1}": "dün {var:1}",
     "you owe": "siz borçlusunuz",
     "your tasks": "görevlerin"
 }
