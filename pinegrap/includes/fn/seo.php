@@ -1193,14 +1193,28 @@ function pg_og_image_from_file_id($file_id)
 }
 
 /**
- * First <img> address out of a rich-text value, absolutized.
+ * First <img> address out of a rich-text value that is a web address,
+ * absolutized. A picture pasted into the editor is a data: address, and
+ * blob: or cid: ones come from copied content: none of them can be a share
+ * image, and made relative to the site they would point at nothing.
  */
 function pg_first_image_url_from_html($html)
 {
     $html = html_entity_decode((string) $html, ENT_QUOTES, 'UTF-8');
 
-    if (preg_match('/<img[^>]+src\s*=\s*["\']([^"\']+)/i', $html, $matches)) {
-        return pg_absolutize_site_url($matches[1]);
+    if (!preg_match_all('/<img[^>]+src\s*=\s*["\']([^"\']+)/i', $html, $matches)) {
+        return '';
+    }
+
+    foreach ($matches[1] as $src) {
+        $src = trim($src);
+
+        // A scheme other than http(s): "data:", "blob:", "cid:" and the like.
+        if (preg_match('#^[a-z][a-z0-9+.\-]*:#i', $src) && !preg_match('#^https?:#i', $src)) {
+            continue;
+        }
+
+        return pg_absolutize_site_url($src);
     }
 
     return '';
