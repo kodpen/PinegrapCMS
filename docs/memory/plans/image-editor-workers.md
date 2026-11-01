@@ -15,7 +15,7 @@ description: How coordinators' workers take the free steps of plans/image-editor
 - The core, `pg_image_editor_layers.js` or another tool's part only for a hook it needs: a small edit, named in the PR body. A clash with another open step goes to the architect (CLAUDE.md Working mode 10).
 
 ## How is a step built?
-- Read the step line, its screens (`image-editor-visuals.md`, the pictures in `plans/image-editor/`), the prototype's part for it, `image-editor-design.md`, `ui/image-editor-parts.md`, and the crop, adjust and layers files as examples.
+- Read the step line, its screens (`image-editor-visuals.md` or `image-editor-animation-visuals.md`, the pictures in `plans/image-editor/`), the prototype's part for it, `image-editor-design.md`, `ui/image-editor-parts.md`, and the crop, adjust and layers files as examples.
 - Labels only with `php tools/tr_add.php`; rebuild the bundles; Node tests for the model section; the checks of CLAUDE.md "When a task is done".
 - Try it in a browser (`workflow/sandbox-and-environment.md`) at desktop size and on a phone (390x844 and 844x390, touch): draw or type, move, resize, undo and redo, save over a file and as a copy, reopen. The PR body says what was tried on both and what could not be.
 
