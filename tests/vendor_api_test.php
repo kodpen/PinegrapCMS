@@ -318,3 +318,20 @@ function test_vendor_api_switch_off_calls_nothing()
 	pg_assert_contains('switched off', $answer['error']);
 	pg_assert_same('', $answer['content_type']);
 }
+
+// api2 answers without the fixed API key, so no call in the product sends it
+// (download_assistant.php sits outside pinegrap/ and keeps its own).
+function test_vendor_api_no_fixed_api2_key_in_product()
+{
+	$found = array();
+	$files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(PG_FUNCTIONS_DIR, FilesystemIterator::SKIP_DOTS));
+	foreach ($files as $file) {
+		if (substr($file->getFilename(), -4) !== '.php') {
+			continue;
+		}
+		if (strpos((string) file_get_contents($file->getPathname()), 'api2?API=') !== false) {
+			$found[] = $file->getPathname();
+		}
+	}
+	pg_assert_same(array(), $found, 'no api2?API= in pinegrap/');
+}

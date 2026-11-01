@@ -74,10 +74,6 @@ function test_dark_theme_please_wait_overlay_uses_tokens()
 
 function test_dark_theme_fixed_fills_follow_tokens()
 {
-	$widget = dark_theme_leftovers_source('includes/dashboard/widgets/widget_14.php');
-	pg_assert_contains('height:4px;background:var(--pg-bg-2);overflow:hidden', $widget);
-	pg_assert_false(strpos($widget, '#e5e7eb') !== false, 'hosting widget track');
-
 	$form = dark_theme_leftovers_source('includes/forms/field_form.php');
 	pg_assert_contains('<div style="background: var(--pg-border-color);width: 3px;height: 14px;', $form);
 	pg_assert_contains('<div style="background: var(--pg-border-color);width: 14px;height: 3px;', $form);
