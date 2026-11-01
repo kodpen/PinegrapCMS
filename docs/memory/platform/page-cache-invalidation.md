@@ -5,7 +5,7 @@ description: Which writes make every page the file cache keeps old (PR #1402): t
 
 ## How are stored pages made old?
 - `pg_page_cache_mark_dirty()` registers one shutdown call that raises `config.page_cache_generation` (2026.11.0, 11.0.29) when the status is < 400, also while the page cache is off: the kept sitemap.xml follows the same number (`visitors/sitemap-cache.md`). The router reads the number from the config row it reads anyway and looks in `g<generation>/` only (`page-file-cache.md`).
-- Raised directly: `pg_page_schedule_run()` when it moved a page; the settings save when the TTL changes; `pg_purge_caches()` (also sets the folder aside, "Page Cache").
+- Raised directly: `pg_page_schedule_run()` when it moved a page; `pg_gsc_link()` right after writing the verification code, since Google reads the home page within that request (#4852); the settings save when the TTL changes; `pg_purge_caches()` (also sets the folder aside, "Page Cache").
 
 ## Which requests mark it?
 - `init.php` after `waf_run('init')`, `pg_page_cache_request_dirties()`: a non-GET/HEAD/OPTIONS request of a signed-in user or an `integration.php` client. Not `page_view.php`, `api.php`, `chat.php`, `software_update_check.php`, `workspace*`, `mcp.php`, OAuth: they poll or answer reads with POST; nor `wishlist.php`: a heart changes no stored page, its state is filled in by script; nor `stock_notify.php`: no page shows a back-in-stock request.

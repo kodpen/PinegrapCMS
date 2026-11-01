@@ -30,7 +30,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `reviews`: taken by LC, #4597
 
-- `search_console`: open
+- `search_console`: #4852
 
 - `seo`: open
 
