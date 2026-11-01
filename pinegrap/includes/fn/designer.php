@@ -6117,8 +6117,10 @@ function _render_content_html($props, $pad, $kids = '')
             //
             // Markup mirrors liveform::output_errors() so theme CSS (software_error /
             // software_notice / software_warning + alert + alert-dismissible) applies.
-            // An e-mail page never shows (or uses up) the visitor's pending
+            // An e-mail page and a background render (the editor's Preview,
+            // the SEO pass) never show or use up the session's pending
             // messages: they belong to the page the visitor sees next.
+            if (function_exists('pg_seo_rendering') && pg_seo_rendering()) break;
             if (function_exists('pg_sw_render_context')) {
                 $msg_ctx = pg_sw_render_context();
                 if (!empty($msg_ctx['email'])) break;
