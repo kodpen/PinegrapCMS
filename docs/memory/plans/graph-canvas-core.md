@@ -1,6 +1,6 @@
 ---
 name: graph-canvas-core
-description: Plan (2026-10-24, answers #2445, slice 1 done #3162, 2a in progress): a reusable box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
+description: Plan (2026-10-24, answers #2445, slice 1 done #3162, 2a #4402): a reusable box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
 ---
 
 ## What is asked? (owner, 2026-10-24)
@@ -23,7 +23,7 @@ description: Plan (2026-10-24, answers #2445, slice 1 done #3162, 2a in progress
 ## Slices (one PR each)
 1. Done #3162: the harness, run by hand (workspace/workspace-flows-canvas-harness.md); 30 of 30 since #4316.
 2. Pure refactor: core plus Flows adapter, behaviour identical, the harness's result the same before and after; new tests: core keys in the shards and `pg_graph_canvas_js_strings()`, the core bundled; the literals the canvas test reads stay in workspace_flow.js; core printed first. Cut into PRs of about 1,000 lines:
-   - 2a (PR pending): the core file and bundle, printed first; helpers, undo history, `viewport(host)` moved; workspace_flow.js aliases them (`var x = G.x`; `ws_flows_canvas_test_node()` searches the core too).
+   - 2a done #4402: the core file and bundle, printed first; helpers, undo history, `viewport(host)` moved; workspace_flow.js aliases them (`var x = G.x`; `ws_flows_canvas_test_node()` searches the core too).
    - 2b: `create(root, adapter)`: pointer, keys, listeners removed on destroy, `select`; Flows keeps threads, binding, `askConnect`, `focusField` as hooks.
    - 2c: boxes, ports, arrows, marks, live region, outline; first texts in `pg_graph_canvas_js_strings()`.
    - 2d: autosave (keepalive, 409) behind `adapter.save`.
