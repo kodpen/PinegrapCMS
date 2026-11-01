@@ -1,10 +1,10 @@
 ---
 name: image-editor-steps-2
-description: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboard, optimisation, pen, SVG, Workspace, designer, access, animation, close-out; claim as [plan:image-editor] E<n>
+description: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboard, optimisation, pen, SVG, Workspace, designer, access, close-out; claim as [plan:image-editor] E<n>
 ---
 
 ## Which steps are there?
-- Sizes and screens as in `image-editor-steps.md`. E11's table is settled (#4202, `image-editor-server.md`); E12 needs E11 for editable texts; E19 comes last (#4203).
+- Sizes and screens as in `image-editor-steps.md`. E11's table is settled (#4202, `image-editor-server.md`); E12 needs E11 for editable texts.
 
 - E11 (M) Versions. Screen 10. `free` Done (#4483, `ui/image-editor-versions.md`).
   - A sub-step in the open version's migration with `install_create_table()`, rerun twice on a dev DB; a save writes a version and its doc; opening loads the original plus the doc; the versions drawer (preview, restore, delete); retention: the original plus the last 10 saves (#4203).
@@ -33,8 +33,7 @@ description: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboa
 - E18 (S) Access. `free` after E9.
   - Keyboard map and help sheet, names for every control, focus trap, reduced motion, two-finger rotate (the phone layout is E1b).
 
-- E19 (M, later) SVG animation presets.
-  - Per layer: entrance (fade, slide, scale, draw the stroke) and loop (pulse, float, spin, blink) with delay, duration, easing; a play button. The server writes one `<style>` of `@keyframes` from the preset names and numbers, never the browser's CSS, inside `prefers-reduced-motion: no-preference`. Only SVG output moves (`<img>`, CSS background, inline); raster formats keep the first frame; no SMIL, script, GIF or video.
+- E19 SVG animation. AN10 of `image-editor-animation-steps.md` (owner, 2026-11-01).
 
 - E20 (S) Close-out.
   - Lasting decisions to topic files (`designer/image-editor-tool.md` rewritten, a `platform/` file for the save pipeline and one for the SVG sanitizer); the plan files and `plans/image-editor/` deleted.

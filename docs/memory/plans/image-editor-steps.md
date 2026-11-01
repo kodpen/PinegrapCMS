@@ -11,8 +11,7 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
   - Opens `{src}` and `{blank}`; no caller switched yet. The JS maths (matrices, rotated space) gets `node --test` tests.
 
 - E1b (S) Phone layout. Screens 20-25. Done in #4186 (`ui/image-editor-modal.md`).
-  - Narrower than 600 px: the rail becomes a scrolling bottom bar, the tool's panel a sheet above it (handle, at most 42 % of the height; closed for Select until something is chosen), the top bar keeps close, name, undo, redo and save; the mini bar sits at the bottom; handles get 44 px touch targets; safe-area insets.
-  - Lower than 500 px (a phone held sideways): an icon rail on the left and the panel as a sheet over the right of the stage. Replaces E1's rule that hides the panel under 768 px.
+  - Narrower than 600 px: a scrolling bottom bar of tools and the panel as a sheet above it; lower than 500 px: an icon rail on the left and the panel over the stage's right.
 
 - E2 (M) Crop and geometry. Screen 02. Done in #4208 (`ui/image-editor-crop.md`).
   - Crop box and handles, ratios (free, original, 1:1, 4:3, 3:2, 16:9, 4:5, 9:16), quarter turns, flips, straighten ±45° with cover scale, output size with presets, crop shape (rounded, circle).
@@ -41,3 +40,6 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
 
 - E10 (M) Redaction. Screen 06. Done (#4579).
   - Pixelate, blur, solid box and brush-shaped areas; browser preview, burned in by server step 4; metadata stripped; the versions stay and the served file loses its metadata (#4203).
+
+- E10b (S) Redaction through save.url. `free`.
+  - A save to another endpoint (`save.url`: the Workspace's `workspace_file_save.php`) loses the redaction: the redact part sends its masks only for replace and copy and `pg_image_editor_render()` takes none, so the saved picture shows what was covered. The hook sends them for `url` too; `pg_image_editor_render()` checks them with `pg_image_editor_take_redactions()`, burns them in as a save's step 4 does and removes the masks on every path. A test renders a solid area through it; try a redacted Workspace picture.

@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-16
-description: Decisions list, product part 16 (2026-11-01 on): design templates finished (comments, events, testimonials); Turkish address fields (İl and İlçe)
+description: Decisions list, product part 16 (2026-11-01 on): design templates finished (comments, events, testimonials); Turkish address fields (İl and İlçe); image editor animation and video
 ---
 
 ## Where are the rules and the earlier parts?
@@ -13,3 +13,7 @@ description: Decisions list, product part 16 (2026-11-01 on): design templates f
 ## Turkish address fields: İl and İlçe (2026-11-01)
 - Owner, 2026-11-01: a Turkish address is asked as İl (the state box) and İlçe (the city box) in every form: site, designer widgets and their starters, classic pages and layouts, panel. The separate district box (#3569, #3641) is not drawn for it; it stays for an address abroad whose carrier asks. A Turkish recipient's `ship_tos.district` is written from the city box; readers take `ship_tos.district` when filled, else the city (the e-waybill too). City and district stay free text where no list exists.
 - Reason: in Turkey the city is the province, so "Şehir" beside "Eyalet / İl" was typed twice, while the account card, e-invoice, e-waybill, imports, carriers and the Turkish default layouts read the city box as the district. The separate box is unreleased (2026.11.0). Plan: `plans/address-fields-by-country.md`.
+
+## Image editor: animation, video and presentation (2026-11-01)
+- Owner, 2026-11-01: the image editor gets animation, saved as GIF or another format, and presentation and video where possible. It widens the editor's decisions of 2026-10-31 (`decisions-made-product-14.md`, which had no video) and #4203's SVG animation (`decisions-made-product-15.md`, where a raster output kept the first frame).
+- Running sites change nothing until someone animates: a still save stays as it is. Plan: `plans/image-editor-animation.md`; its open questions (what a presentation is, sound) go through the architect.
