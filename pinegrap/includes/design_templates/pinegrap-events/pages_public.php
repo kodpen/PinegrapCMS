@@ -349,7 +349,7 @@ foreach ($speakers as $key => $s) {
 
 $public_pages[] = array(
     'key'              => 'speakers',
-    'name'             => lang('speakers'),
+    'name'             => lang('our-speakers'),
     'folder'           => 'public',
     'title'            => lang('Speakers'),
     'meta_description' => lang('The speakers of the conference: who they are, where they work and what they will talk about.'),

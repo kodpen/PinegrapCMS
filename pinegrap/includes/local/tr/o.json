@@ -686,7 +686,7 @@
     "Open My guides from My Account. Each guide you sent has its own page, where the moderators write to you and you can answer them; each message also comes by e-mail.": "Hesabım'dan Rehberlerim'i açın. Gönderdiğiniz her rehberin, moderatörlerin size yazdığı ve sizin de onlara yanıt verebildiğiniz kendi sayfası vardır; her mesaj ayrıca e-postayla gelir.",
     "Open Page Designer": "Sayfa Tasarımcısını Aç",
     "Open Positions": "Açık Pozisyonlar",
-    "Open Register, choose the event and your pass, fill in your details and send the form. Free events and invoiced passes need nothing more; a paid pass can also be bought on the tickets page.": "Kayıt Ol'u açın, etkinliği ve geçişinizi seçin, bilgilerinizi doldurup formu gönderin. Ücretsiz etkinlikler ve faturalı geçişler için başka bir şey gerekmez; ücretli bir geçiş bilet sayfasından da satın alınabilir.",
+    "Open Register, choose the event and your pass, fill in your details and send the form. Free events and invoiced passes need nothing more; a paid pass can also be bought on the tickets page.": "Etkinliğe Kayıt sayfasını açın, etkinliği ve biletinizi seçin, bilgilerinizi doldurup formu gönderin. Ücretsiz etkinlikler ve fatura ile ödenen biletler için başka bir şey gerekmez; ücretli bir bileti biletler sayfasından da satın alabilirsiniz.",
     "Open SMTP Settings": "SMTP Ayarları'nı aç",
     "Open Settings": "Ayarları Aç",
     "Open Settings and choose E-mail to notes to see your address.": "Adresinizi görmek için Ayarlar'ı açın ve E-postadan nota'yı seçin.",
@@ -1436,6 +1436,7 @@
     "orphaned form was moved to page ({var:1})": "sahipsiz form ({var:1}) sayfasına taşındı",
     "our-cafes": "subelerimiz",
     "our-menu": "menumuz",
+    "our-speakers": "konusmacilar",
     "over the device limit": "cihaz sınırı aşıldı",
     "overdue only": "yalnız gecikenler",
     "owes you": "size borçlu"

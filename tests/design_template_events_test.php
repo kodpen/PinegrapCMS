@@ -13,7 +13,8 @@
  * registration form keeps what the request flow relies on (field names,
  * the event and pass filled from the address, the office-only status, the
  * consent link, the e-mail pages); its messages and the reply e-mail run
- * on the Comments widget, with no fixed comments block.
+ * on the Comments widget, with no fixed comments block; the Turkish words
+ * name one thing one way (a ticket, a track, the registration pages).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -24,6 +25,8 @@
 if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
+
+require_once(__DIR__ . '/helpers/language_map.php');
 
 // The parts as the template file reads them: parts.php first, then each
 // page file in the same scope. Read once per run.
@@ -413,4 +416,36 @@ function test_events_tickets_catalog_and_shop_pages()
 	// The account bar places the cart link; on a site without the shop
 	// the link is left out with its widget.
 	pg_assert_contains('"templateWidget":"cart_link"', json_encode($d['shared'][0]), 'account bar places the cart link');
+}
+
+// The Turkish words of the template: a pass is a ticket ("bilet", never
+// "geçiş"), a track is an "oturum dizisi" (never "kol"), the help center
+// sends a visitor to the event registration page, not to Sign Up, and the
+// form page and a registration's own page do not share one title.
+function test_events_turkish_words_name_one_thing_one_way()
+{
+	$map = pg_test_language_map('tr');
+	$keys = array();
+	foreach (glob(PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-events{,/*}.php', GLOB_BRACE) as $file) {
+		preg_match_all("/lang\\('((?:[^'\\\\]|\\\\.)*)'\\)/", file_get_contents($file), $m);
+		foreach ($m[1] as $k) $keys[stripslashes($k)] = true;
+	}
+	pg_assert_true(count($keys) > 100, 'template keys found');
+	foreach (array_keys($keys) as $k) {
+		if (!isset($map[$k])) continue;
+		pg_assert_true(!preg_match('/geçiş|\\bkol(u|un|unun|unda|lar)?\\b/u', $map[$k]), "one word for passes and tracks: $k");
+	}
+	$faq = 'Open Register, choose the event and your pass, fill in your details and send the form. Free events and invoiced passes need nothing more; a paid pass can also be bought on the tickets page.';
+	pg_assert_true(strpos($map[$faq], 'Kayıt Ol') === false, 'the help center names the registration page, not Sign Up');
+
+	$register = _test_events_part('pages', 'registration');
+	$view = _test_events_part('pages', 'registration_view');
+	pg_assert_true($map[$register['title']] !== $map[$view['title']], 'the form page and a registration page have their own titles');
+
+	$d = _test_events_load();
+	$speakers = null;
+	foreach ($d['pages'] as $p) if ($p['key'] === 'speakers') $speakers = $p;
+	pg_assert_true((bool)preg_match('/^[a-z0-9-]+$/', $map[$speakers['name']]), 'the speakers page address is plain ASCII');
+	pg_assert_true($map[$speakers['name']] !== $map['speakers'], 'the speakers page address is not the figure label');
+	pg_assert_same('Haberler', $map['News'], 'the news page and menu item are plural');
 }
