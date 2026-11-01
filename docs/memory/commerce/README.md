@@ -30,6 +30,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - back-in-stock-notices.md: Back-in-stock notices (includes/fn/stock_notify.php, stock_notify.php): who may ask, the request rules, the inventory.changed listener, claim then mail, queue vs inline, trim, export, delete hooks
 - back-in-stock-sms.md: Back-in-stock notice by SMS (PR #1864): kind stock (transactional, owner decision), the stock_back event, the optional number field, text instead of mail, the one-message promise
 - barcode-stock-scan-checks.md: Barcode stock increase/decrease and the product screen's barcode save: whole quantities only (pg_barcode_scan_quantity()), no product in the Recycle Bin or missing (#4447)
+- card-brand-switches.md: How the checkout reads the accepted card brand switches (Visa, MasterCard, American Express, ...) and why American Express was never counted
 - card-data-manual-processing.md: Card data with no payment gateway (manual processing): the security code never stored, the number encrypted only, masked once the order is processed; refusal without openssl; hourly sweep
 - card-surcharge-rounding.md: Card surcharge (ECOMMERCE_SURCHARGE_PERCENTAGE) as a figure: pg_percent_of() in minor units, the same on every PHP version; the classic pages post what submit_order() charges (PR #1388)
 - carrier-label-aras.md: Aras Kargo label driver (2026.11.0, #3259), the first direct Turkish carrier: SOAP from its WSDL, integration code as reference, Aras's own ZPL/PDF label, cancel, waybill status, unverified points
@@ -233,6 +234,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - subscriptions-iyzico.md: iyzico store-run subscriptions (PR #3249, decided in #3183): the stored-card renewals switch, card_ref, charge_renewal, update_card, subscription_cancel, the checkout row
 - subscriptions-later-start.md: Recurring lines that start after the order day on the driver gateways (PR #3378, decided in #3310): their row on today's card, the first charge on the start date, the nothing-today order refused
 - subscriptions-mails.md: Subscription e-mails (decided in #3288): renewed / failed / cancelled campaign profiles, which event mails which, once per event, the fields, the signed card update page, step 11.0.129
+- subscriptions-number-of-payments.md: What a product's Number of Payments (recurring_number_of_payments) counts on store-run subscriptions (#4623): N charges in all, the order's own charge included; legacy gateway profiles differ
 - subscriptions-operator-screen.md: Operator Subscriptions screen (#3343): view_subscriptions.php list and filters, ?id= row page, pause/resume/cancel at period end through the shared move, operator named in the event
 - subscriptions-price-notice.md: Subscription price change (decided in #3311, PR #3495): price_notice event 14 days ahead, subscription_price_changed mail, applied from the first renewal on or after its date, step 11.0.132
 - subscriptions-renewal.md: Renewals of store-run subscriptions (PR #3290, decided in #3183): job branch, per-row lock, renewal order, next date, 1/3/7 ladder, held rows and Stripe's paid report

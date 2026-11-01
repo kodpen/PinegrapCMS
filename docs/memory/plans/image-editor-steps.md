@@ -39,5 +39,5 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
 - E9 (M) Switch and removal. Done in #4609 (`ui/image-editor-callers.md`).
   - Every caller on the new editor, `image_editor_edit.php` a redirect; the old editor, its endpoint and loader removed.
 
-- E10 (M) Redaction. Screen 06. `free` after E11.
+- E10 (M) Redaction. Screen 06. Done (#4579).
   - Pixelate, blur, solid box and brush-shaped areas; browser preview, burned in by server step 4; metadata stripped; the versions stay and the served file loses its metadata (#4203).

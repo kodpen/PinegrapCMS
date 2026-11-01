@@ -1930,18 +1930,19 @@ function waf_collect_targets()
         waf_flatten($source, $label, $targets, $count);
     }
 
-    if ($count < WAF_MAX_VALUES) {
-        if (!empty($_SERVER['REQUEST_URI'])) {
-            $targets['REQUEST_URI'] = (string) $_SERVER['REQUEST_URI'];
-        }
+    // The request line, the user agent and the referrer are scanned whatever
+    // the parameter count: they are three values, and leaving them to the cap
+    // let a request padded with 250 cookies carry its payload in the path.
+    if (!empty($_SERVER['REQUEST_URI'])) {
+        $targets['REQUEST_URI'] = (string) $_SERVER['REQUEST_URI'];
+    }
 
-        if (!empty($_SERVER['HTTP_USER_AGENT'])) {
-            $targets['USER_AGENT'] = (string) $_SERVER['HTTP_USER_AGENT'];
-        }
+    if (!empty($_SERVER['HTTP_USER_AGENT'])) {
+        $targets['USER_AGENT'] = (string) $_SERVER['HTTP_USER_AGENT'];
+    }
 
-        if (!empty($_SERVER['HTTP_REFERER'])) {
-            $targets['REFERER'] = (string) $_SERVER['HTTP_REFERER'];
-        }
+    if (!empty($_SERVER['HTTP_REFERER'])) {
+        $targets['REFERER'] = (string) $_SERVER['HTTP_REFERER'];
     }
 
     return $targets;
@@ -3938,7 +3939,31 @@ function pinegrap_user_agent()
  */
 function waf_path_is_always_served()
 {
-    $url = isset($_SERVER['REQUEST_URI']) ? strtolower($_SERVER['REQUEST_URI']) : '';
+    return waf_path_is_always_served_for(
+        waf_script_name(),
+        isset($_SERVER['REQUEST_URI']) ? (string) $_SERVER['REQUEST_URI'] : ''
+    );
+}
+
+/**
+ * The rule of waf_path_is_always_served() for a given request.
+ *
+ * Only router.php answers robots.txt and .well-known/ (a file on disk there
+ * never reaches PHP). Any other script is asked by its own name: PATH_INFO
+ * is the caller's to write, and /custom_form.php/.well-known/x ran the form
+ * with the bot policy and the country restriction skipped.
+ *
+ * @param string $script      the running script's file name (waf_script_name())
+ * @param string $request_uri the request's REQUEST_URI
+ * @return bool
+ */
+function waf_path_is_always_served_for($script, $request_uri)
+{
+    if ($script !== 'router.php') {
+        return false;
+    }
+
+    $url = strtolower((string) $request_uri);
 
     if ($url === '') {
         return false;

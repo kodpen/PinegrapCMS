@@ -141,8 +141,18 @@ function pg_pdf_stream_data($body)
 
     $start = $match[0][1] + strlen($match[0][0]);
     $end = strrpos($body, 'endstream');
-    $data = rtrim(substr($body, $start, ($end === false ? strlen($body) : $end) - $start), "\r\n");
+    $data = substr($body, $start, ($end === false ? strlen($body) : $end) - $start);
     $dictionary = substr($body, 0, $match[0][1]);
+
+    // Compressed bytes may themselves end in CR or LF: a direct /Length is
+    // exact; without one only the single end-of-line before "endstream" is cut.
+    if (preg_match('#/Length\s+(\d++)(?!\s+\d+\s+R)#', $dictionary, $length) && ((int) $length[1] <= strlen($data))) {
+        $data = substr($data, 0, (int) $length[1]);
+    } elseif (substr($data, -2) === "\r\n") {
+        $data = substr($data, 0, -2);
+    } elseif (in_array(substr($data, -1), array("\r", "\n"), true)) {
+        $data = substr($data, 0, -1);
+    }
 
     if (strpos($dictionary, '/FlateDecode') === false) {
         return $data;

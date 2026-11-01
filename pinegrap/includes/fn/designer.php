@@ -6117,8 +6117,10 @@ function _render_content_html($props, $pad, $kids = '')
             //
             // Markup mirrors liveform::output_errors() so theme CSS (software_error /
             // software_notice / software_warning + alert + alert-dismissible) applies.
-            // An e-mail page never shows (or uses up) the visitor's pending
+            // An e-mail page and a background render (the editor's Preview,
+            // the SEO pass) never show or use up the session's pending
             // messages: they belong to the page the visitor sees next.
+            if (function_exists('pg_seo_rendering') && pg_seo_rendering()) break;
             if (function_exists('pg_sw_render_context')) {
                 $msg_ctx = pg_sw_render_context();
                 if (!empty($msg_ctx['email'])) break;
@@ -7809,6 +7811,8 @@ function _pg_tpl_catalog_file($tpl_id, $source, $folder_id, $user_id)
  * International included: a shippable product with no zone cannot be
  * shipped anywhere, so the sample sells wherever the shop delivers until the
  * operator narrows it on the product's Shipping tab.
+ * A product with 'shippable' => false (a ticket) is made not shippable and
+ * in no zone.
  *
  * A group's parent is 'root' (the site's top product group, if any) or the
  * key of another group of the template, listed before it. A product's price
@@ -7907,8 +7911,11 @@ function _pg_tpl_catalog($tpl, $user_id, $root_group_id)
                 $price  = isset($prices[$currency]) ? $prices[$currency] : (isset($prices['USD']) ? $prices['USD'] : 0);
                 $label  = isset($p['title']) ? (string)$p['title'] : $sku;
                 $text   = isset($p['description']) ? (string)$p['description'] : '';
+                // A product nobody ships (a ticket, a download) says
+                // 'shippable' => false: no shipping step, no zones.
+                $ships  = !(array_key_exists('shippable', $p) && !$p['shippable']);
                 $product = array(
-                    'name' => $sku, 'enabled' => '1', 'price' => (int)round((float)$price * 100), 'taxable' => '1', 'shippable' => '1',
+                    'name' => $sku, 'enabled' => '1', 'price' => (int)round((float)$price * 100), 'taxable' => '1', 'shippable' => $ships ? '1' : '0',
                     'free_shipping' => '0', 'title' => '', 'short_description' => mb_substr($label, 0, 255), 'meta_description' => mb_substr($text, 0, 255),
                     'brand' => '', 'gtin' => '', 'mpn' => '', 'keywords' => isset($p['keywords']) ? (string)$p['keywords'] : '',
                     'weight' => 0, 'length' => 0, 'width' => 0, 'height' => 0, 'inventory' => '0', 'inventory_quantity' => 0,
@@ -7918,7 +7925,7 @@ function _pg_tpl_catalog($tpl, $user_id, $root_group_id)
                     'google_product_category' => '', 'tax_rate' => null, 'default_quantity' => 1,
                 );
                 $img = isset($p['image']) ? _pg_tpl_catalog_file($tpl['id'], $p['image'], $folder_id, $user_id) : '';
-                $pid = (int)pg_pb_create_product($product, array('images' => ($img !== '') ? array($img) : array(), 'group_ids' => array(), 'zone_ids' => $zone_ids, 'attributes' => array(), 'submit_form' => array()));
+                $pid = (int)pg_pb_create_product($product, array('images' => ($img !== '') ? array($img) : array(), 'group_ids' => array(), 'zone_ids' => $ships ? $zone_ids : array(), 'attributes' => array(), 'submit_form' => array()));
                 if ($pid <= 0) continue;
             }
             if ((int)db_value("SELECT COUNT(*) FROM products_groups_xref WHERE product = '$pid' AND product_group = '$gid'") === 0) {

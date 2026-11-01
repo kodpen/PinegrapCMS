@@ -415,10 +415,6 @@ function prepare_file_name($file_name)
     if (($file_name === '') or ($file_name === '.') or (mb_substr($file_name, 0, 1) === '.')) {
         $file_name = 'file' . $file_name;
     }
-    // A name the web server would run or read as its own settings is
-    // defused here whichever door it came through; see
-    // pg_upload_neutralize_name() for the rule and the shape it leaves.
-    $file_name = pg_upload_neutralize_name($file_name);
     // If the file name is longer than 100 characters, then reduce the length of the file name.
     // We have to do this because the database limits the file name to 100 characters,
     // and also we don't want huge file names because they break UI elements.
@@ -459,6 +455,14 @@ function prepare_file_name($file_name)
     // length limit above can leave one too. Never empty here: a name that
     // started with a dot was given "file" in front of it.
     $file_name = rtrim($file_name, '.');
+    // A name the web server would run or read as its own settings is
+    // defused here whichever door it came through; see
+    // pg_upload_neutralize_name() for the rule and the shape it leaves.
+    // Asked after the length limit and the trim: a cut can end the name, or
+    // the part before its extension, on a refused extension
+    // ("x.php123456" cut to "x.php"), which the door's own check, made on
+    // the name as it was sent, never saw.
+    $file_name = pg_upload_neutralize_name($file_name);
     // A basic user or a visitor may not add dkim.key (pg_file_name_reserved()).
     // Asked last, on the name as it is stored: the transliteration above turns
     // "dkım.key" into "dkim.key", and a case-insensitive disk keeps "DKIM.KEY"

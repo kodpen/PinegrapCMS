@@ -53,3 +53,18 @@ function test_file_names_ascii_map_keeps_the_ring_a()
 	pg_assert_same('aland.jpg', pg_ascii_file_name('åland.jpg'), 'small a with ring above');
 	pg_assert_same('Angstrom.png', pg_ascii_file_name('Ångström.png'), 'capital A with ring above');
 }
+
+// The length limit cuts the name after the upload rule has looked at it, so a
+// cut that ends a name, or the part before its extension, on a refused
+// extension ("x.php123456" cut to "x.php") is defused too.
+function test_file_names_length_limit_never_leaves_a_refused_extension()
+{
+	$whole = str_repeat('a', 96) . '.php' . '123456';
+
+	pg_assert_same(str_repeat('a', 96) . '_php', prepare_file_name($whole), 'the whole name is cut');
+
+	$stem = str_repeat('a', 92) . '.php' . 'XXXX' . '.jpg';
+
+	pg_assert_same(str_repeat('a', 92) . '_php.jpg', prepare_file_name($stem), 'the part before the extension is cut');
+	pg_assert_true(!pg_upload_name_blocked(prepare_file_name($stem)), 'the stored name passes the upload rule');
+}

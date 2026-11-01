@@ -74,7 +74,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 
 - Endpoints `visitor` (3): open
 
-- Endpoints `waf` (4): open
+- Endpoints `waf` (4: view_waf_log, waf, waf_ranges_job, waf_unban): done (#4601, #4620)
 
 - Endpoints `workspace` (21): open
 
@@ -108,8 +108,8 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 
 - Endpoints si, signature_receipt, signin, get_site_icon, get_sitemap_info, get_sitemap.xml: open
 
-- Endpoints smtp_settings, stock_notify, submit_order, test_secure_mode, add_to_cart, toolbar: taken by bug-hunt-smtp-toolbar
+- Endpoints smtp_settings, stock_notify, submit_order, test_secure_mode, add_to_cart, toolbar: done #4600, #4607, #4618 (stock_notify, test_secure_mode, toolbar: nothing found)
 
-- Endpoints track_shipment, get_update_address_book, url_to_absolute, variant_set_action, welcome, wishlist: open
+- Endpoints track_shipment, get_update_address_book, url_to_absolute, variant_set_action, welcome, wishlist: done (#4604: get_update_address_book array id and missing row; track_shipment token and throttle, url_to_absolute RFC 3986 cases, variant_set_action set check, welcome role ladder and output, wishlist token and redirect checked)
 
 - Endpoints import_zip: open

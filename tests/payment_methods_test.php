@@ -147,3 +147,21 @@ function test_payment_methods_legal_documents_name_driver_methods()
 	pg_assert_same('Pg Methods Pay', $methods['Pay With Pg Methods'] ?? null);
 	pg_assert_same(array('Credit/Debit Card', 'PayPal Express Checkout', 'Offline Payment', 'Pay With Iyzico'), array_slice(array_keys($methods), 0, 4));
 }
+
+// The card brand switches are config values as the database returns them
+// ('1' / '0'), so American Express counts like every other brand.
+function test_payment_card_brands_accepted_reads_config_values()
+{
+	$config = array(
+		'Visa'             => '0',
+		'MasterCard'       => '0',
+		'American Express' => '1',
+		'Diners Club'      => '0',
+		'Discover'         => '0',
+		'Troy'             => '0',
+	);
+
+	pg_assert_same(array('American Express'), pg_payment_card_brands_accepted($config), 'American Express alone');
+	pg_assert_same(array('Visa', 'Troy'), pg_payment_card_brands_accepted(array_merge($config, array('Visa' => '1', 'American Express' => 0, 'Troy' => true))), 'any true value, in order');
+	pg_assert_same(array(), pg_payment_card_brands_accepted(array('Visa' => '', 'American Express' => null)), 'none');
+}

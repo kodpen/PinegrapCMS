@@ -720,7 +720,7 @@ if ($order_submitted == false) {
                     }
 
                     $gift_card_id = '';
-                    $old_balance = $result['balance'] * 100;
+                    $old_balance = pg_givex_minor_units($result['balance']);
                     $givex = 1;
                 }
                 

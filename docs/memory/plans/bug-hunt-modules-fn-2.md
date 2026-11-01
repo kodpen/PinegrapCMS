@@ -26,9 +26,9 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `record_revisions`: open
 
-- `returns`: open
+- `returns`: clean (#4619)
 
-- `reviews`: open
+- `reviews`: taken by LC, #4597
 
 - `search_console`: open
 
@@ -40,7 +40,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `shipment_tracking`: open
 
-- `shipping`: open
+- `shipping`: taken by LL, #4625
 
 - `shipping_import`: open
 
@@ -64,7 +64,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `sms_campaigns`: open
 
-- `sms_codes`: open
+- `sms_codes`: clean (LG: hash keep and check, expiry and miss limit, purpose, subject and number binding, queue reference and expiry, send throttle buckets, token check, sign-in offer and number lookup, COD field script and its escaping checked)
 
 - `sms_messages`: open
 
@@ -76,7 +76,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `subscription_renewal`: open
 
-- `subscriptions`: open
+- `subscriptions`: clean (LJ: period dates and month-end anchor, retry ladder, status moves and the read-status guarded write, sealed card_ref shape and seal/open, line amount, later-start rows and the nothing-today refusal, event de-duplication checked; store-mode renewals never stop at order_items.recurring_number_of_payments, left to the `subscription_renewal` hunt)
 
 - `subscriptions_account`: open
 
@@ -188,9 +188,9 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `widgets_shipping_method`: open
 
-- `widgets_starters`: open
+- `widgets_starters`: clean (bindings, flags, markers, actions and wiring against palettes, Default trees and renderers checked)
 
-- `widgets_tag_cloud`: open
+- `widgets_tag_cloud`: clean (classic and Search Results widget keyword reads against the classic sync, merge and case folding, size and weight scale, token escaping and search links checked)
 
 - `widgets_wishlist`: clean (owner-only list read, background renders, token escaping and raw price keys, row action wiring and hidden forms, stock and discount rules against the catalog cards, shop and login links checked)
 

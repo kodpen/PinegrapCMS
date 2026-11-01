@@ -180,7 +180,12 @@ function test_comment_parent_mail_line()
 	pg_assert_same("In reply to: Jane (#9)\n\n", pg_comment_parent_mail_line(array('id' => 9, 'name' => 'Jane')), 'the line');
 	pg_assert_same("In reply to: Jane (#9)\n\n", pg_comment_parent_mail_line(array('id' => '9', 'name' => 'Jane')), 'the id as a string');
 	pg_assert_same("In reply to: Jane  Doe (#9)\n\n", pg_comment_parent_mail_line(array('id' => 9, 'name' => "Jane\r\nDoe")), 'a name stays on one line');
-	pg_assert_same("In reply to:  (#9)\n\n", pg_comment_parent_mail_line(array('id' => 9, 'name' => array('Jane'))), 'a name that is not a value');
+	// No name, or the literal 'Anonymous' the name choice stores, reads as
+	// the comment block and the other comment e-mails show it.
+	pg_assert_same("In reply to: Anonymous (#9)\n\n", pg_comment_parent_mail_line(array('id' => 9, 'name' => array('Jane'))), 'a name that is not a value');
+	pg_assert_same("In reply to: Anonymous (#9)\n\n", pg_comment_parent_mail_line(array('id' => 9, 'name' => '')), 'no name');
+	pg_assert_same("In reply to: Anonymous (#9)\n\n", pg_comment_parent_mail_line(array('id' => 9)), 'a row without a name');
+	pg_assert_same("In reply to: Anonymous (#9)\n\n", pg_comment_parent_mail_line(array('id' => 9, 'name' => 'Anonymous')), 'the stored anonymous choice');
 }
 
 // add_comment.php reads the posted parent, asks after the page gates, the
