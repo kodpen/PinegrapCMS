@@ -17,6 +17,7 @@ description: Design of plans/image-editor-animation.md: the motion fields of the
 - `this.time` is the playhead while playing or scrubbing, else null: editing always sees every layer at rest, and the editor never plays by itself.
 - `renderLayers()` (layers part) puts each layer's node in a `<g>`; the motion part sets that group's transform (around the layer box's centre, in rotated space), opacity and clip path from `motionAt()` on each frame. Only a layer whose state cuts its drawing (`draw` a dash offset, `chars` a cut of the text) is drawn again; the text, draw and vector parts read that state.
 - requestAnimationFrame moves the playhead; nothing else in the view is redrawn.
+- Keys: M picks the Animate tool (E18's letters, `M.toolForKey()`); with it open, K plays and pauses. Space keeps panning the view, as in every tool.
 
 ## How is a frame drawn?
 - `renderFrame(t, w, h)` on a canvas: the base, then `paintLayers(g, box, w, h, t)`, each type's `paint(g, l, state)` inside the same transform, clip and opacity. The save's overlay is this call at rest.

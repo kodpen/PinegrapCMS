@@ -469,7 +469,7 @@ function get_billing_information($properties) {
         if ($po_number) {
             $output_po_number =
                 '<tr>
-                    <td style="white-space: nowrap">PO Number</td>
+                    <td style="white-space: nowrap">' . h(lang('PO Number')) . '</td>
                     <td>' . $form->output_field(array('type'=>'text', 'name'=>'po_number', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                 </tr>';
         }
@@ -489,7 +489,7 @@ function get_billing_information($properties) {
 
             $output_referral_source =
                 '<tr>
-                    <td>How did you hear about us?</td>
+                    <td>' . h(lang('How did you hear about us?')) . '</td>
                     <td>' . $form->output_field(array('type'=>'select', 'name'=>'referral_source', 'options'=>$referral_source_options, 'class'=>'software_select')) . '</td>
                 </tr>';
         }
@@ -518,7 +518,7 @@ function get_billing_information($properties) {
                         'name' => 'update_contact',
                         'value' => '1',
                         'class' => 'software_input_checkbox')) .
-                    '<label for="update_contact"> Update my contact info with this billing info.</label>
+                    '<label for="update_contact"> ' . h(lang('Update my contact info with this billing info.')) . '</label>
                 </div>';
         }
 
@@ -578,7 +578,7 @@ function get_billing_information($properties) {
                 }
                 
                 $output_custom_billing_form =
-                    '<div class="edit_mode" style="position: relative; outline: 1px dashed #4780C5; margin: -1px;"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&from=pages&send_to=' . h(urlencode(get_request_uri())) . '" style="background: #4780C5; position: absolute; display: block;  text-decoration: none; z-index: 10; line-height: normal; padding: 5px 8px; margin: -1px 25px 0 -1px; border: none; -webkit-border-bottom-right-radius: 6px; -moz-border-bottom-right-radius: 6px; border-bottom-right-radius: 6px;" title="' . $output_title . '">Edit</a>
+                    '<div class="edit_mode" style="position: relative; outline: 1px dashed #4780C5; margin: -1px;"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&from=pages&send_to=' . h(urlencode(get_request_uri())) . '" style="background: #4780C5; position: absolute; display: block;  text-decoration: none; z-index: 10; line-height: normal; padding: 5px 8px; margin: -1px 25px 0 -1px; border: none; -webkit-border-bottom-right-radius: 6px; -moz-border-bottom-right-radius: 6px; border-bottom-right-radius: 6px;" title="' . $output_title . '">' . h(lang('Edit')) . '</a>
                         ' . $output_custom_billing_form . '
                     </div>';
             }
@@ -606,45 +606,45 @@ function get_billing_information($properties) {
                     ' . $output_custom_field_2 . '
                     ' . $output_custom_field_spacing . '
                     <tr>
-                        <td>Salutation</td>
+                        <td>' . h(lang('Salutation')) . '</td>
                         <td>' . $form->output_field(array('type'=>'select', 'name'=>'billing_salutation', 'options'=>get_salutation_options(), 'class'=>'software_select')) . '</td>
                     </tr>
                     <tr>
-                        <td>First Name*</td>
+                        <td>' . h(lang('First Name')) . '*</td>
                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'billing_first_name', 'maxlength'=>'50', 'class'=>'software_input_text', 'required' => 'true')) . '</td>
                     </tr>
                     <tr>
-                        <td>Last Name*</td>
+                        <td>' . h(lang('Last Name')) . '*</td>
                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'billing_last_name', 'maxlength'=>'50', 'class'=>'software_input_text', 'required' => 'true')) . '</td>
                     </tr>
                     <tr>
-                        <td>Company</td>
+                        <td>' . h(lang('Company')) . '</td>
                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'billing_company', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                     </tr>
                     <tr>
-                        <td>Address 1*</td>
+                        <td>' . h(lang('Address 1')) . '*</td>
                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'billing_address_1', 'maxlength'=>'50', 'class'=>'software_input_text', 'required' => 'true')) . '</td>
                     </tr>
                     <tr>
-                        <td>Address 2</td>
+                        <td>' . h(lang('Address 2')) . '</td>
                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'billing_address_2', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                     </tr>
                     <tr>
-                        <td><label for="billing_city">City*</label></td>
+                        <td><label for="billing_city">' . h(lang('City')) . '*</label></td>
                         <td>' . $form->output_field(array('type'=>'text', 'id'=>'billing_city', 'name'=>'billing_city', 'maxlength'=>'50', 'class'=>'software_input_text', 'required' => 'true')) . '</td>
                     </tr>
                     <tr>
-                        <td>Country*</td>
+                        <td>' . h(lang('Country')) . '*</td>
                         <td>' . $form->output_field(array('type'=>'select', 'name'=>'billing_country', 'id'=>'billing_country', 'options'=>$billing_country_options, 'class'=>'software_select', 'required' => 'true')) . '</td>
                     </tr>
                     <tr>
                         <td>
                             <label for="billing_state_text_box">
-                                State / Province
+                                ' . h(lang('State / Province')) . '
                             </label>
 
                             <label for="billing_state_pick_list" style="display: none">
-                                State / Province*
+                                ' . h(lang('State / Province')) . '*
                             </label>
                         </td>
                         <td>' .
@@ -654,19 +654,19 @@ function get_billing_information($properties) {
                         </td>
                     </tr>
                     <tr>
-                        <td>Zip / Postal Code<span id="billing_zip_code_required" style="display: none">*</span></td>
+                        <td>' . h(lang('Zip / Postal Code')) . '<span id="billing_zip_code_required" style="display: none">*</span></td>
                         <td>' . $form->output_field(array('type'=>'text', 'id' => 'billing_zip_code', 'name'=>'billing_zip_code', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                     </tr>
                     <tr>
-                        <td>Phone*</td>
+                        <td>' . h(lang('Phone')) . '*</td>
                         <td>' . $form->output_field(array('type'=>'tel', 'name'=>'billing_phone_number', 'maxlength'=>'50', 'class'=>'software_input_text', 'required' => 'true')) . '</td>
                     </tr>
                     <tr>
-                        <td>Email*</td>
+                        <td>' . h(lang('Email')) . '*</td>
                         <td>' . $form->output_field(array('type'=>'email', 'name'=>'billing_email_address', 'maxlength'=>'100', 'class'=>'software_input_text', 'required' => 'true')) . '</td>
                     </tr>
                     <tr>
-                        <td>VKN / TCKN</td>
+                        <td>' . h(lang('VKN / TCKN')) . '</td>
                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'tax_number', 'maxlength'=>'11', 'class'=>'software_input_text')) . '</td>
                     </tr>
                     <tr>
@@ -1055,7 +1055,7 @@ function get_billing_information($properties) {
                 }
 
                 $edit_start =
-                    '<div class="edit_mode" style="position: relative; outline: 1px dashed #4780C5; margin: -1px;"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&from=pages&send_to=' . h(urlencode(REQUEST_URL)) . '" style="background: #4780C5; position: absolute; display: block;  text-decoration: none; z-index: 10; line-height: normal; padding: 5px 8px; margin: -1px 25px 0 -1px; border: none; -webkit-border-bottom-right-radius: 6px; -moz-border-bottom-right-radius: 6px; border-bottom-right-radius: 6px;" title="Custom Billing Form' . $title . '">Edit</a>';
+                    '<div class="edit_mode" style="position: relative; outline: 1px dashed #4780C5; margin: -1px;"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&from=pages&send_to=' . h(urlencode(REQUEST_URL)) . '" style="background: #4780C5; position: absolute; display: block;  text-decoration: none; z-index: 10; line-height: normal; padding: 5px 8px; margin: -1px 25px 0 -1px; border: none; -webkit-border-bottom-right-radius: 6px; -moz-border-bottom-right-radius: 6px; border-bottom-right-radius: 6px;" title="Custom Billing Form' . $title . '">' . h(lang('Edit')) . '</a>';
 
                 $edit_end = '</div>';
             }

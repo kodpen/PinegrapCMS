@@ -12,13 +12,13 @@ description: Steps N1-N14 of plans/new-dashboard.md: size, screens, order, which
 - N1 (M) Switch and page shell. Screens 21, 22. done (#4692).
   - Migration step for the decided storage, rerun twice on a dev DB; the sign-in upsert; `dashboard_switch`; the switch row on the old page (its only change) and the new one; the branch in `welcome.php`; `page.php` with part files, the greeting line and an empty grid; the card list `cards.php` with all 30 entries (built ones marked); empty `dashboard_v2.js` and stylesheet sections.
 
-- N2 (M) Greeting card. Screen 01. `free` after N1.
+- N2 (M) Greeting card. Screen 01. done (#4766).
   - Sign-in chips per preset, the shortcut pool with gates, four tiles, `figures.php` with the eleven figures and their tests.
 
-- N3 (M) System Status card and look. Screens 01, 12-14. `free` after N1.
+- N3 (M) System Status card and look. Screens 01, 12-14. done (#4756).
   - The current gauge moved out of `widget_2.php` into one function both call (owner, `new-dashboard-top.md`), check chips, Details; card styles, backdrops, compact, lights off, light and dark.
 
-- N4 (L) Card frame and data. Screens 03, 17. `free` after N1.
+- N4 (L) Card frame and data. Screens 03, 17. done (#4768).
   - Grid and widths, card header (icon, title, chip, badge, period pill, "…"), `dashboard_cards` with batch and solo, the card contract, refresh, empty and error states; `visitors` (SVG line with compare) and `engagement`.
 
 - N5 (L) Edit mode. Screens 05-08. `free` after N2, N3 and N4.

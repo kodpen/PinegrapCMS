@@ -746,6 +746,12 @@
   font-weight: 650;
 }
 
+/* The caller's ratio (the shape the page shows the picture in). */
+.pgie .pgie-chip.pgie-chip-given {
+  border-style: dashed;
+  border-color: var(--pgie-pline);
+}
+
 .pgie-tiles {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

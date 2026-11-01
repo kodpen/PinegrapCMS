@@ -68,3 +68,21 @@ function test_capital_i_search_screens_use_the_helpers()
 	pg_assert_contains('pg_search_ci_count(', $find, 'Find & Replace counts with the shared matcher');
 	pg_assert_contains('pg_search_ci_replace(', $find, 'Find & Replace replaces with the shared matcher');
 }
+
+// The row filter finds "İstanbul" for "istanbul" (pg_search_lower()), so the
+// count and the replace must match it too: PCRE's caseless mode pairs i
+// with I only. A dotless ı stays apart from a dotted i.
+function test_capital_i_search_ci_count_pairs_the_turkish_i()
+{
+	pg_assert_same(2, pg_search_ci_count('İstanbul ve istanbul', 'istanbul'), 'a lowercase i term finds a capital İ');
+	pg_assert_same(2, pg_search_ci_count('iade İADE', 'İADE'), 'a capital İ term finds a lowercase i');
+	pg_assert_same(2, pg_search_ci_count('IRMAK ırmak', 'ırmak'), 'a dotless ı term finds a capital I');
+	pg_assert_same(2, pg_search_ci_count('ırmak IRMAK', 'IRMAK'), 'a capital I term finds a dotless ı');
+	pg_assert_same(2, pg_search_ci_count('Isparta isparta', 'isparta'), 'i and I still pair');
+	pg_assert_same(0, pg_search_ci_count('kir', 'kır'), 'a dotless ı term does not find a dotted i');
+	pg_assert_same(0, pg_search_ci_count('kır', 'kir'), 'a dotted i term does not find a dotless ı');
+
+	$count = -1;
+	pg_assert_same('Ankara ve Ankara', pg_search_ci_replace('istanbul', 'Ankara', 'İstanbul ve istanbul', $count), 'the replace follows the count');
+	pg_assert_same(2, $count, 'two replacements');
+}

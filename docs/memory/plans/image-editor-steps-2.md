@@ -24,10 +24,10 @@ description: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboa
 - E15 (M) SVG open and save. `free` Done (#4728, `ui/image-editor-svg.md`).
   - Opening an SVG gives editable layers for path, rect, circle, ellipse, line, polyline, polygon, text, g, data-URI pictures and gradients; anything else becomes a locked group kept as written. Saving writes SVG through `pg_svg_sanitize()` (tests with hostile samples); fonts by name, pictures embedded.
 
-- E16 (M) Workspace canvas. `free` after E9 and E11.
+- E16 (M) Workspace canvas. `free` after E9 and E11. Done (#4762, `ui/image-editor-workspace.md`); a note's canvas opens again only through its file.
   - "New canvas" in a channel and in notes; saved through `workspace_file_save.php` with its doc; texts edit later; a preview picture in the message.
 
-- E17 (S) Visual designer. `free` after E9 and E11.
+- E17 (S) Visual designer. `free` Done (#4777, `designer/image-editor-tool.md`).
   - The image widget's "Edit image" opens the modal over the designer; a saved version refreshes the picture (cache key); crop presets from the widget's ratio.
 
 - E18 (S) Access. `free` after E9.

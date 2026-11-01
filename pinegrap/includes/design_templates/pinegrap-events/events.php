@@ -17,8 +17,8 @@
  * gets one (auto-registration), so the registration's page and My
  * Registrations show it at once. Its Status is an office-use-only field the
  * staff change in the control panel (Registered, Confirmed, Waitlisted,
- * Cancelled, Attended); the messages under it are the page's comments,
- * mailed to the attendee and to the organiser.
+ * Registration cancelled, Attended); the messages under it are the page's
+ * comments, mailed to the attendee and to the organiser.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -77,7 +77,7 @@ $diets = array(lang('No requirements'), lang('Vegetarian'), lang('Vegan'), lang(
 // The first sample event's day: the sample text the cards show where the
 // record's own date is drawn, so no fixed date is written into a page.
 $sample_day = new DateTime($sample_events[0]['event_date']);
-$statuses = array(lang('Registered'), lang('Confirmed'), lang('Waitlisted'), lang('Cancelled'), lang('Attended'));
+$statuses = array(lang('Registered'), lang('Confirmed'), lang('Waitlisted'), lang('Registration cancelled'), lang('Attended'));
 
 // An event of the lists: its photo with the date on a leaf over it, the
 // kind, the title (the link to its page), when and where, the words, the
@@ -202,7 +202,7 @@ $event_pages[] = array(
     'key'              => 'registration',
     'name'             => lang('register-for-an-event'),
     'folder'           => 'public',
-    'title'            => lang('Register'),
+    'title'            => lang('Register for an Event'),
     'meta_description' => lang('Register for the conference or one of our events in two minutes; your confirmation comes by e-mail.'),
     'form'             => array(
         'form_name'            => lang('Registrations'),
@@ -219,7 +219,7 @@ $event_pages[] = array(
         'confirm_page_id'      => '{{tab:email_registration_received}}',
     ),
     'tree'             => $page(array(
-        $page_header(lang('Register'), lang('Tell us which event and pass, and who is coming. Your confirmation comes by e-mail, usually within a working day.')),
+        $page_header(lang('Register for an Event'), lang('Tell us which event and pass, and who is coming. Your confirmation comes by e-mail, usually within a working day.')),
         $el('section', 'py-5', lang('Content'), array(
             $container(array(
                 $row(array(
@@ -256,7 +256,7 @@ $event_pages[] = array(
     'key'      => 'registration_view',
     'name'     => lang('registration'),
     'folder'   => 'registration',
-    'title'    => lang('Registration'),
+    'title'    => lang('My Registration'),
     'search'   => false,
     'sitemap'  => false,
     'comments' => array('label' => lang('Message'), 'allow_new' => true, 'auto_publish' => true, 'show_date' => true, 'login' => true,

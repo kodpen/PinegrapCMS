@@ -527,7 +527,7 @@ if (!$_POST) {
                             <div class=" btn-group flex-wrap justify-content-center">
                                 ' . ($group_binned
                                     ? '<a class="btn my-1 btn-solid theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin"><span class="bi bi-trash3 me-3"></span><span class="pg-btn-label">' . lang('Open the Recycle Bin') . '</span></a>'
-                                    : '<button type="submit" id="submit_button" name="submit_button" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>') . '
+                                    : '<button type="submit" id="submit_button" name="submit_button" value="Save" data-pg-save-shortcut class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>') . '
                                 ' . $output_delete_button . '
                             </div>
                             <span class="enable-on-selected"> 

@@ -224,7 +224,7 @@ function pg_image_editor_includes()
     // onSaved gets the saved file.
     window.openImageEditor = function (o) {
         o = o || {};
-        var options = { fileId: o.fileId, fileName: o.fileName, tools: o.tools, profile: o.profile, onClose: o.onCancel };
+        var options = { fileId: o.fileId, fileName: o.fileName, tools: o.tools, profile: o.profile, ratio: o.ratio, onClose: o.onCancel };
         if (o.saveUrl) {
             options.src = o.src;
             options.save = { mode: "url", url: o.saveUrl, label: o.saveLabel };
@@ -1182,6 +1182,7 @@ function pg_image_editor_strings_crop()
         'cropRatio'      => lang('Ratio'),
         'cropFree'       => lang('Freeform'),
         'cropOriginal'   => lang('Original'),
+        'cropGiven'      => lang('The shape the page shows it in'),
         'rotateFlip'     => lang('Rotate and flip'),
         'rotateLeft'     => lang('Rotate left'),
         'rotateRight'    => lang('Rotate right'),
@@ -2565,7 +2566,9 @@ function pg_image_editor_action_svg_save($request, $user)
  * An edit of the picture at $path, drawn as a copy is (first frame, the
  * file's own format), for an endpoint that stores the result itself
  * (workspace_file_save.php, save.url of the editor). The request is the
- * editor's save body: doc, overlay and, without Imagick, colour.
+ * editor's save body: doc, overlay, redact and, without Imagick, colour.
+ * The redaction is burned in as a save's step 4; its masks are removed on
+ * every path.
  *
  * @param string $path
  * @param array  $request
@@ -2603,6 +2606,18 @@ function pg_image_editor_render($path, $request)
         $edit['overlay'] = $overlay;
     }
 
+    // Step 4, the redaction, as for a save: refused areas end the render.
+    $redactions = pg_image_editor_take_redactions(isset($request['redact']) ? $request['redact'] : null, $edit, $stem);
+
+    if ($redactions === false) {
+        @unlink($overlay);
+        return $refused;
+    }
+
+    if ($redactions) {
+        $edit['redact'] = $redactions;
+    }
+
     // Without Imagick the browser sends the colour step done, as for a save.
     if (!empty($request['colour']) && !empty($edit['color'])) {
         $layer = $stem . '.colour.tmp';
@@ -2613,6 +2628,7 @@ function pg_image_editor_render($path, $request)
         if (!$taken || ($taken[0] > $width + 0.5) || ($taken[1] > $height + 0.5) || (abs($taken[0] - $taken[1] * $width / $height) > 1.5)) {
             @unlink($layer);
             @unlink($overlay);
+            pg_image_editor_drop_redactions($redactions);
             return $refused;
         }
 
@@ -2622,6 +2638,7 @@ function pg_image_editor_render($path, $request)
 
     } elseif (!empty($edit['color']) && !class_exists('Imagick')) {
         @unlink($overlay);
+        pg_image_editor_drop_redactions($redactions);
         return $refused;
     }
 
@@ -2629,6 +2646,7 @@ function pg_image_editor_render($path, $request)
 
     @unlink($overlay);
     @unlink($layer);
+    pg_image_editor_drop_redactions($redactions);
 
     if (($report['status'] !== 'success') || !is_string($report['data'])) {
         return array('error' => pg_image_editor_report_message($report, basename($path)), 'data' => '', 'extension' => '');

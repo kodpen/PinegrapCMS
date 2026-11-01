@@ -84,11 +84,11 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `system_status`: open
 
-- `text_search`: open
+- `text_search`: taken by MM — #4819
 
 - `tour`: open
 
-- `translate`: open
+- `translate`: taken by MM — #4753, #4776
 
 - `update`: open
 
@@ -180,7 +180,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `widgets_parts_forms`: open
 
-- `widgets_photo_gallery`: open
+- `widgets_photo_gallery`: done (#4754)
 
 - `widgets_placement`: done (#4736)
 

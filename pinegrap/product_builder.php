@@ -6565,13 +6565,25 @@ function pg_pb_posted_barcodes($post, $product_id = 0)
  * pg_assign_product_barcode() refuses such a code by writing nothing, after
  * the product row exists, so the screen checks first and says why.
  *
- * @param array         $barcodes from pg_pb_posted_barcodes()
- * @param string        $type     the barcode type they are stored as
- * @param callable|null $is_taken barcode => bool; absent: product_barcodes
+ * A code that is another product's product code is refused too: a scan
+ * resolves a barcode before a product code, so it would move the new product
+ * instead of that one.
+ *
+ * @param array         $barcodes    from pg_pb_posted_barcodes()
+ * @param string        $type        the barcode type they are stored as
+ * @param callable|null $is_taken    barcode => bool; absent: product_barcodes
+ * @param callable|null $code_holder barcode => the product whose code it is,
+ *                                   or null; absent: pg_product_name_holder()
  * @return string
  */
-function pg_pb_barcodes_problem($barcodes, $type, $is_taken = NULL)
+function pg_pb_barcodes_problem($barcodes, $type, $is_taken = NULL, $code_holder = NULL)
 {
+    if ($code_holder === NULL) {
+        $code_holder = function ($barcode) {
+            return pg_product_name_holder($barcode, 0, false);
+        };
+    }
+
     if ($is_taken === NULL) {
         $is_taken = function ($barcode) {
             $result = db_q("SELECT id FROM product_barcodes WHERE barcode = ? LIMIT 1", array($barcode));
@@ -6596,6 +6608,52 @@ function pg_pb_barcodes_problem($barcodes, $type, $is_taken = NULL)
     foreach ($barcodes as $barcode) {
         if ($is_taken($barcode)) {
             return h($barcode) . ': ' . lang('Another product already carries this barcode.');
+        }
+
+        $holder = $code_holder($barcode);
+
+        if ($holder) {
+            return pg_barcode_code_taken_text($barcode, $holder, true);
+        }
+    }
+
+    return '';
+}
+
+/**
+ * A variant set row's typed barcode that is another row's product code, case
+ * aside, or '' when there is none: the rows are written as separate products,
+ * so a scan of it would move the other variant. A single product may carry
+ * its own code as its barcode.
+ *
+ * @param array $post
+ * @param int   $product_id the product being edited, 0 on create
+ * @return string
+ */
+function pg_pb_posted_barcode_on_other_row($post, $product_id = 0)
+{
+    if ($product_id) {
+        return '';
+    }
+
+    $variants = pg_pb_decode_variants(isset($post['variants_json']) ? $post['variants_json'] : '');
+
+    if (pg_pb_mode($variants) !== 'group') {
+        return '';
+    }
+
+    $rows_of = array();
+
+    foreach ($variants as $index => $variant) {
+        $rows_of[mb_strtolower(trim((string) $variant['name']), 'UTF-8')][] = $index;
+    }
+
+    foreach ($variants as $index => $variant) {
+        $barcode = isset($variant['barcode']) ? trim((string) $variant['barcode']) : '';
+        $key = mb_strtolower($barcode, 'UTF-8');
+
+        if (($barcode !== '') && isset($rows_of[$key]) && array_diff($rows_of[$key], array($index))) {
+            return $barcode;
         }
     }
 
@@ -6706,6 +6764,12 @@ function pg_pb_validate_product_post($user, $product_id = 0)
 
         if ($barcode_problem !== '') {
             output_error($barcode_problem . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+        }
+
+        $crossed = pg_pb_posted_barcode_on_other_row($_POST, $product_id);
+
+        if ($crossed !== '') {
+            output_error(lang(array('string' => 'The barcode {var:1} is the product code of another variant.', 'vars' => array(h($crossed)))) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
     }
 

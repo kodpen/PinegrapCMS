@@ -335,7 +335,7 @@ if (!$_POST) {
         // loop through each currency in order to add it to array
         while ($row = mysqli_fetch_assoc($result)) {
             $currency_option = array(
-                'name' => $row['name'] . ' (' . $row['code'] . ')',
+                'name' => pg_currency_label($row['name']) . ' (' . $row['code'] . ')',
                 'value' => $row['code']
             );
 

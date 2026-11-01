@@ -304,13 +304,13 @@ function pg_explorer_handle_optimize($type, $request, $user)
         'message' => (count($errors) > 0) ? implode(' ', $errors) : $message));
 }
 
-// ── Convert selected images to WebP ─────────────────────────────
+// ── Prepare the WebP copies of selected pictures ───────────────
 //
-// The row's name is the address, so the .webp extension means a new
-// address. Disk first, row second, old file last: the new file is
-// written (temp + rename), then the row is pointed at it, and only
-// then is the old file removed — a crash between the steps leaves an
-// orphan on disk for clean_up.php, never a row without its file.
+// A picture keeps its address and its file: the WebP copy is the derivative
+// get_file.php sends at that same address to a browser that asks for WebP
+// (includes/image_negotiation.php). Made here ahead of the first visitor, in
+// the derivative cache, so no file row is renamed, added or removed and no
+// link anywhere breaks. Only JPEG and PNG: the formats answered that way.
 function pg_explorer_handle_webp($type, $request, $user)
 {
     $items = isset($request['items']) ? $request['items'] : array();
@@ -320,12 +320,22 @@ function pg_explorer_handle_webp($type, $request, $user)
     }
 
     @ini_set('max_execution_time', '600');
-    @ini_set('memory_limit', '-1');
 
-    // webp is deliberately not a source: converting webp to webp is
-    // the optimize button's job.
-    $source_types = array('jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff');
-    $converted_count = 0;
+    $settings = pg_image_delivery();
+    $offered = pg_image_delivery_formats();
+
+    if (empty($offered['webp'])) {
+        respond(array(
+            'status' => 'error',
+            'request' => $type,
+            'message' => empty($settings['formats']['webp'])
+                ? lang('WebP is switched off in Site Settings › Features › Image Optimization.')
+                : lang('This server cannot produce WebP images (neither Imagick nor GD supports it).')));
+    }
+
+    $source_types = pg_explorer_webp_source_types();
+    $directory = pg_image_derivative_directory();
+    $prepared_count = 0;
     $errors = array();
 
     foreach ($items as $item) {
@@ -336,7 +346,7 @@ function pg_explorer_handle_webp($type, $request, $user)
             continue;
         }
 
-        $file = db_item("SELECT id, name, folder, type, design FROM files WHERE id = '" . e($item_id) . "'");
+        $file = db_item("SELECT id, name, folder, type, design, attachment FROM files WHERE id = '" . e($item_id) . "'");
 
         if (!$file) {
             continue;
@@ -350,90 +360,50 @@ function pg_explorer_handle_webp($type, $request, $user)
             continue;
         }
 
-        if (in_array(mb_strtolower($file['type']), $source_types, true) == false) {
+        // Attachments and withheld files get no derivatives (get_file.php).
+        if (
+            (in_array(mb_strtolower($file['type']), $source_types, true) == false)
+            || ($file['attachment'] == 1)
+            || pg_file_withheld($file['name'])
+        ) {
             continue;
         }
 
-        $old_path = FILE_DIRECTORY_PATH . '/' . $file['name'];
+        $path = FILE_DIRECTORY_PATH . '/' . $file['name'];
 
-        $report = pg_process_image_file($old_path, array('write' => false, 'format' => 'webp'));
-
-        if (($report['status'] !== 'success') || ($report['data'] === null)) {
-
-            if ($report['reason'] === 'animated') {
-                $errors[] = lang(array('string' => 'Sorry, {var:1} is an animated image. Optimizing it would leave only the first frame, so it was left alone.', 'vars' => $file['name']));
-            } elseif ($report['reason'] === 'color_profile') {
-                $errors[] = lang(array('string' => 'Sorry, {var:1} has a colour profile this server cannot carry over. Changing it here would wash out its colours, so it was left alone.', 'vars' => $file['name']));
-            } elseif ($report['reason'] === 'orientation_unreadable') {
-                $errors[] = lang(array('string' => 'Sorry, {var:1} has a rotation tag this server cannot read. Changing it here could leave the picture on its side, so it was left alone.', 'vars' => $file['name']));
-            } elseif ($report['reason'] === 'missing') {
-                $errors[] = lang(array('string' => 'Sorry, {var:1} is recorded here but is not on the disk.', 'vars' => $file['name']));
-            } elseif ($report['reason'] === 'no_webp') {
-                $errors[] = lang('This server cannot produce WebP images (neither Imagick nor GD supports it).');
-                break;
-            } elseif ($report['reason'] === 'no_library') {
-                $errors[] = lang('No image library (Imagick or GD) is installed on this server, so images cannot be optimized or resized.');
-                break;
-            } else {
-                $errors[] = lang(array('string' => 'Sorry, we could not convert that image ({var:1}).', 'vars' => $file['name']));
-            }
-
+        if (!is_file($path)) {
+            $errors[] = lang(array('string' => 'Sorry, {var:1} is recorded here but is not on the disk.', 'vars' => $file['name']));
             continue;
         }
 
-        // New address: the old base name with .webp, made unique
-        // across the shared page/file namespace.
-        $new_name = get_unique_name(array('name' => prepare_file_name(pg_explorer_webp_base_name($file['name']) . '.webp'), 'type' => 'file'));
-        $new_path = FILE_DIRECTORY_PATH . '/' . $new_name;
+        $derivative = pg_image_derivative($file['id'], $path, array('width' => 0, 'format' => 'webp'), $directory, $settings);
 
-        $temporary_path = $new_path . '.pgwebp' . getmypid();
-
-        if ((@file_put_contents($temporary_path, $report['data']) === false) || (@rename($temporary_path, $new_path) == false)) {
-            @unlink($temporary_path);
-            $errors[] = lang(array('string' => 'The WebP file could not be written to the file system ({var:1}).', 'vars' => $file['name']));
-            continue;
+        if ($derivative['status'] === 'derivative') {
+            $prepared_count++;
+        } elseif ($derivative['status'] === 'busy') {
+            $errors[] = lang(array('string' => 'The WebP copy of {var:1} could not be made now; it is made on its first visit.', 'vars' => $file['name']));
+        } else {
+            $errors[] = lang(array('string' => '{var:1} keeps no WebP copy: it would not be lighter, or this server cannot read the picture.', 'vars' => $file['name']));
         }
-
-        @clearstatcache(true, $new_path);
-
-        // The engine already recompressed, so the optimized flag is
-        // set — running the optimize button over the result would
-        // only degrade it a second time.
-        $audit_before = pg_audit_fetch('files', $file['id']);
-        db(
-            "UPDATE files
-            SET
-                name = '" . e($new_name) . "',
-                type = 'webp',
-                size = '" . e(strlen($report['data'])) . "',
-                optimized = '1',
-                optimization_percent = '0',
-                image_width = '" . (int) $report['width'] . "',
-                image_height = '" . (int) $report['height'] . "',
-                timestamp = UNIX_TIMESTAMP(),
-                user = '" . USER_ID . "'
-            WHERE id = '" . e($file['id']) . "'");
-        pg_audit_record('update', 'files', $file['id'], $audit_before);
-
-        @unlink($old_path);
-
-        log_activity(lang(array('string' => 'file ({var:1}) was converted to {var:2}', 'vars' => array($file['name'], 'WEBP'))), $_SESSION['sessionusername']);
-
-        $converted_count++;
     }
 
-    if ($converted_count > 1) {
-        $message = lang(array('string' => '{var:1} images were converted to WebP', 'vars' => $converted_count));
-    } elseif ($converted_count == 1) {
-        $message = lang('1 image was converted to WebP');
-    } else {
-        $message = lang(array('string' => '{var:1} images were converted to WebP', 'vars' => 0));
+    if ($prepared_count > 0) {
+        log_activity(lang(array('string' => 'WebP copies were prepared for {var:1} images', 'vars' => $prepared_count)), $_SESSION['sessionusername']);
     }
+
+    $message = lang(array('string' => 'WebP copies were prepared for {var:1} images', 'vars' => $prepared_count));
 
     respond(array(
-        'status' => pg_explorer_batch_status(count($errors), $converted_count),
+        'status' => pg_explorer_batch_status(count($errors), $prepared_count),
         'request' => $type,
-        'converted' => $converted_count,
+        'converted' => $prepared_count,
         'errors' => $errors,
         'message' => (count($errors) > 0) ? implode(' ', $errors) : $message));
+}
+
+// The types whose own address can be answered with WebP
+// (pg_image_negotiated_format()).
+function pg_explorer_webp_source_types()
+{
+    return array('jpg', 'jpeg', 'jpe', 'png');
 }

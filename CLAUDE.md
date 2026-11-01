@@ -212,6 +212,7 @@ php tools/lint.php              # php -l over the product tree
 php tools/check_lang.php        # lang()/_sdT() keys against the language shards
 php tools/check_bindings.php    # designer dropdown tokens against renderer
 php tools/check_api_schema.php  # external API fields against the schema
+php tools/check_audit_rules.php # audit rule registry against editor rules and checkers
 php tools/test.php [filter]     # tests/*_test.php (pure functions)
 php tools/check_copies.php      # only the intended get_file.php copies
 php tools/check_bs6.php --strict  # no Bootstrap 5 left in panel markup

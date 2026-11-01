@@ -207,3 +207,97 @@ function pg_image_negotiated_download_name($name, $extension)
 
     return $base . '.' . $extension;
 }
+
+/**
+ * One picture address of a mail body asking for the uploaded bytes: a JPEG
+ * or PNG of this site gets f=original, everything else is left as it is.
+ *
+ * Mail programs and the proxies that fetch a mail's pictures may name
+ * image/webp and then show the copy where WebP is not drawn, or keep it for
+ * every reader. The address is attribute text, so a new query parameter is
+ * joined with &amp;.
+ *
+ * @param string $url  as written in the attribute
+ * @param string $host this site's host name (HOSTNAME_SETTING)
+ * @return string
+ */
+function pg_image_mail_original_url($url, $host)
+{
+    $url = (string) $url;
+
+    // 1 scheme and host as written, 2 the host, 3 the path, 4 the query,
+    // 5 the fragment.
+    if (!preg_match('~^((?:https?:)?//([^/?#]+))?([^?#]*)(\?[^#]*)?(#.*)?$~i', $url, $parts)) {
+        return $url;
+    }
+
+    $parts = array_pad($parts, 6, '');
+
+    if ($parts[1] !== '') {
+        $own = preg_replace('~^www\.~i', '', strtolower((string) $host));
+        $their = preg_replace('~^www\.~i', '', strtolower(preg_replace('~:\d+$~', '', $parts[2])));
+
+        if (($own === '') || ($their !== $own)) {
+            return $url;
+        }
+    } elseif (preg_match('~^[a-z][a-z0-9+.-]*:~i', $parts[3])) {
+        // data:, cid:, mailto: and the like.
+        return $url;
+    }
+
+    if (!preg_match('~\.(?:jpe?g|jpe|png)$~i', $parts[3])) {
+        return $url;
+    }
+
+    $query = $parts[4];
+
+    if (preg_match('~(?:^\?|&(?:amp;)?)f=~i', $query)) {
+        return $url;
+    }
+
+    if (($query === '') || ($query === '?')) {
+        $query = '?f=original';
+    } else {
+        $query .= '&amp;f=original';
+    }
+
+    return $parts[1] . $parts[3] . $query . $parts[5];
+}
+
+/**
+ * A mail body with its JPEG and PNG addresses asking for the uploaded bytes
+ * (pg_image_mail_original_url()): src and background attributes and url()
+ * in style attributes, the places a mail's pictures are written.
+ *
+ * @param string $html
+ * @param string $host this site's host name (HOSTNAME_SETTING)
+ * @return string
+ */
+function pg_image_mail_original_urls($html, $host)
+{
+    $html = (string) $html;
+
+    if (!preg_match('~\.(?:jpe?g|jpe|png)~i', $html)) {
+        return $html;
+    }
+
+    $address = function ($url) use ($host) {
+        return pg_image_mail_original_url($url, $host);
+    };
+
+    return preg_replace_callback('~<[a-z][a-z0-9]*\b[^>]*>~i', function ($tag) use ($address) {
+
+        $tag = preg_replace_callback('~(\s(?:src|background)\s*=\s*)(["\'])(.*?)\2~is', function ($match) use ($address) {
+            return $match[1] . $match[2] . $address($match[3]) . $match[2];
+        }, $tag[0]);
+
+        return preg_replace_callback('~(\sstyle\s*=\s*)(["\'])(.*?)\2~is', function ($match) use ($address) {
+            $style = preg_replace_callback('~(url\(\s*)(&quot;|&#0?39;|["\']?)(.*?)\2(\s*\))~i', function ($url) use ($address) {
+                return $url[1] . $url[2] . $address($url[3]) . $url[2] . $url[4];
+            }, $match[3]);
+
+            return $match[1] . $match[2] . $style . $match[2];
+        }, $tag);
+
+    }, $html);
+}

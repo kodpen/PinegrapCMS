@@ -28,6 +28,10 @@ $pg_settings_cards[] = '
                                 </div>
                                 <div class="card-body">
                                    <div class="row gy-5">
+                                        <div class="col-12">
+                                            <a class="btn btn-sm btn-outline theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/search_audits.php"><i class="bi bi-activity me-1" aria-hidden="true"></i>' . lang('Search and audits') . '</a>
+                                            <div class="form-text">' . lang('The search index and the SEO, structure and accessibility checks: their last runs, progress, schedule and Run now.') . '</div>
+                                        </div>
                                         <div class="pg-f-lg">
                                             <label for="setting_title" class="form-label">' . lang('Web Browser Title') . '</label>
                                             <input type="text" name="title" id="setting_title" class="form-control" maxlength="255" value="' . h($title) . '"/>

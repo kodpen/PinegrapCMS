@@ -63,8 +63,8 @@ function test_notification_links_callers_pass_the_reader()
 	$panel = file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/notifications.php');
 	pg_assert_same(2, substr_count($panel, "pg_notification_display(\$notification, \$user['role'])"), 'bell and banner');
 
-	$widget = file_get_contents(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets/widget_2.php');
-	pg_assert_true(strpos($widget, "pg_software_repair_open_to(\$user['role'], pg_hosted())") !== false, 'System Status chip');
+	$widget = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/health_gauge.php');
+	pg_assert_true(strpos($widget, "pg_software_repair_open_to(\$role, pg_hosted())") !== false, 'System Status chip');
 }
 
 // A form submission is for whoever may edit the form's folder; a manager

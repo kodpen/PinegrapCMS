@@ -39,7 +39,11 @@ function test_notice_button_names_texts_name_their_button()
 	$cases = array(
 		'view_pages.php' => array(
 			'gone' => array('click the button again'),
-			'named' => array('click Refresh SEO Scores again', 'click Analyze HTML Structure again'),
+			'named' => array('click Refresh SEO Scores again'),
+		),
+		'audit_run.php' => array(
+			'gone' => array('click the button again'),
+			'named' => array('click Analyze HTML Structure again'),
 		),
 		'database_engine.php' => array(
 			'gone' => array('the button below'),

@@ -22,6 +22,6 @@ description: Plan (decided in #2693, 2026-10-28): one date-and-time control for 
 - Each step about 1,000 product lines; claim as `[plan:datetime-picker] P<n> — <topic>`.
 
 ## Where to start?
-- The panel is done: P1-P11 merged (P7 #2862, P9 #2867, P10 #2881 last). S1 #3113 (site loader, `ui/site-datetime-loader.md`), S2 #3132, S3a #3168. Next, after the claim check (`CLAUDE.md`, Claim work): S3b (`datetime-picker-site-steps.md`) once #3141 has merged; then **stop**: S4 waits. F1 done (#4398).
+- The panel is done: P1-P11 merged (P7 #2862, P9 #2867, P10 #2881 last). S1 #3113 (site loader, `ui/site-datetime-loader.md`), S2 #3132, S3a #3168. S3b #4383, F1 #4398. Next: S4 is ready to start (owner, 2026-11-01: the browser's own picker still opens on designed pages); claim it after the check (`CLAUDE.md`, Claim work), in PRs of about 1,000 lines.
 
 Related: docs/memory/plans/datetime-picker-steps.md, docs/memory/plans/datetime-picker-site-steps.md, docs/memory/ui/pg-datepicker.md, docs/memory/ui/pg-date-stores.md, docs/memory/ui/pg-field-wrappers.md, docs/memory/workflow/decisions-made-panel.md

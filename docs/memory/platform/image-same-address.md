@@ -1,6 +1,6 @@
 ---
 name: image-same-address
-description: A JPEG or PNG answered with its WebP derivative at its own address (get_file.php, includes/image_negotiation.php): the switch bits, who gets WebP, Vary, CDN guard, f=original, download name
+description: JPEG/PNG answered with its WebP derivative at its own address (get_file.php, image_negotiation.php): switch bits, Vary, CDN guard, f=original in downloads and mails, no door renames
 ---
 
 ## What does get_file.php do at a picture's own address?
@@ -20,3 +20,12 @@ description: A JPEG or PNG answered with its WebP derivative at its own address 
 
 ## Why the original through a CDN?
 - A cache that ignores `Vary` gives its first copy to everyone; Cloudflare does unless a Cache Rule varies on `Accept`. A request carrying `CF-Ray`, `CDN-Loop`, `Via` or `X-Amz-Cf-Id` gets the original (still with `Vary`) until bit 8 is set (`page-cache-proxy-rules.md`).
+
+## Which doors make WebP, and does any rename a picture?
+- None renames (owner, question 2 of the plan). File Manager "Prepare WebP" (`pg_explorer_handle_webp()`, JPEG/PNG only, `pg_explorer_webp_source_types()`) makes the cached copy with `pg_image_derivative()` (width 0, webp): no row added, renamed or removed; `busy` says it is made on the first visit. Edit File keeps only "Create a .webp copy", a new `.webp` row beside the picture.
+- The file window shows the made copy's size and saving: `pg_image_derivative_cached()` (`image_engine.php`, through `pg_image_derivative_target()`, the plan `pg_image_derivative()` makes from) finds it without making or writing anything.
+
+## Who asks for f=original?
+- File Manager downloads (`originalUrl()` in `view_folders.php`): a download is the uploaded file.
+- Every mail body: `get_page_content()` with `$email` runs `pg_image_mail_original_urls()` over `src`, `background` and `url()` in `style` attributes, for this site's (`HOSTNAME_SETTING`, with or without `www.`) jpg/jpeg/jpe/png addresses without an `f=`; `<style>` blocks and links stay. Mail programs and image proxies may name WebP and then show or keep the copy.
+

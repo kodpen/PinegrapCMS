@@ -67,6 +67,10 @@ jobs:
         if: ${{ hashFiles('tools/check_api_schema.php') != '' }}
         run: php tools/check_api_schema.php
 
+      - name: Audit rule registry (editor rules and codes against their checkers)
+        if: ${{ hashFiles('tools/check_audit_rules.php') != '' }}
+        run: php tools/check_audit_rules.php
+
       - name: Unit tests (tests/*_test.php)
         if: ${{ hashFiles('tools/test.php') != '' }}
         run: php tools/test.php

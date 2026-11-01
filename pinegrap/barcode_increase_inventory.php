@@ -297,15 +297,19 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
 
             // Generated barcodes live in product_barcodes; a scan is resolved there
             // first and falls back to the product name, which older labels carry.
-            $product_id = (int) db_value("SELECT product_id FROM product_barcodes WHERE barcode = '" . escape($barcode) . "' LIMIT 1");
+            // A code that is a barcode of one product and the name of another is
+            // refused instead of moving either.
+            $scanned = pg_barcode_scan_product($barcode);
 
-            if ($product_id) {
-                $sql_where = "id = ?";
-                $where_values = array((string) $product_id);
-            } else {
-                $sql_where = "name = ?";
-                $where_values = array((string) $barcode);
+            if ($scanned['refusal'] !== '') {
+                echo encode_json(array(
+                    'status' => 'error',
+                    'message' => $scanned['refusal']));
+                exit();
             }
+
+            $sql_where = "id = ?";
+            $where_values = array((string) $scanned['id']);
 
             $query = "SELECT 
             

@@ -18,7 +18,13 @@ description: How update_search_index.php survives a bad page, event, record or f
 - The finish window: a warning icon and "updated, but N item(s) could not be read. The Site Log names them." instead of the success sentence. `#finish_message` keeps its id: the status region copies its text.
 
 ## What if the run stops before its end?
-`$search_index_run` holds the stage (pages, records, files, sweep) and the last item started; a shutdown function writes "The search index run stopped before its end: …" with `pg_search_index_stop_note()` (pure): stage, item and `error_get_last()` only when fatal (message, file basename and line). `done` is set after `pg_cron_ran()`. A process killed by a signal runs no shutdown function.
+`$search_index_run` holds the stage (pages, records, files, sweep) and the last item started; a shutdown function writes "The search index run stopped before its end: …" with `pg_search_index_stop_note()` (pure): stage, item and `error_get_last()` only when fatal (message, file basename and line). `done` is set at the end of every run, also one that stops at its time budget ([[search-index-resumable-pass]]). A process killed by a signal runs no shutdown function.
 
 ## Which tests cover it?
 `tests/search_index_isolation_test.php` (render isolation with an `Error` and `output_error()`, notes, file reader, stop note, source checks); `tests/designer_search_index_test.php` (designer branch).
+
+## What if two runs overlap?
+- One lock for every start (#4765): the dispatcher, the panel button and a crontab run claim the `update_search_index` row of `cron_runs` through `pg_cron_claim()` (4 h, released by a shutdown function with `pg_cron_release()`). A second button start gets "The search index is already being updated…"; a second crontab start leaves quietly. Before the 2026.4.8 upgrade (no `locked_until`) there is nothing to claim.
+- The sweep deletes `timestamp < $timestamp` (`pg_search_index_sweep_sql()`): a run started later keeps its rows when an earlier one ends first. Before (`!=`), the first run to finish deleted every row the other had rewritten and pages left the search until the next run.
+
+Test: `tests/search_index_overlap_test.php` (sweep, lock length).

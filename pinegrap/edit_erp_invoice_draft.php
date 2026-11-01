@@ -76,6 +76,16 @@ if (!$_POST) {
             . ' <span class="fg-secondary">' . h(lang('The order counts these lines as received once the draft is issued.')) . '</span></span></div>'
         : '';
 
+    // The delivery note the draft was opened from (erp_waybill_invoice()):
+    // the way back to it, and why the account stays the note's.
+    $output_waybill = '';
+
+    foreach ((function_exists('erp_waybills_for_invoice') ? erp_waybills_for_invoice($invoice_id) : array()) as $draft_waybill) {
+        $output_waybill .= '<div class="alert theme-secondary d-flex align-items-center gap-3 py-3 mb-5" role="status"><i class="bi bi-truck" aria-hidden="true"></i><span>'
+            . '<a class="pg-link-body-emphasis" href="edit_erp_waybill.php?id=' . (int) $draft_waybill['id'] . '">' . h(lang(array('string' => 'From delivery note {var:1}', 'vars' => (string) $draft_waybill['full_number']))) . '</a>'
+            . ' <span class="fg-secondary">' . h(lang('The invoice goes to the note\'s account and takes its shipment date and carrier when the draft is issued.')) . '</span></span></div>';
+    }
+
     echo
     pg_page_shell([
         'title' => lang('Draft Invoice'),
@@ -96,6 +106,7 @@ if (!$_POST) {
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
             ' . $output_purchase_order . '
+            ' . $output_waybill . '
             ' . ((function_exists('erp_credit_draft_warning') && (($output_credit_warning = erp_credit_draft_warning($invoice)) !== ''))
                 ? '<div class="alert theme-warning"><i class="bi bi-speedometer2 me-3" aria-hidden="true"></i>' . h($output_credit_warning) . '</div>'
                 : '') . '
@@ -111,7 +122,7 @@ if (!$_POST) {
                 <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="erp_action" value="draft" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-save me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save Draft') . '</span></button>
+                            <button type="submit" name="erp_action" value="draft" data-pg-save-shortcut class="btn my-1 btn-outline theme-secondary"><i class="bi bi-save me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Save Draft') . '</span></button>
                             <button type="submit" name="erp_action" value="issue" class="btn my-1 btn-solid theme-success"><i class="bi bi-receipt me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Issue the Invoice') . '</span></button>
                             <button type="submit" name="erp_action" value="delete" class="btn my-1 btn-outline theme-warning" data-confirm-content="' . lang('Delete this draft? It has no number and nothing has been posted, so nothing is reversed.') . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Delete Draft') . '</span></button>
                         </div>
@@ -215,6 +226,13 @@ if (!$_POST) {
         $liveform->remove_form();
         $liveform_document = new liveform('edit_erp_invoice');
         $liveform_document->add_notice(lang(array('string' => 'Invoice {var:1} created.', 'vars' => h($issued['full_number']))));
+
+        // The delivery note's ship date and carrier, written where the
+        // invoice had none (erp_invoice_issue()).
+        $written_back = (array) ($issued['written_back'] ?? array());
+        if (isset($written_back['invoice_shipment_date']) || isset($written_back['invoice_carrier'])) {
+            $liveform_document->add_notice(lang('The shipment date and the carrier were written onto the invoice, which had none.'));
+        }
 
         if (function_exists('erp_credit_issued_warning') && (($credit_warning = erp_credit_issued_warning($invoice_id)) !== '')) {
             $liveform_document->add_warning(h($credit_warning));

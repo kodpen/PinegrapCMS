@@ -41,6 +41,13 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // or was deleted), in which case there is no row here at all.
     $row = mysqli_fetch_assoc($result);
 
+    // The visual editor's SEO check draws the page it holds, saved or not
+    // (includes/fn/seo_draft.php). Only in a background render: a visitor's
+    // request never reads a draft.
+    if (function_exists('pg_seo_draft_override') && pg_seo_rendering()) {
+        $row = pg_seo_draft_apply($row, pg_seo_draft_override());
+    }
+
     $page_name = $row['page_name'] ?? '';
     $page_folder = $row['page_folder'] ?? '';
     $page_style = $row['page_style'] ?? '';
@@ -6592,6 +6599,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // src addresses absolute, not srcset ones (pg_img_strip_responsive()).
     if ($email && function_exists('pg_img_strip_responsive')) {
         $content = pg_img_strip_responsive($content);
+    }
+
+    // An e-mail's JPEG and PNG pictures ask for the uploaded bytes: a mail
+    // program, or the proxy that fetches its pictures, may name WebP and
+    // then show or keep the copy get_file.php would send it instead.
+    if ($email) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/image_negotiation.php');
+        $content = pg_image_mail_original_urls($content, HOSTNAME_SETTING);
     }
 
     // An e-mail body says which language it is written in; a page gets this

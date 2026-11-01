@@ -190,6 +190,11 @@ function test_photo_gallery_folders_showing()
 	pg_assert_same(array(3, 2, 1), pg_gal_folders_showing(3, $parent_of), 'the folder and those above it');
 	pg_assert_same(array(5, 6), pg_gal_folders_showing(5, $parent_of), 'a loop ends the walk');
 	pg_assert_same(array(), pg_gal_folders_showing(0, $parent_of), 'no folder');
+	// Folder 2 is the Recycle Bin: no gallery opens it or a folder in it,
+	// so a file there is shown by none, not by the galleries above the bin.
+	pg_assert_same(array(), pg_gal_folders_showing(3, $parent_of, 2), 'a file in a folder of the bin');
+	pg_assert_same(array(), pg_gal_folders_showing(2, $parent_of, 2), 'a file in the bin');
+	pg_assert_same(array(5, 6), pg_gal_folders_showing(5, $parent_of, 2), 'a folder outside the bin');
 }
 
 // The classic page reads the widget's list, writes the photo's alt text
@@ -213,6 +218,7 @@ function test_photo_gallery_where_used()
 	pg_assert_contains('pg_gal_folders_showing($usage_file[\'folder\']', $handler, 'walks the folders above the file');
 	pg_assert_contains("WHERE page_type = 'photo gallery'", $handler, 'reads the gallery pages');
 	pg_assert_contains('pg_recycle_bin_folder_ids()', $handler, 'leaves the Recycle Bin out');
+	pg_assert_contains('}, (int) pg_recycle_bin_folder_id());', $handler, 'a file in the bin is shown by no gallery');
 	pg_assert_contains('pg_gal_widget_pages_showing($usage_gallery_folders)', $handler, 'and the designed pages whose widget shows the file');
 }
 

@@ -3510,33 +3510,12 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     // only what is allowed needs no such list — a change that is not copied
     // has not happened.
     if (is_array($tree) && $restricted) {
-        if ($page_id <= 0) {
-            // No stored page to merge into, and a content-level operator has
-            // no business creating one.
-            return array('ok' => false, 'page_id' => 0,
-                'errors' => array(lang('You do not have access to add pages.')), 'warnings' => $warnings);
+        $gate = pg_designer_gate_tree($tree, $page_id, $user);
+        if (!$gate['ok']) {
+            return array('ok' => false, 'page_id' => max(0, $page_id),
+                'errors' => array($gate['error']), 'warnings' => $warnings);
         }
-        if (pg_designer_page_access($page_id, $user) !== 'edit') {
-            return array('ok' => false, 'page_id' => $page_id,
-                'errors' => array(lang('You do not have access to edit this page.')), 'warnings' => $warnings);
-        }
-        $stored_json = pg_page_tree_json($page_id);
-        $stored_tree = ($stored_json !== '') ? json_decode($stored_json, true) : null;
-        if (is_array($stored_tree)) {
-            $tree = pg_designer_merge_restricted_tree($stored_tree, $tree);
-        } else {
-            // No stored tree to merge into (a page saved before the per-page
-            // tree existed). The submission is written, minus the nodes this
-            // level may never create: a custom_php node is eval()ed on every
-            // public render, so accepting one here would be code execution.
-            // The same marker typed into an ordinary text prop is defused,
-            // since the renderers emit that text into the page raw.
-            if (_pg_dm_locked_kind($tree) !== '') {
-                $tree = array('type' => 'root', 'props' => array(), 'children' => array());
-            }
-            pg_designer_drop_locked_nodes($tree);
-            _pg_dm_neutralise_markers($tree);
-        }
+        $tree = $gate['tree'];
     }
 
     // After the merge, so a content-level operator's note is stamped too, and
@@ -3875,6 +3854,15 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     // texts as a job for their engine (includes/translate/).
     if (function_exists('pg_tr_auto_update_page') && $multi_ready) {
         pg_tr_auto_update_page($page_id, (int)($user['id'] ?? 0));
+    }
+
+    // Contrast and target size measured on the editor's canvas (only a
+    // browser resolves the colours and sizes) are kept with the accessibility
+    // report and replaced on each save; a save that changed the page without
+    // measuring it (another tab, the API) clears them.
+    if ($page_id > 0 && ($changed || isset($page['a11y_measured']))) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/a11y.php');
+        pg_a11y_store_measured($page_id, isset($page['a11y_measured']) ? $page['a11y_measured'] : null);
     }
 
     // The revision this save wrote (0 for none), as pg_page_revision_record()
@@ -4844,6 +4832,14 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
     if (!pg_sw_finish_active() && !empty($props['_bindings'])) {
         $props = pg_page_record_bind_props($props, $type === 'content'
             && in_array(isset($props['contentType']) ? $props['contentType'] : '', array('heading', 'link', 'paragraph', 'span', 'text'), true));
+    }
+
+    // The editor's audit render marks every element with the node it was
+    // drawn from, so a finding on the rendered page badges that node on the
+    // canvas (pg_designer_audit_render()). Never on a stored or served page.
+    if (pg_designer_audit_render() && !empty($node['_id']) && $type !== 'root') {
+        if (!isset($props['_attrs']) || !is_array($props['_attrs'])) $props['_attrs'] = array();
+        $props['_attrs'][] = array('name' => 'data-pg-node', 'value' => (string)$node['_id']);
     }
 
     // A stretched link covers the nearest positioned element around it; when
@@ -6415,6 +6411,7 @@ function get_style_designer_regions_as_json()
         'menu_sequence_regions'=> array(),
         'tag_cloud_regions'    => array(),
         'tag_cloud_widget_pages' => array(),
+        'tag_cloud_page_info'  => array(),
         'system_region_pages'  => array(),
     );
 
@@ -6439,8 +6436,12 @@ function get_style_designer_regions_as_json()
         $data['menu_sequence_regions'][]   = $row['name'];
     }
 
-    $result = mysqli_query(db::$con, "SELECT page_name as name FROM page WHERE page_type = 'search results' ORDER BY page_name ASC") or output_error(lang('Query failed.'));
-    while ($row = mysqli_fetch_assoc($result)) { $data['tag_cloud_regions'][] = $row['name']; }
+    $result = mysqli_query(db::$con, "SELECT page_name, page_folder, page_style FROM page WHERE page_type = 'search results' ORDER BY page_name ASC") or output_error(lang('Query failed.'));
+    $tag_cloud_pages = array();
+    while ($row = mysqli_fetch_assoc($result)) {
+        $data['tag_cloud_regions'][] = $row['page_name'];
+        $tag_cloud_pages[] = $row;
+    }
 
     // Pages built with the Search Results widget: the Tag Cloud widget links
     // to them too (the classic tag cloud region does not).
@@ -6452,6 +6453,19 @@ function get_style_designer_regions_as_json()
         sort($data['tag_cloud_widget_pages']);
     }
 
+    // The design and the audience of each of those pages, so the picker
+    // can mark another design's page or a draft, and a new widget takes an
+    // open page of the design being edited.
+    if (function_exists('pg_tcw_page_info')) {
+        $styles = array();
+        $result = mysqli_query(db::$con, "SELECT style_id, style_name FROM style") or output_error(lang('Query failed.'));
+        while ($row = mysqli_fetch_assoc($result)) { $styles[(int)$row['style_id']] = (string)$row['style_name']; }
+        if (function_exists('pg_sw_widget_pages')) {
+            $tag_cloud_pages = array_merge($tag_cloud_pages, pg_sw_widget_pages('search_results'));
+        }
+        $data['tag_cloud_page_info'] = (object)pg_tcw_page_info($tag_cloud_pages, $styles, 'get_access_control_type');
+    }
+
     $result = mysqli_query(db::$con, "SELECT page_name as name FROM page WHERE
             (page_type = 'folder view') OR (page_type = 'photo gallery') OR (page_type = 'custom form') OR
             (page_type = 'form list view') OR (page_type = 'form view directory') OR (page_type = 'calendar view') OR
@@ -6459,6 +6473,10 @@ function get_style_designer_regions_as_json()
             (page_type = 'shopping cart') OR (page_type = 'search results')
         ORDER BY page_name ASC") or output_error(lang('Query failed.'));
     while ($row = mysqli_fetch_assoc($result)) { $data['system_region_pages'][] = $row['name']; }
+
+    // The city and state label words of the store's default country, for
+    // the address widgets' starters and canvas (İlçe and İl for Turkey).
+    $data['address_labels'] = pg_address_labels_editor_config(pg_address_default_country());
 
     // JSON_HEX_TAG ensures < and > are Unicode-escaped (\u003C / \u003E),
     // so a value containing "</script>" never closes the surrounding <script> tag.
@@ -7823,7 +7841,7 @@ function _pg_tpl_catalog_file($tpl_id, $source, $folder_id, $user_id)
  * Returns array('groups' => key => id, 'paths' => key => address name,
  * 'images' => key => picture address). Empty without the shop.
  */
-function _pg_tpl_catalog($tpl, $user_id, $root_group_id)
+function _pg_tpl_catalog($tpl, $user_id, $root_group_id, $folders = array())
 {
     $out = array('groups' => array(), 'paths' => array(), 'images' => array());
     if (!defined('ECOMMERCE') || !ECOMMERCE) return $out;
@@ -7924,6 +7942,7 @@ function _pg_tpl_catalog($tpl, $user_id, $root_group_id)
                     'order_receipt_message' => '', 'add_comment_message' => '', 'gift_card_email_body' => '',
                     'google_product_category' => '', 'tax_rate' => null, 'default_quantity' => 1,
                 );
+                $product = array_merge($product, _pg_tpl_product_access($p, $folders));
                 $img = isset($p['image']) ? _pg_tpl_catalog_file($tpl['id'], $p['image'], $folder_id, $user_id) : '';
                 $pid = (int)pg_pb_create_product($product, array('images' => ($img !== '') ? array($img) : array(), 'group_ids' => array(), 'zone_ids' => $ships ? $zone_ids : array(), 'attributes' => array(), 'submit_form' => array()));
                 if ($pid <= 0) continue;
@@ -7935,6 +7954,25 @@ function _pg_tpl_catalog($tpl, $user_id, $root_group_id)
             }
         }
     }
+    return $out;
+}
+
+// The access a template product gives once its order is paid, as products
+// columns (the product screen's Grant Access and Membership fields):
+// 'private_folder' => '<folder key>' grants that folder of the template for
+// 'private_days' days (0: no end); 'membership_days' renews the buyer's
+// membership. A folder key the template did not make grants nothing.
+function _pg_tpl_product_access($p, $folders)
+{
+    $out = array();
+    $key = isset($p['private_folder']) ? (string)$p['private_folder'] : '';
+    if ($key !== '' && isset($folders[$key]) && (int)$folders[$key] > 0) {
+        $out['grant_private_access'] = '1';
+        $out['private_folder']       = (int)$folders[$key];
+        $out['private_days']         = max(0, (int)(isset($p['private_days']) ? $p['private_days'] : 0));
+    }
+    $days = isset($p['membership_days']) ? (int)$p['membership_days'] : 0;
+    if ($days > 0) $out['membership_renewal'] = $days;
     return $out;
 }
 
@@ -7981,8 +8019,8 @@ function _pg_tpl_requirement_met($requirement)
 // under it) is taken again rather than making another beside it; one that
 // holds a published copy is left alone and the next is numbered like a page
 // name (pinegrap_hello-2). Access is the template's: 'public', 'private'
-// (users given access to the folder, and the site staff) or 'registration'
-// (any signed-in visitor).
+// (users given access to the folder, and the site staff), 'registration'
+// (any signed-in visitor) or 'membership' (members whose membership runs).
 function _pg_tpl_folders($tpl, $user_id)
 {
     $out  = array();
@@ -8015,7 +8053,7 @@ function _pg_tpl_folders($tpl, $user_id)
     foreach ($defs as $key => $d) {
         $key    = (string)$key;
         $name   = trim((string)(isset($d['name']) ? $d['name'] : $key));
-        $access = (isset($d['access']) && in_array($d['access'], array('public', 'private', 'registration'), true)) ? $d['access'] : 'public';
+        $access = (isset($d['access']) && in_array($d['access'], array('public', 'private', 'registration', 'membership'), true)) ? $d['access'] : 'public';
         $parent_key = isset($d['parent']) ? (string)$d['parent'] : '';
         if ($name === '') continue;
         $id = 0;
@@ -8349,10 +8387,12 @@ function pg_design_template_prepare($template_id, $user)
     }
     $site_name = (defined('ORGANIZATION_NAME') && trim((string)ORGANIZATION_NAME) !== '') ? (string)ORGANIZATION_NAME : lang('My Site');
     $tab_prefix = 'tpl' . substr(md5(uniqid('', true)), 0, 6) . '_';
-    // The template's own product groups and products, and its contact
-    // groups: found again or made, before anything names them.
+    // The template's folders, then its own product groups and products (a
+    // product may grant one of the folders) and its contact groups: found
+    // again or made, before anything names them.
+    $folders = _pg_tpl_folders($tpl, (int)$user['id']);
     $root_group = _pg_tpl_root_product_group();
-    $catalog = _pg_tpl_catalog($tpl, (int)$user['id'], $root_group);
+    $catalog = _pg_tpl_catalog($tpl, (int)$user['id'], $root_group, $folders);
     $vars = array(
         'product_group_paths'  => $catalog['paths'],
         'product_group_images' => $catalog['images'],
@@ -8364,7 +8404,7 @@ function pg_design_template_prepare($template_id, $user)
         'year'      => date('Y'),
         'pages'     => array(),
         'tabs'      => array(),
-        'folders'   => _pg_tpl_folders($tpl, (int)$user['id']),
+        'folders'   => $folders,
         'product_groups' => array_merge($catalog['groups'], array('root' => $root_group)),
     );
     foreach ($names as $key => $name) {
@@ -9512,6 +9552,45 @@ function pg_designer_preview_input($page_id, $settings, $access)
 }
 
 /**
+ * Whether the tree renderer marks elements with their node ids
+ * (data-pg-node): on only while the editor's SEO check renders a draft
+ * (pg_seo_check_draft_render()), whose findings badge the canvas by them.
+ *
+ * @param bool|null $set true/false to switch, null to read
+ * @return bool
+ */
+function pg_designer_audit_render($set = null)
+{
+    static $on = false;
+    if ($set !== null) $on = (bool)$set;
+    return $on;
+}
+
+/**
+ * The editor's widget payload as pg_sw_preview_overrides() rows: sid =>
+ * tree_json and settings (a `tab:` page reads as nothing chosen), at most
+ * 40. Shared by the Preview and the SEO check on the draft. Pure.
+ *
+ * @param array $widgets [{id, tree_json, system_region_config}]
+ * @return array sid => array(tree_json, cfg)
+ */
+function pg_designer_preview_override_rows($widgets)
+{
+    $overrides = array();
+    foreach ((array)$widgets as $w) {
+        if (!is_array($w) || count($overrides) >= 40) continue;
+        $sid = isset($w['id']) ? (int)$w['id'] : 0;
+        if ($sid <= 0) continue;
+        $cfg = isset($w['system_region_config']) ? json_decode((string)$w['system_region_config'], true) : null;
+        $overrides[$sid] = array(
+            'tree_json' => isset($w['tree_json']) ? (string)$w['tree_json'] : '',
+            'cfg'       => is_array($cfg) ? _pg_preview_drop_tab_refs($cfg) : null,
+        );
+    }
+    return $overrides;
+}
+
+/**
  * The editor's Preview: the system widgets on a page, rendered by the server,
  * which the blob page the editor opens cannot do.
  *
@@ -9542,17 +9621,7 @@ function pg_designer_preview_input($page_id, $settings, $access)
 function pg_designer_preview_widgets($page_id, $widgets, $comment_settings = array())
 {
     $page_id   = (int)$page_id;
-    $overrides = array();
-    foreach ((array)$widgets as $w) {
-        if (!is_array($w) || count($overrides) >= 40) continue;
-        $sid = isset($w['id']) ? (int)$w['id'] : 0;
-        if ($sid <= 0) continue;
-        $cfg = isset($w['system_region_config']) ? json_decode((string)$w['system_region_config'], true) : null;
-        $overrides[$sid] = array(
-            'tree_json' => isset($w['tree_json']) ? (string)$w['tree_json'] : '',
-            'cfg'       => is_array($cfg) ? _pg_preview_drop_tab_refs($cfg) : null,
-        );
-    }
+    $overrides = pg_designer_preview_override_rows($widgets);
     if (empty($overrides)) return array();
 
     $page_name = ($page_id > 0) ? (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $page_id . "' LIMIT 1") : '';

@@ -89,6 +89,9 @@ function pg_panel_backend_search($request, $action)
         $actions[] = array('label' => lang('404 Log'), 'icon' => 'bi-sign-dead-end', 'url' => $base_url . '/view_not_found_log.php', 'keys' => array('404', 'bulunamadi', 'bulunamayan', 'not found', 'kirik link', 'broken link', 'yonlendirme', 'redirect'));
     }
     if ($gate['manage']) {
+        $actions[] = array('label' => lang('Search and audits'), 'icon' => 'bi-activity', 'url' => $base_url . '/search_audits.php', 'keys' => array('arama dizini', 'dizin', 'search index', 'index', 'denetim', 'audit', 'seo', 'tarama', 'yapi', 'structure'));
+    }
+    if ($gate['manage']) {
         $actions[] = array('label' => lang('Accessibility report'), 'icon' => 'bi-universal-access', 'url' => $base_url . '/view_accessibility.php', 'keys' => array('erisilebilirlik', 'erişilebilirlik', 'accessibility', 'a11y', 'wcag', 'engelli'));
     }
     if ($gate['folders']) {

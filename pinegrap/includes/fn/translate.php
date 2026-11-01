@@ -786,12 +786,15 @@ function pg_tr_condition_props($props, $type)
         return $props;
     }
 
+    // pg_tr_node_fields() is the subsystem's: the renderer asks here before
+    // pg_tr_props(), so this may be the request's first call into it.
+    pg_tr_load();
+
     foreach (pg_tr_node_fields($type, $props) as $spec) {
         if (strpos($spec[0], '_cond:') !== 0) {
             continue;
         }
 
-        pg_tr_load();
         $raw = pg_tr_field_get($props, $spec[0]);
         $translated = pg_tr_render_text($raw, $spec[1]);
 
@@ -842,18 +845,24 @@ function pg_tr_html_lang($content, $language)
         return $content;
     }
 
-    return preg_replace_callback('~<html\b([^>]*)>~i', function ($match) use ($language) {
+    // The attribute with its value double-quoted, single-quoted or bare, and
+    // spaces allowed around "=", as an HTML parser reads it.
+    $pattern = '~\slang\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s"\'=<>`]+))~i';
+
+    return preg_replace_callback('~<html\b([^>]*)>~i', function ($match) use ($language, $pattern) {
         $attrs = $match[1];
 
-        if (!preg_match('~\slang=("|\')([^"\']*)\1~i', $attrs, $lang)) {
+        if (!preg_match($pattern, $attrs, $lang)) {
             return '<html' . $attrs . ' lang="' . h($language) . '">';
         }
 
-        if (strtolower(trim($lang[2])) !== 'en') {
+        $value = $lang[1] . (isset($lang[2]) ? $lang[2] : '') . (isset($lang[3]) ? $lang[3] : '');
+
+        if (strtolower(trim($value)) !== 'en') {
             return $match[0];
         }
 
-        return '<html' . preg_replace('~\slang=("|\')[^"\']*\1~i', ' lang="' . h($language) . '"', $attrs, 1) . '>';
+        return '<html' . preg_replace($pattern, ' lang="' . h($language) . '"', $attrs, 1) . '>';
     }, $content, 1);
 }
 
