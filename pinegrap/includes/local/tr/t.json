@@ -1004,6 +1004,7 @@
     "The article could not be found.": "Haber bulunamadı.",
     "The article text appears here.": "Haber metni burada görünür.",
     "The article's structured data and the RSS feeds name the time it reached the desk, not the publication time, and feeds order articles by that time; the structured data also names the account that sent it, not the byline.": "Haberin yapılandırılmış verisi ve RSS beslemeleri yayın zamanını değil, haberin masaya ulaştığı zamanı gösterir ve beslemeler haberleri bu zamana göre sıralar; yapılandırılmış veri ayrıca haberde görünen adı değil, haberi gönderen hesabı gösterir.",
+    "The article's structured data and the RSS feeds name the time it reached the desk, not the publication time, and feeds order articles by that time; the structured data names the byline as the author.": "Haberin yapılandırılmış verisi ve RSS beslemeleri yayın zamanını değil, haberin masaya ulaştığı zamanı gösterir ve beslemeler haberleri bu zamana göre sıralar; yapılandırılmış veri yazar olarak haberde görünen adı (imzayı) gösterir.",
     "The articles you sent to the desk, their status and the editors' messages, newest first.": "Masaya gönderdiğiniz haberler, durumları ve editörlerin mesajları; en yenisi önce.",
     "The assistant is already working on it.": "Asistan zaten üzerinde çalışıyor.",
     "The assistants are connected in the Workspace, which is switched off.": "Asistanlar Çalışma Alanı'ndan bağlanır; Çalışma Alanı kapalı.",
