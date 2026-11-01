@@ -25,7 +25,7 @@ description: Community Forum & Docs template (pinegrap-forum): what it ships, it
 - Value links ([[record-value-page-links]]): board badge `?board=board`, byline `?member=submitter_name`, Report a post `?post=form_item_view`, guide breadcrumb `?section=section`.
 
 ## How are replies built?
-- Topic and guide pages: the Comments widget under the record view (topic: `topic_view`, the replies, `topic_aside`); the desk, inbox and report page keep the comments block; the lists and e-mails: [[design-template-forum-replies]]. Labels: `reply` (topic; published at once; no staff e-mail), Feedback (doc; rating; held), Message, Note. All need sign-in.
+- Topic and guide pages: the Comments widget under the record view (topic: `topic_view`, the replies, `topic_aside`); desk, inbox, report: [[design-template-forum-private-threads]]; lists, e-mails: [[design-template-forum-replies]]. Labels: `reply` (topic; published at once; no staff e-mail), Feedback (doc; rating; held), Message, Note. All need sign-in.
 - `reply` is a lower-case key of its own (`yanıt`): the shared `Reply` is a verb (`Yanıtla`), only on the Reply link; as a label it printed "Yanıtla ekle".
 - The author gets every reply by e-mail, others after Follow this topic or the form's box. Signed with the profile's name, else Member; staff type theirs, prefilled ([[designed-page-comment-names]]).
 
