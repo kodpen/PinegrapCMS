@@ -30,4 +30,4 @@ description: Plan (approved 2026-10-19): auto invoice with its two filters and t
 - Once the queue worker exists: enqueue the e-document send right after the automatic invoice, as first planned.
 
 ## Where to start?
-- Step 3 and the marketplace switch (#3670, free to claim) are left; step 3 waits for the İşbaşı test environment, to check the internet-sale note and payment fields against the provider's UBL profile (no field is guessed, `erp-edoc-driver-layer.md`). Read docs/memory/erp/erp-auto-invoice.md first.
+- Only step 3 is left (the marketplace switch is built, #3692); it waits for the İşbaşı test environment, to check the internet-sale note and payment fields against the provider's UBL profile (no field is guessed, `erp-edoc-driver-layer.md`). Read docs/memory/erp/erp-auto-invoice.md first.
