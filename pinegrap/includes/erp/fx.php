@@ -130,10 +130,10 @@ function erp_fx_currency_options()
     $base = erp_base_currency();
     $options = array();
 
-    $options[h($base . (isset($names[$base]) ? (' - ' . $names[$base]) : ''))] = $base;
+    $options[h($base . (isset($names[$base]) ? (' - ' . pg_currency_label($names[$base])) : ''))] = $base;
 
     foreach (erp_fx_currencies() as $code) {
-        $options[h($code . ' - ' . $names[$code])] = $code;
+        $options[h($code . ' - ' . pg_currency_label($names[$code]))] = $code;
     }
 
     return $options;

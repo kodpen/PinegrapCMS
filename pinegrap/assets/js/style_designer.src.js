@@ -5710,7 +5710,7 @@ const StyleDesigner = (function () {
                 d.style.cssText = 'border:1px dashed #6366f1;border-radius:4px;padding:8px 12px;'
                                 + 'background:rgba(99,102,241,.06);color:#6366f1;font-size:.8rem;line-height:1.4';
                 d.innerHTML = '<i class="bi bi-signpost-split me-1"></i>'
-                            + '<strong>Breadcrumb</strong>'
+                            + '<strong>' + esc(_sdT('Breadcrumb')) + '</strong>'
                             + '<span class="ms-2 text-muted small">' + esc(_sdT('Catalog → Group → Subgroup → Product (filled by the backend)')) + '</span>';
                 return d;
             },

@@ -97,6 +97,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - marketplace-order-status-sync.md: Marketplace package status rules: first sight, fill-only dates, tracking once, cancel without refund or customer e-mail, stock restore, cancellations first, auto-accept only Created.
 - marketplace-outbound-layer.md: Design rules of the outbound marketplace layer (includes/api/outbound/connectors/): connector contract, three tables, queue, lease and rotation job.
 - marketplace-price.md: Price and VAT rate sent to Trendyol and n11 - the checkout's tax-inclusive price (mp_product_price()), the rate inside it (vat_rate), the mapping screen's price column.
+- marketplace-product-import-queue.md: The product import queues the products it updated for the marketplaces in one call at the end, after the bundle refresh, without webhooks
 - marketplace-provider-fields.md: How a marketplace provider declares its credential fields in mp_providers() (text, secret, select), help, cargo template and barcode keys, and the transport seam of Trendyol's functions.
 - marketplace-shop-view.md: Shop view of marketplace_products.php (#1931): shop products with pictures and their state on an account, codes typed in the row, bulk own-code match, send, remove, listing changes
 - marketplace-variant-attributes.md: Listed products' variant attributes (Trendyol varianter and slicer, n11 isVariant): own option first, the article's value as fallback, duplicate refusal, mapping screen field.
@@ -259,7 +260,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - trendyol-return-rejection.md: Rejecting a Trendyol return (claim issue): the reasons read with the returns, which need a document, the query-plus-multipart call, the screen's form and checks, what stays unverified (PR #1837)
 - trendyol-returns.md: Trendyol returns (claims): read on a button for the last 14 days, kept in the session only, approve a return's waiting units after a confirm; the calls, what the docs did not prove
 - trendyol-stock-price.md: Trendyol stock and price push: price-and-inventory batch by barcode, what is left out before the call, the 15-minute repeat refusal, status-less batch result; webhooks carry no stock.
-- variant-price-rules.md: How variant prices are computed from attribute price rules (base, multiplier, delta), the fixed order and rounding, the single compute function and its JS preview twin.
+- variant-price-rules.md: How variant prices are computed from attribute price rules (base, multiplier, delta), the fixed order and rounding, the top a rule price may reach, the single compute function and its JS preview twin.
 - variant-set-form-template.md: Variant-set product form model: template rows on the product group, copies on each product, form_fields row shapes, pg_pb_apply_form_template rules (2026.4).
 - wishlist-heart.md: Favourite heart in the catalog widgets: catalog_wishlist / wishlist actions, the binding pass, pg_wishlist.js and its injection, the variant event, why pages stay cacheable
 - wishlist.md: Favourites core (includes/fn/wishlist.php, wishlist.php): owner model, the pg_wishlist cookie, lazy merge at sign-in, the toggle and state endpoint, rate limit, trim, privacy export
