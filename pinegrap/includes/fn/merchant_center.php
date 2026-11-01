@@ -9,7 +9,9 @@
  * account. The site then registers its Google TSV product feed address
  * (feed.php) as a data source Google fetches once a day, and reads the
  * account's aggregate product statuses on a schedule so System Status can
- * show the product problems Merchant Center reports.
+ * show the product problems Merchant Center reports. Next to the feed it
+ * registers a supplemental API data source, which the per-product push of
+ * price and stock writes to (pg_merchant_product_input()).
  *
  * Nothing has a table of its own: the account, the data source and the last
  * reading of the issues are kept under the "merchant" key of
@@ -71,6 +73,7 @@ function pg_merchant_state_parse($stored)
         'checked_at'     => 0,
         'check_error'    => '',
         'issues'         => pg_merchant_issue_summary(array()),
+        'supplement'     => '',
     );
 
     if (!is_array($stored)) {
@@ -104,6 +107,11 @@ function pg_merchant_state_parse($stored)
 
     if (isset($stored['issues']) && is_array($stored['issues'])) {
         $state['issues'] = pg_merchant_summary_parse($stored['issues']);
+    }
+
+    if (isset($stored['supplement']) && is_string($stored['supplement'])
+        && preg_match('#^accounts/\d{1,20}/dataSources/\d{1,20}$#', $stored['supplement'])) {
+        $state['supplement'] = $stored['supplement'];
     }
 
     return $state;
@@ -191,7 +199,7 @@ function pg_merchant_feed_label($country)
 // data source whose file Google fetches once a day.
 function pg_merchant_data_source_body($feed_url, $language, $country, $time_zone, $name)
 {
-    $language = strtolower(substr(preg_replace('/[^A-Za-z]/', '', (string) $language), 0, 2));
+    $language = pg_merchant_content_language($language);
     $country = strtoupper((string) $country);
 
     $fetch = array(
@@ -208,7 +216,7 @@ function pg_merchant_data_source_body($feed_url, $language, $country, $time_zone
     return array(
         'displayName'              => pg_merchant_clip($name, 100),
         'primaryProductDataSource' => array(
-            'contentLanguage' => ($language !== '') ? $language : 'en',
+            'contentLanguage' => $language,
             'feedLabel'       => pg_merchant_feed_label($country),
             'countries'       => array($country),
         ),
@@ -430,6 +438,165 @@ function pg_merchant_default_country($organization_country, $currency)
     return isset($by_currency[$currency]) ? $by_currency[$currency] : '';
 }
 
+// The content language a data source and a product input are written in:
+// the first two letters of a language code, English when there are none.
+function pg_merchant_content_language($language)
+{
+    $language = strtolower(substr(preg_replace('/[^A-Za-z]/', '', (string) $language), 0, 2));
+
+    return ($language !== '') ? $language : 'en';
+}
+
+// A Merchant API price: whole millionths of the currency unit as a string.
+// Prices are kept in minor units with two decimals (as the feed writes
+// them), so four zeros are added to the digits instead of multiplying, which
+// would overflow a 32-bit integer or round through a float.
+function pg_merchant_amount($minor_units, $currency)
+{
+    $minor_units = max(0, (int) round((float) $minor_units));
+
+    return array(
+        'amountMicros' => ($minor_units === 0) ? '0' : $minor_units . '0000',
+        'currencyCode' => strtoupper(trim((string) $currency)),
+    );
+}
+
+// The Merchant API availability of a feed item: back orders keep selling, as
+// in the Google feed (pg_product_feed_google_row()).
+function pg_merchant_availability($availability)
+{
+    return ($availability === 'out_of_stock') ? 'OUT_OF_STOCK' : 'IN_STOCK';
+}
+
+// The {contentLanguage}~{feedLabel}~{offerId} part of a product's name, or
+// '' when the id has characters the name cannot carry (the feed's ids are
+// product numbers, so this only guards against a changed id rule).
+function pg_merchant_product_key($language, $country, $offer_id)
+{
+    $offer_id = (string) $offer_id;
+
+    if (!preg_match('/^[A-Za-z0-9_-]{1,50}$/', $offer_id)) {
+        return '';
+    }
+
+    return pg_merchant_content_language($language) . '~' . pg_merchant_feed_label($country) . '~' . $offer_id;
+}
+
+// The body of productInputs.insert for one feed item into the supplemental
+// data source: only the values that change between two daily fetches (price,
+// sale price, availability). The rest stays the feed's.
+function pg_merchant_product_input($item, $language, $country)
+{
+    $attributes = array(
+        'price' => pg_merchant_amount($item['price'], $item['currency']),
+    );
+
+    if (isset($item['sale_price']) && ($item['sale_price'] !== null)) {
+        $attributes['salePrice'] = pg_merchant_amount($item['sale_price'], $item['currency']);
+    }
+
+    $attributes['availability'] = pg_merchant_availability($item['availability']);
+
+    return array(
+        'offerId'           => (string) $item['id'],
+        'contentLanguage'   => pg_merchant_content_language($language),
+        'feedLabel'         => pg_merchant_feed_label($country),
+        'productAttributes' => $attributes,
+    );
+}
+
+// The body of accounts.dataSources.create for the supplemental source the
+// pushes are written to. No file input: an API source.
+function pg_merchant_supplement_body($language, $country, $name)
+{
+    return array(
+        'displayName'                   => pg_merchant_clip($name, 100),
+        'supplementalProductDataSource' => array(
+            'contentLanguage' => pg_merchant_content_language($language),
+            'feedLabel'       => pg_merchant_feed_label($country),
+        ),
+    );
+}
+
+// The feed source's default rule with the supplemental source added after
+// what is there (the source itself when nothing is), or null when it is
+// already linked. Links the shop added in Merchant Center are kept.
+function pg_merchant_rule_with_supplement($primary, $supplement)
+{
+    $current = isset($primary['primaryProductDataSource']['defaultRule']['takeFromDataSources'])
+        && is_array($primary['primaryProductDataSource']['defaultRule']['takeFromDataSources'])
+        ? array_values($primary['primaryProductDataSource']['defaultRule']['takeFromDataSources'])
+        : array();
+
+    foreach ($current as $reference) {
+        if (is_array($reference) && isset($reference['supplementalDataSourceName']) && ($reference['supplementalDataSourceName'] === $supplement)) {
+            return null;
+        }
+    }
+
+    if (!$current) {
+        $current[] = array('self' => true);
+    }
+
+    $current[] = array('supplementalDataSourceName' => (string) $supplement);
+
+    return $current;
+}
+
+// The issues Merchant Center reports for one product (products.get), worst
+// first, each kind once. 'found' is false when Google has no such product.
+function pg_merchant_product_issues($product)
+{
+    $result = array('found' => false, 'issues' => array());
+
+    if (!is_array($product) || !isset($product['name'])) {
+        return $result;
+    }
+
+    $result['found'] = true;
+    $rank = array('DISAPPROVED' => 0, 'DEMOTED' => 1, 'NOT_IMPACTED' => 2);
+    $issues = array();
+
+    $listed = isset($product['productStatus']['itemLevelIssues']) && is_array($product['productStatus']['itemLevelIssues'])
+        ? $product['productStatus']['itemLevelIssues']
+        : array();
+
+    foreach ($listed as $issue) {
+        if (!is_array($issue) || !isset($issue['description'])) {
+            continue;
+        }
+
+        $line = array(
+            'severity'    => pg_merchant_severity(isset($issue['severity']) ? (string) $issue['severity'] : ''),
+            'description' => pg_merchant_clip((string) $issue['description'], 255),
+            'attribute'   => isset($issue['attribute']) ? pg_merchant_clip((string) $issue['attribute'], 100) : '',
+            'help'        => isset($issue['documentation']) ? pg_merchant_help_url($issue['documentation']) : '',
+        );
+
+        $key = (isset($issue['code']) ? (string) $issue['code'] : '') . '|' . $line['attribute'] . '|' . $line['description'];
+
+        if (!isset($issues[$key]) || ($rank[$line['severity']] < $rank[$issues[$key]['severity']])) {
+            $issues[$key] = $line;
+        }
+    }
+
+    $issues = array_values($issues);
+    $order = array_keys($issues);
+
+    // Stable: issues of the same severity keep Google's order.
+    usort($order, function ($a, $b) use ($issues, $rank) {
+        $by_severity = $rank[$issues[$a]['severity']] - $rank[$issues[$b]['severity']];
+
+        return ($by_severity !== 0) ? $by_severity : $a - $b;
+    });
+
+    foreach ($order as $index) {
+        $result['issues'][] = $issues[$index];
+    }
+
+    return $result;
+}
+
 /* ---------------------------------------------------------------------------
    Storage
    --------------------------------------------------------------------------- */
@@ -637,12 +804,24 @@ function pg_merchant_register()
         return array('ok' => false, 'action' => $action, 'error' => $call['error']);
     }
 
-    pg_merchant_state_save(array(
+    $state = pg_merchant_state_save(array(
         'connection_id'  => $connection['id'],
         'data_source'    => isset($call['data']['name']) ? (string) $call['data']['name'] : $state['data_source'],
         'registered_at'  => time(),
         'register_error' => '',
     ));
+
+    // The supplemental source the per-product push writes to, registered
+    // with the feed so both are in place once an account is chosen. The feed
+    // works without it, so a failure is noted and the feed stays registered.
+    $supplement = pg_merchant_supplement_ensure($connection['id'], $state);
+
+    if (!$supplement['ok']) {
+        $error = pg_merchant_clip(lang(array('string' => 'The feed is registered, but its price and stock update source is not: {var:1}', 'vars' => array($supplement['error']))), 255);
+        pg_merchant_state_save(array('register_error' => $error));
+
+        return array('ok' => false, 'action' => $action, 'error' => $error);
+    }
 
     return array('ok' => true, 'action' => $action, 'error' => '');
 }
@@ -687,6 +866,59 @@ function pg_merchant_refresh_issues($force = false)
     return array('ok' => true, 'ran' => true, 'error' => '');
 }
 
+// The supplemental data source pushes are written to, created once and
+// linked into the feed source's default rule so its values win over the
+// file's. Returns array('ok', 'name', 'error').
+function pg_merchant_supplement_ensure($connection_id, $state)
+{
+    $language = defined('TRANSLATION_SOURCE_LANGUAGE') ? TRANSLATION_SOURCE_LANGUAGE : 'en';
+    $name = $state['supplement'];
+
+    if ($name !== '') {
+        $call = pg_merchant_call($connection_id, 'GET', '/datasources/v1/' . $name);
+
+        if (!$call['ok'] && ($call['status'] !== 404)) {
+            return array('ok' => false, 'name' => '', 'error' => $call['error']);
+        }
+
+        // Deleted in Merchant Center: made again below.
+        if (!$call['ok']) {
+            $name = '';
+        }
+    }
+
+    if ($name === '') {
+        $call = pg_merchant_call($connection_id, 'POST', '/datasources/v1/accounts/' . $state['account'] . '/dataSources',
+            pg_merchant_supplement_body($language, $state['country'], lang('Website price and stock updates')));
+        $name = isset($call['data']['name']) ? (string) $call['data']['name'] : '';
+
+        if (!$call['ok'] || !preg_match('#^accounts/\d{1,20}/dataSources/\d{1,20}$#', $name)) {
+            return array('ok' => false, 'name' => '', 'error' => ($call['error'] !== '') ? $call['error'] : 'no data source name');
+        }
+
+        pg_merchant_state_save(array('supplement' => $name));
+    }
+
+    $primary = pg_merchant_call($connection_id, 'GET', '/datasources/v1/' . $state['data_source']);
+
+    if (!$primary['ok']) {
+        return array('ok' => false, 'name' => $name, 'error' => $primary['error']);
+    }
+
+    $rule = pg_merchant_rule_with_supplement($primary['data'], $name);
+
+    if ($rule !== null) {
+        $link = pg_merchant_call($connection_id, 'PATCH', '/datasources/v1/' . $state['data_source'] . '?updateMask=primaryProductDataSource.defaultRule',
+            array('primaryProductDataSource' => array('defaultRule' => array('takeFromDataSources' => $rule))));
+
+        if (!$link['ok']) {
+            return array('ok' => false, 'name' => $name, 'error' => $link['error']);
+        }
+    }
+
+    return array('ok' => true, 'name' => $name, 'error' => '');
+}
+
 // What the Product Feeds card asked for: choose an account (and country),
 // register the feed again, read the issues now, or forget the account.
 // Choosing an account registers the feed and reads the issues at once.
@@ -704,6 +936,7 @@ function pg_merchant_save_from_screen($input)
         pg_merchant_state_save(array(
             'account' => '', 'account_name' => '', 'data_source' => '', 'registered_at' => 0, 'register_error' => '',
             'checked_at' => 0, 'check_error' => '', 'issues' => pg_merchant_issue_summary(array()),
+            'supplement' => '',
         ));
         $messages[] = array('notice', lang('Merchant Center is no longer used. The data source stays in the Merchant Center account until you delete it there.'));
 
@@ -732,7 +965,7 @@ function pg_merchant_save_from_screen($input)
         pg_merchant_state_save(array(
             'connection_id' => $connection['id'], 'account' => $chosen, 'account_name' => $offered['accounts'][$chosen],
             'data_source' => '', 'registered_at' => 0, 'register_error' => '', 'checked_at' => 0, 'check_error' => '',
-            'issues' => pg_merchant_issue_summary(array()),
+            'issues' => pg_merchant_issue_summary(array()), 'supplement' => '',
         ));
         $register = true;
         $input['check'] = true;

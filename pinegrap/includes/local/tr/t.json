@@ -1861,6 +1861,7 @@
     "The feed could not be built.": "Akış oluşturulamadı.",
     "The feed could not be registered in Merchant Center: {var:1}": "Akış Merchant Center'a kaydedilemedi: {var:1}",
     "The feed is not registered in Merchant Center yet.": "Akış henüz Merchant Center'a kaydedilmedi.",
+    "The feed is registered, but its price and stock update source is not: {var:1}": "Feed kaydedildi, ancak fiyat ve stok güncelleme kaynağı kaydedilemedi: {var:1}",
     "The feed was added to Merchant Center as a data source fetched every day.": "Akış, Merchant Center'a her gün alınan bir veri kaynağı olarak eklendi.",
     "The festival opens": "Festival açıldı",
     "The field has been created.": "Alan oluşturuldu.",

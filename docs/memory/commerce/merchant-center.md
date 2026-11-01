@@ -14,6 +14,7 @@ module: merchant_center
 
 ## How is registering kept idempotent?
 - `pg_merchant_register()` lists the account's data sources; `pg_merchant_find_source()` keeps one whose `fetchUri` is the feed address, moves the one registered before (stored name) to a new address with PATCH `updateMask=fileInput.fetchSettings.fetchUri` (a renewed feed token), and only otherwise creates one (`pg_merchant_data_source_body()`). Google needs `contentLanguage` + `feedLabel` for a file input: the language is `TRANSLATION_SOURCE_LANGUAGE` cut to two letters, the label is the target country.
+- Then `pg_merchant_supplement_ensure()` (#4388) creates the push's supplemental API source (state `supplement`), linked into the feed source's `defaultRule`. Push body `pg_merchant_product_input()`, issues `pg_merchant_product_issues()`.
 - The country comes from the card (two letters, field `merchant_center_country`, apart from the structured-data `merchant_country` in `config`: one shared name made every save overwrite the seller country with this one, #3557; since #3908 the two cards are in different categories, Ecommerce and SEO, and `tests/settings_seo_sharing_test.php` holds each save to its own field), offered first from `ORGANIZATION_COUNTRY` when it is a code, else from the base currency (`pg_merchant_default_country()`).
 
 ## When are the issues read?
