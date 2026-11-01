@@ -31,30 +31,30 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 /**
  * Every check: its severity, the WCAG 2.2 success criterion it reads and that
- * criterion's level. 'document' rules need a whole page and are skipped for
- * output that is not one (seo-structure-non-html-output.md).
+ * criterion's level, in checklist order; read from the audit rule registry
+ * (includes/fn/audit_rules.php). 'document' rules need a whole page and are
+ * skipped for output that is not one (seo-structure-non-html-output.md).
  *
  * @return array<string,array>
  */
 function pg_a11y_rules()
 {
-    return array(
-        'a11y_page_title'        => array('severity' => 'error',   'criterion' => '2.4.2', 'level' => 'A',  'document' => true),
-        'a11y_html_lang'         => array('severity' => 'error',   'criterion' => '3.1.1', 'level' => 'A',  'document' => true),
-        'a11y_main_missing'      => array('severity' => 'warning', 'criterion' => '2.4.1', 'level' => 'A',  'document' => true),
-        'a11y_heading_order'     => array('severity' => 'warning', 'criterion' => '1.3.1', 'level' => 'A',  'document' => false),
-        'a11y_img_alt'           => array('severity' => 'error',   'criterion' => '1.1.1', 'level' => 'A',  'document' => false),
-        'a11y_form_label'        => array('severity' => 'error',   'criterion' => '1.3.1', 'level' => 'A',  'document' => false),
-        'a11y_idref_broken'      => array('severity' => 'warning', 'criterion' => '1.3.1', 'level' => 'A',  'document' => false),
-        'a11y_error_association' => array('severity' => 'warning', 'criterion' => '3.3.1', 'level' => 'A',  'document' => false),
-        'a11y_link_name'         => array('severity' => 'error',   'criterion' => '2.4.4', 'level' => 'A',  'document' => false),
-        'a11y_link_generic'      => array('severity' => 'notice',  'criterion' => '2.4.4', 'level' => 'A',  'document' => false),
-        'a11y_button_name'       => array('severity' => 'error',   'criterion' => '4.1.2', 'level' => 'A',  'document' => false),
-        'a11y_frame_title'       => array('severity' => 'error',   'criterion' => '4.1.2', 'level' => 'A',  'document' => false),
-        'a11y_media_autoplay'    => array('severity' => 'warning', 'criterion' => '1.4.2', 'level' => 'A',  'document' => false),
-        'a11y_contrast'          => array('severity' => 'warning', 'criterion' => '1.4.3', 'level' => 'AA', 'document' => false),
-        'a11y_target_size'       => array('severity' => 'notice',  'criterion' => '2.5.8', 'level' => 'AA', 'document' => false),
-    );
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/audit_rules.php');
+
+    $rules = array();
+
+    foreach (pg_audit_rules() as $rule) {
+        if ($rule['a11y'] !== '') {
+            $rules[$rule['a11y']] = array(
+                'severity'  => $rule['severity']['a11y'],
+                'criterion' => $rule['criterion'],
+                'level'     => $rule['level'],
+                'document'  => in_array('a11y', $rule['document'], true),
+            );
+        }
+    }
+
+    return $rules;
 }
 
 // WCAG 2.2 success criteria the checks read, by number, with their names.

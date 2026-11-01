@@ -6,7 +6,7 @@ description: Steps SA6-SA13 of plans/search-and-audits.md: rule registry, same i
 ## Which steps are there?
 - Sizes as in `search-and-audits-steps.md`.
 
-- SA6 (M) Rule registry. `free`: severities unchanged.
+- SA6 (M) Rule registry. Done (#4769). `free`: severities unchanged.
   - New `includes/fn/audit_rules.php`: concept → SEO code, a11y code, WCAG criterion and level, severity per scope, editor rule ids, document-only, browser-only. `pg_seo_structure_severities()` and `pg_a11y_rules()` read it.
   - `tools/check_audit_rules.php` in CI: every editor rule id and `seo:` code in `style_designer.src.js` has an entry, and each entry's codes have a checker. `tests/audit_rules_test.php`.
 
