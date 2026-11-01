@@ -6,7 +6,7 @@ description: Steps SA1-SA5 of plans/search-and-audits.md: index isolation, overl
 ## Which steps are there?
 - S under 400 product lines, M about 1,000. SA1, SA3 and SA5 touch different files and may run side by side; SA2 and SA4 follow SA1 (`update_search_index.php`), SA6 follows SA3 and SA5. SA6-SA13: `search-and-audits-steps-2.md`.
 
-- SA1 (M) Index survives a bad item. `free`.
+- SA1 (M) Index survives a bad item. Done (#4733).
   - Pages, calendar events and classic form records drawn as designer records are (`pg_error_throws(true)`, `try`/`catch (Throwable)`/`finally` putting back `$_GET`, the buffer level, the flag). A failed item keeps its row (its `timestamp` set to the run's, so the sweep spares it), counted and named by `pg_search_index_failure_note()`, which gains the item's kind.
   - Files: `shell_exec` only after `function_exists()` (a name in `disable_functions` is "Call to undefined function" on PHP 8); `.doc` and `.ppt` read only an existing file with bytes (`fread()` on a failed `fopen()` is a `TypeError`, on 0 bytes a `ValueError`); each file in its own `try`, a failure keeps the old row.
   - A shutdown function writes one Site Log line when the run stops before its end: stage, last item started, `error_get_last()`. The finish window counts every kind.
