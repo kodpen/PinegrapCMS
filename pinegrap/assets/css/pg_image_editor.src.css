@@ -1294,6 +1294,78 @@
 
 /* -- Vector (pg_image_editor_vector.js) -- */
 
+.pgie .pgie-wide {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+.pgie .pgie-wide.on {
+  border-color: var(--pgie-pline);
+  background: var(--pgie-pw);
+  color: var(--pgie-ink);
+}
+
+.pgie-seg button .pgie-ic {
+  width: 15px;
+  height: 15px;
+  margin-inline-end: 4px;
+  vertical-align: -3px;
+}
+
+/* The path being drawn and a chosen point's handle lines. */
+.pgie-vover {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.pgie-vpath {
+  fill: none;
+  stroke: var(--pgie-sel);
+  stroke-width: 1.5;
+}
+
+.pgie-vline {
+  fill: none;
+  stroke: var(--pgie-sel);
+  stroke-width: 1;
+}
+
+.pgie-vknot {
+  fill: #ffffff;
+  stroke: var(--pgie-sel);
+  stroke-width: 1.5;
+}
+
+.pgie-vknot.pgie-vfirst {
+  fill: var(--pgie-sel);
+}
+
+.pgie-vhandle {
+  fill: var(--pgie-sel);
+  stroke: #ffffff;
+  stroke-width: 1.5;
+}
+
+/* A path's points (square) and the chosen point's handles (round). */
+.pgie-sh.pgie-shx[data-h^="k"] {
+  border-radius: 2px;
+  cursor: move;
+}
+
+.pgie-sh.pgie-shx[data-h^="i"],
+.pgie-sh.pgie-shx[data-h^="o"] {
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-color: #ffffff;
+  background: var(--pgie-sel);
+}
+
 /* Small screens. Below 768 px wide or 500 px tall the dialog fills the
    screen and the panel becomes a sheet: over the right of the stage between
    600 and 767 px and on a phone held sideways, above a bottom tool bar below

@@ -1956,5 +1956,18 @@ function pg_image_editor_strings_export()
  */
 function pg_image_editor_strings_vector()
 {
-    return array();
+    return array(
+        'hintVector'     => lang('Click: point. Drag: curve. Enter: finish. Esc: cancel.'),
+        'hintNodes'      => lang('Drag points and handles. Double-click the path: add a point. Delete: remove the point. Esc: done.'),
+        'vectorNote'     => lang('Click to place corner points, drag to pull curves. Click the first point to close the path; double-click or Enter ends it.'),
+        'nodesNote'      => lang('Alt while dragging a handle breaks a smooth point into a corner.'),
+        'layer_path'     => lang('Vector path'),
+        'editPoints'     => lang('Edit points'),
+        'stopEditing'    => lang('Stop editing'),
+        'knotSmooth'     => lang('Smooth'),
+        'knotSharp'      => lang('Sharp'),
+        'pathClosed'     => lang('Closed'),
+        'finishPath'     => lang('Finish'),
+        'convertToPath'  => lang('Convert to path'),
+    );
 }

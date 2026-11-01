@@ -18,7 +18,7 @@ description: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboa
   - Export panel: format (original, JPEG, WebP, AVIF, PNG from the server's list), quality with the exact size from `estimate`, longest edge (original, 2560, 1920, 1280, 1080), metadata (location always removed, camera details optional), sRGB or the kept profile, progressive JPEG, PNG colour reduction; size before and after.
   - Profile `optimise`: the File Manager opens a picture straight on this panel.
 
-- E14 (M) Vector pen and nodes. Screen 09. `free` after E6.
+- E14 (M) Vector pen and nodes. Screen 09. Done in #4564 (`ui/image-editor-vector.md`).
   - Bezier pen (click for corners, drag for curves), node editing (move, handles, add, delete, corner or smooth), open and closed paths, "convert to path" for shapes.
 
 - E15 (M) SVG open and save. `free` after E7 and E14.

@@ -1215,6 +1215,10 @@
     function shapePath(l) {
         var w = l.w, h = l.h, r = clamp(Number(l.radius) || 0, 0, maxRadius(l)), d = '';
 
+        if (l.type === 'path') {
+            return pathShape(l);
+        }
+
         if (LINE_KINDS.indexOf(l.type) >= 0) {
             var parts = lineParts(l);
 
@@ -1239,6 +1243,10 @@
 
         if (LINE_KINDS.indexOf(l.type) >= 0) {
             return [[[0, h / 2], [w, h / 2]]];
+        }
+
+        if (l.type === 'path') {
+            return [curvePoints(pathKnots(l), !!l.closed, 16)];
         }
 
         if (l.type === 'pen') {
@@ -1288,7 +1296,7 @@
     function hitShape(l, p, slack) {
         var q = [l.mirror ? l.w - p[0] : p[0], p[1]], reach = (l.stroke || 1) / 2 + slack, lines = outline(l), i, j;
 
-        if ((l.fill === 'solid' || l.fill === 'soft') && (CLOSED_KINDS.indexOf(l.type) >= 0) && inside(q, lines[0])) {
+        if ((l.fill === 'solid' || l.fill === 'soft') && isClosed(l) && inside(q, lines[0])) {
             return true;
         }
 
@@ -1378,6 +1386,11 @@
         });
     }
 
+    // Whether a fill applies: a closed kind, or a closed vector path.
+    function isClosed(l) {
+        return (CLOSED_KINDS.indexOf(l.type) >= 0) || ((l.type === 'path') && !!l.closed);
+    }
+
     // The stroke's dash pattern, or null for a solid line.
     function dashFor(l) {
         var s = l.stroke || 1;
@@ -1393,7 +1406,7 @@
     function fillFor(l) {
         var hex = /^#([0-9a-f]{6})$/i.exec(l.color || ''), n = hex ? parseInt(hex[1], 16) : 0;
 
-        if ((CLOSED_KINDS.indexOf(l.type) < 0) || ((l.fill !== 'solid') && (l.fill !== 'soft'))) {
+        if (!isClosed(l) || ((l.fill !== 'solid') && (l.fill !== 'soft'))) {
             return 'none';
         }
 
@@ -1469,7 +1482,251 @@
 
     // -- vector pen and nodes (pg_image_editor_vector.js) --
 
-    var VECTOR = {};
+    // A vector path is a box layer like a drawn one (type path): its knots
+    // are kept as parts of the box (knots: [{ x, y, ix, iy, ox, oy, s }],
+    // the point, the handle in, the handle out, s for a smooth knot), so
+    // moving, resizing, turning and the picture's turns carry it; closed
+    // joins the last knot to the first. Its style is a drawn layer's.
+
+    var KAPPA = 0.5523;
+
+    function knot(x, y, s) {
+        return { x: x, y: y, ix: x, iy: y, ox: x, oy: y, s: !!s };
+    }
+
+    function segments(knots, closed) {
+        var out = [], i;
+
+        for (i = 1; i < knots.length; i++) {
+            out.push([knots[i - 1], knots[i]]);
+        }
+
+        if (closed && (knots.length > 2)) {
+            out.push([knots[knots.length - 1], knots[0]]);
+        }
+
+        return out;
+    }
+
+    // The point at t of the curve from knot a to knot b.
+    function cubicAt(a, b, t) {
+        var m = 1 - t;
+
+        return [m * m * m * a.x + 3 * m * m * t * a.ox + 3 * m * t * t * b.ix + t * t * t * b.x,
+            m * m * m * a.y + 3 * m * m * t * a.oy + 3 * m * t * t * b.iy + t * t * t * b.y];
+    }
+
+    function knotsD(knots, closed) {
+        if (!knots.length) {
+            return '';
+        }
+
+        var d = 'M' + rnd(knots[0].x) + ' ' + rnd(knots[0].y);
+
+        segments(knots, closed).forEach(function (s) {
+            d += 'C' + rnd(s[0].ox) + ' ' + rnd(s[0].oy) + ' ' + rnd(s[1].ix) + ' ' + rnd(s[1].iy) + ' ' + rnd(s[1].x) + ' ' + rnd(s[1].y);
+        });
+
+        return d + ((closed && (knots.length > 2)) ? 'Z' : ((knots.length === 1) ? 'h0.01' : ''));
+    }
+
+    // Points along the curve, n per segment.
+    function curvePoints(knots, closed, n) {
+        var pts = knots.length ? [[knots[0].x, knots[0].y]] : [];
+
+        segments(knots, closed).forEach(function (s) {
+            for (var k = 1; k <= n; k++) {
+                pts.push(cubicAt(s[0], s[1], k / n));
+            }
+        });
+
+        return pts;
+    }
+
+    function knotBounds(knots, closed) {
+        var pts = curvePoints(knots, closed, 24), xs = pts.map(function (p) { return p[0]; }), ys = pts.map(function (p) { return p[1]; });
+        var r6 = function (v) { return Math.round(v * 1e6) / 1e6; }, x = r6(Math.min.apply(null, xs)), y = r6(Math.min.apply(null, ys));
+
+        return { x: x, y: y, w: r6(Math.max.apply(null, xs)) - x, h: r6(Math.max.apply(null, ys)) - y };
+    }
+
+    function moveKnots(knots, fx, fy) {
+        return knots.map(function (k) {
+            var a = fx(k.x, k.y), i = fx(k.ix, k.iy), o = fx(k.ox, k.oy);
+
+            return { x: a[0], y: a[1], ix: i[0], iy: i[1], ox: o[0], oy: o[1], s: !!k.s };
+        });
+    }
+
+    function frac(v, size) {
+        return Math.round(v / size * 1e5) / 1e5;
+    }
+
+    // A new path's box from knots in the rotated space: the box around its
+    // curve, at least a pixel each way.
+    function pathLayer(knots, closed) {
+        var b = knotBounds(knots, closed), w = Math.max(1, b.w), h = Math.max(1, b.h), x = b.x + b.w / 2 - w / 2, y = b.y + b.h / 2 - h / 2;
+
+        return {
+            x: x, y: y, w: w, h: h, rot: 0, closed: !!closed,
+            knots: moveKnots(knots, function (px, py) { return [frac(px - x, w), frac(py - y, h)]; })
+        };
+    }
+
+    // A path's knots in its box's frame (pixels, 0, 0 its corner).
+    function pathKnots(l) {
+        return moveKnots(l.knots || [], function (u, v) { return [u * l.w, v * l.h]; });
+    }
+
+    // A path's box and knots after its knots (in its box's frame) changed:
+    // the box fits the curve again, its angle and mirror kept.
+    function refitPath(l, knots) {
+        var b = knotBounds(knots, l.closed), w = Math.max(1, b.w), h = Math.max(1, b.h);
+        var x0 = b.x + b.w / 2 - w / 2, y0 = b.y + b.h / 2 - h / 2, c = drawnPoint(l, x0 + w / 2, y0 + h / 2);
+
+        return {
+            x: c[0] - w / 2, y: c[1] - h / 2, w: w, h: h,
+            knots: moveKnots(knots, function (px, py) { return [frac(px - x0, w), frac(py - y0, h)]; })
+        };
+    }
+
+    function pathShape(l) {
+        return { d: knotsD(pathKnots(l), !!l.closed), head: null, closed: !!l.closed };
+    }
+
+    // Knot i made smooth (handles along its neighbours' direction, a sixth
+    // of their distance each way) or a corner (handles on the point).
+    function smoothKnot(knots, i, closed) {
+        var n = knots.length, k = knots[i], prev = knots[i - 1] || (closed ? knots[n - 1] : k), next = knots[i + 1] || (closed ? knots[0] : k);
+        var tx = (next.x - prev.x) / 6, ty = (next.y - prev.y) / 6, out = knots.slice();
+
+        out[i] = { x: k.x, y: k.y, ix: k.x - tx, iy: k.y - ty, ox: k.x + tx, oy: k.y + ty, s: true };
+
+        return out;
+    }
+
+    function cornerKnot(knots, i) {
+        var out = knots.slice();
+
+        out[i] = knot(knots[i].x, knots[i].y, false);
+
+        return out;
+    }
+
+    // A knot's point moved to x, y, its handles with it.
+    function moveKnot(k, x, y) {
+        var dx = x - k.x, dy = y - k.y;
+
+        return { x: x, y: y, ix: k.ix + dx, iy: k.iy + dy, ox: k.ox + dx, oy: k.oy + dy, s: !!k.s };
+    }
+
+    // A knot's handle (which: 'i' or 'o') moved to x, y; a smooth knot turns
+    // the other handle to stay in line, keeping its length.
+    function moveHandle(k, which, x, y) {
+        var out = { x: k.x, y: k.y, ix: k.ix, iy: k.iy, ox: k.ox, oy: k.oy, s: !!k.s }, other = (which === 'i') ? 'o' : 'i';
+
+        out[which + 'x'] = x;
+        out[which + 'y'] = y;
+
+        if (k.s) {
+            var len = Math.hypot(k[other + 'x'] - k.x, k[other + 'y'] - k.y), dx = k.x - x, dy = k.y - y, d = Math.hypot(dx, dy);
+
+            if (d > 1e-9) {
+                out[other + 'x'] = k.x + dx / d * len;
+                out[other + 'y'] = k.y + dy / d * len;
+            }
+        }
+
+        return out;
+    }
+
+    // The nearest point of the curve to p: its segment, t and distance.
+    function nearestOnPath(knots, closed, p) {
+        var best = { seg: -1, t: 0, d: Infinity };
+
+        segments(knots, closed).forEach(function (s, i) {
+            for (var k = 0; k <= 32; k++) {
+                var q = cubicAt(s[0], s[1], k / 32), d = Math.hypot(q[0] - p[0], q[1] - p[1]);
+
+                if (d < best.d) {
+                    best = { seg: i, t: k / 32, d: d };
+                }
+            }
+        });
+
+        return best;
+    }
+
+    // A knot added at t of segment seg without changing the curve.
+    function splitAt(knots, closed, seg, t) {
+        var a = knots[seg], j = (seg + 1) % knots.length, b = knots[j];
+        var lerp = function (p, q) { return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]; };
+        var p0 = [a.x, a.y], p1 = [a.ox, a.oy], p2 = [b.ix, b.iy], p3 = [b.x, b.y];
+        var q0 = lerp(p0, p1), q1 = lerp(p1, p2), q2 = lerp(p2, p3), r0 = lerp(q0, q1), r1 = lerp(q1, q2), s = lerp(r0, r1);
+        var out = knots.slice();
+
+        out[seg] = { x: a.x, y: a.y, ix: a.ix, iy: a.iy, ox: q0[0], oy: q0[1], s: !!a.s };
+        out[j] = { x: b.x, y: b.y, ix: q2[0], iy: q2[1], ox: b.ox, oy: b.oy, s: !!b.s };
+        out.splice(seg + 1, 0, { x: s[0], y: s[1], ix: r0[0], iy: r0[1], ox: r1[0], oy: r1[1], s: true });
+
+        return out;
+    }
+
+    // A drawn layer's outline as knots in its box's frame, and whether it
+    // closes: "convert to path". Curves keep their shape (an ellipse, a
+    // rounded box); a line keeps its ends, a pen stroke its smoothed points.
+    function shapeKnots(l) {
+        var w = l.w, h = l.h, r = clamp(Number(l.radius) || 0, 0, Math.min(w, h) / 2), c = KAPPA, pts, ks, i;
+
+        if (l.type === 'ellipse') {
+            var rx = w / 2, ry = h / 2;
+
+            return { closed: true, knots: [
+                { x: rx, y: 0, ix: rx - rx * c, iy: 0, ox: rx + rx * c, oy: 0, s: true },
+                { x: w, y: ry, ix: w, iy: ry - ry * c, ox: w, oy: ry + ry * c, s: true },
+                { x: rx, y: h, ix: rx + rx * c, iy: h, ox: rx - rx * c, oy: h, s: true },
+                { x: 0, y: ry, ix: 0, iy: ry + ry * c, ox: 0, oy: ry - ry * c, s: true }
+            ] };
+        }
+
+        if ((l.type === 'rect') && r) {
+            var corner = function (ax, ay, bx, by, cx, cy) {
+                // From (ax, ay) round the corner (bx, by) to (cx, cy).
+                return [
+                    { x: ax, y: ay, ix: ax, iy: ay, ox: ax + (bx - ax) * c, oy: ay + (by - ay) * c, s: false },
+                    { x: cx, y: cy, ix: cx + (bx - cx) * c, iy: cy + (by - cy) * c, ox: cx, oy: cy, s: false }
+                ];
+            };
+
+            return { closed: true, knots: [].concat(
+                corner(w - r, 0, w, 0, w, r), corner(w, h - r, w, h, w - r, h), corner(r, h, 0, h, 0, h - r), corner(0, r, 0, 0, r, 0)) };
+        }
+
+        if (LINE_KINDS.indexOf(l.type) >= 0) {
+            return { closed: false, knots: [knot(0, h / 2), knot(w, h / 2)] };
+        }
+
+        if (l.type === 'pen') {
+            pts = tracePoints(l);
+            ks = pts.map(function (p) { return knot(p[0], p[1]); });
+
+            for (i = 0; i < ks.length; i++) {
+                ks = smoothKnot(ks, i, false);
+            }
+
+            return { closed: false, knots: ks };
+        }
+
+        pts = outline(l)[0].slice(0, -1);
+
+        return { closed: true, knots: pts.map(function (p) { return knot(p[0], p[1]); }) };
+    }
+
+    var VECTOR = {
+        segments: segments, cubicAt: cubicAt, knotsD: knotsD, curvePoints: curvePoints, knotBounds: knotBounds, pathLayer: pathLayer,
+        pathKnots: pathKnots, refitPath: refitPath, pathShape: pathShape, smoothKnot: smoothKnot, cornerKnot: cornerKnot,
+        moveKnot: moveKnot, moveHandle: moveHandle, nearestOnPath: nearestOnPath, splitAt: splitAt, shapeKnots: shapeKnots
+    };
 
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
