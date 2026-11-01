@@ -1985,9 +1985,9 @@ function test_forum_private_fields_stay_private()
 // Replies, feedback, messages and notes are comments of their record pages:
 // each label a singular noun (the platform puts it in plural and into
 // sentences), signed in, placed right under the page's record and headed by
-// the record view while it shows a record. The topic and guide pages draw
-// theirs with the Comments widget; the desk, the inbox and the report page
-// keep the comments block. Every page keeps its own comment settings.
+// the record view while it shows a record. Every page draws them with the
+// Comments widget, the fixed comments block is gone from all of them. Every
+// page keeps its own comment settings.
 function test_forum_comments()
 {
 	$tpl = _test_forum_tpl();
@@ -1995,9 +1995,9 @@ function test_forum_comments()
 	$want = array(
 		'topic' => array(lang('reply'), 'topic_view', lang('Replies'), 'topic_replies'),
 		'doc' => array(lang('Feedback'), 'doc_view', lang('Feedback'), 'doc_feedback'),
-		'doc_submission' => array(lang('Message'), 'doc_submission_view', lang('Messages with the moderators'), ''),
-		'conversation' => array(lang('Message'), 'conversation', lang('Replies'), ''),
-		'staff_report' => array(lang('Note'), 'staff_report_view', lang('Notes'), ''),
+		'doc_submission' => array(lang('Message'), 'doc_submission_view', lang('Messages with the moderators'), 'doc_messages'),
+		'conversation' => array(lang('Message'), 'conversation', lang('Replies'), 'conversation_replies'),
+		'staff_report' => array(lang('Note'), 'staff_report_view', lang('Notes'), 'report_notes'),
 	);
 	$tr = _test_forum_tr();
 	$found = array();
