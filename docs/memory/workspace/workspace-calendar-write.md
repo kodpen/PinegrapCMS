@@ -22,6 +22,9 @@ description: A person's Workspace tasks written to their own Google or Outlook c
 - Google (`ws_calsync_google_body()`): whole day = `date`, end the day after; timed = `date('c')` + site `timeZone`; a deadline has end = start; transparent, `reminders.useDefault` false, `source.url`, `extendedProperties.private.pinegrap_uid`.
 - Graph (`ws_calsync_graph_body()`): UTC times (Graph does not read every IANA zone), whole day midnight to midnight with `isAllDay`, text body with the link, `showAs` free (tentative for copies), `isReminderOn` false.
 
+## What does a change made in the calendar do to the task? (#4490)
+- Owner (2026-11-01, `workflow/decisions-made-workspace-6.md`): a moved event writes the task's due date and time back through the drawer's check (`ws_task_update_check()`, `ws_task_update()`), with a "from your calendar" note on the log and the bell lines; a refused move is written back as it was plus one bell line to the person; repeating-task copies and done tasks are skipped; deletion and a new title are ignored, the next write restores them. Read back with Google `events.list?syncToken=` on the site's calendar and Graph `calendarView/delta` on it; both tokens go in the sealed entry.
+
 ## What is unverified and what is left?
 - No live provider call ran in CI; zero-length events and the 404 paths follow the API references.
-- Left (`plans/reverse-oauth-leftovers.md`): slice 3, reading changes back (Google `syncToken`, Graph delta); what a calendar change does to a task waits for decision #4490.
+- Left (`plans/reverse-oauth-leftovers.md`): slice 3, reading changes back as decided above; not started.
