@@ -5758,7 +5758,8 @@ div#software_image_picker_container {
 }
 .pg-eg-stat .bi {
   flex: 0 0 auto;
-  color: var(--pg-eg-ink);
+  /* The tone pulled toward the text colour: 3:1 on its own tint in both themes. */
+  color: color-mix(in srgb, var(--pg-eg-ink) 75%, var(--pg-fg-emphasis));
   font-size: 15px;
 }
 .pg-eg-stat .bi::before {
@@ -8888,7 +8889,7 @@ html:has(.mpp-bulk:not(.d-none)) {
 }
 .pg-settings-toggle-icon {
   flex: 0 0 auto;
-  color: var(--pg-primary);
+  color: var(--pg-primary-ink);
 }
 .pg-settings-toggle-chev {
   flex: 0 0 auto;
@@ -18323,7 +18324,7 @@ button.ws-home-row:hover,
   border-radius: 50%;
   border: 2px solid var(--pg-success);
   background: var(--pg-bg-body);
-  color: var(--pg-success);
+  color: var(--pg-success-ink);
   font-size: .7rem;
 }
 .ws-home-tl-item.ws-tl-by-claude .ws-home-tl-dot {
@@ -18686,7 +18687,7 @@ button.ws-home-row:hover,
     color: var(--pg-fg-2);
 }
 .ws-nb-item-head > .ws-nb-item-pin {
-    color: var(--pg-primary);
+    color: var(--pg-primary-ink);
 }
 .ws-nb-item-name {
     flex: 1 1 auto;
