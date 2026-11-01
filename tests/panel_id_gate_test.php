@@ -232,7 +232,7 @@ function test_panel_id_gate_file_editors_check_name_and_type()
 	// is missing, on the screen and in the themes list after Save.
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/edit_theme_file.php');
 	pg_assert_contains("\$theme_file_missing = !is_file(FILE_DIRECTORY_PATH . '/' . \$original_name);", $source, 'edit_theme_file looks for the file on the disk');
-	pg_assert_contains("if ((\$name !== \$original_name) && !\$theme_file_missing) {\n            rename(", $source, 'edit_theme_file renames only a file on the disk');
+	pg_assert_contains("(\$name !== \$original_name)\n            && !\$theme_file_missing\n            && !@rename(", $source, 'edit_theme_file renames only a file on the disk');
 	pg_assert_contains("\$liveform_view_themes->add_warning(lang('The file is recorded here but is not on the disk.'));", $source, 'edit_theme_file missing file warning after Save');
 	pg_assert_contains("if (!is_file(FILE_DIRECTORY_PATH . '/' . \$file_name)) {\n            \$output_file_missing = ", $source, 'edit_theme_file missing file note');
 
