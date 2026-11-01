@@ -98,17 +98,17 @@ if (!$_POST) {
         $query = "SELECT id FROM contacts WHERE id = ?";
         $result = db_q($query, array((string) $contact_id)) or output_error('Query failed');
 
-        // Only update tax fields if they were submitted in the form.
+        // Only write the tax fields the form submitted.
+        $pg_tax_columns = pg_my_account_profile_tax_columns($pg_controls,
+            $liveform->field_in_session('tax_number') || $liveform->field_in_session('tax_office'),
+            array(
+                'tax_number' => $liveform->get_field_value('tax_number'),
+                'tax_office' => $liveform->get_field_value('tax_office')));
         $sql_profile_tax = '';
-        if ($pg_controls !== null) {
-            foreach (array('tax_number', 'tax_office') as $pg_column) {
-                if (in_array($pg_column, $pg_controls, true)) {
-                    $sql_profile_tax .= $pg_column . " = '" . escape(trim($liveform->get_field_value($pg_column))) . "',";
-                }
-            }
-        } elseif ($liveform->field_in_session('tax_number') || $liveform->field_in_session('tax_office')) {
-            $sql_profile_tax = "tax_number = '" . escape(trim($liveform->get_field_value('tax_number'))) . "',
-                        tax_office = '" . escape(trim($liveform->get_field_value('tax_office'))) . "',";
+        $sql_profile_tax_insert = '';
+        foreach ($pg_tax_columns as $pg_column => $pg_value) {
+            $sql_profile_tax .= $pg_column . " = '" . escape($pg_value) . "',";
+            $sql_profile_tax_insert .= ', ' . $pg_column . ' = ?';
         }
 
         // The columns this post writes: every one for the legacy screen, and
@@ -138,45 +138,29 @@ if (!$_POST) {
 
         // else a contact was not found, so create contact
         } else {
-            $query = "INSERT INTO contacts (
-                        salutation,
-                        first_name,
-                        last_name,
-                        suffix,
-                        company,
-                        title,
-                        business_address_1,
-                        business_address_2,
-                        business_city,
-                        business_state,
-                        business_zip_code,
-                        business_phone,
-                        business_fax,
-                        business_country,
-                        home_phone,
-                        mobile_phone,
-                        user,
-                        timestamp)
-                     VALUES (
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        UNIX_TIMESTAMP())";
-            $result = db_q($query, array((string) ($liveform->get_field_value('salutation')), (string) ($liveform->get_field_value('first_name')), (string) ($liveform->get_field_value('last_name')), (string) ($liveform->get_field_value('suffix')), (string) ($liveform->get_field_value('company')), (string) ($liveform->get_field_value('title')), (string) ($liveform->get_field_value('business_address_1')), (string) ($liveform->get_field_value('business_address_2')), (string) ($liveform->get_field_value('business_city')), (string) ($liveform->get_field_value('business_state')), (string) ($liveform->get_field_value('business_zip_code')), (string) ($liveform->get_field_value('business_phone')), (string) ($liveform->get_field_value('business_fax')), (string) ($liveform->get_field_value('business_country')), (string) ($liveform->get_field_value('home_phone')), (string) ($liveform->get_field_value('mobile_phone')), (string) $user_id)) or output_error('Query failed');
+            // The tax columns go in too: a member without a contact (one an
+            // administrator created) typed them on this first save.
+            $query = "INSERT INTO contacts SET
+                        salutation = ?,
+                        first_name = ?,
+                        last_name = ?,
+                        suffix = ?,
+                        company = ?,
+                        title = ?,
+                        business_address_1 = ?,
+                        business_address_2 = ?,
+                        business_city = ?,
+                        business_state = ?,
+                        business_zip_code = ?,
+                        business_phone = ?,
+                        business_fax = ?,
+                        business_country = ?,
+                        home_phone = ?,
+                        mobile_phone = ?,
+                        user = ?,
+                        timestamp = UNIX_TIMESTAMP()
+                        $sql_profile_tax_insert";
+            $result = db_q($query, array_merge(array((string) ($liveform->get_field_value('salutation')), (string) ($liveform->get_field_value('first_name')), (string) ($liveform->get_field_value('last_name')), (string) ($liveform->get_field_value('suffix')), (string) ($liveform->get_field_value('company')), (string) ($liveform->get_field_value('title')), (string) ($liveform->get_field_value('business_address_1')), (string) ($liveform->get_field_value('business_address_2')), (string) ($liveform->get_field_value('business_city')), (string) ($liveform->get_field_value('business_state')), (string) ($liveform->get_field_value('business_zip_code')), (string) ($liveform->get_field_value('business_phone')), (string) ($liveform->get_field_value('business_fax')), (string) ($liveform->get_field_value('business_country')), (string) ($liveform->get_field_value('home_phone')), (string) ($liveform->get_field_value('mobile_phone')), (string) $user_id), array_values($pg_tax_columns))) or output_error('Query failed');
 
             // get contact id so we can connect user to contact
             $contact_id = mysqli_insert_id(db::$con);
