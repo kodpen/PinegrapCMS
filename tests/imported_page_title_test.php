@@ -46,3 +46,12 @@ function test_imported_page_title_missing()
 	pg_assert_same('', $title, 'no title');
 	pg_assert_same('<head><titles>x</titles></head>', $html, 'markup untouched');
 }
+
+// Import Design reads the page title with the same helper as Import ZIP
+// File, so a title with attributes or over several lines reaches the page.
+function test_import_design_reads_title_with_helper()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/import_design.php');
+	pg_assert_contains('pg_imported_page_take_title($content)', $source, 'import design uses the shared title reader');
+	pg_assert_same(false, strpos($source, "preg_match('/<title\\s*>"), 'old one-line title pattern gone');
+}
