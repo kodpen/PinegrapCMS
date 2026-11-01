@@ -62,7 +62,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 
 - Endpoints `tax` (3): open
 
-- Endpoints `theme` (6): taken by a bug-hunt worker (add_theme_file, edit_theme_css, edit_theme_file, get_theme_designer_module, theme_designer, view_themes)
+- Endpoints `theme` (6): done #4725, #4739, #4764; lead: theme_designer Cancel calls an undefined `theme_designer_cancel_confirm()`
 
 - Endpoints `translation` (3): open
 

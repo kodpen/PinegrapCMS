@@ -27,11 +27,11 @@ function test_theme_designer_rules_gate_before_both_branches()
 
 	$gate = strpos($source, "SELECT COUNT(*) FROM system_theme_css_rules WHERE file_id = '\" . \$id . \"'");
 	$get_branch = strpos($source, 'if (!$_POST) {');
-	$first_unlink = strpos($source, 'unlink(');
+	$first_write = strpos($source, 'pg_file_write_whole(');
 
 	pg_assert_true($gate !== false, 'theme_designer.php counts the theme\'s designer settings');
 	pg_assert_true(($get_branch !== false) && ($gate < $get_branch), 'the gate runs before the GET branch');
-	pg_assert_true(($first_unlink !== false) && ($gate < $first_unlink), 'the gate runs before the CSS file is deleted');
+	pg_assert_true(($first_write !== false) && ($gate < $first_write), 'the gate runs before the CSS file is written');
 }
 
 // A CSS file without designer settings opens in the CSS editor, every other
