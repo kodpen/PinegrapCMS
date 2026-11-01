@@ -10,5 +10,5 @@ module: calendar
 
 ## How long does one occurrence of a recurring event last?
 - As long as the event itself: `pg_calendar_occurrence_window($occurrence_date, $start, $end)` starts the occurrence on its own date at the event's start time and adds the event's length in seconds.
-- Before #PR the end was the end time on the occurrence's start date, so a recurring overnight event (22:00 to 02:00) ended before it started and a multi-day one lasted only its first day: such events never blocked the room, and the location could be double-booked.
+- Before #4632 the end was the end time on the occurrence's start date, so a recurring overnight event (22:00 to 02:00) ended before it started and a multi-day one lasted only its first day: such events never blocked the room, and the location could be double-booked.
 - Tests: `tests/calendar_occurrence_window_test.php`.
