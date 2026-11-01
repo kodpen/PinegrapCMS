@@ -151,3 +151,23 @@ function test_country_select_options()
 		pg_country_select_options($rows, '7'),
 		'the given country selected instead of the default');
 }
+
+// The ERP account form's country select and the address book screen name and
+// order their countries through the helpers like the other country lists
+// (#4697); the option value stays the country code.
+function test_geo_country_label_used_by_the_erp_account_and_address_book()
+{
+	foreach (array(
+		'includes/erp/account_form.php',
+		'get_update_address_book.php',
+	) as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_true(strpos($source, 'pg_geo_country_label(') !== false, $file . ' names the country');
+		pg_assert_true(strpos($source, 'pg_geo_sort_by_label(') !== false, $file . ' orders by the label');
+	}
+
+	$book = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_update_address_book.php');
+	pg_assert_true(strpos($book, "\$country_options[\$country['name']]") === false, 'the address book keys no option by the stored name');
+	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/account_form.php');
+	pg_assert_true(strpos($form, "h((string) \$country_row['name'])") === false, 'the account form prints no stored name');
+}
