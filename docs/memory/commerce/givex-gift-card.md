@@ -42,7 +42,7 @@ incomplete, a retry redeemed again).
 
 ## How is a Givex balance turned into minor units?
 - `submit_order()` keeps the checked balance as `(int) round($balance * 100)`.
-  Before (bug hunt, PR after #4600), `19.99 * 100` stayed 1998.9999…: a card
+  Before (#4607), `19.99 * 100` stayed 1998.9999…: a card
   holding the order total left a total above zero, so a card payment was
   still asked. `order_preview.php`, `express_order.php` and the redemption
   still multiply without rounding (other files; not yet fixed).
