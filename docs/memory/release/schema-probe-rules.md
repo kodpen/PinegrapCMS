@@ -23,8 +23,8 @@ description: Code that reads a table/column added by a migration probes first wi
 - Signed-in requests (PR #898): `user` columns and `auth_tokens` (`includes/authentication.php`, `includes/fn/auth.php`; see upgrade-bridge-rule.md), root `seo.php` (`pg_seo_columns_exist()`, `pg_seo_speed_source_ready()`), panel home (`includes/dashboard/brief.php`, `widget_9.php`, `_orders_has_refund_columns()`). Administrator, 193 addresses: 17,752 → 15,949 queries, probes 1,818 → 17.
 
 ## How does the router check for the config table?
-- It has no `functions.php`. After the character set and `sql_mode` it reads `SELECT * FROM config LIMIT 1` and hands the row to `waf_prime_config()`, so the firewall does not read it again. `SHOW TABLES LIKE 'config'` runs only when that read fails: no table gives the error page, a table that cannot be read (damaged) goes on as before.
-- The check stays above `define('DB_CONNECTED')`: the error page's `output_control_panel_header_includes()` reads `config` when that constant is defined and exits with the MySQL error instead of drawing the page (PR #883).
+- It has no `functions.php`. After the character set and `sql_mode` it reads `SELECT * FROM config LIMIT 1` and hands the row to `waf_prime_config()`; the firewall, `init.php` and `pg_folder_access_tree()` read no second copy (`waf_config_row()`). `SHOW TABLES LIKE 'config'` runs only when that read fails: no table gives the error page, a damaged one goes on.
+- The check stays above `define('DB_CONNECTED')`: the error page's `output_control_panel_header_includes()` reads `config` when that constant is defined and exits with the MySQL error (PR #883).
 
 ## What about code that runs on the upgrade bridge?
 - Bridge code must not assume new columns/tables at all: see docs/memory/release/upgrade-bridge-rule.md (probes live there, not behind the gate).

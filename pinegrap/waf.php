@@ -78,15 +78,33 @@ function waf_prime_config($row)
 }
 
 /**
+ * The config row the firewall already holds, or null when it has none yet.
+ *
+ * router.php reads the row and primes the firewall with it; init.php takes it
+ * from here instead of reading the table again on every page view. Never
+ * reads the table itself.
+ */
+function waf_config_row()
+{
+    $row = waf_config(null, true);
+
+    return is_array($row) ? $row : null;
+}
+
+/**
  * Read WAF settings from the config table.
  *
  * Returns false when the schema has not been upgraded yet. Every caller
  * treats false as "firewall disabled", so a legacy install that never ran
  * the upgrade behaves exactly as it did before this file existed.
  */
-function waf_config($preloaded = null)
+function waf_config($preloaded = null, $peek = false)
 {
     static $config = null;
+
+    if ($peek) {
+        return $config;
+    }
 
     if ($preloaded !== null && $config === null) {
         $config = $preloaded;

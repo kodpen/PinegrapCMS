@@ -19,6 +19,29 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
+ * A page's name for a link printed on the site, '' when the page is gone.
+ *
+ * Widgets link to pages they keep by id (the catalog detail page, a member
+ * widget's sign-in or redirect page, a list's record page), and a page with
+ * several such widgets asked for the same name once per widget. Each id is
+ * read once per request; a page renamed meanwhile keeps its old name until
+ * the next request, as pg_menu_tree() does. Not for save paths.
+ *
+ * @param int $page_id
+ * @return string
+ */
+function pg_page_name_for_link($page_id)
+{
+    static $names = array();
+    $page_id = (int)$page_id;
+    if ($page_id <= 0) return '';
+    if (!isset($names[$page_id])) {
+        $names[$page_id] = (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $page_id . "' LIMIT 1");
+    }
+    return $names[$page_id];
+}
+
+/**
  * The items of one menu, read once per request in two queries whatever the
  * menu's size, for get_menu_content() and get_menu_sequence() to walk in
  * memory: a page that prints a menu runs no query per level or per item.

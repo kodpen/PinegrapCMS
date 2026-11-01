@@ -1369,9 +1369,13 @@ function pg_sw_list_page_past($requests)
 }
 
 // The fields a filter may name on form $custom_form_page_id, keyed by their
-// lower-case name: every named field but the information blocks.
+// lower-case name: every named field but the information blocks. Read once
+// per form and request: every list and filter of a page asks for it.
 function pg_sw_filter_form_fields($custom_form_page_id)
 {
+    static $forms = array();
+    $custom_form_page_id = (int)$custom_form_page_id;
+    if (isset($forms[$custom_form_page_id])) return $forms[$custom_form_page_id];
     $custom = array();
     $rows = db_items(
         "SELECT id, name, type, multiple"
@@ -1384,7 +1388,7 @@ function pg_sw_filter_form_fields($custom_form_page_id)
     foreach ((array)$rows as $row) {
         $custom[mb_strtolower((string)$row['name'], 'UTF-8')] = $row;
     }
-    return $custom;
+    return $forms[$custom_form_page_id] = $custom;
 }
 
 // The filters a form_list_view widget applies to its records: the classic
@@ -3271,15 +3275,19 @@ function pg_sw_route_record_address($page_id, $segment)
 }
 
 // The address a list links each record to: the detail page's, resolved once
-// per render. A detail page that shows another form gives no address (its
+// per render and kept for the request (several lists of a page often share
+// one). A detail page that shows another form gives no address (its
 // widget would not find the record). Returns array('page_name' => '' when
 // there is none, 'pretty' => bool).
 function pg_sw_list_detail_target($detail_page_id, $custom_form_page_id)
 {
+    static $targets = array();
     $out = array('page_name' => '', 'pretty' => false);
     $detail_page_id = (int)$detail_page_id;
     $custom_form_page_id = (int)$custom_form_page_id;
     if ($detail_page_id <= 0 || $custom_form_page_id <= 0) return $out;
+    $key = $detail_page_id . '|' . $custom_form_page_id;
+    if (isset($targets[$key])) return $targets[$key];
 
     // A classic form item view page bound to the same form.
     $name = (string)db_value(
@@ -3298,13 +3306,13 @@ function pg_sw_list_detail_target($detail_page_id, $custom_form_page_id)
     if (!$classic && pg_sw_page_widget($detail_page_id, 'form_item_view', function ($c) use ($custom_form_page_id) {
         return pg_sw_form_widget_form_page_id($c) === $custom_form_page_id;
     })) {
-        $name = (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $detail_page_id . "' LIMIT 1");
+        $name = pg_page_name_for_link($detail_page_id);
     }
     $out['page_name'] = $name;
     // A classic detail page answers only ?r= under its own name; its pretty
     // address is the classic list page's (get_page.php).
     $out['pretty'] = ($name !== '' && !$classic && pg_sw_form_pretty_urls($custom_form_page_id));
-    return $out;
+    return $targets[$key] = $out;
 }
 
 // ============================================================================
@@ -4513,9 +4521,9 @@ function _pg_member_page_url($page_id)
 {
     $page_id = (int)$page_id;
     if ($page_id <= 0) return '';
-    $name = db_value("SELECT page_name FROM page WHERE page_id = '$page_id' LIMIT 1");
-    if ($name === '' || $name === null || $name === false) return '';
-    return (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . encode_url_path((string)$name);
+    $name = pg_page_name_for_link($page_id);
+    if ($name === '') return '';
+    return (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . encode_url_path($name);
 }
 
 // A same-origin path from the query string, or '' — the caller decides the
@@ -5030,7 +5038,7 @@ function pg_sw_catalog_detail_page_name($page_id = 0)
     static $auto = null;
     $page_id = (int)$page_id;
     if ($page_id > 0) {
-        $name = (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $page_id . "' LIMIT 1");
+        $name = pg_page_name_for_link($page_id);
         if ($name !== '') return $name;
     }
     if ($auto === null) {
