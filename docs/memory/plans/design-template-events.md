@@ -24,7 +24,7 @@ description: Plan for the Events and Conferences template (pinegrap-events): eve
 
 - 3a Tickets: `tickets.php` (catalog group and pass products, `shippable => false`, tickets page, `ticket_passes`, `cart_link`, product, cart, checkout, order, `email_order`; returns `catalog` for step 5). **Done (#4633).**
 
-- 3b Standard: `standard.php` (contact, inbox, newsletter, news and post, search, error, message e-mails, `newsletter_band`, `home_posts`; newsletter and post parts join parts.php). After 2, beside 3a.
+- 3b Standard: `standard.php`; parts.php gained the newsletter and post parts; test `design_template_events_standard_test.php`. **Done (#4645).**
 
 - 4 Account and staff: `account.php` (sign-in pages, My Account pages, staff area, `staff_directory`, `blog_new`, `staff_entry`, account e-mails, `login_region`, `my_account`). After 3a and 3b.
 
