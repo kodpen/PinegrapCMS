@@ -341,6 +341,7 @@
     "Recordings are sent to": "Kayıtların gönderildiği yer",
     "Recordings in this note": "Bu nottaki kayıtlar",
     "Recordings longer than {var:1} minutes are not sent.": "{var:1} dakikadan uzun kayıtlar gönderilmez.",
+    "Recordings of the monthly live sessions and workshops, for members.": "Üyeler için aylık canlı oturum ve atölyelerin kayıtları.",
     "Recordings wait until {var:1}.": "Kayıtlar {var:1} tarihine kadar bekliyor.",
     "Records": "Kayıt",
     "Records are kept in one partition per month. Once all of a month is older than the period, the general job drops it in a moment and its file goes back to the disk; the records of the month the period ends in are removed a chunk at a time. Shrink now rebuilds the table at once.": "Kayıtlar her ay için ayrı bir bölümde tutulur. Bir ayın tamamı saklama süresinden eski olduğunda genel görev o bölümü bir anda kaldırır ve dosyası diske geri döner; sürenin bittiği ayın kayıtları parça parça silinir. «Şimdi küçült» tabloyu hemen yeniden kurar.",

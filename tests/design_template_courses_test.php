@@ -12,7 +12,10 @@
  * trees, link only template pages and anchors that exist, place only
  * widgets the template defines, give each course a page with its free
  * lesson, buy box and enrolment request, and place the Google Reviews
- * widget on the home page.
+ * widget on the home page. The learning pages keep the access rules: a
+ * course's classroom and lessons in its own folder, only the first lesson
+ * public, the library in the membership folder; every lesson has its
+ * questions thread on its own Comments widget and links its neighbours.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -33,6 +36,7 @@ function _test_courses_load()
 	$dir = PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-courses';
 	include $dir . '/parts.php';
 	$public = include $dir . '/pages_public.php';
+	$learn = include $dir . '/learn.php';
 	$lessons = array();
 	foreach (array_keys($courses) as $key) $lessons[$key] = $course_lessons($key);
 	$out = array(
@@ -46,6 +50,8 @@ function _test_courses_load()
 		'library'     => $library,
 		'pages'       => $public['pages'],
 		'widgets'     => $public['widgets'],
+		'learn'       => $learn['pages'],
+		'learn_widgets' => $learn['widgets'],
 		'shared'      => array($account_bar_tree(), $header(), $footer(), $enrol_band(), $notice(), $staff_bar()),
 	);
 	return $out;
@@ -146,7 +152,7 @@ function test_courses_shared_parts_link_template_pages()
 function _test_courses_widget_keys()
 {
 	$d = _test_courses_load();
-	$keys = array_merge(array_keys($d['widgets']), array('home_posts', 'login_region', 'cart_link', 'newsletter_band', 'buy_membership'));
+	$keys = array_merge(array_keys($d['widgets']), array_keys($d['learn_widgets']), array('home_posts', 'login_region', 'cart_link', 'newsletter_band', 'buy_membership'));
 	foreach (array_keys($d['courses']) as $key) $keys[] = 'buy_' . $key;
 	return $keys;
 }
@@ -177,7 +183,7 @@ function test_courses_public_pages_links_anchors_widgets()
 	$widgets = array_flip(_test_courses_widget_keys());
 	$ids = array();
 	$nodes_by_page = array();
-	foreach ($d['pages'] as $p) {
+	foreach (array_merge($d['pages'], $d['learn']) as $p) {
 		$nodes = array();
 		_test_courses_nodes($p['tree'], $nodes);
 		$nodes_by_page[$p['key']] = $nodes;
@@ -230,4 +236,51 @@ function test_courses_course_pages_offer_the_ways_in()
 	foreach ($home as $n) if (!empty($n['props']['templateWidget'])) $placed[] = $n['props']['templateWidget'];
 	pg_assert_true(in_array('google_reviews', $placed, true), 'home places the Google Reviews widget');
 	pg_assert_same('google_reviews', $d['widgets']['google_reviews']['config']['regionType'], 'Google Reviews widget kind');
+}
+
+function test_courses_learning_pages_keep_access()
+{
+	$d = _test_courses_load();
+	$by_key = array();
+	foreach ($d['learn'] as $p) {
+		pg_assert_false(isset($by_key[$p['key']]), $p['key'] . ': unique key');
+		pg_assert_same('root', $p['tree']['type'], $p['key'] . ': root tree');
+		$by_key[$p['key']] = $p;
+	}
+	$names = array();
+	foreach (array_merge($d['pages'], $d['learn']) as $p) {
+		pg_assert_false(isset($names[$p['name']]), 'page name ' . $p['name'] . ' is unique');
+		$names[$p['name']] = true;
+	}
+	foreach ($d['courses'] as $key => $c) {
+		pg_assert_same($c['folder'], $by_key['learn_' . $key]['folder'], "classroom $key in the course folder");
+		pg_assert_false($by_key['learn_' . $key]['search'], "classroom $key: not searched");
+		foreach ($d['lessons'][$key] as $n => $l) {
+			$p = $by_key['lesson_' . $l['key']];
+			pg_assert_same($n === 0 ? 'public' : $c['folder'], $p['folder'], $l['key'] . ': folder');
+			pg_assert_same($n === 0, $p['search'], $l['key'] . ': only the preview is searched');
+			pg_assert_same($n === 0, $p['sitemap'], $l['key'] . ': only the preview is in the sitemap');
+			pg_assert_same('{{tab:email_reply}}', $p['comments']['email_page'], $l['key'] . ': answer e-mail page');
+			pg_assert_true($p['comments']['login'], $l['key'] . ': signed-in questions');
+			$w = $d['learn_widgets']['questions_' . $l['key']];
+			pg_assert_same('lesson_' . $l['key'], $w['page'], $l['key'] . ': its own questions widget');
+			pg_assert_same('comments', $w['config']['regionType'], $l['key'] . ': Comments widget');
+			$nodes = array();
+			_test_courses_nodes($p['tree'], $nodes);
+			$hrefs = array();
+			$placed = array();
+			foreach ($nodes as $node) {
+				if (isset($node['props']['href'])) $hrefs[] = (string)$node['props']['href'];
+				if (!empty($node['props']['templateWidget'])) $placed[] = $node['props']['templateWidget'];
+			}
+			pg_assert_same(array('questions_' . $l['key']), array_values(array_intersect($placed, array_keys($d['learn_widgets']))), $l['key'] . ': places its widget once');
+			$lessons = $d['lessons'][$key];
+			if ($n > 0) pg_assert_true(in_array('{{page:lesson_' . $lessons[$n - 1]['key'] . '}}', $hrefs, true), $l['key'] . ': previous lesson');
+			if ($n < count($lessons) - 1) pg_assert_true(in_array('{{page:lesson_' . $lessons[$n + 1]['key'] . '}}', $hrefs, true), $l['key'] . ': next lesson');
+			pg_assert_true(in_array($n === 0 ? '{{page:course_' . $key . '}}' : '{{page:learn_' . $key . '}}', $hrefs, true), $l['key'] . ': the way in or back');
+		}
+	}
+	pg_assert_same('members', $by_key['library']['folder'], 'library in the membership folder');
+	pg_assert_same('registration', $by_key['my_courses']['folder'], 'My Courses for signed-in visitors');
+	pg_assert_same(count($d['learn_widgets']), count(array_unique(array_map(function ($w) { return $w['page']; }, $d['learn_widgets']))), 'one questions widget per page');
 }

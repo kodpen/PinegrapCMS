@@ -162,6 +162,7 @@
     "$99": "99 $",
     "%d lessons": "%d ders",
     "%d min": "%d dk",
+    "%s: Classroom": "%s: Sınıf",
     "%{var:1} off shipping ({var:2})": "kargoya %{var:1} indirim ({var:2})",
     "& Time": "ve Saati",
     "'No Thanks' Option": "'Hayır Teşekkürler' Seçeneği",
