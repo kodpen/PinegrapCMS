@@ -865,7 +865,7 @@ function test_forum_template_loads()
 	// page's latest replies, held to the board by a record filter; 1.3.0:
 	// the inbox, desk and report threads on the Comments widget, and the
 	// blog; 1.3.1: the conversation's answers labelled replies.
-	pg_assert_same('1.3.1', $tpl['version'], 'version 1.3.1');
+	pg_assert_same('1.3.2', $tpl['version'], 'version 1.3.2');
 	pg_assert_same('bootstrap5', $tpl['framework'], 'framework');
 	pg_assert_same(90, $tpl['order'], 'order');
 	pg_assert_same('bi-chat-square-text', $tpl['icon'], 'icon');

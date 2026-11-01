@@ -39,7 +39,7 @@ function _test_tpl_clinic_threads()
 function test_design_template_clinic_comment_widgets()
 {
 	$tpl = _tpl_threads_tpl('pinegrap-clinic');
-	pg_assert_same('1.1.1', $tpl['version'], 'the version moved');
+	pg_assert_same('1.1.2', $tpl['version'], 'the version moved');
 	_tpl_threads_check_no_fixed_block('pinegrap-clinic', array(
 		'appointment_messages' => 'comments', 'conversation_replies' => 'comments', 'email_comment' => 'comments', 'post_comments' => 'comments',
 	));
