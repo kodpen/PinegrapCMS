@@ -1199,6 +1199,26 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
         }
     }
 }
+/**
+ * The start and end of one occurrence of a recurring event. The occurrence
+ * starts on its own date at the event's start time and lasts as long as the
+ * event, so an overnight or multi-day event ends on a later day than the
+ * one it starts on.
+ *
+ * @param string $occurrence_date     the occurrence's date, YYYY-MM-DD
+ * @param string $start_date_and_time the event's start, YYYY-MM-DD HH:MM:SS
+ * @param string $end_date_and_time   the event's end, YYYY-MM-DD HH:MM:SS
+ * @return int[] array(start timestamp, end timestamp)
+ */
+function pg_calendar_occurrence_window($occurrence_date, $start_date_and_time, $end_date_and_time)
+{
+    $start_parts = explode(' ', $start_date_and_time);
+    $start = strtotime($occurrence_date . ' ' . ($start_parts[1] ?? '00:00:00'));
+    $length = strtotime($end_date_and_time) - strtotime($start_date_and_time);
+
+    return array($start, $start + $length);
+}
+
 function check_calendar_event_location_availability($location_id, $event_start, $event_end, $event_id = "0")
 {
 
@@ -1304,9 +1324,6 @@ function check_calendar_event_location_availability($location_id, $event_start, 
             $event_start_date_and_time_parts = explode(' ', $event_start_date_and_time);
             $event_start_date = $event_start_date_and_time_parts[0];
             $event_start_time = $event_start_date_and_time_parts[1];
-            // split event end date and time into parts
-            $event_end_date_and_time_parts = explode(' ', $event_end_date_and_time);
-            $event_end_time = $event_end_date_and_time_parts[1];
             $calendar_exceptions = array();
             // Split event start date into parts, that we will use later.
             $event_start_date_parts = explode('-', $event_start_date);
@@ -1434,8 +1451,7 @@ function check_calendar_event_location_availability($location_id, $event_start, 
                             break;
                     }
                 }
-                $event_start_date_and_time = strtotime($event_start_date . ' ' . $event_start_time);
-                $event_end_date_and_time = strtotime($event_start_date . ' ' . $event_end_time);
+                list($event_start_date_and_time, $event_end_date_and_time) = pg_calendar_occurrence_window($event_start_date, $row['normal_start_time'], $row['normal_end_time']);
                 // if the event start date is greater than or equal to stop date, then break out of loop,
                 // because it is not possible for further recurrences to be in date range
                 if ($event_start_date_and_time >= $event_end) {
