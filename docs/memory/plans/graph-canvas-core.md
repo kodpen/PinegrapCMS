@@ -1,6 +1,6 @@
 ---
 name: graph-canvas-core
-description: Plan (2026-10-24, answers #2445, slice 1 done #3162, 2a #4402, 2b): a box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
+description: Plan (2026-10-24, answers #2445, slice 1 done #3162, 2a #4402, 2b #4497): a box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
 ---
 
 ## What is asked? (owner, 2026-10-24)
@@ -24,7 +24,7 @@ description: Plan (2026-10-24, answers #2445, slice 1 done #3162, 2a #4402, 2b):
 1. Done #3162: the harness, run by hand (workspace/workspace-flows-canvas-harness.md); 30 of 30 since #4316.
 2. Pure refactor: core plus Flows adapter, behaviour identical, the harness's result the same before and after; new tests: core keys in the shards and `pg_graph_canvas_js_strings()`, the core bundled; the literals the canvas test reads stay in workspace_flow.js; core printed first. Cut into PRs of about 1,000 lines:
    - 2a done #4402: the core file and bundle, printed first; helpers, undo history, `viewport(host)` moved; workspace_flow.js aliases them (`var x = G.x`; `ws_flows_canvas_test_node()` searches the core too).
-   - 2b (PR pending): `create(adapter)`: pointers, pinch, pan, Space, zoom keys, `destroy()`; Flows drags and keys are hooks.
+   - 2b done #4497: `create(adapter)`: pointers, pinch, pan, Space, zoom keys, `destroy()`; Flows drags and keys are hooks.
    - 2c: boxes, ports, arrows, box move and connect out of the hooks, marks, live region, outline; first texts in `pg_graph_canvas_js_strings()`.
    - 2d: autosave (keepalive, 409) behind `adapter.save`.
 3. CSS to `pgc-` with tokens.
