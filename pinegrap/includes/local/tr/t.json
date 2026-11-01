@@ -3059,6 +3059,7 @@
     "The picture could not be saved.": "Resim kaydedilemedi.",
     "The picture has to be a JPEG, PNG or WebP image.": "Resim JPEG, PNG ya da WebP olmalı.",
     "The picture is re-encoded and the file takes the .webp name. Only pictures are touched.": "Görsel yeniden kodlanır ve dosya .webp adını alır. Yalnızca görsellere dokunulur.",
+    "The picture is too large to process.": "Resim işlenemeyecek kadar büyük.",
     "The picture or PDF kept with each expense. An expense with no file kept is not listed here.": "Her giderle saklanan fotoğraf ya da PDF. Dosyası saklanmamış gider burada listelenmez.",
     "The pictures could not be loaded.": "Görseller yüklenemedi.",
     "The pieces are cut one by one, the edges are painted and polished, and every seam is stitched slowly so it holds for a lifetime.": "Parçalar tek tek kesilir, kenarları boyanıp parlatılır ve her dikiş bir ömür dayansın diye yavaşça atılır.",

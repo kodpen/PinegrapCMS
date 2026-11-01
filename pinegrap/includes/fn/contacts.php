@@ -1321,6 +1321,12 @@ function pg_contact_photo_store($user_id, $data)
     // Drawn again where the server can: square, small, and nothing but the
     // pixels.
     if (function_exists('imagecreatefromstring') && function_exists('imagejpeg')) {
+        // GD holds every pixel at four bytes: a small file declaring huge
+        // dimensions would end the request with a fatal error when decoded.
+        if (!pg_image_ensure_memory((int) $info[0], (int) $info[1])) {
+            return $fail(lang('The picture is too large to process.'));
+        }
+
         $source = pg_image_from_string($binary);
 
         if ($source !== false) {
