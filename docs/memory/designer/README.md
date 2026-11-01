@@ -289,6 +289,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - page-html-rebuild.md: Rebuild Page HTML (pg_designer_rebuild_page_code()): every designer page drawn again from its stored tree; when it runs, what stays, session cursor; per-body once-assets
 - page-link-fixed-text.md: A value of a link to another page that is fixed text, the same in every record ({name, text} in _bindParams.href.params): spec, address, list rows, the panel's Fixed text row
 - page-link-list-rows.md: A page link (__page_link) drawn in a list row sends values of the row: row params, props._pgRowLinks, the pgpl placeholder, stage 2 fill, settle, the panel's row group (W15, #1734)
+- page-link-record-address.md: A record's address (form_item_view) sent by a link to another page is the whole address with the site's origin, so it can be pasted into a browser (#4878); the path when longer than 100 characters.
 - page-record-values.md: W17: a value of the page's record printed by an element outside the widget (stored placeholders filled and escaped per request); the form record's public post fields.
 - page-region-into-page-tree.md: A page's own regions (pregion) moved into its designer tree: one _editable block per page region node, the Nth node takes the Nth row, refused inside shared components, rows kept unread
 - page-revisions-concurrency.md: Two writes of one page's revision at the same moment: which errors they meet, which are tried again and how often, why a revision was lost silently before #827
