@@ -788,6 +788,7 @@ function _render_system_widget_account_profile($tree_json, $widget_id, $cfg = ar
     }
     if ($values['business_country'] === '') $values['business_country'] = _pg_acct_default_country();
 
+    pg_sa_address_labels($tree, 'business_', $values['business_country']);
     _pg_acct_fill_values($tree, $values, array(
         'salutation'       => _pg_acct_pairs(get_salutation_options()),
         'suffix'           => _pg_acct_pairs(get_suffix_options()),
@@ -806,7 +807,7 @@ function _render_system_widget_account_profile($tree_json, $widget_id, $cfg = ar
     $split    = _split_widget_tree($tree);
     $rendered = str_replace('<!--pg-loop-slot-->', '', trim(_render_tree_node($split['static_tree'], 0, 0)));
     $lf->remove();
-    $rendered = _pg_member_form_wrap($rendered, _pg_acct_software_path() . '/my_account_profile.php', array(
+    $rendered = _pg_member_form_wrap($rendered . pg_ship_to_district_script(), _pg_acct_software_path() . '/my_account_profile.php', array(
         'send_to'     => $send_to,
         'return_to'   => $page_url,
         'pg_controls' => _pg_acct_control_names($tree),
@@ -1070,6 +1071,7 @@ function _render_system_widget_address_book($tree_json, $widget_id, $cfg = array
     if ($values['country'] === '') $values['country'] = _pg_acct_default_country();
     $type_value = $values['address_type'];
     unset($values['address_type']);
+    pg_sa_address_labels($tree, '', $values['country']);
     _pg_acct_fill_values($tree, $values, array(
         'salutation' => _pg_acct_pairs(get_salutation_options()),
         'country'    => _pg_acct_country_options(),
@@ -1133,7 +1135,7 @@ function _render_system_widget_address_book($tree_json, $widget_id, $cfg = array
     }
     $rendered = str_replace('<!--pg-loop-slot-->', $rows, trim(_render_tree_node($split['static_tree'], 0, 0)));
     $lf->remove();
-    $rendered = _pg_member_form_wrap($rendered, _pg_acct_software_path() . '/update_address_book.php', array(
+    $rendered = _pg_member_form_wrap($rendered . pg_ship_to_district_script(), _pg_acct_software_path() . '/update_address_book.php', array(
         'id'           => $editing !== null ? (string)(int)$editing['id'] : '',
         'send_to'      => $send_to,
         'return_to'    => $self,

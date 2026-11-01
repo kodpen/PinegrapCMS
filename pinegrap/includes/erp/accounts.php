@@ -185,6 +185,30 @@ function erp_address_from_checkout($city, $state, $country_code)
 }
 
 /**
+ * How an order's recipient lands on a delivery note: erp_address_from_checkout(),
+ * with the recipient's own district (ship_tos.district) first when it is
+ * filled. A Turkish recipient's district is written from its city box, so
+ * both agree; an address abroad whose carrier asked has only the box.
+ *
+ * @param string $city     ship_tos.city
+ * @param string $state    ship_tos.state
+ * @param string $country_code
+ * @param string $district ship_tos.district, '' when empty or missing
+ * @return array ['city' => string, 'district' => string, 'state' => string]
+ */
+function erp_address_from_ship_to($city, $state, $country_code, $district)
+{
+    $place = erp_address_from_checkout($city, $state, $country_code);
+    $district = trim((string) $district);
+
+    if ($district !== '') {
+        $place['district'] = $district;
+    }
+
+    return $place;
+}
+
+/**
  * The place line of an address, written the way its country writes it:
  * "34710 Kadıköy İstanbul" in Turkey, "Austin, TX 78701" in North America
  * and Australia, "London SW1A 1AA" in Britain, "10115 Berlin" in most of

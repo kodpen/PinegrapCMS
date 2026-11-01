@@ -218,7 +218,7 @@ function get_my_account_profile($properties = array()) {
                 country_id: "business_country",
                 state_text_box_id: "business_state_text_box",
                 state_pick_list_id: "business_state_pick_list",
-                zip_code_id: "business_zip_code"});
+                zip_code_id: "business_zip_code"' . pg_address_labels_init_props('business_city') . '});
         </script>';
 
     // If the layout type is system or if there is no my account profile page,
@@ -311,8 +311,8 @@ function get_my_account_profile($properties = array()) {
                                         <td>' . $form->output_field(array('type'=>'text', 'name'=>'business_address_2', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                                     </tr>
                                     <tr>
-                                        <td>' . lang('City') . '</td>
-                                        <td>' . $form->output_field(array('type'=>'text', 'name'=>'business_city', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
+                                        <td><label for="business_city">' . lang('City') . '</label></td>
+                                        <td>' . $form->output_field(array('type'=>'text', 'id'=>'business_city', 'name'=>'business_city', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                                     </tr>
                                     <tr>
                                         <td>' . lang('Country') . '</td>

@@ -154,7 +154,7 @@ function get_affiliate_sign_up_form_screen_content($properties)
                 country_id: "country",
                 state_text_box_id: "state_text_box",
                 state_pick_list_id: "state_pick_list",
-                zip_code_id: "zip_code"});
+                zip_code_id: "zip_code"' . pg_address_labels_init_props('city') . '});
         </script>';
 
     $output_terms = '';
@@ -199,8 +199,8 @@ function get_affiliate_sign_up_form_screen_content($properties)
                     <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'address_2', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                 </tr>
                 <tr>
-                    <td>' . lang('City') . '*</td>
-                    <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'city', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
+                    <td><label for="city">' . lang('City') . '*</label></td>
+                    <td>' . $liveform->output_field(array('type'=>'text', 'id'=>'city', 'name'=>'city', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                 </tr>
                 <tr>
                     <td>' . lang('Country') . '*</td>
