@@ -773,6 +773,51 @@
   color: var(--pgie-tx);
 }
 
+/* The shared colour palette (swatches() in pg_image_editor.js). */
+.pgie-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.pgie .pgie-swatch,
+.pgie .pgie-colorin {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 2px solid var(--pgie-surface);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--pgie-line);
+  cursor: pointer;
+  flex: none;
+}
+
+.pgie .pgie-swatch.on {
+  box-shadow: 0 0 0 2px var(--pgie-sel);
+}
+
+.pgie .pgie-colorin {
+  background: conic-gradient(#e53935, #fdd835, #43a047, #1e88e5, #8e24aa, #e53935);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.pgie .pgie-colorin::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.pgie .pgie-colorin::-webkit-color-swatch {
+  border: 0;
+  opacity: 0;
+}
+
+.pgie .pgie-colorin::-moz-color-swatch {
+  border: 0;
+  opacity: 0;
+}
+
 .pgie-range {
   width: 100%;
   margin: 0;
@@ -1062,50 +1107,6 @@
   color: var(--pgie-ink);
 }
 
-.pgie-swatches {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 16px;
-}
-
-.pgie .pgie-swatch,
-.pgie .pgie-colorin {
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: 2px solid var(--pgie-surface);
-  border-radius: 50%;
-  box-shadow: 0 0 0 1px var(--pgie-line);
-  cursor: pointer;
-  flex: none;
-}
-
-.pgie .pgie-swatch.on {
-  box-shadow: 0 0 0 2px var(--pgie-sel);
-}
-
-.pgie .pgie-colorin {
-  background: conic-gradient(#e53935, #fdd835, #43a047, #1e88e5, #8e24aa, #e53935);
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.pgie .pgie-colorin::-webkit-color-swatch-wrapper {
-  padding: 0;
-}
-
-.pgie .pgie-colorin::-webkit-color-swatch {
-  border: 0;
-  opacity: 0;
-}
-
-.pgie .pgie-colorin::-moz-color-swatch {
-  border: 0;
-  opacity: 0;
-}
-
 /* A line's ends and a box's corner-radius dot. */
 .pgie-sh.pgie-shx[data-h="a"],
 .pgie-sh.pgie-shx[data-h="b"] {
@@ -1124,14 +1125,6 @@
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.18);
   pointer-events: none;
-}
-
-@media (max-width: 599.98px) {
-  .pgie .pgie-swatch,
-  .pgie .pgie-colorin {
-    width: 30px;
-    height: 30px;
-  }
 }
 
 
@@ -1222,6 +1215,12 @@
    sheet above it. */
 
 @media (max-width: 599.98px) {
+  .pgie .pgie-swatch,
+  .pgie .pgie-colorin {
+    width: 30px;
+    height: 30px;
+  }
+
   .pgie-top {
     height: calc(52px + env(safe-area-inset-top));
     gap: 2px;

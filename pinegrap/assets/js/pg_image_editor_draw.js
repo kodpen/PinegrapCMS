@@ -18,7 +18,7 @@
     'use strict';
 
     var Editor = X.Editor, M = X.M, SVGNS = X.SVGNS, find = X.find, t = X.t, el = X.el, icon = X.icon, section = X.section;
-    var button = X.button, decimal = X.decimal;
+    var button = X.button, decimal = X.decimal, swatches = X.swatches;
 
     X.icons.triangle = 'M12 4.5l8.5 15h-17z';
     X.icons.polygon = 'M12 3.5l7.4 4.25v8.5L12 20.5l-7.4-4.25v-8.5z';
@@ -29,9 +29,6 @@
     // The kinds of the Draw tool's grid, and the marking tools a caller's mini
     // bar names, each drawing one kind.
     var KINDS = M.DRAW_KINDS, MINI = ['arrow', 'line', 'rect', 'ellipse', 'pen'];
-
-    var COLORS = [['#ffffff', 'colorWhite'], ['#1a1c1e', 'colorBlack'], ['#e53935', 'colorRed'], ['#fb8c00', 'colorOrange'],
-        ['#fdd835', 'colorYellow'], ['#43a047', 'colorGreen'], ['#1e88e5', 'colorBlue'], ['#8e24aa', 'colorPurple']];
 
     // Which kinds a style field applies to (all when missing).
     var FIELDS = {
@@ -601,23 +598,27 @@
             }
         };
 
-        // Colour: the swatches and a picker of any colour.
-        var swatches = el('div', { class: 'pgie-swatches' }), color = String(shown.color || s.color).toLowerCase();
-        var custom = el('input', { type: 'color', class: 'pgie-colorin', value: color, 'aria-label': t('customColor'), title: t('customColor') });
+        // Colour: the swatches and a picker of any colour; the picker's
+        // drag is one undo step, its closing change adds none.
+        var moved = false;
 
-        COLORS.forEach(function (c) {
-            var on = (c[0] === color);
+        body.appendChild(swatches(t('drawColor'), shown.color || s.color, function (c, live) {
+            if (live) {
+                moved = true;
+                set('color', c, true);
+                return;
+            }
 
-            swatches.appendChild(el('button', { type: 'button', class: 'pgie-swatch' + (on ? ' on' : ''), style: 'background: ' + c[0], 'aria-pressed': on ? 'true' : 'false',
-                'aria-label': t(c[1]), title: t(c[1]), onclick: function () { set('color', c[0], false); } }));
-        });
-        custom.addEventListener('input', function () { set('color', custom.value, true); });
-        custom.addEventListener('change', function () {
             self.history.key = null;
-            self.render();
-        });
-        swatches.appendChild(custom);
-        body.appendChild(section(t('drawColor'), swatches));
+
+            if (moved) {
+                moved = false;
+                self.render();
+                return;
+            }
+
+            set('color', c, false);
+        }));
 
         body.appendChild(section(t('strokeWidth'), this.drawSegment([['thin', t('strokeThin')], ['medium', t('strokeMedium')], ['thick', t('strokeThick')]],
             M.strokePreset(shown.stroke, size.w, size.h), function (v) { set('stroke', M.strokeFor(v, size.w, size.h), false); })));
