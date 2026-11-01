@@ -177,7 +177,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - product-bulk-price-edit.md: Bulk price change (edit_products.php, pg_bulk_price_change(), and the Catalog Manager's): a value above zero, a decrease never ends at or below zero, an increase never lowers; no negative price
 - product-bundles-storefront.md: Bundles in the catalog widgets (#2902): __is_bundle, __bundle_saving_formatted, is_bundle / has_bundle_saving flags, the product.bundle_items list, designer twins
 - product-bundles.md: Product bundles (includes/fn/bundles.php): schema 11.0.54, contents, the cached stock and price and what refreshes them, the product screen card, the delete refusal
-- product-code-unique.md: Product screen refuses a product code (products.name) another product holds, with a live field check; variant sets, Recycle Bin, what still renames; typed barcodes on create
+- product-code-unique.md: Product screen and Catalog Manager rename refuse a product code (products.name) another product holds, with a live field check; variant sets, Recycle Bin, what still renames; typed barcodes
 - product-compare-at-price.md: products.compare_at_price (2026.11.0, 11.0.2, PR #658), the merchant's "was" price: NULL/0 rules, product screen switch, list column, import/export, API field, copy paths, what does not read it yet
 - product-customs-fields.md: products.hs_code and origin_country (2026.11.0, 11.0.130, #3408): customs data per product, empty is the shop default; product screen, copy, import/export, products API
 - product-duplicate.md: What a product copy (duplicate_product() and the bulk duplicate_products.php) keeps: later columns via pg_product_copy_extra_sql(), the gallery, a bundle's contents and refresh
@@ -187,6 +187,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - product-feeds.md: Product feed builder (includes/fn/product_feeds.php, PR #561): which products go into the OpenAI JSONL/CSV and Google TSV feeds, field rules, skip reasons, variant families, writers
 - product-group-copy.md: Product group copies (duplicate_product_group.php, pg_catalog_copy_group()): product copy links, Recycle Bin, duplicate notice, default options
 - product-import-prices.md: Product import price cells (price, extra shipping, compare-at): one reader for spreadsheet numbers and typed figures; a row that is not an amount is named (#749, PR #1262)
+- product-price-bound-and-export.md: Catalog Manager and Edit Selected refuse a price past PG_PRODUCT_PRICE_MAX instead of MySQL's silent cut; the Catalog Manager export leaves the Recycle Bin out (#4441, #4443, PR #4515)
 - product-price-box-top.md: The product screen's unit price, compare-at price and extra shipping cost boxes hold 13 characters (21.474.836,47) and the save refuses a larger amount (#4444)
 - product-price-history-api.md: GET /products/{id}/price-history (2026.11.0): a product's price history rows (offer rows included) through the external API and the MCP tools, paging, since and channel filters, what is not in them
 - product-price-history-offers.md: Offer rows of product_price_history (2026.11.0, PR #681): the hourly general-job record of what open offers charge a visitor with no code or account; why recorded, marker, lock, limits

@@ -132,6 +132,7 @@ if (!$_POST) {
                     }
 
                     $number_of_unchanged_price_products = 0;
+                    $number_of_too_large_price_products = 0;
                     $number_of_price_changed_products = 0;
                     $number_of_binned_products = 0;
                     $change_besides_price = pg_products_mass_change_besides_price($_POST, $quantity_value);
@@ -216,8 +217,15 @@ if (!$_POST) {
 							$change = pg_bulk_price_change($row['price'], $edit_change_price_method, $price_value);
 							$price = $change['price'];
 							if($change['refused']){
-								$number_of_unchanged_price_products++;
-								$liveform->mark_error('Update Error', lang(array( 'string'=>'{var:1} product(s) were not changed because their price would fall to zero or below.','vars'=>array($number_of_unchanged_price_products) )) );
+								// A result past what products.price holds is
+								// refused with its own count, not cut to the top.
+								if ($change['too_large']) {
+									$number_of_too_large_price_products++;
+									$liveform->mark_error('Price Too Large', lang(array( 'string'=>'{var:1} product(s) were not changed because their new price would be too large.','vars'=>array($number_of_too_large_price_products) )) );
+								} else {
+									$number_of_unchanged_price_products++;
+									$liveform->mark_error('Update Error', lang(array( 'string'=>'{var:1} product(s) were not changed because their price would fall to zero or below.','vars'=>array($number_of_unchanged_price_products) )) );
+								}
 
 								// Nothing else was asked for this product: it
 								// is neither written nor counted as updated.

@@ -10393,7 +10393,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // Two rows asking for one name is the mistake this preview exists
             // to catch: the server would take the first and refuse the second,
             // and the operator would be left working out which. Compared as
-            // stored, so "Ürün 1.jpg" and "Urun_1.jpg" are one name.
+            // stored, so "Ürün 1.jpg" and "Urun_1.jpg" are one name. A product
+            // code another product outside the selection holds is refused by
+            // the server, and its message names the code and the holder.
             var key = name.toLocaleLowerCase('tr');
             var clash = (!pending) && (name !== '') && (taken[key] === true);
 
@@ -10489,8 +10491,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     ? pushUndo({ undo: { type: 'rename-many', endpoint: endpoint, items: back }, redo: null })
                     : null;
 
+                // The refused rows are named by their own messages; the
+                // ones that went through are still counted beside them.
                 if (errors.length > 0) {
-                    toast(errors.slice(0, 3).join(' '), false);
+                    toast(((done > 0) ? (fmt(L.rename_done, [done]) + '. ') : '') + errors.slice(0, 3).join(' '), false);
                 } else {
                     undoToast(fmt(L.rename_done, [done]), entry);
                 }
