@@ -188,7 +188,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `widgets_shipping_method`: open
 
-- `widgets_starters`: open
+- `widgets_starters`: clean (bindings, flags, markers, actions and wiring against palettes, Default trees and renderers checked)
 
 - `widgets_tag_cloud`: clean (classic and Search Results widget keyword reads against the classic sync, merge and case folding, size and weight scale, token escaping and search links checked)
 
