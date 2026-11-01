@@ -170,11 +170,11 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `widgets_menu`: open
 
-- `widgets_order_form`: open
+- `widgets_order_form`: clean
 
 - `widgets_order_preview`: clean (flags, method rows and On Account, page row changes, recipients and gift card markup escaping, tokens, form wrapper checked)
 
-- `widgets_parts`: open
+- `widgets_parts`: clean (`commerce/cart-product-form-file-field.md`)
 
 - `widgets_parts_anywhere`: clean (marker encode and decode, read-only refusals, injection into the main loop, span take and place counting checked)
 
@@ -192,6 +192,6 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `widgets_tag_cloud`: clean (classic and Search Results widget keyword reads against the classic sync, merge and case folding, size and weight scale, token escaping and search links checked)
 
-- `widgets_wishlist`: clean (owner-only list read, background renders, token escaping and raw price keys, row action wiring and hidden forms, stock and discount rules against the catalog cards, shop and login links checked)
+- `widgets_wishlist`: clean (owner-only read, escaping, row actions, stock and discount rules checked)
 
 - `wishlist`: clean (wishlist.php token, method and throttle checks, cookie hashing and merge, owner SQL, trim batches, page script and its injection checked)
