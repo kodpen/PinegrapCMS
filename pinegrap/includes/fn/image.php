@@ -1654,3 +1654,263 @@ function pg_image_derivative_sweep_run($directory, $seconds = 10)
 
     return $result;
 }
+
+
+/* ---------------------------------------------------------------------------
+ * Derivative warm-up
+ *
+ * With a JPEG or PNG served as WebP at its own address (bit 4 of
+ * config.image_derivative_formats), the first visitor of every picture would
+ * otherwise wait for its encode, and a page of new pictures would queue up
+ * behind the encode slots (pg_image_encode_slot_take()). The general job
+ * makes those copies ahead: the largest files first, because they gain the
+ * most bytes and cost the most to make inside a visitor's request, a few
+ * seconds a tick, through the same pg_image_derivative() a request uses, so
+ * slots, locks, skip markers and the cache are shared. Where it got to is kept
+ * in warmup.json beside sweep.json; a pass that is through starts again after
+ * a day, finding most copies made and stepping over them.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Whether the warm-up has anything to make: WebP offered (bit 1) and served
+ * at the picture's own address (bit 4).
+ *
+ * @param int $bits config.image_derivative_formats as stored
+ * @return bool
+ */
+function pg_image_warmup_wanted($bits)
+{
+    return (((int) $bits) & 5) === 5;
+}
+
+
+/**
+ * config.image_derivative_formats as stored, before the clamp of
+ * pg_image_delivery_settings(): 3 until the column exists.
+ *
+ * @return int
+ */
+function pg_image_derivative_formats_bits()
+{
+    if (!pg_image_delivery_ready()) {
+        return 3;
+    }
+
+    $bits = db_value("SELECT image_derivative_formats FROM config LIMIT 1");
+
+    return is_numeric($bits) ? (int) $bits : 3;
+}
+
+
+/**
+ * Where the warm-up stands: size and id of the last file it went through (id
+ * 0 between passes), and done_at, when the last pass finished.
+ *
+ * @param string $directory pg_image_derivative_directory()
+ * @return array size, id, done_at
+ */
+function pg_image_warmup_state($directory)
+{
+    $state = @json_decode((string) @file_get_contents(rtrim((string) $directory, '/\\') . '/warmup.json'), true);
+
+    $read = function ($key) use ($state) {
+        return (is_array($state) && isset($state[$key]) && is_numeric($state[$key])) ? max(0, (int) $state[$key]) : 0;
+    };
+
+    return array('size' => $read('size'), 'id' => $read('id'), 'done_at' => $read('done_at'));
+}
+
+
+/**
+ * Keep where the warm-up stands.
+ *
+ * @param string $directory
+ * @param array  $state pg_image_warmup_state()
+ * @return void
+ */
+function pg_image_warmup_save($directory, $state)
+{
+    pg_image_derivative_put(rtrim((string) $directory, '/\\') . '/warmup.json', json_encode(array(
+        'size'    => (int) $state['size'],
+        'id'      => (int) $state['id'],
+        'done_at' => (int) $state['done_at'])));
+}
+
+
+/**
+ * Whether a warm-up pass should run now: one under way, or a day since the
+ * last one finished.
+ *
+ * @param array $state pg_image_warmup_state()
+ * @param int   $now
+ * @return bool
+ */
+function pg_image_warmup_due($state, $now)
+{
+    return ((int) $state['id'] > 0) || ((int) $state['done_at'] < ((int) $now - 86400));
+}
+
+
+/**
+ * The SQL condition for the files after the cursor, in the pass's order
+ * (largest first, then the newest of the same size): '' at the start of a
+ * pass.
+ *
+ * @param array $state pg_image_warmup_state()
+ * @return string
+ */
+function pg_image_warmup_after_sql($state)
+{
+    $id = (int) $state['id'];
+
+    if ($id < 1) {
+        return '';
+    }
+
+    $size = (int) $state['size'];
+
+    return "((IFNULL(files.size, 0) < " . $size . ") OR ((IFNULL(files.size, 0) = " . $size . ") AND (files.id < " . $id . ")))";
+}
+
+
+/**
+ * The next pictures of the pass from the files table: JPEG and PNG that are
+ * not form or comment attachments, ERP documents or workspace files (none of
+ * those gets a derivative, docs/memory/platform/image-derivatives.md).
+ *
+ * @param array $state pg_image_warmup_state()
+ * @param int   $limit
+ * @return array rows of id, name, size
+ */
+function pg_image_warmup_fetch($state, $limit)
+{
+    $where = array(
+        "LOWER(files.type) IN ('jpg', 'jpeg', 'jpe', 'png')",
+        "files.attachment = 0",
+        "files.name NOT LIKE 'erp-%'",
+        "files.name NOT LIKE 'ws-%'");
+
+    $after = pg_image_warmup_after_sql($state);
+
+    if ($after !== '') {
+        $where[] = $after;
+    }
+
+    // Workspace channel and note folders (includes/workspace/), when the
+    // workspace tables are there.
+    $folders = array();
+
+    if (pg_schema_has('ws_channels', 'folder_id')) {
+        $folders = array_merge($folders, db_values("SELECT folder_id FROM ws_channels WHERE folder_id > 0"));
+    }
+
+    if (pg_schema_has('ws_notes', 'folder_id')) {
+        $folders = array_merge($folders, db_values("SELECT folder_id FROM ws_notes WHERE folder_id > 0"));
+    }
+
+    $folders = array_unique(array_map('intval', $folders));
+
+    if ($folders) {
+        $where[] = "files.folder NOT IN (" . implode(',', $folders) . ")";
+    }
+
+    return db_items(
+        "SELECT files.id, files.name, IFNULL(files.size, 0) AS size
+        FROM files
+        WHERE " . implode(' AND ', $where) . "
+        ORDER BY size DESC, files.id DESC
+        LIMIT " . max(1, (int) $limit));
+}
+
+
+/**
+ * One tick of the warm-up: the WebP copy at its own width of each picture in
+ * turn, for as many seconds as it is given (at least one picture a tick, so a
+ * picture that takes longer still moves the pass on).
+ *
+ * Stops early, keeping the cursor before the picture, when every encode slot
+ * is taken: visitors' requests come first, and the next tick tries again.
+ *
+ * @param string        $directory      pg_image_derivative_directory()
+ * @param int           $seconds
+ * @param array|null    $settings       pg_image_delivery_settings(); pg_image_delivery() when null
+ * @param callable|null $fetch          function ($state, $limit): rows of id,
+ *                                      name, size; pg_image_warmup_fetch() when null
+ * @param string|null   $file_directory where the files are; FILE_DIRECTORY_PATH when null
+ * @return array state ('done', 'more' or 'busy'), files (gone through), made
+ */
+function pg_image_warmup_run($directory, $seconds = 10, $settings = null, $fetch = null, $file_directory = null)
+{
+    $directory = rtrim((string) $directory, '/\\');
+    $result = array('state' => 'done', 'files' => 0, 'made' => 0);
+
+    if ($file_directory === null) {
+        $file_directory = defined('FILE_DIRECTORY_PATH') ? FILE_DIRECTORY_PATH : '';
+    }
+
+    if (($directory === '') || ((string) $file_directory === '')) {
+        return $result;
+    }
+
+    if (!@is_dir($directory) && !@mkdir($directory, 0755, true) && !@is_dir($directory)) {
+        return $result;
+    }
+
+    if ($settings === null) {
+        $settings = pg_image_delivery();
+    }
+
+    if ($fetch === null) {
+        $fetch = 'pg_image_warmup_fetch';
+    }
+
+    $deadline = microtime(true) + max(0, (int) $seconds);
+    $state = pg_image_warmup_state($directory);
+    $request = array('width' => 0, 'format' => 'webp');
+
+    while (true) {
+
+        $rows = call_user_func($fetch, $state, 20);
+
+        if (!is_array($rows) || !$rows) {
+            break;
+        }
+
+        foreach ($rows as $row) {
+
+            if (($result['files'] > 0) && (microtime(true) > $deadline)) {
+                $result['state'] = 'more';
+                pg_image_warmup_save($directory, $state);
+                return $result;
+            }
+
+            $id = (int) $row['id'];
+            $name = (string) $row['name'];
+            $path = rtrim((string) $file_directory, '/\\') . '/' . $name;
+
+            if (($id > 0) && ($name !== '') && pg_image_derivative_source_ok(strtolower((string) pathinfo($name, PATHINFO_EXTENSION))) && @is_file($path)) {
+
+                $answer = pg_image_derivative($id, $path, $request, $directory, $settings);
+
+                if ($answer['status'] === 'busy') {
+                    $result['state'] = 'busy';
+                    pg_image_warmup_save($directory, $state);
+                    return $result;
+                }
+
+                if (!empty($answer['made'])) {
+                    $result['made']++;
+                }
+            }
+
+            $result['files']++;
+            $state['size'] = max(0, (int) $row['size']);
+            $state['id'] = $id;
+        }
+    }
+
+    pg_image_warmup_save($directory, array('size' => 0, 'id' => 0, 'done_at' => time()));
+
+    return $result;
+}
+

@@ -14,7 +14,7 @@ description: Steps W1-W10 of plans/webp-same-address.md: negotiation, switches, 
 - W2 (S) Switches and status. After W1.
   - Two switches in Settings › Features › Image Optimization (texts through `tr_add.php`), the clamp in `pg_image_delivery_settings()`, the default of question 1 (on for a new install, off on a running site); a System Status line: on or off, WebP written or not, a CDN in front without confirmation.
 
-- W3 (M) Encode cap and warm-up. `free`.
+- W3 (M) Encode cap and warm-up. Done (#4688).
   - At most N encodes at once for every derivative (lock slots beside `data/cache/img/formats.json`, `busy` when all are taken), so a page of forty new pictures does not start forty encodes on a shared host; a warm-up pass in `job.php` beside the sweep: largest JPEG and PNG first, seconds a tick, a cursor file. Tests on the slots and the cursor.
 
 - W4 (S) Convert doors, downloads, mails. After W1.

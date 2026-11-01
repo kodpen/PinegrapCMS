@@ -391,6 +391,7 @@
     "general": "genel",
     "general job cancelled unpaid bank transfer order #{var:1} after {var:2} day(s)": "genel görev, ödenmemiş #{var:1} numaralı havale siparişini {var:2} gün sonra iptal etti",
     "general job corrected the rating of {var:1} product(s) from their reviews": "genel iş {var:1} ürünün puanını değerlendirmelerinden yeniden hesaplayarak düzeltti",
+    "general job made {var:1} WebP image copies ahead of visitors": "genel görev ziyaretçilerden önce {var:1} WebP görsel kopyası oluşturdu",
     "general job published {var:1} scheduled comment(s)": "genel görev {var:1} zamanlanmış yorumu yayımladı",
     "general job removed {var:1} address(es) from the 404 log": "genel görev 404 kaydından {var:1} adresi sildi",
     "general job removed {var:1} audit trail line(s) and {var:2} consent log line(s) past their retention period": "genel iş saklama süresi dolan {var:1} denetim izi satırını ve {var:2} rıza kaydı satırını sildi",
