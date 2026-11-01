@@ -349,6 +349,9 @@ function pg_designer_screen_render($ctx)
             // The providers whose buttons the sign-in block prints now, for
             // the hint on that block.
             'signin_providers'     => function_exists('pg_signin_button_state') ? array_values(pg_signin_button_state()['shown']) : array(),
+            // Whether the product page's Checkout Options table has a row
+            // to show; the site leaves the tab out otherwise.
+            'payment_methods'      => function_exists('pg_civ_payment_method_rows') && pg_civ_payment_method_rows(_pg_civ_payment_settings(false)) !== array(),
         ),
         // The editor's UI text, resolved through lang() for the site's
         // language. Empty when the language is English: the JS keys ARE the

@@ -4385,17 +4385,32 @@ function _pg_civ_set_attr(&$node, $name, $value)
     $node['props']['_attrs'] = $attrs;
 }
 
-// The paths (child indexes from the root) of every comments_block region.
-function _pg_civ_comments_block_paths($node, $path = array(), &$out = array())
+// Whether a node is a comments_block region.
+function _pg_civ_is_comments_block($node)
+{
+    return is_array($node) && isset($node['type'], $node['props']['regionType'])
+        && $node['type'] === 'region' && $node['props']['regionType'] === 'comments_block';
+}
+
+// Whether a node is bound to the payment_methods section.
+function _pg_civ_is_payment_section($node)
+{
+    return is_array($node) && isset($node['props']['_bindings']['section'])
+        && $node['props']['_bindings']['section'] === 'payment_methods';
+}
+
+// The paths (child indexes from the root) of every node $match accepts,
+// outermost only.
+function _pg_civ_matching_paths($node, $match, $path = array(), &$out = array())
 {
     if (!is_array($node)) return $out;
-    if (isset($node['type'], $node['props']['regionType']) && $node['type'] === 'region' && $node['props']['regionType'] === 'comments_block') {
+    if ($match($node)) {
         $out[] = $path;
         return $out;
     }
     if (isset($node['children']) && is_array($node['children'])) {
         foreach ($node['children'] as $i => $child) {
-            _pg_civ_comments_block_paths($child, array_merge($path, array($i)), $out);
+            _pg_civ_matching_paths($child, $match, array_merge($path, array($i)), $out);
         }
     }
     return $out;
@@ -4456,16 +4471,23 @@ function _pg_civ_remove_at(&$tree, $path)
     array_splice($parent['children'], $last, 1);
 }
 
-// Leaves out the frame of each comments block in a widget tree: a) the tab
-// pane holding it, its trigger and the trigger's li / nav-item (the first
-// tab left opens when the pane was the open one); b) else the nearest
-// element around it holding nothing else but headings (a "Reviews"
-// section); c) else the region alone.
+// Leaves out the frame of each comments block in a widget tree
+// (_pg_civ_drop_frames()).
 function _pg_civ_drop_comments_frame(&$tree)
 {
-    // Each pass removes one block with its frame; paths are read again as
+    _pg_civ_drop_frames($tree, '_pg_civ_is_comments_block');
+}
+
+// Leaves out each node $match accepts with its frame, for a section that
+// draws nothing: a) the tab pane holding it, its trigger and the trigger's
+// li / nav-item (the first tab left opens when the pane was the open one);
+// b) else the nearest element around it holding nothing else but headings
+// (a "Reviews" section); c) else the node alone.
+function _pg_civ_drop_frames(&$tree, $match)
+{
+    // Each pass removes one node with its frame; paths are read again as
     // a removal shifts the indexes after it.
-    while (($paths = _pg_civ_comments_block_paths($tree)) !== array()) {
+    while (($paths = _pg_civ_matching_paths($tree, $match)) !== array()) {
         $path = $paths[0];
         if ($path === array()) break;
         $drop = $path;
@@ -4532,6 +4554,146 @@ function _pg_civ_drop_comments_frame(&$tree)
 
         // c) The region alone, or the element of b).
         _pg_civ_remove_at($tree, $drop);
+    }
+}
+
+// ── Checkout Options table ─────────────────────────────────────────────────
+// A container bound to the payment_methods section (the starter's table
+// body) gets one row per payment method the store has switched on, with its
+// real fee; none on: the section is left out with its tab or frame
+// (_pg_civ_drop_frames()). Saved trees with a static table are untouched.
+
+// The store's payment settings the table follows. $visitor: whether the
+// member signed in now may put an order on account; false asks only
+// whether the setting is on (the editor's canvas).
+function _pg_civ_payment_settings($visitor = true)
+{
+    if (!defined('ECOMMERCE') || !ECOMMERCE) return array('ecommerce' => false);
+    $sw = function_exists('pg_payment_builtin_switches') ? pg_payment_builtin_switches() : array();
+    $gateway = defined('ECOMMERCE_PAYMENT_GATEWAY') ? (string)ECOMMERCE_PAYMENT_GATEWAY : '';
+    $offline = !empty($sw['Offline Payment']);
+    if ($visitor) {
+        $on_account = function_exists('pg_erp_open_account') && pg_erp_open_account() !== null;
+    } else {
+        $on_account = defined('ERP_OPEN_ACCOUNT_PAYMENT') && ERP_OPEN_ACCOUNT_PAYMENT;
+    }
+    return array(
+        'ecommerce'    => true,
+        'card'         => !empty($sw['Credit/Debit Card']) && $gateway !== '',
+        'surcharge'    => defined('ECOMMERCE_SURCHARGE_PERCENTAGE') ? (float)ECOMMERCE_SURCHARGE_PERCENTAGE : 0.0,
+        'offline'      => $offline,
+        'cod'          => $offline && function_exists('pg_sms_code_on') && pg_sms_code_on('cod'),
+        'installments' => ($gateway === 'Iyzipay' && defined('ECOMMERCE_IYZIPAY_INSTALLMENT')) ? (int)ECOMMERCE_IYZIPAY_INSTALLMENT : 0,
+        'paypal'       => !empty($sw['PayPal Express Checkout']),
+        'iyzico'       => !empty($sw['Pay With Iyzico']),
+        'on_account'   => (bool)$on_account,
+    );
+}
+
+// The table's rows from the settings, each array(method, description, fee).
+// Only the card carries a fee: the surcharge the checkout adds to a card
+// payment ("0%" when none); every other fee cell stays empty rather than
+// naming a figure the store never set. Pure.
+function pg_civ_payment_method_rows($s)
+{
+    $rows = array();
+    if (empty($s['ecommerce'])) return $rows;
+    if (!empty($s['card'])) {
+        $pct = isset($s['surcharge']) ? max(0.0, (float)$s['surcharge']) : 0.0;
+        $pct = rtrim(rtrim(number_format($pct, 2, '.', ''), '0'), '.');
+        $rows[] = array(lang('Credit/Debit Card'), lang('Pay securely by card'),
+            lang(array('string' => '{var:1}%', 'vars' => array($pct))));
+        $count = isset($s['installments']) ? (int)$s['installments'] : 0;
+        if ($count >= 2) {
+            $rows[] = array(lang('Installments'),
+                lang(array('string' => 'Up to {var:1} installments by card', 'vars' => array($count))), '');
+        }
+    }
+    if (!empty($s['offline'])) {
+        $rows[] = array(lang('Bank Transfer / EFT'), lang('A direct transfer to our bank account'), '');
+    }
+    if (!empty($s['cod'])) {
+        $rows[] = array(lang('Cash on Delivery'), lang('Pay when your order is delivered'), '');
+    }
+    if (!empty($s['paypal'])) {
+        $rows[] = array(lang('PayPal'), lang('Pay with your PayPal account'), '');
+    }
+    if (!empty($s['iyzico'])) {
+        $rows[] = array(lang('iyzico'), lang('Pay with your iyzico account'), '');
+    }
+    if (!empty($s['on_account'])) {
+        $rows[] = array(lang('On account'), lang('Charged to your customer account'), '');
+    }
+    return $rows;
+}
+
+// Sets the text of the first content node in $node (the node itself when
+// it holds none); false when there is none.
+function _pg_civ_set_first_text(&$node, $text)
+{
+    if (!is_array($node)) return false;
+    if (isset($node['type']) && $node['type'] === 'content') {
+        $node['props']['text'] = $text;
+        return true;
+    }
+    if (isset($node['children']) && is_array($node['children'])) {
+        foreach ($node['children'] as &$child) {
+            if (_pg_civ_set_first_text($child, $text)) return true;
+        }
+        unset($child);
+    }
+    return false;
+}
+
+// One table row: a copy of $template (the section's first row, so the
+// designer's look stays) with each cell's text set, or a plain row of
+// three cells when there is no row to copy. Pure.
+function _pg_civ_payment_row($template, $values)
+{
+    $cell = function ($text, $class) {
+        return array('type' => 'semantic', 'props' => array('tag' => 'td', 'cssClass' => $class), 'children' => array(
+            array('type' => 'content', 'props' => array('contentType' => 'paragraph', 'text' => $text, 'cssClass' => 'mb-0'), 'children' => array()),
+        ));
+    };
+    if (!is_array($template) || empty($template['children']) || !is_array($template['children'])) {
+        return array('type' => 'semantic', 'props' => array('tag' => 'tr', 'cssClass' => ''), 'children' => array(
+            $cell(h($values[0]), ''), $cell(h($values[1]), ''), $cell(h($values[2]), 'text-end'),
+        ));
+    }
+    $row = $template;
+    unset($row['id']);
+    foreach ($row['children'] as $i => &$td) {
+        $text = isset($values[$i]) ? h($values[$i]) : '';
+        if (!_pg_civ_set_first_text($td, $text)) {
+            $td['children'] = array(array('type' => 'content', 'props' => array('contentType' => 'paragraph', 'text' => $text, 'cssClass' => 'mb-0'), 'children' => array()));
+        }
+    }
+    unset($td);
+    return $row;
+}
+
+// Fills every payment_methods section of a widget tree with $rows
+// (pg_civ_payment_method_rows()); with no rows, leaves each out with its
+// frame. Pure.
+function _pg_civ_fill_payment_methods(&$tree, $rows)
+{
+    if (!is_array($tree)) return;
+    if (!$rows) {
+        _pg_civ_drop_frames($tree, '_pg_civ_is_payment_section');
+        return;
+    }
+    foreach (_pg_civ_matching_paths($tree, '_pg_civ_is_payment_section') as $path) {
+        $section = &_pg_civ_node_at($tree, $path);
+        $template = null;
+        foreach ((isset($section['children']) && is_array($section['children'])) ? $section['children'] : array() as $child) {
+            if (is_array($child) && isset($child['props']['tag']) && $child['props']['tag'] === 'tr') {
+                $template = $child;
+                break;
+            }
+        }
+        $section['children'] = array();
+        foreach ($rows as $values) $section['children'][] = _pg_civ_payment_row($template, $values);
+        unset($section);
     }
 }
 
@@ -4752,6 +4914,9 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     // The comments block draws nothing while the page's comments are off or
     // a comments widget on the page shows the reviews: its tab or section
     // is left out with it. No page (an e-mail, an unsaved Preview): as it is.
+    // The Checkout Options table: the store's switched-on payment methods,
+    // or the section left out with its tab when none is on.
+    _pg_civ_fill_payment_methods($tree_decoded, pg_civ_payment_method_rows(_pg_civ_payment_settings()));
     $_civ_ctx = pg_sw_render_context();
     if (_pg_civ_comments_block_will_draw(isset($_civ_ctx['page_id']) ? $_civ_ctx['page_id'] : 0) === false) {
         _pg_civ_drop_comments_frame($tree_decoded);
