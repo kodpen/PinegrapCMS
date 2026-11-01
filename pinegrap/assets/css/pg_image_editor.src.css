@@ -1024,6 +1024,170 @@
 
 /* -- Stickers and frames (pg_image_editor_sticker.js) -- */
 
+.pgie-stk {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pgie .pgie-stb {
+  display: grid;
+  place-items: center;
+  height: 64px;
+  padding: 4px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 12px;
+  background: var(--pgie-hover);
+  cursor: pointer;
+}
+
+.pgie .pgie-stb:hover {
+  border-color: var(--pgie-pline);
+}
+
+.pgie-stb svg {
+  width: 100%;
+  height: 100%;
+  max-width: 120px;
+}
+
+.pgie-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.pgie .pgie-sw,
+.pgie .pgie-swc {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--pgie-line);
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.pgie .pgie-sw.pgie-checker {
+  background-size: 10px 10px;
+}
+
+.pgie .pgie-sw.on {
+  box-shadow: 0 0 0 2px var(--pgie-surface), 0 0 0 4px var(--pgie-sel);
+}
+
+.pgie .pgie-swc {
+  overflow: hidden;
+  background: conic-gradient(#e53935, #fdd835, #43a047, #1e88e5, #8e24aa, #e53935);
+}
+
+.pgie .pgie-swc::-webkit-color-swatch-wrapper {
+  padding: 0;
+  opacity: 0;
+}
+
+.pgie .pgie-swc::-moz-color-swatch {
+  opacity: 0;
+}
+
+.pgie .pgie-stklabel,
+.pgie .pgie-stkfind {
+  width: 100%;
+}
+
+.pgie-stkacts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.pgie-stkacts .pgie-tile .pgie-ic {
+  width: 16px;
+  height: 16px;
+}
+
+.pgie .pgie-stkopen {
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.pgie-stkfilebox {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pgie-stkfiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.pgie-stkfiles .pgie-note {
+  grid-column: 1 / -1;
+}
+
+.pgie .pgie-stkfile {
+  aspect-ratio: 1;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--pgie-line);
+  border-radius: 9px;
+  background: var(--pgie-hover);
+  cursor: pointer;
+}
+
+.pgie .pgie-stkfile:hover {
+  border-color: var(--pgie-sel);
+}
+
+.pgie-stkfile img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.pgie-frameov {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.pgie-frames {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.pgie-frames .pgie-tile svg {
+  width: 56px;
+  height: 40px;
+}
+
+.pgie .pgie-frames .pgie-tile.on {
+  border-color: var(--pgie-sel);
+  background: var(--pgie-pw);
+  color: var(--pgie-ink);
+}
+
+.pgie-frpic {
+  fill: var(--pgie-stage);
+}
+
+.pgie-frink {
+  fill: var(--pgie-tx);
+}
+
+.pgie-frnone {
+  fill: none;
+  stroke: var(--pgie-muted);
+  stroke-dasharray: 2 2;
+}
+
 /* -- Redact (pg_image_editor_redact.js) -- */
 
 /* -- Versions (pg_image_editor_versions.js) -- */

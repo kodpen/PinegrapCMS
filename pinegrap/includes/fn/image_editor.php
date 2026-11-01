@@ -1141,7 +1141,6 @@ function pg_image_editor_strings_sticker()
 {
     return array(
         'layer_sticker'   => lang('Sticker'),
-        'stickers'        => lang('Stickers'),
         'stickerNew'      => lang('NEW'),
         'stickerSale'     => lang('SALE'),
         'stickerSold'     => lang('SOLD OUT'),
@@ -1160,7 +1159,7 @@ function pg_image_editor_strings_sticker()
         'stickerFilesError' => lang('The pictures could not be loaded.'),
         'customColor'     => lang('Custom color'),
         'colorWhite'      => lang('White'),
-        'colorBlack'      => lang('Black'),
+        'colorBlack'      => lang('Charcoal'),
         'colorRed'        => lang('Red'),
         'colorOrange'     => lang('Orange'),
         'colorYellow'     => lang('Yellow'),
