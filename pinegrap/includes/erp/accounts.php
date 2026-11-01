@@ -162,6 +162,20 @@ function erp_state_code($state, $country_code)
 }
 
 /**
+ * The language key of an address's city field on the account card and the
+ * delivery note: 'Province' (İl) for a Turkish address, whose district has
+ * its own field, 'City' elsewhere. The card's columns stay as they are:
+ * city is the province, district the district.
+ *
+ * @param string $country_code The address's country; the store's when empty
+ * @return string
+ */
+function erp_address_city_label_key($country_code)
+{
+    return (erp_account_country($country_code) === 'TR') ? 'Province' : 'City';
+}
+
+/**
  * How a checkout address lands on the account card. The checkout has a city
  * and a state (province) field. In Turkey the province is what the card and
  * GİB call the city (il) and the checkout's city field holds the district
