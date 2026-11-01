@@ -7,15 +7,13 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
 - S under 400 product lines, M about 1,000 (E9's deletion not counted). Screens: `image-editor-visuals.md`. Order and `free`: `image-editor-workers.md`. Each step's UI works on a phone (E1b layout).
 
 - E1 (M) Core modal. Screens 18, 19, 01, 12, 13. Done in #4122 (`ui/image-editor-modal.md`).
-  - Bundle, stylesheet, loader, `pg_image_editor_strings()`, the `<dialog>` with full screen, top bar, rail, panel, zoom and pan (wheel, pinch, keys), document model, undo and redo, profiles and `tools`.
-  - Opens `{src}` and `{blank}`; no caller switched yet. The JS maths (matrices, rotated space) gets `node --test` tests.
+  - Bundle, loader, labels, the `<dialog>` with full screen, top bar, rail, panel, zoom and pan, document model, undo and redo, profiles and `tools`.
 
 - E1b (S) Phone layout. Screens 20-25. Done in #4186 (`ui/image-editor-modal.md`).
   - Narrower than 600 px: a scrolling bottom bar of tools and the panel as a sheet above it; lower than 500 px: an icon rail on the left and the panel over the stage's right.
 
 - E2 (M) Crop and geometry. Screen 02. Done in #4208 (`ui/image-editor-crop.md`).
-  - Crop box and handles, ratios (free, original, 1:1, 4:3, 3:2, 16:9, 4:5, 9:16), quarter turns, flips, straighten ±45° with cover scale, output size with presets, crop shape (rounded, circle).
-  - Layers follow turns and flips; cancel restores them.
+  - Crop box, ratios, quarter turns, flips, straighten ±45°, output size, crop shape; layers follow turns and flips.
 
 - E3 (M) Server save. Done in #4258 (`platform/image-editor-save.md`).
   - `image_editor_api.php` open and save, the validator, `pg_image_edit_apply()` steps 1, 2, 5, 6 (Imagick, GD), replace, copy, new.
@@ -43,3 +41,6 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
 
 - E10b (S) Redaction through save.url. `free`.
   - A save to another endpoint (`save.url`: the Workspace's `workspace_file_save.php`) loses the redaction: the redact part sends its masks only for replace and copy and `pg_image_editor_render()` takes none, so the saved picture shows what was covered. The hook sends them for `url` too; `pg_image_editor_render()` checks them with `pg_image_editor_take_redactions()`, burns them in as a save's step 4 does and removes the masks on every path. A test renders a solid area through it; try a redacted Workspace picture.
+
+- E10c (S) A redacted Workspace replace. `free` after E10b.
+  - Owner, #4783: the replaced original is listed in the message's earlier versions only for the person who edited. `ws_file_edits.redacted` (step `11.0.144`, `install_add_column()`), set by `workspace_file_save.php` when the replace burnt masks in; `ws_file_history()` leaves such rows out for anyone else. A test.
