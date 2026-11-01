@@ -10,6 +10,7 @@ description: Generated from the module field of the memory files: each includes/
 - `ai_prompts`: [[ai-prompt-version]]
 - `audit`: [[audit-trail-diff]], [[audit-trail-file-content]], [[consent-log-and-audit-trail]]
 - `audit_list`: [[audit-log-paging]]
+- `audit_rules`: [[audit-rule-registry]]
 - `audit_view`: [[audit-trail-screen]], [[audit-trail-settings-name]]
 - `auth`: [[erp-link-rights]], [[filtered-folder-picker-path]], [[link-rights]], [[list-row-names]], [[sign-in-one-message]]
 - `background_render`: [[background-render]]

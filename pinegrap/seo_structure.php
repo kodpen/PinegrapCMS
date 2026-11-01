@@ -51,83 +51,23 @@ function pg_seo_severity_weights()
     );
 }
 
-// Severity per rule code. Kept in one place so the score, the filters and
-// the detail panel cannot disagree about how serious a finding is.
+// Severity per rule code, read from the audit rule registry
+// (includes/fn/audit_rules.php) so the score, the filters, the detail panel,
+// the accessibility report and the visual editor cannot disagree about how
+// serious a finding is.
 function pg_seo_structure_severities()
 {
-    return array(
-        // Document level tags. These fire when the page template never
-        // emitted the tag at all, which is a different failure from leaving
-        // the corresponding field empty and is invisible from the database.
-        'title_tag_missing'         => 'error',
-        'title_tag_multiple'        => 'warning',
-        'meta_description_tag_missing' => 'error',
-        'canonical_missing'         => 'warning',
-        'canonical_multiple'        => 'warning',
-        'noindex_but_in_sitemap'    => 'error',
-        'viewport_missing'          => 'notice',
-        'og_incomplete'             => 'notice',
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/audit_rules.php');
 
-        // Headings
-        'h1_missing'                => 'error',
-        'h1_multiple'               => 'warning',
-        'h1_empty'                  => 'error',
-        'h1_equals_title'           => 'notice',
-        'h1_too_long'               => 'notice',
-        'heading_starts_at_h2'      => 'warning',
-        'heading_level_skip'        => 'warning',
-        'heading_empty'             => 'warning',
-        'heading_is_paragraph'      => 'notice',
-        'heading_duplicate_text'    => 'notice',
+    $severities = array();
 
-        // Text
-        'p_contains_block'          => 'error',
-        'p_empty'                   => 'notice',
-        'br_as_paragraph'           => 'notice',
-        'presentational_tag'        => 'warning',
-        'bold_italic_tag'           => 'notice',
-        'inline_style_heavy'        => 'notice',
+    foreach (pg_audit_rules() as $rule) {
+        if ($rule['seo'] !== '') {
+            $severities[$rule['seo']] = $rule['severity']['seo'];
+        }
+    }
 
-        // Lists and tables
-        'list_invalid_child'        => 'error',
-        'table_no_header'           => 'notice',
-
-        // Images
-        'img_no_alt'                => 'error',
-        'img_alt_is_filename'       => 'warning',
-        'img_no_dimensions'         => 'notice',
-        'img_no_lazy'               => 'notice',
-
-        // Links
-        'render_failed'             => 'notice',
-        'link_empty'                => 'error',
-        'link_empty_href'           => 'warning',
-        'link_generic_anchor'       => 'notice',
-        'link_blank_no_noopener'    => 'warning',
-
-        // Semantics and accessibility
-        'html_lang_missing'         => 'warning',
-        'main_missing'              => 'notice',
-        'main_multiple'             => 'warning',
-        'landmark_missing'          => 'notice',
-        'input_no_label'            => 'warning',
-        'iframe_no_title'           => 'notice',
-        'button_empty'              => 'warning',
-
-        // Content volume
-        'thin_content'              => 'warning',
-        'low_text_ratio'            => 'notice',
-
-        // Structured data
-        'jsonld_invalid'            => 'error',
-        'jsonld_missing_type'       => 'warning',
-        'jsonld_missing'            => 'notice',
-        'product_schema_incomplete' => 'notice',
-
-        // Set by the page analyzer rather than by the rule pass, because
-        // answering it needs to know which layer the heading came from.
-        'h1_only_in_template'       => 'warning',
-    );
+    return $severities;
 }
 
 // Anchor texts that describe the click instead of the destination. Turkish
@@ -1294,25 +1234,22 @@ function pg_seo_widget_record_query($page_id)
 // The fix is not to run these against a fragment (they would fire on every
 // one) but to carry the stored answers over, which is what the designer
 // already does for the link and speed groups. This list is the contract
-// between the two, and it lives next to the checks that emit it so the two
+// between the two; the audit rule registry (includes/fn/audit_rules.php)
+// marks each code document-only for SEO beside its severity, so the two
 // cannot drift apart.
 function pg_seo_document_only_codes()
 {
-    return array(
-        // <head>: the title and description tags themselves, not their text
-        'title_tag_missing', 'title_tag_multiple', 'meta_description_tag_missing',
-        // sharing tags, only asked for when open_graph is on
-        'og_incomplete',
-        // page-level heading structure
-        'h1_missing', 'h1_multiple',
-        'heading_starts_at_h2', 'heading_level_skip', 'heading_duplicate_text',
-        // document skeleton
-        'html_lang_missing', 'main_missing',
-        // whole-page measures
-        'thin_content',
-        // structured data, only asked for on the types that need it
-        'jsonld_missing',
-    );
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/audit_rules.php');
+
+    $codes = array();
+
+    foreach (pg_audit_rules() as $rule) {
+        if ($rule['seo'] !== '' && in_array('seo', $rule['document'], true)) {
+            $codes[] = $rule['seo'];
+        }
+    }
+
+    return $codes;
 }
 
 // pg_seo_store_issues() and pg_seo_store_links() are the only writers that
