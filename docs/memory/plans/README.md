@@ -51,6 +51,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - image-editor-animation-visuals.md: Screens of plans/image-editor-animation.md (AN0), 26 to 32 in plans/image-editor/: what each shows and which step builds it
 - image-editor-animation.md: Plan (owner 2026-11-01): image editor animation, layers and scenes that move, saved as GIF, APNG, WebP, MP4 or WebM, a PDF of the scenes or animated SVG; held with plans/image-editor.md
 - image-editor-design.md: Design of plans/image-editor.md: the parts and file names, the one call and its options, the modal's look, the document model with layers in rotated space
+- image-editor-icons-fonts.md: Image editor: Google Fonts picker under the Text tool's font tiles, Bootstrap Icons and emoji in the Sticker tool (owner, 2026-11-01); claim as [plan:image-editor-icons-fonts] F<n>
 - image-editor-server.md: Server side of plans/image-editor.md: what the browser and the server each do, the save pipeline through the image engine, replace, copy and new, the versions table proposal, security
 - image-editor-steps-2.md: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboard, optimisation, pen, SVG, Workspace, designer, access, close-out; claim as [plan:image-editor] E<n>
 - image-editor-steps.md: Steps E1-E10 of plans/image-editor.md: core modal, crop, server save, adjust, layers, shapes, text, stickers, the switch that removes the old editor, redaction; claim as [plan:image-editor] E<n>
