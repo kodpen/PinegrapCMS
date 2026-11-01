@@ -16,6 +16,9 @@
  *  - viewport(host): pan, zoom about a point, fit, pinch and the wheel on a
  *    viewport element, its layer and its zoom label, reading and writing the
  *    view { x, y, k } through the host;
+ *  - autosave(host): a graph saved a moment after its last change, at
+ *    once on demand, on a keepalive request as the page is left, and held
+ *    on a conflict (409) until the host reads it again;
  *  - create(adapter): a canvas on top of its viewport: its boxes with
  *    their ports, its arrows, a box moved and an arrow drawn by dragging
  *    from a box's port, the selection's mark and the live region; pan,
@@ -272,6 +275,127 @@
         }
 
         return { apply: apply, zoomAt: zoomAt, zoomBy: zoomBy, fit: fit, point: point, reveal: reveal, wheel: wheel, pinchStart: pinchStart, pinchMove: pinchMove };
+    }
+
+    // ── Autosave ───────────────────────────────────────────────────────
+
+    // The saving of one graph. The host gives:
+    //  - record: the object the save state is kept on, which the host reads
+    //    too: dirty (changes not sent), changes (a count of them), saving
+    //    (the save on its way, a promise, else null), saveError (why the
+    //    last save failed), conflict (why the graph cannot be saved over:
+    //    a newer one is on the server), leaveSent (the changes count a
+    //    keepalive save went out for), saveTimer;
+    //  - ready(): whether there is a graph the person may save now;
+    //  - send(options): a promise of the save of the graph as it is now
+    //    (options.keepalive on a page being left); it applies the answer
+    //    itself and rejects with an error { field, message } (no field: no
+    //    answer came);
+    //  - size(): the bytes of what send() would send;
+    //  - isConflict(error) and conflict(message): a refusal because the
+    //    graph changed meanwhile, and its message shown;
+    //  - failed(): the text of a failure that has none;
+    //  - drawn(): the save state drawn again;
+    //  - delay (ms after the last change) and keepaliveBytes (the most a
+    //    keepalive request carries).
+    function autosave(host) {
+        var record = host.record;
+
+        function later() {
+            window.clearTimeout(record.saveTimer);
+            record.saveTimer = window.setTimeout(save, host.delay);
+        }
+
+        // A change made: sent once the changes pause (later()).
+        function changed() {
+            record.dirty = true;
+            record.changes++;
+        }
+
+        // options: { keepalive } for the save sent as the page is left.
+        function save(options) {
+            window.clearTimeout(record.saveTimer);
+
+            if (!host.ready() || record.conflict) {
+                return Promise.resolve();
+            }
+
+            if (record.saving) {
+                return record.saving.then(function () { return record.dirty ? save() : null; });
+            }
+
+            if (!record.dirty) {
+                return Promise.resolve();
+            }
+
+            var keepalive = !!(options && options.keepalive);
+            var sent = record.changes;
+
+            record.dirty = false;
+            record.saveError = '';
+            record.leaveSent = -1;
+            record.saving = host.send(options).catch(function (error) {
+                record.dirty = true;
+
+                // A keepalive request is rejected when the page closes under
+                // it, yet the browser still delivers it: no answer (no field)
+                // means the save is on its way. The same changes are not sent
+                // again as the page goes (the server would refuse the stale
+                // revision); a page that stays saves them again after the
+                // delay.
+                if (keepalive && (error.field === undefined)) {
+                    record.leaveSent = sent;
+                    return;
+                }
+
+                if (host.isConflict(error)) {
+                    host.conflict(error.message);
+                } else {
+                    record.saveError = error.message || host.failed();
+                }
+            }).then(function () {
+                record.saving = null;
+                host.drawn();
+
+                if (record.dirty && !record.conflict && !record.saveError) {
+                    later();
+                }
+            });
+
+            host.drawn();
+
+            return record.saving;
+        }
+
+        // What is still unsaved, saved before something else is opened.
+        function flush() {
+            return record.dirty ? save() : (record.saving || Promise.resolve());
+        }
+
+        // The page is hidden or being left: the last changes go out on a
+        // request the browser finishes even after the page is gone
+        // (keepalive). It is an ordinary save otherwise: its answer is
+        // read, so a page that lives on (a tab shown again) holds the
+        // revision the server moved to, and a refusal leaves the changes
+        // unsaved. Browsers refuse a keepalive body over 64 KiB: a larger
+        // graph is saved the usual way while the page is only hidden, and
+        // when it is left (leaving) it stays unsaved, which beforeunload
+        // asks about. beforeunload, visibilitychange and pagehide all come
+        // as a page is left: changes whose keepalive save is already on its
+        // way (leaveSent) are sent once.
+        function leave(leaving) {
+            if (!host.ready() || !record.dirty || record.saving || record.conflict || (record.leaveSent === record.changes)) {
+                return;
+            }
+
+            var keepalive = host.size() <= host.keepaliveBytes;
+
+            if (keepalive || !leaving) {
+                save({ keepalive: keepalive });
+            }
+        }
+
+        return { changed: changed, later: later, save: save, flush: flush, leave: leave };
     }
 
     // ── The canvas: boxes, arrows, pointer and keys ────────────────────
@@ -791,6 +915,7 @@
         historyRecord: historyRecord,
         historyStep: historyStep,
         viewport: viewport,
+        autosave: autosave,
         create: create
     };
 })();

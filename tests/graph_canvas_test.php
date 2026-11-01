@@ -47,7 +47,7 @@ function test_graph_canvas_flow_canvas_keeps_no_copy()
 
 	pg_assert_contains('    var G = window.PGGraphCanvas;', $flow, 'the flow canvas reads the core');
 
-	foreach (array('snap', 'clamp', 'svgEl', 'curve', 'freeId', 'typing', 'bytes', 'historyOf', 'historyRecord', 'historyStep', 'applyView', 'zoomAt', 'zoomBy', 'fit', 'canvasPoint', 'pointerDown', 'pointerMove', 'pointerUp', 'cancelDrag') as $name) {
+	foreach (array('snap', 'clamp', 'svgEl', 'curve', 'freeId', 'typing', 'bytes', 'historyOf', 'historyRecord', 'historyStep', 'applyView', 'zoomAt', 'zoomBy', 'fit', 'canvasPoint', 'pointerDown', 'pointerMove', 'pointerUp', 'cancelDrag', 'port') as $name) {
 		pg_assert_false((bool) preg_match('/^ *function ' . $name . '\(/m', $flow), 'no ' . $name . '() of its own');
 	}
 
@@ -494,4 +494,101 @@ JS
 	pg_assert_same(array(32, array('select node a', 'release none')), $result['readOnly'], 'a read-only box is selected only');
 	pg_assert_same(array(array('select edge 0', 'release none', 'release pan empty'), true), $result['others'], 'an arrow pressed is selected, the empty canvas pans');
 	pg_assert_same('Arrow added', $result['live'], 'the live region reads the text');
+}
+
+// The autosave (autosave()): a change is sent once the changes pause; a
+// change made while a save is on its way goes in a second one; a failure is
+// kept and nothing is sent again by itself; a conflict holds every later
+// save; a keepalive save whose answer is lost is not sent twice as the page
+// goes; a graph too large for keepalive is saved as usual while the page is
+// hidden and left unsaved when it is left.
+function test_graph_canvas_autosave()
+{
+	$result = graph_canvas_test_node(<<<'JS'
+var timers = [];
+window.setTimeout = function (handler) { timers.push(handler); return timers.length; };
+window.clearTimeout = function () {};
+function flushTimers() { var due = timers; timers = []; due.forEach(function (handler) { handler(); }); }
+var record = { dirty: false, changes: 0, saving: null, saveError: '', conflict: '', leaveSent: -1, saveTimer: 0 };
+var sends = [];
+var answers = [];
+var size = 10;
+var saver = G.autosave({
+    record: record,
+    delay: 1500,
+    keepaliveBytes: 100,
+    ready: function () { return true; },
+    send: function (options) {
+        sends.push(record.changes + (options && options.keepalive ? ' keepalive' : ''));
+        var answer = answers.shift() || 'ok';
+        return answer === 'ok' ? Promise.resolve({}) : Promise.reject(answer);
+    },
+    size: function () { return size; },
+    isConflict: function (error) { return error.field === 'changed_meanwhile'; },
+    conflict: function (message) { record.conflict = message; },
+    failed: function () { return 'Not saved'; },
+    drawn: function () {}
+});
+var out = {};
+function tick() { return new Promise(function (done) { setImmediate(done); }); }
+(async function () {
+    saver.changed(); saver.later();
+    out.waits = [sends.length, timers.length, record.dirty];
+    flushTimers(); await tick();
+    out.sent = [sends.slice(), record.dirty, record.saving];
+    sends = [];
+    saver.changed();
+    var first = saver.save();
+    saver.changed();
+    var second = saver.save();
+    await first; await second; await tick();
+    out.during = [sends.slice(), record.dirty];
+    sends = [];
+    timers = [];
+    answers = [{ field: '', message: 'Server down' }];
+    saver.changed();
+    await saver.save(); await tick();
+    out.failed = [record.saveError, record.dirty, timers.length];
+    timers = [];
+    answers = [{ field: 'changed_meanwhile', message: 'Newer' }];
+    record.saveError = '';
+    await saver.save(); await tick();
+    out.conflict = [record.conflict, record.dirty];
+    sends = [];
+    await saver.save();
+    saver.leave(true);
+    out.held = sends.length;
+    record.conflict = '';
+    answers = [{ message: 'gone' }];
+    saver.changed();
+    saver.leave(true); await tick(); await tick();
+    out.leave = [sends.slice(), record.leaveSent === record.changes, record.dirty];
+    sends = [];
+    saver.leave(true);
+    out.once = sends.length;
+    saver.changed();
+    size = 1000;
+    saver.leave(true);
+    out.bigLeft = sends.length;
+    saver.leave(false); await tick();
+    out.bigHidden = sends.slice();
+    console.log(JSON.stringify(out));
+})();
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(0, 1, true), $result['waits'], 'a change waits for the pause');
+	pg_assert_same(array(array('1'), false, null), $result['sent'], 'then it is sent once');
+	pg_assert_same(array(array('2', '3'), false), $result['during'], 'a change made while a save runs goes in the next one');
+	pg_assert_same(array('Server down', true, 0), $result['failed'], 'a failure is kept, nothing is sent again by itself');
+	pg_assert_same(array('Newer', true), $result['conflict'], 'a newer graph on the server is a conflict');
+	pg_assert_same(0, $result['held'], 'a conflict holds every save');
+	pg_assert_same(array(array('5 keepalive'), true, true), $result['leave'], 'a keepalive save whose answer is lost is taken as sent');
+	pg_assert_same(0, $result['once'], 'and not sent again as the page goes');
+	pg_assert_same(0, $result['bigLeft'], 'too large for keepalive: left unsaved when the page is left');
+	pg_assert_same(array('6'), $result['bigHidden'], 'saved as usual while the page is only hidden');
 }
