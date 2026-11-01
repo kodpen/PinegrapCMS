@@ -719,4 +719,192 @@
     .pg-dash-bars { fill: CanvasText; }
     .pg-dash-row-bar { background: CanvasText; forced-color-adjust: none; }
   }
+
+
+  /* ── Shop cards ───────────────────────────────────────────────────────
+     Ecommerce summary, Sales map, Orders, Offers, Exchange rates
+     (assets/js/pg_dash_cards_shop.js). A tone is always written out in the
+     text beside its colour. */
+
+  .pg-dash-shop-head {
+    margin-bottom: .75rem;
+  }
+
+  .pg-dash-shop-figure {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+    line-height: 1.1;
+    color: var(--pg-fg-emphasis);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pg-dash-shop-sub,
+  .pg-dash-shop-note {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .25rem .75rem;
+    margin: .25rem 0 0;
+    font-size: .8125rem;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-shop-note {
+    margin: 0 0 .5rem;
+  }
+
+  .pg-dash-shop-change[data-tone="good"] { color: var(--pg-success-fg-emphasis); }
+  .pg-dash-shop-change[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
+
+  .pg-dash-shop-days {
+    margin-bottom: .75rem;
+  }
+
+  .pg-dash-shop-days .pg-dash-bars rect {
+    opacity: .45;
+  }
+
+  .pg-dash-shop-days .pg-dash-bars rect.is-today {
+    opacity: 1;
+  }
+
+  .pg-dash-shop-list {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pg-dash-shop-item + .pg-dash-shop-item {
+    border-top: var(--pg-border-width) solid var(--pg-border-color);
+  }
+
+  .pg-dash-shop-link {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    padding: .5rem .125rem;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .pg-dash-shop-link:hover .pg-dash-shop-name {
+    text-decoration: underline;
+  }
+
+  .pg-dash-shop-main {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .pg-dash-shop-name {
+    overflow: hidden;
+    font-weight: 600;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--pg-fg-emphasis);
+  }
+
+  .pg-dash-shop-meta {
+    overflow: hidden;
+    font-size: .75rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-shop-end {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: .125rem;
+    text-align: end;
+  }
+
+  .pg-dash-shop-value {
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pg-dash-shop-tag {
+    padding: 0 .375rem;
+    border-radius: 999px;
+    font-size: .6875rem;
+    background: var(--pg-tint);
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-shop-tag[data-tone="good"] {
+    background: var(--pg-success-bg-subtle);
+    color: var(--pg-success-fg-emphasis);
+  }
+
+  .pg-dash-shop-tag[data-tone="warn"] {
+    background: var(--pg-warning-bg-subtle);
+    color: var(--pg-warning-fg-emphasis);
+  }
+
+  .pg-dash-shop-tag[data-tone="bad"] {
+    background: var(--pg-danger-bg-subtle);
+    color: var(--pg-danger-fg-emphasis);
+  }
+
+  .pg-dash-spark {
+    width: 4.375rem;
+    height: 1.25rem;
+  }
+
+  .pg-dash-spark path {
+    fill: none;
+    stroke: var(--pg-dash-cat);
+    stroke-width: 1.5;
+  }
+
+  .pg-dash-map svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 12rem;
+  }
+
+  .pg-dash-map path {
+    fill: var(--pg-tint);
+    stroke: var(--pg-card-bg);
+    stroke-width: 1;
+  }
+
+  .pg-dash-map [data-step="1"] { fill: color-mix(in srgb, var(--pg-dash-cat) 25%, var(--pg-card-bg)); }
+  .pg-dash-map [data-step="2"] { fill: color-mix(in srgb, var(--pg-dash-cat) 45%, var(--pg-card-bg)); }
+  .pg-dash-map [data-step="3"] { fill: color-mix(in srgb, var(--pg-dash-cat) 70%, var(--pg-card-bg)); }
+  .pg-dash-map [data-step="4"] { fill: var(--pg-dash-cat); }
+
+  .pg-dash-map-legend {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+    margin: .375rem 0 .75rem;
+    font-size: .75rem;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-map-step {
+    width: 1rem;
+    height: .5rem;
+    border-radius: 2px;
+  }
+
+  .pg-dash-map-step[data-step="1"] { background: color-mix(in srgb, var(--pg-dash-cat) 25%, var(--pg-card-bg)); }
+  .pg-dash-map-step[data-step="2"] { background: color-mix(in srgb, var(--pg-dash-cat) 45%, var(--pg-card-bg)); }
+  .pg-dash-map-step[data-step="3"] { background: color-mix(in srgb, var(--pg-dash-cat) 70%, var(--pg-card-bg)); }
+  .pg-dash-map-step[data-step="4"] { background: var(--pg-dash-cat); }
+
+  @media (forced-colors: active) {
+    .pg-dash-map path { fill: Canvas; stroke: CanvasText; }
+    .pg-dash-map [data-step], .pg-dash-map-step { forced-color-adjust: none; }
+    .pg-dash-spark path { stroke: CanvasText; }
+  }
 }

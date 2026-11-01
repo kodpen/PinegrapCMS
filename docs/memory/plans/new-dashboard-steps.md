@@ -33,8 +33,10 @@ description: Steps N1-N14 of plans/new-dashboard.md: size, screens, order, which
 - N8 (M) Security and team cards. Screens 04, 18. `free` after N4.
   - `firewall`, `team`, `mytasks` (tick through `ws_task_status`), `waiting`, `week`, `calendars`.
 
-- N9 (M) Shop cards. Screens 16-18. `free` after N4.
-  - `shop`, `salesmap`, `ops`, `orders`, `offers`, `fx`.
+- N9 (M) Shop cards. Screens 16-18. done (#4881).
+  - `shop`, `salesmap`, `orders`, `offers`, `fx`.
+
+- N9b (S) `ops` card. Screen 17. `free` after N9.
 
 - N10 (M) Pipeline and queue. Screens 02, 03. `free` after N4.
   - `pipeline` per preset with sparklines, flags and filtered links; `queue` sources and actions; `visitmap` as question 2 decided.

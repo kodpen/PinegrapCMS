@@ -202,3 +202,15 @@ function test_dashboard_v2_shop_cards_share_the_widget_queries()
 	pg_assert_contains('pg_dashboard_best_sellers(', $read('includes/dashboard/v2/cards/shop.php'));
 	pg_assert_contains('pg_sales_map_collect()', $read('includes/dashboard/v2/cards/salesmap.php'));
 }
+
+// Card texts are written with textContent, so money carries the symbol's
+// character, never its HTML entity.
+function test_dashboard_v2_shop_money_is_plain_text()
+{
+	$money = pg_dashboard_v2_money(1234567);
+
+	pg_assert_false(strpos($money, '&#') !== false, 'no entity');
+	pg_assert_same(pg_format_money(12345.67, html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8')), $money);
+	pg_assert_same('&#8378;', htmlspecialchars_decode('&#8378;'), 'the entity the store keeps is not decoded by h()-style helpers');
+	pg_assert_same('₺', html_entity_decode('&#8378;', ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+}

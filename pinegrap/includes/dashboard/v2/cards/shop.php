@@ -98,9 +98,7 @@ function pg_dashboard_v2_card_shop($user, $period, $compare)
             AND orders.order_date >= " . (int) $earliest
     );
 
-    $money = function ($minor) {
-        return pg_format_money(round((float) $minor) / 100, BASE_CURRENCY_SYMBOL);
-    };
+    $money = 'pg_dashboard_v2_money';
 
     $total = (float) ($sums['now_total'] ?? 0);
     $count = (int) ($sums['now_count'] ?? 0);

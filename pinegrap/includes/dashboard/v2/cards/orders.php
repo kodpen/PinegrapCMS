@@ -45,7 +45,7 @@ function pg_dashboard_v2_order_row($order, $shipping)
         'number' => (string) $order['order_number'],
         'note'   => $note,
         'tone'   => $tone,
-        'amount' => pg_format_money(round((float) $order['total']) / 100, BASE_CURRENCY_SYMBOL),
+        'amount' => pg_dashboard_v2_money($order['total']),
         'url'    => 'view_order.php?id=' . (int) $order['id'],
         'when'   => get_relative_time(array('timestamp' => (int) $order['timestamp'], 'format' => 'plain_text')),
     );

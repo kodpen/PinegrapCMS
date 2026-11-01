@@ -144,7 +144,7 @@ function pg_dashboard_v2_card_fx($user, $period, $compare)
         $dates[] = date('Y-m-d', strtotime('-' . $i . ' days'));
     }
 
-    $rows = pg_dashboard_v2_fx_rows($currencies, pg_dashboard_v2_fx_history($base_code, $dates), $dates, BASE_CURRENCY_SYMBOL);
+    $rows = pg_dashboard_v2_fx_rows($currencies, pg_dashboard_v2_fx_history($base_code, $dates), $dates, html_entity_decode((string) BASE_CURRENCY_SYMBOL, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
 
     return array('status' => 'success', 'data' => array(
         'note'       => lang('Updated every day · last 7 days'),

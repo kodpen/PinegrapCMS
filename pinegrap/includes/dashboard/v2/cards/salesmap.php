@@ -63,7 +63,7 @@ function pg_dashboard_v2_salesmap_data($collect, $maps_url, $limit = 6)
             $rows[] = array(
                 'text'  => (string) $entry['name'],
                 'value' => (float) $entry['total'],
-                'note'  => pg_format_money(round((float) $entry['total']) / 100, BASE_CURRENCY_SYMBOL),
+                'note'  => pg_dashboard_v2_money($entry['total']),
             );
         }
     }
@@ -71,7 +71,7 @@ function pg_dashboard_v2_salesmap_data($collect, $maps_url, $limit = 6)
     $count = (int) $period['count'];
 
     return array(
-        'figure'     => pg_format_money(round((float) $period['total']) / 100, BASE_CURRENCY_SYMBOL),
+        'figure'     => pg_dashboard_v2_money($period['total']),
         'sub'        => lang('Last 30 days') . ' · ' . lang(array('string' => '{var:1} order{suffix:1}', 'vars' => pg_format_number($count, 0), 'suffix' => ($count == 1) ? '' : 's')),
         'map_url'    => $on_map ? $maps_url . (string) $collect['home_map'] : '',
         'map_label'  => $on_map ? lang(array('string' => 'Sales by region in {var:1}, last 30 days', 'vars' => (string) $collect['home_name'])) : '',
