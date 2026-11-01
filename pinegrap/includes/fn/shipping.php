@@ -687,7 +687,6 @@ function pg_shipment_delivered($ship_to_id, $time, $opts = array())
         "SELECT
             ship_tos.id,
             ship_tos.order_id,
-            ship_tos.delivery_date,
             orders.order_number,
             orders.contact_id,
             orders.billing_email_address
@@ -734,11 +733,10 @@ function pg_shipment_delivered($ship_to_id, $time, $opts = array())
         return false;
     }
 
-    $day = pg_shipment_date((string) $recipient['delivery_date']);
-
-    if ($day === '') {
-        $day = date('Y-m-d', $time);
-    }
+    // The day the goods arrived. The address's delivery_date is not read:
+    // the tracking job and a marketplace poll leave checkout's estimate
+    // there, and the order screen's save passes the day it entered as $time.
+    $day = date('Y-m-d', $time);
 
     pg_announce('order.delivered', array(
         'id'            => (int) $recipient['order_id'],
