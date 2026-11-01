@@ -16,6 +16,7 @@ description: Adding a front-end cookie or third-party tag under the cookie notic
 - `data-pg-consent-builtin` keeps the software's own held tags out of `pg_consent_page_services()`, so their cookies are listed in the catalogue by hand (`_ga, _ga_*`).
 - A tag the site adds itself is held by its author (`data-pg-consent`, named with `data-pg-consent-name`); the notice lists it from the page.
 - A held tag inside an HTML comment (commented out, a conditional comment) is not listed: `pg_consent_page_services()` drops comments first, as the browser never runs it. Before PR #4577 the notice asked about such a service.
+- The category is read in any case on both sides: the notice lowercases it, and `pg_consent.js` `start()` lowercases it and accepts only `analytics` or `marketing`. Before PR #4587 `data-pg-consent="Marketing"` was listed but never started, and `"constructor"` started without consent.
 
 ## Who writes the `pg_consent` cookie?
 - Only `pg_consent.js` (value `1.a1.m0`, `SameSite=Lax`): `setcookie()` on PHP 7.1–7.2 cannot set `SameSite`. PHP only reads it, through `pg_consent_parse()` / `pg_consent_choices()`.

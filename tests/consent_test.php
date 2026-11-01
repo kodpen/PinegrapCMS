@@ -82,6 +82,18 @@ function test_consent_page_services_lists_tagged_scripts()
 	pg_assert_same(array('analytics' => array(), 'marketing' => array()), pg_consent_page_services('<p>none</p>'), 'nothing tagged');
 }
 
+// The notice lists a tag whatever the case of its category
+// (data-pg-consent="Marketing"), so the script that starts it after consent
+// must read the category the same way, or an accepted service never runs.
+function test_consent_script_reads_the_category_like_the_notice()
+{
+	pg_assert_same(array('analytics' => array(), 'marketing' => array('Pixel')), pg_consent_page_services('<script type="text/plain" data-pg-consent="Marketing" data-pg-consent-name="Pixel"></script>'), 'listed');
+
+	$script = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_consent.js');
+
+	pg_assert_contains("(node.getAttribute('data-pg-consent') || '').toLowerCase()", $script, 'started');
+}
+
 // A tag commented out in the page never runs and pg_consent.js never finds
 // it, so the notice must not ask about it.
 function test_consent_page_services_skips_commented_out_scripts()
