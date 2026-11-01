@@ -57,7 +57,7 @@ function pg_dashboard_widget_16($request, $user)
                     $output_rows .= pg_widget_row(array(
                         'href'  => $output_link_url,
                         'badge' => $currency['symbol'],
-                        'name'  => h($currency['code']) . ' &mdash; ' . h($currency['name']),
+                        'name'  => h($currency['code']) . ' &mdash; ' . h(pg_currency_label($currency['name'])),
                         'aside' => pg_format_number((float) $currency['exchange_rate'], 5),
                         'meta'  => '1 ' . $currency['symbol'] . ' = ' . $rate_display . ' ' . BASE_CURRENCY_SYMBOL,
                     ));

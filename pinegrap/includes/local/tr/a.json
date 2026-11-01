@@ -2995,6 +2995,7 @@
     "August 2026": "Ağustos 2026",
     "Aurora": "Aurora",
     "Austin": "Austin",
+    "Australian dollar": "Avustralya Doları",
     "Auth Token": "Kimlik Doğrulama Belirteci (Auth Token)",
     "Authentication": "Kimlik Doğrulama",
     "Authentication is HTTP Basic: the user name is the application key, the password is its secret. Money is always a whole number of minor units - 1999 is 19.99. Times are ISO-8601 in UTC. Listings are cursor paged: follow page.next_cursor until it is null.": "Kimlik doğrulama HTTP Basic: kullanıcı adı uygulama anahtarı, parola ise gizli anahtardır. Para daima alt birim cinsinden tam sayıdır — 1999, 19,99 demektir. Tarihler UTC ve ISO-8601. Listeler imleçle sayfalanır: page.next_cursor boşalana kadar izleyin.",
