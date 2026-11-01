@@ -164,7 +164,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `order_completion`: open
 
-- `order_list`: open
+- `order_list`: clean
 
 - `order_report`: clean
 
