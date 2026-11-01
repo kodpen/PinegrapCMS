@@ -189,7 +189,7 @@ $instructors = array(
 // free preview, in the public folder.
 $courses = array(
     'web'  => array(
-        'sku' => 'COURSE-WEB', 'title' => lang('Build Your First Website'), 'subject' => 'development', 'instructor' => 'selin', 'level' => 'beginner',
+        'sku' => 'COURSE-WEB', 'slug' => lang('build-your-first-website'), 'title' => lang('Build Your First Website'), 'subject' => 'development', 'instructor' => 'selin', 'level' => 'beginner',
         'length' => lang('6 hours of video'), 'price' => lang('$79'), 'prices' => array('USD' => 79, 'TRY' => 2999), 'folder' => 'course_web',
         'summary'  => lang('HTML and CSS from the first tag to a site you can publish, with a small project in every lesson.'),
         'outcomes' => array(lang('Write a page in HTML that every browser reads'), lang('Lay it out with CSS on a phone and a large screen'),
@@ -211,7 +211,7 @@ $courses = array(
         'assignment' => lang('Publish a one-page site about something you love and send us its address.'),
     ),
     'data' => array(
-        'sku' => 'COURSE-DATA', 'title' => lang('Data Analysis with Spreadsheets'), 'subject' => 'data', 'instructor' => 'jonas', 'level' => 'beginner',
+        'sku' => 'COURSE-DATA', 'slug' => lang('data-analysis-with-spreadsheets'), 'title' => lang('Data Analysis with Spreadsheets'), 'subject' => 'data', 'instructor' => 'jonas', 'level' => 'beginner',
         'length' => lang('5 hours of video'), 'price' => lang('$89'), 'prices' => array('USD' => 89, 'TRY' => 3399), 'folder' => 'course_data',
         'summary'  => lang('From a messy export to a clear chart: cleaning, formulas, pivot tables and a report people read.'),
         'outcomes' => array(lang('Clean an export so every row can be counted'), lang('Answer questions with formulas and pivot tables'),
@@ -233,7 +233,7 @@ $courses = array(
         'assignment' => lang('Send a one-page report built from the course\'s sample sales file, with the question it answers.'),
     ),
     'ux'   => array(
-        'sku' => 'COURSE-UX', 'title' => lang('UX Design Fundamentals'), 'subject' => 'design', 'instructor' => 'maya', 'level' => 'intermediate',
+        'sku' => 'COURSE-UX', 'slug' => lang('ux-design-fundamentals'), 'title' => lang('UX Design Fundamentals'), 'subject' => 'design', 'instructor' => 'maya', 'level' => 'intermediate',
         'length' => lang('7 hours of video'), 'price' => lang('$99'), 'prices' => array('USD' => 99, 'TRY' => 3799), 'folder' => 'course_ux',
         'summary'  => lang('Interviews, user flows, wireframes and a clickable prototype you test with real people.'),
         'outcomes' => array(lang('Run a short interview that teaches you something'), lang('Turn what you heard into a user flow'),

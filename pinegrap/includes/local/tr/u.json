@@ -466,5 +466,6 @@
     "user was auto-logged in by custom form auto-registration": "kullanıcı, özel form otomatik kaydıyla otomatik olarak oturum açtı",
     "user was auto-logged in by order auto-registration": "kullanıcı, siparişteki otomatik kayıtla otomatik olarak giriş yaptı",
     "username or email address": "kullanıcı adı yada eposta",
-    "users": "kullanıcılar"
+    "users": "kullanıcılar",
+    "ux-design-fundamentals": "ux-tasarimin-temelleri"
 }
