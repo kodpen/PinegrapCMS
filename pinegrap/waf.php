@@ -1930,18 +1930,19 @@ function waf_collect_targets()
         waf_flatten($source, $label, $targets, $count);
     }
 
-    if ($count < WAF_MAX_VALUES) {
-        if (!empty($_SERVER['REQUEST_URI'])) {
-            $targets['REQUEST_URI'] = (string) $_SERVER['REQUEST_URI'];
-        }
+    // The request line, the user agent and the referrer are scanned whatever
+    // the parameter count: they are three values, and leaving them to the cap
+    // let a request padded with 250 cookies carry its payload in the path.
+    if (!empty($_SERVER['REQUEST_URI'])) {
+        $targets['REQUEST_URI'] = (string) $_SERVER['REQUEST_URI'];
+    }
 
-        if (!empty($_SERVER['HTTP_USER_AGENT'])) {
-            $targets['USER_AGENT'] = (string) $_SERVER['HTTP_USER_AGENT'];
-        }
+    if (!empty($_SERVER['HTTP_USER_AGENT'])) {
+        $targets['USER_AGENT'] = (string) $_SERVER['HTTP_USER_AGENT'];
+    }
 
-        if (!empty($_SERVER['HTTP_REFERER'])) {
-            $targets['REFERER'] = (string) $_SERVER['HTTP_REFERER'];
-        }
+    if (!empty($_SERVER['HTTP_REFERER'])) {
+        $targets['REFERER'] = (string) $_SERVER['HTTP_REFERER'];
     }
 
     return $targets;
