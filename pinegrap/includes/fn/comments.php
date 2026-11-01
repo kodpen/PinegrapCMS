@@ -2153,3 +2153,42 @@ function pg_comments_thread_order($rows, $layout, $max_depth)
 
     return $out;
 }
+
+/**
+ * A page's comment label as stored, with the English default the Edit Page
+ * screen used to fill in ('Comment') read as no label: that word was saved on
+ * the first save of any page and kept the site's language word (lang('Comment'),
+ * "Yorum") from being shown.
+ *
+ * @param string $label page.comments_label
+ * @return string the label, or '' for none
+ */
+function pg_comment_label_stored($label)
+{
+    $label = (string) $label;
+
+    return (trim($label) === 'Comment') ? '' : $label;
+}
+
+/**
+ * The comment label as the start of a line ("Yanıt: ..."): its first letter
+ * in upper case, multibyte-safe, with Turkish dotted i as İ. A template's
+ * reply label is lower case on purpose, to read as a noun inside sentences.
+ *
+ * @param string $label    the label as shown
+ * @param string $language the language code the text is written in
+ * @return string
+ */
+function pg_comment_label_line_start($label, $language)
+{
+    $label = (string) $label;
+
+    if ($label === '') {
+        return '';
+    }
+
+    $first = mb_substr($label, 0, 1, 'UTF-8');
+    $first = (($first === 'i') && (strpos((string) $language, 'tr') === 0)) ? 'İ' : mb_strtoupper($first, 'UTF-8');
+
+    return $first . mb_substr($label, 1, null, 'UTF-8');
+}

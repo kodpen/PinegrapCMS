@@ -3995,7 +3995,7 @@ function autoload_liveform($class)
 // and pluralizes it if necessary.
 function get_comment_label($properties)
 {
-    $label = $properties['label'];
+    $label = pg_comment_label_stored($properties['label']);
     if (isset($properties['number'])) {
         $number = $properties['number'];
     }
