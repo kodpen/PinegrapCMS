@@ -377,6 +377,23 @@ function test_events_tickets_catalog_and_shop_pages()
 	foreach ($d['passes'] as $p) $pass_skus[] = $p['sku'];
 	pg_assert_same($pass_skus, $skus, 'a product for every pass');
 
+	// A pass card shows its product's price: the same figure for the base
+	// currency, in that currency (#4822: the card said $149, the shop
+	// ₺5.999,00).
+	$currency = defined('BASE_CURRENCY_CODE') ? strtoupper((string)BASE_CURRENCY_CODE) : 'USD';
+	$symbol = defined('BASE_CURRENCY_SYMBOL') ? (string)BASE_CURRENCY_SYMBOL : '$';
+	$i = 0;
+	foreach ($d['passes'] as $key => $pass) {
+		$prices = $group['products'][$i++]['price'];
+		$amount = isset($prices[$currency]) ? $prices[$currency] : $prices['USD'];
+		pg_assert_same(pg_money_text($amount, $symbol), $pass['price'], "pass $key: card price is the product's");
+	}
+	// The sample events' prices are free or in the same currency.
+	foreach ($d['samples'] as $e) {
+		pg_assert_true($e['price'] === lang('Free') || strpos($e['price'], html_entity_decode($symbol, ENT_QUOTES | ENT_HTML5, 'UTF-8')) !== false, $e['title'] . ': price in the base currency');
+	}
+	pg_assert_contains($d['passes']['day']['price'], end($d['samples'])['price'], 'the conference starts at the day pass');
+
 	// The tickets page is there without the shop; every other page and
 	// widget of the shop needs it, and the tickets page places the listing.
 	$keys = array();

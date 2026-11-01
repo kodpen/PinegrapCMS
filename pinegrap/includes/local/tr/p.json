@@ -350,6 +350,7 @@
     "Passed on to a supplier": "Tedarikçiye ciro edildi",
     "Passed the reminder threshold: {var:1} document(s)": "Hatırlatma eşiğini geçenler: {var:1} belge",
     "Passes": "Biletler",
+    "Passes from %s": "Biletler %s ile başlar",
     "Passes in the shop": "Mağazadaki biletler",
     "Passive": "Pasif",
     "Passkey": "Geçiş anahtarı",
