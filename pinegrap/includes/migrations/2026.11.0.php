@@ -132,6 +132,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_file_versions();           // 11.0.140
 	upgrade_2026_11_0_form_field_product_group(); // 11.0.141
 	upgrade_2026_11_0_image_upload_cap();        // 11.0.142
+	upgrade_2026_11_0_dashboard_layout();        // 11.0.143
 
 }
 
@@ -4266,5 +4267,32 @@ function upgrade_2026_11_0_image_upload_cap() {
 	install_add_column('config', 'image_upload_max_dimension', "SMALLINT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Images: pictures larger than a chosen size can be shrunk on upload, under Site Settings, Features, Image Optimization; the setting is off until switched on.');
+
+}
+
+// The new dashboard (2026.11.0, 11.0.143; includes/dashboard/v2/). A person's
+// row (user_id > 0, role 0) holds their switch, layout and look JSON and the
+// last two sign-in times; a role default row (user_id 0, role 0-3 or 9 for
+// everyone) holds a layout, a look and the lock. role is never NULL: a NULL
+// inside the unique key would let two rows of one person exist.
+function upgrade_2026_11_0_dashboard_layout() {
+
+	install_create_table('dashboard_layout', "CREATE TABLE dashboard_layout (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id           INT UNSIGNED NOT NULL DEFAULT 0,
+		role              TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		enabled           TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		layout            MEDIUMTEXT NULL,
+		look              VARCHAR(255) NOT NULL DEFAULT '',
+		locked            TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		signed_in_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		signed_in_before  INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_by        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_user_role (user_id, role)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('New dashboard: a switch at the top of the dashboard lets each person try the new design; their choice, layout and sign-in times are kept per person.');
 
 }

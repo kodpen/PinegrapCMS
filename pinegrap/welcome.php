@@ -59,6 +59,16 @@ if (($user['role'] == 3) && (no_acl_check($user['id']) == false) && ($user['mana
     output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
+// A person who turned the new dashboard on gets it instead of this page
+// (includes/dashboard/v2/page.php); everyone else gets this page with the
+// switch row on top.
+require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/layout.php');
+
+if (pg_dashboard_v2_enabled($user['id'])) {
+    require(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/page.php');
+    exit;
+}
+
 $query = "SELECT * FROM dashboard";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $dashboard = mysqli_fetch_assoc($result);
@@ -1007,6 +1017,7 @@ $output_header_includes .
         }
     }
 </style>
+    ' . pg_dashboard_v2_switch_row(false) . '
     <section class="card pg-clockbar" aria-label="' . h(lang('Welcome')) . '">
         <div class="pg-brief" id="pg_brief">
             <!-- One mark, not two. The hour already had an icon in front of the

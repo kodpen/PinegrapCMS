@@ -9,7 +9,7 @@ description: Steps N1-N14 of plans/new-dashboard.md: size, screens, order, which
 - Each UI step is tried in a browser at 1280 px and 390 px, light and dark; its PR says what was tried.
 
 ## Which steps?
-- N1 (M) Switch and page shell. Screens 21, 22. `free`.
+- N1 (M) Switch and page shell. Screens 21, 22. done (#4692).
   - Migration step for the decided storage, rerun twice on a dev DB; the sign-in upsert; `dashboard_switch`; the switch row on the old page (its only change) and the new one; the branch in `welcome.php`; `page.php` with part files, the greeting line and an empty grid; the card list `cards.php` with all 30 entries (built ones marked); empty `dashboard_v2.js` and stylesheet sections.
 
 - N2 (M) Greeting card. Screen 01. `free` after N1.

@@ -9064,6 +9064,7 @@ function get_tables() {
 		'zones_countries_xref',
 		'zones_states_xref',
 		'dashboard',
+		'dashboard_layout',
 		'notifications',
 		'notification_reads',
 		'iyzipay_3ds_state',
