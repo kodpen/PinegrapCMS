@@ -283,7 +283,17 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
     switch ($action) {
         case 'update_inventory_quantity':
             $barcode = $request['barcode'];
-            $quantity = $request['quantity'];
+
+            // A whole count of 1 or more: the stock column is an integer, so
+            // 1.5 would be stored as 2 while the screen says 1.5.
+            $quantity = pg_barcode_scan_quantity($request['quantity'] ?? null);
+
+            if ($quantity === null) {
+                echo encode_json(array(
+                    'status' => 'error',
+                    'message' => lang('Enter an inventory quantity.')));
+                exit();
+            }
 
             // Generated barcodes live in product_barcodes; a scan is resolved there
             // first and falls back to the product name, which older labels carry.
@@ -317,6 +327,15 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                 break;
             }
             $id = $row['id'];
+
+            // A product in the Recycle Bin is not written, as Edit Product and
+            // Modify Selected leave it alone.
+            if (pg_catalog_product_binned($id)) {
+                echo encode_json(array(
+                    'status' => 'error',
+                    'message' => lang('The product is in the Recycle Bin. Restore it in the Catalog Manager or choose another product.')));
+                exit();
+            }
 
             // A bundle's stock follows its components (includes/fn/bundles.php).
             if (pg_bundle_ids_among(array($id))) {
