@@ -35,9 +35,9 @@
  * that entry of 'widgets', one carrying props.templateShared at the row made
  * for that entry of 'shared' (the parts every page repeats: the header, the
  * footer, the call to action band, the staff bar - edited once for all the
- * pages). A shared component cannot hold a widget yet, so the account area
- * with the login region and the cart link is a thin bar of its own above the
- * header. A widget whose tree is 'starter' opens with the
+ * pages). A shared component may hold system widgets: the account bar, a
+ * thin bar of its own above the header, holds the login region and the cart
+ * link. A widget whose tree is 'starter' opens with the
  * layout the editor gives its kind. A page or widget with 'requires' =>
  * 'ecommerce' is left out of a site without the shop.
  *
@@ -2430,7 +2430,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Say hello to Pinegrap'),
-    'version'     => '2.5.1',
+    'version'     => '2.6.0',
     'framework'   => 'bootstrap5',
     'order'       => 10,
     'icon'        => 'bi-hand-thumbs-up',
