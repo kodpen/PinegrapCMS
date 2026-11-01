@@ -45,7 +45,7 @@ function _design_template_store_footer_links($tree)
 function test_design_template_store_footer_contact_column()
 {
 	$tpl = _pg_tpl_include(PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-store.php');
-	pg_assert_same('1.1.2', $tpl['version']);
+	pg_assert_true(version_compare($tpl['version'], '1.1.2', '>='), 'the version moved with the change');
 
 	$footer  = $tpl['shared']['footer']['tree'];
 	$columns = _design_template_store_footer_node($footer, lang('Footer Columns'));

@@ -1086,6 +1086,7 @@
     "Post a message": "Mesaj gönder",
     "Post a summary": "Özet paylaş",
     "Post a summary to {var:1}: {var:2}": "{var:1} için özet paylaş: {var:2}",
+    "Post comment": "Yorumu gönder",
     "Post in a channel": "Kanalda paylaş",
     "Post method is always safer": "POST yöntemi her zaman daha güvenlidir",
     "Post not found": "Yazı bulunamadı",
