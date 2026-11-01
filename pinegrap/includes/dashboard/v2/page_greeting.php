@@ -123,7 +123,7 @@ function pg_dashboard_v2_greeting_settings($layout_json, $shop)
  *
  * @param int $timestamp
  * @param int $now
- * @return string
+ * @return string HTML (get_absolute_time() writes <time> elements)
  */
 function pg_dashboard_v2_since_text($timestamp, $now)
 {
@@ -131,11 +131,11 @@ function pg_dashboard_v2_since_text($timestamp, $now)
     $day = date('Y-m-d', $timestamp);
 
     if ($day === date('Y-m-d', $now)) {
-        return lang('today') . ' ' . $time;
+        return h(lang('today')) . ' ' . $time;
     }
 
     if ($day === date('Y-m-d', strtotime('-1 day', $now))) {
-        return lang('yesterday') . ' ' . $time;
+        return h(lang('yesterday')) . ' ' . $time;
     }
 
     return get_absolute_time(array('timestamp' => $timestamp, 'type' => 'date')) . ' ' . $time;
@@ -158,7 +158,7 @@ function pg_dashboard_v2_greeting($user)
         . ' · ' . get_absolute_time(array('timestamp' => $now, 'type' => 'time'));
 
     $output = '
-            <p class="pg-dash-greeting-when">' . h($when) . '</p>
+            <p class="pg-dash-greeting-when">' . $when . '</p>
             <h2 class="pg-dash-greeting-title" id="pg_dash_greeting_title">' . h(ws_home_greeting(pg_dashboard_v2_local_hour($now))) . ', <span class="pg-dash-name">' . h((string) $user['username']) . '</span></h2>';
 
     // Since the previous sign-in: no previous one, or nothing happened, no line.
@@ -168,7 +168,7 @@ function pg_dashboard_v2_greeting($user)
     if (!empty($chips)) {
         $output .= '
             <div class="pg-dash-since">
-                <span class="pg-dash-since-label">' . h(lang('Since your last sign-in')) . ' · ' . h(pg_dashboard_v2_since_text($since, $now)) . '</span>
+                <span class="pg-dash-since-label">' . h(lang('Since your last sign-in')) . ' · ' . pg_dashboard_v2_since_text($since, $now) . '</span>
                 <ul class="pg-dash-chips">';
 
         foreach ($chips as $chip) {
@@ -208,10 +208,9 @@ function pg_dashboard_v2_greeting($user)
 
             foreach ($tiles as $key) {
                 $figure = pg_dashboard_v2_figure($key, $user);
-                $value = ($key === 'seo') ? '%' . $figure['value'] : pg_format_number($figure['value'], 0);
                 $output .= '<li><a class="pg-dash-tile" data-figure="' . h($key) . '" href="' . h($figure['url']) . '">'
                     . '<span class="pg-dash-tile-label">' . h($figure['label']) . '</span>'
-                    . '<span class="pg-dash-tile-value">' . h($value) . '</span>'
+                    . '<span class="pg-dash-tile-value">' . h(pg_format_number($figure['value'], 0)) . '</span>'
                     . (($figure['note'] !== '') ? '<span class="pg-dash-tile-note" data-tone="' . h($figure['tone']) . '">' . h($figure['note']) . '</span>' : '')
                     . '</a></li>';
             }
