@@ -369,3 +369,14 @@ function test_page_revisions_writers_ask_the_retry_rule()
 		pg_assert_true(strpos($body, '!== 1062) {' . "\n" . '            break;') === false, $name . ' does not stop on a lock error');
 	}
 }
+
+// A page of exactly the page size has nothing behind it; one row over
+// means older revisions remain and is cut off.
+function test_page_revisions_page_more_only_past_limit()
+{
+	$rows = array(array('revision_no' => 3), array('revision_no' => 2), array('revision_no' => 1));
+
+	pg_assert_same(array($rows, false), pg_page_revisions_page($rows, 3));
+	pg_assert_same(array(array_slice($rows, 0, 2), true), pg_page_revisions_page($rows, 2));
+	pg_assert_same(array(array(), false), pg_page_revisions_page(array(), 50));
+}
