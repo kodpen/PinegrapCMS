@@ -885,6 +885,19 @@ function pg_image_editor_save($request, $user)
         $edit['overlay'] = $overlay;
     }
 
+    // Step 4, the redaction: masks the browser drew of each area, burned in
+    // by the engine after the colour step and before the overlay.
+    $redactions = pg_image_editor_take_redactions(isset($request['redact']) ? $request['redact'] : null, $edit, FILE_DIRECTORY_PATH . '/' . $name . '.' . (function_exists('getmypid') ? getmypid() : uniqid()));
+
+    if ($redactions === false) {
+        @unlink($overlay);
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    if ($redactions) {
+        $edit['redact'] = $redactions;
+    }
+
     $source = $file['path'];
     $layer = '';
     $base = null;
@@ -899,6 +912,7 @@ function pg_image_editor_save($request, $user)
 
             if (!$base) {
                 @unlink($overlay);
+                pg_image_editor_drop_redactions($redactions);
                 return pg_image_editor_refusal(($base_id > 0) ? lang('Invalid request.') : lang('Sorry, the file could not be saved.'));
             }
         } elseif ($base_id > 0) {
@@ -906,6 +920,7 @@ function pg_image_editor_save($request, $user)
 
             if (!$base || ((string) $base['doc_json'] !== '')) {
                 @unlink($overlay);
+                pg_image_editor_drop_redactions($redactions);
                 return pg_image_editor_refusal(lang('Invalid request.'));
             }
         }
@@ -915,6 +930,7 @@ function pg_image_editor_save($request, $user)
         }
     } elseif ($base_id > 0) {
         @unlink($overlay);
+        pg_image_editor_drop_redactions($redactions);
         return pg_image_editor_refusal(lang('Invalid request.'));
     }
 
@@ -930,6 +946,7 @@ function pg_image_editor_save($request, $user)
         if (!$size || ($size[0] > $width + 0.5) || ($size[1] > $height + 0.5) || (abs($size[0] - $size[1] * $width / $height) > 1.5)) {
             @unlink($layer);
             @unlink($overlay);
+            pg_image_editor_drop_redactions($redactions);
             return pg_image_editor_refusal(lang('Invalid request.'));
         }
 
@@ -939,6 +956,7 @@ function pg_image_editor_save($request, $user)
 
     } elseif (!empty($edit['color']) && !class_exists('Imagick')) {
         @unlink($overlay);
+        pg_image_editor_drop_redactions($redactions);
         return pg_image_editor_refusal(lang('Invalid request.'));
     }
 
@@ -954,6 +972,8 @@ function pg_image_editor_save($request, $user)
     if ($layer !== '') {
         @unlink($layer);
     }
+
+    pg_image_editor_drop_redactions($redactions);
 
     if (($report['status'] !== 'success') || !is_string($report['data'])) {
         return pg_image_editor_refusal(pg_image_editor_report_message($report, $name));
@@ -974,7 +994,7 @@ function pg_image_editor_save($request, $user)
     $record = pg_image_editor_record($mode, $name, (int) $file['row']['folder'], (string) $file['row']['type'], $file['row'], $user);
 
     if (($mode === 'replace') && $base && ($record[0]['status'] === 'success')) {
-        pg_file_versions_after_save((int) $file['row']['id'], FILE_DIRECTORY_PATH . '/' . $name, isset($request['doc_object']) ? $request['doc_object'] : null, $base, $user['id']);
+        pg_file_versions_after_save((int) $file['row']['id'], FILE_DIRECTORY_PATH . '/' . $name, isset($request['doc_object']) ? $request['doc_object'] : null, $base, $user['id'], !empty($redactions));
     }
 
     return $record;
@@ -1273,7 +1293,108 @@ function pg_image_editor_strings_sticker()
  */
 function pg_image_editor_strings_redact()
 {
-    return array();
+    return array(
+        'layer_redact'     => lang('Redaction'),
+        'redactMethod'     => lang('Method'),
+        'redactPixel'      => lang('Pixelate'),
+        'redactBlur'       => lang('Blur'),
+        'redactSolid'      => lang('Solid box'),
+        'redactArea'       => lang('Area'),
+        'redactBox'        => lang('Box'),
+        'redactBrush'      => lang('Brush'),
+        'redactBrushSize'  => lang('Brush size'),
+        'redactStrength'   => lang('Strength'),
+        'redactIntro'      => lang('Drag over the area you want to hide.'),
+        'redactNote'       => lang('Saving burns the redaction into the image and removes its metadata. Earlier versions stay in Versions, where anyone who may edit this folder can restore them; Save as a copy leaves this file as it is.'),
+        'hintRedact'       => lang('Drag over the area to hide'));
+}
+
+// The redaction's methods (the model's REDACT_MODES).
+function pg_image_edit_redact_modes()
+{
+    return array('pixel', 'blur', 'solid');
+}
+
+/**
+ * The block of a pixelation and the radius (sigma) of a blur in output
+ * pixels: shares of the longer side of the turned picture, as the preview
+ * draws them (redactSizes() of the model, in its units), times the output's
+ * scale. Pure.
+ *
+ * @param float $strength  1-100
+ * @param float $space_max the longer side of the turned picture
+ * @param float $scale     output pixels per turned-picture pixel
+ * @return array block (int), sigma (float)
+ */
+function pg_image_edit_redact_sizes($strength, $space_max, $scale)
+{
+    $block = max(4, round($strength / 100 * 0.035 * $space_max));
+    $sigma = max(2, $strength / 100 * 0.02 * $space_max);
+
+    return array(
+        'block' => max(2, (int) round($block * $scale)),
+        'sigma' => max(1.0, round($sigma * $scale * 10) / 10));
+}
+
+/**
+ * The redacted areas of a save, checked and their masks written next to
+ * $prefix: each { mode, strength, x, y, mask } with the mask a PNG data: URL
+ * whose opaque pixels are the area, its box at x, y inside the output.
+ *
+ * @param mixed  $regions the request's redact list
+ * @param array  $edit    the recipe of pg_image_edit_validate()
+ * @param string $prefix  path the mask files start with
+ * @return array|false the engine's redact list (mode, block, sigma, x, y, w,
+ *                     h, mask), an empty one for none; false when refused
+ *                     (masks already written are removed)
+ */
+function pg_image_editor_take_redactions($regions, $edit, $prefix)
+{
+    if (($regions === null) || ($regions === array())) {
+        return array();
+    }
+
+    if (!is_array($regions) || (count($regions) > 50)) {
+        return false;
+    }
+
+    $crop_w = !empty($edit['crop']) ? $edit['crop']['w'] : $edit['space_w'];
+    $scale = $edit['out_w'] / max(1, $crop_w);
+    $space_max = max($edit['space_w'], $edit['space_h']);
+    $list = array();
+
+    foreach (array_values($regions) as $i => $region) {
+        $mode = (is_array($region) && isset($region['mode'])) ? $region['mode'] : null;
+        $strength = isset($region['strength']) ? pg_image_edit_number($region['strength'], 1, 100) : null;
+        $x = isset($region['x']) ? pg_image_edit_number($region['x'], 0, $edit['out_w'] - 1) : null;
+        $y = isset($region['y']) ? pg_image_edit_number($region['y'], 0, $edit['out_h'] - 1) : null;
+        $path = $prefix . '.' . $i . '.redact.tmp';
+        $size = (!is_string($mode) || !in_array($mode, pg_image_edit_redact_modes(), true) || ($strength === null) || ($x === null) || ($y === null) || ($x != floor($x)) || ($y != floor($y)) || !is_string(isset($region['mask']) ? $region['mask'] : null) || (strncmp($region['mask'], 'data:image/png;', 15) !== 0))
+            ? false
+            : pg_image_editor_take_picture($region['mask'], $path);
+
+        if (!$size || ($x + $size[0] > $edit['out_w']) || ($y + $size[1] > $edit['out_h'])) {
+            if ($size) {
+                @unlink($path);
+            }
+
+            pg_image_editor_drop_redactions($list);
+            return false;
+        }
+
+        $sizes = pg_image_edit_redact_sizes($strength, $space_max, $scale);
+        $list[] = array('mode' => $mode, 'block' => $sizes['block'], 'sigma' => $sizes['sigma'], 'x' => (int) $x, 'y' => (int) $y, 'w' => (int) $size[0], 'h' => (int) $size[1], 'mask' => $path);
+    }
+
+    return $list;
+}
+
+// The mask files of pg_image_editor_take_redactions(), removed.
+function pg_image_editor_drop_redactions($list)
+{
+    foreach ((array) $list as $region) {
+        @unlink($region['mask']);
+    }
 }
 
 // -- Versions (pg_image_editor_versions.js) --
@@ -1491,9 +1612,10 @@ function pg_file_versions_matches_file($row, $path)
  * @param string $doc_json    '' for a base row
  * @param string $source      save, restore, redact, copy or new
  * @param int    $user_id
+ * @param bool   $redacted a save that burned a redaction in
  * @return array|null the row written
  */
-function pg_file_versions_add($file_id, $source_path, $doc_json, $source, $user_id)
+function pg_file_versions_add($file_id, $source_path, $doc_json, $source, $user_id, $redacted = false)
 {
     $size = @getimagesize($source_path);
     $bytes = (int) @filesize($source_path);
@@ -1521,9 +1643,9 @@ function pg_file_versions_add($file_id, $source_path, $doc_json, $source, $user_
         return null;
     }
 
-    $saved = db_q("INSERT INTO file_versions (file_id, version_no, doc_json, doc_hash, stored_name, format, width, height, size, redacted, user_id, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, UNIX_TIMESTAMP())", array(
+    $saved = db_q("INSERT INTO file_versions (file_id, version_no, doc_json, doc_hash, stored_name, format, width, height, size, redacted, user_id, source, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, UNIX_TIMESTAMP())", array(
         (int) $file_id, $version_no, (string) $doc_json, ($doc_json === '') ? '' : sha1($doc_json), $name, $formats[(int) $size[2]],
-        (int) $size[0], (int) $size[1], $bytes, (int) $user_id, (string) $source));
+        (int) $size[0], (int) $size[1], $bytes, $redacted ? 1 : 0, (int) $user_id, (string) $source));
 
     if (!$saved) {
         @unlink($path);
@@ -1735,7 +1857,7 @@ function pg_file_versions_before_save($file_id, $path, $base_id, $user_id)
  * After a replace save: the result as a save row with its document, unless
  * the newest version already holds the same document; then the retention.
  */
-function pg_file_versions_after_save($file_id, $path, $doc, $base, $user_id)
+function pg_file_versions_after_save($file_id, $path, $doc, $base, $user_id, $redacted = false)
 {
     $json = pg_file_versions_doc_json($doc, (int) $base['version_no']);
     $newest = pg_file_versions_newest($file_id);
@@ -1744,7 +1866,7 @@ function pg_file_versions_after_save($file_id, $path, $doc, $base, $user_id)
         return;
     }
 
-    pg_file_versions_add($file_id, $path, $json, 'save', $user_id);
+    pg_file_versions_add($file_id, $path, $json, $redacted ? 'redact' : 'save', $user_id, $redacted);
     pg_file_versions_prune($file_id);
 }
 
@@ -1876,7 +1998,7 @@ function pg_image_editor_action_restore($request, $user)
     }
 
     if ((int) $row['version_id'] !== (int) ($newest ? $newest['version_id'] : 0)) {
-        pg_file_versions_add($file_id, $file['path'], (string) $row['doc_json'], 'restore', $user['id']);
+        pg_file_versions_add($file_id, $file['path'], (string) $row['doc_json'], 'restore', $user['id'], (int) $row['redacted'] === 1);
         pg_file_versions_prune($file_id);
     }
 
