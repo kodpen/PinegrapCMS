@@ -17,7 +17,7 @@ description: Own panel widgets replaced by Bootstrap 6 components with the same 
 - The translations filter's current chip carried `.active`, which `.pg-chip` never styled: it now shows as selected.
 
 ## What is left of B9k, and why does the rest wait?
-- Focus ring: on the tokens; ring sizes wait for B10 (`panel-focus-ring.md`).
+- Focus ring: on the tokens, sizes too since B10 (#4465, `panel-focus-ring.md`).
 - Wait for B11, since no swap keeps the screen as it is:
   - Guest page toast (`workspace_guest.js`): the page loads Bootstrap's CSS but none of its JavaScript; a Toast would add the whole bundle for one notice.
   - `.ws-chip` to `.badge-subtle`: equal only by overriding every badge token (min-height, weight, line-height, gap, radius), and chips inside saved message HTML keep needing `.ws-chip`, so nothing is removed.
