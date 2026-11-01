@@ -61,3 +61,4 @@ Table structures and SQL pitfalls.
 - slug-generation.md: Which function builds address/slug names for forms, products, files and pages, the two transliteration tables, the lowercase-order rule, and the files.name invariant.
 - sql-silent-wrong-results.md: SQL that runs without an error but reads or writes the wrong thing: an INT or DATE compared to '', SET order, SELECT * replaced by a column list, columns a migration adds, table-specific traps.
 - table-engines-and-row-size.md: Table engines since 2026.4.8 (InnoDB, MyISAM left over the limits), why a write over several tables validates first, InnoDB's 8126-byte row rule, pg_innodb_row_estimate(), maintenance code.
+- widget-pages-index.md: How pg_sw_widget_pages() finds the pages carrying a system widget type: one read of the page trees per request into a sharedId map instead of a LIKE scan per component (#4459)

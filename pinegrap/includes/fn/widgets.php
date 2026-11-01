@@ -4994,30 +4994,103 @@ function pg_sw_page_widget($page_id, $type, $test = null)
 // Pages that carry a widget of $type ($test narrows by config):
 // [['page_id', 'page_name', 'page_title']], binned pages left out. For the
 // page pickers, and for finding a companion page (the event page of a
-// calendar, the detail page of a list) when none is configured.
+// calendar, the detail page of a list) when none is configured. The page
+// trees are read once per request (pg_sw_widget_page_index()); only the
+// type's components are asked for on each call.
 function pg_sw_widget_pages($type, $test = null)
 {
     $rows = db_items(
         "SELECT id, system_region_config FROM shared_components
          WHERE system_region_config LIKE '%\"regionType\":\"" . e($type) . "\"%'");
-    $likes = array();
+    $sids = array();
     foreach ((array)$rows as $row) {
         $cfg = json_decode((string)$row['system_region_config'], true);
         if (!is_array($cfg) || !isset($cfg['regionType']) || $cfg['regionType'] !== $type) continue;
         if ($test !== null && !$test($cfg)) continue;
         $sid = (int)$row['id'];
         if ($sid <= 0) continue;
-        $likes[] = pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $sid . ",%'"
-                 . " OR " . pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":" . $sid . "}%'";
+        $sids[] = $sid;
     }
-    if (!$likes) return array();
+    if (!$sids) return array();
+    $index = pg_sw_widget_page_index();
+    return pg_sw_pick_widget_pages($index['pages'], $index['by_sid'], $sids);
+}
+
+// Every page that is not in the recycle bin, ordered by title then name, and
+// the shared component ids its tree names: array('pages' => rows,
+// 'by_sid' => sid => positions in 'pages'). Built once per request: the
+// sitemap asks for about twenty widget types, and a LIKE scan of every tree
+// per component took seconds on a site with many components (#4459). The
+// trees are read in chunks by page id and dropped once their ids are taken.
+function pg_sw_widget_page_index()
+{
+    static $index = null;
+    if ($index !== null) return $index;
+
+    $not_binned = pg_designer_not_binned_sql('page.page_folder');
     $pages = db_items(
         "SELECT page.page_id, page.page_name, page.page_title
          FROM page
          INNER JOIN style ON page.page_style = style.style_id
-         WHERE (" . implode(' OR ', $likes) . ")" . pg_designer_not_binned_sql('page.page_folder') . "
+         WHERE 1 = 1" . $not_binned . "
          ORDER BY page.page_title ASC, page.page_name ASC");
-    return is_array($pages) ? $pages : array();
+    $pages = is_array($pages) ? array_values($pages) : array();
+    $position = array();
+    foreach ($pages as $i => $page) $position[(int)$page['page_id']] = $i;
+
+    $by_sid = array();
+    $after = 0;
+    do {
+        $chunk = db_items(
+            "SELECT page.page_id, " . pg_page_tree_sql_expr() . " AS tree
+             FROM page
+             INNER JOIN style ON page.page_style = style.style_id
+             WHERE page.page_id > '" . (int)$after . "'
+               AND " . pg_page_tree_sql_expr() . " LIKE '%\"sharedId\":%'" . $not_binned . "
+             ORDER BY page.page_id ASC
+             LIMIT 100");
+        $chunk = is_array($chunk) ? $chunk : array();
+        foreach ($chunk as $row) {
+            $page_id = (int)$row['page_id'];
+            $after = $page_id;
+            if (!isset($position[$page_id])) continue;
+            foreach (pg_sw_tree_shared_ids((string)$row['tree']) as $sid) {
+                $by_sid[$sid][] = $position[$page_id];
+            }
+        }
+    } while (count($chunk) === 100);
+
+    return $index = array('pages' => $pages, 'by_sid' => $by_sid);
+}
+
+// The shared component ids a layout tree's JSON names, each once, in the
+// order they first appear: "sharedId":N followed by "," or "}", case
+// ignored, matched as the column's LIKE '%"sharedId":N,%' /
+// '%"sharedId":N}%' pair did.
+function pg_sw_tree_shared_ids($json)
+{
+    $json = (string)$json;
+    if ($json === '' || !preg_match_all('/"sharedId":([1-9][0-9]*)[,}]/i', $json, $m)) return array();
+    $out = array();
+    foreach ($m[1] as $sid) $out[(int)$sid] = true;
+    return array_keys($out);
+}
+
+// The rows of $pages whose positions $by_sid lists under one of $sids, each
+// once and in the order of $pages.
+function pg_sw_pick_widget_pages(array $pages, array $by_sid, array $sids)
+{
+    $picked = array();
+    foreach ($sids as $sid) {
+        if (!isset($by_sid[$sid])) continue;
+        foreach ($by_sid[$sid] as $i) $picked[(int)$i] = true;
+    }
+    ksort($picked);
+    $out = array();
+    foreach (array_keys($picked) as $i) {
+        if (isset($pages[$i])) $out[] = $pages[$i];
+    }
+    return $out;
 }
 
 // Name of the page product links open: the configured page, else the first
