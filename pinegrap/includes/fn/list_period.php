@@ -65,12 +65,56 @@ function pg_list_period_ordered(array $range)
 }
 
 /**
+ * The default range of a list screen: a month (31 days) ago to the day of
+ * $now.
+ *
+ * @param int $now the current time
+ * @return array start_month, start_day, start_year, stop_month, stop_day, stop_year
+ */
+function pg_list_period_default($now)
+{
+    $month_ago = $now - 2678400;
+
+    return array(
+        'start_month' => date('m', $month_ago),
+        'start_day'   => date('d', $month_ago),
+        'start_year'  => date('Y', $month_ago),
+        'stop_month'  => date('m', $now),
+        'stop_day'    => date('d', $now),
+        'stop_year'   => date('Y', $now),
+    );
+}
+
+/**
+ * Whether two ranges name the same days: each of the six parts the same
+ * number, so '1' and '01' match; a part that is not digits matches nothing.
+ *
+ * @param array $a a range
+ * @param array $b a range
+ * @return bool
+ */
+function pg_list_period_same_range(array $a, array $b)
+{
+    foreach (array('start_month', 'start_day', 'start_year', 'stop_month', 'stop_day', 'stop_year') as $key) {
+        $left = (string) ($a[$key] ?? '');
+        $right = (string) ($b[$key] ?? '');
+
+        if (!ctype_digit($left) || !ctype_digit($right) || ((int) $left !== (int) $right)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
  * A list screen's remembered date range for this request. Unless the user
  * picked a range, it is a month ago to today, worked out on every request:
  * a default kept in the session stayed on the day it was written, so after
  * midnight an open session left out the day's rows. A range that comes in the
  * request is marked as picked ('range_picked') and stays until the screen is
- * reset; a part of it that is not a number of up to four digits falls back to
+ * reset, unless it is the whole default range (a filter form sends its date
+ * pickers filled with it), which ends a pick instead; a part of it that is not a number of up to four digits falls back to
  * the default (mktime() throws for one). The range is put the right way round.
  *
  * @param array $state   the screen's session values (other keys are kept)
@@ -80,21 +124,31 @@ function pg_list_period_ordered(array $range)
  */
 function pg_list_period_state(array $state, array $request, $now)
 {
-    $month_ago = $now - 2678400;
-    $defaults = array(
-        'start_month' => date('m', $month_ago),
-        'start_day'   => date('d', $month_ago),
-        'start_year'  => date('Y', $month_ago),
-        'stop_month'  => date('m', $now),
-        'stop_day'    => date('d', $now),
-        'stop_year'   => date('Y', $now),
-    );
+    $defaults = pg_list_period_default($now);
+
+    $sent = array();
 
     foreach (array_keys($defaults) as $key) {
         if (isset($request[$key]) && is_string($request[$key])) {
-            $state[$key] = trim($request[$key]);
-            $state['range_picked'] = true;
+            $sent[$key] = trim($request[$key]);
         }
+    }
+
+    // A filter form (the orders' and submitted forms' Advanced Filters) sends
+    // its date pickers with every other filter, filled with the default. A
+    // whole range equal to today's default, or to yesterday's for a form
+    // drawn before midnight and sent after it, is not a pick: kept as one,
+    // it stayed on that day and hid the next day's rows.
+    if ((count($sent) === count($defaults))
+        && (pg_list_period_same_range($sent, $defaults)
+            || pg_list_period_same_range($sent, pg_list_period_default(strtotime('-1 day', $now))))) {
+        unset($state['range_picked']);
+        $sent = array();
+    }
+
+    foreach ($sent as $key => $value) {
+        $state[$key] = $value;
+        $state['range_picked'] = true;
     }
 
     $picked = !empty($state['range_picked']);

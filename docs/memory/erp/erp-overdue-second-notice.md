@@ -15,7 +15,8 @@ description: ERP overdue round 2 (migration 4.56): candidate states, second noti
 - The invoice screen card reads the stage from `erp_overdue_invoice_state()`.
 
 ## What is the menu badge?
-- `pg_erp_overdue_badge_count()` (`fn/ecommerce.php`): one COUNT on status + due date, same figure as the dashboard card, ignores the threshold. `output_menu()` has a general `badge` option; CSS `.pg-menu-badge`.
+- `pg_erp_overdue_badge_count()` (`fn/ecommerce.php`): one COUNT on status + due date, same figure as the dashboard card, ignores the threshold. `output_menu()` has a general `badge` option drawn by `pg_menu_count_badge()` (`fn/output.php`, `tests/menu_count_badge_test.php`); CSS `.pg-menu-badge`.
+- The ERP panel shows the same count on an Overdue entry under Invoices (`erp_invoices.php?filter=overdue&direction=sales`, `.pg-menu-has-badge`), drawn only while the count is above zero: a badge on the row alone left the owner looking for it in the opened panel (2026-11-01).
 
 ## How does the customer mail work?
 - Store switch `erp_overdue_notify_customer` ships OFF; account switch `erp_accounts.overdue_notify_customer` ships ON.

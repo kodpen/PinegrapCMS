@@ -642,9 +642,10 @@
 
         var top = group('', '').box;
 
-        // The Inbox counts nothing of its own: the bell it opens does.
+        // The Inbox carries the menu row's count, so the opened panel shows
+        // what the row's badge is about; a click opens the bell on Workspace.
         (nav.top || []).forEach(function (item) {
-            navLink(top, item, navActive(item), 0);
+            navLink(top, item, navActive(item), item.inbox ? data.inbox : 0);
         });
 
         // Channels in a group are listed under it (pinned ones stay pinned).

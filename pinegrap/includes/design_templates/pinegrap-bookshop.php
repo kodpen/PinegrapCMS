@@ -1367,7 +1367,7 @@ $pages[] = array(
                                         $para(lang('by Jane Cooper'), 'small text-body-secondary mb-2'),
                                         $el('p', 'd-flex align-items-start gap-2 small mb-3', lang('Meeting'), array(
                                             $icon('bi-calendar-event', 'text-primary'),
-                                            $span(lang('We meet on Thursday 29 October at 19:00.'), '', lang('Text')),
+                                            $span(lang('We meet on Thursday evenings at 19:00; the next date is on the events page.'), '', lang('Text')),
                                         )),
                                         $link(lang('Find it in the shop'), $category_url('books'), 'btn btn-sm btn-primary'),
                                     )),
@@ -3118,7 +3118,7 @@ $widgets = array(
             $mail_box(array(
                 $mail_line(lang('Your group'), array($span(lang('Thursday evenings, in the shop'), '', lang('Group'), $bind('club_group')))),
                 $mail_line(lang('This month\'s pick'), array($span(lang('The Lighthouse Year by Jane Cooper'), '', lang('Text')))),
-                $mail_line(lang('Next meeting'), array($span(lang('Thursday 29 October at 19:00'), '', lang('Date')))),
+                $mail_line(lang('Meetings'), array($span(lang('Thursday evenings at 19:00; the next date is on our events page'), '', lang('Date')))),
             ), lang('Details')),
             $mail_para(lang('Pick up the book at the counter, with 10% off as a member, and come along on the evening. We send a reminder a week before.')),
             $mail_button(lang('See this month\'s pick'), '{{page:book_club}}'),
@@ -3343,7 +3343,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Bookshop'),
-    'version'     => '1.3.1',
+    'version'     => '1.3.2',
     'framework'   => 'bootstrap5',
     'order'       => 40,
     'icon'        => 'bi-book-half',

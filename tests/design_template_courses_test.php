@@ -39,6 +39,7 @@ function _test_courses_load()
 	$learn = include $dir . '/learn.php';
 	include $dir . '/mail.php';
 	$study = include $dir . '/assignments.php';
+	$shop = include $dir . '/shop.php';
 	$lessons = array();
 	foreach (array_keys($courses) as $key) $lessons[$key] = $course_lessons($key);
 	$out = array(
@@ -56,6 +57,7 @@ function _test_courses_load()
 		'learn_widgets' => $learn['widgets'],
 		'study'       => $study['pages'],
 		'study_widgets' => $study['widgets'],
+		'shop'        => $shop,
 		'mail_shared' => array($email_header_tree(), $email_footer_tree()),
 		'shared'      => array($account_bar_tree(), $header(), $footer(), $enrol_band(), $notice(), $staff_bar()),
 	);
@@ -372,4 +374,52 @@ function test_courses_enrolment_and_assignments()
 		pg_assert_true(in_array($c['title'], $course_options('enrolment_form'), true), 'enrolment offers ' . $c['title']);
 		pg_assert_true(in_array($c['title'], $course_options('assignment_form'), true), 'assignment offers ' . $c['title']);
 	}
+}
+
+function test_courses_shop_sells_courses_and_membership()
+{
+	$d = _test_courses_load();
+	$shop = $d['shop'];
+	$groups = $shop['catalog']['groups'];
+	pg_assert_same('root', $groups['courses']['parent'], 'Courses group under the top group');
+	foreach ($d['courses'] as $key => $c) {
+		$g = $groups['courses_' . $key];
+		pg_assert_same('courses', $g['parent'], "course $key: group under Courses");
+		pg_assert_same(1, count($g['products']), "course $key: one product");
+		$p = $g['products'][0];
+		pg_assert_same($c['sku'], $p['sku'], "course $key: SKU");
+		pg_assert_same($c['prices'], $p['price'], "course $key: prices");
+		pg_assert_false($p['shippable'], "course $key: not shipped");
+		pg_assert_same($c['folder'], $p['private_folder'], "course $key: grants its folder");
+		pg_assert_same(0, $p['private_days'], "course $key: no end date");
+		pg_assert_same('{{product_group:courses_' . $key . '}}', $shop['widgets']['buy_' . $key]['config']['product_group_id'], "buy_$key lists its group");
+	}
+	$m = $groups['membership']['products'][0];
+	pg_assert_same($d['membership']['sku'], $m['sku'], 'membership SKU');
+	pg_assert_same($d['membership']['days'], $m['membership_days'], 'membership renews by its days');
+	pg_assert_false($m['shippable'], 'membership not shipped');
+	pg_assert_same('{{product_group:membership}}', $shop['widgets']['buy_membership']['config']['product_group_id'], 'buy_membership lists its group');
+
+	// Every shop page and widget needs the shop; every widget sits on the
+	// page that places it.
+	foreach ($shop['pages'] as $p) pg_assert_same('ecommerce', $p['requires'], $p['key'] . ': needs the shop');
+	foreach ($shop['widgets'] as $key => $w) pg_assert_same('ecommerce', $w['requires'], "$key: needs the shop");
+	$placed = array();
+	foreach (array_merge($d['pages'], $shop['pages']) as $p) {
+		$nodes = array();
+		_test_courses_nodes($p['tree'], $nodes);
+		foreach ($nodes as $n) {
+			if (!empty($n['props']['templateWidget'])) $placed[$n['props']['templateWidget']][] = $p['key'];
+		}
+	}
+	foreach ($shop['widgets'] as $key => $w) {
+		if ($w['page'] === '') continue;
+		pg_assert_same(array($w['page']), isset($placed[$key]) ? $placed[$key] : array(), "widget $key placed once on its page");
+	}
+
+	// The shop's links and tabs name pages of the template.
+	$known = array_flip(_test_courses_page_keys());
+	$refs = array();
+	_test_courses_refs(array($shop['pages'], $shop['widgets']), $refs);
+	foreach (array_unique($refs) as $key) pg_assert_true(isset($known[$key]), "shop names a page of the template: $key");
 }
