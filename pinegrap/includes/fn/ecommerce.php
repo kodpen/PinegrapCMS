@@ -13254,3 +13254,22 @@ function pg_product_name_taken_text($name, $holder, $html = false)
             : 'The product code {var:1} is already used by {var:2}.',
         'vars' => $vars));
 }
+
+/**
+ * The operator's "unavailable" copy for a product row, as the catalog detail
+ * widget shows it: only when stock is tracked and nothing is left (a
+ * back-orderable product included), and as inline text so it fits inside
+ * the paragraph it is bound to. Empty otherwise.
+ *
+ * @param array $product row with inventory, inventory_quantity and
+ *                       out_of_stock_message
+ * @return string
+ */
+function pg_product_oos_notice($product)
+{
+    $tracked = !empty($product['inventory']);
+    $qty     = (int)($product['inventory_quantity'] ?? 0);
+    $copy    = (string)($product['out_of_stock_message'] ?? '');
+    if (!$tracked || $qty > 0 || $copy === '') return '';
+    return _pg_rich_text_to_inline($copy);
+}

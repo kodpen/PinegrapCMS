@@ -29,6 +29,7 @@ function _catalog_search_form_input($attrs)
 		'search_query_param' => 'query',
 		'search_query'       => 'lamp',
 		'search_label'       => 'Search products',
+		'search_ui_enabled'  => true,
 	));
 	$out = array();
 	foreach ($tree['children'] as $child) {
@@ -70,8 +71,8 @@ function test_catalog_bound_search_form_uses_the_shared_hidden_inputs()
 function test_catalog_starter_search_box_is_named()
 {
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
-	$start = strpos($js, "customName: _sdT('Search Form')");
-	pg_assert_true($start !== false, 'starter search form found');
-	$chunk = substr($js, (int) $start, 600);
-	pg_assert_contains("{ name: 'aria-label', value: _sdT('Search products') }", $chunk);
+	pg_assert_contains("{ name: 'placeholder', value: _sdT('Search…') },\n"
+		. "                                        { name: 'aria-label', value: _sdT('Search products') }\n"
+		. "                                    ],\n"
+		. "                                    _bindings: { value: 'search_query' } }),", $js);
 }
