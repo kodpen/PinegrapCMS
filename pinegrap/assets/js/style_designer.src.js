@@ -61234,8 +61234,8 @@ const StyleDesigner = (function () {
                                                offsetXs: '', offsetMd: '', order: '', cssClass: '' }, [
                                 createNode('semantic', { tag: 'div', cssClass: 'card shadow-sm', customName: _sdT('Sign-in Card') }, [
                                     createNode('semantic', { tag: 'div', cssClass: 'card-body p-4', customName: _sdT('Card Body') }, [
-                                        createNode('content', { contentType: 'heading', tag: 'h4',
-                                            text: _sdT('Log In'), cssClass: 'card-title mb-1 text-center' }),
+                                        createNode('content', { contentType: 'heading', tag: 'h1',
+                                            text: _sdT('Log In'), cssClass: 'h4 card-title mb-1 text-center' }),
                                         createNode('content', { contentType: 'paragraph',
                                             text: _sdT('Site name'), cssClass: 'text-muted text-center small mb-4',
                                             _bindings: { text: '__site_name' } }),
@@ -61394,8 +61394,8 @@ const StyleDesigner = (function () {
                                                offsetXs: '', offsetMd: '', order: '', cssClass: '' }, [
                                 createNode('semantic', { tag: 'div', cssClass: 'card shadow-sm', customName: _sdT('Forgot Password Card') }, [
                                     createNode('semantic', { tag: 'div', cssClass: 'card-body p-4', customName: _sdT('Card Body') }, [
-                                        createNode('content', { contentType: 'heading', tag: 'h4',
-                                            text: _sdT('Forgot Password'), cssClass: 'card-title mb-1 text-center' }),
+                                        createNode('content', { contentType: 'heading', tag: 'h1',
+                                            text: _sdT('Forgot Password'), cssClass: 'h4 card-title mb-1 text-center' }),
                                         createNode('content', { contentType: 'paragraph',
                                             text: _sdT('Enter your email address and we will send you a password reset link.'),
                                             cssClass: 'text-muted text-center small mb-4' }),
@@ -61516,8 +61516,8 @@ const StyleDesigner = (function () {
                                         // membership entrance, which activates a membership
                                         // the site already knows about. The two widgets keep
                                         // their own words so neither screen reads as the other.
-                                        createNode('content', { contentType: 'heading', tag: 'h4',
-                                            text: _sdT('Create Your Account'), cssClass: 'card-title mb-1 text-center' }),
+                                        createNode('content', { contentType: 'heading', tag: 'h1',
+                                            text: _sdT('Create Your Account'), cssClass: 'h4 card-title mb-1 text-center' }),
                                         createNode('content', { contentType: 'paragraph',
                                             text: _sdT('Site name'), cssClass: 'text-muted text-center small mb-4',
                                             _bindings: { text: '__site_name' } }),
@@ -62337,8 +62337,8 @@ const StyleDesigner = (function () {
                                                offsetXs: '', offsetMd: '', order: '', cssClass: '' }, [
                                 createNode('semantic', { tag: 'div', cssClass: 'card shadow-sm', customName: _sdT('Membership Card') }, [
                                     createNode('semantic', { tag: 'div', cssClass: 'card-body p-4', customName: _sdT('Card Body') }, [
-                                        createNode('content', { contentType: 'heading', tag: 'h4',
-                                            text: _sdT('Membership Entrance'), cssClass: 'card-title mb-1 text-center' }),
+                                        createNode('content', { contentType: 'heading', tag: 'h1',
+                                            text: _sdT('Membership Entrance'), cssClass: 'h4 card-title mb-1 text-center' }),
                                         createNode('content', { contentType: 'paragraph',
                                             text: _sdT('Site name'), cssClass: 'text-muted text-center small mb-4',
                                             _bindings: { text: '__site_name' } }),
@@ -62582,7 +62582,7 @@ const StyleDesigner = (function () {
                 return _swAcctPage(_sdT('Logout Card'), '6', '5', [
                     createNode('semantic', { tag: 'div', cssClass: 'text-center', customName: _sdT('Signed In'),
                         _bindings: { eo_visible_if: 'is_signed_in' } }, [
-                        createNode('content', { contentType: 'heading', tag: 'h4', text: _sdT('Log Out'), cssClass: 'card-title mb-2' }),
+                        createNode('content', { contentType: 'heading', tag: 'h1', text: _sdT('Log Out'), cssClass: 'h4 card-title mb-2' }),
                         createNode('content', { contentType: 'paragraph', text: _sdT('Do you want to log out?'), cssClass: 'text-muted mb-1' }),
                         createNode('content', { contentType: 'paragraph', text: _sdT('User name'), cssClass: 'fw-semibold mb-4',
                             _bindings: { text: '__username' } }),
@@ -62594,7 +62594,7 @@ const StyleDesigner = (function () {
                     ]),
                     createNode('semantic', { tag: 'div', cssClass: 'text-center', customName: _sdT('Signed Out'),
                         _bindings: { eo_visible_if: 'is_signed_out' } }, [
-                        createNode('content', { contentType: 'heading', tag: 'h4', text: _sdT('You Have Logged Out'), cssClass: 'card-title mb-2' }),
+                        createNode('content', { contentType: 'heading', tag: 'h1', text: _sdT('You Have Logged Out'), cssClass: 'h4 card-title mb-2' }),
                         createNode('content', { contentType: 'paragraph', text: _sdT('You have logged out successfully.'), cssClass: 'text-muted mb-4' }),
                         createNode('content', { contentType: 'link', text: _sdT('Log In Again'), href: '#', cssClass: 'btn btn-primary',
                             _bindings: { href: '__login_url' } }),
@@ -62613,7 +62613,7 @@ const StyleDesigner = (function () {
                 // shows the note.
                 var cpId = 'f_' + Math.random().toString(36).slice(2, 7);
                 return _swAcctPage(_sdT('Change Password Card'), '6', '5', [
-                    createNode('content', { contentType: 'heading', tag: 'h4', text: _sdT('Change Password'), cssClass: 'card-title mb-3 text-center' }),
+                    createNode('content', { contentType: 'heading', tag: 'h1', text: _sdT('Change Password'), cssClass: 'h4 card-title mb-3 text-center' }),
                     createNode('semantic', { tag: 'div', cssClass: 'alert alert-info small', customName: _sdT('No Password Yet'),
                         _bindings: { eo_visible_if: 'password_not_set' } }, [
                         createNode('content', { contentType: 'paragraph', cssClass: 'mb-0',
@@ -62648,7 +62648,7 @@ const StyleDesigner = (function () {
                 // Messages block prints the notice with its Continue link.
                 var spId = 'f_' + Math.random().toString(36).slice(2, 7);
                 return _swAcctPage(_sdT('Set Password Card'), '6', '5', [
-                    createNode('content', { contentType: 'heading', tag: 'h4', text: _sdT('Set a New Password'), cssClass: 'card-title mb-3 text-center' }),
+                    createNode('content', { contentType: 'heading', tag: 'h1', text: _sdT('Set a New Password'), cssClass: 'h4 card-title mb-3 text-center' }),
                     createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Password Form'),
                         _bindings: { eo_visible_if: 'show_form' } }, [
                         createNode('content', { contentType: 'paragraph', text: _sdT('Choose a new password for this account:'),
