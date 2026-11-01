@@ -1827,7 +1827,7 @@ $pages[] = array(
                     $col(array(
                         $span(lang('Staff only'), 'badge rounded-pill text-bg-primary mb-3', lang('Badge')),
                         $heading('h1', lang('Welcome to the staff area'), 'display-6 fw-bold mb-3'),
-                        $para(lang('The coming appointments, the conversations with patients and the blog are kept here. To confirm or cancel an appointment, open it and press Change Status.'), 'lead text-body-secondary mb-4'),
+                        $para(lang('The coming appointments, the conversations with patients and the blog are kept here. To confirm or cancel an appointment, open it and press Change Status; what you write under it reaches the patient by e-mail.'), 'lead text-body-secondary mb-4'),
                         $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
                             $link(lang('Open the control panel'), $panel_url, 'btn btn-primary px-4'),
                             $link(lang('All Appointments'), '{{page:my_appointments}}', 'btn btn-outline-primary'),

@@ -115,7 +115,7 @@ $account_pages[] = array(
                     $col(array(
                         $span(lang('Staff only'), 'badge rounded-pill text-bg-primary mb-3', lang('Badge')),
                         $heading('h1', lang('Welcome to the staff area'), 'display-6 fw-semibold mb-3'),
-                        $para(lang('The coming bookings, the conversations with clients and the blog are kept here. To confirm or cancel a booking, open it and press Change Status.'), 'lead text-body-secondary mb-4'),
+                        $para(lang('The coming bookings, the conversations with clients and the blog are kept here. To confirm or cancel a booking, open it and press Change Status; what you write under it reaches the client by e-mail.'), 'lead text-body-secondary mb-4'),
                         $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
                             $link(lang('Open the control panel'), $panel_url, 'btn btn-primary rounded-pill px-4'),
                             $link(lang('All Bookings'), '{{page:my_appointments}}', 'btn btn-outline-primary rounded-pill px-4'),
