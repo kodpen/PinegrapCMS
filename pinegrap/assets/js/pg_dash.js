@@ -361,6 +361,13 @@
             empty.remove();
         }
         emptyCheck();
+
+        // The Add card tile (pg_dash_panel.js) stays the grid's last cell.
+        var tile = grid.querySelector(".pg-dash-addtile");
+        if (tile) {
+            grid.appendChild(tile);
+        }
+
         loadAll(fresh);
     };
 

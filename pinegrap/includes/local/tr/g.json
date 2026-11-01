@@ -1,4 +1,5 @@
 {
+    "GA4 figures and traffic sources": "GA4 rakamları ve trafik kaynakları",
     "GBP/TRY": "Sterlin/TL",
     "GET METHOD with url": "Url ile GET YÖNTEMİ",
     "GET Method": "GET Metodu",
@@ -214,6 +215,7 @@
     "Go to where you were mentioned": "Anıldığınız yere git",
     "Goal": "Hedef",
     "Goals and scope": "Hedefler ve kapsam",
+    "Goals you set yourself, progress ring by ring": "Kendi koyduğun hedefler, halka halka ilerleme",
     "Goes live:": "Yayın zamanı:",
     "Goes on the site {var:1}": "{var:1} yayına alınır",
     "Goes on the site {var:1}; comes off it again {var:2}.": "{var:1} yayına alınır; {var:2} yeniden yayından kaldırılır.",

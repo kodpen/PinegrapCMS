@@ -310,6 +310,7 @@
     "Blocked requests per day, last 30 days": "Gün başına engellenen istek, son 30 gün",
     "Blocked requests per day, last 7 days": "Gün başına engellenen istek, son 7 gün",
     "Blocked requests per hour, last 24 hours": "Saat başına engellenen istek, son 24 saat",
+    "Blocked requests, bots, failed sign-ins": "Engellenen istekler, botlar, hatalı girişler",
     "Blocking mode: attacking requests are being rejected.": "Engelleme modu: saldırı istekleri reddediliyor.",
     "Blockquote": "Alıntı",
     "Blocks": "Bloklar",
