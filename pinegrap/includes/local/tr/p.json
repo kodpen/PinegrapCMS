@@ -1703,6 +1703,7 @@
     "parasut connection was authorized for company {var:1}": "{var:1} numaralı firma için Paraşüt bağlantısı yetkilendirildi",
     "parasut connection was authorized for company {var:1} in place of the saved company {var:2}": "Paraşüt bağlantısı, kayıtlı {var:2} numaralı firmanın yerine {var:1} numaralı firma için yetkilendirildi",
     "parent_id is one product group.": "parent_id tek bir ürün grubudur.",
+    "parking, metro, bus, directions": "otopark, metro, otobüs, yol tarifi",
     "parks, neighborhoods": "parklar, mahalleler",
     "parts shown only under a condition": "yalnızca bir koşulda gösterilen bölümler",
     "passive": "pasif",

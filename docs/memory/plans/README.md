@@ -33,7 +33,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - datetime-picker-site-steps.md: Site steps S1-S4 of plans/datetime-picker.md (after the panel stop): on-demand loader, classic renderers, checkout, designer widgets and palette; claim as [plan:datetime-picker] S<n>
 - datetime-picker-steps.md: Panel steps P1-P11 of plans/datetime-picker.md: what each changes, its files, tests and size, its dependencies; claim as [plan:datetime-picker] P<n>
 - datetime-picker.md: Plan (decided in #2693, 2026-10-28): one date-and-time control for the whole software, the time in the same popup, on vanilla-calendar-pro; panel P1-P11, sites S1-S4, steps in datetime-picker-steps.md
-- design-template-beauty-salon.md: Plan for the Beauty Salon design template (pinegrap-salon) with online booking on the Clinic template's request pattern: parts built in a folder, offered once assembled; steps 1-4
 - design-template-bookshop-events.md: Plan (owner, 2026-11-01): the bookshop template's hard-coded events become form records the business adds in the panel, the Café way, past events dropping out of lists
 - designer-prototype-links-code.md: What the code holds for plans/designer-prototype-links.md: where links sit, the two href places, page links by id, renames, the resolver's limits, editor state, rights and Publish
 - designer-prototype-links.md: Plan (2026-10-24, not started, answer 1 given): a Figma/XD-like prototype view in the visual designer: pages as frames, menu items and links as hotspots, an arrow sets the page a click opens

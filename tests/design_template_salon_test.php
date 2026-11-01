@@ -388,3 +388,46 @@ function test_salon_staff_and_account()
 	pg_assert_same('{{tab:email_account_welcome}}', $w['register']['config']['welcome_email_page_id']);
 	pg_assert_true(strpos(json_encode($w['account_email_reset']['tree']), '__set_password_url') !== false, 'reset e-mail carries the set password link');
 }
+
+// The assembled template: the parts' pages and widgets, in their order,
+// with the shared parts, the contact group and the template's own look.
+// Every psl- class the trees use has its rule in User Styles, and every
+// psl- rule is used.
+function test_salon_assembled_template()
+{
+	$tpl = _pg_tpl_include(PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-salon.php');
+	pg_assert_true(is_array($tpl), 'the template loads');
+	$d = _test_salon_load();
+	$keys = array();
+	foreach ($tpl['pages'] as $p) $keys[] = $p['key'];
+	$expected = array();
+	foreach (array($d['pages'], $d['booking']['pages'], $d['standard']['pages'], $d['account']['pages']) as $list) {
+		foreach ($list as $p) $expected[] = $p['key'];
+	}
+	pg_assert_same($expected, $keys, 'every part\'s pages, in order');
+	pg_assert_same(count($d['booking']['widgets']) + count($d['standard']['widgets']) + count($d['account']['widgets']), count($tpl['widgets']));
+	pg_assert_same(array('account_bar', 'notice', 'header', 'footer', 'staff_bar', 'booking_band', 'email_header', 'email_footer'), array_keys($tpl['shared']));
+	pg_assert_true(isset($tpl['contact_groups']['newsletter']), 'the newsletter contact group');
+	pg_assert_same('1.0.0', $tpl['version']);
+
+	// The contact page's details are a search section.
+	foreach ($tpl['pages'] as $p) {
+		if ($p['key'] !== 'contact') continue;
+		$nodes = array();
+		_test_salon_nodes($p['tree'], $nodes);
+		$ids = array();
+		foreach ($nodes as $n) if (!empty($n['props']['searchSection'])) $ids[] = $n['props']['id'];
+		pg_assert_true(in_array('contact-details', $ids, true) && in_array('getting-here', $ids, true), 'contact search sections');
+	}
+
+	$styles = json_decode($tpl['assets']['css'], true);
+	$css = $styles[0]['content'];
+	preg_match_all('/\.(psl-[a-z0-9-]+)/', $css, $m);
+	$ruled = array_unique($m[1]);
+	preg_match_all('/\bpsl-[a-z0-9-]+/', json_encode(array($tpl['pages'], $tpl['widgets'], $tpl['shared'])), $m);
+	$used = array_unique($m[0]);
+	sort($ruled);
+	sort($used);
+	pg_assert_same($ruled, $used, 'psl- classes and rules match');
+	pg_assert_same(2, count(json_decode($tpl['assets']['fonts'], true)), 'two fonts');
+}

@@ -904,6 +904,7 @@
     "The address uses ${var:1}, but the name has {var:2} wildcard(s) (*).": "Adres ${var:1} kullanıyor, ama adda {var:2} joker (*) var.",
     "The address will stop working and your calendars will no longer be updated. End the subscription?": "Adres çalışmayı bırakacak ve takvimleriniz artık güncellenmeyecek. Abonelik sonlandırılsın mı?",
     "The address {var:1} has been added to the allowed list.": "{var:1} adresi izin verilen listeye eklendi.",
+    "The addresses left on the beauty letter form of the salon.": "Salonun güzellik bülteni formuna bırakılan adresler.",
     "The addresses left on the health letter form of the practice.": "Polikliniğin sağlık bülteni formuna bırakılan adresler.",
     "The addresses left on the letter form of the café.": "Kafenin bülten formuna bırakılan adresler.",
     "The addresses left on the newsletter form of the bookshop.": "Kitapçının bülten formuna bırakılan adresler.",
