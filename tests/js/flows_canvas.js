@@ -434,7 +434,13 @@ class Chromium {
             this.child.kill();
         }
 
-        fs.rmSync(this.profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+        // Chrome on Windows can hold the profile folder a while after it
+        // exits: a folder left behind is only a warning, the result stands.
+        try {
+            fs.rmSync(this.profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+        } catch (error) {
+            process.stderr.write('warning: could not remove ' + this.profile + ': ' + ((error && error.message) || error) + '\n');
+        }
     }
 }
 
@@ -599,6 +605,15 @@ class Page {
         if (type !== 'down') {
             await this.send('Input.dispatchKeyEvent', Object.assign({ type: 'keyUp' }, event));
         }
+    }
+
+    // Makes the page a touch screen or not. Touch emulation switches
+    // (pointer: coarse) on, which resizes the panel's tap targets and moves
+    // the canvas: a scenario that measures around a gesture turns it on
+    // before its first measure and off after its last.
+    async setTouchScreen(on) {
+        this.touchScreen = !!on;
+        await this.send('Emulation.setTouchEmulationEnabled', on ? { enabled: true, maxTouchPoints: 2 } : { enabled: false });
     }
 
     // Touches reach a page only while it is a touch screen: a page that is
@@ -897,6 +912,11 @@ function driver(page, store, setup, url) {
 
         wheel: async (where, deltaX, deltaY, ...modifiers) => {
             await page.wheel(where.x, where.y, deltaX, deltaY, modifiers.reduce((sum, mod) => sum | MODIFIERS[mod], 0));
+        },
+
+        // Touch emulation on or off for the following measures and gestures.
+        touchScreen: async (on) => {
+            await page.setTouchScreen(on);
         },
 
         // Two fingers apart by from px around a point, moved to to px apart.

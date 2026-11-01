@@ -260,6 +260,10 @@ module.exports = [
             h.same('the middle button pans', [Math.round(v6.x - v5.x), Math.round(v6.y - v5.y)], [40, 24]);
             h.same('end_1 stays', [(await h.probe('box', 'end_1')).x, (await h.probe('box', 'end_1')).y], [640, 0]);
 
+            // The measures and the gesture share one layout: touch emulation
+            // resizes the panel's tap targets, which moves the canvas.
+            await h.touchScreen(true);
+
             const centre = await h.probe('empty');
             const before = await h.probe('canvasPoint', centre.x, centre.y);
 
@@ -267,6 +271,8 @@ module.exports = [
 
             const v7 = await h.probe('view');
             const after = await h.probe('canvasPoint', centre.x, centre.y);
+
+            await h.touchScreen(false);
 
             h.near('a pinch zooms by the fingers\' spread', v7.k, Math.min(2, v6.k * 1.5), 0.02);
             h.ok('the point between the fingers stays', (Math.abs(after.x - before.x) < 2) && (Math.abs(after.y - before.y) < 2), { before: before, after: after });
