@@ -84,7 +84,9 @@ function test_panel_id_gate_get_id_cast_after_gate()
 			continue;
 		}
 
-		$gate = preg_match('/is_(?:scalar|string)\(\s*\$_(?:GET|REQUEST)\[\'id\'\]/', $source, $match, PREG_OFFSET_CAPTURE) ? $match[0][1] : PHP_INT_MAX;
+		// The gate checks the request id itself, or the id taken from $_POST
+		// or $_GET into $requested_<record>_id (edit_page.php, edit_user.php).
+		$gate = preg_match('/is_(?:scalar|string)\(\s*(?:\$_(?:GET|REQUEST)\[\'id\'\]|\$requested_[a-z_]+_id\b)/', $source, $match, PREG_OFFSET_CAPTURE) ? $match[0][1] : PHP_INT_MAX;
 
 		foreach ($casts[0] as $cast) {
 			if ($cast[1] < $gate) {
@@ -240,4 +242,18 @@ function test_panel_id_gate_file_editors_check_name_and_type()
 		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $screen . '.php');
 		pg_assert_true(strpos($source, "remove_form('edit_design_file')") === false, $screen . ' does not name another form in remove_form()');
 	}
+}
+
+// edit_user.php gates the role check on the id its handlers read ($_POST for
+// a submit, $_GET for the form), never on $_REQUEST: where cookies outrank
+// POST in $_REQUEST (no request_order set), a manager's cookie "id" naming a
+// user below them passed the check while the POST id deleted or changed an
+// administrator.
+function test_panel_id_gate_edit_user_checks_handler_id()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/edit_user.php');
+
+	pg_assert_contains('$requested_user_id = $_POST ? ($_POST[\'id\'] ?? \'\') : ($_GET[\'id\'] ?? \'\');', $source, 'edit_user id source');
+	pg_assert_contains('is_scalar($requested_user_id) ? (int) $requested_user_id : 0', $source, 'edit_user id gate');
+	pg_assert_same(false, strpos($source, "\$_REQUEST['id']"), 'edit_user reads no $_REQUEST id');
 }

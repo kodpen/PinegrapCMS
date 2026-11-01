@@ -9,11 +9,11 @@ description: Remaining outside-account connections (calendar, notes, cloud picke
 
 | Item | What | Effort |
 |---|---|---|
-| Calendar sync | Step 0: personal secret iCal address as a read-only layer: done (#3254, `workspace/workspace-personal-ical.md`). OAuth step, slices: 1 Google write done (#4387, `workspace/workspace-google-calendar-write.md`), 2 Graph write, 3 read back (`syncToken`, delta). | S / M–L |
+| Calendar sync | Step 0: personal secret iCal address as a read-only layer: done (#3254, `workspace/workspace-personal-ical.md`). OAuth step, slices: 1–2 Google and Graph write done (#4387, #4420, `workspace/workspace-calendar-write.md`), 3 read back (`syncToken`, delta) waits for decision #4490. | S / M–L |
 | Notion, OneNote | Notion via its MCP alias: done (#3212). OneNote: done (#3291). An imported note is an ordinary `ws_notes` row. Keep, Evernote, Apple Notes: no usable API | M (S via MCP) |
 | Cloud file picker | Drive, Dropbox (#3238), OneDrive (#3261): done (`platform/cloud-file-picker.md`) | S |
 | Meta | Product feed (step 0, shared with Merchant), Meta Business Extension for Pixel + catalog, Instagram Login feed, WhatsApp Cloud API. Model B only | L |
-| Merchant Center | Slice 1 done (#3213, `commerce/merchant-center.md`). Step 2: one-product push (#4388). Then changed products via the marketplace layer (#4389, `commerce/merchant-center-push.md`) | M |
+| Merchant Center | Slice 1 done (#3213, `commerce/merchant-center.md`). Step 2: update data source + request builders (#4388). Step 3 done: managed provider, mapping, queued push (#4423, `commerce/merchant-center-push.md`) | M |
 | GA4, Business Profile | GA4 dashboard card: done (#3275, `api/google-analytics-card.md`). Google reviews: done (#3292, `designer/google-reviews-widget.md`). Business Profile needs Google's access form; on demand | M |
 | Social posting | Facebook Page, Instagram, LinkedIn; needs app review; X is paid, not recommended | M + process |
 | AI accounts | Not recommended (subscription OAuth is limited to Anthropic's own products); only OpenRouter PKCE as "bring your own model" (`includes/workspace/ai.php`) | S |

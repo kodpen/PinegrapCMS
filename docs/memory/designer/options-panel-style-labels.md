@@ -16,4 +16,8 @@ description: Labels of the options panel selects built from utility classes (sel
 - `colorSelectGroup()`'s visible button says `_sdT('None')` like its hidden select; the tooltip, popover, background position and object position selects say `_sdT('Top')` like their other options.
 - Test: `tests/designer_style_option_labels_test.php` cuts `_sdT()`, `capFirst()`, `_sdStyleOptionLabel()` and `selStyleGroup()` out of the script and runs them under Node with the Turkish values of the keys, and pins the row keys.
 
+## How are prop rows and the object fit options named?
+- The generic prop loops label a row with `_sdPropLabel(key)`: `_sdT()` names for shared props (`src` "Source", `alt` "Alt text", `width`, `height`, `fluid`, `rounded` …), `capFirst(key)` for the rest; the Image rows read "Src", "Alt", "Fluid" on a Turkish panel (#4481).
+- `_sdStyleOptionLabel()` names the `object-fit-*` classes from its own map ("Contain (whole image)" … "Natural size"); the class-derived "Fit contain" mixed languages. Tested in `designer_style_option_labels_test.php`.
+
 Related: docs/memory/core/sdt-designer-js-text-rules.md, docs/memory/designer/designer-panel-popover-and-rows.md

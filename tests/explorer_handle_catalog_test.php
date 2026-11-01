@@ -122,7 +122,7 @@ function test_explorer_catalog_rename_refuses_gone_or_binned_item()
 	pg_assert_true(($group_check !== false) && ($group_read < $group_check), 'missing group refused after the read');
 	pg_assert_true(($group_update !== false) && ($group_check < $group_update), 'group refusal before its UPDATE');
 
-	$product_read = strpos($body, "db_item(\"SELECT id FROM products WHERE id = '\" . e(\$item_id) . \"'\" . pg_catalog_live_filter('products'))");
+	$product_read = strpos($body, "db_item(\"SELECT id, name FROM products WHERE id = '\" . e(\$item_id) . \"'\" . pg_catalog_live_filter('products'))");
 	$product_update = strpos($body, 'UPDATE products SET name');
 	$product_check = strpos($body, $refusal, (int) $group_update);
 	pg_assert_true($product_read !== false, 'product read keeps binned rows out');

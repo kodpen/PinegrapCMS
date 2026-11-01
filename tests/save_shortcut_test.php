@@ -131,3 +131,26 @@ function test_save_shortcut_action_forms_are_excluded()
 	pg_assert_true(strpos($subscriptions, 'method="post" class="d-inline-block disable_shortcut"') !== false, 'the subscription action forms');
 	pg_assert_true(preg_match('/<form name="form" action="\' \. h\(\$self\) \. \'" method="post" class="disable_shortcut">/', $quotes) === 1, 'the cart quotes list form');
 }
+
+// A create screen has no submit_save: the shortcut presses its submit_create
+// button and gives it the hint. Before, about forty create screens (Country,
+// User, Gift Card, ERP documents) caught the key and saved nothing.
+function test_save_shortcut_presses_create_without_save()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
+	$from = strpos($source, 'function pgSaveShortcutButton($form) {');
+	$lookup = ($from === false) ? '' : substr($source, $from, 600);
+
+	pg_assert_true($lookup !== '', 'the lookup is found');
+	pg_assert_true(strpos($lookup, "['submit_save', 'submit_create']") !== false, 'submit_save first, then submit_create');
+	pg_assert_true(strpos($lookup, "\$form.attr('submitshortcut')") !== false, 'a named button still wins');
+}
+
+// A form that only issues an ERP invoice from the order screen carries
+// submit_create too; it stays out of the shortcut.
+function test_save_shortcut_order_invoice_form_is_excluded()
+{
+	$order = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_order.php');
+
+	pg_assert_contains('<form method="post" action="add_erp_invoice.php" class="d-inline disable_shortcut">', $order, 'the Issue the Invoice form');
+}

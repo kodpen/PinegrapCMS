@@ -63,10 +63,17 @@ function pg_sw_page_type_widgets()
     );
 }
 
-// Address of the first designed page carrying the widget that stands in for
+// Address of the designed page carrying the widget that stands in for
 // $page_type, or '' when there is none. get_page_type_url() asks this when
 // the site has no page of the legacy type, so a password reset link, a
 // "back to my account" redirect or a logout lands on the designed page.
+// Only a page the visitor can open counts: a design tried out as a draft
+// keeps its account pages in a private folder, and a link there sent the
+// visitor to the sign-in page (#4451). A guest or registration folder
+// counts, as the visitor can get in. The password reset link goes out by
+// e-mail to a visitor who cannot sign in, so its page must be public. Among
+// the pages left, one of the design of the page asked for comes first, then
+// one of the published design (the home page's).
 function pg_sw_page_type_widget_url($page_type)
 {
     static $cache = array();
@@ -85,7 +92,17 @@ function pg_sw_page_type_widget_url($page_type)
     // private folder and sorts before the public order page by title.
     if ($page_type === 'view order') $pages = pg_sw_pages_without($pages, _pg_sw_order_receipt_email_page_ids());
     if (!$pages) return '';
-    return $cache[$page_type] = (defined('PATH') ? PATH : '/') . encode_url_path((string)$pages[0]['page_name']);
+    $anyone = ($page_type === 'set password');
+    $can_view = function ($folder_id) use ($anyone) {
+        if (!$anyone && defined('USER_LOGGED_IN')) return (bool)check_view_access($folder_id, true);
+        $type = get_access_control_type($folder_id);
+        return $anyone ? ($type === 'public') : in_array($type, array('public', 'guest', 'registration'), true);
+    };
+    $current_id = function_exists('_pg_sw_current_page_id') ? (int)_pg_sw_current_page_id() : 0;
+    $current_style = ($current_id > 0) ? (int)db_value("SELECT page_style FROM page WHERE page_id = '" . $current_id . "' LIMIT 1") : 0;
+    $page = pg_sw_first_viewable_page($pages, $can_view, array($current_style, pg_sw_home_style_id()));
+    if ($page === null) return '';
+    return $cache[$page_type] = (defined('PATH') ? PATH : '/') . encode_url_path((string)$page['page_name']);
 }
 
 // $pages (rows with page_id) without those whose id is in $skip_ids, in the

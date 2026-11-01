@@ -6,6 +6,10 @@ description: The error page system widget: when it is shown, which block shows f
 ## When is the designed error page shown?
 - `output_error()` records the message and the code (`pg_sw_error_context()`); `get_error_screen()` renders the first designed page carrying an `error_page` widget (`pg_sw_error_page_id()`) before the legacy `error` page type. Opened directly, the widget reads as "not found" and the page answers 404.
 
+## Which page carrying the widget is chosen?
+- `pg_sw_error_page_id()` → `pg_sw_error_page_pick()`: only a page in a **public** folder (`get_access_control_type()`), since `get_error_screen()` draws it for every visitor without an access check; among those a page of the home page's design (`pg_sw_home_style_id()`, the published design) first, else the lowest page id. No such page: the legacy `error` page.
+- Why: the list came in title order with no folder check, so a design tried out as a draft (Drafts, a private folder) whose error page title sorted first became every error screen of the live site (issue #4477, PR #4530). The widget's panel note says the rule. Test: `tests/system_page_pick_test.php`.
+
 ## Which block shows for which error?
 - Flags from `pg_sw_error_flags($code, $maintenance_block)` (`includes/fn/widgets_error.php`): `is_not_found` (404), `is_maintenance` (503; maintenance mode is the only sender), `is_other_error` (any other error), `has_error_code` (code 400 and up).
 - A page with an `is_maintenance` block shows maintenance only there. A page designed before PR #692 has no such block, so for it `is_other_error` still covers maintenance (its "503", "Something Went Wrong" and the maintenance sentence); `pg_sw_error_tree_shows()` looks for the block.

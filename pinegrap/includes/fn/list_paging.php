@@ -192,7 +192,18 @@ function pg_list_search_turkish_charset()
     $turkish = (strtolower(substr((string) lang(array('info' => '')), 0, 2)) === 'tr')
         || (function_exists('pg_tr_source_language') && (strtolower(substr((string) pg_tr_source_language(), 0, 2)) === 'tr'));
 
-    if (!$turkish || !class_exists('db', false) || !isset(db::$con) || !db::$con) {
+    return $turkish ? pg_list_search_connection_charset() : '';
+}
+
+/**
+ * The connection's charset as CONVERT() names it: 'utf8' for a utf8/utf8mb3
+ * connection, else 'utf8mb4'; '' without a connection.
+ *
+ * @return string
+ */
+function pg_list_search_connection_charset()
+{
+    if (!class_exists('db', false) || !isset(db::$con) || !db::$con) {
         return '';
     }
 

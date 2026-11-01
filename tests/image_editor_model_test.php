@@ -291,8 +291,9 @@ function test_image_editor_model_resize_crop()
 }
 
 // A turn to the right moves the crop and the layers clockwise with the
-// picture; an upright layer keeps its size; under a flip the turn is still
-// clockwise on screen; turning swaps the output size.
+// picture; a box keeps its size and takes the turn into its angle, an
+// upright layer only moves; under a flip the turn is still clockwise on
+// screen; turning swaps the output size.
 function test_image_editor_model_turns_move_crop_and_layers()
 {
 	$r = image_editor_model_node(
@@ -315,12 +316,12 @@ function test_image_editor_model_turns_move_crop_and_layers()
 	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
 	pg_assert_same(90, $r['rot'], 'the picture turns a quarter');
 	pg_assert_same(array('x' => 200, 'y' => 0, 'w' => 100, 'h' => 200), $r['crop'], 'the crop box turns with it');
-	pg_assert_same(array('type' => 'rect', 'x' => 250, 'y' => 0, 'w' => 50, 'h' => 100), $r['rect'], 'a box turns with the picture');
+	pg_assert_same(array('type' => 'rect', 'x' => 225, 'y' => 25, 'w' => 100, 'h' => 50, 'rot' => 90), $r['rect'], 'a box turns with the picture');
 	pg_assert_same(array('type' => 'text', 'x' => 240, 'y' => 40, 'w' => 80, 'h' => 20), $r['text'], 'a text moves its centre and stays upright');
 	pg_assert_same(array('w' => 50, 'h' => 100), $r['output'], 'the output size is swapped');
 	pg_assert_same(270, $r['flippedRot'], 'under a flip the picture itself turns the other way');
-	pg_assert_same(array('type' => 'rect', 'x' => 299, 'y' => 0, 'w' => 1, 'h' => 1), $r['flippedRect'], 'the top-left corner still goes to the top right');
-	pg_assert_same(array('type' => 'rect', 'x' => 0, 'y' => 0, 'w' => 100, 'h' => 50), $r['full'], 'four turns bring a layer back');
+	pg_assert_same(array('type' => 'rect', 'x' => 299, 'y' => 0, 'w' => 1, 'h' => 1, 'rot' => 90), $r['flippedRect'], 'the top-left corner still goes to the top right');
+	pg_assert_same(array('type' => 'rect', 'x' => 0, 'y' => 0, 'w' => 100, 'h' => 50, 'rot' => 0), $r['full'], 'four turns bring a layer back');
 	pg_assert_same(0, $r['original'], 'the document turned is a copy');
 }
 
@@ -364,6 +365,7 @@ function test_image_editor_model_layers()
 		. ' bounds: M.bounds([turned]), both: M.bounds([box, turned]),'
 		. ' hitTop: M.hitLayer(doc, 200, 140, 0).id, hitTurned: M.hitLayer(doc, 200, 240, 0).id, miss: M.hitLayer(doc, 5, 5, 0),'
 		. ' hitOwn: M.hitLayer(doc, 200, 140, 0, function (l, p) { if (l.id === "a") { seen = p; } return l.id !== "b"; }).id, seen: seen,'
+		. ' inside: [M.insideBox(box, 200, 150, 10), M.insideBox(box, 105, 150, 10), M.insideBox(box, 200, 195, 10), M.insideBox(turned, 200, 70, 10), M.insideBox(turned, 120, 150, 10)],'
 		. ' se: M.resizeBox(box, "se", 400, 300, false, 4), keep: M.resizeBox(box, "se", 400, 150, true, 4), west: M.resizeBox(box, "w", 50, 0, false, 4),'
 		. ' small: M.resizeBox(box, "e", 0, 0, false, 4), turnedEast: M.resizeBox(turned, "e", 200, 400, false, 4),'
 		. ' up: M.angleTo(box, 200, 0, false), right: M.angleTo(box, 400, 150, false), snapped: M.angleTo(box, 400, 140, true),'
@@ -388,6 +390,7 @@ function test_image_editor_model_layers()
 	pg_assert_same(null, $r['miss'], 'a locked layer is not hit');
 	pg_assert_same('a', $r['hitOwn'], 'a type\'s own test lets a press through to the layer below');
 	pg_assert_same(array(100, 40), $r['seen'], 'the test gets the point in the layer\'s own frame');
+	pg_assert_same(array(true, false, false, true, false), $r['inside'], 'inside a box by the margin, in its own turned frame');
 	pg_assert_same(array('x' => 100, 'y' => 100, 'w' => 300, 'h' => 200), $r['se'], 'the opposite corner stays');
 	pg_assert_same(array('x' => 100, 'y' => 100, 'w' => 300, 'h' => 150), $r['keep'], 'from a corner the ratio can be kept');
 	pg_assert_same(array('x' => 50, 'y' => 100, 'w' => 250, 'h' => 100), $r['west'], 'the west edge moves alone');

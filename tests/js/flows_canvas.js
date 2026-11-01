@@ -55,7 +55,7 @@ const ROOT = path.resolve(__dirname, '..', '..');
 const PANEL = path.join(ROOT, 'pinegrap');
 
 // The bundles the flows screen prints, in its order (ws_screen_assets()).
-const SCREEN_BUNDLES = ['assets/js/workspace.min.js', 'assets/js/workspace_palette.min.js', 'assets/js/workspace_flow.min.js'];
+const SCREEN_BUNDLES = ['assets/js/workspace.min.js', 'assets/js/workspace_palette.min.js', 'assets/js/pg_graph_canvas.min.js', 'assets/js/workspace_flow.min.js'];
 
 const ARGS = process.argv.slice(2);
 const FILTER = ARGS.filter((arg) => !arg.startsWith('--'))[0] || '';

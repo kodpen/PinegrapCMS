@@ -171,7 +171,16 @@ $ai_summary = function () use ($el, $link, $icon, $span, $attr, $bind, $show_whe
 $photo = function ($seed, $w, $h) {
     return 'https://picsum.photos/seed/pl-' . $seed . '/' . $w . '/' . $h;
 };
-$avatar = 'https://placehold.co/96x96/a21caf/ffffff?text=JC';
+// The avatar carries the initials of the site owner's name as the language
+// writes it, so it matches the name beside it.
+$initials = '';
+foreach (preg_split('/\s+/u', trim(lang('Jane Cooper'))) as $word) {
+    if (preg_match('/^./u', $word, $m)) $initials .= $m[0];
+}
+$avatar_url = function ($size) use ($initials) {
+    return 'https://placehold.co/' . $size . 'x' . $size . '/a21caf/ffffff?text=' . rawurlencode($initials);
+};
+$avatar = $avatar_url(96);
 
 // ── The parts every page repeats ────────────────────────────────────────
 
@@ -209,7 +218,7 @@ $header = function () use ($el, $link, $image, $span, $icon, $attr, $avatar, $la
                 ))),
                 $el('div', 'collapse navbar-collapse', lang('Nav Links'), array(
                     $el('ul', 'navbar-nav ms-auto mt-3 mt-md-0 fw-semibold', lang('Nav Menu'), array(
-                        $item('about', lang('About')),
+                        $item('about', lang('About me')),
                         $item('projects', lang('Things I make')),
                         $item('blog', lang('Blog')),
                         $item('now', lang('Now')),
@@ -240,7 +249,7 @@ $cta = function () use ($el, $container, $row, $col, $heading, $para, $link, $ic
             $row(array(
                 $col(array(
                     $heading('h2', lang('Got an idea? Let\'s make something fun.'), 'display-5 fw-bolder mb-2'),
-                    $para(lang('Comics, websites, a logo for your band: tell me about it and I will tell you what I would draw first.'), 'lead mb-0 opacity-75'),
+                    $para(lang('Comics, websites, a logo for your band: tell me about it and I will tell you what I would draw first.'), 'lead mb-0'),
                 ), '', '8'),
                 $col(array(
                     $el('a', 'btn btn-light btn-lg rounded-pill border border-3 border-dark fw-bold px-4', lang('Button'), array(
@@ -298,7 +307,7 @@ $page = function ($main) use ($root, $shared, $el) {
 // The staff pages' own menu, under the header: one shared component.
 $staff_bar = function () use ($el, $link, $span) {
     $item = function ($key, $text) use ($link) {
-        return $link($text, '{{page:' . $key . '}}', 'nav-link px-0 fw-semibold');
+        return $link($text, '{{page:' . $key . '}}', 'nav-link link-body-emphasis px-0 fw-semibold');
     };
     return $el('div', 'bg-warning-subtle border-bottom border-3 border-dark', lang('Staff Bar'), array(
         $el('div', 'container d-flex flex-wrap align-items-center gap-4 py-2', lang('Staff Bar Container'), array(
@@ -438,7 +447,7 @@ $projects = array(
           'more' => lang('One ride, one photo, one sentence. Mostly fields, sometimes a goat. A small book of the first year is on my shelf and very likely on my mother\'s.'),
           'tools' => array(lang('Film camera'), lang('Bicycle'), lang('Snacks'))),
     array('icon' => 'bi-stars', 'tone' => 'secondary', 'seed' => 'font',
-          'title' => lang('Wobbly Sans'), 'tag' => lang('Type'),
+          'title' => lang('Wobbly Sans'), 'tag' => lang('Font'),
           'text' => lang('A free hand-lettered font for birthday cards and lemonade stands.'),
           'more' => lang('Every letter drawn with a felt-tip pen, scanned and traced. It has two hundred glyphs, a very bouncy ampersand and a heart in place of the dot on the i.'),
           'tools' => array(lang('Lettering'), lang('Font tools'), lang('Felt-tip pens'))),
@@ -1594,7 +1603,7 @@ $widgets = array(
             ), $show_when('is_signed_out')),
             $el('div', 'dropdown', lang('Signed In'), array(
                 $el('button', 'btn btn-link d-flex align-items-center gap-2 p-0 border-0 link-body-emphasis text-decoration-none dropdown-toggle fw-bold', lang('Account Button'), array(
-                    $image('https://placehold.co/64x64/a21caf/ffffff?text=JC', lang('Jane Cooper'), 'rounded-circle border border-2 border-dark object-fit-cover',
+                    $image($avatar_url(64), lang('Jane Cooper'), 'rounded-circle border border-2 border-dark object-fit-cover',
                         array('width' => '32', 'height' => '32', '_bindings' => array('src' => '__user_avatar_url', 'alt' => '__user_name'))),
                     $span(lang('Jane'), '', lang('First Name'), $bind('__user_first_name')),
                 ), array('_attrs' => array(
@@ -2294,7 +2303,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Playground'),
-    'version'     => '1.0.11',
+    'version'     => '1.0.12',
     'framework'   => 'bootstrap5',
     'order'       => 15,
     'icon'        => 'bi-emoji-smile',

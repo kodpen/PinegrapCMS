@@ -116,11 +116,11 @@ if ($currencies) {
                 <td class="align-middle text-start action-buttons">
                     <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                 </td>
-                <td class="chart_label align-middle">' . h($currency['name']) . '</td>
+                <td class="chart_label align-middle">' . h(pg_currency_label($currency['name'])) . '</td>
                 <td class="align-middle text-center">' . $output_base_check_mark . '</td>
                 <td class="align-middle text-center">' . h($currency['code']) . '</td>
                 <td class="align-middle text-center">' . $currency['symbol'] . '</td>
-                <td class="align-middle text-start">' . h($currency['exchange_rate']) . '</td>
+                <td class="align-middle text-start">' . pg_format_number((float) $currency['exchange_rate'], 5) . '</td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' => $currency['created_timestamp'])) . $created_username . '</td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' => $currency['last_modified_timestamp'])) . $last_modified_username . '</td>
             </tr>';

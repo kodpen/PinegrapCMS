@@ -2740,9 +2740,10 @@
         $('#pg_pb_giftcard_effects').toggleClass('d-none', !this.checked);
     }).trigger('change');
 
-    /* ^^code^^ and friends are replaced by submit_order.php and appear nowhere
-       else in the interface. Clicking inserts at the caret, because these go
-       inside a sentence rather than at the end of one. */
+    /* ^^code^^ and friends are replaced when the gift card is sent; the
+       buttons come from pg_pb_gift_card_variable_buttons(). Clicking inserts
+       at the caret, because these go inside a sentence rather than at the end
+       of one. */
     $(document).on('click', '.pg-pb-giftvar', function () {
 
         var $box   = $(this).closest('[data-pg-pb-giftvar-target]');

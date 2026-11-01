@@ -809,6 +809,9 @@ function ws_screen_config($viewer, $mode, $extra = array())
     $strings = array_merge($strings, ws_meetings_js_strings());
     // Flows and their canvas (flows.php, assets/js/workspace_flow.js).
     $strings = array_merge($strings, ws_flow_js_strings());
+    // The canvas core under the flow canvas (includes/fn/graph_canvas.php,
+    // assets/js/pg_graph_canvas.js).
+    $strings = array_merge($strings, pg_graph_canvas_js_strings());
 
     return array_merge(array(
         'mode'         => (string) $mode,
@@ -984,9 +987,11 @@ function ws_screen_assets($viewer, $mode, $extra = array())
     }
 
     // The flow canvas (assets/js/workspace_flow.js), started by workspace.js
-    // once the team is known.
+    // once the team is known, after the canvas core it draws with
+    // (assets/js/pg_graph_canvas.js).
     if ($mode === 'flows') {
-        $output .= pg_js_bundle_tags('assets/js/workspace_flow.min.js');
+        $output .= pg_js_bundle_tags('assets/js/pg_graph_canvas.min.js')
+            . pg_js_bundle_tags('assets/js/workspace_flow.min.js');
     }
 
     return $output;

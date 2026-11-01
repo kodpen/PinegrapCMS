@@ -61,29 +61,23 @@ if (!$_POST) {
 
     validate_token_field();
 
+    // The shared readers of the price amount and the stock quantity.
+    require_once(PG_FUNCTIONS_DIR . '/includes/explorer/handle_products_bulk.php');
+
 	$edit_change_price_method = (string) ($_POST['edit_change_price_method'] ?? '');
 	$price_value = 0;
 	$price_value_refused = false;
 	if(in_array($edit_change_price_method, array('1', '2', '3', '4'), true)){
-		$raw_price_value = trim((string) ($_POST['edit_price_value'] ?? ''));
-		// remove commas from an amount
-		if(($edit_change_price_method == '1') || ($edit_change_price_method == '2')){
-			$raw_price_value = str_replace(',', '', $raw_price_value);
-		}
-		// The amount or percentage is a number above zero, as in the Catalog
-		// Manager's bulk price change: the method says which way it goes.
-		if(($raw_price_value === '') || !is_numeric($raw_price_value) || ((float) $raw_price_value <= 0)){
+		// The amount is read the panel's way (1.250 on a Turkish panel is
+		// twelve hundred and fifty), as the Catalog Manager's bulk price change
+		// reads it; it is a number above zero, the method says which way it goes.
+		$price_value = pg_products_mass_price_value($edit_change_price_method, $_POST['edit_price_value'] ?? '');
+		if($price_value === null){
+			$price_value = 0;
 			$price_value_refused = true;
 			$edit_change_price_method = '';
 			// Numbered, so a tax rate error in the same submit does not replace it.
 			$liveform->add_error(lang('Enter an amount for the price change.'));
-		}
-		else if(($edit_change_price_method == '1') || ($edit_change_price_method == '2')){
-			// convert price from dollars to cents
-			$price_value = (int) round((float) $raw_price_value * 100);
-		}
-		else {
-			$price_value = (float) $raw_price_value;
 		}
 	}
 
@@ -91,7 +85,6 @@ if (!$_POST) {
     // panel is twelve hundred), with the Catalog Manager's reader. A figure
     // that is not a whole count of zero or more stops the whole change
     // before any product is touched: MySQL would keep 1 of 1.200.
-    require_once(PG_FUNCTIONS_DIR . '/includes/explorer/handle_products_bulk.php');
 
     $quantity_process = (string) ($_POST['edit_inventory_quantity_process'] ?? '');
     $quantity_value = null;
@@ -139,6 +132,7 @@ if (!$_POST) {
                     }
 
                     $number_of_unchanged_price_products = 0;
+                    $number_of_too_large_price_products = 0;
                     $number_of_price_changed_products = 0;
                     $number_of_binned_products = 0;
                     $change_besides_price = pg_products_mass_change_besides_price($_POST, $quantity_value);
@@ -223,8 +217,15 @@ if (!$_POST) {
 							$change = pg_bulk_price_change($row['price'], $edit_change_price_method, $price_value);
 							$price = $change['price'];
 							if($change['refused']){
-								$number_of_unchanged_price_products++;
-								$liveform->mark_error('Update Error', lang(array( 'string'=>'{var:1} product(s) were not changed because their price would fall to zero or below.','vars'=>array($number_of_unchanged_price_products) )) );
+								// A result past what products.price holds is
+								// refused with its own count, not cut to the top.
+								if ($change['too_large']) {
+									$number_of_too_large_price_products++;
+									$liveform->mark_error('Price Too Large', lang(array( 'string'=>'{var:1} product(s) were not changed because their new price would be too large.','vars'=>array($number_of_too_large_price_products) )) );
+								} else {
+									$number_of_unchanged_price_products++;
+									$liveform->mark_error('Update Error', lang(array( 'string'=>'{var:1} product(s) were not changed because their price would fall to zero or below.','vars'=>array($number_of_unchanged_price_products) )) );
+								}
 
 								// Nothing else was asked for this product: it
 								// is neither written nor counted as updated.

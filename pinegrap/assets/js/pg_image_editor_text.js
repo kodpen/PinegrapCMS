@@ -23,9 +23,6 @@
 
     var Editor = X.Editor, M = X.M, SVGNS = X.SVGNS, find = X.find, t = X.t, el = X.el, icon = X.icon, section = X.section, button = X.button;
 
-    var COLORS = ['#ffffff', '#1a1c1e', '#e53935', '#fb8c00', '#fdd835', '#43a047', '#1e88e5', '#8e24aa'];
-    var BACKGROUNDS = [['', 'textNone'], ['#ffffff', 'textWhite'], ['#000000', 'textDark'], ['rgba(0,0,0,0.5)', 'textSoft']];
-    var OUTLINES = [['', 'textNone'], ['#000000', 'textDark'], ['#ffffff', 'textWhite']];
     var SHADOWS = {
         soft: { color: 'rgba(0,0,0,0.55)', blur: 0.12, dx: 0.03, dy: 0.05 },
         hard: { color: 'rgba(0,0,0,0.8)', blur: 0, dx: 0.05, dy: 0.06 },
@@ -590,23 +587,10 @@
         return seg;
     }
 
-    // The colour swatches and a colour of one's own; pick(colour, live)
-    // with live true while the colour picker is being dragged.
-    function colorRow(now, pick, label) {
-        var row = el('div', { class: 'pgie-tcolors', role: 'group', 'aria-label': label });
-        var custom = el('input', { type: 'color', class: 'pgie-tcolor pgie-tcolor-own', title: t('textOwnColor'), 'aria-label': t('textOwnColor'), value: /^#[0-9a-f]{6}$/i.test(now) ? now : '#000000' });
-
-        COLORS.forEach(function (c) {
-            var on = same(now, c);
-
-            row.appendChild(el('button', { type: 'button', class: 'pgie-tcolor' + (on ? ' on' : ''), style: 'background: ' + c, title: c, 'aria-label': c, 'aria-pressed': on ? 'true' : 'false', onclick: function () { pick(c, false); } }));
-        });
-
-        custom.addEventListener('input', function () { pick(custom.value, true); });
-        custom.addEventListener('change', function () { pick(custom.value, false); });
-        row.appendChild(custom);
-
-        return row;
+    // A colour of the core's palette (X.swatches()); its transparent
+    // swatch is none ('' or null by the field).
+    function colorOrNone(c) {
+        return (c === 'transparent') ? '' : c;
     }
 
     function px(size) {
@@ -623,7 +607,7 @@
             return el('button', { type: 'button', class: on ? 'on' : '', 'aria-pressed': on ? 'true' : 'false', title: label, 'aria-label': label, onclick: function () { set(patch); } }, [icon(iconName)]);
         };
 
-        body.appendChild(section(t('textColor'), colorRow(l.color, function (c, live) { set({ color: c }, live ? 'text-color' : null, live); }, t('textColor'))));
+        body.appendChild(X.swatches(t('textColor'), l.color, function (c, live) { set({ color: c }, live ? 'text-color' : null, live); }));
 
         FONTS.map(function (f) {
             return { value: f[0], label: t(f[1]) };
@@ -653,7 +637,9 @@
         style.appendChild(toggle(l.align === 'right', t('textAlignRight'), 'textRight', { align: 'right' }));
         body.appendChild(section(t('textStyle'), style));
 
-        body.appendChild(section(t('textBackground'), choices(BACKGROUNDS, l.bg || '', function (v) { set({ bg: v }); })));
+        body.appendChild(X.swatches(t('textBackground'), l.bg || 'transparent', function (c, live) {
+            set({ bg: colorOrNone(c) }, live ? 'text-bg' : null, live);
+        }, { transparent: true }));
 
         body.appendChild(el('button', { type: 'button', class: 'pgie-more' + (this.textMore ? ' on' : ''), 'aria-expanded': this.textMore ? 'true' : 'false', onclick: function () {
             self.textMore = !self.textMore;
@@ -681,14 +667,14 @@
         body.appendChild(this.textSlider(t('textSpacing'), [-10, 50], Math.round((Number(l.spacing) || 0) * 100), px(size), function (n) { return { spacing: n / 100 }; }, 'text-spacing'));
 
         if (l.bg) {
-            body.appendChild(section(t('textBackgroundColor'), colorRow(l.bg, function (c, live) { set({ bg: c }, live ? 'text-bg' : null, live); }, t('textBackgroundColor'))));
             body.appendChild(this.textSlider(t('textPadding'), [0, 100], Math.round((Number(l.pad) || 0) * 100), px(size), function (n) { return { pad: n / 100 }; }, 'text-pad'));
             body.appendChild(this.textSlider(t('textRadius'), [0, 100], Math.round((Number(l.radius) || 0) * 100), px(size), function (n) { return { radius: n / 100 }; }, 'text-radius'));
         }
 
-        body.appendChild(section(t('textOutline'), choices(OUTLINES, outline ? outline.color : '', function (v) {
-            set({ outline: v ? { color: v, width: outline ? outline.width : 0.04 } : null });
-        })));
+        body.appendChild(X.swatches(t('textOutline'), outline ? outline.color : 'transparent', function (c, live) {
+            c = colorOrNone(c);
+            set({ outline: c ? { color: c, width: outline ? outline.width : 0.04 } : null }, live ? 'text-outline-color' : null, live);
+        }, { transparent: true }));
 
         if (outline) {
             body.appendChild(this.textSlider(t('textOutlineWidth'), [1, 20], Math.round((Number(outline.width) || 0.04) * 100), px(size), function (n) {

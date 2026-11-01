@@ -6,6 +6,9 @@ description: A receipt is never allocated to a return document: erp_post_receipt
 ## Can a receipt be allocated to a return?
 - No. `erp_post_receipt()` reads the named document with its `doc_type` and refuses anything but an invoice ("That document is not an invoice; a receipt does not close it."); `POST /erp/receipts` answers 422 `invoice_id` with the same sentence. A return closes against the invoice it returns (`erp_invoice_returned_total()`), never with money.
 
+## What does Record a Receipt opened from an invoice do with one it cannot close?
+- `add_erp_receipt.php?invoice_id=` asks `erp_receipt_invoice_refusal()` before drawing the form and shows only its reason and a link back (cancelled, a return, the other side, already paid). The refusal names a cancelled invoice as cancelled ("That invoice has been cancelled.") before "already closed" (#4439, PR #4517). Amount boxes there and on Edit Expense take `erp_money_input()`: the figure without symbol, the adornment names the currency.
+
 ## What went wrong before?
 - Before (#1063, PR #1132) the row was read without `doc_type`, so `erp_invoice_open_amount()`'s return gate never held: a return's whole total counted as open, the money settled the return (marked paid) and the invoice stayed open. Checked on the sandbox in a rolled-back transaction.
 

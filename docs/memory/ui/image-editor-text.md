@@ -24,4 +24,4 @@ module: image_editor
 - `pg_image_editor_layers.js` asks a type's `resize(start, box, h)` for the fields a box handle changes. A text scales its size by the height from a corner or the top or bottom, by the width from a side, keeping the opposite corner or side in its turned frame (`textResize()`).
 
 ## What does the panel hold?
-- Colour (eight swatches and a picker), font tiles, size, bold, italic, alignment, background (none, white, dark, soft); under Details: weight, line height, letter spacing, the background's colour, padding and corners, outline and its width, shadow (soft, hard, glow). Select's panel shows the same controls for selected texts. Labels: `pg_image_editor_strings_text()`.
+- Colour, font tiles, size, bold, italic, alignment, background colour (transparent is none); under Details: weight, line height, letter spacing, padding and corners, outline colour (transparent is none) and width, shadow (soft, hard, glow). The colours are the core's palette, `X.swatches()` (`image-editor-parts.md`), not one of the tool's own. Select's panel shows the same controls for selected texts. Labels: `pg_image_editor_strings_text()`.

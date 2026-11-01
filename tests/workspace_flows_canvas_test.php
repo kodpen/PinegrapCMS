@@ -804,7 +804,9 @@ function ws_flows_canvas_test_node(array $names, $script)
 		return null;
 	}
 
-	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+	// The canvas core's helpers (assets/js/pg_graph_canvas.js) are looked
+	// up after the flow canvas's own functions.
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js') . "\n" . (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_graph_canvas.js'));
 	$body = ws_flows_canvas_test_stage() . "\n";
 
 	// The kit's Turkish-aware fold, taken from workspace.js as the page has it.
@@ -1921,7 +1923,7 @@ function test_workspace_flows_canvas_every_kind_has_one_group()
 
 	pg_assert_true((bool) preg_match('/\n    var KINDS = \{\n.*?\n    \};\n/s', $source, $kinds), 'KINDS is in the script');
 	pg_assert_true((bool) preg_match('/\n    var PALETTE = \[\n.*?\n    \];\n/s', $source, $palette), 'PALETTE is in the script');
-	pg_assert_contains("el('div', 'wsf-node ' + kindClasses(node.kind))", $source, 'a box takes its group class');
+	pg_assert_contains('className: kindClasses(node.kind)', $source, 'a box takes its group class (canvas.box())');
 	pg_assert_contains("el('li', 'wsf-outline-item ' + kindClasses(node.kind))", $source, 'an outline entry takes its group class');
 
 	$result = ws_flows_canvas_test_node(
@@ -2031,15 +2033,18 @@ function test_workspace_flows_canvas_group_colours()
 	pg_assert_same(array(), array_values(array_diff($used[1], array_keys(ws_flows_canvas_test_groups()))), 'only groups the CSS colours');
 }
 
-// The canvas's own sizes (BOX_W, BOX_H, DATA_ROW), as the script has them.
+// The canvas's own sizes as the scripts have them: BOX_W and BOX_H of the
+// canvas core (pg_graph_canvas.js), DATA_ROW of the flow canvas.
 function ws_flows_canvas_test_sizes()
 {
+	$core = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_graph_canvas.js'));
 	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
 
-	preg_match_all('/^    var (BOX_W|BOX_H|DATA_ROW) = [^\n]+;$/m', $source, $found);
-	pg_assert_same(3, count($found[0]), 'the box and row sizes are in the script');
+	preg_match_all('/^    var (BOX_W|BOX_H) = [0-9]+;$/m', $core, $boxes);
+	preg_match_all('/^    var DATA_ROW = [^\n]+;$/m', $source, $rows);
+	pg_assert_same(3, count($boxes[0]) + count($rows[0]), 'the box and row sizes are in the scripts');
 
-	return implode("\n", $found[0]) . "\n";
+	return implode("\n", array_merge($boxes[0], $rows[0])) . "\n";
 }
 
 // The row under a box never grows wider than its box: for 1 to 6 values

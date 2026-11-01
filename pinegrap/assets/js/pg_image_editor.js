@@ -211,6 +211,43 @@
         return b;
     }
 
+    // The shared palette: a colour and its label's key.
+    var COLORS = [['#ffffff', 'colorWhite'], ['#1a1c1e', 'colorBlack'], ['#e53935', 'colorRed'], ['#fb8c00', 'colorOrange'],
+        ['#fdd835', 'colorYellow'], ['#43a047', 'colorGreen'], ['#1e88e5', 'colorBlue'], ['#8e24aa', 'colorPurple']];
+
+    // A panel section of colour swatches; value is the chosen colour.
+    // pick(color, live): live is true while the colour input moves (one undo
+    // step), false for a swatch or the input's change. opts.custom (default
+    // true) adds the colour input; opts.transparent puts a transparent
+    // swatch first.
+    function swatches(label, value, pick, opts) {
+        var row = el('div', { class: 'pgie-swatches' }), now = String(value || '').toLowerCase(), list = COLORS.slice();
+
+        opts = opts || {};
+
+        if (opts.transparent) {
+            list.unshift(['transparent', 'colorTransparent']);
+        }
+
+        list.forEach(function (c) {
+            var on = (c[0] === now);
+
+            row.appendChild(el('button', { type: 'button', class: 'pgie-swatch' + ((c[0] === 'transparent') ? ' pgie-checker' : '') + (on ? ' on' : ''),
+                style: (c[0] === 'transparent') ? null : 'background: ' + c[0], 'aria-pressed': on ? 'true' : 'false', 'aria-label': t(c[1]), title: t(c[1]),
+                onclick: function () { pick(c[0], false); } }));
+        });
+
+        if (opts.custom !== false) {
+            var input = el('input', { type: 'color', class: 'pgie-colorin', value: /^#[0-9a-f]{6}$/.test(now) ? now : '#000000', 'aria-label': t('customColor'), title: t('customColor') });
+
+            input.addEventListener('input', function () { pick(input.value, true); });
+            input.addEventListener('change', function () { pick(input.value, false); });
+            row.appendChild(input);
+        }
+
+        return section(label, row);
+    }
+
     function panelTheme() {
         var a = document.documentElement.getAttribute('data-bs-theme');
 
@@ -940,14 +977,36 @@
         this.hint.textContent = t(Editor.hints[this.tool] || 'hintView');
         this.undoBtn.disabled = !this.history.canUndo();
         this.redoBtn.disabled = !this.history.canRedo();
+
+        var before = this.panelControls(), index = before.nodes.indexOf(document.activeElement);
+
         this.renderPanel();
         this.renderView();
 
         // A button the redraw took away leaves the focus on the page body,
-        // where the editor's keys no longer arrive: the stage takes it back.
+        // where the editor's keys no longer arrive: its new copy in the panel
+        // takes it back, else the stage.
         if (!this.dialog.contains(document.activeElement)) {
-            this.stage.focus({ preventScroll: true });
+            var after = this.panelControls(), back = after.nodes[M.focusMatch(before.list, index, after.list)];
+
+            // A button the change disabled (Bring to front, at the front) cannot hold it.
+            (back && !back.disabled ? back : this.stage).focus({ preventScroll: true });
         }
+    };
+
+    // The panel's focusable controls in order, each described for
+    // M.focusMatch() by its tag and label (name) and its tag and classes (cls).
+    Editor.prototype.panelControls = function () {
+        var nodes = this.panel ? Array.prototype.slice.call(this.panel.querySelectorAll('button, input, select, textarea, a[href], [tabindex]')) : [];
+
+        return {
+            nodes: nodes,
+            list: nodes.map(function (n) {
+                var label = n.getAttribute('aria-label') || n.getAttribute('title') || (n.textContent || '').trim();
+
+                return { name: n.tagName + '|' + (n.type || '') + '|' + label, cls: n.tagName + '|' + (n.getAttribute('class') || '') };
+            })
+        };
     };
 
     // ---- document changes ----
@@ -1061,6 +1120,12 @@
         }
 
         if (this.confirmBox || this.saveMenu || typing) {
+            return;
+        }
+
+        // A focused slider or radio button steps its own value with the
+        // arrows, Home, End and the page keys; Ctrl+Z still reaches the editor.
+        if (owns && !mod && (k !== 'Enter') && (k !== ' ')) {
             return;
         }
 
@@ -1496,7 +1561,7 @@
         // For the tool files: the editor and the helpers they build with.
         parts: {
             Editor: Editor, M: M, SVGNS: SVGNS, icons: ICONS, config: config, find: find, t: t, el: el, icon: icon,
-            section: section, tile: tile, decimal: decimal, shapeRadius: shapeRadius, button: button
+            section: section, tile: tile, decimal: decimal, shapeRadius: shapeRadius, button: button, colors: COLORS, swatches: swatches
         }
     };
 }());

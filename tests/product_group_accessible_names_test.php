@@ -62,8 +62,13 @@ function test_product_group_accessible_names_option_label_and_default_option()
 
 	$group = product_group_accessible_names_js_function('init_product_group_attributes');
 	pg_assert_contains('<label class="form-label" for="default_option_id_\' + attribute.id + \'">', $group);
-	pg_assert_contains('<label class="input-group-text" for="default_option_id_\' + attribute.id + \'">', $group);
+	pg_assert_contains('<label class="input-group-text pg-attribute-default-label" for="default_option_id_\' + attribute.id + \'">', $group);
 	pg_assert_contains('<select id="default_option_id_\' + attribute.id + \'" class="default_option_id form-control">', $group);
+	pg_assert_contains('<div class="input-group pg-attribute-default">', $group);
+
+	// Below 576px the add-on hides so the select keeps its width (#4448).
+	$css = product_group_accessible_names_source('assets/css/backend.src.css');
+	pg_assert_contains(".pg-attribute-default > .pg-attribute-default-label {\n    display: none;", $css);
 }
 
 function test_product_group_accessible_names_image_tile_and_barcode_dialogs()

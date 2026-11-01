@@ -5,8 +5,12 @@
  * Tests for the Cafe design template (includes/design_templates/pinegrap-cafe.php)
  * and the parts the Clinic template shares with it: the sample events fall
  * on their weekdays and are still to come, the catering guest count is a
- * whole number from 1, the menu price field explains its format, and the
- * consent boxes link the privacy page both templates carry.
+ * whole number from 1, the menu price field explains its format, the
+ * consent boxes link the privacy page both templates carry, the Cafe's
+ * comment threads are drawn by the Comments widget (the post's comments,
+ * the messages of a booking and of a catering request, a conversation's
+ * replies, the reply e-mail's card) and its Google Reviews widget stands
+ * beside the sample words of the home page.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -17,6 +21,8 @@
 if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
+
+require_once(__DIR__ . '/helpers/template_threads.php');
 
 // A template as the loader reads it, read once per run.
 function _test_tpl_cafe_load($id)
@@ -165,4 +171,68 @@ function test_design_template_cafe_clinic_privacy_page()
 			pg_assert_true($linked, $id . '/' . $box . ': the consent links the privacy page');
 		}
 	}
+}
+
+// The Cafe's threads: widget key => its page, the record view above it,
+// its options, Reply and Share, the follow boxes.
+function _test_tpl_cafe_threads()
+{
+	$private = array('order' => 'oldest', 'featured' => 'none', 'layout' => 'flat', 'max_depth' => 1, 'per_page' => 0);
+	return array(
+		'post_comments' => array('page' => 'blog_post', 'view' => 'blog_post', 'reply' => true, 'watch' => true,
+			'options' => array('order' => 'oldest', 'featured' => 'first', 'layout' => 'threaded', 'max_depth' => 2, 'per_page' => 20)),
+		'reservation_messages' => array('page' => 'reservation_view', 'view' => 'reservation_detail', 'reply' => false, 'watch' => false, 'options' => $private),
+		'quote_messages' => array('page' => 'quote_view', 'view' => 'quote_detail', 'reply' => false, 'watch' => false, 'options' => $private),
+		'conversation_replies' => array('page' => 'conversation', 'view' => 'conversation', 'reply' => false, 'watch' => false, 'options' => $private),
+	);
+}
+
+// No fixed comments block is left; the widget kinds the Cafe ships.
+function test_design_template_cafe_comment_widgets()
+{
+	$tpl = _tpl_threads_tpl('pinegrap-cafe');
+	pg_assert_same('1.1.0', $tpl['version'], 'the version moved');
+	_tpl_threads_check_no_fixed_block('pinegrap-cafe', array(
+		'conversation_replies' => 'comments', 'email_comment' => 'comments', 'post_comments' => 'comments',
+		'quote_messages' => 'comments', 'reservation_messages' => 'comments',
+	));
+	pg_assert_same('google_reviews', pg_sw_widget_kind($tpl['widgets']['google_reviews']['config']), 'and a Google Reviews widget');
+	// Each thread keeps its page's comment settings: signed-in writers,
+	// published at once, its label and its e-mail.
+	$labels = array('blog_post' => lang('Comment'), 'reservation_view' => lang('Message'), 'quote_view' => lang('Message'), 'conversation' => lang('reply'));
+	foreach ($labels as $key => $label) {
+		$c = _tpl_threads_page($tpl, $key)['comments'];
+		pg_assert_same($label, $c['label'], $key . ': its label');
+		pg_assert_true($c['login'] && $c['auto_publish'], $key . ': signed in, published at once');
+	}
+}
+
+function test_design_template_cafe_comment_threads()
+{
+	foreach (_test_tpl_cafe_threads() as $key => $t) {
+		_tpl_threads_check_thread('pinegrap-cafe', $key, $t);
+		_tpl_threads_check_draws('pinegrap-cafe', $key, $t);
+	}
+	// A booking's and a request's messages are as private as the record:
+	// the view above them shows it to its guest only.
+	$tpl = _tpl_threads_tpl('pinegrap-cafe');
+	foreach (array('reservation_detail', 'quote_detail', 'conversation') as $view) {
+		pg_assert_same('submitter_only', $tpl['widgets'][$view]['config']['access_control'], $view . ': the guest\'s own');
+	}
+}
+
+function test_design_template_cafe_comment_email()
+{
+	_tpl_threads_check_email_card('pinegrap-cafe', 'email_comment', 'email_reply', array('blog_post', 'reservation_view', 'quote_view', 'conversation'));
+}
+
+function test_design_template_cafe_google_reviews()
+{
+	_tpl_threads_check_google_reviews('pinegrap-cafe', 'google_reviews', 'home', lang('Testimonials'));
+	// The sample words stay, before the widget.
+	$tpl = _tpl_threads_tpl('pinegrap-cafe');
+	$home = json_encode(_tpl_threads_page($tpl, 'home')['tree'], JSON_UNESCAPED_UNICODE);
+	$sample = strpos($home, lang('“Friday evenings at Riverside: live music, a cold brew and the sea. Hard to beat.”'));
+	$widget = strpos($home, '"templateWidget":"google_reviews"');
+	pg_assert_true($sample !== false && $widget !== false && $sample < $widget, 'the sample words stay, the widget after them');
 }

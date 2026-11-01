@@ -698,7 +698,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $output_erp_fx_currencies .= '
                                 <div class="form-field d-inline-grid me-5">
                                     <input class="check" type="checkbox" name="erp_fx_currencies[]" id="erp_fx_currency_' . h($erp_fx_code) . '" value="' . h($erp_fx_code) . '"' . (in_array($erp_fx_code, $erp_fx_selected, true) ? ' checked="checked"' : '') . ' />
-                                    <label class="" for="erp_fx_currency_' . h($erp_fx_code) . '">' . h($erp_fx_code . ' - ' . $erp_fx_currency['name']) . '</label>
+                                    <label class="" for="erp_fx_currency_' . h($erp_fx_code) . '">' . h($erp_fx_code . ' - ' . pg_currency_label($erp_fx_currency['name'])) . '</label>
                                 </div>';
     }
     if ($output_erp_fx_currencies === '') {
@@ -1205,9 +1205,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
       
         foreach($currencies as $currency){
             if($iyzipay_protected_currency_code == $currency['code']){
-                $output_iyzipay_protected_currency_select_options .= '<option value="' . h($currency['code']) . '" selected="selected">' . h($currency['code']) . ' - ' . h($currency['name']) . '</option>';
+                $output_iyzipay_protected_currency_select_options .= '<option value="' . h($currency['code']) . '" selected="selected">' . h($currency['code']) . ' - ' . h(pg_currency_label($currency['name'])) . '</option>';
             }else{
-                $output_iyzipay_protected_currency_select_options .= '<option value="' . h($currency['code']) . '" >' . h($currency['code']) . ' - ' . h($currency['name']) . '</option>';
+                $output_iyzipay_protected_currency_select_options .= '<option value="' . h($currency['code']) . '" >' . h($currency['code']) . ' - ' . h(pg_currency_label($currency['name'])) . '</option>';
             }
 
         }

@@ -275,10 +275,12 @@ function pg_panel_backend_search($request, $action)
     };
 
     // ── Pages (folders the viewer may edit) ──────────────────────────────
+    // Pages, forms and files in the Recycle Bin are left out everywhere
+    // below: they are found on the Recycle Bin screen only.
     $rows = db_items(
         "SELECT page_id AS id, page_name AS name, page_type AS type
          FROM page
-         WHERE page_name LIKE '$s'" . pg_panel_search_scope_sql('folder', $role, 'page_folder', $folder_ids) . "
+         WHERE page_name LIKE '$s'" . pg_panel_search_scope_sql('folder', $role, 'page_folder', $folder_ids) . pg_designer_not_binned_sql('page_folder') . "
          " . $rank('page_name', 'page_id') . "
          LIMIT $per_limit"
     );
@@ -289,7 +291,7 @@ function pg_panel_backend_search($request, $action)
     // ── Files (folders the viewer may edit) ──────────────────────────────
     // Design files only for designers and up, and never a document the ERP
     // module keeps: edit_file.php refuses both.
-    $file_where = pg_panel_search_scope_sql('folder', $role, 'folder', $folder_ids);
+    $file_where = pg_panel_search_scope_sql('folder', $role, 'folder', $folder_ids) . pg_designer_not_binned_sql('folder');
     if (!$can_design) {
         $file_where .= ' AND design = 0';
     }
@@ -362,7 +364,7 @@ function pg_panel_backend_search($request, $action)
             "SELECT page_id AS id, page_name AS name
              FROM page
              WHERE " . pg_form_page_sql('page') . "
-               AND page_name LIKE '$s'" . pg_panel_search_scope_sql('folder', $role, 'page_folder', $folder_ids) . "
+               AND page_name LIKE '$s'" . pg_panel_search_scope_sql('folder', $role, 'page_folder', $folder_ids) . pg_designer_not_binned_sql('page_folder') . "
              " . $rank('page_name', 'page_id') . "
              LIMIT $per_limit"
         );

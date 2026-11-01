@@ -314,14 +314,24 @@ var pgLazyOptions = {
 };
 
 // The button the panel's Ctrl+S presses in a form: the one named by the
-// form's submitshortcut attribute, default submit_save. Empty when the form
-// has none; the shortcut then submits nothing and no button gets its hint.
+// form's submitshortcut attribute; without it submit_save, or submit_create
+// on a create screen that has no submit_save. Empty when the form has none;
+// the shortcut then submits nothing and no button gets its hint.
 function pgSaveShortcutButton($form) {
-    var name = $form.attr('submitshortcut') || 'submit_save';
+    var names = $form.attr('submitshortcut') ? [$form.attr('submitshortcut')] : ['submit_save', 'submit_create'];
+    var $buttons = $form.find('button');
 
-    return $form.find('button').filter(function () {
-        return this.name === name;
-    }).first();
+    for (var i = 0; i < names.length; i++) {
+        var $button = $buttons.filter(function () {
+            return this.name === names[i];
+        }).first();
+
+        if ($button.length) {
+            return $button;
+        }
+    }
+
+    return $();
 }
 
 // Swaps the loading.gif of pictures that have not loaded yet for the still
@@ -4707,8 +4717,8 @@ function init_product_group_attributes(properties) {
         $('.attributes').append(
             '<div class="col-12 my-3 attribute attribute_' + attribute.id + '" data-attribute-id="' + attribute.id + '">\
                 <label class="form-label" for="default_option_id_' + attribute.id + '">' + h(attribute.name) + '</label>\
-                <div class="input-group">\
-                    <label class="input-group-text" for="default_option_id_' + attribute.id + '">' + label['Default Option'] + ':</label>\
+                <div class="input-group pg-attribute-default">\
+                    <label class="input-group-text pg-attribute-default-label" for="default_option_id_' + attribute.id + '">' + label['Default Option'] + ':</label>\
                     <select id="default_option_id_' + attribute.id + '" class="default_option_id form-control">\
                         <option value="">-' + label['None'] + '-</option>\
                         ' + output_options + '\

@@ -25,4 +25,4 @@ description: A person's own secret iCal address as a read-only layer on their Wo
 - The layer is placed by `ws_personal_ical_place()` as events with `id` 0, `kind` other, `layer` (calendar name), `readonly` true, only when the calendar shows the reader's own view (person filter 0 or themselves).
 
 ## What is left?
-- Google write: `workspace-google-calendar-write.md`. Microsoft write and reading changes back: `plans/reverse-oauth-leftovers.md`.
+- Google and Outlook write: `workspace-calendar-write.md`. Reading changes back: decision #4490, `plans/reverse-oauth-leftovers.md`.

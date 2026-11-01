@@ -5,7 +5,7 @@ description: News Portal template (pinegrap-news): what it ships, the Articles f
 
 ## What does it ship?
 - 53 pages: front page, 9 sections, Opinion, `blog`, `blog_post` (article), `author` (`?author=`), search, static and legal pages; accounts; the author desk (`blog_new`, `my_articles`, `submission`) in `contributors`; `staff*` in `private`; 11 e-mail pages.
-- `contributors` is a private child of `private`. Shared: topbar, masthead, sections_nav, breaking, footer, staff_bar, email_header/footer. Tests: `tests/design_template_news_test.php`. Shapes: [[design-template-news-layout]].
+- `contributors` is a private child of `private`. Shared: topbar, masthead, sections_nav, breaking, footer, staff_bar, email_header/footer. Tests: `tests/design_template_news_test.php`. Shapes: [[design-template-news-layout]]. Comment threads (1.1.0, Comments widget): [[design-template-newsroom-comments]].
 
 ## What is the Articles form contract (reused by the magazine)?
 - Form `News Articles`, page `blog_new`, widget `article_form`: section (role category), title (title), summary (description), dateline, body (rich), cover_image (media), image_caption, image_credit, tags, byline, byline_bio, byline_photo, note_to_editors, rights. Office use only: status, publish_date (date and time, not required), placement, breaking, reading_time, correction.
@@ -29,8 +29,8 @@ description: News Portal template (pinegrap-news): what it ships, the Articles f
 - `_pg_tpl_preview_tree()` fills each loop three times: the lead grid fits, the featured row shows 3 of 4 (idea: `min(3, max_results)`). Cards take a sample of their own section.
 
 ## What can the platform not do yet?
-- A byline link to the writer's archive; "more in this section"; offsets; share links; a status-change e-mail; author edits after sending; an empty message for an unknown writer; feeds dated by publish_date ([[design-template-news-publishing]]).
-- Core a11y follow-ups: list-search icon buttons unnamed; `account_security` starter: outline-danger "log out everywhere" 3.4:1 in dark, h4/h6 right after the page's h2; comment form's watcher e-mail and `publish` controls unlabelled; the rich-text iframe has no title.
+- "More in this section"; offsets; share links; a status-change e-mail; author edits after sending; an empty message for an unknown writer; feeds dated by publish_date ([[design-template-news-publishing]]).
+- Core a11y follow-ups: list-search icon buttons unnamed; `account_security` starter: outline-danger "log out everywhere" 3.4:1 in dark, h4/h6 right after the page's h2.
 
 ## Which owner question does it inherit?
 - CKEditor's `oembed` plugin loads unpinned jQuery 1.x from ajax.googleapis.com on `/submit-an-article`, the first page with a visitor rich field ([[custom-form-rich-text]]).

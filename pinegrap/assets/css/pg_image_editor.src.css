@@ -773,6 +773,51 @@
   color: var(--pgie-tx);
 }
 
+/* The shared colour palette (swatches() in pg_image_editor.js). */
+.pgie-swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.pgie .pgie-swatch,
+.pgie .pgie-colorin {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 2px solid var(--pgie-surface);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--pgie-line);
+  cursor: pointer;
+  flex: none;
+}
+
+.pgie .pgie-swatch.on {
+  box-shadow: 0 0 0 2px var(--pgie-sel);
+}
+
+.pgie .pgie-colorin {
+  background: conic-gradient(#e53935, #fdd835, #43a047, #1e88e5, #8e24aa, #e53935);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.pgie .pgie-colorin::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.pgie .pgie-colorin::-webkit-color-swatch {
+  border: 0;
+  opacity: 0;
+}
+
+.pgie .pgie-colorin::-moz-color-swatch {
+  border: 0;
+  opacity: 0;
+}
+
 .pgie-range {
   width: 100%;
   margin: 0;
@@ -1020,6 +1065,69 @@
 
 /* -- Draw (pg_image_editor_draw.js) -- */
 
+.pgie-kinds {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.pgie .pgie-kind {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  padding: 8px 0 6px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 12px;
+  background: var(--pgie-surface);
+  color: var(--pgie-muted);
+  font-size: 11px;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.pgie .pgie-kind span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pgie .pgie-kind:hover {
+  background: var(--pgie-hover);
+  color: var(--pgie-tx);
+}
+
+.pgie .pgie-kind.on {
+  border-color: var(--pgie-pline);
+  background: var(--pgie-pw);
+  color: var(--pgie-ink);
+}
+
+/* A line's ends and a box's corner-radius dot. */
+.pgie-sh.pgie-shx[data-h="a"],
+.pgie-sh.pgie-shx[data-h="b"] {
+  cursor: crosshair;
+}
+
+.pgie-sh.pgie-shx[data-h="radius"] {
+  border-color: #ffffff;
+  background: var(--pgie-sel);
+  cursor: nwse-resize;
+}
+
+.pgie-eraser {
+  position: absolute;
+  border: 1.5px solid var(--pgie-sel);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+}
+
+
 /* -- Text (pg_image_editor_text.js) -- */
 
 /* The typing box over a text: the layer's letters at the view's zoom, its
@@ -1049,42 +1157,6 @@
 .pgie-textedit::placeholder {
   color: currentColor;
   opacity: 0.5;
-}
-
-.pgie-tcolors {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.pgie .pgie-tcolor {
-  width: 26px;
-  height: 26px;
-  padding: 0;
-  border: 1px solid var(--pgie-line);
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-.pgie .pgie-tcolor.on {
-  box-shadow: 0 0 0 2px var(--pgie-surface), 0 0 0 4px var(--pgie-sel);
-}
-
-.pgie .pgie-tcolor-own {
-  background: conic-gradient(#e53935, #fdd835, #43a047, #1e88e5, #8e24aa, #e53935);
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.pgie .pgie-tcolor-own::-webkit-color-swatch-wrapper {
-  padding: 0;
-}
-
-.pgie .pgie-tcolor-own::-webkit-color-swatch,
-.pgie .pgie-tcolor-own::-moz-color-swatch {
-  border: 0;
-  border-radius: 50%;
-  opacity: 0;
 }
 
 .pgie-tfonts {
@@ -1134,14 +1206,6 @@
 
 .pgie .pgie-textweight {
   width: 100%;
-}
-
-/* On touch a colour is a finger's size. */
-@media (pointer: coarse) {
-  .pgie .pgie-tcolor {
-    width: 34px;
-    height: 34px;
-  }
 }
 
 /* -- Stickers and frames (pg_image_editor_sticker.js) -- */
@@ -1229,6 +1293,12 @@
    sheet above it. */
 
 @media (max-width: 599.98px) {
+  .pgie .pgie-swatch,
+  .pgie .pgie-colorin {
+    width: 30px;
+    height: 30px;
+  }
+
   .pgie-top {
     height: calc(52px + env(safe-area-inset-top));
     gap: 2px;

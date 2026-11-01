@@ -72,6 +72,10 @@ if ($_POST) {
 
         $liveform_document = new liveform('edit_erp_invoice');
         $liveform_document->add_notice(lang(array('string' => 'Delivery note {var:1} has been invoiced.', 'vars' => h($waybill['full_number']))));
+        $written_back = (array) ($result['written_back'] ?? array());
+        if (isset($written_back['invoice_shipment_date']) || isset($written_back['invoice_carrier'])) {
+            $liveform_document->add_notice(lang('The shipment date and the carrier were written onto the invoice, which had none.'));
+        }
         go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . (int) $result['invoice_id']);
     }
 

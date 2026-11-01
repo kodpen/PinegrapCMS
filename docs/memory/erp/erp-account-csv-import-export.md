@@ -29,3 +29,6 @@ Related: docs/memory/erp/erp-account-save-partial-writes.md
 
 ## Which words do the generic invoice and receipt CSVs write?
 - The panel's: the invoices file's status through `erp_invoice_status_label()`, the receipts file's method through `erp_export_payment_method_label()` (Cash, Bank transfer, Card, Cheque, Other); an unknown code is written as it is. The Paraşüt profiles keep their own value sets (#4320, bug #4290). Test: `tests/erp_export_csv_words_test.php`.
+
+## How does the receipts CSV show a cancelled receipt?
+- The receipt keeps its row and its cancellation (`doc_type = 'cancel'` whose `doc_id` is a collection or payment) gets one too: "Cancellation", amounts negative, the last column "Cancelled receipt ID" names the receipt, so the file adds up to the till ledgers. The cancel has its own id, so "not exported yet" brings it into the next file. Before PR #4516 (#4431) a cancelled payment read as a valid one.

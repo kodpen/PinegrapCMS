@@ -445,6 +445,23 @@ function pg_offer_gift_refuse($order_id, $offer_id, $offer_action_id)
     }
 }
 
+// The quantity a cart form posts for one line, as the classic cart reads it:
+// thousands separators (commas) and surrounding spaces dropped, then a whole
+// number is the new quantity and 0 takes the line out. Anything else (an
+// emptied box, a minus sign, a decimal, a typo, a list) is null: the line
+// keeps its quantity instead of being removed.
+function pg_cart_posted_quantity($raw)
+{
+    if (!is_string($raw)) {
+        return null;
+    }
+    $raw = trim(str_replace(',', '', $raw));
+    if (!preg_match('/^\d{1,9}$/', $raw)) {
+        return null;
+    }
+    return (int) $raw;
+}
+
 // The shopper took a line out of the cart: a quantity of 0 on the cart
 // screens. A gift the offer placed by itself is remembered as refused, then
 // the line goes the way every removal does (remove_order_item()): with its
@@ -3145,6 +3162,26 @@ function get_tax_inclusive_price($price, $taxable, $product_rate, $zone_rate, $t
 }
 
 /**
+ * The largest price products.price holds: a signed INT of minor units. The
+ * session is not strict, so MySQL would store this top for anything larger
+ * without a word; every price writer refuses a larger amount first.
+ */
+define('PG_PRODUCT_PRICE_MAX', 2147483647);
+
+/**
+ * True when a price in minor units is more than products.price holds. A float
+ * is compared as a float, so an amount past the integer range of a 32-bit
+ * build is not wrapped before the check.
+ *
+ * @param int|float $minor
+ * @return bool
+ */
+function pg_product_price_too_large($minor)
+{
+    return ((float) $minor > PG_PRODUCT_PRICE_MAX);
+}
+
+/**
  * The price a bulk product edit (edit_products.php) gives a product.
  *
  * Methods: '1' decrease by an amount, '2' increase by an amount, '3' decrease
@@ -3154,11 +3191,13 @@ function get_tax_inclusive_price($price, $taxable, $product_rate, $zone_rate, $t
  * negative value), so a free product raised by a percentage stays free. A
  * refused change keeps the old price. A price below zero would become an
  * order line below zero, which an e-document provider refuses on an invoice.
+ * A result above PG_PRODUCT_PRICE_MAX is refused too ('too_large'), rather
+ * than cut by the column to its top.
  *
  * @param int|string       $price   products.price, minor units
  * @param int|string       $method  '1' to '4'; any other changes nothing
  * @param int|float|string $value   minor units for '1' and '2' (rounded to whole ones), a percentage for '3' and '4'
- * @return array  ['price' => int, the new price or the old one when refused, 'refused' => bool]
+ * @return array  ['price' => int, the new price or the old one when refused, 'refused' => bool, 'too_large' => bool]
  */
 function pg_bulk_price_change($price, $method, $value)
 {
@@ -3166,31 +3205,38 @@ function pg_bulk_price_change($price, $method, $value)
     $method = (string) $method;
 
     if (!in_array($method, array('1', '2', '3', '4'), true)) {
-        return array('price' => $price, 'refused' => false);
+        return array('price' => $price, 'refused' => false, 'too_large' => false);
     }
 
+    // Worked out as a float and bounded before the int cast, which wraps on
+    // a 32-bit build.
     switch ($method) {
         case '1':
-            $new = $price - (int) round((float) $value);
+            $new = $price - round((float) $value);
             break;
         case '2':
-            $new = $price + (int) round((float) $value);
+            $new = $price + round((float) $value);
             break;
         case '3':
-            $new = (int) round(((100 - (float) $value) / 100) * $price);
+            $new = round(((100 - (float) $value) / 100) * $price);
             break;
         default:
-            $new = (int) round(((100 + (float) $value) / 100) * $price);
+            $new = round(((100 + (float) $value) / 100) * $price);
             break;
     }
 
+    if (pg_product_price_too_large($new)) {
+        return array('price' => $price, 'refused' => true, 'too_large' => true);
+    }
+
+    $new = (int) $new;
     $decrease = ($method === '1') || ($method === '3');
 
     if (($new <= 0) && ($decrease || ($new < $price))) {
-        return array('price' => $price, 'refused' => true);
+        return array('price' => $price, 'refused' => true, 'too_large' => false);
     }
 
-    return array('price' => $new, 'refused' => false);
+    return array('price' => $new, 'refused' => false, 'too_large' => false);
 }
 
 
@@ -7810,6 +7856,37 @@ function pg_format_number($amount, $decimals = 2)
     $s = pg_number_separators();
     $amount = is_numeric($amount) ? (float) $amount : 0.0;
     return number_format($amount, (int) $decimals, $s['decimal'], $s['thousands']);
+}
+
+/**
+ * A stored currency name for display. The starter data stores the names
+ * below in English (the Turkish starter data too), so they go through lang();
+ * a name the site owner wrote is printed as written. The stored value is
+ * never changed.
+ *
+ * @param string $name
+ * @return string
+ */
+function pg_currency_label($name)
+{
+    $name = (string) $name;
+
+    switch ($name) {
+        case 'US Dollar':
+            return lang('US Dollar');
+        case 'British pound':
+            return lang('British pound');
+        case 'Canadian dollar':
+            return lang('Canadian dollar');
+        case 'Euro':
+            return lang('Euro');
+        case 'Japanese yen':
+            return lang('Japanese yen');
+        case 'Australian dollar':
+            return lang('Australian dollar');
+    }
+
+    return $name;
 }
 
 /**
@@ -13023,6 +13100,68 @@ function pg_products_import_row_decimals_refused($row, $decimal_positions)
     }
 
     return false;
+}
+
+/**
+ * The quantity of a barcode stock scan (barcode_increase_inventory.php,
+ * barcode_decrease_inventory.php): a whole count from 1 to 1000000, read the
+ * panel's way (pg_normalize_amount()), or null. The screen's method gives the
+ * direction, so a minus sign is refused, and so is a fraction: the stock
+ * column is an integer.
+ *
+ * @param mixed $value
+ * @return int|null
+ */
+function pg_barcode_scan_quantity($value)
+{
+    if (!is_scalar($value) || is_bool($value)) {
+        return null;
+    }
+
+    $value = trim((string) $value);
+
+    if (($value === '') || (strpos($value, '-') === 0)) {
+        return null;
+    }
+
+    $value = pg_normalize_amount($value);
+
+    if (!is_numeric($value) || ((float) $value != floor((float) $value)) || ((float) $value < 1) || ((float) $value > 1000000)) {
+        return null;
+    }
+
+    return (int) $value;
+}
+
+/**
+ * Sets the out-of-stock mark of a product the import has just written, by
+ * the product screens' rule (pg_pb_apply_stock_flag(), product_builder.php,
+ * which the caller loads): tracked with 0 in stock is marked, stamped only
+ * on the way in. Read from the stored row, since a file may carry only one
+ * of the tracking and stock columns, or an empty cell that keeps the column.
+ *
+ * @param int $product_id
+ * @return void
+ */
+function pg_products_import_stock_flag($product_id)
+{
+    $product_id = (int) $product_id;
+    $stored = db_item("SELECT inventory, inventory_quantity, out_of_stock FROM products WHERE id = '" . e($product_id) . "'");
+
+    if (!$stored) {
+        return;
+    }
+
+    $stock = array('inventory' => $stored['inventory'], 'inventory_quantity' => $stored['inventory_quantity']);
+    pg_pb_apply_stock_flag($stock, $product_id);
+
+    if (($stock['out_of_stock'] === (string) $stored['out_of_stock']) && !isset($stock['out_of_stock_timestamp'])) {
+        return;
+    }
+
+    db("UPDATE products SET out_of_stock = '" . e($stock['out_of_stock']) . "'"
+        . (isset($stock['out_of_stock_timestamp']) ? ", out_of_stock_timestamp = '" . e((int) $stock['out_of_stock_timestamp']) . "'" : '')
+        . " WHERE id = '" . e($product_id) . "'");
 }
 
 /**

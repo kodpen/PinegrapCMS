@@ -14,7 +14,7 @@ description: Long-Read Magazine template (pinegrap-magazine): what it ships, the
 ## What does it add or drop?
 - Adds: the office pick list `issue` and the author's `pull_quote`; placements Cover story, Editor's letter, Editors' pick; a desk list With the writer (`Changes requested`; Being edited is `In review` only); Last activity on every desk row (`newest_activity_date_and_time`, relative).
 - Drops: dateline, breaking strip, tips form, page and e-mails (a pitch is a contact topic), a Standards page (About `#how-we-work`), series.
-- Comment labels: `Letter` on the story (held, sign-in), `Message` on `submission` and `conversation`.
+- Comment labels: `Letter` on the story (held, sign-in), `Message` on `submission` and `conversation`. Threads on the Comments widget since 1.1.0: [[design-template-newsroom-comments]]. Bylines link to `?author=` (`$byline_link()`, `.pm-byline`) since 1.2.0, as the news template's ([[design-template-news]]).
 
 ## Why do the samples carry no reading time?
 - 17 stories of about 200 words (three issues of five or six, one Online only). A computed time would say "1 min read" on every cover; an invented one is false data. The "N min read" line shows once an editor fills `reading_time`.
@@ -27,5 +27,5 @@ description: Long-Read Magazine template (pinegrap-magazine): what it ships, the
 - The DB-less preview repeats every loop three times; `.pm-one article:not(:first-of-type){display:none}` shows one cover, quote and letter there. Live lists have `max_results 1`. On the canvas each row has its own `.sd-wrap`, so every row shows (editor only).
 
 ## What can the platform not do yet?
-- A byline link to the contributor archive (needs a link with a parameter); "more from this issue" (no current-record filter); per-value sitemap entries; a status-change e-mail; author edits after sending; italic web fonts (the loader asks `:wght@` only); `ugc` on author links and blocking remote pictures in visitor HTML ([[custom-form-rich-text]]).
+- "More from this issue" (no current-record filter); per-value sitemap entries; a status-change e-mail; author edits after sending; italic web fonts (the loader asks `:wght@` only); `ugc` on author links and blocking remote pictures in visitor HTML ([[custom-form-rich-text]]).
 - Lists fail closed on a missing or invalid filter row since #1299 ([[form-list-filters-fail-closed]]).
