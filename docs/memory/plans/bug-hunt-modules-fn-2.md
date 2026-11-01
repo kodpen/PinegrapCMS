@@ -180,7 +180,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `widgets_parts_forms`: open
 
-- `widgets_photo_gallery`: open
+- `widgets_photo_gallery`: taken (Arzu)
 
 - `widgets_placement`: done (#4736)
 
