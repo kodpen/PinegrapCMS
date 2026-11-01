@@ -135,12 +135,20 @@ function pg_dashboard_widget_23($request, $user)
         // half the time grades on its good half. Understating is
         // the safer error for a badge that has to be trusted, and
         // the average is still visible in the list underneath.
+        //
+        // Only real pages are graded. A request that answered 400 or
+        // above is stored under its status code ("[410]"), and a
+        // removed address that crawlers keep asking for is not a page
+        // of the site: graded, it named "[410]" the slowest page and
+        // took the verdict with it. The pattern takes exactly the
+        // three-digit buckets; "[home]" is the home page and stays.
         $pf_worst = mysqli_fetch_assoc(db_q(
             "SELECT label, SUM(hits) AS hits, MIN(min_ms) AS floor_ms,
                     SUM(total_ms) / GREATEST(SUM(hits), 1) AS avg_ms
              FROM perf_stats
              WHERE hour_start >= ?
                AND area = 'frontend'
+               AND label NOT LIKE '[___]'
              GROUP BY label
              HAVING SUM(hits) >= 3
              ORDER BY floor_ms DESC, label ASC
@@ -155,6 +163,7 @@ function pg_dashboard_widget_23($request, $user)
                  FROM perf_stats
                  WHERE hour_start >= ?
                    AND area = 'frontend'
+                   AND label NOT LIKE '[___]'
                  GROUP BY label
                  ORDER BY floor_ms DESC, label ASC
                  LIMIT 1", array((int) $pf_day_ago)
@@ -167,7 +176,8 @@ function pg_dashboard_widget_23($request, $user)
         // Below this there is not enough traffic to judge anything,
         // and a confident verdict from four requests is worse than
         // admitting the sample is too small.
-        $pf_enough = ($pf_hits >= 10);
+        // Traffic made only of error responses has no page to grade.
+        $pf_enough = ($pf_hits >= 10) && ($pf_worst_label !== '');
 
         if (!$pf_enough) {
             $pf_grade = lang('Not enough data');
@@ -334,7 +344,8 @@ function pg_dashboard_widget_23($request, $user)
 
             // Front-end labels are URLs and can be very long; show
             // the tail, which is the part that identifies the page.
-            $pf_label = $pf_page['label'];
+            // An error-response bucket is named as one, not as "[410]".
+            $pf_label = pg_perf_label_display($pf_page['label']);
 
             if (mb_strlen($pf_label) > 34) {
                 $pf_label = '…' . mb_substr($pf_label, -33);
@@ -343,7 +354,7 @@ function pg_dashboard_widget_23($request, $user)
             $pf_rows .= '
             <div class="mb-3">
                 <div class="d-flex align-items-center justify-content-between" style="gap:6px">
-                    <span class="text-truncate" style="font-size:.75rem" title="' . h($pf_page['label']) . '">' . h($pf_label) . '</span>
+                    <span class="text-truncate" style="font-size:.75rem" title="' . h(pg_perf_label_display($pf_page['label'])) . '">' . h($pf_label) . '</span>
                     <span class="fg-secondary flex-shrink-0" style="font-size:.6875rem">' . pg_format_number($pf_page_avg, 0) . ' ms</span>
                 </div>
                 <div class="progress mt-1" style="height:4px;background:var(--pg-bg-2)" aria-hidden="true">
