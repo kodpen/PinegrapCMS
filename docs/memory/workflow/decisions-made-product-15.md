@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-15
-description: Decisions list, product part 15 (2026-10-31 afternoon on): cancelled order's affiliate commission voided; image editor redacted save keeps versions, original plus 10 saves, site button, SVG animation
+description: Decisions list, product part 15 (2026-10-31 on): affiliate commission voided with a cancelled order; image editor redacted save, retention, site button, SVG animation; P7 drops the fixed api2 key
 ---
 
 ## Where are the rules and the earlier parts?
@@ -14,3 +14,6 @@ description: Decisions list, product part 15 (2026-10-31 afternoon on): cancelle
 - Retention: the original plus the last 10 saves per file, no setting; deleting the file deletes them; their bytes count in the File Manager's Disk Usage.
 - The live site's edit button opens the editor modal on the page; its bundle loads only for a signed-in editor, nothing for visitors. Refused: a jump to the File Manager, removing the button.
 - E19 stays: a few CSS keyframe presets per layer (fade, slide, pulse, spin) written into the saved SVG, no script; the plan's last step.
+
+## Does P7 remove the fixed api2 key before the v1 switch is on? (#4396)
+- Owner (2026-11-01): yes, as the plan says, reversing the architect's "keep it until the api2 branches go". api2 was updated on the server and no longer requires the `API` key, so `includes/fn/update.php`, `software_update_check.php` and `includes/fn/output.php` call it without the key while `PG_VENDOR_API_V1` is off, and the version and licence checks keep working; P7's test "no `api2?API=` in `pinegrap/`" stays. `download_assistant.php` keeps its key in every case (#3205, decision 2).
