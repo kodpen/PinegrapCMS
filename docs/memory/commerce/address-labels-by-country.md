@@ -15,7 +15,8 @@ module: shipping
 - At render, `pg_address_labels_tree_stamp()` finds the label beside the city and state controls, writes the current country's words and stamps `data-pg-addr-label` (country control name), `-codes`, `-tr`, `-other`. `pg_ship_to_district_script()` swaps the label's first text node when that country control changes (and on load).
 - Express order: `_eo_fit_district_field()` stamps shipping and billing (country: the recipient's stored one, else `_eo_default_country()`); the server-drawn billing rows and per-recipient form use `pg_address_labels_html()`.
 - Shipping address, billing information, affiliate sign-up, account profile and address book: `pg_sa_address_labels($tree, $prefix, $country)` before the fill and the state split; each prints the script.
-- JS starters still carry plain City / State / Province (A2 of `plans/address-fields-by-country.md`); the canvas is not stamped.
+
+- The editor's starters and canvas: `designer/address-labels-in-editor.md`.
 
 ## How do classic pages do it?
 - The six `get_*.php` address pages append `pg_address_labels_init_props($city_id)` to their `software.init_country()` call: `city_id`, `address_labels` (TR codes, words). `software.address_labels()` (`frontend.src.js`, hand-patched in `frontend.min.js`) matches `label[for]` of the city, state text box and pick list, and swaps on each country change. Custom and generated layouts (`includes/templates/*.php`) need a `<label for>` on the city; the default markup got one where it had a bare `<td>`.

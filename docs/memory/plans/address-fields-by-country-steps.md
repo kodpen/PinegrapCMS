@@ -13,8 +13,7 @@ description: Steps A1-A8 of plans/address-fields-by-country.md: site labels and 
   - `includes/erp/waybills.php`: the order's ship-to district from `ship_tos.district` first.
   - Tests: `tests/tr_district_box_test.php` (the rule turns), the labels, the waybill pick. Memory: `commerce/tr-district-plate-code.md`; new `commerce/address-labels-by-country.md`.
 
-- A2 (S) Editor starters and canvas. After A1.
-  - `style_designer.src.js`: `_buildExpressOrderStarterTree()`, the recipient list block, `_buildStarterTree()` cases `account_profile`, `address_book`, `billing_information`, `affiliate_sign_up_form`, `shipping_address_and_arrival` carry A1's stamps; the canvas shows the labels of the store's default country. `build_js.php`, `node --check`. Design templates open these widgets as starters: no template edit, no version bump.
+- A2 (S) done (#4759). Editor starters and canvas. Now in `commerce/address-labels-by-country.md`.
 
 - A3 (S) State pick list in the account profile and address book widgets. After A2.
   - Both draw the state as a text box, their classic pages switch to the pick list: add the list control and `pg_sa_state_script()` (`widgets_account.php`, A2's starters); a saved tree without the list gets it by a fit.
