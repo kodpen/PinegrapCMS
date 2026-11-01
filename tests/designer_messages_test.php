@@ -273,3 +273,52 @@ function test_designer_messages_every_renderer_names_its_node()
 	}
 	pg_assert_true($renderers >= 25, 'renderers found: ' . $renderers);
 }
+
+// The editor's Preview is a background render (pg_seo_rendering()): its
+// Messages node neither prints nor uses up the session's pending messages,
+// which belong to the page the visitor or the panel shows next.
+function test_designer_messages_background_render_leaves_session()
+{
+	$saved = isset($_SESSION) ? $_SESSION : null;
+	$saved_seo = pg_seo_rendering();
+	$_SESSION = array('software' => array('liveforms' => array(
+		'1131' => array(0 => array('department' => array('error' => true, 'error_message' => 'Department is required'))),
+		'view_order' => array(0 => array('notices' => array('The order was cancelled.'))),
+	)));
+
+	pg_seo_rendering(true);
+	$unnamed = _render_tree_node(_test_msg_tree(''), 0);
+	$named   = _render_tree_node(_test_msg_tree('1131'), 0);
+	pg_seo_rendering($saved_seo);
+
+	pg_assert_same(false, strpos($unnamed, 'Department is required'), 'an unnamed node prints no other form error');
+	pg_assert_same(false, strpos($unnamed, 'The order was cancelled.'), 'nor a panel notice');
+	pg_assert_same(false, strpos($named, 'Department is required'), 'a named node prints nothing either');
+	pg_assert_true(isset($_SESSION['software']['liveforms']['1131']), 'the refused form keeps its state');
+	pg_assert_true(isset($_SESSION['software']['liveforms']['view_order']), 'the panel notice waits for its screen');
+
+	if ($saved === null) {
+		unset($_SESSION);
+	} else {
+		$_SESSION = $saved;
+	}
+}
+
+// A custom form whose fields are drawn on the page is named by the drawn
+// page: the request's page when a visitor opens it, the render context's
+// page_id in the editor's Preview, where no page is registered.
+function test_designer_messages_drawn_page_id_falls_back_to_render_context()
+{
+	$saved_ctx = pg_sw_render_context(array('email' => false, 'page_id' => 1131));
+	$preview = pg_sw_drawn_page_id();
+	pg_sw_render_context(array('email' => false));
+	$none = pg_sw_drawn_page_id();
+	pg_sw_render_context($saved_ctx);
+
+	if (pg_rendered_page() > 0) {
+		pg_assert_same(pg_rendered_page(), $preview, 'the registered page wins');
+	} else {
+		pg_assert_same(1131, $preview, 'the preview names the drawn page');
+		pg_assert_same(0, $none, 'no page, no name');
+	}
+}
