@@ -25,4 +25,7 @@ description: Variant-set product form model: template rows on the product group,
 - `pg_pb_copy_row()` works by `SELECT *` + dropping identity columns, NOT a written column list: `form_fields` accumulated columns over the years (`rss_field`, `quiz_question`, `contact_field`, `upload_folder_id`...) and a hand-kept list would silently stop copying the next added column.
 - `pg_pb_form_template_ready()`: on an install with new code but un-upgraded DB the feature silently disappears; a missing column does not error.
 
+## Why does `form_type` need a migration step? (#4461)
+- `form_type` was `ENUM('', 'custom', 'product', 'shipping', 'billing')` and 2026.4 never widened it, so the non-strict session stored every template row as `''`: `edit_field.php` reached no branch ("Query failed") and `pg_pb_apply_form_template()` found the template only when MySQL picked the `form_type` index. Decided (architect, 2026-11-01): a 2026.11.0 step appends `'product_group'` to the ENUM read from the column (`install_column_info()`, `install_modify_column()`, skipped when the value is there) and in the same step backfills `form_type = 'product_group'` on rows with `form_type = ''`, `product_group_id <> 0`, `product_id = 0`, `template_field_id = 0`. The starter dumps stay as they are: the installer runs the step.
+
 Related: docs/memory/commerce/form-fields-zero-id-query-trap.md

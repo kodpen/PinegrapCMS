@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-15
-description: Decisions list, product part 15 (2026-10-31 on): affiliate commission voided with a cancelled order; image editor redacted save, retention, site button, SVG animation; P7 drops the fixed api2 key
+description: Decisions list, product part 15 (2026-10-31 on): affiliate commission voided on cancel; image editor redacted save, retention, site button, SVG animation; P7 api2 key; cash tills never below zero
 ---
 
 ## Where are the rules and the earlier parts?
@@ -17,3 +17,6 @@ description: Decisions list, product part 15 (2026-10-31 on): affiliate commissi
 
 ## Does P7 remove the fixed api2 key before the v1 switch is on? (#4396)
 - Owner (2026-11-01): yes, as the plan says, reversing the architect's "keep it until the api2 branches go". api2 was updated on the server and no longer requires the `API` key, so `includes/fn/update.php`, `software_update_check.php` and `includes/fn/output.php` call it without the key while `PG_VENDOR_API_V1` is off, and the version and licence checks keep working; P7's test "no `api2?API=` in `pinegrap/`" stays. `download_assistant.php` keeps its key in every case (#3205, decision 2).
+
+## May a transfer, payment or expense take a cash till below zero? (#4460)
+- Owner (2026-11-01): no. A till of kind `cash` (the drawer, a received-cheque portfolio) refuses the outflow with the balance it holds; `bank`, `pos` and `credit_card` tills may go below zero (overdraft, credit). The cheque module's own postings skip the check: the given-cheques till lives below zero between the giving and the bank's payment (`erp/erp-cheques.md`). Adjustments stay free. No row of a running site is rewritten: a till already below zero refuses its next outflow until money comes in. The API gives the same refusal. No schema.
