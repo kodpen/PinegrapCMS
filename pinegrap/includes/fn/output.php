@@ -5173,7 +5173,7 @@ function license_check($properties = false)
 
                 $data = encode_json($request);
                 $subscription_key_clean = str_replace('-', '', SUBSCRIPTION_KEY);
-                $api_url = 'https://www.kodpen.com/api2?API=59593DS72233483322T669223344&REQUEST=license&LICENSE=' . h($subscription_key_clean);
+                $api_url = 'https://www.kodpen.com/api2?REQUEST=license&LICENSE=' . h($subscription_key_clean);
 
                 $response = false;
                 $curl_errno = 0;

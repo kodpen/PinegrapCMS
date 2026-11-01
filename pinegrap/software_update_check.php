@@ -114,7 +114,6 @@ function software_update_check($return_details = false)
 
 
     $data = encode_json($request);
-    $API = '59593DS72233483322T669223344';
     // Beta sites ask their own question; see pg_update_channel().
     $REQUEST = function_exists('pg_update_request_key') ? pg_update_request_key() : 'latest_version';
 
@@ -123,7 +122,7 @@ function software_update_check($return_details = false)
     // anonymous client to the receiving server's own firewall and gets
     // rejected. The certificate is verified with pg_curl_tls(); see there for
     // why this matters most on the update and licence channel.
-    $answer = pg_curl_run('POST', 'https://www.kodpen.com/api2?API=' . $API . '&REQUEST=' . $REQUEST, array(
+    $answer = pg_curl_run('POST', 'https://www.kodpen.com/api2?REQUEST=' . $REQUEST, array(
         'body'            => $data,
         'headers'         => array(
             'Content-Type: application/json',
