@@ -33941,7 +33941,7 @@ const StyleDesigner = (function () {
                 _sourceInfoHtml = _sdT('Choosing a type loads that type\'s ready-made layout and renames the widget after the type instead of <code>{var}</code>.', esc(_swAutoName('', null, { sid: sid })));
             } else if (_isErrorPage) {
                 // No source: the error arrives with the request.
-                _sourceInfoHtml = _sdT('The first published page carrying this widget becomes the site\'s error page: a page that cannot be found, and every other site error, is shown on it instead of the legacy error page. The <strong>Not found</strong> and <strong>Other error</strong> blocks are kept or dropped by the kind of error. Opened directly, the page answers 404.');
+                _sourceInfoHtml = _sdT('A page carrying this widget in a public folder becomes the site\'s error page, the published design\'s first (the home page\'s design); a page of a design kept as a draft in a private folder never does. A page that cannot be found, and every other site error, is shown on it instead of the legacy error page. The <strong>Not found</strong> and <strong>Other error</strong> blocks are kept or dropped by the kind of error. Opened directly, the page answers 404.');
             } else if (_isComments) {
                 _sourceInfoHtml = _sdT('Shows the comments of the page it is placed on, under that page\'s comment settings, and the form that adds one. Placed on several pages, it keeps one look and shows each page its own comments.');
             } else if (_isCommentsRecent) {
