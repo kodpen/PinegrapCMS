@@ -4222,6 +4222,7 @@
     "The {var:1} tool of @{var:2} does not say which page to fetch.": "@{var:2} sunucusunun {var:1} aracı hangi sayfayı getireceğini belirtmiyor.",
     "The {var:1} tool of @{var:2} takes no search words.": "@{var:2} sunucusunun {var:1} aracı arama sözcüğü almıyor.",
     "The {var:1} was retrieved ({var:2}).": "{var:1} geri getirildi ({var:2}).",
+    "The {var:1} was retrieved.": "{var:1} geri getirildi.",
     "The {var:1} who joined this week has not heard from you yet.": "Bu hafta katılan {var:1} senden henüz haber almadı.",
     "The {var:1} who joined this week have not heard from you yet.": "Bu hafta katılan {var:1} senden henüz haber almadı.",
     "The {var:1} you entered was not found. Please enter a different {var:1}.": "Girdiğiniz {var:1} bulunamadı. Lütfen farklı bir {var:1} girin.",
