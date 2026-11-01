@@ -199,6 +199,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-value-boxes.md: Value boxes of a flow (T3, decision #2415 1a): the constants box's rows, no arrows and no run row, how value boxes are read in a run, the check, the canvas form
 - workspace-flows-value-picker.md: "Add value" in a Flows box's side panel (data-passing D6): the text boxes with value chips, what the list offers, "empty if skipped", how a chip is kept and edited
 - workspace-flows-versions.md: A paused flow resumed on its live version, and a flow's published versions listed, read and brought back into the draft (flow_versions.php, API routes, no schema)
+- workspace-flows-visual-spec.md: Plan (owner request 2026-10-27, draft): the Flows canvas look in numbers; line widths, type colours and tones, thread sag and gaps, icons, run flags, the mini window, template motion
 - workspace-flows-wait-timeout.md: The timeout of a flow task box (F5d): hours to wait, the timeout outcome, counted from the claim, next look capped at the deadline, the task end first, why approvals have none
 - workspace-flows-webhook-body.md: The webhook box's answer as its body output (D9a, PR #2985, decision #2414-2): 16 KB UTF-8 cut, the run row's result budget, held back from readers who may not change the flow
 - workspace-flows-webhook-url.md: Numbers in a webhook box's address (decision #3410, PR #3471): path or query only, digits URL-encoded, refused in host or scheme and at run when not digits; canvas lights it for numbers
