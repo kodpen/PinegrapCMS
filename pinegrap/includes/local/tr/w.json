@@ -761,6 +761,7 @@
     "While this is on, an order paid by offline payment (not one put on account) is placed only with the code texted to its billing phone number, which must be a mobile number.": "Bu açıkken, çevrimdışı ödemeli bir sipariş (cari hesaba yazılan hariç) yalnızca fatura telefon numarasına SMS ile gönderilen kodla verilir; bu numara bir cep telefonu olmalıdır.",
     "While you were away": "Siz yokken",
     "While you were away: {var:1}.": "Siz yokken: {var:1}.",
+    "White": "Beyaz",
     "Who": "Kim",
     "Who Jane is, what she is good at and a few things she is very bad at.": "Ayşe kimdir, nelerde iyidir ve nelerde hiç iyi değildir.",
     "Who We Are": "Biz Kimiz",

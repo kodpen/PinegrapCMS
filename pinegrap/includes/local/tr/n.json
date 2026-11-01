@@ -738,6 +738,7 @@
     "No file was uploaded.": "Dosya yüklenmedi.",
     "No files found.": "Dosya bulunamadı.",
     "No files have been posted here yet.": "Buraya henüz dosya gönderilmedi.",
+    "No fill": "Yok",
     "No firewall events found for this period.": "Bu dönem için güvenlik duvarı olayı bulunamadı.",
     "No firewall events were recorded in this period.": "Bu dönemde güvenlik duvarı olayı kaydedilmedi.",
     "No flow can be started here. A flow is listed once it is published, started by hand, and its owner may write in this channel.": "Burada başlatılabilecek akış yok. Bir akış yayımlandığında, elle başlatılan bir akış olduğunda ve sahibi bu kanala yazabildiğinde listelenir.",
