@@ -33,6 +33,10 @@ function get_photo_gallery($properties) {
 
     $page_name = get_page_name($page_id);
 
+    // The Recycle Bin and the folders below it are never part of the gallery
+    // (as in the Photo Gallery widget, pg_gal_folder_shown()).
+    $gallery_bin_id = (int) pg_recycle_bin_folder_id();
+
     if ($layout_type == 'system') {
 
         // A gallery with no columns outputs an empty wrapper.
@@ -75,7 +79,7 @@ function get_photo_gallery($properties) {
                 }
                 
                 // get all child folders that are within the scope of this photo gallery
-                $all_child_folders = get_child_folders($folder_id, $folders);
+                $all_child_folders = pg_child_folders_outside_bin($folder_id, $folders, $gallery_bin_id);
                 
                 // if this folder is not in the array, then output an error
                 if (in_array($_GET['folder_id'], $all_child_folders) == FALSE) {
@@ -218,7 +222,11 @@ function get_photo_gallery($properties) {
             
             // Add each child folder to the array
             while ($row = mysqli_fetch_assoc($result)) {
-                $child_folders[] = $row;
+                // The Recycle Bin is not an album, even for staff, who skip the
+                // access check below.
+                if ((int) $row['id'] !== $gallery_bin_id) {
+                    $child_folders[] = $row;
+                }
             }
             
             // loop through the child folders and validate the user's access to view them
@@ -695,7 +703,7 @@ function get_photo_gallery($properties) {
             }
             
             // get all child folders that are within the scope of this photo gallery
-            $all_child_folders = get_child_folders($folder_id, $folders);
+            $all_child_folders = pg_child_folders_outside_bin($folder_id, $folders, $gallery_bin_id);
             
             // if this folder is not in the array, then output an error
             if (in_array($_GET['folder_id'], $all_child_folders) == FALSE) {
@@ -837,7 +845,11 @@ function get_photo_gallery($properties) {
         
         // Add each child folder to the array
         while ($row = mysqli_fetch_assoc($result)) {
-            $child_folders[] = $row;
+            // The Recycle Bin is not an album, even for staff, who skip the
+            // access check below.
+            if ((int) $row['id'] !== $gallery_bin_id) {
+                $child_folders[] = $row;
+            }
         }
         
         // loop through the child folders and validate the user's access to view them

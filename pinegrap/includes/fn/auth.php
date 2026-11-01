@@ -2939,6 +2939,31 @@ function get_child_folders($folder_id, $folders)
     return $child_folders;
 }
 
+// get_child_folders() without the Recycle Bin: the bin folder and every
+// folder below it are left out, so a gallery or a listing whose top is the
+// site's root never reaches deleted folders. A $bin_id of 0 (no bin) gives
+// the same answer as get_child_folders().
+function pg_child_folders_outside_bin($folder_id, $folders, $bin_id)
+{
+    $bin_id = (int) $bin_id;
+    $child_folders = array();
+
+    foreach ($folders as $folder) {
+        if ($folder['parent_folder_id'] != $folder_id) {
+            continue;
+        }
+
+        if (($bin_id > 0) && ((int) $folder['id'] === $bin_id)) {
+            continue;
+        }
+
+        $child_folders[] = $folder['id'];
+        $child_folders = array_merge($child_folders, pg_child_folders_outside_bin($folder['id'], $folders, $bin_id));
+    }
+
+    return $child_folders;
+}
+
 // Determine whether this server hosts the site.
 // Checks hostname(s) and server IP against known values.
 // Compatible with PHP 7.0 - 8.5.
