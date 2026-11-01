@@ -583,6 +583,9 @@ if (!$_POST) {
         // delete views for this submitted form that the form view directory feature uses
         pg_sfv_delete_views('submitted_form_id', $_POST['id']);
 
+        // delete the record's comments, their attachments, watchers and counters
+        pg_comment_delete_record_thread($_POST['id'] ?? 0);
+
         log_activity(lang(array('string'=>'submitted form (form name: {var:1}, reference code: {var:2}) was deleted','vars'=>array($form_name,$reference_code) )), $_SESSION['sessionusername']);
         
         // if the there is a form list view send to, then forward user there

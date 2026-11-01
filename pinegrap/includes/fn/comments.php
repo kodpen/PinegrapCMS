@@ -816,6 +816,96 @@ function pg_comment_refresh_record_info($page_id, $item_type, $item_id)
     return true;
 }
 
+/**
+ * Removes what hangs off a form record that is being deleted: its comments
+ * (on every page they were written on) with their notifications and the
+ * attachment files no other comment shares, its watchers, its "allow new
+ * comments" setting and its submitted_form_info counters. Called by every
+ * path that deletes a submitted form, beside pg_signature_delete() and
+ * pg_sfv_delete_views(): no foreign key ties these rows to forms, so without
+ * it the comments stayed in the panel's comment list with no page or record
+ * behind them.
+ *
+ * A failed query is logged and the remaining statements still run, so one
+ * failure does not leave more behind than needed.
+ *
+ * @param mixed $form_id forms.id
+ * @return string[] names of the attachment files that were deleted
+ */
+function pg_comment_delete_record_thread($form_id)
+{
+    $rid = pg_comment_record_id('submitted_form', $form_id);
+
+    if (($rid <= 0) || !class_exists('db') || !isset(db::$con) || !db::$con) {
+        return array();
+    }
+
+    $thread = "(item_type = 'submitted_form') AND (item_id = ?)";
+    $id = array((string) $rid);
+    $deleted = array();
+
+    $result = db_q(
+        "SELECT DISTINCT files.id, files.name
+        FROM comments
+        INNER JOIN files ON files.id = comments.file_id
+        WHERE (comments.item_type = 'submitted_form') AND (comments.item_id = ?)",
+        $id);
+
+    if ($result instanceof mysqli_result) {
+        $files = array();
+
+        while ($row = mysqli_fetch_assoc($result)) {
+            $files[] = $row;
+        }
+
+        mysqli_free_result($result);
+
+        foreach ($files as $file) {
+            // A duplicated page copies its comments with the same file_id,
+            // so the file stays while a comment outside this thread uses it.
+            $shared = _pg_comment_db_int(
+                "SELECT COUNT(*) FROM comments
+                WHERE (file_id = ?) AND NOT ((item_type = 'submitted_form') AND (item_id = ?))",
+                array((string) $file['id'], (string) $rid));
+
+            if ($shared !== 0) {
+                continue;
+            }
+
+            if (db_q("DELETE FROM files WHERE id = ?", array((string) $file['id']))) {
+                if (defined('FILE_DIRECTORY_PATH') && ((string) $file['name'] !== '')) {
+                    @unlink(FILE_DIRECTORY_PATH . '/' . basename((string) $file['name']));
+                }
+
+                $deleted[] = (string) $file['name'];
+            } else {
+                _pg_comment_db_failed();
+            }
+        }
+    } else {
+        _pg_comment_db_failed();
+    }
+
+    $statements = array(
+        "DELETE FROM notifications WHERE comment_id IN (SELECT id FROM (SELECT id FROM comments WHERE " . $thread . ") AS thread_comments)",
+        "DELETE FROM comments WHERE " . $thread,
+        "DELETE FROM watchers WHERE " . $thread,
+        "DELETE FROM allow_new_comments_for_items WHERE " . $thread,
+    );
+
+    foreach ($statements as $sql) {
+        if (!db_q($sql, $id)) {
+            _pg_comment_db_failed();
+        }
+    }
+
+    if (!db_q("DELETE FROM submitted_form_info WHERE submitted_form_id = ?", $id)) {
+        _pg_comment_db_failed();
+    }
+
+    return $deleted;
+}
+
 // The name a comment is stored under. Who may type one is decided by the
 // comment form (get_page_content.php) and add_comment.php alike: a visitor
 // who is not signed in, staff (role < 3), a member with edit rights on the
