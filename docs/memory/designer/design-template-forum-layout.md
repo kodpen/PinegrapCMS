@@ -24,4 +24,4 @@ description: Forum template look: pf- User Styles, Figtree and JetBrains Mono, t
 - E-mail frames are `data-bs-theme="light"`: inline colours are written for a light card, each `var()` with its fallback, and no CSS capitals (`pf-kicker` and `pf-label` stay out of e-mails: a Turkish i would print dotless).
 
 ## What does the installer preview show?
-- 14 public pages (home, forum, board, unanswered, docs, docs_section, search and the static pages) and the 11 e-mails. The preview repeats each loop three times (the e-mail comment card too) and prints each element's sample words (Date, 2 hours ago): never a calendar date, which would go stale on the canvas.
+- 15 public pages (home, forum, board, unanswered, docs, docs_section, blog, search and the static pages) and the 11 e-mails. The preview repeats each loop three times (the e-mail comment card too) and prints each element's sample words (Date, 2 hours ago): never a calendar date, which would go stale on the canvas.
