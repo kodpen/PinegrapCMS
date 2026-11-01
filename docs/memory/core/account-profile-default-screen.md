@@ -1,6 +1,6 @@
 ---
 name: account-profile-default-screen
-description: The default My Account Profile screen (no page of that type): page id read with a default, labels through lang(), countries named and ordered in the site language (#4793)
+description: The default My Account Profile screen (no page of that type): page id read with a default, labels through lang(), countries named and ordered in the site language (PR #4832)
 ---
 
 ## When is the default profile screen drawn?
@@ -12,4 +12,4 @@ description: The default My Account Profile screen (no page of that type): page 
 - The Country select listed the stored English names in their order ("Tunisia, Turkey, Turkmenistan") while checkout said "Tunus, Türkiye". It now builds its options like `get_express_order.php` and `get_billing_information.php`: `pg_geo_country_label()` per row, `pg_geo_sort_by_label()`, a shared label gets " (CODE)", the option value stays the code (`commerce/country-names-display.md`).
 
 ## What guards it?
-- `tests/my_account_profile_default_screen_test.php` (PR for #4793): the defaulted page id, the four labels through `lang()` with Turkish texts, the country options from the helpers and none keyed by the stored name.
+- `tests/my_account_profile_default_screen_test.php` (PR #4832, issue #4793): the defaulted page id, the four labels through `lang()` with Turkish texts, the country options from the helpers and none keyed by the stored name.
