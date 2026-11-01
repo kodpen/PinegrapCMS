@@ -164,3 +164,39 @@ function test_pdf_merge_takes_a_dompdf_document()
 
 	pg_assert_same(3, count(pdf_merge_test_pages(pg_pdf_merge(array($rendered, pdf_merge_test_two())))), 'one and two pages');
 }
+
+// Compressed stream data may end in a CR or LF byte of its own: only the
+// one end-of-line before "endstream" is cut, so the object stream still
+// inflates and the pages it holds are not lost.
+function test_pdf_merge_keeps_an_object_stream_ending_in_a_line_byte()
+{
+	foreach (array("\n", "\r") as $byte) {
+		$stream = '';
+
+		for ($pad = 0; $pad < 100000; $pad++) {
+			$text = "2 0 << /Type /Pages /Kids [3 0 R] /Count 1 /MediaBox [0 0 283 425] /Pad (" . $pad . ") >>\n";
+			$stream = gzcompress($text);
+
+			if (substr($stream, -1) === $byte) {
+				break;
+			}
+		}
+
+		pg_assert_same($byte, substr($stream, -1), 'a stream ending in ' . bin2hex($byte));
+		pg_assert_same($text, pg_pdf_stream_data("<< /Filter /FlateDecode /Length " . strlen($stream) . " >>\nstream\n" . $stream . "\nendstream"), 'inflated whole');
+		pg_assert_same($text, pg_pdf_stream_data("<< /Filter /FlateDecode /Length 12 0 R >>\nstream\n" . $stream . "\r\nendstream"), 'inflated whole without a direct length');
+
+		$page = "BT /F1 12 Tf 10 10 Td (LINE) Tj ET";
+		$pdf = pdf_merge_test_document(array(
+			1 => "<< /Type /Catalog /Pages 2 0 R >>",
+			3 => "<< /Type /Page /Parent 2 0 R /Contents 4 0 R >>",
+			4 => "<< /Length " . strlen($page) . " >>\nstream\n" . $page . "\nendstream",
+			5 => "<< /Type /ObjStm /N 1 /First 4 /Filter /FlateDecode /Length " . strlen($stream) . " >>\nstream\n" . $stream . "\nendstream",
+		), 1);
+		$skipped = array();
+		$merged = pg_pdf_merge(array($pdf), $skipped);
+
+		pg_assert_same(array(), $skipped, 'not left out');
+		pg_assert_same(1, count(pdf_merge_test_pages($merged)), 'its page kept');
+	}
+}
