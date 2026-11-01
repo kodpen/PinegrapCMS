@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-15
-description: Decisions list, product part 15 (2026-10-31 afternoon on): cancelled order's affiliate commission voided; image editor redacted save keeps versions, original plus 10 saves, site button, SVG animation
+description: Decisions list, product part 15 (2026-10-31 afternoon on): cancelled order's commission voided; image editor redaction and retention; design templates finished (comments, events, testimonials)
 ---
 
 ## Where are the rules and the earlier parts?
@@ -14,3 +14,7 @@ description: Decisions list, product part 15 (2026-10-31 afternoon on): cancelle
 - Retention: the original plus the last 10 saves per file, no setting; deleting the file deletes them; their bytes count in the File Manager's Disk Usage.
 - The live site's edit button opens the editor modal on the page; its bundle loads only for a signed-in editor, nothing for visitors. Refused: a jump to the File Manager, removing the button.
 - E19 stays: a few CSS keyframe presets per layer (fade, slide, pulse, spin) written into the saved SVG, no script; the plan's last step.
+
+## Design templates finished: comment threads, events, testimonials (2026-11-01)
+- Owner, 2026-11-01, so the templates ship with no temporary stand-ins. (a) Every template moves its comment threads, public and private (conversation, desk or submission, Café reservation and quote, Clinic appointment, the forum's three private pages), from the fixed comments block to the Comments widget; a comment e-mail page gets the widget's card and keeps its System region. (b) The bookshop's events become form records the business adds in the panel, as the Café's. (c) A template's hard-coded testimonials stay as sample text, with a Google Reviews widget beside them that shows once configured. (d) The forum template gets the standard blog pages. (e) The hello template's product page gets reviews.
+- Installed sites keep their pages: rows are never reused, no migration. Shop templates: `designer/design-template-shop-comments.md`.
