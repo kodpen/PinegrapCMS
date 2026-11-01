@@ -297,3 +297,19 @@ function test_backup_estimate_bytes_leaves_out_rowless_and_skipped_tables()
 	pg_assert_same(0.0, pg_backup_estimate_bytes(array('visitors' => 5000000)), 'only left-out tables');
 	pg_assert_same(16384.0, pg_backup_estimate_bytes(array('visitors_stats' => 16384)), 'a name close to a left-out one counts');
 }
+
+// The dump reads the tables in the site connection's character set. Read as
+// utf8 (three bytes), every emoji or other four-byte character stored in a
+// utf8mb4 column comes out of the server as "?" and the backup loses it.
+function test_backup_dump_charset_follows_the_site_connection()
+{
+	pg_assert_same('utf8mb4', pg_backup_dump_charset('utf8mb4'));
+	pg_assert_same('utf8', pg_backup_dump_charset('utf8'));
+	pg_assert_same('utf8', pg_backup_dump_charset('utf8mb3'));
+	pg_assert_same('utf8mb4', pg_backup_dump_charset(''));
+	pg_assert_same('utf8mb4', pg_backup_dump_charset(false));
+
+	$settings = pg_backup_dump_settings('utf8mb4');
+
+	pg_assert_same('utf8mb4', $settings['default-character-set']);
+}
