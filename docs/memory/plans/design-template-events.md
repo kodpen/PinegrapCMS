@@ -18,11 +18,11 @@ description: Plan for the Events and Conferences template (pinegrap-events): eve
 
 ## Which steps are there?
 
-- 1 Data and public pages: `parts.php` (builders, the conference data, notice, account bar, header, footer, register band, page shells, form fields) and `pages_public.php` (home, programme, speakers, venue, about; `google_reviews`); the test. **Done (#4595).**
+- 1 Data and public pages: `parts.php`, `pages_public.php` (home, programme, speakers, venue, about; `google_reviews`), the test. **Done (#4595).**
 
-- 2 Events and registration: `events.php` (events, event_view, event_new with samples, registration form, registration_view, my_registrations, `staff_registrations`, `home_events`, `events_list`, privacy, registration e-mails, `email_reply`; parts.php gains the comment thread, staff bar and page, `$page_link`) and `mail.php`. **Done (#4612).**
+- 2 Events and registration: `events.php`, `mail.php`; parts.php gained the comment thread, staff bar and page, `$page_link`. **Done (#4612).**
 
-- 3a Tickets: `tickets.php` (catalog group and pass products, tickets page, `ticket_passes`, product, cart, checkout, receipt and its e-mail). After 2.
+- 3a Tickets: `tickets.php` (catalog group and pass products, `shippable => false`, tickets page, `ticket_passes`, `cart_link`, product, cart, checkout, order, `email_order`; returns `catalog` for step 5). **Done (#PR).**
 
 - 3b Standard: `standard.php` (contact, inbox, newsletter, news and post, search, error, message e-mails, `newsletter_band`, `home_posts`; newsletter and post parts join parts.php). After 2, beside 3a.
 
