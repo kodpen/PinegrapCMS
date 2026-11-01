@@ -69,17 +69,22 @@ function pg_gal_photo_alt($description, $name)
 /**
  * The folder a file lies in and every folder above it, the folders whose
  * photo gallery page shows the file (a gallery shows its own folder and
- * opens the albums below it). A loop in the parents ends the walk.
+ * opens the albums below it). A loop in the parents ends the walk. A file
+ * in the Recycle Bin or a folder in it is shown by no gallery (none opens
+ * the bin), so the walk meeting the bin gives none.
  *
  * @param int      $folder_id
  * @param callable $parent_of folder id => parent folder id (0 at the top)
+ * @param int      $bin_id    the Recycle Bin folder (0 for none)
  * @return int[]
  */
-function pg_gal_folders_showing($folder_id, $parent_of)
+function pg_gal_folders_showing($folder_id, $parent_of, $bin_id = 0)
 {
     $chain = array();
     $folder_id = (int)$folder_id;
+    $bin_id = (int)$bin_id;
     while ($folder_id > 0 && !in_array($folder_id, $chain, true)) {
+        if ($folder_id === $bin_id) return array();
         $chain[] = $folder_id;
         $folder_id = (int)$parent_of($folder_id);
     }
