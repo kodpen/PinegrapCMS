@@ -144,7 +144,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `mail_parse`: open
 
-- `mail_queue`: open
+- `mail_queue`: taken by LS
 
 - `maintenance_mode`: open
 
