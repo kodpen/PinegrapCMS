@@ -45,6 +45,9 @@ $join_billing_countries = '';
 $join_shipping_states = '';
 $join_shipping_countries = '';
 
+// Set by the advanced filters on a ship-to field; the ship_tos join follows it.
+$shipping = false;
+
 $liveform = new liveform('view_orders');
 
 $user = validate_user();
@@ -95,27 +98,10 @@ if (isset($_SESSION['software']['ecommerce']['view_orders']['date_type']) == fal
     $_SESSION['software']['ecommerce']['view_orders']['date_type'] = 'order_date';
 }
 
-// Default range: a month ago to today. Each date part is checked on its own:
-// the year math and mktime() below throw a TypeError for a missing or
-// non-numeric value, the year select loops forever on a non-numeric stop year,
-// and since the value is kept in the session, one bad address would otherwise
-// break the list for the rest of the session.
-$date_defaults = array(
-    'start_month' => date('m', time() - 2678400),
-    'start_day'   => date('d', time() - 2678400),
-    'start_year'  => date('Y', time() - 2678400),
-    'stop_month'  => date('m'),
-    'stop_day'    => date('d'),
-    'stop_year'   => date('Y'),
-);
-
-foreach ($date_defaults as $key => $value) {
-    if (!preg_match('/^\d{1,4}$/', (string) ($_SESSION['software']['ecommerce']['view_orders'][$key] ?? ''))) {
-        $_SESSION['software']['ecommerce']['view_orders'][$key] = $value;
-    }
-}
-
-$_SESSION['software']['ecommerce']['view_orders'] = pg_list_period_ordered($_SESSION['software']['ecommerce']['view_orders']);
+// A month ago to today, worked out on every request, unless the user picked
+// a range (pg_list_period_state()); a non-numeric date part falls back to the
+// default, since the year math and mktime() below throw a TypeError for one.
+$_SESSION['software']['ecommerce']['view_orders'] = pg_list_period_state($_SESSION['software']['ecommerce']['view_orders'] ?? array(), $_REQUEST, time());
 
 if (isset($_SESSION['software']['ecommerce']['view_orders']['status']) == false) {
     $_SESSION['software']['ecommerce']['view_orders']['status'] = 'complete_or_exported';
@@ -2655,6 +2641,28 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         $output_advanced_filters_label = lang('Remove Advanced Filters');
         $advanced_filters_icon = 'bi-funnel-fill';
         $output_advanced_filters_class = ' active';
+
+        // The picklists' selected marks: only the matching one is set below.
+        $payment_method_any_selected = '';
+        $payment_method_none_selected = '';
+        $payment_method_credit_debit_card_selected = '';
+        $payment_method_paypal_express_checkout_selected = '';
+        $payment_method_offline_selected = '';
+        $opt_in_status_any_selected = '';
+        $opt_in_status_opt_in_selected = '';
+        $opt_in_status_opt_out_selected = '';
+        $tax_status_any_selected = '';
+        $tax_status_tax_exempt_selected = '';
+        $tax_status_not_tax_exempt_selected = '';
+        $address_type_any_selected = '';
+        $address_type_none_selected = '';
+        $address_type_residential_selected = '';
+        $address_type_business_selected = '';
+        $shipping_status_any_selected = '';
+        $shipping_status_unshipped_selected = '';
+        $shipping_status_shipped_selected = '';
+        $date_type_order_date_selected = '';
+        $date_type_ship_date_selected = '';
 
         // prepare selection for payment method field
         if (($_SESSION['software']['ecommerce']['view_orders']['payment_method'] ?? '') == 'any') {

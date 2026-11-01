@@ -60,7 +60,7 @@ if (isset($_REQUEST['advanced_filters']) == true) {
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list.php');
 
 $custom_forms = pg_submitted_form_list_custom_forms();
-pg_submitted_form_list_defaults($custom_forms);
+pg_submitted_form_list_defaults($custom_forms, $_REQUEST);
 $list_filter = pg_submitted_form_list_filter($user);
 $sort_columns = $list_filter['sort_columns'];
 $sort_default = $list_filter['sort_default'];

@@ -65,6 +65,50 @@ function pg_list_period_ordered(array $range)
 }
 
 /**
+ * A list screen's remembered date range for this request. Unless the user
+ * picked a range, it is a month ago to today, worked out on every request:
+ * a default kept in the session stayed on the day it was written, so after
+ * midnight an open session left out the day's rows. A range that comes in the
+ * request is marked as picked ('range_picked') and stays until the screen is
+ * reset; a part of it that is not a number of up to four digits falls back to
+ * the default (mktime() throws for one). The range is put the right way round.
+ *
+ * @param array $state   the screen's session values (other keys are kept)
+ * @param array $request the request's values ($_REQUEST)
+ * @param int   $now     the current time
+ * @return array the session values with the six start_/stop_ parts set
+ */
+function pg_list_period_state(array $state, array $request, $now)
+{
+    $month_ago = $now - 2678400;
+    $defaults = array(
+        'start_month' => date('m', $month_ago),
+        'start_day'   => date('d', $month_ago),
+        'start_year'  => date('Y', $month_ago),
+        'stop_month'  => date('m', $now),
+        'stop_day'    => date('d', $now),
+        'stop_year'   => date('Y', $now),
+    );
+
+    foreach (array_keys($defaults) as $key) {
+        if (isset($request[$key]) && is_string($request[$key])) {
+            $state[$key] = trim($request[$key]);
+            $state['range_picked'] = true;
+        }
+    }
+
+    $picked = !empty($state['range_picked']);
+
+    foreach ($defaults as $key => $value) {
+        if (!$picked || !preg_match('/^\d{1,4}$/', (string) ($state[$key] ?? ''))) {
+            $state[$key] = $value;
+        }
+    }
+
+    return pg_list_period_ordered($state);
+}
+
+/**
  * The months the ‹ Month › arrows move to: the whole month before and the
  * whole month after the LAST month on screen. Stepping from the first month
  * skipped a month on any range that crosses one (the default "26 September -

@@ -34,21 +34,15 @@ if (isset($_SESSION['software']['ecommerce']['view_commissions']['advanced_filte
 // if necessary create commission instances from recurring profiles
 update_recurring_commissions();
 
-// The date range is kept in the session, so the list opens on the range
-// picked last. The sort is kept by pg_list_state().
-foreach (array('start_month', 'start_day', 'start_year', 'stop_month', 'stop_day', 'stop_year') as $key) {
-    if (isset($_REQUEST[$key]) && is_string($_REQUEST[$key])) {
-        $_SESSION['software']['ecommerce']['view_commissions'][$key] = trim($_REQUEST[$key]);
-    }
-}
 // if advanced filters value was passed in the query string
 if (isset($_REQUEST['advanced_filters']) == true) {
     $_SESSION['software']['ecommerce']['view_commissions']['advanced_filters'] = ($_REQUEST['advanced_filters'] == 'true');
 }
 
-// The range a month ago to today unless one was picked
-// (includes/fn/commission_list.php).
-$range = pg_commission_list_range();
+// The range a month ago to today unless one was picked; a picked range is
+// kept in the session (includes/fn/commission_list.php). The sort is kept by
+// pg_list_state().
+$range = pg_commission_list_range($_REQUEST);
 $start_timestamp = $range['start'];
 $stop_timestamp = $range['stop'];
 
