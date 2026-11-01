@@ -1853,7 +1853,105 @@
 
     // -- canvas and artboard (pg_image_editor_artboard.js) --
 
-    var ARTBOARD = {};
+    // The New image dialog's sizes and the artboard tool's preset chips;
+    // custom takes the width and height typed in.
+    var BOARD_PRESETS = [['square', 1080, 1080], ['portrait', 1080, 1350], ['story', 1080, 1920], ['share', 1200, 630], ['banner', 1920, 600]];
+
+    // The New image dialog's backgrounds.
+    var BOARD_BACKGROUNDS = [['#ffffff', 'colorWhite'], ['transparent', 'colorTransparent'], ['#1a1c1e', 'colorBlack'], ['#e3f2fd', 'boardLightBlue']];
+
+    function boardSide(v) {
+        return Math.round(clamp(Number(v) || 0, SIZE_MIN, SIZE_MAX));
+    }
+
+    // The preset of a size, else 'custom'.
+    function boardPreset(w, h) {
+        for (var i = 0; i < BOARD_PRESETS.length; i++) {
+            if ((BOARD_PRESETS[i][1] === w) && (BOARD_PRESETS[i][2] === h)) {
+                return BOARD_PRESETS[i][0];
+            }
+        }
+
+        return 'custom';
+    }
+
+    // The board of size w, h dragged by handle h (nw, n, ne, e, se, s, sw, w)
+    // by dx, dy document units: the new board in the old one's units (x, y
+    // its top left). keep holds the ratio, from a corner or an edge (the
+    // other side grows around its middle); centre moves the opposite side the
+    // other way. No side under SIZE_MIN or over SIZE_MAX.
+    function boardDrag(w, h, handle, dx, dy, keep, centre) {
+        var sx = 0, sy = 0, f = centre ? 2 : 1;
+
+        if (handle.indexOf('w') >= 0) { sx = -1; }
+        if (handle.indexOf('e') >= 0) { sx = 1; }
+        if (handle.indexOf('n') >= 0) { sy = -1; }
+        if (handle.indexOf('s') >= 0) { sy = 1; }
+
+        var nw = sx ? clamp(w + sx * dx * f, SIZE_MIN, SIZE_MAX) : w, nh = sy ? clamp(h + sy * dy * f, SIZE_MIN, SIZE_MAX) : h;
+
+        if (keep) {
+            var k = (sx && sy) ? Math.max(nw / w, nh / h) : (sx ? nw / w : nh / h);
+
+            k = clamp(k, Math.max(SIZE_MIN / w, SIZE_MIN / h), Math.min(SIZE_MAX / w, SIZE_MAX / h));
+            nw = w * k;
+            nh = h * k;
+        }
+
+        // The side that stays: the opposite one; with centre, or for a side
+        // the handle does not move (it changes only to keep the ratio), the
+        // middle.
+        return {
+            x: (centre || !sx) ? (w - nw) / 2 : ((sx < 0) ? w - nw : 0),
+            y: (centre || !sy) ? (h - nh) / 2 : ((sy < 0) ? h - nh : 0),
+            w: nw,
+            h: nh
+        };
+    }
+
+    // A board of size w, h placed on the old one (w0, h0) by an anchor (ax,
+    // ay: 0 left or top, 0.5 the middle, 1 right or bottom).
+    function boardAnchored(w0, h0, w, h, ax, ay) {
+        w = boardSide(w);
+        h = boardSide(h);
+
+        return { x: (w0 - w) * ax, y: (h0 - h) * ay, w: w, h: h };
+    }
+
+    // The board around layers (the visible ones), in whole pixels; null
+    // when there are none.
+    function boardAround(layers) {
+        var b = bounds(layers.filter(function (l) { return !l.hidden; }));
+
+        if (!b) {
+            return null;
+        }
+
+        var x = Math.floor(b.x), y = Math.floor(b.y);
+
+        return { x: x, y: y, w: Math.ceil(b.x + b.w) - x, h: Math.ceil(b.y + b.h) - y };
+    }
+
+    // doc with its artboard moved to r (in the old board's units): the size
+    // in whole pixels and every layer moved the other way, so the artwork
+    // stays where it is on the board's old frame.
+    function applyBoard(doc, r) {
+        var d = clone(doc), dx = Math.round(r.x), dy = Math.round(r.y);
+
+        d.artboard.width = boardSide(r.w);
+        d.artboard.height = boardSide(r.h);
+
+        if (dx || dy) {
+            d.layers = d.layers.map(function (l) { return mapLayer(l, function (x, y) { return [x - dx, y - dy]; }); });
+        }
+
+        return d;
+    }
+
+    var ARTBOARD = {
+        BOARD_PRESETS: BOARD_PRESETS, BOARD_BACKGROUNDS: BOARD_BACKGROUNDS, boardSide: boardSide, boardPreset: boardPreset,
+        boardDrag: boardDrag, boardAnchored: boardAnchored, boardAround: boardAround, applyBoard: applyBoard
+    };
 
     // -- export (pg_image_editor_export.js) --
 
