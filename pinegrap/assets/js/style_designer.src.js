@@ -5676,7 +5676,9 @@ const StyleDesigner = (function () {
             defaultProps: { cssClass: '' },
             render: function (doc, p) {
                 var d = doc.createElement('div');
-                d.className = 'alert alert-info py-2 mb-0';
+                // sd-editor-ph: editor chrome, left out of the canvas audit
+                // (_SD_CANVAS_AUDIT_SKIP); the site prints only the messages.
+                d.className = 'alert alert-info py-2 mb-0 sd-editor-ph';
                 d.style.borderStyle = 'dashed';
                 d.style.opacity = '0.7';
                 d.innerHTML = '<span class="bi bi-chat-square-text me-1"></span><strong>' + esc(_sdT('PHP Messages')) + '</strong>' +
@@ -14074,8 +14076,10 @@ const StyleDesigner = (function () {
                 var rg = doc.createElement('div');
                 // Special canvas placeholder for comments_block
                 if (node.props.regionType === 'comments_block') {
+                    // sd-editor-ph: editor chrome, left out of the canvas
+                    // audit (_SD_CANVAS_AUDIT_SKIP).
                     rg.innerHTML =
-                        '<div style="border:2px dashed #6c9bd1;border-radius:8px;padding:20px;' +
+                        '<div class="sd-editor-ph" style="border:2px dashed #6c9bd1;border-radius:8px;padding:20px;' +
                         'text-align:center;background:rgba(108,155,209,0.07);' +
                         'color:#6c9bd1;font-size:14px;margin:4px 0;pointer-events:none;">' +
                         '<i class="bi bi-chat-square-text" style="font-size:22px;display:block;margin-bottom:6px;"></i>' +
@@ -75365,7 +75369,7 @@ const StyleDesigner = (function () {
     // and elements a switched-off feature drops from the page.
     var _SD_CANVAS_AUDIT_SKIP = '.sd-tb, .sd-persistent-note, .sd-issue-badge, .sd-region-ph, .sd-system-template-band, ' +
         '.sd-system-empty-hint, .sd-system-placeholder, .sd-section-binding-hint, .sd-loop-band, .sd-loop-band-row, ' +
-        '.sd-loop-empty-cell, .sd-dz, .sd-img-placeholder, .sd-drag-ghost, .sd-ghost, .sd-align-guide, .sd-binding-off';
+        '.sd-loop-empty-cell, .sd-dz, .sd-img-placeholder, .sd-drag-ghost, .sd-ghost, .sd-align-guide, .sd-binding-off, .sd-editor-ph';
 
     // An editor box around an element: its background (the selection tint,
     // the loop area's) and its display are the editor's, not the page's.
