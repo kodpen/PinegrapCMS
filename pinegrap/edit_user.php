@@ -24,6 +24,11 @@ $liveform_view_users = new liveform('view_users');
 $user = validate_user();
 validate_area_access($user, 'manager');
 
+// The username and e-mail are one value each; one posted as an array
+// (username[]=x) counts as not given ("Username is required") instead of an
+// error page from trim().
+pg_request_single_values(array('username', 'email'));
+
 // Stop early when the screen is opened without an existing record (stale
 // link, hand-typed URL, row deleted meanwhile): a "not found" screen instead
 // of a half-empty form and PHP notices from the unchecked row below.
@@ -1475,8 +1480,8 @@ if (!$_POST) {
             output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
 
-        $_POST['username'] = trim($_POST['username']);
-        $_POST['email'] = trim($_POST['email']);
+        $_POST['username'] = trim($_POST['username'] ?? '');
+        $_POST['email'] = trim($_POST['email'] ?? '');
 
         // If the username is blank, then output error.
         if ($_POST['username'] == '') {

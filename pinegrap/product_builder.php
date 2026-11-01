@@ -3934,6 +3934,35 @@ function pg_pb_render_bundle_card($mode, $product_id, $values)
 
 
 /**
+ * The variables the gift card e-mail replaces when the card is sent
+ * (complete_order(), includes/fn/order_completion.php), in the order the
+ * product screen lists them.
+ *
+ * @return string[]
+ */
+function pg_pb_gift_card_variable_names()
+{
+    return array('code', 'amount', 'from_name', 'recipient_email_address', 'message', 'delivery_date');
+}
+
+/**
+ * The buttons under the gift card e-mail's subject and body: each shows its
+ * ^^token^^ and carries the variable name in data-pg-pb-giftvar.
+ *
+ * @return string
+ */
+function pg_pb_gift_card_variable_buttons()
+{
+    $output = '';
+
+    foreach (pg_pb_gift_card_variable_names() as $name) {
+        $output .= '<button type="button" class="pg-pb-giftvar btn btn-sm btn-outline theme-secondary" data-pg-pb-giftvar="' . h($name) . '">^^' . h($name) . '^^</button>';
+    }
+
+    return $output;
+}
+
+/**
  * Every field of a product, drawn once.
  *
  * Creating a product and editing one are the same screen with different values
@@ -3950,9 +3979,9 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 {
     global $user, $liveform;
 
-    // NOTE: $output_gift_card_variables is never assigned anywhere, so the gift card variable
-    // chips below render empty.  Starting it empty keeps that and stops the warning.
-    $output_gift_card_variables = '';
+    // One button per ^^variable^^ the gift card e-mail replaces; product_builder.js
+    // inserts the token at the caret of the box the buttons sit under.
+    $output_gift_card_variables = pg_pb_gift_card_variable_buttons();
 
     $pg_mode       = isset($context['mode']) ? $context['mode'] : 'create';
     $pg_product_id = isset($context['product_id']) ? (int) $context['product_id'] : 0;

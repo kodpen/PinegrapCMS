@@ -23,9 +23,10 @@ require_once(PG_FUNCTIONS_DIR . '/includes/forms/user_form.php');
 $user = validate_user();
 validate_area_access($user, 'manager');
 
-// The contact is one value; one sent as an array (?contact_id[]=x) counts as
-// not given: it ended in an error page.
-pg_request_single_values(array('contact_id'));
+// The contact, username and e-mail are one value each; one sent as an array
+// (?contact_id[]=x, username[]=x) counts as not given: escape() and trim()
+// refuse an array and the request ended in an error page.
+pg_request_single_values(array('contact_id', 'username', 'email'));
 
 if (!$_POST) {
     $email_address = '';
@@ -244,8 +245,8 @@ if (!$_POST) {
 
     validate_token_field();
 
-    $_POST['username'] = trim($_POST['username']);
-    $_POST['email'] = trim($_POST['email']);
+    $_POST['username'] = trim($_POST['username'] ?? '');
+    $_POST['email'] = trim($_POST['email'] ?? '');
 
     // The role arrives as text. Cast it before the ceiling check so a
     // non-numeric value cannot slip past the comparison and reach the SQL,
