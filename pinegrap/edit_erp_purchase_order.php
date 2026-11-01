@@ -208,7 +208,7 @@ if ($editable) {
                 ' . erp_invoice_form_cards($liveform, array('purchase_order' => true, 'keep_account_id' => (int) $order['account_id'], 'lines' => erp_invoice_form_lines($liveform, erp_purchase_order_editor_rows($order)))) . '
                 <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
-                        <button type="submit" class="btn my-1 btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
+                        <button type="submit" data-pg-save-shortcut class="btn my-1 btn-solid theme-success"><i class="bi bi-check-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Save')) . '</span></button>
                     </div>
                 </nav>
             </form>
