@@ -1332,6 +1332,7 @@ function pg_designer_home_texts()
         'compYes'       => lang('Delete ({var})'),
         'compDone'      => lang('{var} deleted.'),
         'compKept'      => lang('{var} kept: a saved page uses them.'),
+        'compMore'      => lang(array('string' => 'and {var:1} more', 'vars' => '{var}')),
     );
 }
 
