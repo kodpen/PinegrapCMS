@@ -9,6 +9,12 @@ module: subscription_renewal
 - Why: the receipt is the customer's contract; charging once more than it says takes money the customer was never told about.
 - Running sites: a store-run row already past N ends at its next due date instead of being charged. No schema: N is read from the subscription's first order line, the charges made are the order's own charge plus the row's `renewed` events.
 
+## Where is it enforced? (#4622)
+- `pg_subscription_renewal_payments_left($row, $item, $renewed)` (pure): N less the order's own charge (not for a later-start line) and the `renewed` events (io `paid_count`); -1 for N = 0.
+- `pg_subscription_renewal_run_row()`: none left → not charged; the row is saved `ended` (`next_charge_at` 0, `ended_at`, the save's `status_ended` event), outcome `ended`, and no mail (`status_ended` would mail "cancelled", wrong for a contract that ran out).
+- One left → the paid plan (`$last` argument) ends the row: the last renewal order is written and the row closes in the same run. `pg_subscription_renewal_confirmed()` ends it the same way when 0 or 1 is left (the money was already taken).
+- Symptom fixed: a product sold for N payments renewed until cancelled.
+
 ## How do the legacy gateways count it?
 - Their profiles keep their own reading, untouched: Authorize.Net ARB (`totalOccurrences`), Payflow Pro (`TERM`), PayPal Payments Pro (`TOTALBILLINGCYCLES`), Sage and First Data (`installments`) take N on a profile that starts one period after an order that charged the line, so a today-start line is charged N+1 times; ClearCommerce (`TotalNumberPayments`) never charges the line in the order and takes N. Only the store-run path follows the receipt.
 
