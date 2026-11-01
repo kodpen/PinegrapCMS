@@ -4623,6 +4623,28 @@ const StyleDesigner = (function () {
     setTimeout(function () { _sdPreloaderDone(); }, 12000);
     function _sdPreloaderDone() {
         if (typeof window.pgPreloaderDone === 'function') window.pgPreloaderDone();
+        _sdShowServerMessages();
+    }
+
+    /**
+     * What the request left for the screen (sdDesign.messages, built by
+     * pg_designer_screen_messages()): errors, warnings and notices, shown as
+     * the editor's own toasts once the curtain is down, so a notice's timer
+     * does not run out unseen. The panel's alert boxes are not printed here:
+     * above the full-height editor they pushed the whole layout down.
+     * Errors and warnings stay until closed. Each message is markup the
+     * server already escaped.
+     */
+    var _sdServerMessages = [];
+    function _sdShowServerMessages() {
+        var list = _sdServerMessages;
+        _sdServerMessages = [];
+        for (var i = 0; i < list.length; i++) {
+            var m = list[i];
+            if (!m || typeof m.message !== 'string' || m.message === '') continue;
+            var type = (m.type === 'error' || m.type === 'warning') ? m.type : 'success';
+            sdToast(m.message, type, type === 'success' ? 9000 : 0);
+        }
     }
 
     /**
@@ -77023,6 +77045,7 @@ const StyleDesigner = (function () {
             regionData = cfg.regionData || {};
             var hadExistingTree = false;
             if (cfg.design) {
+                if (Array.isArray(cfg.design.messages)) _sdServerMessages = cfg.design.messages.slice();
                 // Multi-page design: every tab's tree arrives up front; the
                 // active one becomes the live `tree`. _pgTabsInit also
                 // installs the beforeunload guard and the tab strip.

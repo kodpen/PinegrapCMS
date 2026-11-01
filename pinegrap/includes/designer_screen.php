@@ -274,6 +274,10 @@ function pg_designer_screen_render($ctx)
 
     $design_js = json_encode(array(
         'mode'          => $mode,
+        // What the request left in the liveform (errors, warnings, notices):
+        // shown as the editor's own toasts once the canvas is up, never as
+        // the panel's alert boxes, which pushed the full-height editor down.
+        'messages'      => pg_designer_screen_messages($liveform->get_errors(), $liveform->get_warning_messages(), $liveform->get_notices()),
         'styleId'       => $style_id,
         'styleName'     => (string)$style['name'],
         'activeKey'     => $active_key,
@@ -467,9 +471,6 @@ function pg_designer_screen_render($ctx)
         <link rel="stylesheet" href="assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
         <link rel="stylesheet" href="assets/css/style_designer.css?v=' . pg_designer_asset_stamp('assets/css/style_designer.css') . '">
         <main id="content" style="padding:0; max-width:100%;">
-            ' . $liveform->output_errors() . '
-            ' . $liveform->output_notices() . '
-            ' . $liveform->get_warnings() . '
             ' . ((!empty($ctx['classic_folder_pages']) && function_exists('pg_classic_style_folder_pages_field')) ? pg_classic_style_folder_pages_field($ctx['classic_folder_pages']) : '') . '
             <!-- disable_shortcut: the editor answers Ctrl+S itself, with what its
                  main button says on the page on screen (style_designer.js). -->
