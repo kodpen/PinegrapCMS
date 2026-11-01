@@ -5654,6 +5654,11 @@ function _pg_sw_prune_to_messages(&$node)
 // alert comes through them, and no empty labels or dead buttons are left.
 // $extra_html (already safe) follows the message area - the empty cart's
 // quick add box.
+//
+// A background or e-mail render (pg_sw_messages_held_back()) draws the alert
+// in place instead: its Messages node prints nothing, and a message written
+// to the session would wait for the next page the admin opens, one more for
+// every Preview and publish.
 function _pg_sw_render_message_only($tree, $form_name, $message_html, $kind = 'notice', $extra_html = '')
 {
     if (!is_array($tree)) return '';
@@ -5662,12 +5667,50 @@ function _pg_sw_render_message_only($tree, $form_name, $message_html, $kind = 'n
     if ($extra_html !== '' && function_exists('_pg_inject_html_after_messages')) {
         _pg_inject_html_after_messages($tree, $extra_html);
     }
-    if ($message_html !== '' && class_exists('liveform')) {
-        $lf = new liveform($form_name);
-        if ($kind === 'warning') $lf->add_warning($message_html);
-        else $lf->add_notice($message_html);
+    if ($message_html !== '') {
+        if (pg_sw_messages_held_back()) {
+            // Inserted right after the Messages node, so above $extra_html.
+            if (function_exists('_pg_inject_html_after_messages')) {
+                _pg_inject_html_after_messages($tree, pg_sw_message_alert_html($message_html, $kind));
+            }
+        } elseif (class_exists('liveform')) {
+            $lf = new liveform($form_name);
+            if ($kind === 'warning') $lf->add_warning($message_html);
+            else $lf->add_notice($message_html);
+        }
     }
     return trim(_render_tree_node($tree, 0, 0));
+}
+
+/**
+ * Whether this render leaves the session's pending messages alone: the
+ * editor's Preview and the SEO pass (pg_seo_rendering()) and an e-mail page
+ * (render context 'email'). Those messages belong to the page the visitor
+ * or the admin opens next.
+ *
+ * @return bool
+ */
+function pg_sw_messages_held_back()
+{
+    if (function_exists('pg_seo_rendering') && pg_seo_rendering()) return true;
+    $ctx = pg_sw_render_context();
+    return !empty($ctx['email']);
+}
+
+/**
+ * One alert written the way the Messages node writes a session notice or
+ * warning (liveform::output_errors() markup), for a message drawn in place.
+ *
+ * @param string $message_html Already safe; it may hold a link
+ * @param string $kind         'warning' or 'notice'
+ * @return string
+ */
+function pg_sw_message_alert_html($message_html, $kind = 'notice')
+{
+    $warning = ($kind === 'warning');
+    return '<div class="' . ($warning ? 'software_warning alert alert-warning' : 'software_notice alert alert-success') . ' show" role="alert">'
+        . '<p class="' . ($warning ? 'warning' : 'notice') . '">' . $message_html . '</p>'
+        . '</div>';
 }
 
 // Keeps or cuts each span _pg_sw_mark_visibility() marked. Spans nest (a
