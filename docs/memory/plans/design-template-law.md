@@ -26,4 +26,4 @@ description: Plan for the Law Firm template (pinegrap-law): practice areas, lawy
 
 ## Where to start?
 - `pinegrap-salon/` (same layout, same booking pattern), `pinegrap-courses/` (the latest one), [[design-templates-file-format]], [[design-template-threads]].
-- Step 1 done in its PR; the next free step is the lowest one not marked done here.
+- Done: step 1 (#4964). The next free step is the lowest one not marked done here.
