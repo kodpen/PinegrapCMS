@@ -106,7 +106,8 @@ function test_image_delivery_settings()
 {
 	$defaults = array(
 		'formats' => array('webp' => true, 'avif' => true),
-		'quality' => array('webp' => 80, 'avif' => 50, 'source' => 82));
+		'quality' => array('webp' => 80, 'avif' => 50, 'source' => 82),
+		'same_address' => array('on' => false, 'cdn' => false));
 
 	pg_assert_same($defaults, pg_image_delivery_settings(null), 'no row: what the software did before the settings');
 	pg_assert_same($defaults, pg_image_delivery_settings(array('image_resize_quality' => '82')), 'a row without the new columns');
@@ -114,7 +115,8 @@ function test_image_delivery_settings()
 	$row = array('image_derivative_formats' => '1', 'image_quality_webp' => '75', 'image_quality_avif' => '45', 'image_resize_quality' => '85');
 	pg_assert_same(array(
 		'formats' => array('webp' => true, 'avif' => false),
-		'quality' => array('webp' => 75, 'avif' => 45, 'source' => 85)), pg_image_delivery_settings($row), 'as stored');
+		'quality' => array('webp' => 75, 'avif' => 45, 'source' => 85),
+		'same_address' => array('on' => false, 'cdn' => false)), pg_image_delivery_settings($row), 'as stored');
 
 	$formats = function ($bits) {
 		$settings = pg_image_delivery_settings(array('image_derivative_formats' => $bits));

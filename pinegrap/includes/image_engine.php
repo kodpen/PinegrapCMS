@@ -2498,10 +2498,17 @@ function pg_image_derivative_format($requested, $source_extension, $writable)
  * JPEG (image_resize_quality). AVIF holds up lower on its own scale than the
  * other two, hence its lower floor.
  *
- * @param array|null $row image_derivative_formats (bits: 1 WebP, 2 AVIF),
+ * Bits 4 and 8 are the plain-address switches (includes/image_negotiation.php,
+ * pg_image_same_address_settings(), which get_file.php reads on its own):
+ * 4 answers a JPEG or PNG's own address with WebP and counts only with WebP
+ * on; 8 says the CDN in front keeps a copy per format.
+ *
+ * @param array|null $row image_derivative_formats (bits: 1 WebP, 2 AVIF,
+ *                        4 same address, 8 CDN confirmed),
  *                        image_quality_webp, image_quality_avif,
  *                        image_resize_quality
- * @return array formats (webp, avif => bool), quality (webp, avif, source)
+ * @return array formats (webp, avif => bool), quality (webp, avif, source),
+ *               same_address (on, cdn => bool)
  */
 function pg_image_delivery_settings($row)
 {
@@ -2526,7 +2533,56 @@ function pg_image_delivery_settings($row)
         'quality' => array(
             'webp'   => $value('image_quality_webp', 80, 40),
             'avif'   => $value('image_quality_avif', 50, 20),
-            'source' => $value('image_resize_quality', 82, 40)));
+            'source' => $value('image_resize_quality', 82, 40)),
+        'same_address' => array(
+            'on'  => (($bits & 5) === 5),
+            'cdn' => (($bits & 8) === 8)));
+}
+
+
+/**
+ * The settings of pg_image_delivery_settings() as the value of
+ * config.image_derivative_formats, so a save of the formats keeps the
+ * plain-address switches; bit 4 is written only with WebP on.
+ *
+ * @param array $settings pg_image_delivery_settings()
+ * @return int
+ */
+function pg_image_delivery_bits($settings)
+{
+    $webp = !empty($settings['formats']['webp']);
+
+    return ($webp ? 1 : 0)
+        | (!empty($settings['formats']['avif']) ? 2 : 0)
+        | (($webp && !empty($settings['same_address']['on'])) ? 4 : 0)
+        | (!empty($settings['same_address']['cdn']) ? 8 : 0);
+}
+
+
+/**
+ * The state of WebP at a picture's own address, for System Status.
+ *
+ * @param array $settings  pg_image_delivery_settings()
+ * @param array $writable  pg_image_derivative_formats(): webp, avif => bool
+ * @param bool  $behind_cdn a CDN or proxy was seen in front of this request
+ * @return string off, no_webp (on, but this server writes no WebP),
+ *                cdn_unconfirmed (on, a CDN in front, not confirmed), on
+ */
+function pg_image_same_address_status($settings, $writable, $behind_cdn)
+{
+    if (empty($settings['same_address']['on'])) {
+        return 'off';
+    }
+
+    if (empty($writable['webp'])) {
+        return 'no_webp';
+    }
+
+    if ($behind_cdn && empty($settings['same_address']['cdn'])) {
+        return 'cdn_unconfirmed';
+    }
+
+    return 'on';
 }
 
 
