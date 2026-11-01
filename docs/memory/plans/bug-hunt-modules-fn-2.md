@@ -8,7 +8,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `privacy`: open
 
-- `privacy_export`: open
+- `privacy_export`: taken by LA
 
 - `privacy_retention`: open
 
