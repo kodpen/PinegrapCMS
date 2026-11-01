@@ -453,8 +453,9 @@ case 'guest':
 	break;
 case 'registration':
 	// if user is not logged in or has an invalid login, then forward user to Registration Entrance page
-	// (the site's designed sign-in page, which links to sign-up, when it has one)
-	if (pg_session_signed_in() == false)
+	// (the site's designed sign-in page, which links to sign-up, when it has one);
+	// a form's confirmation page opens for the visitor who just submitted it
+	if ((pg_session_signed_in() == false) && !pg_cf_registration_gate_lets_submitter($page_id))
 	{
 		header('Location: ' . URL_SCHEME . HOSTNAME . pg_sw_sign_in_url(REQUEST_URL, PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL), 'registration entrance', pg_sw_page_is_visual($page_id), $page_id));
 		exit();

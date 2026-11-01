@@ -33,7 +33,7 @@ description: Generated from the module field of the memory files: each includes/
 - `core`: [[error-screen-language-and-status]], [[send-to-url-safety]], [[time-zone-list-labels]]
 - `cron`: [[scheduled-job-resume]]
 - `currency_rates`: [[exchange-rates-update]]
-- `custom_form`: [[collection-template-refs]], [[custom-form-field-rules]], [[form-field-errors]], [[sms-consent-custom-form]]
+- `custom_form`: [[collection-template-refs]], [[custom-form-field-rules]], [[form-field-errors]], [[registration-gate-form-submitter]], [[sms-consent-custom-form]]
 - `designer_fx`: [[designer-interactions]]
 - `designer_vocab`: [[designer-bootstrap-vocabulary]]
 - `ecommerce`: [[affiliate-link-offer-code]], [[barcode-stock-scan-checks]], [[card-data-manual-processing]], [[cart-default-quantity]], [[csv-import-headings]], [[currency-names-display]], [[express-order-tax-address]], [[import-decimal-cells]], [[marketplace-product-import-queue]], [[order-cancel-commissions]], [[panel-image-alt]]

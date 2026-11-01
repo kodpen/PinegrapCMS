@@ -33,5 +33,5 @@ function test_registration_gate_submitter_refused()
 	pg_assert_same(false, pg_cf_submitter_gate_pass(true, 'ABC123', null), 'no codes in session');
 	pg_assert_same(false, pg_cf_submitter_gate_pass(true, 'ABC123', 'ABC123'), 'session value not a list');
 	pg_assert_same(false, pg_cf_submitter_gate_pass(true, array('ABC123'), array('ABC123')), 'code given as an array');
-	pg_assert_same(false, pg_cf_submitter_gate_pass(true, '0', array(0)), 'loose match');
+	pg_assert_same(false, pg_cf_submitter_gate_pass(true, '1e1', array('10')), 'numeric strings compared loosely');
 }
