@@ -489,6 +489,7 @@
     "{var:1} became the invoice draft {var:2} on Claude's proposal.": "{var:1}, Claude'un önerisiyle {var:2} fatura taslağına dönüştü.",
     "{var:1} blocked addresses also show signed-in activity or a completed order. See Possible False Positives below.": "Engellenen adreslerden {var:1} tanesi aynı zamanda oturum açmış etkinlik ya da tamamlanmış sipariş gösteriyor. Aşağıdaki Olası Yanlış Pozitifler bölümüne bakın.",
     "{var:1} bounced": "{var:1} karşılıksız",
+    "{var:1} bounced: the movement that took it in and the one that sent it back cancel each other out, so neither is allocated to an invoice.": "{var:1} karşılıksız çıktı: onu alan hareketle geri gönderen hareket birbirini sıfırlıyor, bu yüzden ikisi de faturaya tahsis edilmez.",
     "{var:1} boxes": "{var:1} kutu",
     "{var:1} brought this channel back": "{var:1} bu kanalı arşivden geri getirdi",
     "{var:1} bytes": "{var:1} bayt",

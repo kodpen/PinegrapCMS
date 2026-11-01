@@ -148,6 +148,13 @@ $settlements = erp_txn_settlements($ledger_id);
 $unallocated = erp_txn_unallocated($ledger_id);
 $reversal = $is_cancelled ? db_item("SELECT * FROM erp_cash_transactions WHERE id = '" . (int) $receipt['reversal_id'] . "' LIMIT 1") : null;
 
+// A cheque's or note's movement is not cancelled here, and once the cheque
+// bounced it takes no allocation either: the movement that took it in and
+// the one that sent it back cancel each other out.
+$receipt_cheque = (!$is_cancelled && function_exists('erp_cheque_for_cash')) ? erp_cheque_for_cash($cash_id) : null;
+$cheque_allocation_refusal = function_exists('erp_cheque_allocation_refusal') ? erp_cheque_allocation_refusal($receipt_cheque) : '';
+$no_allocation = $is_cancelled || ($cheque_allocation_refusal !== '');
+
 $method_labels = array(
     'cash' => lang('Cash'),
     'transfer' => lang('Bank transfer'),
@@ -236,7 +243,7 @@ $output_allocations = '
             <div class="card my-7">
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
                     <span>' . lang('Allocations') . '</span>
-                    <span class="small fw-normal fg-secondary">' . lang('Unallocated') . ': <span class="fw-bold ' . (($unallocated > 0 && !$is_cancelled) ? 'fg-warning' : '') . '" id="unallocated_amount">' . $money($is_cancelled ? 0 : $unallocated) . '</span></span>
+                    <span class="small fw-normal fg-secondary">' . lang('Unallocated') . ': <span class="fw-bold ' . (($unallocated > 0 && !$no_allocation) ? 'fg-warning' : '') . '" id="unallocated_amount">' . $money($no_allocation ? 0 : $unallocated) . '</span></span>
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
@@ -261,7 +268,7 @@ $output_allocations = '
 // oldest first, with a proposal already typed in.
 $output_allocate = '';
 
-if (!$is_cancelled && ($unallocated > 0)) {
+if (!$no_allocation && ($unallocated > 0)) {
     $suggestion = erp_settlement_suggest($ledger_id);
     $open_invoices = erp_open_invoices((int) $receipt['account_id'], 200, $is_collection ? 'sales' : 'purchase');
 
@@ -323,13 +330,20 @@ if (!$is_cancelled && ($unallocated > 0)) {
                 <div class="card-body fg-secondary"><i class="bi bi-info-circle me-3"></i>' . lang('There is no open invoice in this currency on the account to allocate the rest to.') . '</div>
             </div>';
     }
+} elseif ($cheque_allocation_refusal !== '') {
+    // Allocations a bounce made before it took them off itself are named,
+    // so the invoices they close can be opened again with Remove above.
+    $output_allocate = '
+            <div class="card my-7">
+                <div class="card-body fg-secondary"><i class="bi bi-info-circle me-3" aria-hidden="true"></i>' . h($cheque_allocation_refusal)
+                    . (!empty($settlements) ? ' ' . lang('Remove the allocations above: the invoices they close read as paid by money that never came.') : '') . '</div>
+            </div>';
 }
 
 // Cancelling: a modal that asks why, so the reversal carries the reason.
 // A cheque's or note's movement is not cancelled here: the screen shows
 // why and leads to the cheque, whose steps change it.
 $output_cancel = '';
-$receipt_cheque = (!$is_cancelled && function_exists('erp_cheque_for_cash')) ? erp_cheque_for_cash($cash_id) : null;
 // A receipt dated inside the locked books cannot be cancelled: the button
 // stays visible but disabled, with the reason under it.
 $cancel_locked = ($receipt_cheque === null && !$is_cancelled) ? erp_lock_refusal((string) $receipt['doc_date']) : '';
