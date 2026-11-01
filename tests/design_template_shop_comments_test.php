@@ -7,8 +7,8 @@
  * pinegrap-bookshop.php, hello-pinegrap.php): a blog post's comments and a
  * conversation's replies are drawn by the Comments widget, not the fixed
  * comments block; the reply e-mail draws its comment with a Comments widget
- * card before the System region, which stays; the product reviews use the
- * editor's starter widget. Each thread is drawn by the renderer's own steps
+ * card before the System region, which stays; the product reviews ship a
+ * layout worded as reviews. Each thread is drawn by the renderer's own steps
  * for a member, a visitor and a staff member, and the e-mail card as an
  * e-mail draws it.
  *
@@ -141,8 +141,9 @@ function test_shop_comments_no_fixed_block()
 		pg_assert_same(array('conversation_replies' => 'comments', 'email_comment' => 'comments', 'post_comments' => 'comments', 'product_reviews' => 'comments'),
 			$kinds, $id . ': the four comments widgets');
 
-		// The product reviews stay as they were: the editor's starter.
-		pg_assert_same('starter', $tpl['widgets']['product_reviews']['tree'], $id . ': the reviews keep the starter');
+		// The product reviews ship their own layout, worded as reviews like
+		// the page's comments label (#4812: the starter said comment).
+		pg_assert_true(is_array($tpl['widgets']['product_reviews']['tree']), $id . ': the reviews ship their layout');
 		pg_assert_same(array('order' => 'newest', 'featured' => 'none', 'layout' => 'flat', 'max_depth' => 1, 'per_page' => 10),
 			pg_comments_widget_options($tpl['widgets']['product_reviews']['config']), $id . ': and their options');
 	}
@@ -452,5 +453,43 @@ function test_shop_comments_email_card()
 		pg_assert_contains('the date', $html, $id . ': its date');
 		pg_assert_false(strpos($html, '^^'), $id . ': no token left');
 		pg_assert_true(pg_comments_email_drew($html, 12, $url), $id . ': the e-mail takes the widget\'s comment');
+	}
+}
+
+// The product page's reviews use one word: every text of the widget's
+// layout says review, as the page's comments label does, never comment
+// (#4812). The page's label is the template's own.
+function test_shop_comments_product_reviews_say_review()
+{
+	require_once(__DIR__ . '/helpers/language_map.php');
+	foreach (_shop_comments_templates() as $id => $version) {
+		$tpl = _shop_comments_tpl($id);
+		$page = _shop_comments_page($tpl, 'product');
+		pg_assert_same(lang('Review'), $page['comments']['label'], $id . ': the product page labels reviews');
+		pg_assert_true(version_compare($tpl['version'], array('pinegrap-store' => '1.2.2', 'pinegrap-boutique' => '1.2.2', 'pinegrap-bookshop' => '1.3.3', 'hello-pinegrap' => '2.6.1')[$id], '>='), $id . ': the version moved');
+
+		$texts = array();
+		$flags = array();
+		$actions = array();
+		foreach (_shop_comments_nodes($tpl['widgets']['product_reviews']['tree']) as $n) {
+			if (isset($n['props']['text']) && is_string($n['props']['text']) && empty($n['props']['_bindings']['text'])) {
+				$texts[] = $n['props']['text'];
+			}
+			$flags[] = _shop_comments_binding($n, 'eo_visible_if');
+			$actions[] = _shop_comments_binding($n, 'action');
+		}
+		$map = pg_test_language_map('tr');
+		foreach (array('No reviews yet. Be the first to review this product.', 'Review this product', 'Your review', 'Sign in to write a review.', 'Submit review', 'Stop new reviews', 'Allow new reviews') as $words) {
+			pg_assert_true(in_array(lang($words), $texts, true), $id . ': says ' . $words);
+			// In Turkish too: "değerlendirme", never "yorum".
+			pg_assert_true(isset($map[$words]) && mb_stripos($map[$words], 'değerlendir') !== false && mb_stripos($map[$words], 'yorum') === false, $id . ': Turkish ' . $words);
+		}
+		foreach ($texts as $text) {
+			pg_assert_false((bool)preg_match('/\bcomments?\b/i', $text), $id . ': no comment wording: ' . $text);
+		}
+		pg_assert_true(in_array('rating_on', $flags, true), $id . ': the stars can be given');
+		foreach (array('comment_submit', 'comment_reply', 'comment_close', 'comment_reopen', 'comment_watch') as $a) {
+			pg_assert_true(in_array($a, $actions, true), $id . ': ' . $a);
+		}
 	}
 }

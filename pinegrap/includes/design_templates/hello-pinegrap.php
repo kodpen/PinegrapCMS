@@ -2563,7 +2563,8 @@ $widgets = array(
     ),
     // The product's reviews (the comments widget reads the product in the
     // address): newest first, never pinned; a reply of the shop shows under
-    // its review.
+    // its review. Its own layout, so every word says review like the page's
+    // comments label, where the editor's starter says comment.
     'product_reviews' => array(
         'page'     => 'product',
         'requires' => 'ecommerce',
@@ -2575,7 +2576,21 @@ $widgets = array(
             'layout'     => 'flat',
             'per_page'   => 10,
         ),
-        'tree'     => 'starter',
+        'tree'     => $comment_thread(array(
+            'title'     => lang('Customer reviews'),
+            'empty'     => lang('No reviews yet. Be the first to review this product.'),
+            'heading'   => lang('Review this product'),
+            'label'     => lang('Your review'),
+            'sign_in'   => lang('Sign in to write a review.'),
+            'submit'    => lang('Submit review'),
+            'watch_box' => lang('Notify me when a new review is added.'),
+            'follow'    => lang('Notify me of new reviews'),
+            'unfollow'  => lang('Stop notifying me'),
+            'close'     => lang('Stop new reviews'),
+            'reopen'    => lang('Allow new reviews'),
+            'reply'     => true,
+            'watch'     => true,
+        )),
     ),
     'cart' => array(
         'page'     => 'cart',
@@ -2823,7 +2838,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Say hello to Pinegrap'),
-    'version'     => '2.6.0',
+    'version'     => '2.6.1',
     'framework'   => 'bootstrap5',
     'order'       => 10,
     'icon'        => 'bi-hand-thumbs-up',

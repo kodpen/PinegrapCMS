@@ -2264,6 +2264,7 @@
     "Allow new messages": "Yeni mesajlara izin ver",
     "Allow new questions": "Yeni sorulara izin ver",
     "Allow new replies": "Yeni yanıtlara izin ver",
+    "Allow new reviews": "Yeni değerlendirmelere izin ver",
     "Allow offer to be applied to multiple recipients": "Teklifin birden fazla alıcıya uygulanmasına izin ver",
     "Allow offline payment option for this {var:1} (and click update to apply).": "Bu {var:1} için çevrimdışı ödeme seçeneğine izin ver (uygulamak için güncelle'ye tıklayın).",
     "Allow only submitter and watchers to view his/her submitted form(s)": "O kişi tarafından gönderilen formları sadece, gönderenin ve izleyicilerin görüntülemesine izin ver",
