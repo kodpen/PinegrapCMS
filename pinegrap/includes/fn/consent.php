@@ -375,7 +375,8 @@ function pg_consent_hold_scripts($html, $category)
  * The scripts a page holds back on its own: a designer writes a third-party
  * script as <script type="text/plain" data-pg-consent="marketing"
  * data-pg-consent-name="Meta Pixel"> and the notice lists it under its
- * category. A script without a name is listed as an unnamed service.
+ * category. A script without a name is listed as an unnamed service; one
+ * inside an HTML comment is not listed.
  *
  * @param string $content the page
  * @return array category => list of names ('' for an unnamed one), each name once
@@ -383,6 +384,13 @@ function pg_consent_hold_scripts($html, $category)
 function pg_consent_page_services($content)
 {
     $services = array_fill_keys(array_keys(pg_consent_category_letters()), array());
+
+    // A tag inside an HTML comment (a pixel commented out, a conditional
+    // comment) never runs and pg_consent.js never finds it, so it is not
+    // listed; without this the notice asked about a service the page lacks.
+    // A regex failure (null) keeps the page as it is.
+    $uncommented = preg_replace('/<!--.*?(?:-->|$)/s', '', (string) $content);
+    $content = is_string($uncommented) ? $uncommented : (string) $content;
 
     if (!preg_match_all('/<script\b[^>]*\bdata-pg-consent\s*=\s*("|\')(analytics|marketing)\1[^>]*>/i', (string) $content, $tags, PREG_SET_ORDER)) {
         return $services;
