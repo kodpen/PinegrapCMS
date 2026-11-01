@@ -1,6 +1,6 @@
 ---
 name: decisions-made-schema-7
-description: Decisions list, schema part 7 (2026-10-31 on): SMS campaign tables sms_campaigns and contact_groups_sms_campaigns_xref; image versions table in principle
+description: Decisions list, schema part 7 (2026-10-31 on): SMS campaign tables; image versions table in principle; ws_file_edits.redacted for a redacted Workspace replace
 ---
 
 ## Where are the rules and the earlier parts?
@@ -13,3 +13,6 @@ description: Decisions list, schema part 7 (2026-10-31 on): SMS campaign tables 
 ## A table for image versions (owner, 2026-10-31; columns #4202)
 - Approved in principle (owner, 2026-10-31: a table row may be opened, keeping versions makes sense). Columns (architect, 2026-10-31, #4202): `file_versions` by `install_create_table()` in `includes/migrations/2026.11.0.php` under one sub-step, the next free general label when pushed, InnoDB utf8mb4, no ENUM: `version_id` INT UNSIGNED AUTO_INCREMENT, `file_id` (files.id), `version_no` (1 = the original as uploaded, counts up per file), `doc_json` MEDIUMTEXT NOT NULL (the editor document, '' for version 1), `doc_hash` CHAR(40) (SHA-1; a save equal to the newest version writes no row), `stored_name` VARCHAR(100) (the pixels under `data/file_versions/`, built from file id, version and a digest), `format` VARCHAR(8) (files.type is 4 wide), `width`, `height`, `size` (bytes, added to the File Manager's Disk Usage sum), `redacted` TINYINT UNSIGNED, `user_id`, `source` VARCHAR(16) DEFAULT 'save' (save, restore, redact, copy, new), `created_at`; INT UNSIGNED NOT NULL DEFAULT 0 unless said; PRIMARY KEY (version_id), UNIQUE KEY idx_file_version (file_id, version_no), KEY idx_file_created (file_id, created_at).
 - The document lives in the row, the pixels on disk (refused: the document as a file too, pixels as BLOBs). Version 1 is copied from the original at the first save; later versions keep the result pixels, so restore works on GD hosts too. No retention columns (the rule: `decisions-made-product-15.md`); deleting the `files` row deletes the versions' rows and files; the document refuses inline pixel data and a size over 1 MB, an inserted picture is its own `files` row.
+
+## A redacted Workspace replace hides the earlier version (owner, 2026-11-01, #4783)
+- `ws_file_edits.redacted TINYINT UNSIGNED NOT NULL DEFAULT 0` by `install_add_column()`, step `11.0.144` of `includes/migrations/2026.11.0.php` (architect shape). The Workspace save endpoint sets it to 1 on the history row of a replace whose save carried a redaction; `ws_file_history()` leaves rows with `redacted` = 1 out for everyone but the person who made the edit (`edited_by`). Default 0 changes nothing on a running site; the file itself stays in the file manager under its folder's access.
