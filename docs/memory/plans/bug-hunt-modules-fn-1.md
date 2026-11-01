@@ -144,7 +144,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `mail_parse`: open
 
-- `mail_queue`: taken by LS — #4654
+- `mail_queue`: done #4654 (rest checked: retry ladder, give-up and notices, property encoding and attachments, job-alive check, claim race, sweeps, List-Unsubscribe headers)
 
 - `maintenance_mode`: open
 
