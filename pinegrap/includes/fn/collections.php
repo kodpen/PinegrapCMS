@@ -914,7 +914,10 @@ function pg_coll_number_order_sql($alias, $direction)
 
 /**
  * The comparison a filter on a reference text box makes: whether the
- * comma-joined codes of $data_sql hold $code. Codes never hold a comma.
+ * comma-joined codes of $data_sql hold $code. Codes never hold a comma or
+ * a space, so every space is dropped before the comparison: a value typed
+ * as "news ,sport" or "news,  sport" holds both codes, as it prints them
+ * (pg_coll_ref_codes() trims each one).
  *
  * @param string $data_sql SQL giving the stored value
  * @param string $code
@@ -922,7 +925,7 @@ function pg_coll_number_order_sql($alias, $direction)
  */
 function pg_coll_reference_holds_sql($data_sql, $code)
 {
-    return "(FIND_IN_SET('" . e((string)$code) . "', REPLACE(IFNULL($data_sql, ''), ', ', ',')) > 0)";
+    return "(FIND_IN_SET('" . e((string)$code) . "', REPLACE(IFNULL($data_sql, ''), ' ', '')) > 0)";
 }
 
 /**

@@ -43,10 +43,14 @@ function test_collections_reference_holds_sql()
 {
 	_collections_lists_db_stub();
 	pg_assert_same(
-		"(FIND_IN_SET('abc123', REPLACE(IFNULL(d.data, ''), ', ', ',')) > 0)",
+		"(FIND_IN_SET('abc123', REPLACE(IFNULL(d.data, ''), ' ', '')) > 0)",
 		pg_coll_reference_holds_sql('d.data', 'abc123')
 	);
 	pg_assert_contains("FIND_IN_SET('a\\'b'", pg_coll_reference_holds_sql('d.data', "a'b"), 'the code is escaped');
+	// "news ,sport" or "news,  sport" prints both records (pg_coll_ref_codes()
+	// trims each code), so the filter must find "news" and "sport" in it too:
+	// every space goes, as a code never holds one.
+	pg_assert_contains("REPLACE(IFNULL(d.data, ''), ' ', '')", pg_coll_reference_holds_sql('d.data', 'sport'), 'spaces around a comma are dropped');
 }
 
 function test_collections_filter_value_prints_reference_label()
