@@ -26,7 +26,7 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 
 - `not_found_log`: open
 
-- `office`: done (#OFFICEPR: a run property turned off with `w:val="off"` showed its formatting in the Word preview)
+- `office`: done (#4946: a run property turned off with `w:val="off"` showed its formatting in the Word preview)
 
 - `office_edit`: clean for addresses, value parsing, save lock, file replace, save package; sheet/docx patching not read
 
