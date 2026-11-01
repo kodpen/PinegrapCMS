@@ -86,7 +86,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 
 - Endpoints `key` (5): open
 
-- Endpoints `login` (4): open
+- Endpoints `login` (4): taken by KZ (add_login_region, edit_login_region, get_login, login_as_user): #4594; the rest clean
 
 - Endpoints `logout` (2): open
 
