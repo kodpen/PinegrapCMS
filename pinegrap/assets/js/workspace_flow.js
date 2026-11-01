@@ -8081,8 +8081,7 @@
             return;
         }
 
-        state.dirty = true;
-        state.changes++;
+        saver.changed();
 
         // A change that folds (typing, an arrow-key move) is recorded once
         // the changes pause; one that is its own step first records what
@@ -8118,8 +8117,7 @@
         }
 
         drawState();
-        window.clearTimeout(state.saveTimer);
-        state.saveTimer = window.setTimeout(save, SAVE_DELAY);
+        saver.later();
     }
 
     // The changes paused (or something needs them settled now: a step of its
@@ -8499,101 +8497,67 @@
         return data;
     }
 
+    // The draft's autosave (autosave() of the core): its state is kept on
+    // state (dirty, changes, saving, saveError, conflict, leaveSent,
+    // saveTimer), which the bar and the switches read.
+    var saver = G.autosave({
+        record: state,
+        delay: SAVE_DELAY,
+        keepaliveBytes: KEEPALIVE_BYTES,
+        ready: function () {
+            return drafting() && !!state.flow;
+        },
+        send: function (options) {
+            var flow = state.flow;
+
+            return K.api('ws_flow_save', payload(), options).then(function (data) {
+                flow.draft_rev = data.draft_rev;
+                flow.changed = true;
+
+                if (state.flow === flow) {
+                    state.problems = data.problems || [];
+                    state.warnings = data.warnings || [];
+
+                    // A run shown keeps the canvas; the draft's problems are
+                    // drawn once it is closed.
+                    if (!state.run) {
+                        drawProblems();
+                        markProblems();
+                    }
+                }
+            });
+        },
+        size: function () {
+            return bytes(JSON.stringify(payload()));
+        },
+        isConflict: function (error) {
+            return error.field === 'changed_meanwhile';
+        },
+        conflict: function (message) {
+            conflict(message);
+        },
+        failed: function () {
+            return t('fl_unsaved');
+        },
+        drawn: function () {
+            drawState();
+        }
+    });
+
     // options: { keepalive } for the save sent as the page is left.
     function save(options) {
-        window.clearTimeout(state.saveTimer);
-
-        if (!drafting() || !state.flow || state.conflict) {
-            return Promise.resolve();
-        }
-
-        if (state.saving) {
-            return state.saving.then(function () { return state.dirty ? save() : null; });
-        }
-
-        if (!state.dirty) {
-            return Promise.resolve();
-        }
-
-        var flow = state.flow;
-        var keepalive = !!(options && options.keepalive);
-        var sent = state.changes;
-
-        state.dirty = false;
-        state.saveError = '';
-        state.leaveSent = -1;
-        state.saving = K.api('ws_flow_save', payload(), options).then(function (data) {
-            flow.draft_rev = data.draft_rev;
-            flow.changed = true;
-
-            if (state.flow === flow) {
-                state.problems = data.problems || [];
-                state.warnings = data.warnings || [];
-
-                // A run shown keeps the canvas; the draft's problems are
-                // drawn once it is closed.
-                if (!state.run) {
-                    drawProblems();
-                    markProblems();
-                }
-            }
-        }).catch(function (error) {
-            state.dirty = true;
-
-            // A keepalive request is rejected when the page closes under it,
-            // yet the browser still delivers it: no answer (no field) means
-            // the save is on its way. The same changes are not sent again as
-            // the page goes (the server would refuse the stale draft_rev);
-            // a page that stays saves them again after SAVE_DELAY.
-            if (keepalive && (error.field === undefined)) {
-                state.leaveSent = sent;
-                return;
-            }
-
-            if (error.field === 'changed_meanwhile') {
-                conflict(error.message);
-            } else {
-                state.saveError = error.message || t('fl_unsaved');
-            }
-        }).then(function () {
-            state.saving = null;
-            drawState();
-
-            if (state.dirty && !state.conflict && !state.saveError) {
-                state.saveTimer = window.setTimeout(save, SAVE_DELAY);
-            }
-        });
-
-        drawState();
-
-        return state.saving;
+        return saver.save(options);
     }
 
     // What is still unsaved, saved before another flow is opened.
     function flush() {
-        return state.dirty ? save() : (state.saving || Promise.resolve());
+        return saver.flush();
     }
 
-    // The page is hidden or being left: the last changes go out on a
-    // request the browser finishes even after the page is gone (keepalive).
-    // It is an ordinary save otherwise: its answer is read, so a page that
-    // lives on (a tab shown again) holds the draft_rev the server moved to,
-    // and a refusal leaves the changes unsaved. Browsers refuse a keepalive
-    // body over 64 KiB: a larger draft is saved the usual way while the page
-    // is only hidden, and when it is left (leaving) it stays unsaved, which
-    // beforeunload asks about. beforeunload, visibilitychange and pagehide
-    // all come as a page is left: changes whose keepalive save is already on
-    // its way (leaveSent) are sent once.
+    // The page is hidden or being left (leaving): the last changes on a
+    // keepalive request (leave() of the core).
     function saveOnLeave(leaving) {
-        if (!drafting() || !state.flow || !state.dirty || state.saving || state.conflict || (state.leaveSent === state.changes)) {
-            return;
-        }
-
-        var keepalive = bytes(JSON.stringify(payload())) <= KEEPALIVE_BYTES;
-
-        if (keepalive || !leaving) {
-            save({ keepalive: keepalive });
-        }
+        saver.leave(leaving);
     }
 
     function conflict(message) {
