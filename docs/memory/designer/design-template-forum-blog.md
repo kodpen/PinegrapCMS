@@ -23,4 +23,4 @@ description: Forum template 1.3.0: the standard blog pages in the forum's look (
 - Not in `$search_sections`: that map holds in-page anchors, not list pages.
 
 ## How is it checked?
-- `test_forum_blog_pages`, `test_forum_blog_form`, `test_forum_blog_widgets`; `post_comments` sits in `_test_forum_threads()`, so the generic thread tests and draws cover it; `test_forum_preview_html` (15 pages). No browser run: five masthead links at lg with a long site name may wrap.
+- `test_forum_blog_pages`, `test_forum_blog_form`, `test_forum_blog_widgets`; `post_comments` sits in `_test_forum_threads()`, so the generic thread tests and draws cover it; `test_forum_preview_html` (15 pages). The five masthead links wrapped at lg (992–1199 px) beside the language and account links; they show from xl since 1.3.2: [[design-template-forum-guides-notes-masthead]].

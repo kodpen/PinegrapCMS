@@ -1220,7 +1220,7 @@ $post_cards = function ($p, $cols, $tag = 'h3') use ($el, $loop, $post_card) {
 // ── The parts every page repeats ────────────────────────────────────────
 
 // The masthead: the skip link; the menu button (phone), the community's
-// name, the main links from lg, then the theme, the language, the sign-in
+// name, the main links from xl, then the theme, the language, the sign-in
 // and Start a Topic; and the menu drawer. Not sticky, so the drawer can
 // live inside it. Left out of a printed page.
 $masthead = function () use ($el, $link, $icon, $span, $attr, $lang_switcher, $widget) {
@@ -1258,19 +1258,21 @@ $masthead = function () use ($el, $link, $icon, $span, $attr, $lang_switcher, $w
         $link(lang('Skip to main content'), '#main', 'visually-hidden-focusable position-absolute p-2 bg-body text-body'),
         $el('div', 'container', lang('Container'), array(
             $el('div', 'd-flex align-items-center gap-2 py-2', lang('Masthead Row'), array(
-                $el('button', 'btn p-2 d-lg-none', lang('Menu Button'), array($icon('bi-list', 'fs-3')), array('_attrs' => array(
+                $el('button', 'btn p-2 d-xl-none', lang('Menu Button'), array($icon('bi-list', 'fs-3')), array('_attrs' => array(
                     $attr('type', 'button'),
                     $attr('data-bs-toggle', 'offcanvas'),
                     $attr('data-bs-target', '#pf-menu'),
                     $attr('aria-controls', 'pf-menu'),
                     $attr('aria-label', lang('Open the menu')),
                 ))),
-                $el('a', 'pf-brand me-auto me-lg-3', lang('Brand'), array(
+                $el('a', 'pf-brand me-auto me-xl-3', lang('Brand'), array(
                     $el('span', 'pf-logo', lang('Logo'), array($icon('bi-chat-square-text'))),
                     $span('{{site_name}}', 'pf-name', lang('Name')),
                 ), array('href' => '{{page:home}}')),
-                // The main links from lg; the current one is marked on the server.
-                $el('nav', 'd-none d-lg-block me-auto', lang('Main Links'), array(
+                // The main links from xl (five of them beside the language
+                // and account links wrap at lg); the current one is marked
+                // on the server.
+                $el('nav', 'd-none d-xl-block me-auto', lang('Main Links'), array(
                     $el('ul', 'nav', lang('Nav Menu'), $nav_items, array('smartActive' => true)),
                 ), array('_attrs' => array($attr('aria-label', lang('Main links'))))),
                 $el('div', 'd-flex align-items-center gap-2', lang('Account Links'), array(
@@ -2811,6 +2813,8 @@ $pages[] = array(
         'confirm_subject'      => lang('Your guide reached the moderators: ^^title^^'),
         'confirm_page_id'      => '{{tab:email_doc_received}}',
         'pretty_urls'          => 0,
+        // The guide's structured data names the byline readers see.
+        'schema_author'        => 'field:byline',
         'sample_records'       => $sample_docs,
     ),
     'tree'    => $page(array(
@@ -4460,9 +4464,9 @@ $note_words = array(
     'heading' => lang('Add a note'),
     'label'   => lang('Your note'),
     'sign_in' => lang('Sign in to reply.'),
-    'submit'  => lang('Add note'),
-    'close'   => lang('Stop new comments'),
-    'reopen'  => lang('Allow new comments'),
+    'submit'  => lang('Add a note'),
+    'close'   => lang('Stop new notes'),
+    'reopen'  => lang('Allow new notes'),
     'rating'  => false,
     'reply'   => false,
     'watch'   => false,
@@ -6194,7 +6198,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Community Forum & Docs'),
-    'version'     => '1.3.1',
+    'version'     => '1.3.2',
     'framework'   => 'bootstrap5',
     'order'       => 90,
     'icon'        => 'bi-chat-square-text',

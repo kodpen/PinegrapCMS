@@ -487,9 +487,9 @@ function _test_forum_two_sided_threads()
 			'empty' => lang('No notes yet.'),
 			'heading' => lang('Add a note'),
 			'sign_in' => lang('Sign in to reply.'),
-			'submit' => lang('Add note'),
-			'close' => lang('Stop new comments'),
-			'reopen' => lang('Allow new comments'),
+			'submit' => lang('Add a note'),
+			'close' => lang('Stop new notes'),
+			'reopen' => lang('Allow new notes'),
 		),
 	);
 }
@@ -865,7 +865,7 @@ function test_forum_template_loads()
 	// page's latest replies, held to the board by a record filter; 1.3.0:
 	// the inbox, desk and report threads on the Comments widget, and the
 	// blog; 1.3.1: the conversation's answers labelled replies.
-	pg_assert_same('1.3.1', $tpl['version'], 'version 1.3.1');
+	pg_assert_same('1.3.2', $tpl['version'], 'version 1.3.2');
 	pg_assert_same('bootstrap5', $tpl['framework'], 'framework');
 	pg_assert_same(90, $tpl['order'], 'order');
 	pg_assert_same('bi-chat-square-text', $tpl['icon'], 'icon');
@@ -3786,4 +3786,36 @@ function test_forum_blog_widgets()
 		pg_assert_contains($token, $json, 'the post binds ' . $token);
 	}
 	pg_assert_contains('pf-post pf-measure', $json, 'the text in the template\'s box, at a reading measure');
+}
+
+// -- 1.3.2 ---------------------------------------------------------------------
+
+// A guide's structured data names the byline readers see (#4873).
+function test_forum_guide_author_is_the_byline()
+{
+	pg_assert_same('field:byline', _test_forum_pages()['doc_new']['form']['schema_author'], 'the guide\'s author is its byline');
+}
+
+// The masthead keeps one row: its five main links show from xl, the menu
+// button up to xl (#4874).
+function test_forum_masthead_links_from_xl()
+{
+	$json = json_encode(_test_forum_tpl()['shared']);
+	pg_assert_contains('"d-none d-xl-block me-auto"', $json, 'the main links from xl');
+	pg_assert_contains('"btn p-2 d-xl-none"', $json, 'the menu button up to xl');
+	pg_assert_contains('"pf-brand me-auto me-xl-3"', $json, 'the brand pushes the account links until xl');
+	pg_assert_true(strpos($json, 'd-lg-none') === false && strpos($json, 'd-none d-lg-block') === false, 'nothing switches at lg');
+}
+
+// The notes under a report are notes on every button (#4875).
+function test_forum_report_note_words()
+{
+	$tr = _test_forum_tr();
+	$src = file_get_contents(_test_forum_file());
+	pg_assert_same(1, preg_match('/\$note_words = array\((.*?)\);/s', $src, $m), 'the note words');
+	pg_assert_contains("'submit'  => lang('Add a note')", $m[1], 'the button says what the heading says');
+	pg_assert_contains("lang('Stop new notes')", $m[1], 'closing stops notes');
+	pg_assert_contains("lang('Allow new notes')", $m[1], 'reopening allows notes');
+	pg_assert_same('Yeni notları durdur', $tr['Stop new notes']);
+	pg_assert_same('Yeni notlara izin ver', $tr['Allow new notes']);
 }
