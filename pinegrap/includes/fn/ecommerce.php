@@ -3255,6 +3255,26 @@ function pg_product_price_too_large($minor)
 }
 
 /**
+ * The largest stock count products.inventory_quantity holds: an INT UNSIGNED.
+ * The session is not strict, so MySQL would store this top for anything
+ * larger without a word; every stock writer refuses a larger count first.
+ */
+define('PG_INVENTORY_QUANTITY_MAX', 4294967295);
+
+/**
+ * True when a stock count is more than products.inventory_quantity holds,
+ * compared as a float, so a count past the integer range of a 32-bit build
+ * is not wrapped before the check.
+ *
+ * @param int|float|string $quantity
+ * @return bool
+ */
+function pg_inventory_quantity_too_large($quantity)
+{
+    return ((float) $quantity > PG_INVENTORY_QUANTITY_MAX);
+}
+
+/**
  * The price a bulk product edit (edit_products.php) gives a product.
  *
  * Methods: '1' decrease by an amount, '2' increase by an amount, '3' decrease

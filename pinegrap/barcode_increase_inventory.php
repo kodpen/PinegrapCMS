@@ -356,6 +356,15 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
             
             $new_inventory_quantity = $inventory_quantity + $quantity;
 
+            // Past what products.inventory_quantity holds: MySQL would store
+            // the column's top while the screen showed the uncut sum.
+            if (pg_inventory_quantity_too_large($new_inventory_quantity)) {
+                echo encode_json(array(
+                    'status' => 'error',
+                    'message' => lang(array('string' => '{var:1} is too large.', 'vars' => array(lang('New Inventory Quantity'))))));
+                exit();
+            }
+
             $sql_out_of_stock = '';
             if($new_inventory_quantity > 0 && $inventory == 1){
                 $sql_out_of_stock = "out_of_stock = '0',";

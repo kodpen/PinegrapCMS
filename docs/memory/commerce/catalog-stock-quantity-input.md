@@ -18,4 +18,4 @@ description: How the Catalog Manager stock edits and the product list's Modify S
 ## Which tests cover it?
 - `tests/explorer_handle_catalog_edit_test.php` (`test_explorer_catalog_quick_quantity`) and `tests/explorer_handle_products_bulk_test.php` (`test_explorer_bulk_quantity_value`, `test_products_mass_quantity_value`, `test_products_mass_change_quantity_is_read_before_the_write`). Not submitted in a browser (#3643).
 
-Related: docs/memory/erp/erp-stock-count.md (the ERP count's scan quantity), docs/memory/ui/money-field-input-mask.md
+Related: docs/memory/commerce/stock-quantity-column-bound.md (a count past the column), docs/memory/erp/erp-stock-count.md (the ERP count's scan quantity), docs/memory/ui/money-field-input-mask.md
