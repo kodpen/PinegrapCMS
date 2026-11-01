@@ -25,8 +25,9 @@ validate_area_access($user, 'manager');
 
 validate_token_field();
 
-// if at least one user was selected
-if ($_POST['users']) {
+// if at least one user was selected; the selection is a list of ids, and a
+// single value (users=5) selects nothing
+if (isset($_POST['users']) && is_array($_POST['users']) && $_POST['users']) {
     // if user is an administrator, get number of administrators in order to prevent the last administrator from being deleted
     if ($user['role'] == 0) {
         $query = "SELECT COUNT(user_id) FROM user WHERE user_role = '0'";
@@ -38,6 +39,11 @@ if ($_POST['users']) {
     $number_of_users = 0;
 
     foreach ($_POST['users'] as $user_id) {
+        // An entry posted as an array (users[0][]=x) is no id.
+        if (!is_scalar($user_id)) {
+            continue;
+        }
+
         // get user's role so that we can determine if this logged-in user has access to delete this user
         $query = "SELECT user_role FROM user WHERE user_id = ?";
         $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
