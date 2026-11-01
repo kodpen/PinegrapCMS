@@ -4220,7 +4220,7 @@ function get_update_currency_form()
             $selected = ' selected="selected"';
         }
         // prepare option for currency
-        $output_currency_options .= '<option value="' . $currency['id'] . '"' . $selected . '>' . h($currency['name']) . ' (' . h($currency['code']) . ')</option>';
+        $output_currency_options .= '<option value="' . $currency['id'] . '"' . $selected . '>' . h(pg_currency_label($currency['name'])) . ' (' . h($currency['code']) . ')</option>';
     }
     return '<form action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/update_currency.php" method="post" class="currency" style="text-align: right; margin-top: 15px; margin-bottom: 15px">
 

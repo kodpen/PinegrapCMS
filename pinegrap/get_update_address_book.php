@@ -18,12 +18,15 @@
 
 function get_update_address_book($properties = array()) {
 
-    $page_id = $properties['page_id'];
+    // The default screen (no update address book page) passes no properties.
+    $page_id = (int) ($properties['page_id'] ?? 0);
 
     $properties = get_page_type_properties($page_id, 'update address book');
 
-    $address_type = $properties['address_type'];
-    $address_type_page_id = $properties['address_type_page_id'];
+    // get_page_type_properties() returns null when there is no such page:
+    // the address type fields stay off.
+    $address_type = $properties['address_type'] ?? 0;
+    $address_type_page_id = $properties['address_type_page_id'] ?? 0;
 
     $layout_type = get_layout_type($page_id);
     
