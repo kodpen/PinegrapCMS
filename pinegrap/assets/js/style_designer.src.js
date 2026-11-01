@@ -76034,6 +76034,17 @@ const StyleDesigner = (function () {
             page_sitemap: p.page_sitemap ? 1 : 0, page_noindex: p.page_noindex ? 1 : 0,
             html: (typeof generateHTML === 'function') ? generateHTML() : ''
         };
+        // A saved page's draft is rendered by the server as a whole page
+        // (head, shared components, system widgets): its tree and the
+        // system widgets it shows, as the Preview sends them. The markup
+        // above is the fallback the server judges as a fragment.
+        if (body.page_id && tree) {
+            body.tree_json = JSON.stringify(tree);
+            var wp = null;
+            _sdPreviewWidgetMarkers = true;
+            try { wp = _sdPreviewWidgetPayload(generateHTML()); } finally { _sdPreviewWidgetMarkers = false; }
+            body.widgets = wp ? wp.widgets : [];
+        }
         _pgApiPost('seo_check', body).then(function (res) { _seoCheckCache = res; draw(res); })
             .catch(function () { draw(null); });
     }

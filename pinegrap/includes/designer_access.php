@@ -434,6 +434,55 @@ function _pg_dm_locked_kind($node)
 }
 
 /**
+ * A submitted tree as the save writes it for this user: a designer's as
+ * sent, a content-level operator's merged into the stored one
+ * (pg_designer_merge_restricted_tree()), or, on a page with no stored tree,
+ * without the nodes their level may never create and with render markers
+ * defused (a custom_php node is eval()ed on every render). The save and the
+ * editor's SEO check, which renders the draft on the server, both go
+ * through it.
+ *
+ * @param array $tree    the submitted tree, validated
+ * @param int   $page_id the page, 0 when not saved yet
+ * @param array $user    validate_user() row
+ * @return array ok, tree, error
+ */
+function pg_designer_gate_tree($tree, $page_id, $user)
+{
+    $page_id = (int)$page_id;
+
+    if (!is_array($tree) || pg_designer_is_full($user)) {
+        return array('ok' => true, 'tree' => $tree, 'error' => '');
+    }
+    if ($page_id <= 0) {
+        // No stored page to merge into, and a content-level operator has
+        // no business creating one.
+        return array('ok' => false, 'tree' => null, 'error' => lang('You do not have access to add pages.'));
+    }
+    if (pg_designer_page_access($page_id, $user) !== 'edit') {
+        return array('ok' => false, 'tree' => null, 'error' => lang('You do not have access to edit this page.'));
+    }
+
+    $stored_json = pg_page_tree_json($page_id);
+    $stored_tree = ($stored_json !== '') ? json_decode($stored_json, true) : null;
+    if (is_array($stored_tree)) {
+        return array('ok' => true, 'tree' => pg_designer_merge_restricted_tree($stored_tree, $tree), 'error' => '');
+    }
+
+    // No stored tree to merge into (a page saved before the per-page tree
+    // existed). The submission is taken minus the nodes this level may never
+    // create; the same marker typed into an ordinary text prop is defused,
+    // since the renderers emit that text into the page raw.
+    if (_pg_dm_locked_kind($tree) !== '') {
+        $tree = array('type' => 'root', 'props' => array(), 'children' => array());
+    }
+    pg_designer_drop_locked_nodes($tree);
+    _pg_dm_neutralise_markers($tree);
+
+    return array('ok' => true, 'tree' => $tree, 'error' => '');
+}
+
+/**
  * Put the stored locked nodes back into an accepted subtree.
  *
  * Inside a marked area the submission is taken wholesale, and a shared_ref

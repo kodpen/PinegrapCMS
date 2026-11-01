@@ -3510,33 +3510,12 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     // only what is allowed needs no such list — a change that is not copied
     // has not happened.
     if (is_array($tree) && $restricted) {
-        if ($page_id <= 0) {
-            // No stored page to merge into, and a content-level operator has
-            // no business creating one.
-            return array('ok' => false, 'page_id' => 0,
-                'errors' => array(lang('You do not have access to add pages.')), 'warnings' => $warnings);
+        $gate = pg_designer_gate_tree($tree, $page_id, $user);
+        if (!$gate['ok']) {
+            return array('ok' => false, 'page_id' => max(0, $page_id),
+                'errors' => array($gate['error']), 'warnings' => $warnings);
         }
-        if (pg_designer_page_access($page_id, $user) !== 'edit') {
-            return array('ok' => false, 'page_id' => $page_id,
-                'errors' => array(lang('You do not have access to edit this page.')), 'warnings' => $warnings);
-        }
-        $stored_json = pg_page_tree_json($page_id);
-        $stored_tree = ($stored_json !== '') ? json_decode($stored_json, true) : null;
-        if (is_array($stored_tree)) {
-            $tree = pg_designer_merge_restricted_tree($stored_tree, $tree);
-        } else {
-            // No stored tree to merge into (a page saved before the per-page
-            // tree existed). The submission is written, minus the nodes this
-            // level may never create: a custom_php node is eval()ed on every
-            // public render, so accepting one here would be code execution.
-            // The same marker typed into an ordinary text prop is defused,
-            // since the renderers emit that text into the page raw.
-            if (_pg_dm_locked_kind($tree) !== '') {
-                $tree = array('type' => 'root', 'props' => array(), 'children' => array());
-            }
-            pg_designer_drop_locked_nodes($tree);
-            _pg_dm_neutralise_markers($tree);
-        }
+        $tree = $gate['tree'];
     }
 
     // After the merge, so a content-level operator's note is stamped too, and
