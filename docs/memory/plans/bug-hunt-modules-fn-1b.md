@@ -20,7 +20,7 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 
 - `merchant_center`: open
 
-- `meta_tags`: done (#MTPR: a page `og:image` kept the design's `og:image:alt` and size)
+- `meta_tags`: done (#4952: a page `og:image` kept the design's `og:image:alt` and size)
 
 - `mfa`: taken by KY — #4590
 
