@@ -12,4 +12,5 @@ description: Steps B10-B11 of plans/bootstrap-6-panel.md: token tuning and the r
 - Legacy edit screens whose inputs spread over full-width rows or label/field tables. The B1b screenshot round lists them. Ready to start: the claiming session picks the next screen (most used first) and names it in its draft; the owner approves each PR (approval issue, `workflow/architect-asking.md`). The liked screens (`bootstrap-6-panel.md`) are the reference and are not redone.
 - Target: the product_builder pattern (`ui/edit-screen-wide-layout.md`: form column, sticky status column, sticky save bar) with v6 `form-field`, form-adorn and cards. One screen per PR, before and after screenshots, the owner's approval before merge.
 - Screens redone: campaign profile, add and edit (#4830, `includes/forms/email_campaign_profile_form.php`: Enabled and Purpose in the status column).
+- Screens in progress: shipping method (add/edit, `includes/forms/shipping_method_form.php`).
 - Tables: the owner finds their structure fine. `table.chart` and DataTables stay; density, header, row actions and empty states may change (`.table-card` once B0b is in).
