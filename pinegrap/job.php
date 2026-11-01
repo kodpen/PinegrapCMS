@@ -489,6 +489,32 @@ if (pg_image_derivative_sweep_due(pg_image_derivative_directory())) {
     }
 }
 
+// WebP copies of JPEG and PNG files served at their own address, made ahead
+// of the first visitor (pg_image_warmup_run()): largest first, ten seconds a
+// tick, while the setting is on and the server writes WebP; once through, a
+// new pass after a day. A tick with nothing due reads one small file.
+if (pg_image_warmup_wanted(pg_image_derivative_formats_bits())) {
+
+    $image_warmup_directory = pg_image_derivative_directory();
+
+    if (($image_warmup_directory !== '') && pg_image_warmup_due(pg_image_warmup_state($image_warmup_directory), time())) {
+
+        $image_delivery_formats = pg_image_delivery_formats();
+
+        if (!empty($image_delivery_formats['webp'])) {
+
+            $image_warmup = pg_image_warmup_run($image_warmup_directory, 10);
+
+            if ($image_warmup['made'] > 0) {
+                log_activity(lang(array(
+                    'string' => 'general job made {var:1} WebP image copies ahead of visitors',
+                    'vars'   => array(pg_format_number($image_warmup['made'], 0)),
+                )), 'UNKNOWN');
+            }
+        }
+    }
+}
+
 // The page cache (includes/fn/page_cache.php): the folders of old
 // generations and of a purge, and copies past twice their lifetime; at most
 // every ten minutes, ten seconds a tick. With nothing to do it reads one small
