@@ -571,8 +571,7 @@ function api_files_create($params) {
 	$optimized = 0;
 
 	// The product profile is the one the shop screens use: scaled to the
-	// operator's dimension and re-encoded at their quality. Anything else is
-	// stored byte for byte, the same as an upload through the file manager.
+	// operator's dimension and re-encoded at their quality.
 	if (isset($params['image_profile']) && ($params['image_profile'] === 'product')
 		&& function_exists('pg_process_image_file') && function_exists('pg_image_settings')) {
 
@@ -595,6 +594,24 @@ function api_files_create($params) {
 				$optimized = 1;
 
 			}
+
+		}
+
+	}
+
+	// Anything else is shrunk only when its longest edge is above the site's
+	// upload cap, in its own format, the same as an upload through the panel.
+	elseif (function_exists('pg_image_upload_cap_apply') && function_exists('pg_image_settings')) {
+
+		$settings = pg_image_settings();
+
+		$report = pg_image_upload_cap_apply($destination, $settings['upload_max_dimension'], $settings['resize_quality']);
+
+		if ($report && ($report['status'] === 'success') && $report['resized']) {
+
+			$width  = (int)$report['width'];
+
+			$height = (int)$report['height'];
 
 		}
 

@@ -6415,6 +6415,20 @@ else {
 
 		}
 
+		// A new site shrinks pictures larger than 2560 px on upload
+		// (pg_image_upload_cap_apply()). The upgrade above added the cap off, as it
+		// does on every upgraded site. Only a starter site: a restored backup keeps
+		// the cap it was taken with.
+		if ((get_starter_site_language($install_directory_path) !== '') && (install_column_exists('config', 'image_upload_max_dimension'))) {
+
+			db("UPDATE config SET image_upload_max_dimension = 2560");
+
+			$install_expected_steps++;
+
+			add_install_step(lang('Pictures larger than 2560 px are shrunk on upload'), lang('Site Settings › Features › Image Optimization'));
+
+		}
+
 		// The administrator row above was written as MD5 because the starter
 		// template predates user_password_algo. Now that the upgrades have added
 		// the column, store the modern hash right away instead of leaving the

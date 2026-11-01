@@ -29,7 +29,7 @@ description: Steps W1-W10 of plans/webp-same-address.md: negotiation, switches, 
 - W8 (S) Workspace previews. After W7 and question 8.
   - `ws_file_preview()` (`includes/workspace/files.php`) answers from the derivative cache and widths; `data/temp/workspace_previews` and its sweep go; Workspace access checks stay in front.
 
-- W9 (S) Upload size cap. After question 9.
+- W9 (S) Upload size cap. Done (#4700).
   - "Shrink pictures larger than N px on upload" in the image card (same format, the engine's resize), the default of question 9; the heavy-images widget points to it.
 
 - W10 (S) Close-out.

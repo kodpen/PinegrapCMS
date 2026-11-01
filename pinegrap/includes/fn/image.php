@@ -255,7 +255,8 @@ function pg_image_settings($recheck = false)
         'resize_quality'        => 82,
         'derivative_formats'    => 3,
         'quality_webp'          => 80,
-        'quality_avif'          => 50);
+        'quality_avif'          => 50,
+        'upload_max_dimension'  => 0);
 
     if (pg_image_settings_ready($recheck)) {
 
@@ -310,6 +311,19 @@ function pg_image_settings($recheck = false)
             $settings['quality_avif']       = (int) $row['image_quality_avif'];
         }
     }
+
+    // The upload size cap (2026.11.0, 11.0.142): off until the column exists
+    // and the operator sets it.
+    if (pg_schema_has('config', 'image_upload_max_dimension')) {
+
+        $row = db_item("SELECT image_upload_max_dimension FROM config LIMIT 1");
+
+        if ($row) {
+            $settings['upload_max_dimension'] = (int) $row['image_upload_max_dimension'];
+        }
+    }
+
+    $settings['upload_max_dimension'] = pg_image_upload_cap_clamp($settings['upload_max_dimension']);
 
     $delivery = pg_image_delivery_settings(array(
         'image_derivative_formats' => $settings['derivative_formats'],

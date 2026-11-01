@@ -74,6 +74,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
              image_file_resize_trigger = " . $image_file_trigger . ",
              image_file_max_dimension = " . $image_file_max . ",
              image_resize_quality = " . $image_quality . ",";
+
+        // The upload size cap: 0 (or an empty box) is off.
+        if (pg_schema_has('config', 'image_upload_max_dimension')) {
+            $sql_image_settings .=
+                "image_upload_max_dimension = " . pg_image_upload_cap_clamp(pg_parse_whole_number(post_value('image_upload_max_dimension'), 20000)) . ",";
+        }
     }
 
     // How pictures are delivered (2026.11.0). Clamped by the function
