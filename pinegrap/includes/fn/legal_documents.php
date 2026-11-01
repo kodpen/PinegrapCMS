@@ -1000,7 +1000,7 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
             orders.billing_city,
             orders.billing_state,
             orders.billing_zip_code,
-            IFNULL(countries.name, orders.billing_country) AS billing_country,
+            orders.billing_country,
             orders.billing_phone_number,
             orders.billing_email_address,
             orders.subtotal,
@@ -1012,7 +1012,6 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
             orders.total,
             orders.payment_method
         FROM orders
-        LEFT JOIN countries ON countries.code = orders.billing_country
         WHERE orders.id = '" . $order_id . "'"
     );
 
@@ -1068,13 +1067,13 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
             ship_tos.city,
             ship_tos.state,
             ship_tos.zip_code,
-            IFNULL(countries.name, ship_tos.country) AS country,
-            ship_tos.arrival_date,
+            ship_tos.country,
+            ship_tos.arrival_date," . (pg_ship_to_district_ready() ? "
+            ship_tos.district," : "") . "
             ship_tos.shipping_cost,
             shipping_methods.name AS shipping_method_name
         FROM ship_tos
         LEFT JOIN shipping_methods ON shipping_methods.id = ship_tos.shipping_method_id
-        LEFT JOIN countries ON countries.code = ship_tos.country
         WHERE ship_tos.order_id = '" . $order_id . "'
         ORDER BY ship_tos.id"
     ) as $ship_to) {
@@ -1085,8 +1084,10 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
             'address'      => pg_legal_document_address(array(
                 $ship_to['address_1'],
                 $ship_to['address_2'],
-                array($ship_to['zip_code'], $ship_to['city'], $ship_to['state']),
-                $ship_to['country'],
+                // The district before the city, as the order screens print it.
+                array($ship_to['zip_code'], pg_order_view_district($ship_to['district'] ?? '', $ship_to['city']), $ship_to['city'], $ship_to['state']),
+                // The country in the site's language, as the order summary names it.
+                pg_geo_country_label_site($ship_to['country']),
             )),
             'method'       => (string) $ship_to['shipping_method_name'],
             'arrival_date' => (($arrival !== '') && ($arrival !== '0000-00-00')) ? prepare_form_data_for_output($arrival, 'date', false) : '',
@@ -1101,17 +1102,21 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
 
         $order = pg_legal_document_cart_order($order, $lines, $ship_tos, $seen);
 
-        // The checkout posts a country code; the documents name the country.
-        // A country the visitor took off the form (typed, empty) is none.
+        // The checkout posts a country code; the documents name the country
+        // below. A country the visitor took off the form (typed, empty) is none.
         $seen_country = trim((string) ($seen['billing']['billing_country'] ?? ''));
 
         if ($seen_country !== '') {
-            $country_name = (string) db_value("SELECT name FROM countries WHERE code = '" . e($seen_country) . "' LIMIT 1");
-            $order['billing_country'] = ($country_name !== '') ? $country_name : $seen_country;
+            $order['billing_country'] = $seen_country;
         } elseif (!empty($seen['typed']) && is_array($seen['billing'] ?? null) && array_key_exists('billing_country', $seen['billing'])) {
             $order['billing_country'] = '';
         }
     }
+
+    // The country in the site's language, as the order summary names it: a
+    // stored code or English name becomes 'Türkiye' on a Turkish site.
+    $billing_country = trim((string) ($order['billing_country'] ?? ''));
+    $order['billing_country'] = ($billing_country !== '') ? pg_geo_country_label_site($billing_country) : '';
 
     // The plain-text price keeps a symbol stored as an entity (&#8378;); the
     // renderer escapes every value, so the entity becomes the character here.
