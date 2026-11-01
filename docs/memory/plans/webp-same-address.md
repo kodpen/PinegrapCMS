@@ -20,17 +20,16 @@ description: Plan (owner request 2026-11-01): a JPEG or PNG keeps its address an
 - `webp-same-address-steps.md`: W1-W10, their files, tests and order.
 - `webp-same-address-options.md`: the options weighed and the outside facts behind the choice.
 
-## Which questions are open?
-- #4676 holds 1-6 and #4677 holds 7-9 with their options; the recommendation is written here.
-1. Default: on for new installs, off for running sites until switched on.
-2. Convert doors: the batch becomes "Prepare WebP" (renames nothing); Edit File keeps only "Create a .webp copy".
-3. Switches: bits 4 and 8 of `config.image_derivative_formats`, no schema step.
-4. AVIF at the plain address: not now.
-5. Cloudflare Tools writes and checks the Cache Rule when its token may.
-6. Image editor export (E13, `image-editor-steps-2.md`): another format is saved as a copy; Replace keeps the format.
-7. A 320 px rung in the derivative widths, used by panel lists.
-8. Workspace previews served from the derivative cache.
-9. The upload stays the master (never its WebP copy); "Shrink pictures larger than N px on upload", on at 2560 px for new installs, off for running sites.
+## Which questions are decided? (owner 2026-11-01, delegated to the architect; #4676 1-6, #4677 7-9; `workflow/decisions-made-product-17.md`)
+1. Default: on for a new install; off on a running site until switched on (the upgrade note and System Status say so).
+2. Convert doors: the batch becomes "Prepare WebP" (copies, no rename); Edit File keeps only "Create a .webp copy". No door renames a file.
+3. Switches: bits 4 (own address) and 8 (CDN confirmed) of `config.image_derivative_formats`, no schema; bit 4 needs bit 1.
+4. AVIF at the plain address: not now; `?f=avif` stays.
+5. Cloudflare Tools writes and checks the Cache Rule when its token may, else shows the steps; bit 8 is set by a passed check or the operator.
+6. Image editor export (E13): another format is saved as a copy; Replace keeps the format.
+7. A 320 px rung appended to the derivative widths, used by panel lists (W7).
+8. Workspace previews served from the derivative cache with the file's `files` id (W8).
+9. The upload stays the master, never its WebP copy; shrink on upload above N px (`config.image_upload_max_dimension`, step `11.0.142`): 2560 on a new install, off on a running site (W9).
 
 ## Where does it start?
 - W1. Read `platform/image-derivatives.md`, `image-delivery-settings.md`, `get-file-byte-ranges.md` and `get_file.php` from the access checks to the send.

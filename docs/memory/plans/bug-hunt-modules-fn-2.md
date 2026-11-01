@@ -4,13 +4,13 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 ---
 
 ## Which includes/fn/ modules (price_history to wishlist) are hunted?
-- `price_history`: open
+- `price_history`: clean
 
 - `privacy`: clean
 
 - `privacy_export`: taken by LA, #4589
 
-- `privacy_retention`: open
+- `privacy_retention`: taken by LV, #4680
 
 - `product_customs`: open
 
@@ -60,7 +60,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `site_time_sql`: open
 
-- `sms`: taken by LW, #4674
+- `sms`: #4674 (LW; rest clean)
 
 - `sms_campaigns`: open
 
