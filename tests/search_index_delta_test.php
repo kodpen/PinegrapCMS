@@ -54,3 +54,27 @@ function test_search_index_delta_records_changed_since_their_row()
 
 	pg_assert_same(array('A' => true), pg_search_index_delta_records($rows, $forms), 'only a record changed after its row');
 }
+
+function test_search_index_delta_wiring()
+{
+	$src = file_get_contents(PG_FUNCTIONS_DIR . '/update_search_index.php');
+
+	// Only a dispatched run with no pass under way and a full pass not due.
+	$decide = substr($src, strpos($src, '$search_index_delta = null;'), 900);
+	pg_assert_contains("defined('PG_CRON_DISPATCH') && (\$search_index_saved_state === null)", $decide);
+	pg_assert_contains("pg_search_index_full_due(", $decide);
+	pg_assert_contains("['update_search_index_done']", $decide, 'against the end of the last full pass');
+
+	// It keeps no cursor, draws only changed pages and records, and ends
+	// before the files, the sweep and the completion marker.
+	pg_assert_contains("if (\$search_index_delta !== null) {\n        return;\n    }", $src, 'no cursor');
+	pg_assert_contains("(page.page_id IN ('\" . implode(\"', '\", array_merge(array(0), \$search_index_delta['pages']))", $src);
+	pg_assert_contains("!isset(\$search_index_delta['records'][(string) \$record['reference_code']])", $src);
+	pg_assert_contains("|| (\$search_index_delta !== null)) ? array() : db_items(", $src, 'no files');
+	$end = substr($src, strpos($src, '$search_index_done = '));
+	pg_assert_true(strpos($end, 'if ($search_index_delta !== null) {') < strpos($end, 'db(pg_search_index_sweep_sql($timestamp));'), 'the delta branch comes before the sweep');
+
+	// The job comes hourly; a new design asks for a full pass.
+	pg_assert_contains("'interval'    => 3600,", file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/cron.php'));
+	pg_assert_contains("WHERE job_name = 'update_search_index_done'", file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/site_search.php'));
+}

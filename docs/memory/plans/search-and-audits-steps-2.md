@@ -26,7 +26,7 @@ description: Steps SA6-SA13 of plans/search-and-audits.md: rule registry, same i
 - SA11 (M) The screen. After SA3 and SA4.
   - Per engine (index, SEO scores, structure, accessibility): last full run, running or due, progress, failures named, its switch, Run now (short requests); the Pages tools menu, the main menu and the panel search open it.
 
-- SA12 (S) Delta stage. After SA4.
+- SA12 (S) Delta stage. After SA4. Done (#4837).
   - Each tick first re-indexes pages whose `page_timestamp` and records whose `forms.last_modified_timestamp` is newer than their row; the daily full run stays.
 
 - SA13 (S) Close-out.

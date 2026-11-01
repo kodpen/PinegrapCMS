@@ -268,6 +268,13 @@ function pg_search_index_refresh_soon()
     if (!function_exists('pg_cron_jobs') || !pg_schema_has('cron_runs')) return false;
     $jobs = pg_cron_jobs();
     $interval = isset($jobs['update_search_index']['interval']) ? (int) $jobs['update_search_index']['interval'] : 86400;
+    // The new pages have no rows yet, which a delta run leaves to the full
+    // pass: the end of the last full pass moves back a day too, so the next
+    // tick starts one (pg_search_index_full_due()).
+    db_q(
+        "UPDATE cron_runs SET last_run_at = LEAST(last_run_at, UNIX_TIMESTAMP() - 86400)
+         WHERE job_name = 'update_search_index_done'",
+        array());
     // Without a row the job has never run and is due already.
     return db_q(
         "UPDATE cron_runs SET last_run_at = LEAST(last_run_at, UNIX_TIMESTAMP() - ?)
@@ -749,6 +756,71 @@ function pg_search_index_delta_records($rows, $forms)
     }
 
     return $codes;
+}
+
+/**
+ * What the delta stage re-indexes now: the pages of the index's scope whose
+ * own row is older than the page's last change, and the reference codes of
+ * the records whose ?r= row is older than the record's last change.
+ *
+ * @return array pages (int[]), records (reference code => true)
+ */
+function pg_search_index_delta_targets()
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/background_render.php');
+
+    $types = array();
+
+    foreach (pg_render_pass_scope('index')['types'] as $type) {
+        $types[] = "'" . e($type) . "'";
+    }
+
+    $pages = array();
+
+    foreach (db_items(
+        "SELECT page.page_id AS id, page.page_name AS name, page.page_timestamp
+        FROM page
+        LEFT JOIN folder ON page.page_folder = folder.folder_id
+        WHERE
+            (page.page_search = '1')
+            AND (folder.folder_archived = '0')
+            AND (page.page_type IN (" . implode(', ', $types) . "))") as $page) {
+        $page['url'] = encode_url_path($page['name']);
+        $pages[(int) $page['id']] = $page;
+    }
+
+    $page_rows = array();
+
+    if ($pages) {
+        foreach (db_items("SELECT url, timestamp FROM search_items WHERE page_id IN (" . implode(', ', array_keys($pages)) . ")") as $row) {
+            $page_rows[$row['url']] = (int) $row['timestamp'];
+        }
+    }
+
+    $record_rows = array();
+    $codes = array();
+
+    foreach (db_items("SELECT url, timestamp FROM search_items WHERE url LIKE '%?r=%' OR url LIKE '%&r=%'") as $row) {
+        $code = pg_search_index_record_code($row['url']);
+
+        if ($code !== '') {
+            $record_rows[$row['url']] = (int) $row['timestamp'];
+            $codes[$code] = "'" . e($code) . "'";
+        }
+    }
+
+    $forms = array();
+
+    foreach (array_chunk(array_values($codes), 500) as $chunk) {
+        foreach (db_items("SELECT reference_code, last_modified_timestamp FROM forms WHERE reference_code IN (" . implode(', ', $chunk) . ")") as $form) {
+            $forms[$form['reference_code']] = (int) $form['last_modified_timestamp'];
+        }
+    }
+
+    return array(
+        'pages'   => pg_search_index_delta_pages($pages, $page_rows),
+        'records' => pg_search_index_delta_records($record_rows, $forms),
+    );
 }
 
 /**

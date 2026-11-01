@@ -82,9 +82,10 @@ function test_search_index_resume_wiring()
 {
 	$src = file_get_contents(PG_FUNCTIONS_DIR . '/update_search_index.php');
 
-	pg_assert_contains('$search_index_state = pg_search_index_next(pg_search_index_state_read(), time());', $src, 'the pass is read back');
+	pg_assert_contains('$search_index_saved_state = pg_search_index_state_read();', $src, 'the pass is read back');
+	pg_assert_contains('$search_index_state = pg_search_index_next($search_index_saved_state, time());', $src, 'and carried on');
 	pg_assert_contains("\$timestamp = \$search_index_state['started'];", $src, 'rows carry the pass start');
-	pg_assert_contains("AND (page.page_id > '\" . (int) \$search_index_state['after'] . \"')", $src, 'pages resume after the last one');
+	pg_assert_contains(": \"(page.page_id > '\" . (int) \$search_index_state['after'] . \"')\")", $src, 'pages resume after the last one');
 	pg_assert_contains("AND (files.id > '\" . (int) \$search_index_state['after'] . \"')", $src, 'files resume after the last one');
 	pg_assert_same(3, substr_count($src, '$search_index_step = $search_index_item('), 'each stage loop asks before every item');
 	pg_assert_same(3, substr_count($src, "if (\$search_index_step === 'skip') {"), 'each stage loop skips the item a run ended inside');
