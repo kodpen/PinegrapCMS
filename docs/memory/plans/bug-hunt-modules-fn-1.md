@@ -28,7 +28,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `bundles`: open
 
-- `calendar`: taken by LM (#4632, #4646)
+- `calendar`: done #4632 #4646 (recurring overnight/multi-day events and room availability, unpadded view date; rest reviewed: escaping, access, recurrence expansion)
 
 - `captcha`: clean (siteverify outcomes, token, widget escaping, settings card and save order checked)
 
