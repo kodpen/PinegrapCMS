@@ -14,8 +14,8 @@ description: waf_is_excluded() matches the resolved script path only (never quer
 - It matches nothing any more: `integration.php/products` or `oauth.php/token` named PATH_INFO, which is no longer part of the path. Exclude the script name (`integration.php`) instead; a bare script name is still matched against the running script.
 
 ## Which paths are always served?
-- `waf_path_is_always_served()`: `/robots.txt` and `/.well-known/` are exempt from bot policy.
-- Blocking `robots.txt` undermines itself: it tells crawlers what not to crawl; without it the crawler cannot learn the rule and keeps guessing. A live log showed AhrefsBot, SemrushBot and DotBot turned away from `/robots.txt` repeatedly, missing every chance to tell them "go".
+- `waf_path_is_always_served()`: `/robots.txt` and `/.well-known/` are exempt from bot policy and the country restriction, only when `router.php` runs, which alone answers them: matched whatever ran, `/custom_form.php/.well-known/x` skipped both (`tests/waf_always_served_test.php`).
+- Blocking `robots.txt` undermines itself: the crawler cannot learn the rule and keeps guessing (a live log showed AhrefsBot, SemrushBot and DotBot refused it repeatedly).
 - `.well-known/` carries ACME certificate renewal. Blocking it does not fail loudly: ninety days later the certificate expires and the whole site fails with it.
 - The exemption is from the BOT POLICY ONLY; the IP blacklist and rate limit still apply.
 - `health.php` (uptime monitors) gets the same bot-policy and country exemption through `waf_is_health_request()`, which asks the running script, never the path: `/x/health.php/y` handed to `router.php` must not carry it. See `docs/memory/platform/maintenance-mode-health.md`.

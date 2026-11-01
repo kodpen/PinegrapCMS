@@ -53,6 +53,33 @@ function pg_calendar_month_padding($start_timestamp, $stop_timestamp, $first_day
     );
 }
 
+/**
+ * The date a calendar view is asked for, as MM-DD-YYYY with a two-digit
+ * month and day and a four-digit year, or '' when it is not a real date in
+ * that order. The monthly and weekly views compare event dates with the
+ * range as text, so an unpadded month or day ("3-1-2026") would leave every
+ * event outside the range.
+ *
+ * @param mixed $date the date from the query string or the session
+ * @return string e.g. '03-01-2026', or ''
+ */
+function pg_calendar_view_date($date)
+{
+    if (!is_string($date) || $date === '') {
+        return '';
+    }
+
+    $parts = explode('-', $date);
+
+    if ((count($parts) != 3)
+        || !ctype_digit($parts[0]) || !ctype_digit($parts[1]) || !ctype_digit($parts[2])
+        || !checkdate((int) $parts[0], (int) $parts[1], (int) $parts[2])) {
+        return '';
+    }
+
+    return sprintf('%02d-%02d-%04d', (int) $parts[0], (int) $parts[1], (int) $parts[2]);
+}
+
 function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $link, $number_of_upcoming_events = '', $return = 'html', $output_minimal_calendar = false)
 {
     $sql_join = '';
@@ -81,17 +108,9 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
         // bad value that stuck in the session would break every later request.
         // A date that is not text (an array kept by an older version) is
         // dropped the same way.
-        if (!is_string($date)) {
-            $date = '';
-        }
-        if ($date) {
-            $date_parts = explode('-', $date);
-            if ((count($date_parts) != 3)
-                || !ctype_digit($date_parts[0]) || !ctype_digit($date_parts[1]) || !ctype_digit($date_parts[2])
-                || !checkdate((int) $date_parts[0], (int) $date_parts[1], (int) $date_parts[2])) {
-                $date = '';
-            }
-        }
+        // The views compare dates as text, so the month and day are written
+        // with two digits ("3-1-2026" showed an empty month).
+        $date = pg_calendar_view_date($date);
         switch ($view) {
             case '':
             case 'monthly':
@@ -1199,6 +1218,26 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
         }
     }
 }
+/**
+ * The start and end of one occurrence of a recurring event. The occurrence
+ * starts on its own date at the event's start time and lasts as long as the
+ * event, so an overnight or multi-day event ends on a later day than the
+ * one it starts on.
+ *
+ * @param string $occurrence_date     the occurrence's date, YYYY-MM-DD
+ * @param string $start_date_and_time the event's start, YYYY-MM-DD HH:MM:SS
+ * @param string $end_date_and_time   the event's end, YYYY-MM-DD HH:MM:SS
+ * @return int[] array(start timestamp, end timestamp)
+ */
+function pg_calendar_occurrence_window($occurrence_date, $start_date_and_time, $end_date_and_time)
+{
+    $start_parts = explode(' ', $start_date_and_time);
+    $start = strtotime($occurrence_date . ' ' . ($start_parts[1] ?? '00:00:00'));
+    $length = strtotime($end_date_and_time) - strtotime($start_date_and_time);
+
+    return array($start, $start + $length);
+}
+
 function check_calendar_event_location_availability($location_id, $event_start, $event_end, $event_id = "0")
 {
 
@@ -1304,9 +1343,6 @@ function check_calendar_event_location_availability($location_id, $event_start, 
             $event_start_date_and_time_parts = explode(' ', $event_start_date_and_time);
             $event_start_date = $event_start_date_and_time_parts[0];
             $event_start_time = $event_start_date_and_time_parts[1];
-            // split event end date and time into parts
-            $event_end_date_and_time_parts = explode(' ', $event_end_date_and_time);
-            $event_end_time = $event_end_date_and_time_parts[1];
             $calendar_exceptions = array();
             // Split event start date into parts, that we will use later.
             $event_start_date_parts = explode('-', $event_start_date);
@@ -1434,8 +1470,7 @@ function check_calendar_event_location_availability($location_id, $event_start, 
                             break;
                     }
                 }
-                $event_start_date_and_time = strtotime($event_start_date . ' ' . $event_start_time);
-                $event_end_date_and_time = strtotime($event_start_date . ' ' . $event_end_time);
+                list($event_start_date_and_time, $event_end_date_and_time) = pg_calendar_occurrence_window($event_start_date, $row['normal_start_time'], $row['normal_end_time']);
                 // if the event start date is greater than or equal to stop date, then break out of loop,
                 // because it is not possible for further recurrences to be in date range
                 if ($event_start_date_and_time >= $event_end) {

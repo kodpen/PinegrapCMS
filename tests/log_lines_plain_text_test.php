@@ -32,7 +32,6 @@ function log_lines_plain_text_test_files()
 		'includes/explorer/handle_short_links.php',
 		'includes/explorer/handle_recycle.php',
 		'includes/explorer/handle_upload.php',
-		'image_editor_save.php',
 		'includes/panel/software.php',
 	);
 }

@@ -412,6 +412,22 @@ function pg_sw_posted_control($controls, $name)
     return ($controls === null) || in_array((string)$name, $controls, true);
 }
 
+// The tax columns a profile post writes, as column => trimmed value: for a
+// widget post the ones it drew, for a legacy post both when the form sent
+// them ($posted), else none so the stored values stay. my_account_profile.php
+// writes the same list to the contact it updates and to the one it creates.
+function pg_my_account_profile_tax_columns($controls, $posted, $values)
+{
+    $out = array();
+    foreach (array('tax_number', 'tax_office') as $column) {
+        if (($controls !== null) ? in_array($column, $controls, true) : $posted) {
+            $value = isset($values[$column]) ? $values[$column] : '';
+            $out[$column] = is_string($value) ? trim($value) : '';
+        }
+    }
+    return $out;
+}
+
 // The page a widget post names in return_to, as a same-site path, or ''.
 function pg_sw_return_to($value = null)
 {

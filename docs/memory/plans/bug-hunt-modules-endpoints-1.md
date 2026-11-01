@@ -48,7 +48,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 
 - Endpoints `custom` (6): open
 
-- Endpoints `design` (5): open
+- Endpoints `design` (5): taken by Arzu worker (add_design_file, edit_design_file, import_design, import_design_zip, view_design_files)
 
 - Endpoints `designer` (4): open
 
@@ -100,6 +100,6 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 
 - Endpoints `menu` (7): open
 
-- Endpoints `my` (4): open
+- Endpoints `my` (4): done #4653 (get_my_account, get_my_account_profile, my_account, my_account_profile)
 
-- Endpoints `offer` (5): open
+- Endpoints `offer` (5): clean (add_offer, duplicate_offer, edit_offer, edit_offer_f, view_offers)

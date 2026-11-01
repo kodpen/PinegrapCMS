@@ -292,15 +292,14 @@ function pg_dashboard_widget_18($request, $user)
             // the shrink to help — so the only thing left is a
             // person deciding what to do with it.
             //
-            // Design files are excluded even for administrators:
-            // image_editor_edit.php refuses to save over one at
-            // any role, so the link would open an editor whose
-            // save button always fails. The row still carries the
-            // size warning, it just has nothing to offer.
+            // Design files are left out: this list is about heavy
+            // pictures on the site, and a design file belongs to the
+            // designers. The row still carries the size warning, it
+            // just has nothing to offer.
             $fm_action .= '
-            <a class="btn btn-sm btn-outline theme-secondary border-0 py-0 px-1 flex-shrink-0 d-flex align-items-center"
+            <button type="button" class="btn btn-sm btn-outline theme-secondary border-0 py-0 px-1 flex-shrink-0 d-flex align-items-center"
                title="' . lang(array('string' => 'Edit this image with {var:1}', 'vars' => array(lang('Image Editor')))) . '"
-               href="image_editor_edit.php?file_name=' . rawurlencode($fm_item['name']) . '&amp;send_to=' . h(PATH . SOFTWARE_DIRECTORY . '/welcome.php') . '"><i class="bi bi-brush"></i></a>';
+               data-pg-image-edit="' . h($fm_item['name']) . '"><i class="bi bi-brush"></i></button>' . pg_image_editor_includes();
         }
 
         $fm_note = '';

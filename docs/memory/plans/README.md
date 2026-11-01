@@ -33,7 +33,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - datetime-picker-site-steps.md: Site steps S1-S4 of plans/datetime-picker.md (after the panel stop): on-demand loader, classic renderers, checkout, designer widgets and palette; claim as [plan:datetime-picker] S<n>
 - datetime-picker-steps.md: Panel steps P1-P11 of plans/datetime-picker.md: what each changes, its files, tests and size, its dependencies; claim as [plan:datetime-picker] P<n>
 - datetime-picker.md: Plan (decided in #2693, 2026-10-28): one date-and-time control for the whole software, the time in the same popup, on vanilla-calendar-pro; panel P1-P11, sites S1-S4, steps in datetime-picker-steps.md
-- design-template-bookshop-events.md: Plan (owner, 2026-11-01): the bookshop template's hard-coded events become form records the business adds in the panel, the Café way, past events dropping out of lists
 - design-template-events.md: Plan for the Events and Conferences template (pinegrap-events): events as form records, registration on a form, tickets as shop products; parts in a folder; steps 1-5
 - designer-prototype-links-code.md: What the code holds for plans/designer-prototype-links.md: where links sit, the two href places, page links by id, renames, the resolver's limits, editor state, rights and Publish
 - designer-prototype-links.md: Plan (2026-10-24, not started, answer 1 given): a Figma/XD-like prototype view in the visual designer: pages as frames, menu items and links as hotspots, an arrow sets the page a click opens
@@ -56,6 +55,16 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): 2026.11.0 asks api.kodpen.com/v1 for licences and signed updates behind one switch line, no api2 fallback; steps P1-P8 in -steps, contract in the -design files
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer; Trendyol 1, 2, 2b-i, 2b-ii, 3, 4a-4c, 5a, 5b (with rejection), 5c, 6, A, B, common label done; Hepsiburada open
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what M1–M6 built, what M7 (native push) and M8 add, decisions, how its needs arrive
+- new-dashboard-build.md: New dashboard plan: the page branch in welcome.php, the files (page, script bundle, stylesheet), charts, refresh, light and dark, phone, keyboard, texts; how card steps stay out of each other's files
+- new-dashboard-cards-2.md: New dashboard plan, cards 17-30 (Security, Team, Ecommerce, System): id, default width and period, what each shows, where its data comes from, its gate
+- new-dashboard-cards.md: New dashboard plan, cards 1-16 (General, Content, Visitors): id, default width and period, what each shows, where its data comes from, its gate; what every card shares
+- new-dashboard-data.md: New dashboard plan: where the switch, layouts, look, role defaults and sign-in times are kept (question 1), the layout JSON, the API actions, the card data contract and gates
+- new-dashboard-edit.md: New dashboard plan: edit mode (bar, presets, cancel and save), card tools, drag and keyboard moves, card settings, the gallery, top-section switches, look options, sharing a layout with a role
+- new-dashboard-presets.md: New dashboard plan: the five preset layouts (Corporate, Blog, Ecommerce, Agency, Simple): their cards and widths, shortcuts, tiles, pipeline, sign-in chips, recommended cards, the first default
+- new-dashboard-steps.md: Steps N1-N14 of plans/new-dashboard.md: size, screens, order, which run side by side, the files each owns; claim as [plan:new-dashboard] N<n>
+- new-dashboard-top.md: New dashboard plan: the switch row on both dashboards, the greeting card (sign-in chips, shortcuts, four tiles) and the System Status gauge card; what each shows and where it comes from
+- new-dashboard-visuals.md: The new dashboard design the owner asked for on 2026-11-01: its 22 screens and prototype source in plans/new-dashboard/, what each shows and which step of new-dashboard-steps.md builds it
+- new-dashboard.md: Plan (owner 2026-11-01): a new dashboard from the owner's design, turned on per person by a switch at the top of the current one, which stays as it is; steps N1-N14
 - prototype-sharing-code.md: What the code holds for plans/prototype-sharing.md: drafts and their revisions, how a draft opens today, what Preview draws, token links, the password throttle, MCP routes, flow and note rights
 - prototype-sharing.md: Plan (2026-10-24; slices 1-4 done: #1867, #1579, #1595, #1578; 5 later): drafts play as a clickable prototype shared by a view-only link; flows with the team
 - refactor-candidates.md: Refactor and infrastructure items from the 2026-10-08 code audit that were still open on 2026-10-16 (designer JS twin, add/edit pairs, big lists, db_q, schema probes, fragment cache, _f gates)
@@ -75,6 +84,9 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - subscriptions-iyzico-stripe.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): recurring billing for iyzico and Stripe through drivers, membership renewals, customer pause/cancel; legacy profiles untouched
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
+- webp-same-address-options.md: Research of 2026-11-01 behind plans/webp-same-address.md: the options weighed for WebP without breaking addresses, and the outside facts (browsers, mail, social sites, marketplaces, Cloudflare)
+- webp-same-address-steps.md: Steps W1-W10 of plans/webp-same-address.md: negotiation, switches, encode cap, convert doors, Cloudflare rule, panel thumbnails, Workspace previews, upload cap; claim as [plan:webp-same-address] W<n>
+- webp-same-address.md: Plan (owner request 2026-11-01): a JPEG or PNG keeps its address and its file; a browser that asks for WebP gets a WebP copy there, every other reader the original; steps W1-W10
 - workspace-agent-handles.md: Plan (2026-10-21, steps 1 and 5 done, 4 waits for 2): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
 - workspace-assistant-key-setup.md: Plan (2026-10-23; steps 1-3 (#1462, #1523, #1726) and question 6 done): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
 - workspace-flows-channels.md: Plan (owner request 2026-10-27, draft): flows started from a channel's Add menu, a Completed flag with the run's result, scheduled work only as flows, no menu or form of its own

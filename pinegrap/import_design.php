@@ -27,6 +27,7 @@ ini_set('memory_limit', '-1');
 
 include('init.php');
 require('url_to_absolute.php');
+require_once('update_imported_items.php');
 $command_line = '';
 // If the script was run from the command line, then remember that. The SAPI
 // name is what tells a shell run apart; a missing Host header does not, since
@@ -520,18 +521,9 @@ if ($action != 'import') {
             // so it is compatible with this system.
             $content = preg_replace('/<meta\s+[^>]*charset.*?>/i', '', $content);
 
-            // Get the title for the page so we can update the page property later.
-            preg_match('/<title\s*>(.*?)<\/title>/i', $content, $matches);
-
-            $title = '';
-
-            // If a title tag was found, then remember title and remove title tags.
-            if ($matches[0] != '') {
-                $title = unhtmlspecialchars(trim($matches[1]));
-
-                // Remove all title tags from the HTML.
-                $content = preg_replace('/<title>.*?<\/title>/i', '', $content);
-            }
+            // Get the title for the page so we can update the page property later,
+            // and remove the title elements, which the page draws itself.
+            list($title, $content) = pg_imported_page_take_title($content);
 
             // Get the meta description for the page so we can update the page property later.
             preg_match('/<meta\s+[^>]*name\s*=\s*["\']\s*description\s*["\'].*?>/i', $content, $matches);
@@ -776,7 +768,6 @@ if ($action != 'import') {
         }
     }
 
-    require('update_imported_items.php');
     update_imported_items($imported_items);
 
     $summary = import_design_import_summary(count($imported_items), $skipped_items);

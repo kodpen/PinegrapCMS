@@ -3469,12 +3469,9 @@ function add_edit_button_for_images($object_type = '', $object_id = 0, $content 
             }
             // remove any left over spaces
             $image_content = str_replace('  ', ' ', $image_content);
-            // if there is a column specified to update, then prepare it for the link
-            if ($column_to_update != '') {
-                $column_to_update = '&amp;column_to_update=' . $column_to_update;
-            }
-            // add link to the image editor
-            $image_content .= '<a id="software_edit_button_for_' . h($image_id) . '" href="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/image_editor_edit.php?file_name=' . h(urlencode($image_name)) . '&amp;object_type=' . $object_type . '&amp;object_id=' . $object_id . $column_to_update . '&amp;send_to=' . h(urlencode(get_request_uri())) . '" style="background: #7a7a7a63;cursor:pointer;border: 1px dashed #fff;height:auto;position: absolute; left: 0px; top: 0px; display: none; padding: .5em; margin: 0; text-decoration: none; z-index: 9;border-bottom-right-radius: 5px !important;" title="' . lang(array('string' => 'Edit Image ({var:1}) with Software Image Editor', 'vars' => h($image_name))) . '" onmouseover="software_show_or_hide_image_edit_button(\'' . h(escape_javascript($image_id)) . '\', event);" onmouseout="software_show_or_hide_image_edit_button(\'' . h(escape_javascript($image_id)) . '\', event);"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_image_editor.png" width="50" height="auto" alt="' . lang('Software Image Editor') . '"></a>';
+            // The edit button opens the image editor on this page
+            // (pg_image_editor_includes()); a copy is put in this content.
+            $image_content .= '<a id="software_edit_button_for_' . h($image_id) . '" href="#" data-pg-image-edit="' . h($image_name) . '" data-pg-image-object="' . h($object_type) . '" data-pg-image-object-id="' . h($object_id) . '" data-pg-image-column="' . h($column_to_update) . '" style="background: #7a7a7a63;cursor:pointer;border: 1px dashed #fff;height:auto;position: absolute; left: 0px; top: 0px; display: none; padding: .5em; margin: 0; text-decoration: none; z-index: 9;border-bottom-right-radius: 5px !important;" title="' . lang(array('string' => 'Edit Image ({var:1}) with Software Image Editor', 'vars' => h($image_name))) . '" onmouseover="software_show_or_hide_image_edit_button(\'' . h(escape_javascript($image_id)) . '\', event);" onmouseout="software_show_or_hide_image_edit_button(\'' . h(escape_javascript($image_id)) . '\', event);"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_image_editor.png" width="50" height="auto" alt="' . lang('Software Image Editor') . '"></a>';
             // output the image we created above with a link around it
             $content = preg_replace('/' . escape_regex($match[0]) . '/i', $image_content, $content, 1);
         }

@@ -172,7 +172,6 @@ function get_help_url($properties = array())
         'add_file'          => 'files#upload-files',
         'edit_file'         => 'files#edit-file',
         'editor_edit_file'  => 'files#edit-file',
-        'image_editor_edit' => 'files#image-editor',
 
         // Calendars
         'view_calendars'                => 'calendars',

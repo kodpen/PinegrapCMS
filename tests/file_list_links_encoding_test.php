@@ -26,11 +26,11 @@ function test_file_lists_encode_send_to_and_file_name()
 {
 	$cases = array(
 		'view_files.php' => array(
-			"/image_editor_edit.php?file_name=' . h(urlencode(\$file['name'])) . '&send_to=' . h(escape_javascript(urlencode(REQUEST_URL))) . '",
+			"data-pg-image-edit=\"' . h(\$file['name']) . '\"",
 			"/edit_file.php?id=' . \$file['id'] . '&send_to=' . h(escape_javascript(urlencode(REQUEST_URL))) . '",
 		),
 		'view_design_files.php' => array(
-			"/image_editor_edit.php?file_name=' . h(urlencode(\$file['name'])) . '&send_to=' . h(escape_javascript(urlencode(REQUEST_URL))) . '",
+			"data-pg-image-edit=\"' . h(\$file['name']) . '\"",
 			"/edit_design_file.php?id=' . \$file['id'] . '&send_to=' . h(escape_javascript(urlencode(REQUEST_URL))) . '",
 		),
 	);
@@ -52,7 +52,7 @@ function test_edit_screens_encode_the_image_editor_link()
 	foreach (array('edit_file.php', 'edit_design_file.php') as $file) {
 		$source = file_list_links_encoding_source($file);
 
-		pg_assert_true(strpos($source, "/image_editor_edit.php?file_name=' . h(urlencode(\$file_name)) . '&send_to=' . h(urlencode(REQUEST_URL)) . '") !== false, $file . ' encodes the Image Editor link');
+		pg_assert_true(strpos($source, "data-pg-image-edit=\"' . h(\$file_name) . '\"") !== false, $file . ' escapes the image editor button');
 		pg_assert_true(strpos($source, "send_to=' . h(escape_javascript(REQUEST_URL))") === false, $file . ' has no unencoded send_to');
 	}
 }

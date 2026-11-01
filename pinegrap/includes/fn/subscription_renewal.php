@@ -190,10 +190,12 @@ function pg_subscription_renewal_figures($subscription, $item)
  * @param int    $now
  * @param array  $item    the first order's line (recurring_start_date: the
  *                        series of a line that started later begins then)
+ * @param bool   $last    a paid charge is the line's last payment: the row
+ *                        ends instead of moving one period
  * @return array fields (column => value), status (the status after, or ''
  *               when it stays), event, detail
  */
-function pg_subscription_renewal_plan($row, $outcome, $answer, $now, $item = array())
+function pg_subscription_renewal_plan($row, $outcome, $answer, $now, $item = array(), $last = false)
 {
     $now = (int) $now;
     $status = (string) ($row['status'] ?? '');
@@ -209,7 +211,7 @@ function pg_subscription_renewal_plan($row, $outcome, $answer, $now, $item = arr
             $first_at = pg_subscription_later_start_at($item['recurring_start_date'] ?? '', (int) ($row['created_at'] ?? 0));
             $fields['next_charge_at'] = pg_subscription_renewal_next_at(($first_at > 0) ? $first_at : (int) ($row['created_at'] ?? 0), (string) ($row['period'] ?? ''), $now);
             $fields['retry_count'] = 0;
-            $to = ($status === 'past_due') ? 'active' : '';
+            $to = $last ? 'ended' : (($status === 'past_due') ? 'active' : '');
             $event = 'renewed';
             break;
 
@@ -263,6 +265,33 @@ function pg_subscription_renewal_plan($row, $outcome, $answer, $now, $item = arr
     }
 
     return array('fields' => $fields, 'status' => $to, 'event' => $event, 'detail' => $detail);
+}
+
+/**
+ * How many payments a row still has to take: the line's
+ * recurring_number_of_payments (the number on the receipt) less the
+ * payments made. The order's own charge is the first payment of a line
+ * charged in the order; a line that started later was not charged in the
+ * order, so all its payments are renewals. Pure.
+ *
+ * @param array $row     the subscriptions row
+ * @param array $item    the first order's line
+ * @param int   $renewed the row's paid renewals (its 'renewed' events)
+ * @return int -1 when the line runs until cancelled (0 or no number), else
+ *             the payments left, never below 0
+ */
+function pg_subscription_renewal_payments_left($row, $item, $renewed)
+{
+    $payments = (int) ($item['recurring_number_of_payments'] ?? 0);
+
+    if ($payments <= 0) {
+        return -1;
+    }
+
+    $later = pg_subscription_later_start_at($item['recurring_start_date'] ?? '', (int) ($row['created_at'] ?? 0)) > 0;
+    $made = ($later ? 0 : 1) + max(0, (int) $renewed);
+
+    return max(0, $payments - $made);
 }
 
 /**
@@ -323,10 +352,12 @@ function pg_subscription_renewal_status_after($row, $plan)
  * @param int   $id
  * @param int   $now
  * @param array $io lock, unlock, read, first_order, charge, seal, save,
- *                  write_order, log, event, mail; price_notice (the latest
- *                  price notice) when price changes are applied
+ *                  write_order, log, event, mail, paid_count (the row's
+ *                  'renewed' events); price_notice (the latest price
+ *                  notice) when price changes are applied
  * @return string the outcome, 'skipped' when another run holds the row or
- *                it is no longer due, 'refused' when it cannot be charged
+ *                it is no longer due, 'refused' when it cannot be charged,
+ *                'ended' when the line's number of payments was reached
  */
 function pg_subscription_renewal_run_row($id, $now, array $io)
 {
@@ -369,12 +400,30 @@ function pg_subscription_renewal_run_row($id, $now, array $io)
         return 'refused';
     }
 
+    $left = pg_subscription_renewal_payments_left($row, $first['item'], isset($io['paid_count']) ? (int) call_user_func($io['paid_count'], $id) : 0);
+
+    if ($left === 0) {
+        // Every payment on the receipt was taken: the row ends instead of
+        // being charged. Its status_ended event is written by the save; no
+        // mail, the last payment was announced already.
+        $moved = pg_subscription_transition_fields($row, 'ended', $now);
+
+        if ($moved !== null) {
+            unset($moved['status']);
+            call_user_func($io['save'], $row, array('fields' => array_merge($moved, array('next_charge_at' => 0)), 'status' => 'ended', 'event' => 'status_ended', 'detail' => ''));
+        }
+
+        call_user_func($io['unlock'], $id);
+
+        return 'ended';
+    }
+
     $driver_row = pg_subscription_driver_row($row);
     $driver_row['order'] = $first['order'];
 
     $answer = call_user_func($io['charge'], $row['driver'], $driver_row);
     $outcome = pg_subscription_renewal_outcome($answer);
-    $plan = pg_subscription_renewal_plan($row, $outcome, $answer, $now, $first['item']);
+    $plan = pg_subscription_renewal_plan($row, $outcome, $answer, $now, $first['item'], $left === 1);
 
     if ($outcome === 'paid') {
         $plan['fields'] += pg_subscription_renewal_card_fields($answer, $driver_row['card_ref'], $io['seal']);
@@ -443,6 +492,10 @@ function pg_subscription_renewal_io()
             return pg_subscription_event_write($id, $kind, $order_id, $amount, $remote_event_id, $detail);
         },
         'mail' => 'pg_subscription_mail_send',
+        'paid_count' => function ($id) {
+            return (int) db_value("SELECT COUNT(*) FROM subscription_events
+                WHERE (subscription_id = '" . e((int) $id) . "') AND (kind = 'renewed')");
+        },
         'price_notice' => 'pg_subscription_price_notice_latest',
         'notice_read' => function ($id) {
             return db_item(pg_subscription_price_notice_sql(true), array((int) $id));
@@ -470,7 +523,7 @@ function pg_subscription_renewal_first_order($row)
             . ($page_column ? ', checkout_page_id' : '') . "
         FROM orders WHERE id = '" . e((int) $row['order_id']) . "'");
 
-    $item = db_item("SELECT id, ship_to_id, product_id, product_name, quantity, price, tax_total, recurring_start_date
+    $item = db_item("SELECT id, ship_to_id, product_id, product_name, quantity, price, tax_total, recurring_start_date, recurring_number_of_payments
         FROM order_items
         WHERE (id = '" . e((int) $row['order_item_id']) . "') AND (order_id = '" . e((int) $row['order_id']) . "')");
 
@@ -697,7 +750,9 @@ function pg_subscription_renewal_confirmed($driver, $id, $answer, $now, $io = nu
         return 'refused';
     }
 
-    $plan = pg_subscription_renewal_plan($row, 'paid', $answer, $now, $first['item']);
+    $left = pg_subscription_renewal_payments_left($row, $first['item'], isset($io['paid_count']) ? (int) call_user_func($io['paid_count'], $id) : 0);
+    // The money was taken: a row already past its number ends with it.
+    $plan = pg_subscription_renewal_plan($row, 'paid', $answer, $now, $first['item'], ($left === 0) || ($left === 1));
 
     call_user_func($io['save'], $row, $plan);
 
@@ -724,7 +779,7 @@ function pg_subscription_renewal_confirmed($driver, $id, $answer, $now, $io = nu
  */
 function pg_subscription_renewals_run($now, $limit = 200)
 {
-    $counts = array('paid' => 0, 'failed' => 0, 'confirm' => 0, 'pending' => 0, 'unclear' => 0, 'refused' => 0, 'skipped' => 0);
+    $counts = array('paid' => 0, 'failed' => 0, 'confirm' => 0, 'pending' => 0, 'unclear' => 0, 'refused' => 0, 'skipped' => 0, 'ended' => 0);
 
     if (!pg_subscriptions_ready()) {
         return $counts;

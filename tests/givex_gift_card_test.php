@@ -73,7 +73,7 @@ function test_givex_redemption_reply()
 
 	// The redemption runs behind the order lock (pg_order_complete_gift_cards()).
 	$redemption = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php');
-	pg_assert_contains("\$new_balance = isset(\$result['balance']) ? \$result['balance'] * 100 : \$applied_gift_card['old_balance'] - \$amount;", $redemption, 'new balance without one in the reply');
+	pg_assert_contains("\$new_balance = isset(\$result['balance']) ? pg_givex_minor_units(\$result['balance']) : \$applied_gift_card['old_balance'] - \$amount;", $redemption, 'new balance without one in the reply');
 	pg_assert_same(0, substr_count($redemption, "escape(\$result['balance'] * 100)"), 'reply balance multiplied unchecked');
 }
 
@@ -114,4 +114,24 @@ function test_givex_request_through_curl_run()
 	pg_assert_contains("\$result['curl_errno'] = \$response['errno'];", $source, 'curl_errno kept');
 	pg_assert_contains("\$result['curl_error'] = \$response['error'];", $source, 'curl_error kept');
 	pg_assert_contains("pg_givex_parse_response(\$type, \$response['body'])", $source, 'reply parsed');
+}
+
+// A Givex balance is a decimal string; in minor units it is rounded, never
+// left as a float: 19.99 * 100 is 1998.999..., which left a fraction of the
+// order to charge after a card covering the total.
+function test_givex_minor_units()
+{
+	pg_assert_same(1999, pg_givex_minor_units('19.99'), '19.99');
+	pg_assert_same(1999, pg_givex_minor_units(19.99), '19.99 as a float');
+	pg_assert_same(57, pg_givex_minor_units('0.57'), '0.57');
+	pg_assert_same(2500, pg_givex_minor_units('25.00'), 'whole amount');
+	pg_assert_same(0, pg_givex_minor_units('0.00'), 'no balance');
+	pg_assert_same(115, pg_givex_minor_units('1.15'), '1.15');
+
+	// Every place that turns a Givex balance into minor units goes through it.
+	foreach (array('order_preview.php', 'express_order.php', 'submit_order.php', 'includes/fn/order_completion.php') as $file) {
+		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_same(0, preg_match("/\\\$result\\['balance'\\]\\s*\\*\\s*100/", $source), $file . ': balance multiplied unrounded');
+		pg_assert_contains("pg_givex_minor_units(\$result['balance'])", $source, $file . ': helper used');
+	}
 }

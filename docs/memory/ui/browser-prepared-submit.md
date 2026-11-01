@@ -11,4 +11,3 @@ description: A form that prepares data in the browser before posting it (Image E
 - They are drawn `disabled` and enabled once the data is in the form. A failed preparation keeps them disabled and says so in a `role="status"` line. They are disabled on the first click and enabled again on `pageshow` from the back/forward cache. The labels never change. This is how the Image Editor's Save Option dialog works (#3176).
 
 ## Why does the server check too?
-- `image_editor_edit.php` refuses an empty `image_file` before `unlink()`. A click before the conversion ended once replaced the original with a 0-byte file, and a double click created two copies (#3176).

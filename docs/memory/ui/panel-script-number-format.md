@@ -5,7 +5,7 @@ module: innodb, geo
 ---
 
 ## How does a panel script write a number?
-- With the separators `pg_number_separators()` gives (tr `1.234,56`, en `1,234.56`), printed into the script by the screen: `NUM` + `numberLabel()` in `view_folders.php` (Catalog Manager prices, quick-edit price box without grouping, upload window sizes), `NUM` + `fmtN()` in the Visitor Summaries widget (`includes/dashboard/widgets/widget_5.php`), `window.pgImageEditorNumber` (printed by `get_image_editor_includes()`) for the image editor's size line, `cfg.moneySeparators` for `readableBytes()` on the product screen.
+- With the separators `pg_number_separators()` gives (tr `1.234,56`, en `1,234.56`), printed into the script by the screen: `NUM` + `numberLabel()` in `view_folders.php` (Catalog Manager prices, quick-edit price box without grouping, upload window sizes), `NUM` + `fmtN()` in the Visitor Summaries widget (`includes/dashboard/widgets/widget_5.php`), `pgImageEditorConfig.decimal` (`pg_image_editor_decimal()`) for the image editor's figures, `cfg.moneySeparators` for `readableBytes()` on the product screen.
 - Never `toLocaleString()` with no or an `undefined` locale (the browser's locale, not the panel's) and never a bare `toFixed(1)` for a figure a person reads: the server prints the figure beside it with `pg_format_number()`, and the two read differently.
 
 ## And on the server?

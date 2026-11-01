@@ -3631,7 +3631,7 @@ function pg_order_complete_gift_cards($order_id, $order_number, $required_amount
 
             } else {
                 // Givex took the amount; a new balance its reply did not give is what the card had left.
-                $new_balance = isset($result['balance']) ? $result['balance'] * 100 : $applied_gift_card['old_balance'] - $amount;
+                $new_balance = isset($result['balance']) ? pg_givex_minor_units($result['balance']) : $applied_gift_card['old_balance'] - $amount;
 
                 db_q(
                     "UPDATE applied_gift_cards

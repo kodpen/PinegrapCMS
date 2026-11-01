@@ -3,9 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Source pins for the File Manager actions that write a new copy on every
- * run. "Save a copy as PNG/JPG/WebP" on an SVG posts to
- * image_editor_save.php in copy mode, which always writes a new file and
- * row; its buttons are type=button, so the window guard never saw them and
+ * run. "Save a copy as PNG/JPG/WebP" on an SVG uploads the drawn picture
+ * beside it (explorer_upload), which always writes a new file and row; its
+ * buttons are type=button, so the window guard never saw them and
  * a double click saved two copies. Import ZIP (its own screen and the File
  * Manager dialog) and Import ZIP for the Visual Page Editor upload, unzip
  * and write rows before they answer, often longer than the window guard's
@@ -51,12 +51,12 @@ function test_rasterize_svg_runs_once()
 	pg_assert_contains('button.disabled = busy;', $fn, 'the buttons follow the flag');
 	pg_assert_false(strpos($fn, 'spinner-border') !== false, 'the labels stay as they are');
 
-	// Every outcome ends the run: the answer (refusal or success), a fetch
+	// Every outcome ends the run: the answer (refusal or success), a request
 	// failure, an image that does not load, a canvas that cannot export.
 	pg_assert_true(substr_count($fn, 'settle();') >= 4, 'every outcome clears the flag');
 	pg_assert_contains('picture.onerror = function () { settle();', $fn, 'a picture that does not load ends the run');
 	pg_assert_contains('catch (e) { settle();', $fn, 'a canvas that cannot export ends the run');
-	pg_assert_contains('.catch(function () { settle();', $fn, 'a network failure ends the run');
+	pg_assert_contains('}, function () { settle();', $fn, 'a failed request ends the run');
 }
 
 // The File Manager's two ZIP dialogs send once and say the import runs.

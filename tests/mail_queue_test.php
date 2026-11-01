@@ -272,3 +272,30 @@ function test_mail_queue_given_up_notices_clip()
 	pg_assert_same(255, mb_strlen($notices[0]['title'], 'UTF-8'));
 	pg_assert_same(100, strlen($notices[0]['order_total']));
 }
+
+// A message left in 'sending' by a run that died counts that attempt: it
+// goes back to the queue on the retry ladder, and the sixth such attempt
+// gives it up instead of putting it back forever.
+function test_mail_queue_stale_claim_counts_the_attempt()
+{
+	$first = pg_mail_stale_claim_update(0, 6, 1000);
+
+	pg_assert_same('queued', $first['status']);
+	pg_assert_same(1, $first['attempts']);
+	pg_assert_same(1060, $first['send_after']);
+	pg_assert_same(0, $first['claimed_at']);
+	pg_assert_true($first['last_error'] !== '');
+
+	$fifth = pg_mail_stale_claim_update(4, 6, 1000);
+
+	pg_assert_same('queued', $fifth['status']);
+	pg_assert_same(5, $fifth['attempts']);
+	pg_assert_same(1000 + 21600, $fifth['send_after']);
+
+	$last = pg_mail_stale_claim_update(5, 6, 1000);
+
+	pg_assert_same('failed', $last['status']);
+	pg_assert_same(6, $last['attempts']);
+	pg_assert_false(array_key_exists('send_after', $last));
+	pg_assert_same($first['last_error'], $last['last_error']);
+}

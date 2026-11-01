@@ -382,7 +382,7 @@ function submit_order($type) {
                     // else the card is valid, so update data for card in database and array
                     } else {
                         // Givex answers in major units; the order counts integer minor units.
-                        $balance = (int) round($result['balance'] * 100);
+                        $balance = pg_givex_minor_units($result['balance']);
                         
                         // update old balance in database
                         $query = "UPDATE applied_gift_cards SET old_balance = ? WHERE id = ?";

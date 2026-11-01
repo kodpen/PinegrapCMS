@@ -6,7 +6,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 ## Which includes/fn/ modules (price_history to wishlist) are hunted?
 - `price_history`: open
 
-- `privacy`: open
+- `privacy`: clean
 
 - `privacy_export`: taken by LA, #4589
 
@@ -26,7 +26,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `record_revisions`: open
 
-- `returns`: open
+- `returns`: clean (#4619)
 
 - `reviews`: taken by LC, #4597
 
@@ -40,7 +40,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `shipment_tracking`: open
 
-- `shipping`: open
+- `shipping`: taken by LL, #4625
 
 - `shipping_import`: open
 
@@ -48,7 +48,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `signature`: open
 
-- `signin`: open
+- `signin`: clean
 
 - `site_datetime`: open
 
@@ -74,7 +74,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `submitted_form_list`: open
 
-- `subscription_renewal`: open
+- `subscription_renewal`: fault fixed by LN, #4622 (renewals stop at the line's number of payments, decided in #4623)
 
 - `subscriptions`: clean (LJ: period dates and month-end anchor, retry ladder, status moves and the read-status guarded write, sealed card_ref shape and seal/open, line amount, later-start rows and the nothing-today refusal, event de-duplication checked; store-mode renewals never stop at order_items.recurring_number_of_payments, left to the `subscription_renewal` hunt)
 
@@ -186,9 +186,9 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `widgets_shipping_address`: open
 
-- `widgets_shipping_method`: open
+- `widgets_shipping_method`: clean (refusals, methods, amounts, remove link)
 
-- `widgets_starters`: open
+- `widgets_starters`: clean (#4628)
 
 - `widgets_tag_cloud`: clean (classic and Search Results widget keyword reads against the classic sync, merge and case folding, size and weight scale, token escaping and search links checked)
 

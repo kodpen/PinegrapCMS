@@ -2,9 +2,9 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Static checks on the folder, page copy, calendar event, image editor and
- * theme designer screens (edit_folder.php, duplicate_page_f.php,
- * edit_calendar_event.php, image_editor_edit.php, theme_designer.php):
+ * Static checks on the folder, page copy, calendar event and theme designer
+ * screens (edit_folder.php, duplicate_page_f.php, edit_calendar_event.php,
+ * theme_designer.php):
  * their raw queries with values run through db_q() placeholders, not
  * escape()/e() concatenated into the SQL text, and every db_q() call passes
  * one value per '?'. The raw queries left have no values. Optional SQL
@@ -124,7 +124,6 @@ function db_q_content_screens_test_files()
 		'edit_folder.php' => 22,
 		'duplicate_page_f.php' => 22,
 		'edit_calendar_event.php' => 22,
-		'image_editor_edit.php' => 26,
 		'theme_designer.php' => 20,
 	);
 }

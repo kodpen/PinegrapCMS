@@ -174,7 +174,7 @@ if ((isset($_POST['submit_apply_gift_card']) == TRUE) && (ECOMMERCE_GIFT_CARD ==
                 }
 
                 $gift_card_id = '';
-                $old_balance = $result['balance'] * 100;
+                $old_balance = pg_givex_minor_units($result['balance']);
                 $givex = 1;
             }
             

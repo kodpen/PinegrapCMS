@@ -11,8 +11,8 @@ module: image_editor
 
 ## How does a screen open it?
 - Print `pg_image_editor_includes()` once (the File Manager does). `pgImageEditor.open(options)` loads the stylesheet and the scripts on the first call, then answers with the editor's promise: the save result, or `null` when it closed unsaved.
-- Options: `src`, `fileId`, `fileName`, or `blank: {width, height, background}` (16-8000 px); `save: {mode, folderId, name}`; `profile` (`photo`, `canvas`, `annotate`, `optimise`; a blank one defaults to `canvas`); `tools` (known names: the floating mini bar instead of the rail and panel); `theme`; `fullscreen`; `onSave(result)`; `onClose()`. One editor at a time: a second call gets the open one's promise.
-- Save writes through `image_editor_api.php` and answers `{ file, doc, fileId }`; a callback save answers `{ doc, fileId }` and writes nothing (`platform/image-editor-save.md`).
+- Options: `src`, `fileId`, `fileName` (with save mode replace or copy and no id, the file is looked up by name), or `blank: {width, height, background}` (16-8000 px); `save: {mode, folderId, name, url, label}` (`url`: the save body goes there, `label` names its button); `profile` (`photo`, `canvas`, `annotate`, `optimise`; a blank one defaults to `canvas`); `tools` (known names: the floating mini bar instead of the rail and panel); `theme`; `fullscreen`; `onSave(result)`; `onClose()`. One editor at a time: a second call gets the open one's promise.
+- Save writes through `image_editor_api.php` and answers `{ file, doc, fileId }`; a callback save answers `{ doc, fileId }` and writes nothing (`platform/image-editor-save.md`). The screens that call it, and the older `openImageEditor()`: `image-editor-callers.md`.
 
 ## Which keys and gestures work?
 - See `image-editor-keys.md`: shortcuts, Escape, Enter and Space on focused buttons, gestures.

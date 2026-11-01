@@ -5,7 +5,7 @@ description: The single shipment write path (includes/fn/shipping.php): pg_shipm
 
 ## What writes shipping_tracking_numbers?
 - Only `includes/fn/shipping.php` (#879): `pg_shipment_record()` adds a row or updates the one of the same (`ship_to_id`, `number`) in place (id, source, dates kept); `pg_shipment_prune()` removes the address's rows not in a list; `pg_shipment_delivered()` marks an address delivered.
-- Callers: `update_order()` (order screen, Workspace: `panel`; `api_orders_ship()`: `api`, `shipment-api-fields.md`), `mp_order_apply_tracking()` / `mp_order_mark_dates()` (`marketplace`), label create and tracking (`carrier`, `shipment-labels.md`, `shipment-tracking.md`), `shipworks.php` `updateshipment` (`shipworks`, #3443: `order.shipped` if `created`; no mail, SMS, ERP invoice). `delete_order.php` deletes an order's rows.
+- Callers: `update_order()` (screen, Workspace: `panel`; `api_orders_ship()`: `api`), `mp_order_apply_tracking()` / `mp_order_mark_dates()` (`marketplace`), labels and tracking (`carrier`), `shipworks.php` `updateshipment` (`shipworks`, #3443: `order.shipped` if `created`; no mail, SMS, ERP invoice). `delete_order.php` deletes an order's rows.
 - Before 11.0.20 (`pg_shipment_rows_ready()`) only the number is written; a delivery has only the caller's guard.
 
 ## When is the list replaced?
@@ -19,11 +19,12 @@ description: The single shipment write path (includes/fn/shipping.php): pg_shipm
 - `format_warning`: recomputed on each write against the carrier the customer is shown (named, else `pg_shipping_carrier()` with the default).
 
 ## What does the format warning check?
-- `pg_shipment_number_warning()`: 5–40 of `[A-Za-z0-9 -]`, alphanumeric first; yurtici, surat, aras, mng 8–20 digits; ptt 8–20 digits or a valid UPU S10 (`pg_shipment_s10_valid()`, mod 11); UPS/FedEx/USPS their patterns; others the general shape. Never blocks; `_order_has_shipped()` ignores it. Unchecked on live numbers.
+- `pg_shipment_number_warning()`: 5–40 of `[A-Za-z0-9 -]`, alphanumeric first; yurtici, surat, aras, mng 8–20 digits; ptt 8–20 digits or a valid UPU S10 (`pg_shipment_s10_valid()`, mod 11); UPS/FedEx/USPS their patterns; others the general shape. Never blocks; `_order_has_shipped()` ignores it.
 
 ## When is a delivery recorded?
 - `update_order()`: `pg_shipment_delivery_entered()`, i.e. the save enters or changes the delivery date to a day not after today (an unchanged estimate records nothing; a future date is an estimate). Tracking: a service's delivered answer, at its time.
-- `pg_shipment_delivered()` stamps `status` delivered and `delivered_at` on the address's numbered rows not yet arrived; it announces `order.delivered` (`pg_announce`) and starts `order_delivered` campaigns only when it changed rows and none had arrived before. Resaves, corrections, re-polls and racing writers give one event; a later parcel is stamped silently; the first arrival time never moves; clearing the date undoes nothing.
+- `pg_shipment_delivered()` stamps `status` delivered and `delivered_at` on the address's numbered rows not yet arrived; it announces `order.delivered` (`pg_announce`) and starts `order_delivered` campaigns only when it changed rows and none had arrived before. Resaves, re-polls and racing writers give one event; a later parcel is stamped silently; the first arrival never moves.
+- Announced `delivery_date`: the day of `$time`, never `ship_tos.delivery_date` (tracking job and marketplace polls leave the estimate there; #4625).
 - An address with no numbered row uses `$opts['first']` (the caller's own transition): there a correction past → past day announces again, and a number added after such a delivery can announce twice.
 - `notify` false (API `notify` false, marketplace) skips the customer e-mail and SMS, not the event. The marketplace import calls it per address on each delivered poll; `first` is its "delivery_date was empty" update.
 

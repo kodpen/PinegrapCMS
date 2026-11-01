@@ -28,7 +28,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `bundles`: open
 
-- `calendar`: open
+- `calendar`: done #4632 #4646 (recurring overnight/multi-day events and room availability, unpadded view date; rest reviewed: escaping, access, recurrence expansion)
 
 - `captcha`: clean (siteverify outcomes, token, widget escaping, settings card and save order checked)
 
@@ -38,7 +38,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `carrier_webhook`: open
 
-- `cart_quotes`: open
+- `cart_quotes`: clean (line cleaning, plan against stock/minimum/maximum/bin, create and open checks, apply and its repeat guard, completion, link page escaping checked)
 
 - `classic_style_design`: open
 
@@ -46,7 +46,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `cloudflare_tools`: open
 
-- `collections`: open
+- `collections`: taken by LQ, #4650
 
 - `comments`: taken by LB — #4599
 
@@ -60,7 +60,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `contact_list`: open
 
-- `contacts`: open
+- `contacts`: done #4624
 
 - `content`: open
 
@@ -102,7 +102,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `explorer_side`: open
 
-- `files`: open
+- `files`: done #4613
 
 - `form_subscription`: open
 
@@ -144,7 +144,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `mail_parse`: open
 
-- `mail_queue`: open
+- `mail_queue`: done #4654 (rest checked: retry ladder, give-up and notices, property encoding and attachments, job-alive check, claim race, sweeps, List-Unsubscribe headers)
 
 - `maintenance_mode`: open
 
@@ -182,14 +182,14 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `page_revisions`: open
 
-- `page_schedule`: open
+- `page_schedule`: clean (time parsing and range, save plan, job pass and its overlap guard, API time checks, list chip escaping checked)
 
-- `page_type_pane`: open
+- `page_type_pane`: clean (type rights, layout type rule, offer rights, contact group, private folder and custom form guards, form name check, pane CSRF, folder access and collaboration lock checked)
 
-- `parasut`: open
+- `parasut`: clean (request and 429 retry, credentials and token cache, connect and settings card escaping, inbox totals and list filters, VKN lookup, Create Invoice and E-Shipment flows, kept-id SQL, order screen notices checked)
 
-- `passkeys`: open
+- `passkeys`: clean
 
-- `payments`: open
+- `payments`: done (#4629)
 
-- `pdf_merge`: taken by bug-hunt-pdf-merge
+- `pdf_merge`: done (#4610)

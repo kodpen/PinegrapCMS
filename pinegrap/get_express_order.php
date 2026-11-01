@@ -3130,7 +3130,7 @@ function get_express_order($properties) {
                 )
                 &&
                 (
-                    ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && ((ECOMMERCE_AMERICAN_EXPRESS === true) || (ECOMMERCE_DINERS_CLUB == true) || (ECOMMERCE_DISCOVER_CARD == true) || (ECOMMERCE_MASTERCARD == true) || (ECOMMERCE_VISA == true)))
+                    ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && ((ECOMMERCE_AMERICAN_EXPRESS == true) || (ECOMMERCE_DINERS_CLUB == true) || (ECOMMERCE_DISCOVER_CARD == true) || (ECOMMERCE_MASTERCARD == true) || (ECOMMERCE_VISA == true)))
                     || ((ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT == TRUE) && ($recurring_transaction == FALSE))
                     || ($payment_driver_methods !== array())
                     ||
@@ -3146,7 +3146,7 @@ function get_express_order($properties) {
                 )
             ) {
                 // if the credit/debit card payment method is on and there is at least one accepted card, then remember that the payment method should be shown
-                if ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && ((ECOMMERCE_AMERICAN_EXPRESS === true) || (ECOMMERCE_DINERS_CLUB == true) || (ECOMMERCE_DISCOVER_CARD == true) || (ECOMMERCE_MASTERCARD == true) || (ECOMMERCE_VISA == true))) {
+                if ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && ((ECOMMERCE_AMERICAN_EXPRESS == true) || (ECOMMERCE_DINERS_CLUB == true) || (ECOMMERCE_DISCOVER_CARD == true) || (ECOMMERCE_MASTERCARD == true) || (ECOMMERCE_VISA == true))) {
                     $show_credit_debit_card_payment_method = TRUE;
                 }
                 
@@ -5724,7 +5724,7 @@ function get_express_order($properties) {
                 )
                 &&
                 (
-                    ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && ((ECOMMERCE_AMERICAN_EXPRESS === true) || (ECOMMERCE_DINERS_CLUB == true) || (ECOMMERCE_DISCOVER_CARD == true) || (ECOMMERCE_MASTERCARD == true) || (ECOMMERCE_VISA == true)))
+                    ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && ((ECOMMERCE_AMERICAN_EXPRESS == true) || (ECOMMERCE_DINERS_CLUB == true) || (ECOMMERCE_DISCOVER_CARD == true) || (ECOMMERCE_MASTERCARD == true) || (ECOMMERCE_VISA == true)))
                     || ((ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT == TRUE) && ($recurring_transaction == FALSE))
                     || (pg_payment_checkout_driver_methods($recurring_transaction == TRUE) !== array())
                     ||
@@ -5779,7 +5779,7 @@ function get_express_order($properties) {
                 }
 
                 // if the credit/debit card payment method is on and there is at least one accepted card, then remember that the payment method should be shown
-                if ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && ((ECOMMERCE_AMERICAN_EXPRESS === true) || (ECOMMERCE_DINERS_CLUB == true) || (ECOMMERCE_DISCOVER_CARD == true) || (ECOMMERCE_MASTERCARD == true) || (ECOMMERCE_VISA == true))) {
+                if ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && ((ECOMMERCE_AMERICAN_EXPRESS == true) || (ECOMMERCE_DINERS_CLUB == true) || (ECOMMERCE_DISCOVER_CARD == true) || (ECOMMERCE_MASTERCARD == true) || (ECOMMERCE_VISA == true))) {
 
                     $credit_debit_card = true;
                     $number_of_payment_methods++;

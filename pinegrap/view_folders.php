@@ -10932,10 +10932,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // tools resizes and crops, and starting square means neither dimension is
     // the one that has to be undone.
     //
-    // There is nothing to replace, so the window is opened with Replace taken
-    // out -- the footer then offers the format and one Save, which is the
-    // whole decision. The endpoint is told the folder instead of a file id,
-    // which is how it knows to make a row rather than write over one.
+    // There is nothing to replace: the editor opens an empty white canvas
+    // and its save makes a new PNG in the folder.
     var BLANK_IMAGE_SIZE = 1000;
 
     function createBlankImage() {
@@ -10944,56 +10942,21 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if ((!newActions().image) || (folderId <= 0)) { return; }
 
-        loadAssets('image_editor', function () {
+        window.pgImageEditor.open({
+            blank: { width: BLANK_IMAGE_SIZE, height: BLANK_IMAGE_SIZE, background: '#ffffff' },
+            save: { mode: 'new', folderId: folderId, name: L.new_image_name },
+            onSave: function (result) {
 
-            if (typeof window.openImageEditor !== 'function') {
-                toast(L.image_editor_missing, false);
-                return;
+                var response = result.file || {};
+
+                toast(fmt(L.new_image_saved, [response.name || '']), true);
+
+                // Somewhere other than where the operator is standing --
+                // the flat views create into the top folder -- so the
+                // screen goes to where the picture actually landed.
+                if (folderId !== state.folderId) { exitAllFiles(folderId); } else { reload(); }
             }
-
-            var canvas = document.createElement('canvas');
-            canvas.width = BLANK_IMAGE_SIZE;
-            canvas.height = BLANK_IMAGE_SIZE;
-
-            var context = canvas.getContext('2d');
-
-            // White rather than transparent: the canvas is what the operator
-            // draws on, and two of the three formats on offer cannot keep
-            // transparency -- a jpg saved from a transparent canvas comes back
-            // black, which reads as the tool having broken.
-            context.fillStyle = '#ffffff';
-            context.fillRect(0, 0, BLANK_IMAGE_SIZE, BLANK_IMAGE_SIZE);
-
-            var blank;
-
-            try { blank = canvas.toDataURL('image/png'); }
-            catch (e) { toast(L.request_failed, false); return; }
-
-            window.openImageEditor({
-                src: blank,
-                fileName: L.new_image_name + '.png',
-                folderId: folderId,
-                token: software_token,
-                saveUrl: 'image_editor_save.php',
-                allowReplace: false,
-                // Nothing on disk yet, so there is no format to keep: the
-                // footer asks for one outright instead of offering "the same
-                // one", which here would mean the same as what.
-                newFile: true,
-                saveLabel: L.save,
-                onSaved: function (response) {
-
-                    response = response || {};
-
-                    toast(fmt(L.new_image_saved, [response.name || '']), true);
-
-                    // Somewhere other than where the operator is standing --
-                    // the flat views create into the top folder -- so the
-                    // screen goes to where the picture actually landed.
-                    if (folderId !== state.folderId) { exitAllFiles(folderId); } else { reload(); }
-                }
-            });
-        });
+        }).catch(function () { toast(L.image_editor_missing, false); });
     }
 
     // ── Delete (selection in the content area) ──────────────────────────
@@ -14056,59 +14019,40 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         runInBatches({ type: 'explorer_webp' }, items, 'converted', L.converting, L.converted_done);
     }
 
-    // The picture editor, in a window on this screen.
-    //
-    // It used to leave for image_editor_edit.php and come back through
-    // send_to: a page out and a page back for a crop, with the selection, the
-    // scroll position and the folder you were standing in all rebuilt from
-    // the address bar afterwards. This is the same editor the visual designer
-    // opens -- one tool, one save endpoint -- and none of that is lost.
-    //
-    // Addressed by id: image_editor_save.php looks a name up across the whole
-    // files table, and two folders can hold the same name.
+    // The picture editor, in a window on this screen (pg_image_editor_includes()
+    // at the end of the page), addressed by id: two folders can hold the
+    // same name. A file it may not write over is saved as a copy.
     function openImageEditorFor(item, onSaved) {
 
-        loadAssets('image_editor', function () {
+        window.pgImageEditor.open({
+            fileId: item.id,
+            fileName: item.name,
+            onSave: function (result) {
 
-            if (typeof window.openImageEditor !== 'function') {
-                toast(L.image_editor_missing, false);
-                return;
+                var response = result.file || {};
+
+                // Saved over itself: the address is unchanged, the pixels
+                // are not, and the browser is holding the old ones.
+                if (response.mode !== 'copy') { imageVersions[item.id] = Date.now(); }
+
+                toast(fmt(L.saved_named, [response.name || item.name]), true);
+
+                if (onSaved) { onSaved(response); } else { reload(); }
             }
-
-            window.openImageEditor({
-                src: imageUrl(item),
-                fileId: item.id,
-                fileName: item.name,
-                token: software_token,
-                saveUrl: 'image_editor_save.php',
-                onSaved: function (response) {
-
-                    response = response || {};
-
-                    // Saved over itself: the address is unchanged, the pixels
-                    // are not, and the browser is holding the old ones.
-                    if (response.mode !== 'copy') { imageVersions[item.id] = Date.now(); }
-
-                    toast(fmt(L.saved_named, [response.name || item.name]), true);
-
-                    if (onSaved) { onSaved(response); } else { reload(); }
-                }
-            });
-        });
+        }).catch(function () { toast(L.image_editor_missing, false); });
     }
 
     // -- Heavy tools, fetched the first time somebody reaches for them ----
     //
-    // The picture editor weighs close to a megabyte of script, and most
-    // visits to this screen never open it. The tags are the ones the other
-    // screens put in their head, from the same PHP functions, so the list of
-    // files lives in one place; here they are read out of that markup and
-    // appended one at a time, each script waiting for the one before it --
-    // the order the head would have loaded them in. The code editor is
-    // fetched by window.pgCodeEditorUse() (backend.src.js) instead, the first
-    // time a text file opens.
+    // The Word and Excel view is large, and most visits to this screen never
+    // open one. The tags are the ones the other screens put in their head,
+    // from the same PHP function, so the list of files lives in one place;
+    // here they are read out of that markup and appended one at a time, each
+    // script waiting for the one before it -- the order the head would have
+    // loaded them in. The code editor is fetched by window.pgCodeEditorUse()
+    // (backend.src.js) and the image editor by window.pgImageEditor (its
+    // loader at the end of the page) instead.
     var assetBundles = {
-        image_editor: <?php echo encode_json(get_image_editor_includes()); ?>,
         office_view: <?php echo encode_json(pg_office_view_includes()); ?>
     };
 
@@ -14740,21 +14684,23 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             try { data = canvas.toDataURL(mime, 0.92); } catch (e) { settle(); toast(L.request_failed, false); return; }
 
-            fetch('image_editor_save.php', {
-                method: 'POST',
-                credentials: 'same-origin',
-                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                body: JSON.stringify({ token: software_token, file_id: file.id, mode: 'copy', type: type, data: data })
-            }).then(function (response) { return response.json(); }).then(function (result) {
+            // A new file beside the drawing, through the upload: its folder's
+            // access rules, a free name and the row as for any upload.
+            api({
+                type: 'explorer_upload',
+                target_folder_id: file.folder_id,
+                name: String(file.name).replace(/\.[^.]*$/, '') + '.' + type,
+                data: data
+            }, function (result) {
 
                 settle();
 
                 if (!result || (result.status !== 'success')) { toast((result && result.message) || L.request_failed, false); return; }
 
-                toast(fmt(L.saved_named, [result.name]), true);
+                toast(fmt(L.saved_named, [result.file.name]), true);
                 reload();
 
-            }).catch(function () { settle(); toast(L.request_failed, false); });
+            }, function () { settle(); toast(L.request_failed, false); });
         };
 
         picture.onerror = function () { settle(); toast(L.request_failed, false); };

@@ -219,6 +219,52 @@ function pg_image_editor_includes()
         load: load,
         open: function (options) { return load().then(function (E) { return E.open(options || {}); }); }
     };
+    // The older call: a file by id or name is saved over (or copied when
+    // allowReplace is false), saveUrl takes the edit somewhere else, and
+    // onSaved gets the saved file.
+    window.openImageEditor = function (o) {
+        o = o || {};
+        var options = { fileId: o.fileId, fileName: o.fileName, tools: o.tools, profile: o.profile, onClose: o.onCancel };
+        if (o.saveUrl) {
+            options.src = o.src;
+            options.save = { mode: "url", url: o.saveUrl, label: o.saveLabel };
+        } else {
+            options.save = { mode: (o.allowReplace === false) ? "copy" : "replace" };
+        }
+        options.onSave = function (r) { if (typeof o.onSaved === "function") { o.onSaved(r.file || r); } };
+        return window.pgImageEditor.open(options);
+    };
+    window.imageEditorAvailable = function () { return true; };
+    // A button or link with data-pg-image-edit (the name of a file) opens the
+    // file. A copy saved from a picture of a page is put in that content
+    // (data-pg-image-object, -object-id, -column: action content); then the
+    // page is drawn again, past the week the browser may keep a picture.
+    document.addEventListener("click", function (e) {
+        var b = e.target && e.target.closest ? e.target.closest("[data-pg-image-edit]") : null;
+        if (!b) { return; }
+        e.preventDefault();
+        var cfg = window.pgImageEditorConfig, name = b.getAttribute("data-pg-image-edit");
+        window.pgImageEditor.open({ fileName: name, save: { mode: "replace" }, onSave: function (r) {
+            var f = r.file || {}, object = b.getAttribute("data-pg-image-object"), steps = [];
+            if (f.url) {
+                var bare = String(f.url).split("?")[0];
+                [bare, decodeURI(bare)].forEach(function (u) { steps.push(fetch(u, { cache: "reload", credentials: "same-origin" }).catch(function () {})); });
+            }
+            if (object && (f.mode === "copy")) {
+                steps.push(fetch(cfg.api, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", Accept: "application/json" },
+                    body: JSON.stringify({ token: cfg.token, action: "content", object_type: object, object_id: b.getAttribute("data-pg-image-object-id") || "",
+                        column: b.getAttribute("data-pg-image-column") || "", from: name, to: f.id }) }).catch(function () {}));
+            }
+            Promise.all(steps).then(function () { window.location.reload(); });
+        } });
+    });
+    // #pg-image-edit=<name>: the address image_editor_edit.php sends to.
+    var asked = /^#pg-image-edit=(.+)$/.exec(window.location.hash || "");
+    if (asked) {
+        if (window.history.replaceState) { window.history.replaceState(null, "", window.location.pathname + window.location.search); }
+        try { asked = decodeURIComponent(asked[1]); } catch (err) { asked = ""; }
+        if (asked) { window.pgImageEditor.open({ fileName: asked, save: { mode: "replace" }, onSave: function () { window.location.reload(); } }); }
+    }
 })();</script>';
 }
 
@@ -589,7 +635,16 @@ function pg_image_editor_file($file_id, $user)
  */
 function pg_image_editor_open($request, $user)
 {
-    $file = pg_image_editor_file(isset($request['file_id']) ? $request['file_id'] : 0, $user);
+    $file_id = isset($request['file_id']) ? $request['file_id'] : 0;
+
+    // A caller that knows the file only by its address (a page's picture,
+    // the designer's image field) names it; the name is the files row's
+    // address, so it is unique.
+    if (!$file_id && isset($request['file_name']) && is_string($request['file_name']) && ($request['file_name'] !== '')) {
+        $file_id = (int) db_value("SELECT id FROM files WHERE name = '" . e($request['file_name']) . "' LIMIT 1");
+    }
+
+    $file = pg_image_editor_file($file_id, $user);
 
     if ($file['refusal']) {
         return $file['refusal'];
@@ -1024,7 +1079,7 @@ function pg_image_editor_arrays($value)
  * Every answer is JSON, refusals included; a page with a "go back" link is
  * a syntax error to fetch().
  *
- *   { token, action: 'open', file_id }
+ *   { token, action: 'open', file_id | file_name }
  *       -> { status, file: { id, name, url, replace, notice } }
  *       (and versions, doc, base: the versions this file has)
  *   { token, action: 'save', mode: 'replace'|'copy'|'new', file_id | folder_id,
@@ -2339,4 +2394,206 @@ function pg_image_editor_strings_vector()
         'finishPath'     => lang('Finish'),
         'convertToPath'  => lang('Convert to path'),
     );
+}
+
+// -- Callers: an endpoint of their own, a page's content --
+
+/**
+ * An edit of the picture at $path, drawn as a copy is (first frame, the
+ * file's own format), for an endpoint that stores the result itself
+ * (workspace_file_save.php, save.url of the editor). The request is the
+ * editor's save body: doc, overlay and, without Imagick, colour.
+ *
+ * @param string $path
+ * @param array  $request
+ * @return array error: '' or why not; data: the bytes; extension: jpg,
+ *               png, webp or gif
+ */
+function pg_image_editor_render($path, $request)
+{
+    $check = pg_image_edit_validate(isset($request['doc']) ? $request['doc'] : null);
+    $refused = array('error' => lang('Invalid request.'), 'data' => '', 'extension' => '');
+    $size = is_file($path) ? @getimagesize($path) : false;
+    $types = array(IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_WEBP => 'webp', IMAGETYPE_GIF => 'gif');
+
+    if (($check['error'] !== '') || !$check['edit'] || !$size || !isset($types[(int) $size[2]])) {
+        return $refused;
+    }
+
+    @set_time_limit(120);
+
+    $edit = $check['edit'];
+    $edit['first_frame'] = true;
+    // Beside the picture, as a save keeps its temporary files.
+    $stem = $path . '.' . (function_exists('getmypid') ? getmypid() : uniqid());
+    $overlay = '';
+    $layer = '';
+    $source = $path;
+
+    if (!empty($request['overlay'])) {
+        $overlay = $stem . '.overlay.tmp';
+
+        if (!pg_image_editor_take_png($request['overlay'], $overlay, $edit['out_w'], $edit['out_h'])) {
+            return $refused;
+        }
+
+        $edit['overlay'] = $overlay;
+    }
+
+    // Without Imagick the browser sends the colour step done, as for a save.
+    if (!empty($request['colour']) && !empty($edit['color'])) {
+        $layer = $stem . '.colour.tmp';
+        $taken = pg_image_editor_take_picture($request['colour'], $layer);
+        $width = ($edit['rot'] % 180) ? $edit['space_h'] : $edit['space_w'];
+        $height = ($edit['rot'] % 180) ? $edit['space_w'] : $edit['space_h'];
+
+        if (!$taken || ($taken[0] > $width + 0.5) || ($taken[1] > $height + 0.5) || (abs($taken[0] - $taken[1] * $width / $height) > 1.5)) {
+            @unlink($layer);
+            @unlink($overlay);
+            return $refused;
+        }
+
+        $source = $layer;
+        $edit['color'] = null;
+        $edit['type'] = (int) $size[2];
+
+    } elseif (!empty($edit['color']) && !class_exists('Imagick')) {
+        @unlink($overlay);
+        return $refused;
+    }
+
+    $report = pg_image_edit_apply($source, $edit, array('quality' => 92));
+
+    @unlink($overlay);
+    @unlink($layer);
+
+    if (($report['status'] !== 'success') || !is_string($report['data'])) {
+        return array('error' => pg_image_editor_report_message($report, basename($path)), 'data' => '', 'extension' => '');
+    }
+
+    $made = @getimagesizefromstring($report['data']);
+
+    if (!$made || !isset($types[(int) $made[2]])) {
+        return array('error' => lang('Sorry, the file could not be saved.'), 'data' => '', 'extension' => '');
+    }
+
+    return array('error' => '', 'data' => $report['data'], 'extension' => $types[(int) $made[2]]);
+}
+
+/**
+ * Where a page's picture lives, by the object type of its edit button
+ * (includes/fn/content.php, frontend.src.js): the table, its id column and
+ * the column holding the content. A product's column is chosen by the
+ * button (image_name, details, else full_description).
+ *
+ * @return array type => array(table, id column, content column)
+ */
+function pg_image_editor_content_places()
+{
+    return array(
+        'ad'                   => array('ads', 'id', 'content'),
+        'calendar_event'       => array('calendar_events', 'id', 'full_description'),
+        'cregion'              => array('cregion', 'cregion_id', 'cregion_content'),
+        'pregion'              => array('pregion', 'pregion_id', 'pregion_content'),
+        'system_region_header' => array('page', 'page_id', 'system_region_header'),
+        'system_region_footer' => array('page', 'page_id', 'system_region_footer'),
+        'product'              => array('products', 'id', 'full_description'),
+        'product_group'        => array('product_groups', 'id', 'full_description'),
+        'form_field'           => array('form_fields', 'id', 'information'));
+}
+
+/**
+ * Whether a user of the user role (3) may change the content of an object;
+ * the other roles may. The rules the page editor applies to each kind.
+ *
+ * @return bool
+ */
+function pg_image_editor_content_allowed($type, $id, $user)
+{
+    if ((int) $user['role'] < 3) {
+        return true;
+    }
+
+    switch ($type) {
+        case 'ad':
+            return in_array((int) db_value("SELECT ad_region_id FROM ads WHERE id = '" . e($id) . "'"), array_map('intval', get_items_user_can_edit('ad_regions', $user['id'])), true);
+
+        case 'pregion':
+            return check_edit_access((int) db_value("SELECT page.page_folder FROM pregion LEFT JOIN page ON pregion.pregion_page = page.page_id WHERE pregion.pregion_id = '" . e($id) . "'"));
+
+        case 'system_region_header':
+        case 'system_region_footer':
+            return check_edit_access((int) db_value("SELECT page_folder FROM page WHERE page_id = '" . e($id) . "'"));
+
+        case 'cregion':
+            return in_array((int) $id, array_map('intval', get_items_user_can_edit('common_regions', $user['id'])), true);
+
+        case 'calendar_event':
+            return $user['manage_calendars'] && validate_calendar_event_access($id);
+
+        case 'product':
+        case 'product_group':
+            return (bool) $user['manage_ecommerce'];
+
+        case 'form_field':
+            return check_edit_access((int) db_value("SELECT page.page_folder FROM form_fields LEFT JOIN page ON form_fields.page_id = page.page_id WHERE form_fields.id = '" . e($id) . "'"));
+    }
+
+    return false;
+}
+
+/**
+ * Action content { object_type, object_id, column, from, to }: a copy saved
+ * from a page's picture (to: its file id) takes the place of the picture it
+ * was made from (from: that file's name) in the content of the page region,
+ * ad, product or other object the edit button named.
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_content($request, $user)
+{
+    $type = isset($request['object_type']) ? (string) $request['object_type'] : '';
+    $id = isset($request['object_id']) && is_scalar($request['object_id']) ? (int) $request['object_id'] : 0;
+    $column = isset($request['column']) ? (string) $request['column'] : '';
+    $from = isset($request['from']) && is_string($request['from']) ? $request['from'] : '';
+    $places = pg_image_editor_content_places();
+    $copy = pg_image_editor_file(isset($request['to']) ? $request['to'] : 0, $user);
+
+    if ($copy['refusal']) {
+        return $copy['refusal'];
+    }
+
+    if (!isset($places[$type]) || ($id <= 0) || ($from === '') || !db_value("SELECT id FROM files WHERE name = '" . e($from) . "'")) {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    // A region made a shared component draws the component; its row is no
+    // longer read.
+    if (($type === 'cregion') && in_array($id, pg_common_region_converted_ids(), true)) {
+        return array(array('status' => 'success'), 200);
+    }
+
+    if (!pg_image_editor_content_allowed($type, $id, $user)) {
+        log_activity(lang('access denied to update content with image from ImageEditor because user does not have access to edit it'), isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');
+        return pg_image_editor_refusal(lang('Access denied'), 403);
+    }
+
+    list($table, $key, $field) = $places[$type];
+    $name = (string) $copy['row']['name'];
+
+    if (($type === 'product') || ($type === 'product_group')) {
+        $field = in_array($column, array('image_name', 'details'), true) ? $column : 'full_description';
+    }
+
+    if ($field === 'image_name') {
+        $content = $name;
+    } else {
+        $content = update_image_in_content((string) db_value("SELECT `$field` FROM `$table` WHERE `$key` = '" . e($id) . "'"), $from, $name);
+    }
+
+    if (!db_q("UPDATE `$table` SET `$field` = ? WHERE `$key` = ?", array($content, $id))) {
+        return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
+    }
+
+    return array(array('status' => 'success'), 200);
 }

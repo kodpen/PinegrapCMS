@@ -16,6 +16,9 @@ description: Mail queue gives a message up on its first attempt when the failure
 - The sender notice: before the last attempt the queue passes `notify_sender => 'permanent'`; `email()` then sends the "Email delivery failed" notice only for a permanent failure. Last attempt: `true`. Stored `false` stays false.
 - No schema change. The screen tells a permanent failure by `pg_mail_failed_permanently($status, $attempts)`: failed with fewer attempts than `pg_mail_max_attempts()`; the Retry button resets attempts, so the reading holds. `mail_queue.php` shows a dark "Permanent" badge beside "Failed"; the reason is the Last error column.
 
+## What happens to a row a dead run left in `sending`?
+- PR #4654: after 15 minutes `pg_mail_stale_claim_update()` counts the lost attempt (retry ladder, or failed when attempts run out). Before, it was requeued uncounted, forever.
+
 ## How is the panel told?
 - Every given-up message (permanent, sixth attempt, unreadable row) is told once, at the end of `pg_mail_queue_run()`, through `pg_mail_given_up_notices()` → `create_notification()`.
 - Row: `action = 'mail_failed'`, type error, `title` = reason (clipped 255), `order_total` = recipient (100), `form_id` = `mail_outbox.id`, user `system`. More than 3 in one run: one row, `title` = count, no `form_id`.
