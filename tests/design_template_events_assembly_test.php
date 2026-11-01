@@ -42,7 +42,7 @@ function test_events_template_offered()
 	pg_assert_true(isset($all['pinegrap-events']), 'the template is offered');
 	pg_assert_true(!isset($all['parts']) && !isset($all['events']), 'the parts folder is not read as a template');
 	$tpl = _test_events_tpl();
-	pg_assert_same('1.0.1', $tpl['version']);
+	pg_assert_same('1.0.2', $tpl['version']);
 	pg_assert_same('bootstrap5', $tpl['framework']);
 	pg_assert_same('bi-calendar2-event', $tpl['icon']);
 	pg_assert_true(!isset($tpl['requires']), 'the template opens without the shop');
