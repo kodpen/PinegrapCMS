@@ -480,21 +480,8 @@ if (!isset($_POST['name'])) {
                         <div class="card-body">
                             <div class="col-12 my-3">
                                 <div class="form-field">
-                                    <div class="switch"><input class="collapse-switcher" type="checkbox" id="convert_webp" name="convert_webp" value="1" data-bs-target="#convert_webp_row"></div>
-                                    <label class="" for="convert_webp">' . lang('Convert this image to .webp format') . '</label>
-                                </div>
-                                <div class="collapse popover fade bs-popover-bottom p-0 mb-3" id="convert_webp_row">
-                                    <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                    <div class="popover-body">
-                                        <div class="row">
-                                            <div class="col-12 my-3">
-                                                <div class="form-field">
-                                                    <div class="switch"><input class="" type="checkbox" id="convert_webp_create_copy" name="convert_webp_create_copy" value="1"></div>
-                                                    <label class="" for="convert_webp_create_copy">' . lang('Create a .webp copy instead of replace orginal image') . '</label>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+                                    <div class="switch"><input type="checkbox" id="convert_webp" name="convert_webp" value="1"></div>
+                                    <label class="" for="convert_webp">' . lang('Create a .webp copy') . '</label>
                                 </div>
                             </div>
                         </div>
@@ -761,9 +748,6 @@ $liveform->remove_form('edit_file');
     }
 
     $sql_size = '';
-    // Set when the original image has already been replaced by its WebP
-    // conversion, so the rename step below must not move the old file onto it.
-    $webp_replaced_original = false;
 
     // The sentence for an image the engine could not process. Each reason
     // asks for something different of the operator, so each has its own
@@ -864,41 +848,27 @@ $liveform->remove_form('edit_file');
         exit();
     }
 
-    // WEBP CONVERSION
+    // WEBP COPY
     //
-    // Encoded by the image engine, as the file manager's "Convert to WebP".
+    // A .webp file of its own beside the picture, encoded by the image
+    // engine. The picture itself is never replaced: its name is its address,
+    // which pages, CSS, sent mails and other sites keep asking for. A browser
+    // that wants WebP gets it at that same address anyway (get_file.php).
     // GD's imagewebp() writes nothing for a palette image (every GIF, an
-    // 8-bit PNG) and still returns true, which would leave an empty .webp
-    // and, in replace mode, delete the original after it; the engine turns a
-    // palette into truecolor first. It also reads the file by its detected
-    // type with whichever library this PHP has (imagecreatefrombmp() is PHP
-    // 7.2+, a TIFF needs Imagick) and says why when it cannot.
-    //
-    // Encoded only when one of the two branches below will use it, and
-    // before either writes anything: a failure stops the request with the
-    // original file and its row as they were.
-    //
-    // Replace mode only for the save buttons: the original is deleted, so it
-    // must run only when the row is about to be updated with the new name.
-    // Otherwise a Duplicate request would remove a file its record still
-    // points to.
-    $webp_replace = (
-        !empty($_POST['convert_webp'])
-        && empty($_POST['convert_webp_create_copy'])
-        && (!empty($_POST['submit_save']) || !empty($_POST['submit_save_and_return'])));
-
-    $webp_copy = (!empty($_POST['convert_webp']) && !empty($_POST['convert_webp_create_copy']));
+    // 8-bit PNG) and still returns true; the engine turns a palette into
+    // truecolor first. Encoded before anything is written: a failure stops
+    // the request with the file and its row as they were.
+    $webp_copy = !empty($_POST['convert_webp']);
 
     // webp is not a source: the switch is not drawn for a WebP file, and
     // re-encoding one is the optimize button's job.
     if (in_array($stored_file_extension, array('jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'tif'), true) == false) {
-        $webp_replace = false;
         $webp_copy = false;
     }
 
     $webp_report = null;
 
-    if ($webp_replace || $webp_copy) {
+    if ($webp_copy) {
 
         @set_time_limit(120);
 
@@ -912,43 +882,6 @@ $liveform->remove_form('edit_file');
                     lang(array('string' => 'Sorry, we could not convert that image ({var:1}).', 'vars' => $row['name']))))
                 . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
-    }
-
-    // WEBP overwrite
-    if ($webp_replace) {
-        $name = prepare_file_name(pathinfo($name, PATHINFO_FILENAME) . '.webp');
-        $file_path = FILE_DIRECTORY_PATH . '/' . $name;
-        if (!check_name_availability(array('name' => $name, 'ignore_item_id' => $_POST['id'], 'ignore_item_type' => 'file'))) {
-            output_error(lang(array('string'=>'{var:1} already exists. Please choose a different file name.','vars'=>array(h($name)))) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-        }
-
-        // Through a temporary file in the same directory, as the engine
-        // writes: the name is the file's public address, and a write cut
-        // short would leave half a picture there.
-        $webp_temporary_path = $file_path . '.pgwebp' . (function_exists('getmypid') ? getmypid() : uniqid());
-
-        if ((@file_put_contents($webp_temporary_path, $webp_report['data']) === false) || (@rename($webp_temporary_path, $file_path) == false)) {
-            @unlink($webp_temporary_path);
-            output_error(lang(array('string' => 'The WebP file could not be written to the file system ({var:1}).', 'vars' => h($row['name']))) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-        }
-
-        // The converted file replaces the original; remove the source so the
-        // rename below does not overwrite the WebP bytes with the old image.
-        $old_file_path = FILE_DIRECTORY_PATH . '/' . $row['name'];
-        if ($old_file_path !== $file_path) {
-            @unlink($old_file_path);
-        }
-        $webp_replaced_original = true;
-        $file_extension = 'webp';
-
-        // The engine already recompressed, so the optimized flag is set:
-        // running the optimize button over the result would only degrade it
-        // a second time.
-        $sql_size = "size = '" . (int) strlen($webp_report['data']) . "',
-            image_width = '" . (int) $webp_report['width'] . "',
-            image_height = '" . (int) $webp_report['height'] . "',
-            optimized = '1',
-            optimization_percent = '0',";
     }
 
     // WEBP copy
@@ -1093,7 +1026,7 @@ $liveform->remove_form('edit_file');
         // The database is only told about the new name if the file actually
         // moved. Updating it after a failed rename is what produces the broken
         // state this is here to prevent.
-        if (($name !== $row['name']) && ($webp_replaced_original == FALSE)) {
+        if ($name !== $row['name']) {
             $old_file_path = FILE_DIRECTORY_PATH . '/' . $row['name'];
 
             if ((file_exists($old_file_path) == TRUE) && (@rename($old_file_path, $file_path) == FALSE)) {

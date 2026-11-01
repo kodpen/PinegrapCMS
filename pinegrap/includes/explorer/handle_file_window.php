@@ -71,8 +71,35 @@ function pg_explorer_handle_file_get($type, $request, $user)
     }
 
     $payload['editor_max_label'] = convert_bytes_to_string(pg_explorer_editor_max_bytes());
+    $payload['webp_copy'] = pg_explorer_file_webp_copy($file, $extension, $path);
 
     respond(array('status' => 'success', 'request' => $type, 'file' => $payload));
+}
+
+// The WebP copy a browser that asks for WebP is sent at the picture's own
+// address (get_file.php), when it is made: its size and how much lighter it
+// is than the original. Nothing is made here; Prepare WebP or the first
+// visit makes it.
+function pg_explorer_file_webp_copy($file, $extension, $path)
+{
+    if (
+        !in_array($extension, pg_explorer_webp_source_types(), true)
+        || !empty($file['attachment'])
+        || !is_file($path)
+    ) {
+        return null;
+    }
+
+    $copy = pg_image_derivative_cached($file['id'], $path, array('width' => 0, 'format' => 'webp'), pg_image_derivative_directory(), pg_image_delivery());
+    $original_size = (int) @filesize($path);
+
+    if (($copy === null) || ($original_size < 1)) {
+        return null;
+    }
+
+    return array(
+        'size_label' => convert_bytes_to_string($copy['size']),
+        'saving' => (int) round(100 * ($original_size - $copy['size']) / $original_size));
 }
 
 // Saves the file window: name, folder, description, design flag, and the

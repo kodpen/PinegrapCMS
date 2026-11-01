@@ -821,6 +821,7 @@
     "The Venue": "Mekân",
     "The Walk Before Work": "İşten Önceki Yürüyüş",
     "The Water Issue": "Su Sayısı",
+    "The WebP copy of {var:1} could not be made now; it is made on its first visit.": "{var:1} için WebP kopyası şimdi oluşturulamadı; ilk ziyarette oluşturulur.",
     "The WebP file could not be written to the file system ({var:1}).": "WebP dosyası dosya sistemine yazılamadı ({var:1}).",
     "The Weekend Read": "Hafta Sonu Okuması",
     "The Whole Team": "Tüm Ekip",
