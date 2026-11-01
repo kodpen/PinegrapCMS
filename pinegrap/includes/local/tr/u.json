@@ -411,6 +411,7 @@
     "until {var:1}": "{var:1} tarihine kadar",
     "untouched for a week or more": "bir haftadır ya da daha uzun süredir dokunulmamış olanlar",
     "untracked": "takip edilmiyor",
+    "up {var:1}%": "%{var:1} arttı",
     "up-sell message off": "yukarı satış kapalı",
     "up-sell message on": "yukarı satış açık",
     "update, channel, beta, stable, version": "update, channel, beta, stable, version, guncelleme, güncelleme, kanal, kararli, surum, sürüm",

@@ -39,7 +39,7 @@ pg_page_shell(
     <div class="pg-dash-top">
         ' . pg_dashboard_v2_greeting($user) . '
     </div>
-    ' . pg_dashboard_v2_grid($user) . '
+    ' . pg_dashboard_v2_grid($user, pg_dashboard_v2_row($user['id'])) . '
     ' . pg_js_bundle_tags('assets/js/pg_dash.min.js') . '
 </main>' .
 output_footer();
