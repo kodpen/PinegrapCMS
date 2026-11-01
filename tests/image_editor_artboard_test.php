@@ -260,3 +260,46 @@ function test_image_editor_artboard_gd_extend()
 	$white = pg_image_edit_gd_extend($solid(), array('w' => 50, 'h' => 30, 'x' => 0, 'y' => 0, 'fill' => null), false);
 	pg_assert_same(array(255, 255, 255, 0), $pixel($white, 45, 5), 'white where the format has no alpha');
 }
+
+// A canvas saved in Files keeps its document: the JSON a version row holds,
+// opened again by the model, gives back the text as a layer.
+function test_image_editor_artboard_canvas_document_round_trip()
+{
+	$doc = json_decode('{"v":1,"source":null,"artboard":{"width":1080,"height":1080,"background":"#ffffff"},'
+		. '"geometry":{"rot":0,"flipX":false,"flipY":false,"straighten":0,"crop":null,"cropShape":"rect","output":null},"adjust":{},"filter":"none","frame":null,'
+		. '"layers":[{"id":"t1","type":"text","text":"Hello","x":100,"y":100,"w":300,"h":80},{"id":"p1","type":"image","src":"/logo.png","fileId":12,"x":0,"y":0,"w":50,"h":50}]}');
+
+	pg_assert_true(pg_image_editor_canvas_is_doc($doc), 'a canvas document');
+	pg_assert_false(pg_image_editor_canvas_is_doc(json_decode('{"v":1,"source":{"fileId":3},"artboard":null}')), 'a picture\'s is not');
+
+	$json = pg_image_editor_canvas_doc_json($doc);
+	pg_assert_true($json !== '', 'kept');
+	pg_assert_same('', pg_image_editor_canvas_doc_json(json_decode(str_replace('"/logo.png"', '"data:image/png;base64,AAAA"', json_encode($doc, JSON_UNESCAPED_SLASHES)))), 'a picture still inline is not kept');
+
+	$r = image_editor_artboard_node('var doc = M.canvasOpenDoc(' . $json . ');' . "\n"
+		. 'console.log(JSON.stringify({ types: doc.layers.map(function (l) { return l.type; }), text: doc.layers[0].text, file: doc.layers[1].fileId, board: [doc.artboard.width, doc.artboard.height] }));');
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array('text', 'image'), $r['types'], 'the layers come back');
+	pg_assert_same('Hello', $r['text'], 'the text is editable again');
+	pg_assert_same(12, $r['file'], 'the picture by its file');
+	pg_assert_same(array(1080, 1080), $r['board'], 'the board');
+}
+
+// The save order: a canvas keeps its document after its pictures became
+// files; a picture's copy makes no files of its pictures.
+function test_image_editor_artboard_save_order()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/image_editor.php');
+	$canvas = substr($source, (int) strpos($source, 'function pg_image_editor_save_canvas('));
+	$canvas = substr($canvas, 0, (int) strpos($canvas, "\n}\n"));
+	$save = substr($source, (int) strpos($source, 'function pg_image_editor_save('));
+	$save = substr($save, 0, (int) strpos($save, "\n}\n"));
+
+	pg_assert_true(strpos($canvas, 'pg_image_editor_pictures_saved(') < strpos($canvas, 'pg_image_editor_canvas_keep('), 'pictures before the document is kept');
+	pg_assert_contains("if (\$mode === 'replace') {\n        \$record = pg_image_editor_pictures_saved(", $save, 'a picture keeps its pictures as files on a replace only');
+}

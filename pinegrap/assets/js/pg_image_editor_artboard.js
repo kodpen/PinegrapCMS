@@ -265,6 +265,8 @@
     Editor.prototype.renderMat = function () {
         var b = this.board, show = this.ready && !!this.doc.source && !this.cropping() && !!M.saveLayout(this.doc);
 
+        this.placeVignette(show);
+
         if (!b.mat) {
             if (!show) {
                 return;
@@ -300,6 +302,25 @@
         pattern.firstChild.setAttribute('width', 2 * q);
         pattern.firstChild.setAttribute('height', 2 * q);
         pattern.lastChild.setAttribute('d', 'M0 0h' + q + 'v' + q + 'h' + (-q) + 'ZM' + q + ' ' + q + 'h' + q + 'v' + q + 'h' + (-q) + 'Z');
+    };
+
+    // The vignette belongs to the picture's adjustments: over the crop box
+    // only, as the save draws it, when the canvas reaches past it.
+    Editor.prototype.placeVignette = function (on) {
+        var st = this.vignette.style, vr, c, k;
+
+        if (!on) {
+            st.left = st.top = st.width = st.height = '';
+            return;
+        }
+
+        vr = this.viewRect();
+        c = M.cropBox(this.doc);
+        k = this.view.k;
+        st.left = ((c.x - vr.x) * k) + 'px';
+        st.top = ((c.y - vr.y) * k) + 'px';
+        st.width = (c.w * k) + 'px';
+        st.height = (c.h * k) + 'px';
     };
 
     // The shown box changed by the canvas or an outward frame (an edit, undo,
@@ -346,8 +367,45 @@
         }
     };
 
-    // A picture's save lays it on its canvas (extend); pictures from this
-    // computer go along to be kept as files (pictures) in the target folder.
+    // A file saved before as a canvas opens from its document (the open
+    // answer's canvas and doc), its layers editable, with the canvas's
+    // tools and no New image dialog.
+    var openFile = Editor.prototype.openFile;
+
+    Editor.prototype.openFile = function (r) {
+        var doc = (r && r.canvas && !this.opts.src) ? M.canvasOpenDoc(r.doc) : null;
+
+        if (!doc) {
+            openFile.call(this, r);
+            return;
+        }
+
+        this.versionCount = Number(r.versions) || 0;
+        this.versionBase = 0;
+        this.doc = doc;
+        this.layersDirty = true;
+
+        if (!this.tools.mini) {
+            this.tools = M.resolveTools('canvas', this.opts.tools);
+            this.tool = this.tools.list[0];
+            this.renderTools();
+        }
+
+        if (this.renderVersionCount) {
+            this.renderVersionCount();
+        }
+
+        this.frame.style.background = (doc.artboard.background === 'transparent') ? '' : doc.artboard.background;
+        this.frame.classList.toggle('pgie-checker', doc.artboard.background === 'transparent');
+        this.setReady();
+        this.render();
+    };
+
+    // A picture's save lays it on its canvas (extend); a canvas reopened
+    // from its file names it for a replace or a copy (the core sends its
+    // PNG, picture); pictures from this computer go along to be kept as files
+    // (pictures) in the target folder: not for a picture's copy, which
+    // keeps no document.
     Editor.saveHooks.push(function (body, mode) {
         var layout = (mode !== 'new') ? M.saveLayout(this.doc) : null, list = [];
 
@@ -355,7 +413,11 @@
             body.extend = layout;
         }
 
-        if ((mode === 'replace') || (mode === 'copy') || (mode === 'new')) {
+        if (this.doc.artboard && ((mode === 'replace') || (mode === 'copy'))) {
+            body.file_id = this.opts.fileId;
+        }
+
+        if ((mode === 'replace') || (mode === 'new') || ((mode === 'copy') && this.doc.artboard)) {
             this.doc.layers.forEach(function (l) {
                 if ((l.type === 'image') && !l.fileId && /^data:image\/(png|jpeg);base64,/.test(l.src || '')) {
                     list.push({ id: l.id, data: l.src, name: l.fileName || '' });

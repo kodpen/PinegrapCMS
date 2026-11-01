@@ -651,6 +651,13 @@ function pg_image_editor_open($request, $user)
     }
 
     $state = pg_file_versions_open_state((int) $file['row']['id'], $file['path']);
+    $canvas = pg_image_editor_canvas_open_doc((int) $file['row']['id']);
+
+    // A canvas opens from its document, its layers editable.
+    if ($canvas) {
+        $state['doc'] = $canvas;
+        $state['base'] = 0;
+    }
 
     return array(array(
         'status' => 'success',
@@ -665,7 +672,9 @@ function pg_image_editor_open($request, $user)
         // the browser loads instead of the file (action picture).
         'versions' => $state['count'],
         'doc'      => $state['doc'],
-        'base'     => $state['base']), 200);
+        'base'     => $state['base'],
+        // A canvas file: doc is its document, opened as a blank board.
+        'canvas'   => (bool) $canvas), 200);
 }
 
 /**
@@ -872,41 +881,7 @@ function pg_image_editor_save($request, $user)
     @set_time_limit(120);
 
     if ($check['artboard']) {
-        $folder = isset($request['folder_id']) ? (int) $request['folder_id'] : 0;
-
-        if ($folder <= 0) {
-            return pg_image_editor_refusal(lang('Invalid request.'));
-        }
-
-        // The bin folder takes no new file, as the File Manager's upload and
-        // move refuse it.
-        if (!check_edit_access($folder) || pg_folder_binned($folder)) {
-            return pg_image_editor_refusal(lang('Access denied'), 403);
-        }
-
-        $base = preg_replace('/\.[a-z0-9]{2,5}$/i', '', trim(isset($request['name']) ? (string) $request['name'] : ''));
-        $name = get_unique_name(array('name' => prepare_file_name((($base !== '') ? $base : lang('New image')) . '.png'), 'type' => 'file'));
-
-        if (pg_upload_name_blocked($name)) {
-            return pg_image_editor_refusal(pg_upload_blocked_message($name));
-        }
-
-        $path = FILE_DIRECTORY_PATH . '/' . $name;
-        $temporary = $path . '.' . (function_exists('getmypid') ? getmypid() : uniqid()) . '.tmp';
-
-        if (!pg_image_editor_take_png(isset($request['picture']) ? $request['picture'] : '', $temporary, $check['artboard']['width'], $check['artboard']['height'])) {
-            return pg_image_editor_refusal(lang('Invalid request.'));
-        }
-
-        // The browser's PNG is recompressed when that makes it smaller.
-        pg_process_image_file($temporary);
-
-        if (!@rename($temporary, $path)) {
-            @unlink($temporary);
-            return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
-        }
-
-        return pg_image_editor_pictures_saved(pg_image_editor_record('new', $name, $folder, 'png', null, $user), $request, $folder, $user);
+        return pg_image_editor_save_canvas($request, $check['artboard'], $mode, $user);
     }
 
     if (($mode !== 'replace') && ($mode !== 'copy')) {
@@ -1058,7 +1033,12 @@ function pg_image_editor_save($request, $user)
         return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
     }
 
-    $record = pg_image_editor_pictures_saved(pg_image_editor_record($mode, $name, (int) $file['row']['folder'], (string) $file['row']['type'], $file['row'], $user), $request, (int) $file['row']['folder'], $user);
+    $record = pg_image_editor_record($mode, $name, (int) $file['row']['folder'], (string) $file['row']['type'], $file['row'], $user);
+
+    // A copy keeps no document: its pictures live in its pixels only.
+    if ($mode === 'replace') {
+        $record = pg_image_editor_pictures_saved($record, $request, (int) $file['row']['folder'], $user);
+    }
 
     if (($mode === 'replace') && $base && ($record[0]['status'] === 'success')) {
         pg_file_versions_after_save((int) $file['row']['id'], FILE_DIRECTORY_PATH . '/' . $name, isset($request['doc_object']) ? $request['doc_object'] : null, $base, $user['id'], !empty($redactions));
@@ -2488,7 +2468,12 @@ function pg_image_editor_pictures_saved($record, &$request, $folder, $user)
             continue;
         }
 
-        pg_process_image_file($temporary);
+        // The site's upload cap, as a File Manager upload has it.
+        $settings = pg_image_settings();
+
+        if (!pg_image_upload_cap_apply($temporary, $settings['upload_max_dimension'], $settings['resize_quality'])) {
+            pg_process_image_file($temporary);
+        }
 
         if (!@rename($temporary, $path)) {
             @unlink($temporary);
@@ -2516,6 +2501,184 @@ function pg_image_editor_pictures_saved($record, &$request, $folder, $user)
     $record[0]['pictures'] = (object) $saved;
 
     return $record;
+}
+
+/**
+ * A canvas's save (an artboard document): the browser's PNG (picture) at
+ * the board's size, written as a new file into folder_id (new), over the
+ * canvas file_id (replace) or beside it (copy). The pictures from this
+ * computer become files and the document is kept as the file's newest
+ * version, so the canvas opens again with its layers.
+ *
+ * @param array $board width and height of pg_image_edit_validate()
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_save_canvas($request, $board, $mode, $user)
+{
+    $row = null;
+
+    if ($mode === 'new') {
+        $folder = isset($request['folder_id']) ? (int) $request['folder_id'] : 0;
+
+        if ($folder <= 0) {
+            return pg_image_editor_refusal(lang('Invalid request.'));
+        }
+
+        // The bin folder takes no new file, as the File Manager's upload and
+        // move refuse it.
+        if (!check_edit_access($folder) || pg_folder_binned($folder)) {
+            return pg_image_editor_refusal(lang('Access denied'), 403);
+        }
+
+        $base = preg_replace('/\.[a-z0-9]{2,5}$/i', '', trim(isset($request['name']) ? (string) $request['name'] : ''));
+        $name = get_unique_name(array('name' => prepare_file_name((($base !== '') ? $base : lang('New image')) . '.png'), 'type' => 'file'));
+
+    } elseif (($mode === 'replace') || ($mode === 'copy')) {
+        $file = pg_image_editor_file(isset($request['file_id']) ? $request['file_id'] : 0, $user);
+
+        if ($file['refusal']) {
+            return $file['refusal'];
+        }
+
+        // A canvas is a PNG; a replace writes a PNG over a PNG only.
+        if (($mode === 'replace') && (!$file['replace'] || ($file['type'] !== IMAGETYPE_PNG))) {
+            return pg_image_editor_refusal(lang('Access denied'), 403);
+        }
+
+        $row = $file['row'];
+        $folder = (int) $row['folder'];
+        $name = ($mode === 'replace') ? (string) $row['name']
+            : get_unique_name(array('name' => prepare_file_name(preg_replace('/\.[a-z0-9]{2,5}$/i', '', (string) $row['name']) . '.png'), 'type' => 'file'));
+
+    } else {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    if (pg_upload_name_blocked($name)) {
+        return pg_image_editor_refusal(pg_upload_blocked_message($name));
+    }
+
+    $path = FILE_DIRECTORY_PATH . '/' . $name;
+    $temporary = $path . '.' . (function_exists('getmypid') ? getmypid() : uniqid()) . '.tmp';
+
+    if (!pg_image_editor_take_png(isset($request['picture']) ? $request['picture'] : '', $temporary, $board['width'], $board['height'])) {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    // The browser's PNG is recompressed when that makes it smaller.
+    pg_process_image_file($temporary);
+
+    if (!@rename($temporary, $path)) {
+        @unlink($temporary);
+        return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
+    }
+
+    $record = pg_image_editor_record(($mode === 'replace') ? 'replace' : 'new', $name, $folder, 'png', $row, $user);
+    $record = pg_image_editor_pictures_saved($record, $request, $folder, $user);
+
+    if ($record[0]['status'] === 'success') {
+        $record[0]['mode'] = $mode;
+
+        // After the pictures: the kept document points at their files.
+        if (pg_image_editor_canvas_keep((int) $record[0]['id'], isset($request['doc_object']) ? $request['doc_object'] : null, $user['id'], ($mode === 'replace') ? 'saved' : 'new')
+            && ($mode === 'replace')) {
+            pg_file_versions_prune((int) $record[0]['id']);
+        }
+    }
+
+    return $record;
+}
+
+/**
+ * Is this the document of a canvas: version 1, an artboard with its size, no
+ * source picture? Works on the array and the object decode alike. Pure.
+ *
+ * @param mixed $doc
+ * @return bool
+ */
+function pg_image_editor_canvas_is_doc($doc)
+{
+    if (is_object($doc)) {
+        $doc = json_decode(json_encode($doc), true);
+    }
+
+    if (!is_array($doc) || ((isset($doc['v']) ? $doc['v'] : null) !== 1) || !empty($doc['source'])) {
+        return false;
+    }
+
+    $board = isset($doc['artboard']) ? $doc['artboard'] : null;
+
+    return is_array($board) && isset($board['width'], $board['height'])
+        && is_numeric($board['width']) && is_numeric($board['height'])
+        && ($board['width'] >= 1) && ($board['height'] >= 1);
+}
+
+/**
+ * The canvas document as kept in a version row: JSON, or '' when it is no
+ * canvas or may not be kept (pg_file_versions_doc_storable()). The object
+ * decode keeps an empty {} an object. Pure.
+ *
+ * @param mixed $doc the editor's document, decoded as objects
+ * @return string
+ */
+function pg_image_editor_canvas_doc_json($doc)
+{
+    if (!is_object($doc) || !pg_image_editor_canvas_is_doc($doc)) {
+        return '';
+    }
+
+    $json = json_encode($doc, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    return (is_string($json) && pg_file_versions_doc_storable($json)) ? $json : '';
+}
+
+/**
+ * Keeps a canvas's document beside the file just written from it, as the
+ * file's newest version ($source 'new' for a new file, 'saved' over one).
+ * Nothing when the versions table is not installed yet or the document may
+ * not be kept.
+ *
+ * @param int    $file_id
+ * @param mixed  $doc     decoded as objects
+ * @param int    $user_id
+ * @param string $source
+ * @return bool kept
+ */
+function pg_image_editor_canvas_keep($file_id, $doc, $user_id, $source = 'new')
+{
+    $json = pg_image_editor_canvas_doc_json($doc);
+    $stored = ($json !== '') ? (string) db_value("SELECT name FROM files WHERE id = '" . (int) $file_id . "'") : '';
+
+    if (($stored === '') || !pg_file_versions_ready()) {
+        return false;
+    }
+
+    return (bool) pg_file_versions_add((int) $file_id, FILE_DIRECTORY_PATH . '/' . basename($stored), $json, $source, $user_id);
+}
+
+/**
+ * The canvas document a file was drawn from, while the file still holds
+ * those pixels (not changed outside since); null for any other picture.
+ *
+ * @param int $file_id
+ * @return object|null decoded as objects
+ */
+function pg_image_editor_canvas_open_doc($file_id)
+{
+    if (!pg_file_versions_ready()) {
+        return null;
+    }
+
+    $stored = (string) db_value("SELECT name FROM files WHERE id = '" . (int) $file_id . "'");
+    $newest = ($stored !== '') ? pg_file_versions_newest((int) $file_id) : null;
+
+    if (!$newest || ((string) $newest['doc_json'] === '') || !pg_file_versions_matches_file($newest, FILE_DIRECTORY_PATH . '/' . basename($stored))) {
+        return null;
+    }
+
+    $doc = json_decode((string) $newest['doc_json']);
+
+    return (is_object($doc) && pg_image_editor_canvas_is_doc($doc)) ? $doc : null;
 }
 
 // -- Export (pg_image_editor_export.js) --

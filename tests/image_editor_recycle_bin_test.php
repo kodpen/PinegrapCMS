@@ -51,7 +51,8 @@ function test_image_editor_file_refuses_binned_file()
 // The 'new' mode writes into folder_id: the bin folder is refused there.
 function test_image_editor_new_refuses_bin_folder()
 {
-	$body = image_editor_recycle_body('pg_image_editor_save');
+	// A canvas's save, new among its modes.
+	$body = image_editor_recycle_body('pg_image_editor_save_canvas');
 	$branch = substr($body, 0, (int) strpos($body, 'pg_image_editor_take_png('));
 
 	pg_assert_true($branch !== '', 'artboard branch found');
