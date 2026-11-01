@@ -251,16 +251,32 @@ $sponsors = array(
     'partner'  => array('title' => lang('Partners'), 'names' => array(lang('Bosphorus Studio'), lang('Brightpath'), lang('Mavi Agency'), lang('Tandem HR'))),
 );
 
-// The passes: what each includes. The shop sells them as products of the
-// Tickets group (same SKU); the middle one is the one most attendees take.
+// A price of the template as the shop writes it: the figure for the site's
+// base currency, USD's figure for a currency not listed (the same choice
+// _pg_tpl_catalog() makes for a product), with the base currency's symbol.
+// A card and the product it sells therefore show one amount.
+$base_currency = defined('BASE_CURRENCY_CODE') ? strtoupper((string)BASE_CURRENCY_CODE) : 'USD';
+$money = function (array $prices) use ($base_currency) {
+    $amount = isset($prices[$base_currency]) ? $prices[$base_currency] : $prices['USD'];
+    return pg_money_text($amount, defined('BASE_CURRENCY_SYMBOL') ? (string)BASE_CURRENCY_SYMBOL : '$');
+};
+
+// The passes: what each includes and what it costs per currency. The shop
+// sells them as products of the Tickets group (same SKU, same prices); the
+// middle one is the one most attendees take.
+$pass_prices = array(
+    'day'  => array('USD' => 149, 'EUR' => 139, 'GBP' => 119, 'TRY' => 5999),
+    'full' => array('USD' => 249, 'EUR' => 229, 'GBP' => 199, 'TRY' => 9999),
+    'vip'  => array('USD' => 349, 'EUR' => 319, 'GBP' => 279, 'TRY' => 13999),
+);
 $passes = array(
-    'day'  => array('sku' => 'EVENTS-PASS-DAY', 'title' => lang('Day Pass'), 'price' => lang('$149'), 'featured' => false,
+    'day'  => array('sku' => 'EVENTS-PASS-DAY', 'title' => lang('Day Pass'), 'price' => $money($pass_prices['day']), 'featured' => false,
         'text'  => lang('One day of your choice, every talk of that day.'),
         'items' => array(lang('All talks of one day'), lang('Breakfast, lunch and coffee'), lang('Recordings after the event'))),
-    'full' => array('sku' => 'EVENTS-PASS-FULL', 'title' => lang('Conference Pass'), 'price' => lang('$249'), 'featured' => true,
+    'full' => array('sku' => 'EVENTS-PASS-FULL', 'title' => lang('Conference Pass'), 'price' => $money($pass_prices['full']), 'featured' => true,
         'text'  => lang('Both days, every track and the evening reception.'),
         'items' => array(lang('All talks on both days'), lang('Breakfast, lunch and coffee'), lang('The evening reception'), lang('Recordings after the event'))),
-    'vip'  => array('sku' => 'EVENTS-PASS-VIP', 'title' => lang('Conference + Workshop'), 'price' => lang('$349'), 'featured' => false,
+    'vip'  => array('sku' => 'EVENTS-PASS-VIP', 'title' => lang('Conference + Workshop'), 'price' => $money($pass_prices['vip']), 'featured' => false,
         'text'  => lang('The Conference Pass and a seat at a hands-on workshop.'),
         'items' => array(lang('Everything in the Conference Pass'), lang('A reserved workshop seat'), lang('Lunch with the speakers'))),
 );

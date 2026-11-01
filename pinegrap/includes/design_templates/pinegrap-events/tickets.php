@@ -30,14 +30,9 @@ $ticket_pages = array();
 // ── The catalog ─────────────────────────────────────────────────────────
 // Made once when the template is first opened (_pg_tpl_catalog()): the
 // Tickets group under the site's top group, a product for each pass found
-// again by its SKU. Prices in the base currency, USD for any currency not
-// listed. A pass is not shipped: the cart goes to checkout without a
-// shipping step.
-$pass_prices = array(
-    'day'  => array('USD' => 149, 'EUR' => 139, 'GBP' => 119, 'TRY' => 5999),
-    'full' => array('USD' => 249, 'EUR' => 229, 'GBP' => 199, 'TRY' => 9999),
-    'vip'  => array('USD' => 349, 'EUR' => 319, 'GBP' => 279, 'TRY' => 13999),
-);
+// again by its SKU. Prices in the base currency, USD's figure for any
+// currency not listed. A pass is not shipped: the cart goes to checkout without a
+// shipping step. The prices are $pass_prices (parts.php), the cards' too.
 $pass_products = array();
 foreach ($passes as $key => $p) {
     $pass_products[] = array(
