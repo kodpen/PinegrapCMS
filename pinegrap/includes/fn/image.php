@@ -355,6 +355,83 @@ function pg_image_delivery_formats()
 
 
 /**
+ * The upload size cap as stored (config.image_upload_max_dimension, 2026.11.0,
+ * 11.0.142) held to what the engine can use: 0 (or anything that is not a
+ * positive number) is off; otherwise the longest edge, between 200 and 20000
+ * px like the other image ceilings.
+ *
+ * @param mixed $value
+ * @return int
+ */
+function pg_image_upload_cap_clamp($value)
+{
+    $value = is_numeric($value) ? (int) $value : 0;
+
+    if ($value <= 0) {
+        return 0;
+    }
+
+    return max(200, min(20000, $value));
+}
+
+
+/**
+ * Whether a picture of this size is shrunk by the cap: only when its longest
+ * edge is above it. A picture at or under the cap is stored byte for byte,
+ * so the cap never recompresses what it does not make smaller.
+ *
+ * @param int $cap    pg_image_upload_cap_clamp()
+ * @param int $width
+ * @param int $height
+ * @return bool
+ */
+function pg_image_upload_cap_wanted($cap, $width, $height)
+{
+    return ((int) $cap > 0) && (max((int) $width, (int) $height) > (int) $cap);
+}
+
+
+/**
+ * Shrinks an uploaded picture whose longest edge is above the cap, in place,
+ * in its own format, through the image engine (EXIF orientation turned into
+ * pixels, the result written only when it is lighter). The uploaded file
+ * stays the master that derivatives are made from; the cap only keeps a
+ * phone or camera original from becoming that master at full size.
+ *
+ * @param string $file_path the stored file
+ * @param int    $cap       pg_image_upload_cap_clamp(); 0 does nothing
+ * @param int    $quality   resize quality (pg_image_settings() resize_quality)
+ * @return array|null the engine's report, null when nothing was asked of it
+ *                    (cap off, not a picture, not above the cap)
+ */
+function pg_image_upload_cap_apply($file_path, $cap, $quality)
+{
+    $cap = pg_image_upload_cap_clamp($cap);
+
+    if ($cap === 0) {
+        return null;
+    }
+
+    $size = @getimagesize($file_path);
+
+    if (!is_array($size) || !pg_image_upload_cap_wanted($cap, $size[0] ?? 0, $size[1] ?? 0)) {
+        return null;
+    }
+
+    // A 24 megapixel photo takes a couple of seconds to resample.
+    @set_time_limit(120);
+
+    $report = pg_process_image_file($file_path, array(
+        'max_dimension' => $cap,
+        'quality'       => (int) $quality));
+
+    @clearstatcache(true, $file_path);
+
+    return $report;
+}
+
+
+/**
  * The pixel size of a file row, from the cached columns when they are filled
  * and from the file itself when they are not.
  *
