@@ -12,7 +12,7 @@ description: Main menu rows in categories (pg_menu_categories(), pg_menu_layout(
 - Also over a single row (owner): order reports only gives Ecommerce over Order Reports; a workspace-only member gets no heading at all.
 
 ## Where did the files go?
-- The File Manager row (slot 1, `view_folders.php`) is the destination; its panel: File Manager, Create Folder, Upload Files or Folders, Create File, then the explorer's tree with its views (Files, Pictures, Pages, ...) and folders (`explorer-menu-tree.md`). The Files row (slot 3) is retired, like 13, 18 and 19; never reuse it. Slot 25 (System tools, #3929) took the next free number for the same reason: operators pin rows by slot. Every `view_folders.php` view, the folder screens and the old file screens mark row 1; the tree marks the open view.
+- The File Manager row (slot 1, `view_folders.php`) is the destination; its panel holds only the explorer's tree with its views (Files, Pictures, Pages, ...) and folders (`explorer-menu-tree.md`, #4889). The Files row (slot 3) is retired, like 13, 18 and 19; never reuse it. Slot 25 (System tools, #3929) took the next free number for the same reason: operators pin rows by slot. Every `view_folders.php` view, `duplicate_folder.php` and the file screens (`add_file.php`, `create_file.php`, `edit_file.php`) mark row 1; the tree marks the open view.
 - The explorer switches views without a page load; it writes the address only through `setAddress()` (`view_folders.php`), which calls `pgMenu.refreshCurrent()`.
 - The `files` drawing of `pg_menu_icon()` went with it.
 
