@@ -280,3 +280,47 @@ function test_list_period_shipping_report_heading()
 	pg_assert_false(strpos($source, '$month_and_day_format . \', Y\'') !== false, 'no English date() of its own');
 	pg_assert_false(strpos($source, 'text-nowrap">\' . $output_date_range') !== false, 'the period text can wrap');
 }
+
+function test_list_period_state_moves_a_stored_default_to_today()
+{
+	// Written to the session on 31 October; the list is opened again after midnight.
+	$stored = list_period_test_range('2026-09-30', '2026-10-31');
+	$state = pg_list_period_state($stored + array('status' => 'complete'), array(), strtotime('2026-11-01 03:28:00'));
+
+	$expected = list_period_test_range(date('Y-m-d', strtotime('2026-11-01 03:28:00') - 2678400), '2026-11-01');
+	foreach ($expected as $key => $value) {
+		pg_assert_same($value, $state[$key], 'the default range ends today: ' . $key);
+	}
+	pg_assert_same('complete', $state['status'], 'other keys are kept');
+	pg_assert_true(empty($state['range_picked']), 'a default is not marked as picked');
+}
+
+function test_list_period_state_keeps_a_picked_range()
+{
+	$picked = list_period_test_range('2026-10-01', '2026-10-15');
+	$state = pg_list_period_state($picked, $picked, strtotime('2026-11-01 03:28:00'));
+
+	pg_assert_true(!empty($state['range_picked']), 'a range from the request is marked as picked');
+
+	// The next request carries no date: the picked range stays.
+	$state = pg_list_period_state($state, array(), strtotime('2026-11-02 10:00:00'));
+	foreach ($picked as $key => $value) {
+		pg_assert_same($value, $state[$key], 'the picked range stays: ' . $key);
+	}
+}
+
+function test_list_period_state_replaces_a_bad_part_of_a_picked_range()
+{
+	$state = pg_list_period_state(array('range_picked' => true) + list_period_test_range('2026-10-01', '2026-10-15'), array('stop_year' => 'x'), strtotime('2026-11-01 12:00:00'));
+
+	pg_assert_same('2026', $state['stop_year'], 'a non-numeric part falls back to the default');
+	pg_assert_same('10', $state['start_month'], 'the other parts stay');
+}
+
+function test_list_period_state_puts_the_range_the_right_way_round()
+{
+	$state = pg_list_period_state(list_period_test_range('2026-10-20', '2026-10-01'), array('start_day' => '20'), strtotime('2026-11-01 12:00:00'));
+
+	pg_assert_same('01', $state['start_day'], 'start and stop swapped');
+	pg_assert_same('20', $state['stop_day'], 'start and stop swapped');
+}
