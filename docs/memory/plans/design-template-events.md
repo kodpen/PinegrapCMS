@@ -22,7 +22,7 @@ description: Plan for the Events and Conferences template (pinegrap-events): eve
 
 - 2 Events and registration: `events.php`, `mail.php`; parts.php gained the comment thread, staff bar and page, `$page_link`. **Done (#4612).**
 
-- 3a Tickets: `tickets.php` (catalog group and pass products, `shippable => false`, tickets page, `ticket_passes`, `cart_link`, product, cart, checkout, order, `email_order`; returns `catalog` for step 5). **Done (#PR).**
+- 3a Tickets: `tickets.php` (catalog group and pass products, `shippable => false`, tickets page, `ticket_passes`, `cart_link`, product, cart, checkout, order, `email_order`; returns `catalog` for step 5). **Done (#4633).**
 
 - 3b Standard: `standard.php` (contact, inbox, newsletter, news and post, search, error, message e-mails, `newsletter_band`, `home_posts`; newsletter and post parts join parts.php). After 2, beside 3a.
 
