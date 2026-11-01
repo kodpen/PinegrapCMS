@@ -4516,6 +4516,10 @@ function update_tag_cloud_keywords_for_search_results_page_product_group($page_i
 // Seconds a kept sitemap is served before it is drawn again anyway.
 define('PG_SITEMAP_CACHE_TTL', 3600);
 
+// Seconds a request with no kept copy waits for the one another request is
+// drawing before it draws the sitemap itself.
+define('PG_SITEMAP_CACHE_WAIT', 15);
+
 // The layout of the kept file; a file of another layout is a miss.
 define('PG_SITEMAP_CACHE_FORMAT', 1);
 
@@ -4619,8 +4623,9 @@ function pg_sitemap_cache_state($entry, $generation, $version, $now, $ttl)
 }
 
 /**
- * get_sitemap_info() through the kept copy. Drawn on a miss; when stale, the
- * request that takes the lock draws it and the others get the old copy. Drawn
+ * get_sitemap_info() through the kept copy. When stale, the request that
+ * takes the lock draws it and the others get the old copy; with no copy the
+ * others wait for the one being drawn (PG_SITEMAP_CACHE_WAIT). Drawn
  * every time before the upgrade step that adds the generation.
  *
  * @return array content, urls_exist, cache (hit, stale, miss, off)
@@ -4651,6 +4656,25 @@ function pg_sitemap_info_cached()
 
         if (!pg_page_cache_lock($file)) {
             return $kept + array('cache' => 'stale');
+        }
+    } elseif (!pg_page_cache_lock($file)) {
+        // No copy yet and another request is drawing it: wait for that copy
+        // instead of drawing the same file at the same time. Drawn here when
+        // it does not come (the drawer stopped or took too long).
+        $deadline = microtime(true) + PG_SITEMAP_CACHE_WAIT;
+        $lock = $file . '.lock';
+        while (microtime(true) < $deadline) {
+            usleep(200000);
+            clearstatcache(true, $file);
+            $raw = is_file($file) ? @file_get_contents($file) : false;
+            $entry = is_string($raw) ? pg_sitemap_cache_unpack($raw) : null;
+            $state = pg_sitemap_cache_state($entry, $generation, VERSION, time(), PG_SITEMAP_CACHE_TTL);
+            if ($state !== 'miss') {
+                return array('content' => $entry['content'], 'urls_exist' => $entry['meta']['urls_exist'],
+                    'cache' => ($state === 'fresh') ? 'hit' : 'stale');
+            }
+            clearstatcache(true, $lock);
+            if (!is_file($lock)) break;
         }
     }
 

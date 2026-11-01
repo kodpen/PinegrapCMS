@@ -1,6 +1,6 @@
 ---
 name: sitemap-cache
-description: sitemap.xml kept in data/cache/sitemap.txt under config.page_cache_generation with a one-hour lifetime (#2054): which writes redraw it, what waits for the lifetime, the lock, the purge
+description: sitemap.xml kept in data/cache/sitemap.txt under config.page_cache_generation with a one-hour lifetime (#2054): what redraws it, what waits for the lifetime, the lock, the wait with no copy, the purge
 module: seo
 ---
 
@@ -20,11 +20,11 @@ module: seo
 - Not safe through the number, so bounded by the lifetime: records and comments sent by anonymous visitors, a translated page's index answer kept when it is drawn (GET, `translation-index-verdict.md`), legacy GET writes with a token, Workspace endpoints that announce nothing, changes made straight in the database or by a restore. Hooking each one was not worth it: search engines read the sitemap a few times a day.
 
 ## What do concurrent requests do?
-- Stale copy: the request that takes `sitemap.txt.lock` (`pg_page_cache_lock()`, taken over after 30 s) draws it, the others get the old copy. No copy at all: each request draws (first request after an upgrade or purge).
+- Stale copy: the request that takes `sitemap.txt.lock` (`pg_page_cache_lock()`, taken over after 30 s) draws it, the others get the old copy. No copy at all (first request after an upgrade or purge): the lock taker draws, the others poll the file every 0.2 s for up to `PG_SITEMAP_CACHE_WAIT` (15 s) and serve it as `hit`; they draw themselves when the lock goes without a copy or the wait runs out (#4459).
 - Before the 2026.11.0 step adds `page_cache_generation` the cache is off and every request draws, as before.
 
 ## How is it emptied?
 - `pg_purge_caches()` deletes the file ("Sitemap" in the cleared list); the purge raises the generation anyway.
 - Tested in `tests/sitemap_cache_test.php` (file, states, that the mark does not wait for the page cache).
 
-Related: docs/memory/platform/page-cache-invalidation.md, docs/memory/visitors/sitemap-listed-pages.md
+Related: docs/memory/data/widget-pages-index.md, docs/memory/platform/page-cache-invalidation.md, docs/memory/visitors/sitemap-listed-pages.md
