@@ -121,6 +121,11 @@ $shared = function ($key) {
 $bind = function ($token) {
     return array('_bindings' => array('text' => $token));
 };
+// A bound date with its format (month and day names would print in English,
+// so the formats are numbers).
+$bind_date = function ($token, $format) {
+    return array('_bindings' => array('text' => $token), '_bindFormats' => array('text' => $format));
+};
 $show_when = function ($flag) {
     return array('_bindings' => array('eo_visible_if' => $flag));
 };
@@ -189,37 +194,47 @@ $category_url = function ($key) {
     return '{{page:shop}}/{{product_group_path:' . $key . '}}';
 };
 
-// The coming events, newest first: the home page shows the first three, the
-// events page all of them. Sample dates; change them on the pages.
-$events = array(
-    array('datetime' => '2026-10-15T19:00', 'month' => lang('Oct'), 'day' => '15', 'weekday' => lang('Thursday'), 'time' => '19:00',
-          'type' => lang('Reading night'), 'title' => lang('Poems after Dark'),
-          'text' => lang('An evening of poems read aloud by local writers, with tea and an open microphone for anyone brave enough.'),
+// The events are records of the events form (the New Event staff page): the
+// home page shows the next three, the events page every one from today on;
+// a past event leaves both lists. The form's first events are written in
+// when the form is made (pg_cf_seed_sample_records()), each dated from the
+// day the template is opened: $event_on() is the first day after today with
+// that ISO weekday (1 = Monday), plus $weeks weeks, so the readings fall on
+// Thursday evenings and the signing and workshop on Saturdays.
+$event_on = function ($weekday, $weeks = 0) {
+    $day = new DateTime('today');
+    do {
+        $day->modify('+1 day');
+    } while ((int)$day->format('N') !== $weekday);
+    if ($weeks > 0) $day->modify('+' . (7 * $weeks) . ' days');
+    return $day->format('Y-m-d');
+};
+$event_kinds = array(lang('Reading night'), lang('Signing'), lang('Book club'), lang('Workshop'));
+$sample_events = array(
+    array('title' => lang('Poems after Dark'), 'event_date' => $event_on(4), 'event_time' => '19:00', 'kind' => lang('Reading night'),
+          'summary' => lang('An evening of poems read aloud by local writers, with tea and an open microphone for anyone brave enough.'),
           'place' => lang('The reading room, upstairs')),
-    array('datetime' => '2026-10-17T14:00', 'month' => lang('Oct'), 'day' => '17', 'weekday' => lang('Saturday'), 'time' => '14:00',
-          'type' => lang('Signing'), 'title' => lang('Jane Cooper signs The Lighthouse Year'),
-          'text' => lang('Meet the author, have your copy signed and hear how the book was written.'),
+    array('title' => lang('Jane Cooper signs The Lighthouse Year'), 'event_date' => $event_on(6), 'event_time' => '14:00', 'kind' => lang('Signing'),
+          'summary' => lang('Meet the author, have your copy signed and hear how the book was written.'),
           'place' => lang('At the front counter')),
-    array('datetime' => '2026-10-29T19:00', 'month' => lang('Oct'), 'day' => '29', 'weekday' => lang('Thursday'), 'time' => '19:00',
-          'type' => lang('Book club'), 'title' => lang('Book club: The Lighthouse Year'),
-          'text' => lang('This month\'s book, talked over with coffee and cake. New members are always welcome.'),
+    array('title' => lang('Book club: The Lighthouse Year'), 'event_date' => $event_on(4, 1), 'event_time' => '19:00', 'kind' => lang('Book club'),
+          'summary' => lang('This month\'s book, talked over with coffee and cake. New members are always welcome.'),
           'place' => lang('The reading room, upstairs')),
-    array('datetime' => '2026-11-07T10:30', 'month' => lang('Nov'), 'day' => '7', 'weekday' => lang('Saturday'), 'time' => '10:30',
-          'type' => lang('Workshop'), 'title' => lang('Brush lettering for beginners'),
-          'text' => lang('Learn the basic strokes with brush pens in two hours; pens and paper are provided.'),
+    array('title' => lang('Brush lettering for beginners'), 'event_date' => $event_on(6, 1), 'event_time' => '10:30', 'kind' => lang('Workshop'),
+          'summary' => lang('Learn the basic strokes with brush pens in two hours; pens and paper are provided.'),
           'place' => lang('The workshop table')),
-    array('datetime' => '2026-11-19T19:00', 'month' => lang('Nov'), 'day' => '19', 'weekday' => lang('Thursday'), 'time' => '19:00',
-          'type' => lang('Reading night'), 'title' => lang('Short stories by candlelight'),
-          'text' => lang('Three short stories, three readers and the lights turned low.'),
+    array('title' => lang('Short stories by candlelight'), 'event_date' => $event_on(4, 2), 'event_time' => '19:00', 'kind' => lang('Reading night'),
+          'summary' => lang('Three short stories, three readers and the lights turned low.'),
           'place' => lang('The reading room, upstairs')),
 );
 
-// The date of an event as a small calendar leaf.
-$date_box = function ($e, $class = '') use ($el, $span, $attr) {
-    return $el('time', trim('d-flex flex-column align-items-center justify-content-center flex-shrink-0 rounded-3 px-3 py-2 bg-primary-subtle text-primary-emphasis ' . $class), lang('Date'), array(
-        $span($e['month'], 'small text-uppercase fw-semibold', lang('Month')),
-        $span($e['day'], 'fs-3 fw-bold lh-1', lang('Day')),
-    ), array('_attrs' => array($attr('datetime', $e['datetime']))));
+// The date of an event as a small calendar leaf: the day over the month
+// and year.
+$date_box = function ($class = '') use ($el, $span, $bind_date) {
+    return $el('div', trim('d-flex flex-column align-items-center justify-content-center flex-shrink-0 rounded-3 px-3 py-2 bg-primary-subtle text-primary-emphasis ' . $class), lang('Date Leaf'), array(
+        $span('15', 'fs-3 fw-bold lh-1', lang('Day'), $bind_date('event_date', 'd')),
+        $span('10.2026', 'small fw-semibold mt-1', lang('Month'), $bind_date('event_date', 'm.Y')),
+    ));
 };
 
 // ── The parts every page repeats ────────────────────────────────────────
@@ -479,6 +494,7 @@ $staff_bar = function () use ($el, $link, $span) {
             $el('nav', 'nav nav-underline gap-4', lang('Staff Links'), array(
                 $item('staff', lang('Staff Area')),
                 $item('blog_new', lang('New Blog Post')),
+                $item('event_new', lang('New Event')),
                 $item('staff_entry', lang('Add to the Staff Directory')),
                 $item('inbox', lang('Inbox')),
             ), array('smartActive' => true)),
@@ -988,26 +1004,25 @@ foreach ($categories as $key => $c) {
     ), array('href' => $category_url($key)));
 }
 
-// The first three events, as small cards.
-$event_cards = array();
-foreach (array_slice($events, 0, 3) as $e) {
-    $event_cards[] = $col(array(
-        $el('div', 'card h-100 border-0 shadow-sm', lang('Event'), array(
+// An event on the home page, as a small card: the date leaf, the kind, the
+// title, the time and the place.
+$event_card = function () use ($el, $span, $para, $col, $bind, $date_box) {
+    return $col(array(
+        $el('article', 'card h-100 border-0 shadow-sm', lang('Event Card'), array(
             $el('div', 'card-body d-flex gap-3', lang('Card Body'), array(
-                $date_box($e, 'align-self-start'),
+                $date_box('align-self-start'),
                 $el('div', '', lang('Event Details'), array(
-                    $para($e['type'], 'small text-uppercase fw-semibold text-primary mb-1'),
-                    $heading('h3', $e['title'], 'h6 fw-bold mb-2'),
+                    $para(lang('Reading night'), 'small text-uppercase fw-semibold text-primary mb-1', $bind('kind')),
+                    $el('h3', 'h6 fw-bold mb-2', lang('Event Title'), array(), array_merge(array('text' => lang('Poems after Dark')), $bind('title'))),
                     $el('p', 'd-flex flex-wrap column-gap-2 small text-body-secondary mb-0', lang('Meta'), array(
-                        $span($e['weekday'], '', lang('Weekday')),
-                        $span($e['time'], 'fw-semibold', lang('Time')),
-                        $span($e['place'], '', lang('Location')),
+                        $span('19:00', 'fw-semibold', lang('Time'), $bind('event_time')),
+                        $span(lang('The reading room, upstairs'), '', lang('Location'), $bind('place')),
                     )),
                 )),
             )),
         )),
     ), '', '4');
-}
+};
 
 $pages[] = array(
     'key'              => 'home',
@@ -1099,7 +1114,7 @@ $pages[] = array(
         $el('section', 'py-5 bg-body-tertiary', lang('Events'), array(
             $container(array(
                 $shelf_header(lang('In the shop'), lang('Upcoming events'), lang('All events'), '{{page:events}}'),
-                $row($event_cards, '4'),
+                $widget('home_events'),
             )),
         )),
 
@@ -1213,33 +1228,31 @@ $pages[] = array(
     'tree'     => $page(array($widget('order_view')), false),
 );
 
-// Events: every coming event in a list, each with the way to reserve a seat
-// (a message from the contact page).
-$event_rows = array();
-// Each event is a search section: a search for it opens the events page at
-// its row.
-foreach (array_values($events) as $n => $e) {
-    $event_rows[] = $el('div', 'list-group-item p-3 p-lg-4', lang('Event'), array(
+// An event on the events page, as a row of the list: the date leaf, the
+// kind, the title, the summary, the time and the place, and the way to
+// reserve a seat (a message from the contact page).
+$event_row = function () use ($el, $span, $para, $icon, $bind, $date_box) {
+    return $el('div', 'list-group-item p-3 p-lg-4', lang('Event'), array(
         $el('div', 'd-flex flex-column flex-sm-row gap-3', lang('Event Row'), array(
-            $date_box($e, 'align-self-start'),
+            $date_box('align-self-start'),
             $el('div', 'flex-grow-1', lang('Event Details'), array(
-                $span($e['type'], 'badge bg-secondary-subtle text-secondary-emphasis mb-2', lang('Badge')),
-                $heading('h3', $e['title'], 'h5 fw-bold mb-1'),
-                $para($e['text'], 'text-body-secondary mb-2'),
+                $span(lang('Reading night'), 'badge bg-secondary-subtle text-secondary-emphasis mb-2', lang('Badge'), $bind('kind')),
+                $el('h3', 'h5 fw-bold mb-1', lang('Event Title'), array(), array_merge(array('text' => lang('Poems after Dark')), $bind('title'))),
+                $para(lang('An evening of poems read aloud by local writers, with tea and an open microphone for anyone brave enough.'), 'text-body-secondary mb-2', $bind('summary')),
                 $el('p', 'd-flex flex-wrap column-gap-3 row-gap-1 small mb-0', lang('Meta'), array(
-                    $el('span', 'd-inline-flex align-items-center gap-1', lang('When'), array($icon('bi-clock', 'text-primary'), $span($e['weekday'], '', lang('Weekday')), $span($e['time'], '', lang('Time')))),
-                    $el('span', 'd-inline-flex align-items-center gap-1', lang('Location'), array($icon('bi-geo-alt', 'text-primary'), $span($e['place'], '', lang('Text')))),
+                    $el('span', 'd-inline-flex align-items-center gap-1', lang('When'), array($icon('bi-clock', 'text-primary'), $span('19:00', '', lang('Time'), $bind('event_time')))),
+                    $el('span', 'd-inline-flex align-items-center gap-1', lang('Location'), array($icon('bi-geo-alt', 'text-primary'), $span(lang('The reading room, upstairs'), '', lang('Text'), $bind('place')))),
                 )),
             )),
             $el('div', 'flex-shrink-0 align-self-sm-center', lang('Action'), array(
                 $el('a', 'btn btn-sm btn-outline-primary', lang('Link'), array(
                     $span(lang('Reserve a seat'), '', lang('Link Text')),
-                    $span($e['title'], 'visually-hidden', lang('Name')),
+                    $span(lang('Poems after Dark'), 'visually-hidden', lang('Name'), $bind('title')),
                 ), array('href' => '{{page:contact}}')),
             )),
         )),
-    ), $searchable('event-' . ($n + 1), $e['type']));
-}
+    ));
+};
 $pages[] = array(
     'key'              => 'events',
     'name'             => lang('events'),
@@ -1253,7 +1266,7 @@ $pages[] = array(
                 $row(array(
                     $col(array(
                         $heading('h2', lang('Coming up'), 'h4 fw-bold mb-3'),
-                        $el('div', 'list-group', lang('List'), $event_rows),
+                        $widget('events_list'),
                     ), '', '8'),
                     $col(array(
                         $el('div', 'p-4 rounded-4 bg-body-tertiary mb-4', lang('Info'), array(
@@ -1714,7 +1727,7 @@ $staff_shortcut = function ($icon_name, $title, $text, $href) use ($el, $heading
                 $para($text, 'small text-body-secondary mb-0'),
             )),
         ), array('href' => $href)),
-    ), '6', '4');
+    ), '6', '3');
 };
 $pages[] = array(
     'key'     => 'staff',
@@ -1731,7 +1744,7 @@ $pages[] = array(
                     $col(array(
                         $span(lang('Staff only'), 'badge rounded-pill text-bg-primary mb-3', lang('Badge')),
                         $heading('h1', lang('Welcome to the staff area'), 'display-6 fw-bold mb-3'),
-                        $para(lang('Orders, books and customers are handled in the control panel. The blog, the staff directory and the conversations with readers are kept here.'), 'lead text-body-secondary mb-4'),
+                        $para(lang('Orders, books and customers are handled in the control panel. The blog, the events, the staff directory and the conversations with readers are kept here.'), 'lead text-body-secondary mb-4'),
                         $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
                             $link(lang('Open the control panel'), $panel_url, 'btn btn-primary px-4'),
                             $link(lang('New Blog Post'), '{{page:blog_new}}', 'btn btn-outline-primary'),
@@ -1745,6 +1758,7 @@ $pages[] = array(
                 $shelf_header(lang('Staff'), lang('Shortcuts')),
                 $row(array(
                     $staff_shortcut('bi-journal-plus', lang('New Blog Post'), lang('Write a post; it appears on the blog as soon as you send it.'), '{{page:blog_new}}'),
+                    $staff_shortcut('bi-calendar-plus', lang('New Event'), lang('Add a reading, a signing or a workshop; it shows on the events page until its day has passed.'), '{{page:event_new}}'),
                     $staff_shortcut('bi-person-plus', lang('Add to the Staff Directory'), lang('Add a colleague to the directory members see.'), '{{page:staff_entry}}'),
                     $staff_shortcut('bi-chat-left-text', lang('All Conversations'), lang('Every message from the contact page. Answer below each one.'), '{{page:inbox}}'),
                 ), '4'),
@@ -1806,7 +1820,7 @@ $sample_posts = array(
     ),
 );
 
-// The staff's forms: the blog and the staff directory.
+// The staff's forms: the blog, the events and the staff directory.
 $staff_form_page = function ($key, $name, $title, $lead, $widget_key, $form) use ($staff_page, $page_header, $el, $container, $row, $col, $widget) {
     return array(
         'key'     => $key,
@@ -1844,6 +1858,15 @@ $pages[] = $staff_form_page('blog_new', lang('new-blog-post'), lang('New Blog Po
         'sample_records'       => $sample_posts,
         // The cover is the posts' share image (pg_cf_share_image_field_id()).
         'share_image_field'    => 'cover_image',
+    ));
+$pages[] = $staff_form_page('event_new', lang('new-event'), lang('New Event'),
+    lang('The event appears on the events page and the home page until its day has passed.'), 'event_form',
+    array(
+        'form_name'            => lang('Event Calendar'),
+        'collection'           => 1,
+        'confirmation_message' => lang('The event is published.'),
+        'confirmation_page_id' => '{{tab:events}}',
+        'sample_records'       => $sample_events,
     ));
 $pages[] = $staff_form_page('staff_entry', lang('add-to-staff-directory'), lang('Add to the Staff Directory'),
     lang('Signed-in members see the directory from their account.'), 'staff_form',
@@ -2392,6 +2415,47 @@ $widgets = array(
         )),
     ),
 
+    // The home page's next three events.
+    'home_events' => array(
+        'page'   => 'home',
+        'slug'   => lang('coming-events'),
+        'config' => array(
+            'regionType'          => 'form_list_view',
+            'custom_form_page_id' => '{{tab:event_new}}',
+            'items_per_page'      => 3,
+            'max_results'         => 3,
+            'order_by_field'      => 'event_date',
+            'order_by_direction'  => 'ASC',
+            'filters'             => array(
+                array('field' => 'event_date', 'operator' => 'is greater than or equal to', 'value' => '', 'dynamic_value' => 'current date'),
+            ),
+            'empty_message'       => lang('No events planned right now. Subscribe to the bookshop letter to hear about the next ones.'),
+        ),
+        'tree'   => $widget_root(array(
+            $row(array($loop(array($event_card()))), '4'),
+        )),
+    ),
+
+    // The events page: every event from today on, the nearest first.
+    'events_list' => array(
+        'page'   => 'events',
+        'slug'   => lang('form-list'),
+        'config' => array(
+            'regionType'          => 'form_list_view',
+            'custom_form_page_id' => '{{tab:event_new}}',
+            'items_per_page'      => 20,
+            'order_by_field'      => 'event_date',
+            'order_by_direction'  => 'ASC',
+            'filters'             => array(
+                array('field' => 'event_date', 'operator' => 'is greater than or equal to', 'value' => '', 'dynamic_value' => 'current date'),
+            ),
+            'empty_message'       => lang('No events planned right now. Subscribe to the bookshop letter to hear about the next ones.'),
+        ),
+        'tree'   => $widget_root(array(
+            $el('div', 'list-group', lang('List'), array($loop(array($event_row())))),
+        )),
+    ),
+
     // The blog: every post, newest first, with a search over the posts.
     'blog_list' => array(
         'page'   => 'blog',
@@ -2508,6 +2572,26 @@ $widgets = array(
             $field('bk-post-summary', lang('Summary'), pg_cf_with_role($textarea('bk-post-summary', 'summary', 3), 'description')),
             $field('bk-post-cover', lang('Cover Image'), pg_cf_with_role($file('bk-post-cover', 'cover_image', 'public'), 'media')),
             $field('bk-post-content', lang('Content'), $textarea('bk-post-content', 'content', 14)),
+            $submit(lang('Publish')),
+            $loop(array()),
+        )),
+    ),
+
+    // The staff page's events form: one event. The time is free text, as the
+    // events page prints it.
+    'event_form' => array(
+        'page'   => 'event_new',
+        'slug'   => 'form',
+        'config' => array('regionType' => 'custom_form', 'form_source' => 'page'),
+        'tree'   => $widget_root(array(
+            $field('bk-event-title', lang('Title'), pg_cf_with_role($input('bk-event-title', 'text', 'title', 'off'), 'title')),
+            $row(array(
+                $col(array($field('bk-event-date', lang('Date'), $input('bk-event-date', 'date', 'event_date', 'off'))), '6'),
+                $col(array($field('bk-event-time', lang('Starts at'), $input('bk-event-time', 'text', 'event_time', 'off'))), '6'),
+                $col(array($field('bk-event-kind', lang('Kind'), $select('bk-event-kind', 'kind', lang('Choose…'), $event_kinds))), '6'),
+                $col(array($field('bk-event-place', lang('Place'), $input('bk-event-place', 'text', 'place', 'off'))), '6'),
+            ), '3'),
+            $field('bk-event-summary', lang('Summary'), pg_cf_with_role($textarea('bk-event-summary', 'summary', 3), 'description')),
             $submit(lang('Publish')),
             $loop(array()),
         )),
@@ -3259,7 +3343,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Bookshop'),
-    'version'     => '1.2.1',
+    'version'     => '1.3.0',
     'framework'   => 'bootstrap5',
     'order'       => 40,
     'icon'        => 'bi-book-half',

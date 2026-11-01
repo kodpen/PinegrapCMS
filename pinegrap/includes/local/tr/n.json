@@ -724,6 +724,7 @@
     "No error_log files were deleted.": "Hiçbir error_log dosyası silinmedi.",
     "No events message": "Etkinlik yok mesajı",
     "No events planned right now. Subscribe to our newsletter to hear about the next ones.": "Şu anda planlanmış etkinlik yok. Sonrakilerden haberdar olmak için bültenimize abone olun.",
+    "No events planned right now. Subscribe to the bookshop letter to hear about the next ones.": "Şu an planlanmış bir etkinlik yok. Sonrakilerden haberdar olmak için kitapçının bültenine abone olun.",
     "No events planned right now. Subscribe to the café's letter to hear about the next ones.": "Şu an planlanmış bir etkinlik yok. Sonrakilerden haberdar olmak için kafe bültenine abone olun.",
     "No exchange rate is recorded for {var:1} on {var:2}. Run Update Exchange Rates or enter the rate.": "{var:2} tarihi için {var:1} kuru kayıtlı değil. Döviz Kurlarını Güncelle'yi çalıştırın ya da kuru girin.",
     "No exchange rate is recorded for {var:1} on {var:2}. Set exchange_rate on the draft, or run Update Exchange Rates in the panel.": "{var:2} tarihi için {var:1} kuru kayıtlı değil. Taslağa exchange_rate girin ya da panelde Döviz Kurlarını Güncelle'yi çalıştırın.",
