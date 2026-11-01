@@ -58,6 +58,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
 - decisions-made-schema-6.md: Decisions list, schema part 6 (2026-10-30 midday on): district and plate_code, iys_sms_status, form_fields.rules, the marketplace auto-invoice switch, erp_quote_links, erp_quote_templates
 - decisions-made-schema-7.md: Decisions list, schema part 7 (2026-10-31 on): SMS campaign tables; image versions table in principle; ws_file_edits.redacted for a redacted Workspace replace
+- decisions-made-schema-8.md: Decisions list, schema part 8 (2026-11-01 evening on): the referring_search_engine ENUM of visitors appended with today's search engines for the Visitors overview
 - decisions-made-schema.md: Decisions list, schema part: steps approved in advance (ENUM appends in the 4.48 shape), the tables and columns approved on 2026-10-27 and 2026-10-28, who decides schema
 - decisions-made-seo.md: Decisions list, SEO part (2026-10-27/28): large image preview, site icon, main-host redirect, per-form structured-data type, author source and share-image field; defaults keep running sites
 - decisions-made-waf.md: Decisions list, firewall part: thresholds stay, a concurrent refusal is no offence, rate bans off the ladder, global limit before the session, no lock release, nothing served to a ban.
