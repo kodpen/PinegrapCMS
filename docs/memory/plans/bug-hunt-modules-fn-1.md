@@ -46,7 +46,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `cloudflare_tools`: open
 
-- `collections`: open
+- `collections`: taken by LQ, #4650
 
 - `comments`: taken by LB — #4599
 
