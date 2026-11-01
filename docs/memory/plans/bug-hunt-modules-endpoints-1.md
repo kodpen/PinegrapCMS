@@ -102,4 +102,4 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 
 - Endpoints `my` (4): open
 
-- Endpoints `offer` (5): open
+- Endpoints `offer` (5): clean (add_offer, duplicate_offer, edit_offer, edit_offer_f, view_offers)
