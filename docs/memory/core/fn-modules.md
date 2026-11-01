@@ -11,7 +11,7 @@ description: Generated from the module field of the memory files: each includes/
 - `audit`: [[audit-trail-diff]], [[audit-trail-file-content]], [[consent-log-and-audit-trail]]
 - `audit_list`: [[audit-log-paging]]
 - `audit_view`: [[audit-trail-screen]], [[audit-trail-settings-name]]
-- `auth`: [[erp-link-rights]], [[link-rights]], [[list-row-names]], [[sign-in-one-message]]
+- `auth`: [[erp-link-rights]], [[filtered-folder-picker-path]], [[link-rights]], [[list-row-names]], [[sign-in-one-message]]
 - `backup`: [[fn-module-errors-mail-backup-consent]]
 - `bundles`: [[product-bundles]], [[product-bundles-storefront]]
 - `carrier_labels`: [[carrier-label-drivers]], [[carrier-label-text-cuts]]

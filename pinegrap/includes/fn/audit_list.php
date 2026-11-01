@@ -106,17 +106,29 @@ function pg_audit_list_sort()
 /**
  * The search box's condition: every word in the user's name, the record's
  * name or id, the IP address or the request id, or in the name a source,
- * an action or a record type is shown under.
+ * an action or a record type is shown under, or the name a settings line's
+ * category is shown under (the line stores the category's key).
  *
- * @param array $terms pg_list_search_terms()'s answer
+ * @param array      $terms pg_list_search_terms()'s answer
+ * @param array|null $names settings category key => shown name; null reads
+ *                          pg_audit_view_settings_names()
  * @return array array('sql', 'params') as pg_list_search_where() answers
  */
-function pg_audit_list_search(array $terms)
+function pg_audit_list_search(array $terms, $names = null)
 {
     $labels = array();
 
     foreach (array('source' => 'source', 'action' => 'action', 'type' => 'entity_type') as $kind => $column) {
         $labels[] = array('expr' => $column, 'labels' => pg_audit_view_labels($kind));
+    }
+
+    if ($terms) {
+        // Only a settings line's label is a category key; on any other line
+        // the expression is NULL and never matches.
+        $labels[] = array(
+            'expr' => "(CASE WHEN entity_type = 'settings' THEN label END)",
+            'labels' => is_array($names) ? $names : pg_audit_view_settings_names(),
+        );
     }
 
     return pg_list_search_where($terms, array(

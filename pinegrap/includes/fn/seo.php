@@ -288,6 +288,29 @@ function pg_perf_request_queries()
     return $queries;
 }
 
+// perf_monitor_shutdown() groups every request that answered 400 or above
+// under its status code ("[404]", "[410]") instead of its URL. Such a bucket
+// is not a page: the home page's own label, "[home]", is one, and so is any
+// URL, which always starts with a slash.
+function pg_perf_is_status_label($label)
+{
+    return (bool) preg_match('/^\[[0-9]{3}\]$/', (string) $label);
+}
+
+// The text a performance list shows for a label: a status bucket is named
+// as error responses with its code, a page keeps its URL.
+function pg_perf_label_display($label)
+{
+    if (!pg_perf_is_status_label($label)) {
+        return (string) $label;
+    }
+
+    return lang(array(
+        'string' => 'Error responses ({var:1})',
+        'vars'   => substr((string) $label, 1, 3),
+    ));
+}
+
 /**
  * Make MySQL agree with PHP about what time it is.
  *

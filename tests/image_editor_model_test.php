@@ -364,6 +364,7 @@ function test_image_editor_model_layers()
 		. ' bounds: M.bounds([turned]), both: M.bounds([box, turned]),'
 		. ' hitTop: M.hitLayer(doc, 200, 140, 0).id, hitTurned: M.hitLayer(doc, 200, 240, 0).id, miss: M.hitLayer(doc, 5, 5, 0),'
 		. ' hitOwn: M.hitLayer(doc, 200, 140, 0, function (l, p) { if (l.id === "a") { seen = p; } return l.id !== "b"; }).id, seen: seen,'
+		. ' inside: [M.insideBox(box, 200, 150, 10), M.insideBox(box, 105, 150, 10), M.insideBox(box, 200, 195, 10), M.insideBox(turned, 200, 70, 10), M.insideBox(turned, 120, 150, 10)],'
 		. ' se: M.resizeBox(box, "se", 400, 300, false, 4), keep: M.resizeBox(box, "se", 400, 150, true, 4), west: M.resizeBox(box, "w", 50, 0, false, 4),'
 		. ' small: M.resizeBox(box, "e", 0, 0, false, 4), turnedEast: M.resizeBox(turned, "e", 200, 400, false, 4),'
 		. ' up: M.angleTo(box, 200, 0, false), right: M.angleTo(box, 400, 150, false), snapped: M.angleTo(box, 400, 140, true),'
@@ -388,6 +389,7 @@ function test_image_editor_model_layers()
 	pg_assert_same(null, $r['miss'], 'a locked layer is not hit');
 	pg_assert_same('a', $r['hitOwn'], 'a type\'s own test lets a press through to the layer below');
 	pg_assert_same(array(100, 40), $r['seen'], 'the test gets the point in the layer\'s own frame');
+	pg_assert_same(array(true, false, false, true, false), $r['inside'], 'inside a box by the margin, in its own turned frame');
 	pg_assert_same(array('x' => 100, 'y' => 100, 'w' => 300, 'h' => 200), $r['se'], 'the opposite corner stays');
 	pg_assert_same(array('x' => 100, 'y' => 100, 'w' => 300, 'h' => 150), $r['keep'], 'from a corner the ratio can be kept');
 	pg_assert_same(array('x' => 50, 'y' => 100, 'w' => 250, 'h' => 100), $r['west'], 'the west edge moves alone');

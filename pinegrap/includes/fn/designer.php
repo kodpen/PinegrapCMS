@@ -2182,6 +2182,24 @@ function pg_designer_page_draft_plan($page_id, $page, $user, $restricted)
 }
 
 /**
+ * Which draft status line a page save writes to the site log: 'off' for a
+ * page on the site saved as a draft, 'on' for a draft put back on the site,
+ * '' when neither changed. A page created by this save was never on the
+ * site, so it gets no status line beside its "was created" line.
+ *
+ * @param bool $was     the stored page was a draft
+ * @param bool $draft   the saved page is a draft
+ * @param bool $created the save created the page
+ * @return string 'off', 'on' or ''
+ */
+function pg_designer_page_draft_log($was, $draft, $created)
+{
+    if ($created || (bool)$was === (bool)$draft) return '';
+
+    return $draft ? 'off' : 'on';
+}
+
+/**
  * How many of each design's pages there are, how many are drafts and how
  * many carry the home flag (the designs list, view_system_styles.php). The
  * pages are the ones the editor opens: the design's own, outside the bin.
@@ -3456,6 +3474,7 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     // Draft or on the site (2026.4.7): decided here, so the dry run that
     // checks every page reports a refused draft before anything is written.
     $draft_plan = pg_designer_page_draft_plan($page_id, $page, $user, $restricted);
+    $page_created = false;
     foreach ($draft_plan['warnings'] as $w) $warnings[] = $w;
 
     // The time to go on the site and the time to come off it (2026.11.0,
@@ -3795,6 +3814,7 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
                 $sql_c_extra_vals
                 '$c_on', '" . e($c_label) . "', '$c_allow', '$c_rating')");
         $page_id = (int)mysqli_insert_id(db::$con);
+        $page_created = true;
         update_tag_cloud_keywords_for_page($page_id, $search, $keywords, 0, '');
         log_activity(lang(array('string' => 'page ({var:1}) was created', 'vars' => array($name))), $_SESSION['sessionusername']);
     }
@@ -3829,8 +3849,9 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         } else {
             db("DELETE FROM page_drafts WHERE page_id = '$page_id'");
         }
-        if ($draft_plan['was'] !== ($draft_return > 0)) {
-            $draft_log = ($draft_return > 0)
+        $draft_change = pg_designer_page_draft_log($draft_plan['was'], $draft_return > 0, $page_created);
+        if ($draft_change !== '') {
+            $draft_log = ($draft_change === 'off')
                 ? lang(array('string' => 'page ({var:1}) was taken off the site as a draft', 'vars' => array($name)))
                 : lang(array('string' => 'page ({var:1}) was published', 'vars' => array($name)));
             log_activity($draft_log, isset($_SESSION['sessionusername']) ? $_SESSION['sessionusername'] : '');

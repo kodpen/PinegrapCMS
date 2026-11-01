@@ -15,7 +15,11 @@
  *    historyStep);
  *  - viewport(host): pan, zoom about a point, fit, pinch and the wheel on a
  *    viewport element, its layer and its zoom label, reading and writing the
- *    view { x, y, k } through the host.
+ *    view { x, y, k } through the host;
+ *  - create(adapter): a canvas's pointer and keys on top of its viewport:
+ *    pan, pinch, Space, the zoom keys, and the drags the adapter's own
+ *    kinds make (moving a box, drawing an arrow), its listeners removed
+ *    again by destroy().
  *
  * Served minified as assets/js/pg_graph_canvas.min.js (pg_js_bundles(),
  * includes/fn/output.php), printed before the script that uses it; after
@@ -266,6 +270,247 @@
         return { apply: apply, zoomAt: zoomAt, zoomBy: zoomBy, fit: fit, point: point, reveal: reveal, wheel: wheel, pinchStart: pinchStart, pinchMove: pinchMove };
     }
 
+    // ── The canvas: pointer and keys ───────────────────────────────────
+
+    // One canvas's pan, zoom, pinch and keys, and the pointer plumbing its
+    // user builds on. The adapter gives:
+    //  - ui (viewport, layer, zoomLabel), view(next) and items() as
+    //    viewport() takes them;
+    //  - ownClicks: a selector of what keeps its own clicks and keys (a link
+    //    on a box): the canvas takes no pointer and no key from it;
+    //  - classes: { panning, space }, put on the viewport while it pans and
+    //    while Space is held;
+    //  - press(event, drag, space): a pointer went down on the canvas; it
+    //    sets drag.kind ('pan' unless it says otherwise) and what its own
+    //    kinds need, or answers false when it took the press itself (the
+    //    pointer is then forgotten);
+    //  - move(event, drag, dx, dy): a drag of the adapter's kind moved past
+    //    4 px from where it started;
+    //  - release(event, drag): the drag's pointer went up (or was cancelled
+    //    by the browser: event.type says which);
+    //  - cancel(drag): a drag was cut short (Esc, a second finger); drag is
+    //    null when there was none;
+    //  - key(event): a key on the canvas, first; true when it handled it.
+    //    Arrows the adapter does not take pan, + and − zoom, 0 fits.
+    function create(adapter) {
+        var ui = adapter.ui;
+        var view = viewport({ ui: ui, view: adapter.view, items: adapter.items });
+        var pointers = {};
+        var pinch = null;
+        var drag = null;
+        var space = false;
+        var bound = [];
+
+        function listen(target, type, handler, options) {
+            target.addEventListener(type, handler, options);
+            bound.push([target, type, handler, options]);
+        }
+
+        function own(target) {
+            return !!(adapter.ownClicks && target.closest && target.closest(adapter.ownClicks));
+        }
+
+        function points() {
+            return Object.keys(pointers).map(function (id) { return pointers[id]; });
+        }
+
+        function pointerDown(event) {
+            pointers[event.pointerId] = { x: event.clientX, y: event.clientY };
+
+            // A second finger: the drag so far becomes a pinch.
+            if (Object.keys(pointers).length === 2) {
+                var both = points();
+
+                cancel();
+                pinch = view.pinchStart(both);
+                return;
+            }
+
+            if ((event.button !== undefined) && (event.button > 1)) {
+                return;
+            }
+
+            if (own(event.target)) {
+                delete pointers[event.pointerId];
+                return;
+            }
+
+            var v = adapter.view();
+            var next = { id: event.pointerId, sx: event.clientX, sy: event.clientY, moved: false, kind: 'pan', vx: v.x, vy: v.y };
+
+            if (adapter.press(event, next, space) === false) {
+                delete pointers[event.pointerId];
+                return;
+            }
+
+            drag = next;
+
+            try {
+                ui.viewport.setPointerCapture(event.pointerId);
+            } catch (error) {
+                // A pointer that cannot be captured still drags while it stays on the canvas.
+            }
+
+            if (drag.kind === 'pan') {
+                ui.viewport.classList.add(adapter.classes.panning);
+            }
+        }
+
+        function pointerMove(event) {
+            if (pointers[event.pointerId]) {
+                pointers[event.pointerId] = { x: event.clientX, y: event.clientY };
+            }
+
+            if (pinch) {
+                var both = points();
+
+                if (both.length < 2) {
+                    return;
+                }
+
+                view.pinchMove(pinch, both);
+                return;
+            }
+
+            if (!drag || (drag.id !== event.pointerId)) {
+                return;
+            }
+
+            var dx = event.clientX - drag.sx;
+            var dy = event.clientY - drag.sy;
+
+            if (!drag.moved && (Math.abs(dx) + Math.abs(dy) < 4)) {
+                return;
+            }
+
+            drag.moved = true;
+
+            if (drag.kind === 'pan') {
+                var v = adapter.view();
+
+                v.x = drag.vx + dx;
+                v.y = drag.vy + dy;
+                view.apply();
+            } else {
+                adapter.move(event, drag, dx, dy);
+            }
+        }
+
+        function pointerUp(event) {
+            delete pointers[event.pointerId];
+
+            if (pinch) {
+                if (Object.keys(pointers).length < 2) {
+                    pinch = null;
+                }
+
+                return;
+            }
+
+            var done = drag;
+
+            if (!done || (done.id !== event.pointerId)) {
+                return;
+            }
+
+            drag = null;
+            ui.viewport.classList.remove(adapter.classes.panning);
+            adapter.release(event, done);
+        }
+
+        function cancel() {
+            var done = drag;
+
+            drag = null;
+            ui.viewport.classList.remove(adapter.classes.panning);
+            adapter.cancel(done);
+        }
+
+        function key(event) {
+            if (typing(event.target) || event.altKey || own(event.target)) {
+                return;
+            }
+
+            var name = event.key;
+            var step = (event.shiftKey ? GRID * 4 : GRID) * 2;
+            var handled = !!adapter.key(event);
+            var v = adapter.view();
+
+            if (handled) {
+                // The adapter's own key.
+            } else if ((name === 'ArrowLeft') || (name === 'ArrowRight') || (name === 'ArrowUp') || (name === 'ArrowDown')) {
+                v.x -= (name === 'ArrowLeft') ? -step : (name === 'ArrowRight') ? step : 0;
+                v.y -= (name === 'ArrowUp') ? -step : (name === 'ArrowDown') ? step : 0;
+                view.apply();
+                handled = true;
+            } else if ((name === '+') || (name === '=')) {
+                view.zoomBy(1.2);
+                handled = true;
+            } else if ((name === '-') || (name === '_')) {
+                view.zoomBy(1 / 1.2);
+                handled = true;
+            } else if (name === '0') {
+                view.fit();
+                handled = true;
+            }
+
+            if (handled) {
+                event.preventDefault();
+            }
+        }
+
+        // Space held down on the canvas: dragging anywhere on it moves it.
+        // Elsewhere Space keeps its own work (a summary, a button).
+        function spaceDown(event) {
+            if ((event.key === ' ') && !typing(event.target) && ui.viewport.contains(event.target)) {
+                space = true;
+                ui.viewport.classList.add(adapter.classes.space);
+                event.preventDefault();
+            }
+        }
+
+        function spaceUp(event) {
+            if (event.key === ' ') {
+                space = false;
+                ui.viewport.classList.remove(adapter.classes.space);
+            }
+        }
+
+        // The listeners, once the adapter's ui holds the viewport.
+        function bind() {
+            listen(ui.viewport, 'pointerdown', pointerDown);
+            listen(ui.viewport, 'pointermove', pointerMove);
+            listen(ui.viewport, 'pointerup', pointerUp);
+            listen(ui.viewport, 'pointercancel', pointerUp);
+            listen(ui.viewport, 'wheel', view.wheel, { passive: false });
+            listen(ui.viewport, 'keydown', key);
+            listen(document, 'keydown', spaceDown);
+            listen(document, 'keyup', spaceUp);
+        }
+
+        function destroy() {
+            bound.forEach(function (item) {
+                item[0].removeEventListener(item[1], item[2], item[3]);
+            });
+            bound = [];
+            pointers = {};
+            pinch = null;
+            drag = null;
+        }
+
+        return {
+            view: view,
+            bind: bind,
+            destroy: destroy,
+            cancel: cancel,
+            // The drag on its way, null when none; hold() puts one in its
+            // place (a box pressed before it takes the focus, null to let a
+            // drag go without cancel()).
+            dragging: function () { return drag; },
+            hold: function (next) { drag = next; }
+        };
+    }
+
     window.PGGraphCanvas = {
         GRID: GRID,
         BOX_W: BOX_W,
@@ -282,6 +527,7 @@
         historyOf: historyOf,
         historyRecord: historyRecord,
         historyStep: historyStep,
-        viewport: viewport
+        viewport: viewport,
+        create: create
     };
 })();
