@@ -4,7 +4,7 @@ description: A design template's own data and looks: catalog and contact groups 
 ---
 
 ## What data does a template bring?
-- `'catalog'`: product groups and products, made when the template opens and only with the shop (`_pg_tpl_catalog()`). A group is found again by its name (`title`, in the opening language) under its parent, a product by its SKU; only what is missing is made. Pictures ship in `includes/design_templates/<id>/` and are copied to a folder of their own. Prices per currency in major units (`'USD' => 89, 'TRY' => 3499`); a new product ships to every shipping zone.
+- `'catalog'`: product groups and products, made when the template opens and only with the shop (`_pg_tpl_catalog()`). A group is found again by its name (`title`, in the opening language) under its parent, a product by its SKU; only what is missing is made. Pictures ship in `includes/design_templates/<id>/` and are copied to a folder of their own. Prices per currency in major units (`'USD' => 89, 'TRY' => 3499`); a new product ships to every shipping zone, unless it says `'shippable' => false` (a ticket: not shippable, no zone, no shipping step; Events template, step 3a of its plan).
 - `'contact_groups'`: one of that name is used, otherwise made (`_pg_tpl_contact_groups()`).
 - Placeholders: `{{product_group:<key>}}` (id; `root` = the site's top group, 0 without the shop), `{{product_group_path:<key>}}` (its address on a catalog page), `{{product_group_image:<key>}}` (its picture, a sample photo when none), `{{contact_group:<key>}}`. A value that is only the placeholder becomes a number.
 
