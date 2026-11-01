@@ -59,13 +59,16 @@ function pg_panel_get_installment_options($request, $action)
     // if supported installment, we output a table with all supported cards and banks installment prices.
     switch (ECOMMERCE_PAYMENT_GATEWAY) {
         case 'Iyzipay':
-            //prepare to installment check
-            $card_number_request = $request['card'];
-            //remove spaces in card number.
-            $card_number_without_spaces = str_replace(' ', '', $card_number_request);
+            // Card number and total price; a request without them gets an
+            // error instead of a gateway call with an empty BIN.
+            $card_number_request = $request['card'] ?? '';
+            $price = $request['price'] ?? '';
+            $card_number_without_spaces = is_scalar($card_number_request) ? str_replace(' ', '', (string) $card_number_request) : '';
 
-            //get total price
-            $price = $request['price'];
+            if ((strlen($card_number_without_spaces) < 6) || !is_scalar($price) || !is_numeric($price)) {
+                echo encode_json(array('status' => 'error', 'message' => lang('Card number and price are required.')));
+                exit();
+            }
 
             //if installment option not activated from site settings than pass to installment check.
             if (ECOMMERCE_IYZIPAY_INSTALLMENT >= 2) {
@@ -271,12 +274,12 @@ function pg_panel_eo_get_installments($request, $action)
         echo encode_json(array('status'=>'error','message'=>'Iyzipay gateway is not active.'));
         exit();
     }
-    $eo_inst_card  = isset($request['card'])  ? trim((string)$request['card'])  : '';
-    $eo_inst_price = isset($request['price']) ? trim((string)$request['price']) : '';
+    $eo_inst_card  = (isset($request['card']) && is_scalar($request['card']))   ? trim((string)$request['card'])  : '';
+    $eo_inst_price = (isset($request['price']) && is_scalar($request['price'])) ? trim((string)$request['price']) : '';
     // Strip spaces/dashes so a "5528 7900 …" input still resolves to a BIN.
     $eo_inst_bin   = substr(preg_replace('/[^0-9]/', '', $eo_inst_card), 0, 6);
     if (strlen($eo_inst_bin) < 6 || !is_numeric($eo_inst_price) || (float)$eo_inst_price <= 0) {
-        echo encode_json(array('status'=>'error','message'=>'card and price are required.'));
+        echo encode_json(array('status'=>'error','message'=>lang('Card number and price are required.')));
         exit();
     }
     $eo_max_inst = defined('ECOMMERCE_IYZIPAY_INSTALLMENT') ? (int)ECOMMERCE_IYZIPAY_INSTALLMENT : 1;
@@ -509,7 +512,7 @@ function pg_panel_get_cross_sell_for_product($request, $action)
     $_x_detail = isset($request['detail_page_id']) ? (int)$request['detail_page_id'] : 0;
     $_x_count  = isset($request['count']) ? max(1, min(12, (int)$request['count'])) : 4;
     if ($_x_pid <= 0) {
-        echo encode_json(array('status' => 'error', 'message' => 'product[id] required'));
+        echo encode_json(array('status' => 'error', 'message' => lang('Product is required.')));
         exit();
     }
     // widget_id: a catalog detail widget whose cross-sell part is drawn
@@ -550,7 +553,10 @@ function pg_panel_get_product($request, $action)
     // detail pages read the extended fields when the visitor picks a new
     // variant from a select-type group, refreshing the bound elements
     // (price, brand, gallery image, etc.) without a full page reload.
-    $product_raw = db_item(
+    $product_id = $request['product']['id'] ?? '';
+    $product_id = is_scalar($product_id) ? (int) $product_id : 0;
+
+    $product_raw = ($product_id > 0) ? db_item(
         "SELECT
                 id,
                 name,
@@ -579,8 +585,14 @@ function pg_panel_get_product($request, $action)
                 custom_field_4,
                 timestamp
             FROM products
-            WHERE id = '" . e($request['product']['id']) . "'"
-    );
+            WHERE id = '" . $product_id . "'"
+    ) : false;
+
+    // A missing or unknown id answers in JSON before any field is read.
+    if (!$product_raw) {
+        echo encode_json(array('status' => 'error', 'message' => lang('Product not found.')));
+        exit();
+    }
 
 
 
@@ -592,7 +604,7 @@ function pg_panel_get_product($request, $action)
     ) {
         //check for image list from products_images_xref
         $item_images = "SELECT product,file_name FROM products_images_xref WHERE product = ?";
-        $image_results = db_q($item_images, array((string) $request['product']['id'])) or output_error('Query failed');
+        $image_results = db_q($item_images, array((string) $product_id)) or output_error('Query failed');
 
         $code_header_position = strpos($product_raw['code'], '^^image_loop_start^');//number
         $code_content_position = strpos($product_raw['code'], '^^image_url^^');

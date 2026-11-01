@@ -4002,6 +4002,11 @@ var software = {
                     }),
                     type: 'POST',
                     success: function(response) {
+                        // A product that is gone answers with an error and no product.
+                        if (!response || !response.product) {
+                            return;
+                        }
+
                         product = response.product;
 
                         // If there is a full description for the product, then use it.

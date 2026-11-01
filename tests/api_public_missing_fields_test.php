@@ -192,5 +192,5 @@ function test_api_public_installment_options_missing_fields()
 function test_api_public_error_texts_are_translated()
 {
 	pg_assert_contains("lang('Card number and price are required.')", api_public_missing_fields_handler('pg_panel_eo_get_installments'));
-	pg_assert_contains("lang('Product ID is required.')", api_public_missing_fields_handler('pg_panel_get_cross_sell_for_product'));
+	pg_assert_contains("lang('Product is required.')", api_public_missing_fields_handler('pg_panel_get_cross_sell_for_product'));
 }

@@ -25,22 +25,46 @@ function get_cross_sell_items($request) {
     }
 
     $request = $request + array(
-        'product_group'    => '',
-        'recipient'        => '',
-        'limit'            => '',
-        'days'             => '',
-        'discounted'       => true,
-        'in_product_group' => '');
+        'products'            => array(),
+        'product_group'       => array(),
+        'recipient'           => array(),
+        'limit'               => '',
+        'days'                => '',
+        'discounted'          => true,
+        'in_product_group'    => '',
+        'catalog_detail_page' => array(),
+        'number_of_items'     => '');
 
-    $product_group = $request['product_group'];
-    $recipient = $request['recipient'];
+    // The sources are objects in the JSON body; anything else (a bare id, a
+    // text) is read as not sent, so the next mode runs instead of a TypeError.
+    foreach (array('products', 'product_group', 'recipient', 'catalog_detail_page') as $key) {
+        if (!is_array($request[$key])) {
+            $request[$key] = array();
+        }
+    }
+
+    $product_group = $request['product_group'] + array('id' => '');
+    $recipient = $request['recipient'] + array('id' => '');
+
+    if (!is_scalar($product_group['id'])) {
+        $product_group['id'] = '';
+    }
+
+    if (!is_scalar($recipient['id'])) {
+        $recipient['id'] = '';
+    }
 
     $products = array();
 
     // If products were passed, then use those.
     if ($request['products']) {
 
-        $products = $request['products'];
+        // Only entries that carry an id are products.
+        foreach ($request['products'] as $product) {
+            if (is_array($product) && isset($product['id']) && is_scalar($product['id'])) {
+                $products[] = array('id' => $product['id']);
+            }
+        }
 
     // Otherwise if a product group was passed, then use products in that group.
     } else if ($product_group['id']) {
@@ -111,7 +135,7 @@ function get_cross_sell_items($request) {
     // by limiting by number of orders, however those solutions were slower.
 
     // If there is a limit in the request, then use that.
-    if ($request['limit']) {
+    if (is_numeric($request['limit']) && ((int) $request['limit'] > 0)) {
         $limit = (int) $request['limit'];
 
     // Otherwise there is not a limit in the request, so set 50,000 default.
@@ -136,9 +160,9 @@ function get_cross_sell_items($request) {
 
     $sql_timestamp = '';
     
-    if ($request['days']) {
+    if (is_numeric($request['days']) && ((int) $request['days'] > 0)) {
 
-        $timestamp = time() - ($request['days'] * 86400);
+        $timestamp = time() - ((int) $request['days'] * 86400);
 
         $sql_timestamp = "AND orders.order_date > '" . e($timestamp) . "'";
     }
@@ -229,7 +253,7 @@ function get_cross_sell_items($request) {
 
     $added_product_groups = array();
 
-    $url = PATH . encode_url_path(get_page_name($request['catalog_detail_page']['id'])) . '/';
+    $url = PATH . encode_url_path(get_page_name($request['catalog_detail_page']['id'] ?? '')) . '/';
 
     require_once(dirname(__FILE__) . '/get_catalog_item.php');
 
@@ -238,8 +262,8 @@ function get_cross_sell_items($request) {
     }
 
     // If the number of items was passed in the request, then use that.
-    if ($request['number_of_items']) {
-        $number_of_items = $request['number_of_items'];
+    if (is_numeric($request['number_of_items']) && ((int) $request['number_of_items'] > 0)) {
+        $number_of_items = (int) $request['number_of_items'];
 
     // Otherwise, use the default.
     } else {
