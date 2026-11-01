@@ -324,6 +324,7 @@
     "Your article reached the desk: ^^title^^": "Haberiniz masaya ulaştı: ^^title^^",
     "Your author desk": "Yazar masanız",
     "Your basket": "Sepetiniz",
+    "Your bookings, their status and our messages, newest first.": "Randevularınız, durumları ve mesajlarımız; en yenisi önce.",
     "Your bookings, their status and our messages.": "Rezervasyonlarınız, durumları ve mesajlarımız.",
     "Your browser asks for {var:1}, none of which the site is served in: you would be sent to the fallback, {var:2}.": "Tarayıcınız şunları istiyor: {var:1}; site bunların hiçbirinde yayınlanmıyor. Yedek dile gönderilirdiniz: {var:2}.",
     "Your browser asks for {var:1}: you would be sent to {var:2}.": "Tarayıcınız şunları istiyor: {var:1}. Şuraya gönderilirdiniz: {var:2}.",

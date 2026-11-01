@@ -548,3 +548,46 @@ $agree = function ($id, $name, $text, $privacy = false) use ($el, $attr, $link) 
     if ($privacy) $children[] = $link(lang('Privacy Policy'), '{{page:privacy}}', 'ms-1');
     return $el('div', 'form-check small mb-3', lang('Consent'), $children);
 };
+// A group of radio buttons under its legend: the legend names the field.
+// Each option is array(value, label).
+$radios = function ($id, $name, $legend, $options, $checked) use ($el, $attr) {
+    $children = array($el('legend', 'form-label fs-6 mb-2', lang('Label'), array(), array('text' => $legend)));
+    foreach (array_values($options) as $n => $o) {
+        $rid = $id . '-' . ($n + 1);
+        $rattrs = array($attr('type', 'radio'), $attr('name', $name), $attr('value', $o[0]));
+        if ($o[0] === $checked) $rattrs[] = $attr('checked', '');
+        $children[] = $el('div', 'form-check form-check-inline', lang('Option'), array(
+            $el('input', 'form-check-input', lang('Field'), array(), array('id' => $rid, '_attrs' => $rattrs)),
+            $el('label', 'form-check-label', lang('Label'), array(), array('text' => $o[1], '_attrs' => array($attr('for', $rid)))),
+        ));
+    }
+    return $el('fieldset', 'mb-3', $legend, $children);
+};
+// The numbered heading of a part of a longer form.
+$form_step = function ($n, $title) use ($el, $span, $heading) {
+    return $el('div', 'd-flex align-items-center gap-2 mt-2 mb-3', lang('Step'), array(
+        $span((string)$n, 'badge rounded-circle text-bg-primary', lang('Step Number')),
+        $heading('h2', $title, 'h6 fw-bold mb-0'),
+    ));
+};
+
+// The record's Edit button, shown to whoever may edit the submissions of
+// its form; it opens the record in the control panel and comes back.
+$edit_button = function ($text = '') use ($link) {
+    return $link($text !== '' ? $text : lang('Edit'), '#', 'btn btn-sm btn-outline-secondary rounded-pill', array(),
+        array('_bindings' => array('href' => '__edit_url', 'eo_visible_if' => 'can_edit')));
+};
+
+// The comments of a record page (a booking's messages, a conversation's
+// replies, a post's comments), in the reading column.
+$comments_section = function ($name) use ($el, $container, $row, $col) {
+    return $el('section', 'pb-5', $name, array(
+        $container(array(
+            $row(array(
+                $col(array(
+                    array('type' => 'region', 'props' => array('regionType' => 'comments_block', 'regionName' => ''), 'children' => array()),
+                ), '', '8'),
+            ), '', 'center'),
+        )),
+    ));
+};
