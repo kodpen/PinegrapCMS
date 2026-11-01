@@ -7823,7 +7823,7 @@ function _pg_tpl_catalog_file($tpl_id, $source, $folder_id, $user_id)
  * Returns array('groups' => key => id, 'paths' => key => address name,
  * 'images' => key => picture address). Empty without the shop.
  */
-function _pg_tpl_catalog($tpl, $user_id, $root_group_id)
+function _pg_tpl_catalog($tpl, $user_id, $root_group_id, $folders = array())
 {
     $out = array('groups' => array(), 'paths' => array(), 'images' => array());
     if (!defined('ECOMMERCE') || !ECOMMERCE) return $out;
@@ -7924,6 +7924,7 @@ function _pg_tpl_catalog($tpl, $user_id, $root_group_id)
                     'order_receipt_message' => '', 'add_comment_message' => '', 'gift_card_email_body' => '',
                     'google_product_category' => '', 'tax_rate' => null, 'default_quantity' => 1,
                 );
+                $product = array_merge($product, _pg_tpl_product_access($p, $folders));
                 $img = isset($p['image']) ? _pg_tpl_catalog_file($tpl['id'], $p['image'], $folder_id, $user_id) : '';
                 $pid = (int)pg_pb_create_product($product, array('images' => ($img !== '') ? array($img) : array(), 'group_ids' => array(), 'zone_ids' => $ships ? $zone_ids : array(), 'attributes' => array(), 'submit_form' => array()));
                 if ($pid <= 0) continue;
@@ -7935,6 +7936,25 @@ function _pg_tpl_catalog($tpl, $user_id, $root_group_id)
             }
         }
     }
+    return $out;
+}
+
+// The access a template product gives once its order is paid, as products
+// columns (the product screen's Grant Access and Membership fields):
+// 'private_folder' => '<folder key>' grants that folder of the template for
+// 'private_days' days (0: no end); 'membership_days' renews the buyer's
+// membership. A folder key the template did not make grants nothing.
+function _pg_tpl_product_access($p, $folders)
+{
+    $out = array();
+    $key = isset($p['private_folder']) ? (string)$p['private_folder'] : '';
+    if ($key !== '' && isset($folders[$key]) && (int)$folders[$key] > 0) {
+        $out['grant_private_access'] = '1';
+        $out['private_folder']       = (int)$folders[$key];
+        $out['private_days']         = max(0, (int)(isset($p['private_days']) ? $p['private_days'] : 0));
+    }
+    $days = isset($p['membership_days']) ? (int)$p['membership_days'] : 0;
+    if ($days > 0) $out['membership_renewal'] = $days;
     return $out;
 }
 
@@ -7981,8 +8001,8 @@ function _pg_tpl_requirement_met($requirement)
 // under it) is taken again rather than making another beside it; one that
 // holds a published copy is left alone and the next is numbered like a page
 // name (pinegrap_hello-2). Access is the template's: 'public', 'private'
-// (users given access to the folder, and the site staff) or 'registration'
-// (any signed-in visitor).
+// (users given access to the folder, and the site staff), 'registration'
+// (any signed-in visitor) or 'membership' (members whose membership runs).
 function _pg_tpl_folders($tpl, $user_id)
 {
     $out  = array();
@@ -8015,7 +8035,7 @@ function _pg_tpl_folders($tpl, $user_id)
     foreach ($defs as $key => $d) {
         $key    = (string)$key;
         $name   = trim((string)(isset($d['name']) ? $d['name'] : $key));
-        $access = (isset($d['access']) && in_array($d['access'], array('public', 'private', 'registration'), true)) ? $d['access'] : 'public';
+        $access = (isset($d['access']) && in_array($d['access'], array('public', 'private', 'registration', 'membership'), true)) ? $d['access'] : 'public';
         $parent_key = isset($d['parent']) ? (string)$d['parent'] : '';
         if ($name === '') continue;
         $id = 0;
@@ -8349,10 +8369,12 @@ function pg_design_template_prepare($template_id, $user)
     }
     $site_name = (defined('ORGANIZATION_NAME') && trim((string)ORGANIZATION_NAME) !== '') ? (string)ORGANIZATION_NAME : lang('My Site');
     $tab_prefix = 'tpl' . substr(md5(uniqid('', true)), 0, 6) . '_';
-    // The template's own product groups and products, and its contact
-    // groups: found again or made, before anything names them.
+    // The template's folders, then its own product groups and products (a
+    // product may grant one of the folders) and its contact groups: found
+    // again or made, before anything names them.
+    $folders = _pg_tpl_folders($tpl, (int)$user['id']);
     $root_group = _pg_tpl_root_product_group();
-    $catalog = _pg_tpl_catalog($tpl, (int)$user['id'], $root_group);
+    $catalog = _pg_tpl_catalog($tpl, (int)$user['id'], $root_group, $folders);
     $vars = array(
         'product_group_paths'  => $catalog['paths'],
         'product_group_images' => $catalog['images'],
@@ -8364,7 +8386,7 @@ function pg_design_template_prepare($template_id, $user)
         'year'      => date('Y'),
         'pages'     => array(),
         'tabs'      => array(),
-        'folders'   => _pg_tpl_folders($tpl, (int)$user['id']),
+        'folders'   => $folders,
         'product_groups' => array_merge($catalog['groups'], array('root' => $root_group)),
     );
     foreach ($names as $key => $name) {
