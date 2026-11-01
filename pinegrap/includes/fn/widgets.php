@@ -2345,9 +2345,10 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
         $extra['__filter_value'] = pg_sw_filter_value_html($filter_value);
         $extra['__result_count'] = $result_count_html;
         $extra += $paging_tokens;
-        // Links to another page, valued from this record.
+        // Links to another page, valued from this record (its address as a
+        // whole address, pg_sw_page_link_record_value()).
         $extra += pg_sw_page_link_values($page_links, $f, isset($by_form_source[$fid]) ? $by_form_source[$fid] : array(), array(
-            'form_item_view'    => ($extra['form_item_view'] !== '#') ? $extra['form_item_view'] : '',
+            'form_item_view'    => pg_sw_page_link_record_value($extra['form_item_view'], pg_sw_ai_page_url($extra['form_item_view'] !== '#' ? $extra['form_item_view'] : '')),
             'submitted_form_id' => $extra['submitted_form_id'],
             'submitter_user_id' => $extra['submitter_user_id'],
         ));
@@ -3023,6 +3024,19 @@ function pg_sw_page_link_values($links, $row, $custom, $extra_raw)
     return $values;
 }
 
+// The value a record's address (the form_item_view token) gives a link to
+// another page: the whole address ($absolute, pg_sw_ai_page_url() of
+// $path), so whoever reads it on that page can paste it into a browser; the
+// path when the whole address is unknown or longer than a URL filter reads
+// (pg_sw_url_param_value(): 100 characters); '' without a record.
+function pg_sw_page_link_record_value($path, $absolute)
+{
+    $path = (string)$path;
+    if ($path === '' || $path === '#') return '';
+    $absolute = (string)$absolute;
+    return ($absolute !== '' && mb_strlen($absolute, 'UTF-8') <= 100) ? $absolute : $path;
+}
+
 // Whether a link takes a value from a list row.
 function pg_sw_page_link_has_row($link)
 {
@@ -3671,7 +3685,7 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     // and the surround alike. With no record to show every value is empty
     // and such a link opens the bare page.
     $extra += pg_sw_page_link_values($page_links, $form_row, $custom_source, array(
-        'form_item_view'    => ($extra['form_item_view'] !== '#') ? (string)$extra['form_item_view'] : '',
+        'form_item_view'    => pg_sw_page_link_record_value($extra['form_item_view'], pg_sw_ai_page_url($extra['form_item_view'] !== '#' ? (string)$extra['form_item_view'] : '')),
         'submitted_form_id' => (string)$extra['submitted_form_id'],
         'submitter_user_id' => (string)$extra['submitter_user_id'],
     ));

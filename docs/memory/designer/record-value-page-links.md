@@ -8,8 +8,8 @@ description: A form list or detail link opening another page with the record's v
 - Stored: `_bindings.href = '__page_link'`, `_bindParams.href = {page_id, params: [{name, token}]}` (fixed `{name, text}`: [[page-link-fixed-text]]); `page_id`: an id, `tab:<key>` until Publish, or 0.
 
 ## How does the renderer draw it?
-- `pg_sw_page_link_bindings(&$tree)`, beside `pg_sw_record_href_bindings()`, makes each link `__page_link_<n>` (like `__link_label_<n>`) and collects `pg_sw_page_link_spec()`.
-- `pg_sw_page_link_resolve()`: one page query per request, `pg_sw_page_link_base()`. Before the list's `$stitch` (captures by value) and the detail's `$tree_designed` copy.
+- `pg_sw_page_link_bindings(&$tree)`, beside `pg_sw_record_href_bindings()`, makes each link `__page_link_<n>` and collects `pg_sw_page_link_spec()`.
+- `pg_sw_page_link_resolve()`: one page query per request, `pg_sw_page_link_base()`. Before the list's `$stitch` and the detail's `$tree_designed` copy.
 - `pg_sw_page_link_tokens()` joins the record query's tokens, so a param's standard field is read.
 
 ## How is it escaped?
@@ -17,7 +17,7 @@ description: A form list or detail link opening another page with the record's v
 
 ## Which names and values are sent?
 - Names: `pg_sw_url_param_name()` (URL-filter rule, [[form-list-url-filters]]); a refused, valueless or repeated name is dropped; at most `pg_sw_page_link_max()` = 8 (JS `_SW_PAGE_LINK_MAX`).
-- Values: `pg_sw_raw_token_value()` in `pg_sw_apply_tokens()` order: `$extra_raw` (record address, ids), a `pg_sw_standard_fields()` name the query read, the form field as stored (no date format, `, `-joined). `id`, `user_id`, `__*`: nothing.
+- Values: `pg_sw_raw_token_value()` in `pg_sw_apply_tokens()` order: `$extra_raw` (record address, whole: [[page-link-record-address]]; ids), a `pg_sw_standard_fields()` name the query read, the form field as stored (no date format, `, `-joined). `id`, `user_id`, `__*`: nothing.
 - A value is sent only when `pg_sw_url_param_value()` reads it back unchanged (≤ 100 chars, one line). None left: the bare page. `translate_records` on: source values (`$by_form_source`, `$custom_source`).
 
 ## What if there is no record, or no page?
