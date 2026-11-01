@@ -1858,7 +1858,7 @@
     var BOARD_PRESETS = [['square', 1080, 1080], ['portrait', 1080, 1350], ['story', 1080, 1920], ['share', 1200, 630], ['banner', 1920, 600]];
 
     // The New image dialog's backgrounds.
-    var BOARD_BACKGROUNDS = [['#ffffff', 'colorWhite'], ['transparent', 'colorTransparent'], ['#1a1c1e', 'colorBlack'], ['#e3f2fd', 'boardLightBlue']];
+    var BOARD_BACKGROUNDS = [['#ffffff', 'colorWhite'], ['transparent', 'colorTransparent'], ['#000000', 'colorBlack'], ['#e3f2fd', 'boardLightBlue']];
 
     function boardSide(v) {
         return Math.round(clamp(Number(v) || 0, SIZE_MIN, SIZE_MAX));
