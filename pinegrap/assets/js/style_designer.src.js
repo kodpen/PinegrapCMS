@@ -64808,7 +64808,7 @@ const StyleDesigner = (function () {
                             createNode('semantic', { tag: 'div', cssClass: 'alert alert-secondary d-flex flex-wrap gap-2', customName: _sdT('Sign in'),
                                 _bindings: { eo_visible_if: 'must_sign_in' } }, [
                                 createNode('semantic', { tag: 'span', text: _sdT('Sign in to add your comment.') }),
-                                createNode('content', { contentType: 'link', text: _sdT('Sign in'), href: '#', cssClass: 'fw-semibold', rel: 'nofollow',
+                                createNode('content', { contentType: 'link', text: _sdT('Sign in'), href: '#', cssClass: 'alert-link', rel: 'nofollow',
                                     _bindings: { href: '__login_url' } })
                             ]),
                             createNode('semantic', { tag: 'form', cssClass: 'card card-body', customName: _sdT('Comment Form'),
@@ -64818,7 +64818,7 @@ const StyleDesigner = (function () {
                                     _bindings: { eo_visible_if: 'is_replying' } }, [
                                     createNode('semantic', { tag: 'span', text: _sdT('Replying to') }),
                                     createNode('semantic', { tag: 'strong', _bindings: { text: '__reply_to_name' } }),
-                                    createNode('content', { contentType: 'link', text: _sdT('Cancel'), href: '#', cssClass: 'ms-auto',
+                                    createNode('content', { contentType: 'link', text: _sdT('Cancel'), href: '#', cssClass: 'ms-auto alert-link',
                                         _bindings: { action: 'comment_reply_cancel' } })
                                 ]),
                                 createNode('semantic', { tag: 'div', cssClass: 'mb-3' }, [

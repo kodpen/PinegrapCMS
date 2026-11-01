@@ -37,7 +37,7 @@ function _test_tpl_playground_threads()
 function test_design_template_playground_comment_widgets()
 {
 	$tpl = _tpl_threads_tpl('pinegrap-playground');
-	pg_assert_same('1.1.0', $tpl['version'], 'the version moved');
+	pg_assert_same('1.1.1', $tpl['version'], 'the version moved');
 	_tpl_threads_check_no_fixed_block('pinegrap-playground', array(
 		'conversation_replies' => 'comments', 'email_comment_card' => 'comments', 'email_reply_card' => 'comments', 'post_comments' => 'comments',
 	));

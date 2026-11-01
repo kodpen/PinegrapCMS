@@ -193,7 +193,7 @@ function _test_tpl_cafe_threads()
 function test_design_template_cafe_comment_widgets()
 {
 	$tpl = _tpl_threads_tpl('pinegrap-cafe');
-	pg_assert_same('1.1.1', $tpl['version'], 'the version moved');
+	pg_assert_same('1.1.2', $tpl['version'], 'the version moved');
 	_tpl_threads_check_no_fixed_block('pinegrap-cafe', array(
 		'conversation_replies' => 'comments', 'email_comment' => 'comments', 'post_comments' => 'comments',
 		'quote_messages' => 'comments', 'reservation_messages' => 'comments',

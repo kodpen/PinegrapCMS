@@ -355,7 +355,8 @@ function pg_wishlist_widget_html($tree, $widget_id, $rows, $ctx)
 /**
  * The address of the first page carrying a Favourites widget the visitor
  * may open, '' when there is none: the My Account link
- * (^^__my_account_wishlist_url^^).
+ * (^^__my_account_wishlist_url^^). Like the other account links, a page of
+ * the design being drawn comes first, then one of the published design.
  *
  * @return string
  */
@@ -367,7 +368,7 @@ function pg_wishlist_widget_page_url()
         return '';
     }
 
-    $name = _pg_sw_open_widget_page_name('wishlist');
+    $name = _pg_sw_open_widget_page_name('wishlist', _pg_sw_preferred_style_ids());
 
     return ($name === '') ? '' : (defined('PATH') ? PATH : '/') . encode_url_path($name);
 }

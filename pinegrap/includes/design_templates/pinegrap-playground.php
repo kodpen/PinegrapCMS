@@ -668,7 +668,7 @@ $comment_thread = function ($w) use ($el, $heading, $para, $link, $span, $attr, 
         $fields[] = $el('div', 'alert alert-secondary py-2 small', lang('Replying To'), array(
             $span(lang('Replying to'), 'me-1', lang('Text')),
             $el('strong', '', lang('Name'), array(), array('text' => lang('Jane Cooper'), '_bindings' => array('text' => '__reply_to_name'))),
-            $link(lang('Cancel'), '#', 'ms-3 fw-semibold', array(), array('_bindings' => array('action' => 'comment_reply_cancel'))),
+            $link(lang('Cancel'), '#', 'ms-3 alert-link', array(), array('_bindings' => array('action' => 'comment_reply_cancel'))),
         ), $show_when('is_replying'));
     }
     $fields[] = $el('div', 'mb-3', lang('Rating'), array(
@@ -727,7 +727,7 @@ $comment_thread = function ($w) use ($el, $heading, $para, $link, $span, $attr, 
             $el('div', 'alert alert-secondary', lang('Closed'), array(), array('_bindings' => array('text' => '__comments_closed_message', 'eo_visible_if' => 'comments_closed'))),
             $el('div', 'alert alert-secondary d-flex flex-wrap align-items-center gap-2', lang('Sign in'), array(
                 $span($w['sign_in'], '', lang('Text')),
-                $link(lang('Sign in'), '#', 'fw-semibold', array(), array('rel' => 'nofollow', '_bindings' => array('href' => '__login_url'))),
+                $link(lang('Sign in'), '#', 'alert-link', array(), array('rel' => 'nofollow', '_bindings' => array('href' => '__login_url'))),
             ), $show_when('must_sign_in')),
             $el('form', 'card card-body border border-2 border-dark rounded-4 p-4', lang('Comment Form'), $fields, array('_bindings' => array('action' => 'comment_form', 'eo_visible_if' => 'can_comment'))),
         )),
@@ -2604,7 +2604,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Playground'),
-    'version'     => '1.1.0',
+    'version'     => '1.1.1',
     'framework'   => 'bootstrap5',
     'order'       => 15,
     'icon'        => 'bi-emoji-smile',
