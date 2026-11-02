@@ -27,7 +27,7 @@ description: Steps N1-N14 and the visual pass V of plans/new-dashboard.md: size,
 
 - N12 (M) Goals, pins, notes, performance, subscriptions. Screens 01, 04, 18, 19. Cut in three.
   - N12a (M) `goals` editor and rings, `notes`, the `dashboard_personal_save` action and the pin cleaning. done (#4981); `ui/dashboard-v2-personal-cards.md`.
-  - N12b (M) `pins` (tiles, "+ Pin" through `backend_search`) and `perf` (widget 23's queries and grade moved into helpers both call). `free` after N12a.
+  - N12b (M) `pins` (tiles, "+ Pin" through `backend_search`) and `perf` (widget 23's queries and grade moved into helpers both call). In progress (N12b PR).
   - N12c (S) `subs`, hidden until the vendor licence client answers (`plans/kodpen-vendor-api-client-steps.md`, P8).
 
 - N13 (S) Share with the team. Screen 10. done (#4975); `ui/dashboard-v2-share.md`.
