@@ -7,7 +7,9 @@
  * together (practice areas led by a lawyer who works in them, lawyers in
  * known areas, results naming a known area, the consultation form's pick
  * lists), every page link of the shared parts names a page of the finished
- * template, and the shared parts carry no class of another template.
+ * template, and the shared parts carry no class of another template; the
+ * public pages (pages_public.php): their keys, one page per area, links to
+ * known pages and consultation links that name answers of the form's lists.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -29,7 +31,9 @@ function _test_law_load()
 	include $dir . '/parts.php';
 	$cards = array();
 	foreach (array_keys($lawyers) as $key) $cards[] = $lawyer_card($key);
+	$public = include $dir . '/pages_public.php';
 	$out = array(
+		'public'         => $public,
 		'areas'          => $practice_areas,
 		'lawyers'        => $lawyers,
 		'figures'        => $figures,
@@ -146,5 +150,95 @@ function test_law_lawyer_card_chooses_the_lawyer()
 		pg_assert_same(1, count($hrefs), "lawyer $key: one consultation link");
 		parse_str(substr($hrefs[0], strlen('{{page:consultation}}?')), $q);
 		pg_assert_true(in_array($q['lawyer'], $d['lawyer_choices'], true), "lawyer $key: the link names a Lawyer answer");
+	}
+}
+
+// Every {{page:}} key a tree links to, and every consultation query.
+function _test_law_links($tree, &$keys, &$queries)
+{
+	$nodes = array();
+	_test_law_nodes($tree, $nodes);
+	foreach ($nodes as $node) {
+		foreach (array('href', 'text') as $prop) {
+			if (!isset($node['props'][$prop]) || !is_string($node['props'][$prop])) continue;
+			preg_match_all('/\{\{page:([a-z0-9_]+)\}\}(\?[^#"\s]*)?/', $node['props'][$prop], $m, PREG_SET_ORDER);
+			foreach ($m as $hit) {
+				$keys[] = $hit[1];
+				if ($hit[1] === 'consultation' && !empty($hit[2])) $queries[] = substr($hit[2], 1);
+			}
+		}
+	}
+}
+
+function test_law_public_pages()
+{
+	$d = _test_law_load();
+	$keys = array();
+	foreach ($d['public'] as $p) {
+		pg_assert_same('public', $p['folder'], $p['key'] . ': public folder');
+		pg_assert_true(trim($p['name']) !== '' && trim($p['title']) !== '' && trim($p['meta_description']) !== '', $p['key'] . ': name, title, description');
+		pg_assert_true(!preg_match('/[^a-z0-9-]/', $p['name']), $p['key'] . ': page name is an address: ' . $p['name']);
+		$keys[] = $p['key'];
+	}
+	$expect = array('home', 'practice');
+	foreach (array_keys($d['areas']) as $a) $expect[] = 'area_' . $a;
+	$expect = array_merge($expect, array('lawyers', 'results', 'fees', 'about', 'faq'));
+	pg_assert_same($expect, $keys, 'the public pages in order');
+	$names = array();
+	foreach ($d['public'] as $p) $names[] = $p['name'];
+	pg_assert_same(count($names), count(array_unique($names)), 'page names unique');
+
+	$known = array_flip(_test_law_page_keys());
+	$links = array();
+	$queries = array();
+	foreach ($d['public'] as $p) _test_law_links($p['tree'], $links, $queries);
+	foreach (array_unique($links) as $key) pg_assert_true(isset($known[$key]), "link to a page of the template: $key");
+	// Each consultation link starts the form with an answer of its lists.
+	pg_assert_true(count($queries) >= count($d['areas']) + count($d['lawyers']), 'consultation links with a choice');
+	foreach ($queries as $q) {
+		parse_str($q, $v);
+		pg_assert_true(isset($v['area']) || isset($v['lawyer']), "query names a choice: $q");
+		if (isset($v['area'])) pg_assert_true(in_array($v['area'], $d['area_titles'], true), 'area is an answer: ' . $v['area']);
+		if (isset($v['lawyer'])) pg_assert_true(in_array($v['lawyer'], $d['lawyer_choices'], true), 'lawyer is an answer: ' . $v['lawyer']);
+	}
+}
+
+// Each area's page lists every lawyer who works in it, and its search
+// section carries the area's topics.
+function test_law_area_pages_list_their_lawyers()
+{
+	$d = _test_law_load();
+	$pages = array();
+	foreach ($d['public'] as $p) $pages[$p['key']] = $p;
+	foreach ($d['areas'] as $key => $a) {
+		$nodes = array();
+		_test_law_nodes($pages['area_' . $key]['tree'], $nodes);
+		$cards = array();
+		$topics = false;
+		foreach ($nodes as $node) {
+			if (($node['props']['_label'] ?? '') === lang('Lawyer Card')) $cards[] = $node;
+			if (!empty($node['props']['searchSection']) && ($node['props']['searchKeywords'] ?? '') === $a['topics']) $topics = true;
+		}
+		$expect = 0;
+		foreach ($d['lawyers'] as $l) if (in_array($key, $l['areas'], true)) $expect++;
+		pg_assert_same($expect, count($cards), "area $key: a card per lawyer of the area");
+		pg_assert_true($topics, "area $key: search section with the area's topics");
+	}
+}
+
+// Search sections: an id each, never the same id twice on a page.
+function test_law_public_search_sections()
+{
+	$d = _test_law_load();
+	foreach ($d['public'] as $p) {
+		$nodes = array();
+		_test_law_nodes($p['tree'], $nodes);
+		$ids = array();
+		foreach ($nodes as $node) {
+			if (empty($node['props']['searchSection'])) continue;
+			pg_assert_true(!empty($node['props']['id']), $p['key'] . ': search section has an id');
+			$ids[] = $node['props']['id'];
+		}
+		pg_assert_same(count($ids), count(array_unique($ids)), $p['key'] . ': search section ids unique');
 	}
 }
