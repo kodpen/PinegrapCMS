@@ -32,10 +32,10 @@ function test_product_group_form_layout_columns_in_order()
 		'row_class' => 'edit_product_group_container'));
 
 	$row = strpos($html, '<div class="row edit_product_group_container">');
-	$form = strpos($html, '<div class="col-12 lg:col-8 2xl:col-9 order-1"><i>FORM</i>');
+	$form = strpos($html, '<div class="col-12 lg:col-8 2xl:col-9 order-1"><div class="row"><i>FORM</i>');
 	$status = strpos($html, '<div class="col-12 lg:col-4 2xl:col-3 order-2">');
 	$sticky = strpos($html, '<div class="position-sticky" style="top:3.3rem;"><i>STATUS</i>');
-	$wide = strpos($html, '<div class="col-12 order-3"><i>PRODUCTS</i>');
+	$wide = strpos($html, '<div class="col-12 order-3"><div class="row"><i>PRODUCTS</i>');
 	$bar = strpos($html, '<div class="col-12 order-4 position-sticky" style="bottom:0; z-index:3;">');
 	$buttons = strpos($html, '<b>BUTTONS</b>');
 	$extra = strpos($html, '<u>EXTRA</u>');
@@ -58,7 +58,11 @@ function test_product_group_form_status_card()
 	pg_assert_contains('id="enabled" name="enabled" value="1" checked="checked"', $html, 'enabled switch, ticked');
 	pg_assert_contains('<i>PARENT</i>', $html, 'parent group picker');
 	pg_assert_true(strpos(pg_product_group_form_status_card(array('enabled' => '0'), ''), 'checked') === false, 'disabled group unticked');
-	pg_assert_true(strpos(pg_product_group_form_cards(null, array('name' => 'x'), array()), 'name="enabled"') === false, 'the switch is no longer in the form column');
+
+	// The form column cards no longer draw the switch.
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/product_group_form.php');
+	$cards = substr($source, strpos($source, 'function pg_product_group_form_cards('), strpos($source, 'function pg_product_group_form_status_card(') - strpos($source, 'function pg_product_group_form_cards('));
+	pg_assert_true(strpos($cards, 'name="enabled"') === false, 'the switch is no longer in the form column');
 }
 
 function test_product_group_form_screens_use_the_layout()

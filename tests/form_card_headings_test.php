@@ -58,7 +58,7 @@ function test_form_card_titles_are_h2_with_the_same_look()
 		'contact_form.php' => 7,
 		'email_campaign_profile_form.php' => 6,
 		'page_form.php' => 2,
-		'product_group_form.php' => 5,
+		'product_group_form.php' => 6,
 		'shipping_method_form.php' => 4,
 		'zone_form.php' => 4,
 	);

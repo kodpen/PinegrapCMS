@@ -75,23 +75,24 @@ function pg_product_group_form_unselected_rows($products, $show_image)
 }
 
 /**
- * The information, catalog display, image and SEO cards.
+ * The form column cards: information (name, short and full description),
+ * catalog display, image and SEO. The Enabled switch and the parent group
+ * sit in the status column (pg_product_group_form_status_card()).
  *
- * @param liveform $liveform
+ * @param liveform|null $liveform  Read only on create
  * @param array $values  The stored row (raw), array() on create; 'images'
  *                       the picker's file names, cover first
- * @param array $form    'is_new', 'parent_row' (the parent picker markup),
- *                       'attributes' (edit: the attributes block),
+ * @param array $form    'is_new', 'attributes' (edit: the attributes block),
  *                       'seo_badge', 'seo_checklist' (edit)
  * @return string
  */
 function pg_product_group_form_cards($liveform, $values, $form)
 {
     $v = array_merge(array(
-        'name' => '', 'enabled' => '1', 'short_description' => '', 'full_description' => '', 'details' => '',
+        'name' => '', 'short_description' => '', 'full_description' => '', 'details' => '',
         'code' => '', 'keywords' => '', 'display_type' => 'browse', 'address_name' => '', 'title' => '',
         'meta_description' => '', 'meta_keywords' => '', 'images' => array()), $values);
-    $form = array_merge(array('is_new' => false, 'parent_row' => '', 'attributes' => '', 'seo_badge' => '', 'seo_checklist' => ''), $form);
+    $form = array_merge(array('is_new' => false, 'attributes' => '', 'seo_badge' => '', 'seo_checklist' => ''), $form);
 
     // A new group's name is a liveform field, so a refused save keeps it.
     if ($form['is_new']) {
@@ -100,41 +101,22 @@ function pg_product_group_form_cards($liveform, $values, $form)
         $output_name = '<input type="text" name="name" id="name" class="form-control" maxlength="100" required value="' . h($v['name']) . '"/>';
     }
 
-    $enabled_checked = $v['enabled'] ? ' checked="checked"' : '';
     $display_type_browse_checked = ($v['display_type'] == 'browse') ? ' checked="checked"' : '';
     $display_type_select_checked = ($v['display_type'] == 'browse') ? '' : ' checked="checked"';
 
     return '
                         <div class="col-12">
-                            <div class="card my-7">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . ($form['is_new'] ? lang('New Product Group Information') : lang('Product Group Information')) . '
                                 </h2>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 md:col-4 my-3">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="name" class="form-label">' . lang('Product Group Name') . '</label>
                                             ' . $output_name . '
                                         </div>
-                                        <div class="col-12 my-5">
-                                            <div class="form-field">
-                                                <div class="switch"><input class="" type="checkbox" id="enabled" name="enabled" value="1"' . $enabled_checked . ' /></div>
-                                                <label class="" for="enabled">' . lang('Enabled') . '</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Catalog Page Display Options') . '
-                                </h2>
-                                <div class="card-body">
-                                    <div class="row">
-                                        ' . $form['parent_row'] . '
-                                        <div class="col-12 md:col-8 my-3">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="short_description" class="form-label">' . lang('Short Description') . '</label>
                                             <input type="text" name="short_description" placeholder="' . lang('Short Description') . '" id="short_description" maxlength="100" class="form-control" value="' . h($v['short_description']) . '" />
                                         </div>
@@ -142,8 +124,18 @@ function pg_product_group_form_cards($liveform, $values, $form)
                                             <label for="full_description" class="form-label">' . lang('Full Description') . '</label>
                                             <textarea id="full_description" name="full_description">' . h(prepare_rich_text_editor_content_for_output($v['full_description'])) . '</textarea>
                                         </div>
-
-                                        <div class="col-12 my-5">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Catalog Page Display Options') . '
+                                </h2>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-12 my-3">
                                             <fieldset>
                                                 <legend class="form-label fs-md">' . lang('Display Type') . '</legend>
                                                 <div class="form-field  d-inline-grid me-5" title="' . lang('Display contents for browsing on catalog page') . '">
@@ -183,7 +175,7 @@ function pg_product_group_form_cards($liveform, $values, $form)
                         </div>
 
                         <div class="col-12">
-                            <div class="card my-7">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Image Options') . '
                                 </h2>
@@ -218,7 +210,7 @@ function pg_product_group_form_cards($liveform, $values, $form)
                         </div>
 
                         <div class="col-12">
-                            <div class="card my-7">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('SEO') . $form['seo_badge'] . '
                                 </h2>
@@ -252,6 +244,75 @@ function pg_product_group_form_cards($liveform, $values, $form)
 }
 
 /**
+ * The status column card: the Enabled switch and the parent group picker,
+ * what decides whether and where the group shows in the catalog.
+ *
+ * @param array $values      The stored row (raw), array() on create
+ * @param string $parent_row The parent picker markup (a col-12 cell or a
+ *                           hidden field), '' when there is no group to pick
+ * @return string
+ */
+function pg_product_group_form_status_card($values, $parent_row)
+{
+    $enabled = array_key_exists('enabled', $values) ? (bool) $values['enabled'] : true;
+
+    return '
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Status') . '
+                                </h2>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-12 my-3">
+                                            <div class="form-field">
+                                                <div class="switch"><input class="" type="checkbox" id="enabled" name="enabled" value="1"' . ($enabled ? ' checked="checked"' : '') . ' /></div>
+                                                <label class="" for="enabled">' . lang('Enabled') . '</label>
+                                            </div>
+                                        </div>
+                                        ' . $parent_row . '
+                                    </div>
+                                </div>
+                            </div>';
+}
+
+/**
+ * The edit screen layout (ui/edit-screen-wide-layout.md): the form column,
+ * the status column with a sticky box, then the products table across the
+ * full width (eight columns with pictures do not fit the form column), and
+ * the sticky save bar last.
+ *
+ * @param array $parts  'form', 'status', 'wide' (the products card),
+ *                      'buttons' (inside the bar's button group),
+ *                      'bar_extra' (after the group), 'row_class'
+ * @return string
+ */
+function pg_product_group_form_layout($parts)
+{
+    $parts = array_merge(array('form' => '', 'status' => '', 'wide' => '', 'buttons' => '', 'bar_extra' => '', 'row_class' => ''), $parts);
+
+    return '
+                    <div class="row' . ($parts['row_class'] !== '' ? ' ' . $parts['row_class'] : '') . '">
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1"><div class="row">' . $parts['form'] . '
+                        </div></div>
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                            <div class="position-sticky" style="top:3.3rem;">' . $parts['status'] . '
+                            </div>
+                        </div>
+                        <div class="col-12 order-3"><div class="row">' . $parts['wide'] . '
+                        </div></div>
+                        <div class="col-12 order-4 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class="btn-group flex-wrap justify-content-center">' . $parts['buttons'] . '
+                                    </div>' . $parts['bar_extra'] . '
+                                </div>
+                            </nav>
+                        </div>
+                    </div>';
+}
+
+/**
  * The products card: the table, the "Load More Products" button while more
  * products are left, and the script that loads them.
  *
@@ -265,7 +326,7 @@ function pg_product_group_form_products_card($form)
 {
     return '
                         <div class="col-12">
-                            <div class="card my-7' . $form['card_class'] . '">
+                            <div class="card mb-7' . $form['card_class'] . '">
                                 <h2 class="card-header bg-reset text-uppercase fg-primary h5 fw-bold">' . $form['title'] . '</h2>
                                 <div class="card-body p-0 position-relative">
                                     <table id="' . $form['table_id'] . '" class="chart table-hover table datatable-restricted-mode" style="width:100%;display:none">
