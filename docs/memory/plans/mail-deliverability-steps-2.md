@@ -6,7 +6,7 @@ description: Steps MD5-MD7 of plans/mail-deliverability.md: campaign hygiene, th
 ## Which steps are there?
 - Sizes, tests and memory rules as in `mail-deliverability-steps.md`; MD5 and MD6 run beside MD2 and MD4 once MD1 and MD3 are merged.
 
-- MD5 (S) Campaign hygiene. After MD1.
+- MD5 (S) Campaign hygiene. After MD1. Done (#5440).
   - The campaign screens (`view_email_campaigns.php`, the campaign report) show suppressed, bounced and complained counts per send beside the delivered count; the contact list gets the filter "Suppressed" (`pg_contact_list_filters()` in `includes/fn/contact_list.php`) and a badge on the contact card with "Allow again"; a complaint sets `contacts.opt_in` to 0 and writes the consent log line (question 2, `core/consent-log-writers.md`); the contacts export carries the status; personal data export and erasure (`core/personal-data-export.md`, `-erasure.md`) cover the bounce rows. Tests on the count queries' SQL builders. Memory: `core/mail-bounces.md` grows a "Which screens show it?" section.
 
 - MD6 (M) Domain health card. After MD1.
