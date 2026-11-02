@@ -6,6 +6,7 @@ description: Rules for writing settings cards and their save modules: own column
 ## Which columns may a category write?
 - A category writes ONLY its own columns. A new setting: control in `<cat>.php`, write in `<cat>.save.php`. Never write another category's column: the old "every save writes every column" behaviour caused two production bugs (partnership fields and the barcode label template were wiped on every save).
 - Never write a column that has no control: `post_value()` returns empty and the column is reset. If another screen owns the column (barcode template -> label editor) Settings never touches it.
+- A control drawn only under a condition is written only when posted (`array_key_exists('<name>', $_POST)`): the Iyzipay protected currency box exists only with Multiple Currencies on, and every Store save without it blanked the currency (#5021).
 - A `$sql_*` fragment is spliced in the file where it is built. Building the fragment in one file and putting it in another file's `UPDATE` silently writes empty (happened once with `software_language`).
 
 ## What is `$row` in `prep.php`?
