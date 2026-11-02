@@ -79,7 +79,6 @@ if (!empty($_SERVER['HTTP_HOST'])) {
             (defined('REQUIRE_SECURE_MODE') === false)
             || (REQUIRE_SECURE_MODE !== false)
         )
-        && ($secure_mode !== 'false')
     ) {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             output_error(
@@ -101,13 +100,16 @@ if (!empty($_SERVER['HTTP_HOST'])) {
             exit();
         }
 
-    // Otherwise if the request is secure, and the secure_mode query string value is set to false,
-    // then redirect visitor to non-secure URL.
+    // Otherwise, on a site without Secure Mode, a secure request asking for
+    // secure_mode=false is sent to the plain address. A Secure Mode site never
+    // sends a visitor to http (the parameter is ignored there), and the switch
+    // is temporary: a 301 would stay cached in the visitor's browser.
     } elseif (
-        ($secure_request === true)
+        (URL_SCHEME !== 'https://')
+        && ($secure_request === true)
         && ($secure_mode === 'false')
     ) {
-        header('Location: http://' . HOSTNAME_SETTING . get_request_uri(), true, 301);
+        header('Location: http://' . HOSTNAME_SETTING . get_request_uri(), true, 302);
         exit();
     }
 

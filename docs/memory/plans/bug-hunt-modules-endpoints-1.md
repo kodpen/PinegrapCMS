@@ -28,9 +28,9 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 - Endpoints `custom` (6): #5164 (array query value); the rest clean
 - Endpoints `design` (5): done #4663, #4684
 - Endpoints `designer` (4): #5177 (designer_import: HTML refusals on a JSON endpoint); the rest clean
-- Endpoints `device` (3): open
-- Endpoints `dynamic` (2): open
-- Endpoints `editor` (4): open
+- Endpoints `device` (3): clean (device_limit, device_pairing, update_device_type)
+- Endpoints `dynamic` (2): clean (add_dynamic_region, edit_dynamic_region)
+- Endpoints `editor` (4): #5167 (editor_add_file: a closing script tag got out of escape_javascript()); editor_edit_file, editor_select_image, editor_select_page_or_file: open
 - Endpoints `email` (16): open
 - Endpoints `erp` (77): open
 - Endpoints `expres` (2): open

@@ -285,6 +285,22 @@ function test_fedex_rate_request_shape()
 	pg_assert_false(isset($request['requestedShipment']['serviceType']), 'no service type');
 }
 
+// A weight too small for two decimals is sent as the smallest FedEx takes:
+// rounded to 0 it is refused like no weight at all (products.weight keeps four
+// decimals).
+function test_fedex_rate_request_light_item_is_not_zero()
+{
+	$weight = function ($pounds) {
+		$request = pg_fedex_rate_request(array('zip_code' => '30301'), array('zip_code' => '10001', 'country' => 'US'), '2026-10-14', $pounds, '740561073');
+
+		return $request['requestedShipment']['requestedPackageLineItems'][0]['weight']['value'];
+	};
+
+	pg_assert_same(0.01, $weight(0.002), 'under a hundredth');
+	pg_assert_same(0.01, $weight('0.0049'), 'decimal column text');
+	pg_assert_same(2.35, $weight(2.346), 'rounded to two decimals');
+}
+
 // The committed date is read first, then the operational one; FedEx Ground's
 // transit time comes along for the method's own weekend rules.
 function test_fedex_delivery_parse_reads_dates_and_transit()

@@ -26,17 +26,17 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `backup_restore`: clean (archive entry filter, size-capped CRC-checked extraction, statement start and classification, renaming, partition fallback, line splitter against escaped dumps, session save and restore, recovery, lock and swap checked)
 
-- `bundles`: open
+- `bundles`: clean
 
 - `calendar`: done #4632 #4646 (recurring overnight/multi-day events and room availability, unpadded view date; rest reviewed: escaping, access, recurrence expansion)
 
 - `captcha`: clean (siteverify outcomes, token, widget escaping, settings card and save order checked)
 
-- `carrier_api`: open
+- `carrier_api`: done #5159 (FedEx weight under 0.005 lb sent as 0)
 
-- `carrier_labels`: open
+- `carrier_labels`: clean
 
-- `carrier_webhook`: open
+- `carrier_webhook`: clean
 
 - `cart_quotes`: clean (line cleaning, plan against stock/minimum/maximum/bin, create and open checks, apply and its repeat guard, completion, link page escaping checked)
 
