@@ -27,7 +27,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 - Endpoints `currency` (3): #5147 (exchange rate 0)
 - Endpoints `custom` (6): #5164 (array query value); the rest clean
 - Endpoints `design` (5): done #4663, #4684
-- Endpoints `designer` (4): open
+- Endpoints `designer` (4): #5177 (designer_import: HTML refusals on a JSON endpoint); the rest clean
 - Endpoints `device` (3): open
 - Endpoints `dynamic` (2): open
 - Endpoints `editor` (4): open
