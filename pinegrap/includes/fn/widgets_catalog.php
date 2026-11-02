@@ -1179,8 +1179,11 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     $offset_records = pg_sw_list_offset($cfg);
     $query_param    = 'query';
     $current_page   = isset($_GET[$page_param]) ? max(1, (int)$_GET[$page_param]) : 1;
-    $search_query = ($search_enabled && isset($_GET[$query_param])) ? trim((string)$_GET[$query_param]) : '';
-    if (strlen($search_query) > 100) $search_query = substr($search_query, 0, 100);
+    // One value only (?query[]=x is no search), cut at 100 characters, not
+    // bytes: a cut inside a multi-byte letter left invalid UTF-8, which h()
+    // prints as nothing, so the search box came back empty.
+    $search_query = ($search_enabled && isset($_GET[$query_param]) && is_scalar($_GET[$query_param])) ? trim((string)$_GET[$query_param]) : '';
+    if (mb_strlen($search_query) > 100) $search_query = mb_substr($search_query, 0, 100);
 
     // ── Active group resolution (path-based) ──────────────────────────────
     // Drill-down state lives in the URL path: /{liste_page}/{group_address_name}.
