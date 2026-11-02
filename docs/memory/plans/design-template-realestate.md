@@ -17,17 +17,8 @@ description: Plan for the Real Estate Agency template (pinegrap-realestate): lis
 - As Law and Salon: steps 1-6 write `includes/design_templates/pinegrap-realestate/` (not globbed); step 7's `pinegrap-realestate.php` includes them in one scope. Classes `pre-`, field ids `re-`.
 
 ## Which steps are there?
-- 1 Done (#5092). Data and shared parts: `parts.php` (builders, neighbourhoods, property types, agents, figures, services, sample listings, the forms' pick lists, account bar, notice, header, footer, valuation band, listing card, agent card, staff bar, page shells, form fields, comment thread, newsletter line, post card, AI summary); test `design_template_realestate_test.php`.
-
-- 2 Done (#5120). Public pages: `pages_public.php`; places `home_listings` and `area_listings_<key>` (step 3) and links `valuation?area=&agent=` (step 4).
-
-- 3 Done (#5132). Listings: `listings.php` returns `pages`/`widgets`; viewing button is a `__page_link` to `viewing` with `listing` = title, so step 4's Listing field reads `url_param` `listing`; tests use `_test_re_controls()`.
-
-- 4 Done (#5141). Requests: `mail.php` (e-mails, teal `#0f766e` inline), `requests.php` (viewing and valuation pages, lists, e-mails, `privacy`, `email_reply`); `privacy` places `newsletter_band`, which step 5 defines.
-
-- 5 Done (#5165). Standard: `standard.php` (contact, inbox, conversation, listing alerts on contact group `listing_alerts`, "Market News", blog post, search, error, their e-mails, `newsletter_band`, `home_posts`, `google_reviews`).
-
-- 6 Account and staff: `account.php` (sign-in pages, My Account, `staff`, `blog_new` with sample posts, `staff_directory`, `staff_entry`, account e-mails); test `…_account_test.php`.
+- 1-6 Done: `parts.php` (#5092), `pages_public.php` (#5120, pages only), `listings.php` (#5132), `mail.php` + `requests.php` (#5141, mail colour `#0f766e`), `standard.php` (#5165, contact group `listing_alerts`), `account.php` (#5176). Tests `design_template_realestate{,_standard,_account}_test.php`; `test_realestate_account_template_is_whole` checks links and widgets across the parts.
+- Step 7 includes, in order: parts, mail, pages_public, listings, requests, standard, account; never name a part's return `$listings` (that is the sample data).
 
 - 7 Assembly: `pinegrap-realestate.php` (order 69, icon `bi-house-door`, look, palette, contact group `listing_alerts`, folders, `pre-` User Styles with two fonts, search map), the shared tests' lists, `designer/design-template-realestate.md`, plan deleted; PR body names `[NEW] Added the Real Estate Agency design template`.
 
