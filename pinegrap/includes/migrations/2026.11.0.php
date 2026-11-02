@@ -134,6 +134,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_image_upload_cap();        // 11.0.142
 	upgrade_2026_11_0_dashboard_layout();        // 11.0.143
 	upgrade_2026_11_0_claude_daily_summary();    // 11.0.145
+	upgrade_2026_11_0_site_search_daily();      // 11.0.147
 
 }
 
@@ -4312,5 +4313,29 @@ function upgrade_2026_11_0_claude_daily_summary() {
 	install_add_column('config', 'ws_claude_summary_channel_id', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Assistant card: Claude can write a daily summary into a channel at a chosen hour; off until switched on under the Claude in the channels card.');
+
+}
+
+// The site search rollup (2026.11.0, 11.0.147; includes/fn/site_search_stats.php).
+// One row per day and search term, aggregated at write time: id is the SHA-1
+// of "day|term", raised by one INSERT ... ON DUPLICATE KEY UPDATE per search
+// (a visit counts a term once a day), so a busy search box adds no row per
+// request. searches counts the searches, zero_results those that found
+// nothing, clicks the result clicks. idx_day serves the report's top terms of
+// a period. The general job removes days older than 400.
+function upgrade_2026_11_0_site_search_daily() {
+
+	install_create_table('site_search_daily', "CREATE TABLE site_search_daily (
+		id            CHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		day           DATE NOT NULL,
+		term          VARCHAR(191) NOT NULL DEFAULT '',
+		searches      INT UNSIGNED NOT NULL DEFAULT 0,
+		zero_results  INT UNSIGNED NOT NULL DEFAULT 0,
+		clicks        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_day (day, searches)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Site search: each day\'s searches are now counted by term, with the searches that found nothing and the clicks on their results. Days older than 400 are removed.');
 
 }
