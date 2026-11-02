@@ -9,6 +9,9 @@ module: shipping
 - The JS starters (express order, recipient list block, account profile, address book, billing information, affiliate sign-up, shipping address and arrival) write `_sdAddrLabel('city' | 'state')`: the default country's words, a default word the render still swaps for a visitor's other country. The PHP default tree keeps City / State / Province; the render stamps it the same. Account profile and address book draw their state with `_swAcctStateField()`: the text box and the hidden pick list the server fills.
 - The canvas draws a label holding a default word beside a city or state control (name or `eo_field`) in those words (`_sdAddrCanvasText()`, twins of the key and swap); the tree is not rewritten, so an older design shows İlçe/İl in a Turkish store too.
 
+## Which templates are concerned?
+- No template ships its own address tree: every one opens express order, account profile and address book with `'tree' => 'starter'`, so the starters cover new openings and the site render covers installed designs (`commerce/address-form-places.md`).
+
 ## Why the default country?
 - The canvas has no visitor's country; the site starts the country controls with the default (`countries.default_selected`), so the canvas shows what a first visit shows. Site rules: `commerce/address-labels-by-country.md`.
 

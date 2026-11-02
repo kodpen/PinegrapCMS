@@ -13143,7 +13143,7 @@ function pg_product_image_cell_content($key, $image_name, $name, $short_descript
         . ' data-pg-lb-src="' . h(PATH . encode_url_path($image_name)) . '"'
         . ' data-pg-lb-alt="' . h($caption) . '" data-pg-lb-caption="' . h($caption) . '"'
         . ' aria-label="' . h(lang('View images')) . '">'
-        . '<img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" alt="" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(PATH . encode_url_path($image_name)) . '" />'
+        . '<img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" alt="" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(pg_image_panel_thumb_url(PATH . encode_url_path($image_name))) . '" />'
         . '</button>';
 
     $index = 1;

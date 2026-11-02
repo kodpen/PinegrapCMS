@@ -98,75 +98,22 @@ if (!$_POST || $errors) {
     print $output;
 
 } else {
-    // delete zone references in zones_countries_xref (we do this reguardless of whether we are deleting the zone or updating the zone)
-    $query = "DELETE FROM zones_countries_xref ".
-             "WHERE zone_id = ?";
-    $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-
-    // delete zone references in zones_states_xref (we do this reguardless of whether we are deleting the zone or updating the zone)
-    $query = "DELETE FROM zones_states_xref ".
-             "WHERE zone_id = ?";
-    $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+    $zone_id = $id;
 
     // if zone was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
-        // delete zone
-        $query = "DELETE FROM zones WHERE id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-
-        // delete zone references in shipping_methods_zones_xref
-        $query = "DELETE FROM shipping_methods_zones_xref WHERE zone_id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-        
-        // delete zone references in products_zones_xref
-        $query = "DELETE FROM products_zones_xref WHERE zone_id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        pg_store_zone_delete($zone_id, (string) ($_POST['name'] ?? '')) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'shipping zone ({var:1}) was deleted','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
     // else zone was not selected for delete
     } else {
-
         // Rates are stored in minor units.
-        $base_rate = pg_zone_form_rate($_POST['base_rate'] ?? '');
-        $primary_weight_rate = pg_zone_form_rate($_POST['primary_weight_rate'] ?? '');
-        $secondary_weight_rate = pg_zone_form_rate($_POST['secondary_weight_rate'] ?? '');
-        $item_rate = pg_zone_form_rate($_POST['item_rate'] ?? '');
-
-        // update zone
-        $query = "UPDATE zones SET
-                    name = ?,
-                    base_rate = ?,
-                    primary_weight_rate = ?,
-                    secondary_weight_rate = ?,
-                    item_rate = ?,
-                    user = ?,
-                    timestamp = UNIX_TIMESTAMP()
-                WHERE id = ?";
-        $result = db_q($query, array($values['name'], (string) $base_rate, (string) $primary_weight_rate, (string) $secondary_weight_rate, (string) $item_rate, (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-
-        // load all allowed countries in array by exploding string that has allowed country ids separated by commas
-        $allowed_countries = (isset($_POST['allowed_countries']) && is_array($_POST['allowed_countries'])) ? $_POST['allowed_countries'] : array();
-
-        // foreach allowed country insert row in zones_countries_xref table
-        foreach ($allowed_countries as $country_id) {
-            // if country id is not blank, insert row
-            if ($country_id) {
-                $query = "INSERT INTO zones_countries_xref (zone_id, country_id) VALUES (?, ?)";
-                $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $country_id)) or output_error('Query failed.');
-            }
+        $rates = array();
+        foreach (pg_store_zone_rate_columns() as $column) {
+            $rates[$column] = pg_zone_form_rate($_POST[$column] ?? '');
         }
 
-        // load all allowed states in array by exploding string that has allowed state ids separated by commas
-        $allowed_states = (isset($_POST['allowed_states']) && is_array($_POST['allowed_states'])) ? $_POST['allowed_states'] : array();
-
-        // foreach allowed state insert row in zones_states_xref table
-        foreach ($allowed_states as $state_id) {
-            // if state id is not blank, insert row
-            if ($state_id) {
-                $query = "INSERT INTO zones_states_xref (zone_id, state_id) VALUES (?, ?)";
-                $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $state_id)) or output_error('Query failed.');
-            }
-        }
+        pg_store_zone_save($zone_id, array('name' => $values['name']) + $rates, $values['allowed_countries'], $values['allowed_states'], (int) $user['id']) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'shipping zone ({var:1}) was modified','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
     }

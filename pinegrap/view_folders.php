@@ -4798,6 +4798,43 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         return item.url + ((item.url.indexOf('?') === -1) ? '?' : '&') + 'v=' + stamp;
     }
 
+    // The address a tile draws a picture from: its 320 px derivative, as
+    // WebP for a JPEG or PNG, rather than the original, which for a camera
+    // photo is megabytes for a box 116 px wide. A GIF (it may move), a vector
+    // or an address that already asks for a width or format stays as it is.
+    // Twin of pg_image_panel_thumb_url() (includes/image_engine.php).
+    function thumbUrl(url) {
+        url = String(url || '');
+
+        var fragment = '';
+        var hash = url.indexOf('#');
+
+        if (hash !== -1) {
+            fragment = url.slice(hash);
+            url = url.slice(0, hash);
+        }
+
+        var question = url.indexOf('?');
+        var urlPath = (question === -1) ? url : url.slice(0, question);
+        var query = (question === -1) ? '' : url.slice(question + 1);
+
+        if (/(^|&)(w|f)=/i.test(query)) { return url + fragment; }
+
+        var dot = urlPath.lastIndexOf('.');
+        var extension = (dot === -1) ? '' : urlPath.slice(dot + 1).toLowerCase();
+        var add = '';
+
+        if (['jpg', 'jpeg', 'jpe', 'png'].indexOf(extension) !== -1) {
+            add = 'w=320&f=webp';
+        } else if (extension === 'webp') {
+            add = 'w=320';
+        } else {
+            return url + fragment;
+        }
+
+        return url + ((question === -1) ? '?' : '&') + add + fragment;
+    }
+
     // A thumbnail that loads on demand rather than the moment it is drawn.
     //
     // The address goes in data-src, not src, so the browser does not fetch it
@@ -4931,7 +4968,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // corner keeps it readable as a group rather than a product.
             if (item.image_name && withPicture) {
                 return '<span class="thumb-wrap">' +
-                    lazyThumb(path + item.image_name) +
+                    lazyThumb(thumbUrl(path + item.image_name)) +
                     '<span class="access-badge bi ' + groupIcon + ' fg-primary"></span></span>';
             }
 
@@ -4945,7 +4982,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // the two are told apart at a glance.
             if (item.image_name && withPicture) {
                 return '<span class="thumb-wrap">' +
-                    lazyThumb(path + item.image_name) +
+                    lazyThumb(thumbUrl(path + item.image_name)) +
                     '<span class="access-badge bi bi-box2-heart fg-secondary"></span></span>';
             }
 
@@ -4971,7 +5008,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // drag (whose URL payload would navigate the tab on a missed
             // drop) — the tile itself is the draggable thing.
             return '<span class="thumb-wrap ' + item.access_control_type + '">' +
-                lazyThumb(imageUrl(item)) + badge + '</span>';
+                lazyThumb(item.erp ? imageUrl(item) : thumbUrl(imageUrl(item))) + badge + '</span>';
         }
 
         var typeIcon = FILETYPE_ICONS[item.type] || 'bi-file-earmark';

@@ -26,14 +26,14 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - coordinator-limits.md: Coordinator rules: model and effort of coordinators and workers, quota guard before a worker starts, 4 to 8 workers per coordinator, a new worker for a decided draft PR
 - coordinator-no-plans.md: What a coordinator gives its workers when no plan step is free: open issues first, then a module-by-module bug hunt, then a new design template
 - coordinator-todo-list.md: Coordinator's to-do list (2026-10-27): one item per worker PR in the list shown in its own window, added when the draft is on GitHub, struck through once the PR is merged
-- coordinator.md: Coordinator session (pilot, 2026-10-26): one per account, keeps its cloud workers on free plan steps, looks at them every 10 minutes, writes no code, merges nothing; questions go to the architect
+- coordinator.md: Coordinator session: one per account, keeps its cloud workers on free plan steps, looks at them every 10 minutes, writes no code, merges nothing; questions go to the architect
 - decisions-made-access.md: Decisions list, access part: public pi.php/si.php and test_secure_mode.php, guest order linking, backup, dashboard and role 3 gates, secrets shown on screen, the TLS escape flag, escape_url().
 - decisions-made-customers.md: Decisions list, customer data (owner, 2026-10-28): marketing boxes stay ticked, İYS never narrows sending, export unchanged, review order and photos, merge re-points all but consent_log
 - decisions-made-data.md: Decisions list, data part: starter dumps, orders.notes, tracking_company, secret_key*, order_items.tax, tracking_code, fixing a released migration, MySQL 5.7, ERP schema approval.
 - decisions-made-files.md: Decisions list, files part: a form file no view shows stays refused in a public folder; RSS media counts as shown with its record; folders and files are managed in the File Manager
 - decisions-made-marketplace.md: Decisions list, marketplace part: n11 orders of products shipped from the n11 warehouse are not imported.
 - decisions-made-messages.md: Decisions list, messages part: which text messages are transactional (no İYS consent), the back-in-stock SMS, the cash-on-delivery code's orders, the member's SMS sign-in code.
-- decisions-made-panel-2.md: Decisions list, panel part 2 (2026-11-02 on): no Site Settings row in the main menu; every menu icon in two colours, the System tools toolbox animated
+- decisions-made-panel-2.md: Decisions list, panel part 2 (2026-11-02 on): no Site Settings row in the main menu; menu icons in two colours; app-like screens print no alert boxes; user-rights trees keep the Workspace folder
 - decisions-made-panel.md: Decisions list, panel part: Bootstrap 6 breakpoints kept on purpose; the one date-and-time picker; the main menu in category headings; navigator screens; the front-end editing button box
 - decisions-made-product-10.md: Decisions list, product part 10 (2026-10-30 evening on): Turkish i-fold in panel lists, public invoice PDF address, e-mail triage suggestion, Workspace uploads, no collection schedule columns
 - decisions-made-product-11.md: Decisions list, product part 11 (2026-10-30 night on): CRM shape, storefront API timing, the two support e-mail fields, slash commands over the API, e-mail-a-friend limit off the log

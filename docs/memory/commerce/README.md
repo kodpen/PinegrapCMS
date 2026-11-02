@@ -22,6 +22,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 ## Files
 
 - address-autocomplete.md: Address autocomplete: drivers (Google Places, Mapbox, Photon) behind address_suggest.php, account in connect_apps addr_<key>, Turkish box mapping, Ecommerce settings card
+- address-form-places.md: Every place an address's city, state or district is asked, shown, saved or read: widgets, templates, classic pages, layouts, panel and ERP forms, save and read paths
 - address-labels-by-country.md: City and state labels that follow the country (İlçe and İl for Turkey): pg_address_labels(), the render stamp in designer widgets, init_country() on classic pages, default words only
 - affiliate-link-offer-code.md: When an affiliate link (?a=) puts the affiliate's code into the session as the special offer code: only when its group offer runs today (pg_special_offer_code_running(), #4163, PR #4266)
 - api-bulk-inventory-quantity.md: How POST /products/inventory (batch) reads each item's quantity: the same whole-number rule and ±1000000 bound as the single-product endpoint, refused per item instead of rounded or clamped
@@ -246,6 +247,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - shipment-write-path.md: The single shipment write path (includes/fn/shipping.php): pg_shipment_record() upsert, pg_shipment_prune(), pg_shipment_delivered() once per address, the format warning, who calls it
 - shipping-bulk-import.md: Bulk "mark shipped" on the order list and the tracking-number CSV upload (import_shipments.php): what each writes through update_order(), what is refused and why
 - shipping-today.md: How shipping works today (checked 2026-10-20): tracking tables and write paths, the four meanings of "shipped", estimated dates, known gaps and reusable Turkish validation helpers
+- short-link-binned-destination.md: A short link whose page or file is in the Recycle Bin: the list shows the original name marked, the CSV writes it, a 301/302 sends nobody to the parked pgbin_ address
 - short-link-recycle-bin.md: How short links treat a product, product group, page or file in the Recycle Bin (lists, save checks on every entry point), where a deleted short link goes, and posted lists on the short link screens.
 - stock-quantity-column-bound.md: Panel stock writers refuse or skip a count past PG_INVENTORY_QUANTITY_MAX (the INT UNSIGNED top) instead of letting MySQL cut it (#4711)
 - storefront-api-missing-fields.md: Public api.php storefront actions (get_cross_sell_items, get_product, get_installment_options) read missing or malformed request fields as empty and answer in JSON, never with a warning or a 500

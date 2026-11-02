@@ -5,7 +5,7 @@ description: The #button_bar strip under a screen's heading is the .pg-toolbar c
 
 ## What is #button_bar?
 - The action strip under the heading of about a hundred screens (the stylesheet's comment still says seventy-odd). It is the toolbar component: `backend.src.css` gives `#button_bar` the `.pg-toolbar` rules by its id, so a legacy `<nav id="button_bar" class="navigation">` gets them too; new markup writes `nav#button_bar.pg-toolbar`, full width. Never put it inside a `.row` / `.col-*`, never open a second tool column beside it.
-- Its legacy markup (`.btn-group`, `.btn-link`) is mapped by `assets/css/backend.src.css` ("Page action bar" and "Admin screen toolbar"): `.btn-group` gets `display: contents`, every button `flex: 0 0 auto` and the pill shape. Bootstrap's `.btn-group > .btn { flex: 1 1 auto }` had spread two actions across two thousand pixels. A bar with no button in it is hidden.
+- Its legacy markup (`.btn-group`, `.btn-link`) is mapped by `assets/css/backend.src.css` ("Page action bar" and "Admin screen toolbar"): `.btn-group` gets `display: contents` (not one with `role="group"`: a view switch stays one box, #5340), every button `flex: 0 0 auto` and the pill shape. A bar with no button in it is hidden.
 
 ## What may sit in it?
 - Buttons, as direct children of the bar. The only wrapper is the `<form>` an action needs (export, filter, search) or an inline `span`: CSS opens it onto the bar's own line (`inline-flex`). A wrapper of buttons wraps; a form with fields stays on one line.

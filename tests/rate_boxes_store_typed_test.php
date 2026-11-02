@@ -65,7 +65,7 @@ function test_rate_boxes_tax_zone_saves_read_the_rate()
 
 	$edit = rate_boxes_store_typed_test_source('edit_tax_zone.php');
 	pg_assert_true(
-		strpos($edit, 'parse_tax_rate(') < strpos($edit, 'DELETE FROM tax_zones_countries_xref'),
+		strpos($edit, 'parse_tax_rate(') < strpos($edit, 'pg_store_tax_zone_delete('),
 		'the edit save refuses the rate before it drops the zone\'s countries');
 }
 

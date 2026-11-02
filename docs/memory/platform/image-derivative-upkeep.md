@@ -11,3 +11,4 @@ module: image
 
 ## What does the warm-up make, and when?
 - Warm-up (general job, after the sweep, 10 s a tick, `pg_image_warmup_run()`): while bits 1 and 4 of `config.image_derivative_formats` are on (WebP at the own address) and the server writes WebP, the WebP copy at the own width of each JPEG/PNG row (no attachment, `erp-`, `ws-` or workspace folder), largest first, through `pg_image_derivative()`. Cursor (size, id) in `warmup.json`; at least one picture a tick; all slots taken stops the tick without moving the cursor; a finished pass starts again after a day. Tests: `tests/image_encode_warmup_test.php`.
+- Thumbnail pass (general job, before the own-address pass, 5 s a tick, `pg_image_warmup_run(..., 'thumbs')`): while WebP is offered and written, whatever bit 4 says, the 320 px WebP copy of the same rows, newest first (cursor id in `warmup-thumbs.json`), for panel lists (`image-panel-thumbnails.md`).
