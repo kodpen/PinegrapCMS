@@ -42,7 +42,7 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 
 - `order_view`: clean (callers escape)
 
-- `output`: clean for list sort, quick edit, back URL, filter, period nav; header, menu, license, page panel open
+- `output`: done (#5568: page panel Next/Skip Page links did not encode the page name; a deleted skip page linked to the root); clean for list sort, quick edit, back URL, filter, period nav, license check and card; header, menu open
 
 - `page_bulk`: clean
 

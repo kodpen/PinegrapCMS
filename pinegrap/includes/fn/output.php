@@ -5735,19 +5735,11 @@ function pg_page_facts($page_id, $style_id, $user, $send_to = null)
         }
 
         if ($next_page_id !== NULL) {
-            $next_page_name = get_page_name($next_page_id);
-
-            if ($next_page_name == '') {
-                $facts[] = array('label' => lang('Next Page'), 'text' => '[' . lang('Not Set') . ']');
-            } else {
-                $facts[] = array('label' => lang('Next Page'), 'text' => $next_page_name, 'url' => OUTPUT_PATH . $next_page_name);
-            }
+            $facts[] = pg_page_fact_page(lang('Next Page'), get_page_name($next_page_id), OUTPUT_PATH);
         }
 
         if (isset($page_type_properties['skip_button_next_page_id']) && ($page_type_properties['skip_button_next_page_id'] != 0)) {
-            $skip_page_name = get_page_name($page_type_properties['skip_button_next_page_id']);
-
-            $facts[] = array('label' => lang('Skip Page'), 'text' => $skip_page_name, 'url' => OUTPUT_PATH . $skip_page_name);
+            $facts[] = pg_page_fact_page(lang('Skip Page'), get_page_name($page_type_properties['skip_button_next_page_id']), OUTPUT_PATH);
         }
     }
 
@@ -5869,6 +5861,28 @@ function pg_page_facts($page_id, $style_id, $user, $send_to = null)
     }
 
     return $facts;
+}
+
+/**
+ * A page panel fact naming another page: its name, linked to the page. The
+ * name is encoded for the path, since a page name may hold "#", "?" or "%".
+ * A page that is not set or no longer exists reads "[Not Set]" with no link.
+ * Pure.
+ *
+ * @param string      $label
+ * @param string|null $page_name get_page_name() of the page, '' when none
+ * @param string      $path      site path the page names sit under
+ * @return array label / text / url
+ */
+function pg_page_fact_page($label, $page_name, $path)
+{
+    $page_name = (string) $page_name;
+
+    if ($page_name === '') {
+        return array('label' => $label, 'text' => '[' . lang('Not Set') . ']');
+    }
+
+    return array('label' => $label, 'text' => $page_name, 'url' => $path . encode_url_path($page_name));
 }
 
 /**
