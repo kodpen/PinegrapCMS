@@ -197,6 +197,8 @@ function test_mail_parse_transfer_encodings()
 {
 	pg_assert_same("a=b\nc", pg_mail_decode_body("a=3Db  \nc", 'quoted-printable'), 'trailing space dropped');
 	pg_assert_same('=ZZ', pg_mail_decode_body('=ZZ', 'quoted-printable'), 'broken escape kept');
+	pg_assert_same('Merhaba', pg_mail_decode_body("Merhaba=", 'quoted-printable'), 'soft break at the end of the part dropped');
+	pg_assert_same('Merhaba', pg_mail_decode_body("Mer=\nhaba= \t", 'quoted-printable'), 'soft break and its trailing space at the end dropped');
 	pg_assert_same('a', pg_mail_decode_body("YQ\n", 'base64'), 'missing padding');
 	pg_assert_same('hello', pg_mail_decode_body("aGVs\n bG8=\n", 'base64'));
 	pg_assert_same('raw', pg_mail_decode_body('raw', 'x-uuencode'), 'unknown encoding as is');
