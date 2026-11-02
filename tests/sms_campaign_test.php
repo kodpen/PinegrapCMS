@@ -204,6 +204,25 @@ function test_sms_campaign_screen_uses_the_body_limit()
 	pg_assert_contains('$body_limit)', $source, 'the save check gets the limit');
 	pg_assert_contains('data-pg-sms-limit', $source, 'the counter');
 	pg_assert_true(strpos($source, 'maxlength="\' . (int) pg_sms_max_length()') === false, 'the box is not given the whole layer limit');
+	pg_assert_true(strpos($source, 'maxlength="\' . (int) $body_limit') === false, 'no maxlength: it counts an emoji as two, the counter and the server as one');
+}
+
+// Cancelling asks first and says what happened; a read-only campaign shows
+// its times; a long name is cut in the list.
+function test_sms_campaign_cancel_and_read_only_view()
+{
+	$edit = file_get_contents(PG_FUNCTIONS_DIR . '/edit_sms_campaign.php');
+
+	pg_assert_true((bool) preg_match('/name="submit_cancel"[^>]*data-confirm-content=/', $edit), 'the cancel button asks first');
+	pg_assert_contains("lang('The SMS campaign was cancelled.')", $edit);
+	pg_assert_contains("lang('The SMS campaign was not cancelled: it was queued, cancelled or deleted before.')", $edit);
+	pg_assert_contains("\$campaign['queued_at']", $edit, 'the queued time is shown');
+	pg_assert_contains("lang('Send Time')", $edit, 'the send time is shown');
+
+	$list = file_get_contents(PG_FUNCTIONS_DIR . '/view_sms_campaigns.php');
+
+	pg_assert_contains('mb_substr($name, 0, 50)', $list, 'the name is cut');
+	pg_assert_contains("array('string' => 'Edit {var:1}', 'vars' => array(\$name))", $list, 'the edit label keeps the whole name');
 }
 
 // A scheduled campaign and a queued one read as two states in Turkish.

@@ -810,7 +810,7 @@ function api_schema() {
 			'summary' => 'Make a cart quote',
 			'description' => 'Makes a quote as the new cart quote screen does and answers it with link: the address to send the customer. The link is answered here only, never again: only its hash is kept, and a lost link is replaced with POST /cart-quotes/{id}/link. Opening the link shows the products and quantities, never whom the quote is for; the customer\'s button puts them into the cart at that day\'s prices. Each product must be in the catalogue, switched on and no donation (422 naming lines otherwise); its stock is weighed when the link is used. A retry answered from its Idempotency-Key record carries link null. Announced as cart_quote.created.',
 			'params'  => array(
-				array('name' => 'lines',       'in' => 'body', 'type' => 'list', 'of' => array('product_id' => 'integer', 'quantity' => 'integer'), 'max_items' => PG_CART_QUOTE_MAX_LINES, 'required' => true, 'description' => 'Objects of {product_id, quantity}, at most ' . PG_CART_QUOTE_MAX_LINES . ' products: quantity a whole number of at least 1. A product sent twice is one line with the quantities added up, at most ' . PG_CART_QUOTE_MAX_QUANTITY . '.'),
+				array('name' => 'lines',       'in' => 'body', 'type' => 'list', 'of' => array('product_id' => 'integer', 'quantity' => 'integer'), 'max_items' => PG_CART_QUOTE_MAX_LINES, 'required' => true, 'description' => 'Objects of {product_id, quantity}, at most ' . PG_CART_QUOTE_MAX_LINES . ' products: quantity a whole number from 1 to ' . PG_CART_QUOTE_MAX_QUANTITY . '. A product sent twice is one line with the quantities added up; a quantity or a sum past ' . PG_CART_QUOTE_MAX_QUANTITY . ' is refused, never cut down.'),
 				array('name' => 'contact_id',  'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The contact the quote is for (GET /customers). Left out, it is made for nobody named.'),
 				array('name' => 'valid_until', 'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'The last day the link works, through the end of that day in the site\'s time zone; not a day already over. Left out, 30 days from today; an empty string or null, no end.')
 			)
@@ -2362,6 +2362,24 @@ function api_schema() {
 				array('name' => 'from',  'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
 				array('name' => 'to',    'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
 				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 50, 'default' => 10, 'description' => 'Top pages per bot.')
+			)
+		),
+
+		array(
+			'id'      => 'reports.vitals',
+			'method'  => 'GET',
+			'path'    => '/reports/vitals',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_vitals',
+			'returns' => 'VitalsReport',
+			'summary' => 'Page speed measured in visitors\' browsers',
+			'description' => 'Largest Contentful Paint and Interaction to Next Paint in milliseconds and Cumulative Layout Shift times 1000, as visitors\' browsers measured them on the site\'s pages, from the hourly rollup: the site over the window, each day of it that has measurements, and the slowest pages. Each figure gives its samples, an estimated 75th percentile (from the good / needs-work / poor counts and the sum; the rating Google gives a page follows it), the mean, and the share of samples in each rating (good up to 2500 ms, 200 ms and 100; poor above 4000 ms, 500 ms and 250). views counts the measurements sent; INP has fewer samples when visitors did not interact. Nothing about a visitor is kept. Defaults to the last thirty days; a window is at most 400 days. 503 service_unavailable until the database update that adds the rollup has run.',
+			'params'  => array(
+				array('name' => 'from',   'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',     'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'device', 'in' => 'query', 'type' => 'enum', 'values' => array('desktop', 'mobile', 'tablet'), 'description' => 'One width class instead of all: mobile under 768 px, tablet under 1024 px.'),
+				array('name' => 'order',  'in' => 'query', 'type' => 'enum', 'values' => array('lcp', 'inp', 'cls', 'views'), 'default' => 'lcp', 'description' => 'How pages are ranked: the highest 75th percentile of that figure first, or the most measurements.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 10, 'description' => 'How many pages.')
 			)
 		),
 

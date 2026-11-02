@@ -296,6 +296,12 @@ if (!$_POST) {
 
     $liveform->add_fields_to_session();
 
+    // The button pressed in this request. The session keeps the entry of a
+    // button pressed before a validation error, so asking it would count that
+    // older button as pressed again.
+    $save_for_later_clicked = isset($_POST['save_for_later_button']);
+    $complete_clicked = isset($_POST['complete_button']);
+
     // get all fields for this form
     $fields = db_items(
         "SELECT
@@ -326,7 +332,7 @@ if (!$_POST) {
         // If field is required and the user clicked the complete button, then require the field.
         // Required fields are not enforced for the save for later button, so that a partially
         // filled in submitted form can still be stored.
-        if ($field['required'] and $liveform->field_in_session('complete_button')) {
+        if ($field['required'] and $complete_clicked) {
             $error_message = '';
 
             if ($field['label']) {
@@ -364,7 +370,7 @@ if (!$_POST) {
     if ($liveform->check_form_errors() == false) {
 
         // If the save for later button was clicked, then mark the form as incomplete.
-        if ($liveform->field_in_session('save_for_later_button')) {
+        if ($save_for_later_clicked) {
             $new_complete = 0;
 
         // Otherwise the complete button was clicked, so mark the form as complete.
@@ -501,7 +507,7 @@ if (!$_POST) {
         log_activity(lang(array('string'=>'submitted form (form name: {var:1}, reference code: {var:2}) was created','vars'=>array($form_name,$reference_code))), $_SESSION['sessionusername']);
 
         // If the save for later button was clicked.
-        if ($liveform->field_in_session('save_for_later_button')) {
+        if ($save_for_later_clicked) {
             $message = lang('The form has been created and saved for later.');
 
         // Otherwise the complete button was clicked.

@@ -69,7 +69,10 @@ function pg_contact_form_columns($post, $user_id)
         $columns[$name] = pg_contact_form_posted($post, $name);
     }
 
-    $columns['expiration_date'] = (string) prepare_form_data_for_input(pg_contact_form_posted($post, 'expiration_date'), 'date');
+    // An empty box is a lifetime membership (0000-00-00); a date that is no
+    // date is refused before the save (pg_contact_form_refusal()).
+    $expiration = pg_date_input_iso(pg_contact_form_posted($post, 'expiration_date'));
+    $columns['expiration_date'] = ($expiration === '') ? '0000-00-00' : $expiration;
     $columns['tax_number'] = trim(pg_contact_form_posted($post, 'tax_number'));
     $columns['tax_office'] = trim(pg_contact_form_posted($post, 'tax_office'));
     $columns['file_id'] = pg_contact_form_posted($post, 'file_id');
@@ -77,6 +80,56 @@ function pg_contact_form_columns($post, $user_id)
     $columns['user'] = (string) $user_id;
 
     return $columns;
+}
+
+/**
+ * Why a posted contact cannot be saved, '' when it can: a membership
+ * expiration date that is no date (dotted, impossible or with a two-digit
+ * year was stored as a lifetime membership or the year 0027), or a negative
+ * commission rate (its minus was dropped, so -7,5 was saved as 7.50).
+ *
+ * @param array $post
+ * @return string
+ */
+function pg_contact_form_refusal($post)
+{
+    $expiration = trim(pg_contact_form_posted($post, 'expiration_date'));
+
+    if (($expiration !== '') && (pg_date_input_iso($expiration) === '')) {
+        return lang('The membership expiration date is not valid.');
+    }
+
+    if (strpos(trim(pg_contact_form_posted($post, 'affiliate_commission_rate')), '-') === 0) {
+        return lang('The commission rate cannot be negative.');
+    }
+
+    return '';
+}
+
+/**
+ * Whether a user with the user role (3) keeps the contact in at least one
+ * group they may edit; the other roles always do. Create asked it, edit did
+ * not: a role 3 user could uncheck every group and lose the contact.
+ *
+ * @param array    $user           the viewer (role)
+ * @param array    $contact_groups list of array('id')
+ * @param array    $post
+ * @param callable $may_edit       group id => bool (validate_contact_group_access() for $user)
+ * @return bool
+ */
+function pg_contact_form_keeps_a_group($user, $contact_groups, $post, $may_edit)
+{
+    if ((int) ($user['role'] ?? 0) != 3) {
+        return true;
+    }
+
+    foreach ($contact_groups as $contact_group) {
+        if ((pg_contact_form_posted($post, 'contact_group_' . $contact_group['id']) == '1') && call_user_func($may_edit, $contact_group['id'])) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**
@@ -190,9 +243,10 @@ function pg_contact_form_name_card($values, $is_new)
  */
 function pg_contact_form_picture_card($is_new, $image_html)
 {
-    // The edit screen posts the picked file under file_id, which also holds
-    // the stored picture; the create screen keeps the picker's own name.
-    $picker = 'software_image_picker({initialize:true,SingleImage:true' . ($is_new ? '' : ',file_input_name:\'file_id\'') . '});';
+    // Both screens post the picked file under file_id (and an Unsplash
+    // image under image_url), the names the save reads: under the picker's
+    // own name, selected_images[], the create screen dropped the picture.
+    $picker = 'software_image_picker({initialize:true,SingleImage:true,file_input_name:\'file_id\'});';
 
     return '
                                 <div class="card mb-7 display-on-hover overflow-hidden position-relative">
@@ -325,7 +379,7 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
 {
     $output_work =
         pg_contact_form_text_field($values, 'company', lang('Company'), 50) .
-        pg_contact_form_text_field($values, 'title', lang('Title'), 50) .
+        pg_contact_form_text_field($values, 'title', lang('Job Title'), 50) .
         pg_contact_form_text_field($values, 'department', lang('Department'), 50) .
         pg_contact_form_text_field($values, 'office_location', lang('Office Location'), 50) .
         pg_contact_form_text_field($values, 'website', lang('Website'), 255, 'url');
@@ -402,7 +456,7 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
                                             <div class="form-text text-end">' . lang('leave blank for no membership') . '</div>
                                         </div>
                                         <div class="col-12 my-3">
-                                            <label for="expiration_date" class="form-label">' . lang('Expiration Date') . '</label>
+                                            <label for="expiration_date" class="form-label">' . lang('Membership Expiration Date') . '</label>
                                             <input value="' . pg_contact_form_value($values, 'expiration_date') . '" type="text" name="expiration_date" id="expiration_date" class="form-control" data-pg-date />
                                             <div class="form-text text-end">' . lang('leave blank for lifetime membership') . '</div>
                                             ' . get_date_picker_format() . pg_fields_script() . '
@@ -421,7 +475,7 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
                                         ' . pg_contact_form_lead_source_field($values, pg_referral_sources()) . '
                                         <div class="col-12 my-3">
                                             <label for="description" class="form-label">' . lang('Description') . '</label>
-                                            <textarea type="text" name="description" id="description" class="form-control">' . pg_contact_form_value($values, 'description') . '</textarea>
+                                            <textarea name="description" id="description" class="form-control" rows="6">' . pg_contact_form_value($values, 'description') . '</textarea>
                                         </div>
                                     </div>
                                 </div>
@@ -484,9 +538,9 @@ function pg_contact_form_affiliate_card($values)
                             <label for="affiliate_commission_rate" class="form-label">' . lang('Commission Rate') . '</label>
                             <label class="form-control form-adorn form-adorn-end">
                                 <span class="form-adorn-text" aria-hidden="true">%</span>
-                                <input value="' . h(pg_contact_form_commission_rate_value($values['affiliate_commission_rate'] ?? '')) . '" type="text" name="affiliate_commission_rate" id="affiliate_commission_rate" class="form-ghost" size="6" maxlength="6" inputmode="decimal" data-inputmask-alias="decimal" data-inputmask-placeholder="0" style="text-align: right;">
+                                <input value="' . h(pg_contact_form_commission_rate_value($values['affiliate_commission_rate'] ?? '')) . '" type="text" name="affiliate_commission_rate" id="affiliate_commission_rate" class="form-ghost" size="6" maxlength="6" inputmode="decimal" data-inputmask-alias="decimal" data-inputmask-allowminus="false" data-inputmask-placeholder="0" style="text-align: right;">
                             </label>
-                            <div class="form-text text-end">' . lang(array('string'=>'leave blank for default: {var:1}%','vars'=>AFFILIATE_DEFAULT_COMMISSION_RATE)) . '</div>
+                            <div class="form-text text-end">' . lang(array('string'=>'leave blank for default: {var:1}%','vars'=>pg_format_number(AFFILIATE_DEFAULT_COMMISSION_RATE, 2))) . '</div>
                         </div>
                     </div>
                 </div>
@@ -594,6 +648,33 @@ function pg_contact_form_group_cells($contact_groups, $states)
     }
 
     return $output;
+}
+
+/**
+ * Ends the request with an error when the posted contact cannot be saved
+ * (pg_contact_form_refusal()) or a user with the user role leaves it in no
+ * group they may edit (pg_contact_form_keeps_a_group()).
+ *
+ * @param array $user           the viewer (validate_user())
+ * @param array $contact_groups pg_contact_form_all_groups()'s answer
+ * @param array $post
+ * @return void
+ */
+function pg_contact_form_check($user, $contact_groups, $post)
+{
+    $refusal = pg_contact_form_refusal($post);
+
+    if ($refusal !== '') {
+        output_error(h($refusal) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+    }
+
+    $may_edit = function ($group_id) use ($user) {
+        return validate_contact_group_access($user, $group_id) == true;
+    };
+
+    if (!pg_contact_form_keeps_a_group($user, $contact_groups, $post, $may_edit)) {
+        output_error(lang('Please select at least one contact group for the contact') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+    }
 }
 
 /**

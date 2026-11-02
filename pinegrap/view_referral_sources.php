@@ -23,6 +23,9 @@ $output_rows = '';
 $user = validate_user();
 validate_ecommerce_access($user);
 
+include_once('liveform.class.php');
+$liveform = new liveform('view_referral_sources');
+
 
 
 // The columns this list sorts by, in the order the table shows them.
@@ -31,10 +34,12 @@ validate_ecommerce_access($user);
 $sort_columns = array(
     'name'          => lang('Name'),
     'code'          => lang('Code'),
+    'sort_order'    => lang('Sort Order'),
     'last_modified' => lang('Last Modified'),
 );
 
-$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
+// The order the checkout shows the sources in.
+$sort_default = array('sort' => 'sort_order', 'order' => 'asc');
 
 $list_state = pg_list_state('view_referral_sources', $sort_columns, $sort_default);
 $sort_levels = $list_state['sorts'];
@@ -44,6 +49,7 @@ $sort_levels = $list_state['sorts'];
 $order_by = pg_list_order_by($sort_levels, array(
     'name'          => 'name',
     'code'          => 'code',
+    'sort_order'    => 'referral_sources.sort_order',
     'last_modified' => 'timestamp',
 ));
 
@@ -51,11 +57,12 @@ $query = "SELECT
             referral_sources.id as id,
             referral_sources.name as name,
             referral_sources.code as code,
+            referral_sources.sort_order as sort_order,
             user.user_username as user,
             referral_sources.timestamp as timestamp
         FROM referral_sources
         LEFT JOIN user ON referral_sources.user = user.user_id
-        ORDER BY $order_by";
+        ORDER BY $order_by, referral_sources.name";
 
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 while ($row = mysqli_fetch_array($result)) {
@@ -80,6 +87,7 @@ while ($row = mysqli_fetch_array($result)) {
             </td>
             <td class="align-middle chart_label position-relative">' . h($name) . '</td>
             <td class="align-middle position-relative">' . h($code) . '</td>
+            <td class="align-middle">' . (int) $row['sort_order'] . '</td>
             <td class="align-middle" >' . get_relative_time(array('timestamp' => $timestamp)) . $output_last_modifier_user . ' </td>
         </tr>';
 }
@@ -99,6 +107,7 @@ print
                     'primary' => array('label' => lang('Create'), 'url' => 'add_referral_source.php', 'icon' => 'bi-plus-circle'),
                     'search'  => pg_list_sort_menu('view_referral_sources.php', $sort_columns, $sort_levels, $sort_default),
                 )) . '
+                ' . $liveform->output_notices() . '
                 <div class="card my-7">
                     <div class="card-body p-0 position-relative">
                         <table class="chart table-hover table " style="width:100%;display:none">
@@ -107,6 +116,7 @@ print
                                     <th class="noVis">' . lang(array('string'=>'Action') ) . '</th> 
                                     <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
                                     <th>' . get_column_heading(lang('Code'), $sort_levels, '', '', 'code') . '</th>
+                                    <th>' . get_column_heading(lang('Sort Order'), $sort_levels, '', '', 'sort_order') . '</th>
                                     <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                                 </tr>
                             </thead>
@@ -121,4 +131,6 @@ print
     
 </main>' .
     output_footer();
+
+$liveform->remove_form();
 ?>

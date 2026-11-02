@@ -8,7 +8,7 @@ description: Steps VA1-VA6 of plans/voice-to-assistants.md: deaf hint, keyless h
 - S is under 400 product lines, M about 1,000. Pure parts get `tests/workspace_voice_*_test.php`. Texts go in only through `tr_add.php`. Run `php tools/build_js.php` after editing workspace.js. Changelog: one `[NEW]` line for voice answers and voice messages from assistants, named in VA4's PR body.
 
 ## Which steps are there?
-- VA1 (S) Say why nobody heard. `free`
+- VA1 (S) Say why nobody heard. Done, #5709 (`workspace/workspace-voice-unheard.md`).
   - While transcripts are off or the channel closes them, the recorder says that assistants will not hear the recording. Role 0 gets a link to Workspace Settings › Voice message transcripts.
   - `ws_voice_heard()` writes the reason (off, failed or skipped). Claude's instructions and Pinegrap AI's prompt answer with that reason and the setting's place.
 
@@ -16,7 +16,7 @@ description: Steps VA1-VA6 of plans/voice-to-assistants.md: deaf hint, keyless h
   - (c): with no service set, `PGVoiceText` writes the sender's recording out on the device before the upload and sends it as the transcript (`provider` browser). The server keeps it only for a recorder file, as machine text. A browser without the model gets VA1's hint.
   - (b): the voice card offers "Pinegrap AI" on the subscription key.
 
-- VA3 (M) Speech service. `free`
+- VA3 (M) Speech service. Done, #5715.
   - The voice card gets a speech part: OpenAI-compatible `/audio/speech`, with the same address and key by default, a model and a voice from a list, stored as `config_text` rows. The consent line names the provider.
   - `ws_voice_speak($text, $locale)` is a pure request builder plus `api_http_request()`. It returns a file kept like a recording: a `voice-…` name and a `done` `ws_voice` row whose transcript is the text. Text over 1,500 characters is cut at a sentence end.
 

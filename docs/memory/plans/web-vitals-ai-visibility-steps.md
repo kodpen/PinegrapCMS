@@ -11,7 +11,7 @@ description: Steps WV1-WV3 of plans/web-vitals-ai-visibility.md: the vitals beac
 - WV1 (M) Beacon and rollup. Done in #5397.
   - `assets/js/pg_vitals.src.js` and `.min.js` (registered in `pg_js_bundles()`): LCP, INP and CLS through `PerformanceObserver` (`buffered: true`), the final values sent once on `visibilitychange` hidden or `pagehide` with `navigator.sendBeacon()`; no value for a page restored from the back-forward cache. `output.php` prints it for public pages only (not the designer, Preview, prototype, or a staff session). `page_view.php` reads `v=` (three numbers, device class, connection) after the token check, validates ranges (LCP 0-60 s, INP 0-10 s, CLS 0-10) and writes the schema sub-step's table `page_vitals_hourly` (`install_create_table()`, in `get_tables()`, rerun twice) with `INSERT ... ON DUPLICATE KEY UPDATE`: counts, sums, good/needs-work/poor buckets per Google's thresholds. Tests: the bucket function, the validation, the key. Memory: `visitors/page-vitals-beacon.md`.
 
-- WV2 (M) Figures and API. After WV1.
+- WV2 (M) Figures and API. Done in #5618.
   - `includes/fn/page_vitals.php`: `pg_vitals_site($from, $to)` (p75 estimated from the buckets and sums, the good share), `pg_vitals_pages($from, $to, $order, $limit)` (slowest first), `pg_vitals_trend()` (per day); the API route `reports/vitals` in `includes/api/resources/reports.php` with its schema row (`api/api-endpoint-rules.md`), MCP tool follows; the general job keeps 400 days. Tests on the p75 estimate against a known distribution. Memory: `visitors/page-vitals-figures.md`.
 
 - WV3 (M) AI fetch counter. Done in #5398.

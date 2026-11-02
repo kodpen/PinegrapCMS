@@ -45,7 +45,7 @@ if (!$_POST) {
                 'extra classes'=>'setting',
                 'icon'=>'setting',
                 'heading'=>lang('Edit Referral Source'),
-                'heading_description' => lang('Create a new referral source to gather marketing information during checkout. (Delete all will hide feature.)'),
+                'heading_description' => lang('Edit a referral source to gather marketing information during checkout. (Delete all will hide feature.)'),
                 'cancel'=>array('enable'=>'true','url'=>'view_referral_sources.php'),
                 'breadcrumb' => array(
                     array('label' => lang('All Referral Sources'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_referral_sources.php'),
@@ -82,12 +82,17 @@ if (!$_POST) {
 } else {
     validate_token_field();
 
+    include_once('liveform.class.php');
+    $liveform_view = new liveform('view_referral_sources');
+    $stored_name = (string) db_value("SELECT name FROM referral_sources WHERE id = '" . $id . "'");
+
     // if referral source was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // delete referral source
         $query = "DELETE FROM referral_sources WHERE id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-        log_activity(lang(array('string'=>'referral source ({var:1}) was deleted','vars'=>array($_POST['name']) )) , $_SESSION['sessionusername']);
+        $result = db_q($query, array((int) $id)) or output_error('Query failed.');
+        log_activity(lang(array('string'=>'referral source ({var:1}) was deleted','vars'=>array($stored_name) )) , $_SESSION['sessionusername']);
+        $liveform_view->add_notice(lang('The referral source has been deleted.'));
     // else referral source was not selected for delete
     } else {
         // update referral source
@@ -99,13 +104,19 @@ if (!$_POST) {
                     timestamp = UNIX_TIMESTAMP()
                 WHERE id = ?";
         $values = pg_referral_source_form_values($_POST);
-        $error = pg_referral_source_form_error($values);
+        $others = array();
+        $others_result = db_q("SELECT name, code FROM referral_sources WHERE id <> ?", array((int) $id)) or output_error('Query failed.');
+        while ($other = mysqli_fetch_assoc($others_result)) {
+            $others[] = $other;
+        }
+        $error = pg_referral_source_form_error($values, $others);
         if ($error !== '') {
             output_error($error . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
-        $result = db_q($query, array($values['name'], $values['code'], $values['sort_order'], (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        $result = db_q($query, array($values['name'], $values['code'], pg_referral_source_sort_order($values['sort_order']), (string) $user['id'], (int) $id)) or output_error('Query failed.');
 
-        log_activity(lang(array('string'=>'referral source ({var:1}) was modified','vars'=>array($_POST['name']) )) , $_SESSION['sessionusername']);
+        log_activity(lang(array('string'=>'referral source ({var:1}) was modified','vars'=>array($values['name']) )) , $_SESSION['sessionusername']);
+        $liveform_view->add_notice(lang('The referral source has been saved.'));
     }
 
     // forward user to view referral sources screen

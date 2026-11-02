@@ -681,6 +681,7 @@ function api_openapi_objects()
         'SeoNotFound'    => 'api_seo_not_found_schema',
         'SystemStatus'   => 'api_system_status_schema',
         'SalesReport'    => 'api_sales_report_schema',
+        'VitalsReport'   => 'api_vitals_report_schema',
         'Design'         => 'api_design_schema',
         'DesignPage'     => 'api_design_page_schema',
         'DesignView'     => 'api_design_view_schema',

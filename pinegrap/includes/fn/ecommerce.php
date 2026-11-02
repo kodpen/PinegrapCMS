@@ -8155,6 +8155,78 @@ function pg_currency_label($name)
 }
 
 /**
+ * The rows of the currency list (view_currencies.php) in the order of its
+ * sort levels, as the screen shows them: the name by its displayed label
+ * (pg_currency_label()) and the symbol by its character, not the stored
+ * HTML entity, both in the panel language's alphabet
+ * (pg_geo_label_compare()). Other columns compare by value. Rows that tie
+ * on every level keep their order.
+ *
+ * @param array $rows   currencies rows (name, base, code, symbol,
+ *                      exchange_rate, created_timestamp,
+ *                      last_modified_timestamp)
+ * @param array $levels list of array('sort' => code, 'order' => 'asc'|'desc'),
+ *                      as pg_list_state() returns them
+ * @return array
+ */
+function pg_currency_list_sort(array $rows, array $levels)
+{
+    $numeric = array(
+        'base' => 'base',
+        'exchange_rate' => 'exchange_rate',
+        'created' => 'created_timestamp',
+        'last_modified' => 'last_modified_timestamp',
+    );
+
+    $key = function ($row, $code) use ($numeric) {
+        switch ($code) {
+            case 'name':
+                return pg_currency_label((string) ($row['name'] ?? ''));
+            case 'symbol':
+                return html_entity_decode((string) ($row['symbol'] ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            case 'code':
+                return (string) ($row['code'] ?? '');
+        }
+
+        return (float) ($row[$numeric[$code]] ?? 0);
+    };
+
+    $keyed = array();
+
+    foreach (array_values($rows) as $index => $row) {
+        $keyed[] = array($index, $row);
+    }
+
+    usort($keyed, function ($a, $b) use ($levels, $numeric, $key) {
+        foreach ($levels as $level) {
+            $code = (string) ($level['sort'] ?? '');
+
+            if (!in_array($code, array('name', 'symbol', 'code'), true) && !isset($numeric[$code])) {
+                continue;
+            }
+
+            $x = $key($a[1], $code);
+            $y = $key($b[1], $code);
+            $compare = is_string($x) ? pg_geo_label_compare($x, $y) : ($x <=> $y);
+
+            if ($compare !== 0) {
+                return ((($level['order'] ?? '') === 'desc') ? -1 : 1) * (($compare < 0) ? -1 : 1);
+            }
+        }
+
+        return $a[0] <=> $b[0];
+    });
+
+    $sorted = array();
+
+    foreach ($keyed as $pair) {
+        $sorted[] = $pair[1];
+    }
+
+    return $sorted;
+}
+
+/**
  * An amount for an input box the person edits: the site's decimal separator
  * and no grouping, so 1250,00 (tr) or 1250.00 (en). pg_parse_amount() reads
  * it back either way.

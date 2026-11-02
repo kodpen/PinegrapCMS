@@ -161,3 +161,41 @@ function test_commission_posted_status()
 	pg_assert_same('', pg_commission_posted_status(array('paid')), 'an array is refused');
 	pg_assert_same('', pg_commission_posted_status(null), 'a missing status is refused');
 }
+
+// The edit screens name the record they change: affiliate, amount, order.
+function test_commission_edit_summary()
+{
+	$html = pg_commission_edit_summary(array(
+		'affiliate_name' => 'Ann <B>', 'affiliate_code' => 'A&1', 'reference_code' => 'R1', 'amount' => '179940',
+		'order_id' => '12', 'order_number' => '1192', 'order_status' => 'cancelled',
+	));
+	pg_assert_contains('Ann &lt;B&gt;', $html, 'the affiliate name, escaped');
+	pg_assert_contains('A&amp;1', $html, 'the affiliate code, escaped');
+	pg_assert_contains('R1', $html, 'the reference code');
+	pg_assert_contains(pg_format_money(1799.40, BASE_CURRENCY_SYMBOL), $html, 'the amount');
+	pg_assert_contains('view_order.php?id=12', $html, 'the order links to its screen');
+	pg_assert_contains('>1192</a>', $html, 'the order number');
+	pg_assert_contains(lang('Cancelled order'), $html, 'a cancelled order is marked');
+
+	$plain = pg_commission_edit_summary(array('affiliate_name' => '', 'affiliate_code' => 'A1', 'amount' => '0', 'order_id' => '0', 'order_number' => ''));
+	pg_assert_false(strpos($plain, 'view_order.php') !== false, 'no order, no link');
+	pg_assert_false(strpos($plain, lang('Reference Code')) !== false, 'a profile has no reference code row');
+
+	$profile = pg_commission_edit_summary(array(
+		'affiliate_name' => 'B', 'affiliate_code' => 'A1', 'amount' => '500', 'order_id' => '3', 'order_number' => '9',
+		'product_name' => 'Box', 'product_short_description' => 'Small', 'start_date' => '2026-01-02', 'period' => 'Weekly', 'number_of_commissions' => '0',
+	));
+	pg_assert_contains('Box - Small', $profile, 'the product');
+	pg_assert_contains(lang('Weekly'), $profile, 'the frequency');
+	pg_assert_contains(lang('Unlimited'), $profile, 'the number of commissions');
+	pg_assert_contains(lang('Start Date'), $profile, 'the start date row');
+}
+
+function test_commission_edit_screens_print_the_summary()
+{
+	foreach (array('edit_commission.php', 'edit_recurring_commission_profile.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_contains('pg_commission_edit_summary($', $source, $file . ' names the record');
+		pg_assert_contains('orders.status AS order_status', $source, $file . ' reads the order status');
+	}
+}

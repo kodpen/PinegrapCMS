@@ -13910,6 +13910,31 @@
                 && !!this.channel && !!this.channel.can_post && !message.deleted && this.voiceAnswers(message);
         },
 
+        // Why the assistants would not hear a recording made here, for the
+        // recorder's hint: the channel's voice_unheard (off: transcripts are
+        // switched off on the site; skipped: this channel keeps its
+        // recordings), only where an assistant could be asked. Role 0 gets
+        // the settings card's link, a manager of a switchable channel the
+        // menu's entry; null when the recording is written out.
+        voiceUnheard: function () {
+            var channel = this.channel;
+            var reason = channel ? (channel.voice_unheard || '') : '';
+
+            if (!reason || !(channel.claude || channel.ai || (BOOT.mcp || []).length)) {
+                return null;
+            }
+
+            var hint = { text: t(reason === 'off' ? 'voice_unheard_off' : 'voice_unheard_skipped'), link: null, note: '' };
+
+            if ((reason === 'off') && (parseInt(CFG.me_role, 10) === 0) && CFG.urls && CFG.urls.settings) {
+                hint.link = { url: CFG.urls.settings + '#ws-voice', text: t('voice_unheard_settings') };
+            } else if ((reason === 'skipped') && channel.voice && channel.can_manage && !channel.archived) {
+                hint.note = t('voice_unheard_menu');
+            }
+
+            return hint;
+        },
+
         // Records into the writing box (the microphone in place of Send, or
         // a sound's own); Stop sends it with voiceSend().
         voiceRecord: function () {
@@ -13922,6 +13947,7 @@
 
             window.PGWsVoice.start({
                 box: box,
+                unheard: self.voiceUnheard(),
                 send: function (file, measure) { self.voiceSend(file, measure); },
                 done: function () {
                     self.voiceSwap();

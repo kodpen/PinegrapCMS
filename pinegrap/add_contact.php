@@ -103,25 +103,7 @@ if (!$_POST) {
     // get all contact groups, so that contact can be added to selected contact groups
     $contact_groups = pg_contact_form_all_groups();
 
-    // if user has user role, then check to make sure that at least one group was selected for contact
-    if ($user['role'] == 3) {
-        // assume no contact groups were selected, until we find out otherwise
-        $contact_group_selected = false;
-
-        // loop through all contact groups
-        foreach ($contact_groups as $contact_group) {
-            // if contact group was selected for contact to be added to and user has access to contact group, take note
-            if ((($_POST['contact_group_' . $contact_group['id']] ?? '') == 1) && (validate_contact_group_access($user, $contact_group['id']) == true)) {
-                $contact_group_selected = true;
-                break;
-            }
-        }
-
-        // if no contact groups were selected, then output error
-        if ($contact_group_selected == false) {
-            output_error(lang('Please select at least one contact group for the contact') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
-        }
-    }
+    pg_contact_form_check($user, $contact_groups, $_POST);
 
     $columns = pg_contact_form_columns($_POST, $user['id']) + pg_contact_form_affiliate_columns($_POST, $affiliate_code);
 

@@ -4645,11 +4645,12 @@ html[data-bs-theme="dark"] #notifications .pg-bell-glyph {
 
 /* Combobox fields (pg_fields.js): the posted <select> stays in the form, out
    of sight but still checked by `required`; the toggle after it is what
-   people use. */
+   people use. The size is !important: a select written with an inline
+   width:100% kept that width out of sight and pushed a narrow page sideways. */
 .pg-combobox-native {
   position: absolute;
-  width: 1px;
-  height: 1px;
+  width: 1px !important;
+  height: 1px !important;
   padding: 0;
   margin: -1px;
   overflow: hidden;
@@ -15927,6 +15928,7 @@ a.ws-chip:hover {
 }
 .ws-voice-rec {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: var(--ws-space-2);
   min-height: 2.6rem;
@@ -15934,6 +15936,12 @@ a.ws-chip:hover {
 }
 .ws-voice-rec .ws-grow {
   flex: 1 1 auto;
+}
+.ws-voice-rec-hint {
+  flex: 0 0 100%;
+  padding-bottom: var(--ws-space-1);
+  font-size: .8rem;
+  color: var(--pg-fg-2);
 }
 .ws-voice-rec-dot {
   flex: 0 0 auto;
@@ -21696,6 +21704,22 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
    beats @layer custom, and 1020 falls below the sidebar and the menu backdrop. */
 .software-navbar.fixed-top {
   z-index: 1030;
+}
+
+/* Unlayered: the DataTables stylesheet gives the column chooser a fixed
+   400px width centred with a -200px margin, which @layer custom cannot
+   override. On a phone that runs off both edges, so it takes the screen
+   width less a gutter, and one column. */
+@media (max-width: 575.98px) {
+  div.dt-button-collection.fixed.two-column {
+    width: calc(100vw - 2rem);
+    left: 1rem;
+    margin-left: 0;
+  }
+
+  div.dt-button-collection.fixed.two-column > :last-child {
+    column-count: 1;
+  }
 }
 
 /* Bootstrap 6 bridge: its theme variables read the panel's palette, its

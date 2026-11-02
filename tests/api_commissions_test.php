@@ -375,6 +375,21 @@ function test_affiliate_approve_is_what_the_screen_calls()
 	pg_assert_contains('pg_affiliate_approve(', $screen, 'the screen approves through the shared function');
 	pg_assert_true(strpos($screen, 'UPDATE contacts') === false, 'no inline write left');
 	pg_assert_true(function_exists('pg_affiliate_approve'));
+	pg_assert_contains("'already_approved'", $screen, 'the screen reads the shared refusal of a second approval');
+	pg_assert_true(strpos($screen, 'validate_contact_access($user, $contact_id)') < strpos($screen, 'pg_affiliate_approve('), 'the group check stays above the call');
+}
+
+// A second approval is refused by the shared function itself, so neither the
+// screen nor the API sends the welcome e-mail twice.
+function test_affiliate_approve_refuses_an_approved_contact()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/contacts.php');
+	$start = strpos($source, 'function pg_affiliate_approve(');
+	$body = substr($source, $start, strpos($source, "\n}\n", $start) - $start);
+
+	pg_assert_contains("return 'already_approved';", $body);
+	pg_assert_contains("AND affiliate_approved != '1'", $body, 'the mark is written by one approval only');
+	pg_assert_true(strpos($body, "return 'already_approved';") < strpos($body, 'email('), 'refused before the welcome e-mail');
 }
 
 function test_api_affiliate_present()

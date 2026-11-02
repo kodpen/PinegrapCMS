@@ -454,7 +454,7 @@ function pg_explorer_restore_message($restored, $errors, $notes)
 {
     $message = (count($errors) > 0)
         ? implode(' ', $errors)
-        : lang(array('string' => '{var:1} item(s) were restored from the recycle bin', 'vars' => $restored));
+        : lang(array('string' => '{var:1} item(s) were restored from the Recycle Bin.', 'vars' => $restored));
 
     if (count($notes) > 0) {
         $message = rtrim($message, '.') . '. ' . implode(' ', $notes);
@@ -687,7 +687,7 @@ function pg_explorer_handle_recycle_restore($type, $request, $user)
     }
 
     if ($restored > 0) {
-        log_activity(lang(array('string' => '{var:1} item(s) were restored from the recycle bin', 'vars' => $restored)), $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => '{var:1} item(s) were restored from the Recycle Bin.', 'vars' => $restored)), $_SESSION['sessionusername']);
     }
 
     respond(array(

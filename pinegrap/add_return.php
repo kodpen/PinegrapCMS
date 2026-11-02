@@ -382,7 +382,7 @@ if ($order_id <= 0) {
                         </div>
                         <div class="mb-5">
                             <label for="note" class="form-label">' . h(lang('The customer\'s note')) . '</label>
-                            ' . $liveform->output_field(array('type' => 'textarea', 'name' => 'note', 'id' => 'note', 'rows' => '3', 'maxlength' => PG_RETURN_NOTE_MAX, 'class' => 'form-control')) . '
+                            ' . $liveform->output_field(array('type' => 'textarea', 'name' => 'note', 'id' => 'note', 'rows' => '3', 'maxlength' => PG_RETURN_NOTE_MAX, 'class' => 'form-control', 'aria-describedby' => 'note_help')) . '
                             <div id="note_help" class="form-text">' . h(lang('The customer\'s reason in their words. Needed with "Another reason". The customer can see it on their order page and in the e-mail.')) . '</div>
                         </div>
                         ' . $output_notify . '
@@ -402,10 +402,10 @@ if ($order_id <= 0) {
                                 <span class="col fg-secondary">' . h(lang('Order Date')) . ':</span>
                                 <span class="col text-end">' . h(pg_return_time_text($order['order_date'])) . '</span>
                             </div>
-                            <div class="row">
+                            ' . (((string) pg_payment_method_label($order['payment_method']) !== '') ? '<div class="row">
                                 <span class="col fg-secondary">' . h(lang('Payment Method')) . ':</span>
                                 <span class="col text-end">' . h(pg_payment_method_label($order['payment_method'])) . '</span>
-                            </div>
+                            </div>' : '') . '
                             <hr>
                             <div class="fw-semibold">' . h($customer) . '</div>
                             ' . (($mail_to !== '') ? '<div><a href="mailto:' . h($mail_to) . '">' . h($mail_to) . '</a></div>' : '') . '

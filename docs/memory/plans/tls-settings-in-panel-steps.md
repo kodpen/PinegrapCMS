@@ -8,7 +8,7 @@ description: Steps TP1-TP4 of plans/tls-settings-in-panel.md: scheme helper, Sec
 - S is under 400 product lines, M about 1,000. Pure functions get `tests/<topic>_test.php` (red first); texts go in only through `tr_add.php`. Changelog: the version's `[FIX]` line.
 
 ## Which steps are there?
-- TP1 (M) One scheme helper; Trusted Proxies decides. `free`
+- TP1 (M) One scheme helper; Trusted Proxies decides. Done, #5714.
   - New `includes/fn/request_scheme.php`, loadable without `functions.php` (it requires `waf.php`, which is guarded and only defines). It holds two functions:
     - `pg_forwarded_https($server)`, pure: `X-Forwarded-Proto` (first value), `Forwarded` proto, `X-Forwarded-Ssl`, `Front-End-Https`, `X-ARR-SSL` (new), `CF-Visitor`, `X-Forwarded-Port` 443; any one is enough.
     - `pg_https_peer_trusted($remote, $trusted_raw)`: the constant, `waf_proxy_ranges()` or `waf_cloudflare_ranges()`.

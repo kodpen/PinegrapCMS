@@ -2871,10 +2871,16 @@ function software_image_picker(properties) {
                 //default
                 $output_input_name = 'selected_images[]';
                 $output_input_value = decodeURIComponent(properties.image_name);
+                var _image_url_input = '';
                 if (properties.file_input_name !== undefined && properties.file_input_name !== '') {
                     $output_input_name = decodeURIComponent(properties.file_input_name);
                     if (properties.file_input_name == 'file_id') {
                         $output_input_value = properties.file_id;
+                        // An Unsplash image is no file (file_id 0): its address
+                        // goes along as image_url, or the pick was lost on save.
+                        if (/^https?:\/\//.test(properties.image_name)) {
+                            _image_url_input = '<input type="hidden" name="image_url" value="' + h(properties.image_name) + '"/>';
+                        }
                     }
                 }
                 // Support absolute URLs (e.g. Unsplash) — don't prepend path
@@ -2888,7 +2894,7 @@ function software_image_picker(properties) {
                                 <button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" aria-label="' + h(pgLang('Remove')) + '" onclick=" $(this).closest(\'.item\').remove();"></button>\
                             </div>\
                             <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4;background: radial-gradient(transparent, #00000024);" title="' + h(decodeURIComponent(properties.image_name)) + '">\
-                                <input type="hidden" name="' + $output_input_name + '" value="' + $output_input_value + '"/>\
+                                <input type="hidden" name="' + $output_input_name + '" value="' + $output_input_value + '"/>' + _image_url_input + '\
                                 <img class="object-fit-contain w-100 h-100" alt="" src="' + _img_src + '" />\
                             </div>\
                         </div>\
@@ -7218,8 +7224,8 @@ function init_edit_comment_publish() {
 function toggle_calendar_event_all_day() {
     // If all day is checked, then prepare start and end date fields to just contain dates.
     if (document.getElementById('all_day').checked == true) {
-        document.getElementById('start_time_label').style.display = 'none';
-        document.getElementById('end_time_label').style.display = 'none';
+        document.getElementById('start_time_suffix').style.display = 'none';
+        document.getElementById('end_time_suffix').style.display = 'none';
         document.getElementById('show_start_time_container').style.display = 'none';
         document.getElementById('show_end_time_container').style.display = 'none';
 
@@ -7241,8 +7247,8 @@ function toggle_calendar_event_all_day() {
 
         // Otherwise all day is not checked, so prepare start and end date fields to contain both dates and times.
     } else {
-        document.getElementById('start_time_label').style.display = '';
-        document.getElementById('end_time_label').style.display = '';
+        document.getElementById('start_time_suffix').style.display = '';
+        document.getElementById('end_time_suffix').style.display = '';
         document.getElementById('show_start_time_container').style.display = '';
         document.getElementById('show_end_time_container').style.display = '';
 
@@ -7344,7 +7350,7 @@ function create_shipping_cutoff(properties) {
 
     // prepare content for shipping method id cell
     var shipping_method_id_cell_html =
-        '<select id="shipping_cutoff_' + shipping_cutoff_number + '_shipping_method_id" name="shipping_cutoff_' + shipping_cutoff_number + '_shipping_method_id" class="form-control">\n\
+        '<select id="shipping_cutoff_' + shipping_cutoff_number + '_shipping_method_id" name="shipping_cutoff_' + shipping_cutoff_number + '_shipping_method_id" class="form-control" aria-label="' + prepare_content_for_html(lang('Shipping Method')) + '">\n\
             <option value=""></option>';
 
     // loop through all shipping method id options in order to prepare options for pick list
@@ -7367,11 +7373,11 @@ function create_shipping_cutoff(properties) {
 
     // prepare content for date and time cell
     var td_2 = document.createElement('td');
-    td_2.innerHTML = '<input id="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" name="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" class="form-control" type="text" value="' + prepare_content_for_html(String(properties['date_and_time'] || '')) + '" size="20" maxlength="22" data-pg-datetime />';
+    td_2.innerHTML = '<input id="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" name="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" class="form-control" type="text" aria-label="' + prepare_content_for_html(lang('Cut-off Date & Time')) + '" value="' + prepare_content_for_html(String(properties['date_and_time'] || '')) + '" size="20" maxlength="22" data-pg-datetime />';
 
     // prepare content for delete cell
     var td_3 = document.createElement('td');
-    td_3.innerHTML = '<button type="button" class="btn btn-solid theme-danger material-icons" onclick="delete_shipping_cutoff(this.parentNode.parentNode)" >delete</button>';
+    td_3.innerHTML = '<button type="button" class="btn btn-solid theme-danger" onclick="delete_shipping_cutoff(this.parentNode.parentNode)" aria-label="' + prepare_content_for_html(lang('Delete')) + '" title="' + prepare_content_for_html(lang('Delete')) + '"><span class="material-icons" aria-hidden="true">delete</span></button>';
 
     tr.appendChild(td_1);
     tr.appendChild(td_2);

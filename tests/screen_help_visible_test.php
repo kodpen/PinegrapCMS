@@ -68,7 +68,7 @@ function test_screen_help_visible_navbar_titles()
 function test_screen_help_visible_instructions_printed()
 {
 	$visible = array(
-		'includes/templates/duplicate_folder.php' => "lang('Press Duplicate to duplicate this folder",
+		'includes/templates/duplicate_folder.php' => "lang('Duplicate creates a new folder with a copy of each page",
 		'includes/templates/edit_auto_dialog.php' => "lang('Create a new auto dialog that can automatically popup for visitors.",
 		'includes/templates/edit_key_code.php' => "lang('Create one or more key codes",
 		'includes/templates/generate_layout.php' => "lang('Copy & paste the code below into your custom layout.')",

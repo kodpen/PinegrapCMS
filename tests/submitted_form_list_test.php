@@ -215,3 +215,68 @@ function test_submitted_form_list_field_condition_is_one_per_form()
 	pg_assert_contains('(form_data.form_id = forms.id)', $condition['sql']);
 	pg_assert_same(array('12', pg_list_like_pattern('e')), $condition['params']);
 }
+
+function test_submitted_form_list_labels_number_forms_still_equal()
+{
+	$labels = pg_submitted_form_list_labels(array(
+		array('id' => '1745', 'form_name' => 'Blog', 'page_name' => 'post-4', 'binned' => true),
+		array('id' => '1778', 'form_name' => 'Blog', 'page_name' => 'post-4', 'binned' => true),
+		array('id' => '1609', 'form_name' => 'Blog', 'page_name' => 'blog', 'binned' => false),
+	));
+
+	pg_assert_same('Blog — blog', $labels[0]['name'], 'a label of its own gets no id');
+	pg_assert_same('Blog — post-4 [' . lang('IN RECYCLE BIN') . '] (#1745)', $labels[1]['name'], 'every form of a shared label gets its id');
+	pg_assert_same('Blog — post-4 [' . lang('IN RECYCLE BIN') . '] (#1778)', $labels[2]['name'], 'the second one too');
+}
+
+function test_submitted_form_list_field_label_reads_the_label()
+{
+	pg_assert_same(array('text' => 'Department', 'title' => 'Department (department)'), pg_submitted_form_list_field_label('Department', 'department'), 'the label is shown, the title names the field');
+	pg_assert_same(array('text' => 'doctor', 'title' => 'doctor'), pg_submitted_form_list_field_label('', 'doctor'), 'a field without a label shows its name');
+	pg_assert_same('A & B', pg_submitted_form_list_field_label('<b>A &amp; B</b>', 'ab')['text'], 'markup is taken off, not escaped twice');
+
+	$long = pg_submitted_form_list_field_label(str_repeat('consent ', 20), 'consent', 30);
+	pg_assert_same(30, mb_strlen($long['text'], 'UTF-8'), 'a long label is cut');
+	pg_assert_same('…', mb_substr($long['text'], -1, 1, 'UTF-8'), 'and ends with an ellipsis');
+	pg_assert_true(strpos($long['title'], '(consent)') !== false, 'the title keeps the whole label and the name');
+}
+
+function test_submitted_form_import_fixed_columns()
+{
+	$export = pg_submitted_form_export_columns();
+
+	pg_assert_same(12, pg_submitted_form_import_fixed_columns(array_merge($export, array('status', 'first_name'))), 'an exported file starts with the record columns');
+	pg_assert_same(13, pg_submitted_form_import_fixed_columns(array_merge($export, array('quiz_score', 'status'))), 'a quiz adds its score column');
+	pg_assert_same(0, pg_submitted_form_import_fixed_columns(array('status', 'first_name')), 'a hand-made file maps every column to fields');
+	pg_assert_same(0, pg_submitted_form_import_fixed_columns(array('form_name', 'reference_code')), 'a part of the record columns is not the export');
+}
+
+function test_submitted_form_import_complete()
+{
+	pg_assert_same('0', pg_submitted_form_import_complete(lang('Incomplete')), 'the incomplete status in the panel language');
+	pg_assert_same('0', pg_submitted_form_import_complete(' incomplete '), 'in English, any case');
+	pg_assert_same('1', pg_submitted_form_import_complete(lang('Complete')), 'complete');
+	pg_assert_same('1', pg_submitted_form_import_complete(''), 'an empty cell is complete');
+}
+
+function test_submitted_form_import_value_converts_dates()
+{
+	pg_assert_same('2026-12-20', pg_submitted_form_import_value('2026-12-20', 'date'), 'the export ISO date stays');
+	pg_assert_same('1990-12-15', pg_submitted_form_import_value('15/12/1990', 'date'), 'the site order is read');
+	pg_assert_same('1990-12-15', pg_submitted_form_import_value('15.12.1990', 'date'), 'the dotted date is read');
+	pg_assert_same(null, pg_submitted_form_import_value('31.02.2026', 'date'), 'no real date is refused');
+	pg_assert_same(null, pg_submitted_form_import_value('soon', 'date'), 'text is refused');
+	pg_assert_same('', pg_submitted_form_import_value('  ', 'date'), 'an empty cell stays empty');
+
+	pg_assert_same('2026-12-20 17:05', pg_submitted_form_import_value('2026-12-20 17:05', 'date and time'), 'the export date and time stays');
+	pg_assert_same('2026-12-20 17:05', pg_submitted_form_import_value('2026-12-20T17:05', 'date and time'), 'the ISO T form');
+	pg_assert_same('1990-12-15 17:05', pg_submitted_form_import_value('15.12.1990 5:05 PM', 'date and time'), 'a site date with a 12-hour time');
+	pg_assert_same(null, pg_submitted_form_import_value('15.12.1990', 'date and time'), 'a date without a time is refused');
+	pg_assert_same(null, pg_submitted_form_import_value('15.12.1990 25:00', 'date and time'), 'an impossible time is refused');
+
+	pg_assert_same('17:05', pg_submitted_form_import_value('17:05:00', 'time'), 'the export time');
+	pg_assert_same('17:05', pg_submitted_form_import_value('5:05 PM', 'time'), 'a 12-hour time');
+	pg_assert_same(null, pg_submitted_form_import_value('noon', 'time'), 'text is no time');
+
+	pg_assert_same(' as is ', pg_submitted_form_import_value(' as is ', 'text box'), 'other types are left as they are');
+}

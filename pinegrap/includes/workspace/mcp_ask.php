@@ -420,9 +420,17 @@ function ws_mcp_ask_start($row, $asker)
     }
 
     $request_text = ws_ai_heard_text($asker, $message, 4000);
+    // A recording nobody heard: the reason and where the setting is
+    // (voice.php).
+    $unheard = function_exists('ws_voice_unheard_reason') ? ws_voice_unheard_reason($channel, $message) : '';
 
     $parts[] = 'The request (message ' . (int) $message['id'] . '):';
     $parts[] = $request_text;
+
+    if ($unheard !== '') {
+        $parts[] = ws_voice_unheard_line($unheard);
+    }
+
     $parts[] = '';
     $parts[] = 'Answer in ' . ws_ai_request_language($request_text) . '.';
 

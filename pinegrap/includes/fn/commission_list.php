@@ -228,6 +228,60 @@ function pg_commission_list_cancelled_badge($order_status)
 }
 
 /**
+ * The summary an edit screen prints above its form, so the operator sees
+ * which commission or profile the status change is for: affiliate name and
+ * code, the reference code (a commission), the amount, the order (linked to
+ * its screen, marked when cancelled) and, for a profile, the product, start
+ * date, frequency and number of commissions. A key the record lacks prints
+ * no row.
+ *
+ * @param array $record the commission or profile row with its affiliate_name,
+ *                      order_number and order_status
+ * @return string escaped HTML
+ */
+function pg_commission_edit_summary($record)
+{
+    $rows = array();
+    $rows[lang('Affiliate Name')] = h((string) ($record['affiliate_name'] ?? ''));
+    $rows[lang('Affiliate Code')] = h((string) ($record['affiliate_code'] ?? ''));
+
+    if (isset($record['reference_code'])) {
+        $rows[lang('Reference Code')] = h((string) $record['reference_code']);
+    }
+
+    $rows[lang('Amount')] = pg_format_money(((int) ($record['amount'] ?? 0)) / 100, BASE_CURRENCY_SYMBOL);
+
+    $order = '';
+    if (((int) ($record['order_id'] ?? 0) > 0) && ((string) ($record['order_number'] ?? '') !== '')) {
+        $order = '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . (int) $record['order_id'] . '">' . h($record['order_number']) . '</a>';
+    }
+    $rows[lang('Order')] = $order . pg_commission_list_cancelled_badge($record['order_status'] ?? null);
+
+    if (array_key_exists('product_name', $record)) {
+        $rows[lang('Product')] = h((string) $record['product_name']
+            . (((string) ($record['product_short_description'] ?? '') !== '') ? ' - ' . $record['product_short_description'] : ''));
+        $rows[lang('Start Date')] = prepare_form_data_for_output($record['start_date'] ?? '', 'date');
+        $rows[lang('Frequency')] = h(pg_commission_list_periods()[(string) ($record['period'] ?? '')] ?? lang(ucwords((string) ($record['period'] ?? ''))));
+        $rows[lang('Commissions')] = ((int) ($record['number_of_commissions'] ?? 0) === 0) ? h(lang('Unlimited')) : pg_format_number($record['number_of_commissions'], 0);
+    }
+
+    $output = '';
+    foreach ($rows as $label => $value) {
+        $output .= '
+                        <dt class="col-12 sm:col-4 lg:col-3">' . h($label) . '</dt>
+                        <dd class="col-12 sm:col-8 lg:col-9">' . (($value !== '') ? $value : '&mdash;') . '</dd>';
+    }
+
+    return '
+                <div class="card my-7">
+                    <div class="card-body">
+                        <dl class="row mb-0">' . $output . '
+                        </dl>
+                    </div>
+                </div>';
+}
+
+/**
  * One row of the commissions list.
  *
  * @param array $commission

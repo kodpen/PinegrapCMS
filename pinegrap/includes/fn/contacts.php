@@ -1670,23 +1670,30 @@ function pg_affiliate_approved_event($contact_id, $affiliate_code, $affiliate_na
  * the sign-up e-mail) and the external API (POST /affiliates/{id}/approve)
  * do: the code is kept or made, the contact is marked approved, it gets a
  * key code for the affiliate group offer when there is one, the welcome
- * e-mail goes out and affiliate.approved is announced. Approving an
- * approved affiliate again does all of it again, as the link always did.
+ * e-mail goes out and affiliate.approved is announced. An approved
+ * affiliate is left as it is: the request e-mail can be opened twice, and a
+ * second approval would send the welcome e-mail again.
  *
  * @param int $contact_id
  * @param int $user_id the person or the application's owner
- * @return array|null|false affiliate_code and email_address; null when
- *                          there is no such contact, false when a query
- *                          failed
+ * @return array|string|null|false affiliate_code and email_address;
+ *                          'already_approved' when the contact is an
+ *                          approved affiliate already (nothing is written or
+ *                          sent); null when there is no such contact, false
+ *                          when a query failed
  */
 function pg_affiliate_approve($contact_id, $user_id)
 {
     $contact_id = (int) $contact_id;
 
-    $contact = db_item("SELECT id, email_address, affiliate_code, affiliate_name FROM contacts WHERE id = '" . $contact_id . "'");
+    $contact = db_item("SELECT id, email_address, affiliate_code, affiliate_name, affiliate_approved FROM contacts WHERE id = '" . $contact_id . "'");
 
     if (!$contact) {
         return null;
+    }
+
+    if ((int) $contact['affiliate_approved'] === 1) {
+        return 'already_approved';
     }
 
     $affiliate_code = pg_affiliate_approval_code($contact['affiliate_code']);
@@ -1700,11 +1707,17 @@ function pg_affiliate_approve($contact_id, $user_id)
             affiliate_code = ?,
             user = ?,
             timestamp = UNIX_TIMESTAMP()
-        WHERE id = ?",
+        WHERE id = ? AND affiliate_approved != '1'",
         array($affiliate_code, (string) (int) $user_id, (string) $contact_id));
 
     if (!$result) {
         return false;
+    }
+
+    // Two approvals at once (two tabs, the link and the API): only the one
+    // that wrote the mark goes on to the key code and the welcome e-mail.
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return 'already_approved';
     }
 
     pg_audit_record('update', 'contacts', $contact_id, $audit_before);

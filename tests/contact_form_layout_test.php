@@ -40,7 +40,7 @@ function test_contact_form_layout_columns_in_order()
 function test_contact_form_picture_card_picker_input()
 {
 	pg_assert_contains("file_input_name:'file_id'", pg_contact_form_picture_card(false, ''), 'edit posts the picture as file_id');
-	pg_assert_true(strpos(pg_contact_form_picture_card(true, ''), 'file_input_name') === false, 'create keeps the picker name');
+	pg_assert_contains("file_input_name:'file_id'", pg_contact_form_picture_card(true, ''), 'create posts the picture as file_id too (selected_images[] was never read)');
 	pg_assert_contains('id="software_image_picker_container"', pg_contact_form_picture_card(true, '<x>'), 'picker container');
 }
 

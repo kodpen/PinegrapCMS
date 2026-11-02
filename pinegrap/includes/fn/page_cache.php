@@ -30,6 +30,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+// The forwarded-scheme parser the key reads the proxy's word with. Loaded
+// here too: the router loads this module without functions.php.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/request_scheme.php');
+
 // Longest lifetime, in seconds, a shared cache may keep a page.
 define('PG_PAGE_CACHE_TTL_MAX', 3600);
 
@@ -635,9 +639,9 @@ function pg_page_cache_file_enabled()
  * The scheme the request came in on, as this server sees it, and whether a
  * proxy in front says https ('https', else ''). Both go into the key: Secure
  * Mode may trust the proxy's word and redirect, so a copy drawn for one must
- * never answer the other. The proxy's word is read from the same headers as
- * check_proxy_ssl_headers() (core.php, not loaded in the router) and reduced
- * to one of two values, so a made-up header value draws no copy of its own.
+ * never answer the other. The proxy's word is pg_forwarded_https()'s, the
+ * same parser Secure Mode reads, without its peer check and reduced to one of
+ * two values, so a made-up header value draws no copy of its own.
  *
  * @param array $server $_SERVER
  * @return array [scheme, forwarded]
@@ -647,20 +651,7 @@ function pg_page_cache_request_scheme(array $server)
     $https = (!empty($server['HTTPS']) && (strtolower((string) $server['HTTPS']) !== 'off'))
         || (isset($server['SERVER_PORT']) && ((int) $server['SERVER_PORT'] === 443));
 
-    $header = function ($name) use ($server) {
-        return (isset($server[$name]) && is_scalar($server[$name])) ? strtolower(trim((string) $server[$name])) : '';
-    };
-
-    $first = explode(',', $header('HTTP_X_FORWARDED_PROTO'));
-
-    $proxy_https = (trim($first[0]) === 'https')
-        || (strpos($header('HTTP_CF_VISITOR'), '"scheme":"https"') !== false)
-        || (bool) preg_match('/proto\s*=\s*"?https"?/', $header('HTTP_FORWARDED'))
-        || ($header('HTTP_X_FORWARDED_SSL') === 'on')
-        || ($header('HTTP_FRONT_END_HTTPS') === 'on')
-        || ($header('HTTP_X_FORWARDED_PORT') === '443');
-
-    return array($https ? 'https' : 'http', $proxy_https ? 'https' : '');
+    return array($https ? 'https' : 'http', pg_forwarded_https($server) ? 'https' : '');
 }
 
 /**

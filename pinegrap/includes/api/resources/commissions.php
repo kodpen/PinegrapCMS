@@ -633,6 +633,12 @@ function api_affiliates_approve($params) {
 
 	$done = pg_affiliate_approve($id, (int)$app['owner']['id']);
 
+	if ($done === 'already_approved') {
+
+		api_fail(409, 'affiliate_already_approved', lang('The affiliate is already approved.'));
+
+	}
+
 	if (!$done) {
 
 		api_fail_server();

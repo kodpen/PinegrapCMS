@@ -63,6 +63,57 @@ function pg_explorer_backup_entry_segments($entry)
 // Not part of the site's folder tree: these are files on disk with no
 // database records, outside the web root, and nothing here writes to
 // them. Manager area, the same gate backups.php uses.
+// The week a weekly automatic backup covers, read from its name
+// (pg_backup_auto_name(): auto_backup_<year>-<month>-<ISO week>, ".zip" on
+// the archive): array('week', 'start', 'end') with the Monday and Sunday as
+// Y-m-d, or null for any other name. The year in the name is the calendar
+// year of the run, so a run on 29-31 December in ISO week 1 is read as the
+// first week of that year.
+function pg_explorer_backup_auto_week($name)
+{
+    if (!preg_match('/^auto_backup_(\d{4})-(\d{2})-(\d{2})(\.zip)?$/', (string) $name, $match)) {
+        return null;
+    }
+
+    $year = (int) $match[1];
+    $week = (int) $match[3];
+
+    if (($week < 1) || ($week > 53)) {
+        return null;
+    }
+
+    $monday = new DateTime('now', new DateTimeZone('UTC'));
+    $monday->setISODate($year, $week, 1);
+    $sunday = clone $monday;
+    $sunday->modify('+6 days');
+
+    return array('week' => $week, 'start' => $monday->format('Y-m-d'), 'end' => $sunday->format('Y-m-d'));
+}
+
+// The bytes the files under a backup folder take. A folder holding more than
+// $limit entries stops counting there and answers with 'partial' set.
+function pg_explorer_backup_folder_size($path, $limit = 50000)
+{
+    $bytes = 0;
+    $seen = 0;
+
+    try {
+        $walk = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($path, FilesystemIterator::SKIP_DOTS));
+        foreach ($walk as $entry) {
+            if (++$seen > $limit) {
+                return array('bytes' => $bytes, 'partial' => true);
+            }
+            if ($entry->isFile()) {
+                $bytes += (int) $entry->getSize();
+            }
+        }
+    } catch (Exception $exception) {
+        return array('bytes' => $bytes, 'partial' => true);
+    }
+
+    return array('bytes' => $bytes, 'partial' => false);
+}
+
 function pg_explorer_handle_backups_list($type, $request, $user)
 {
     if ($user['role'] > 2) {
@@ -112,7 +163,12 @@ function pg_explorer_handle_backups_list($type, $request, $user)
             $timestamp = (int) @filemtime($entry_path);
             $index++;
 
+            // Where the entry is: the backup root, or the folders down to it.
+            $location = lang('Backups') . (($relative == '') ? '' : (' / ' . str_replace('/', ' / ', $relative)));
+
             if (is_dir($entry_path)) {
+
+                $folder_size = pg_explorer_backup_folder_size($entry_path);
 
                 $folders[] = array(
                     'kind' => 'folder',
@@ -134,9 +190,23 @@ function pg_explorer_handle_backups_list($type, $request, $user)
                     'modified' => get_relative_time(array('timestamp' => $timestamp)),
                     'username' => '',
                     'permissions' => substr(sprintf('%o', @fileperms($entry_path)), -4),
+                    'location' => $location,
+                    'size' => $folder_size['bytes'],
+                    'size_label' => convert_bytes_to_string($folder_size['bytes'], 'auto') . ($folder_size['partial'] ? '+' : ''),
+                    'backup_note' => '',
                     'can_edit' => true);
 
             } else {
+
+                // A weekly automatic backup is named by year, month and ISO
+                // week, which reads like a date; the panel says which week.
+                $auto_week = pg_explorer_backup_auto_week($name);
+                $backup_note = $auto_week
+                    ? lang(array('string' => 'Weekly automatic backup · week {var:1} ({var:2} – {var:3})', 'vars' => array(
+                        $auto_week['week'],
+                        get_absolute_time(array('timestamp' => strtotime($auto_week['start'] . ' 12:00:00'), 'format' => 'plain_text', 'type' => 'date', 'size' => 'short', 'year' => true)),
+                        get_absolute_time(array('timestamp' => strtotime($auto_week['end'] . ' 12:00:00'), 'format' => 'plain_text', 'type' => 'date', 'size' => 'short', 'year' => true)))))
+                    : '';
 
                 $size = (int) @filesize($entry_path);
 
@@ -148,6 +218,8 @@ function pg_explorer_handle_backups_list($type, $request, $user)
                     'name' => $name,
                     'folder_id' => 0,
                     'folder_name' => ($relative == '') ? lang('Backups') : basename($path),
+                    'location' => $location,
+                    'backup_note' => $backup_note,
                     'type' => mb_strtolower(pathinfo($name, PATHINFO_EXTENSION)),
                     'is_image' => false,
                     'size' => $size,
