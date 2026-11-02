@@ -706,6 +706,19 @@ if (!$_POST) {
             }
             $_POST['parent_id'] = 0;
         }
+
+        // The parent list was drawn when the screen opened; a group moved
+        // under this one since then would close the tree into a ring, so the
+        // posted parent is checked against the tree as it is now.
+        if (!function_exists('pg_catalog_group_map')) {
+            require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+        }
+
+        if (!pg_product_group_form_parent_ok(pg_catalog_group_map(), (int) $_POST['id'], $_POST['parent_id'], (int) $parent_id)) {
+            $liveform->mark_error('parent_id', lang('A product group cannot be moved into itself.'));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_product_group.php?id=' . (int) $_POST['id']);
+            exit();
+        }
         
         // assume that we will not update the display type until we find out otherwise
         $sql_display_type = "";

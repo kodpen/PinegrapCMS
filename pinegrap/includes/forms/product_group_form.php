@@ -478,6 +478,39 @@ function pg_product_group_form_address_source($post)
 }
 
 /**
+ * Whether a group may be saved under the parent its form posts. The list on
+ * the screen leaves the group and its sub-groups out, but it was drawn when
+ * the screen opened: a group moved under this one meanwhile would close the
+ * tree into a ring, and both would drop out of the catalogue. The parent must
+ * be a live group (or the one it already has) outside the group's own
+ * subtree; 0 is the root's own "no parent". Pure.
+ *
+ * @param array $map               live groups, id => row with parent_id (pg_catalog_group_map())
+ * @param int   $group_id          the group being saved
+ * @param mixed $parent_id         the posted parent
+ * @param int   $current_parent_id the parent stored now
+ * @return bool
+ */
+function pg_product_group_form_parent_ok($map, $group_id, $parent_id, $current_parent_id)
+{
+    if (!is_scalar($parent_id)) {
+        return false;
+    }
+
+    $parent_id = (int) $parent_id;
+
+    if ($parent_id === 0) {
+        return true;
+    }
+
+    if (!isset($map[$parent_id]) && ($parent_id !== (int) $current_parent_id)) {
+        return false;
+    }
+
+    return !pg_catalog_group_is_within($map, $parent_id, (int) $group_id);
+}
+
+/**
  * Splits the picked images into the cover (stored in image_name) and the
  * rest (product_groups_images_xref), in the order picked.
  *
