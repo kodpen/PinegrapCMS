@@ -10,7 +10,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `ai_prompts`: open
 
-- `ai_write`: open
+- `ai_write`: done #5126 (page regions read from the style's collection and into a designer tree's region tags; rest reviewed: targets, context cleaning, prompt, answer and tidy, cut, HTML escaping, daily counter, access, marks and fingerprints, browser path)
 
 - `audit`: open
 

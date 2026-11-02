@@ -23,6 +23,6 @@ description: The "Write with AI" button and draft panel (pg_ai_write_button(), p
 - On the browser's model (ai-write-browser.md) the title says so and the body shows the download and the translation as they run.
 
 ## What does the server add?
-- A stored product: its group names and attribute choices ("Renk: Kırmızı"). A stored page: its folder name, its h1–h3 headings and its text, from `page_tree_code` (its `<pregion></pregion>` tags filled) or a classic page's regions, rows from its style's collection (`pg_ai_write_page_html()`; before #PR collection a only, tags empty). Only fields the form left empty are filled.
+- A stored product: its group names and attribute choices ("Renk: Kırmızı"). A stored page: its folder name, its h1–h3 headings and its text, from `page_tree_code` (its `<pregion></pregion>` tags filled) or classic regions, rows from its style's collection (`pg_ai_write_page_html()`, before #5126 collection a only, tags empty). Only fields the form left empty are filled.
 - The price gets the store's currency symbol; a zero price is left out (`pg_ai_write_price_text()`).
 - Settings › Languages says the style note is read here too.
