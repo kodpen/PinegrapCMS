@@ -3328,7 +3328,8 @@ function get_system_status_checks()
             }
 
             $webhook_detail[] = array(
-                'label' => $webhook_row['url'],
+                // Scheme and host only: the path can carry the secret.
+                'label' => pg_ops_alert_mask_url($webhook_row['url']),
                 'state' => $webhook_state,
                 'when'  => $webhook_when,
             );

@@ -226,6 +226,37 @@ function pg_ops_alert_due($last_sent, $now, $window = 86400)
 }
 
 /**
+ * A webhook address as an alert shows it: scheme and host (and port) only.
+ *
+ * Slack, Discord and Zapier carry the secret in the path, and an alert text
+ * goes to the bell, the mail, device banners and System Status, so the path,
+ * query, fragment and any user:password part are cut; '/…' marks that there
+ * was more. The full address stays on the webhook's own edit screen. Pure.
+ *
+ * @param string $url
+ * @return string 'https://hooks.example.com/…', or '…' for no absolute address
+ */
+function pg_ops_alert_mask_url($url)
+{
+    $parts = @parse_url(trim((string) $url));
+
+    if (!is_array($parts) || empty($parts['scheme']) || empty($parts['host'])) {
+        return '…';
+    }
+
+    $masked = strtolower($parts['scheme']) . '://' . strtolower($parts['host'])
+        . (isset($parts['port']) ? ':' . (int) $parts['port'] : '');
+
+    $path = isset($parts['path']) ? $parts['path'] : '';
+
+    if ((($path !== '') && ($path !== '/')) || isset($parts['query']) || isset($parts['fragment'])) {
+        $masked .= '/…';
+    }
+
+    return $masked;
+}
+
+/**
  * An alert's detail as it is stored and shown: plain text on one line, short
  * enough for the notification row (title is VARCHAR(256)).
  *
@@ -1121,7 +1152,7 @@ function pg_ops_alerts_check_webhooks($now)
 
     pg_ops_alert('webhook_failing', lang(array(
         'string' => '{var:1} event address(es) stopped answering and are no longer sent to: {var:2}',
-        'vars'   => array($total, implode(', ', (array) $urls)),
+        'vars'   => array($total, implode(', ', array_map('pg_ops_alert_mask_url', (array) $urls))),
     )));
 
     return 'webhook_failing';
