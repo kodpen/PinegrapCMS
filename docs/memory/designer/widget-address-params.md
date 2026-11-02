@@ -1,6 +1,6 @@
 ---
 name: widget-address-params
-description: How the system widgets read a value from the address (?r=, ?cancelled=, ?query=): one value only, an array is no value; the warnings a later PR fixed
+description: How the system widgets read a value from the address (?r=, ?cancelled=, ?query=): one value only, an array is no value; the warnings #5173 fixed
 module: widgets
 ---
 
