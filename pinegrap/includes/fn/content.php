@@ -3151,6 +3151,29 @@ function prepare_catalog_item_address_name($address_name, $item_id = '', $item_t
     }
     return $address_name;
 }
+/**
+ * The catalog item address in a page parameter ("urun-detay/masa-lambasi"):
+ * the part after the first slash; '' when there is no slash, nothing after
+ * it, or the parameter is not a string (page[]=…). Pure.
+ *
+ * @param mixed $page_parameter $_GET['page']
+ * @return string
+ */
+function pg_catalog_address_from_page_parameter($page_parameter)
+{
+    if (!is_string($page_parameter)) {
+        return '';
+    }
+
+    $slash = strpos($page_parameter, '/');
+
+    if ($slash === false) {
+        return '';
+    }
+
+    return (string) substr($page_parameter, $slash + 1);
+}
+
 function get_catalog_item_from_url($forget = false)
 {
     // Memoised per request. The render path calls this between two and five
@@ -3174,9 +3197,7 @@ function get_catalog_item_from_url($forget = false)
         return $cached;
     }
 
-    // get the address name
-    $page_parameter = isset($_GET['page']) ? $_GET['page'] : '';
-    $address_name = mb_substr(mb_substr($page_parameter, mb_strpos($page_parameter, '/')), 1);
+    $address_name = pg_catalog_address_from_page_parameter(isset($_GET['page']) ? $_GET['page'] : '');
     $item_id = '';
     $item_image_name = '';
     $item_type = '';
@@ -3206,9 +3227,16 @@ function get_catalog_item_from_url($forget = false)
         FROM product_groups
 
         WHERE address_name = ?";
-    $result = db_q($query, array((string) $address_name)) or output_error(lang('Query failed.'));
+    // An empty address shows no item: a lookup would find any row whose
+    // address name is blank.
+    $result = false;
+
+    if ($address_name !== '') {
+        $result = db_q($query, array($address_name)) or output_error(lang('Query failed.'));
+    }
+
     // if a product group was found, then set its information
-    if (mysqli_num_rows($result) > 0) {
+    if ($result && (mysqli_num_rows($result) > 0)) {
         $row = mysqli_fetch_assoc($result);
         $item_id = $row['id'];
         $item_image_name = $row['image_name'];
@@ -3219,7 +3247,7 @@ function get_catalog_item_from_url($forget = false)
         $item_full_description = $row['full_description'];
         $item_address_name = $row['address_name'];
         // else a product group was not found, so check for a product
-    } else {
+    } elseif ($address_name !== '') {
         $query = "SELECT
                 id,
                 name,
@@ -3239,7 +3267,7 @@ function get_catalog_item_from_url($forget = false)
             FROM products
 
             WHERE address_name = ?";
-        $result = db_q($query, array((string) $address_name)) or output_error(lang('Query failed.'));
+        $result = db_q($query, array($address_name)) or output_error(lang('Query failed.'));
         // if a product was found, then set its information
         if (mysqli_num_rows($result) > 0) {
             $row = mysqli_fetch_assoc($result);
