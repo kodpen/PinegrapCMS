@@ -147,11 +147,10 @@ if (!$_POST) {
         }
 
         $output_order_info_rows =
-            '<div class="col-12 sm:col-6 md:col-4 lg:col-3">
-                <div class="card my-7 h-100">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            '<div class="card mb-7">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Order Info') . '
-                    </div>
+                    </h2>
                     <div class="card-body">
                         <div class="row">
                             <span class="translateable col fg-secondary">' . lang('Order') . ' #:</span>
@@ -163,7 +162,7 @@ if (!$_POST) {
                         </div>
                         <div class="row">
                             <span class="translateable col fg-secondary">' . lang('Recipient') . ':</span>
-                            <span class="col text-end"><a href="mailto:' . h($gift_card['recipient_email_address']) . '">' . h($gift_card['recipient_email_address']) . '</a></span>
+                            <span class="col text-end text-break"><a href="mailto:' . h($gift_card['recipient_email_address']) . '">' . h($gift_card['recipient_email_address']) . '</a></span>
                         </div>
                         <div class="row">
                             <span class="translateable col fg-secondary">' . lang('Message') . ':</span>
@@ -174,24 +173,21 @@ if (!$_POST) {
                             <span class="col text-end">' . $output_delivery_date . '</span>
                         </div>
                     </div>
-                </div>
-            </div>';
+                </div>';
 
     // Otherwise, this gift card was created manually, so explain that.
     } else {
         $output_order_info_rows =
-            '<div class="col-12 sm:col-6 md:col-4 lg:col-3">
-                <div class="card my-7 h-100">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            '<div class="card mb-7">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Order Info') . '
-                    </div>
+                    </h2>
                     <div class="card-body">
                         <div class="row">
                             <span class="col text-center">' . lang('This gift card was created manually, so there is no order info.') . '</span>
                         </div>
                     </div>
-                </div>
-            </div>';
+                </div>';
     }
 
     $output_redemption_history = '';
@@ -232,11 +228,10 @@ if (!$_POST) {
         }
 
         $output_redemption_history =
-            '<div class="col-12 sm:col-12 md:col-8 lg:col-9">
-                <div class="card my-7 h-100">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+            '<div class="card mb-7">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Redemption History') . '
-                    </div>
+                    </h2>
                     <div class="card-header chart-buttons justify-content-end d-flex flex-wrap"></div>
                     <div class="card-body">
                         <div class="row">
@@ -255,25 +250,24 @@ if (!$_POST) {
                             </table>
                         </div>
                     </div>
-                </div>
-            </div>';
+                </div>';
 
     } else {
-        $output_redemption_history = '
-            <div class="col-12 sm:col-6 md:col-4 lg:col-3">
-                <div class="card my-7 h-100">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+        $output_redemption_history = '<div class="card mb-7">
+                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Redemption History') . '
-                    </div>
+                    </h2>
                     <div class="card-body">
                         <div class="row">
                             <span class="col text-center">' . lang('This gift card has not been redeemed yet.') . '</span>
                         </div>
                     </div>
-                </div>
-            </div>';
+                </div>';
     }
     
+    // Edit screen layout (product_builder.php): the options and the
+    // redemption history in the form column, the order the card came from
+    // in a sticky status column, the save bar in its own sticky row.
     echo
     pg_page_shell([
         'title'=> lang('Edit Gift Card'),
@@ -286,36 +280,39 @@ if (!$_POST) {
             'breadcrumb' => array(array('label' => lang('All Gift Cards'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_gift_cards.php'), array('label' => lang('Edit Gift Card'))),
         ]) . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
-                ' . $liveform->output_errors() . '
-                ' . $liveform->get_warnings() . '
-                ' . $liveform->output_notices() . '
-                
-                <form name="form" action="edit_gift_card.php" method="post" >
-                    ' . get_token_field() . '
-                    ' . $liveform->output_field(array('type' => 'hidden', 'name' => 'id', 'value' => $_GET['id'])) . '
-                    ' . $liveform->output_field(array('type' => 'hidden', 'name' => 'balance_was')) . '
-                    ' . pg_gift_card_form_card($liveform, 'edit', array(
-                        'symbol' => BASE_CURRENCY_SYMBOL,
-                        'scripts' => get_date_picker_format() . pg_fields_script(),
-                        'original_amount' => pg_format_money($gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL))) . '
-                    <div class="row mb-12 g-5">
-                        ' . $output_order_info_rows . '
-                        ' . $output_redemption_history . '
-                    </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('gift card')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
-                            </div>
+    ' . $liveform->output_errors() . '
+    ' . $liveform->get_warnings() . '
+    ' . $liveform->output_notices() . '
+    <form name="form" action="edit_gift_card.php" method="post">
+        ' . get_token_field() . '
+        ' . $liveform->output_field(array('type' => 'hidden', 'name' => 'id', 'value' => $_GET['id'])) . '
+        ' . $liveform->output_field(array('type' => 'hidden', 'name' => 'balance_was')) . '
+        <div class="row">
+            <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                ' . pg_gift_card_form_card($liveform, 'edit', array(
+                    'symbol' => BASE_CURRENCY_SYMBOL,
+                    'scripts' => get_date_picker_format() . pg_fields_script(),
+                    'original_amount' => pg_format_money($gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL))) . '
+                ' . $output_redemption_history . '
+            </div>
+            <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                <div class="position-sticky" style="top:3.3rem;">
+                    ' . $output_order_info_rows . '
+                </div>
+            </div>
+            <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                    <div class="container">
+                        <div class="btn-group flex-wrap justify-content-center">
+                            <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                            <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('gift card')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>
                         </div>
-                    </nav>
-                </form>
+                    </div>
+                </nav>
             </div>
         </div>
-    
+    </form>
 </main>' .
     output_footer();
     

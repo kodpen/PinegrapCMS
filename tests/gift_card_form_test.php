@@ -144,3 +144,20 @@ function test_gift_card_form_amount_fits_the_column()
 	pg_assert_false(pg_gift_card_form_amount_fits('999999999.99'), 'what the 12-character field takes');
 	pg_assert_same(4294967295, PG_GIFT_CARD_AMOUNT_MAX, 'the column ceiling in minor units');
 }
+
+function test_gift_card_form_screens_use_the_edit_screen_layout()
+{
+	$card = pg_test_gift_card_form_card('add', array('symbol' => '$', 'scripts' => '', 'quantity_max' => '1000'));
+	pg_assert_true(strpos(ltrim($card), '<div class="card mb-7">') === 0, 'the helper returns the card alone, no row');
+
+	foreach (array('add_gift_card.php', 'edit_gift_card.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_contains('<div class="col-12 lg:col-8 2xl:col-9 order-1">', $source, $file . ' puts the card in the form column');
+		pg_assert_contains('<div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">', $source, $file . ' puts its save bar in its own sticky column');
+		pg_assert_false(strpos($source, 'card my-7') !== false, $file . ' stacks no full-width card');
+	}
+
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_gift_card.php');
+	pg_assert_contains('<div class="col-12 lg:col-4 2xl:col-3 order-2">', $edit, 'the order info sits in the status column');
+	pg_assert_contains('<div class="position-sticky" style="top:3.3rem;">', $edit, 'the status column box sticks below the top bar');
+}
