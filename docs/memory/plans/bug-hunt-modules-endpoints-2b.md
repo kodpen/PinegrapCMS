@@ -14,7 +14,7 @@ description: Module list of plans/bug-hunt.md, part 5: the single root endpoints
 
 - Endpoints do, excel_reader2, update_exchange_rates, edit_featured_and_new_items, feed, functions: open
 
-- Endpoints health, get_help_url, update_imported_items, index, init, integration: open
+- Endpoints health, get_help_url, update_imported_items, index, init, integration: taken by worker of Arzu v14 (lead first: get_form_item_view, get_file submitter e-mail match)
 
 - Endpoints iys_job, edit_javascript, job, kiosk, legal_document, liveform.class: done #5074 (job: page revisions sweep twice per tick; rest clean; lead: kiosk keeps an array dialog_message or button label, shown as "Array")
 
