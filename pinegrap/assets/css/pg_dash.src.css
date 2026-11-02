@@ -2663,4 +2663,107 @@
     .pg-dash-map [data-step], .pg-dash-map-step { forced-color-adjust: none; }
     .pg-dash-spark path { stroke: CanvasText; }
   }
+
+  /* ── Assistant card ───────────────────────────────────────────────────── */
+
+  .pg-dash-card-chip[data-tone="good"] {
+    border-color: var(--pg-success-border-subtle);
+    background: var(--pg-success-bg-subtle);
+    color: var(--pg-success-fg-emphasis);
+  }
+
+  .pg-dash-ai-off {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+  }
+
+  .pg-dash-ai-off-icon {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--pg-radius);
+    background: var(--pg-tint-hover);
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-ai-off-main {
+    min-width: 0;
+  }
+
+  .pg-dash-ai-off-title {
+    margin: 0 0 .25rem;
+    font-size: 1rem;
+    font-weight: 600;
+  }
+
+  .pg-dash-ai-off-text {
+    margin: 0 0 .75rem;
+    font-size: .875rem;
+  }
+
+  .pg-dash-ai-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-bottom: .75rem;
+  }
+
+  .pg-dash-ai-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin: 0 0 .5rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pg-dash-ai-chip {
+    display: inline-block;
+    max-width: 100%;
+    padding: .25rem .625rem;
+    overflow: hidden;
+    border: var(--pg-border-width) solid var(--pg-warning-border-subtle);
+    border-radius: var(--pg-radius);
+    background: var(--pg-warning-bg-subtle);
+    font-size: .8125rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--pg-warning-fg-emphasis);
+    text-decoration: none;
+  }
+
+  a.pg-dash-ai-chip:hover {
+    border-color: var(--pg-warning);
+  }
+
+  a.pg-dash-ai-chip:focus-visible {
+    outline: 2px solid var(--pg-primary-ink);
+    outline-offset: 2px;
+  }
+
+  .pg-dash-ai-job {
+    display: flex;
+    gap: .5rem;
+    margin-top: .75rem;
+  }
+
+  .pg-dash-ai-input {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .pg-dash-ai-send {
+    flex: 0 0 auto;
+  }
+
+  .pg-dash-ai-status[data-tone="good"] { color: var(--pg-success-fg-emphasis); }
+  .pg-dash-ai-status[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
+
+  @media (forced-colors: active) {
+    .pg-dash-ai-chip { border-color: CanvasText; }
+  }
 }

@@ -150,15 +150,15 @@
     // ---- tools ----
 
     var PROFILES = {
-        photo: ['select', 'crop', 'artboard', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector'],
-        canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'image', 'vector', 'frame'],
+        photo: ['select', 'crop', 'artboard', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'motion'],
+        canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'image', 'vector', 'frame', 'motion'],
         annotate: ['arrow', 'rect', 'text', 'pen', 'redact'],
         optimise: ['export']
     };
 
     // Tools a caller may name: the rail's and the marking tools of the mini
     // bar (one draw kind each).
-    var TOOLS = ['select', 'crop', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'artboard', 'image', 'export',
+    var TOOLS = ['select', 'crop', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'artboard', 'image', 'export', 'motion',
         'arrow', 'line', 'rect', 'ellipse', 'pen'];
 
     // The tools of one call: the caller's list (known names, first mention
@@ -2531,13 +2531,291 @@
         svgPlace: svgPlace, svgMatrix: svgMatrix, svgMatrixText: svgMatrixText, svgEscape: svgEscape, svgFile: svgFile
     };
 
+    // ---- motion (pg_image_editor_motion.js) ----
+    //
+    // A layer's anim is { in, loop, out }, each absent or { kind, ms, delay,
+    // ease, dir }; the document's motion is { duration, loop, base }. Times
+    // are ms; offsets are rotated-space units; a null playhead is the rest
+    // state, which is what editing and a still save always see.
+
+    var MOTION_IN = ['fade', 'slide', 'rise', 'pop', 'zoom', 'wipe', 'spin', 'type', 'draw'];
+    var MOTION_LOOP = ['pulse', 'float', 'spin', 'blink', 'wiggle', 'swing'];
+    var MOTION_DIRS = ['left', 'up', 'right', 'down'];
+    var MOTION_EASES = ['linear', 'out', 'in', 'in-out', 'back', 'bounce'];
+    var MOTION_BASES = ['none', 'zoomin', 'zoomout', 'panleft', 'panright'];
+    var MOTION_MIN = 1000, MOTION_MAX = 60000, MOTION_DEFAULT = 5000;
+
+    // A direction as the unit step it moves by.
+    var MOTION_STEP = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
+    // The side a wipe moving that way starts its reveal from.
+    var MOTION_SIDE = { left: 'right', right: 'left', up: 'bottom', down: 'top' };
+    var MOTION_BACK = { left: 'right', right: 'left', up: 'down', down: 'up' };
+
+    function easeAt(name, p) {
+        p = clamp(p, 0, 1);
+
+        switch (name) {
+            case 'out':
+                return 1 - Math.pow(1 - p, 3);
+            case 'in':
+                return p * p * p;
+            case 'in-out':
+                return (p < 0.5) ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+            case 'back':
+                return (p >= 1) ? 1 : 1 + 2.70158 * Math.pow(p - 1, 3) + 1.70158 * Math.pow(p - 1, 2);
+            case 'bounce':
+                return bounceOut(p);
+        }
+
+        return p;
+    }
+
+    function bounceOut(p) {
+        var n = 7.5625, d = 2.75;
+
+        if (p < 1 / d) {
+            return n * p * p;
+        }
+
+        if (p < 2 / d) {
+            p -= 1.5 / d;
+            return n * p * p + 0.75;
+        }
+
+        if (p < 2.5 / d) {
+            p -= 2.25 / d;
+            return n * p * p + 0.9375;
+        }
+
+        p -= 2.625 / d;
+
+        return n * p * p + 0.984375;
+    }
+
+    function motionRest() {
+        return { opacity: 1, x: 0, y: 0, scale: 1, rot: 0, clip: null, draw: 1, chars: null };
+    }
+
+    // A fresh phase of a kind, as the panel adds it.
+    function newMotion(phase, kind) {
+        return {
+            kind: kind,
+            ms: (phase === 'loop') ? 1500 : 800,
+            delay: 0,
+            ease: (kind === 'pop') ? 'back' : ((phase === 'loop') ? 'in-out' : 'out'),
+            dir: 'up'
+        };
+    }
+
+    function motionMs(a, fallback) {
+        var ms = Number(a && a.ms);
+
+        return (ms > 0) ? ms : fallback;
+    }
+
+    function motionDelay(a) {
+        var d = Number(a && a.delay);
+
+        return (d > 0) ? d : 0;
+    }
+
+    // When each phase runs on a timeline of end ms; null for a phase the
+    // layer does not have.
+    function motionSpans(l, end) {
+        var a = (l && l.anim) || {}, sp = { inStart: null, inEnd: null, loopStart: null, loopEnd: null, outStart: null, outEnd: null };
+
+        if (a['in'] && a['in'].kind) {
+            sp.inStart = motionDelay(a['in']);
+            sp.inEnd = sp.inStart + motionMs(a['in'], 800);
+        }
+
+        if (a.out && a.out.kind) {
+            sp.outEnd = Math.max(0, end - motionDelay(a.out));
+            sp.outStart = Math.max(0, sp.outEnd - motionMs(a.out, 800));
+        }
+
+        if (a.loop && a.loop.kind) {
+            sp.loopStart = ((sp.inEnd === null) ? 0 : sp.inEnd) + motionDelay(a.loop);
+            sp.loopEnd = (sp.outStart === null) ? end : sp.outStart;
+        }
+
+        return sp;
+    }
+
+    // An in kind at eased progress e (0 hidden or away, 1 at rest).
+    function motionEnter(l, kind, e, dir, started) {
+        var st = motionRest(), step = MOTION_STEP[dir] || MOTION_STEP.up;
+        var w = Math.abs(Number(l.w) || 0), h = Math.abs(Number(l.h) || 0);
+        var along = step[0] ? w : h, sign = (dir === 'left') ? -1 : 1;
+        var n;
+
+        switch (kind) {
+            case 'fade':
+                st.opacity = e;
+                break;
+            case 'slide':
+                st.x = -step[0] * along * (1 - e);
+                st.y = -step[1] * along * (1 - e);
+                st.opacity = started ? 1 : 0;
+                break;
+            case 'rise':
+                st.x = -step[0] * along * 0.25 * (1 - e);
+                st.y = -step[1] * along * 0.25 * (1 - e);
+                st.opacity = e;
+                break;
+            case 'pop':
+                st.scale = 0.3 + 0.7 * e;
+                st.opacity = clamp(e * 2, 0, 1);
+                break;
+            case 'zoom':
+                st.scale = 1.5 - 0.5 * e;
+                st.opacity = e;
+                break;
+            case 'wipe':
+                st.clip = (e < 1) ? { side: MOTION_SIDE[dir] || 'bottom', f: e } : null;
+                break;
+            case 'spin':
+                st.rot = -sign * 180 * (1 - e);
+                st.scale = 0.5 + 0.5 * e;
+                st.opacity = e;
+                break;
+            case 'draw':
+                st.draw = e;
+                break;
+            case 'type':
+                n = Array.from(String(l.text || '')).length;
+                st.chars = (e >= 1) ? null : Math.floor(e * n + 1e-9);
+                break;
+        }
+
+        return st;
+    }
+
+    // A loop kind at phase f of its period (0 and 1 at rest).
+    function motionLoop(l, kind, f, dir) {
+        var st = motionRest(), c = (1 - Math.cos(2 * Math.PI * f)) / 2, step = MOTION_STEP[dir] || MOTION_STEP.up;
+        var amp = (step[0] ? Math.abs(Number(l.w) || 0) : Math.abs(Number(l.h) || 0)) * 0.08;
+
+        switch (kind) {
+            case 'pulse':
+                st.scale = 1 + 0.08 * c;
+                break;
+            case 'float':
+                st.x = step[0] * amp * c;
+                st.y = step[1] * amp * c;
+                break;
+            case 'spin':
+                st.rot = ((dir === 'left') ? -1 : 1) * 360 * f;
+                break;
+            case 'blink':
+                st.opacity = 1 - 0.8 * c;
+                break;
+            case 'wiggle':
+                st.rot = 6 * Math.sin(4 * Math.PI * f);
+                break;
+            case 'swing':
+                st.rot = 12 * Math.sin(2 * Math.PI * f);
+                break;
+        }
+
+        return st;
+    }
+
+    function motionCompose(a, b) {
+        return {
+            opacity: a.opacity * b.opacity,
+            x: a.x + b.x,
+            y: a.y + b.y,
+            scale: a.scale * b.scale,
+            rot: a.rot + b.rot,
+            clip: b.clip || a.clip,
+            draw: Math.min(a.draw, b.draw),
+            chars: (a.chars === null) ? b.chars : ((b.chars === null) ? a.chars : Math.min(a.chars, b.chars))
+        };
+    }
+
+    // The layer at playhead t (ms) on a timeline of end ms: in, then the
+    // loop between the end of in and the start of out, then out; composed.
+    function motionAt(l, t, end) {
+        var st = motionRest(), a = l && l.anim, sp, p;
+
+        if ((t === null) || (t === undefined) || !a) {
+            return st;
+        }
+
+        sp = motionSpans(l, end);
+
+        if ((sp.inStart !== null) && (t < sp.inEnd)) {
+            p = (t - sp.inStart) / (sp.inEnd - sp.inStart);
+            st = motionCompose(st, motionEnter(l, a['in'].kind, easeAt(a['in'].ease, p), a['in'].dir, t > sp.inStart));
+        }
+
+        if ((sp.loopStart !== null) && (t >= sp.loopStart) && (t < sp.loopEnd)) {
+            p = ((t - sp.loopStart) % motionMs(a.loop, 1500)) / motionMs(a.loop, 1500);
+            st = motionCompose(st, motionLoop(l, a.loop.kind, p, a.loop.dir));
+        }
+
+        if ((sp.outStart !== null) && (t >= sp.outStart)) {
+            p = (sp.outEnd > sp.outStart) ? (t - sp.outStart) / (sp.outEnd - sp.outStart) : 1;
+            st = motionCompose(st, motionEnter(l, a.out.kind, 1 - easeAt(a.out.ease, p), MOTION_BACK[a.out.dir] || 'down', p < 1));
+        }
+
+        return st;
+    }
+
+    // The document's motion with its defaults: 5 s, repeat forever, no base move.
+    function docMotion(doc) {
+        var m = (doc && doc.motion) || {}, d = Math.round(Number(m.duration) || MOTION_DEFAULT), loop = Math.round(Number(m.loop) || 0);
+
+        return {
+            duration: clamp(d, MOTION_MIN, MOTION_MAX),
+            loop: (loop > 0) ? loop : 0,
+            base: (MOTION_BASES.indexOf(m.base) >= 0) ? m.base : 'none'
+        };
+    }
+
+    // The base move of the picture under the layers at t: a scale around the
+    // centre and a shift as fractions of the document's size.
+    function baseAt(base, t, end) {
+        var p = (end > 0) ? clamp(t / end, 0, 1) : 0;
+
+        switch (base) {
+            case 'zoomin':
+                return { scale: 1 + 0.15 * p, x: 0, y: 0 };
+            case 'zoomout':
+                return { scale: 1.15 - 0.15 * p, x: 0, y: 0 };
+            case 'panleft':
+                return { scale: 1.12, x: 0.05 - 0.1 * p, y: 0 };
+            case 'panright':
+                return { scale: 1.12, x: -0.05 + 0.1 * p, y: 0 };
+        }
+
+        return { scale: 1, x: 0, y: 0 };
+    }
+
+    // Whether any layer moves.
+    function hasMotion(doc) {
+        return ((doc && doc.layers) || []).some(function (l) {
+            var a = l.anim;
+
+            return !!(a && ((a['in'] && a['in'].kind) || (a.loop && a.loop.kind) || (a.out && a.out.kind)));
+        });
+    }
+
+    var MOTION = {
+        MOTION_IN: MOTION_IN, MOTION_LOOP: MOTION_LOOP, MOTION_DIRS: MOTION_DIRS, MOTION_EASES: MOTION_EASES, MOTION_BASES: MOTION_BASES,
+        MOTION_MIN: MOTION_MIN, MOTION_MAX: MOTION_MAX, easeAt: easeAt, newMotion: newMotion, motionSpans: motionSpans, motionAt: motionAt,
+        docMotion: docMotion, baseAt: baseAt, hasMotion: hasMotion
+    };
+
     // -- access (pg_image_editor_access.js) --
 
     // A letter picks a tool of the call: the first of its tools the call
     // has, so A is Adjust on the rail and Arrow on the mini bar.
     var KEY_TOOLS = {
         v: ['select'], c: ['crop'], a: ['adjust', 'arrow'], d: ['draw'], t: ['text'], r: ['redact'], u: ['rect'], s: ['sticker'],
-        f: ['frame'], p: ['vector', 'pen'], b: ['artboard'], i: ['image'], e: ['export'], l: ['line'], o: ['ellipse']
+        f: ['frame'], p: ['vector', 'pen'], b: ['artboard'], i: ['image'], e: ['export'], l: ['line'], o: ['ellipse'],
+        m: ['motion']
     };
 
     function toolForKey(key, list) {
@@ -2724,7 +3002,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, ACCESS, GFONTS].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, ACCESS, GFONTS].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');
