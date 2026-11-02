@@ -40,4 +40,4 @@ module: image_editor
 
 ## What is left out, and what never moves?
 - Redaction layers never move: one moving away in an export would show what it hides.
-- Not here yet: tracks (AN2), frames, exports and the server's base (AN3 on), timeline keys other than K (AN11).
+- Tracks: `image-editor-tracks.md`. Not here yet: frames, exports and the server's base (AN3 on), timeline keys other than K (AN11).

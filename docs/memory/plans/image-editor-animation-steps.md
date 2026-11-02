@@ -12,7 +12,7 @@ description: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion,
 - AN1 (M) Motion and preview. Done (#4831).
   - Part `motion` (an Animate tool in the photo and canvas rails), section `MOTION` with `M.motionAt()`; per layer in, loop and out presets with delay, duration, ease and direction; the document's duration, loop and base move; the play bar (play, pause, scrub, time); the `<g>` per layer in `renderLayers()` and the text, draw and vector states.
 
-- AN2 (M) Tracks. Done (#5062).
+- AN2 (M) Tracks. Claimed (#5062, part `tracks`).
   - A row per layer under the stage with its bar from the start of in to the end of out; drag the bar or an end; snapping to 0.1 s and to other ends; on a phone the panel's fields only.
 
 - AN3 (M) Frames and GIF. `free` after AN1 and E10b, beside AN2.

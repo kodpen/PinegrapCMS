@@ -61,6 +61,12 @@
     var UNDRAWABLE = ['text', 'image', 'sticker', 'redact'];
     var PHONE = '(max-width: 599.98px)';
 
+    // Rows under the play bar (the tracks part): { key, node, update, note },
+    // each called on the editor. key() joins the bar's key, node() is put
+    // under the bar (null for none), update() runs with the playhead, note()
+    // goes under a phase's fields in the panel (null for none).
+    Editor.motionDocks = [];
+
     function seconds(ms) {
         return X.decimal(ms / 1000) + ' ' + t('motionSecondsUnit');
     }
@@ -242,7 +248,14 @@
         }
 
         body.appendChild(el('p', { class: 'pgie-note pgie-msays', text: this.motionSays(l) }));
-        body.appendChild(el('p', { class: 'pgie-note pgie-mtracknote', text: t('motionTracksNote') }));
+
+        Editor.motionDocks.forEach(function (d) {
+            var n = d.note.call(self);
+
+            if (n) {
+                body.appendChild(n);
+            }
+        });
     };
 
     // A time slider in steps of a tenth of a second.
@@ -385,212 +398,9 @@
         ]);
     };
 
-    // ---- tracks ----
-
-    var TRACK_ICONS = { image: 'image', text: 'text', sticker: 'sticker', path: 'vector', svg: 'vector' };
-    // How near (px) an end snaps to another.
-    var SNAP_PX = 6;
-
-    // A row per layer, the top one first, under the play bar: the entrance
-    // and exit as bars to drag (the bar moves, an end changes the length),
-    // the loop hatched with a grip at its start; a ruler of seconds and the
-    // playhead. Not on a phone: the panel's fields set the same numbers.
-    Editor.prototype.motionTracks = function () {
-        var self = this, end = this.motionEnd();
-        var ruler = el('div', { class: 'pgie-mruler' });
-        var lanes = el('div', { class: 'pgie-mlanes' });
-        var head = el('span', { class: 'pgie-mhead', 'aria-hidden': 'true', style: 'left: ' + (100 * ((this.time === null) ? 0 : this.time) / end) + '%' });
-        var rows = el('div', { class: 'pgie-mrows', role: 'list', 'aria-label': t('motionTracks') });
-        var step = (end > 20000) ? 5000 : ((end > 8000) ? 2000 : 1000);
-
-        for (var at = 0; at <= end; at += step) {
-            ruler.appendChild(el('span', { style: 'left: ' + (100 * at / end) + '%', text: seconds(at) }));
-        }
-
-        // A press on the ruler moves the playhead there.
-        ruler.addEventListener('pointerdown', function (e) {
-            var r = ruler.getBoundingClientRect();
-
-            self.seek(end * Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)));
-        });
-
-        this.doc.layers.slice().reverse().forEach(function (l) {
-            if (l.hidden || (STILL.indexOf(l.type) >= 0)) {
-                return;
-            }
-
-            var on = (self.sel.indexOf(l.id) >= 0);
-            var lane = el('div', { class: 'pgie-mlane' });
-            var row = el('div', { class: 'pgie-mrow' + (on ? ' on' : ''), role: 'listitem' }, [
-                el('button', { type: 'button', class: 'pgie-mrname', 'aria-pressed': on ? 'true' : 'false', onclick: function () { self.select([l.id]); } }, [
-                    icon(TRACK_ICONS[l.type] || 'draw'), el('span', { text: self.layerName(l) })
-                ]),
-                lane
-            ]);
-
-            self.motionLane(lane, l, end, on);
-            // A press beside the bars selects the layer.
-            lane.addEventListener('pointerdown', function (e) {
-                if (e.target === lane) {
-                    self.select([l.id]);
-                }
-            });
-            rows.appendChild(row);
-        });
-
-        lanes.appendChild(head);
-        this.motionEls = this.motionEls || {};
-        this.motionEls.head = head;
-
-        return el('div', { class: 'pgie-mtracks' }, [
-            el('div', { class: 'pgie-mrhead' }, [el('span', { class: 'pgie-mrlabel', text: t('layers') }), ruler]),
-            rows,
-            lanes
-        ]);
-    };
-
-    // One layer's bars on its lane, from its spans.
-    Editor.prototype.motionLane = function (lane, l, end, on) {
-        var self = this, a = l.anim || {}, sp = M.motionSpans(l, end);
-        var place = function (n, from, to) {
-            n.style.left = (100 * from / end) + '%';
-            n.style.width = Math.max(0, 100 * (to - from) / end) + '%';
-        };
-
-        lane.textContent = '';
-
-        [['in', sp.inStart, sp.inEnd], ['loop', sp.loopStart, sp.loopEnd], ['out', sp.outStart, sp.outEnd]].forEach(function (seg) {
-            var phase = seg[0];
-
-            if ((seg[1] === null) || (seg[2] <= seg[1])) {
-                return;
-            }
-
-            var label = self.motionSegText(l, phase, seg[1], seg[2]);
-            var bar = el('div', { class: 'pgie-mseg pgie-mseg-' + phase, title: label, 'aria-label': label, role: 'img' });
-
-            place(bar, seg[1], seg[2]);
-
-            if (phase !== 'loop') {
-                bar.appendChild(el('span', { class: 'pgie-mgrip', 'data-part': 'start' }));
-                bar.appendChild(el('span', { class: 'pgie-mgrip', 'data-part': 'end' }));
-                bar.addEventListener('pointerdown', function (e) { self.trackDown(e, l, phase, bar); });
-            } else {
-                bar.appendChild(el('span', { class: 'pgie-mgrip', 'data-part': 'start' }));
-                bar.addEventListener('pointerdown', function (e) {
-                    if (e.target.getAttribute('data-part') === 'start') {
-                        self.trackDown(e, l, phase, bar);
-                    }
-                });
-            }
-
-            lane.appendChild(bar);
-        });
-
-        lane.classList.toggle('pgie-mempty', !(a['in'] || a.loop || a.out));
-    };
-
-    // "Typewriter · 1.6 → 2.4 s"
-    Editor.prototype.motionSegText = function (l, phase, from, to) {
-        var cur = (l.anim || {})[phase] || {};
-
-        return t('motion_' + cur.kind) + ' · ' + X.decimal(from / 1000) + ' → ' + seconds(to);
-    };
-
-    // A press on a bar: an end changes the length, the bar moves.
-    Editor.prototype.trackDown = function (e, l, phase, bar) {
-        var self = this, end = this.motionEnd(), lane = bar.parentNode, r = lane.getBoundingClientRect();
-        var part = e.target.getAttribute('data-part') || 'move', sp = M.motionSpans(l, end);
-        var from = { 'in': [sp.inStart, sp.inEnd], loop: [sp.loopStart, sp.loopEnd], out: [sp.outStart, sp.outEnd] }[phase];
-        var edge = (part === 'end') ? from[1] : from[0], targets = M.trackTargets(this.doc.layers, end, l.id);
-        var draft = null, tip = el('span', { class: 'pgie-mtip', role: 'status' });
-
-        if (e.button !== 0) {
-            return;
-        }
-
-        e.preventDefault();
-        e.stopPropagation();
-
-        if (this.playing) {
-            this.pause();
-            return;
-        }
-
-        if (this.sel.indexOf(l.id) < 0) {
-            this.sel = [l.id];
-        }
-
-        bar.setPointerCapture(e.pointerId);
-        bar.classList.add('pgie-mdrag');
-        lane.appendChild(tip);
-
-        var move = function (ev) {
-            var at = edge + (ev.clientX - e.clientX) * end / r.width;
-
-            at = M.snapTime(at, targets, SNAP_PX * end / r.width, ev.shiftKey ? 0 : 100);
-
-            // A moved bar snaps by whichever of its ends lands nearer a target.
-            if ((part === 'move') && !ev.shiftKey) {
-                var len = from[1] - from[0], byEnd = M.snapTime(at + len, targets, SNAP_PX * end / r.width, 0);
-
-                if (targets.indexOf(byEnd) >= 0) {
-                    at = byEnd - len;
-                }
-            }
-
-            var copy = Object.assign({}, l, { anim: Object.assign({}, l.anim) });
-
-            copy.anim[phase] = M.trackSet(l, phase, part, at, end);
-            draft = copy.anim[phase];
-
-            // The bars move in place: drawing them again would drop the
-            // pointer this one holds.
-            var nsp = M.motionSpans(copy, end), spans = { 'in': [nsp.inStart, nsp.inEnd], loop: [nsp.loopStart, nsp.loopEnd], out: [nsp.outStart, nsp.outEnd] }, span = spans[phase];
-
-            Object.keys(spans).forEach(function (k) {
-                var seg = lane.querySelector('.pgie-mseg-' + k);
-
-                if (seg && (spans[k][0] !== null)) {
-                    seg.style.left = (100 * spans[k][0] / end) + '%';
-                    seg.style.width = Math.max(0, 100 * (spans[k][1] - spans[k][0]) / end) + '%';
-                }
-            });
-
-            tip.textContent = self.motionSegText(copy, phase, span[0], span[1]);
-            tip.style.left = (100 * span[1] / end) + '%';
-        };
-
-        var up = function () {
-            window.removeEventListener('pointermove', move);
-            window.removeEventListener('pointerup', up);
-            window.removeEventListener('pointercancel', up);
-
-            if (!draft || (JSON.stringify(draft) === JSON.stringify((l.anim || {})[phase]))) {
-                self.render();
-                return;
-            }
-
-            var id = l.id, value = draft;
-
-            self.change(function (doc) {
-                doc.layers.forEach(function (x) {
-                    if (x.id === id) {
-                        x.anim = Object.assign({}, x.anim);
-                        x.anim[phase] = value;
-                    }
-                });
-            });
-        };
-
-        window.addEventListener('pointermove', move);
-        window.addEventListener('pointerup', up);
-        window.addEventListener('pointercancel', up);
-    };
-
     // The bar under the stage, or first in the sheet on a phone.
     Editor.prototype.renderMotion = function () {
-        var onPhone = window.matchMedia && window.matchMedia(PHONE).matches;
+        var self = this, onPhone = window.matchMedia && window.matchMedia(PHONE).matches;
         var wanted = (this.tool === 'motion') && !onPhone, had = !!this.stageBar;
 
         if (this.tool !== 'motion') {
@@ -601,8 +411,7 @@
 
         // Drawn again only when what it shows changed: a zoom redraws the
         // view, and a scrub in progress must keep its slider.
-        var key = wanted ? [this.motionEnd(), this.playing, this.motionRepeat, this.sel.join(','),
-            JSON.stringify(this.doc.layers.map(function (l) { return [l.id, l.hidden ? 1 : 0, l.anim || 0, l.text || '']; }))].join('|') : '';
+        var key = wanted ? [this.motionEnd(), this.playing, this.motionRepeat, JSON.stringify(this.doc.layers.map(function (l) { return l.anim || 0; }))].concat(Editor.motionDocks.map(function (d) { return d.key.call(self); })).join('|') : '';
 
         if (this.stageBar && (key !== this.stageBarKey)) {
             this.stageBar.remove();
@@ -610,10 +419,12 @@
         }
 
         if (wanted && !this.stageBar) {
-            this.stageBar = el('div', { class: 'pgie-mdock' }, [this.motionBar(), this.motionTracks()]);
-            // The dock sits on the stage: its presses are its own, not a
-            // press on the picture that would select or pan.
-            this.stageBar.addEventListener('pointerdown', function (e) { e.stopPropagation(); });
+            this.stageBar = el('div', { class: 'pgie-mdock' }, [this.motionBar()].concat(Editor.motionDocks.map(function (d) { return d.node.call(self); })));
+            // The dock sits on the stage: a press, a double click or a wheel
+            // on it is its own, not the stage's (select, drag, zoom).
+            ['pointerdown', 'dblclick', 'wheel'].forEach(function (type) {
+                self.stageBar.addEventListener(type, function (e) { e.stopPropagation(); });
+            });
             this.stageBarKey = key;
             this.stage.appendChild(this.stageBar);
         }
@@ -652,13 +463,11 @@
             return;
         }
 
-        if (e.head) {
-            e.head.style.left = (100 * now / this.motionEnd()) + '%';
-        }
-
         e.scrub.value = String(now);
         e.scrub.setAttribute('aria-valuetext', clockText(now));
         e.clock.textContent = clockText(now);
+
+        Editor.motionDocks.forEach(function (d) { d.update.call(this); }, this);
     };
 
     Editor.prototype.togglePlay = function () {
