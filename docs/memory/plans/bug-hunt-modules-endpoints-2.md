@@ -94,11 +94,11 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 
 - Endpoints iys_job, edit_javascript, job, kiosk, legal_document, liveform.class: open
 
-- Endpoints get_llms.txt, local_sale, view_log, mailchimp, mass_edit, mcp: open
+- Endpoints get_llms.txt, local_sale, view_log, mailchimp, mass_edit, mcp: taken (mass_edit)
 
-- Endpoints mfa, migration, myself_upsell, mysqldump, view_not_found_log, oauth: open
+- Endpoints mfa, migration, myself_upsell, mysqldump, view_not_found_log, oauth: clean (mysqldump bundled)
 
-- Endpoints add_or_remove_watcher, organize_contacts, print_packing_slip, passkey, set_password, payment_callback: open
+- Endpoints add_or_remove_watcher, organize_contacts, print_packing_slip, passkey, set_password, payment_callback: clean
 
 - Endpoints pclzip.lib, view_performance_log, get_photo_gallery, pi, private_label, prototype: done #4773 (pclzip.lib bundled, rest clean)
 
