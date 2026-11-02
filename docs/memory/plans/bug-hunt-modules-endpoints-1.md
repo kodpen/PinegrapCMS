@@ -30,8 +30,8 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 - Endpoints `designer` (4): open
 - Endpoints `device` (3): clean (device_limit, device_pairing, update_device_type)
 - Endpoints `dynamic` (2): clean (add_dynamic_region, edit_dynamic_region)
-- Endpoints `editor` (4): #5167 (editor_add_file: a closing script tag got out of escape_javascript()); editor_edit_file, editor_select_image, editor_select_page_or_file: open
-- Endpoints `email` (16): open
+- Endpoints `editor` (4): #5167 (editor_add_file: a closing script tag got out of escape_javascript()); editor_edit_file, editor_select_image, editor_select_page_or_file clean
+- Endpoints `email` (16): clean (access, CSRF and role-3 creator checks on the panel screens; email_a_friend, email_preferences one-click unsubscribe; email_campaign_job is web-callable by design)
 - Endpoints `erp` (77): open
 - Endpoints `expres` (2): open
 - Endpoints `field` (4): open
