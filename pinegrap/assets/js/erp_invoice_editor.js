@@ -128,6 +128,14 @@
         return negative ? -kurus : kurus;
     }
 
+    // erp_typed_number_ok(): digits and separators only, spaces and a
+    // trailing percent sign allowed. A minus sign or a letter makes the box
+    // one the server refuses, so its line is not priced.
+    function typedOk(raw) {
+        var text = String(raw === undefined || raw === null ? '' : raw).replace(/[\s\u00A0\u202F]+/g, '');
+        return text === '' || /^(?=.*[0-9])[0-9.,]+%?$/.test(text);
+    }
+
     // erp_fx_rate_in(): the last separator is the decimal one, the others group.
     function parseDecimal(raw) {
         raw = String(raw || '').replace(/[^0-9.,]/g, '');
@@ -381,10 +389,10 @@
         return baseCurrency;
     }
 
-    function formatMoney(kurus) {
+    function formatMoney(kurus, code) {
         var amount = kurus / 100;
         var text = numberFormat ? numberFormat.format(amount) : amount.toFixed(2);
-        var code = currentCurrency();
+        code = (code === undefined) ? currentCurrency() : code;
         return code ? (text + ' ' + code) : text;
     }
 
@@ -482,6 +490,14 @@
     }
 
     function lineFigures(row) {
+        var refused = ['quantity', 'discount_rate', 'offer_discount_rate', 'tax_rate', 'tax2_rate'].some(function (name) {
+            var box = field(row, name);
+            return box && !typedOk(box.value);
+        });
+        if (refused) {
+            return { lineTotal: 0, discount: 0, net: 0, taxRate: 0, tax2Rate: 0, withholdingRate: 0, isEmpty: true };
+        }
+
         // Priced at the places it is saved with, as the server prices it.
         var quantity = quantityRound(parseQuantity(field(row, 'quantity') ? field(row, 'quantity').value : ''));
         var unitPrice = parseKurus(field(row, 'unit_price') ? field(row, 'unit_price').value : '');
@@ -954,7 +970,9 @@
 
             var price = document.createElement('span');
             price.className = 'fg-secondary small ms-3';
-            price.textContent = formatPrice(product.price);
+            // The product's own price is in the store's main currency,
+            // whatever currency the document is in.
+            price.textContent = formatMoney(product.price, baseCurrency);
             item.appendChild(price);
 
             if (product.stock !== null && product.stock !== undefined) {

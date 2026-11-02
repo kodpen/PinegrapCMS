@@ -276,14 +276,20 @@ function erp_invoice_recurrence_create($invoice_id, $options, $user_id)
 /**
  * Stop a recurrence. The invoices it wrote stay.
  *
+ * A screen names the invoice the recurrence must repeat: without it a
+ * recurrence id posted from another invoice's screen stopped that other
+ * invoice's recurrence and logged it under this one.
+ *
  * @param int $id
  * @param int $user_id
+ * @param int $source_invoice_id  0 to stop whatever invoice it repeats
  * @return bool
  */
-function erp_invoice_recurrence_stop($id, $user_id)
+function erp_invoice_recurrence_stop($id, $user_id, $source_invoice_id = 0)
 {
     db("UPDATE erp_invoice_recurrences SET status = 'stopped', stopped_at = UNIX_TIMESTAMP(), stopped_by = '" . (int) $user_id . "', updated_at = UNIX_TIMESTAMP()
-        WHERE id = '" . (int) $id . "' AND status = 'active'");
+        WHERE id = '" . (int) $id . "' AND status = 'active'"
+        . (((int) $source_invoice_id > 0) ? " AND source_invoice_id = '" . (int) $source_invoice_id . "'" : ''));
 
     return (mysqli_affected_rows(db::$con) === 1);
 }

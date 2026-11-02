@@ -4687,6 +4687,18 @@ html[data-bs-theme="dark"] #notifications .pg-bell-glyph {
   width: 1%;
 }
 
+/* Every combobox menu stays within the screen: it grows to its longest
+   option (a long account title), which on a phone pushed it past the edge
+   and scrolled the page sideways; a long option wraps instead. */
+.pg-combobox-menu {
+  max-width: calc(100vw - 1rem);
+}
+
+.pg-combobox-menu .menu-item {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 /* A combobox searching the server (data-pg-source): its own search box,
    which Bootstrap must not filter, and the line that says what the search
    is doing. */
