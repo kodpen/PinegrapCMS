@@ -93,11 +93,42 @@ function erp_audit_actor()
         $username = (string) $_SESSION['sessionusername'];
     }
 
-    if ((PHP_SAPI === 'cli') || (($user_id <= 0) && ($username === ''))) {
+    $background = function_exists('pg_cron_is_background_run') ? pg_cron_is_background_run() : (PHP_SAPI === 'cli');
+
+    if ($background) {
         return array('source' => 'job', 'user_id' => 0, 'username' => '');
     }
 
+    // A web request with nobody signed in came through a link (an accountant
+    // downloading a pack, a customer signing a quote): no user, no name, and
+    // erp_audit_actor_kind() reads it as such instead of as a scheduled job.
+    if (($user_id <= 0) && ($username === '')) {
+        return array('source' => 'panel', 'user_id' => 0, 'username' => '');
+    }
+
     return array('source' => 'panel', 'user_id' => $user_id, 'username' => mb_substr($username, 0, 100));
+}
+
+/**
+ * Who wrote a stored line: a scheduled job, an application through the API,
+ * someone through a link without a login, or a signed-in user.
+ *
+ * @param array $row  source, user_id, username
+ * @return string  job | api | link | panel
+ */
+function erp_audit_actor_kind($row)
+{
+    $source = (string) ($row['source'] ?? '');
+
+    if (($source === 'job') || ($source === 'api')) {
+        return $source;
+    }
+
+    if (((int) ($row['user_id'] ?? 0) <= 0) && ((string) ($row['username'] ?? '') === '')) {
+        return 'link';
+    }
+
+    return 'panel';
 }
 
 /**
@@ -322,6 +353,8 @@ function erp_audit_where($filters)
     if ((string) ($filters['user'] ?? '') !== '') {
         if ($filters['user'] === '@job') {
             $where[] = "source = 'job'";
+        } elseif ($filters['user'] === '@link') {
+            $where[] = "source = 'panel' AND user_id = 0 AND username = ''";
         } else {
             $where[] = "username = '" . escape((string) $filters['user']) . "'";
         }
@@ -465,7 +498,7 @@ function erp_audit_csv($filters)
             $is_log = ((string) $row['event'] === 'log');
             fputcsv($out, array(
                 date('Y-m-d H:i:s', (int) $row['created_at']),
-                $sources[(string) $row['source']] ?? (string) $row['source'],
+                $sources[erp_audit_actor_kind($row)] ?? (string) $row['source'],
                 pg_csv_formula_guard((string) $row['username']),
                 (string) $row['ip'],
                 $is_log ? pg_csv_formula_guard((string) $row['description']) : pg_csv_formula_guard(erp_audit_event_text($row)),
@@ -493,5 +526,6 @@ function erp_audit_sources()
         'panel' => lang('Panel'),
         'api' => lang('API'),
         'job' => lang('Scheduled job'),
+        'link' => lang('Without a login (link or outside service)'),
     );
 }

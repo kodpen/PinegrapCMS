@@ -1031,6 +1031,7 @@
     "Within the workspace the User may": "Çalışma alanında kullanıcı şunları yapabilir",
     "Without a label the skip button is not drawn.": "Etiket olmadan atla düğmesi çizilmez.",
     "Without a limit": "Sınırsız",
+    "Without a login (link or outside service)": "Oturum açmadan (bağlantı ya da dış servis)",
     "Without insurance, the fees on the services page apply. You can pay by card or cash at reception.": "Sigortanız yoksa hizmetler sayfasındaki ücretler geçerlidir. Danışmada kartla ya da nakit ödeyebilirsiniz.",
     "Without multiple recipients (a single ship_to in the cart) this area is still rendered, but only once. To show it only for multiple recipients, add the <code>eo_visible_if=is_multi_recipient</code> visibility binding to its parent.": "Çoklu alıcı yokken (sepette tek ship_to varsa) bu alan yine çizilir, ancak yalnızca bir kez. Sadece çoklu alıcıda göstermek için üst öğesine <code>eo_visible_if=is_multi_recipient</code> görünürlük bağlaması ekleyin.",
     "Without tax, added at the total (sales-tax countries)": "Vergisiz, toplamda eklenir (satış vergisi uygulanan ülkeler)",
