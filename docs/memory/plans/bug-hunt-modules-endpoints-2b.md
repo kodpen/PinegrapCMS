@@ -12,7 +12,7 @@ description: Module list of plans/bug-hunt.md, part 5: the single root endpoints
 
 - Endpoints create_file, get_cross_sell_items, csp_report, view_currencies, database_engine, developer_lock: done #5166 (developer_lock: the PIN could be guessed without a limit; rest clean)
 
-- Endpoints do, excel_reader2, update_exchange_rates, edit_featured_and_new_items, feed, functions: open
+- Endpoints do, excel_reader2, update_exchange_rates, edit_featured_and_new_items, feed, functions: done #5174 (do: missing or array parameters gave PHP 8 warnings and TypeErrors, an array page_id broke the later registration; excel_reader2 bundled, functions a loader, rest clean; add_watcher from any link is by design)
 
 - Endpoints health, get_help_url, update_imported_items, index, init, integration: done #5121 (update_imported_items: data-src rewritten with the src address; health, get_help_url, index, integration clean; leads: init.php ?secure_mode=false skips the forced https redirect and 301s an https request to http, a product question (#5146); also #5100 get_form_item_view/get_file submitter e-mail match, #5110 kiosk array text)
 

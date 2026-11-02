@@ -21,14 +21,19 @@
 
 include('init.php');
 
+// Each parameter is one text value: an array (?page_id[]=1) counts as not
+// given, so it neither stops the request nor waits in the session for the
+// registration or the order that reads it later.
+pg_request_single_values(array('action', 'watcher', 'field_name', 'field_value', 'page_id', 'url'));
+
 // Do different things depending on the action.
-switch ($_GET['action']) {
+switch ($_GET['action'] ?? '') {
 
     // This action deals with storing a watcher in the session so that it is added
     // when an order is submitted where a product submit form feature is used.
     // Example: do.php?action=add_watcher_for_product_submit_form&watcher=username&url=/example
     case 'add_watcher_for_product_submit_form':
-        $_SESSION['software']['product_submit_form']['add_watcher'] = $_GET['watcher'];
+        $_SESSION['software']['product_submit_form']['add_watcher'] = (string) ($_GET['watcher'] ?? '');
         break;
 
     // This action deals with storing a field name and value in the session,
@@ -41,8 +46,8 @@ switch ($_GET['action']) {
         $_SESSION['software']['prefill_product_form'] = array();
 
         $_SESSION['software']['prefill_product_form'][] = array(
-            'name' => trim($_GET['field_name']),
-            'value' => trim($_GET['field_value'])
+            'name' => trim($_GET['field_name'] ?? ''),
+            'value' => trim($_GET['field_value'] ?? '')
         );
 
         break;
@@ -62,7 +67,7 @@ switch ($_GET['action']) {
     // or membership entrance.
     // Example: do.php?action=set_start_page&page_id=123&url=/example
     case 'set_start_page':
-        $_SESSION['software']['start_page_id'] = $_GET['page_id'];
+        $_SESSION['software']['start_page_id'] = (int) ($_GET['page_id'] ?? 0);
         break;
 
 }
