@@ -1467,23 +1467,24 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         // ("yeşil" should find products with Renk=Yeşil attribute). Result
         // was inconsistent search ("kısmen çalışıyor"). Wider field set
         // makes search match visitor expectations across the board.
-        $q_esc = e($search_query);
+        // A % or _ the visitor types is a plain character, not a wildcard.
+        $q_like = e(pg_list_like_pattern($search_query));
         $extra_conditions .= " AND (
-              products.name              LIKE '%$q_esc%'
-           OR products.short_description LIKE '%$q_esc%'
-           OR products.full_description  LIKE '%$q_esc%'
-           OR products.details           LIKE '%$q_esc%'
-           OR products.keywords          LIKE '%$q_esc%'
-           OR products.meta_keywords     LIKE '%$q_esc%'
-           OR products.meta_description  LIKE '%$q_esc%'
-           OR products.address_name      LIKE '%$q_esc%'
+              products.name              LIKE '$q_like'
+           OR products.short_description LIKE '$q_like'
+           OR products.full_description  LIKE '$q_like'
+           OR products.details           LIKE '$q_like'
+           OR products.keywords          LIKE '$q_like'
+           OR products.meta_keywords     LIKE '$q_like'
+           OR products.meta_description  LIKE '$q_like'
+           OR products.address_name      LIKE '$q_like'
            OR EXISTS (
                 SELECT 1
                 FROM products_attributes_xref _pas
                 INNER JOIN product_attribute_options _pao
                   ON _pao.id = _pas.option_id
                 WHERE _pas.product_id = products.id
-                  AND _pao.label LIKE '%$q_esc%'
+                  AND _pao.label LIKE '$q_like'
               )
         ) ";
     }
@@ -2488,7 +2489,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         // behind a click and quoted the whole group's price range, not the
         // matching items' — it read as a result that did not match.
         if ($search_active) {
-            $_q = e($search_query);
+            $_q = e(pg_list_like_pattern($search_query));
             $children = db_items(
                 "SELECT product_groups.id, product_groups.name, product_groups.address_name,
                        product_groups.image_name, product_groups.short_description,
@@ -2499,9 +2500,9 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                 WHERE product_groups.parent_id = '" . $_pg_parent_filter . "'
                   AND product_groups.enabled = 1
                   AND (
-                       product_groups.name              LIKE '%$_q%'
-                    OR product_groups.short_description LIKE '%$_q%'
-                    OR product_groups.address_name      LIKE '%$_q%'
+                       product_groups.name              LIKE '$_q'
+                    OR product_groups.short_description LIKE '$_q'
+                    OR product_groups.address_name      LIKE '$_q'
                   )
                 ORDER BY product_groups.sort_order ASC, product_groups.name ASC"
             );

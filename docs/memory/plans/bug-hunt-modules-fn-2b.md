@@ -1,6 +1,6 @@
 ---
 name: bug-hunt-modules-fn-2b
-description: Module list of plans/bug-hunt.md, part 2b: includes/fn/ modules widgets to widgets_lists_checkout, one line each with its state
+description: Module list of plans/bug-hunt.md, part 2b: includes/fn/ modules widgets to widgets_lists_checkout (widgets_cart and widgets_catalog in part 2d), one line each with its state
 ---
 
 ## Which includes/fn/ modules (widgets to widgets_lists_checkout) are hunted?
@@ -10,8 +10,6 @@ description: Module list of plans/bug-hunt.md, part 2b: includes/fn/ modules wid
 - `widgets_affiliate_sign_up`: done (#4998: posted next_page_id); rest clean (prefill as the classic screen, terms, confirmation, row changes)
 - `widgets_attrs`: clean (denied names and tokens, placeholders and carriers, empty switches dropped)
 - `widgets_billing_information`: clean (start values, liveform restore, flags and dropped controls, page row changes as the classic page)
-- `widgets_cart`: open (#5140: a cart on the home page was not recorded as the cart page; rest checked, clean: tax, schedules, notices, currency, offers, quick add, quantities, cart links, express order totals)
-- `widgets_catalog`: open (#5134: clear filters kept the attribute filters; checked, clean: RSS and JSON-LD parts, group paths and subtree, item resolution, breadcrumb rows, group tree, card templates, variant flag marks, variant attribute markers, wishlist and stock-notify controls)
 - `widgets_comments`: clean (options, order, paginate, page param and URLs, quote excerpt, link values, mask email, watcher label, row root id and anchor links; audience and preview override, thread and row flags, status text, rating, the render's thread pick, review refusal, name mode, reply target, watcher state and count, notified rule as the classic block)
 - `widgets_comments_recent`: clean (source decisions, access and scope SQL, record gate, rows read again under the scope, titles)
 - `widgets_conditions`: clean (specs and joins, denied tokens, required controls, amounts and figure grouping, every operator)
