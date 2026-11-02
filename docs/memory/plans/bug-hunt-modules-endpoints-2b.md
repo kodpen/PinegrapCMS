@@ -22,7 +22,7 @@ description: Module list of plans/bug-hunt.md, part 5: the single root endpoints
 
 - Endpoints mfa, migration, myself_upsell, mysqldump, view_not_found_log, oauth: clean (mysqldump bundled)
 
-- Endpoints add_or_remove_watcher, organize_contacts, print_packing_slip, passkey, set_password, payment_callback: done #PRNUM (add_or_remove_watcher: submission without an e-mail field matched a member with none; rest clean)
+- Endpoints add_or_remove_watcher, organize_contacts, print_packing_slip, passkey, set_password, payment_callback: done #5015 (add_or_remove_watcher: submission without an e-mail field matched a member with none; rest clean)
 
 - Endpoints pclzip.lib, view_performance_log, get_photo_gallery, pi, private_label, prototype: done #4773 (pclzip.lib bundled, rest clean)
 
