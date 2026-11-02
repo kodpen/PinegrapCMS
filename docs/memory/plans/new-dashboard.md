@@ -1,6 +1,6 @@
 ---
 name: new-dashboard
-description: Plan (owner 2026-11-01): a new dashboard from the owner's design, turned on per person by a switch at the top of the current one, which stays as it is; steps N1-N14
+description: Plan (owner 2026-11-01): a new dashboard from the owner's design, turned on per person by a switch at the top of the current one, which stays as it is; steps N1-N15
 ---
 
 ## What is the status?
@@ -18,7 +18,7 @@ description: Plan (owner 2026-11-01): a new dashboard from the owner's design, t
 - `new-dashboard-cards.md`, `new-dashboard-cards-2.md`: the 30 cards and their data.
 - `new-dashboard-data.md`: storage (question 1), layout JSON, API actions, the card contract.
 - `new-dashboard-build.md`: the branch in `welcome.php`, files, look, charts, refresh, phone, keyboard, texts.
-- `new-dashboard-steps.md`: N1-N14, sizes, order, which run side by side.
+- `new-dashboard-steps.md`: N1-N15, sizes, order, which run side by side.
 
 ## What must not change?
 - The current dashboard: markup, script, site-wide order (`dashboard.order_widgets`), the Appearance card, widget ids and API actions. It gains only the switch row; `welcome.php` only that row and an early branch that draws the new page for a person who has it on.

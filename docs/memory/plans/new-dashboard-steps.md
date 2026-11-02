@@ -48,3 +48,6 @@ description: Steps N1-N14 of plans/new-dashboard.md: size, screens, order, which
 
 - N14 (M) Phone, keyboard and close-out. Screen 20. After N2-N13.
   - Phone pass (390x844, 844x390, touch), keyboard and screen reader, reduced motion, forced colours, every screen in light and dark; topic files under `ui/`, the decisions moved there, this plan deleted.
+
+- N15 (L) Drawings round. Screens 01-20. After N14.
+  - Owner (2026-11-02): the cards are built on the panel's theme first; once that is done, one round turns them into the drawings: the prototype's colours, card faces, type and spacing (its CSS), each card's content as drawn, and chart values shown on hover and keyboard focus (as text too, like the old dashboard's figures). The page stays `container-fluid` like the rest of the panel: a wider screen gets more columns, not wider cards.
