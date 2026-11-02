@@ -210,3 +210,60 @@ function test_key_code_form_screens_use_shared_form()
 		pg_assert_false(strpos($source, 'FROM offers') !== false, $file . ' keeps no copy of the offer check');
 	}
 }
+
+function test_key_code_form_expiration_date_reads_the_whole_value()
+{
+	if (!defined('DATE_FORMAT')) {
+		define('DATE_FORMAT', 'day_month');
+	}
+
+	$dotted = (DATE_FORMAT == 'month_day') ? '06.15.2027' : '15.06.2027';
+	$taken = array('offers' => array('SUMMER10'));
+
+	foreach (array('1/6/20271', '1/6/2027x', 'x1/6/2027', '31/02/2027') as $typed) {
+		$errors = pg_test_key_code_form_errors(array('code' => 'ABC', 'offer_code' => 'SUMMER10', 'expiration_date' => $typed), null, $taken);
+		pg_assert_same(array('expiration_date'), array_keys($errors), $typed . ' is refused, not stored as never expiring');
+	}
+
+	foreach (array($dotted, '2027-06-15', '') as $typed) {
+		$errors = pg_test_key_code_form_errors(array('code' => 'ABC', 'offer_code' => 'SUMMER10', 'expiration_date' => $typed), null, $taken);
+		pg_assert_same(array(), $errors, '"' . $typed . '" is accepted');
+	}
+
+	$saved = isset($_SESSION) ? $_SESSION : null;
+	$_SESSION = array();
+
+	$liveform = new liveform('key_code_form_test');
+	$liveform->set('offer_code', 'SUMMER10');
+	$liveform->set('expiration_date', $dotted);
+	$values = pg_key_code_form_values($liveform, 'ABC');
+	pg_assert_same('2027-06-15', $values[3], 'a dotted date is stored as the day it names');
+
+	$liveform->set('expiration_date', '');
+	$values = pg_key_code_form_values($liveform, 'ABC');
+	pg_assert_same('', $values[3], 'empty still means it never expires');
+
+	if ($saved === null) {
+		unset($_SESSION);
+	} else {
+		$_SESSION = $saved;
+	}
+}
+
+function test_key_code_form_refuses_codes_longer_than_the_column()
+{
+	$long = 'pg-test-' . str_repeat('ğ', 43);
+	$taken = array('offers' => array('SUMMER10'), 'key_codes' => array(mb_substr($long, 0, 50)));
+
+	$errors = pg_test_key_code_form_errors(array('code' => $long, 'offer_code' => 'SUMMER10'), 7, $taken, $calls);
+	pg_assert_same(array('code'), array_keys($errors), 'a 51 letter code is refused');
+	pg_assert_contains('longer than 50 characters', $errors['code'], 'with the import\'s words');
+	pg_assert_same(array(array('offers', 'SUMMER10', null)), $calls, 'a code too long is not looked up');
+
+	$errors = pg_test_key_code_form_errors(array('code' => str_repeat('ğ', 50), 'offer_code' => 'SUMMER10'), 7, $taken);
+	pg_assert_same(array(), $errors, '50 letters fit, whatever their bytes');
+
+	$errors = pg_test_key_code_form_errors(array('code' => 'ABC', 'offer_code' => str_repeat('O', 51)), 7, $taken, $calls);
+	pg_assert_same(array('offer_code'), array_keys($errors), 'an offer code longer than the column');
+	pg_assert_contains('longer than 50 characters', $errors['offer_code'], 'with the same words');
+}

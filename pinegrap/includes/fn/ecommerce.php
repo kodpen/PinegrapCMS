@@ -10866,7 +10866,7 @@ function pg_key_code_quick_update($key_code_id, $field, $value, $user_id)
 
         log_activity(
             lang(array(
-                'string' => 'key code ({var:1}) was changed on the key code list: {var:2} from "{var:3}" to "{var:4}"',
+                'string' => 'Key code ({var:1}) was changed on the key code list: {var:2} from "{var:3}" to "{var:4}".',
                 'vars'   => array((string) $current['code'], $columns[$field]['label'], $columns[$field]['options'][$previous], $columns[$field]['options'][$enabled]),
             )),
             $_SESSION['sessionusername'] ?? '');
@@ -11050,7 +11050,10 @@ function pg_key_code_import_row($row, $columns, $date_format)
     $error = '';
 
     foreach ($columns as $index => $column) {
-        $cell = (is_array($row) && isset($row[$index])) ? trim((string) $row[$index]) : '';
+        // The export guards a text cell starting with = + - @ with an
+        // apostrophe; it is taken off so an unchanged export reads back as
+        // stored.
+        $cell = (is_array($row) && isset($row[$index])) ? pg_csv_formula_unguard(trim((string) $row[$index])) : '';
 
         switch ($column) {
             case 'code':
@@ -11073,7 +11076,7 @@ function pg_key_code_import_row($row, $columns, $date_format)
                 $flag = pg_key_code_import_flag($cell);
 
                 if ($flag === false) {
-                    $error = ($error !== '') ? $error : lang(array('string' => '"{var:1}" in the {var:2} column is neither yes nor no.', 'vars' => array($cell, $column)));
+                    $error = ($error !== '') ? $error : lang(array('string' => '"{var:1}" in the {var:2} column is neither yes nor no.', 'vars' => array($cell, ($column === 'enabled') ? lang('Enabled') : lang('Single-Use'))));
                 } else if ($flag !== null) {
                     $values[$column] = $flag;
                 }
@@ -11106,6 +11109,32 @@ function pg_key_code_import_row($row, $columns, $date_format)
     }
 
     return array('values' => $values, 'error' => $error);
+}
+
+/**
+ * One line of the key code export: the columns import_key_codes.php reads
+ * back, every cell quoted. The text cells (code, offer code, notes, user
+ * name) carry the formula guard: a code or note starting with = + - @ ran as
+ * a formula in Excel, and an affiliate code is typed by a visitor.
+ * pg_key_code_import_row() takes the guard off again.
+ *
+ * @param array $key_code a key_codes row with last_modified_username
+ * @return string
+ */
+function pg_key_code_export_line($key_code)
+{
+    $expiration_date = ((string) $key_code['expiration_date'] !== '0000-00-00') ? (string) $key_code['expiration_date'] : '';
+
+    return
+        '"' . csv_cell($key_code['code']) . '",' .
+        '"' . csv_cell($key_code['offer_code']) . '",' .
+        '"' . $key_code['enabled'] . '",' .
+        '"' . $expiration_date . '",' .
+        '"' . csv_cell($key_code['notes']) . '",' .
+        '"' . $key_code['single_use'] . '",' .
+        '"' . $key_code['report'] . '",' .
+        '"' . pg_csv_export_time($key_code['last_modified_timestamp']) . '",' .
+        '"' . csv_cell($key_code['last_modified_username']) . '"' . "\n";
 }
 
 /**
