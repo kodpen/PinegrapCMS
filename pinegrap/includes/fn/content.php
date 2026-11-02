@@ -3062,6 +3062,39 @@ function pg_catalog_address_excluded_ids($item_id, $item_type = '')
 }
 
 /**
+ * The path segment a catalog name becomes, before it is made unique: the
+ * letters spelled in ASCII, anything else an underscore, no runs or ends of
+ * them, 'item' when nothing is left. Pure.
+ *
+ * @param string $address_name
+ * @return string
+ */
+function pg_catalog_address_slug($address_name)
+{
+    $address_name = trim($address_name);
+    $address_name = pg_transliterate_to_ascii($address_name);
+
+    // Everything that is not allowed becomes an underscore rather than
+    // disappearing, so two different names cannot collapse into one.
+    $address_name = preg_replace('/[^A-Za-z0-9\[\]_-]/', '_', $address_name);
+
+    // A run of separators reads as one, and neither end should start or finish
+    // on one.
+    $address_name = preg_replace('/_{2,}/', '_', $address_name);
+    $address_name = trim($address_name, '_');
+
+    // An address written entirely in a script this cannot transliterate -
+    // Arabic, Greek, Chinese - reduces to nothing. An empty path segment is
+    // not an address, so fall back to a placeholder and let the duplicate
+    // numbering make each one unique.
+    if ($address_name === '') {
+        $address_name = 'item';
+    }
+
+    return $address_name;
+}
+
+/**
  * @param string     $address_name
  * @param int|string $item_id   the item being saved, '' for a new one
  * @param string     $item_type 'product' or 'product_group' when $item_id is
@@ -3088,25 +3121,7 @@ function prepare_catalog_item_address_name($address_name, $item_id = '', $item_t
     // appends "[1]" to make a duplicate unique, and this function runs again
     // over an address that already carries one. Hyphen and underscore stay
     // because they are the ordinary word separators in an address.
-    $address_name = trim($address_name);
-    $address_name = pg_transliterate_to_ascii($address_name);
-
-    // Everything that is not allowed becomes an underscore rather than
-    // disappearing, so two different names cannot collapse into one.
-    $address_name = preg_replace('/[^A-Za-z0-9\[\]_-]/', '_', $address_name);
-
-    // A run of separators reads as one, and neither end should start or finish
-    // on one.
-    $address_name = preg_replace('/_{2,}/', '_', $address_name);
-    $address_name = trim($address_name, '_');
-
-    // An address written entirely in a script this cannot transliterate -
-    // Arabic, Greek, Chinese - reduces to nothing. An empty path segment is
-    // not an address, so fall back to a placeholder and let the duplicate
-    // numbering below make each one unique.
-    if ($address_name === '') {
-        $address_name = 'item';
-    }
+    $address_name = pg_catalog_address_slug($address_name);
     // assume that the address name does not already exist until we find out otherwise
     $address_name_exists = false;
     // check products table to see if there is already a product with an address name that matches the one we want to use

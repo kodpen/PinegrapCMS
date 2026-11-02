@@ -883,6 +883,7 @@
     "Moving the due date moves the copies after it as well.": "Bitiş tarihini değiştirirseniz sonraki kopyalar da yeni tarihe göre gelir.",
     "Moving the task there causes these clashes:": "Görevi oraya taşımak şu çakışmalara yol açıyor:",
     "Moving the visitors table to InnoDB stopped: {var:1}. It stays on MyISAM and works as before.": "Ziyaretçi tablosunun InnoDB'ye taşınması durdu: {var:1}. Tablo MyISAM'da kalıyor ve eskisi gibi çalışıyor.",
+    "Moving to the Recycle Bin": "Geri Dönüşüm Kutusuna taşınıyor",
     "Mozilla data": "Mozilla verisi",
     "Mr.": "Bay",
     "Mr/Ms": "Bay/Bayan",
