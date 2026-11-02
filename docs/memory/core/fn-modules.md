@@ -68,7 +68,7 @@ description: Generated from the module field of the memory files: each includes/
 - `merchant_center`: [[merchant-center]], [[merchant-center-issues]]
 - `merchant_center_push`: [[merchant-center-push]]
 - `mfa`: [[two-step-sign-in-expiry]]
-- `order_completion`: [[order-completion]], [[order-completion-account]], [[order-completion-after-lines]], [[order-completion-before-lock]], [[order-completion-context]], [[order-completion-from-payment]], [[order-completion-line-comments]], [[order-completion-lines]]
+- `order_completion`: [[order-completion]], [[order-completion-account]], [[order-completion-after-lines]], [[order-completion-before-lock]], [[order-completion-context]], [[order-completion-from-payment]], [[order-completion-line-comments]], [[order-completion-lines]], [[order-completion-shipping-less]]
 - `order_list`: [[orders-list-amount-column]]
 - `order_report`: [[order-report-totals]]
 - `order_view`: [[order-view-screen-rows]], [[print-order-shipping-card]]

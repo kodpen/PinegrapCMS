@@ -10,7 +10,7 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 
 - `list_period`: clean
 
-- `mail`: done (#5009: plain-text part capitalised whole bodies and link addresses); `email()` and comment mails only skimmed
+- `mail`: done (#5009: plain-text part capitalised whole bodies and link addresses); `email()` (transport choice, address errors, attachments, DKIM, failure notice) and the three comment mails read: clean (conditional admin lists are validated when the field is saved)
 
 - `mail_parse`: done (#4992: a quoted-printable part ending on a soft break kept its `=`)
 
@@ -32,7 +32,7 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 
 - `ops_alerts`: clean; lead: webhook_failing mails raw webhook URLs
 
-- `order_completion`: done (#4884, #4962: DST end dates); line forms, from_payment clean; lead: two payment callbacks at once can both lower `ship_tos.shipping_cost`
+- `order_completion`: done (#4884, #4962: DST end dates; #5073: two payment callbacks both lowered `ship_tos.shipping_cost`); line forms, from_payment clean
 
 - `order_list`: clean
 
