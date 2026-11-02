@@ -45,7 +45,7 @@ if (!isset($_POST['name'])) {
     // The stored values, or the posted ones after a refused name.
     $form_name = $dregion_name;
     $form_code = $dregion_code;
-    $name_taken = $liveform->check_field_error('name');
+    $name_error = pg_region_form_name_error_text($liveform);
 
     if ($liveform->field_in_session('name')) {
         list($form_name, $form_code) = pg_dynamic_region_form_values(array('name' => $liveform->get_field_value('name'), 'code' => $liveform->get_field_value('code')));
@@ -74,7 +74,7 @@ if (!isset($_POST['name'])) {
                 <form action="edit_dynamic_region.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
-                    ' . pg_dynamic_region_form_card($form_name, $form_code, $name_taken) . '
+                    ' . pg_dynamic_region_form_card($form_name, $form_code, $name_error) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -104,12 +104,14 @@ if (!isset($_POST['name'])) {
     } else {
         list($name, $code) = pg_dynamic_region_form_values($_POST);
 
-        // A rename onto a name another region already has is refused: the
-        // site reads only one row per name. The screen comes back with the
-        // posted values.
-        if (pg_dregion_name_taken($name, $id)) {
+        // A blank or too long name, or a rename onto a name another region
+        // already has (the site reads only one row per name), is refused. The
+        // screen comes back with the posted values.
+        $name_error = pg_region_form_name_refusal($name, pg_dregion_name_taken($name, $id));
+
+        if ($name_error !== '') {
             $liveform->add_fields_to_session(array('trim' => false));
-            $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
+            $liveform->mark_error('name', $name_error);
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_dynamic_region.php?id=' . $id);
             exit();
         }

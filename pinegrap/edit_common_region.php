@@ -54,7 +54,7 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
     $form_name = $cregion_name;
     $form_content = $cregion_content;
     $form_type = 'common';
-    $name_taken = $liveform->check_field_error('name');
+    $name_error = pg_region_form_name_error_text($liveform);
 
     if ($liveform->field_in_session('name')) {
         list($form_name, $form_content) = pg_common_region_form_values(array('name' => $liveform->get_field_value('name'), 'content' => $liveform->get_field_value('content')));
@@ -65,7 +65,7 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
         $component_name = (string) db_value("SELECT name FROM shared_components WHERE id = '" . (int) $component_id . "'");
         $output_component =
             '<div class="alert theme-primary my-7">
-                <p>' . h(lang(array('string' => 'This common region is now the shared component "{var:1}". Its content is edited in the visual designer, by managers and by the users granted the component; the content kept below is no longer shown on the site.', 'vars' => $component_name))) . '</p>
+                <p>' . h(lang(array('string' => 'This common region is now the shared component "{var:1}". Its content is edited in the visual designer, by managers and by the users granted the component. The region\'s earlier content is kept and comes back if the component is deleted.', 'vars' => $component_name))) . '</p>
                 <a class="btn btn-sm btn-solid theme-primary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_system_style.php?component=' . (int) $component_id . '&amp;send_to=' . h(urlencode(get_request_uri())) . '"><span class="material-icons me-1">edit</span>' . h(lang('Edit in the visual designer')) . '</a>
             </div>';
     } elseif (($user['role'] <= 1) && pg_shared_component_content_ready()) {
@@ -114,7 +114,7 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
                                             <label for="type" class="form-label">' . lang('Region Type') . '</label>
                                             <select name="type" id="type" class="form-control"' . ($component_id ? ' disabled' : '') . '><option value="common"' . ($form_type == 'common' ? ' selected="selected"' : '') . '>' . lang('Common Region') . '</option><option value="designer"' . ($form_type == 'designer' ? ' selected="selected"' : '') . '>' . lang('Designer Region') . '</option></select>
                                             ' . ($component_id ? '<input type="hidden" name="type" value="common">' : '<div class="form-text text-end">' . lang('You can change Region Type') . '</div>') . '
-                                        </div>', !$component_id, $name_taken) . '
+                                        </div>', !$component_id, $name_error) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -184,12 +184,14 @@ if (!isset($_POST['name']) && !isset($_POST['submit_convert'])) {
     } else {
         list($name, $content) = pg_common_region_form_values($_POST);
 
-        // A rename onto a name another region already has is refused: the
-        // site reads only one row per name. The screen comes back with the
-        // posted values.
-        if (pg_cregion_name_taken($name, $id)) {
+        // A blank or too long name, or a rename onto a name another region
+        // already has (the site reads only one row per name), is refused. The
+        // screen comes back with the posted values.
+        $name_error = pg_region_form_name_refusal($name, pg_cregion_name_taken($name, $id));
+
+        if ($name_error !== '') {
             $liveform->add_fields_to_session(array('trim' => false));
-            $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
+            $liveform->mark_error('name', $name_error);
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_common_region.php?id=' . $id);
             exit();
         }
