@@ -7194,8 +7194,8 @@ function init_edit_comment_publish() {
 function toggle_calendar_event_all_day() {
     // If all day is checked, then prepare start and end date fields to just contain dates.
     if (document.getElementById('all_day').checked == true) {
-        document.getElementById('start_time_label').style.display = 'none';
-        document.getElementById('end_time_label').style.display = 'none';
+        document.getElementById('start_time_suffix').style.display = 'none';
+        document.getElementById('end_time_suffix').style.display = 'none';
         document.getElementById('show_start_time_container').style.display = 'none';
         document.getElementById('show_end_time_container').style.display = 'none';
 
@@ -7217,8 +7217,8 @@ function toggle_calendar_event_all_day() {
 
         // Otherwise all day is not checked, so prepare start and end date fields to contain both dates and times.
     } else {
-        document.getElementById('start_time_label').style.display = '';
-        document.getElementById('end_time_label').style.display = '';
+        document.getElementById('start_time_suffix').style.display = '';
+        document.getElementById('end_time_suffix').style.display = '';
         document.getElementById('show_start_time_container').style.display = '';
         document.getElementById('show_end_time_container').style.display = '';
 

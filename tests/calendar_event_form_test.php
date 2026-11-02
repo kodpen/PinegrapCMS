@@ -153,3 +153,82 @@ function test_calendar_event_form_uses_the_edit_screen_layout()
 		pg_assert_contains('<div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">', $screen, $file . ' puts its save bar in its own sticky column');
 	}
 }
+
+function test_calendar_event_form_check_window_reads_the_day_month_order()
+{
+	if (!defined('DATE_FORMAT')) {
+		define('DATE_FORMAT', 'day_month');
+	}
+
+	if (DATE_FORMAT !== 'day_month') {
+		return;
+	}
+
+	// strtotime() read '15/12/2026 10:00' as false and '05/12/2026' as 12 May.
+	pg_assert_same(array('start' => '2026-12-15 10:00', 'end' => '2026-12-15 12:30'), pg_calendar_event_form_check_window('15/12/2026 10:00', '15/12/2026 12:30'));
+	pg_assert_same(array('start' => '2026-12-05 10:00', 'end' => '2026-12-05 12:30'), pg_calendar_event_form_check_window('05/12/2026 10:00 AM', '05/12/2026 12:30 PM'));
+
+	// An all day event carries 12:00 AM and 11:59 PM.
+	pg_assert_same(array('start' => '2026-12-15 00:00', 'end' => '2026-12-16 23:59'), pg_calendar_event_form_check_window('15/12/2026 12:00 AM', '16/12/2026 11:59 PM'));
+}
+
+function test_calendar_event_form_non_repeating_location_check_uses_the_converted_window()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/calendar_event_form.php');
+
+	pg_assert_contains("\$check_window['start'], \$check_window['end'], \$calendar_event_id);", $source, 'the non-repeating check is given Y-m-d times');
+	pg_assert_true(strpos($source, '$calendar_event_location, $start_time, $end_time, $calendar_event_id') === false, 'the raw form value no longer reaches the check');
+}
+
+function test_calendar_event_form_whole_numbers_refuse_signs_decimals_and_overflow()
+{
+	pg_assert_true(pg_calendar_event_whole_number_ok('3', 1, 999999999));
+	pg_assert_true(pg_calendar_event_whole_number_ok(' 65535 ', 0, 65535));
+	pg_assert_true(pg_calendar_event_whole_number_ok('0', 0, 65535));
+	pg_assert_false(pg_calendar_event_whole_number_ok('0', 1, 999999999), 'a repeat count starts at 1');
+	pg_assert_false(pg_calendar_event_whole_number_ok('2.5', 1, 999999999), '2.5 was stored as 3');
+	pg_assert_false(pg_calendar_event_whole_number_ok('2,5', 1, 999999999));
+	pg_assert_false(pg_calendar_event_whole_number_ok('-12', 0, 999999999), '-12 was stored as 0');
+	pg_assert_false(pg_calendar_event_whole_number_ok('abc', 0, 999999999));
+	pg_assert_false(pg_calendar_event_whole_number_ok('', 0, 999999999));
+	pg_assert_false(pg_calendar_event_whole_number_ok('99999', 0, 65535), '99999 unpublish days was stored as 65535');
+	pg_assert_false(pg_calendar_event_whole_number_ok('99999999999999999999', 0, 999999999));
+	pg_assert_false(pg_calendar_event_whole_number_ok(array('1'), 0, 9));
+}
+
+function test_calendar_event_form_number_fields_take_no_minus_or_decimals()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/calendar_event_form.php');
+
+	pg_assert_true(strpos($source, "'data-inputmask-alias'=>'decimal'") === false, 'no decimal mask on a count');
+	pg_assert_same(4, substr_count($source, "'data-inputmask-allowminus'=>'false'"), 'repeat, unpublish and both spots fields take no minus');
+}
+
+function test_calendar_event_form_time_suffix_has_its_own_id()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/calendar_event_form.php');
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
+
+	// pg_fields.js names a label without an id <field>_label: the suffix
+	// span with that id made the all day switch hide the whole label.
+	pg_assert_true(strpos($source, 'id="start_time_label"') === false && strpos($source, 'id="end_time_label"') === false);
+	pg_assert_contains('<span id="start_time_suffix">', $source);
+	pg_assert_contains("getElementById('start_time_suffix')", $script);
+	pg_assert_true(strpos($script, "getElementById('start_time_label')") === false);
+}
+
+function test_calendar_event_form_reservations_switch_reruns_the_repeat_toggle()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/calendar_event_form.php');
+
+	pg_assert_contains("'id' => 'reservations', 'name' => 'reservations', 'value' => '1', 'class' => 'collapse-switcher no-bs', 'onclick' => 'toggle_calendar_event_recurrence()'", $source, 'Repeat then Reservations shows the separate reservations row');
+}
+
+function test_calendar_event_edit_screen_clears_the_saved_form_before_send_to()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_calendar_event.php');
+	$clear = strpos($source, "\$send_to = \$liveform->get_field_value('send_to');\n        \$liveform->remove_form();");
+
+	pg_assert_true($clear !== false, 'the form leaves the session on save');
+	pg_assert_true($clear < strpos($source, 'pg_safe_redirect_path($send_to)'), 'before the send_to redirect');
+}

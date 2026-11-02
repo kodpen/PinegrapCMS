@@ -23,41 +23,56 @@ validate_calendars_access($user);
 
 validate_token_field();
 
+// The calendar's Remove and Unremove links pass all three; anything else
+// (a missing id, an unknown action) gets an error screen, not a warning and
+// a blank page.
+$request = pg_calendar_event_exception_request($_GET);
+
+if ($request === null) {
+    output_error(lang('Record not found.'));
+}
+
+$action = $request['action'];
+$calendar_event_id = $request['calendar_event_id'];
+$recurrence_number = $request['recurrence_number'];
+
 // Make sure that the user should be able to update a calendar exception before any data is processed.
-if (validate_calendar_event_access($_GET['calendar_event_id']) == false) {
+if (validate_calendar_event_access($calendar_event_id) == false) {
     log_activity(lang('access denied to edit calendar event exception because user does not have access to calendar that the calendar event is in'), $_SESSION['sessionusername']);
     output_error(lang('Access denied.'));
+}
+
+$result = db_q("SELECT published, recurrence, recurrence_number FROM calendar_events WHERE id = ?", array((string) $calendar_event_id)) or output_error('Query failed.');
+$event = mysqli_fetch_assoc($result);
+
+// Only an instance the repeating event has can be removed or unremoved.
+if (!$event || !pg_calendar_event_exception_number_ok($recurrence_number, $event['recurrence'], $event['recurrence_number'])) {
+    output_error(lang('Record not found.'));
 }
 
 // if user is a basic user and user does not have access to publish calendar events then check if calendar event is published
 // in order to check if the user should be able to edit exceptions for this calendar event
 if (($user['role'] == 3) && ($user['publish_calendar_events'] == FALSE)) {
-    // check to see if the calendar event has been published
-    $query = "SELECT published FROM calendar_events WHERE id = ?";
-    $result = db_q($query, array((string) $_GET['calendar_event_id'])) or output_error('Query failed.');
-    $row = mysqli_fetch_assoc($result);
-    
     // if the event has been published then log and output error
-    if ($row['published'] == '1') {
+    if ($event['published'] == '1') {
         log_activity(lang('access denied to edit calendar event exception for a published calendar event because user does not have publish rights to calendar events'), $_SESSION['sessionusername']);
         output_error(lang('Access denied.'));
     }
 }
 
-// Make sure that all variables required were passed.
-if (
-    (isset($_GET['action']))
-    && (isset($_GET['calendar_event_id'])) 
-    && (isset($_GET['recurrence_number']))
-    ) {
-    // Convert the GET requests to variables for easy use.
-    $action = $_GET['action'];
-    $calendar_event_id = $_GET['calendar_event_id'];
-    $recurrence_number = $_GET['recurrence_number'];
-    
+if ($request !== null) {
     // Switch based on the action= passed in the query string
     switch ($action) {
         case 'create':
+            // A second click or a reload removes nothing more: the table
+            // has no unique key on the pair, so it would hold a second row.
+            $result = db_q("SELECT 1 FROM calendar_event_exceptions WHERE (calendar_event_id = ?) AND (recurrence_number = ?) LIMIT 1", array((string) $calendar_event_id, (string) $recurrence_number)) or output_error('Query failed.');
+
+            if (mysqli_num_rows($result) > 0) {
+                header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/calendars.php');
+                break;
+            }
+
             // Insert the exception into the database.
             $query =
                 "INSERT INTO calendar_event_exceptions (
