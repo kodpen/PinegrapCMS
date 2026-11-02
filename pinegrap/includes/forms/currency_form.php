@@ -118,6 +118,30 @@ function pg_currency_form_exchange_rate($posted, $base)
 }
 
 /**
+ * The message for a posted exchange rate a non-base currency cannot be
+ * saved with, or ''. An empty, non-numeric, negative or zero rate (or one
+ * that rounds to zero at the column's five decimals) is stored as 0, and the
+ * storefront divides a donation by the visitor currency's rate, which stops
+ * the page on PHP 8. The base currency is always saved with 1.
+ *
+ * @param mixed $posted
+ * @param mixed $base
+ * @return string
+ */
+function pg_currency_form_exchange_rate_error($posted, $base)
+{
+    if ($base == 1) {
+        return '';
+    }
+
+    $exchange_rate = is_scalar($posted) ? pg_currency_form_exchange_rate((string) $posted, '') : '';
+
+    return (is_numeric($exchange_rate) && ((float) $exchange_rate > 0))
+        ? ''
+        : lang('Enter an exchange rate greater than zero.');
+}
+
+/**
  * Takes the base flag from every currency but the given one, so only one
  * currency is the base.
  *

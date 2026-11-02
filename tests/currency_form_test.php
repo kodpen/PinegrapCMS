@@ -26,6 +26,21 @@ function test_currency_form_exchange_rate()
 	pg_assert_same('', pg_currency_form_exchange_rate('', ''), 'an empty rate stays empty');
 }
 
+function test_currency_form_exchange_rate_error()
+{
+	$message = lang('Enter an exchange rate greater than zero.');
+
+	pg_assert_same('', pg_currency_form_exchange_rate_error('1.5', ''), 'a positive rate is accepted');
+	pg_assert_same('', pg_currency_form_exchange_rate_error('0,00006', '0'), 'a small masked rate is accepted');
+	pg_assert_same('', pg_currency_form_exchange_rate_error('', '1'), 'the base currency needs no rate (it is saved as 1)');
+	pg_assert_same($message, pg_currency_form_exchange_rate_error('', ''), 'an empty rate is refused: it is saved as 0');
+	pg_assert_same($message, pg_currency_form_exchange_rate_error('0', '0'), 'a zero rate is refused: checkout divides by it');
+	pg_assert_same($message, pg_currency_form_exchange_rate_error('0.000001', ''), 'a rate that rounds to 0 at five decimals is refused');
+	pg_assert_same($message, pg_currency_form_exchange_rate_error('-2', ''), 'a negative rate is refused');
+	pg_assert_same($message, pg_currency_form_exchange_rate_error('abc', ''), 'a non-numeric rate is refused');
+	pg_assert_same($message, pg_currency_form_exchange_rate_error(array('1'), ''), 'a non-scalar rate is refused');
+}
+
 function test_currency_form_screens_use_shared_form()
 {
 	foreach (array('add_currency.php', 'edit_currency.php') as $file) {
@@ -35,6 +50,7 @@ function test_currency_form_screens_use_shared_form()
 		pg_assert_contains('pg_currency_form_card($liveform)', $source, $file . ' prints the shared card');
 		pg_assert_contains('pg_currency_form_code_in_use(', $source, $file . ' checks the code the shared way');
 		pg_assert_contains('pg_currency_form_exchange_rate(', $source, $file . ' saves the rate the shared way');
+		pg_assert_contains('pg_currency_form_exchange_rate_error(', $source, $file . ' refuses a rate that is not above zero');
 		pg_assert_contains('validate_token_field()', $source, $file . ' checks the token');
 		pg_assert_contains('validate_ecommerce_access($user)', $source, $file . ' keeps the commerce gate');
 		pg_assert_false(strpos($source, "'id'=>'exchange_rate'") !== false, $file . ' keeps no copy of the card');
