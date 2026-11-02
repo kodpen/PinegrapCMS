@@ -143,19 +143,14 @@ function pg_contact_form_commission_rate_value($rate)
 }
 
 /**
- * The name card and the picture card.
+ * The name card of the form column.
  *
- * @param array $values      The stored contact (raw values), array() for a new one
+ * @param array $values The stored contact (raw values), array() for a new one
  * @param bool $is_new
- * @param string $image_html The current picture's markup, '' for none
  * @return string
  */
-function pg_contact_form_name_row($values, $is_new, $image_html)
+function pg_contact_form_name_card($values, $is_new)
 {
-    // The edit screen posts the picked file under file_id, which also holds
-    // the stored picture; the create screen keeps the picker's own name.
-    $picker = 'software_image_picker({initialize:true,SingleImage:true' . ($is_new ? '' : ',file_input_name:\'file_id\'') . '});';
-
     $output_fields = '';
 
     $fields = array(
@@ -168,16 +163,14 @@ function pg_contact_form_name_row($values, $is_new, $image_html)
 
     foreach ($fields as $name => $label) {
         $output_fields .= '
-                                        <div class="col-12 md:col-4 my-3">
+                                        <div class="col-12 md:col-6 xl:col-4 my-3">
                                             <label for="' . $name . '" class="form-label">' . $label . '</label>
                                             <input value="' . pg_contact_form_value($values, $name) . '" type="text" name="' . $name . '" id="' . $name . '" class="form-control" size="30" maxlength="50" />
                                         </div>';
     }
 
     return '
-                    <div class="row justify-content-center">
-                        <div class="col-12 sm:col sm:order-2 align-self-end">
-                            <div class="card my-7">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . ($is_new ? lang('New Contact\'s Name') : lang('Contact\'s Name')) . '
                                 </h2>
@@ -185,15 +178,65 @@ function pg_contact_form_name_row($values, $is_new, $image_html)
                                     <div class="row">' . $output_fields . '
                                     </div>
                                 </div>
+                            </div>';
+}
+
+/**
+ * The picture card of the status column.
+ *
+ * @param bool $is_new
+ * @param string $image_html The current picture's markup, '' for none
+ * @return string
+ */
+function pg_contact_form_picture_card($is_new, $image_html)
+{
+    // The edit screen posts the picked file under file_id, which also holds
+    // the stored picture; the create screen keeps the picker's own name.
+    $picker = 'software_image_picker({initialize:true,SingleImage:true' . ($is_new ? '' : ',file_input_name:\'file_id\'') . '});';
+
+    return '
+                                <div class="card mb-7 display-on-hover overflow-hidden position-relative">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Picture') . '
+                                    </h2>
+                                    <div class="card-body py-0">
+                                        <div id="software_image_picker_container" ondblclick="' . $picker . '" class="user-select-none sortable-list img-list bg-1 rounded-4 p-3 mx-0 mt-0 row g-7">' . $image_html . '</div>
+                                    </div>
+                                    <div class="card-footer border-0 bg-transparent">
+                                        <button type="button" class="btn"  onclick="' . $picker . '"><span class="material-icons me-3">image_search</span>' . lang('Change Image') . '</button>
+                                    </div>
+                                </div>';
+}
+
+/**
+ * The edit screen layout (ui/edit-screen-wide-layout.md): the form column
+ * with the cards the operator fills, the status column whose box sticks
+ * below the 50px top bar, and the sticky save bar. Below lg the status
+ * column follows the form column, so the name fields stay first on a phone.
+ *
+ * @param string $form_html    The form column's cards
+ * @param string $status_html  The status column's cards
+ * @param string $buttons_html The save bar's buttons
+ * @return string
+ */
+function pg_contact_form_layout($form_html, $status_html, $buttons_html)
+{
+    return '
+                    <div class="row">
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">' . $form_html . '
+                        </div>
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                            <div class="position-sticky" style="top:3.3rem;">' . $status_html . '
                             </div>
                         </div>
-                        <div class="col-auto sm:order-1 ">
-                            <div class="card my-7 display-on-hover overflow-hidden position-relative" style="width:200px;height:auto;">
-                                <div id="software_image_picker_container" ondblclick="' . $picker . '" class="user-select-none sortable-list img-list bg-1 rounded-4 p-3 row g-7">' . $image_html . '</div>
-                                <div class="card-footer border-0 bg-transparent">
-                                    <button type="button" class="btn"  onclick="' . $picker . '"><span class="material-icons me-3">image_search</span>' . lang('Change Image') . '</button>
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class="btn-group flex-wrap justify-content-center">' . $buttons_html . '
+                                    </div>
                                 </div>
-                            </div>
+                            </nav>
                         </div>
                     </div>';
 }
@@ -234,7 +277,7 @@ function pg_contact_form_keyboard_attributes($keyboard)
 function pg_contact_form_text_field($values, $name, $label, $maxlength, $keyboard = '')
 {
     return '
-                                        <div class="col-12 md:col-4 my-3">
+                                        <div class="col-12 md:col-6 xl:col-4 my-3">
                                             <label for="' . $name . '" class="form-label">' . $label . '</label>
                                             <input value="' . pg_contact_form_value($values, $name) . '" type="text" name="' . $name . '" id="' . $name . '" class="form-control" maxlength="' . (int) $maxlength . '"' . pg_contact_form_keyboard_attributes($keyboard) . ' />
                                         </div>';
@@ -310,8 +353,8 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
 
     return '
                     <div class="row">
-                        <div class="col-12 ">
-                            <div class="card my-7">
+                        <div class="col-12">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . ($is_new ? lang('New Contact\'s Work Information') : lang('Contact\'s Work Information')) . '
                                 </h2>
@@ -319,12 +362,12 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
                                     <div class="row">' . $output_work . '
                                     </div>
                                     <div class="row">' . $output_business . '
-                                        <div class="col-12 md:col-4 my-3">
+                                        <div class="col-12 md:col-6 xl:col-4 my-3">
                                             <label for="tax_number" class="form-label">VKN / TCKN</label>
                                             <input value="' . pg_contact_form_value($values, 'tax_number') . '" type="text" name="tax_number" id="tax_number" class="form-control" maxlength="11" inputmode="numeric" />
                                             <div class="form-text">' . lang('11-digit TCKN for individuals, 10-digit VKN for companies.') . '</div>
                                         </div>
-                                        <div class="col-12 md:col-4 my-3">
+                                        <div class="col-12 md:col-6 xl:col-4 my-3">
                                             <label for="tax_office" class="form-label">' . lang('Tax Office') . '</label>
                                             <input value="' . pg_contact_form_value($values, 'tax_office') . '" type="text" name="tax_office" id="tax_office" class="form-control" maxlength="100" />
                                         </div>
@@ -335,7 +378,7 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
                         </div>
 
                         <div class="col-12">
-                            <div class="card my-7">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . ($is_new ? lang('New Contact\'s Home Information') : lang('Contact\'s Home Information')) . '
                                 </h2>
@@ -346,8 +389,8 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
                             </div>
                         </div>
 
-                        <div class="col-12 md:col-6">
-                            <div class="card my-7">
+                        <div class="col-12 xl:col-6">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Membership Access') . '
                                 </h2>
@@ -368,8 +411,8 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 md:col-6">
-                            <div class="card my-7">
+                        <div class="col-12 xl:col-6">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Additional Notes') . '
                                 </h2>
@@ -388,7 +431,7 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
                         ' . pg_contact_form_affiliate_card($values) . '
 
                         <div class="col-12">
-                            <div class="card my-7">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Contact Groups & Subscriptions') . '
                                 </h2>
@@ -415,7 +458,7 @@ function pg_contact_form_affiliate_card($values)
     }
 
     return '<div class="col-12">
-            <div class="card my-7">
+            <div class="card mb-7">
                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('Affiliate Information') . '
                 </h2>
@@ -428,7 +471,7 @@ function pg_contact_form_affiliate_card($values)
                                 <label class="" for="affiliate_approved">' . lang('Approved') . '</label>
                             </div>
                         </div>
-                        <div class="col-12 md:col-3 my-3">
+                        <div class="col-12 md:col-6 xl:col-3 my-3">
                             <label for="affiliate_name" class="form-label">' . lang('Affiliate Name') . '</label>
                             <input value="' . pg_contact_form_value($values, 'affiliate_name') . '" type="text" name="affiliate_name" id="affiliate_name" class="form-control" maxlength="100" />
                         </div>
@@ -437,7 +480,7 @@ function pg_contact_form_affiliate_card($values)
                             <input value="' . pg_contact_form_value($values, 'affiliate_code') . '" type="text" name="affiliate_code" id="affiliate_code" class="form-control" maxlength="100" />
                             <div class="form-text text-end">' . lang('leave blank to generate a code when the affiliate is approved') . '</div>
                         </div>
-                        <div class="col-12 md:col-3 my-3">
+                        <div class="col-12 md:col-6 xl:col-3 my-3">
                             <label for="affiliate_commission_rate" class="form-label">' . lang('Commission Rate') . '</label>
                             <label class="form-control form-adorn form-adorn-end">
                                 <span class="form-adorn-text" aria-hidden="true">%</span>
@@ -541,7 +584,7 @@ function pg_contact_form_group_cells($contact_groups, $states)
         }
 
         $output .=
-        '<div class="col-12 md:col-4 my-3">
+        '<div class="col-12 md:col-6 xl:col-4 my-3">
             <div class="form-field">
                 <div class="switch"><input type="checkbox" name="contact_group_' . $id . '" id="contact_group_' . $id . '" value="1" class="collapse-switcher"' . ($state['in'] ? ' checked="checked"' : '') . $contact_group_target . '/></div>
                 <label class="" for="contact_group_' . $id . '"> ' . h($contact_group['name']) . '</label>
