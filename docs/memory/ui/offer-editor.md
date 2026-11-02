@@ -13,6 +13,10 @@ description: Offer editor (edit_offer.php, offer_editor.js) rules: single JSON s
 - Type registries are two-sided. A new condition/result type goes into `_pg_offer_condition_types()` / `_pg_offer_action_types()` AND the JS side; if either is missing the type can neither be added nor saved.
 - Children first, `offers` last. No transaction (the code opens none, and a table over the 2026.4.8 limits may still be MyISAM: `data/table-engines-and-row-size.md`); validation (`_pg_offer_validate()`) finishes without writing anything, so the write order is never broken.
 
+## How are a save's errors shown?
+- Client checks (`conditionClientError()` / `actionClientError()`) alone disable Save; a server message (`serverErrors`, keyed `actions.2.value`) is only shown under its row. Editing a row drops its message; removing a row drops it and moves later rows' messages up (`dropRowErrors()`). Before, a server message locked Save until a reload (#5507).
+- Nothing is silently changed: a fractional percentage is refused (`_pg_offer_percent()`, columns are whole, #5511), two ladder rungs at one amount or a rung out of 1-100 are refused (`_pg_offer_clean_tiers()`, #5508), and amounts and counts above `PG_OFFER_MAX_NUMBER` (2147483647) are refused: MySQL outside strict mode cut them to the column's limit (#5510). The up-sell triggers are not bounded yet.
+
 ## How is the currency symbol handled?
 - `BASE_CURRENCY_SYMBOL` holds HTML as an entity (`&#8378;`). Output to screen and JSON goes through `_pg_offer_currency()` (i.e. `html_entity_decode`); printing the raw constant prints the literal `&#8378;`.
 
