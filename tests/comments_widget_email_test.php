@@ -1085,7 +1085,9 @@ function test_comments_widget_email_page_without_widget_unchanged()
 		}
 	}
 
-	pg_assert_same(array('includes/fn/widgets_comments.php' => 2), $claims, 'two calls, both in the comments widget');
+	// The e-mail claim, the live claim, and the live claim of a widget that
+	// shows a product's questions.
+	pg_assert_same(array('includes/fn/widgets_comments.php' => 3), $claims, 'three calls, all in the comments widget');
 	pg_assert_contains('pg_comments_widget_claim($page_id)', comments_widget_email_test_php_body('_render_system_widget_comments'), 'one in the live renderer');
 	pg_assert_contains('pg_comments_widget_claim($email_page)', comments_widget_email_test_php_body('_pg_comments_widget_email'), 'one in the e-mail branch');
 

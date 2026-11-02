@@ -104,7 +104,12 @@ $review = pg_review_gate_applies($item_type, $item_id);
 $verified_order_id = (int) $row['verified_order_id'];
 $seller_reply = (string) $row['seller_reply'];
 $seller_reply_at = (int) $row['seller_reply_at'];
-$reply_allowed = $review && pg_review_replies_ready();
+// A product question and its staff answer (includes/fn/product_questions.php):
+// a question is answered here, never replied to as a review.
+$question_state = pg_product_question_state($comment_id);
+$comment_kind = $question_state['kind'];
+$question_answer = $question_state['answer'];
+$reply_allowed = $review && pg_review_replies_ready() && ($comment_kind === 'comment');
 
 
 $form_reference_code = '';
@@ -174,6 +179,7 @@ if (!$_POST) {
         $liveform->assign_field_value('message', $message);
         $liveform->assign_field_value('rating', $rating);
         $liveform->assign_field_value('seller_reply', $seller_reply);
+        $liveform->assign_field_value('question_answer', ($question_answer !== null) ? (string) $question_answer['message'] : '');
 
         if ($published) {
             $liveform->assign_field_value('publish', 'published');
@@ -253,7 +259,9 @@ if (!$_POST) {
     $output_review_line = '';
     $output_seller_reply_field = '';
 
-    if ($review) {
+    if ($comment_kind !== 'comment') {
+        $output_review_line = '<p class="p-0 m-0">' . h(pg_product_question_badge($comment_kind, $question_answer !== null)) . '</p>';
+    } elseif ($review) {
         if ($verified_order_id > 0) {
             $order = db_item("SELECT id, order_number FROM orders WHERE id = '" . $verified_order_id . "'");
 
@@ -283,6 +291,17 @@ if (!$_POST) {
                 <label for="seller_reply" class="form-label">' . lang('Reply from the store') . '</label>
                 ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'seller_reply', 'id'=>'seller_reply', 'rows'=>'3', 'maxlength'=>'5000', 'class'=>'form-control')) . '
                 <div class="form-text">' . (($seller_reply_at > 0) ? lang(array('string' => 'Replied {var:1}.', 'vars' => array(get_relative_time(array('timestamp' => $seller_reply_at))))) . ' ' : '') . lang('Shown under the review, with the date it was written.') . '</div>
+            </div>';
+    }
+
+    // The staff answer to a product question: published with the question,
+    // shown under it; emptied, the answer is removed.
+    if ($comment_kind === 'question') {
+        $output_seller_reply_field = '
+            <div class="col-12 my-3">
+                <label for="question_answer" class="form-label">' . lang('Answer') . '</label>
+                ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'question_answer', 'id'=>'question_answer', 'rows'=>'3', 'maxlength'=>'5000', 'class'=>'form-control')) . '
+                <div class="form-text">' . lang('Shown under the question as the store\'s answer. Leave it empty to remove the answer.') . '</div>
             </div>';
     }
 
@@ -489,6 +508,11 @@ if (!$_POST) {
         $query = "DELETE FROM notifications WHERE comment_id = ?";
         $result = db_q($query, array((string) ($liveform->get_field_value('id')))) or output_error('Query failed.');
 
+        // A question goes with its answer.
+        if ($comment_kind === 'question') {
+            db_q("DELETE FROM comments WHERE (answer_of = ?) AND (kind = 'answer')", array((string) (int) $comment_id));
+        }
+
         // A form record's comment count and newest comment, read by the form
         // lists (includes/fn/comments.php).
         pg_comment_refresh_record_info($page_id, $item_type, $item_id);
@@ -609,6 +633,16 @@ if (!$_POST) {
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
         log_activity( lang(array('string'=>'comment on page ({var:1}) was modified','vars'=>get_page_name($page_id))), $_SESSION['sessionusername']);
+
+        // The staff answer to a product question, written under the name of
+        // the member of staff who answers.
+        if ($comment_kind === 'question') {
+            $answer_saved = pg_product_question_answer_save($comment_id, $liveform->get_field_value('question_answer'), (int) $user['id'], (string) ($user['username'] ?? ''));
+
+            if ($answer_saved !== '') {
+                log_activity(lang(array('string' => 'answer to a product question on page ({var:1}) was saved', 'vars' => get_page_name($page_id))), $_SESSION['sessionusername']);
+            }
+        }
 
         // A form record's comment count and newest comment, read by the form
         // lists (includes/fn/comments.php). Rebuilt before the e-mails below,
