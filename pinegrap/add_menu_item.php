@@ -55,7 +55,8 @@ $liveform = new liveform('add_menu_item');
 
 if (!$_POST) {
     // Setup picklist option variables
-    $parent_id_options = get_menu_item_options($_REQUEST['menu_id']);
+    // After a refused save the form shows the parent that was posted.
+    $parent_id_options = get_menu_item_options($menu_id, 0, 0, 1, (int) $liveform->get_field_value('parent_id'));
 
     if (!$liveform->output_errors()) {
         $liveform->remove_form();
@@ -70,7 +71,7 @@ if (!$_POST) {
         'cancel'=>array('enable'=>'true','url'=>'view_menu_items.php?id=' . (int)$menu_id . '&from=' . urlencode((string)($_GET['from'] ?? '')) . '&send_to=' . urlencode((string)($_GET['send_to'] ?? ''))),
         'breadcrumb' => array(
             array('label' => lang('All Menus'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menus.php'),
-            array('label' => lang('Edit Menu'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menu_items.php?id=' . $menu_id),
+            array('label' => lang('Edit Menu'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menu_items.php?id=' . (int) $menu_id . '&from=' . urlencode((string) ($_GET['from'] ?? '')) . '&send_to=' . urlencode((string) ($_GET['send_to'] ?? ''))),
             array('label' => lang('Create Menu Item')),
         ),
     ]) . '
