@@ -16,7 +16,7 @@ description: Module list of plans/bug-hunt.md, part 5: the single root endpoints
 
 - Endpoints health, get_help_url, update_imported_items, index, init, integration: open
 
-- Endpoints iys_job, edit_javascript, job, kiosk, legal_document, liveform.class: taken by a worker of Arzu
+- Endpoints iys_job, edit_javascript, job, kiosk, legal_document, liveform.class: done #5074 (job: page revisions sweep twice per tick; rest clean; lead: kiosk keeps an array dialog_message or button label, shown as "Array")
 
 - Endpoints get_llms.txt, local_sale, view_log, mailchimp, mass_edit, mcp: done #4987, #5051 (mass_edit; get_llms.txt, local_sale, view_log, mailchimp, mcp clean)
 

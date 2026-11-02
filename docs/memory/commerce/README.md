@@ -82,6 +82,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - express-order-recipient-loop-area.md: Express Order recipient_loop_area node for multi-recipient carts: designer usage, render pipeline, visibility flags, compatibility, structural rules.
 - express-order-recipient-tokens.md: Binding tokens available inside an Express Order recipient_loop_area (^^__recipient_*^^ text/href tokens) and how form inputs bind via eo_field.
 - express-order-tax-address.md: Which address the express order widget takes its tax on: prefill at render, eo_tax_totals on each address edit; no ship_tos write (#3326, PRs #3530, #3920)
+- express-order-tick-boxes.md: When the express order widget fills its billing tick boxes (opt_in, opt_in_sms, tax_exempt, update_contact), and the refused-submit fault it fixed.
 - express-order-widget-totals.md: Express order widget totals (designer pages) as submit_order() charges them: today's lines, order discount and its tax, gift cards, surcharge, shipping a kurus lower (pg_express_order_charged_totals)
 - form-fields-zero-id-query-trap.md: Product-form reads must pin form_type = 'product' (template rows have page_id and product_id 0); the deleted-product receipt bug and the empty-id rule.
 - gift-card-balance-edit.md: The gift card screen (edit_gift_card.php) writes the balance only when it was changed there, and only over the balance it opened with; why, and what a stale save sees
@@ -133,6 +134,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-completion-from-payment.md: pg_order_complete_from_payment() (A3, #3021; account A3b, #3035): a payment service's message completes an incomplete order the visitor left: why, values, lines, receipt, account, legal documents
 - order-completion-line-comments.md: Order completion stage functions for a line's comments, its e-mailed page and the product_ordered and order_completed campaigns (A2c4): inputs, unit rules, what changed
 - order-completion-lines.md: Per-line stage functions of the order completion (#2713, #2740, #2766, A2c3b): stock, reservations, membership, folder access, gift cards, product forms, submitted forms, watcher
+- order-completion-shipping-less.md: The recipient that gives up the shipping's minor units on a payment callback is lowered by a compare-and-set, so two callbacks lower it once
 - order-completion-stock-and-spots.md: What a completed order or local sale does to stock and event spots: fresh stock read before the decrement, the out_of_stock flag and bell, what is announced, event spots
 - order-completion.md: pg_order_complete() (#2638, every stage since #2972): the session-free completion of an incomplete order, the once-only lock, its context, what it writes in order
 - order-delete.md: What deleting an order removes (delete_order.php, the only DELETE FROM orders), the kept legal document copies among them, and who calls it
