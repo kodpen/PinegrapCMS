@@ -40,8 +40,10 @@ description: Steps N1-N14 of plans/new-dashboard.md: size, screens, order, which
 - N11 (M) Assistant and flows. Screens 01, 02, 15. `free` after N4.
   - `ai` connected and not connected, proposals, giving a job, the daily summary as question 3 decided; `flows` tiles, the current run, last runs with Approve and Retry through the flow endpoints.
 
-- N12 (M) Goals, pins, notes, performance, subscriptions. Screens 01, 04, 18, 19. `free` after N5.
-  - `goals` editor and rings, `pins`, `notes`, `perf`, `subs` (hidden until the vendor licence answers).
+- N12 (M) Goals, pins, notes, performance, subscriptions. Screens 01, 04, 18, 19. Cut in three.
+  - N12a (M) `goals` editor and rings, `notes`, the `dashboard_personal_save` action and the pin cleaning. done (#4981); `ui/dashboard-v2-personal-cards.md`.
+  - N12b (M) `pins` (tiles, "+ Pin" through `backend_search`) and `perf` (widget 23's queries and grade moved into helpers both call). `free` after N12a.
+  - N12c (S) `subs`, hidden until the vendor licence client answers (`plans/kodpen-vendor-api-client-steps.md`, P8).
 
 - N13 (S) Share with the team. Screen 10. `free` after N6.
   - `dashboard_role_default`, the section for role < 2, the lock in read and save, the chip.

@@ -679,6 +679,7 @@
     "Only workspace events can be narrowed to a channel group: {var:1}": "Yalnız Çalışma Alanı olayları bir kanal grubuyla sınırlanabilir: {var:1}",
     "Only you can see this": "Bunu yalnızca siz görebilirsiniz",
     "Only you can see this note.": "Bu notu yalnız siz görebilirsiniz.",
+    "Only you see these notes.": "Bu notları yalnızca siz görürsünüz.",
     "Only {var:1} in stock; lower the quantity.": "Stokta {var:1} adet var; miktarı düşürün.",
     "Only {var:1} in stock; no more can be added.": "Stokta {var:1} adet var; daha fazla eklenemez.",
     "Opacity": "Saydamlık",
@@ -1370,6 +1371,7 @@
     "of the required quantity": "bu kadar yakınsa göster",
     "of the required subtotal": "bu kadar yakınsa göster",
     "of which {var:1} estimated at today's average cost": "{var:1} tutarı bugünkü ortalama maliyetle tahmin edildi",
+    "of {var:1}": "/ {var:1}",
     "off": "kapalı",
     "off the order, by tier: {var:1}": "siparişe kademeli indirim: {var:1}",
     "off-topic, advertising, spam, self-promotion": "konu dışı, reklam, spam, kendini tanıtma",
@@ -1459,6 +1461,7 @@
     "our-menu": "menumuz",
     "our-speakers": "konusmacilar",
     "over the device limit": "cihaz sınırı aşıldı",
+    "over {var:1} ms": "{var:1} ms üzeri",
     "overdue only": "yalnız gecikenler",
     "owes you": "size borçlu"
 }

@@ -49,7 +49,7 @@ function test_dashboard_v2_cards_asked_cleans_the_request()
 // answers denied without loading its file.
 function test_dashboard_v2_card_run_denies()
 {
-	pg_assert_same('denied', pg_dashboard_v2_card_run('goals', array('id' => 1, 'role' => 0), 0, 0)['status'], 'not built');
+	pg_assert_same('denied', pg_dashboard_v2_card_run('subs', array('id' => 1, 'role' => 0), 0, 0)['status'], 'not built');
 	pg_assert_same('denied', pg_dashboard_v2_card_run('engagement', array('id' => 1, 'role' => 3, 'manage_visitors' => 1), 0, 0)['status'], 'gate');
 	pg_assert_same('denied', pg_dashboard_v2_card_run('nope', array('id' => 1, 'role' => 0), 0, 0)['status'], 'unknown');
 }

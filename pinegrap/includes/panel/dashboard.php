@@ -21,6 +21,9 @@
  *                                (includes/dashboard/v2/run.php)
  *   dashboard_layout_save        the caller's new dashboard layout and look
  *                                (includes/dashboard/v2/layout.php)
+ *   dashboard_personal_save      the caller's goals, pins or notes on the
+ *                                new dashboard (includes/dashboard/v2/
+ *                                personal.php)
  *   tour_seen                    a guided tour has been watched or skipped
  *   contact_quick_save           the account menu's quick form for one's own
  *                                name
@@ -358,6 +361,35 @@ function pg_panel_dashboard_layout_save($request, $action)
     }
 
     respond(array('status' => 'success', 'layout' => $layout));
+}
+
+function pg_panel_dashboard_personal_save($request, $action)
+{
+    // Every panel role keeps its own goals, pins and notes; the session and
+    // the token are checked here, the row written is the caller's own.
+    if (!USER_LOGGED_IN) {
+        respond(panel_login_refusal());
+    }
+
+    validate_token();
+
+    global $user;
+    $user = validate_user();
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/layout.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/personal.php');
+
+    if (pg_dashboard_v2_role_locked((int) $user['role'])) {
+        respond(array('status' => 'error', 'message' => lang('Your dashboard layout is locked by an administrator.')));
+    }
+
+    $saved = pg_dashboard_v2_personal_save($user, (string) ($request['part'] ?? ''), $request['value'] ?? null);
+
+    if ($saved === null) {
+        respond(array('status' => 'error', 'message' => lang('The change could not be saved.')));
+    }
+
+    respond(array('status' => 'success', 'value' => $saved['value']));
 }
 
 function pg_panel_update_dashboard_appearance($request, $action)

@@ -51,7 +51,7 @@ function pg_dashboard_v2_goal_metrics()
         'files'       => array('label' => lang('Files uploaded'), 'gate' => 'files'),
         'tasks_done'  => array('label' => lang('Tasks done'), 'gate' => 'workspace'),
         'orders'      => array('label' => lang('Orders'), 'gate' => 'shop'),
-        'revenue'     => array('label' => lang('Revenue'), 'gate' => 'shop'),
+        'revenue'     => array('label' => lang('Revenue'), 'gate' => 'shop_summary'),
     );
 }
 
