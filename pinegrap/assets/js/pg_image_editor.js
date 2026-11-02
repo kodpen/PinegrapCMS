@@ -715,6 +715,8 @@
     };
 
     Editor.prototype.onResize = function () {
+        this.fitRail();
+
         if (this.fitMode) {
             this.fit();
         }
@@ -969,7 +971,30 @@
                 this.layersBtn = button('pgie-tool pgie-layersbtn', t('layers'), 'layers', function () { self.toggleLayers(); }, true);
                 host.appendChild(this.layersBtn);
             }
+
+            this.fitRail();
         }
+    };
+
+    // A rail too short for its buttons draws them closer, then keeps only
+    // their icons (each button's title still names it). What does not fit
+    // even then scrolls, under the Layers button that stays at the foot
+    // (pg_image_editor.src.css). Run on a new rail and on a resize only, as
+    // it measures the rail.
+    Editor.prototype.fitRail = function () {
+        var rail = this.rail;
+
+        if (!rail || this.tools.mini) {
+            return;
+        }
+
+        rail.classList.remove('pgie-rail-tight', 'pgie-rail-icons');
+
+        ['pgie-rail-tight', 'pgie-rail-icons'].forEach(function (cls) {
+            if (rail.scrollHeight > rail.clientHeight + 1) {
+                rail.classList.add(cls);
+            }
+        });
     };
 
     Editor.prototype.pickTool = function (id) {
