@@ -364,6 +364,7 @@
     "Left empty, the link works for {var:1} days. The customer gets no reminder.": "Boş bırakılırsa bağlantı {var:1} gün geçerli olur. Müşteriye hatırlatma gönderilmez.",
     "Left empty, the stock is not tracked, unless {var:1} is set to Yes: then it is tracked from 0.": "Boş bırakılırsa stok takip edilmez; {var:1} Evet yapılırsa stok 0'dan takip edilir.",
     "Left empty, the task has no due date.": "Boş bırakılırsa görevin bitiş tarihi olmaz.",
+    "Left empty, the transcripts' key is used.": "Boş bırakılırsa dökümlerin anahtarı kullanılır.",
     "Left empty, {var:1} is counted.": "Boş bırakılırsa {var:1} sayılır.",
     "Left empty: {var:1}": "Boş kalanlar: {var:1}",
     "Left for the buyer to declare and pay.": "Alıcı beyan eder ve öder.",

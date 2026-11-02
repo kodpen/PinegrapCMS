@@ -876,6 +876,7 @@
     "No items in cart.": "Sepette ürün yok.",
     "No items were found for {var:1}.": "{var:1} için hiçbir öğe bulunamadı.",
     "No items were found for: {var:1}": "{var:1} için ürün bulunamadı",
+    "No key is entered for the speech service.": "Konuşma hizmeti için anahtar girilmemiş.",
     "No key is entered for the transcription service.": "Yazıya dökme hizmeti için anahtar girilmedi.",
     "No key stored": "Anahtar kayıtlı değil",
     "No layers yet.": "Henüz katman yok.",
