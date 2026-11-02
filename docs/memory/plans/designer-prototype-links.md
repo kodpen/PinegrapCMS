@@ -32,4 +32,4 @@ description: Plan (2026-10-24; ready to start, owner 2026-11-01): a Figma/XD-lik
 5. Breakpoint: desktop width, collapsed navbars shown as their links.
 
 ## Where to start?
-- Ready now: slice 1, its first PR graph-canvas-core slice 4. Read designer/README.md, designer/designer-canvas-links.md, designer/record-value-page-links.md, designer/shared-component-model.md, designer/designer-content-roles-save-gate.md; claim before code.
+- Ready now: slice 1 (graph-canvas-core 4 done in #5401). Read designer/README.md, designer/designer-canvas-links.md, designer/record-value-page-links.md, designer/shared-component-model.md, designer/designer-content-roles-save-gate.md; claim before code.
