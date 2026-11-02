@@ -146,9 +146,17 @@ function pg_audit_view_condition(array $filters, $names = null)
         $params[] = (string) (int) $filters['id'];
     }
 
+    // A number is a user's id, or the whole of a username made of digits:
+    // a line's "who" link passes the name, and nothing forbids such a name.
     if ($filters['user'] !== '') {
-        $where[] = ctype_digit($filters['user']) ? 'user_id = ?' : 'username LIKE ?';
-        $params[] = ctype_digit($filters['user']) ? (string) (int) $filters['user'] : '%' . pg_audit_view_like($filters['user']) . '%';
+        if (ctype_digit($filters['user'])) {
+            $where[] = 'user_id = ? OR username = ?';
+            $params[] = (string) (int) $filters['user'];
+            $params[] = $filters['user'];
+        } else {
+            $where[] = 'username LIKE ?';
+            $params[] = '%' . pg_audit_view_like($filters['user']) . '%';
+        }
     }
 
     if ($filters['q'] !== '') {

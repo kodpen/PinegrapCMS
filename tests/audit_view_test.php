@@ -85,7 +85,9 @@ function test_audit_view_where()
 		'all filters'
 	);
 
-	pg_assert_same("(user_id = '7')", pg_audit_view_where(pg_audit_view_filters(array('user' => '7')), 'addslashes'), 'user id');
+	// A number is a user id or a username made of digits: the "who" link of
+	// an account named 2024 passes its name.
+	pg_assert_same("(user_id = '7' OR username = '7')", pg_audit_view_where(pg_audit_view_filters(array('user' => '7')), 'addslashes'), 'user id or digit username');
 }
 
 // Each stored form of a value is shown as its kind.

@@ -11,6 +11,7 @@ module: audit_list
 
 ## Where do the filters live?
 - In the address, as before (links on a line narrow the list from the filters it was drawn with). The screen sends them in `data-pg-list-params` as `{"filters": {...}}`, nested because a filter is called `action` like the panel action; the action checks them again with `pg_audit_view_filters()`. The old `page` parameter is ignored.
+- The User filter (and a line's "who" link, which passes the username, or `#id` as the id when there is none): words match the username with LIKE; digits match `user_id` or the whole username, since a username may be all digits (before #5145 only the id, so such an account's link showed someone else's lines).
 - Every query binds its values: `pg_audit_view_condition()` gives the filters as `?` placeholders; `pg_audit_view_where()` (the API) writes the same values in with `pg_db_bind()`. A `?` inside a value never breaks a `db_q()` template.
 
 ## How is it sorted and searched?
