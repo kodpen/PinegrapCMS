@@ -21,9 +21,9 @@ description: Plan (owner 2026-11-02): recordings reach every assistant in channe
 - Claude's routine reads text and images and cannot hear a sound file. The recording is therefore written out before the request, either by the site's service or on the sender's device.
 - A spoken answer is the assistant's own voice message: an audio file with a `done` `ws_voice` row whose transcript is the answer's text. Search, recaps, bells and the player therefore work unchanged. Speech settings are `config_text` rows like the transcript key, so no schema change is needed.
 
-## Which questions are open? (#5390)
-1. Who writes a recording out when the site has no key? (a) only the site's key, with VA1's hint; (b) a Pinegrap AI gateway preset on the subscription key, which needs audio endpoints on api.kodpen.com; (c) the sender's browser on the device, with the text stored as a machine transcript. Recommended: (c) now, (b) once the gateway offers audio.
-2. When is an answer spoken? (a) whenever the ask was a recording: by the speech service when one is set, else by the asker's browser even with the switch off; (b) only with the switch on. Recommended: (a).
+## What did #5390 decide? (owner, 2026-11-02)
+1. Without a site key the sender's browser writes the recording out on the device (`workspace/voice-browser-to-text.md`), stored as a machine transcript; Turkish is tried first, and where the browser's recognition proves unusable the site's key with VA1's hint stays the way. A Pinegrap AI gateway preset on the subscription key follows once api.kodpen.com offers audio endpoints.
+2. An ask that was a recording is answered by voice: by the speech service when one is set, else read aloud by the asker's browser even with the switch off. A text ask gets a text answer.
 
 ## Where does it start?
 - Read the `workspace/README.md` key rules, the `workspace/workspace-voice-*.md` files, `workspace/voice-browser-to-text.md` and `workspace/workspace-claude-bootstrap.md`. Steps: `voice-to-assistants-steps.md`.
