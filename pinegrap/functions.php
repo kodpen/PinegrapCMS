@@ -138,6 +138,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/geo.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/language_redirect.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_queue.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_bounces.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_bounce_report.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_parse.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/errors.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/backup.php');
