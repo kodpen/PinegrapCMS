@@ -16,7 +16,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 
 - Endpoints `privacy` (2): open
 
-- Endpoints `product`, part 1 (products): add_product, edit_product, edit_products, view_products, duplicate_product, duplicate_products, check_for_products_in_cart, get_product_group_for_product, get_erp_products, product_feed_job: taken by OP: #PR (duplicate_products copy code made unique)
+- Endpoints `product`, part 1 (products): add_product, edit_product, edit_products, view_products, duplicate_product, duplicate_products, check_for_products_in_cart, get_product_group_for_product, get_erp_products, product_feed_job: taken by OP: #5257 (duplicate_products copy code made unique)
 
 - Endpoints `product`, part 2 (attributes, groups): add_product_attribute, edit_product_attribute, product_attribute_action, view_product_attributes, add_product_group, edit_product_group, duplicate_product_group, update_product_group_status, view_product_groups: open
 
