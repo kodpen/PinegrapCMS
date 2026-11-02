@@ -54,6 +54,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/content.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/calendar.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/editor.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_transport.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/contacts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/design_templates_custom.php');

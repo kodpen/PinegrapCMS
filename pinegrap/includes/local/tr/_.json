@@ -1035,6 +1035,7 @@
     "{var:1} must be accepted.": "{var:1} onaylanmalıdır.",
     "{var:1} must be an object.": "{var:1} bir nesne olmalı.",
     "{var:1} must be between {var:2} and {var:3}.": "{var:1}, {var:2} ile {var:3} arasında olmalıdır.",
+    "{var:1} must be filled in to send e-mail through {var:2}.": "{var:2} üzerinden e-posta göndermek için {var:1} doldurulmalıdır.",
     "{var:1} must be one of: {var:2}": "{var:1} şunlardan biri olmalıdır: {var:2}",
     "{var:1} must be one of: {var:2}.": "{var:1} şunlardan biri olmalıdır: {var:2}.",
     "{var:1} must be text.": "{var:1} metin olmalıdır.",
