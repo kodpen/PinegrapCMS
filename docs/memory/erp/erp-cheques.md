@@ -17,7 +17,7 @@ description: ERP cheques and promissory notes (4.101): the steps, money only thr
 - A cheque bounced before #4429's fix keeps its allocations: `erp_cheque_bounced_allocations()` lists them, the cheque screen names the invoices and links to the receipt, whose Remove opens them. Nothing repairs those rows on its own.
 
 ## Which date may a step carry? (#4436, PR #4517)
-- Not before the cheque's own `doc_date`, and a real day (`checkdate()`; 2026-02-30 passed before PR #NNNN): `erp_cheque_step_date_refusal()` in `erp_cheque_step()`, so screen and API refuse alike; the date box starts at today or `doc_date`, with `min`. A back-dated collect left the portfolio below zero.
+- Not before the cheque's own `doc_date`, and a real day (`checkdate()`; 2026-02-30 passed before PR #5622): `erp_cheque_step_date_refusal()` in `erp_cheque_step()`, so screen and API refuse alike; the date box starts at today or `doc_date`, with `min`. A back-dated collect left the portfolio below zero.
 
 ## What does the screen say after a step?
 - `erp_cheque_step_note($step)`: deposit says the cheque went to the bank and the money moves when the bank collects it; collect and pay say the amount moved between the business's own tills; endorse and bounce say the movement is in the till and on the account. Before, every step said the last, so handing a cheque to the bank seemed to move money (#4004, PR #4184).
