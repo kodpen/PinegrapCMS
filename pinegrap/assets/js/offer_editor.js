@@ -106,10 +106,18 @@
         if (isNaN(n)) { return 0; }
         return Math.round((negative ? -n : n) * 100);
     }
+    // The percentage as typed: a fraction is kept so that it can be refused
+    // (the columns are whole), never rounded up into a larger discount.
     function pct(text) {
         var n = parseFloat(String(text || '').replace(',', '.'));
-        return isNaN(n) ? 0 : Math.round(n);
+        return isNaN(n) ? 0 : n;
     }
+    function isWhole(n) { return Math.floor(n) === n; }
+    // The largest amount (minor units) or count a field takes; edit_offer_f.php
+    // holds the same bound (PG_OFFER_MAX_NUMBER).
+    var MAX_NUMBER = 2147483647;
+    function amountMax() { return fmt(L.amountMax, [money(MAX_NUMBER)]); }
+    function numberMax() { return fmt(L.numberMax, [MAX_NUMBER]); }
     function productLabel(id) {
         for (var i = 0; i < PRODUCTS.length; i++) {
             if (PRODUCTS[i].id == id) { return PRODUCTS[i].label; }
@@ -175,38 +183,71 @@
     }
 
     // ── condition rows ───────────────────────────────────────────────────
-    function conditionError(c, index) {
-        var key = 'conditions.' + index;
+    // What the server refused on save, keyed by the row ("actions.2.value").
+    // It is only shown: it never blocks the next save, and it goes as soon as
+    // its row is edited or removed.
+    function serverRowError(list, index) {
+        var key = list + '.' + index, found = '';
+        Object.keys(serverErrors).some(function (k) {
+            if (k === key || k.indexOf(key + '.') === 0) { found = serverErrors[k]; return true; }
+            return false;
+        });
+        return found;
+    }
+    // A row was edited (removed: taken out): its server message goes, and on
+    // removal the later rows' messages move up with their rows.
+    function dropRowErrors(list, index, removed) {
+        var next = {};
+        Object.keys(serverErrors).forEach(function (k) {
+            var m = /^(conditions|actions)\.(\d+)(\..*)?$/.exec(k);
+            if (!m || m[1] !== list) { next[k] = serverErrors[k]; return; }
+            var n = parseInt(m[2], 10);
+            if (n === index) { return; }
+            if (removed && n > index) { n--; }
+            next[list + '.' + n + (m[3] || '')] = serverErrors[k];
+        });
+        serverErrors = next;
+    }
+    function rowEdited(on, index) {
+        if (isNaN(index)) { return; }
+        if (/^cond-/.test(on)) { dropRowErrors('conditions', index, on === 'cond-remove'); }
+        if (/^(act|tier)-/.test(on)) { dropRowErrors('actions', index, on === 'act-remove'); }
+    }
+    function quantityError(n) {
+        if (!(n >= 1)) { return L.enterQuantity; }
+        if (n > MAX_NUMBER) { return numberMax(); }
+        return '';
+    }
+    function conditionClientError(c) {
         if (c.type === 'subtotal') {
             if (!(c.amount > 0)) { return L.enterSubtotal; }
-            return serverErrors[key + '.amount'] || serverErrors[key] || '';
+            if (c.amount > MAX_NUMBER) { return amountMax(); }
         }
         if (c.type === 'products') {
             if (!c.product_ids.length) { return L.selectProducts; }
-            if (!(c.quantity >= 1)) { return L.enterQuantity; }
-            return serverErrors[key + '.product_ids'] || serverErrors[key + '.quantity'] || serverErrors[key] || '';
+            return quantityError(c.quantity);
         }
         if (c.type === 'product group') {
             if (!c.group_ids.length) { return L.selectGroups; }
-            if (!(c.quantity >= 1)) { return L.enterQuantity; }
-            return serverErrors[key + '.group_ids'] || serverErrors[key + '.quantity'] || serverErrors[key] || '';
+            return quantityError(c.quantity);
         }
         if (c.type === 'cart quantity') {
-            if (!(c.quantity >= 1)) { return L.enterQuantity; }
-            return serverErrors[key + '.quantity'] || serverErrors[key] || '';
+            return quantityError(c.quantity);
         }
         if (c.type === 'usage limit') {
             if (!(c.total_limit >= 1) && !(c.customer_limit >= 1)) { return L.enterLimit; }
-            return serverErrors[key + '.total_limit'] || serverErrors[key + '.customer_limit'] || serverErrors[key] || '';
+            if (c.total_limit > MAX_NUMBER || c.customer_limit > MAX_NUMBER) { return numberMax(); }
         }
         if (c.type === 'new customer') {
             if (c.mode !== 'no_orders') {
                 if (!(c.days >= 1)) { return L.enterDays; }
                 if (c.days > 3650) { return L.maxDays; }
             }
-            return serverErrors[key + '.days'] || serverErrors[key] || '';
         }
         return '';
+    }
+    function conditionError(c, index) {
+        return conditionClientError(c) || serverRowError('conditions', index);
     }
     // The up-sell nudge counts the customer down to a subtotal or a quantity
     // they can still reach; a condition about the customer gives it nothing to
@@ -358,23 +399,36 @@
     function tiersAllowed(a) {
         return (a.type === 'discount order') && (a.unit === 'percent') && !!C.offer_conditions;
     }
-    function actionError(a, index) {
-        var key = 'actions.' + index;
+    function tierError(tiers) {
+        var seen = {};
+        for (var t = 0; t < tiers.length; t++) {
+            if (!(tiers[t].percent > 0) || tiers[t].percent > 100) { return L.tierPercent; }
+            if (!isWhole(tiers[t].percent)) { return L.percentWhole; }
+            if (tiers[t].min > MAX_NUMBER) { return amountMax(); }
+            var min = Math.max(0, tiers[t].min || 0);
+            if (seen[min]) { return L.tierDuplicate; }
+            seen[min] = true;
+        }
+        return '';
+    }
+    function actionClientError(a) {
         if (targetsCheapest(a)) {
             // The cart picks the line; there is nothing to choose here.
         } else if (targetsGroup(a)) {
             if (!(a.group_id > 0)) { return L.selectGroup; }
         } else if ((a.type === 'discount product' || a.type === 'add product') && !(a.product_id > 0)) { return L.selectProduct; }
-        if (hasTiers(a)) {
-            for (var t = 0; t < a.tiers.length; t++) {
-                if (!(a.tiers[t].percent > 0) || a.tiers[t].percent > 100) { return L.tierPercent; }
-            }
-            return serverErrors[key] || '';
-        }
+        if (hasTiers(a)) { return tierError(a.tiers); }
         if (a.type !== 'add product' && !(a.value > 0)) { return L.enterValue; }
+        if (a.value < 0) { return L.enterValue; }
         if (a.unit === 'percent' && a.value > 100) { return L.percentMax; }
+        if (a.unit === 'percent' && !isWhole(a.value)) { return L.percentWhole; }
+        if (a.unit === 'amount' && a.value > MAX_NUMBER) { return amountMax(); }
+        if (a.type === 'add product' && a.quantity > MAX_NUMBER) { return numberMax(); }
         if (a.type === 'discount shipping' && !a.shipping_method_ids.length) { return L.selectMethod; }
-        return serverErrors[key + '.value'] || serverErrors[key + '.product_id'] || serverErrors[key + '.group_id'] || serverErrors[key + '.shipping_method_ids'] || serverErrors[key] || '';
+        return '';
+    }
+    function actionError(a, index) {
+        return actionClientError(a) || serverRowError('actions', index);
     }
     // A percentage in the panel language's order: L.percent is '{n}%' or '%{n}'.
     function percentText(value) {
@@ -428,7 +482,7 @@
     function valueInput(a, i) {
         var shown = a.unit === 'amount' ? centsToInput(a.value) : (a.value || '');
         return '<div class="col-7 sm:col-5 md:col-4 xl:col-3 2xl:col-2">' +
-            '<div class="input-group input-group-sm"><input type="text" class="form-control text-end" inputmode="decimal" value="' + esc(shown) + '" placeholder="0" aria-label="' + esc(L.discount) + '" data-on="act-value" data-index="' + i + '">' + unitToggle(a, i) + '</div>' +
+            '<div class="input-group input-group-sm"><input type="text" class="form-control text-end" inputmode="' + (a.unit === 'amount' ? 'decimal' : 'numeric') + '" value="' + esc(shown) + '" placeholder="0" aria-label="' + esc(L.discount) + '" data-on="act-value" data-index="' + i + '">' + unitToggle(a, i) + '</div>' +
             '</div>';
     }
     // Shown only where the schema can store a group (C.group_discount); on a
@@ -535,8 +589,8 @@
     function hardErrorCount() {
         var n = 0;
         if (!S.offer.code.trim()) { n++; }
-        S.conditions.forEach(function (c, i) { if (conditionError(c, i)) { n++; } });
-        S.actions.forEach(function (a, i) { if (actionError(a, i)) { n++; } });
+        S.conditions.forEach(function (c) { if (conditionClientError(c)) { n++; } });
+        S.actions.forEach(function (a) { if (actionClientError(a)) { n++; } });
         if (S.offer.period === 'range' && (!S.offer.start_date || !S.offer.end_date)) { n++; }
         if (S.offer.period === 'range' && S.offer.start_date && S.offer.end_date && S.offer.start_date > S.offer.end_date) { n++; }
         return n;
@@ -795,6 +849,8 @@
         var i = parseInt(el.getAttribute('data-index'), 10);
         if (el.tagName === 'A' || el.tagName === 'BUTTON') { e.preventDefault(); }
         if (el.classList.contains('disabled')) { return; }
+        // A click into a text field changes nothing; a button or link does.
+        if (el.tagName === 'A' || el.tagName === 'BUTTON') { rowEdited(on, i); }
         switch (on) {
             case 'cond-add':
                 addCondition(el.getAttribute('data-type')); break;
@@ -879,6 +935,7 @@
     function onChange(el) {
         var on = el.getAttribute('data-on');
         var i = parseInt(el.getAttribute('data-index'), 10);
+        rowEdited(on, i);
         // A pick in a row's select redraws the row: focus goes back to the
         // same select (or its combobox toggle), else to the row's remove
         // button when the select is gone.
@@ -932,6 +989,7 @@
         if (!el) { return; }
         var on = el.getAttribute('data-on');
         var i = parseInt(el.getAttribute('data-index'), 10);
+        rowEdited(on, i);
         switch (on) {
             case 'code':
                 S.offer.code = el.value; touch();
