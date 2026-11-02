@@ -94,3 +94,17 @@ function test_affiliate_sign_up_widget_confirmation_wiring()
 	pg_assert_contains('data-sw-cfg="confirmation_message" data-sw-cfg-max="2000"', $js, 'a message longer than a label');
 	pg_assert_contains("\$confirmed->assign_field_value('screen', 'confirm');", (string) file_get_contents(PG_FUNCTIONS_DIR . '/affiliate_sign_up_form.php'), 'the handler asks for it');
 }
+
+// The page whose content becomes the applicant's e-mail is the one the form's
+// page row names, never the posted next_page_id: a posted id would mail the
+// content of any page, a members-only one included.
+function test_affiliate_sign_up_next_page_from_row()
+{
+	pg_assert_same(42, pg_aff_handler_next_page_id(array('next_page_id' => '42')), 'the row names the next page');
+	pg_assert_same(0, pg_aff_handler_next_page_id(array('next_page_id' => '0')), 'the row names none');
+	pg_assert_same(0, pg_aff_handler_next_page_id(null), 'no row (legacy screen or not an affiliate page)');
+	pg_assert_same(0, pg_aff_handler_next_page_id(array()), 'a row without the column');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/affiliate_sign_up_form.php');
+	pg_assert_contains('pg_aff_handler_next_page_id(', $source, 'the handler reads the next page from the row');
+	pg_assert_false(strpos($source, "\$_POST['next_page_id']") !== false, 'the posted next page is not read');
+}
