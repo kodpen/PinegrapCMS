@@ -271,7 +271,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                 contacts.affiliate_code,
                 contacts.affiliate_commission_rate,
                 contacts.salutation,
-                contacts.suffix
+                contacts.suffix,
+                " . (pg_mail_bounces_ready() ? "COALESCE(" . pg_mail_bounce_status_sql('contacts.email_address') . ", '')" : "''") . " AS mail_status
              " . $list_filter['from'] . "
              " . $list_filter['where'] . "
              GROUP BY contacts.id
@@ -282,12 +283,14 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
     $result = db_q($query, $list_filter['params']) or output_error('Query failed.');
 
     pg_csv_download_start('contacts.csv');
-    print 'first_name,last_name,nickname,company,title,department,office_location,business_address_1,business_address_2,business_city,business_state,business_country,business_zip_code,business_phone,business_fax,home_address_1,home_address_2,home_city,home_state,home_country,home_zip_code,home_phone,home_fax,mobile_phone,email_address,website,lead_source,opt_in,description,member_id,expiration_date' . $output_affiliate_headings . ',salutation,suffix' . "\n";
+    print 'first_name,last_name,nickname,company,title,department,office_location,business_address_1,business_address_2,business_city,business_state,business_country,business_zip_code,business_phone,business_fax,home_address_1,home_address_2,home_city,home_state,home_country,home_zip_code,home_phone,home_fax,mobile_phone,email_address,website,lead_source,opt_in,description,member_id,expiration_date' . $output_affiliate_headings . ',salutation,suffix,mail_status' . "\n";
 
     // Contact text often comes from visitors (forms, sign-ups, orders), so a
     // text cell gets the formula guard (csv_cell()); the number and date
     // cells stay as they are, a guard would turn them into text.
-    $export_plain_columns = array('opt_in', 'expiration_date', 'affiliate_approved', 'affiliate_commission_rate');
+    // mail_status is the kind that stops e-mail to the address (hard, soft,
+    // complaint, manual), empty while it is mailed.
+    $export_plain_columns = array('mail_status', 'opt_in', 'expiration_date', 'affiliate_approved', 'affiliate_commission_rate');
 
     while($row = mysqli_fetch_assoc($result)) {
         foreach ($row as $key => $value) {
@@ -298,7 +301,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
             $output_affiliate_values = ',' . $row['affiliate_approved'] . ',' . $row['affiliate_name'] . ',' . $row['affiliate_code'] . ',' . $row['affiliate_commission_rate'];
         }
 
-        print $row['first_name'] . ',' . $row['last_name'] . ',' . $row['nickname'] . ',' . $row['company'] . ',' . $row['title'] . ',' . $row['department'] . ',' . $row['office_location'] . ',' . $row['business_address_1'] . ',' . $row['business_address_2'] . ',' . $row['business_city'] . ',' . $row['business_state'] . ',' . $row['business_country'] . ',' . $row['business_zip_code'] . ',' . $row['business_phone'] . ',' . $row['business_fax'] . ',' . $row['home_address_1'] . ',' . $row['home_address_2'] . ',' . $row['home_city'] . ',' . $row['home_state'] . ',' . $row['home_country'] . ',' . $row['home_zip_code'] . ',' . $row['home_phone'] . ',' . $row['home_fax'] . ',' . $row['mobile_phone'] . ',' . $row['email_address'] . ',' . $row['website'] . ',' . $row['lead_source'] . ',' . $row['opt_in'] . ',' . $row['description'] . ',' . $row['member_id'] . ',' . $row['expiration_date'] . $output_affiliate_values . ',' . $row['salutation'] . ',' . $row['suffix'] . "\n";
+        print $row['first_name'] . ',' . $row['last_name'] . ',' . $row['nickname'] . ',' . $row['company'] . ',' . $row['title'] . ',' . $row['department'] . ',' . $row['office_location'] . ',' . $row['business_address_1'] . ',' . $row['business_address_2'] . ',' . $row['business_city'] . ',' . $row['business_state'] . ',' . $row['business_country'] . ',' . $row['business_zip_code'] . ',' . $row['business_phone'] . ',' . $row['business_fax'] . ',' . $row['home_address_1'] . ',' . $row['home_address_2'] . ',' . $row['home_city'] . ',' . $row['home_state'] . ',' . $row['home_country'] . ',' . $row['home_zip_code'] . ',' . $row['home_phone'] . ',' . $row['home_fax'] . ',' . $row['mobile_phone'] . ',' . $row['email_address'] . ',' . $row['website'] . ',' . $row['lead_source'] . ',' . $row['opt_in'] . ',' . $row['description'] . ',' . $row['member_id'] . ',' . $row['expiration_date'] . $output_affiliate_values . ',' . $row['salutation'] . ',' . $row['suffix'] . ',' . $row['mail_status'] . "\n";
 
         $number_of_contacts++;
     }
