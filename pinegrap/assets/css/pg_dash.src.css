@@ -898,6 +898,145 @@
     .pg-dash-pipe-flag[data-tone="bad"] { border-color: CanvasText; }
   }
 
+  /* ── Work cards: Flows ────────────────────────────────────────────────── */
+
+  .pg-dash-flow-now {
+    margin-top: .75rem;
+  }
+
+  .pg-dash-flow-head {
+    margin: 0 0 .5rem;
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-flow-line {
+    display: flex;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pg-dash-flow-node {
+    position: relative;
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    align-items: center;
+    gap: .25rem;
+    min-width: 0;
+    text-align: center;
+  }
+
+  /* The thread to the box before. */
+  .pg-dash-flow-node + .pg-dash-flow-node::before {
+    position: absolute;
+    top: .6875rem;
+    inset-inline-end: 50%;
+    width: 100%;
+    height: 2px;
+    background: var(--pg-border-color);
+    content: "";
+  }
+
+  .pg-dash-flow-node[data-state="done"] + .pg-dash-flow-node::before {
+    background: var(--pg-success);
+  }
+
+  .pg-dash-flow-dot {
+    position: relative;
+    z-index: 1;
+    width: 1.375rem;
+    height: 1.375rem;
+    border: 2px solid var(--pg-border-color);
+    border-radius: 50%;
+    background: var(--pg-card-bg);
+  }
+
+  .pg-dash-flow-node[data-state="done"] .pg-dash-flow-dot { border-color: var(--pg-success); background: color-mix(in srgb, var(--pg-success) 20%, var(--pg-card-bg)); }
+  .pg-dash-flow-node[data-state="waiting"] .pg-dash-flow-dot { border-color: var(--pg-warning); background: color-mix(in srgb, var(--pg-warning) 20%, var(--pg-card-bg)); }
+  .pg-dash-flow-node[data-state="failed"] .pg-dash-flow-dot { border-color: var(--pg-danger); background: color-mix(in srgb, var(--pg-danger) 20%, var(--pg-card-bg)); }
+
+  .pg-dash-flow-name {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: .6875rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-flow-node[data-state="waiting"] .pg-dash-flow-name { color: var(--pg-warning-fg-emphasis); }
+  .pg-dash-flow-node[data-state="failed"] .pg-dash-flow-name { color: var(--pg-danger-fg-emphasis); }
+
+  .pg-dash-flow-runs {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pg-dash-flow-run {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: .5rem;
+    padding: .5rem 0;
+    border-top: var(--pg-border-width) solid var(--pg-border-color);
+  }
+
+  .pg-dash-flow-run:first-child {
+    border-top: 0;
+  }
+
+  .pg-dash-flow-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .pg-dash-flow-title {
+    overflow: hidden;
+    font-size: .875rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--pg-fg-emphasis);
+    text-decoration: none;
+  }
+
+  .pg-dash-flow-title:hover,
+  .pg-dash-flow-title:focus-visible {
+    text-decoration: underline;
+  }
+
+  .pg-dash-flow-note {
+    font-size: .75rem;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-flow-run[data-tone="good"] .pg-dash-flow-note { color: var(--pg-success-fg-emphasis); }
+  .pg-dash-flow-run[data-tone="warn"] .pg-dash-flow-note { color: var(--pg-warning-fg-emphasis); }
+  .pg-dash-flow-run[data-tone="bad"] .pg-dash-flow-note,
+  .pg-dash-flow-note[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
+
+  .pg-dash-flow-when {
+    font-size: .75rem;
+    color: var(--pg-fg-2);
+    white-space: nowrap;
+  }
+
+  @media (forced-colors: active) {
+    .pg-dash-flow-dot { forced-color-adjust: none; border-color: CanvasText; background: Canvas; }
+    .pg-dash-flow-node[data-state="done"] .pg-dash-flow-dot,
+    .pg-dash-flow-node[data-state="waiting"] .pg-dash-flow-dot,
+    .pg-dash-flow-node[data-state="failed"] .pg-dash-flow-dot { background: Highlight; }
+    .pg-dash-flow-node + .pg-dash-flow-node::before { background: CanvasText; }
+  }
+
   /* ── Edit mode ────────────────────────────────────────────────────────── */
 
   .pg-dash-card-edit,

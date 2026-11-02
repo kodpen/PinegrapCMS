@@ -36,8 +36,9 @@ description: Steps N1-N14 and the visual pass V of plans/new-dashboard.md: size,
   - N10c (S) `queue` sources of the shop and accounting (unshipped orders, low stock, refund requests, overdue invoices) and drafts ready, through N9's Operations Desk helpers. `free` after N9.
   - N10d (S) `visitmap` as question 2 decided. Held: a raw `visitors` count clashes with the `visitors/` key rules; architect issue #4896.
 
-- N11 (M) Assistant and flows. Screens 01, 02, 15. `free` after N4.
-  - `ai` connected and not connected, proposals, giving a job, the daily summary as question 3 decided; `flows` tiles, the current run, last runs with Approve and Retry through the flow endpoints.
+- N11 Assistant and flows. Screens 01, 02, 15. Cut in two.
+  - N11a (S) `flows` tiles, the current run, last runs with Approve and Retry through the flow endpoints. In progress.
+  - N11b (M) `ai` connected and not connected, proposals, giving a job, the daily summary as question 3 decided. `free`.
 
 - N12 (M) Goals, pins, notes, performance, subscriptions. Screens 01, 04, 18, 19. `free` after N5.
   - `goals` editor and rings, `pins`, `notes`, `perf`, `subs` (hidden until the vendor licence answers).
