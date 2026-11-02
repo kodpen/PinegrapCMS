@@ -27,12 +27,13 @@ validate_forms_access($user);
 include_once('liveform.class.php');
 // pg_field_form_pick_by_name(): which field a CSV heading means.
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/field_form.php');
+// The custom form picker's labels and the import's column and cell rules.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list.php');
 $liveform = new liveform('import_submitted_forms');
 
 if (!$_POST) {
     // Every custom form the user may edit is its own option: same-named forms
     // get their page name, binned ones are marked and go last.
-    require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list.php');
     $custom_form_options = array('-' . lang('Select') . '-' => '')
         + pg_submitted_form_list_options(pg_submitted_form_list_custom_forms());
 
@@ -68,7 +69,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'class'=>'form-control w-auto', 'required'=>'required')) . '
+                                            ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'class'=>'form-control w-auto', 'required'=>'required', 'accept'=>'.csv,text/csv,text/plain')) . '
                                             ' . pg_upload_limit_hint() . '
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
@@ -120,15 +121,17 @@ if (!$_POST) {
     
     // if a custom form was selected, validate user's access to custom form
     if ($custom_form_page_id) {
-        // get folder id that custom form is in, in order to validate user's access
-        $query = "SELECT page_folder FROM page WHERE page_id = ?";
+        // The page must be a custom form (a changed option or a form deleted
+        // meanwhile names none); its folder decides the user's access.
+        $query = "SELECT page.page_folder FROM page WHERE (page.page_id = ?) AND " . pg_form_page_sql('page');
         $result = db_q($query, array((string) $custom_form_page_id)) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
-        
-        $folder_id = $row['page_folder'];
-        
+
+        if (!$row) {
+            $liveform->mark_error('custom_form_page_id', lang('The selected custom form could not be found. Please choose a different custom form.'));
+
         // if user does not have access to custom form, prepare error
-        if (check_edit_access($folder_id) == false) {
+        } elseif (check_edit_access($row['page_folder']) == false) {
             log_activity(lang('access denied to import submitted forms because user does not have access to modify folder that custom form is in'), $_SESSION['sessionusername']);
             $liveform->mark_error('custom_form_page_id', lang('You do not have access to import submitted forms for that custom form. Please choose a different custom form.'));
         }
@@ -149,9 +152,22 @@ if (!$_POST) {
         $fields = array();
         // Headings that name no field of the form, named in the result.
         $unknown_headings = array();
-        
+        // Headings of a field an earlier column already fills, left out.
+        $repeated_headings = array();
+        $mapped_field_ids = array();
+
+        // A file the export wrote starts with the record's own columns
+        // (status, reference code…): they fill no field, even one of the same
+        // name, and the status column says whether the record is complete.
+        $fixed_columns = pg_submitted_form_import_fixed_columns($columns);
+        $status_key = $fixed_columns ? array_search('status', pg_submitted_form_export_columns(), true) : false;
+
         // loop through all column field names in order to determine which columns have valid field names
         foreach ($columns as $key => $field_name) {
+            if ($key < $fixed_columns) {
+                continue;
+            }
+
             // get field id from field name if a field exists
             $query =
                 "SELECT
@@ -176,9 +192,15 @@ if (!$_POST) {
             }
             $row = pg_field_form_pick_by_name($matches, $field_name);
 
+            // One column fills a field: a second column of the same field
+            // would add its value next to the first one's.
+            if ($row && isset($mapped_field_ids[$row['id']])) {
+                $repeated_headings[] = $field_name;
+
             // if a field was found, then add to fields array
-            if ($row) {
+            } elseif ($row) {
                 $field_id = $row['id'];
+                $mapped_field_ids[$field_id] = true;
                 
                 $fields[] =
                     array(
@@ -195,8 +217,9 @@ if (!$_POST) {
         }
         
         $imported_submitted_forms = 0;
-        // File-upload cells that resolve to no file the user may attach, as
-        // array(line, reason); a row is named by the file line it starts on.
+        // File-upload cells that resolve to no file the user may attach and
+        // date or time cells that cannot be read, as array(line, reason); a
+        // row is named by the file line it starts on.
         $file_problems = array();
         $next_line = 1 + pg_csv_row_lines($columns);
         
@@ -227,13 +250,14 @@ if (!$_POST) {
                         last_modified_timestamp)
                     VALUES (
                         ?,
-                        '1',
+                        ?,
                         ?,
                         ?,
                         UNIX_TIMESTAMP(),
                         ?,
                         UNIX_TIMESTAMP())";
-                $result = db_q($query, array((string) $custom_form_page_id, (string) $user['id'], (string) generate_form_reference_code(), (string) $user['id'])) or output_error('Query failed.');
+                $complete = ($status_key !== false) ? pg_submitted_form_import_complete($row[$status_key] ?? '') : '1';
+                $result = db_q($query, array((string) $custom_form_page_id, $complete, (string) $user['id'], (string) generate_form_reference_code(), (string) $user['id'])) or output_error('Query failed.');
                 
                 $submitted_form_id = mysqli_insert_id(db::$con);
                 
@@ -290,6 +314,17 @@ if (!$_POST) {
                         $add_data = TRUE;
                         // The export guards a leading = + - @ with an apostrophe; take it off.
                         $data = isset($row[$key]) ? pg_csv_formula_unguard($row[$key]) : '';
+
+                        // A date, date and time or time is stored as the add
+                        // screen stores it; one that cannot be read is left
+                        // empty and its line named.
+                        $converted = pg_submitted_form_import_value($data, $field['type']);
+                        if ($converted === null) {
+                            $file_problems[] = array($line, lang(array('string' => 'The value "{var:1}" is not a date or time this site reads, so the {var:2} field was left empty.', 'vars' => array(trim($data), $field['name']))));
+                            $add_data = FALSE;
+                        } else {
+                            $data = $converted;
+                        }
                     }
                     
                     // if data should be added for this field, then add it
@@ -407,6 +442,10 @@ if (!$_POST) {
 
         if (pg_csv_headings_text($unknown_headings) !== '') {
             $liveform->add_warning(h(lang(array('string' => 'These columns name no field of the form and were left out: {var:1}', 'vars' => array(pg_csv_headings_text($unknown_headings))))));
+        }
+
+        if (pg_csv_headings_text($repeated_headings) !== '') {
+            $liveform->add_warning(h(lang(array('string' => 'These columns name a field an earlier column already fills and were left out: {var:1}', 'vars' => array(pg_csv_headings_text($repeated_headings))))));
         }
 
         if ($file_problems) {
