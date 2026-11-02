@@ -142,6 +142,8 @@
     "Untouched for {var:1} days: {var:2}": "{var:1} gündür dokunulmamış: {var:2}",
     "Untouched for {var:1}+ days": "{var:1}+ gündür dokunulmamış",
     "Untouched landscapes are waiting to be explored.": "El değmemiş manzaralar keşfe çıkmayı bekliyor.",
+    "Unverified": "Doğrulanmamış",
+    "Unverified claim": "Doğrulanmamış iddia",
     "Up": "Yukarı",
     "Up 12 points from last year.": "Geçen yıla göre 12 puan artış.",
     "Up To": "Tekrar sayısı",

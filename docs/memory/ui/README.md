@@ -429,6 +429,8 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - user-screens-names-and-dates.md: User and session screens: session and password dates through get_absolute_time(), the users list checkbox, yes mark and name-menu names, badge label and folder expiry names
 - user-shared-form.md: The user create and edit screens share includes/forms/user_form.php (rights cards, folder rights, access save)
 - verified-shipping-address-shared-form.md: The verified shipping address create and edit screens share includes/forms/verified_shipping_address_form.php: what it holds, what stays in the screens
+- visitors-ai-section.md: The AI visibility section (visitor_ai.php until the Visitors overview takes it): bots and firewall state, fetches by day, top pages per bot, AI assistant visits, unfetched sitemap pages
+- visitors-speed-section.md: The Speed section (visitor_vitals.php until the Visitors overview takes it): period, device and order filters, p75 tiles with the good share, slowest pages, trend; the perf card's page load tile
 - voice-text-keyboard.md: Convert to text under a voice message from the keyboard (pg_voice_text.js): where focus goes while it works, after success and after a failure; the progress meter's name
 - waf-log-paging.md: The firewall log's events (view_waf_log.php) paged, sorted and searched on the server; period, category and search filters stay in the address and drive the summary
 - whole-number-input-mask.md: Panel boxes of whole-number columns take Inputmask's integer alias, never decimal, so a Turkish 1.000 is a thousand

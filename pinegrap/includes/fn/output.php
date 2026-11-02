@@ -3432,6 +3432,17 @@ function output_menu($properties = false)
             $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitor_search.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-search bi-me-2\'>' . lang('Site Search') . '</a>';
         }
 
+        // VISITORS > Page Speed and AI Visibility, once their tables are there.
+        if (pg_vitals_ready() || pg_ai_visibility_ready()) {
+            $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
+        }
+        if (pg_vitals_ready()) {
+            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitor_vitals.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-speedometer2 bi-me-2\'>' . lang('Page Speed') . '</a>';
+        }
+        if (pg_ai_visibility_ready()) {
+            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitor_ai.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-robot bi-me-2\'>' . lang('AI Visibility') . '</a>';
+        }
+
         // VISITORS > Google Search Console
         $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
         $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/search_console.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-google bi-me-2\'>' . lang('Google Search Console') . '</a>';
@@ -4067,6 +4078,8 @@ function output_menu($properties = false)
         case 'view_visitor.php':
         case 'search_console.php':
         case 'visitor_search.php':
+        case 'visitor_vitals.php':
+        case 'visitor_ai.php':
             $active_menu = 6;
             break;
         case 'view_contacts.php':
