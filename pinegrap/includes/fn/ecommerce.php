@@ -9610,6 +9610,26 @@ function pg_product_copy_extra_sql($row, $ai_fields)
 
     return array('columns' => $columns, 'values' => $values);
 }
+
+/**
+ * The product code a bulk copy (duplicate_products.php) asks for: the
+ * original's code with its last letter replaced by the typed letter or word.
+ * The letter is cut by characters, so a Turkish last letter (Ş, Ç) is not
+ * split into a broken byte. A code that would come out empty keeps the
+ * original. The caller still makes the result unique (get_unique_name()).
+ *
+ * @param string $name     the original's product code
+ * @param string $new_text the letter or word typed on the screen
+ * @return string
+ */
+function pg_duplicate_products_base_name($name, $new_text)
+{
+    $name = (string) $name;
+    $base = mb_substr($name, 0, max(0, mb_strlen($name, 'UTF-8') - 1), 'UTF-8') . (string) $new_text;
+
+    return ($base === '') ? $name : $base;
+}
+
 function duplicate_product($id)
 {
     // get original product's info

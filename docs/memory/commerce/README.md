@@ -192,6 +192,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - print-order-id.md: print_order.php reads every order query with the one id it checked ($id from $_REQUEST, whole number), never $_GET['id'] again
 - print-order-shipping-card.md: The printed order (print_order.php) prints one shipping card per real recipient above its items, empty rows hidden, every parcel with its carrier
 - product-builder-parent-group.md: The Product Builder's parent group list for a new variant group (PR #4309): no empty choice, opens on the top group; what a posted 0 still does
+- product-bulk-duplicate-code.md: The product code of a bulk copy (duplicate_products.php): last letter swapped for the typed text, cut by characters, then made unique; why the old "[1]" cut wrote duplicate codes
 - product-bulk-price-edit.md: Bulk price change (edit_products.php, pg_bulk_price_change(), and the Catalog Manager's): a value above zero, a decrease never ends at or below zero, an increase never lowers; no negative price
 - product-bundles-storefront.md: Bundles in the catalog widgets (#2902): __is_bundle, __bundle_saving_formatted, is_bundle / has_bundle_saving flags, the product.bundle_items list, designer twins
 - product-bundles.md: Product bundles (includes/fn/bundles.php): schema 11.0.54, contents, the cached stock and price and what refreshes them, the product screen card, the delete refusal
