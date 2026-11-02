@@ -175,3 +175,40 @@ function test_product_preorder_end_sql()
 	pg_assert_false(strpos($sql, 'backorder') !== false, 'the back order stays');
 	pg_assert_contains("'1970-01-01'", pg_preorder_end_sql("x' OR 1", 10), 'only a date');
 }
+
+// The product screen saves both behind the probe, refuses a bad pre-order
+// before any write and draws the switch beside the back order one.
+function test_product_preorder_product_screen()
+{
+	$source = product_preorder_test_source('product_builder.php');
+
+	pg_assert_contains('$common = array_merge($common, pg_preorder_from_post($_POST));', $source);
+	pg_assert_contains('$preorder_problem = pg_preorder_problem(', $source);
+	pg_assert_contains("pg_pb_render_preorder_row(\$v)", $source);
+
+	$row = product_preorder_test_body($source, 'pg_pb_render_preorder_row');
+	pg_assert_contains('if (!pg_product_preorder_ready())', $row);
+	pg_assert_contains('type="date" name="preorder_date"', $row);
+}
+
+// Every reader takes the columns through the probe-aware select and prints
+// the label through the shared rule.
+function test_product_preorder_readers()
+{
+	$readers = array(
+		'includes/fn/widgets_catalog.php'      => 'pg_preorder_tokens($p,',
+		'includes/fn/widgets_cart.php'         => "\$row_values['__item_preorder_label'] = h(pg_preorder_label(",
+		'includes/fn/widgets.php'              => "'__item_preorder_label'    => h(\$item['preorder_label'])",
+		'get_order_receipt_in_plain_text.php'  => '$preorder_label = pg_preorder_label($order_item,',
+		'includes/api/resources/products.php'  => "'preorder_date'     => api_product_preorder_date(\$row)",
+	);
+
+	foreach ($readers as $file => $needle) {
+		$source = product_preorder_test_source($file);
+		pg_assert_contains($needle, $source, $file);
+		pg_assert_contains('pg_preorder_select_sql(', $source, $file . ' reads the columns through the probe');
+	}
+
+	pg_assert_contains("pg_preorder_arrival_problem(\$arrival_date, \$preorder_from)", product_preorder_test_source('shipping.php'));
+	pg_assert_contains('pg_preorder_end_hourly();', product_preorder_test_source('job.php'));
+}

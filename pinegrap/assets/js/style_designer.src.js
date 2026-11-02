@@ -41268,6 +41268,7 @@ const StyleDesigner = (function () {
             ['__item_image_alt',         _sdT('Image alt text')],
             ['__item_url',               _sdT('Product detail page URL')],
             ['__item_ship_to',           _sdT('This item\'s shipping address')],
+            ['__item_preorder_label',    _sdT('Pre-order note')],
             // The item form and gift card parts' boxes show by these; their
             // rows are the order.item_forms and order.item_gift_cards lists.
             ['__item_has_form_data',     _sdT('Has product form answers (1 or empty)')],

@@ -83,6 +83,7 @@ description: Generated from the module field of the memory files: each includes/
 - `payments`: [[card-brand-switches]], [[payment-driver-paytr-installments]], [[payment-gateway-secrets]]
 - `pdf_merge`: [[shipment-label-bulk]]
 - `places`: [[place-packs]], [[tr-place-list]]
+- `preorder`: [[product-preorder]]
 - `privacy`: [[consent-log-and-audit-trail]], [[sms-consent-box]]
 - `privacy_export`: [[personal-data-export]]
 - `privacy_retention`: [[privacy-log-retention]]

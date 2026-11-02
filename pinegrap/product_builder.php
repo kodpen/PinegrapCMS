@@ -711,6 +711,13 @@ function pg_pb_common_from_post()
         $common = array_merge($common, pg_product_customs_from_post($_POST));
     }
 
+    // Pre-order (products.preorder, preorder_date): turning it on turns the
+    // back order on with it, the path that sells before the stock arrives.
+    // pg_pb_validate_product_post() refused a pre-order with no usable date.
+    if (pg_product_preorder_ready()) {
+        $common = array_merge($common, pg_preorder_from_post($_POST));
+    }
+
     /* ---------------------------------------------------- checkout */
 
     $common['required_product'] = $post('required_product');
@@ -2992,6 +2999,41 @@ function pg_pb_form_values($set = NULL)
 
     return $values;
 }
+
+/**
+ * The pre-order switch beside the back order one, with the date the stock
+ * is expected (includes/fn/preorder.php); '' before the upgrade adds the
+ * columns. An ended pre-order is drawn off: saving it again would be
+ * refused for its past date.
+ *
+ * @param  callable $v The screen's value reader.
+ * @return string
+ */
+function pg_pb_render_preorder_row($v)
+{
+    if (!pg_product_preorder_ready()) {
+        return '';
+    }
+
+    $today = pg_preorder_today();
+    $date = pg_preorder_date_parse((string) $v('preorder_date', ''));
+    $running = !empty($v('preorder', 0)) && is_string($date) && ($date > $today);
+
+    return pg_pb_render_switch_row(
+        pg_pb_render_switch(array(
+            'id'      => 'preorder',
+            'name'    => 'preorder',
+            'label'   => lang('Pre-order'),
+            'checked' => $running,
+            'help'    => lang('Sell this before its stock arrives; the back order is turned on with it and the pre-order ends on the date or when stock is in.'),
+            'panel'   =>
+                '<div class="col-12 sm:col-6 lg:col-4">
+                    <label for="preorder_date" class="form-label">' . lang('Ships From') . '</label>
+                    <input type="date" name="preorder_date" id="preorder_date" class="form-control" min="' . h(date('Y-m-d', strtotime($today . ' +1 day'))) . '" value="' . h($running ? $date : '') . '" />
+                </div>',
+        )));
+}
+
 /**
  * One switch, optionally revealing a panel when it is on.
  *
@@ -5206,7 +5248,8 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                                 'name'  => 'backorder',
                                                                 'label' => lang('Backorder'),
                                                                 'help'  => lang('Let customers order this even when stock reaches zero.'),
-                                                            ))),
+                                                            ))) .
+                                                    pg_pb_render_preorder_row($v),
                                             )) .
                                             // Shipping and commission are product-wide switches too, and
                                             // both decide what the rest of the screen is even asking. The
@@ -6722,6 +6765,20 @@ function pg_pb_validate_product_post($user, $product_id = 0)
 
         if ($customs_problem !== '') {
             output_error(lang($customs_problem) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+        }
+    }
+
+    // A pre-order needs a real date after today; refused rather than saved
+    // off, so the operator is not left thinking the product is on pre-order.
+    if (pg_product_preorder_ready()) {
+
+        $preorder_problem = pg_preorder_problem(
+            !empty($_POST['preorder']),
+            isset($_POST['preorder_date']) ? $_POST['preorder_date'] : '',
+            pg_preorder_today());
+
+        if ($preorder_problem !== '') {
+            output_error(lang($preorder_problem) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
     }
 

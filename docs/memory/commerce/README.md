@@ -212,6 +212,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - product-group-copy.md: Product group copies (duplicate_product_group.php, pg_catalog_copy_group()): product copy links, Recycle Bin, duplicate notice, default options, variant set form and price rules
 - product-import-prices.md: Product import price cells (price, extra shipping, compare-at): one reader for spreadsheet numbers and typed figures; a row that is not an amount is named (#749, PR #1262)
 - product-import-row-refusals.md: Product import rows left out and why each list says so (too large, not whole, not a number, in the Recycle Bin); an update finds its product by id (PR #4917)
+- product-preorder.md: Product pre-order (11.0.151, PR #5550): columns, back order path, when it runs, tokens and notes, arrival date bound, hourly end, API field
 - product-price-bound-and-export.md: Catalog Manager and Edit Selected refuse a price past PG_PRODUCT_PRICE_MAX instead of MySQL's silent cut; the Catalog Manager export leaves the Recycle Bin out (#4441, #4443, PR #4515)
 - product-price-box-top.md: The product screen's unit price, compare-at price and extra shipping cost boxes hold 13 characters (21.474.836,47) and the save refuses a larger amount (#4444)
 - product-price-history-api.md: GET /products/{id}/price-history (2026.11.0): a product's price history rows (offer rows included) through the external API and the MCP tools, paging, since and channel filters, what is not in them
