@@ -7,7 +7,7 @@ module: shipping
 ## What do the two columns hold?
 - `ship_tos.district` VARCHAR(50) '': the recipient's district (ilçe) as typed, free text, optional. Before it, Turkish carriers and the n11 import read the district from `city` and the province from `state`; that stays the fallback, so older orders keep working.
 - `states.plate_code` VARCHAR(4) '': a Turkish province's licence plate number ('34'). Only the states of Turkish countries rows carry one.
-- No district list and no district validation: a data set and its licence would be a separate decision (#3569 (b)).
+- Districts are free text; a Turkish one is checked against the place list (`tr-place-list.md`), never refused.
 
 ## How is the plate code filled?
 - Step 11.0.134 (`upgrade_2026_11_0_tr_district_plate()`) adds both columns with `install_add_column()`, then fills the plate codes once.

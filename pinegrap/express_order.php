@@ -776,6 +776,9 @@ if ($order_submitted == false) {
         }
     }
     
+    // A Turkish district is saved in its listed spelling.
+    pg_place_liveform_fix($liveform, 'billing_');
+
     // update order information
     $query =
         "UPDATE orders
@@ -1512,6 +1515,9 @@ if (ECOMMERCE_SHIPPING) {
         // Get unique prefix for all shipping fields for this recipient, because there might be
         // multiple recipients.
         $prefix = 'shipping_' . $recipient['id'] . '_';
+
+        // A Turkish district is saved in its listed spelling.
+        pg_place_liveform_fix($liveform, $prefix);
 
         // Each recipient carries its own arrival date; one without a selection
         // must not inherit the previous recipient's row.

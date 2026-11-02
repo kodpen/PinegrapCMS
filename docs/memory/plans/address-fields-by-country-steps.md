@@ -20,7 +20,7 @@ description: Steps A1-A8 of plans/address-fields-by-country.md: site labels and 
 - A4 (S) done (#4750). Panel and ERP labels. After A1. Now in `commerce/address-labels-by-country.md`.
   - `verified_shipping_address_form.php`, ERP account and waybill forms: İl/İlçe for Turkey (ERP card fields unchanged: card city = il, district = ilçe). Turkish default layout `1005.php` still says "City" / "State / Province".
 
-- A5 (M) Turkish place list. `free` (A1 done, questions 1 and 2 decided).
+- A5 (M) done (#5246). Turkish place list. Now in `commerce/tr-place-list.md`.
   - `includes/geo/places/TR.json` (`TR-01`…`TR-81` → district names, 973 with the 51 "Merkez"), found by `states.plate_code` or name; the İlçe box suggests "Kadıköy / İstanbul" and fills the İl, so field order does not matter; the server corrects a matching spelling; question 2 for the rest. Tests on the lookup and spelling.
 
 - A6 (S) Lists as country packs. After A5.

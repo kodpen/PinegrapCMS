@@ -4922,6 +4922,8 @@
     "This device": "Bu cihaz",
     "This device was locked by the site owner and cannot be signed out here.": "Bu cihaz site sahibi tarafından kilitlendi ve buradan kapatılamaz.",
     "This device will be signed out and will have to sign in again.": "Bu cihazın oturumu kapatılacak ve yeniden oturum açması gerekecek.",
+    "This district is not in the district list of {var:1}. Check the address before shipping.": "Bu ilçe {var:1} ilçe listesinde yok. Göndermeden önce adresi kontrol edin.",
+    "This district is not in the district list. Check the address before shipping.": "Bu ilçe ilçe listesinde yok. Göndermeden önce adresi kontrol edin.",
     "This document cannot be changed here.": "Bu belge burada değiştirilemez.",
     "This document has already been dealt with.": "Bu belgeyle ilgili işlem zaten yapılmış.",
     "This document has already gone to the provider; its copy of the buyer is not edited any more.": "Bu belge sağlayıcıya gitti; alıcı kopyası artık değiştirilmiyor.",
