@@ -298,3 +298,25 @@ function pg_print_order_tracking_text(array $parcels)
 
     return implode('<br />', $lines);
 }
+
+/**
+ * Whether the signed-in account owns the order, for the customer's order
+ * history endpoints and the view order screen. A visitor who is not signed in
+ * finds no account row (null), and a guest order belongs to account 0: a
+ * loose comparison takes "0" and null as equal, which handed every guest order
+ * to every visitor. Account 0 owns nothing.
+ *
+ * @param mixed $order_user_id the order's user_id column
+ * @param mixed $user_id       the signed-in account's id, null when none
+ * @return bool
+ */
+function pg_order_view_owner_matches($order_user_id, $user_id)
+{
+    if (!is_scalar($order_user_id) || !is_scalar($user_id)) {
+        return false;
+    }
+
+    $user_id = (int) $user_id;
+
+    return ($user_id > 0) && ((int) $order_user_id === $user_id);
+}
