@@ -442,6 +442,8 @@
     "Referral Information": "Referans Bilgisi",
     "Referral Source": "Referans Kaynağı",
     "Referral Source Code": "Yönlendirme Kaynak Kodu",
+    "Referral Source Code for Order Reporting": "Sipariş Raporlaması için Yönlendirme Kaynağı Kodu",
+    "Referral Source Information": "Yönlendirme Kaynağı Bilgisi",
     "Referral Source Name": "Yönlendirme Kaynağı Adı",
     "Referral source": "Referans kaynağı",
     "Referred to in {var:1} place(s)": "{var:1} yerde geçiyor",

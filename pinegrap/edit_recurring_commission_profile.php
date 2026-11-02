@@ -30,6 +30,7 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM recurring_commission_prof
 }
 
 include_once('liveform.class.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/commission_list.php');
 $liveform = new liveform('edit_recurring_commission_profile');
 
 $liveform->add_fields_to_session();
@@ -40,9 +41,19 @@ $query =
         recurring_commission_profiles.id,
         recurring_commission_profiles.affiliate_code,
         recurring_commission_profiles.enabled,
-        contacts.affiliate_name
+        recurring_commission_profiles.amount,
+        recurring_commission_profiles.order_id,
+        recurring_commission_profiles.product_name,
+        recurring_commission_profiles.product_short_description,
+        recurring_commission_profiles.start_date,
+        recurring_commission_profiles.period,
+        recurring_commission_profiles.number_of_commissions,
+        contacts.affiliate_name,
+        orders.order_number,
+        orders.status AS order_status
     FROM recurring_commission_profiles
     LEFT JOIN contacts ON recurring_commission_profiles.affiliate_code = contacts.affiliate_code
+    LEFT JOIN orders ON recurring_commission_profiles.order_id = orders.id
     WHERE recurring_commission_profiles.id = ?";
 $result = db_q($query, array((string) $liveform->get_field_value('id'))) or output_error('Query failed.');
 $recurring_commission_profile = mysqli_fetch_assoc($result);
@@ -71,11 +82,7 @@ if (!$_POST) {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <div class="row mb-3  flex-wrap">
-                    <div class="col-12 sm:col-12 text-center md:text-start">
-
-                    </div>
-                </div>
+                ' . pg_commission_edit_summary($recurring_commission_profile) . '
                 <form action="edit_recurring_commission_profile.php" method="post">
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>$_GET['id'])) . '
