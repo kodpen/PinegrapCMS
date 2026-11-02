@@ -550,6 +550,30 @@ function pg_connect_return_path($return)
 }
 
 /**
+ * Whether a connection may be renewed by a new connection attempt: same
+ * provider and the requesting owner's own row (user 0 for the site's, the
+ * person's id for a personal one). Anything else would put another account's
+ * name into the provider's sign-in screen (login_hint) and its purposes into
+ * the new permission.
+ *
+ * @param array|null $existing what pg_connect_account() returned
+ * @param string     $provider_key
+ * @param string     $owner   'site' or 'person'
+ * @param int        $user_id the signed-in person
+ * @return bool
+ */
+function pg_connect_renewal_allowed($existing, $provider_key, $owner, $user_id)
+{
+    if (!is_array($existing) || !isset($existing['provider'], $existing['user_id'])) {
+        return false;
+    }
+
+    $owner_id = ($owner === 'person') ? (int) $user_id : 0;
+
+    return ((string) $existing['provider'] === (string) $provider_key) && ((int) $existing['user_id'] === $owner_id);
+}
+
+/**
  * The access token cached under a key, or '' when there is none or it ends
  * within the margin.
  *
@@ -1376,7 +1400,7 @@ function pg_connect_start($provider_key, $purpose_key, $owner, $user, $return, $
     if ($connection_id > 0) {
         $existing = pg_connect_account($connection_id);
 
-        if (is_array($existing) && ($existing['provider'] === $provider_key)) {
+        if (pg_connect_renewal_allowed($existing, $provider_key, $owner, (int) $user['id'])) {
             // A provider that names no account has no account to hint at.
             $login_hint = (isset($provider['identity']) && ($provider['identity'] === false)) ? '' : $existing['label'];
 
