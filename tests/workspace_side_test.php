@@ -250,7 +250,7 @@ function test_workspace_side_data_is_read_only_where_it_is_drawn()
 {
 	$menu = pg_test_function_source('output_menu');
 	$slot = substr($menu, strpos($menu, '// WORKSPACE. Slot 23'));
-	$slot = substr($slot, 0, strpos($slot, '// SITE SETTINGS.'));
+	$slot = substr($slot, 0, strpos($slot, '// SYSTEM TOOLS.'));
 
 	foreach (array('ws_channels_for(', 'ws_groups_for(', 'ws_threads_for(') as $call) {
 		pg_assert_false(strpos($slot, $call) !== false, 'slot 23 does not call ' . $call . ' itself');
