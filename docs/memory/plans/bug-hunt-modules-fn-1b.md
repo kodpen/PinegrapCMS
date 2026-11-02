@@ -10,7 +10,7 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 
 - `list_period`: clean
 
-- `mail`: done (#5009: plain-text part capitalised whole bodies and link addresses); `email()` and comment mails only skimmed
+- `mail`: done (#5009: plain-text part capitalised whole bodies and link addresses); `email()` (transport choice, address errors, attachments, DKIM, failure notice) and the three comment mails read: clean (conditional admin lists are validated when the field is saved)
 
 - `mail_parse`: done (#4992: a quoted-printable part ending on a soft break kept its `=`)
 
