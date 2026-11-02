@@ -8966,6 +8966,7 @@ function get_tables() {
 		'messages',
 		'next_order_number',
 		'not_found_log',
+		'site_search_daily',
 		'oauth_clients',
 		'oauth_codes',
 		'offer_actions',

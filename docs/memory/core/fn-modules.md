@@ -102,6 +102,7 @@ description: Generated from the module field of the memory files: each includes/
 - `site_icon`: [[site-icon]]
 - `site_log_list`: [[site-log-paging]]
 - `site_search`: [[site-search-index-text]], [[site-search-query-and-freshness]], [[site-search-terms-on-visit]], [[site-search-turkish-i]]
+- `site_search_stats`: [[site-search-rollup]]
 - `site_time_sql`: [[visitor-report-site-time]]
 - `sms_campaigns`: [[sms-campaign-limit-and-labels]], [[sms-campaigns]]
 - `sms_codes`: [[sms-codes]]

@@ -486,6 +486,9 @@ function get_search_results($properties) {
                     LIMIT 100", array($score_search_query, $score_search_query, $score_search_query, $filter_search_query));
             }
         }
+
+        // The day's search rollup (includes/fn/site_search_stats.php).
+        pg_site_search_count($query, count($featured_items) + count($catalog_items) + count($results));
     }
 
     if ($layout_type == 'system') {
