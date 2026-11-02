@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-20
-description: Decisions list, product part 20 (2026-11-02 on): voice to assistants, transactional campaigns and opt-in, converted regions, event copies, till dates, country names, bank statements
+description: Decisions list, product part 20 (2026-11-02 on): voice to assistants, transactional campaigns and opt-in, converted regions, event copies, till dates, country names, bank statements, untracked scans
 ---
 
 ## Where are the rules and the earlier parts?
@@ -26,3 +26,6 @@ description: Decisions list, product part 20 (2026-11-02 on): voice to assistant
 
 ## An imported bank statement can be deleted while nothing is recorded (2026-11-02, #5649)
 - Owner: a statement with no recorded or matched line deletes with its new and ignored lines; one with a recorded line refuses and names them; a file with no dated amount is refused at upload. Reason: a wrong upload must be cleared without touching recorded movements.
+
+## A scan on an untracked product writes the count and says so (2026-11-02, #5788)
+- Owner (2026-11-02 night) delegated the question to the architect; decided: the barcode increase/decrease screens keep writing `inventory_quantity` for a product with stock tracking off, as Modify Selected and the Catalog Manager do, and the success line and the table row say "stock tracking is off; the count is used when tracking is turned on". Reason: one rule for every stock writer; a warehouse counts before tracking is on.
