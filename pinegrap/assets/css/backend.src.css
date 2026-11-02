@@ -29,6 +29,13 @@
 .btn:where(.text-end) {
   justify-content: flex-end;
 }
+/* A switched-off ghost button draws no frame. With a theme class
+   (.theme-secondary) v6 leaves the disabled border colour unset, so it falls
+   back to the text colour and the disabled button looked stronger than the
+   enabled one beside it (the settings step arrows). */
+.btn-text:is(:disabled, .disabled) {
+  border-color: transparent;
+}
 /* v5's card: block body and header, v5 paddings and cap tint, children
    keep their own margins (v6 zeroes them and spaces them with a gap). */
 .card {
@@ -4669,6 +4676,12 @@ input[readonly=true], input[readonly=true]:focus {
 }
 .pg-settings-modal .collapse.popover{
   margin-top:.5rem;
+}
+/* Inside a settings card the box a switch opens is as wide as the card, not
+   as wide as its content: sized to content, two boxes of one card ended at
+   different places and the switches inside them did not line up. */
+.pg-set-card .collapse.popover {
+  width: calc(100% - 0.3rem);
 }
 body.toolbar {
   background-color: transparent;
@@ -9852,6 +9865,30 @@ body.pg-side-panel-open .pg-chat-launcher {
     border-top: var(--pg-border-width) solid var(--pg-border-color-translucent);
   }
 
+  /* A group heading inside a card (a cell that starts with an <h6>) starts a new
+     group, so the line goes above it, with room, and not between it and the
+     group's first setting: drawn there, the heading sat flush under the
+     previous setting's description and read as part of it. The row right
+     after a heading repeats the divider's predicate to take the line back
+     off; a plain selector could not beat it. */
+  .pg-set-card .row > * + [class]:has(> h6:first-child) {
+    /* Padding handed to the margin as on a converted cell, so the line
+       starts and ends where the text does. */
+    flex: 0 0 auto;
+    width: calc(100% - var(--bs-gutter-x));
+    max-width: calc(100% - var(--bs-gutter-x));
+    margin-inline: calc(var(--bs-gutter-x) * .5);
+    padding-inline: 0;
+    margin-top: .5rem;
+    padding-top: 1.1rem;
+    border-top: var(--pg-border-width) solid var(--pg-border-color-translucent);
+  }
+  .pg-set-card .row > [class]:has(> h6:first-child) + [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range),
+  .pg-set-card .row > [class]:has(> h6:first-child) + [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) {
+    padding-top: .25rem;
+    border-top: 0;
+  }
+
   /* The two columns. The control column is given a width rather than left to
      its content: a .form-control is width:100%, and in a content-sized column
      that is a question with no answer -- the field would end up as wide as
@@ -9900,6 +9937,16 @@ body.pg-side-panel-open .pg-chat-launcher {
   .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > .form-text {
     grid-area: pgnote;
     margin-top: .1rem;
+  }
+
+  /* The grid has one note area, so a second description (a warning drawn
+     only on some sites, a link to the screen that holds the rest) would be
+     painted on top of the first. Only the first takes the area; every later
+     one gets a full-width row of its own under it. The rule repeats the
+     predicate: without it, it could not beat the placement above. */
+  .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > .form-text ~ .form-text,
+  .pg-set-card .row > [class]:has(> .form-field > :is(input[type="checkbox"], .switch)) > .form-field > .form-text ~ .form-text {
+    grid-area: auto / 1 / auto / -1;
   }
 
   .pg-set-card .row > [class]:has(> .form-label):has(> input.form-control:not(.tagin), > :is(select.form-control), > .input-group, > .form-adorn, > .form-range) > input.form-control,
@@ -10225,9 +10272,11 @@ body.pg-side-panel-open .pg-chat-launcher {
   opacity: .7;
 }
 .pg-sm-link span {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
+  /* Wraps rather than ending in an ellipsis: at tablet width the list is
+     12rem and a long category name was cut, with the full name shown
+     nowhere (its tooltip holds the description). */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .pg-sm-link:hover,
 .pg-sm-link:focus-visible {
