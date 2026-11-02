@@ -33,6 +33,7 @@ $self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_accountant.php';
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 $can_settings = defined('USER_MANAGE_ERP_SETTINGS') && USER_MANAGE_ERP_SETTINGS && !$readonly;
 $can_cash = defined('USER_MANAGE_ERP_CASH') && USER_MANAGE_ERP_CASH;
+$cash_refusal = lang('This pack carries the till sheets: downloading or sending it needs the right to see the tills.');
 
 // ---------------------------------------------------------------- download
 // One number: an array (?download[]=x) cast to 1 and sent the first pack;
@@ -42,12 +43,27 @@ $download_id = is_scalar($_GET['download'] ?? null) ? (int) $_GET['download'] : 
 if ($download_id !== null) {
     $package = erp_accountant_package($download_id);
 
+    // Any pack can be asked for by its number: one built by someone who sees
+    // the tills (or by the monthly job) is not handed to someone who does not.
+    if (is_array($package) && !$can_cash && erp_accountant_package_has_cash($package)) {
+        $liveform->mark_error('_error', $cash_refusal);
+        go($self_url);
+    }
+
     if (!is_array($package) || !erp_accountant_stream($package)) {
         $liveform->mark_error('_error', lang('That pack is no longer there. Build it again.'));
         go($self_url);
     }
 
     erp_accountant_count_download((int) $package['id']);
+
+    if (function_exists('log_activity')) {
+        log_activity(lang(array(
+            'string' => 'Accountant pack for {var:1} downloaded.',
+            'vars' => erp_profit_period_title((string) $package['period_from'], (string) $package['period_to']),
+        )));
+    }
+
     exit();
 }
 
@@ -87,9 +103,18 @@ if ($_POST) {
             go($self_url);
         }
 
+        $period_title = erp_profit_period_title($period['from'], $period['to']);
+
+        if (function_exists('log_activity')) {
+            log_activity(lang(array(
+                'string' => !empty($_POST['pdfs']) ? 'Accountant pack for {var:1} built with the documents.' : 'Accountant pack for {var:1} built without the documents.',
+                'vars' => $period_title,
+            )));
+        }
+
         $liveform->add_notice(h(lang(array(
             'string' => 'The pack for {var:1} is ready.',
-            'vars' => erp_accountant_period_label($period['from'], $period['to']),
+            'vars' => $period_title,
         ))) . ' <a class="alert-link" href="' . h($self_url . '?download=' . (int) $built['id']) . '">' . lang('Download') . '</a>');
 
         foreach ($built['warnings'] as $warning) {
@@ -112,6 +137,11 @@ if ($_POST) {
             go($self_url);
         }
 
+        if (!$can_cash && erp_accountant_package_has_cash($package)) {
+            $liveform->mark_error('_error', $cash_refusal);
+            go($self_url);
+        }
+
         $link = erp_accountant_new_link((int) $package['id']);
 
         if ($link === '') {
@@ -129,7 +159,7 @@ if ($_POST) {
         if (function_exists('log_activity')) {
             log_activity(lang(array(
                 'string' => 'A new link was made for the accountant pack of {var:1}.',
-                'vars' => erp_accountant_period_label((string) $package['period_from'], (string) $package['period_to']),
+                'vars' => erp_profit_period_title((string) $package['period_from'], (string) $package['period_to']),
             )));
         }
 
@@ -143,6 +173,13 @@ if ($_POST) {
         }
 
         $to = trim((string) ($_POST['to'] ?? ''));
+        $package = erp_accountant_package((int) ($_POST['package_id'] ?? 0));
+
+        if (is_array($package) && !$can_cash && erp_accountant_package_has_cash($package)) {
+            $liveform->mark_error('_error', $cash_refusal);
+            go($self_url);
+        }
+
         $sent = erp_accountant_send((int) ($_POST['package_id'] ?? 0), $to, (int) $user['id']);
 
         if (!$sent['success']) {
@@ -176,6 +213,14 @@ if ($_POST) {
             }
 
             $liveform->add_notice(lang('The accountant\'s settings were saved.'));
+            go($self_url);
+        }
+
+        // An empty date on Lock is a mistake, not a request to lift the lock:
+        // erp_lock_set() reads an empty date as lifting it, which only the
+        // Lift the lock button asks for.
+        if (($action === 'lock') && (trim((string) ($_POST['lock_date'] ?? '')) === '')) {
+            $liveform->mark_error('lock_date', lang('Enter the lock date as a date.'));
             go($self_url);
         }
 
@@ -328,43 +373,81 @@ $output_rows = '';
 foreach ($packages as $package) {
     $summary = json_decode((string) $package['summary'], true);
     $summary = is_array($summary) ? $summary : array();
-    $period_label = erp_accountant_period_label((string) $package['period_from'], (string) $package['period_to']);
+    $period_dates = prepare_form_data_for_output((string) $package['period_from'], 'date', false) . ' – ' . prepare_form_data_for_output((string) $package['period_to'], 'date', false);
+    $period_title = erp_profit_period_title((string) $package['period_from'], (string) $package['period_to']);
     $file_exists = is_file(erp_accountant_directory() . '/' . basename((string) $package['file_name']));
+    $cash_locked = !$can_cash && erp_accountant_package_has_cash($package);
     $sent = ((int) $package['sent_at'] > 0)
-        ? h((string) $package['sent_to']) . '<div class="small fg-secondary">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $package['sent_at']), 'date and time')) . '</div>'
+        ? '<span class="text-break">' . h((string) $package['sent_to']) . '</span><div class="small fg-secondary">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $package['sent_at']), 'date and time')) . '</div>'
         : '<span class="fg-secondary">—</span>';
 
-    $output_send = '';
-
-    if (!$readonly && $file_exists) {
-        $output_send = '
-                <form method="post" action="erp_accountant.php" class="d-flex gap-1 mt-1" style="min-width:16rem">
-                    ' . get_token_field() . '
-                    <input type="hidden" name="package_id" value="' . (int) $package['id'] . '" />
-                    <input type="email" name="to" class="form-control form-control-sm" value="' . h($settings['email']) . '" placeholder="' . h(lang('Accountant\'s e-mail')) . '" aria-label="' . h(lang('Accountant\'s e-mail')) . '" required />
-                    <button type="submit" name="erp_action" value="send" class="btn btn-sm btn-outline theme-secondary text-nowrap"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Send link') . '</button>
-                    <button type="submit" name="erp_action" value="link" formnovalidate class="btn btn-sm btn-outline theme-secondary" title="' . h(lang('Make a link to copy')) . '" aria-label="' . h(lang('Make a link to copy')) . '"><i class="bi bi-link-45deg" aria-hidden="true"></i></button>
-                </form>';
+    // Sending opens one shared window below the table, so the row stays as
+    // narrow as its two buttons.
+    if (!$file_exists) {
+        $output_actions = '<span class="fg-secondary small">' . lang('The file is no longer there.') . '</span>';
+    } elseif ($cash_locked) {
+        $output_actions = '<span class="fg-secondary small">' . h(lang('Needs the right to see the tills.')) . '</span>';
+    } else {
+        $output_actions = '<div class="d-flex flex-wrap gap-1 justify-content-end">'
+            . '<a class="btn btn-sm btn-outline theme-primary text-nowrap" href="' . h($self_url . '?download=' . (int) $package['id']) . '"><i class="bi bi-download me-1" aria-hidden="true"></i>' . lang('Download') . ' <span class="small fg-secondary">' . h(erp_accountant_size_text((int) $package['file_size'])) . '</span></a>'
+            . (!$readonly
+                ? '<button type="button" class="btn btn-sm btn-outline theme-secondary text-nowrap" data-erp-pack-send="' . (int) $package['id'] . '" data-erp-pack-period="' . h($period_title) . '"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Send link') . '</button>'
+                : '')
+            . '</div>';
     }
 
     $output_rows .= '
         <tr>
-            <td class="align-middle text-nowrap" data-sort="' . h(str_replace('-', '', (string) $package['period_from'])) . '">'
-                . h(prepare_form_data_for_output((string) $package['period_from'], 'date', false)) . ' – ' . h(prepare_form_data_for_output((string) $package['period_to'], 'date', false))
-                . '<div class="small fg-secondary font-monospace">' . h($period_label) . '</div></td>
-            <td class="align-middle text-nowrap" data-sort="' . (int) $package['created_at'] . '">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $package['created_at']), 'date and time'))
+            <td class="align-middle" data-sort="' . h(str_replace('-', '', (string) $package['period_from'])) . '">'
+                . (($period_title !== $period_dates) ? h($period_title) . '<div class="small fg-secondary">' . h($period_dates) . '</div>' : h($period_dates)) . '</td>
+            <td class="align-middle" data-sort="' . (int) $package['created_at'] . '">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $package['created_at']), 'date and time'))
                 . '<div class="small fg-secondary">' . ((string) $package['source'] === 'monthly' ? lang('Monthly, by itself') : h((string) ($package['created_by_name'] ?? ''))) . '</div></td>
             <td class="align-middle text-end" data-sort="' . (int) $package['documents'] . '">' . (int) $package['documents'] . '<div class="small fg-secondary">' . h(lang(array('string' => '{var:1} file(s)', 'vars' => (int) $package['files_added']))) . '</div></td>
             <td class="align-middle text-end text-nowrap" data-sort="' . (int) ($summary['output_vat'] ?? 0) . '">' . $money($summary['output_vat'] ?? 0) . '</td>
             <td class="align-middle text-end text-nowrap" data-sort="' . (int) ($summary['input_vat'] ?? 0) . '">' . $money($summary['input_vat'] ?? 0) . '</td>
             <td class="align-middle" data-sort="' . (int) $package['sent_at'] . '">' . $sent . '</td>
             <td class="align-middle text-end" data-sort="' . (int) $package['downloads'] . '">' . (int) $package['downloads'] . '</td>
-            <td class="align-middle">'
-                . ($file_exists
-                    ? '<a class="btn btn-sm btn-outline theme-primary text-nowrap" href="' . h($self_url . '?download=' . (int) $package['id']) . '"><i class="bi bi-download me-1" aria-hidden="true"></i>' . lang('Download') . ' <span class="small fg-secondary">' . h(number_format(((int) $package['file_size']) / 1048576, 1, erp_number_separators()['decimal'], '')) . ' MB</span></a>'
-                    : '<span class="fg-secondary small">' . lang('The file is no longer there.') . '</span>')
-                . $output_send . '</td>
+            <td class="align-middle text-end">' . $output_actions . '</td>
         </tr>';
+}
+
+// One window for sending any pack: the row's button fills in which one.
+$output_send_dialog = '';
+
+if (!$readonly) {
+    $output_send_dialog = '
+            <dialog class="dialog pg-dialog-centered" id="erp_accountant_send_modal" aria-labelledby="erp_accountant_send_modal_label">
+                <form method="post" action="erp_accountant.php">
+                    ' . get_token_field() . '
+                    <input type="hidden" name="package_id" id="erp_accountant_send_package" value="" />
+                    <div class="dialog-header">
+                        <h5 class="dialog-title" id="erp_accountant_send_modal_label"><i class="bi bi-send me-3" aria-hidden="true"></i>' . lang('Send link') . ' <span class="fg-secondary" id="erp_accountant_send_period"></span></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
+                    </div>
+                    <div class="dialog-body">
+                        <label class="form-label" for="erp_accountant_send_to">' . lang('Accountant\'s e-mail') . '</label>
+                        <input type="email" name="to" id="erp_accountant_send_to" class="form-control" value="' . h($settings['email']) . '" maxlength="255" required />
+                        <div class="form-text">' . h(lang(array('string' => 'A link opens its pack without a login for {var:1} days. Send it by e-mail, or make one to copy into a message; each new link makes the one before it stop working.', 'vars' => ERP_ACCOUNTANT_LINK_DAYS))) . '</div>
+                    </div>
+                    <div class="dialog-footer">
+                        <button type="submit" name="erp_action" value="link" formnovalidate class="btn btn-outline theme-secondary"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . lang('Make a link to copy') . '</button>
+                        <button type="submit" name="erp_action" value="send" class="btn btn-solid theme-primary"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Send link') . '</button>
+                    </div>
+                </form>
+            </dialog>
+            <script>
+            (function () {
+                var modal = document.getElementById("erp_accountant_send_modal");
+                if (!modal) { return; }
+                document.addEventListener("click", function (event) {
+                    var button = event.target.closest("[data-erp-pack-send]");
+                    if (!button) { return; }
+                    document.getElementById("erp_accountant_send_package").value = button.getAttribute("data-erp-pack-send");
+                    document.getElementById("erp_accountant_send_period").textContent = button.getAttribute("data-erp-pack-period");
+                    pgUI.ready(function () { pgUI.dialog.show(modal); });
+                });
+            })();
+            </script>';
 }
 
 if ($output_rows === '') {
@@ -390,6 +473,12 @@ if (!$liveform->prefill() && ((string) $liveform->get_field_value('erp_action') 
     $settings_form['pdfs'] = ((string) $liveform->get_field_value('accountant_pdfs') !== '');
 }
 
+// A refused address is marked on its box, with the reason under it.
+$email_error = null;
+if ($liveform->check_field_error('accountant_email')) {
+    $email_error = (string) ($liveform->field_error_texts()['accountant_email'] ?? '');
+}
+
 $output_settings_card = '
             <div class="card my-7">
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Accountant') . '</div>
@@ -400,7 +489,8 @@ $output_settings_card = '
                         <div class="row g-5">
                             <div class="col-12">
                                 <label class="form-label" for="accountant_email">' . lang('Accountant\'s e-mail') . '</label>
-                                <input type="email" class="form-control" id="accountant_email" name="accountant_email" value="' . h($settings_form['email']) . '" maxlength="255" autocomplete="off"' . ($can_settings ? '' : ' disabled') . ' />
+                                <input type="email" class="form-control' . ($email_error !== null ? ' is-invalid' : '') . '" id="accountant_email" name="accountant_email" value="' . h($settings_form['email']) . '" maxlength="255" autocomplete="off"' . ($email_error !== null ? ' aria-invalid="true" aria-describedby="accountant_email_error"' : '') . ($can_settings ? '' : ' disabled') . ' />
+                                ' . ($email_error !== null ? '<div class="invalid-feedback" id="accountant_email_error">' . h($email_error) . '</div>' : '') . '
                             </div>
                             <div class="col-12">
                                 <div class="form-field">
@@ -480,7 +570,7 @@ pg_page_shell(array(
                                     <input class="radio" type="radio" name="range" id="range_dates" value="dates" />
                                     <label class="" for="range_dates">' . lang('From - to') . '</label>
                                 </div>
-                                <div class="d-flex gap-3 mt-1">
+                                <div class="d-flex gap-3 mt-1" id="range_dates_fields">
                                     <input type="date" data-pg-date class="form-control" name="from" value="' . h($last_month['from']) . '" aria-label="' . h(lang('Start')) . '" />
                                     <input type="date" data-pg-date class="form-control" name="to" value="' . h($last_month['to']) . '" aria-label="' . h(lang('End')) . '" />
                                 </div>
@@ -493,11 +583,33 @@ pg_page_shell(array(
                                 <button type="submit" class="btn btn-solid theme-primary w-100"' . ($ready ? '' : ' disabled') . '><i class="bi bi-file-earmark-zip me-1" aria-hidden="true"></i>' . lang('Build the pack') . '</button>
                             </div>
                         </div>
+                        <script>
+                        (function () {
+                            // Touching the dates picks the date range, changing
+                            // the month picks the month: the radio left as it
+                            // was sent the other period without a word.
+                            var month = document.getElementById("month");
+                            var dates = document.getElementById("range_dates_fields");
+                            var pick = function (id) { document.getElementById(id).checked = true; };
+                            if (!month || !dates) { return; }
+                            month.addEventListener("change", function () { pick("range_month"); });
+                            month.addEventListener("focus", function () { pick("range_month"); });
+                            dates.addEventListener("focusin", function () { pick("range_dates"); });
+                            dates.addEventListener("change", function () { pick("range_dates"); });
+                            dates.addEventListener("input", function () { pick("range_dates"); });
+                        })();
+                        </script>
                         <div class="form-text mt-5">' . lang('Amounts are in the base currency unless a column names the document\'s own; cancelled documents are listed and left out of the totals. A document that has no kept PDF yet is rendered and kept now.') . ($can_cash ? '' : ' ' . lang('The till sheets are left out: your account does not see the tills.')) . '</div>
                     </form>
                 </div>
             </div>
 
+        </div>
+        <div class="col-12 xl:col-4">
+            ' . $output_lock_card . '
+            ' . $output_settings_card . '
+        </div>
+        <div class="col-12">
             <div class="card my-7">
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Packs') . '</div>
                 <div class="card-body p-0 table-responsive">
@@ -519,10 +631,7 @@ pg_page_shell(array(
                 </div>
                 <div class="form-text px-5 pb-5">' . h(lang(array('string' => 'A link opens its pack without a login for {var:1} days. Send it by e-mail, or make one to copy into a message; each new link makes the one before it stop working.', 'vars' => ERP_ACCOUNTANT_LINK_DAYS))) . '</div>
             </div>
-        </div>
-        <div class="col-12 xl:col-4">
-            ' . $output_lock_card . '
-            ' . $output_settings_card . '
+            ' . $output_send_dialog . '
         </div>
     </div>
 </main>

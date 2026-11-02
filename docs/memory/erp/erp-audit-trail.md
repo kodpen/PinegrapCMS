@@ -13,6 +13,8 @@ description: ERP audit trail (erp_audit_log, 4.90): its two writers (events and 
 
 ## What does a line carry?
 - `request_id`, shared by every line of one request (the screen shows one action as one entry; the core `audit_log` takes the same id inside the ERP), `source` (`panel`, `api`, `job`), user id and name (`erp_audit_actor()`: through the API the application's owner and the application's name), ip, `event`, `object_type`, `object_id`, `label`, `amount`, `currency`.
+- A web request with nobody signed in (an accountant's link download, a guest signing a quote) is written `source = 'panel'`, user 0, empty name: only `pg_cron_is_background_run()` makes a `job` line. `erp_audit_actor_kind()` reads a row as job / api / link / panel; the screen and the CSV show "Without a login (link or outside service)" and the user filter has `@link`. Before, link lines showed as "Scheduled job" (#5734). Older link lines stay `job` (no reliable way to tell them apart).
+- Description, record name and user cells carry `text-break`, so one long word does not widen the table (#5739).
 - `object_type` is the event name's second part. A new type needs its label and amount in `erp_audit_event()`, a row in `erp_audit_object_types()` (filter label and link) and its sentence in `erp_audit_event_text()`.
 
 ## Who may read it?
