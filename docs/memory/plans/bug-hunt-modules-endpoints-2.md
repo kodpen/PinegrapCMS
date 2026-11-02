@@ -6,7 +6,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 ## Which root endpoint groups (optimize to zone) are hunted?
 - Endpoints `optimize` (2): clean (optimize, optimize_image)
 
-- Endpoints `order` (22): partly done #5115, #5125 (order_*.php: order_form, order_history_*, order_invoice_print, order_preview, order_return); print_order: #5170 (queries used $_GET id, the check $_REQUEST id); retrieve_order, delete_order, connect_user_to_order, view_orders_for_contact clean; still open: add_order, edit_orders, view_order(s), submit_order, update_order, cancel_order, express_order, get_express_order, get_order_*, get_view_order_screen_content, view_order_report(s)
+- Endpoints `order` (22): partly done #5115, #5125 (order_*.php: order_form, order_history_*, order_invoice_print, order_preview, order_return); print_order: #5170 (queries used $_GET id, the check $_REQUEST id); retrieve_order, delete_order, connect_user_to_order, view_orders_for_contact clean; cancel_order, edit_orders, view_order_reports clean (#PRNUM); still open: add_order, view_order(s), submit_order, update_order, express_order, get_express_order, get_order_*, get_view_order_screen_content, view_order_report(s)
 
 - Endpoints `page` (10): done #5135 (get_page RSS no-feed description escaped; page_view, update_view_page_mode, duplicate_page, edit_page_layout, editor_select_page_or_file clean), #5151 (get_page theme designer preview: CSS no longer HTML-escaped, theme_id scalar only; add_page, edit_page, get_page_content clean)
 
