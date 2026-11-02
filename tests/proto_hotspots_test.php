@@ -344,6 +344,25 @@ function test_proto_hotspots_layout()
 	pg_assert_same(44 + 2 * 30 + 15, $result['y'], 'a row port in the middle of its row');
 }
 
+// The designer prints the canvas core, the resolver and the collector
+// without defer before style_designer.min.js, which reads them; the view
+// has its toolbar button and reads the prototype_map answer.
+function test_proto_hotspots_printed_before_the_designer()
+{
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+	$designer = strpos($screen, "pg_js_bundle_tags('assets/js/style_designer.min.js', false)");
+
+	foreach (array('pg_graph_canvas', 'pg_link_resolve', 'pg_proto_hotspots') as $name) {
+		$at = strpos($screen, "pg_js_bundle_tags('assets/js/" . $name . ".min.js', false)");
+		pg_assert_true(($at !== false) && ($designer !== false) && ($at < $designer), $name . ' is printed without defer before the designer');
+	}
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+
+	pg_assert_contains('id="sd-vb-proto"', $source, 'the toolbar button');
+	pg_assert_contains("_pgApiPost('prototype_map', designed.request)", $source, 'the view asks the map read');
+}
+
 // The collector is a bundle of its own.
 function test_proto_hotspots_is_bundled()
 {

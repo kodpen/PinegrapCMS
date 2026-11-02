@@ -20,6 +20,7 @@
  * - mark(): each hotspot's mark from that read through the resolver's twin
  *   (window.PGLinkResolve): tab, page, broken, hidden, external, contact,
  *   anchor, with a draft flag.
+ * - layout(): where the frames, rows, chips and arrows of the view go.
  *
  * Nothing runs at load but the definition of window.PGProtoHotspots.
  * Served minified as assets/js/pg_proto_hotspots.min.js (pg_js_bundles(),
