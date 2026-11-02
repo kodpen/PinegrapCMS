@@ -134,6 +134,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_image_upload_cap();        // 11.0.142
 	upgrade_2026_11_0_dashboard_layout();        // 11.0.143
 	upgrade_2026_11_0_claude_daily_summary();    // 11.0.145
+	upgrade_2026_11_0_product_questions();       // 11.0.148
 
 }
 
@@ -4312,5 +4313,52 @@ function upgrade_2026_11_0_claude_daily_summary() {
 	install_add_column('config', 'ws_claude_summary_channel_id', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Assistant card: Claude can write a daily summary into a channel at a chosen hour; off until switched on under the Claude in the channels card.');
+
+}
+
+// Product questions (2026.11.0, 11.0.148; includes/fn/product_questions.php).
+// A question about a product is a comment of kind 'question' on the product's
+// thread, the staff answer a comment of kind 'answer' whose answer_of names
+// the question (and whose parent_id names it too, so the threaded widget
+// draws it under the question). Every comment written before this step is
+// kind 'comment'. idx_answer_of finds a question's answer; the unanswered
+// count reads kind with the thread index.
+//
+// As 11.0.31 for the same table: the columns are added in place where the
+// server can; on a copying server neither the columns nor the index is
+// started once this pass's budget is spent (install_pass_spent()), they wait
+// for the next pass.
+function upgrade_2026_11_0_product_questions() {
+
+	$columns = array(
+		'kind'      => "ENUM('comment','question','answer') NOT NULL DEFAULT 'comment'",
+		'answer_of' => "INT UNSIGNED NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('comments', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			if (install_pass_spent()) {
+
+				install_pause(lang(array('string' => 'comments: product questions are being added; {var:1} follows in the next pass', 'vars' => $column)));
+
+			}
+
+			install_add_column('comments', $column, $definition);
+
+		}
+
+	}
+
+	if (install_pass_spent() && !install_index_exists('comments', 'idx_answer_of')) {
+
+		install_pause(lang(array('string' => 'comments: product questions are being added; {var:1} follows in the next pass', 'vars' => 'idx_answer_of')));
+
+	}
+
+	install_add_index('comments', 'idx_answer_of', "INDEX idx_answer_of (answer_of)");
+
+	install_note('Comments: visitors can ask a question about a product and staff can answer it; every comment written before this version stays a comment.');
 
 }
