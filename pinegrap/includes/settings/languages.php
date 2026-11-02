@@ -164,7 +164,7 @@ if ($output_translation_rows === '') {
 }
 
 // Languages that can still be added: the known list minus the source and
-// the ones already there.
+// the ones already there, each named in the panel language and in its own.
 $output_translation_add_options = '<option value="">' . lang('-Select-') . '</option>';
 
 foreach ($translation_known as $translation_code => $translation_info) {
@@ -172,7 +172,7 @@ foreach ($translation_known as $translation_code => $translation_info) {
         continue;
     }
 
-    $output_translation_add_options .= '<option value="' . h($translation_code) . '">' . h($translation_info[0]) . ' - ' . h($translation_info[1]) . ' (' . h($translation_code) . ')</option>';
+    $output_translation_add_options .= '<option value="' . h($translation_code) . '">' . h(lang($translation_info[0])) . ' - ' . h($translation_info[1]) . ' (' . h($translation_code) . ')</option>';
 }
 
 $output_translation_languages = '

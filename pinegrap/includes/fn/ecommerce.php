@@ -7961,8 +7961,9 @@ function pg_format_number($amount, $decimals = 2)
 /**
  * A stored currency name for display. The starter data stores the names
  * below in English (the Turkish starter data too), so they go through lang();
- * a name the site owner wrote is printed as written. The stored value is
- * never changed.
+ * the Turkish starter data spells the first one 'US Dolar', read as the same
+ * currency. A name the site owner wrote is printed as written. The stored
+ * value is never changed.
  *
  * @param string $name
  * @return string
@@ -7973,6 +7974,7 @@ function pg_currency_label($name)
 
     switch ($name) {
         case 'US Dollar':
+        case 'US Dolar':
             return lang('US Dollar');
         case 'British pound':
             return lang('British pound');
