@@ -1160,6 +1160,12 @@ function ws_mcp_agent_post($row, $context, $tool, $answer, $call_id, $conversati
 
     // The answer is the service's, not the person's words: nobody edits it.
     db("UPDATE ws_messages SET locked = 1 WHERE id = '" . $reply_id . "'");
+
+    // An answer to a recording is heard back: its sound is made and kept on
+    // the same message where the speech service is set (voice.php).
+    if (function_exists('ws_voice_answer_spoken')) {
+        ws_voice_answer_spoken($channel, $reply_id, (int) $message['id'], ws_mcp_agent_neutral($answer, WS_MESSAGE_MAX), (int) $asker['id']);
+    }
     db("UPDATE ws_mcp_calls SET message_id = '" . $reply_id . "' WHERE id = '" . (int) $call_id . "'");
 
     if (function_exists('ws_thread_copy_sync')) {

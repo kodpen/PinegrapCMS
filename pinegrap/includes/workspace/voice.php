@@ -1289,6 +1289,136 @@ function ws_voice_speak_keep($channel, $message, $spoken, $user_id)
 }
 
 /* ---------------------------------------------------------------------------
+   Spoken answers: an answer to a recording
+   --------------------------------------------------------------------------- */
+
+/**
+ * Whether a message is a recording still there: the recorder's name on its
+ * file (or a spoken message, which is named the same) and not deleted. Only
+ * an answer to such a message is spoken; a sound somebody attached is not a
+ * question asked by voice.
+ *
+ * @param array|null $message the ws_messages row
+ * @return bool
+ */
+function ws_voice_answer_to_recording($message)
+{
+    return is_array($message)
+        && ((int) ($message['file_id'] ?? 0) > 0)
+        && ((int) ($message['deleted_at'] ?? 0) === 0)
+        && ws_voice_is_recording((string) ($message['file_name'] ?? ''));
+}
+
+/**
+ * The words of an answer as a voice reads them: tags out (the mention of
+ * the asker, a record tag: a voice reads no tags), code blocks out, Markdown
+ * marks off (emphasis, code, headings, bullets, quotes), white space within
+ * a line folded and empty lines folded to one break.
+ *
+ * @param string $body the answer as it is kept
+ * @return string '' when nothing is left to say
+ */
+function ws_voice_answer_text($body)
+{
+    $text = str_replace("\r\n", "\n", (string) $body);
+    $text = (string) preg_replace('/```.*?```/s', '', $text);
+    $text = (string) preg_replace('/<[@#][a-z_]{1,30}:[0-9]{1,10}>/i', '', $text);
+    $text = (string) preg_replace('/^[ \t]*(#{1,6}[ \t]+|[-*+][ \t]+|>[ \t]*|[0-9]{1,3}\.[ \t]+)/m', '', $text);
+    $text = (string) preg_replace('/(\*\*|__|`)(.*?)\1/s', '$2', $text);
+    $text = (string) preg_replace('/(?<![\p{L}\p{N}])[*_](?=\S)(.*?)(?<=\S)[*_](?![\p{L}\p{N}])/su', '$1', $text);
+    $text = (string) preg_replace('/[ \t]+/', ' ', $text);
+    $text = (string) preg_replace('/ *\n */', "\n", $text);
+    $text = (string) preg_replace('/\n{2,}/', "\n", $text);
+
+    return trim($text);
+}
+
+/**
+ * The language an answer is spoken in: Turkish when its letters say so,
+ * whatever the site speaks; otherwise the site's own language; English for
+ * a code that is no code.
+ *
+ * @param string $text
+ * @param string $site the site's language as lang(array('info' => true)) gives it
+ * @return string a two-letter code
+ */
+function ws_voice_answer_locale_rule($text, $site)
+{
+    if (preg_match('/[çğıöşüÇĞİÖŞÜ]/u', (string) $text)) {
+        return 'tr';
+    }
+
+    $code = ws_voice_speech_language_code($site);
+
+    return ($code !== '') ? $code : 'en';
+}
+
+/**
+ * @param string $text
+ * @return string
+ */
+function ws_voice_answer_locale($text)
+{
+    return ws_voice_answer_locale_rule($text, (string) lang(array('info' => true)));
+}
+
+/**
+ * After an assistant's answer was written: when it answers a recording and
+ * the speech service is ready, its sound is made (ws_voice_speak()) and kept
+ * on the same message (ws_voice_speak_keep()), so the person who spoke hears
+ * it back; the answer's text stays as it is. Without a service, or when the
+ * service refuses, nothing is kept and the asker's browser reads the answer
+ * aloud (speakAnswer() in workspace.js); the refusal shows on the card.
+ * Shared by Claude's answer route (api_claude.php), Pinegrap AI (ai.php) and
+ * an MCP agent (mcp_agent.php).
+ *
+ * @param array  $channel    where the answer was written
+ * @param int    $message_id the answer
+ * @param int    $parent_id  the message it answers
+ * @param string $text       the answer as it was written
+ * @param int    $user_id    the person who asked, owner of the file
+ * @return array spoken (bool), error ('' when nothing was tried or it went well)
+ */
+function ws_voice_answer_spoken($channel, $message_id, $parent_id, $text, $user_id)
+{
+    $out = array('spoken' => false, 'error' => '');
+
+    if (!ws_voice_schema_ready() || ((int) $parent_id <= 0) || ((int) $message_id <= 0) || !ws_voice_speech_ready()) {
+        return $out;
+    }
+
+    if (!ws_voice_answer_to_recording(ws_message((int) $parent_id))) {
+        return $out;
+    }
+
+    $words = ws_voice_answer_text($text);
+
+    if ($words === '') {
+        return $out;
+    }
+
+    $spoken = ws_voice_speak($words, ws_voice_answer_locale($words));
+
+    if (!$spoken['ok']) {
+        $out['error'] = $spoken['error'];
+
+        return $out;
+    }
+
+    $message = ws_message((int) $message_id);
+
+    if (!$message) {
+        return $out;
+    }
+
+    $kept = ws_voice_speak_keep($channel, $message, $spoken, (int) $user_id);
+    $out['spoken'] = $kept['ok'];
+    $out['error'] = $kept['error'];
+
+    return $out;
+}
+
+/* ---------------------------------------------------------------------------
    Transcripts: the queue and the work
    --------------------------------------------------------------------------- */
 

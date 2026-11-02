@@ -2454,6 +2454,12 @@ function ws_ai_deliver($row, $text, $proposals)
         return array('ok' => false, 'error' => 'text: ' . $sent['error']);
     }
 
+    // An answer to a recording is heard back: its sound is made and kept on
+    // the same message where the speech service is set (voice.php).
+    if (function_exists('ws_voice_answer_spoken')) {
+        ws_voice_answer_spoken($channel, (int) $sent['message_id'], (int) $row['message_id'], $text, (int) $row['requested_by']);
+    }
+
     foreach ($drafts['rows'] as $draft) {
         db("INSERT INTO ws_ai_drafts (request_id, channel_id, message_id, title, description, assignees, due_date, priority, created_at)
             VALUES (

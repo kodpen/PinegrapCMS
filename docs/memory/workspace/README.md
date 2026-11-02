@@ -284,6 +284,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-voice-recording.md: Voice messages (workspace_voice.js): the mic in place of Send, a sound's reply mic, the 5-minute cap, .weba/.ogg/.m4a names, the player
 - workspace-voice-screen.md: Voice transcripts on the channel screen (V3c2): recorder waveform and length, the player's peaks and transcript, the panel kick, the channel menu switch
 - workspace-voice-speech.md: The speech service a spoken answer is made with (VA3): the card's Spoken answers part, config_text rows, ws_voice_speak() and ws_voice_speak_keep(), the 1,500-character cut, what VA4 and VA5 call
+- workspace-voice-spoken-answers.md: An assistant's answer to a recording is heard back (VA4, #5390): ws_voice_answer_spoken() on the three answer routes, the words read, the language, the browser fallback
 - workspace-voice-transcript-job.md: Voice message transcripts at work (V3b #2696, V3c1 #2744): queue, ws_voice_kick(), answers and holds, delete for everyone, file.voice, channel switch, workspace.message.transcribed
 - workspace-voice-transcripts.md: Voice message transcripts (V3a #2674): ws_voice, the settings card with the site's own OpenAI-compatible key, ws_channels.voice_access, the 5-minute cap
 - workspace-voice-unheard.md: Why nobody heard a voice message (VA1): the recorder's hint while transcripts are off or the channel keeps its recordings, ws_voice_unheard_reason() in the assistants' briefings, Claude's instruction
