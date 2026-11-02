@@ -971,7 +971,8 @@ function pg_settings_tools_link($groups)
 
 
 /**
- * "Last modified 5 hours ago by admin", or an empty string.
+ * "Last modified 5 hours ago by admin", or an empty string. The relative
+ * time sits mid-sentence, so "a moment ago" keeps a small letter.
  *
  * Shown by the hub and by the category screens, from one place: the hub is
  * often opened to find out what somebody else changed, and the answer must not
@@ -988,7 +989,7 @@ function pg_settings_last_modified($row)
         return '';
     }
 
-    $output = lang('Last modified') . ' ' . get_relative_time(array('timestamp' => $timestamp)) . ' ';
+    $output = lang('Last modified') . ' ' . get_relative_time(array('timestamp' => $timestamp, 'mid_sentence' => true)) . ' ';
 
     $user_id = isset($row['last_modified_user_id']) ? (int) $row['last_modified_user_id'] : 0;
 
