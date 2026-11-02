@@ -6980,7 +6980,7 @@ function pg_js_bundles()
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
         // card frame first, then each card group's renderers.
-        'assets/js/pg_dash.min.js'                => array('assets/js/pg_dash.js', 'assets/js/pg_dash_cards_visitors.js', 'assets/js/pg_dash_cards_content.js', 'assets/js/pg_dash_cards_security.js', 'assets/js/pg_dash_cards_team.js', 'assets/js/pg_dash_cards_work.js', 'assets/js/pg_dash_edit.js', 'assets/js/pg_dash_panel.js', 'assets/js/pg_dash_cards_personal.js'),
+        'assets/js/pg_dash.min.js'                => array('assets/js/pg_dash.js', 'assets/js/pg_dash_cards_visitors.js', 'assets/js/pg_dash_cards_content.js', 'assets/js/pg_dash_cards_security.js', 'assets/js/pg_dash_cards_team.js', 'assets/js/pg_dash_cards_work.js', 'assets/js/pg_dash_edit.js', 'assets/js/pg_dash_panel.js', 'assets/js/pg_dash_cards_personal.js', 'assets/js/pg_dash_cards_shop.js'),
     );
 }
 

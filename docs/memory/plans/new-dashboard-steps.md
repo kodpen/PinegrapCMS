@@ -13,8 +13,10 @@ description: Steps N1-N14 and the visual pass V of plans/new-dashboard.md: size,
 ## Which steps?
 - Done: N1 switch and shell (#4692), N2 greeting (#4766), N3 System Status (#4756), N4 card frame (#4768), N5 edit mode (#4856), N6 gallery and side panel (#4888), N7 visitor and content cards (#4861), N8 security and team cards (#4865).
 
-- N9 (M) Shop cards. Screens 16-18. `free` after N4.
-  - `shop`, `salesmap`, `ops`, `orders`, `offers`, `fx`.
+- N9 (M) Shop cards. Screens 16-18. done (#4881).
+  - `shop`, `salesmap`, `orders`, `offers`, `fx`.
+
+- N9b (S) `ops` card. Screen 17. `free` after N9.
 
 - N10 Pipeline and queue. Screens 02, 03. Cut in four, each `free` after N4 unless said.
   - N10a (M) `pipeline` per preset with sparklines, flags and filtered links. done (#4973).

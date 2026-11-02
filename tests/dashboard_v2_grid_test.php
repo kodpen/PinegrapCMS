@@ -22,6 +22,11 @@ require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/page_grid.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/visitors.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/engagement.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/queue.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/shop.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/salesmap.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/orders.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/offers.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/fx.php');
 
 // Unknown ids, repeats and non-arrays are dropped; period and compare are
 // held to 0-2, and a card without a period takes 0.
