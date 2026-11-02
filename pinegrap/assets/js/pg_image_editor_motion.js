@@ -410,6 +410,16 @@
             this.stage.appendChild(this.stageBar);
         }
 
+        // A sheet open over the stage's right (a phone held sideways, a
+        // window 600-767 px wide) would hide the bar's end: it stops there.
+        // A short bar leaves out the length, which the panel shows too.
+        if (this.stageBar) {
+            var cover = this.panelCover();
+
+            this.stageBar.style.right = cover + 'px';
+            this.stageBar.classList.toggle('pgie-mshort', (this.stage.clientWidth - cover) < 480);
+        }
+
         // The bar takes the stage's bottom: a fitted picture moves up.
         var inset = this.stageBar ? this.stageBar.offsetHeight : 0;
 

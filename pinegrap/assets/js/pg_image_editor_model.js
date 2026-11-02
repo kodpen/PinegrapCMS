@@ -2561,7 +2561,8 @@
     // has, so A is Adjust on the rail and Arrow on the mini bar.
     var KEY_TOOLS = {
         v: ['select'], c: ['crop'], a: ['adjust', 'arrow'], d: ['draw'], t: ['text'], r: ['redact'], u: ['rect'], s: ['sticker'],
-        f: ['frame'], p: ['vector', 'pen'], b: ['artboard'], i: ['image'], e: ['export'], l: ['line'], o: ['ellipse']
+        f: ['frame'], p: ['vector', 'pen'], b: ['artboard'], i: ['image'], e: ['export'], l: ['line'], o: ['ellipse'],
+        m: ['motion']
     };
 
     function toolForKey(key, list) {

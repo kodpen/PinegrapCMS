@@ -2094,7 +2094,8 @@
   height: 16px;
 }
 
-.pgie-pb > .pgie-mbar .pgie-mlength {
+.pgie-pb > .pgie-mbar .pgie-mlength,
+.pgie-mbar.pgie-mshort .pgie-mlength {
   display: none;
 }
 

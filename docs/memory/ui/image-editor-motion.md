@@ -7,7 +7,7 @@ module: image_editor
 ## What does a document hold?
 - A layer's `anim`: `{ in, loop, out }`, each absent or `{ kind, ms, delay, ease, dir }`. In kinds and out kinds come from `M.MOTION_IN` (fade, slide, rise, pop, zoom, wipe, spin, type, draw), loop kinds from `M.MOTION_LOOP` (pulse, float, spin, blink, wiggle, swing). `dir` is one of `M.MOTION_DIRS`, the way the layer moves. `ease` is one of `M.MOTION_EASES`.
 - `doc.motion`: `{ duration, loop, base }`, read through `M.docMotion()`. It defaults to 5 s, repeat forever (0) and no base move, and clamps the duration to 1-60 s. `base` is one of `M.MOTION_BASES`: a slow zoom or pan of the picture across the whole duration (`M.baseAt()`).
-- Both ride in the document that a version row keeps (`image-editor-versions.md`). A save draws every layer at rest.
+- Both ride in the document a version row keeps (`image-editor-versions.md`). A save draws every layer at rest.
 
 ## When does each phase run?
 - `M.motionSpans(l, end)` answers `inStart/inEnd`, `loopStart/loopEnd` and `outStart/outEnd`, with null for a phase the layer lacks.
@@ -31,13 +31,13 @@ module: image_editor
   - The editor never plays by itself.
 
 ## Where is the play bar?
-- It holds Play/Pause, the clock (m:ss.d with the panel's decimal separator), the scrub with a tick at each layer's start, Repeat (preview only, not saved) and the length.
-- On desktop and on a phone held sideways it runs along the stage's bottom (`this.stageBar`). `stageInset` is its height and `stageSize()` subtracts it, so a fitted picture stays above the bar.
+- Play/Pause, the clock (m:ss.d, the panel's decimal separator), the scrub with a tick at each layer's start, Repeat (preview only, not saved) and the length.
+- On desktop and on a phone held sideways it runs along the stage's bottom (`this.stageBar`), up to an open sheet's edge (`panelCover()`); under 480 px wide it drops the length. `stageInset` is its height and `stageSize()` subtracts it, so a fitted picture stays above the bar.
 - On a phone held upright (`max-width: 599.98px`) it comes first in the sheet instead.
-- It is rebuilt only when what it shows changes (`stageBarKey`), so a zoom or an active scrub keeps it.
+- Rebuilt only when what it shows changes (`stageBarKey`): a zoom or a scrub keeps it.
 - requestAnimationFrame advances `this.time` and calls only `applyMotion()` and `updateBar()`.
-- With the Animate tool active, K plays or pauses (the video players' key; the button's label names it). Space keeps panning the view as in every tool. Escape pauses before anything else. The tool's letter M goes into E18's key map (`M.toolForKey()`) with E18 or AN11, whichever lands after this.
+- In the Animate tool K plays or pauses (the video players' key; the button's label says so). Space pans as in every tool; Escape pauses first. M picks the tool (`KEY_TOOLS`). The access part loads after this one, so its key handler runs first and an open `?` sheet takes K.
 
 ## What is left out, and what never moves?
 - Redaction layers never move: one moving away in an export would show what it hides.
-- Tracks (AN2), frames, exports and the server's base (AN3 onward), and the timeline keys other than K (AN11), are not in this step.
+- Not here yet: tracks (AN2), frames, exports and the server's base (AN3 on), timeline keys other than K (AN11).
