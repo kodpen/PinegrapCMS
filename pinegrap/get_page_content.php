@@ -519,6 +519,9 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // record the sender passed with it (a form's confirmation: form_id; an
     // order receipt: order_id), which on an e-mail page no URL carries.
     if (function_exists('pg_sw_item_missing')) pg_sw_item_missing(false);
+    // Whether a widget read the address segment; a page drawn meanwhile (an
+    // e-mail, another page) keeps the answer of the one drawn around it.
+    $pg_segment_read_prev = function_exists('pg_sw_segment_read') ? pg_sw_segment_read(false) : false;
     // An e-mail drawn while a page is drawn adds nothing and clears nothing.
     if (function_exists('pg_sw_url_filter_state') && !$email) pg_sw_url_filter_state(false);
     if (function_exists('pg_sw_list_page_requests') && !$email) pg_sw_list_page_requests(false);
@@ -555,6 +558,21 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             pg_sw_item_missing(true);
         }
     }
+
+    // An address segment after the page name that nothing on the page read
+    // (/about/xyz, a classic system-layout page included) is not there: a 404
+    // with noindex that goes into the 404 log, as a missing record or product
+    // answers. Only for the page this request asked for (a classic form list
+    // address shows its item view page under another name), never in an
+    // e-mail or edit mode.
+    if (!$email && ($mode != 'edit') && function_exists('pg_sw_unread_segment_missing')
+        && !defined('PRETTY_URL_PATH')
+        && ((int)$page_id === _pg_sw_current_page_id())
+        && pg_sw_unread_segment_missing(pg_sw_request_segment(), pg_sw_segment_read(), $page_type)
+    ) {
+        pg_sw_item_missing(true);
+    }
+    if ($pg_segment_read_prev) pg_sw_segment_read(true);
 
     // A part of a detail widget the page does not draw shows nothing
     // (widgets_parts_anywhere.php).

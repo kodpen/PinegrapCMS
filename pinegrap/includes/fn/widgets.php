@@ -3200,6 +3200,27 @@ function pg_sw_request_segment($page_parameter = null)
     return (strlen($segment) > 255) ? '' : $segment;
 }
 
+// Whether a widget read the address segment (pg_sw_request_segment()) as the
+// product, product group or record it shows. Pass true to mark (the widget
+// read it), false to clear (get_page_content() before its widget pass),
+// nothing to read. Marking and clearing return the value before.
+function pg_sw_segment_read($mark = null)
+{
+    static $read = false;
+    $before = $read;
+    if ($mark !== null) $read = (bool)$mark;
+    return $before;
+}
+
+// Whether the page answers 404 for its address segment: there is one, no
+// widget read it, and the page's type does not read it itself (a classic
+// catalog or catalog detail page takes its product or group from it).
+function pg_sw_unread_segment_missing($segment, $read, $page_type)
+{
+    if ((string)$segment === '' || $read) return false;
+    return !in_array((string)$page_type, array('catalog', 'catalog detail'), true);
+}
+
 // The record of a form a pretty address names: array('id', 'reference_code',
 // 'address_name'), or null.
 function pg_sw_record_by_address($form_page_id, $address_name)
@@ -3523,12 +3544,18 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             && pg_sw_record_passes_filters($custom_form_page_id, pg_sw_record_view_filters($cfg), $form_row['id'], _pg_sw_current_page_id()));
     $found_and_allowed = ($form_row && $allowed);
 
-    // The address asked for a record (?r=, or a name under the page when the
-    // form has pretty URLs on and no catalog widget on the page reads that
-    // segment instead) and there is none to show: a 404, not the page.
+    // With pretty URLs on, the segment names the record (the router turned
+    // it into ?r=): the page does not answer 404 for it as an unread one.
+    if ($email_record_id === 0 && pg_sw_request_segment() !== '' && pg_sw_form_pretty_urls($custom_form_page_id)) {
+        pg_sw_segment_read(true);
+    }
+
+    // The address asked for a record (?r=, or a name under the page, unless
+    // a catalog widget on the page reads that segment instead) and there is
+    // none to show: a 404, not the page.
     if (!$found_and_allowed && $email_record_id === 0) {
         $asked = ($reference_code !== '');
-        if (!$asked && pg_sw_request_segment() !== '' && pg_sw_form_pretty_urls($custom_form_page_id)) {
+        if (!$asked && pg_sw_request_segment() !== '') {
             $asked = true;
             foreach (pg_sw_page_widgets(_pg_sw_current_page_id()) as $w) {
                 $type = isset($w['cfg']['regionType']) ? (string)$w['cfg']['regionType'] : '';
