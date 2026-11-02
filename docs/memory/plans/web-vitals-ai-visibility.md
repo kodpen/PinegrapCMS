@@ -18,9 +18,9 @@ description: Plan (owner 2026-11-02): real-user web vitals per page from a beaco
 - The beacon is off while the page is in the designer, in Preview, in prototype play and for signed-in staff (their pages carry the panel bar).
 - Both tables are derived data: wrong buckets are truncated and rebuilt from nothing (the next hours fill), never fixed in place (`visitors/visitor-rollup-consistency.md`).
 
-## Which questions are open? (architect, before WV1 and WV3)
-1. The two tables as named above, in the open version's migration (a schema question by the fixed rules); recommended as written, retention 400 days by the general job.
-2. Whether the AI fetch counter also keeps unverified AI user agents under a separate `unverified` bot name (recommended yes, as a count only).
+## Which questions are decided? (#5040)
+1. `page_vitals_hourly` and `ai_fetch_daily` as written, shape in the issue; 400 days by the general job.
+2. Unverified AI user agents are counted under the bot name `unverified`, a count only.
 
 ## Where does it start?
 - WV1 and WV3 touch different files and start together after their questions; WV2 and WV4 follow. Read `visitors/README.md` key rules, `visitors/page-view-beacon.md`, `visitors/visitor-rollup-tables.md`, `waf/waf-ai-bots-ranges.md`, `includes/fn/seo.php` from `init_tracking()`. Steps: `web-vitals-ai-visibility-steps.md`, `-steps-2.md`.

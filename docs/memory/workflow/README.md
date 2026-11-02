@@ -43,6 +43,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-16.md: Decisions list, product part 16 (2026-11-01 on): design templates finished (comments, events, testimonials); Turkish address fields (İl and İlçe); image editor animation and video
 - decisions-made-product-17.md: Decisions list, product part 17 (2026-11-01 midday on): WebP at a picture's own address; the new dashboard's four questions and its gauge; the Turkish district list and country place packs
 - decisions-made-product-18.md: Decisions list, product part 18 (2026-11-01 afternoon on): search and audits; editor presentation and silent video; redacted Workspace replace; a thank-you page behind the registration gate
+- decisions-made-product-19.md: Decisions list, product part 19 (2026-11-02 on): the owner answers of the 2026-11 feature plans (booking, importers, forms, mail complaints, Fediverse, stock)
 - decisions-made-product-2.md: Decisions list, product part 2 (2026-10-29 on): guest account and receipt of a webhook-completed order; PayTR instalments; layout editor of a page not on a visual design; carrier drivers
 - decisions-made-product-3.md: Decisions list, product part 3 (2026-10-29 on): SVG and ZPL labels, the first international label driver, get_catalog.php's dead top-item block, the PHP 5 remnants, converted common regions' rows
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
@@ -58,6 +59,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-schema-5.md: Decisions list, schema part 5 (2026-10-29 evening on): subscriptions tables and ENUMs, products customs columns, shipment_labels pickup, ws_events.contact_id; rules in part 1
 - decisions-made-schema-6.md: Decisions list, schema part 6 (2026-10-30 midday on): district and plate_code, iys_sms_status, form_fields.rules, the marketplace auto-invoice switch, erp_quote_links, erp_quote_templates
 - decisions-made-schema-7.md: Decisions list, schema part 7 (2026-10-31 on): SMS campaign tables; image versions table in principle; ws_file_edits.redacted for a redacted Workspace replace
+- decisions-made-schema-8.md: Decisions list, schema part 8 (2026-11-02 on): tables and columns of the 2026-11 feature plans (#5032-#5042) and the Assistant card summary columns (#5014)
 - decisions-made-schema.md: Decisions list, schema part: steps approved in advance (ENUM appends in the 4.48 shape), the tables and columns approved on 2026-10-27 and 2026-10-28, who decides schema
 - decisions-made-seo.md: Decisions list, SEO part (2026-10-27/28): large image preview, site icon, main-host redirect, per-form structured-data type, author source and share-image field; defaults keep running sites
 - decisions-made-waf.md: Decisions list, firewall part: thresholds stay, a concurrent refusal is no offence, rate bans off the ladder, global limit before the session, no lock release, nothing served to a ban.

@@ -18,10 +18,10 @@ description: Plan (owner 2026-11-02): appointments with real time slots: service
 - Installed templates keep working; switching their booking pages to the widget is the last step and changes no installed site.
 - Deposits and fees come from `designer-form-logic.md` (the payment step), not from a second payment path.
 
-## Which questions are open? (architect; 1-2 before BK1, 3 before BK5)
-1. Tables `booking_services`, `booking_staff` (user id, service ids, hours JSON, exceptions JSON), `bookings` (unique key on staff and start, a `hold_until` time) in the open version's migration; cancelled rows kept 400 days, erasure covers them.
-2. Whether a booking needs an account: recommended no (name, e-mail, phone; an account is linked when signed in; auto-registration stays a template choice).
-3. The mail actions `booking_confirmed`, `booking_reminder`, `booking_rescheduled`, `booking_cancelled` as new `email_campaign_profiles.action` values (an ENUM widened by appending, as `commerce/shipment-mail-fields.md` did), and the SMS kinds beside the order kinds.
+## Which questions are decided? (#5032)
+1. Tables `booking_services`, `booking_staff`, `bookings` (unique key on staff and start, `hold_until`), shape in the issue; cancelled rows kept 400 days, erasure covers them.
+2. Owner: no account needed (name, e-mail, phone; a signed-in account is linked; auto-registration stays a template choice).
+3. `email_campaign_profiles.action` and `email_campaigns.action` widened by appending the four booking actions; SMS kinds beside the order kinds.
 
 ## Where does it start?
 - BK1 alone, then BK2-BK5 together. Read the `workspace/` and `designer/` key rules, `workspace/workspace-calendar-read.md`, `platform/sms-outbox-queue.md`, `ui/site-datetime-loader.md`, `designer/system-widget-change-checklist.md`, `pinegrap-salon/booking.php`. Steps: `appointment-booking-steps.md`, `-steps-2.md`.

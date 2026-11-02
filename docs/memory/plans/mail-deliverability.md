@@ -20,9 +20,9 @@ description: Plan (owner 2026-11-02): bounces and complaints stop sending to an 
 - No outside library: SES SigV4 signing is the same code the object-storage plan writes (`object-storage.md`, OS1); Postmark, Mailgun, Brevo and Resend are plain JSON over HTTPS.
 - Texts through `tr_add.php`; every new function in `includes/fn/mail_bounces.php` or the driver file; events `mail.bounced` and `mail.complained` through `pg_announce()` so webhooks and Flows see them.
 
-## Which questions are open? (architect, before MD1)
-1. Where the bounce record lives: a new table `mail_bounces` (address, kind, source, count, first and last timestamp, message id, campaign id) or columns on `contacts`. Recommended: the table, since an address can be on an order or a form record without a contact.
-2. The soft-bounce threshold (recommended 3 in 30 days) and whether a complaint also sets `contacts.opt_in` to 0 (recommended yes, as an unsubscribe).
+## Which questions are decided? (#5036)
+1. New table `mail_bounces`, one row per address with its current state; shape in the issue.
+2. Soft bounces: 3 in 30 days (a module constant); owner: a complaint also sets `contacts.opt_in` to 0 with a consent-log row.
 
 ## Where does it start?
 - MD1 and MD3 touch different files and start together; read `core/README.md` key rules, `core/mail-queue-permanent-errors.md`, `core/email-campaign-send.md`, `platform/sms-provider-layer.md`, `includes/fn/mail.php` from `pg_mail_hostname()` on. Steps: `mail-deliverability-steps.md`, `-steps-2.md`.

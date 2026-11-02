@@ -18,9 +18,9 @@ description: Plan (owner 2026-11-02): an S3-compatible object store (S3, R2, B2,
 - Access checks stay in `get_file.php`: a presigned URL is minted only after them, lives minutes, and is never written into a page or a mail (mails and feeds keep the site address, as `platform/image-same-address.md` asks).
 - The SigV4 code is shared with `mail-deliverability.md` MD3 (Amazon SES): the first to land writes `aws_sign.php`, the other reuses it.
 
-## Which questions are open? (architect; 1 before OS3, 2 before OS2)
-1. Where a file's place is kept: `files.storage` (ENUM local, s3) plus `files.storage_key`, or a side table; and whether Workspace channel files (`workspace_file_save.php`) join in OS5 or stay local. Recommended: the two columns; Workspace in OS5.
-2. Whether a public-folder file may be served straight from a public bucket or CDN host (faster, no PHP) in a later step, or always through the redirect. Recommended: redirect only in this plan; the public host as a later question.
+## Which questions are decided? (#5037)
+1. `files.storage` ENUM(local, s3) and `files.storage_key`; Workspace channel files join in OS5.
+2. Redirect only in this plan; a public bucket or CDN host is a later question.
 
 ## Where does it start?
 - OS1 alone (the client), then OS2 and OS3 side by side. Read `platform/README.md` key rules, `platform/curl-run-wrapper.md`, `core/security-helpers-and-secret-storage.md`, `platform/image-derivatives.md`, `get_file.php`. Steps: `object-storage-steps.md`.
