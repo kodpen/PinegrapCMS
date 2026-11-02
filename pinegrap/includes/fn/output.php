@@ -2375,6 +2375,10 @@ function output_header($properties = false)
                             'strings' => array(
                                 'title' => lang('Notification'),
                                 'body' => lang('There is something new in your panel.'),
+                                // The worker's offline notice (offline.html).
+                                'offline_title' => lang('You are offline'),
+                                'offline_body' => lang('The panel cannot be reached right now. Check the connection and try again.'),
+                                'offline_retry' => lang('Retry'),
                                 'on' => lang('Turn off'),
                                 'off' => lang('Turn on'),
                                 'working' => lang('Please wait') . '...',
@@ -2647,6 +2651,12 @@ function pg_account_menu($user, $options = array())
             $output .= $row(OUTPUT_PATH . $start_page_name, 'bi-bookmark-star', lang('My Start Page'), $parent_target);
         }
     }
+
+    // Install the panel as an application. Hidden until the browser says it
+    // can be installed (beforeinstallprompt, backend.src.js); a private label
+    // does not name the software.
+    $output .= '
+                            <li id="pg_install_app" class="d-none"><a class="menu-item" href="#" role="button" data-pg-install><i class="bi bi-download" aria-hidden="true"></i><span class="pg-um-text">' . ($private_label ? lang('Install as an app') : lang('Install Pinegrap')) . '</span></a></li>';
 
     // ── Help and support ────────────────────────────────────────────────
     $help = '';
@@ -6959,12 +6969,12 @@ function pg_js_bundles()
         // first open): the pure model, the core modal, then each tool's file,
         // which hangs its code on the core.
         'assets/js/pg_image_editor.min.js'         => array(
-            'assets/js/pg_image_editor_model.js', 'assets/js/pg_image_editor.js',
+            'assets/js/pg_google_fonts.js', 'assets/js/pg_image_editor_model.js', 'assets/js/pg_image_editor.js',
             'assets/js/pg_image_editor_crop.js', 'assets/js/pg_image_editor_adjust.js', 'assets/js/pg_image_editor_layers.js',
             'assets/js/pg_image_editor_draw.js', 'assets/js/pg_image_editor_text.js', 'assets/js/pg_image_editor_sticker.js',
             'assets/js/pg_image_editor_redact.js', 'assets/js/pg_image_editor_versions.js', 'assets/js/pg_image_editor_artboard.js',
             'assets/js/pg_image_editor_export.js', 'assets/js/pg_image_editor_vector.js', 'assets/js/pg_image_editor_svg.js',
-            'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_access.js'),
+            'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_fonts.js'),
         'assets/js/pg_fx.min.js'                   => array('assets/js/pg_fx.src.js'),
         // "Convert to text" under a voice message, loaded before
         // workspace.min.js and beside the chat window's script.
@@ -6976,7 +6986,7 @@ function pg_js_bundles()
         'assets/js/explorer_side.min.js'           => array('assets/js/explorer_side.js'),
         // The visual designer. Loaded without defer, before the inline
         // script that starts it and the scripts that extend it.
-        'assets/js/style_designer.min.js'          => array('assets/js/style_designer.src.js'),
+        'assets/js/style_designer.min.js'          => array('assets/js/pg_google_fonts.js', 'assets/js/style_designer.src.js'),
         // The cloud file picker of the Upload File screen (add_file.php).
         'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
         // The new dashboard (includes/dashboard/v2/page.php): the grid and

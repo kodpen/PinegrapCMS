@@ -21,6 +21,9 @@ description: Settings modal vs rest of panel: no settings breadcrumbs/back butto
 - Those tools write `add_notice()` / `mark_error()` on `liveform('settings')` and redirect; no screen is left to read them. The endpoint takes them over in the GET branch with `get_notices()` + `get_errors()`, drops the form with `remove_form()`, and the dialog shows them on the first pane.
 - Exactly once: removing before takeover destroys the sentence; taking over without removing brings it back on every open.
 
+## What does the address say while the dialog is open?
+- `#settings/<pane>`: `paint()` calls `locate()` with `history.replaceState` (no entry, no `hashchange`); a `#settings/<pane>/<card>` of the same pane stays. `open()` keeps the page's own fragment once (`address`); `fromHash()` marks a fragment that opened the dialog as its own (`address = ''`). The `hidden` handler's `unlocate()` gives the page its fragment back. Before #5027 a closed dialog came back on Back and reload. Test: `tests/settings_dialog_shell_test.php`.
+
 ## Where is the search in the dialog?
 - In `settings-modal-search.md`.
 

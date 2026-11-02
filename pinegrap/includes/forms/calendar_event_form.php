@@ -514,10 +514,10 @@ function pg_calendar_event_stored_spots($calendar_event_id, $recurrence_number)
 }
 
 /**
- * The form's five cards (main information, schedule, locations, calendars,
- * reservations), from the opening row to the script that sets the repeat
- * rows. The screens print the form tag, their hidden fields and buttons
- * around it.
+ * The form's two columns: the form column (main information, schedule,
+ * locations, reservations) and the status column (publishing and the
+ * calendars), then the script that sets the repeat rows. The screens print
+ * the form tag, their hidden fields, the row and the save bar around it.
  *
  * The edit screen passes the event's id, which changes four things: no
  * default start and end time, a remaining spots field (whose presence the
@@ -571,7 +571,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
         }
 
         $output_publish_rows =
-            '<div class="col-12 my-5">
+            '<div class="col-12 mb-3">
                 <div class="form-field"><div class="switch">' .
                     $liveform->output_field(array(
                         'type' => 'checkbox',
@@ -600,7 +600,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                         'data-inputmask-alias'=>'decimal')) . '
                                     <span class="input-group-text" title="' . lang('day(s) after event ends') . '">' . lang('day(s)') . '</span>
                                 </div>
-                                <div class="form-text text-end">' . lang('leave blank to never unpublish automatically') . '</div>
+                                <div class="form-text">' . lang('leave blank to never unpublish automatically') . '</div>
                             </div>
                         </div>
                     </div>
@@ -665,13 +665,13 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                     </div>
                 </div>
             </div>
-            <div class="col-12 sm:col-auto my-1">
+            <div class="col-12 md:col-6 my-1">
                 <label for="location" class="form-label">' . lang('Or enter special Location') . '</label>
                 ' . $liveform->output_field(array('type'=>'text', 'name'=>'location', 'id'=>'location', 'class'=>'form-control', 'maxlength'=>'100')) . '
             </div>';
     } else {
         $output_locations = '
-        <div class="col-12 sm:col-auto my-1">
+        <div class="col-12 md:col-6 my-1">
             <label for="location" class="form-label">' . lang('Enter special Location') . '</label>
             ' . $liveform->output_field(array('type'=>'text', 'name'=>'location', 'id'=>'location', 'class'=>'form-control', 'maxlength'=>'100')) . '
         </div>';
@@ -696,20 +696,24 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
         $product_id = $liveform->get_field_value('product_id');
     }
 
+    // The form column of the edit screen layout (ui/edit-screen-wide-layout.md)
+    // holds the four field cards; the calendars the event is posted to and
+    // whether it is published sit in a sticky status column on the right.
+    // Below lg the status column follows the form column. The screens put
+    // both in their row, before the save bar.
     return '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Main Informations') . '
                                 </h2>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 md:col-4 my-3">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Event'))) . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                         </div>
-                                        <div class="col-12 md:col-8 my-3">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="short_description" class="form-label">' . lang('Short Description') . '</label>
                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'short_description', 'id'=>'short_description', 'class'=>'form-control', 'maxlength'=>'255')) . '
                                         </div>
@@ -724,9 +728,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="card my-7">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Event Schedule') . '
                                 </h2>
@@ -884,9 +886,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="card my-7">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Event Location(s)') . '
                                 </h2>
@@ -896,35 +896,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Event Calendar(s)') . '
-                                </h2>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 my-3">
-                                            <h3 class="h5" id="multiselect-checkbox-checker-1_title">' . lang('Post to any of my Calendars') . '</h3>
-                                            <div class="card multiselect-checkbox-container rounded-0 mb-1">
-                                                <div class="card-header border-0 bg-reset">
-                                                    <div class="form-field">
-                                                        <div class="switch"><input id="multiselect-checkbox-checker-1" class="multiselect-checkbox-checker" type="checkbox" aria-labelledby="multiselect-checkbox-checker-1_label multiselect-checkbox-checker-1_title"></div>
-                                                        <label for="multiselect-checkbox-checker-1" class="" id="multiselect-checkbox-checker-1_label">' . lang('Select All') . '</label>
-                                                    </div>
-                                                </div>
-                                                <div class="card-body overflow-auto" style="max-height:300px">
-                                                    ' . $output_calendars . '
-                                                </div>
-                                            </div>
-                                            ' . $output_publish_rows . '
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="card my-7">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Reservations') . '
                                 </h2>
@@ -966,15 +938,15 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                                                 </div> 
                                                             </div> 
                                                         </div> 
-                                                        <div class="col-12 md:col-4 my-3">
+                                                        <div class="col-12 md:col-6 xl:col-4 my-3">
                                                             <label for="reserve_button_label" class="form-label">' . lang('Reserve Button Label') . '</label>
                                                             ' . $liveform->output_field(array('type'=>'text', 'name'=>'reserve_button_label', 'id'=>'reserve_button_label', 'class'=>'form-control', 'maxlength'=>'50')) . '
                                                         </div>
-                                                        <div class="col-12 md:col-4 my-3">
+                                                        <div class="col-12 md:col-6 xl:col-4 my-3">
                                                             <label for="product_id" class="form-label">' . lang('Reservation Product') . '</label>
                                                             ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-control', 'options'=>get_product_options(true, $product_id))) . '
                                                         </div>
-                                                        <div class="col-12 md:col-4 my-3">
+                                                        <div class="col-12 md:col-6 xl:col-4 my-3">
                                                             <label for="next_page_id" class="form-label">' . lang('Next Page') . '</label>
                                                             ' . $liveform->output_field(array('type'=>'select', 'name'=>'next_page_id', 'id'=>'next_page_id', 'class'=>'form-control', 'options'=>get_page_options('', '', 'edit', true, $keep_next_page_id))) . '
                                                         </div>
@@ -986,7 +958,35 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                 </div>
                             </div>
                         </div>
-                    </div>
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                            <div class="position-sticky" style="top:3.3rem;">
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Event Calendar(s)') . '
+                                    </h2>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            ' . $output_publish_rows . '
+                                            <div class="col-12 my-3">
+                                                <h3 class="h5" id="multiselect-checkbox-checker-1_title">' . lang('Post to any of my Calendars') . '</h3>
+                                                <div class="card multiselect-checkbox-container rounded-0 mb-1">
+                                                    <div class="card-header border-0 bg-reset">
+                                                        <div class="form-field">
+                                                            <div class="switch"><input id="multiselect-checkbox-checker-1" class="multiselect-checkbox-checker" type="checkbox" aria-labelledby="multiselect-checkbox-checker-1_label multiselect-checkbox-checker-1_title"></div>
+                                                            <label for="multiselect-checkbox-checker-1" class="" id="multiselect-checkbox-checker-1_label">' . lang('Select All') . '</label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="card-body overflow-auto" style="max-height:300px">
+                                                        ' . $output_calendars . '
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     <script>toggle_calendar_event_recurrence();</script>
 ';
 }

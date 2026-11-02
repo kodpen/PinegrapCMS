@@ -2069,7 +2069,11 @@ $(document).ready(function () {
 
     pg_push_open_requested();
 
+    pg_sw_register();
+
     pg_push_init();
+
+    pg_install_init();
 
     pg_quick_note_init();
 
@@ -3240,6 +3244,109 @@ var pg_push = {
     busy: false
 };
 
+// The texts and version of the worker, printed beside the bell
+// (#pg-push-config). Read once; a page without it leaves both empty and the
+// worker falls back to its English texts.
+var pg_push_config_done = false;
+
+function pg_push_config_read() {
+
+    if (pg_push_config_done) {
+        return;
+    }
+
+    pg_push_config_done = true;
+
+    try {
+        var config = JSON.parse($('#pg-push-config').text() || '{}');
+        pg_push.strings = config.strings || {};
+        pg_push.version = config.version || '';
+    } catch (error) {
+        pg_push.strings = {};
+        pg_push.version = '';
+    }
+}
+
+// The panel's one worker (sw.js): push, and the offline notice it answers
+// when a page cannot be reached. Registered on every panel page, not only
+// where push is offered, so the notice works for everyone. One address for
+// both uses: a second address for the same scope would replace the worker.
+// Null where a worker cannot run (no support, or not a secure context).
+var pg_sw_registering = null;
+
+function pg_sw_register() {
+
+    if (pg_sw_registering) {
+        return pg_sw_registering;
+    }
+
+    if (!('serviceWorker' in navigator) || !window.isSecureContext || ($('#pg-push-config').length === 0)) {
+        return null;
+    }
+
+    pg_push_config_read();
+
+    pg_sw_registering = navigator.serviceWorker.register('sw.js?v=' + encodeURIComponent(pg_push.version) + '&strings=' + encodeURIComponent(JSON.stringify({
+        title: pg_push.strings.title || '',
+        body: pg_push.strings.body || '',
+        lang: document.documentElement.lang || '',
+        offline_title: pg_push.strings.offline_title || '',
+        offline_body: pg_push.strings.offline_body || '',
+        offline_retry: pg_push.strings.offline_retry || ''
+    })));
+
+    // Refused on a panel served from a folder the worker may not control,
+    // and by a browser in private mode: nothing the operator can act on.
+    pg_sw_registering.catch(function () {
+        return null;
+    });
+
+    return pg_sw_registering;
+}
+
+// "Install Pinegrap" in the account menu (#pg_install_app), shown only once
+// the browser says the panel can be installed (beforeinstallprompt, Chromium
+// browsers), and gone once it is. Listened for as the script loads: the
+// event can come before the page is ready.
+var pg_install_prompt = null;
+
+window.addEventListener('beforeinstallprompt', function (event) {
+    // The menu row offers it instead of the browser's own bar.
+    event.preventDefault();
+    pg_install_prompt = event;
+    $(function () {
+        $('#pg_install_app').removeClass('d-none');
+    });
+});
+
+window.addEventListener('appinstalled', function () {
+    pg_install_prompt = null;
+    $('#pg_install_app').addClass('d-none');
+});
+
+function pg_install_init() {
+
+    if (pg_install_prompt) {
+        $('#pg_install_app').removeClass('d-none');
+    }
+
+    $(document).on('click', '#pg_install_app [data-pg-install]', function (event) {
+        event.preventDefault();
+
+        if (!pg_install_prompt) {
+            return;
+        }
+
+        var offer = pg_install_prompt;
+
+        // A prompt can be shown once; the browser fires a new event if it
+        // may be offered again.
+        pg_install_prompt = null;
+        $('#pg_install_app').addClass('d-none');
+        offer.prompt();
+    });
+}
+
 function pg_push_init() {
 
     var $row = $('#push_row');
@@ -3254,14 +3361,7 @@ function pg_push_init() {
         return;
     }
 
-    try {
-        var config = JSON.parse($('#pg-push-config').text() || '{}');
-        pg_push.strings = config.strings || {};
-        pg_push.version = config.version || '';
-    } catch (error) {
-        pg_push.strings = {};
-        pg_push.version = '';
-    }
+    pg_push_config_read();
 
     // iOS only hands a push subscription to a site that was added to the home
     // screen, and asking before that is done fails in a way the operator cannot
@@ -3271,10 +3371,13 @@ function pg_push_init() {
         return;
     }
 
-    navigator.serviceWorker.register('sw.js?v=' + encodeURIComponent(pg_push.version) + '&strings=' + encodeURIComponent(JSON.stringify({
-        title: pg_push.strings.title || '',
-        body: pg_push.strings.body || ''
-    }))).then(function (registration) {
+    var registering = pg_sw_register();
+
+    if (!registering) {
+        return;
+    }
+
+    registering.then(function (registration) {
 
         pg_push.registration = registration;
 
@@ -10977,14 +11080,16 @@ var pgSettingsModal = (function () {
     var seq = 0;                // the pane request that is allowed to paint
     var leaving = false;        // a close the operator has already agreed to
     var pending = '';           // a card to scroll to once the pane is in
+    var address = null;         // the page's own fragment while the dialog holds the address
 
     function byId(id) { return document.getElementById(id); }
 
     function working() { return busy > 0; }
 
     // .dialog.pg-sm -- the box the sidebar, the pane and the drawer
-    // state all live on.
-    function shell() { return el ? el.querySelector('.pg-sm') : null; }
+    // state all live on: the <dialog> itself. querySelector() looks at
+    // descendants only, so asking the dialog for .pg-sm found nothing.
+    function shell() { return el; }
 
     // Every word the operator reads comes from the server, on the dialog.
     function say(name) { return el ? (el.getAttribute('data-pg' + name) || '') : ''; }
@@ -11111,6 +11216,7 @@ var pgSettingsModal = (function () {
 
             clearExtras();
             drawer(false);
+            unlocate();
 
             // The next opening asks for the pane again rather than showing
             // values that may have been changed by the work done in between.
@@ -12001,7 +12107,7 @@ var pgSettingsModal = (function () {
     }
 
 
-    function notice(said, bad) {
+    function notice(said, bad, caution) {
 
         var box = byId('pg_settings_modal_notice');
 
@@ -12009,23 +12115,40 @@ var pgSettingsModal = (function () {
             return;
         }
 
-        if (!said) {
-            box.innerHTML = '';
-            return;
+        $(box).empty();
+
+        // What a save module could not do (add_warning()) has its own tone and
+        // comes first: a refused authorisation code or a feed that was not
+        // built must not read as part of the green "saved".
+        if (caution) {
+            $(box).append(alertBox(caution, 'theme-warning'));
         }
+
+        if (said) {
+            $(box).append(alertBox(said, bad ? 'theme-danger' : 'theme-success'));
+        }
+    }
+
+
+    function alertBox(text, tone) {
 
         // No py-* here. .alert-dismissible parks the close button absolutely at
         // the top right with a padding of its own, so a shortened alert cannot
         // contain it and the button hangs out of the box.
         var alert = $('<div class="alert pg-alert-dismissible show mb-5" role="alert"></div>')
-            .addClass(bad ? 'theme-danger' : 'theme-success')
-            .text(said);
+            .addClass(tone)
+            .text(text);
 
         $('<button type="button" class="btn-close no-popover" data-bs-dismiss="alert"></button>')
             .attr('aria-label', say('close'))
             .appendTo(alert);
 
-        $(box).empty().append(alert);
+        return alert;
+    }
+
+
+    function words(list) {
+        return (list && list.length) ? list.join(' ') : '';
     }
 
 
@@ -12412,9 +12535,9 @@ window.pgCodeEditorReady = function (markup, done) {
         // send the operator back with something to read. The endpoint hands it
         // over once, on the first pane the dialog asks for.
         if (response.errors && response.errors.length) {
-            notice(response.errors.join(' '), true);
+            notice(response.errors.join(' '), true, words(response.warnings));
         } else {
-            notice((response.notices && response.notices.length) ? response.notices.join(' ') : '');
+            notice(words(response.notices), false, words(response.warnings));
         }
 
         // A dialog the last pane brought with it goes when the pane does.
@@ -12466,6 +12589,8 @@ window.pgCodeEditorReady = function (markup, done) {
             // A private window has no store; the dialog then opens on the
             // first category, which is not worth reporting.
         }
+
+        locate(key);
 
         if (pending) {
             jump(pending);
@@ -12593,9 +12718,8 @@ window.pgCodeEditorReady = function (markup, done) {
                 return;
             }
 
-            var said = (response.notices && response.notices.length)
-                ? response.notices.join(' ')
-                : '';
+            var said = words(response.notices);
+            var caution = words(response.warnings);
 
             setDirty(false);
 
@@ -12603,7 +12727,7 @@ window.pgCodeEditorReady = function (markup, done) {
             // what it was given -- a list becomes comma separated, a limit of
             // zero becomes one -- and the operator should see what was stored.
             load(pane).always(function () {
-                notice(said);
+                notice(said, false, caution);
             });
 
         }).fail(function (xhr) {
@@ -12669,6 +12793,12 @@ window.pgCodeEditorReady = function (markup, done) {
         if (!key) {
             var first = el.querySelector('.pg-sm-link[data-pane]');
             key = first ? first.getAttribute('data-pane') : '';
+        }
+
+        // The fragment the page had before the dialog took the address over,
+        // given back when it closes (unlocate()).
+        if (address === null) {
+            address = String(window.location.hash || '');
         }
 
         modal.show();
@@ -12797,6 +12927,66 @@ window.pgCodeEditorReady = function (markup, done) {
 
 
     /**
+     * A card on the settings page itself is that page's own section, reached
+     * from its section links (the main menu's Site Settings entries among
+     * them); only an anchor no card on the page answers is an old link meant
+     * for the dialog.
+     */
+    function ownAnchor(hash) {
+
+        var own = document.getElementById(hash);
+        var dialog = document.getElementById('pg_settings_modal');
+
+        return !!own && !(dialog && dialog.contains(own));
+    }
+
+
+    /**
+     * The address names the category on screen while the dialog is open, so a
+     * reload or a copied link lands where the operator is looking.
+     * replaceState(): no history entry of its own and no hashchange, which
+     * would load the pane a second time. A #settings/<key>/<card> address of
+     * the same category is left as it is.
+     */
+    function locate(key) {
+
+        // Null once the dialog has closed: a pane that arrives after that
+        // must not put the address back.
+        if (!key || (address === null) || !window.history || !history.replaceState) {
+            return;
+        }
+
+        var now = String(window.location.hash || '');
+
+        if ((now === '#settings/' + key) || (now.indexOf('#settings/' + key + '/') === 0)) {
+            return;
+        }
+
+        history.replaceState(history.state, '', location.pathname + location.search + '#settings/' + key);
+    }
+
+
+    /**
+     * The dialog closed: the page gets back the fragment it had before, or
+     * none when a #settings address opened the dialog. Otherwise Back to this
+     * page or a reload opens a dialog the operator has closed.
+     */
+    function unlocate() {
+
+        if ((address === null) || !window.history || !history.replaceState) {
+            address = null;
+            return;
+        }
+
+        if (String(window.location.hash || '') !== address) {
+            history.replaceState(history.state, '', location.pathname + location.search + address);
+        }
+
+        address = null;
+    }
+
+
+    /**
      * An address that asks for the settings.
      *
      * #settings/<category>[/<card>] is what this dialog answers to; a bare
@@ -12813,6 +13003,13 @@ window.pgCodeEditorReady = function (markup, done) {
 
         if (!hash) {
             return false;
+        }
+
+        // Every branch below that opens the dialog was asked by this
+        // fragment: it is the dialog's, not the page's, and goes on close.
+        if ((address === null) && ((hash === 'settings') || (hash.indexOf('settings/') === 0)
+            || (anchors[hash] && !ownAnchor(hash)))) {
+            address = '';
         }
 
         if (hash === 'settings') {
@@ -12833,14 +13030,7 @@ window.pgCodeEditorReady = function (markup, done) {
 
         if (anchors[hash]) {
 
-            // A card on the settings page itself is that page's own section,
-            // reached from its section links (the main menu's Site Settings
-            // entries among them); only an anchor no card on the page answers
-            // is an old link meant for the dialog.
-            var own = document.getElementById(hash);
-            var dialog = document.getElementById('pg_settings_modal');
-
-            if (own && !(dialog && dialog.contains(own))) {
+            if (ownAnchor(hash)) {
                 return false;
             }
 

@@ -193,6 +193,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - image-editor-canvas-save.md: How a photo's grown or trimmed canvas and an outward frame are saved (extend step), pictures from the computer as files rows, a canvas file keeping and reopening its document
 - image-editor-crop.md: The image editor's crop tool: geometry in the document, the rotated space, cover scale, crop mode with its undo and Cancel, ratios, handles, turns and flips, shape, output size, keys
 - image-editor-draw.md: The image editor's Draw tool: nine kinds and the eraser, drawn layers as boxes with their drawing inside, line ends, corner radius, style fields, turns and flips
+- image-editor-fonts.md: The image editor's Google Fonts choice in the Text tool and the one font catalogue it shares with the visual designer
 - image-editor-keys.md: The image editor's keys: shortcuts, Escape on keydown, Enter and Space to focused buttons, arrows to sliders (ownsKey), focus kept after a panel redraw, panning
 - image-editor-layers.md: The image editor's layers and the Select tool: the layer box model, selection and handles, snapping, align, distribute, order, the layers list, keys, pasting a picture, and the overlay a save draws
 - image-editor-modal.md: The image editor core (window.PgImageEditor): files, loader, bundles, the pure model, labels via lang(), options, full screen, the phone layout, recording a change
@@ -284,6 +285,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-link-roles.md: Links turned into buttons (report Edit, Add Filter, Unlock Sign-in), real Create an User link, Optimize/Shipment Tracking/Print names, edit-file previews and Download names
 - panel-load-failures.md: Dashboard cards and the SEO detail panel when a load fails: the card retry line, the 401/403 fragment of get_seo_analysis.php, response.ok && !response.redirected in the fetch handlers
 - panel-money-base-currency.md: Panel amounts print in the base currency (prepare_amount()), never at the storefront currency the operator's browser picked; ERP documents in their own currency; Workspace and Marketplace helpers.
+- panel-offline-and-install.md: The panel's offline notice (sw.js answers offline.html when a page load fails), the worker registered on every panel page, "Install Pinegrap" in the account menu; the site manifest waits on #5065
 - panel-picture-viewer-focus.md: Panel picture viewer (pg_lightbox.js): focus moves in, Tab wraps, focus returns to the opener, the closed overlay is inert and hidden, named dialog and thumbnails, closes only on a background tap
 - panel-picture-viewer-zoom.md: Panel picture viewer (pg_lightbox.js): zoom measured from the fitted size, a zoomed picture pans by drag and by the arrow keys, Left/Right change the picture only at the fit
 - panel-save-shortcut-dialogs.md: Dialogs and editors that save on Ctrl+S themselves (Site Settings, code dialog, visual designer) and how the panel shortcut leaves their key alone

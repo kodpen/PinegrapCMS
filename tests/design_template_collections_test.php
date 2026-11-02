@@ -87,6 +87,7 @@ function test_design_template_collection_forms()
 		'pinegrap-courses'    => array('blog_new', 'staff_entry'),
 		'pinegrap-events'     => array('blog_new', 'event_new', 'staff_entry'),
 		'pinegrap-forum'      => array('blog_new', 'staff_entry'),
+		'pinegrap-law'        => array('blog_new', 'staff_entry'),
 		'pinegrap-magazine'   => array('blog_new', 'staff_entry'),
 		'pinegrap-news'       => array('blog_new', 'staff_entry'),
 		'pinegrap-playground' => array('blog_new', 'staff_entry'),

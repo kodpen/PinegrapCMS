@@ -1,6 +1,6 @@
 ---
 name: coordinator-limits
-description: Coordinator rules (2026-10-27): quota guard before a worker starts, 4 to 8 workers per coordinator, a new worker for a draft PR whose decision came after its session ended
+description: Coordinator rules: model and effort of coordinators and workers, quota guard before a worker starts, 4 to 8 workers per coordinator, a new worker for a decided draft PR
 ---
 
 ## Why?
@@ -11,6 +11,10 @@ description: Coordinator rules (2026-10-27): quota guard before a worker starts,
 - Before starting a worker the coordinator calls `get_session` on itself and reads `rate_limit_info`: a status other than `allowed` means no new worker until `resetsAt`. A session of its account that fails within a minute of its start is read as a limit hit: no new worker for 10 minutes, the owner told once.
 - Each coordinator keeps at least 4 and at most 8 workers busy (since 2026-11-01; 3 to 6 from 2026-10-31, before that 6 per account shared by its coordinators). Fewer than 4 only while the quota guard, the queue limit (CLAUDE.md, Working mode 8) or a lack of free steps stops a start. The queue rule (at most 6 of the 20 places per coordinator; 4 of 15 before 2026-10-28) stays.
 - Starts are staggered: at most one new worker a minute. The architect starts no sub-agents for the same reason.
+
+## Which model and effort?
+- A coordinator runs on Opus 5.5 at xhigh effort with Ultracode on; a worker runs on Opus 5.5 at high effort (owner, 2026-11-02; until then coordinators ran at medium with Ultracode off). A coordinator starts every worker with `create_session` `model` `claude-opus-5-5`; the call takes no effort, and a session it starts opens at high (tried 2026-11-02), so nothing more is set. A coordinator's own xhigh and Ultracode are set by the owner when opening it.
+- Every `create_session` (worker or new coordinator) passes `source_url` `https://github.com/kodpen/PinegrapCMS` and `source_revision` `development`, else the session has no repository.
 
 ## Which draft PR gets a new worker?
 - A draft PR whose `Decision: #<issue>` issue is closed and whose session has ended: a new worker (`create_session`) for that branch, with the decision comment on the PR as the brief; the new session continues the branch, notes "decided in #<issue>" in the PR body and marks it ready when CI is green.

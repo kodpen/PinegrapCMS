@@ -265,7 +265,7 @@ function test_designer_submitter_name_templates_public_pages_print_no_username()
 function test_designer_submitter_name_templates_blog_post_byline()
 {
 	$tpls = _test_dsn_templates();
-	foreach (array('hello-pinegrap', 'pinegrap-bookshop', 'pinegrap-boutique', 'pinegrap-cafe', 'pinegrap-clinic', 'pinegrap-courses', 'pinegrap-events', 'pinegrap-playground', 'pinegrap-salon', 'pinegrap-store') as $id) {
+	foreach (array('hello-pinegrap', 'pinegrap-bookshop', 'pinegrap-boutique', 'pinegrap-cafe', 'pinegrap-clinic', 'pinegrap-courses', 'pinegrap-events', 'pinegrap-law', 'pinegrap-playground', 'pinegrap-salon', 'pinegrap-store') as $id) {
 		$found = false;
 		foreach ((isset($tpls[$id]['pages']) && is_array($tpls[$id]['pages'])) ? $tpls[$id]['pages'] : array() as $page) {
 			if (!isset($page['key']) || $page['key'] !== 'blog_post') {

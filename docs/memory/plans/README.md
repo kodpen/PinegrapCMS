@@ -50,7 +50,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - datetime-picker-site-steps.md: Site steps S1-S4 of plans/datetime-picker.md (after the panel stop): on-demand loader, classic renderers, checkout, designer widgets and palette; claim as [plan:datetime-picker] S<n>
 - datetime-picker-steps.md: Panel steps P1-P11 of plans/datetime-picker.md: what each changes, its files, tests and size, its dependencies; claim as [plan:datetime-picker] P<n>
 - datetime-picker.md: Plan (decided in #2693, 2026-10-28): one date-and-time control for the whole software, the time in the same popup, on vanilla-calendar-pro; panel P1-P11, sites S1-S4, steps in datetime-picker-steps.md
-- design-template-law.md: Plan for the Law Firm template (pinegrap-law): practice areas, lawyers, case results, fees, a consultation request the client follows from their account, careers; parts in a folder; steps 1-6
 - designer-form-logic-steps-2.md: Steps FL5-FL8 of plans/designer-form-logic.md: the payment step on the site, the staff side and API, template fees, close-out; claim as [plan:designer-form-logic] FL<n>
 - designer-form-logic-steps.md: Steps FL1-FL4 of plans/designer-form-logic.md: Shown when rules, form steps with progress, the browser draft, the fee setting and order writer; claim as [plan:designer-form-logic] FL<n>
 - designer-form-logic.md: Plan (owner 2026-11-02): designed forms get Shown-when rules, steps with progress, and a payment step that places a one-line order through the payment drivers; steps FL1-FL8

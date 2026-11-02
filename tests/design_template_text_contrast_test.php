@@ -59,7 +59,7 @@ function _test_tpl_text_class($node)
 
 function test_design_template_text_never_faded()
 {
-	foreach (array('hello-pinegrap', 'pinegrap-playground', 'pinegrap-events', 'pinegrap-courses') as $id) {
+	foreach (array('hello-pinegrap', 'pinegrap-playground', 'pinegrap-events', 'pinegrap-courses', 'pinegrap-law') as $id) {
 		$strings = array();
 		_test_tpl_text_strings(_test_tpl_text_template($id), $strings);
 		$faded = array_values(array_filter($strings, function ($s) {

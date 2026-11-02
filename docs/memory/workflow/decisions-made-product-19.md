@@ -27,3 +27,6 @@ description: Decisions list, product part 19 (2026-11-02 on): the owner answers 
 
 ## EU VAT: a VIES-validated id is tax-exempt on its own (2026-11-02, #5047)
 - Owner: an EU VAT id that VIES confirms sets the existing tax-exempt flag (reverse charge) without a confirmation box; the id and the check time are written on the order. Reason: no extra step for a B2B customer, and the accountant's proof is on the order.
+
+## Memberships: a lifetime member stays lifetime (2026-11-02, #5058)
+- Owner: when a lifetime member (empty end date) reaches a reward goal or buys a membership renewal product, the order completes, no period is added and the membership is not turned into a timed one (`pg_order_extended_until()`, `includes/fn/order_completion.php`). Reason: a renewal or a reward never shortens what the member had. Members already downgraded on running sites stay as they are.

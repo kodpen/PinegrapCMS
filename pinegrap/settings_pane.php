@@ -139,8 +139,9 @@ if (!$_POST) {
     // screen of their own and send the operator back to the settings with a
     // sentence to read; there is no settings screen left to read it on, so the
     // dialog is handed it with the first pane it asks for.
-    $notices = array();
-    $errors  = array();
+    $notices  = array();
+    $errors   = array();
+    $warnings = array();
 
     foreach ($liveform->get_notices() as $notice) {
         $notices[] = pg_settings_pane_words($notice);
@@ -148,6 +149,12 @@ if (!$_POST) {
 
     foreach ($liveform->get_errors() as $error) {
         $errors[] = pg_settings_pane_words($error);
+    }
+
+    // A save that reloaded the page (a new panel language) left its warnings
+    // here as well; the dialog shows them in a tone of their own.
+    foreach ($liveform->get_warning_messages() as $warning) {
+        $warnings[] = pg_settings_pane_words($warning);
     }
 
     // The form the cards were drawn from is done with. get_warnings() and
@@ -160,6 +167,7 @@ if (!$_POST) {
         'status'      => 'success',
         'notices'     => $notices,
         'errors'      => $errors,
+        'warnings'    => $warnings,
         'pane'        => $pane,
         'title'       => $category['label'],
         'description' => $category['description'],
@@ -281,12 +289,22 @@ foreach ($liveform->get_notices() as $notice) {
     $notices[] = pg_settings_pane_words($notice);
 }
 
+// What a save module could not do beside the save itself (add_warning()): a
+// refused Paraşüt code, a maintenance allow list open to everyone. Dropped
+// with the form, they would leave only "saved" on screen.
+$warnings = array();
+
+foreach ($liveform->get_warning_messages() as $warning) {
+    $warnings[] = pg_settings_pane_words($warning);
+}
+
 $liveform->remove_form();
 
 pg_settings_pane_respond(array(
     'status'   => 'success',
     'pane'     => $pane,
     'notices'  => $notices,
+    'warnings' => $warnings,
     // Secure Mode can be switched on by the save that just ran. The dialog
     // cannot go on talking to the old scheme: say where the panel lives now
     // and let it move the whole screen there.

@@ -293,13 +293,17 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
         if (is_array($product_feeds_saved['built'])) {
             if ($product_feeds_saved['built']['error'] !== '') {
-                $liveform->add_notice(lang(array('string' => 'The product feeds were not built: {var:1}', 'vars' => array(pg_product_feed_error_text($product_feeds_saved['built']['error'])))));
+                $liveform->add_warning(lang(array('string' => 'The product feeds were not built: {var:1}', 'vars' => array(pg_product_feed_error_text($product_feeds_saved['built']['error'])))));
             }
 
+            // A format that was not built is a warning: beside the green
+            // "saved" a failure read as one more success.
             foreach ($product_feeds_saved['built']['formats'] as $product_feeds_format => $product_feeds_result) {
-                $liveform->add_notice($product_feeds_result['ok']
-                    ? lang(array('string' => '{var:1} was built with {var:2} product(s).', 'vars' => array($product_feeds_texts[$product_feeds_format]['label'], (int) $product_feeds_result['count'])))
-                    : lang(array('string' => '{var:1} was not built: {var:2}', 'vars' => array($product_feeds_texts[$product_feeds_format]['label'], pg_product_feed_error_text($product_feeds_result['error'])))));
+                if ($product_feeds_result['ok']) {
+                    $liveform->add_notice(lang(array('string' => '{var:1} was built with {var:2} product(s).', 'vars' => array($product_feeds_texts[$product_feeds_format]['label'], (int) $product_feeds_result['count']))));
+                } else {
+                    $liveform->add_warning(lang(array('string' => '{var:1} was not built: {var:2}', 'vars' => array($product_feeds_texts[$product_feeds_format]['label'], pg_product_feed_error_text($product_feeds_result['error'])))));
+                }
             }
         }
     }
