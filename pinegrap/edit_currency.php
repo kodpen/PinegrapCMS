@@ -141,6 +141,15 @@ if (!$_POST) {
             exit();
         }
 
+        // a non-base currency needs a rate above zero: checkout divides by it
+        $exchange_rate_error = pg_currency_form_exchange_rate_error($liveform->get_field_value('exchange_rate'), $liveform->get_field_value('base'));
+
+        if ($exchange_rate_error !== '') {
+            $liveform->mark_error('exchange_rate', $exchange_rate_error);
+            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_currency.php?id=' . $id);
+            exit();
+        }
+
         $exchange_rate = pg_currency_form_exchange_rate($liveform->get_field_value('exchange_rate'), $liveform->get_field_value('base'));
         
         // update currency
