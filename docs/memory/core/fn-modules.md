@@ -12,7 +12,7 @@ description: Generated from the module field of the memory files: each includes/
 - `audit_list`: [[audit-log-paging]]
 - `audit_rules`: [[audit-rule-registry]]
 - `audit_view`: [[audit-trail-screen]], [[audit-trail-settings-name]]
-- `auth`: [[erp-link-rights]], [[filtered-folder-picker-path]], [[link-rights]], [[list-row-names]], [[sign-in-one-message]]
+- `auth`: [[erp-link-rights]], [[filtered-folder-picker-path]], [[link-rights]], [[list-row-names]], [[settings-folder-pickers]], [[sign-in-one-message]]
 - `background_render`: [[background-render]]
 - `backup`: [[fn-module-errors-mail-backup-consent]]
 - `bundles`: [[product-bundles]], [[product-bundles-storefront]]

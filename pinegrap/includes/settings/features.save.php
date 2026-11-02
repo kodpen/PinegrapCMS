@@ -167,6 +167,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $sql_workspace_setting .= "speculation_prefetch = '" . (post_value('speculation_prefetch') ? 1 : 0) . "',";
     }
 
+    // The time stamp authority password is drawn empty, so an empty box
+    // keeps the stored one and only the remove tick clears it.
+    $signature_tsa_password_new = pg_signature_tsa_password_to_store(
+        (string) post_value('signature_tsa_password'),
+        (string) db_value("SELECT signature_tsa_password FROM config"),
+        (bool) post_value('signature_tsa_password_clear'));
+
     // Only what the cards on this screen edit.
     db("UPDATE config
         SET
@@ -192,7 +199,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             signature_tsa_url = '" . escape(trim(post_value('signature_tsa_url'))) . "',
             signature_tsa_auth = '" . escape((post_value('signature_tsa_auth') === 'basic') ? 'basic' : 'none') . "',
             signature_tsa_username = '" . escape(post_value('signature_tsa_username')) . "',
-            signature_tsa_password = '" . escape(post_value('signature_tsa_password')) . "',
+            signature_tsa_password = '" . escape($signature_tsa_password_new) . "',
             " . $sql_image_settings . "
             " . $sql_page_revisions_settings . "
             " . $sql_workspace_setting . "
@@ -218,7 +225,7 @@ if (post_value('submit_test_tsa')) {
                 'url' => $test_url,
                 'auth' => post_value('signature_tsa_auth'),
                 'username' => post_value('signature_tsa_username'),
-                'password' => post_value('signature_tsa_password'),
+                'password' => $signature_tsa_password_new,
             ),
             $test_reason);
 

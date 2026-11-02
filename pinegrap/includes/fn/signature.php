@@ -1268,3 +1268,23 @@ function pg_signature_stamp_token($record)
 
     return ($token === false) ? '' : $token;
 }
+
+/**
+ * The time stamp authority password a Site Settings save writes. The box is
+ * drawn empty and never carries the stored password back to the browser, so
+ * an empty box keeps what is stored; the "Remove the saved value" tick
+ * clears it. Pure.
+ *
+ * @param string $posted what the box sent
+ * @param string $stored the password saved before
+ * @param bool   $clear  the remove tick was set
+ * @return string
+ */
+function pg_signature_tsa_password_to_store($posted, $stored, $clear)
+{
+    if ($clear) {
+        return '';
+    }
+
+    return ((string) $posted !== '') ? (string) $posted : (string) $stored;
+}

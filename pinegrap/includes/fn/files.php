@@ -1533,38 +1533,88 @@ function pg_public_image_file_types()
 }
 
 /**
- * The `files` condition of a picker whose choice is shown to everyone (site
- * icon, app icon, share image, logo): no attachment and no ERP document. An
- * ERP document (an invoice, a quote signature, an expense receipt) is served
- * to the ERP right only, and a site icon is redrawn and served without a
- * session, so naming one would publish it.
+ * The folders whose files a visitor without a session may open: public
+ * along their parent chain (get_access_control_type()) and not in the
+ * Recycle Bin, which reads as private.
  *
- * @param bool|null $erp_ready  Whether files.erp_doc_type exists; asked when null
+ * @return int[]
+ */
+function pg_public_folder_ids()
+{
+    if (!function_exists('pg_folder_access_tree')) {
+        return array();
+    }
+
+    $tree = pg_folder_access_tree();
+
+    return pg_public_folder_ids_of($tree['rows'], $tree['bin']);
+}
+
+/**
+ * pg_public_folder_ids() over given rows. Pure.
+ *
+ * @param array $rows   folder_id => folder_parent, folder_access_control_type
+ * @param int   $bin_id the Recycle Bin folder, 0 when none
+ * @return int[]
+ */
+function pg_public_folder_ids_of($rows, $bin_id)
+{
+    $ids = array();
+
+    foreach (array_keys((array) $rows) as $folder_id) {
+        if (pg_folder_access_resolve($rows, $folder_id, $bin_id) === 'public') {
+            $ids[] = (int) $folder_id;
+        }
+    }
+
+    return $ids;
+}
+
+/**
+ * The `files` condition of a picker whose choice is shown to everyone (site
+ * icon, app icon, share image, logo): no attachment, no ERP document, and a
+ * file in a folder every visitor may open. An ERP document (an invoice, a
+ * quote signature, an expense receipt) is served to the ERP right only; a
+ * file in a private folder or in the Recycle Bin (its pgbin_ names) sends a
+ * visitor without a session to the sign-in page. The site icon is redrawn
+ * and served without a session, so naming such a file would publish it.
+ *
+ * @param bool|null  $erp_ready Whether files.erp_doc_type exists; asked when null
+ * @param int[]|null $folders   The public folders; read when null
  * @return string
  */
-function pg_public_image_files_where($erp_ready = null)
+function pg_public_image_files_where($erp_ready = null, $folders = null)
 {
     if ($erp_ready === null) {
         $erp_ready = function_exists('waf_table_has_column') && waf_table_has_column('files', 'erp_doc_type');
     }
 
-    return '(attachment = 0)' . ($erp_ready ? " AND (erp_doc_type = '')" : '');
+    if ($folders === null) {
+        $folders = pg_public_folder_ids();
+    }
+
+    $folders = array_values(array_unique(array_map('intval', (array) $folders)));
+
+    return '(attachment = 0)' . ($erp_ready ? " AND (erp_doc_type = '')" : '')
+        . ' AND (folder IN (' . (empty($folders) ? '-1' : implode(', ', $folders)) . '))';
 }
 
 /**
  * Whether a save may write $input into a public picture setting.
  *
  * Empty is always allowed. A files row is allowed when it is no attachment,
- * no ERP document and one of $types. A name no files row carries is allowed
- * only when it is the stored value (an old hand-typed address the picker
- * keeps as its own option), so saving the screen never clears it; a stored
- * file that is now private is refused all the same. A stored public file of
- * a type the picker no longer lists is kept for the same reason.
+ * no ERP document, in a folder every visitor may open and one of $types. A
+ * name no files row carries is allowed only when it is the stored value (an
+ * old hand-typed address the picker keeps as its own option), so saving the
+ * screen never clears it; a stored file that is now private or in the
+ * Recycle Bin is refused all the same. A stored public file of a type the
+ * picker no longer lists is kept for the same reason.
  *
  * @param string     $input   The posted name
  * @param string     $stored  The value saved before
  * @param array      $types   The files.type values the picker lists
- * @param array|null $row     The files row named $input: type, attachment, erp_doc_type
+ * @param array|null $row     The files row named $input: type, attachment,
+ *                            erp_doc_type, public (its folder is public)
  * @return bool
  */
 function pg_public_image_choice_verdict($input, $stored, $types, $row)
@@ -1579,11 +1629,33 @@ function pg_public_image_choice_verdict($input, $stored, $types, $row)
         return ($input === (string) $stored);
     }
 
-    if (((int) ($row['attachment'] ?? 0) !== 0) || ((string) ($row['erp_doc_type'] ?? '') !== '')) {
+    if (((int) ($row['attachment'] ?? 0) !== 0) || ((string) ($row['erp_doc_type'] ?? '') !== '') || empty($row['public'])) {
         return false;
     }
 
     return in_array(strtolower((string) ($row['type'] ?? '')), (array) $types, true) || ($input === (string) $stored);
+}
+
+/**
+ * The files row a public picture setting names, with `public` set from its
+ * folder; null when no row carries the name or the query fails.
+ *
+ * @param string $name
+ * @return array|null
+ */
+function pg_public_image_row($name)
+{
+    $erp_ready = function_exists('waf_table_has_column') && waf_table_has_column('files', 'erp_doc_type');
+
+    $row = db_item("SELECT type, attachment, folder" . ($erp_ready ? ', erp_doc_type' : '') . " FROM files WHERE name = '" . e((string) $name) . "' LIMIT 1");
+
+    if (!is_array($row) || !$row) {
+        return null;
+    }
+
+    $row['public'] = in_array((int) $row['folder'], pg_public_folder_ids(), true);
+
+    return $row;
 }
 
 /**
@@ -1603,11 +1675,38 @@ function pg_public_image_choice_ok($input, $stored, $types)
         return true;
     }
 
-    $erp_ready = function_exists('waf_table_has_column') && waf_table_has_column('files', 'erp_doc_type');
+    return pg_public_image_choice_verdict($input, trim((string) $stored), $types, pg_public_image_row($input));
+}
 
-    $row = db_item("SELECT type, attachment" . ($erp_ready ? ', erp_doc_type' : '') . " FROM files WHERE name = '" . e($input) . "' LIMIT 1");
+/**
+ * The option a public picture picker appends for a stored value its list
+ * lacks: marked "(file not found)" when no file carries it, "(visitors
+ * cannot open it)" when its file is private, in the Recycle Bin, an
+ * attachment or an ERP document. The value is never rewritten; the save
+ * refuses it until another is chosen.
+ *
+ * @param string $value
+ * @return string
+ */
+function pg_public_image_stored_option($value)
+{
+    $value = (string) $value;
 
-    return pg_public_image_choice_verdict($input, trim((string) $stored), $types, (is_array($row) && $row) ? $row : null);
+    if (!pg_stored_file_needs_check($value)) {
+        return pg_stored_file_option($value, true);
+    }
+
+    $row = pg_public_image_row($value);
+
+    if ($row === null) {
+        return pg_stored_file_option($value, false);
+    }
+
+    $hidden = ((int) ($row['attachment'] ?? 0) !== 0) || ((string) ($row['erp_doc_type'] ?? '') !== '') || empty($row['public']);
+
+    return $hidden
+        ? '<option value="' . h($value) . '" selected="selected">' . h($value) . ' ' . lang('(visitors cannot open it)') . '</option>'
+        : pg_stored_file_option($value, true);
 }
 
 // The width of the name columns the File and Catalog Manager and the folder
