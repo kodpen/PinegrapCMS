@@ -1,6 +1,6 @@
 ---
 name: settings-window-turkish-texts
-description: Site Settings window wording in Turkish (#5029): mid-sentence relative time, the Turkish starter dollar name, translated language names in the add-language list, settled terms
+description: Site Settings window wording in Turkish (#5029, PR #5079): mid-sentence relative time, Turkish starter dollar name, translated language names, the category-switch question, settled terms
 ---
 
 ## Why does the footer say "a moment ago" with a small letter?
@@ -14,3 +14,6 @@ description: Site Settings window wording in Turkish (#5029): mid-sentence relat
 
 ## Which terms are settled?
 - "Ödeme Yöntemleri" (not "Metodları"), "para birimi" in two words, "çalışma süresi denetimi" for the uptime check, the brand as "iyzico" in labels (Iyzipay stays in log messages), "… Etkinleştir" / "… Kabul Et" (not "-in"), "ve" instead of "&" in card titles.
+
+## Why does a category switch ask its own question?
+- `ask(switching)` in `backend.src.js`: `choose()` passes `true` and reads `data-pgswitch` / `data-pgswitchdiscard` ("… Yine de bu bölümden çıkılsın mı?" / "Kaydetmeden Geç"); closing keeps `data-pgleave` / `data-pgdiscard`. Before, a switch asked "Yine de kapatılsın mı?" with "Kaydetmeden Kapat" though the window stayed open.
