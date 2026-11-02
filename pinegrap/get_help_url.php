@@ -179,6 +179,7 @@ function get_help_url($properties = array())
         'view_visitor_report'  => 'visitors#create-edit-visitor-report',
         'view_visitor'         => 'visitors#visit-details',
         'search_console'       => 'visitors#google-search-console',
+        'visitor_search'       => 'visitors#site-search',
         'view_accessibility'   => 'seo#accessibility-check',
         'search_audits'        => 'seo#seo-checks',
 

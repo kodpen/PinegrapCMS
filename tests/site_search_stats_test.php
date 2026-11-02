@@ -148,3 +148,53 @@ function test_site_search_counts_nothing_without_the_table()
 	pg_assert_false(pg_site_search_sweep_due());
 	pg_assert_same(0, pg_site_search_sweep());
 }
+
+function test_site_search_report_period()
+{
+	pg_assert_same(30, pg_site_search_period(null));
+	pg_assert_same(7, pg_site_search_period('7'));
+	pg_assert_same(30, pg_site_search_period('8'), 'only the offered periods');
+	pg_assert_same(30, pg_site_search_period(array(7)));
+
+	$now = mktime(12, 0, 0, 11, 2, 2026);
+	pg_assert_same('2026-11-02', pg_site_search_period_start(1, $now), 'one day is today');
+	pg_assert_same('2026-10-27', pg_site_search_period_start(7, $now), 'seven days end today');
+	// The DST change of 25 October lies inside: days are stepped, not seconds.
+	pg_assert_same('2026-10-04', pg_site_search_period_start(30, mktime(0, 30, 0, 11, 2, 2026)));
+}
+
+function test_site_search_report_sql_sums_rows()
+{
+	$summary = pg_site_search_summary_sql();
+	pg_assert_contains('COALESCE(SUM(searches), 0) AS searches', $summary);
+	pg_assert_contains('COUNT(DISTINCT term) AS terms', $summary);
+	pg_assert_contains('WHERE day >= ?', $summary);
+
+	$top = pg_site_search_terms_sql('top', 100);
+	pg_assert_contains('SUM(searches) AS searches', $top);
+	pg_assert_contains('GROUP BY term ORDER BY searches DESC, term ASC LIMIT 100', $top);
+	pg_assert_false(strpos($top, 'HAVING') !== false);
+
+	$zero = pg_site_search_terms_sql('zero', 5000);
+	pg_assert_contains('HAVING SUM(zero_results) > 0 ORDER BY zero_results DESC, term ASC LIMIT 1000', $zero, 'capped at 1000');
+}
+
+function test_site_search_click_rate()
+{
+	pg_assert_same(null, pg_site_search_click_rate(3, 0));
+	pg_assert_same(33.3, pg_site_search_click_rate(1, 3));
+	pg_assert_same(150.0, pg_site_search_click_rate(3, 2), 'several results of one search can be clicked');
+	pg_assert_same(0.0, pg_site_search_click_rate(-1, 2));
+}
+
+function test_site_search_report_screen()
+{
+	$screen = site_search_stats_test_source('visitor_search.php');
+	pg_assert_contains('validate_visitors_access($user);', $screen);
+	pg_assert_contains("\$may_tune = ((int) \$user['role'] < 3);", $screen, 'only managers get the promote button');
+	pg_assert_contains("settings_features.php?search_promote=", $screen);
+
+	$menu = site_search_stats_test_source('includes/fn/output.php');
+	pg_assert_contains("/visitor_search.php\\''", $menu, 'the Visitors menu opens it');
+	pg_assert_contains("case 'visitor_search.php':", $menu);
+}
