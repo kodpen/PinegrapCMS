@@ -1193,7 +1193,7 @@ function pg_pb_create_product($product, $relations = array())
 
     pg_pb_update_row(
         'products',
-        array('address_name' => prepare_catalog_item_address_name($address_source, $product_id)),
+        array('address_name' => prepare_catalog_item_address_name($address_source, $product_id, 'product')),
         'id',
         $product_id);
 
@@ -6161,7 +6161,7 @@ function pg_pb_update_product($product_id)
     $current        = db_value("SELECT address_name FROM products WHERE id = '" . e($product_id) . "'");
 
     if (($address_source !== '') && ($address_source !== $current)) {
-        $product['address_name'] = prepare_catalog_item_address_name($address_source, $product_id);
+        $product['address_name'] = prepare_catalog_item_address_name($address_source, $product_id, 'product');
     } elseif ($current == '') {
         if ($product['short_description'] !== '') {
             $source = $product['short_description'];
@@ -6170,7 +6170,7 @@ function pg_pb_update_product($product_id)
         } else {
             $source = (string) $product_id;
         }
-        $product['address_name'] = prepare_catalog_item_address_name($source, $product_id);
+        $product['address_name'] = prepare_catalog_item_address_name($source, $product_id, 'product');
     }
 
     // Last modified. Reports and the "recently changed" ordering read it, so a

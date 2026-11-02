@@ -3038,12 +3038,37 @@ function pg_transliterate_ascii_table()
     return $table;
 }
 
-function prepare_catalog_item_address_name($address_name, $item_id = '')
+/**
+ * The id each table's clash check skips for an item being saved: its own row,
+ * in its own table only. A product and a product group share no id space, so
+ * product 5 must still see product group 5's address name. An unnamed type
+ * skips the id in both tables, as callers that do not pass one always did.
+ * Pure.
+ *
+ * @param int|string $item_id   '' or 0 for a new item
+ * @param string     $item_type 'product', 'product_group' or ''
+ * @return array products, product_groups (ids as strings, '0' for none)
+ */
+function pg_catalog_address_excluded_ids($item_id, $item_type = '')
 {
-    // if item id is blank then set to zero.
-    if ($item_id == '') {
-        $item_id = '0';
-    }
+    $id = (string) (int) $item_id;
+
+    return array(
+        'products'       => (($item_type === '') || ($item_type === 'product')) ? $id : '0',
+        'product_groups' => (($item_type === '') || ($item_type === 'product_group')) ? $id : '0',
+    );
+}
+
+/**
+ * @param string     $address_name
+ * @param int|string $item_id   the item being saved, '' for a new one
+ * @param string     $item_type 'product' or 'product_group' when $item_id is
+ *                              given (pg_catalog_address_excluded_ids())
+ * @return string
+ */
+function prepare_catalog_item_address_name($address_name, $item_id = '', $item_type = '')
+{
+    $excluded = pg_catalog_address_excluded_ids($item_id, $item_type);
     // Prepare the address name for the database.
     //
     // This value becomes a path segment: /katalog/<address name>. Anything
@@ -3084,14 +3109,14 @@ function prepare_catalog_item_address_name($address_name, $item_id = '')
     $address_name_exists = false;
     // check products table to see if there is already a product with an address name that matches the one we want to use
     $query = "SELECT id FROM products where address_name = ? AND id != ?";
-    $result = db_q($query, array((string) $address_name, (string) $item_id)) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) $address_name, $excluded['products'])) or output_error(lang('Query failed.'));
     // if there is a result, then there is already a product with that address name
     if (mysqli_num_rows($result) > 0) {
         $address_name_exists = true;
     }
     // check product groups table to see if there is already a product group with an address name that matches the one we want to use
     $query = "SELECT id FROM product_groups where address_name = ? AND id != ?";
-    $result = db_q($query, array((string) $address_name, (string) $item_id)) or output_error(lang('Query failed.'));
+    $result = db_q($query, array((string) $address_name, $excluded['product_groups'])) or output_error(lang('Query failed.'));
     // if there is a result, then there is already a product group with that address name
     if (mysqli_num_rows($result) > 0) {
         $address_name_exists = true;
