@@ -4530,6 +4530,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         return sortCollator;
     }
 
+    // A page sorts by the type name it shows ("Page", "Page · Custom Form"),
+    // so the order matches the column; the rest by their stored type.
+    function typeSortValue(item) {
+        return (item.kind === 'page') ? itemTypeLabel(item) : (item.type || '');
+    }
+
     function sortItems(list) {
         var key = state.sort.key;
         var dir = state.sort.dir === 'desc' ? -1 : 1;
@@ -4539,7 +4545,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var va, vb;
             if (key === 'size') { va = a.size || 0; vb = b.size || 0; }
             else if (key === 'timestamp') { va = a.timestamp || 0; vb = b.timestamp || 0; }
-            else if (key === 'type') { va = (a.type || ''); vb = (b.type || ''); }
+            else if (key === 'type') { va = typeSortValue(a); vb = typeSortValue(b); }
             // Keys the table has and the menu does not: a heading can be
             // clicked for any column that holds something worth ordering by.
             else if (key === 'folder') { va = (a.folder_name || ''); vb = (b.folder_name || ''); }
@@ -5111,7 +5117,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (item.kind === 'group') { return isVariantSet(item) ? L.variant_set : L.category; }
         if (item.kind === 'product') { return L.product; }
         if (item.kind === 'folder') { return L.folder; }
-        if (item.kind === 'page') { return L.page + (item.type && item.type !== 'standard' ? ' (' + item.type + ')' : ''); }
+        if (item.kind === 'page') { return L.page + (item.type_name ? ' · ' + item.type_name : ''); }
         return (item.type || '').toUpperCase();
     }
 
