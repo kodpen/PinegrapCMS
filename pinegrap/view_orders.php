@@ -529,6 +529,13 @@ if(defined('ENABLE_PARASUT') && ENABLE_PARASUT != 0){
     $output_generate_xlsl_button = '<button type="button" class="no-submit btn mb-1 mt-1 btn-solid theme-success disabled" data-bs-toggle="dialog" data-bs-target="#xlsl_setup_modal"><span class="material-icons me-3">file_present</span>' . lang(array('string'=>'Export for Parasut Selected') ) . '</button>';
 }
 
+// The product and shipping filters join order_items and ship_tos, one row
+// per item or recipient of an order. The export queries read one table's
+// rows, so with a join in place an order (or recipient, item, tracking
+// number) that matches more than once is selected once. Without a join the
+// rows are unique already and no temporary table is paid for.
+$export_distinct = (($join_order_items !== '') || ($join_ship_tos !== '')) ? 'DISTINCT ' : '';
+
 // if user requested to export orders, export orders
 if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     // The export marks every complete order as exported, so the button's form
@@ -542,7 +549,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     $order_ids = array();
 
     // get order data
-    $query = "SELECT
+    $query = "SELECT {$export_distinct}
                 orders.*,
                 INET_NTOA(ip_address) as ip_address,
                 contacts.member_id
@@ -931,7 +938,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
     // get ship to data
     $query =
-        "SELECT
+        "SELECT {$export_distinct}
             ship_tos.*,
             orders.order_number
         FROM ship_tos
@@ -1051,7 +1058,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
     // get order item data
     $query =
-        "SELECT
+        "SELECT {$export_distinct}
             order_items.*,
             orders.order_number,
             products.custom_field_1,
@@ -1155,7 +1162,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
     // get shipping tracking numbers
     $query =
-        "SELECT
+        "SELECT {$export_distinct}
             shipping_tracking_numbers.id,
             shipping_tracking_numbers.order_id,
             orders.order_number,
@@ -1226,7 +1233,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
     // get orders
     $query =
-        "SELECT
+        "SELECT {$export_distinct}
             orders.id,
             orders.order_number,
             orders.custom_field_1,
@@ -1307,7 +1314,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
     // get ship tos
     $query =
-        "SELECT
+        "SELECT {$export_distinct}
             ship_tos.id,
             ship_tos.order_id,
             ship_tos.ship_to_name,
@@ -1362,7 +1369,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
 
     // get order items
     $query =
-        "SELECT
+        "SELECT {$export_distinct}
             order_items.id,
             order_items.order_id,
             order_items.ship_to_id,
@@ -1411,7 +1418,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     
     // get shipping tracking numbers
     $query =
-        "SELECT
+        "SELECT {$export_distinct}
             shipping_tracking_numbers.id,
             shipping_tracking_numbers.order_id,
             shipping_tracking_numbers.ship_to_id,
