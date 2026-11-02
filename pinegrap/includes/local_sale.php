@@ -110,22 +110,70 @@ function local_sale_fail($message, $extra = array())
  * The order the cart lives in, while it is still a cart. An order that was
  * completed (in another tab, say) is dropped from the session.
  *
+ * The counter's cart has its own session key, apart from the site's shopping
+ * cart (order_id): an operator who also shops on the site in the same
+ * browser keeps the two orders apart.
+ *
  * @return int
  */
 function local_sale_order_id()
 {
-    $order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
+    $order_id = (int) ($_SESSION['ecommerce']['local_sale_order_id'] ?? 0);
 
     if ($order_id <= 0) {
         return 0;
     }
 
     if ((string) db_value("SELECT status FROM orders WHERE id = '" . $order_id . "' LIMIT 1") !== 'incomplete') {
-        unset($_SESSION['ecommerce']['order_id']);
+        unset($_SESSION['ecommerce']['local_sale_order_id']);
         return 0;
     }
 
     return $order_id;
+}
+
+/**
+ * Run the site's cart writers (initialize_order(), add_order_item()), which
+ * work on $_SESSION['ecommerce']['order_id'], against the counter's cart:
+ * the site's cart id is put aside and given back afterwards, whatever the
+ * writer did. A cart the writer creates is marked a local order at once, so
+ * it never shows as an online cart (reminders, the order list).
+ *
+ * @param callable $writer
+ * @return mixed what the writer returned
+ */
+function local_sale_with_cart($writer)
+{
+    $site_order_id = $_SESSION['ecommerce']['order_id'] ?? null;
+    $cart_id = local_sale_order_id();
+
+    if ($cart_id > 0) {
+        $_SESSION['ecommerce']['order_id'] = $cart_id;
+    } else {
+        unset($_SESSION['ecommerce']['order_id']);
+    }
+
+    try {
+        $result = $writer();
+    } finally {
+        $written_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
+
+        if ($site_order_id === null) {
+            unset($_SESSION['ecommerce']['order_id']);
+        } else {
+            $_SESSION['ecommerce']['order_id'] = $site_order_id;
+        }
+    }
+
+    if ($written_id > 0) {
+        $_SESSION['ecommerce']['local_sale_order_id'] = $written_id;
+
+        if (($written_id !== $cart_id) && pg_schema_has('orders', 'type')) {
+            db("UPDATE orders SET type = 'local' WHERE id = '" . $written_id . "' AND status = 'incomplete'");
+        }
+    }
+
+    return $result;
 }
 
 /**
@@ -514,16 +562,39 @@ function local_sale_add_item($code, $product_id, $quantity)
             : local_sale_fail(local_sale_product_label($product) . ': ' . $stock_error, array('field' => 'product'));
     }
 
-    initialize_order();
+    $added = local_sale_with_cart(function () use ($product, $quantity) {
+        initialize_order();
 
-    if (add_order_item($product['id'], $quantity, 0, 'myself', '') === false) {
+        return add_order_item($product['id'], $quantity, 0, 'myself', '');
+    });
+
+    if ($added === false) {
         return local_sale_fail(lang('Product not found or is disabled.'), array('field' => 'product'));
     }
 
-    $order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
+    $order_id = local_sale_order_id();
     $line_id = (int) db_value("SELECT id FROM order_items WHERE order_id = '" . $order_id . "' AND product_id = '" . (int) $product['id'] . "' AND added_by_offer = '0' ORDER BY id DESC LIMIT 1");
 
     return local_sale_ok(lang(array('string' => '{var:1} added to the cart.', 'vars' => array(local_sale_product_label($product)))), array('line_id' => $line_id));
+}
+
+/**
+ * A typed line quantity: a whole number from 0 (remove the line) to 9999.
+ * Anything else (empty, a letter, a minus, 12,50, 99999) is null and refused
+ * rather than read as 0, which removed the line, or cut to 9999 or 12.
+ *
+ * @param mixed $raw
+ * @return int|null
+ */
+function local_sale_qty_input($raw)
+{
+    $raw = is_scalar($raw) ? trim((string) $raw) : '';
+
+    if ((preg_match('/^\d{1,4}$/', $raw) !== 1)) {
+        return null;
+    }
+
+    return (int) $raw;
 }
 
 /**
@@ -531,7 +602,7 @@ function local_sale_add_item($code, $product_id, $quantity)
  * than +1/-1, so a request that arrives twice does no harm.
  *
  * @param int $item_id
- * @param int $quantity
+ * @param mixed $quantity a whole number from 0 to 9999 (local_sale_qty_input())
  * @return array
  */
 function local_sale_set_qty($item_id, $quantity)
@@ -554,7 +625,13 @@ function local_sale_set_qty($item_id, $quantity)
         return local_sale_fail(lang('That line is no longer in the cart.'));
     }
 
-    $quantity = min(9999, (int) $quantity);
+    $quantity = local_sale_qty_input($quantity);
+
+    if ($quantity === null) {
+        $error = lang('The quantity must be a whole number from 1 to 9999.');
+
+        return local_sale_fail($error, array('line_errors' => array((int) $item['id'] => $error), 'line_id' => (int) $item['id']));
+    }
 
     if ($quantity <= 0) {
         db("DELETE FROM order_items WHERE id = '" . (int) $item['id'] . "' AND order_id = '" . $order_id . "'");
@@ -687,6 +764,39 @@ function local_sale_set_customer($contact_id, $account_id)
     $_SESSION['ecommerce']['local_sale_customer'] = array('contact_id' => $contact_id, 'account_id' => $account_id, 'label' => $label);
 
     return local_sale_ok(lang(array('string' => 'Customer: {var:1}', 'vars' => array($label))), array('customer_changed' => true, 'level' => 'info'));
+}
+
+/**
+ * The billing name a completed counter sale is written with: the picked
+ * contact's first and last name and company, else the picked account's
+ * title as the company; empty for a walk-in sale.
+ *
+ * @param array|null $customer local_sale_customer()
+ * @return array first_name, last_name, company
+ */
+function local_sale_billing_name($customer)
+{
+    $name = array('first_name' => '', 'last_name' => '', 'company' => '');
+
+    if (!is_array($customer)) {
+        return $name;
+    }
+
+    if ((int) $customer['contact_id'] > 0) {
+        $contact = db_item("SELECT first_name, last_name, company FROM contacts WHERE id = '" . (int) $customer['contact_id'] . "' LIMIT 1");
+
+        if ($contact) {
+            return array(
+                'first_name' => (string) $contact['first_name'],
+                'last_name'  => (string) $contact['last_name'],
+                'company'    => (string) $contact['company'],
+            );
+        }
+    }
+
+    $name['company'] = trim((string) $customer['label']);
+
+    return $name;
 }
 
 function local_sale_clear_customer()
@@ -955,7 +1065,7 @@ function local_sale_complete($user, $input)
         WHERE id = '" . $order_id . "' AND status = 'incomplete'");
 
     if (mysqli_affected_rows(db::$con) !== 1) {
-        unset($_SESSION['ecommerce']['order_id']);
+        unset($_SESSION['ecommerce']['local_sale_order_id']);
         return local_sale_fail(lang('This sale has already been completed.'), array('code' => 'completed', 'level' => 'warning'));
     }
 
@@ -991,6 +1101,11 @@ function local_sale_complete($user, $input)
 
     $sql_account = waf_table_has_column('orders', 'erp_account_id') ? "erp_account_id = '" . (int) $account_id . "'," : '';
 
+    // The buyer's name on the order, so the order list, its name filter and
+    // search find the sale: the picked contact's card, else the picked
+    // account's title as the company. A walk-in sale keeps no name.
+    $billing = local_sale_billing_name($customer);
+
     db("UPDATE orders SET
             order_number = '" . (int) $order_number . "',
             subtotal = '" . (int) $totals['net'] . "',
@@ -999,9 +1114,19 @@ function local_sale_complete($user, $input)
             contact_id = '" . (int) $contact_id . "',
             " . $sql_account . "
             user_id = '" . (int) $user['id'] . "',
+            billing_first_name = '" . e($billing['first_name']) . "',
+            billing_last_name = '" . e($billing['last_name']) . "',
+            billing_company = '" . e($billing['company']) . "',
+            order_date = '" . $now . "',
             last_modified_timestamp = '" . $now . "',
             ip_address = IFNULL(INET_ATON('" . escape($_SERVER['REMOTE_ADDR'] ?? '') . "'), 0)
         WHERE id = '" . $order_id . "'");
+
+    // A counter sale is handed over at the till: the recipient the cart
+    // writer opened ('myself', no address) is dropped, so the order screen
+    // draws no empty shipping card, date or tracking fields.
+    db("UPDATE order_items SET ship_to_id = '0' WHERE order_id = '" . $order_id . "'");
+    db("DELETE FROM ship_tos WHERE order_id = '" . $order_id . "'");
 
     // 5. Stock goes down for tracked products. Each one then tells the
     //    outside the same way a web sale does: the stamp for updated_since
@@ -1067,7 +1192,7 @@ function local_sale_complete($user, $input)
         pg_announce('order.created', array('id' => $order_id, 'order_number' => (int) $order_number));
     }
 
-    unset($_SESSION['ecommerce']['order_id']);
+    unset($_SESSION['ecommerce']['local_sale_order_id']);
     unset($_SESSION['ecommerce']['local_sale_customer']);
 
     // What the operator picked is remembered for the next sale: the till and

@@ -3068,7 +3068,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     // above), one row each: the joins for the advanced filters can repeat an
     // order, so every figure below is taken over this distinct set.
     $orders_filtered_sql =
-        "SELECT DISTINCT orders.id, orders.total, orders.order_date, orders.payment_method
+        "SELECT DISTINCT orders.id, orders.total, orders.order_date, orders.payment_method, " . (pg_schema_has('orders', 'type') ? 'orders.type' : "'' AS type") . "
         FROM orders
         LEFT JOIN user ON orders.user_id = user.user_id
         LEFT JOIN contacts on orders.contact_id = contacts.id
@@ -3136,17 +3136,19 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         );
     }
 
-    // How the orders were paid, by number of orders.
+    // How the orders were paid, by number of orders. A counter sale keeps
+    // its payment in the ERP's receipts, not on the order: it counts as a
+    // counter sale, not as "None".
     $payment_split = array();
 
     foreach ((array) db_items(
-        "SELECT f.payment_method, COUNT(*) AS n
+        "SELECT IF(f.payment_method = '' AND f.type = 'local', '#local', f.payment_method) AS payment_method, COUNT(*) AS n
         FROM ($orders_filtered_sql) AS f
-        GROUP BY f.payment_method
+        GROUP BY 1
         ORDER BY n DESC") as $payment_row) {
 
         $payment_split[] = array(
-            'label' => ((string) $payment_row['payment_method'] === '') ? lang('None') : lang((string) $payment_row['payment_method']),
+            'label' => ((string) $payment_row['payment_method'] === '#local') ? lang('Counter sale') : (((string) $payment_row['payment_method'] === '') ? lang('None') : lang((string) $payment_row['payment_method'])),
             'count' => (int) $payment_row['n'],
         );
     }
