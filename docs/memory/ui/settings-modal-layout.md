@@ -11,6 +11,8 @@ Same form at every width: list on the left, one pane beside it, and ONLY the pan
 | 576-1024px | full screen | left, 12rem |
 | < 576px | full screen | drawer sliding over the pane |
 
+- `pg-sm` (with `is-busy`, `is-nav-open`) sits on the `<dialog>` itself, so `shell()` returns `el`; a `querySelector('.pg-sm')` there found nothing and the phone drawer and progress bar were dead (#5019).
+
 ## Which CSS rules must not be broken?
 - Every flex item in the scroll chain carries `min-height: 0`. A flex item does not shrink below its content on the MAIN axis; in column direction `.pg-sm-main` grows to the height of all cards, the pane never scrolls and the save bar ends a thousand pixels below the screen (measured on a phone: 1921px content in an 812px dialog, Save unreachable). In row direction (desktop) `min-height: auto` is not the main axis, so the bug showed only on narrow screens.
 - Dialog height must agree with Bootstrap's own margin: `--bs-dialog-margin` is 1.75rem (the dialog's max-height is the window minus it twice); content of `100vh - 3rem` overflows. The value is `min(860px, calc(100vh - 3.5rem))`.
