@@ -1,6 +1,6 @@
 ---
 name: coordinator-limits
-description: Coordinator rules: model and effort of coordinators and workers, quota guard before a worker starts, 4 to 8 workers per coordinator, a new worker for a decided draft PR
+description: Coordinator rules: model and effort of coordinators and workers, quota guard and scaling by the 5-hour window, 6 to 9 workers per coordinator, a new worker for a decided draft PR
 ---
 
 ## Why?
@@ -8,8 +8,10 @@ description: Coordinator rules: model and effort of coordinators and workers, qu
 - Workers waited hours for a decision (one 9.5 hours), paying their whole context on every check-in; a worker with an open decision question now ends its session (`session-lifecycle.md`), so the decision must reach a new session.
 
 ## Which quota guard?
-- Before starting a worker the coordinator calls `get_session` on itself and reads `rate_limit_info`: a status other than `allowed` means no new worker until `resetsAt`. A session of its account that fails within a minute of its start is read as a limit hit: no new worker for 10 minutes, the owner told once.
-- Each coordinator keeps at least 4 and at most 8 workers busy (since 2026-11-01; 3 to 6 from 2026-10-31, before that 6 per account shared by its coordinators). Fewer than 4 only while the quota guard, the queue limit (CLAUDE.md, Working mode 8) or a lack of free steps stops a start. The queue rule (at most 6 of the 20 places per coordinator; 4 of 15 before 2026-10-28) stays.
+- Before starting a worker the coordinator calls `get_session` on itself and reads `rate_limit_info` (status and `resetsAt`, no percentage). A session of its account that fails within a minute of its start is read as a limit hit: no new worker for 10 minutes, the owner told once.
+- Each coordinator keeps at least 6 and at most 9 workers busy (owner's setting for the coordinators, 2026-11-02: the account has only a 5-hour window, no weekly limit; 4 to 8 before). Fewer than 6 only while the quota guard, the queue limit (CLAUDE.md, Working mode 8) or a lack of free steps stops a start.
+- It scales by the 5-hour window: `allowed` → fill up to 9 while free work and queue places exist; a warning status → finishing workers are not replaced (down toward 6); limited → no new worker until `resetsAt`, then back up to 9.
+- The queue rule (at most 6 of the 20 places per coordinator) stays.
 - Starts are staggered: at most one new worker a minute. The architect starts no sub-agents for the same reason.
 
 ## Which model and effort?
