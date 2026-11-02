@@ -35,8 +35,14 @@ if (($user['role'] == 3) && (($_GET['filter'] ?? '') == 'all_duplicate_contacts'
     output_error(lang('Access denied') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
-// store all values collected in request to session
+// store all values collected in request to session; the six date range
+// parts are left to pg_contact_list_prepare(), which tells a picked range
+// from the default one the forms send back
 foreach ($_REQUEST as $key => $value) {
+    if (in_array($key, array('start_month', 'start_day', 'start_year', 'stop_month', 'stop_day', 'stop_year'), true)) {
+        continue;
+    }
+
     // if the value is a string or this is the contact groups array then add it to the session
     // we have to do this check because cookie arrays are sometimes included in the $_REQUEST array,
     // for certain php.ini settings
@@ -89,9 +95,14 @@ if (isset($_REQUEST['advanced_filters']) == true) {
 // The list's filters and rows are shared with the action that pages it
 // (includes/fn/contact_list.php).
 $contact_groups = pg_contact_list_groups($user);
-pg_contact_list_prepare($user, $contact_groups);
+pg_contact_list_prepare($user, $contact_groups, $_REQUEST);
 $list_filter = pg_contact_list_filter($user, $filter, $contact_groups);
 $heading = $list_filter['heading'];
+
+// A typed expiration date that is no real date is left out of the list
+// (pg_contact_list_filter()); its box says so.
+$expiration_filter_value = (string) pg_contact_list_value($_SESSION['software']['view_contacts'] ?? array(), 'expiration_date');
+$expiration_filter_invalid = ($expiration_filter_value !== '') && (pg_date_input_iso($expiration_filter_value) === '');
 $subheading = $list_filter['subheading'];
 $advanced_filters = $list_filter['advanced'];
 $contact_groups_filter = $list_filter['group_filter'];
@@ -211,8 +222,6 @@ if ($filter != 'all_duplicate_contacts') {
 
 // if user requested to export contacts, export contacts
 if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
-    pg_csv_download_start('contacts.csv');
-
     $output_affiliate_headings = '';
     $output_affiliate_values = '';
 
@@ -220,7 +229,6 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         $output_affiliate_headings = ',affiliate_approved,affiliate_name,affiliate_code,affiliate_commission_rate';
     }
 
-    print 'first_name,last_name,nickname,company,title,department,office_location,business_address_1,business_address_2,business_city,business_state,business_country,business_zip_code,business_phone,business_fax,home_address_1,home_address_2,home_city,home_state,home_country,home_zip_code,home_phone,home_fax,mobile_phone,email_address,website,lead_source,opt_in,description,member_id,expiration_date' . $output_affiliate_headings . ',salutation,suffix' . "\n";
 
     $number_of_contacts = 0;
 
@@ -269,16 +277,21 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
              GROUP BY contacts.id
              ORDER BY contacts.last_name, contacts.first_name";
 
+    // The query runs before the download starts, so a failure shows the
+    // error screen instead of writing its HTML into the file.
     $result = db_q($query, $list_filter['params']) or output_error('Query failed.');
+
+    pg_csv_download_start('contacts.csv');
+    print 'first_name,last_name,nickname,company,title,department,office_location,business_address_1,business_address_2,business_city,business_state,business_country,business_zip_code,business_phone,business_fax,home_address_1,home_address_2,home_city,home_state,home_country,home_zip_code,home_phone,home_fax,mobile_phone,email_address,website,lead_source,opt_in,description,member_id,expiration_date' . $output_affiliate_headings . ',salutation,suffix' . "\n";
+
+    // Contact text often comes from visitors (forms, sign-ups, orders), so a
+    // text cell gets the formula guard (csv_cell()); the number and date
+    // cells stay as they are, a guard would turn them into text.
+    $export_plain_columns = array('opt_in', 'expiration_date', 'affiliate_approved', 'affiliate_commission_rate');
+
     while($row = mysqli_fetch_assoc($result)) {
-        // for each value in the row
         foreach ($row as $key => $value) {
-           // replace quotation mark with two quotation marks
-           $value = str_replace('"', '""', $value);
-           // add quotation marks around value
-           $value = '"' . $value . '"';
-           // set new value
-           $row[$key] = $value;
+            $row[$key] = '"' . (in_array($key, $export_plain_columns, true) ? escape_csv($value) : csv_cell($value)) . '"';
         }
 
         if (AFFILIATE_PROGRAM == true) {
@@ -593,7 +606,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
 
     // if the advanced filters are off
     if ($advanced_filters == false) {
-    
+        // The duplicates view always looks in every group, so it shows no
+        // group picker; set before the picker's markup is built.
+        $show_hide_contact_group_select = ($filter == 'all_duplicate_contacts') ? ' d-none' : '';
+
         $output_contact_group_selection = '
         <div class="input-group input-group-sm w-auto'. $show_hide_contact_group_select .'">
             <label class="input-group-text material-icons" title="' . lang('Group') . '" for="contact_group">groups</label>
@@ -604,16 +620,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         $output_advanced_filters = '';
         $advanced_filters_icon = 'bi-funnel';
     
-        // if the all duplicate contacts filter is on then hide the contact group select list and the advanced filters button
-        if ($filter == 'all_duplicate_contacts') {
-            $show_hide_contact_group_select = ' d-none';
-            $output_advanced_filters_class = ' d-none';
-            
-        // else show the contact groups pick list and advanced filters button
-        } else {
-            $show_hide_contact_group_select = '';
-            $output_advanced_filters_class = '';
-        }
+        // the duplicates view has no advanced filters either
+        $output_advanced_filters_class = ($filter == 'all_duplicate_contacts') ? ' d-none' : '';
 
     // else the advanced filters are on
     } else {
@@ -914,7 +922,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="expiration_date" class="form-label">' . lang('Expiration Date') . '</label>
-                            <input type="text" id="expiration_date" name="expiration_date" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['expiration_date'] ?? '')) . '" data-pg-date />
+                            <input type="text" id="expiration_date" name="expiration_date" class="form-control' . ($expiration_filter_invalid ? ' is-invalid' : '') . '" value="' . h(($_SESSION['software']['view_contacts']['expiration_date'] ?? '')) . '" data-pg-date' . ($expiration_filter_invalid ? ' aria-invalid="true" aria-describedby="expiration_date_error"' : '') . ' />
+                            ' . ($expiration_filter_invalid ? '<div id="expiration_date_error" class="invalid-feedback">' . h(lang('The date is not valid.')) . '</div>' : '') . '
                             ' . get_date_picker_format() . pg_fields_script() . '
                         </div>
                         
@@ -1103,7 +1112,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                                 'week'  => array($decrease_week, $current_week, $increase_week),
                                 'month' => array($decrease_month, $current_month, $increase_month),
                                 'year'  => array($decrease_year, $current_year, $increase_year),
-                            ), $output_date_range_time) : '') . '
+                            ), $output_date_range_time, '', array('filter' => $filter)) : '') . '
                 </nav>
                 ' . $output_advanced_filters . '
                 <div class="card my-7">

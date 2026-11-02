@@ -128,20 +128,115 @@ function pg_contact_list_groups($user)
 }
 
 /**
- * Brings the list's session filters into shape: defaults for what is not
- * set yet, a user with the user role kept to the groups they may edit, the
- * checked groups of the advanced filters started from the picked group, and
- * date parts that are numbers (one that is not would break the date math
- * for the rest of the session).
+ * The list's group choices kept to the ones the screen offers: the picked
+ * group must be [All], [None] (above the user role) or a group the user may
+ * edit, else it falls back to [All]; the advanced filters' checked groups
+ * lose any other value. A deleted group, or [Tümü] left from a panel in
+ * another language, otherwise stayed in the session: the list came out
+ * empty while the picker, with no option to select, showed [All].
  *
- * @param array $user   the viewer (validate_user())
- * @param array $groups pg_contact_list_groups()'s answer
+ * @param array $state     the list's session values
+ * @param array $group_ids the ids of the groups the user may edit
+ * @param bool  $may_none  whether [None] is offered (a role above user)
+ * @return array the session values
+ */
+function pg_contact_list_clean_groups(array $state, array $group_ids, $may_none)
+{
+    $all = '[' . lang('All') . ']';
+    $none = '[' . lang('None') . ']';
+    $allowed = array();
+
+    foreach ($group_ids as $id) {
+        $allowed[(string) $id] = true;
+    }
+
+    if ($may_none) {
+        $allowed[$none] = true;
+    }
+
+    if (isset($state['contact_group'])) {
+        $group = is_scalar($state['contact_group']) ? trim((string) $state['contact_group']) : '';
+
+        if (($group !== $all) && !isset($allowed[$group])) {
+            unset($state['contact_group']);
+        }
+    }
+
+    if (isset($state['contact_groups'])) {
+        if (!is_array($state['contact_groups'])) {
+            unset($state['contact_groups']);
+        } else {
+            $checked = array();
+
+            foreach ($state['contact_groups'] as $value) {
+                if (is_scalar($value) && isset($allowed[(string) $value])) {
+                    $checked[] = (string) $value;
+                }
+            }
+
+            $state['contact_groups'] = $checked;
+        }
+    }
+
+    if (!isset($state['contact_group'])) {
+        $state['contact_group'] = $all;
+    }
+
+    return $state;
+}
+
+/**
+ * The checked groups the advanced filters open with: every group the user
+ * may edit, and [None] above the user role, for [All], so opening the
+ * filters leaves the list as it was (without [None] the contacts in no
+ * group dropped out); the picked group otherwise.
+ *
+ * @param string $picked    the picked group
+ * @param array  $group_ids the ids of the groups the user may edit
+ * @param bool   $may_none  whether [None] is offered (a role above user)
+ * @return array
+ */
+function pg_contact_list_initial_checked($picked, array $group_ids, $may_none)
+{
+    if ($picked != '[' . lang('All') . ']') {
+        return array((string) $picked);
+    }
+
+    $checked = array();
+
+    foreach ($group_ids as $id) {
+        $checked[] = (string) $id;
+    }
+
+    if ($may_none) {
+        $checked[] = '[' . lang('None') . ']';
+    }
+
+    return $checked;
+}
+
+/**
+ * Brings the list's session filters into shape: defaults for what is not
+ * set yet, the groups kept to the ones the user may pick, the checked
+ * groups of the advanced filters started from the picked group, and the
+ * date range of this request (pg_list_period_state()): unless the user
+ * picked one, the oldest contact to today, worked out on every request, so
+ * a session open past midnight still lists the contacts added since.
+ *
+ * @param array    $user    the viewer (validate_user())
+ * @param array    $groups  pg_contact_list_groups()'s answer
+ * @param array    $request the request's range values (the screen's
+ *                          $_REQUEST; the paging action sends none)
+ * @param int|null $now     the current time; time() when null
  * @return void
  */
-function pg_contact_list_prepare($user, $groups)
+function pg_contact_list_prepare($user, $groups, array $request = array(), $now = null)
 {
     $state = &$_SESSION['software']['view_contacts'];
-    $all = '[' . lang('All') . ']';
+
+    if (!is_array($state)) {
+        $state = array();
+    }
 
     if (!isset($state['show_contact_groups'])) {
         $state['show_contact_groups'] = false;
@@ -151,55 +246,22 @@ function pg_contact_list_prepare($user, $groups)
         $state['advanced_filters'] = false;
     }
 
-    if ($user['role'] == 3) {
-        if (isset($state['contact_group']) && ($state['contact_group'] != '') && ($state['contact_group'] != $all)
-            && (!is_scalar($state['contact_group']) || (validate_contact_group_access($user, $state['contact_group']) == false))) {
-            unset($state['contact_group']);
-        }
+    $group_ids = array();
 
-        if (isset($state['contact_groups']) && is_array($state['contact_groups'])) {
-            foreach ($state['contact_groups'] as $key => $value) {
-                if (!is_scalar($value) || (validate_contact_group_access($user, $value) == false)) {
-                    unset($state['contact_groups'][$key]);
-                }
-            }
-        }
+    foreach ($groups as $group) {
+        $group_ids[] = $group['id'];
     }
 
-    if (!isset($state['contact_group'])) {
-        $state['contact_group'] = $all;
-    }
+    $may_none = ($user['role'] < 3);
+    $state = pg_contact_list_clean_groups($state, $group_ids, $may_none);
 
     if (($state['advanced_filters'] == true) && !isset($state['contact_groups'])) {
-        $state['contact_groups'] = array();
-
-        if ($state['contact_group'] == $all) {
-            foreach ($groups as $group) {
-                $state['contact_groups'][] = $group['id'];
-            }
-        } else {
-            $state['contact_groups'][] = $state['contact_group'];
-        }
+        $state['contact_groups'] = pg_contact_list_initial_checked($state['contact_group'], $group_ids, $may_none);
     }
 
     // The range starts with the oldest contact.
     $oldest = (int) db_value("SELECT MIN(timestamp) FROM contacts");
-    $date_defaults = array(
-        'start_month' => date('m', $oldest),
-        'start_day'   => date('d', $oldest),
-        'start_year'  => date('Y', $oldest),
-        'stop_month'  => date('m'),
-        'stop_day'    => date('d'),
-        'stop_year'   => date('Y'),
-    );
-
-    foreach ($date_defaults as $key => $value) {
-        if (!preg_match('/^\d{1,4}$/', (string) ($state[$key] ?? ''))) {
-            $state[$key] = $value;
-        }
-    }
-
-    $state = pg_list_period_ordered($state);
+    $state = pg_list_period_state($state, $request, ($now === null) ? time() : (int) $now, $oldest);
 }
 
 /**
@@ -398,11 +460,11 @@ function pg_contact_list_filter($user, $filter, $groups)
         $boxes = array('salutation', 'first_name', 'last_name', 'suffix', 'nickname', 'company', 'title', 'department', 'office_location',
             'business_address_1', 'business_address_2', 'business_city', 'business_state', 'business_country', 'business_zip_code', 'business_phone', 'business_fax',
             'home_address_1', 'home_address_2', 'home_city', 'home_state', 'home_country', 'home_zip_code', 'home_phone', 'home_fax',
-            'mobile_phone', 'email_address', 'website', 'lead_source');
+            'mobile_phone', 'email_address', 'website', 'lead_source', 'description');
 
+        // The subscribers view only lists contacts that opted in, so its
+        // opt-in box is left out; the description box filters in every view.
         if ($filter != 'my_subscribers') {
-            $boxes[] = 'description';
-
             $opt_in = pg_contact_list_value($state, 'opt_in_status');
 
             if ($opt_in == 'opt_in') {
@@ -419,12 +481,16 @@ function pg_contact_list_filter($user, $filter, $groups)
             $boxes[] = 'affiliate_code';
         }
 
+        // The boxes match the way the table search does, with the Turkish
+        // I/ı folding (pg_list_search_where()): a plain LIKE missed
+        // "Açıklama" for "AÇIKLAMA". The whole box is one term.
         foreach ($boxes as $box) {
             $value = pg_contact_list_value($state, $box);
 
             if ($value !== '') {
-                $conditions[] = '(contacts.' . $box . ' LIKE ?)';
-                $params[] = pg_list_like_pattern($value);
+                $box_where = pg_list_search_where(array($value), array('contacts.' . $box));
+                $conditions[] = $box_where['sql'];
+                $params = array_merge($params, $box_where['params']);
             }
         }
 
@@ -455,11 +521,14 @@ function pg_contact_list_filter($user, $filter, $groups)
             }
         }
 
-        $expiration = pg_contact_list_value($state, 'expiration_date');
+        // A date that is no real date is left out (the screen marks the
+        // box): handed to the query as it was, MySQL refused the comparison
+        // and the list and its export failed.
+        $expiration = pg_date_input_iso(pg_contact_list_value($state, 'expiration_date'));
 
         if ($expiration !== '') {
             $conditions[] = '(contacts.expiration_date = ?)';
-            $params[] = (string) prepare_form_data_for_input($expiration, 'date');
+            $params[] = $expiration;
         }
     }
 

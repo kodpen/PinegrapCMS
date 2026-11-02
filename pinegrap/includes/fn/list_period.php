@@ -65,15 +65,17 @@ function pg_list_period_ordered(array $range)
 }
 
 /**
- * The default range of a list screen: a month (31 days) ago to the day of
- * $now.
+ * The default range of a list screen: a month (31 days) ago, or the day of
+ * $start when one is given (the contacts list starts with the oldest
+ * contact), to the day of $now.
  *
- * @param int $now the current time
+ * @param int      $now   the current time
+ * @param int|null $start the first day's timestamp; a month before $now when null
  * @return array start_month, start_day, start_year, stop_month, stop_day, stop_year
  */
-function pg_list_period_default($now)
+function pg_list_period_default($now, $start = null)
 {
-    $month_ago = $now - 2678400;
+    $month_ago = ($start === null) ? ($now - 2678400) : (int) $start;
 
     return array(
         'start_month' => date('m', $month_ago),
@@ -117,14 +119,15 @@ function pg_list_period_same_range(array $a, array $b)
  * pickers filled with it), which ends a pick instead; a part of it that is not a number of up to four digits falls back to
  * the default (mktime() throws for one). The range is put the right way round.
  *
- * @param array $state   the screen's session values (other keys are kept)
- * @param array $request the request's values ($_REQUEST)
- * @param int   $now     the current time
+ * @param array    $state   the screen's session values (other keys are kept)
+ * @param array    $request the request's values ($_REQUEST)
+ * @param int      $now     the current time
+ * @param int|null $start   the default range's first day (pg_list_period_default())
  * @return array the session values with the six start_/stop_ parts set
  */
-function pg_list_period_state(array $state, array $request, $now)
+function pg_list_period_state(array $state, array $request, $now, $start = null)
 {
-    $defaults = pg_list_period_default($now);
+    $defaults = pg_list_period_default($now, $start);
 
     $sent = array();
 
@@ -141,7 +144,7 @@ function pg_list_period_state(array $state, array $request, $now)
     // it stayed on that day and hid the next day's rows.
     if ((count($sent) === count($defaults))
         && (pg_list_period_same_range($sent, $defaults)
-            || pg_list_period_same_range($sent, pg_list_period_default(strtotime('-1 day', $now))))) {
+            || pg_list_period_same_range($sent, pg_list_period_default(strtotime('-1 day', $now), $start)))) {
         unset($state['range_picked']);
         $sent = array();
     }

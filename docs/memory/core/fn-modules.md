@@ -30,7 +30,7 @@ description: Generated from the module field of the memory files: each includes/
 - `commission_list`: [[commission-list-paging]], [[order-cancel-commissions]]
 - `config_text`: [[config-table-no-varchar]]
 - `consent`: [[fn-module-errors-mail-backup-consent]]
-- `contact_list`: [[contact-list-names]], [[contact-merge-role]], [[contact-user-list-view-kept]], [[panel-image-alt]], [[server-paged-lists]]
+- `contact_list`: [[contact-list-filters]], [[contact-list-names]], [[contact-merge-role]], [[contact-user-list-view-kept]], [[panel-image-alt]], [[server-paged-lists]]
 - `contacts`: [[contact-holders]], [[contact-lead-source]], [[deleted-picture-fallback]], [[panel-avatar]], [[panel-avatar-sites]]
 - `core`: [[app-screen-messages]], [[error-screen-language-and-status]], [[send-to-url-safety]], [[style-tag-css]], [[time-zone-list-labels]]
 - `cron`: [[scheduled-job-resume]]

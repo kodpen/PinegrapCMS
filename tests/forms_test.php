@@ -187,3 +187,21 @@ function test_forms_validate_date_and_time_24_hour()
 	pg_assert_true(validate_date_and_time('03/03/2016 17:00'));
 	pg_assert_false(validate_date_and_time('03/03/2016 25:00'));
 }
+
+// A typed date as ISO: the site's day and month order with any separator
+// (the Turkish dotted form included), ISO itself, and '' for no real date
+// or a two-digit year.
+function test_date_input_iso()
+{
+	$day_month = !defined('DATE_FORMAT') || (DATE_FORMAT != 'month_day');
+
+	pg_assert_same('2026-12-31', pg_date_input_iso('2026-12-31'), 'ISO');
+	pg_assert_same('2026-02-03', pg_date_input_iso('2026-2-3'), 'ISO without zeros');
+	pg_assert_same('2026-12-31', pg_date_input_iso($day_month ? '31.12.2026' : '12.31.2026'), 'dots');
+	pg_assert_same('2026-12-31', pg_date_input_iso($day_month ? ' 31/12/2026 ' : ' 12/31/2026 '), 'slashes, trimmed');
+	pg_assert_same('2026-12-31', pg_date_input_iso($day_month ? '31-12-2026' : '12-31-2026'), 'dashes');
+
+	foreach (array('', 'abc', '32/13/2027', '31/12/27', '30.02.2026', '2026-13-01', '0000-00-00', '31.12.2026x', array('2026-12-31'), null) as $bad) {
+		pg_assert_same('', pg_date_input_iso($bad), 'no date: ' . json_encode($bad));
+	}
+}
