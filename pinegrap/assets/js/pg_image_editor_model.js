@@ -2372,6 +2372,165 @@
         moveKnot: moveKnot, moveHandle: moveHandle, nearestOnPath: nearestOnPath, splitAt: splitAt, shapeKnots: shapeKnots
     };
 
+    // -- SVG open and save (pg_image_editor_svg.js) --
+
+    // A length of an SVG root (px, unitless or pt/in/cm/mm), or 0 for a
+    // percentage or nothing.
+    function svgLength(value) {
+        var m = /^\s*([0-9]*\.?[0-9]+(?:e[-+]?[0-9]+)?)\s*(px|pt|pc|in|cm|mm)?\s*$/i.exec(String(value || ''));
+        var unit = { px: 1, pt: 4 / 3, pc: 16, 'in': 96, cm: 96 / 2.54, mm: 96 / 25.4 };
+
+        return m ? Number(m[1]) * (m[2] ? unit[m[2].toLowerCase()] : 1) : 0;
+    }
+
+    // The numbers of a list attribute (viewBox, points, a transform's).
+    function svgNumbers(value) {
+        return (String(value || '').match(/[-+]?(?:[0-9]*\.[0-9]+|[0-9]+\.?)(?:e[-+]?[0-9]+)?/gi) || []).map(Number);
+    }
+
+    // An SVG root's artboard (w, h, whole pixels within the editor's sizes)
+    // and the matrix from its user space (the view box) to the artboard;
+    // the view box fits centred, keeping its ratio.
+    function svgRoot(width, height, viewBox) {
+        var vb = svgNumbers(viewBox), w = svgLength(width), h = svgLength(height);
+
+        vb = ((vb.length === 4) && (vb[2] > 0) && (vb[3] > 0)) ? vb : null;
+
+        if (!w && !h) {
+            w = vb ? vb[2] : 300;
+            h = vb ? vb[3] : 150;
+        } else if (!w) {
+            w = vb ? h * vb[2] / vb[3] : h;
+        } else if (!h) {
+            h = vb ? w * vb[3] / vb[2] : w;
+        }
+
+        var aw = Math.round(clamp(w, SIZE_MIN, SIZE_MAX)), ah = Math.round(clamp(h, SIZE_MIN, SIZE_MAX));
+
+        if (!vb) {
+            return { w: aw, h: ah, m: scale(aw / w, ah / h) };
+        }
+
+        var k = Math.min(aw / vb[2], ah / vb[3]);
+
+        return { w: aw, h: ah, m: mul(translate((aw - vb[2] * k) / 2, (ah - vb[3] * k) / 2), mul(scale(k), translate(-vb[0], -vb[1]))) };
+    }
+
+    // A transform attribute as a matrix.
+    function svgTransform(value) {
+        var m = [1, 0, 0, 1, 0, 0], re = /(matrix|translate|scale|rotate|skewX|skewY)\s*\(([^)]*)\)/g, f;
+
+        while ((f = re.exec(String(value || ''))) !== null) {
+            var n = svgNumbers(f[2]), step = null;
+
+            if ((f[1] === 'matrix') && (n.length === 6)) {
+                step = n;
+            } else if (f[1] === 'translate') {
+                step = translate(n[0] || 0, n[1] || 0);
+            } else if (f[1] === 'scale') {
+                step = scale((n[0] === undefined) ? 1 : n[0], (n[1] === undefined) ? n[0] : n[1]);
+            } else if (f[1] === 'rotate') {
+                step = (n.length >= 3) ? mul(translate(n[1], n[2]), mul(rotate(n[0] || 0), translate(-n[1], -n[2]))) : rotate(n[0] || 0);
+            } else if (f[1] === 'skewX') {
+                step = [1, 0, Math.tan((n[0] || 0) * Math.PI / 180), 1, 0, 0];
+            } else if (f[1] === 'skewY') {
+                step = [1, Math.tan((n[0] || 0) * Math.PI / 180), 0, 1, 0, 0];
+            }
+
+            if (step) {
+                m = mul(m, step);
+            }
+        }
+
+        return m;
+    }
+
+    // A box of the element's own space at least a unit wide and high, so a
+    // straight line still has a box to scale.
+    function svgOwnBox(b) {
+        var box = { x: b.x, y: b.y, w: b.w, h: b.h };
+
+        if (!(box.w >= 1)) {
+            box.x -= (1 - (box.w || 0)) / 2;
+            box.w = 1;
+        }
+
+        if (!(box.h >= 1)) {
+            box.y -= (1 - (box.h || 0)) / 2;
+            box.h = 1;
+        }
+
+        return box;
+    }
+
+    // A layer's box (x, y, w, h, rot, mirror) for an element whose own box
+    // vb is drawn through matrix m; null when m skews, as a box cannot.
+    function svgPlace(vb, m) {
+        var a = m[0], b = m[1], c = m[2], d = m[3], sx = Math.hypot(a, b), det = a * d - b * c;
+
+        if ((sx < 1e-9) || (Math.abs(det) < 1e-12) || (Math.abs(a * c + b * d) > 1e-6 * sx * Math.hypot(c, d))) {
+            return null;
+        }
+
+        var rot = Math.atan2(b, a) * 180 / Math.PI, mirror = det < 0, sy = Math.abs(det) / sx;
+
+        if (mirror) {
+            rot += 180;
+        }
+
+        rot = ((rot + 540) % 360) - 180;
+
+        var w = vb.w * sx, h = vb.h * sy, centre = apply(m, vb.x + vb.w / 2, vb.y + vb.h / 2);
+        var box = { x: centre[0] - w / 2, y: centre[1] - h / 2, w: w, h: h, rot: Math.round(rot * 1e6) / 1e6 };
+
+        if (mirror) {
+            box.mirror = true;
+        }
+
+        return box;
+    }
+
+    // The matrix that draws an SVG layer's element (its own box vb) into the
+    // layer's box: turned around the box's centre, mirrored inside it.
+    function svgMatrix(l) {
+        var vb = l.vb, m = translate(l.x, l.y);
+
+        if (l.rot) {
+            m = mul(m, mul(translate(l.w / 2, l.h / 2), mul(rotate(l.rot), translate(-l.w / 2, -l.h / 2))));
+        }
+
+        if (l.mirror) {
+            m = mul(m, [-1, 0, 0, 1, l.w, 0]);
+        }
+
+        return mul(m, mul(scale(l.w / vb.w, l.h / vb.h), translate(-vb.x, -vb.y)));
+    }
+
+    // The same as a transform attribute.
+    function svgMatrixText(m) {
+        return 'matrix(' + m.map(function (n) { return Math.round(n * 1e6) / 1e6; }).join(' ') + ')';
+    }
+
+    // Text for an attribute value or a text node.
+    function svgEscape(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // A whole SVG file: its size, the root's id (which its style rules are
+    // scoped to), the artboard's fill, the kept definitions and the layers'
+    // markup, in order.
+    function svgFile(w, h, background, defs, bodies, id) {
+        var fill = (background && (background !== 'transparent')) ? '<rect width="' + w + '" height="' + h + '" fill="' + svgEscape(background) + '"/>' : '';
+
+        return '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"' + (id ? ' id="' + svgEscape(id) + '"' : '') + ' width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">'
+            + (defs || '') + fill + bodies.join('') + '</svg>';
+    }
+
+    var SVG = {
+        svgLength: svgLength, svgNumbers: svgNumbers, svgRoot: svgRoot, svgTransform: svgTransform, svgOwnBox: svgOwnBox,
+        svgPlace: svgPlace, svgMatrix: svgMatrix, svgMatrixText: svgMatrixText, svgEscape: svgEscape, svgFile: svgFile
+    };
+
     // -- access (pg_image_editor_access.js) --
 
     // A letter picks a tool of the call: the first of its tools the call
@@ -2526,7 +2685,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, ACCESS].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, ACCESS].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');
