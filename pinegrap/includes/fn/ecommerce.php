@@ -9630,6 +9630,25 @@ function pg_duplicate_products_base_name($name, $new_text)
     return ($base === '') ? $name : $base;
 }
 
+/**
+ * The short description a bulk copy (duplicate_products.php) writes: the
+ * original's text minus its last $count letters, plus the typed letter or
+ * word. Letters are counted as characters, so a Turkish text loses exactly
+ * the letters asked for and is never left with half of a two-byte letter.
+ *
+ * @param string $text     the original's short description
+ * @param int    $count    the letters to remove, at least 1
+ * @param string $new_text the letter or word typed on the screen
+ * @return string
+ */
+function pg_duplicate_products_description($text, $count, $new_text)
+{
+    $text = (string) $text;
+    $keep = max(0, mb_strlen($text, 'UTF-8') - max(1, (int) $count));
+
+    return mb_substr($text, 0, $keep, 'UTF-8') . (string) $new_text;
+}
+
 function duplicate_product($id)
 {
     // get original product's info
