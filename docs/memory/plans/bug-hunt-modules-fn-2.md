@@ -19,11 +19,11 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 - `reviews`: taken by LC, #4597
 - `search_console`: #4852
 - `seo`: #4870
-- `shipment_labels`: open
-- `shipment_lookup`: open
+- `shipment_labels`: #5117 (NY)
+- `shipment_lookup`: clean (NY)
 - `shipment_tracking`: clean (MJ)
 - `shipping`: taken by LL, #4625
-- `shipping_import`: open
+- `shipping_import`: clean (NY)
 - `short_link_redirects`: open
 - `signature`: open
 - `signin`: clean
