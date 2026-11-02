@@ -279,23 +279,19 @@ if (!$_POST) {
         )
     ) . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
                 ' . $output_orders_button . '
                 <form name="form" action="edit_contact.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
-                    ' . pg_contact_form_name_row($row, false, $image) . '
-
-                    <div class="row">
-                        <div class="col-12 md:col-6">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    ' . pg_contact_form_layout(
+                        pg_contact_form_name_card($row, false) . '
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Contact\'s Subscriber Information') . '
-                                </div>
-                                <div class="card-body" >
+                                </h2>
+                                <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-3">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="email_address" class="form-label">' . lang('Email') . '</label>
                                             <div class="input-group">
                                                 <input value="' . $email_address . '" type="text" name="email_address" id="email_address" autocomplete="off" class="form-control text-end" maxlength="100" inputmode="email" data-inputmask-alias="email" />
@@ -311,34 +307,25 @@ if (!$_POST) {
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-12 md:col-6">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Connected Account of this Contact') . '
-                                </div>
-                                <div class="card-body" >
-                                    <div class="row">
-                                        ' . $output_user_info . '
+                            ' . pg_contact_form_detail_cards($row, false, $output_parasut, pg_contact_form_group_cells($contact_groups, pg_contact_form_group_states($_GET['id'], $contact_groups))),
+                        pg_contact_form_picture_card(false, $image) . '
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Connected Account of this Contact') . '
+                                    </h2>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            ' . $output_user_info . '
+                                        </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    ' . pg_contact_form_detail_cards($row, false, $output_parasut, pg_contact_form_group_cells($contact_groups, pg_contact_form_group_states($_GET['id'], $contact_groups))) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('contact')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                                </div>',
+                        '
+                                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                        <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('contact')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>'
+                    ) . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '">
                 </form>
-            </div>
-        </div>
-    
+
     <script>
         // The photo x removes its item from an inline handler. This listener
         // runs first, in the capture phase, and moves focus to Change Image,

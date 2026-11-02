@@ -203,6 +203,26 @@ if (!$channel_id) {
 	}
 }
 
+// -- a contact with work and home details ------------------------------------------
+
+$contact_id = (int) seed_value("SELECT id FROM contacts WHERE email_address = 'deniz.kaya@example.test' LIMIT 1");
+
+if (!$contact_id) {
+	$contact_id = seed_insert('contacts', array(
+		'first_name' => 'Deniz',
+		'last_name' => 'Kaya',
+		'email_address' => 'deniz.kaya@example.test',
+		'opt_in' => 1,
+		'company' => 'Kaya Tekstil',
+		'title' => 'Satın Alma Müdürü',
+		'business_city' => 'İzmir',
+		'business_country' => 'TR',
+		'mobile_phone' => '+90 532 000 00 00',
+		'timestamp' => $now,
+		'user' => $admin_id,
+	));
+}
+
 // -- records the starter site brings ----------------------------------------------
 
 $product_id = (int) seed_value('SELECT id FROM products ORDER BY id LIMIT 1');
@@ -213,4 +233,5 @@ echo json_encode(array(
 	'channel_id' => $channel_id,
 	'product_id' => $product_id,
 	'offer_id' => $offer_id,
+	'contact_id' => $contact_id,
 )) . "\n";

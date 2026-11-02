@@ -42,22 +42,18 @@ if (!$_POST) {
         )
     ) . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
-                
                 <form name="form" action="add_contact.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
-                    ' . pg_contact_form_name_row(array(), true, '') . '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    ' . pg_contact_form_layout(
+                        pg_contact_form_name_card(array(), true) . '
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('New Contact\'s Subscriber Information') . '
-                                </div>
-                                <div class="card-body" >
+                                </h2>
+                                <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 md:col-4 my-3">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="email_address" class="form-label">' . lang('Email') . '</label>
                                             <input type="text" name="email_address" autocomplete="off" id="email_address" class="form-control text-end" maxlength="100" inputmode="email" data-inputmask-alias="email" />
                                         </div>
@@ -70,20 +66,13 @@ if (!$_POST) {
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                    ' . pg_contact_form_detail_cards(array(), true, '', pg_contact_form_group_cells($contact_groups, array())) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                            ' . pg_contact_form_detail_cards(array(), true, '', pg_contact_form_group_cells($contact_groups, array())),
+                        pg_contact_form_picture_card(true, ''),
+                        '
+                                        <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>'
+                    ) . '
                 </form>
-            </div>
-        </div>
-    
+
     <script>
         // The photo x removes its item from an inline handler. This listener
         // runs first, in the capture phase, and moves focus to Change Image,
