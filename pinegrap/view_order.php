@@ -2918,11 +2918,11 @@ if (!$_POST) {
                                     <hr/>
                                     <div class="row" >
                                         <span class="translateable col fg-secondary">' . lang('Special Offer Code') . ':</span>
-                                        <span class="col text-end">' . $special_offer_code . '</span>
+                                        <span class="col text-end">' . h($special_offer_code) . '</span>
                                     </div>
                                     <div class="row" >
                                         <span class="translateable col fg-secondary">' . lang('Reference Code') . ':</span>
-                                        <span class="col text-end">' . $reference_code . '</span>
+                                        <span class="col text-end">' . h($reference_code) . '</span>
                                     </div>
                                     ' . $output_currency_code_row . '
                                     ' . $output_parasut_status_rows . '
