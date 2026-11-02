@@ -41,7 +41,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 - `submitted_form_list`: open
 - `subscription_renewal`: fault fixed by LN, #4622 (renewals stop at the line's number of payments, decided in #4623)
 - `subscriptions`: clean (#4621)
-- `subscriptions_account`: open
+- `subscriptions_account`: taken by OF, #PR
 - `subscriptions_operator`: open
 - `system_status`: open
 - `text_search`: taken by MM — #4819
