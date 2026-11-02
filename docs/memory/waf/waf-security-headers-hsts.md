@@ -8,7 +8,7 @@ description: Security headers are sent outside waf_run(), independent of the fir
 
 ## When is HSTS sent?
 - HSTS is separate and default OFF: it is a one-year commitment and turning it off does not undo it.
-- Sent only when Secure Mode is on (`url_scheme === 'https://'`; the box is passive on screen until then and forced to 0 on save) AND `check_if_request_is_secure()` is true. That function is the ONLY answer to "is this https?" (`TRUST_PROXY_SSL_HEADERS`, `test_secure_mode.php`); never write a second definition.
+- Sent only when Secure Mode is on (`url_scheme === 'https://'`; the box is passive on screen until then and forced to 0 on save) AND `check_if_request_is_secure()` is true. That function is the ONLY answer to "is this https?" (direct TLS, or a forwarded header from a trusted peer: `platform/proxy-https-trust.md`, `test_secure_mode.php`); never write a second definition.
 - For that reason HSTS goes with CSP from the init phase.
 - `Permissions-Policy` is written with `(self)`, not `()`; `payment` is deliberately absent.
 

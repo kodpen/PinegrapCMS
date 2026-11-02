@@ -1545,13 +1545,16 @@ function pg_device_limit_gate($user_id, $username, $send_to, $remember = false, 
 
 /**
  * Whether the CURRENT request actually arrived over HTTPS - directly, on the
- * standard TLS port, or behind a proxy/tunnel that says so (X-Forwarded-Proto,
- * e.g. Cloudflare Tunnel). Used for cookie Secure flags instead of URL_SCHEME:
- * URL_SCHEME is a static setting, and a Secure cookie set over a plain-http
- * request (localhost, LAN) is silently discarded by the browser - the sign-in
- * would look successful but the token cookie would never stick. Spoofing the
- * forwarded header gains an attacker nothing: the browser itself refuses to
- * store a Secure cookie received over plain http.
+ * standard TLS port, or behind a proxy/tunnel that says so in a forwarded
+ * header (pg_forwarded_https(); e.g. Cloudflare Tunnel). Used for cookie
+ * Secure flags instead of URL_SCHEME: URL_SCHEME is a static setting, and a
+ * Secure cookie set over a plain-http request (localhost, LAN) is silently
+ * discarded by the browser - the sign-in would look successful but the token
+ * cookie would never stick. The peer is deliberately not checked
+ * (pg_https_peer_trusted() is Secure Mode's concern): spoofing the forwarded
+ * header gains an attacker nothing, since the browser itself refuses to store
+ * a Secure cookie received over plain http, while a proxy not yet listed on
+ * Trusted Proxies must still get a cookie that sticks.
  */
 function pg_request_is_https()
 {
@@ -1563,12 +1566,7 @@ function pg_request_is_https()
         return true;
     }
 
-    if (isset($_SERVER['HTTP_X_FORWARDED_PROTO'])
-        && (strtolower(trim(strtok((string) $_SERVER['HTTP_X_FORWARDED_PROTO'], ','))) === 'https')) {
-        return true;
-    }
-
-    return false;
+    return pg_forwarded_https($_SERVER);
 }
 
 // Re-issue the session cookie with SameSite=None so that a cross-site POST
