@@ -1743,7 +1743,12 @@ function validate_date($date)
 }
 function validate_date_and_time($date_and_time)
 {
-    $date_and_time_parts = explode(' ', $date_and_time, 2);
+    // An ISO date and time ('2026-10-26T17:00'), as an <input
+    // type="datetime-local"> of a designed form or product form posts it.
+    if (preg_match('/^\s*(\d{4}-\d{1,2}-\d{1,2})[T ](\d{1,2}:\d{2}(?::\d{2})?)\s*$/', (string)$date_and_time, $iso)) {
+        return validate_date($iso[1]) && (pg_time_24_hour_parts($iso[2]) !== null);
+    }
+    $date_and_time_parts = explode(' ', (string)$date_and_time, 2) + array('', '');
     $date = $date_and_time_parts[0];
     $time = $date_and_time_parts[1];
     if ((validate_date($date) == true) && (validate_time($time) == true)) {
@@ -3420,6 +3425,12 @@ function prepare_form_data_for_input($data, $type)
                 return $year . '-' . $month . '-' . $day;
                 break;
             case 'date and time':
+                // Already ISO ('2026-10-26T17:00', as an <input
+                // type="datetime-local"> posts it, or with a space): read
+                // the site's way it was stored as '0026-10-2026 17:00'.
+                if (preg_match('/^\s*(\d{4})-(\d{1,2})-(\d{1,2})[T ](\d{1,2}):(\d{2})/', (string)$data, $iso)) {
+                    return sprintf('%04d-%02d-%02d %02d:%02d', $iso[1], $iso[2], $iso[3], $iso[4], $iso[5]);
+                }
                 // Parts missing from a value that is not in a date and time
                 // format (e.g. a search term) count as empty.
                 $date_and_time_parts = explode(' ', $data, 2) + array('', '');

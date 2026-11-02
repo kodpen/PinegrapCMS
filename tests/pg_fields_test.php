@@ -160,7 +160,10 @@ FakeElement.prototype.dispatchEvent = function (e) {
 };
 FakeElement.prototype.matches = function (sel) {
     var self = this;
-    return sel.split(',').some(function (one) { var m = /^\[([\w-]+)\]$/.exec(one.trim()); return !!m && self.hasAttribute(m[1]); });
+    return sel.split(',').some(function (one) {
+        var m = /^\[([\w-]+)\]$/.exec(one.trim());
+        return m ? self.hasAttribute(m[1]) : (/^[a-z]+$/i.test(one.trim()) && self.tagName === one.trim().toUpperCase());
+    });
 };
 
 function makeDocument() {
@@ -767,6 +770,23 @@ function main() {
     bd.win.pgFields.init();
     out.dp_bind = ['41', '42', '43', '44'].map(function (id) { var el = bd.doc.querySelector('#' + id); return [el.pgFieldKind || '', Object.keys(el.attributes).filter(function (k) { return /^data-pg-/.test(k); }).join(',')]; });
     out.dp_bind_calls = bd.calls.filter(function (c) { return c[0] === 'calendar'; }).length;
+    // On a site page a native date, date-and-time or time input without a
+    // hook gets the hook of its type and keeps its ISO store; a hooked one
+    // keeps its own; a text input is left. The panel hooks nothing itself.
+    var nativeFields = function () { return [
+        ['input', { id: 'n1', type: 'date', value: '2026-10-26' }], ['input', { id: 'n2', type: 'DateTime-Local', value: '2026-10-26T17:05' }],
+        ['input', { id: 'n3', type: 'time', value: '17:05' }], ['input', { id: 'n4', type: 'date', 'data-pg-datetime': '' }], ['input', { id: 'n5', type: 'text' }]
+    ]; };
+    var nv = load({ noBootstrap: true, calendar: { site: true }, format: 'd/m/yy', fields: nativeFields() });
+    nv.win.pgFields.init();
+    var np = load({ format: 'd/m/yy', fields: nativeFields() });
+    np.win.pgFields.init();
+    var hooksOf = function (doc, id) { var el = doc.querySelector('#' + id); return [el.pgFieldKind || '', Object.keys(el.attributes).filter(function (k) { return /^data-pg-/.test(k); }).join(',')]; };
+    out.dp_native = {
+        site: ['n1', 'n2', 'n3', 'n4', 'n5'].map(function (id) { return hooksOf(nv.doc, id); }),
+        store: [nv.win.pgDatePicker.get('#n1'), nv.win.pgDateTimeField.get('#n2'), nv.win.pgDateTimeField.get('#n3')],
+        panel: ['n1', 'n5'].map(function (id) { return hooksOf(np.doc, id); })
+    };
     out.dp_site = {
         site: [st.win.pgDateTime.site(), dp.win.pgDateTime.site()],
         before: siteBefore,
@@ -1377,6 +1397,15 @@ function test_pg_fields_dates_on_the_calendar_control()
 		'a bind marker gives each input named by id the hook of its kind, once; a field already hooked keeps its own'
 	);
 	pg_assert_same(4, $r['dp_bind_calls'], 'each bound field drawn once, however often init() runs');
+	pg_assert_same(
+		array(
+			'site' => array(array('date', 'data-pg-date'), array('datetime', 'data-pg-datetime'), array('time', 'data-pg-time'), array('datetime', 'data-pg-datetime'), array('', '')),
+			'store' => array('2026-10-26', '2026-10-26 17:05', '17:05'),
+			'panel' => array(array('', ''), array('', '')),
+		),
+		$r['dp_native'],
+		'a site page hooks its native date, date-and-time and time inputs by type, ISO kept; a hooked or text input keeps what it has; the panel hooks nothing itself'
+	);
 	pg_assert_same(
 		array('site' => array(true, false), 'before' => false, 'kinds' => array('date', 'datetime'), 'done' => array(true, false), 'plain' => array('', 0)),
 		$r['dp_site'],
