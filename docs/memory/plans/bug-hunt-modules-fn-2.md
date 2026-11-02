@@ -12,11 +12,11 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `privacy_retention`: taken by LV, #4680
 
-- `product_customs`: open
+- `product_customs`: clean (NF)
 
 - `product_feeds`: taken by MF, #4729
 
-- `product_list`: open
+- `product_list`: clean (NF)
 
 - `prototype`: open
 
