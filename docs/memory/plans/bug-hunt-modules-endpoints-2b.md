@@ -16,9 +16,9 @@ description: Module list of plans/bug-hunt.md, part 5: the single root endpoints
 
 - Endpoints health, get_help_url, update_imported_items, index, init, integration: open
 
-- Endpoints iys_job, edit_javascript, job, kiosk, legal_document, liveform.class: open
+- Endpoints iys_job, edit_javascript, job, kiosk, legal_document, liveform.class: taken by a worker of Arzu
 
-- Endpoints get_llms.txt, local_sale, view_log, mailchimp, mass_edit, mcp: mass_edit done #4987, #MASSPR; rest taken by a worker of Arzu
+- Endpoints get_llms.txt, local_sale, view_log, mailchimp, mass_edit, mcp: done #4987, #5051 (mass_edit; get_llms.txt, local_sale, view_log, mailchimp, mcp clean)
 
 - Endpoints mfa, migration, myself_upsell, mysqldump, view_not_found_log, oauth: clean (mysqldump bundled)
 
