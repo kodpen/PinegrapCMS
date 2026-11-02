@@ -5600,7 +5600,10 @@ function pg_seo_pages_summary($rows)
             }
         }
 
-        if ((int) ($row['seo_checked_at'] ?? 0) == 0) {
+        // Never scored, or marked stale by a change since the last score:
+        // the rows the "SEO Score Not Calculated" filter lists.
+        if (((int) ($row['seo_checked_at'] ?? 0) == 0)
+            || (isset($row['seo_analysis_current']) && ((string) $row['seo_analysis_current'] === '0'))) {
             $summary['not_calculated']++;
         }
 
