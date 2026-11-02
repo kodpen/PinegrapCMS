@@ -650,3 +650,340 @@ function api_store_feeds_list($params) {
 
 }
 
+
+/* ----- Zone and tax zone writes -------------------------------------------- */
+
+// The country ids of ISO codes, in the order sent; an unknown code is 422
+// naming the field.
+function api_store_zone_country_ids($codes, $field) {
+
+	$ids = array();
+
+	foreach ((array)$codes as $code) {
+
+		if (!is_string($code) || !preg_match('/^[A-Za-z]{2,3}$/', trim($code))) {
+
+			api_fail_validation(lang(array('string' => '{var:1} must be a list of country codes.', 'vars' => $field)), $field);
+
+		}
+
+		$id = (int)api_value("SELECT id FROM countries WHERE code = '" . escape(strtoupper(trim($code))) . "' LIMIT 1");
+
+		if ($id <= 0) {
+
+			api_fail_validation(lang(array('string' => '{var:1}: there is no country with the code {var:2}.', 'vars' => array($field, strtoupper(trim($code))))), $field);
+
+		}
+
+		$ids[] = $id;
+
+	}
+
+	return array_values(array_unique($ids));
+
+}
+
+// The state ids of {country_code, code} objects, as GET /store/zones lists
+// them; an unknown state is 422 naming the field.
+function api_store_zone_state_ids($states, $field) {
+
+	$ids = array();
+
+	foreach ((array)$states as $state) {
+
+		$country = (is_array($state) && isset($state['country_code']) && is_string($state['country_code'])) ? strtoupper(trim($state['country_code'])) : '';
+
+		$code = (is_array($state) && isset($state['code']) && is_scalar($state['code'])) ? trim((string)$state['code']) : '';
+
+		if (($country === '') || ($code === '')) {
+
+			api_fail_validation(lang(array('string' => '{var:1} must be a list of objects with country_code and code.', 'vars' => $field)), $field);
+
+		}
+
+		$id = (int)api_value("SELECT states.id FROM states
+			INNER JOIN countries ON countries.id = states.country_id
+			WHERE (countries.code = '" . escape($country) . "') AND (states.code = '" . escape($code) . "')
+			LIMIT 1");
+
+		if ($id <= 0) {
+
+			api_fail_validation(lang(array('string' => '{var:1}: there is no state {var:2} in the country {var:3}.', 'vars' => array($field, $code, $country))), $field);
+
+		}
+
+		$ids[] = $id;
+
+	}
+
+	return array_values(array_unique($ids));
+
+}
+
+// The ids a zone covers now, for an update that leaves one list unsent.
+function api_store_zone_link_ids_of($kind, $id) {
+
+	$t = pg_store_zone_tables($kind);
+
+	$out = array('countries' => array(), 'states' => array());
+
+	foreach (api_rows("SELECT country_id FROM " . $t['countries'] . " WHERE " . $t['key'] . " = '" . (int)$id . "' ORDER BY country_id ASC") as $row) {
+
+		$out['countries'][] = (int)$row['country_id'];
+
+	}
+
+	foreach (api_rows("SELECT state_id FROM " . $t['states'] . " WHERE " . $t['key'] . " = '" . (int)$id . "' ORDER BY state_id ASC") as $row) {
+
+		$out['states'][] = (int)$row['state_id'];
+
+	}
+
+	return $out;
+
+}
+
+// A zone's name and rates after an update: the stored row with the fields
+// sent laid over it ('' is no field sent; a sent name is trimmed).
+function api_store_zone_save_data($row, $params) {
+
+	$data = array('name' => (string)$row['name']);
+
+	foreach (pg_store_zone_rate_columns() as $column) {
+
+		$data[$column] = (int)$row[$column];
+
+	}
+
+	if (array_key_exists('name', $params)) {
+
+		$data['name'] = trim((string)$params['name']);
+
+	}
+
+	foreach (pg_store_zone_rate_columns() as $column) {
+
+		if (array_key_exists($column, $params)) {
+
+			$data[$column] = (int)$params[$column];
+
+		}
+
+	}
+
+	return $data;
+
+}
+
+function api_store_zone_load_or_fail($kind, $id) {
+
+	$t = pg_store_zone_tables($kind);
+
+	$row = api_row("SELECT * FROM " . $t['table'] . " WHERE id = '" . (int)$id . "' LIMIT 1");
+
+	if ($row === null) {
+
+		api_fail_not_found(($kind === 'tax_zone') ? lang('Tax Zone') : lang('Zone'));
+
+	}
+
+	return $row;
+
+}
+
+function api_store_zone_answer($kind, $id, $status_code = 200) {
+
+	$row = api_store_zone_load_or_fail($kind, $id);
+
+	if ($kind === 'tax_zone') {
+
+		api_ok(api_store_tax_zone_present($row, api_store_zone_areas('tax_zones', array($id))), $status_code);
+
+	}
+
+	api_ok(api_store_zone_present($row, api_store_zone_areas('zones', array($id))), $status_code);
+
+}
+
+function api_store_zones_get($params) {
+
+	api_store_zone_answer('zone', (int)$params['id']);
+
+}
+
+function api_store_tax_zones_get($params) {
+
+	api_store_zone_answer('tax_zone', (int)$params['id']);
+
+}
+
+// A create, or an update of the zone $row, checked and resolved before
+// anything is written: the fields sent over the stored ones, the countries
+// and states replaced only when their list is sent.
+function api_store_zone_write_prepare($kind, $params, $row = null) {
+
+	if ($kind === 'tax_zone') {
+
+		$data = array('name' => ($row === null) ? '' : (string)$row['name'], 'tax_rate' => ($row === null) ? null : (float)$row['tax_rate']);
+
+		if (array_key_exists('name', $params)) {
+
+			$data['name'] = trim((string)$params['name']);
+
+		}
+
+		if (array_key_exists('rate', $params)) {
+
+			$data['tax_rate'] = (float)$params['rate'];
+
+		}
+
+		if ($data['tax_rate'] === null) {
+
+			api_fail_validation(lang('Enter a tax rate between 0 and 100.'), 'rate');
+
+		}
+
+	} else {
+
+		$data = api_store_zone_save_data(($row === null) ? array('name' => '', 'base_rate' => 0, 'primary_weight_rate' => 0, 'secondary_weight_rate' => 0, 'item_rate' => 0) : $row, $params);
+
+	}
+
+	if ($data['name'] === '') {
+
+		api_fail_validation(lang('Enter a name.'), 'name');
+
+	}
+
+	$id = ($row === null) ? 0 : (int)$row['id'];
+
+	$current = ($row === null) ? array('countries' => array(), 'states' => array()) : api_store_zone_link_ids_of($kind, $id);
+
+	return array(
+		'id'          => $id,
+		'data'        => $data,
+		'country_ids' => array_key_exists('country_codes', $params) ? api_store_zone_country_ids($params['country_codes'], 'country_codes') : $current['countries'],
+		'state_ids'   => array_key_exists('states', $params) ? api_store_zone_state_ids($params['states'], 'states') : $current['states']
+	);
+
+}
+
+// Writes what api_store_zone_write_prepare() resolved; the zone's id.
+function api_store_zone_write_commit($kind, $prepared) {
+
+	$app = api_current_app();
+
+	$data = $prepared['data'];
+
+	$created = ($prepared['id'] <= 0);
+
+	if ($kind === 'tax_zone') {
+
+		$saved = pg_store_tax_zone_save($prepared['id'], $data['name'], $data['tax_rate'], $prepared['country_ids'], $prepared['state_ids'], (int)$app['owner']['id']);
+
+		$text = $created ? 'Tax zone ({var:1}) was created through the API by the application {var:2} (key {var:3}).' : 'Tax zone ({var:1}) was changed through the API by the application {var:2} (key {var:3}).';
+
+	} else {
+
+		$saved = pg_store_zone_save($prepared['id'], $data, $prepared['country_ids'], $prepared['state_ids'], (int)$app['owner']['id']);
+
+		$text = $created ? 'Shipping zone ({var:1}) was created through the API by the application {var:2} (key {var:3}).' : 'Shipping zone ({var:1}) was changed through the API by the application {var:2} (key {var:3}).';
+
+	}
+
+	if ($saved <= 0) {
+
+		api_fail_server();
+
+	}
+
+	log_activity(lang(array('string' => $text, 'vars' => array($data['name'], $app['name'], $app['api_key']))), $app['owner']['username']);
+
+	return $saved;
+
+}
+
+function api_store_zone_remove_commit($kind, $row) {
+
+	$app = api_current_app();
+
+	$id = (int)$row['id'];
+
+	$done = ($kind === 'tax_zone') ? pg_store_tax_zone_delete($id, (string)$row['name']) : pg_store_zone_delete($id, (string)$row['name']);
+
+	if (!$done) {
+
+		api_fail_server();
+
+	}
+
+	$text = ($kind === 'tax_zone')
+		? 'Tax zone ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).'
+		: 'Shipping zone ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).';
+
+	log_activity(lang(array('string' => $text, 'vars' => array((string)$row['name'], $app['name'], $app['api_key']))), $app['owner']['username']);
+
+	api_ok(array('id' => $id, 'deleted' => true));
+
+}
+
+function api_store_zones_create($params) {
+
+	$prepared = api_store_zone_write_prepare('zone', $params);
+
+	api_dry_run_stop('created', 'zone', array('name' => $prepared['data']['name']));
+
+	api_store_zone_answer('zone', api_store_zone_write_commit('zone', $prepared), 201);
+
+}
+
+function api_store_zones_update($params) {
+
+	$prepared = api_store_zone_write_prepare('zone', $params, api_store_zone_load_or_fail('zone', $params['id']));
+
+	api_dry_run_stop('updated', 'zone', array('id' => $prepared['id'], 'name' => $prepared['data']['name']));
+
+	api_store_zone_answer('zone', api_store_zone_write_commit('zone', $prepared));
+
+}
+
+function api_store_zones_delete($params) {
+
+	$row = api_store_zone_load_or_fail('zone', $params['id']);
+
+	api_dry_run_stop('deleted', 'zone', array('id' => (int)$row['id'], 'name' => (string)$row['name']));
+
+	api_store_zone_remove_commit('zone', $row);
+
+}
+
+function api_store_tax_zones_create($params) {
+
+	$prepared = api_store_zone_write_prepare('tax_zone', $params);
+
+	api_dry_run_stop('created', 'tax_zone', array('name' => $prepared['data']['name']));
+
+	api_store_zone_answer('tax_zone', api_store_zone_write_commit('tax_zone', $prepared), 201);
+
+}
+
+function api_store_tax_zones_update($params) {
+
+	$prepared = api_store_zone_write_prepare('tax_zone', $params, api_store_zone_load_or_fail('tax_zone', $params['id']));
+
+	api_dry_run_stop('updated', 'tax_zone', array('id' => $prepared['id'], 'name' => $prepared['data']['name']));
+
+	api_store_zone_answer('tax_zone', api_store_zone_write_commit('tax_zone', $prepared));
+
+}
+
+function api_store_tax_zones_delete($params) {
+
+	$row = api_store_zone_load_or_fail('tax_zone', $params['id']);
+
+	api_dry_run_stop('deleted', 'tax_zone', array('id' => (int)$row['id'], 'name' => (string)$row['name']));
+
+	api_store_zone_remove_commit('tax_zone', $row);
+
+}

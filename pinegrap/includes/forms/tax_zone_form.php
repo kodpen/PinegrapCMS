@@ -175,27 +175,6 @@ function pg_tax_zone_form_choices($tax_zone_id = 0, $selected = null)
 }
 
 /**
- * Write the posted country and state links of a tax zone. The edit screen
- * deletes the old links first.
- *
- * @param int   $tax_zone_id
- * @param array $post The posted form ($_POST)
- * @return void
- */
-function pg_tax_zone_form_save_links($tax_zone_id, $post)
-{
-    foreach (pg_tax_zone_form_link_ids($post['allowed_countries'] ?? null) as $country_id) {
-        $query = "INSERT INTO tax_zones_countries_xref (tax_zone_id, country_id) VALUES (?, ?)";
-        db_q($query, array((int) $tax_zone_id, (string) $country_id)) or output_error('Query failed.');
-    }
-
-    foreach (pg_tax_zone_form_link_ids($post['allowed_states'] ?? null) as $state_id) {
-        $query = "INSERT INTO tax_zones_states_xref (tax_zone_id, state_id) VALUES (?, ?)";
-        db_q($query, array((int) $tax_zone_id, (string) $state_id)) or output_error('Query failed.');
-    }
-}
-
-/**
  * The form's three cards, from the opening row to its closing tag; the
  * screens print the form tag, the buttons and the edit screen's id around it.
  *

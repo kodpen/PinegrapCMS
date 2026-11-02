@@ -40,6 +40,11 @@ function api_scope_groups() {
 
 		'orders'    => array('label' => 'Orders',     'read' => 'orders:read',    'write' => 'orders:write'),
 
+		// The store's shipping zones and tax zones: what checkout charges for
+		// an address. Read under orders (GET /store/...); writing them changes
+		// every later checkout's shipping and tax, so it is its own right.
+		'store'     => array('label' => 'Store settings', 'read' => '',           'write' => 'store:write'),
+
 		'customers' => array('label' => 'Customers',  'read' => 'customers:read', 'write' => 'customers:write'),
 
 		'pages'     => array('label' => 'Pages',      'read' => 'pages:read',     'write' => 'pages:write'),
@@ -271,6 +276,7 @@ function api_owner_scopes($owner) {
 		$scopes[] = 'inventory:write';
 		$scopes[] = 'orders:read';
 		$scopes[] = 'orders:write';
+		$scopes[] = 'store:write';
 		$scopes[] = 'offers:read';
 		$scopes[] = 'offers:write';
 
