@@ -131,6 +131,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dashboard-visitor-head-wrap.md: Visitor Summaries card head on a narrow card: the legend wraps below the figures, the figure lines keep to one line
 - dashboard-welcome-card.md: The dashboard top card (welcome.php, .pg-clockbar): greeting on the left, time and date on the right in one full-width card; phone stacking, themes, ids the scripts read
 - dashboard-widget-files.md: Adding a dashboard widget: includes/dashboard/widgets/widget_<id>.php and its function contract, the welcome.php registry entry, retired ids never reused, the refresh and solo lists, charts.
+- datetime-control-history.md: The one date-and-time control across panel and sites (#2693): which change landed where (P1-P11, F1, S1-S4b), the rules kept from its plan, the risks still open
 - deleted-picture-fallback.md: A contact or product picture whose file was deleted in the File Manager falls back to the letters or icon (pg_contact_picture_name(), is_file() on product thumbs)
 - design-file-missing-on-disk.md: What the theme, file, design file, comment and quote signature screens do when a files row has no file on the disk; the Turkish "noise" theme file and upgrade step 10.5
 - design-file-shared-form.md: add_design_file.php and edit_design_file.php draw the File Access Control and Description cards through includes/forms/design_file_form.php; what each screen keeps
