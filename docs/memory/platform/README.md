@@ -88,6 +88,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - kiosk-mode.md: kiosk.php: what its query string sets in the session, how logout restarts it, and why the text parameters must be strings
 - language-address-prefix.md: A target language's address prefix (/en/, /pt-br/): lower case everywhere, fallback to the lower-cased code, collision check in the languages save, router matching
 - license-check.md: The panel's licence check (license_check(), includes/fn/output.php): when it asks, the Kodpen API branch behind PG_VENDOR_API_V1 (PR #4381), the card, the key field
+- link-resolve-js-twin.md: The link resolver's browser twin (assets/js/pg_link_resolve.js, window.PGLinkResolve): what it mirrors, how parity is tested, what it cannot mirror
 - link-resolve-letter-case.md: The link resolver (SEO broken links, prototype viewer) matches page, file, short link, product, group and record names without letter case, as the router's database lookup does (#4976)
 - main-host-redirect.md: Redirect to the main host (config.main_host_redirect, 11.0.52, #2179): which requests get a 301 to config.hostname, which never do, why it starts off everywhere
 - maintenance-mode-end-time.md: How Settings › General reads the maintenance end time (the zone of the same save) and when a passed end time refuses the save (only switching on or a new end)
