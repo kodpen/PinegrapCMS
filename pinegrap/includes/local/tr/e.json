@@ -611,6 +611,7 @@
     "Ended": "Bitti",
     "Ended Right of Withdrawal": "Sona Ermiş Cayma Hakkı",
     "Ended at {var:1}": "Bitiş: {var:1}",
+    "Ended on {var:1}": "Süresi doldu: {var:1}",
     "Endpoint address": "Uç nokta adresi",
     "Endpoints": "Uç Noktalar",
     "Ends": "Bitiş saati",

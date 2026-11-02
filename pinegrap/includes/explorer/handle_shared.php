@@ -133,6 +133,8 @@ function pg_explorer_handle_shared_list($type, $request, $user, $folders_that_us
                 'contact_name' => pg_explorer_contact_name($row),
                 'rights' => (int) $row['rights'],
                 'expiration_date' => $expiration_date,
+                // The panel's date format, for the badge.
+                'expiration_label' => ($expiration_date != '') ? get_absolute_time(array('timestamp' => strtotime($expiration_date . ' 12:00:00'), 'format' => 'plain_text', 'type' => 'date', 'size' => 'short', 'year' => true)) : '',
                 'expired' => (($expiration_date != '') && ($expiration_date < $today)));
         }
     }

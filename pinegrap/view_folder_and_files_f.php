@@ -894,6 +894,7 @@ function pg_explorer_folder_payload($folder, $counts, $user, $folders_that_user_
         'style_desktop' => pg_explorer_style_info($folder['folder_style'], (int) $folder['folder_parent'], 'desktop'),
         'style_mobile' => pg_explorer_style_info(isset($folder['mobile_style_id']) ? $folder['mobile_style_id'] : 0, (int) $folder['folder_parent'], 'mobile'),
         'counts' => $count,
+        'size_label' => isset($count['total']) ? convert_bytes_to_string($count['total']['bytes'], 'auto') : '',
         'empty' => (($count['folders'] + $count['pages'] + $count['files']) == 0),
         'timestamp' => (int) $folder['folder_timestamp'],
         'modified' => ($folder['folder_timestamp'] > 0) ? get_relative_time(array('timestamp' => $folder['folder_timestamp'])) : '',
@@ -923,18 +924,93 @@ function pg_explorer_folder_counts()
         }
     }
 
-    $rows = db_items("SELECT folder AS id, COUNT(*) AS total FROM files GROUP BY folder");
+    $rows = db_items("SELECT folder AS id, COUNT(*) AS total, SUM(size) AS bytes FROM files GROUP BY folder");
     if ($rows) {
         foreach ($rows as $row) {
             $counts[(int) $row['id']]['files'] = (int) $row['total'];
+            $counts[(int) $row['id']]['bytes'] = (int) $row['bytes'];
         }
     }
 
+    // Users holding a right on the folder itself, for the details panel.
+    $rows = db_items("SELECT aclfolder_folder AS id, COUNT(DISTINCT aclfolder_user) AS total FROM aclfolder WHERE aclfolder_rights > 0 GROUP BY aclfolder_folder");
+    if ($rows) {
+        foreach ($rows as $row) {
+            $counts[(int) $row['id']]['rights_users'] = (int) $row['total'];
+        }
+    }
+
+    $parents = array();
+    foreach (pg_explorer_folder_map() as $id => $folder) {
+        $parents[(int) $id] = (int) $folder['folder_parent'];
+    }
+
+    $totals = pg_explorer_folder_totals($counts, $parents, function_exists('pg_recycle_folder_id') ? (int) pg_recycle_folder_id(false) : 0);
+
+    foreach ($parents as $id => $parent) {
+        $count = isset($counts[$id]) ? $counts[$id] : array();
+        $counts[$id] = array_merge(array('folders' => 0, 'pages' => 0, 'files' => 0, 'bytes' => 0, 'rights_users' => 0), $count);
+        $counts[$id]['total'] = $totals[$id];
+    }
+
     foreach ($counts as $id => $count) {
-        $counts[$id] = array_merge(array('folders' => 0, 'pages' => 0, 'files' => 0), $count);
+        $counts[$id] = array_merge(array('folders' => 0, 'pages' => 0, 'files' => 0, 'bytes' => 0, 'rights_users' => 0), $count);
     }
 
     return $counts;
+}
+
+// Everything under each folder, sub-folders at any depth included: folders,
+// pages, files and the bytes of the files. $counts is the direct content per
+// folder id (folders, pages, files, bytes), $parents maps each folder id to
+// its parent. A folder inside the recycle bin ($bin_id) adds nothing to the
+// folders above the bin, and a broken parent chain stops after 100 steps.
+function pg_explorer_folder_totals($counts, $parents, $bin_id = 0)
+{
+    $totals = array();
+
+    foreach ($parents as $id => $parent) {
+        $totals[(int) $id] = array('folders' => 0, 'pages' => 0, 'files' => 0, 'bytes' => 0);
+    }
+
+    foreach ($parents as $id => $parent) {
+
+        $id = (int) $id;
+        $own = isset($counts[$id]) ? $counts[$id] : array();
+
+        // The ancestors this folder's content counts for, itself first.
+        $chain = array($id);
+        $walk = (int) $parent;
+        $binned = ($bin_id > 0) && ($id === $bin_id);
+
+        for ($step = 0; ($walk > 0) && isset($parents[$walk]) && ($step < 100); $step++) {
+            if ($walk === $bin_id) {
+                $binned = true;
+            }
+            $chain[] = $walk;
+            $walk = (int) $parents[$walk];
+        }
+
+        // Content in the bin counts up to the bin itself, not above it.
+        $last = $binned ? (int) array_search($bin_id, $chain, true) : (count($chain) - 1);
+
+        foreach ($chain as $position => $ancestor) {
+
+            if ($position > $last) {
+                break;
+            }
+
+            $totals[$ancestor]['pages'] += isset($own['pages']) ? (int) $own['pages'] : 0;
+            $totals[$ancestor]['files'] += isset($own['files']) ? (int) $own['files'] : 0;
+            $totals[$ancestor]['bytes'] += isset($own['bytes']) ? (int) $own['bytes'] : 0;
+
+            if ($position > 0) {
+                $totals[$ancestor]['folders']++;
+            }
+        }
+    }
+
+    return $totals;
 }
 
 // The subfolders a listing should show for $folder_id. For the virtual root
@@ -1497,6 +1573,11 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
         // ── Folder access panel: read ───────────────────────────────────
         case 'explorer_folder_access_get':
             pg_explorer_handle_folder_access_get($type, $request, $user);
+            break;
+
+        // ── Access panels: the Add a user box ───────────────────────────
+        case 'explorer_access_user_search':
+            pg_explorer_handle_access_user_search($type, $request, $user);
             break;
 
         // ── Folder access panel: write ──────────────────────────────────

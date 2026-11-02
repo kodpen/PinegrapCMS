@@ -1495,7 +1495,7 @@ function pg_page_cache_panel_sub_actions()
                 'explorer_catalog_membership_remove', 'explorer_catalog_create_group',
                 'explorer_catalog_rename', 'explorer_catalog_paste', 'delete_file'),
             'clean' => array('explorer_list', 'explorer_tree', 'explorer_folder_options',
-                'explorer_folder_access_get', 'explorer_delete_check', 'explorer_folder_settings_get',
+                'explorer_folder_access_get', 'explorer_access_user_search', 'explorer_delete_check', 'explorer_folder_settings_get',
                 'explorer_bulk_page_options', 'explorer_bulk_file_options', 'explorer_shared_list',
                 'explorer_files_design', 'explorer_file_get', 'explorer_office_preview',
                 'explorer_file_usage', 'explorer_backups_list', 'explorer_backup_zip',
