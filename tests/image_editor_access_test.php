@@ -56,7 +56,8 @@ function test_image_editor_access_tool_letters()
 		. ' v: M.toolForKey("v", photo), upper: M.toolForKey("C", photo), aPhoto: M.toolForKey("a", photo), aMini: M.toolForKey("a", mini),' . "\n"
 		. ' rPhoto: M.toolForKey("r", photo), pMini: M.toolForKey("p", mini), cropMini: M.toolForKey("c", mini), unknown: M.toolForKey("z", photo),' . "\n"
 		. ' none: M.toolForKey("v", null), keyText: M.toolKey("text", photo), keyRect: M.toolKey("rect", mini),' . "\n"
-		. ' uMini: M.toolForKey("u", mini), keyCrop: M.toolKey("crop", mini)' . "\n"
+		. ' uMini: M.toolForKey("u", mini), keyCrop: M.toolKey("crop", mini),' . "\n"
+		. ' mPhoto: M.toolForKey("m", photo), mMini: M.toolForKey("m", mini), kPhoto: M.toolForKey("k", photo)' . "\n"
 		. '}));'
 	);
 
@@ -73,6 +74,9 @@ function test_image_editor_access_tool_letters()
 	pg_assert_same('pen', $r['pMini'], 'P is Pen on the mini bar');
 	pg_assert_same(null, $r['cropMini'], 'a tool the call lacks is not picked');
 	pg_assert_same(null, $r['unknown'], 'an unknown letter picks nothing');
+	pg_assert_same('motion', $r['mPhoto'], 'M is Animate on the rail');
+	pg_assert_same(null, $r['mMini'], 'the mini bar has no Animate tool');
+	pg_assert_same(null, $r['kPhoto'], 'K picks no tool: the Animate tool plays and pauses with it');
 	pg_assert_same(null, $r['none'], 'no tools, no pick');
 	pg_assert_same('T', $r['keyText'], 'Text shows T');
 	pg_assert_same('U', $r['keyRect'], 'Rectangle shows U');
@@ -136,7 +140,7 @@ function test_image_editor_access_key_map()
 	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
 	pg_assert_same(array('keysTools', 'keysEdit', 'keysLayers', 'keysView', 'keysTouch'), $r['photo'], 'photo groups');
 	pg_assert_same(array('keysTools', 'keysEdit', 'keysView', 'keysTouch'), $r['opt'], 'no layer keys for export only');
-	pg_assert_same(array('tool_select', 'tool_crop', 'tool_artboard', 'tool_adjust', 'tool_draw', 'tool_text', 'tool_redact', 'tool_sticker', 'tool_frame', 'tool_vector'), $r['photoTools'], 'every photo tool has a letter, the photo canvas included');
+	pg_assert_same(array('tool_select', 'tool_crop', 'tool_artboard', 'tool_adjust', 'tool_draw', 'tool_text', 'tool_redact', 'tool_sticker', 'tool_frame', 'tool_vector', 'tool_motion'), $r['photoTools'], 'every photo tool has a letter, the photo canvas and the Animate tool included');
 	pg_assert_same(array('tool_arrow', 'tool_rect', 'tool_text', 'tool_pen', 'tool_redact'), $r['annTools'], 'every annotate tool has a letter');
 	pg_assert_same(array('touchPan', 'touchFit'), $r['optTouch'], 'no twist without layers');
 	pg_assert_same(array('touchPan', 'touchFit', 'touchTwist'), $r['photoTouch'], 'twist with layers');

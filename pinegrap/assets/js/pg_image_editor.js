@@ -669,8 +669,10 @@
 
     // ---- view ----
 
+    // stageInset: the height a bar along the stage's bottom takes (the
+    // Animate tool's play bar), which a fitted picture stays above.
     Editor.prototype.stageSize = function () {
-        return { w: this.stage.clientWidth, h: this.stage.clientHeight };
+        return { w: this.stage.clientWidth, h: this.stage.clientHeight - (this.stageInset || 0) };
     };
 
     Editor.prototype.fit = function () {
