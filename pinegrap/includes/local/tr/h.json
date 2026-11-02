@@ -467,6 +467,7 @@
     "How many values there are": "Kaç değer olduğu",
     "How moderation works": "Moderasyon nasıl işler",
     "How much a weak score costs, weighed against how many people see the page": "Zayıf skorun maliyeti, sayfayı kaç kişinin gördüğüyle birlikte tartılmış hâli",
+    "How much fixing this page would gain: (100 − SEO score) × log10(1 + views). The higher, the sooner.": "Bu sayfayı düzeltmenin kazandıracağı: (100 − SEO puanı) × log10(1 + görüntüleme). Yüksek olan önce ele alınmalı.",
     "How much it is, where it is kept, and how to get it back in full when you leave.": "Ne kadar olduğu, nerede tutulduğu ve çıkarken tamamını nasıl geri alacağınız.",
     "How much this installation is holding: the database, the file library, the image derivatives made from it and the backup folder.": "Bu kurulumun tuttuğu alan: veritabanı, dosya kitaplığı, ondan üretilen görsel türevleri ve yedek klasörü.",
     "How much would you like to work?": "Ne kadar çalışmak istersiniz?",
