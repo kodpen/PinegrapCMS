@@ -263,6 +263,7 @@
     "Visitor tracking is off": "Ziyaretçi takibi kapalı",
     "Visitor tracking is on": "Ziyaretçi takibi açık",
     "Visitor tracking, cookie consent and the checkout's legal documents.": "Ziyaretçi takibi, çerez izni ve ödeme adımının yasal belgeleri.",
+    "Visitor tracking, cookie consent, the checkout's legal documents and the accessibility statement.": "Ziyaretçi takibi, çerez onayı, ödeme adımının yasal belgeleri ve erişilebilirlik beyanı.",
     "Visitor was not allowed to App access because the visitor's IP address ({var:1}) was banned": "Ziyaretçinin IP adresi ({var:1}) engelli olduğu için uygulama erişimine izin verilmedi",
     "Visitor's IP Address": "Ziyaretçinin IP Adresi",
     "Visitor's Location Information": "Ziyaretçinin Konum Bilgileri",

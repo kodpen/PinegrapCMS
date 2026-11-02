@@ -11428,6 +11428,7 @@ const StyleDesigner = (function () {
                     ad_region:            _sdT('Ad Region'),
                     tag_cloud_region:     _sdT('Tag Cloud'),
                     google_reviews:       _sdT('Google Reviews'),
+                    accessibility_statement: _sdT('Accessibility Statement'),
                     // Legacy aliases — normalized to form_list_view downstream
                     form_list:            _sdT('Form List View'),
                     submitted_forms_list: _sdT('Form List View'),
@@ -34013,6 +34014,7 @@ const StyleDesigner = (function () {
             var _isAdRegion        = (_regionType === 'ad_region');
             var _isTagCloud        = (_regionType === 'tag_cloud_region');
             var _isGoogleReviews   = (_regionType === 'google_reviews');
+            var _isA11yStatement   = (_regionType === 'accessibility_statement');
             var _isCommentsRecent  = (_regionType === 'comments_recent');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
@@ -35236,6 +35238,13 @@ const StyleDesigner = (function () {
             if (_isGoogleReviews) {
                 systemSection += sect('bi-google', _sdT('Google Reviews Settings'),
                     '<div style="font-size:.7rem;color:#888">' + esc(_sdT('The Places API key and the Place ID are set in Site Settings › Integrations › Google Reviews. Without them the widget shows nothing on the site.')) + '</div>'
+                );
+            }
+
+            // ── accessibility_statement settings ─────────────────────────────
+            if (_isA11yStatement) {
+                systemSection += sect('bi-universal-access', _sdT('Accessibility Statement Settings'),
+                    '<div style="font-size:.7rem;color:#888">' + esc(_sdT('The organisation, contact and enforcement texts are set in Site Settings › Visitors and privacy › Accessibility Statement; the conformance and the known limitations come from the nightly accessibility report.')) + '</div>'
                 );
             }
 
@@ -38927,7 +38936,7 @@ const StyleDesigner = (function () {
         shipping_address_and_arrival: 1, shipping_method: 1, billing_information: 1,
         order_preview: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1,
         tag_cloud_region: 1, order_form: 1, folder_view: 1, photo_gallery: 1,
-        affiliate_sign_up_form: 1, google_reviews: 1
+        affiliate_sign_up_form: 1, google_reviews: 1, accessibility_statement: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
@@ -40941,6 +40950,31 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // accessibility_statement token palette — has loop_area (one row per
+    // known limitation). Mirrors _render_system_widget_accessibility_statement()
+    // in widgets_accessibility.php.
+    var SW_ACCESSIBILITY_STATEMENT_TOKEN_GROUPS = [
+        { label: _sdT('Accessibility Statement'), tokens: [
+            ['__a11y_organisation', _sdT('Organisation name (the site name when not set)')],
+            ['__a11y_scope',        _sdT('What the statement applies to')],
+            ['__a11y_standard',     _sdT('Standard (WCAG 2.2 AA, EN 301 549)')],
+            ['__a11y_conformance',  _sdT('Conformance status, from the report')],
+            ['__a11y_contact',      _sdT('Contact address')],
+            ['__a11y_feedback',     _sdT('Feedback mechanism')],
+            ['__a11y_enforcement',  _sdT('Enforcement procedure')],
+            ['__a11y_date',         _sdT('Date the statement was prepared')],
+            ['__a11y_last_check',   _sdT('Date of the last full automatic check')],
+            ['__a11y_pages',        _sdT('Pages the check covers')],
+            ['__limit_total',       _sdT('Number of known limitations')]
+        ]},
+        { label: _sdT('Known limitation (loop_area)'), tokens: [
+            ['__limit_label',       _sdT('The problem found')],
+            ['__limit_criterion',   _sdT('WCAG criterion (number and name)')],
+            ['__limit_level',       _sdT('WCAG level (A or AA)')],
+            ['__limit_pages',       _sdT('Pages where it was found')]
+        ]}
+    ];
+
     // ad_region token palette — has loop_area (one row per ad shown).
     // Mirrors _render_system_widget_ad_region() in widgets_ad_region.php.
     var SW_AD_REGION_TOKEN_GROUPS = [
@@ -41001,7 +41035,8 @@ const StyleDesigner = (function () {
         menu_sequence_region: SW_MENU_SEQUENCE_TOKEN_GROUPS,
         ad_region:         SW_AD_REGION_TOKEN_GROUPS,
         tag_cloud_region:  SW_TAG_CLOUD_TOKEN_GROUPS,
-        google_reviews:    SW_GOOGLE_REVIEWS_TOKEN_GROUPS
+        google_reviews:    SW_GOOGLE_REVIEWS_TOKEN_GROUPS,
+        accessibility_statement: SW_ACCESSIBILITY_STATEMENT_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -43048,6 +43083,15 @@ const StyleDesigner = (function () {
             ['invoice_is_overdue', _sdT('Row: past its due date')],
             ['invoice_is_open',    _sdT('Row: money is still owed on it')],
             ['invoice_has_order',  _sdT('Row: made from an order')]
+        ],
+        accessibility_statement: [
+            ['a11y_assessed',   _sdT('A full accessibility check has finished')],
+            ['has_limitations', _sdT('The report lists a known limitation')],
+            ['no_limitations',  _sdT('The report lists no known limitation')],
+            ['has_contact',     _sdT('A contact address is set')],
+            ['has_feedback',    _sdT('A feedback mechanism is set')],
+            ['has_enforcement', _sdT('An enforcement procedure is set')],
+            ['has_last_check',  _sdT('The date of the last full check is known')]
         ],
         google_reviews: [
             ['has_reviews',      _sdT('Google has a review of the business to show')],
@@ -56940,7 +56984,8 @@ const StyleDesigner = (function () {
         { type: 'menu_sequence_region', label: _sdT('Menu Sequence'),  slug: _sdT('menu-sequence'),     icon: 'bi-arrow-left-right' },
         { type: 'ad_region',         label: _sdT('Ad Region'),         slug: _sdT('ad-region'),         icon: 'bi-badge-ad' },
         { type: 'tag_cloud_region',  label: _sdT('Tag Cloud'),         slug: _sdT('tag-cloud'),         icon: 'bi-tags' },
-        { type: 'google_reviews',    label: _sdT('Google Reviews'),    slug: _sdT('google-reviews'),    icon: 'bi-google' }
+        { type: 'google_reviews',    label: _sdT('Google Reviews'),    slug: _sdT('google-reviews'),    icon: 'bi-google' },
+        { type: 'accessibility_statement', label: _sdT('Accessibility Statement'), slug: _sdT('accessibility-statement'), icon: 'bi-universal-access' }
     ];
     // The account widgets (widgets_account.php), and those of them that show
     // one screen - their loop_area is not used.
@@ -64047,6 +64092,84 @@ const StyleDesigner = (function () {
                 ]);
             }
 
+            case 'accessibility_statement': {
+                // The statement in the W3C structure: commitment, conformance,
+                // known limitations (one row per check with findings), feedback,
+                // assessment, enforcement and date. The texts come from Site
+                // Settings, the conformance and the rows from the nightly
+                // report. Mirrors _render_system_widget_accessibility_statement().
+                var asText = function (tag, cls, txt, name, token, flag) {
+                    var b = { text: token };
+                    if (flag) b.eo_visible_if = flag;
+                    return createNode('semantic', { tag: tag, cssClass: cls, text: txt, customName: name, _bindings: b });
+                };
+                var asPlain = function (tag, cls, txt, name, flag) {
+                    return createNode('semantic', { tag: tag, cssClass: cls, text: txt, customName: name,
+                        _bindings: flag ? { eo_visible_if: flag } : {} });
+                };
+                var asSection = function (name, flag, kids) {
+                    return createNode('semantic', { tag: 'div', cssClass: 'mb-4', customName: name,
+                        _bindings: flag ? { eo_visible_if: flag } : {} }, kids);
+                };
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'article', cssClass: '', customName: _sdT('Accessibility Statement') }, [
+                        createNode('semantic', { tag: 'h1', cssClass: 'h2 mb-3', customName: _sdT('Heading') }, [
+                            asPlain('span', '', _sdT('Accessibility Statement') + ': ', _sdT('Label')),
+                            asText('span', '', _sdT('Organisation'), _sdT('Organisation'), '__a11y_organisation')
+                        ]),
+                        asSection(_sdT('Scope'), '', [
+                            asText('p', '', _sdT('What the statement applies to'), _sdT('Scope'), '__a11y_scope')
+                        ]),
+                        asSection(_sdT('Conformance status'), '', [
+                            asPlain('h2', 'h4', _sdT('Conformance status'), _sdT('Heading')),
+                            asText('p', 'mb-1', 'WCAG 2.2 AA, EN 301 549', _sdT('Standard'), '__a11y_standard'),
+                            asText('p', '', _sdT('Partially conformant: some parts of the content do not fully conform to the standard.'), _sdT('Conformance'), '__a11y_conformance')
+                        ]),
+                        asSection(_sdT('Known limitations'), '', [
+                            asPlain('h2', 'h4', _sdT('Known limitations'), _sdT('Heading')),
+                            createNode('semantic', { tag: 'ul', cssClass: '', customName: _sdT('Limitations'),
+                                _bindings: { eo_visible_if: 'has_limitations' } }, [
+                                createNode('loop_area', {}, [
+                                    createNode('semantic', { tag: 'li', cssClass: '', customName: _sdT('Limitation') }, [
+                                        asText('span', 'fw-semibold', _sdT('Image without alternative text'), _sdT('Problem'), '__limit_label'),
+                                        asPlain('span', '', ' (', _sdT('Separator')),
+                                        asText('span', '', '1.1.1 ' + _sdT('Non-text Content'), _sdT('Criterion'), '__limit_criterion'),
+                                        asPlain('span', '', ', ', _sdT('Separator')),
+                                        asText('span', '', 'A', _sdT('Level'), '__limit_level'),
+                                        asPlain('span', '', '): ', _sdT('Separator')),
+                                        asText('span', '', '3', _sdT('Pages'), '__limit_pages'),
+                                        asPlain('span', '', ' ' + _sdT('pages'), _sdT('Label'))
+                                    ])
+                                ])
+                            ]),
+                            asPlain('p', 'text-body-secondary', _sdT('The automatic check found no known limitations.'), _sdT('No limitations'), 'no_limitations')
+                        ]),
+                        asSection(_sdT('Feedback'), '', [
+                            asPlain('h2', 'h4', _sdT('Feedback'), _sdT('Heading')),
+                            asPlain('p', '', _sdT('We welcome your feedback on the accessibility of this site. Please let us know if you meet accessibility barriers.'), _sdT('Invitation')),
+                            asText('p', '', _sdT('Contact address'), _sdT('Contact'), '__a11y_contact', 'has_contact'),
+                            asText('p', '', _sdT('Feedback mechanism'), _sdT('Feedback mechanism'), '__a11y_feedback', 'has_feedback')
+                        ]),
+                        asSection(_sdT('Enforcement procedure'), 'has_enforcement', [
+                            asPlain('h2', 'h4', _sdT('Enforcement procedure'), _sdT('Heading')),
+                            asText('p', '', _sdT('Enforcement procedure'), _sdT('Enforcement procedure'), '__a11y_enforcement')
+                        ]),
+                        asSection(_sdT('Date'), '', [
+                            asPlain('h2', 'h4', _sdT('Date'), _sdT('Heading')),
+                            createNode('semantic', { tag: 'p', cssClass: 'mb-1', customName: _sdT('Prepared') }, [
+                                asPlain('span', '', _sdT('Prepared on') + ' ', _sdT('Label')),
+                                asText('span', '', '2026-11-02', _sdT('Date'), '__a11y_date')
+                            ]),
+                            createNode('semantic', { tag: 'p', cssClass: 'text-body-secondary small', customName: _sdT('Last check'),
+                                _bindings: { eo_visible_if: 'has_last_check' } }, [
+                                asPlain('span', '', _sdT('Last automatic check') + ' ', _sdT('Label')),
+                                asText('span', '', '2026-11-01', _sdT('Date'), '__a11y_last_check')
+                            ])
+                        ])
+                    ])
+                ]);
+            }
+
             case 'ad_region': {
                 // The ads of a region as a Bootstrap carousel: the loop
                 // repeats the ads (the server marks the first one active),
@@ -65007,7 +65130,7 @@ const StyleDesigner = (function () {
     // "PHP Messages" box in the middle of the header that the page never shows.
     // An e-mail shows no alerts either (_render_system_widget_account_email()).
     // A list of recent comments takes no form either (_render_system_widget_comments_recent()).
-    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1, tag_cloud_region: 1, google_reviews: 1 };
+    var _SW_NO_MESSAGES = { accessibility_statement: 1, cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1, tag_cloud_region: 1, google_reviews: 1 };
 
     // Removes every Messages block from a tree; true when there was one.
     function _sdDropMessagesNodes(n) {

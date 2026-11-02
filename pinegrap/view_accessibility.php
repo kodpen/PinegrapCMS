@@ -55,6 +55,16 @@ if ($ready && isset($_GET['pdf'])) {
     exit();
 }
 
+// ---- Statement -------------------------------------------------------------
+
+// The accessibility statement as a printable page, for a site without a page
+// carrying the Accessibility Statement widget (includes/fn/widgets_accessibility.php).
+if ($ready && isset($_GET['statement'])) {
+    header('Content-Type: text/html; charset=utf-8');
+    echo pg_a11y_statement_html(pg_a11y_statement_parts(pg_a11y_statement_settings(), pg_a11y_statement_data(), pg_a11y_rules(), HOSTNAME_SETTING));
+    exit();
+}
+
 $shell = array(
     'title'               => lang('Accessibility report'),
     'extra classes'       => 'page',
@@ -159,6 +169,8 @@ echo pg_page_shell($shell) . '
                     <button type="submit" name="submit_check" value="1" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Check Pages Now')) . '</button>
                 </form>
                 <a class="btn btn-sm btn-text theme-secondary" href="view_accessibility.php?pdf=1"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . h(lang('Download PDF')) . '</a>
+                <a class="btn btn-sm btn-text theme-secondary" href="' . h(pg_settings_link('privacy', 'pgset-a11y-statement')) . '"><i class="bi bi-universal-access me-1" aria-hidden="true"></i>' . h(lang('Create the statement page')) . '</a>
+                <a class="btn btn-sm btn-text theme-secondary" href="view_accessibility.php?statement=1" target="_blank" rel="noopener"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . h(lang('Print the statement')) . '</a>
                 <div class="pg-toolbar-grow"></div>
                 ' . pg_filter_select('code', $code_options, $code, array('label' => lang('Check'), 'icon' => 'funnel', 'action' => 'view_accessibility.php')) . '
             </nav>
