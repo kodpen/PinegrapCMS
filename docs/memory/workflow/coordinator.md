@@ -25,13 +25,12 @@ description: Coordinator session (pilot, 2026-10-26): one per account, keeps its
 - Every 10 minutes (a session cron on off-minutes): one listing of the open PRs, drafts included, against the previous one. Nothing new: no message, no more reading.
 - Its workers' PRs: merged with no next draft 10 minutes later (its slot is free); sent back by the merging session and not pushed to within 30 minutes (a new worker for that branch); a draft with no push for an hour (named to the owner once: a prompt, limit or error stopped it); a worker with no draft 30 minutes after its start (`get_session`; replace a failed one).
 - The merging session: a `ready` PR with no update for 45 minutes and no `merge-train/*` PR open, or a train PR with none for 45 minutes, means the merger stopped: tell the owner once, with the PR numbers. Also an `architect` issue with no analysis for an hour.
-- Quota guard, worker range, decided drafts: `coordinator-limits.md`.
+- Model and effort, session sources, quota guard, worker range, decided drafts: `coordinator-limits.md`.
 
 ## When does it hand over to a fresh coordinator?
-- Past 350k tokens of context (`get_session` `context_usage.used_tokens`, at a check-in): each wake pays for all of it.
+- Past about 200k tokens of context (`get_session` `context_usage.used_tokens`, at a check-in): each wake pays for all of it.
 - The workers go with it. Its note: each worker's session id and PR, waits it named to the owner, its to-do list, and the schedules the new one sets up (each cron's minutes and prompt, check-ins, routines).
-- It starts the new one with `create_session` and the note, sends each running worker the new coordinator's session id (`send_message`), cancels its own schedules and ends. A worker's failure event still wakes the old one: it only forwards it to the new one. It hands over on any turn.
-- Every `create_session` (worker or new coordinator) passes `source_url` `https://github.com/kodpen/PinegrapCMS` and `source_revision` `development`, else the session has no repository.
+- First it archives its workers whose work is done (PR merged, session ended; `archive_session`), then starts the new one with `create_session` and the note, sends each running worker the new coordinator's session id (`send_message`), cancels its own schedules and ends. The new coordinator's first act is to archive the previous one. A worker's failure event then reaches no one: the new one's 10-minute check finds a stopped worker. It hands over on any turn.
 
 ## How is one started?
 - A new desktop session on the account, told: "You are the coordinator: read `CLAUDE.md` and `docs/memory/workflow/coordinator.md`, then start the workers and keep the 10-minute check-in."
