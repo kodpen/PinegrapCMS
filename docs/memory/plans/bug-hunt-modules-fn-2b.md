@@ -12,7 +12,7 @@ description: Module list of plans/bug-hunt.md, part 2b: includes/fn/ modules wid
 - `widgets_billing_information`: clean (start values, liveform restore, flags and dropped controls, page row changes as the classic page)
 - `widgets_cart`: open (checked, clean: cart link subtotal and placement ids, express order charged totals)
 - `widgets_catalog`: open (#5134: clear filters kept the attribute filters; checked, clean: RSS and JSON-LD parts, group paths and subtree, item resolution, breadcrumb rows, group tree, card templates, variant flag marks, variant attribute markers, wishlist and stock-notify controls)
-- `widgets_comments`: open (checked, clean: options, order, paginate, page param and URLs, quote excerpt, link values, mask email, watcher label, row root id and anchor links)
+- `widgets_comments`: clean (options, order, paginate, page param and URLs, quote excerpt, link values, mask email, watcher label, row root id and anchor links; audience and preview override, thread and row flags, status text, rating, the render's thread pick, review refusal, name mode, reply target, watcher state and count, notified rule as the classic block)
 - `widgets_comments_recent`: clean (source decisions, access and scope SQL, record gate, rows read again under the scope, titles)
 - `widgets_conditions`: clean (specs and joins, denied tokens, required controls, amounts and figure grouping, every operator)
 - `widgets_entity_fields`: clean (allow-lists, gates, money and dates, order and account reads; order money tokens in the visitor's currency, as the classic receipt and the order view totals)
