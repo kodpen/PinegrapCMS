@@ -9,7 +9,8 @@ description: Sign-in throttle (pg_login_throttle_* in includes/fn/auth.php): add
 - A made-up user name counts like a real one (no account discovery). A success clears only the account's counters (`pg_login_throttle_pass()`): clearing the address would let one valid account reset the limit between guesses at others.
 
 ## Which endpoints must use it?
-- Every endpoint that accepts a password: `pg_login_throttle_guard($name)` before the check, `pg_login_record_failure($name)` after a miss, the same buckets as the sign-in screens. A door without it bypasses the lock. `grep -rn "pg_login_throttle_guard("` lists the doors today (sign-in screens, change password, `api.php` with a password in the body, the external API's device sign-in, MFA, ShipWorks, the install unlock form).
+- Every endpoint that accepts a password: `pg_login_throttle_guard($name)` before the check, `pg_login_record_failure($name)` after a miss, the same buckets as the sign-in screens. A door without it bypasses the lock. `grep -rn "pg_login_throttle_guard("` lists the doors today (sign-in screens, change password, `api.php` with a password in the body, the external API's device sign-in, MFA, ShipWorks, the install unlock form, the developer PIN of `developer_lock.php`).
+- `developer_lock.php` counts a wrong `DEVELOPER_PIN` against the signed-in user's name and address (#PRNUM): the PIN is a few digits, and before it every value could be tried in turn.
 - The sign-in question sits in front of the lock: docs/memory/waf/waf-login-captcha.md.
 - Not a prototype share link's password: it opens no account, so its wrong answers count on its own row; the address bucket would lock the visitor's office out of sign-in (docs/memory/designer/designer-prototype-share-links.md).
 
