@@ -1491,3 +1491,183 @@ function pg_backup_s3_prune(array $config, $keep)
 
     return $outcome;
 }
+
+
+// ----------------------------------------------------------------------------
+// Archives in the bucket, brought back to data/backups
+// ----------------------------------------------------------------------------
+
+/**
+ * Whether a key in the bucket's backup folder names an archive that may be
+ * written into data/backups under that name: a .zip directly in the folder,
+ * letters, digits, dots, dashes and underscores only, not starting with a dot.
+ *
+ * @param string $name
+ * @return bool
+ */
+function pg_backup_s3_archive_name_ok($name)
+{
+    return is_string($name) && (strlen($name) <= 200)
+        && (preg_match('/^[A-Za-z0-9_-][A-Za-z0-9._-]*\.zip$/', $name) === 1);
+}
+
+
+/**
+ * The archives of a bucket listing, newest first.
+ *
+ * @param array $items pg_os_list() items
+ * @return array list of array(name, size, modified, etag)
+ */
+function pg_backup_s3_archive_rows(array $items)
+{
+    $rows = array();
+
+    foreach ($items as $item) {
+        $name = isset($item['key']) ? (string) $item['key'] : '';
+
+        if (!pg_backup_s3_archive_name_ok($name) || isset($rows[$name])) {
+            continue;
+        }
+
+        $rows[$name] = array(
+            'name'     => $name,
+            'size'     => (int) $item['size'],
+            'modified' => (int) $item['modified'],
+            'etag'     => (string) $item['etag'],
+        );
+    }
+
+    uasort($rows, function ($a, $b) {
+        return ($a['modified'] === $b['modified']) ? strcmp($b['name'], $a['name']) : (($a['modified'] < $b['modified']) ? 1 : -1);
+    });
+
+    return array_values($rows);
+}
+
+
+/**
+ * The archives in the bucket's backup folder of the S3 destination in use.
+ *
+ * @return array ok, rows (pg_backup_s3_archive_rows()), truncated, error
+ */
+function pg_backup_s3_archives()
+{
+    list($type, $config) = pg_backup_remote_config();
+
+    if ($type !== 's3') {
+        return array('ok' => false, 'rows' => array(), 'truncated' => false, 'error' => lang('No remote backup destination is set.'));
+    }
+
+    $listed = pg_os_list(pg_backup_s3_client_config($config), '', array('limit' => 2000));
+
+    if (!$listed['ok']) {
+        return array('ok' => false, 'rows' => array(), 'truncated' => false, 'error' => $listed['message']);
+    }
+
+    return array('ok' => true, 'rows' => pg_backup_s3_archive_rows($listed['items']), 'truncated' => $listed['truncated'], 'error' => '');
+}
+
+
+/**
+ * Brings one archive of the bucket into data/backups, where the installation
+ * screen restores it like any other.
+ *
+ * The bytes go to data/temp first and the archive is moved into place only
+ * after its size matches the listing and its directory reads as the backup
+ * of a site (sql.sql in it). The CRC32 of every file is checked when the
+ * restore extracts it (pg_restore_archive_copy()); an ETag is not used as a
+ * checksum, since an encrypted object's is no MD5. A name that already
+ * exists in data/backups is never replaced.
+ *
+ * @param array $row one of pg_backup_s3_archives()'s rows, as listed now
+ * @return array array('ok' => bool, 'error' => string)
+ */
+function pg_backup_s3_fetch(array $row)
+{
+    $name = isset($row['name']) ? (string) $row['name'] : '';
+    $size = isset($row['size']) ? (int) $row['size'] : 0;
+
+    if (!pg_backup_s3_archive_name_ok($name) || ($size <= 0)) {
+        return array('ok' => false, 'error' => lang('This is not a backup archive.'));
+    }
+
+    $target = pg_backup_directory() . '/' . $name;
+
+    if (file_exists($target)) {
+        return array('ok' => false, 'error' => lang(array('string' => 'A backup named {var:1} is already on this server.', 'vars' => array($name))));
+    }
+
+    $temp = PG_FUNCTIONS_DIR . '/data/temp';
+
+    if (!is_dir($temp) || !pg_dir_writable($temp) || !is_dir(pg_backup_directory())) {
+        return array('ok' => false, 'error' => lang('The data/temp or data/backups folder cannot be written.'));
+    }
+
+    pg_backup_s3_fetch_sweep($temp);
+
+    // The archive itself and room to restore from it.
+    if (function_exists('disk_free_space')) {
+        $free = @disk_free_space($temp);
+
+        if (($free !== false) && ((float) $free < ((float) $size + 67108864))) {
+            return array('ok' => false, 'error' => lang('There is not enough free disk space for this archive.'));
+        }
+    }
+
+    if (function_exists('set_time_limit')) {
+        @set_time_limit(0);
+    }
+
+    list(, $config) = pg_backup_remote_config();
+
+    $work = $temp . '/backup_fetch_' . bin2hex(random_bytes(8)) . '.zip';
+
+    $got = pg_os_get(pg_backup_s3_client_config($config), $name, $work, array('cap' => $size, 'timeout' => pg_os_timeout($size)));
+
+    if (!$got['ok']) {
+        return array('ok' => false, 'error' => $got['message']);
+    }
+
+    $error = '';
+
+    if (((int) $got['size'] !== $size) || ((int) @filesize($work) !== $size)) {
+        $error = lang('The archive did not arrive whole. Try again.');
+    } else {
+        $read = pg_restore_archive_read($work);
+
+        if (!$read['ok']) {
+            $error = $read['error'];
+        }
+    }
+
+    if (($error === '') && file_exists($target)) {
+        $error = lang(array('string' => 'A backup named {var:1} is already on this server.', 'vars' => array($name)));
+    }
+
+    if (($error === '') && !@rename($work, $target)) {
+        $error = lang('The data/temp or data/backups folder cannot be written.');
+    }
+
+    if (is_file($work)) {
+        @unlink($work);
+    }
+
+    return array('ok' => ($error === ''), 'error' => $error);
+}
+
+
+/**
+ * Deletes downloads into data/temp that a request killed outright left
+ * behind, after a day.
+ *
+ * @param string $temp
+ * @return void
+ */
+function pg_backup_s3_fetch_sweep($temp)
+{
+    foreach ((array) @glob($temp . '/backup_fetch_*.zip') as $path) {
+        if (is_string($path) && is_file($path) && (@filemtime($path) < time() - 86400)) {
+            @unlink($path);
+        }
+    }
+}

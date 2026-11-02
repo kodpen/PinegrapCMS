@@ -37,6 +37,7 @@
     "A VKN is ten digits and a TCKN is eleven.": "VKN on hane, TCKN on bir hanedir.",
     "A Year of Listening to Whole Albums": "Albümleri Baştan Sona Dinlediğim Bir Yıl",
     "A backup can only be uploaded here after an administrator has unlocked this screen.": "Buraya yedek yükleyebilmek için önce bir yöneticinin bu ekranın kilidini açması gerekir.",
+    "A backup named {var:1} is already on this server.": "{var:1} adlı bir yedek bu sunucuda zaten var.",
     "A backup of the database was written before the upgrade": "Yükseltmeden önce veritabanının yedeği yazıldı",
     "A backup on the server": "Sunucudaki bir yedek",
     "A bar that shows how far something has got.": "Bir şeyin ne kadar ilerlediğini gösteren çubuk.",
