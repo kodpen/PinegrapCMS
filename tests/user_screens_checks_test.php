@@ -166,6 +166,17 @@ function test_acl_folder_tree_names_left_out_parents()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/auth.php');
 
-	pg_assert_true((bool) preg_match('/function get_acl_folder_tree\([^)]*\$left_out_parents/', $source), 'the tree carries the parents it left out');
+	pg_assert_true((bool) preg_match('/function get_acl_folder_tree\(.*\$left_out_parents = array\(\)\)/', $source), 'the tree carries the parents it left out');
 	pg_assert_contains('pg_folder_option_label($folder[\'name\'], $left_out_parents)', $source);
+}
+
+// No contact is NULL, never an empty text a lenient server stores as 0.
+function test_user_contact_sql()
+{
+	pg_assert_same('NULL', pg_user_contact_sql(''));
+	pg_assert_same('NULL', pg_user_contact_sql('0'));
+	pg_assert_same('NULL', pg_user_contact_sql('abc'));
+	pg_assert_same('NULL', pg_user_contact_sql(null));
+	pg_assert_same("'42'", pg_user_contact_sql('42'));
+	pg_assert_same("'42'", pg_user_contact_sql(42));
 }

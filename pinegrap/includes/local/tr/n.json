@@ -626,7 +626,7 @@
     "No action chosen": "İş seçilmedi",
     "No action yet": "Henüz işlem yok",
     "No active sessions": "Etkin oturum yok",
-    "No active sessions.": "Aktif oturum yok.",
+    "No active sessions.": "Etkin oturum yok.",
     "No active till or bank account is kept in {var:1}, so this expense cannot be paid from one yet.": "{var:1} tutan etkin bir kasa ya da banka hesabı yok; bu gider henüz bir hesaptan ödenemez.",
     "No active till.": "Etkin kasa yok.",
     "No activity recorded yet.": "Henüz kayıtlı hareket yok.",
