@@ -97,3 +97,20 @@ function test_dashboard_v2_ops_empty_lane_says_so_and_has_no_tone()
 	pg_assert_same('', $lane['more']);
 	pg_assert_same('No refunds are waiting.', $lane['empty']);
 }
+
+function test_dashboard_v2_ops_card_is_built_on_widget_9s_queries()
+{
+	$cards = pg_dashboard_v2_cards();
+	pg_assert_true($cards['ops']['built']);
+
+	// Widget 9's lanes and the card read the same rows.
+	$widget = file_get_contents(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets/widget_9.php');
+	pg_assert_contains('$shipments = pg_dashboard_ops_shipments($row_limit + 1);', $widget);
+	pg_assert_contains('$rows = pg_dashboard_ops_refund_list(10);', $widget);
+	pg_assert_contains('$rows = pg_dashboard_ops_out_of_stock_list(8);', $widget);
+
+	$card = file_get_contents(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/ops.php');
+	foreach (array('pg_dashboard_ops_shipments(', 'pg_dashboard_ops_refund_list(', 'pg_dashboard_ops_out_of_stock_list(', 'pg_dashboard_ops_stock_counts()') as $call) {
+		pg_assert_contains($call, $card);
+	}
+}

@@ -157,3 +157,81 @@ function pg_dashboard_v2_ops_when($timestamp)
 
     return get_relative_time(array('timestamp' => (int) $timestamp, 'format' => 'plain_text'));
 }
+
+function pg_dashboard_v2_card_ops($user, $period, $compare)
+{
+    if (!pg_dashboard_v2_gate('shop', $user)) {
+        return array('status' => 'denied');
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets/widget_9.php');
+
+    $now = time();
+    $limit = PG_DASHBOARD_V2_OPS_ROWS;
+    $lanes = array();
+
+    if (defined('ECOMMERCE_SHIPPING') && (ECOMMERCE_SHIPPING === true)) {
+        $shipping = pg_dashboard_ops_shipping_summary();
+        $count = $shipping['orders'];
+
+        $lanes[] = pg_dashboard_v2_ops_lane('ship', lang('To ship'), $count,
+            pg_dashboard_v2_ops_ship_rows(pg_dashboard_ops_shipments($limit), $now),
+            ($count > 0)
+                ? lang(array('string' => '{var:1} package{suffix:1}', 'vars' => pg_format_number($shipping['packages'], 0), 'suffix' => ($shipping['packages'] === 1) ? '' : 's'))
+                    . ' · ' . pg_dashboard_v2_money($shipping['value'])
+                : lang('All sent'),
+            $shipping['late'] ? 'bad' : 'warn',
+            lang('All Orders'),
+            // The list's unshipped filter over the lane's window.
+            pg_dashboard_list_url('view_orders.php', array(
+                'reset'            => 'true',
+                'advanced_filters' => 'true',
+                'shipping_status'  => 'unshipped'), pg_dashboard_days_back(strtotime(date('Y-m-d', $now)), $shipping['window_days']), $now),
+            lang(array('string' => 'Nothing waiting from the last {var:1} days.', 'vars' => $shipping['window_days'])));
+    }
+
+    // The refund columns arrive with the 2026.1.27 upgrade; without them
+    // there is no lane, as widget 9 draws none.
+    if (pg_schema_has('orders', 'refund_status')) {
+        $refunds = pg_dashboard_ops_refund_summary();
+        $count = $refunds['count'];
+        $list = array();
+
+        foreach (pg_dashboard_ops_refund_list($limit) as $order) {
+            $list[] = array(
+                'id'           => $order['id'],
+                'order_number' => $order['order_number'],
+                'name'         => trim((string) $order['billing_first_name'] . ' ' . (string) $order['billing_last_name']),
+                'owed'         => pg_order_cancel_refund_owed($order)['total'],
+                'cancelled_at' => $order['cancelled_at'],
+            );
+        }
+
+        $lanes[] = pg_dashboard_v2_ops_lane('refund', lang('To refund'), $count,
+            pg_dashboard_v2_ops_refund_rows($list, $now),
+            ($count > 0) ? pg_dashboard_v2_money($refunds['owed']) : lang('Nothing owed'),
+            (($refunds['oldest'] > 0) && ($refunds['oldest'] < ($now - 172800))) ? 'bad' : 'warn',
+            lang(array('string' => '{var:1} more waiting', 'vars' => pg_format_number(max(0, $count - $limit), 0))),
+            // Every type of order and from the oldest one waiting, as the
+            // widget's lane opens the list.
+            pg_dashboard_list_url('view_orders.php', array(
+                'reset'  => 'true',
+                'status' => 'refund_pending',
+                'type'   => 'any'), ($refunds['oldest'] > 0) ? $refunds['oldest'] : $now, $now),
+            lang('No refunds are waiting.'));
+    }
+
+    $stock = pg_dashboard_ops_stock_counts();
+    $lanes[] = pg_dashboard_v2_ops_lane('stock', lang('Out of stock'), $stock['out'],
+        pg_dashboard_v2_ops_stock_rows(pg_dashboard_ops_out_of_stock_list($limit)),
+        ($stock['low'] > 0)
+            ? lang(array('string' => '{var:1} running low', 'vars' => pg_format_number($stock['low'], 0)))
+            : (($stock['out'] > 0) ? lang('Not selling') : lang('All in stock')),
+        'bad',
+        lang(array('string' => '{var:1} more out of stock', 'vars' => pg_format_number(max(0, $stock['out'] - $limit), 0))),
+        'view_products.php?filter=out_of_stock_products',
+        lang('Every product is in stock.'));
+
+    return array('status' => 'success', 'data' => array('lanes' => $lanes));
+}
