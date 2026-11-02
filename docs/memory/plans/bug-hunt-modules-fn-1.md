@@ -54,7 +54,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `config_text`: clean
 
-- `connect`: open
+- `connect`: taken by OO
 
 - `consent`: done #4577, #4587
 
