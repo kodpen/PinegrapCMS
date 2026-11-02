@@ -508,6 +508,7 @@
     "What is written in this private channel will be sent to Pinegrap AI (ai.pinegrap.com) when somebody asks it. Allow it?": "Biri Pinegrap AI'ı çağırdığında bu özel kanalda yazılanlar Pinegrap AI'a (ai.pinegrap.com) gönderilecek. İzin verilsin mi?",
     "What is your message about?": "Mesajınız ne hakkında?",
     "What is {var:1} + {var:2} ?": "{var:1} + {var:2} kaç eder?",
+    "What it counts": "Ne sayılsın",
     "What it covers": "Neleri kapsar",
     "What it did": "Ne yaptığı",
     "What it does could not be read from the sentence: choose it in step 3.": "Ne yapacağı cümleden anlaşılamadı: 3. adımda seçin.",

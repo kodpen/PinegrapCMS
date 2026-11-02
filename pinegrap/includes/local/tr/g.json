@@ -440,6 +440,7 @@
     "google translate, google cloud, api key, chrome, translator, engine, machine translation, attribution, style note": "google translate, google cloud, api key, api anahtarı, chrome, translator, engine, motor, machine translation, makine çevirisi, attribution, rozet, style note, üslup notu",
     "google, oauth, sign in with google, sso, client id, client secret": "google, oauth, sign in with google, sso, client id, client secret, google ile giris",
     "google-reviews": "google-yorumlari",
+    "graded on {var:1}, {var:2} ms at its fastest": "{var:1} sayfasına göre, en hızlı {var:2} ms",
     "gram": "gram",
     "group": "grup",
     "guest book, sign, hello, wall": "ziyaretçi defteri, imza, merhaba, duvar",

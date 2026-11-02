@@ -11,21 +11,7 @@ description: Steps N1-N14 and the visual pass V of plans/new-dashboard.md: size,
 - Until V, a step keeps its look plain: features first, the look is matched in V.
 
 ## Which steps?
-- N1 (M) Switch and page shell. Screens 21, 22. done (#4692).
-
-- N2 (M) Greeting card. Screen 01. done (#4766).
-
-- N3 (M) System Status card and look. Screens 01, 12-14. done (#4756).
-
-- N4 (L) Card frame and data. Screens 03, 17. done (#4768).
-
-- N5 (L) Edit mode. Screens 05-08. done (#4856).
-
-- N6 (M) Gallery and side panel. Screens 06, 09, 11. done (#4888).
-
-- N7 (M) Visitor and content cards. Screens 03, 04, 18, 19. done (#4861).
-
-- N8 (M) Security and team cards. Screens 04, 18. done (#4865).
+- Done: N1 switch and shell (#4692), N2 greeting (#4766), N3 System Status (#4756), N4 card frame (#4768), N5 edit mode (#4856), N6 gallery and side panel (#4888), N7 visitor and content cards (#4861), N8 security and team cards (#4865).
 
 - N9 (M) Shop cards. Screens 16-18. `free` after N4.
   - `shop`, `salesmap`, `ops`, `orders`, `offers`, `fx`.
@@ -39,11 +25,12 @@ description: Steps N1-N14 and the visual pass V of plans/new-dashboard.md: size,
 - N11 (M) Assistant and flows. Screens 01, 02, 15. `free` after N4.
   - `ai` connected and not connected, proposals, giving a job, the daily summary as question 3 decided; `flows` tiles, the current run, last runs with Approve and Retry through the flow endpoints.
 
-- N12 (M) Goals, pins, notes, performance, subscriptions. Screens 01, 04, 18, 19. `free` after N5.
-  - `goals` editor and rings, `pins`, `notes`, `perf`, `subs` (hidden until the vendor licence answers).
+- N12 (M) Goals, pins, notes, performance, subscriptions. Screens 01, 04, 18, 19. Cut in three.
+  - N12a (M) `goals` editor and rings, `notes`, the `dashboard_personal_save` action and the pin cleaning. done (#4981); `ui/dashboard-v2-personal-cards.md`.
+  - N12b (M) `pins` (tiles, "+ Pin" through `backend_search`) and `perf` (widget 23's queries and grade moved into helpers both call). `free` after N12a.
+  - N12c (S) `subs`, hidden until the vendor licence client answers (`plans/kodpen-vendor-api-client-steps.md`, P8).
 
-- N13 (S) Share with the team. Screen 10. done (#4975).
-  - `dashboard_role_default`, the section for role < 2, the lock in read and save, the chip.
+- N13 (S) Share with the team. Screen 10. done (#4975); `ui/dashboard-v2-share.md`.
 
 - N14 (M) Phone, keyboard and close-out. Screen 20. After N2-N13.
   - Phone pass (390x844, 844x390, touch), keyboard and screen reader, reduced motion, forced colours, every screen in light and dark.

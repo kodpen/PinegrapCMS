@@ -2214,4 +2214,127 @@
     .pg-dash-sketch { forced-color-adjust: none; }
     .pg-dash-tag { border-color: CanvasText; }
   }
+
+  /* ── Personal cards ───────────────────────────────────────────────────── */
+
+  /* My goals: a ring per goal, its name, figure and toned state. */
+  .pg-dash-goals {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pg-dash-goal {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+  }
+
+  .pg-dash-goal-ring {
+    position: relative;
+    flex: none;
+    width: 3.5rem;
+    height: 3.5rem;
+    --pg-dash-ring: var(--pg-primary);
+  }
+
+  .pg-dash-goal-ring[data-tone="good"] { --pg-dash-ring: var(--pg-success); }
+  .pg-dash-goal-ring[data-tone="warn"] { --pg-dash-ring: var(--pg-warning); }
+  .pg-dash-goal-ring[data-tone="bad"] { --pg-dash-ring: var(--pg-danger); }
+
+  .pg-dash-goal-ring-svg {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  .pg-dash-goal-ring-svg circle {
+    fill: none;
+    stroke-width: 3.5;
+  }
+
+  .pg-dash-goal-ring-track { stroke: var(--pg-tint); }
+  .pg-dash-goal-ring-arc { stroke: var(--pg-dash-ring); stroke-linecap: round; }
+
+  .pg-dash-goal-ring-value {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .75rem;
+    font-weight: 700;
+    color: var(--pg-fg-emphasis);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pg-dash-goal-main {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  .pg-dash-goal-name {
+    overflow: hidden;
+    font-weight: 600;
+    color: var(--pg-fg-emphasis);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+
+  .pg-dash-goal-figure,
+  .pg-dash-personal-hint {
+    font-size: .75rem;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-goal-remove { flex: none; }
+
+  .pg-dash-goal-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+    gap: .5rem;
+    margin-top: .5rem;
+  }
+
+  .pg-dash-goal-field .form-label {
+    margin-bottom: .125rem;
+    font-size: .75rem;
+  }
+
+  .pg-dash-goal-actions {
+    display: flex;
+    flex-wrap: wrap;
+    grid-column: 1 / -1;
+    gap: .5rem;
+  }
+
+  .pg-dash-personal-add {
+    align-self: flex-start;
+    margin-top: .5rem;
+  }
+
+  .pg-dash-personal-status {
+    margin: .25rem 0 0;
+    font-size: .75rem;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-personal-status:empty { display: none; }
+
+  /* My notes: one plain box. */
+  .pg-dash-notes {
+    min-height: 8rem;
+    resize: vertical;
+  }
+
+  .pg-dash-personal-hint { margin: .25rem 0 0; }
+
+  @media (forced-colors: active) {
+    .pg-dash-goal-ring-arc { stroke: CanvasText; }
+  }
 }
