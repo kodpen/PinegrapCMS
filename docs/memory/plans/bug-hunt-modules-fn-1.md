@@ -62,7 +62,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `contacts`: done #4624
 
-- `content`: open
+- `content`: taken by OO
 
 - `core`: open
 
