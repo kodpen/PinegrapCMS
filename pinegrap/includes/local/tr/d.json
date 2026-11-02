@@ -132,6 +132,7 @@
     "Day {var}": "Gün {var}",
     "Day(s)": "Gün",
     "Day(s) Ago": "Gün önce",
+    "Day(s) ago must be a whole number of 0 or more.": "Gün önce değeri 0 ya da daha büyük bir tam sayı olmalıdır.",
     "Day(s)/Hour(s)": "Gün/Saat",
     "Days": "Günler",
     "Days Left": "Kalan Gün",
