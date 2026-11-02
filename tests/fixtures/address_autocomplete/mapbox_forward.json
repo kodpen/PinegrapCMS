@@ -1,0 +1,49 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "dXJuOm1ieGFkcjox",
+      "geometry": {"type": "Point", "coordinates": [13.4, 52.5]},
+      "properties": {
+        "mapbox_id": "dXJuOm1ieGFkcjox",
+        "feature_type": "address",
+        "full_address": "Hauptstraße 5, 10827 Berlin, Germany",
+        "name": "Hauptstraße 5",
+        "context": {
+          "address": {"mapbox_id": "x", "address_number": "5", "street_name": "Hauptstraße", "name": "Hauptstraße 5"},
+          "street": {"mapbox_id": "y", "name": "Hauptstraße"},
+          "neighborhood": {"mapbox_id": "n", "name": "Schöneberg"},
+          "postcode": {"mapbox_id": "p", "name": "10827"},
+          "place": {"mapbox_id": "c", "name": "Berlin"},
+          "region": {"mapbox_id": "r", "name": "Berlin", "region_code": "BE", "region_code_full": "DE-BE"},
+          "country": {"mapbox_id": "k", "name": "Germany", "country_code": "DE", "country_code_alpha_3": "DEU"}
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "place",
+        "full_address": "Berlin, Germany",
+        "name": "Berlin",
+        "context": {"country": {"name": "Germany", "country_code": "DE"}}
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "feature_type": "address",
+        "full_address": "Bağdat Caddesi 100, 34728 Kadıköy, İstanbul, Türkiye",
+        "context": {
+          "address": {"address_number": "100", "street_name": "Bağdat Caddesi"},
+          "postcode": {"name": "34728"},
+          "locality": {"name": "Suadiye"},
+          "place": {"name": "Kadıköy"},
+          "region": {"name": "İstanbul", "region_code": "34"},
+          "country": {"name": "Türkiye", "country_code": "TR"}
+        }
+      }
+    }
+  ]
+}
