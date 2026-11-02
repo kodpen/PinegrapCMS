@@ -19,7 +19,7 @@ description: Plan for the Real Estate Agency template (pinegrap-realestate): lis
 ## Which steps are there?
 - 1 Done (#5092). Data and shared parts: `parts.php` (builders, neighbourhoods, property types, agents, figures, services, sample listings, the forms' pick lists, account bar, notice, header, footer, valuation band, listing card, agent card, staff bar, page shells, form fields, comment thread, newsletter line, post card, AI summary); test `design_template_realestate_test.php`.
 
-- 2 Done (#PR). Public pages: `pages_public.php`; places `home_listings` and `area_listings_<key>` (step 3) and links `valuation?area=&agent=` (step 4).
+- 2 Done (#5120). Public pages: `pages_public.php`; places `home_listings` and `area_listings_<key>` (step 3) and links `valuation?area=&agent=` (step 4).
 
 - 3 Listings: `listings.php` (`listing_new` with the Listings collection and its samples, `buy`, `rent`, `listings` with filters and sorts, `listing` record page with photos, facts, features, agent and the viewing button, the list widgets the home and area pages place).
 
