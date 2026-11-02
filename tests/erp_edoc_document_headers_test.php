@@ -4,8 +4,8 @@
  *
  * Tests for the headers get_erp_edoc_document.php sends with the provider's
  * copy of an e-document (erp_edoc_document_headers()): a page the provider
- * rendered runs in a sandbox, never on the panel's origin, and nothing is
- * sniffed into a document.
+ * rendered runs in a sandbox, never on the panel's origin, and the endpoint
+ * sends them with nosniff.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -47,7 +47,6 @@ function test_erp_edoc_document_headers_html_is_sandboxed()
 	pg_assert_true(strpos($map['content-security-policy'], 'allow-same-origin') === false, 'never the panel origin');
 	pg_assert_contains('allow-scripts', $map['content-security-policy']);
 	pg_assert_contains('allow-modals', $map['content-security-policy'], 'print() still opens its dialog');
-	pg_assert_same('nosniff', $map['x-content-type-options']);
 	pg_assert_same('noindex', $map['x-robots-tag']);
 	pg_assert_same('private, no-store', $map['cache-control']);
 }
@@ -60,7 +59,6 @@ function test_erp_edoc_document_headers_every_kind_is_sandboxed()
 		foreach (array(false, true) as $download) {
 			$map = erp_edoc_document_headers_test_map(erp_edoc_document_headers($mime, 'x.bin', $download));
 			pg_assert_true(isset($map['content-security-policy']) && (strpos($map['content-security-policy'], 'sandbox') === 0), 'sandboxed: ' . $mime);
-			pg_assert_same('nosniff', $map['x-content-type-options'], 'not sniffed: ' . $mime);
 		}
 	}
 }
@@ -74,4 +72,14 @@ function test_erp_edoc_document_headers_disposition()
 	// No type from the provider is saved as bytes, never guessed.
 	$map = erp_edoc_document_headers_test_map(erp_edoc_document_headers('', 'a.bin', true));
 	pg_assert_same('application/octet-stream', $map['content-type']);
+}
+
+// The endpoint sends the list and nosniff; no header of its own beside them.
+function test_erp_edoc_document_endpoint_uses_the_headers()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_erp_edoc_document.php');
+
+	pg_assert_contains('erp_edoc_document_headers(', $source);
+	pg_assert_contains('pg_send_nosniff();', $source);
+	pg_assert_false((bool) preg_match("/header\\('Content-(Type|Disposition)/", $source), 'no type or disposition of its own');
 }
