@@ -2375,6 +2375,10 @@ function output_header($properties = false)
                             'strings' => array(
                                 'title' => lang('Notification'),
                                 'body' => lang('There is something new in your panel.'),
+                                // The worker's offline notice (offline.html).
+                                'offline_title' => lang('You are offline'),
+                                'offline_body' => lang('The panel cannot be reached right now. Check the connection and try again.'),
+                                'offline_retry' => lang('Retry'),
                                 'on' => lang('Turn off'),
                                 'off' => lang('Turn on'),
                                 'working' => lang('Please wait') . '...',
@@ -2647,6 +2651,12 @@ function pg_account_menu($user, $options = array())
             $output .= $row(OUTPUT_PATH . $start_page_name, 'bi-bookmark-star', lang('My Start Page'), $parent_target);
         }
     }
+
+    // Install the panel as an application. Hidden until the browser says it
+    // can be installed (beforeinstallprompt, backend.src.js); a private label
+    // does not name the software.
+    $output .= '
+                            <li id="pg_install_app" class="d-none"><a class="menu-item" href="#" role="button" data-pg-install><i class="bi bi-download" aria-hidden="true"></i><span class="pg-um-text">' . ($private_label ? lang('Install as an app') : lang('Install Pinegrap')) . '</span></a></li>';
 
     // ── Help and support ────────────────────────────────────────────────
     $help = '';

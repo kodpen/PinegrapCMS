@@ -2069,7 +2069,11 @@ $(document).ready(function () {
 
     pg_push_open_requested();
 
+    pg_sw_register();
+
     pg_push_init();
+
+    pg_install_init();
 
     pg_quick_note_init();
 
@@ -3240,6 +3244,109 @@ var pg_push = {
     busy: false
 };
 
+// The texts and version of the worker, printed beside the bell
+// (#pg-push-config). Read once; a page without it leaves both empty and the
+// worker falls back to its English texts.
+var pg_push_config_done = false;
+
+function pg_push_config_read() {
+
+    if (pg_push_config_done) {
+        return;
+    }
+
+    pg_push_config_done = true;
+
+    try {
+        var config = JSON.parse($('#pg-push-config').text() || '{}');
+        pg_push.strings = config.strings || {};
+        pg_push.version = config.version || '';
+    } catch (error) {
+        pg_push.strings = {};
+        pg_push.version = '';
+    }
+}
+
+// The panel's one worker (sw.js): push, and the offline notice it answers
+// when a page cannot be reached. Registered on every panel page, not only
+// where push is offered, so the notice works for everyone. One address for
+// both uses: a second address for the same scope would replace the worker.
+// Null where a worker cannot run (no support, or not a secure context).
+var pg_sw_registering = null;
+
+function pg_sw_register() {
+
+    if (pg_sw_registering) {
+        return pg_sw_registering;
+    }
+
+    if (!('serviceWorker' in navigator) || !window.isSecureContext || ($('#pg-push-config').length === 0)) {
+        return null;
+    }
+
+    pg_push_config_read();
+
+    pg_sw_registering = navigator.serviceWorker.register('sw.js?v=' + encodeURIComponent(pg_push.version) + '&strings=' + encodeURIComponent(JSON.stringify({
+        title: pg_push.strings.title || '',
+        body: pg_push.strings.body || '',
+        lang: document.documentElement.lang || '',
+        offline_title: pg_push.strings.offline_title || '',
+        offline_body: pg_push.strings.offline_body || '',
+        offline_retry: pg_push.strings.offline_retry || ''
+    })));
+
+    // Refused on a panel served from a folder the worker may not control,
+    // and by a browser in private mode: nothing the operator can act on.
+    pg_sw_registering.catch(function () {
+        return null;
+    });
+
+    return pg_sw_registering;
+}
+
+// "Install Pinegrap" in the account menu (#pg_install_app), shown only once
+// the browser says the panel can be installed (beforeinstallprompt, Chromium
+// browsers), and gone once it is. Listened for as the script loads: the
+// event can come before the page is ready.
+var pg_install_prompt = null;
+
+window.addEventListener('beforeinstallprompt', function (event) {
+    // The menu row offers it instead of the browser's own bar.
+    event.preventDefault();
+    pg_install_prompt = event;
+    $(function () {
+        $('#pg_install_app').removeClass('d-none');
+    });
+});
+
+window.addEventListener('appinstalled', function () {
+    pg_install_prompt = null;
+    $('#pg_install_app').addClass('d-none');
+});
+
+function pg_install_init() {
+
+    if (pg_install_prompt) {
+        $('#pg_install_app').removeClass('d-none');
+    }
+
+    $(document).on('click', '#pg_install_app [data-pg-install]', function (event) {
+        event.preventDefault();
+
+        if (!pg_install_prompt) {
+            return;
+        }
+
+        var offer = pg_install_prompt;
+
+        // A prompt can be shown once; the browser fires a new event if it
+        // may be offered again.
+        pg_install_prompt = null;
+        $('#pg_install_app').addClass('d-none');
+        offer.prompt();
+    });
+}
+
 function pg_push_init() {
 
     var $row = $('#push_row');
@@ -3254,14 +3361,7 @@ function pg_push_init() {
         return;
     }
 
-    try {
-        var config = JSON.parse($('#pg-push-config').text() || '{}');
-        pg_push.strings = config.strings || {};
-        pg_push.version = config.version || '';
-    } catch (error) {
-        pg_push.strings = {};
-        pg_push.version = '';
-    }
+    pg_push_config_read();
 
     // iOS only hands a push subscription to a site that was added to the home
     // screen, and asking before that is done fails in a way the operator cannot
@@ -3271,10 +3371,13 @@ function pg_push_init() {
         return;
     }
 
-    navigator.serviceWorker.register('sw.js?v=' + encodeURIComponent(pg_push.version) + '&strings=' + encodeURIComponent(JSON.stringify({
-        title: pg_push.strings.title || '',
-        body: pg_push.strings.body || ''
-    }))).then(function (registration) {
+    var registering = pg_sw_register();
+
+    if (!registering) {
+        return;
+    }
+
+    registering.then(function (registration) {
 
         pg_push.registration = registration;
 
