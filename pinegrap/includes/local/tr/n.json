@@ -769,6 +769,7 @@
     "No e-document provider is selected; the delivery note stays a paper document.": "e-Belge sağlayıcısı seçilmemiş; irsaliye kâğıt belge olarak kalır.",
     "No e-document provider sends e-Delivery Notes yet.": "Henüz hiçbir e-Belge sağlayıcısı e-İrsaliye göndermiyor.",
     "No e-mail conversation matches.": "Eşleşen e-posta konuşması yok.",
+    "No e-mail is sent to this address: {var:1}": "Bu adrese e-posta gönderilmiyor: {var:1}",
     "No e-mail yet": "Henüz e-posta yok",
     "No earlier version yet. The note is kept as it was when it is changed after a pause, when somebody else changes it, or when much of it is removed.": "Henüz önceki sürüm yok. Not, bir aradan sonra değiştirildiğinde, başka biri değiştirdiğinde ya da büyük bölümü silindiğinde önceki hâliyle saklanır.",
     "No effect on price": "Fiyatı etkilemez",

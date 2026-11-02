@@ -192,17 +192,29 @@ function pg_mail_bounce_campaign_cell(array $counts)
     $cell = h(lang(array('string' => '{var:1} delivered', 'vars' => array(pg_format_number((int) ($counts['delivered'] ?? 0), 0)))));
 
     $badges = array(
-        'suppressed' => array('{var:1} suppressed', 'theme-secondary'),
-        'bounced'    => array('{var:1} bounced', 'theme-warning'),
-        'complained' => array('{var:1} complained', 'theme-danger'),
+        'suppressed' => 'theme-secondary',
+        'bounced'    => 'theme-warning',
+        'complained' => 'theme-danger',
     );
 
-    foreach ($badges as $key => $badge) {
+    foreach ($badges as $key => $theme) {
         $count = (int) ($counts[$key] ?? 0);
 
-        if ($count > 0) {
-            $cell .= ' <span class="badge ' . $badge[1] . '">' . h(lang(array('string' => $badge[0], 'vars' => array(pg_format_number($count, 0))))) . '</span>';
+        if ($count <= 0) {
+            continue;
         }
+
+        $vars = array(pg_format_number($count, 0));
+
+        if ($key === 'suppressed') {
+            $text = lang(array('string' => '{var:1} suppressed', 'vars' => $vars));
+        } elseif ($key === 'bounced') {
+            $text = lang(array('string' => '{var:1} bounced back', 'vars' => $vars));
+        } else {
+            $text = lang(array('string' => '{var:1} complained', 'vars' => $vars));
+        }
+
+        $cell .= ' <span class="badge ' . $theme . '">' . h($text) . '</span>';
     }
 
     return $cell;

@@ -54,8 +54,8 @@ function test_mail_bounce_campaign_bounces_sql()
 {
 	pg_assert_same(
 		"SELECT campaign_id, SUM(kind IN ('hard', 'soft')) AS bounced, SUM(kind = 'complaint') AS complained"
-		. " FROM mail_bounces WHERE campaign_id IN (2, 5) GROUP BY campaign_id",
-		pg_mail_bounce_campaign_bounces_sql(array(5, 2 + 0, '5'))
+		. " FROM mail_bounces WHERE campaign_id IN (5, 2) GROUP BY campaign_id",
+		pg_mail_bounce_campaign_bounces_sql(array(5, '2', '5'))
 	);
 }
 
