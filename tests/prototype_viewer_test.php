@@ -456,6 +456,12 @@ function test_prototype_rewrite_reads_only_real_link_tags()
 	pg_assert_contains('<a href="/pinegrap/prototype.php?page=12" target="_top" data-pg-proto="prototype">P</a>', prototype_viewer_test_rewrite($apostrophe));
 	pg_assert_same(array('/pricing'), pg_proto_html_hrefs($apostrophe));
 
+	// An unquoted value runs to the next space or ">", "=" included, as the
+	// browser reads it: the record a link names stays with it.
+	pg_assert_same(array('/pricing?r=ab12', '/a/'), pg_proto_html_hrefs('<a href=/pricing?r=ab12 class=x>P</a><a href=/a/>A</a>'));
+	pg_assert_same('<a href="/pinegrap/prototype.php?page=12&amp;r=ab12" class=x target="_top" data-pg-proto="prototype">P</a>',
+		prototype_viewer_test_rewrite('<a href=/pricing?r=ab12 class=x>P</a>'));
+
 	// A link with no attributes, or written with a slash before them, and
 	// a self-closing tag pass through without a warning.
 	pg_assert_same('<a>none</a><br/><hr />', prototype_viewer_test_rewrite('<a>none</a><br/><hr />'));

@@ -11,10 +11,10 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 - `product_customs`: open
 - `product_feeds`: taken by MF, #4729
 - `product_list`: open
-- `prototype`: open
-- `prototype_links`: open
-- `qr`: open
-- `record_revisions`: open
+- `prototype`: #4990
+- `prototype_links`: clean
+- `qr`: clean
+- `record_revisions`: clean
 - `returns`: clean (#4619)
 - `reviews`: taken by LC, #4597
 - `search_console`: #4852
