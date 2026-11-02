@@ -38,7 +38,10 @@ function subscriptions_account_test_io(array &$store, array &$calls, $answer = n
 		'read' => function ($id) use (&$store) {
 			return ((int) $id === (int) $store['id']) ? $store : null;
 		},
-		'set_status' => function ($id, $to, $detail) use (&$store, &$calls) {
+		'set_status' => function ($id, $to, $detail, $from = '') use (&$store, &$calls) {
+			if (((string) $from !== '') && ((string) $store['status'] !== (string) $from)) {
+				return false;
+			}
 			$fields = pg_subscription_transition_fields($store, $to, 1000);
 			if ($fields === null) {
 				return false;
@@ -135,6 +138,27 @@ function test_subscription_customer_move_lost_to_a_concurrent_one()
 
 	pg_assert_same('refused', pg_subscription_customer_action(17, 7, 'cancel', '', $io)['result']);
 	pg_assert_same(array(), $calls, 'no card forgotten for a cancel that was not written');
+}
+
+// A renewal that failed between the action's read and its write moved the
+// row to past_due: the pause checked against "active" is not written, so the
+// retries of a past_due row are never stopped by a customer's pause.
+function test_subscription_customer_pause_refused_after_a_concurrent_renewal_failure()
+{
+	$store = subscriptions_account_test_row();
+	$calls = array();
+	$io = subscriptions_account_test_io($store, $calls);
+	$read = $io['read'];
+	$io['read'] = function ($id) use ($read, &$store) {
+		$row = $read($id);
+		$store['status'] = 'past_due';
+		$store['retry_count'] = '1';
+		return $row;
+	};
+
+	pg_assert_same('refused', pg_subscription_customer_action(17, 7, 'pause', '', $io)['result']);
+	pg_assert_same('past_due', $store['status'], 'the retries go on');
+	pg_assert_same(array(), $calls, 'no event written');
 }
 
 function test_subscription_customer_cancel_keeps_the_paid_period()

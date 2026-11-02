@@ -38,7 +38,10 @@ function subscriptions_operator_test_io(array &$store, array &$calls, $shared = 
 		'read' => function ($id) use (&$store) {
 			return ((int) $id === (int) $store['id']) ? $store : null;
 		},
-		'set_status' => function ($id, $to, $detail) use (&$store, &$calls) {
+		'set_status' => function ($id, $to, $detail, $from = '') use (&$store, &$calls) {
+			if (((string) $from !== '') && ((string) $store['status'] !== (string) $from)) {
+				return false;
+			}
 			$fields = pg_subscription_transition_fields($store, $to, 1000);
 			if ($fields === null) {
 				return false;
