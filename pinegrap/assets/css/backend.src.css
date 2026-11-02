@@ -8811,6 +8811,16 @@ html:has(.mpp-bulk:not(.d-none)) {
 .pg-settings-body h6 {
   font-size: 0.6875rem;
 }
+/* A card's introduction paragraph reads at the size of a description, and a
+   legend used as a field name at the size of a name: at body size (16px) the
+   accounting cards that carry them looked larger than every other card.
+   Outside the settings the legend keeps the 1rem it had from fs-md. */
+.pg-settings-body .pg-set-card p.fg-secondary {
+  font-size: 0.75rem;
+}
+legend.form-label {
+  font-size: 1rem;
+}
 
 /* Section rail placement, shared by every screen that has one.
    <main> becomes two columns from xl up: the rail, then everything the page

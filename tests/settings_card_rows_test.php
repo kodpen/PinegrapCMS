@@ -75,3 +75,26 @@ function test_settings_category_names_wrap()
 	pg_assert_true(strpos($block, 'text-overflow') === false, 'a category name is not cut with an ellipsis');
 	pg_assert_true(strpos($block, 'overflow-wrap: anywhere') !== false, 'a long category name wraps');
 }
+
+function test_settings_switch_descriptions_sit_outside_the_label()
+{
+	$root = dirname(__DIR__) . '/pinegrap/includes/';
+	$files = array('settings/appearance.php', 'settings/contact.php', 'settings/maintenance.php', 'iys/settings.php', 'fn/sms.php', 'fn/carrier_labels.php');
+	foreach ($files as $file) {
+		$source = (string) file_get_contents($root . $file);
+		pg_assert_true($source !== '', $file . ' is read');
+		pg_assert_true(strpos($source, '<br/><span class="form-text') === false, $file . ' draws no description inside a label');
+	}
+}
+
+function test_settings_long_messages_are_full_width()
+{
+	$root = dirname(__DIR__) . '/pinegrap/includes/settings/';
+	$commerce = (string) file_get_contents($root . 'commerce.php');
+	pg_assert_true(strpos($commerce, '<textarea name="ecommerce_product_restriction_message"') !== false, 'the product restriction message is a text box');
+	pg_assert_true(strpos($commerce, '<textarea name="ecommerce_no_shipping_methods_message"') !== false, 'the no shipping methods message is a text box');
+	pg_assert_true(strpos($commerce, 'text-end form-text') === false, 'no description is aligned to the right');
+
+	$seo = (string) file_get_contents($root . 'seo.php');
+	pg_assert_same(1, preg_match('/<div class="col-12">\s*<label for="setting_meta_description"/', $seo), 'the meta description box is full width');
+}

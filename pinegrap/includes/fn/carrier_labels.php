@@ -1149,7 +1149,7 @@ function pg_label_settings_rows()
                                                                         <div class="col-12">
                                                                             <div class="form-field">
                                                                                 <div class="switch"><input value="1"' . ($settings['enabled'] ? ' checked="checked"' : '') . ' class="collapse-switcher" type="checkbox" id="' . h($enabled_id) . '" name="' . h($enabled_id) . '" data-bs-target="#' . h($row) . '"/></div>
-                                                                                <label class="" for="' . h($enabled_id) . '">' . h($definition['label']) . ($carriers ? '<br/><span class="form-text">' . h(implode(', ', $carriers)) . '</span>' : '') . '</label>
+                                                                                <label class="" for="' . h($enabled_id) . '">' . h($definition['label']) . '</label>' . ($carriers ? '<div class="form-text">' . h(implode(', ', $carriers)) . '</div>' : '') . '
                                                                             </div>
                                                                             <div class="collapse popover fade bs-popover-bottom p-0" id="' . h($row) . '">
                                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>

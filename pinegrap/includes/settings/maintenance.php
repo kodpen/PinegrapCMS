@@ -43,7 +43,7 @@ $pg_settings_cards[] = '
                     <div class="col-12">
                         <div class="form-field">
                             <div class="switch"><input value="1"' . ($update_backup ? ' checked="checked"' : '') . ' class="" type="checkbox" id="update_backup" name="update_backup"/></div>
-                            <label class="" for="update_backup">' . lang('Back up before updating') . '<br/><span class="form-text">' . lang('Before an update or a repair replaces the software files, the files it replaces and the database are written to data/backups/pre-update-….zip; the three newest are kept. Repair Software rolls the files back from it, and the installation screen restores its database. Switch it off only for a site too large to back up within one request.') . '</span></label>
+                            <label class="" for="update_backup">' . lang('Back up before updating') . '</label><div class="form-text">' . lang('Before an update or a repair replaces the software files, the files it replaces and the database are written to data/backups/pre-update-….zip; the three newest are kept. Repair Software rolls the files back from it, and the installation screen restores its database. Switch it off only for a site too large to back up within one request.') . '</div>
                         </div>
                     </div>' : '') . '
                 </div>
@@ -64,7 +64,7 @@ $pg_settings_cards[] = '
                                         <div class="col-12 ">
                                             <div class="form-field">
                                                 <div class="switch"><input value="1"' . $job_dispatch_enabled_checked . ' class="" type="checkbox" id="job_dispatch_enabled" name="job_dispatch_enabled"/></div>
-                                                <label class="" for="job_dispatch_enabled">' . lang('Run Cron Jobs Automatically') . '<br/><span class="form-text">' . lang('The jobs selected below run together with the general job instead of needing a scheduled task of their own. One job per turn, the one waiting longest first, so a single turn never takes longer than one job. Long jobs (backup, SEO, search index) and short ones take turns in two separate lanes, so a running backup does not hold up the short jobs. Leaving a job\'s own scheduled task in place is safe: every job records when it last finished, whoever started it, so one that is already running on its own schedule is never started a second time from here.') . '</span></label>
+                                                <label class="" for="job_dispatch_enabled">' . lang('Run Cron Jobs Automatically') . '</label><div class="form-text">' . lang('The jobs selected below run together with the general job instead of needing a scheduled task of their own. One job per turn, the one waiting longest first, so a single turn never takes longer than one job. Long jobs (backup, SEO, search index) and short ones take turns in two separate lanes, so a running backup does not hold up the short jobs. Leaving a job\'s own scheduled task in place is safe: every job records when it last finished, whoever started it, so one that is already running on its own schedule is never started a second time from here.') . '</div>
                                             </div>
                                         </div>
                                         <div class="col-12" id="job_dispatch_jobs">
@@ -437,7 +437,7 @@ if ($backup_settings_ready) {
                             <div class="col-12">
                                 <div class="form-field">
                                     <div class="switch"><input value="1"' . ($backup_remote_s3['path_style'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="backup_s3_path_style" name="backup_s3_path_style"/></div>
-                                    <label class="" for="backup_s3_path_style">' . lang('Path-style addresses') . '<br/><span class="form-text">' . lang('The bucket goes in the path instead of the host name. MinIO and most self-hosted stores need this; Amazon S3 does not.') . '</span></label>
+                                    <label class="" for="backup_s3_path_style">' . lang('Path-style addresses') . '</label><div class="form-text">' . lang('The bucket goes in the path instead of the host name. MinIO and most self-hosted stores need this; Amazon S3 does not.') . '</div>
                                 </div>
                             </div>
                         </div>
@@ -520,7 +520,7 @@ if ($ops_alerts_ready) {
                     <div class="col-12">
                         <div class="form-field">
                             <div class="switch"><input value="1"' . ($ops_alerts ? ' checked="checked"' : '') . ' class="" type="checkbox" id="ops_alerts" name="ops_alerts"/></div>
-                            <label class="" for="ops_alerts">' . lang('Operations alerts') . '<br/><span class="form-text">' . lang('Tells the people who run the site when something stops working: an automatic backup fails or goes stale, a scheduled task stops running, the software files no longer match the release, PHP errors pile up, the disk runs full, e-mails or event notifications stop going out, or the site\'s certificate is about to run out. Each problem is told at most once a day while it lasts, on the panel bell of managers and administrators and by the channels below. System Status lists the alerts of the last seven days.') . '</span></label>
+                            <label class="" for="ops_alerts">' . lang('Operations alerts') . '</label><div class="form-text">' . lang('Tells the people who run the site when something stops working: an automatic backup fails or goes stale, a scheduled task stops running, the software files no longer match the release, PHP errors pile up, the disk runs full, e-mails or event notifications stop going out, or the site\'s certificate is about to run out. Each problem is told at most once a day while it lasts, on the panel bell of managers and administrators and by the channels below. System Status lists the alerts of the last seven days.') . '</div>
                         </div>
                     </div>
                     <div class="col-12" id="ops_alert_fields">
@@ -539,7 +539,7 @@ if ($ops_alerts_ready) {
                             <div class="col-12">
                                 <div class="form-field">
                                     <div class="switch"><input value="1"' . ($ops_alert_push ? ' checked="checked"' : '') . ' class="" type="checkbox" id="ops_alert_push" name="ops_alert_push"/></div>
-                                    <label class="" for="ops_alert_push">' . lang('Send alerts to subscribed devices') . '<br/><span class="form-text">' . lang('Phones and computers on which a manager or administrator turned notifications on. Delivered by the Device notifications job, which has to be selected under Cron Jobs.') . '</span></label>
+                                    <label class="" for="ops_alert_push">' . lang('Send alerts to subscribed devices') . '</label><div class="form-text">' . lang('Phones and computers on which a manager or administrator turned notifications on. Delivered by the Device notifications job, which has to be selected under Cron Jobs.') . '</div>
                                 </div>
                             </div>
                             <div class="pg-f-xs">
@@ -630,7 +630,7 @@ if ($maintenance_ready) {
                     <div class="col-12">
                         <div class="form-field">
                             <div class="switch"><input value="1"' . ($maintenance_mode ? ' checked="checked"' : '') . ' class="" type="checkbox" id="maintenance_mode" name="maintenance_mode"/></div>
-                            <label class="" for="maintenance_mode">' . lang('Maintenance Mode') . '<br/><span class="form-text">' . lang('Visitors who open a page of the site see the maintenance screen - the designed error page, or the classic one - with the 503 answer that tells search engines to come back later. Signed-in managers and administrators, and the addresses below, see the site as usual. Files, the control panel and payment callbacks keep working.') . '</span></label>
+                            <label class="" for="maintenance_mode">' . lang('Maintenance Mode') . '</label><div class="form-text">' . lang('Visitors who open a page of the site see the maintenance screen - the designed error page, or the classic one - with the 503 answer that tells search engines to come back later. Signed-in managers and administrators, and the addresses below, see the site as usual. Files, the control panel and payment callbacks keep working.') . '</div>
                         </div>
                     </div>' . $maintenance_state . '
                     <div class="pg-f-sm">
