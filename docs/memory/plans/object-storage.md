@@ -14,7 +14,7 @@ description: Plan (owner 2026-11-02): an S3-compatible object store (S3, R2, B2,
 - Files: an upload is written locally as today and moved to the store by the general job (an upload never waits on the network); a `files` row says where its bytes are; readers that need a path (the image engine, PDF and office code, the editor) get a local cache copy on demand; `get_file.php` keeps every access check and then redirects to a short-lived presigned URL for a file in the store, or streams it when the request must stay on the site (a download with a changed name, a range request from the panel). Derivatives stay a local cache made from the copy. A migration tool moves existing files in batches with a cursor; Disk Usage and System Status count both places.
 
 ## Which decisions bind it?
-- Legacy unchanged: a site that configures nothing keeps every file local; the `s3` backup type keeps its settings, the three accounts stay. A file never changes its address (the same-address rule of `webp-same-address.md`).
+- Legacy unchanged: a site that configures nothing keeps every file local; the `s3` backup type keeps its settings, the three accounts stay. A file never changes its address (the same-address rule of `platform/image-same-address-why.md`).
 - Access checks stay in `get_file.php`: a presigned URL is minted only after them, lives minutes, and is never written into a page or a mail (mails and feeds keep the site address, as `platform/image-same-address.md` asks).
 - The SigV4 code is shared with `mail-deliverability.md` MD3 (Amazon SES): the first to land writes `aws_sign.php`, the other reuses it.
 

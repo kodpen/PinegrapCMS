@@ -21,7 +21,7 @@ description: Steps OS1-OS7 of plans/object-storage.md: SigV4 client, backup targ
   - Settings › Storage: "Move existing files" starts the job over all local rows with progress (count, bytes, failures), pause and resume; "Bring back" moves them home; Disk Usage and System Status count local and stored bytes and name the store. Memory: `platform/file-object-storage.md` grows.
 
 - OS5 (M) Workspace and ERP attachments. After OS3 and question 1.
-  - Workspace channel files and note canvases (`workspace_file_save.php`, `ws_file_preview()`) and ERP attachments follow the same row rule and copy function; previews stay in the derivative cache (`webp-same-address.md` W8). Memory: `workspace/workspace-files-object-storage.md`.
+  - Workspace channel files and note canvases (`workspace_file_save.php`, `ws_file_preview()`) and ERP attachments follow the same row rule and copy function; previews stay in the derivative cache (`api/api-file-endpoints.md`). Memory: `workspace/workspace-files-object-storage.md`.
 
 - OS6 (S) Health. After OS3.
   - Ops alert `storage_unreachable` (once a day, after N failed calls in an hour), the Test button's last result on the card, the job's failures on the System Status screen; erasure and export unchanged (bytes are deleted where they are). Memory: `platform/object-storage-health.md`.
