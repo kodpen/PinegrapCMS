@@ -24,19 +24,19 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `backup_cloud`: open
 
-- `backup_restore`: open
+- `backup_restore`: clean (archive read and extraction with resume and checksums, statement classification and renaming, session replay, kill recovery, partition fallback, swap and leftovers checked)
 
-- `bundles`: open
+- `bundles`: clean (contents cleaning and refusals, stock and price, refresh, cart allowance, sale and return of components, contents and saving checked)
 
 - `calendar`: done #4632 #4646 (recurring overnight/multi-day events and room availability, unpadded view date; rest reviewed: escaping, access, recurrence expansion)
 
 - `captcha`: clean (siteverify outcomes, token, widget escaping, settings card and save order checked)
 
-- `carrier_api`: open
+- `carrier_api`: taken by worker OG (FedEx weight under 0.005 lb sent as 0)
 
-- `carrier_labels`: open
+- `carrier_labels`: clean (answer shape, document and SVG checks with the image-only serving, secret masking, settings decide/store/test, card escaping checked)
 
-- `carrier_webhook`: open
+- `carrier_webhook`: clean (key and signature checks, body limit, rate limit, label lookup, decide order, sync and by-hand keys, card escaping checked)
 
 - `cart_quotes`: clean (line cleaning, plan against stock/minimum/maximum/bin, create and open checks, apply and its repeat guard, completion, link page escaping checked)
 
