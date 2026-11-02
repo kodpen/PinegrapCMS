@@ -584,6 +584,91 @@ function pg_addr_throttled()
 
 
 /* ---------------------------------------------------------------------------
+   The form hook
+   --------------------------------------------------------------------------- */
+
+/**
+ * The street box's suggestion list for every address form on the page,
+ * printed once with pg_ship_to_district_script(), which each address form
+ * already prints (checkout, the account's profile and address book, billing,
+ * the panel's verified address form). '' while no provider is on.
+ *
+ * The script finds the street box of a form by its name, `<prefix>address_1`
+ * (shipping_, billing_, business_, shipping_<recipient>_ or none), and the
+ * other boxes by the same prefix: address_2, city, zip_code, country and
+ * state, or state_id (the panel's verified form, whose pick list holds ids).
+ * It asks address_suggest.php with the form's own token, so the page carries
+ * nothing of the visitor's session and stays cacheable.
+ *
+ * A pick fills the boxes pg_addr_boxes() answers (a Turkish address: the
+ * İlçe in the city box): the country first, with a change event, so the
+ * labels and the state pick list follow it; then the state, matched by
+ * value (state_code) or by name; a box the answer leaves empty keeps what
+ * was typed, and the second address line is filled only while it is empty.
+ * The list is an ARIA combobox: arrow keys, Enter, Escape.
+ *
+ * @return string
+ */
+function pg_addr_suggest_script()
+{
+    static $done = false;
+
+    if ($done || !pg_addr_ready()) {
+        return '';
+    }
+
+    $done = true;
+
+    $config = str_replace('</', '<\/', encode_json(array(
+        'url'   => PATH . SOFTWARE_DIRECTORY . '/address_suggest.php',
+        'label' => lang('Address suggestions'),
+    )));
+
+    return '<script>(function(){var C=' . $config . ';' . <<<'JS'
+var seq=0,n=0;
+function post(f,data,done){var t=f.elements.token;if(!t)return;data.token=t.value;
+var b=new URLSearchParams();Object.keys(data).forEach(function(k){b.append(k,data[k]);});
+fetch(C.url,{method:"POST",body:b,credentials:"same-origin",headers:{"X-Requested-With":"XMLHttpRequest"}})
+.then(function(r){return r.ok?r.json():null;}).then(function(j){if(j&&j.ok)done(j);}).catch(function(){});}
+function norm(s){return String(s||"").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim();}
+function fire(el,type){el.dispatchEvent(new Event(type,{bubbles:true}));}
+function put(el,v,onlyEmpty){if(!el||!el.tagName||v===""||(onlyEmpty&&el.value!==""))return;el.value=v;fire(el,"input");fire(el,"change");}
+function pick(sel,code,name){var i,o,c=norm(code),m=norm(name);
+for(i=0;i<sel.options.length;i++){o=sel.options[i];if(o.value!==""&&((c&&norm(o.value)===c)||(m&&norm(o.text)===m))){sel.value=o.value;return true;}}return false;}
+function fill(f,p,b){var e=f.elements,c=e[p+"country"];
+if(c&&c.tagName==="SELECT"&&b.country){var was=c.value;if(pick(c,b.country,"")&&c.value!==was)fire(c,"change");}
+put(e[p+"address_1"],b.address_1);put(e[p+"address_2"],b.address_2,true);put(e[p+"city"],b.city);put(e[p+"zip_code"],b.zip_code);
+var s=e[p+"state"]||e[p+"state_id"];if(s&&!s.tagName&&s.length){s=Array.prototype.filter.call(s,function(x){return !x.hidden;})[0];}
+if(!s)return;if(s.tagName==="SELECT"){if(pick(s,b.state_code,b.state))fire(s,"change");}else put(s,b.state);}
+function hook(inp){if(inp.getAttribute("data-pg-addr-hooked"))return;var f=inp.form,m=/^(.*)address_1$/.exec(inp.name);if(!f||!m)return;
+inp.setAttribute("data-pg-addr-hooked","1");var p=m[1],id="pg-addr-list-"+(++n),list=document.createElement("ul"),items=[],act=-1,timer=0;
+list.id=id;list.setAttribute("role","listbox");list.setAttribute("aria-label",C.label);list.hidden=true;
+list.style.cssText="position:absolute;z-index:1050;left:0;right:0;margin:2px 0 0;padding:4px 0;list-style:none;max-height:16rem;overflow:auto;background:var(--bs-body-bg,#fff);color:var(--bs-body-color,inherit);border:1px solid var(--bs-border-color,#ccc);border-radius:.375rem;box-shadow:0 .5rem 1rem rgba(0,0,0,.15)";
+var wrap=inp.parentNode;if(getComputedStyle(wrap).position==="static")wrap.style.position="relative";inp.insertAdjacentElement("afterend",list);
+inp.setAttribute("role","combobox");inp.setAttribute("aria-autocomplete","list");inp.setAttribute("aria-expanded","false");inp.setAttribute("aria-controls",id);
+function close(){list.hidden=true;act=-1;inp.setAttribute("aria-expanded","false");inp.removeAttribute("aria-activedescendant");}
+function mark(i){act=i;Array.prototype.forEach.call(list.children,function(li,k){li.setAttribute("aria-selected",k===i?"true":"false");li.style.background=k===i?"var(--bs-tertiary-bg,#eee)":"";});
+if(i>=0){inp.setAttribute("aria-activedescendant",list.children[i].id);list.children[i].scrollIntoView({block:"nearest"});}else inp.removeAttribute("aria-activedescendant");}
+function show(s){items=s;list.innerHTML="";if(!s.length){close();return;}
+s.forEach(function(it,k){var li=document.createElement("li");li.id=id+"-"+k;li.setAttribute("role","option");li.textContent=it.label;li.style.cssText="padding:.375rem .75rem;cursor:pointer";
+li.addEventListener("mousedown",function(ev){ev.preventDefault();choose(k);});list.appendChild(li);});
+list.hidden=false;inp.setAttribute("aria-expanded","true");mark(-1);}
+function choose(k){var it=items[k];close();if(!it)return;
+post(f,{action:"fill",id:it.id,lang:document.documentElement.lang||""},function(j){if(j.boxes)fill(f,p,j.boxes);});}
+inp.addEventListener("input",function(ev){if(!ev.isTrusted)return;clearTimeout(timer);var q=inp.value.trim();if(q.length<3){close();return;}
+timer=setTimeout(function(){var my=++seq,c=f.elements[p+"country"],cv=(c&&c.value&&/^[A-Za-z]{2}$/.test(c.value))?c.value:"";
+post(f,{action:"suggest",q:q,country:cv,lang:document.documentElement.lang||""},function(j){if(my===seq&&document.activeElement===inp)show(j.suggestions||[]);});},300);});
+inp.addEventListener("keydown",function(ev){if(list.hidden)return;var len=list.children.length;
+if(ev.key==="ArrowDown"){ev.preventDefault();mark((act+1)%len);}else if(ev.key==="ArrowUp"){ev.preventDefault();mark(act<=0?len-1:act-1);}
+else if(ev.key==="Enter"&&act>=0){ev.preventDefault();choose(act);}else if(ev.key==="Escape"){close();}});
+inp.addEventListener("blur",function(){setTimeout(close,150);});}
+function all(){document.querySelectorAll("form input[name$=address_1]").forEach(function(i){if(i.type==="text"||i.type==="search"||!i.type)hook(i);});}
+if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",all);else all();
+JS
+        . '})();</script>';
+}
+
+/* ---------------------------------------------------------------------------
    Settings › Ecommerce › Address Autocomplete
    --------------------------------------------------------------------------- */
 

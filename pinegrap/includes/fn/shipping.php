@@ -1734,7 +1734,8 @@ function pg_ship_to_district_script()
         .   't.form.querySelectorAll("[data-pg-district]").forEach(function(i){if(i.getAttribute("data-pg-district")===t.name)sync(i);});'
         .   't.form.querySelectorAll("[data-pg-addr-label]").forEach(function(l){if(l.getAttribute("data-pg-addr-label")===t.name)lab(l);});});'
         . 'if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",all);else all();'
-        . '})();</script>';
+        . '})();</script>'
+        . (function_exists('pg_addr_suggest_script') ? pg_addr_suggest_script() : '');
 }
 
 /**
