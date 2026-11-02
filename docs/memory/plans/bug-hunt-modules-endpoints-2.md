@@ -11,11 +11,11 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 - Endpoints `preview` (3): open
 - Endpoints `privacy` (2): open
 - Endpoints `product`, part 1 (products): done #5257 (duplicate_products: the copy's product code made unique), #5355 (duplicate_products: short description cut by letters, not bytes); add_product, edit_product, edit_products, view_products, duplicate_product, check_for_products_in_cart, get_product_group_for_product, get_erp_products, product_feed_job clean. Not covered here: barcode generation (edit_products assign_barcodes, the panel and API assigners) checks only product_barcodes, not other products' codes; the writers behind add/edit_product live in product_builder (part 3)
-- Endpoints `product`, part 2 (attributes, groups): taken by worker OU; #5393 (duplicate_product_group, Catalog Manager copy: variant set lost form template and price rules); the attribute files looked clean (option label repeats checked only in product_attribute_action)
+- Endpoints `product`, part 2 (attributes, groups): done #5393 (duplicate_product_group, Catalog Manager copy: variant set lost form template and price rules); the rest clean (option label repeats checked only in product_attribute_action)
 - Endpoints `product`, part 3 (import, export, builder, marketplace): import_products: #5371 (columns after a sfc_/sfu_ heading were read one cell to the left); import_products_f, export_products, export_products_f, product_builder, marketplace_products clean
-- Endpoints `recurring` (3): open
-- Endpoints `referral` (3): open
-- Endpoints `region` (3): open
+- Endpoints `recurring` (3): done #5525 (recurring_payment_job: no web gate); the commission profile screens clean
+- Endpoints `referral` (3): add_referral_source, edit_referral_source, view_referral_sources clean
+- Endpoints `region` (3): get_region_content, save_region_content, view_regions clean; the next hunt starts at `registration`
 - Endpoints `registration` (4): open
 - Endpoints `remove` (3): open
 - Endpoints `return` (4): open
