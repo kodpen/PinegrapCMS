@@ -158,6 +158,7 @@ function test_design_template_cafe_clinic_privacy_page()
 		'pinegrap-courses' => array('pco-enrol-consent'),
 		'pinegrap-events' => array('ev-reg-consent'),
 		'pinegrap-law'    => array('lw-con-consent', 'lw-app-consent'),
+		'pinegrap-realestate' => array('re-vw-consent', 're-va-consent'),
 		'pinegrap-salon'  => array('sl-book-consent'),
 	);
 	foreach ($consents as $id => $boxes) {
