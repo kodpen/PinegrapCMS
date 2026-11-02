@@ -50,8 +50,14 @@ if (isset($_POST['sc'])) {
 }
 
 // The page speed beacon (pg_vitals.min.js): the figures of a page this site
-// signed, counted in the hour's rollup; nothing else is counted for it.
+// signed today or yesterday, counted in the hour's rollup, at most
+// PG_VITALS_RATE_LIMIT a minute from one address; nothing else is counted
+// for it.
 if (isset($_POST['vp'])) {
+    if (pg_vitals_rate_exceeded()) {
+        exit();
+    }
+
     $page_vitals_page = pg_vitals_verify($_POST['vp'], $_POST['vs'] ?? '', defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '');
     $page_vitals = pg_vitals_parse($_POST['v'] ?? '');
 

@@ -69,20 +69,38 @@ function test_vitals_key_is_the_hour_page_and_device()
 	pg_assert_same(40, strlen(pg_vitals_key('2026-11-02', 23, 1, 'tablet')));
 }
 
-function test_vitals_signature_names_one_page_of_one_site()
+function test_vitals_signature_names_one_page_of_one_site_and_day()
 {
-	$signature = pg_vitals_sign(42, 'site-key');
+	$now = strtotime('2026-11-02 12:00:00');
+	$signature = pg_vitals_sign(42, 'site-key', '2026-11-02');
 
-	pg_assert_same(hash_hmac('sha256', 'page-vitals:42', 'site-key'), $signature);
-	pg_assert_same(42, pg_vitals_verify('42', $signature, 'site-key'));
-	pg_assert_same(0, pg_vitals_verify('43', $signature, 'site-key'), 'another page');
-	pg_assert_same(0, pg_vitals_verify('42', $signature, 'other-key'), 'another site');
-	pg_assert_same(0, pg_vitals_verify('42', '', 'site-key'), 'no signature');
-	pg_assert_same(0, pg_vitals_verify(array('42'), $signature, 'site-key'), 'an array');
-	pg_assert_same(0, pg_vitals_verify('4x2', $signature, 'site-key'), 'not a number');
-	pg_assert_same('', pg_vitals_sign(42, ''), 'no key, no beacon');
-	pg_assert_same('', pg_vitals_sign(0, 'site-key'), 'no page, no beacon');
-	pg_assert_same(0, pg_vitals_verify('42', pg_vitals_sign(42, ''), ''), 'no key never verifies');
+	pg_assert_same(hash_hmac('sha256', 'page-vitals:42|2026-11-02', 'site-key'), $signature);
+	pg_assert_same(42, pg_vitals_verify('42', $signature, 'site-key', $now));
+	pg_assert_same(0, pg_vitals_verify('43', $signature, 'site-key', $now), 'another page');
+	pg_assert_same(0, pg_vitals_verify('42', $signature, 'other-key', $now), 'another site');
+	pg_assert_same(0, pg_vitals_verify('42', '', 'site-key', $now), 'no signature');
+	pg_assert_same(0, pg_vitals_verify(array('42'), $signature, 'site-key', $now), 'an array');
+	pg_assert_same(0, pg_vitals_verify('4x2', $signature, 'site-key', $now), 'not a number');
+	pg_assert_same('', pg_vitals_sign(42, '', '2026-11-02'), 'no key, no beacon');
+	pg_assert_same('', pg_vitals_sign(0, 'site-key', '2026-11-02'), 'no page, no beacon');
+	pg_assert_same('', pg_vitals_sign(42, 'site-key', 'today'), 'no day, no beacon');
+	pg_assert_same(0, pg_vitals_verify('42', pg_vitals_sign(42, '', '2026-11-02'), '', $now), 'no key never verifies');
+}
+
+function test_vitals_signature_expires_after_the_next_day()
+{
+	$signature = pg_vitals_sign(42, 'site-key', '2026-11-02');
+
+	pg_assert_same(42, pg_vitals_verify('42', $signature, 'site-key', strtotime('2026-11-03 23:30:00')), 'the next day still reports');
+	pg_assert_same(0, pg_vitals_verify('42', $signature, 'site-key', strtotime('2026-11-04 00:10:00')), 'two days on it is refused');
+	pg_assert_same(0, pg_vitals_verify('42', $signature, 'site-key', strtotime('2026-11-01 12:00:00')), 'a day ahead is refused');
+}
+
+function test_vitals_rows_are_kept_400_days()
+{
+	pg_assert_same('2025-10-28', pg_vitals_keep_from(strtotime('2026-12-02 10:00:00')));
+	pg_assert_same(400, PG_VITALS_DAYS);
+	pg_assert_contains('pg_vitals_sweep()', vitals_beacon_test_source('job.php'), 'the general job sweeps');
 }
 
 function test_vitals_upsert_raises_sums_and_buckets()
@@ -130,6 +148,8 @@ function test_vitals_is_wired_into_the_page_the_endpoint_and_the_schema()
 	pg_assert_contains("isset(\$_POST['vp'])", $page_view);
 	pg_assert_true(strpos($page_view, "isset(\$_POST['vp'])") < strpos($page_view, 'pg_page_cache_beacon_verify('), 'handled before the page view');
 	pg_assert_contains('pg_vitals_verify(', $page_view);
+	pg_assert_true(strpos($page_view, 'pg_vitals_rate_exceeded()') < strpos($page_view, 'pg_vitals_verify('), 'the address limit comes first');
+	pg_assert_contains("waf_rate_exceeded(\$ip, 'vitals', PG_VITALS_RATE_LIMIT, 60)", vitals_beacon_test_source('includes/fn/page_vitals.php'));
 	pg_assert_contains('pg_vitals_parse(', $page_view);
 
 	$get_page = vitals_beacon_test_source('get_page.php');

@@ -663,6 +663,20 @@ if (function_exists('pg_site_search_sweep_due') && pg_site_search_sweep_due()) {
     }
 }
 
+// The page speed rollup (includes/fn/page_vitals.php): once a day the days
+// older than the retention period go.
+if (function_exists('pg_vitals_sweep_due') && pg_vitals_sweep_due()) {
+
+    $page_vitals_removed = pg_vitals_sweep();
+
+    if ($page_vitals_removed > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} row(s) from the page speed statistics',
+            'vars'   => array(pg_format_number($page_vitals_removed, 0)),
+        )), 'UNKNOWN');
+    }
+}
+
 // Image versions (includes/fn/image_editor.php): once a day the versions of
 // files deleted where no direct call took them along. A tick with nothing
 // due reads one small file.

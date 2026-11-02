@@ -1,6 +1,6 @@
 ---
 name: page-vitals-beacon
-description: Real-user LCP/INP/CLS from pg_vitals.min.js into page_vitals_hourly (11.0.149, decision #5040): which pages carry it, the signed page id, the v= part, validation, buckets, the upsert
+description: Real-user LCP/INP/CLS beacon into page_vitals_hourly (11.0.149, #5040): which pages carry it, day-signed page id, rate limit, validation, buckets, upsert, 400-day sweep
 module: page_vitals
 ---
 
@@ -15,7 +15,8 @@ module: page_vitals
 - Also needs `pg_vitals_ready()` (the table), `ENCRYPTION_KEY` and a `</body>`. Independent of visitor tracking: nothing personal is kept.
 
 ## What does page_view.php do with it?
-- `vp` is handled before the page-view payload and exits. `pg_vitals_verify()`: HMAC-SHA256 of `'page-vitals:' . page_id` over `ENCRYPTION_KEY`, so only pages this site signed are counted; a replay counts like a reload.
+- `vp` is handled before the page-view payload and exits. First `pg_vitals_rate_exceeded()`: at most `PG_VITALS_RATE_LIMIT` (30) beacons a minute per address (`waf_rate_exceeded(waf_ip_subject(ip), 'vitals', …)`).
+- `pg_vitals_verify()`: HMAC-SHA256 of `'page-vitals:' . page_id . '|' . day` over `ENCRYPTION_KEY`, the day the page was drawn; today and yesterday are accepted (a page drawn before midnight or kept by the page cache, an hour at most), an older one is refused. Why (#5397 review): a signature only over the page id never expired, so anyone could copy it from a page and post false figures in a loop.
 - `pg_vitals_parse()` drops the whole beacon for a bad shape, an unknown device, a non-integer, more than six digits, LCP > 60000, INP > 10000, CLS > 10000, or nothing measured.
 - `pg_vitals_record()`: not for `pg_request_is_automated()`; site time zone `date('Y-m-d')` and `date('G')`; one `INSERT … ON DUPLICATE KEY UPDATE` from `pg_vitals_upsert_sql()`.
 
@@ -24,8 +25,11 @@ module: page_vitals
 - Buckets (`pg_vitals_bucket()`): good ≤ 2500 / 200 / 100, poor > 4000 / 500 / 250 (LCP ms, INP ms, CLS × 1000); the threshold itself is in the better bucket.
 - Derived data: wrong rows are truncated and refill, never fixed (`visitor-rollup-consistency.md`).
 
+## How long are rows kept?
+- 400 days (`PG_VITALS_DAYS`): `job.php` runs `pg_vitals_sweep()` once a day (`data/temp/page_vitals_sweep.json`), `DELETE … WHERE day < ? LIMIT 5000` within 5 seconds, as `site-search-rollup.md`.
+
 ## What comes later?
-- WV2: figures (p75 from buckets and sums), `reports/vitals`, and the 400-day sweep by the general job; until then rows are not removed. `plans/web-vitals-ai-visibility-steps.md`.
+- WV2: figures (p75 from buckets and sums) and `reports/vitals`. `plans/web-vitals-ai-visibility-steps.md`.
 
 ## Tests?
 - `tests/vitals_beacon_test.php`.

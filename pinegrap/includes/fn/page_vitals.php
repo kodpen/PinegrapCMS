@@ -16,6 +16,10 @@
  * Nothing about the visitor is kept, so the beacon runs whether visitor
  * tracking is on or not. Crawlers and scripts are not counted.
  *
+ * The signature names the page and the day it was drawn (today and yesterday
+ * are accepted), and one address may send PG_VITALS_RATE_LIMIT beacons a
+ * minute. The general job removes days older than PG_VITALS_DAYS once a day.
+ *
  * The rollup is derived data: a wrong bucket is truncated and refilled by the
  * hours that follow, never fixed in place.
  *
@@ -28,6 +32,21 @@
 if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
+
+/**
+ * Days the rollup keeps.
+ */
+define('PG_VITALS_DAYS', 400);
+
+/**
+ * Beacons one address may send in a minute; the rest are dropped.
+ */
+define('PG_VITALS_RATE_LIMIT', 30);
+
+/**
+ * The state file of the daily sweep, under data/temp.
+ */
+define('PG_VITALS_SWEEP_STATE', 'page_vitals_sweep.json');
 
 /**
  * True when the 2026.11.0 step (11.0.149) has created page_vitals_hourly.
@@ -154,42 +173,78 @@ function pg_vitals_key($day, $hour, $page_id, $device)
 }
 
 /**
- * The signature of a page's beacon with the site's key; '' without a key or
- * a page, and then the page carries no beacon. Pure.
+ * The signature of a page's beacon for one day, with the site's key; '' without
+ * a key or a page, and then the page carries no beacon. The day bounds how
+ * long a signature copied out of a page can be replayed. Pure.
  *
  * @param int    $page_id
  * @param string $key ENCRYPTION_KEY
+ * @param string $day Y-m-d, the day the page was drawn
  * @return string
  */
-function pg_vitals_sign($page_id, $key)
+function pg_vitals_sign($page_id, $key, $day)
 {
     $page_id = (int) $page_id;
     $key = (string) $key;
 
-    if (($page_id <= 0) || ($key === '')) {
+    if (($page_id <= 0) || ($key === '') || !preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $day)) {
         return '';
     }
 
-    return hash_hmac('sha256', 'page-vitals:' . $page_id, $key);
+    return hash_hmac('sha256', 'page-vitals:' . $page_id . '|' . $day, $key);
 }
 
 /**
- * Whether a beacon's page id carries the signature this site gave it. Pure.
+ * Whether a beacon's page id carries the signature this site gave it today or
+ * yesterday: a page drawn just before midnight, or kept by the page cache
+ * (an hour at most), still reports the next day; an older signature does not.
+ * Pure.
  *
  * @param mixed  $page_id
  * @param mixed  $signature
  * @param string $key
+ * @param int    $now     timestamp, 0 for now
  * @return int the page id, 0 when it does not
  */
-function pg_vitals_verify($page_id, $signature, $key)
+function pg_vitals_verify($page_id, $signature, $key, $now = 0)
 {
     if (!is_string($page_id) || !ctype_digit($page_id) || (strlen($page_id) > 10) || !is_string($signature) || ($signature === '')) {
         return 0;
     }
 
-    $expected = pg_vitals_sign((int) $page_id, $key);
+    $now = ((int) $now > 0) ? (int) $now : time();
 
-    return (($expected !== '') && hash_equals($expected, $signature)) ? (int) $page_id : 0;
+    foreach (array(date('Y-m-d', $now), date('Y-m-d', strtotime('-1 day', $now))) as $day) {
+        $expected = pg_vitals_sign((int) $page_id, $key, $day);
+
+        if (($expected !== '') && hash_equals($expected, $signature)) {
+            return (int) $page_id;
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * Whether one more beacon from this address would pass the per-minute limit
+ * (PG_VITALS_RATE_LIMIT), counted in the firewall's rate buckets. A visitor
+ * sends one beacon a page; a loop replaying a page's signature stops here.
+ *
+ * @return bool
+ */
+function pg_vitals_rate_exceeded()
+{
+    if (!function_exists('waf_rate_exceeded') || !function_exists('waf_client_ip')) {
+        return false;
+    }
+
+    $ip = waf_client_ip();
+
+    if (function_exists('waf_ip_subject')) {
+        $ip = waf_ip_subject($ip);
+    }
+
+    return waf_rate_exceeded($ip, 'vitals', PG_VITALS_RATE_LIMIT, 60);
 }
 
 /**
@@ -318,11 +373,92 @@ function pg_vitals_beacon_inject($content, $page_id, array $draw)
         $urls ? $urls[0] : '',
         (defined('PATH') ? PATH : '/') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : 'pinegrap') . '/page_view.php',
         $page_id,
-        pg_vitals_sign($page_id, defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : ''));
+        pg_vitals_sign($page_id, defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '', date('Y-m-d')));
 
     if ($tag === '') {
         return $content;
     }
 
     return substr($content, 0, $position) . $tag . substr($content, $position);
+}
+
+/**
+ * The first day the rollup keeps: PG_VITALS_DAYS before $now. Pure.
+ *
+ * @param int $now timestamp, 0 for now
+ * @return string Y-m-d
+ */
+function pg_vitals_keep_from($now = 0)
+{
+    $now = ((int) $now > 0) ? (int) $now : time();
+
+    return date('Y-m-d', strtotime('-' . PG_VITALS_DAYS . ' days', $now));
+}
+
+/**
+ * Where the daily sweep keeps when it last finished.
+ *
+ * @return string
+ */
+function pg_vitals_sweep_file()
+{
+    return PG_FUNCTIONS_DIR . '/data/temp/' . PG_VITALS_SWEEP_STATE;
+}
+
+/**
+ * Whether the daily sweep is owed: it has not run in the last day.
+ *
+ * @return bool
+ */
+function pg_vitals_sweep_due()
+{
+    if (!pg_vitals_ready()) {
+        return false;
+    }
+
+    $state = @json_decode((string) @file_get_contents(pg_vitals_sweep_file()), true);
+    $done = (is_array($state) && isset($state['done_at'])) ? (int) $state['done_at'] : 0;
+
+    return $done < (time() - 86400);
+}
+
+/**
+ * The daily pass (job.php): the days older than PG_VITALS_DAYS go, five
+ * thousand rows at a time within the time budget. Writes the state file when
+ * through.
+ *
+ * @param int $seconds
+ * @return int rows removed
+ */
+function pg_vitals_sweep($seconds = 5)
+{
+    if (!pg_vitals_ready()) {
+        return 0;
+    }
+
+    $removed = 0;
+    $deadline = microtime(true) + max(1, (int) $seconds);
+    $keep_from = pg_vitals_keep_from();
+
+    while (microtime(true) < $deadline) {
+        if (db_q("DELETE FROM page_vitals_hourly WHERE day < ? LIMIT 5000", array($keep_from)) === false) {
+            return $removed;
+        }
+
+        $affected = max(0, (int) mysqli_affected_rows(db::$con));
+        $removed += $affected;
+
+        if ($affected < 5000) {
+            $file = pg_vitals_sweep_file();
+
+            if (!is_dir(dirname($file))) {
+                @mkdir(dirname($file), 0755, true);
+            }
+
+            @file_put_contents($file, json_encode(array('done_at' => time())), LOCK_EX);
+            break;
+        }
+    }
+
+    return $removed;
 }

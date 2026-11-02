@@ -425,6 +425,7 @@
     "general job removed {var:1} page cache file(s)": "genel görev {var:1} sayfa önbelleği dosyasını kaldırdı",
     "general job removed {var:1} page revision(s): {var:2} of deleted pages, {var:3} past the retention period": "genel iş {var:1} sayfa sürümünü sildi: {var:2} silinmiş sayfanın, {var:3} saklama süresi dolmuş",
     "general job removed {var:1} product price history row(s) older than {var:2} days": "genel görev {var:2} günden eski {var:1} ürün fiyat geçmişi satırını sildi",
+    "general job removed {var:1} row(s) from the page speed statistics": "genel iş sayfa hızı istatistiklerinden {var:1} satır kaldırdı",
     "general job removed {var:1} row(s) from the site search statistics": "genel iş site arama istatistiklerinden {var:1} satır kaldırdı",
     "general job removed {var:1} visitor record(s) older than {var:2} days": "genel görev {var:2} günden eski {var:1} ziyaretçi kaydını sildi",
     "general job took the IP address out of {var:1} visitor record(s) older than {var:2} days": "genel görev {var:2} günden eski {var:1} ziyaretçi kaydından IP adresini sildi",

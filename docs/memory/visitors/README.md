@@ -29,7 +29,7 @@ Visitor statistics, page and article views, search engine index flags.
 - page-canonical-robots-directives.md: A page's own canonical address and noarchive / max-snippet (page.canonical_url, noarchive, max_snippet; 11.0.22, #802): storage, where it applies, languages, editors, PHP/JS twin.
 - page-noindex-switch.md: What the per-page noindex/nofollow switch does in three places, which four screens write it, the sitemap query rule and the PHP/JS lockstep rule (2026.4.3).
 - page-view-beacon.md: How a visit answered from the page file cache is still counted (PR #1402): the signed beacon in the stored copy, page_view.php, what it counts and what it cannot
-- page-vitals-beacon.md: Real-user LCP/INP/CLS from pg_vitals.min.js into page_vitals_hourly (11.0.149, decision #5040): which pages carry it, the signed page id, the v= part, validation, buckets, the upsert
+- page-vitals-beacon.md: Real-user LCP/INP/CLS beacon into page_vitals_hourly (11.0.149, #5040): which pages carry it, day-signed page id, rate limit, validation, buckets, upsert, 400-day sweep
 - panel-preview-not-a-visit.md: The File Manager's page previews (preview pane, Quick look) load the page with pg_preview=1; get_page.php opens no visitor record and counts no page view for them
 - robots-large-image-preview.md: The site switch that adds max-image-preview:large to every indexed page's robots meta (config.max_image_preview_large, 11.0.51, #2175): default, new installs, where it is written
 - robots-txt-disallow-rules.md: How noindex pages are written into robots.txt: anchored lines, which User-agent group, private folders, and the no-noindex byte-identical guarantee.
