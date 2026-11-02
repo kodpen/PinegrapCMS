@@ -215,9 +215,11 @@ function test_settings_system_tools_menu_row()
 		pg_assert_same('25', settings_system_tools_menu_case_slot($source, $script), $script . ' marks the System tools row');
 	}
 
-	foreach (array('settings_general.php', 'settings_accounting.php', 'settings_privacy.php', 'translations.php') as $script) {
-		pg_assert_same('20', settings_system_tools_menu_case_slot($source, $script), $script . ' marks the Site Settings row');
+	foreach (array('settings_general.php', 'settings_accounting.php', 'settings_privacy.php') as $script) {
+		pg_assert_same(null, settings_system_tools_menu_case_slot($source, $script), $script . ' marks no row: the Site Settings row is retired');
 	}
+
+	pg_assert_same("(\$user['role'] < 2) ? 21 : 2", settings_system_tools_menu_case_slot($source, 'translations.php'), 'translations.php marks the row that lists it');
 
 	foreach (array('view_referral_sources.php', 'add_currency.php', 'edit_currency.php') as $script) {
 		pg_assert_same("(\$user['role'] <= 2) ? 25 : 15", settings_system_tools_menu_case_slot($source, $script), $script . ' marks System tools, or shipping for role 3');

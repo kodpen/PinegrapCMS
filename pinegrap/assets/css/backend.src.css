@@ -1875,7 +1875,7 @@ html[data-bs-theme="dark"] #menu .pg-mi {
 #menu .pg-mi-offers { --pg-mi-a: var(--pg-mi-rose); }
 #menu .pg-mi-shipping { --pg-mi-a: var(--pg-mi-amber); }
 #menu .pg-mi-ads { --pg-mi-a: var(--pg-mi-yellow); }
-#menu .pg-mi-settings { --pg-mi-a: var(--pg-mi-sky); }
+#menu .pg-mi-tools { --pg-mi-a: var(--pg-mi-amber); }
 /* Page Styles: the paint on the palette is every colour but its own. */
 #menu .pg-mi-styles .pg-mi-c1 { color: var(--pg-mi-sky); }
 #menu .pg-mi-styles .pg-mi-c2 { color: var(--pg-mi-amber); }
@@ -1899,6 +1899,10 @@ html[data-bs-theme="dark"] #menu .pg-mi .pg-mi-2 {
 #menu .pg-mi .pg-mi-solid {
   fill-opacity: 0.92;
 }
+/* The toolbox hides its tools until the lid opens: nothing shows through. */
+#menu .pg-mi-tools .pg-mi-solid {
+  fill-opacity: 1;
+}
 #menu .pg-mi .pg-mi-date {
   font-family: inherit;
   font-variant-numeric: tabular-nums;
@@ -1911,7 +1915,7 @@ html[data-bs-theme="dark"] #menu .pg-mi .pg-mi-2 {
 #menu .pg-mi .pg-mi-speed {
   opacity: 0;
 }
-#menu .pg-mi :is(.pg-mi-bar, .pg-mi-sun, .pg-mi-tip, .pg-mi-spark, .pg-mi-date,
+#menu .pg-mi :is(.pg-mi-bar, .pg-mi-sun, .pg-mi-tip, .pg-mi-spark, .pg-mi-date, .pg-mi-latch,
   .pg-mi-keys circle, .pg-mi-dots circle, .pg-mi-lights circle) {
   transform-box: fill-box;
   transform-origin: 50% 50%;
@@ -1924,7 +1928,7 @@ html[data-bs-theme="dark"] #menu .pg-mi .pg-mi-2 {
   /* Parts that stay moved while the row is hovered spring into place and
      back. */
   #menu .pg-mi :is(.pg-mi-flap, .pg-mi-sheet, .pg-mi-back, .pg-mi-front, .pg-mi-sun,
-    .pg-mi-rings, .pg-mi-lid, .pg-mi-l1, .pg-mi-l2, .pg-mi-l3, .pg-mi-truck) {
+    .pg-mi-rings, .pg-mi-lid, .pg-mi-l1, .pg-mi-l2, .pg-mi-l3, .pg-mi-truck, .pg-mi-kit) {
     transition: transform 0.45s var(--pg-mi-spring);
   }
   #menu .pg-mi .pg-mi-speed {
@@ -2098,10 +2102,18 @@ html[data-bs-theme="dark"] #menu .pg-mi .pg-mi-2 {
   #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-styles .pg-mi-dots circle:nth-child(3) { animation-delay: 0.16s; }
   #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-styles .pg-mi-dots circle:nth-child(4) { animation-delay: 0.24s; }
 
-  /* Site Settings: the gear turns one tooth, which lands it where it began. */
-  #menu .pg-mi-settings .pg-mi-gear { transform-origin: 12px 12px; }
-  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-settings .pg-mi-gear {
-    animation: pg-mi-turn 0.6s var(--pg-mi-spring);
+  /* System tools: the lid swings open on its right hinge, the latch gives a
+     click, and the screwdriver and the spanner come up out of the box. */
+  #menu .pg-mi-tools .pg-mi-lid { transform-origin: 21px 12px; }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-tools .pg-mi-lid {
+    transform: rotate(30deg);
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-tools .pg-mi-latch {
+    animation: pg-mi-pop 0.4s ease-out;
+  }
+  #menu .list-group-item:is(:hover, :focus-visible) .pg-mi-tools .pg-mi-kit {
+    transform: translateY(-3.6px);
+    transition-delay: 0.08s;
   }
 }
 
@@ -2126,7 +2138,6 @@ html[data-bs-theme="dark"] #menu .pg-mi .pg-mi-2 {
 @keyframes pg-mi-stream { from { transform: translateX(1.2px); } to { transform: translateX(-1.2px); } }
 @keyframes pg-mi-flare { 45% { transform: rotate(90deg) scale(1.7); } 75% { transform: rotate(160deg) scale(0.9); } to { transform: rotate(180deg); } }
 @keyframes pg-mi-tip { 30% { transform: rotate(-16deg); } 60% { transform: rotate(8deg); } 82% { transform: rotate(-3deg); } }
-@keyframes pg-mi-turn { to { transform: rotate(45deg); } }
 /*ADS*/
 body .ads-color {
   color: var(--ads-color) !important;
@@ -2709,7 +2720,49 @@ body:not(.toolbar) .software-content {
   background: rgba(var(--pg-primary-rgb), 0.18);
   font-weight: 600;
 }
-/* An entry that opens a second-level panel (Site Settings): its arrow sits
+/* Two colours for an entry's icon, as on the rows: the glyph in the module's
+   colour on a tile of its other shade. The panel names its module
+   (data-pg-menu-tone, pg_menu_panel()); the themes swap the two shades as
+   they do for the row icons (.pg-mi-2). The tile is about as tall as the
+   text line was with its padding, so the entries keep their height. */
+#menu .pg-menu-panel[data-pg-menu-tone="dashboard"] { --pg-menu-tone: var(--dashboard-color); --pg-menu-tone-2: var(--dashboard-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="workspace"] { --pg-menu-tone: var(--workspace-color); --pg-menu-tone-2: var(--workspace-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="folders"] { --pg-menu-tone: var(--folders-color); --pg-menu-tone-2: var(--folders-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="pages"] { --pg-menu-tone: var(--pages-color); --pg-menu-tone-2: var(--pages-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="calendars"] { --pg-menu-tone: var(--calendars-color); --pg-menu-tone-2: var(--calendars-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="forms"] { --pg-menu-tone: var(--forms-color); --pg-menu-tone-2: var(--forms-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="statistics"] { --pg-menu-tone: var(--statistics-color); --pg-menu-tone-2: var(--statistics-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="contacts"] { --pg-menu-tone: var(--contacts-color); --pg-menu-tone-2: var(--contacts-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="users"] { --pg-menu-tone: var(--users-color); --pg-menu-tone-2: var(--users-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="campaigns"] { --pg-menu-tone: var(--campaigns-color); --pg-menu-tone-2: var(--campaigns-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="erp"] { --pg-menu-tone: var(--erp-color); --pg-menu-tone-2: var(--erp-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="ecommerce"] { --pg-menu-tone: var(--ecommerce-color); --pg-menu-tone-2: var(--ecommerce-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="ads"] { --pg-menu-tone: var(--ads-color); --pg-menu-tone-2: var(--ads-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="design"] { --pg-menu-tone: var(--design-color); --pg-menu-tone-2: var(--design-color-highlight); }
+#menu .pg-menu-panel[data-pg-menu-tone="settings"] { --pg-menu-tone: var(--settings-color); --pg-menu-tone-2: var(--settings-color-highlight); }
+#menu .menu-body .pg-menu-panel[data-pg-menu-tone] .pg-menu-panel-body > a.bi {
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
+}
+/* Bootstrap Icons' own ::before rule is unlayered, so its line-height of 1
+   beats this layer: the glyph is centred in the tile by the top padding. */
+#menu .menu-body .pg-menu-panel[data-pg-menu-tone] .pg-menu-panel-body > a.bi::before {
+  box-sizing: border-box;
+  width: 1.625rem;
+  height: 1.625rem;
+  padding-top: calc((1.625rem - 0.9375rem) / 2);
+  border-radius: var(--pg-radius);
+  text-align: center;
+  font-size: 0.9375rem;
+  color: var(--pg-menu-tone);
+  background: color-mix(in srgb, var(--pg-menu-tone-2) 45%, transparent);
+}
+html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .pg-menu-panel-body > a.bi::before {
+  color: var(--pg-menu-tone-2);
+  background: color-mix(in srgb, var(--pg-menu-tone) 55%, transparent);
+}
+
+/* An entry that opens a second-level panel (System tools): its arrow sits
    in its right padding, as on the rows. */
 #menu .menu-body .pg-menu-panel-body > a.pg-menu-parent {
   position: relative;
