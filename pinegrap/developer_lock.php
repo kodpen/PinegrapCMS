@@ -124,9 +124,17 @@ if (!$_POST) {
 } else {
     validate_token_field();
     $liveform_settings = new liveform('developer_lock');
-    $pin = str_replace("'", '', $_POST['pin']);
+    $pin = str_replace("'", '', is_string($_POST['pin'] ?? null) ? $_POST['pin'] : '');
+
+    // The PIN is a few digits shared by everyone it unlocks for: without a
+    // limit every value can be tried in turn. Wrong PINs are counted by the
+    // sign-in throttle against this account and address, as on the other
+    // doors that take a password, and a locked one is refused (429) before
+    // the PIN is compared.
+    pg_login_throttle_guard($SUser);
 
     if (hash_equals((string) DEVELOPER_PIN, (string) $pin)) {
+        pg_login_throttle_pass($SUser);
         $hash = md5($pin);
         $query = "UPDATE user
                   SET user_devpasspin = ?
@@ -142,6 +150,7 @@ if (!$_POST) {
         exit;
 
     } else {
+        pg_login_record_failure($SUser);
         $liveform_settings->mark_error('error', lang('Unlock pin is not correct'));
         log_activity(lang(array(
             'string'=>'Unlock Pin is not correct for access to {var:1}',
