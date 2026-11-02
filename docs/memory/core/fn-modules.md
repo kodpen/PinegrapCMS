@@ -93,6 +93,7 @@ description: Generated from the module field of the memory files: each includes/
 - `product_questions`: [[product-questions]], [[product-questions-output]]
 - `prototype`: [[designer-prototype-viewer]]
 - `prototype_links`: [[designer-prototype-share-links]]
+- `prototype_map`: [[prototype-map-read]]
 - `record_revisions`: [[collection-history]], [[collection-revisions]]
 - `returns`: [[bootstrap-6-runtime-markup]]
 - `reviews`: [[product-review-photos]], [[product-reviews-verified]]
