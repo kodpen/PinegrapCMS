@@ -226,13 +226,13 @@ if (!$_POST) {
         // then add button to allow user to create a user for this contact.
         $output_create_user_button = '';
         if (USER_ROLE < 3) {
-            $output_create_user_button = lang(array('string'=>' {var:1} connected to this contact.','vars'=>array('<a class="alert-link" href="' . h(PATH . SOFTWARE_DIRECTORY . '/add_user.php?contact_id=' . $_GET['id']) . '">' . lang('Create an User') . '</a>') ));
+            $output_create_user_button = ' <a class="alert-link" href="' . h(PATH . SOFTWARE_DIRECTORY . '/add_user.php?contact_id=' . $_GET['id']) . '">' . h(lang('Create a user for this contact')) . '</a>';
         }
 
         $output_user_info ='
         <div class="col-12 my-3">
             <div class="alert theme-primary">
-                <p class="mb-0">' . lang('This Contact does not currently have a User connected to it.') . $output_create_user_button . '</p>
+                <p class="mb-0">' . h(lang('This contact has no user connected to it.')) . $output_create_user_button . '</p>
             </div>
         </div>';
     }
@@ -377,6 +377,8 @@ if (!$_POST) {
         $contact_id = (string) ($_POST['id'] ?? '');
 
         $_POST['email_address'] = pg_contact_form_email($_POST['email_address'] ?? '');
+
+        pg_contact_form_check($user, pg_contact_form_all_groups(), $_POST);
 
         $columns = pg_contact_form_columns($_POST, $user['id']);
         $columns['parasut_contact_id'] = trim(pg_contact_form_posted($_POST, 'parasut_contact_id'));
