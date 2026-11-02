@@ -160,6 +160,16 @@ pg_wishlist_trim_daily();
 
 pg_stock_notify_trim_daily();
 
+// Pre-orders whose date has come or whose stock is in end (includes/fn/
+// preorder.php): the flag is cleared, the back order stays. Once an hour.
+$preorders_ended = pg_preorder_end_hourly();
+
+if ($preorders_ended > 0) {
+
+    log_activity(lang(array('string' => 'general job ended the pre-order of {var:1} product(s)', 'vars' => array(pg_format_number($preorders_ended, 0)))), 'UNKNOWN');
+
+}
+
 // Shipping label documents whose time is up (includes/fn/shipment_labels.php):
 // 30 days after delivery or cancellation, 90 days after creation at the
 // latest. Once a day; the rows stay with their orders.

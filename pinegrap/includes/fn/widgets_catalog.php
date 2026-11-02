@@ -1706,6 +1706,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                              xref.new_date  AS xref_new_date";
         }
         $rating_cols = _pg_catalog_rating_columns(pg_reviews_ready());
+        $preorder_cols = pg_preorder_select_sql('products', pg_product_preorder_ready());
+        $preorder_today = pg_preorder_today();
         $products = db_items(
             "SELECT
                  products.id, products.name, products.address_name,
@@ -1716,7 +1718,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                  products.out_of_stock_message,
                  products.mpn, products.gtin, products.brand, products.weight,
                  products.shippable, products.taxable, products.reward_points,
-                 products.seo_score, $rating_cols,
+                 products.seo_score, $rating_cols$preorder_cols,
                  products.custom_field_1, products.custom_field_2,
                  products.custom_field_3, products.custom_field_4
                  " . pg_sw_entity_select('product', 'products') . "
@@ -2014,6 +2016,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             // shelf. See the catalog_item_view twin.
             '__out_of_stock_message'=> ($oos_notice && !empty($p['out_of_stock_message']))
                                            ? _pg_rich_text_to_inline($p['out_of_stock_message']) : '',
+            // __preorder, __preorder_date, __preorder_label (includes/fn/preorder.php).
+        ) + pg_preorder_tokens($p, $preorder_today) + array(
 
             // Identity
             '__sku'                 => isset($p['mpn']) ? (string)$p['mpn'] : '',  // alias — Pinegrap uses MPN
@@ -5046,6 +5050,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     // The AI marks of the product's texts (^^__ai_generated^^), read only
     // where the upgrade added the column.
     $_civ_ai_col = pg_ai_fields_ready('product') ? ', products.ai_fields' : '';
+    $_civ_preorder_cols = pg_preorder_select_sql('products', pg_product_preorder_ready());
 
     $p = null;
     if ($product_address_name !== '') {
@@ -5059,7 +5064,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                  products.out_of_stock_message,
                  products.mpn, products.gtin, products.brand, products.weight,
                  products.shippable, products.taxable, products.reward_points,
-                 products.seo_score, $_civ_rating_cols$_civ_ai_col,
+                 products.seo_score, $_civ_rating_cols$_civ_ai_col$_civ_preorder_cols,
                  products.custom_field_1, products.custom_field_2,
                  products.custom_field_3, products.custom_field_4
                  " . pg_sw_entity_select('product', 'products') . "
@@ -5128,7 +5133,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                          products.out_of_stock_message,
                          products.mpn, products.gtin, products.brand, products.weight,
                          products.shippable, products.taxable, products.reward_points,
-                         products.seo_score, $_civ_rating_cols$_civ_ai_col,
+                         products.seo_score, $_civ_rating_cols$_civ_ai_col$_civ_preorder_cols,
                          products.custom_field_1, products.custom_field_2,
                          products.custom_field_3, products.custom_field_4
                          " . pg_sw_entity_select('product', 'products') . "
@@ -5152,7 +5157,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                  products.out_of_stock_message,
                  products.mpn, products.gtin, products.brand, products.weight,
                  products.shippable, products.taxable, products.reward_points,
-                 products.seo_score, $_civ_rating_cols$_civ_ai_col,
+                 products.seo_score, $_civ_rating_cols$_civ_ai_col$_civ_preorder_cols,
                  products.custom_field_1, products.custom_field_2,
                  products.custom_field_3, products.custom_field_4
                  " . pg_sw_entity_select('product', 'products') . "
@@ -5582,6 +5587,9 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             '__out_of_stock'         => '0',
             '__out_of_stock_label'   => '',
             '__out_of_stock_message' => '',
+            '__preorder'             => '0',
+            '__preorder_date'        => '',
+            '__preorder_label'       => '',
             '__sku'                  => '',
             '__mpn'                  => '',
             '__gtin'                 => '',
@@ -5890,6 +5898,8 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             // bound element via the standard token cleanup.
             '__out_of_stock_message' => ($oos_notice && !empty($p['out_of_stock_message']))
                                             ? _pg_rich_text_to_inline($p['out_of_stock_message']) : '',
+            // __preorder, __preorder_date, __preorder_label (includes/fn/preorder.php).
+        ) + pg_preorder_tokens($p, pg_preorder_today()) + array(
 
             // Identity
             '__sku'                  => isset($p['mpn']) ? (string)$p['mpn'] : '',  // alias

@@ -7604,7 +7604,8 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 p.id AS product_id, p.address_name, p.image_name,
                 p.short_description, p.full_description,
                 p.form AS product_has_form, p.form_name, p.form_quantity_type,
-                p.gift_card AS product_is_gift_card" . $_ov_entity_sql . ",
+                p.gift_card AS product_is_gift_card,
+                p.inventory, p.inventory_quantity" . pg_preorder_select_sql('p', pg_product_preorder_ready()) . $_ov_entity_sql . ",
                 st.first_name AS st_first_name, st.last_name AS st_last_name,
                 st.address_1 AS st_address_1, st.city AS st_city,
                 st.state AS st_state, st.zip_code AS st_zip, st.country AS st_country
@@ -7616,6 +7617,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     );
 
     $items = array();
+    $_ov_today = pg_preorder_today();
     if (is_array($item_rows)) {
         foreach ($item_rows as $r) {
             $qty        = (int)$r['quantity'];
@@ -7672,6 +7674,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 'url'               => $item_url,
                 'ship_to'           => $item_ship_to,
                 'ship_to_id'        => (int)$r['ship_to_id'],
+                // "Pre-order, ships from <date>" while the product's
+                // pre-order runs (includes/fn/preorder.php), else ''.
+                'preorder_label'    => pg_preorder_label($r, $_ov_today),
                 'entity'            => $item_entity,
             );
         }
@@ -8157,6 +8162,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
                 '__item_url'               => h($item['url']),
                 // Per-item shipping (one-liner; empty for digital products)
                 '__item_ship_to'           => h($item['ship_to']),
+                '__item_preorder_label'    => h($item['preorder_label']),
                 // Whether the item's product form answers and gift cards
                 // have rows (the item form and gift card parts' boxes).
                 '__item_has_form_data'     => !empty($item['has_form_data']) ? '1' : '',

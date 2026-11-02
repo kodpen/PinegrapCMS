@@ -217,6 +217,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/order_view.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_icon.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/speculation.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_customs.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/preorder.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/variant_set_copy.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/text_search.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/graph_canvas.php');

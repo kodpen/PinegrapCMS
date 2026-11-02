@@ -14397,6 +14397,9 @@ const StyleDesigner = (function () {
         '__tax_shipping_notice': _sdT('Tax and shipping will be calculated at checkout.'),
         '__item_stock_warning': _sdT('Only 3 left'),
         '__item_out_of_stock_message': _sdT('This product is out of stock right now.'),
+        '__item_preorder_label': _sdT('Pre-order, ships from {var:1}', _sdDateSample(false)),
+        '__preorder_label': _sdT('Pre-order, ships from {var:1}', _sdDateSample(false)),
+        '__preorder_date': _sdDateSample(false),
         '__arrival_date': _sdDateSample(false),
         // Favourites: the day a product was saved.
         '__added_date': _sdDateSample(false),
@@ -39966,7 +39969,10 @@ const StyleDesigner = (function () {
             ['__backorder',          _sdT('Whether backorder is allowed')],
             ['__out_of_stock',       _sdT('Out of stock (0/1)')],
             ['__out_of_stock_label', _sdT('Out of stock label')],
-            ['__out_of_stock_message',_sdT('Out of stock message')]
+            ['__out_of_stock_message',_sdT('Out of stock message')],
+            ['__preorder',           _sdT('On pre-order (0/1)')],
+            ['__preorder_date',      _sdT('Pre-order ships from (date)')],
+            ['__preorder_label',     _sdT('Pre-order note')]
         ]},
         { label: _sdT('Identification'), tokens: [
             ['__sku',           'SKU (= MPN)'],
@@ -40151,7 +40157,10 @@ const StyleDesigner = (function () {
             ['__backorder',          _sdT('Whether backorder is allowed')],
             ['__out_of_stock',       _sdT('Out of stock (0/1)')],
             ['__out_of_stock_label', _sdT('Out of stock label')],
-            ['__out_of_stock_message',_sdT('Out of stock message')]
+            ['__out_of_stock_message',_sdT('Out of stock message')],
+            ['__preorder',           _sdT('On pre-order (0/1)')],
+            ['__preorder_date',      _sdT('Pre-order ships from (date)')],
+            ['__preorder_label',     _sdT('Pre-order note')]
         ]},
         { label: _sdT('Identification'), tokens: [
             ['__sku',           'SKU (= MPN)'],
@@ -41108,7 +41117,8 @@ const StyleDesigner = (function () {
             ['__item_stock_warning',      _sdT('Low stock warning ("Only 3 left")')],
             ['__item_inventory_quantity', _sdT('Remaining stock quantity')],
             ['__item_out_of_stock',       _sdT('Whether it is out of stock (1 / empty)')],
-            ['__item_out_of_stock_message', _sdT('The product\'s own out-of-stock message')]
+            ['__item_out_of_stock_message', _sdT('The product\'s own out-of-stock message')],
+            ['__item_preorder_label',     _sdT('Pre-order note')]
         ]},
         { label: _sdT('Product row — Row Type'), tokens: [
             ['__item_is_donation',       _sdT('Whether it is a donation row (1 / empty) — an amount is entered instead of a quantity')],
@@ -41258,6 +41268,7 @@ const StyleDesigner = (function () {
             ['__item_image_alt',         _sdT('Image alt text')],
             ['__item_url',               _sdT('Product detail page URL')],
             ['__item_ship_to',           _sdT('This item\'s shipping address')],
+            ['__item_preorder_label',    _sdT('Pre-order note')],
             // The item form and gift card parts' boxes show by these; their
             // rows are the order.item_forms and order.item_gift_cards lists.
             ['__item_has_form_data',     _sdT('Has product form answers (1 or empty)')],

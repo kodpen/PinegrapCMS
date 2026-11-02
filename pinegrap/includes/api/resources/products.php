@@ -83,6 +83,9 @@ function api_product_present($row, $extras = array(), $with_issues = false) {
 		// none, and the label service's shop default is used.
 		'hs_code'           => api_product_customs_value($row, 'hs_code'),
 		'origin_country'    => api_product_customs_value($row, 'origin_country'),
+		// The day a running pre-order ships from (YYYY-MM-DD), null when the
+		// product is not on pre-order (includes/fn/preorder.php).
+		'preorder_date'     => api_product_preorder_date($row),
 		'inventory' => array(
 			'tracked'      => ((int)$row['inventory'] === 1),
 			'quantity'     => (int)$row['inventory_quantity'],
@@ -160,6 +163,15 @@ function api_product_rating($row) {
 function api_product_customs_value($row, $column) {
 
 	return (isset($row[$column]) && ((string)$row[$column] !== '')) ? (string)$row[$column] : null;
+
+}
+
+// The running pre-order's date as the product object carries it, or null.
+function api_product_preorder_date($row) {
+
+	$date = pg_preorder_active_date($row, pg_preorder_today());
+
+	return ($date !== '') ? $date : null;
 
 }
 
@@ -309,6 +321,7 @@ function api_product_select() {
 			products.inventory, products.inventory_quantity, products.out_of_stock,
 			products.tax_rate,
 			" . (pg_product_customs_ready() ? "products.hs_code, products.origin_country," : "'' AS hs_code, '' AS origin_country,") . "
+			" . ltrim(pg_preorder_select_sql('products', pg_product_preorder_ready()), ', ') . ",
 			" . (pg_bundles_ready() ? "products.bundle, products.bundle_pricing, products.bundle_discount_bp," : "0 AS bundle, 'fixed' AS bundle_pricing, 0 AS bundle_discount_bp,") . "
 			" . (pg_reviews_ready() ? "products.rating_avg, products.rating_count," : "0 AS rating_avg, 0 AS rating_count,") . "
 			" . (api_catalog_bin_columns() ? "products.recycled," : "0 AS recycled,") . "
@@ -670,6 +683,7 @@ function api_products_create($params) {
 	}
 
 	$product = array_merge($product, api_products_customs_param($params));
+	$product = array_merge($product, api_products_preorder_param($params));
 
 	// Absent means "follow the tax zone", which is the column default. Present
 	// and empty means the same thing said out loud, and both write NULL.
@@ -849,6 +863,44 @@ function api_products_customs_param($params) {
 	}
 
 	return $values;
+
+}
+
+// The pre-order columns a write's preorder_date asks for, as the product
+// screen stores them: a date after today puts the product on pre-order and
+// turns the back order on with it; null or an empty value ends it. 422 for
+// any other date, 503 before the 11.0.151 step has added the columns.
+function api_products_preorder_param($params) {
+
+	if (!array_key_exists('preorder_date', $params)) {
+
+		return array();
+
+	}
+
+	if (!pg_product_preorder_ready()) {
+
+		api_fail(503, 'service_unavailable', lang('The database has to be updated first.'));
+
+	}
+
+	$date = pg_preorder_date_parse($params['preorder_date']);
+
+	if ($date === '') {
+
+		return array('preorder' => 0, 'preorder_date' => null);
+
+	}
+
+	$problem = pg_preorder_problem(true, $params['preorder_date'], pg_preorder_today());
+
+	if ($problem !== '') {
+
+		api_fail_validation(lang($problem), 'preorder_date');
+
+	}
+
+	return pg_preorder_from_post(array('preorder' => 1, 'preorder_date' => $date));
 
 }
 
@@ -1227,6 +1279,12 @@ function api_products_update($params) {
 	foreach (api_products_customs_param($params) as $column => $value) {
 
 		$set[] = $column . " = '" . escape($value) . "'";
+
+	}
+
+	foreach (api_products_preorder_param($params) as $column => $value) {
+
+		$set[] = $column . " = " . (($value === null) ? 'NULL' : "'" . escape((string)$value) . "'");
 
 	}
 
@@ -2275,6 +2333,7 @@ function api_product_schema() {
 		// '' in the column (the shop default) answers null.
 		'hs_code'           => 'string?',
 		'origin_country'    => 'string?',
+		'preorder_date'     => 'string?',
 		'inventory'         => array(
 			'tracked'      => 'boolean',
 			'quantity'     => 'integer',

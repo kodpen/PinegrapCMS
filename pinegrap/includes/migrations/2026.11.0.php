@@ -139,6 +139,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_product_questions();       // 11.0.148
 	upgrade_2026_11_0_page_vitals_hourly();      // 11.0.149
 	upgrade_2026_11_0_ai_fetch_daily();          // 11.0.150
+	upgrade_2026_11_0_product_preorder();        // 11.0.151
 
 }
 
@@ -4506,5 +4507,19 @@ function upgrade_2026_11_0_ai_fetch_daily() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('AI crawlers: each day\'s fetches by AI assistants and AI search indexers are now counted per page.');
+
+}
+
+// Pre-order of a product (2026.11.0, 11.0.151; includes/fn/preorder.php).
+//
+// preorder marks a product sold before its stock arrives, preorder_date the
+// day it ships from. 0 and NULL mean no pre-order, so the two columns change
+// nothing on existing rows.
+function upgrade_2026_11_0_product_preorder() {
+
+	install_add_column('products', 'preorder', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('products', 'preorder_date', "DATE NULL DEFAULT NULL");
+
+	install_note('Products: a product can be sold on pre-order until the date its stock is expected; the catalog, the cart and the order mails show the date it ships from.');
 
 }

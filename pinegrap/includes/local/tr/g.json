@@ -413,6 +413,7 @@
     "general": "genel",
     "general job cancelled unpaid bank transfer order #{var:1} after {var:2} day(s)": "genel görev, ödenmemiş #{var:1} numaralı havale siparişini {var:2} gün sonra iptal etti",
     "general job corrected the rating of {var:1} product(s) from their reviews": "genel iş {var:1} ürünün puanını değerlendirmelerinden yeniden hesaplayarak düzeltti",
+    "general job ended the pre-order of {var:1} product(s)": "genel görev {var:1} ürünün ön satışını bitirdi",
     "general job made {var:1} WebP image copies ahead of visitors": "genel görev ziyaretçilerden önce {var:1} WebP görsel kopyası oluşturdu",
     "general job made {var:1} panel thumbnails ahead of the File Manager": "genel görev Dosya Yöneticisi'nden önce {var:1} panel küçük resmi oluşturdu",
     "general job published {var:1} scheduled comment(s)": "genel görev {var:1} zamanlanmış yorumu yayımladı",
