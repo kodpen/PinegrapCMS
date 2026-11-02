@@ -879,6 +879,12 @@ function pg_explorer_folder_payload($folder, $counts, $user, $folders_that_user_
 
     $count = isset($counts[$folder_id]) ? $counts[$folder_id] : array('folders' => 0, 'pages' => 0, 'files' => 0);
 
+    // Rights holders and the totals of the whole subtree are for designers
+    // and managers; a basic user may not see every sub-folder or right.
+    if ((int) $user['role'] > 2) {
+        unset($count['rights_users'], $count['total']);
+    }
+
     return array(
         'kind' => 'folder',
         'id' => $folder_id,

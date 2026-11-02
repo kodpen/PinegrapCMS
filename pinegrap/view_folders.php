@@ -7345,7 +7345,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             // Who holds a right on the folder itself, with the drawer that
             // lists and changes them.
-            if ((item.counts.rights_users > 0) || (item.access_control_type === 'private') || (item.access_control_type === 'membership')) {
+            if ((typeof item.counts.rights_users === 'number') && ((item.counts.rights_users > 0) || (item.access_control_type === 'private') || (item.access_control_type === 'membership'))) {
                 rows += '<tr><th>' + esc(L.access_user_rights) + '</th><td>' + esc(fmt(L.rights_users_count, [item.counts.rights_users || 0])) +
                     (item.can_edit ? ' · <a href="#" draggable="false" class="pg-link-secondary" data-role="open-access">' + esc(L.access_permissions) + '</a>' : '') + '</td></tr>';
             }
