@@ -77,7 +77,11 @@ function pg_test_form_adorn_cases()
 	// Settings cards: every single add-on field keeps its <label for> above the wrapper.
 	foreach (pg_test_form_adorn_settings_fields() as $file => $ids) {
 		foreach ($ids as $id => $add_on) {
-			$cases[] = array($root . 'includes/settings/' . $file, 'id="' . $id . '"', 'for="' . $id . '"', 'form-adorn-end', $add_on);
+			// An entry given as array(add-on, class) sets its wrapper class
+			// at run time (the % sign on the side the language writes it).
+			$class = is_array($add_on) ? $add_on[1] : 'form-adorn-end';
+			$add_on = is_array($add_on) ? $add_on[0] : $add_on;
+			$cases[] = array($root . 'includes/settings/' . $file, 'id="' . $id . '"', 'for="' . $id . '"', $class, $add_on);
 		}
 	}
 
@@ -101,8 +105,8 @@ function pg_test_form_adorn_settings_fields()
 		),
 		'contact.php' => array('mailchimp_sync_days' => "lang('days in the past')"),
 		'features.php' => array(
-			'image_quality_webp' => '>%</span>',
-			'image_quality_avif' => '>%</span>',
+			'image_quality_webp' => array('>%</span>', '$image_quality_adorn'),
+			'image_quality_avif' => array('>%</span>', '$image_quality_adorn'),
 			'image_product_max_dimension' => "lang('pixels')",
 			'image_product_min_dimension' => "lang('pixels')",
 			'image_file_resize_trigger' => "lang('pixels')",
