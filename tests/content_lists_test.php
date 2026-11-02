@@ -43,7 +43,6 @@ function test_content_lists_check_marks_named()
 		'view_regions.php' => 3,
 		'view_fields.php' => 2,
 		'view_menu_items.php' => 1,
-		'view_files.php' => 1,
 		'view_design_files.php' => 1,
 	);
 
@@ -56,7 +55,7 @@ function test_content_lists_check_marks_named()
 
 function test_content_lists_folder_and_home_ligatures()
 {
-	foreach (array('view_pages.php', 'view_files.php', 'view_design_files.php') as $path) {
+	foreach (array('view_pages.php', 'view_design_files.php') as $path) {
 		$source = content_lists_source($path);
 		pg_assert_false(strpos($source, '<span class="material-icons d-inline">folder</span>') !== false, $path . ': folder ligature read aloud');
 		pg_assert_contains('pg_folder_list_name($', $source, $path);
@@ -70,7 +69,6 @@ function test_content_lists_row_checkboxes_named()
 {
 	$expect = array(
 		'view_pages.php' => '$page[\'page_name\']',
-		'view_files.php' => '$file[\'name\']',
 		'view_design_files.php' => '$file[\'name\']',
 		'view_fields.php' => '$name',
 	);
@@ -82,7 +80,7 @@ function test_content_lists_row_checkboxes_named()
 
 function test_content_lists_file_download_and_thumbnail()
 {
-	foreach (array('view_files.php', 'view_design_files.php') as $path) {
+	foreach (array('view_design_files.php') as $path) {
 		$source = content_lists_source($path);
 		pg_assert_false(strpos($source, 'download="\' . h($file[\'type\']) . \'"') !== false, $path . ': file type as download name');
 		pg_assert_contains('download="\' . h($file[\'name\']) . \'"', $source, $path);

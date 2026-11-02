@@ -1643,7 +1643,7 @@ function test_comments_widget_draw_end_to_end()
 	));
 	$login_data['thread_values']['__login_url'] = '/sign-in?send_to=%2Fp%23software_add_comment';
 	$login = pg_comments_widget_draw(comments_widget_test_stamped_tree(), $login_data);
-	pg_assert_true((bool) preg_match('#<a href="/sign-in\\?send_to=%2Fp%23software_add_comment" class="fw-semibold" rel="nofollow"#', $login), 'the sign-in link, nofollow');
+	pg_assert_true((bool) preg_match('#<a href="/sign-in\\?send_to=%2Fp%23software_add_comment" class="alert-link" rel="nofollow"#', $login), 'the sign-in link, nofollow');
 	pg_assert_false(strpos($login, '<form'), 'no form until signed in');
 
 	// A layout without a loop_area draws its comments in the default card.
@@ -1827,7 +1827,7 @@ function test_comments_widget_draw_replies()
 		// The starter's box carries d-flex, which beats Bootstrap's [hidden]:
 		// d-none comes after it.
 		pg_assert_contains('<div class="alert alert-secondary d-flex flex-wrap align-items-center gap-2 py-2 small d-none" data-pg-comment-replying="" hidden="">', $idle, 'not replying: the box waits, hidden');
-		pg_assert_contains('class="ms-auto d-none" data-pg-comment-reply-cancel="" data-pg-comment-replying="" hidden="">Cancel</a>', $idle, 'and its way out');
+		pg_assert_contains('class="ms-auto alert-link d-none" data-pg-comment-reply-cancel="" data-pg-comment-replying="" hidden="">Cancel</a>', $idle, 'and its way out');
 
 		$data['controls']['can_reply'] = false;
 		$data['rows'][0]['reply_ok'] = false;

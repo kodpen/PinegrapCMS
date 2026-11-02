@@ -36,15 +36,15 @@ function pg_dashboard_widget_18($request, $user)
     //
     //   0 administrator  everything
     //   1 designer       everything
-    //   2 manager        design files excluded — view_files.php
-    //                    and optimize.php both refuse them above
-    //                    role 1, so listing them would only
-    //                    produce a dead end
+    //   2 manager        design files excluded — optimize.php
+    //                    refuses them above role 1, so listing
+    //                    them would only produce a dead end
     //   3 contributor    design files excluded, and narrowed to
     //                    the folders granted with edit rights
     //
     // Archived folders are left out for everyone, matching the
-    // default view_files.php listing.
+    // File Manager's Files view, which shows them only under its
+    // Archived files scope.
 
     // Above this an image is too heavy for a web page however
     // well it is compressed, so it is reported even when the row
@@ -82,41 +82,8 @@ function pg_dashboard_widget_18($request, $user)
     $fm_image_settings = pg_image_settings();
     $fm_resize_target  = $fm_image_settings['file_max_dimension'];
 
-    $fm_where = "(folder.folder_archived = '0')";
-
-    // Design files belong to designers and administrators.
-    if ($user['role'] > 1) {
-        $fm_where .= " AND (files.design = '0')";
-    }
-
-    $fm_no_access = false;
-
-    // Contributors see only the folders they were granted edit
-    // rights on, plus those folders' children. Resolved into the
-    // WHERE clause rather than by filtering rows afterwards: on a
-    // site with thousands of files, reading them all to discard
-    // most would make this the most expensive card on a dashboard
-    // that reloads on every visit.
-    if ($user['role'] == 3) {
-
-        $fm_folders = get_folders_that_user_has_access_to($user['id']);
-
-        if ($fm_folders) {
-
-            $fm_folder_ids = array();
-
-            foreach ($fm_folders as $fm_folder_id) {
-                $fm_folder_ids[] = "'" . e($fm_folder_id) . "'";
-            }
-
-            $fm_where .= " AND (files.folder IN (" . implode(',', $fm_folder_ids) . "))";
-
-        } else {
-            // Granted nothing: no query can return a row this user
-            // is allowed to touch.
-            $fm_no_access = true;
-        }
-    }
+    $fm_where = pg_dashboard_files_where($user);
+    $fm_no_access = ($fm_where === null);
 
     $fm_image_list = array();
 
@@ -235,8 +202,7 @@ function pg_dashboard_widget_18($request, $user)
             && in_array(mb_strtolower($fm_item['type']), $fm_optimizable_types));
 
         // Read from the cached column only. Filling it in means
-        // decoding and recompressing the image, which view_files.php
-        // does deliberately and under a threshold; a dashboard that
+        // decoding and recompressing the image; a dashboard that
         // every logged-in user loads is the wrong place to start
         // that work.
         $fm_percent = '';
@@ -422,7 +388,7 @@ function pg_dashboard_widget_18($request, $user)
         ' . $fm_cap_note . '
     </div>
     <div class="card-footer border-0 bg-reset py-1 text-center">
-        <a href="view_files.php" class="text-decoration-none" style="font-size:.6875rem">'
+        <a href="view_folders.php?view=files" class="text-decoration-none" style="font-size:.6875rem">'
         . lang('Files') . ' <i class="bi bi-arrow-right-short"></i></a>
     </div>';
 
@@ -432,4 +398,53 @@ function pg_dashboard_widget_18($request, $user)
         'data' => $output_data,
     );
     return $response;
+}
+
+/**
+ * The files condition for what the person may edit: archived folders left
+ * out, design files only for designers and administrators, a contributor
+ * narrowed to the folders granted. Shared with the new dashboard's File
+ * management card.
+ *
+ * @param array $user
+ * @return string|null SQL condition on files and folder; null when nothing
+ *                     is granted
+ */
+function pg_dashboard_files_where($user)
+{
+    $fm_where = "(folder.folder_archived = '0')";
+
+    // Design files belong to designers and administrators.
+    if ($user['role'] > 1) {
+        $fm_where .= " AND (files.design = '0')";
+    }
+
+    // Contributors see only the folders they were granted edit
+    // rights on, plus those folders' children. Resolved into the
+    // WHERE clause rather than by filtering rows afterwards: on a
+    // site with thousands of files, reading them all to discard
+    // most would make this the most expensive card on a dashboard
+    // that reloads on every visit.
+    if ($user['role'] == 3) {
+
+        $fm_folders = get_folders_that_user_has_access_to($user['id']);
+
+        if ($fm_folders) {
+
+            $fm_folder_ids = array();
+
+            foreach ($fm_folders as $fm_folder_id) {
+                $fm_folder_ids[] = "'" . e($fm_folder_id) . "'";
+            }
+
+            $fm_where .= " AND (files.folder IN (" . implode(',', $fm_folder_ids) . "))";
+
+        } else {
+            // Granted nothing: no query can return a row this user
+            // is allowed to touch.
+            return null;
+        }
+    }
+
+    return $fm_where;
 }

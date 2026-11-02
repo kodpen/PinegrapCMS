@@ -32,11 +32,6 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM folder WHERE folder_id = 
 
 
 
-$send_to = '';
-if(isset($_GET['send_to']) && ($_GET['send_to'] ?? '') != ''){
-    $send_to = '&send_to=' . urlencode($_GET['send_to'] ?? '');
-}
-
 $form = new liveform('duplicate_folder');
 
 $folder = db_item(
@@ -56,6 +51,11 @@ if (!check_edit_access($folder['parent']) or (USER_ROLE == 3 and !$user['create_
     log_activity(lang(array('string'=>'Access denied to duplicate folder ({var:1}) because user does not have edit access to parent folder.','vars'=>array($folder['name']) )) );
     output_error(lang('Access denied.'));
 }
+
+// Opened from the File Manager's folder menu: Cancel, the breadcrumb and the
+// finished duplicate go back to where it was opened, else to the folder the
+// duplicate is made in.
+$back_url = pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?folder=' . (int) $folder['parent']);
 
 // If the form has not been submitted, then output it.
 if (!$_POST) {
@@ -84,13 +84,14 @@ if (!$_POST) {
         'extra classes'=>'design',
         'icon'=>'design',
         'heading'=>lang('Duplicate Folder'),
-        'cancel'=>array('enable'=>'true','url'=>'view_folders.php'),
+        'cancel'=>array('enable'=>'true','url'=>$back_url),
     ]);
 
     $content = render(array(
         'template' => 'duplicate_folder.php',
         'form' => $form,
-        'folder' => $folder));
+        'folder' => $folder,
+        'back_url' => $back_url));
 
     echo $form->prepare($content);
 
@@ -136,11 +137,13 @@ if (!$_POST) {
     }
 
     $new_folder = $response['folder'];
-    
-    $form_edit_folder = new liveform('edit_folder');
-    $form_edit_folder->add_notice(lang('The folder has been duplicated, and you are now editing the duplicate.'));
+
+    // The File Manager prints its own notices (view_folders.php).
+    $liveform_view_folders = new liveform('view_folders');
+    $liveform_view_folders->add_notice(lang('The folder has been duplicated.'));
 
     $form->remove();
 
-    go(PATH . SOFTWARE_DIRECTORY . '/edit_folder.php?id=' . $new_folder['id'] . $send_to);
+    // Back where it was opened, else the duplicate itself.
+    go(pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?folder=' . (int) $new_folder['id']));
 }

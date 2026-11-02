@@ -37,6 +37,9 @@ function _test_courses_load()
 	include $dir . '/parts.php';
 	$public = include $dir . '/pages_public.php';
 	$learn = include $dir . '/learn.php';
+	include $dir . '/mail.php';
+	$study = include $dir . '/assignments.php';
+	$shop = include $dir . '/shop.php';
 	$lessons = array();
 	foreach (array_keys($courses) as $key) $lessons[$key] = $course_lessons($key);
 	$out = array(
@@ -52,6 +55,10 @@ function _test_courses_load()
 		'widgets'     => $public['widgets'],
 		'learn'       => $learn['pages'],
 		'learn_widgets' => $learn['widgets'],
+		'study'       => $study['pages'],
+		'study_widgets' => $study['widgets'],
+		'shop'        => $shop,
+		'mail_shared' => array($email_header_tree(), $email_footer_tree()),
 		'shared'      => array($account_bar_tree(), $header(), $footer(), $enrol_band(), $notice(), $staff_bar()),
 	);
 	return $out;
@@ -152,7 +159,7 @@ function test_courses_shared_parts_link_template_pages()
 function _test_courses_widget_keys()
 {
 	$d = _test_courses_load();
-	$keys = array_merge(array_keys($d['widgets']), array_keys($d['learn_widgets']), array('home_posts', 'login_region', 'cart_link', 'newsletter_band', 'buy_membership'));
+	$keys = array_merge(array_keys($d['widgets']), array_keys($d['learn_widgets']), array_keys($d['study_widgets']), array('home_posts', 'login_region', 'cart_link', 'newsletter_band', 'buy_membership'));
 	foreach (array_keys($d['courses']) as $key) $keys[] = 'buy_' . $key;
 	return $keys;
 }
@@ -183,7 +190,7 @@ function test_courses_public_pages_links_anchors_widgets()
 	$widgets = array_flip(_test_courses_widget_keys());
 	$ids = array();
 	$nodes_by_page = array();
-	foreach (array_merge($d['pages'], $d['learn']) as $p) {
+	foreach (array_merge($d['pages'], $d['learn'], $d['study']) as $p) {
 		$nodes = array();
 		_test_courses_nodes($p['tree'], $nodes);
 		$nodes_by_page[$p['key']] = $nodes;
@@ -248,7 +255,7 @@ function test_courses_learning_pages_keep_access()
 		$by_key[$p['key']] = $p;
 	}
 	$names = array();
-	foreach (array_merge($d['pages'], $d['learn']) as $p) {
+	foreach (array_merge($d['pages'], $d['learn'], $d['study']) as $p) {
 		pg_assert_false(isset($names[$p['name']]), 'page name ' . $p['name'] . ' is unique');
 		$names[$p['name']] = true;
 	}
@@ -283,4 +290,136 @@ function test_courses_learning_pages_keep_access()
 	pg_assert_same('members', $by_key['library']['folder'], 'library in the membership folder');
 	pg_assert_same('registration', $by_key['my_courses']['folder'], 'My Courses for signed-in visitors');
 	pg_assert_same(count($d['learn_widgets']), count(array_unique(array_map(function ($w) { return $w['page']; }, $d['learn_widgets']))), 'one questions widget per page');
+}
+
+// Every {{tab:<key>}} and {{page:<key>}} in a value, recursively.
+function _test_courses_refs($value, &$out)
+{
+	if (is_array($value)) {
+		foreach ($value as $v) _test_courses_refs($v, $out);
+	} elseif (is_string($value) && preg_match_all('/\{\{(?:tab|page):([a-z0-9_]+)\}\}/', $value, $m)) {
+		foreach ($m[1] as $key) $out[] = $key;
+	}
+}
+
+function test_courses_enrolment_and_assignments()
+{
+	$d = _test_courses_load();
+	$by_key = array();
+	foreach ($d['study'] as $p) {
+		pg_assert_false(isset($by_key[$p['key']]), $p['key'] . ': unique key');
+		pg_assert_same('root', $p['tree']['type'], $p['key'] . ': root tree');
+		$by_key[$p['key']] = $p;
+	}
+	foreach (array('enrolment', 'enrolment_view', 'assignment', 'assignment_view', 'my_assignments', 'staff_enrolments', 'staff_assignments', 'email_reply') as $key) {
+		pg_assert_true(isset($by_key[$key]), "page $key");
+	}
+	$known = array_flip(array_merge(_test_courses_page_keys(), array_keys($by_key)));
+
+	// Forms, comment settings and widget configs name pages of the template.
+	$refs = array();
+	foreach ($d['study'] as $p) {
+		if (isset($p['form'])) _test_courses_refs($p['form'], $refs);
+		if (isset($p['comments'])) _test_courses_refs($p['comments'], $refs);
+		_test_courses_refs($p['tree'], $refs);
+	}
+	foreach ($d['study_widgets'] as $w) {
+		_test_courses_refs($w['config'], $refs);
+		if (is_array($w['tree'])) _test_courses_refs($w['tree'], $refs);
+	}
+	foreach ($d['mail_shared'] as $tree) _test_courses_refs($tree, $refs);
+	foreach (array_unique($refs) as $key) pg_assert_true(isset($known[$key]), "names a page of the template: $key");
+
+	// The way in from the course pages and the classrooms.
+	pg_assert_same('public', $by_key['enrolment']['folder'], 'enrolment request open to anybody');
+	pg_assert_same(1, $by_key['enrolment']['form']['auto_registration'], 'enrolment request opens an account');
+	pg_assert_same('registration', $by_key['assignment']['folder'], 'assignments for signed-in students');
+	foreach (array('staff_enrolments', 'staff_assignments') as $key) pg_assert_same('private', $by_key[$key]['folder'], "$key: staff only");
+	foreach ($by_key as $key => $p) {
+		if (strpos($key, 'email_') === 0) {
+			pg_assert_same('private', $p['folder'], "$key: private");
+			pg_assert_false($p['search'], "$key: not searched");
+		}
+	}
+	foreach (array('enrolment_view' => 'enrolment_detail', 'assignment_view' => 'assignment_detail') as $key => $widget) {
+		pg_assert_same('{{tab:email_reply}}', $by_key[$key]['comments']['email_page'], "$key: reply e-mail");
+		pg_assert_same('submitter_only', $d['study_widgets'][$widget]['config']['access_control'], "$key: only its sender and the staff");
+	}
+
+	// Every widget is placed once, on the page it names.
+	$placed = array();
+	foreach ($d['study'] as $p) {
+		$nodes = array();
+		_test_courses_nodes($p['tree'], $nodes);
+		foreach ($nodes as $n) {
+			if (!empty($n['props']['templateWidget'])) $placed[$n['props']['templateWidget']][] = $p['key'];
+		}
+	}
+	foreach ($d['study_widgets'] as $key => $w) {
+		pg_assert_same(array($w['page']), isset($placed[$key]) ? $placed[$key] : array(), "widget $key placed once on its page");
+	}
+
+	// The pick lists take what the course pages and classrooms send.
+	$course_options = function ($widget) use ($d) {
+		$nodes = array();
+		_test_courses_nodes($d['study_widgets'][$widget]['tree'], $nodes);
+		$values = array();
+		foreach ($nodes as $n) {
+			if (!isset($n['props']['tag']) || $n['props']['tag'] !== 'option') continue;
+			$values[] = (string)$n['props']['text'];
+		}
+		return $values;
+	};
+	foreach ($d['courses'] as $c) {
+		pg_assert_true(in_array($c['title'], $course_options('enrolment_form'), true), 'enrolment offers ' . $c['title']);
+		pg_assert_true(in_array($c['title'], $course_options('assignment_form'), true), 'assignment offers ' . $c['title']);
+	}
+}
+
+function test_courses_shop_sells_courses_and_membership()
+{
+	$d = _test_courses_load();
+	$shop = $d['shop'];
+	$groups = $shop['catalog']['groups'];
+	pg_assert_same('root', $groups['courses']['parent'], 'Courses group under the top group');
+	foreach ($d['courses'] as $key => $c) {
+		$g = $groups['courses_' . $key];
+		pg_assert_same('courses', $g['parent'], "course $key: group under Courses");
+		pg_assert_same(1, count($g['products']), "course $key: one product");
+		$p = $g['products'][0];
+		pg_assert_same($c['sku'], $p['sku'], "course $key: SKU");
+		pg_assert_same($c['prices'], $p['price'], "course $key: prices");
+		pg_assert_false($p['shippable'], "course $key: not shipped");
+		pg_assert_same($c['folder'], $p['private_folder'], "course $key: grants its folder");
+		pg_assert_same(0, $p['private_days'], "course $key: no end date");
+		pg_assert_same('{{product_group:courses_' . $key . '}}', $shop['widgets']['buy_' . $key]['config']['product_group_id'], "buy_$key lists its group");
+	}
+	$m = $groups['membership']['products'][0];
+	pg_assert_same($d['membership']['sku'], $m['sku'], 'membership SKU');
+	pg_assert_same($d['membership']['days'], $m['membership_days'], 'membership renews by its days');
+	pg_assert_false($m['shippable'], 'membership not shipped');
+	pg_assert_same('{{product_group:membership}}', $shop['widgets']['buy_membership']['config']['product_group_id'], 'buy_membership lists its group');
+
+	// Every shop page and widget needs the shop; every widget sits on the
+	// page that places it.
+	foreach ($shop['pages'] as $p) pg_assert_same('ecommerce', $p['requires'], $p['key'] . ': needs the shop');
+	foreach ($shop['widgets'] as $key => $w) pg_assert_same('ecommerce', $w['requires'], "$key: needs the shop");
+	$placed = array();
+	foreach (array_merge($d['pages'], $shop['pages']) as $p) {
+		$nodes = array();
+		_test_courses_nodes($p['tree'], $nodes);
+		foreach ($nodes as $n) {
+			if (!empty($n['props']['templateWidget'])) $placed[$n['props']['templateWidget']][] = $p['key'];
+		}
+	}
+	foreach ($shop['widgets'] as $key => $w) {
+		if ($w['page'] === '') continue;
+		pg_assert_same(array($w['page']), isset($placed[$key]) ? $placed[$key] : array(), "widget $key placed once on its page");
+	}
+
+	// The shop's links and tabs name pages of the template.
+	$known = array_flip(_test_courses_page_keys());
+	$refs = array();
+	_test_courses_refs(array($shop['pages'], $shop['widgets']), $refs);
+	foreach (array_unique($refs) as $key) pg_assert_true(isset($known[$key]), "shop names a page of the template: $key");
 }

@@ -32,7 +32,6 @@ function test_list_names_wrap_folder_name()
 function test_list_names_wrap_folder_cells()
 {
 	$cells = array(
-		'view_files.php' => '<td class="align-middle text-start text-wrap \' . $file[\'folder_access_control_type\'] . \'">\' . pg_folder_list_name($file[\'folder_name\'], $file[\'folder_access_control_type\']) . \'</td>',
 		'view_pages.php' => '<td class="align-middle text-start text-wrap \' . $page[\'folder_access_control_type\'] . \'">\' . pg_folder_list_name($page[\'folder_name\'], $page[\'folder_access_control_type\']) . \'</td>',
 		'view_design_files.php' => '<td class="align-middle text-start text-wrap">\' . pg_folder_list_name($file[\'folder_name\']) . \'</td>',
 		'view_themes.php' => '<td class="align-middle text-start text-wrap \' . $folder_access_control_type . \'">\' . pg_folder_list_name($file[\'folder_name\']) . \'<span class="badge',
@@ -47,7 +46,7 @@ function test_list_names_wrap_folder_cells()
 function test_list_names_wrap_text_cells()
 {
 	$wrap = '<div class="text-wrap text-break" style="max-width:20rem;">';
-	foreach (array('view_files.php', 'view_design_files.php') as $path) {
+	foreach (array('view_design_files.php') as $path) {
 		$source = list_names_wrap_source($path);
 		pg_assert_contains($wrap . '\' . nl2br(h($file[\'description\'])) . \'</div></td>', $source, $path);
 		pg_assert_false(strpos($source, 'width:200px') !== false, $path . ': no 200px description box');

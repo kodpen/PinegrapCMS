@@ -362,6 +362,8 @@
     //   saveHooks                 [fn(body, mode)]: add to a save request
     //   topItems, menuItems       [fn()]: an element for the top bar (before
     //                             Save) or the save menu, or null
+    //   footItems                 [fn()]: an element for the end of the
+    //                             footer, or null
     Editor.inits = [];
     Editor.panels = {};
     Editor.headers = {};
@@ -375,6 +377,7 @@
     Editor.saveHooks = [];
     Editor.topItems = [];
     Editor.menuItems = [];
+    Editor.footItems = [];
 
     Editor.prototype.build = function () {
         var self = this, mini = this.tools.mini;
@@ -461,7 +464,7 @@
             this.zoomLabel,
             button('pgie-ibtn sm', t('zoomIn'), 'plus', function () { self.zoomBy(ZOOM_STEP); }),
             button('pgie-ibtn sm', t('zoomFit'), 'fit', function () { self.fit(); })
-        ]);
+        ].concat(Editor.footItems.map(function (item) { return item.call(self); })));
 
         this.confirmBox = null;
         this.root = el('div', { class: 'pgie' + (theme === 'dark' ? ' pgie-dark' : '') + (mini ? ' pgie-ismini' : '') }, [this.fxSvg, top, body, foot]);
@@ -770,6 +773,19 @@
 
         var ids = Object.keys(this.pointers);
 
+        // A second finger while one layer moves turns it (startTwist()).
+        if ((ids.length === 2) && (e.pointerType === 'touch') && this.startTwist && this.startTwist(ids)) {
+            e.preventDefault();
+
+            try {
+                this.stage.setPointerCapture(e.pointerId);
+            } catch (err) {
+                // The pointer is already gone.
+            }
+
+            return;
+        }
+
         if ((e.button === 1) || this.space || (ids.length === 2)) {
             // A second finger ends a tool's drag where it is.
             if (this.drag && Editor.pointers[this.tool]) {
@@ -822,6 +838,11 @@
 
         this.pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
 
+        if (this.drag && (this.drag.kind === 'twist')) {
+            this.moveTwist(e);
+            return;
+        }
+
         if (this.drag && Editor.pointers[this.tool]) {
             Editor.pointers[this.tool].move.call(this, e);
             return;
@@ -851,6 +872,12 @@
 
     Editor.prototype.onUp = function (e) {
         delete this.pointers[e.pointerId];
+
+        // Either finger ends a twist; the other one then does nothing.
+        if (this.drag && (this.drag.kind === 'twist')) {
+            this.endDrag();
+            return;
+        }
 
         if (this.drag && Editor.pointers[this.tool]) {
             Editor.pointers[this.tool].up.call(this, e);
@@ -933,6 +960,15 @@
             host.appendChild(this.redoBtn);
         } else {
             host.appendChild(el('div', { class: 'pgie-grow' }));
+
+            // The rail's foot: the layers list, from any tool (the layers
+            // part, toggleLayers()); a call without Select has no layers.
+            this.layersBtn = null;
+
+            if (this.toggleLayers && (this.tools.list.indexOf('select') >= 0)) {
+                this.layersBtn = button('pgie-tool pgie-layersbtn', t('layers'), 'layers', function () { self.toggleLayers(); }, true);
+                host.appendChild(this.layersBtn);
+            }
         }
     };
 
@@ -950,8 +986,10 @@
         var entering = (id === 'crop') && (this.tool !== 'crop') && !!this.doc.source;
 
         // A tool opens the sheet; pressing the active tool again closes or
-        // opens it; Select opens it only on that second press.
-        this.sheetOpen = (id === this.tool) ? !this.sheetOpen : (id !== 'select');
+        // opens it; Select opens it only on that second press. A tool closes
+        // the layers list.
+        this.sheetOpen = ((id === this.tool) && !this.layersOpen) ? !this.sheetOpen : (id !== 'select');
+        this.layersOpen = false;
         this.tool = id;
 
         if (entering) {
@@ -967,11 +1005,17 @@
             return;
         }
 
-        // Select with nothing selected on a canvas shows the canvas first.
-        var title = (this.tool !== 'select') ? t('tool_' + this.tool) : ((this.doc.artboard && !this.sel.length) ? t('tool_artboard') : t('layers'));
+        // The title names what the panel shows: the layers list, the
+        // selection's type, the canvas, or the tool (M.panelTitle()).
+        var types = (this.tool === 'select') ? this.selected().map(function (l) { return l.type; }) : [];
+        var key = M.panelTitle(this.tool, types, !!this.doc.artboard, !!this.layersOpen);
+        var strings = config().strings || {}, title = t((strings[key] !== undefined) ? key : 'layers');
         var body = el('div', { class: 'pgie-pb' });
+        var header = (!this.layersOpen && Editor.headers[this.tool]) ? Editor.headers[this.tool].call(this) : null;
 
-        if (Editor.panels[this.tool]) {
+        if (this.layersOpen) {
+            this.layerList(body);
+        } else if (Editor.panels[this.tool]) {
             Editor.panels[this.tool].call(this, body);
         }
 
@@ -982,7 +1026,7 @@
         this.panel.appendChild(el('div', { class: 'pgie-ph' }, [
             el('h2', { text: title }),
             el('div', { class: 'pgie-grow' }),
-            Editor.headers[this.tool] ? Editor.headers[this.tool].call(this) : null,
+            header,
             button('pgie-ibtn sm pgie-sheet-close', t('closePanel'), 'close', function () {
                 self.sheetOpen = false;
                 self.render();
@@ -994,12 +1038,18 @@
     Editor.prototype.render = function () {
         var self = this;
 
+        // While the layers list is open its button is the one pressed.
         Object.keys(this.toolButtons || {}).forEach(function (id) {
-            var on = (id === self.tool);
+            var on = (id === self.tool) && !self.layersOpen;
 
             self.toolButtons[id].classList.toggle('on', on);
             self.toolButtons[id].setAttribute('aria-pressed', on ? 'true' : 'false');
         });
+
+        if (this.layersBtn) {
+            this.layersBtn.classList.toggle('on', !!this.layersOpen);
+            this.layersBtn.setAttribute('aria-pressed', this.layersOpen ? 'true' : 'false');
+        }
 
         this.root.classList.toggle('pgie-sheet-closed', !this.sheetOpen);
 
@@ -1123,6 +1173,11 @@
         } : null, k);
 
         if (e.isComposing) {
+            return;
+        }
+
+        // Tab stays in the editor and in an open box (trapTab()).
+        if ((k === 'Tab') && !mod && this.trapTab && this.trapTab(e)) {
             return;
         }
 

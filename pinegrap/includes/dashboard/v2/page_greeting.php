@@ -82,7 +82,8 @@ function pg_dashboard_v2_greeting_preset($preset, $shop = false)
  *
  * @param string $layout_json dashboard_layout.layout, '' when none
  * @param bool   $shop
- * @return array preset, actions, tiles, chips, top (since, actions, tiles)
+ * @return array preset, actions, tiles, chips, top (since, actions, tiles,
+ *               status)
  */
 function pg_dashboard_v2_greeting_settings($layout_json, $shop)
 {
@@ -104,7 +105,7 @@ function pg_dashboard_v2_greeting_settings($layout_json, $shop)
     };
 
     $top = array();
-    foreach (array('since', 'actions', 'tiles') as $part) {
+    foreach (array('since', 'actions', 'tiles', 'status') as $part) {
         $top[$part] = (isset($layout['top'][$part]) && ((int) $layout['top'][$part] === 0)) ? 0 : 1;
     }
 
@@ -151,7 +152,7 @@ function pg_dashboard_v2_greeting($user)
     require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/figures.php');
 
     $now = time();
-    $row = pg_dashboard_v2_row($user['id']);
+    $row = pg_dashboard_v2_row_for($user);
     $settings = pg_dashboard_v2_greeting_settings((string) ($row['layout'] ?? ''), defined('ECOMMERCE') && (ECOMMERCE === true));
 
     $when = get_absolute_time(array('timestamp' => $now, 'type' => 'date', 'size' => 'long'))

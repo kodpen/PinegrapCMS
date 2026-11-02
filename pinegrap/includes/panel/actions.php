@@ -104,6 +104,16 @@ function pg_panel_actions()
         // own gate by its function.
         'dashboard_cards' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_dashboard_cards', 'exempt' => true, 'token' => false, 'write' => false),
         'dashboard_switch' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_dashboard_switch', 'exempt' => true, 'token' => true, 'write' => true),
+        // The caller's own layout of the new dashboard, every backend role;
+        // the handler checks the session, the token and the role's lock.
+        'dashboard_layout_save' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_dashboard_layout_save', 'exempt' => true, 'token' => true, 'write' => true),
+        // A role's default layout and its lock: administrators and
+        // designers, so it keeps the general gate; the handler checks too.
+        'dashboard_role_default' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_dashboard_role_default', 'exempt' => false, 'token' => true, 'write' => true),
+        // The caller's own goals, pins or notes on the new dashboard, every
+        // backend role; the handler checks the session, the token and the
+        // role's lock.
+        'dashboard_personal_save' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_dashboard_personal_save', 'exempt' => true, 'token' => true, 'write' => true),
         // Site-wide, so it keeps the general gate.
         'update_dashboard_appearance' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_update_dashboard_appearance', 'exempt' => false, 'token' => true, 'write' => true),
         // Noting that someone has watched a guided tour is theirs to do

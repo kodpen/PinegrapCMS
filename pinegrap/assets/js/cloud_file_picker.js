@@ -115,7 +115,7 @@
             if ((answer.status === 'success') && answer.files && answer.files.length) {
                 var sendTo = document.getElementById('send_to');
 
-                window.location = (sendTo && sendTo.value) ? sendTo.value : 'view_files.php';
+                window.location = (sendTo && sendTo.value) ? sendTo.value : 'view_folders.php?view=files';
 
                 return;
             }

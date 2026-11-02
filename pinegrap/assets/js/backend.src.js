@@ -1242,6 +1242,16 @@ $(document).ready(function () {
         menu.classList.toggle('pg-menu-animate', !!options.animate);
         // Back to a first-level panel it comes in from the left, like the rows.
         menu.classList.toggle('pg-menu-returning', !!options.back);
+
+        // The row it was opened from, which need not be the row it belongs
+        // to (the pinned My Notes row opens the Workspace list): the way
+        // back puts the focus there. Opened by itself, it has none.
+        if (options.opener && options.opener.id) {
+            panel.setAttribute('data-pg-menu-opener', options.opener.id);
+        } else if (!options.back) {
+            panel.removeAttribute('data-pg-menu-opener');
+        }
+
         panel.classList.add('is-open');
         menu.classList.add('pg-menu-drilled');
         paintMenuPanelRows(menu, panel);
@@ -1317,7 +1327,7 @@ $(document).ready(function () {
             open.classList.remove('is-open');
 
             if (options.focus) {
-                var row = document.getElementById(open.getAttribute('data-pg-menu-row'));
+                var row = document.getElementById(open.getAttribute('data-pg-menu-opener') || open.getAttribute('data-pg-menu-row'));
 
                 if (row) {
                     row.focus();
@@ -1527,7 +1537,7 @@ $(document).ready(function () {
 
                 if (panel) {
                     e.preventDefault();
-                    openMenuPanel(panel, { animate: true, focus: true });
+                    openMenuPanel(panel, { animate: true, focus: true, opener: row });
                 }
 
                 return;

@@ -369,6 +369,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         // delete views for this submitted form that the form view directory feature uses
         pg_sfv_delete_views('submitted_form_id', $form['id']);
 
+        // delete the record's comments, their attachments, watchers and counters
+        pg_comment_delete_record_thread($form['id']);
+
         $custom_forms_for_log[$form['page_id']] = $form['form_name'];
 
         $number_of_forms++;

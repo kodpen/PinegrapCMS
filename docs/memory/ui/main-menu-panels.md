@@ -7,7 +7,7 @@ description: Main menu rows that open their entries in a panel inside the menu: 
 - A row with more than one entry, a control, or one entry that goes elsewhere opens a panel in place of the rows: back arrow, row name, entries (`pg_menu_row_opens_panel()`, `pg_menu_panel()`, `includes/fn/output.php`; `tests/menu_panel_test.php`). The arrow or Escape brings the rows back.
 - A row with no entries, or one that is its own screen, stays a plain link (Dashboard).
 - An entry can open a panel of its own (Site Settings, `main-menu-settings-row.md`); the back arrow and Escape go up one level (`backMenuPanel()`).
-- The pinned My Notes row has My Notes and Add Note (`?new=1`). Its panel (`menu_panel_24`) is drawn whenever the notes are open to the person, pinned or not, so `workspace.js` `drawMenuRow()` hooks a row pinned at runtime to it.
+- The pinned My Notes row opens the Workspace list (`'panel_of' => 23`, `pg_menu_row_panel_id()`; #4889), not a panel of its own; `workspace.js` `drawMenuRow()` hooks a row pinned at runtime to it. Back returns the focus to the opening row (`data-pg-menu-opener`).
 - The row keeps its `href`: middle click, Ctrl/Cmd click or "open in new tab" opens its screen; the right button gets the browser's menu.
 
 ## Where do the entries and their permissions come from?

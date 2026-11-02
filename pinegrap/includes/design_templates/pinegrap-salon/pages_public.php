@@ -208,7 +208,9 @@ $public_pages[] = array(
             )),
         )),
 
-        // What clients say.
+        // What clients say: sample words for the salon to replace, and beside
+        // them the salon's own Google reviews, which show once Google Reviews
+        // is set up under Site Settings.
         $el('section', 'py-5', lang('Testimonials'), array(
             $container(array(
                 $section_header(lang('Our clients'), lang('What clients say')),
@@ -217,6 +219,7 @@ $public_pages[] = array(
                     $testimonial(lang('“My gel manicure lasted three full weeks. The studio is so calm I nearly fell asleep.”'), lang('Zeynep A.'), lang('Gel Manicure')),
                     $testimonial(lang('“Leyla did my wedding make-up. It looked perfect in every photo and lasted until the last dance.”'), lang('Burcu and Can Y.'), lang('Bridal Make-up')),
                 ), '4'),
+                $widget('google_reviews'),
             )),
         )),
 
@@ -279,7 +282,9 @@ foreach ($packages as $p) {
                 $para($p['text'], 'small text-body-secondary mb-3'),
                 $para($p['price'], 'display-6 fw-semibold mb-3'),
                 $check_list($p['items'], 'list-unstyled small mb-4'),
-                $link(lang('Book this package'), '{{page:appointment}}', 'btn rounded-pill ' . ($is_featured ? 'btn-primary' : 'btn-outline-primary') . ' mt-auto'),
+                // The package goes into the form's notes: the form has no
+                // package field, and its services are single treatments.
+                $link(lang('Book this package'), '{{page:appointment}}?' . $appointment_query(array('notes' => $p['title'])), 'btn rounded-pill ' . ($is_featured ? 'btn-primary' : 'btn-outline-primary') . ' mt-auto'),
             )))
         )),
     ), '', '4');
@@ -351,7 +356,7 @@ foreach ($team as $key => $t) {
                         $el('a', 'btn btn-sm btn-outline-primary rounded-pill align-self-start mt-auto', lang('Link'), array(
                             $span(lang('Book with me'), '', lang('Link Text')),
                             $span($t['name'], 'visually-hidden', lang('Name')),
-                        ), array('href' => '{{page:appointment}}')),
+                        ), array('href' => '{{page:appointment}}?' . $appointment_query(array('stylist' => $t['name'] . ' · ' . $t['role'])))),
                     )),
                 )),
             )),

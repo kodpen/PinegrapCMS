@@ -620,6 +620,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     // Bootstrap starts neither by itself: a visual editor page holding a
     // tooltip (the panel's Tooltip option) or a popover gets the small script
     // that does (pg_bs_tips_inject()), checked once everything is drawn in.
+    // A page with tabs gets it too: it shows the tab holding the address's
+    // anchor, which Bootstrap does not.
     // Classic pages start their own. Not in an e-mail.
     if (!$email && $style_layout === 'visual_designer' && function_exists('pg_bs_tips_inject')) {
         $content = pg_bs_tips_inject($content);

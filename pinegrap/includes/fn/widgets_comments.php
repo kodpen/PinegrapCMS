@@ -1223,7 +1223,8 @@ function pg_comments_component_census($ids)
  *   component that holds a comments widget count that widget once: the
  *   number is an approximation that errs on the low side.
  * - blocks: the fixed comments blocks of the page and of the components it
- *   reaches.
+ *   reaches, except a Catalog Detail's own when a comments widget sits on
+ *   the page itself: the Catalog Detail drops that block's frame then.
  * - nested_record: a form_item_view widget below the top level
  *   (pg_comments_nested_record_decision()).
  * - top_record: a form_item_view widget placed on the page itself, the one
@@ -1285,10 +1286,15 @@ function pg_comments_page_census_facts($top, $components)
         $queue[] = array($id, 0);
     }
 
+    // A Catalog Detail leaves its own fixed block out while a comments
+    // widget placed on the page itself shows the thread
+    // (_pg_civ_comments_block_will_draw()), so that block is not counted.
+    $civ_drops_block = ($widgets > 0);
+
     for ($i = 0; $i < count($queue); $i++) {
         list($id, $depth) = $queue[$i];
 
-        if (isset($components[$id]['census'])) {
+        if (isset($components[$id]['census']) && !($civ_drops_block && $type($id) === 'catalog_item_view')) {
             $blocks += $blocks_of($components[$id]['census']);
         }
 
@@ -3059,7 +3065,7 @@ function pg_comments_default_tree()
             '_bindings' => array('eo_visible_if' => 'is_replying')), array(
             $sem('span', array('text' => lang('Replying to'))),
             $sem('strong', array('_bindings' => array('text' => '__reply_to_name'))),
-            $content('link', array('text' => lang('Cancel'), 'href' => '#', 'cssClass' => 'ms-auto', '_bindings' => array('action' => 'comment_reply_cancel'))),
+            $content('link', array('text' => lang('Cancel'), 'href' => '#', 'cssClass' => 'ms-auto alert-link', '_bindings' => array('action' => 'comment_reply_cancel'))),
         )),
         $sem('div', array('cssClass' => 'mb-3'), array(
             $sem('label', array('cssClass' => 'form-label visually-hidden', 'text' => lang('Comment'), '_attrs' => $attrs('for', 'comment_message'))),
@@ -3125,7 +3131,7 @@ function pg_comments_default_tree()
                 $sem('div', array('cssClass' => 'alert alert-secondary d-flex flex-wrap gap-2', 'customName' => lang('Sign in'),
                     '_bindings' => array('eo_visible_if' => 'must_sign_in')), array(
                     $sem('span', array('text' => lang('Sign in to add your comment.'))),
-                    $content('link', array('text' => lang('Sign in'), 'href' => '#', 'cssClass' => 'fw-semibold', 'rel' => 'nofollow',
+                    $content('link', array('text' => lang('Sign in'), 'href' => '#', 'cssClass' => 'alert-link', 'rel' => 'nofollow',
                         '_bindings' => array('href' => '__login_url'))),
                 )),
                 $form,

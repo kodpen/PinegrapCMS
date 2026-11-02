@@ -14,7 +14,7 @@ description: Design-wide and per-page custom meta tags of the visual designer (s
 
 ## How are they written in the head?
 - At the `<meta_tags>` step, after marker expansion, so content never reaches the `<!--pg-…-->` eval path; values go through `h()`.
-- `pg_meta_tags_merge()`: a page tag replaces every design tag of the same name (case-insensitive). Same names inside one list are kept (several `og:image`).
+- `pg_meta_tags_merge()`: a page tag replaces every design tag of the same name (case-insensitive). It also takes the design's structured properties of that name (a page `og:image` drops the design's `og:image:alt`, `:width`, `:height`, which describe the other picture), as `pg_meta_tags_drop_overridden()` does for the generated tags (PR #4952). Same names inside one list are kept (several `og:image`).
 - `pg_meta_tags_drop_overridden()`: a custom tag replaces the generated tag of the same name and its structured properties (custom `og:image` drops `og:image:width/height/alt`). Custom `og:description` turns the combined description tag into a plain `name="description"`. `google-site-verification` is never dropped (several owners).
 - Attribute: `property` for `og: fb: article: book: profile: music: video: product:`, `name` otherwise (`pg_meta_tags_attribute()`).
 - Not in an e-mail body. Without the placeholder the custom tags go before `</head>`, like robots.

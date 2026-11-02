@@ -153,6 +153,30 @@ function test_meta_tags_merge_page_wins_by_name()
 	pg_assert_same($page, pg_meta_tags_merge(null, $page));
 }
 
+// A page tag also replaces the design's structured properties of it: the
+// design's og:image:alt and size describe the design's picture, not the
+// page's. A property the page sets alone replaces only that property.
+function test_meta_tags_merge_page_takes_the_design_properties()
+{
+	$design = array(
+		array('name' => 'og:image', 'content' => 'https://example.com/design.jpg'),
+		array('name' => 'og:image:alt', 'content' => 'The design picture'),
+		array('name' => 'og:image:width', 'content' => '1200'),
+		array('name' => 'og:imagery', 'content' => 'kept'),
+		array('name' => 'twitter:image:alt', 'content' => 'Design alt'),
+	);
+	$page = array(
+		array('name' => 'og:image', 'content' => 'https://example.com/page.jpg'),
+		array('name' => 'twitter:image:alt', 'content' => 'Page alt'),
+	);
+
+	pg_assert_same(array(
+		array('name' => 'og:imagery', 'content' => 'kept'),
+		array('name' => 'og:image', 'content' => 'https://example.com/page.jpg'),
+		array('name' => 'twitter:image:alt', 'content' => 'Page alt'),
+	), pg_meta_tags_merge($design, $page));
+}
+
 // Values are escaped and each tag ends the line with the head's indent.
 function test_meta_tags_html_escapes()
 {

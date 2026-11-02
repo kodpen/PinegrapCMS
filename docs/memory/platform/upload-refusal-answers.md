@@ -18,7 +18,7 @@ description: Upload Design Files and Upload File answer a Dropzone refusal in JS
 
 ## What does Upload File answer?
 - The same helper and line (#3666): the discarded-body 413, the token 403, the empty batch 400 and the folder refusal 403 `Access denied.` answer JSON on the XHR path (`jsonreturn` or `X-Requested-With`); the fallback form keeps the HTML pages. The 413 body now has the `error` key (Dropzone showed `[object Object]` without it).
-- A Dropzone batch where every file failed answers 400 with the failed sentences instead of landing on All My Files. `jsonreturn` callers (product photos, cloud picker) still get `status: success` with the `failed` list, since they return before that point; they already read `message` from a 4xx body.
+- A Dropzone batch where every file failed answers 400 with the failed sentences instead of landing on the File Manager's Files view. `jsonreturn` callers (product photos, cloud picker) still get `status: success` with the `failed` list, since they return before that point; they already read `message` from a 4xx body.
 
 ## How does Upload Design Files treat a file over the limit?
 - A file over `upload_max_filesize` (under `post_max_size`) arrives with an error code and an empty `tmp_name`. Before #3666 nothing read the code: on PHP 8 `copy('')` threw ValueError (bare 500 mid-batch, the earlier files saved, the rest lost); on PHP 7 `copy()` failed unchecked and a size-0 `design=1` row was written, with "has been uploaded" and a 404 link.

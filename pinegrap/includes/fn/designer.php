@@ -4360,7 +4360,9 @@ function pg_theme_switcher_inject($content)
 /**
  * The marker of a Bootstrap tooltip or popover: data-bs-toggle="tooltip"
  * (the Tooltip option of the editor's panel, _pg_node_title_attrs()) or
- * data-bs-toggle="popover" (Components > Popover), in any quoting. The
+ * data-bs-toggle="popover" (Components > Popover), in any quoting; and of
+ * tabs (data-bs-toggle="tab", "pill" or "list"), whose pane holding the
+ * address's anchor the same script shows. The
  * editor's Preview tests the markup with the same expression
  * (_SD_PAGE_SCRIPTS in assets/js/style_designer.js).
  *
@@ -4368,12 +4370,13 @@ function pg_theme_switcher_inject($content)
  */
 function pg_bs_tips_pattern()
 {
-    return '/data-bs-toggle\s*=\s*["\']?(?:tooltip|popover)\b/i';
+    return '/data-bs-toggle\s*=\s*["\']?(?:tooltip|popover|tab|pill|list)\b/i';
 }
 
 /**
- * The script that starts Bootstrap tooltips and popovers, for a visual
- * editor page whose HTML holds one (pg_bs_tips_pattern()).
+ * The script that starts Bootstrap tooltips and popovers and shows the tab
+ * holding the address's anchor, for a visual editor page whose HTML holds
+ * one of them (pg_bs_tips_pattern()).
  *
  * Bootstrap creates neither by itself, so without this a popover never opens
  * on the published page and a tooltip shows only the browser's own title.
@@ -6116,11 +6119,8 @@ function _render_content_html($props, $pad, $kids = '')
             // An e-mail page and a background render (the editor's Preview,
             // the SEO pass) never show or use up the session's pending
             // messages: they belong to the page the visitor sees next.
-            if (function_exists('pg_seo_rendering') && pg_seo_rendering()) break;
-            if (function_exists('pg_sw_render_context')) {
-                $msg_ctx = pg_sw_render_context();
-                if (!empty($msg_ctx['email'])) break;
-            }
+            if (function_exists('pg_sw_messages_held_back') ? pg_sw_messages_held_back()
+                : (function_exists('pg_seo_rendering') && pg_seo_rendering())) break;
             $msg_form  = !empty($props['formName']) ? $props['formName'] : '';
             $msg_cls   = !empty($props['cssClass']) ? ' ' . h($props['cssClass']) : '';
             $msg_parts = array();
@@ -10018,4 +10018,91 @@ function pg_designer_tab_layout_save($style_id, $layout, $user)
     $out['ok'] = true;
     $out['layout'] = pg_designer_tab_layout_export($norm);
     return $out;
+}
+
+/**
+ * The messages a request left for the visual designer screen, as the list its
+ * own toasts show (sdDesign.messages, sdToast() in style_designer.js).
+ *
+ * The editor is a full-height application screen: the panel's alert boxes
+ * printed above it pushed the toolbar, canvas and side panels down by their
+ * own height. Errors come first and stay until closed; warnings next; the
+ * notices last, in the panel's success tone. Each message is markup already
+ * escaped by whoever added it to the liveform, as the alert boxes print it.
+ *
+ * Pure: no query.
+ *
+ * @return array list of array('type' => 'error'|'warning'|'success', 'message' => string)
+ */
+function pg_designer_screen_messages($errors, $warnings, $notices)
+{
+    $out = array();
+    foreach (array('error' => $errors, 'warning' => $warnings, 'success' => $notices) as $type => $list) {
+        foreach ((array)$list as $message) {
+            if (!is_string($message) || trim($message) === '') continue;
+            $out[] = array('type' => $type, 'message' => $message);
+        }
+    }
+    return $out;
+}
+
+/**
+ * The editor's blank tab (sdDesign.pages entry): a page not saved yet,
+ * created by the first save. Opened in add mode, for a design with no page,
+ * and for a classic style opened in the designer that no page names as its
+ * own style; that one starts with the tree placing the style's frame
+ * (pg_classic_style_page_tree()) and is marked converted, so it opens
+ * unsaved and the frame shows on the canvas and in the tree.
+ *
+ * Pure: no query.
+ *
+ * @param int        $draft  1 when the new page starts as a draft
+ * @param array|null $tree   decoded tree, null for an empty canvas
+ * @return array
+ */
+function pg_designer_blank_page($draft, $tree = null)
+{
+    $tree = is_array($tree) ? $tree : null;
+    return array(
+        'key'                   => 'new1',
+        'page_id'               => 0,
+        'page_name'             => '',
+        'page_folder'           => 0,
+        'page_draft'            => $draft ? 1 : 0,
+        'page_title'            => '',
+        'page_meta_description' => '',
+        'page_search'           => 1,
+        'page_search_keywords'  => '',
+        'page_sitemap'          => 1,
+        'page_home'             => 0,
+        'page_noindex'          => 0,
+        'page_nofollow'         => 0,
+        'pg_comments'           => 0,
+        'pg_comments_label'     => '',
+        'pg_comments_allow_new' => 1,
+        'pg_comments_rating'    => 0,
+        'pg_comments_auto_publish' => 0,
+        'pg_comments_show_date'    => 0,
+        'pg_comments_login'        => 0,
+        'pg_comments_email_page'    => 0,
+        'pg_comments_email_subject' => '',
+        'pg_comments_notify_email'  => '',
+        'pg_comments_attachments'      => 0,
+        'pg_comments_select_name'      => 0,
+        'pg_comments_message'          => '',
+        'pg_comments_closed_message'   => '',
+        'pg_comments_watchers_managed' => 0,
+        'page_meta_tags'        => '',
+        'page_custom_jsonld'    => '',
+        'page_canonical_url'    => '',
+        'page_noarchive'        => 0,
+        'page_max_snippet'      => '',
+        'page_publish_at'       => '',
+        'page_unpublish_at'     => '',
+        'tree'                  => $tree,
+        'treeLoadWarning'       => false,
+        'formSettings'          => array(),
+        'access'                => 'edit',
+        'converted'             => $tree !== null ? 1 : 0,
+    );
 }

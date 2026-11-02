@@ -62,8 +62,7 @@ function test_panel_steppers_names_every_stepper_button_is_named()
 		}
 	}
 
-	// The folder screens share one stepper pair (includes/forms/folder_form.php).
-	pg_assert_true($found >= 16, 'expected the panel steppers, found ' . $found);
+	pg_assert_true($found >= 14, 'expected the panel steppers, found ' . $found);
 }
 
 function test_panel_steppers_names_offer_tag_remove_link()
@@ -92,7 +91,7 @@ function test_panel_steppers_names_translated_landmarks()
 		'add_ship_date_adjustment.php', 'edit_ship_date_adjustment.php',
 		'add_verified_shipping_address.php', 'edit_verified_shipping_address.php',
 		'add_product_attribute.php', 'edit_product_attribute.php',
-		'add_folder.php', 'edit_folder.php', 'view_order.php',
+		'view_order.php',
 		'add_country.php', 'edit_country.php',
 		'includes/templates/edit_products.php', 'product_builder.php',
 	);
