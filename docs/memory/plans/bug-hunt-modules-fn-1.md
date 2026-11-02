@@ -44,7 +44,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `cloud_file_picker`: clean
 
-- `cloudflare_tools`: taken by worker OG
+- `cloudflare_tools`: done #5182 (cached bandwidth in MiB beside bandwidth in MB)
 
 - `collections`: taken by LQ, #4650
 
