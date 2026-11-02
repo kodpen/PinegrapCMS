@@ -10,7 +10,7 @@ description: Module list of plans/bug-hunt.md, part 5: the single root endpoints
 
 - Endpoints cloudflare, confirm_subscription, connected_apps, connections, consent_answer, view_countries: done #5144 (cloudflare: DNS table printed record names and contents raw; confirm_subscription, connected_apps, connections, consent_answer, view_countries clean; leads: cloudflare analytics day reads ask `limit: days` for days+1 dates, so a preset period drops one day at random; `log_start`/`start_date` arrays reach trim()/htmlspecialchars() (TypeError); init.php ?secure_mode=false question #5146)
 
-- Endpoints create_file, get_cross_sell_items, csp_report, view_currencies, database_engine, developer_lock: open
+- Endpoints create_file, get_cross_sell_items, csp_report, view_currencies, database_engine, developer_lock: done #5166 (developer_lock: the PIN could be guessed without a limit; rest clean)
 
 - Endpoints do, excel_reader2, update_exchange_rates, edit_featured_and_new_items, feed, functions: open
 
