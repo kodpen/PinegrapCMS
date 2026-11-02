@@ -287,6 +287,7 @@ $output_forms = '';
 // Approve or reject a request.
 if (in_array('approved', $actions, true)) {
     $suggested = pg_return_suggested_approval($return, $state);
+    $approval_codes = pg_return_approval_codes(pg_return_previous_approvals($return_id));
 
     $output_forms .= '
             <div class="card mb-7">
@@ -299,16 +300,16 @@ if (in_array('approved', $actions, true)) {
                         <div class="row g-5">
                             <div class="col-12">
                                 <label for="note" class="form-label">' . h(lang('Note to the customer')) . '</label>
-                                ' . $liveform->output_field(array('type' => 'textarea', 'name' => 'note', 'id' => 'note', 'rows' => '3', 'maxlength' => PG_RETURN_NOTE_MAX, 'class' => 'form-control')) . '
+                                ' . $liveform->output_field(array('type' => 'textarea', 'name' => 'note', 'id' => 'note', 'rows' => '3', 'maxlength' => PG_RETURN_NOTE_MAX, 'class' => 'form-control', 'aria-describedby' => 'note_help')) . '
                                 <div id="note_help" class="form-text">' . h(lang('Sent to the customer with the answer. Needed when you reject the request.')) . '</div>
                             </div>
                             <div class="col-12 md:col-6">
                                 <label for="carrier" class="form-label">' . h(lang('Return carrier')) . '</label>
-                                <select class="form-control" id="carrier" name="carrier">' . $carrier_options($field_value('carrier', $suggested['carrier']), lang('Not named')) . '</select>
+                                <select class="form-control" id="carrier" name="carrier" data-pg-return-codes="' . h(json_encode((object) $approval_codes)) . '">' . $carrier_options($field_value('carrier', $suggested['carrier']), lang('Not named')) . '</select>
                             </div>
                             <div class="col-12 md:col-6">
                                 <label for="carrier_code" class="form-label">' . h(lang('Return code')) . '</label>
-                                ' . $liveform->output_field(array('type' => 'text', 'name' => 'carrier_code', 'id' => 'carrier_code', 'value' => $suggested['carrier_code'], 'maxlength' => '64', 'class' => 'form-control', 'autocomplete' => 'off')) . '
+                                ' . $liveform->output_field(array('type' => 'text', 'name' => 'carrier_code', 'id' => 'carrier_code', 'value' => $suggested['carrier_code'], 'maxlength' => '64', 'class' => 'form-control', 'autocomplete' => 'off', 'aria-describedby' => 'carrier_code_help')) . '
                                 <div id="carrier_code_help" class="form-text">' . h(lang('The code the customer gives the carrier so that the shop pays for the parcel.')) . '</div>
                             </div>
                         </div>
@@ -317,6 +318,45 @@ if (in_array('approved', $actions, true)) {
                             <button type="submit" name="action" value="reject" class="btn btn-sm btn-outline theme-warning align-self-center" data-confirm-content="' . h(lang('The request will be rejected and the customer is told why by e-mail.')) . '"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . h(lang('Reject the Return')) . '</button>
                         </div>
                     </form>
+                    <script>
+                        // A return code belongs to its carrier: when staff pick
+                        // another carrier, a code that is still the contracted
+                        // code of the previous one (or empty) becomes the
+                        // contracted code of the new one, or empty without one.
+                        // A code typed by hand is left alone.
+                        (function () {
+                            var carrier = document.getElementById("carrier");
+                            var code = document.getElementById("carrier_code");
+
+                            if (!carrier || !code) {
+                                return;
+                            }
+
+                            var codes = {};
+
+                            try {
+                                codes = JSON.parse(carrier.getAttribute("data-pg-return-codes") || "{}") || {};
+                            } catch (error) {
+                                codes = {};
+                            }
+
+                            var codeOf = function (key) {
+                                return Object.prototype.hasOwnProperty.call(codes, key) ? String(codes[key]) : "";
+                            };
+
+                            var previous = carrier.value;
+
+                            carrier.addEventListener("change", function () {
+                                var current = code.value.trim();
+
+                                if ((current === "") || (current === codeOf(previous))) {
+                                    code.value = codeOf(carrier.value);
+                                }
+
+                                previous = carrier.value;
+                            });
+                        })();
+                    </script>
                 </div>
             </div>';
 }
@@ -712,10 +752,10 @@ echo
                             <span class="col fg-secondary">' . h(lang('Order Date')) . ':</span>
                             <span class="col text-end">' . h(pg_return_time_text($order['order_date'])) . '</span>
                         </div>
-                        <div class="row">
+                        ' . (((string) pg_payment_method_label($order['payment_method']) !== '') ? '<div class="row">
                             <span class="col fg-secondary">' . h(lang('Payment Method')) . ':</span>
                             <span class="col text-end">' . h(pg_payment_method_label($order['payment_method'])) . '</span>
-                        </div>' : '') . '
+                        </div>' : '') : '') . '
                         <hr>
                         <div class="fw-semibold">' . h($customer) . '</div>
                         ' . ($order && ((string) $order['billing_email_address'] !== '') ? '<div><a href="mailto:' . h((string) $order['billing_email_address']) . '">' . h((string) $order['billing_email_address']) . '</a></div>' : '') . '
