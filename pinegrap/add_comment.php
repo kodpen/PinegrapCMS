@@ -23,8 +23,23 @@ validate_token_field();
 check_banned_ip_addresses('add comment');
 
 include_once('liveform.class.php');
-$liveform = new liveform('add_comment', $_POST['page_id']);
+
+// The page id names the form's slot in the session, so it has to be one value:
+// an array (page_id[]=) there is an illegal offset that stops the request.
+pg_request_single_values(array('page_id'));
+
+$liveform = new liveform('add_comment', $_POST['page_id'] ?? 0);
 $liveform->add_fields_to_session();
+
+// Every field this handler reads holds one value. One posted as an array
+// (message[]=) counts as not given, as for an empty field, instead of reaching
+// the string functions and stopping the request on PHP 8.
+pg_liveform_single_values($liveform, array('send_to', 'page_id', 'item_id', 'item_type', 'name', 'name_type', 'message', 'watcher', 'parent_id', 'rating', 'publish', 'publish_date_and_time', 'publish_cancel'));
+
+// The form uploads one attachment; a multi-file post (file[]=) is no attachment.
+if (isset($_FILES['file']) && !is_string($_FILES['file']['name'] ?? null)) {
+    unset($_FILES['file']);
+}
 
 // get values from form
 $send_to = $liveform->get_field_value('send_to');
