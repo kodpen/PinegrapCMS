@@ -3256,7 +3256,10 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         // session values, then replaces per-recipient ^^__recipient_*^^
         // tokens. Empty recipients list collapses the marker silently.
         if (is_array($eo_recipient_tmpl) && !empty($eo_recipient_tmpl) && !empty($recipients)) {
-            $recipient_loop_html = _eo_render_recipient_loop($eo_recipient_tmpl, $recipients, $_eo_lf);
+            // The recipient rows are drawn after the messages node, which took
+            // the liveform from the session: they read the copy, or every
+            // address box came back empty when the page showed a message.
+            $recipient_loop_html = _eo_render_recipient_loop($eo_recipient_tmpl, $recipients, $_eo_lf_rows);
             $designed_body = str_replace('<!--pg-recipient-loop-slot-->', $recipient_loop_html, $designed_body);
         } else {
             $designed_body = str_replace('<!--pg-recipient-loop-slot-->', '', $designed_body);
