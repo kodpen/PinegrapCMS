@@ -246,7 +246,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                         'type' => 'text', 'id' => 'address', 'name' => 'address',
                         'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off')) . '
                 </div>
-                <div class="col-12 sm:col-6 lg:col-3 my-3">
+                <div class="col-12 sm:col-6 lg:col-3 my-3"' . pg_places_input_attrs('country_code', 'city') . '>
                     <label for="district" class="form-label">' . lang('District') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'district', 'name' => 'district',
@@ -426,7 +426,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                         'type' => 'text', 'id' => 'opening_date', 'data-pg-date' => '', 'name' => 'opening_date',
                         'class' => 'form-control', 'size' => '10', 'maxlength' => '10',
                         'autocomplete' => 'off')) . '
-                    ' . get_date_picker_format() . pg_fields_script() . '                </div>
+                    ' . get_date_picker_format() . pg_fields_script() . pg_places_suggest_script() . '                </div>
                 <div class="col-12 lg:col-6 my-3">
                     <div class="form-text pt-7">' . lang('Recorded as a movement rather than written straight onto the balance, so it can be traced later like any other entry.') . '</div>
                 </div>
