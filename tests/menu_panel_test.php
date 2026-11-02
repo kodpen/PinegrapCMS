@@ -4,10 +4,9 @@
  *
  * Tests for the panels of the main menu (includes/fn/output.php): which rows
  * open their entries inside the menu (pg_menu_row_opens_panel()), the panel
- * they open (pg_menu_panel()), the two levels of the Site Settings row
- * (pg_menu_settings_markup()), the System tools row (pg_menu_tools_markup())
- * and the screens listed under a category
- * (pg_settings_category_screens(), includes/settings/registry.php).
+ * they open (pg_menu_panel()) and the module that colours its icons
+ * (pg_menu_tone()), the System tools row (pg_menu_tools_markup()), and the
+ * retired Site Settings row (slot 20).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -115,32 +114,70 @@ function test_menu_panel_carries_its_entries_as_they_are()
 	pg_assert_contains('data-pg-menu-back', $html, 'the way back');
 	pg_assert_contains('aria-label="' . h(lang('Back')) . '"', $html, 'the way back is named');
 	pg_assert_contains('no-popover', $html, 'the way back keeps a plain title hint');
+	pg_assert_false(strpos($html, 'data-pg-menu-tone') !== false, 'no module, plain icons');
 }
 
-function test_menu_settings_markup_opens_categories()
+function test_menu_panel_names_its_module_for_two_colour_icons()
 {
-	$categories = array(
-		'general' => array('label' => 'General', 'icon' => 'bi-sliders', 'url' => 'settings_general.php', 'sections' => array('pgset-server' => 'Server & Domain', 'pgset-cron' => 'Cron Jobs')),
-		'appearance' => array('label' => 'Appearance', 'icon' => 'bi-palette', 'url' => 'settings_appearance.php', 'sections' => array('pgset-theme' => 'Theme')));
+	pg_assert_contains('data-pg-menu-row="menu_item_2" data-pg-menu-tone="pages" role="group"', pg_menu_panel('menu_panel_2', 'menu_item_2', 'Pages', '', 'pages'), 'the module');
+	pg_assert_false(strpos(pg_menu_panel('menu_panel_2', 'menu_item_2', 'Pages', '', 'pages" onclick="x'), 'data-pg-menu-tone') !== false, 'anything but a plain name is left out');
+}
 
-	$menu = pg_menu_settings_markup($categories, '/pinegrap/', '');
+function test_menu_tone_is_the_module_of_a_colour_class()
+{
+	pg_assert_same('pages', pg_menu_tone('pages-color'), 'a module colour');
+	pg_assert_same('settings', pg_menu_tone('settings-color'), 'the System tools row');
+	pg_assert_same('', pg_menu_tone(''), 'no class');
+	pg_assert_same('', pg_menu_tone('pg-neon-icon'), 'not a module colour');
+	pg_assert_same('', pg_menu_tone('pages-color extra'), 'one class only');
+}
 
-	pg_assert_same('settings_general.php', $menu['href'], 'the row leads to the first category');
+function test_menu_every_row_colour_has_its_tone_in_the_stylesheet()
+{
+	// Every colour class a row is given must have its two shades for the
+	// panel's icons, or that panel's icons are drawn without colour.
+	$menu = pg_test_function_source('output_menu');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
 
-	// First level: only the categories, each opening its own panel.
-	pg_assert_contains('id=\'menu_entry_20_general\' href=\'/pinegrap/settings_general.php\'', $menu['entries'], 'a category entry');
-	pg_assert_contains('data-pg-menu-panel=\'menu_panel_20_appearance\'', $menu['entries'], 'opens its panel');
-	pg_assert_false(strpos($menu['entries'] . $menu['panels'], 'menu_entry_20_tools_') !== false, 'the tool groups have their own row');
-	pg_assert_false(strpos($menu['entries'], '<hr') !== false, 'no divider on the first level');
+	preg_match_all("/\['color_class'\] = '([a-z]+)-color';/", $menu, $match);
+	pg_assert_true(count($match[1]) > 10, 'the rows are read');
 
-	// Second level.
-	pg_assert_contains('id="menu_panel_20_general"', $menu['panels'], 'the category panel');
-	pg_assert_contains('data-pg-menu-row="menu_entry_20_general"', $menu['panels'], 'belongs to its entry');
-	pg_assert_contains('href=\'/pinegrap/settings_general.php#pgset-cron\'', $menu['panels'], 'a section link');
-	pg_assert_contains('Server &amp; Domain', $menu['panels'], 'section names are escaped');
+	foreach (array_unique($match[1]) as $tone) {
+		pg_assert_contains('#menu .pg-menu-panel[data-pg-menu-tone="' . $tone . '"] { --pg-menu-tone: var(--' . $tone . '-color); --pg-menu-tone-2: var(--' . $tone . '-color-highlight); }', $css, $tone);
+	}
+}
 
-	// Every link to a settings page skips the modal.
-	pg_assert_same(2 + 3 + 2, substr_count($menu['entries'] . $menu['panels'], 'data-pg-settings-page'), 'category entries, category pages and sections');
+function test_menu_site_settings_row_is_retired()
+{
+	$menu = pg_test_function_source('output_menu');
+
+	pg_assert_false(strpos($menu, '$menu_items[20]') !== false, 'slot 20 is not built');
+	pg_assert_false(strpos($menu, '$active_menu = 20;') !== false, 'nothing marks it');
+	pg_assert_false(function_exists('pg_menu_settings_markup'), 'its panels are gone');
+	pg_assert_same(array(8, 25), pg_menu_categories()['system']['slots'], 'System: Users and System tools');
+	pg_assert_same('', pg_menu_icon('settings', 'settings-color'), 'its gear is not drawn');
+}
+
+function test_menu_translations_has_a_way_for_managers()
+{
+	// translations.php admits managers; row 21 is built for role < 2 only.
+	$menu = pg_test_function_source('output_menu');
+
+	pg_assert_contains("if ((int) \$user['role'] === 2) {\n            \$menu_items[2]['data-bs-content'] .= '<a href=\\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/translations.php\\''", $menu, 'in the Pages panel for a manager');
+	pg_assert_contains("case 'translations.php':\n            // A manager reaches it from the Pages panel; row 21 is built for\n            // role < 2 only.\n            \$active_menu = (\$user['role'] < 2) ? 21 : 2;", $menu, 'the row that lists it is marked');
+}
+
+function test_menu_tools_icon_is_two_coloured_and_moves()
+{
+	$svg = pg_menu_icon('tools', 'settings-color');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+
+	pg_assert_contains('class="pg-mi pg-mi-tools me-3 settings-color"', $svg, 'the module colour');
+	pg_assert_contains('<g class="pg-mi-a pg-mi-latch">', $svg, 'the latch in the accent colour');
+	pg_assert_contains('<g class="pg-mi-a pg-mi-kit">', $svg, 'the tools inside in the accent colour');
+	pg_assert_contains('<g class="pg-mi-lid">', $svg, 'the lid that opens');
+	pg_assert_contains('#menu .pg-mi-tools { --pg-mi-a: var(--pg-mi-amber); }', $css, 'its accent hue');
+	pg_assert_contains('#menu .list-group-item:is(:hover, :focus-visible) .pg-mi-tools .pg-mi-lid {', $css, 'the lid opens on hover');
 }
 
 function test_menu_tools_markup_opens_its_groups()
@@ -153,7 +190,7 @@ function test_menu_tools_markup_opens_its_groups()
 		array('label' => 'Jobs', 'icon' => 'bi-tools', 'items' => array(
 			array('label' => 'Purge Cache', 'icon' => 'bi-trash3', 'url' => 'purge_cache.php?token=a&b', 'confirm' => 'Sure?'))));
 
-	$menu = pg_menu_tools_markup($groups, '/pinegrap/', '');
+	$menu = pg_menu_tools_markup($groups, '/pinegrap/', '', 'settings');
 
 	// First level: the screen itself, then every group with screens.
 	pg_assert_true(strpos($menu['entries'], 'href=\'/pinegrap/system_tools.php\'') < strpos($menu['entries'], 'menu_entry_25_tools_0'), 'the screen comes first');
@@ -166,6 +203,7 @@ function test_menu_tools_markup_opens_its_groups()
 
 	// Second level.
 	pg_assert_contains('id="menu_panel_25_tools_0"', $menu['panels'], 'the group panel');
+	pg_assert_same(2, substr_count($menu['panels'], 'data-pg-menu-tone="settings"'), 'each group panel colours its icons as the row');
 	pg_assert_contains('data-pg-menu-row="menu_entry_25_tools_0"', $menu['panels'], 'belongs to its entry');
 	pg_assert_contains('target=\'_blank\' rel=\'noopener\'', $menu['panels'], 'a screen that opens apart keeps its target');
 	pg_assert_contains('data-confirm-content=\'Sure?\'', $menu['panels'], 'a job keeps its question');
@@ -187,32 +225,3 @@ function test_menu_tools_markup_in_the_toolbar()
 	pg_assert_same(1, substr_count($all, 'target=\'_blank\''), 'its own target wins');
 }
 
-function test_menu_settings_markup_lists_a_category_s_screens_under_its_sections()
-{
-	$categories = array(
-		'languages' => array('label' => 'Languages', 'icon' => 'bi-globe', 'url' => 'settings_languages.php', 'sections' => array('pgset-languages' => 'Site Languages'),
-			'screens' => array(array('label' => 'Translations', 'icon' => 'bi-translate', 'url' => 'translations.php'))),
-		'general' => array('label' => 'General', 'icon' => 'bi-sliders', 'url' => 'settings_general.php', 'sections' => array('pgset-server' => 'Server')));
-
-	$menu = pg_menu_settings_markup($categories, '/pinegrap/', '');
-	$languages = substr($menu['panels'], strpos($menu['panels'], 'id="menu_panel_20_languages"'));
-	$languages = substr($languages, 0, strpos($languages, 'id="menu_panel_20_general"'));
-
-	pg_assert_contains('href=\'/pinegrap/translations.php\'', $languages, 'the screen is in its category panel');
-	pg_assert_true(strpos($languages, '#pgset-languages') < strpos($languages, 'translations.php'), 'under the sections');
-	pg_assert_same(1, substr_count($languages, '<hr'), 'after a divider');
-	pg_assert_false(strpos($languages, 'translations.php\' class=\'btn btn-link link-body-emphasis text-start text-decoration-none text-truncate bi bi-translate bi-me-2\' data-pg-settings-page') !== false, 'not a settings page, so the modal may answer nothing');
-	pg_assert_false(strpos($menu['panels'], '<hr') !== strrpos($menu['panels'], '<hr'), 'a category with no screens gets no divider');
-}
-
-function test_settings_category_screens_follow_the_gate_of_each_screen()
-{
-	$administrator = pg_settings_category_screens(array('role' => 0));
-	pg_assert_same(array('translations.php'), array_column($administrator['languages'], 'url'), 'an administrator gets Translations');
-	pg_assert_same(array('languages'), array_keys($administrator), 'Private Label Branding is a card of Appearance, not a screen beside it');
-
-	pg_assert_same(array('languages'), array_keys(pg_settings_category_screens(array('role' => 1))), 'a designer gets Translations');
-	pg_assert_same(array('languages'), array_keys(pg_settings_category_screens(array('role' => 2))), 'a manager gets Translations');
-	pg_assert_same(array(), pg_settings_category_screens(array('role' => 3)), 'a user gets none');
-	pg_assert_same(array(), pg_settings_category_screens(array()), 'no role counts as a user');
-}

@@ -33,6 +33,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-files.md: Decisions list, files part: a form file no view shows stays refused in a public folder; RSS media counts as shown with its record; folders and files are managed in the File Manager
 - decisions-made-marketplace.md: Decisions list, marketplace part: n11 orders of products shipped from the n11 warehouse are not imported.
 - decisions-made-messages.md: Decisions list, messages part: which text messages are transactional (no İYS consent), the back-in-stock SMS, the cash-on-delivery code's orders, the member's SMS sign-in code.
+- decisions-made-panel-2.md: Decisions list, panel part 2 (2026-11-02 on): no Site Settings row in the main menu; every menu icon in two colours, the System tools toolbox animated
 - decisions-made-panel.md: Decisions list, panel part: Bootstrap 6 breakpoints kept on purpose; the one date-and-time picker; the main menu in category headings; navigator screens; the front-end editing button box
 - decisions-made-product-10.md: Decisions list, product part 10 (2026-10-30 evening on): Turkish i-fold in panel lists, public invoice PDF address, e-mail triage suggestion, Workspace uploads, no collection schedule columns
 - decisions-made-product-11.md: Decisions list, product part 11 (2026-10-30 night on): CRM shape, storefront API timing, the two support e-mail fields, slash commands over the API, e-mail-a-friend limit off the log

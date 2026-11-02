@@ -48,11 +48,6 @@ function test_settings_private_label_is_an_appearance_section_for_administrators
 	pg_assert_contains("if (!defined('USER_ROLE') || ((int) USER_ROLE !== 0)) {", $registry, 'the administrator\'s alone');
 }
 
-function test_settings_private_label_screen_is_no_longer_a_category_screen()
-{
-	pg_assert_same(array('languages'), array_keys(pg_settings_category_screens(array('role' => 0))), 'the menu lists the section instead of the screen');
-}
-
 function test_settings_private_label_card_is_drawn_for_the_administrator()
 {
 	$cards = settings_private_label_test_source('includes/settings/appearance.php');
