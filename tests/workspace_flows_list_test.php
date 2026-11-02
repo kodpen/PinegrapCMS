@@ -65,3 +65,20 @@ function test_workspace_flows_list_no_scheduled_section()
 	pg_assert_false(strpos($notify, 'workspace_flows.php?view=scheduled') !== false, 'a notice points at the flow list');
 	pg_assert_true(strpos($actions, "empty(\$item['flow']) && ((string) \$item['status'] !== 'cancelled')") !== false, 'the cards list only rows not converted and not cancelled');
 }
+
+// The flow table scrolls sideways inside its own box, never the page, and
+// the "how it starts" cell stays a table cell: its icon and sentence sit in
+// a flex wrapper, so the cell grows with the row and the row's border and
+// hover band reach every column (#5186).
+function test_workspace_flows_list_table_layout()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+
+	pg_assert_true(strpos($js, "el('div', 'wsf-flow-scroll')") !== false, 'the table sits in a scroll box');
+	pg_assert_true(strpos($js, 'scroll.appendChild(table)') !== false && strpos($js, 'ui.flows.appendChild(table)') === false, 'the scroll box holds the table');
+	pg_assert_true((bool) preg_match('~\.wsf-flow-scroll\s*\{[^}]*overflow-x:\s*auto~', $css), 'the scroll box scrolls sideways');
+	pg_assert_true(strpos($js, "el('span', 'wsf-flow-start-in')") !== false, 'the start cell content has a wrapper');
+	pg_assert_false((bool) preg_match('~(^|\n)\.wsf-flow-start\s*\{[^}]*display:\s*flex~', $css), 'the start cell itself is no flex box');
+	pg_assert_true((bool) preg_match('~\.wsf-flow-start-in\s*\{[^}]*display:\s*flex~', $css), 'the wrapper is the flex box');
+}

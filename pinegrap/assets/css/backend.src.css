@@ -20235,6 +20235,9 @@ button.ws-ack-count:hover {
   color: var(--pg-fg-2);
   font-variant-numeric: tabular-nums;
 }
+.wsf-flow-scroll {
+  overflow-x: auto;
+}
 .wsf-flow-table th,
 .wsf-flow-table td {
   vertical-align: top;
@@ -20259,7 +20262,7 @@ button.ws-ack-count:hover {
 .wsf-flow-name .wsf-list-level {
   display: block;
 }
-.wsf-flow-start {
+.wsf-flow-start-in {
   display: flex;
   align-items: flex-start;
   gap: var(--ws-space-2);
@@ -20269,7 +20272,7 @@ button.ws-ack-count:hover {
   color: var(--wsf-kind);
 }
 .wsf-flow-last .wsf-flag {
-  max-width: 22rem;
+  max-width: 16rem;
 }
 /* The scheduled actions the flow list ends with (drawScheduled()): the
    converted rows, then the cards of the rows not converted, whose state
@@ -21469,7 +21472,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   .wsf-flow-table th,
   .wsf-flow-table td { display: block; padding: .2rem 0; border: 0; }
   .wsf-flow-table td::before { content: attr(data-label); display: block; font-size: .72rem; color: var(--pg-fg-2); }
-  .wsf-flow-table .wsf-flow-start { display: block; }
+  .wsf-flow-table .wsf-flow-start-in { display: inline-flex; }
 }
 /* ── /Workspace ── */
 /* A scheduled action drawn read-only in the Scheduled actions section of

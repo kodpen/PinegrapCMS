@@ -964,7 +964,12 @@
         table.appendChild(el('thead')).appendChild(head);
         ui.rows = el('tbody');
         table.appendChild(ui.rows);
-        ui.flows.appendChild(table);
+        // The table scrolls sideways in its own box when the main area is
+        // narrower than its columns, so the page itself never does.
+        var scroll = el('div', 'wsf-flow-scroll');
+
+        scroll.appendChild(table);
+        ui.flows.appendChild(scroll);
         ui.flowsNone = el('p', 'small fg-secondary wsf-flows-none d-none');
         ui.flows.appendChild(ui.flowsNone);
 
@@ -1172,6 +1177,9 @@
         var name = el('th', 'wsf-flow-name');
         var link = el('button', 'wsf-flow-open', flow.name);
         var starts = el('td', 'wsf-flow-start');
+        // The icon and sentence share a flex wrapper: the cell stays a table
+        // cell, growing with the row so its border and hover band line up.
+        var startsIn = el('span', 'wsf-flow-start-in');
         var stateCell = el('td');
         var last = el('td', 'wsf-flow-last');
         var channel = el('td', '', flow.channel_name ? '#' + flow.channel_name : '—');
@@ -1190,10 +1198,11 @@
         }
 
         if (START_BOXES[flow.start]) {
-            starts.appendChild(K.flowIcon(START_BOXES[flow.start], 'wsf-group-start'));
+            startsIn.appendChild(K.flowIcon(START_BOXES[flow.start], 'wsf-group-start'));
         }
 
-        starts.appendChild(el('span', '', startSentence(flow)));
+        startsIn.appendChild(el('span', '', startSentence(flow)));
+        starts.appendChild(startsIn);
         stateCell.appendChild(statusBadge(flow, true));
 
         if (flow.last_run) {

@@ -6,6 +6,9 @@ description: The Flows screen's flow list (#3172, #3222): full-width table, star
 ## What is it?
 - The flow list, full width in place of the editor (`showNone()` → `listing(true)`, `drawFlows()`); a missing or unreachable `?flow=` shows it too, and so does deleting a flow. A table: Flow (row header, a button that opens it; a click on the row too), How it starts (V2's line icon of the start box and `start_text`, else the kind's name), State (`statusBadge()`), Last run (`runFlag()`, its link opens the flow then the run), Home channel (`#name`). Phones: stacked rows, each value under its column's name (`data-label`).
 
+## Why does the table sit in `.wsf-flow-scroll`?
+- With the side menu open, under about 1100 px the table's columns were wider than the main area and the whole page scrolled sideways, cutting off Home channel (#5186). The table now scrolls in its own `overflow-x: auto` box. The How it starts cell stays a table cell; its icon and sentence are in a flex `span.wsf-flow-start-in`, because a flex `<td>` did not grow with the row and broke the row's border and hover band. The last-run flag is at most 16rem wide. Source test: `tests/workspace_flows_list_test.php`.
+
 ## How is it searched and filtered?
 - A search field (every word in name, sentence or channel) and chips `CHIPS` (All, Time, By hand, Event, Join, Draft): a toolbar of `aria-pressed` buttons whose counts follow the search (`listCounts()`, `listMatches()`; Node test in the canvas test). They replace the start select of #2391.
 
