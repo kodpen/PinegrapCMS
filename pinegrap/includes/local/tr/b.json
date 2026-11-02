@@ -805,6 +805,8 @@
     "banana": "muz",
     "banking, weekends": "bankacılık, hafta sonları",
     "barista, coffee, counter, part time, job": "barista, kahve, tezgâh, yarı zamanlı, iş",
+    "base_rates must be a list of objects with from_subtotal and rate, whole minor units of 0 or more.": "base_rates, from_subtotal ve rate alanları olan, 0 veya daha büyük tam küçük birim değerli nesnelerin listesi olmalıdır.",
+    "base_rates must start with a tier from_subtotal 0 and hold at most 4 tiers.": "base_rates, from_subtotal değeri 0 olan bir kademeyle başlamalı ve en fazla 4 kademe içermelidir.",
     "bathrooms": "banyo",
     "batteries, research": "bataryalar, araştırma",
     "bcc e-mail address": "bcc e-posta adresi",
