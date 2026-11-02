@@ -1632,6 +1632,7 @@
     "The customer, from their account": "Müşteri, kendi hesabından",
     "The customers behind {var:1} are still waiting for a parcel.": "Hâlâ kargosunu bekleyen {var:1} var.",
     "The customers whose payment is late.": "Ödemesi geciken müşteriler.",
+    "The daily summary is answered with text only: no tasks, no changes.": "Günlük özet yalnızca metinle yanıtlanır: görev yok, değişiklik yok.",
     "The daily summary is off: those days will be gone from the visitor report.": "Günlük özet kapalı: o günler ziyaretçi raporundan çıkacak.",
     "The dashboard lists the comments waiting for approval, newest first.": "Panel, onay bekleyen yorumları en yenisi üstte listeler.",
     "The dashboard widgets are back in their default order.": "Panel ekranındaki widget'lar varsayılan sıralarına döndü.",

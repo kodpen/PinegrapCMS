@@ -912,6 +912,7 @@
     "Every day": "Her gün",
     "Every day 07:30–22:00": "Her gün 07:30–22:00",
     "Every day 08:00–23:00": "Her gün 08:00–23:00",
+    "Every day at this hour Claude writes three lines on what is waiting into the channel, and the dashboard's Assistant card shows them. Each summary is one of the routine's daily runs.": "Claude her gün bu saatte bekleyen işler hakkında kanala üç satır yazar; panodaki Asistan kartı bunları gösterir. Her özet, rutinin günlük çalıştırmalarından birini kullanır.",
     "Every day at {var:1}, from {var:2}": "{var:2} itibarıyla her gün saat {var:1}",
     "Every day {var:1}": "Her gün {var:1}",
     "Every day, the e-mail and SMS marketing answers people give on this site are sent to İYS (İleti Yönetim Sistemi), and the refusals they give through İYS are brought back: an e-mail refusal stops e-mail campaigns to that address, an SMS refusal stops marketing SMS to that number. A consent İYS does not know stays valid; only a refusal held in İYS stops sending.": "Kişilerin bu sitede verdiği e-posta ve SMS pazarlama yanıtları her gün İYS'ye (İleti Yönetim Sistemi) gönderilir, İYS üzerinden verdikleri retler geri alınır: bir e-posta reddi o adrese giden e-posta kampanyalarını, bir SMS reddi o numaraya giden pazarlama SMS'ini durdurur. İYS'nin bilmediği bir izin geçerli kalır; gönderimi yalnızca İYS'deki ret durdurur.",

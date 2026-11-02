@@ -4301,14 +4301,15 @@ function upgrade_2026_11_0_dashboard_layout() {
 // The Assistant card's daily summary (2026.11.0, 11.0.145;
 // includes/dashboard/v2/cards/ai.php, includes/workspace/claude.php). At the
 // chosen hour the hourly job queues one summary request; the routine answers
-// it as a message in the chosen channel, and the card reads that message by
-// id. 255 = off, the default, so an upgrade spends no run until someone turns
-// it on.
+// it as a message in the chosen channel, and the card reads the latest
+// answered summary request's reply_message_id, so no column holds the
+// message: config's row has no room to spare (tests/innodb_row_size_test.php).
+// 255 = off, the default, so an upgrade spends no run until someone turns it
+// on.
 function upgrade_2026_11_0_claude_daily_summary() {
 
 	install_add_column('config', 'ws_claude_summary_hour', "TINYINT UNSIGNED NOT NULL DEFAULT 255");
 	install_add_column('config', 'ws_claude_summary_channel_id', "INT UNSIGNED NOT NULL DEFAULT 0");
-	install_add_column('config', 'ws_claude_summary_message_id', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Assistant card: Claude can write a daily summary into a channel at a chosen hour; off until switched on under the Claude in the channels card.');
 

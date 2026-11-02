@@ -76,3 +76,13 @@ function test_dashboard_v2_ai_offline()
 	pg_assert_true($member['ask'] !== '', 'who connects it');
 	pg_assert_true($member['note'] !== '', 'the MCP note for everyone');
 }
+
+function test_dashboard_v2_ai_summary_lines()
+{
+	pg_assert_same(array('3 orders wait to be shipped', 'Task #12 is late', 'Two comments wait'), pg_dashboard_v2_ai_summary_lines("- 3 orders wait to be shipped\n\n2) Task #12 is late\r\n• Two comments wait\nA fourth line"), 'list markers dropped, empty lines left out, three kept');
+	pg_assert_same(array('One line only'), pg_dashboard_v2_ai_summary_lines('One line only'));
+	pg_assert_same(array(), pg_dashboard_v2_ai_summary_lines("  \n "), 'nothing to show');
+	$long = pg_dashboard_v2_ai_summary_lines(str_repeat('word ', 60))[0];
+	pg_assert_true(mb_strlen($long) <= 140, 'a long line is cut');
+	pg_assert_same('…', mb_substr($long, -1), 'and says so');
+}

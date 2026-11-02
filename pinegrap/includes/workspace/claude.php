@@ -51,6 +51,17 @@ define('WS_CLAUDE_QUEUE_TTL', 86400);
 define('WS_CLAUDE_BETA', 'experimental-cc-routine-2026-04-01');
 
 /**
+ * config.ws_claude_summary_hour when the daily summary is off.
+ */
+define('WS_CLAUDE_SUMMARY_OFF', 255);
+
+/**
+ * What ws_ai_requests.note_text holds on a daily summary request: the mark
+ * that tells it from a request somebody wrote.
+ */
+define('WS_CLAUDE_SUMMARY_MARK', 'daily_summary');
+
+/**
  * The most requests one person may have waiting at once.
  */
 define('WS_CLAUDE_PER_PERSON', 5);
@@ -879,7 +890,198 @@ function ws_claude_tick()
         return;
     }
 
+    ws_claude_summary_queue(time());
     ws_claude_dispatch();
+}
+
+/**
+ * Whether the daily summary's columns are there (2026.11.0, 11.0.145).
+ *
+ * @return bool
+ */
+function ws_claude_summary_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = ws_claude_schema_ready() && waf_table_has_column('config', 'ws_claude_summary_channel_id');
+    }
+
+    return $ready;
+}
+
+/**
+ * The daily summary's setting: the hour (WS_CLAUDE_SUMMARY_OFF when off),
+ * the channel it is written in and the latest summary message.
+ *
+ * @param bool $fresh
+ * @return array hour, channel_id, message_id
+ */
+function ws_claude_summary_config($fresh = false)
+{
+    static $config = null;
+
+    if (!ws_claude_summary_ready()) {
+        return array('hour' => WS_CLAUDE_SUMMARY_OFF, 'channel_id' => 0, 'message_id' => 0);
+    }
+
+    if (($config === null) || $fresh) {
+        $row = (array) db_item("SELECT ws_claude_summary_hour, ws_claude_summary_channel_id FROM config LIMIT 1");
+        $channel_id = (int) ($row['ws_claude_summary_channel_id'] ?? 0);
+
+        // The latest summary written in the chosen channel: one written in a
+        // channel chosen before is not shown.
+        $message_id = ($channel_id > 0) ? (int) db_value("SELECT reply_message_id FROM ws_ai_requests
+            WHERE channel_id = '" . $channel_id . "' AND message_id = 0 AND note_text = '" . e(WS_CLAUDE_SUMMARY_MARK) . "'
+                AND status = 'answered' AND reply_message_id > 0" . ws_claude_only() . "
+            ORDER BY answered_at DESC, id DESC LIMIT 1") : 0;
+
+        $config = array(
+            'hour'       => (int) ($row['ws_claude_summary_hour'] ?? WS_CLAUDE_SUMMARY_OFF),
+            'channel_id' => $channel_id,
+            'message_id' => $message_id,
+        );
+    }
+
+    return $config;
+}
+
+/**
+ * Is today's summary due? On, its hour reached in the site's zone, and none
+ * asked for yet today. Pure.
+ *
+ * @param int  $hour       config.ws_claude_summary_hour
+ * @param int  $channel_id config.ws_claude_summary_channel_id
+ * @param int  $now_hour   the hour now, 0-23
+ * @param bool $asked      a summary request was made today
+ * @return bool
+ */
+function ws_claude_summary_due($hour, $channel_id, $now_hour, $asked)
+{
+    $hour = (int) $hour;
+
+    return ($hour >= 0) && ($hour <= 23) && ((int) $channel_id > 0) && ((int) $now_hour >= $hour) && !$asked;
+}
+
+/**
+ * Is a ws_ai_requests row a daily summary request? It has no message, note,
+ * task or page, and carries the mark. Pure.
+ *
+ * @param array $row
+ * @return bool
+ */
+function ws_claude_is_summary_request($row)
+{
+    return ((int) ($row['channel_id'] ?? 0) > 0)
+        && ((int) ($row['message_id'] ?? 0) === 0)
+        && ((int) ($row['note_id'] ?? 0) === 0)
+        && ((int) ($row['task_id'] ?? 0) === 0)
+        && ((int) ($row['page_id'] ?? 0) === 0)
+        && ((string) ($row['note_text'] ?? '') === WS_CLAUDE_SUMMARY_MARK);
+}
+
+/**
+ * What the routine is asked on a summary request, in the request's
+ * message.text.
+ *
+ * @return string
+ */
+function ws_claude_summary_instruction()
+{
+    return 'Write the daily summary of this site for the team, in the site\'s language: '
+        . 'exactly three lines, the three things most worth knowing or doing today '
+        . '(orders and refunds waiting, overdue tasks, approvals, forms, comments, visitors), '
+        . 'each line short and naming its record with a tag such as <#order:ID> or <#task:ID>. '
+        . 'No greeting, no heading, no other lines.';
+}
+
+/**
+ * Queues today's summary when it is due: one request in the chosen channel,
+ * asked in the name of the owner of Claude's application, answered by the
+ * next run like any other, so the daily allowance and the hold apply.
+ *
+ * @param int $now
+ * @return bool a request was queued
+ */
+function ws_claude_summary_queue($now)
+{
+    if (!ws_claude_summary_ready() || !ws_claude_ready()) {
+        return false;
+    }
+
+    $summary = ws_claude_summary_config(true);
+
+    if (($summary['hour'] === WS_CLAUDE_SUMMARY_OFF) || ($summary['channel_id'] <= 0)) {
+        return false;
+    }
+
+    $midnight = strtotime(date('Y-m-d', (int) $now));
+    $asked = (int) db_value("SELECT COUNT(*) FROM ws_ai_requests
+        WHERE message_id = 0 AND note_text = '" . e(WS_CLAUDE_SUMMARY_MARK) . "' AND created_at >= '" . (int) $midnight . "'" . ws_claude_only()) > 0;
+
+    if (!ws_claude_summary_due($summary['hour'], $summary['channel_id'], (int) date('G', (int) $now), $asked)) {
+        return false;
+    }
+
+    $channel = ws_channel($summary['channel_id']);
+    $app = ws_claude_app();
+
+    if (!$channel || !$app || ((int) $app['owner_user_id'] <= 0) || !ws_claude_channel_allowed($channel)) {
+        return false;
+    }
+
+    list($pv_column, $pv_value) = pg_ai_prompt_version_insert();
+
+    db("INSERT INTO ws_ai_requests (channel_id, message_id, note_text, requested_by, status, created_at" . $pv_column . ")
+        VALUES ('" . (int) $channel['id'] . "', '0', '" . e(WS_CLAUDE_SUMMARY_MARK) . "', '" . (int) $app['owner_user_id'] . "', 'queued', '" . (int) $now . "'" . $pv_value . ")");
+
+    return true;
+}
+
+/**
+ * The channels the summary may be written in: open, not archived, and Claude
+ * may be asked there.
+ *
+ * @return array id => name
+ */
+function ws_claude_summary_channels()
+{
+    $out = array();
+
+    foreach ((array) db_values("SELECT id FROM ws_channels WHERE kind IN ('public', 'private') AND archived_at = 0 ORDER BY name LIMIT 200") as $id) {
+        $channel = ws_channel($id);
+
+        if ($channel && ws_claude_channel_allowed($channel)) {
+            $out[(int) $channel['id']] = (string) $channel['name'];
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The summary's setting as posted, checked: the hour (0-23, or off) and a
+ * channel from the list. Pure.
+ *
+ * @param mixed $hour     the posted hour, '' for off
+ * @param mixed $channel  the posted channel id
+ * @param array $channels ws_claude_summary_channels()
+ * @return array ok, hour, channel_id
+ */
+function ws_claude_summary_input($hour, $channel, $channels)
+{
+    $hour = trim((string) $hour);
+    $channel = (int) $channel;
+
+    if (($hour === '') || !preg_match('/^[0-9]{1,2}$/', $hour) || ((int) $hour > 23)) {
+        return array('ok' => true, 'hour' => WS_CLAUDE_SUMMARY_OFF, 'channel_id' => isset($channels[$channel]) ? $channel : 0);
+    }
+
+    if (!isset($channels[$channel])) {
+        return array('ok' => false, 'hour' => (int) $hour, 'channel_id' => 0);
+    }
+
+    return array('ok' => true, 'hour' => (int) $hour, 'channel_id' => $channel);
 }
 
 /**
@@ -1545,6 +1747,12 @@ Work through the queue:
       until a designer previews and applies the proposal. Then answer as in c;
       a request from the editor takes text only: one or two sentences on what
       you propose.
+      A request with "summary": true is the site's daily summary: nobody wrote
+      it, message.id is 0 and message.text says what to write. Read what it
+      names through the Site API with the key's own reads, then answer as in c
+      with text only - no tasks, no changes, nobody mentioned. The answer is
+      posted in channel.id, where the team reads it, and the dashboard's
+      Assistant card shows its first three lines.
    d. When you cannot do a request, POST /workspace/claude/requests/{id}/fail with
       {"reason": "..."} saying why, in the language of the request.
 3. When the list is empty, read it once more: requests may have come in while you
@@ -1716,6 +1924,19 @@ function ws_claude_settings_post($viewer, $action, $liveform, $user)
         $sets[] = "ws_claude_token = NULL";
     }
 
+    if (ws_claude_summary_ready() && isset($_POST['claude_summary_hour'])) {
+        $summary = ws_claude_summary_input($_POST['claude_summary_hour'], $_POST['claude_summary_channel'] ?? 0, ws_claude_summary_channels());
+
+        if (!$summary['ok']) {
+            $liveform->add_error(lang('Choose the channel the daily summary is written in.'));
+            return;
+        }
+
+        $sets[] = "ws_claude_summary_hour = '" . (int) $summary['hour'] . "'";
+
+        $sets[] = "ws_claude_summary_channel_id = '" . (int) $summary['channel_id'] . "'";
+    }
+
     db("UPDATE config SET " . implode(', ', $sets));
 
     log_activity(lang('the Claude connection of the workspace was changed'), $username);
@@ -1871,6 +2092,41 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null)
     $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
     $host = (string) HOSTNAME_SETTING;
     $disabled = $admin ? '' : ' disabled';
+
+    // The daily summary: an hour (off by default) and the channel it is
+    // written in, read on the dashboard's Assistant card.
+    $summary_block = '';
+
+    if (ws_claude_summary_ready()) {
+        $summary = ws_claude_summary_config(true);
+        $hours = '<option value="">' . h(lang('Off')) . '</option>';
+
+        for ($hour = 0; $hour <= 23; $hour++) {
+            $hours .= '<option value="' . $hour . '"' . (($summary['hour'] === $hour) ? ' selected' : '') . '>' . sprintf('%02d:00', $hour) . '</option>';
+        }
+
+        $channels = '<option value="0">' . h(lang('Choose a channel')) . '</option>';
+
+        foreach (ws_claude_summary_channels() as $id => $name) {
+            $channels .= '<option value="' . (int) $id . '"' . (($summary['channel_id'] === (int) $id) ? ' selected' : '') . '>#' . h($name) . '</option>';
+        }
+
+        $summary_block = '
+                            <fieldset class="mb-5">
+                                <legend class="form-label">' . h(lang('Daily summary')) . '</legend>
+                                <div class="row g-3">
+                                    <div class="sm:col-4">
+                                        <label class="form-label small" for="ws_claude_summary_hour">' . h(lang('Hour')) . '</label>
+                                        <select class="form-control form-control-sm" name="claude_summary_hour" id="ws_claude_summary_hour"' . $disabled . '>' . $hours . '</select>
+                                    </div>
+                                    <div class="sm:col-8">
+                                        <label class="form-label small" for="ws_claude_summary_channel">' . h(lang('Channel')) . '</label>
+                                        <select class="form-control form-control-sm" name="claude_summary_channel" id="ws_claude_summary_channel"' . $disabled . '>' . $channels . '</select>
+                                    </div>
+                                </div>
+                                <div class="form-text">' . h(lang('Every day at this hour Claude writes three lines on what is waiting into the channel, and the dashboard\'s Assistant card shows them. Each summary is one of the routine\'s daily runs.')) . '</div>
+                            </fieldset>';
+    }
 
     // The applications that could carry Claude.
     $options = '<option value="0">' . h(lang('Choose an application')) . '</option>';
@@ -2096,6 +2352,7 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null)
                                 </div>' : '') . '
                                 <div class="form-text">' . h(lang('It is stored encrypted and never shown again. If it leaks, press Regenerate on claude.ai and enter the new one.')) . '</div>
                             </div>
+                            ' . $summary_block . '
                             ' . ($admin ? '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>' : '<div class="form-text">' . h(lang('Only an administrator can connect Claude.')) . '</div>') . '
                         </form>
                         <details class="mt-7 ws-claude-guide"' . (empty($missing) ? '' : ' open') . '>
