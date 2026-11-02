@@ -526,7 +526,7 @@ if ($file['attachment'] == 1) {
 
                                         // If this user has the same e-mail address as the connect-to-contact e-mail address
                                         // field value for this submitted form, then the user has view access.
-                                        if (mb_strtolower(USER_EMAIL_ADDRESS) == mb_strtolower($submitter_email_address)) {
+                                        if (pg_email_address_matches(USER_EMAIL_ADDRESS, $submitter_email_address)) {
                                             $attachment_access = true;
                                             break;
 
@@ -539,7 +539,7 @@ if ($file['attachment'] == 1) {
                                                 WHERE
                                                     (
                                                         (user_id = '" . USER_ID . "')
-                                                        OR (email_address = '" . escape(USER_EMAIL_ADDRESS) . "')
+                                                        OR ((email_address = '" . escape(USER_EMAIL_ADDRESS) . "') AND (email_address != ''))
                                                     )
                                                     AND (page_id = '" . $comment['page_id'] . "')
                                                     AND (item_id = '" . $submitted_form['id'] . "')
@@ -671,7 +671,7 @@ if ($file['attachment'] == 1) {
 
                                     // If this user has the same e-mail address as the connect-to-contact e-mail address
                                     // field value for this submitted form, then the user has view access.
-                                    if (mb_strtolower(USER_EMAIL_ADDRESS) == mb_strtolower($submitter_email_address)) {
+                                    if (pg_email_address_matches(USER_EMAIL_ADDRESS, $submitter_email_address)) {
                                         $attachment_access = true;
                                         break;
                                     }
@@ -686,7 +686,7 @@ if ($file['attachment'] == 1) {
                                             WHERE
                                                 (
                                                     (user_id = '" . USER_ID . "')
-                                                    OR (email_address = '" . escape(USER_EMAIL_ADDRESS) . "')
+                                                    OR ((email_address = '" . escape(USER_EMAIL_ADDRESS) . "') AND (email_address != ''))
                                                 )
                                                 AND (page_id = '" . $form_list_view['form_item_view_page_id'] . "')
                                                 AND (item_id = '" . $submitted_form['id'] . "')
@@ -761,7 +761,7 @@ if ($file['attachment'] == 1) {
 
                                         // If this user has the same e-mail address as the connect-to-contact e-mail address
                                         // field value for this submitted form, then the user has view access.
-                                        if (mb_strtolower(USER_EMAIL_ADDRESS) == mb_strtolower($submitter_email_address)) {
+                                        if (pg_email_address_matches(USER_EMAIL_ADDRESS, $submitter_email_address)) {
                                             $attachment_access = true;
                                             break;
 
@@ -774,7 +774,7 @@ if ($file['attachment'] == 1) {
                                                 WHERE
                                                     (
                                                         (user_id = '" . USER_ID . "')
-                                                        OR (email_address = '" . escape(USER_EMAIL_ADDRESS) . "')
+                                                        OR ((email_address = '" . escape(USER_EMAIL_ADDRESS) . "') AND (email_address != ''))
                                                     )
                                                     AND (page_id = '" . $form_item_view['page_id'] . "')
                                                     AND (item_id = '" . $submitted_form['id'] . "')

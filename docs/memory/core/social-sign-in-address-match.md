@@ -4,7 +4,7 @@ description: Social sign-in ties a verified provider address only to an account 
 ---
 
 ## Which account does a verified provider address tie to?
-- One whose stored `user_email` equals the reported address apart from letter case and that has no identity at that provider yet. `pg_signin_match_user()` (`includes/fn/signin.php`) reads the candidate rows, then `pg_signin_same_address_user()` keeps only one that passes `pg_email_address_matches()` (`includes/fn/auth.php`).
+- One whose stored `user_email` equals the reported address apart from letter case and that has no identity at that provider yet. `pg_signin_match_user()` (`includes/fn/signin.php`) reads the candidate rows, then `pg_signin_same_address_user()` keeps only one that passes `pg_email_address_matches()` (`includes/authentication.php`).
 - The same helper decides the password reset address: `pg_password_reset_address_matches()` (`includes/fn/widgets_account.php`) is a wrapper kept for that name ([[account-email-pages]]).
 
 ## Why is the SQL lookup not enough?
