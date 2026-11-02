@@ -13,7 +13,7 @@ description: Coordinator rules: model and effort of coordinators and workers, qu
 - Starts are staggered: at most one new worker a minute. The architect starts no sub-agents for the same reason.
 
 ## Which model and effort?
-- A coordinator runs on Opus 5.5 at xhigh effort with Ultracode on; a worker runs on Opus 5.5 at high effort (owner, 2026-11-02; until then coordinators ran at medium with Ultracode off). A coordinator starts every worker that way (`create_session` `model`) and says the effort in its brief.
+- A coordinator runs on Opus 5.5 at xhigh effort with Ultracode on; a worker runs on Opus 5.5 at high effort (owner, 2026-11-02; until then coordinators ran at medium with Ultracode off). A coordinator starts every worker with `create_session` `model` `claude-opus-5-5`; the call takes no effort, and a session it starts opens at high (tried 2026-11-02), so nothing more is set. A coordinator's own xhigh and Ultracode are set by the owner when opening it.
 - Every `create_session` (worker or new coordinator) passes `source_url` `https://github.com/kodpen/PinegrapCMS` and `source_revision` `development`, else the session has no repository.
 
 ## Which draft PR gets a new worker?
