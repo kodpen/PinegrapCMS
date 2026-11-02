@@ -378,7 +378,7 @@ function pg_settings_categories()
                 'pgset-maintenance' => pg_settings_keywords(lang('maintenance, offline, closed, 503, coming soon, health, uptime, monitor')),
             ),
             'lists' => array(
-                'job_dispatch_job'     => 1,
+                'job_dispatch_job' => 1,
                 'notify_new_codes'     => 1,
                 'notify_new_events'    => 1,
                 'notify_target_label'  => 1,
