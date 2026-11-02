@@ -752,7 +752,7 @@
     "When you write to us from the contact page, your message does not land in a crowded mailbox. It becomes a conversation that the whole team can see.": "İletişim sayfasından bize yazdığınızda mesajınız kalabalık bir posta kutusuna düşmez. Tüm ekibin görebildiği bir görüşmeye dönüşür.",
     "Where You Are": "Bulunduğunuz Yer",
     "Where a form shows its messages after it is sent: errors and confirmations.": "Bir formun gönderildikten sonra mesajlarını gösterdiği yer: hatalar ve onaylar.",
-    "Where a short link to an address already has the name, give it the new address and code from the file": "Adı zaten bir adrese giden kısa linkteyse, o linke dosyadaki yeni adresi ve kodu ver",
+    "Where a short link to an address already has the name, give it the new address and code from the file": "Ad zaten bir adrese giden bir kısa bağlantıdaysa, o bağlantıya dosyadaki yeni adresi ve kodu ver",
     "Where a used or expired link sends the visitor to ask for a new email.": "Kullanılmış ya da süresi dolmuş bağlantının ziyaretçiyi yeni e-posta istemeye gönderdiği yer.",
     "Where a used or expired link sends the visitor to ask for a new email. Token: ^^__forgot_password_url^^": "Kullanılmış ya da süresi dolmuş bağlantının ziyaretçiyi yeni e-posta istemeye gönderdiği yer. Token: ^^__forgot_password_url^^",
     "Where an endpoint says so, DELETE has a POST alias - either the same address answered to POST, or a /delete address - for servers that refuse the DELETE verb before it reaches the application.": "Bir uç nokta belirtiyorsa DELETE'in bir POST karşılığı vardır - aynı adresin POST'a yanıt vermesi ya da bir /delete adresi - DELETE fiilini uygulamaya ulaşmadan reddeden sunucular için.",

@@ -139,6 +139,9 @@ if (!$_POST) {
     // not on the Host header. A name may hold letters outside ASCII, so it is
     // percent-encoded.
     $short_link_qr_url = URL_SCHEME . HOSTNAME_SETTING . PATH . encode_url_path($short_link['name']);
+    // The QR code carries the encoded address; the line under it is read by a
+    // person, so it keeps the name's own letters.
+    $short_link_qr_text = URL_SCHEME . HOSTNAME_SETTING . PATH . $short_link['name'];
     $short_link_qr_options = array('label' => lang('QR code for the short link'), 'class' => 'd-block mx-auto');
     $short_link_qr = $short_link_is_pattern ? '' : pg_qr_svg($short_link_qr_url, 160, $short_link_qr_options);
     $output_short_link_qr_card = '';
@@ -155,7 +158,7 @@ if (!$_POST) {
                     </div>
                     <div class="card-body text-center">
                         <div class="d-inline-block border rounded-4 p-3 bg-white">' . $short_link_qr . '</div>
-                        <p class="small fg-secondary mt-3 mb-0 text-break">' . h($short_link_qr_url) . '</p>
+                        <p class="small fg-secondary mt-3 mb-0 text-break">' . h($short_link_qr_text) . '</p>
                     </div>
                 </div>
             </div>';

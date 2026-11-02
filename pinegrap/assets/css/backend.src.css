@@ -3225,9 +3225,19 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
   display: none;
 }
 
-#button_bar .btn-group,
-#button_bar .btn-group-vertical {
+#button_bar .btn-group:not([role="group"]),
+#button_bar .btn-group-vertical:not([role="group"]) {
   display: contents;
+}
+
+/* A group with role="group" is one control (a view switch, a type filter):
+   its buttons are choices of the same thing, so they stay together and wrap
+   to the next row as one box. Its buttons still take the bar's pill shape
+   below, so they sit side by side with a small gap instead of welded. */
+#button_bar .btn-group[role="group"] {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  gap: 0.25rem;
 }
 
 /* Shape and spacing for everything on the bar; the colour is decided by the
