@@ -262,6 +262,7 @@ $explorer_lang = array(
     'access_permissions' => lang('Access Permissions'),
     'optimize_image' => lang('Optimize this image'),
     'image_editor' => lang('Image Editor'),
+    'image_export' => lang('Export settings…'),
     'new_image' => lang('New image'),
     'new_image_name' => lang('New image'),
     'new_image_saved' => lang('{var:1} was created.'),
@@ -7903,6 +7904,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 }
                 if (item.is_image && item.can_edit) {
                     html += menuItem('bi-brush', L.image_editor, 'image_editor', multi);
+                    // The editor opened on its export panel alone: format,
+                    // quality and longest edge, with the size before and after.
+                    html += menuItem('bi-sliders', L.image_export, 'image_export', multi);
                     if (!item.optimized && OPTIMIZABLE_TYPES.indexOf(item.type) !== -1) {
                         html += menuItem('bi-fast-forward-circle', L.optimize_image, 'optimize', multi);
                     }
@@ -8309,6 +8313,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 break;
             case 'image_editor':
                 if (item) { openImageEditorFor(item); }
+                break;
+            case 'image_export':
+                if (item) { openImageEditorFor(item, null, 'optimise'); }
                 break;
             case 'optimize':
                 // The same run the multi-select uses, for one file: it used
@@ -14060,12 +14067,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     // The picture editor, in a window on this screen (pg_image_editor_includes()
     // at the end of the page), addressed by id: two folders can hold the
-    // same name. A file it may not write over is saved as a copy.
-    function openImageEditorFor(item, onSaved) {
+    // same name. A file it may not write over is saved as a copy. profile
+    // 'optimise' opens it on its export settings alone.
+    function openImageEditorFor(item, onSaved, profile) {
 
         window.pgImageEditor.open({
             fileId: item.id,
             fileName: item.name,
+            profile: profile || 'photo',
             onSave: function (result) {
 
                 var response = result.file || {};

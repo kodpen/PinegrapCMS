@@ -2144,7 +2144,7 @@
     // The settings as a save starts: the file's own format at the editor's
     // quality and size, as before there was a panel.
     function exportDefaults() {
-        return { format: 'keep', quality: 92, edge: 0, colors: false };
+        return { format: 'keep', quality: 92, edge: 0, colors: false, progressive: true };
     }
 
     // w x h brought within a longest edge; never enlarged.
@@ -2180,12 +2180,44 @@
             out.colors = 256;
         }
 
+        // A JPEG is written progressive unless asked otherwise.
+        if ((ex.progressive === false) && (format === 'jpeg')) {
+            out.progressive = false;
+        }
+
         return Object.keys(out).length ? out : null;
+    }
+
+    // The panel's result card: after against before as a signed percent
+    // (negative is lighter) and the bar's width in percent (3-100).
+    function exportChange(before, after) {
+        if (!(before > 0) || !(after > 0)) {
+            return null;
+        }
+
+        return { percent: Math.round((after / before - 1) * 100), bar: Math.max(3, Math.min(100, Math.round(after / before * 1000) / 10)) };
+    }
+
+    // A file size for the result card: B, KB with no decimals, MB with one;
+    // sep is the panel's decimal separator.
+    function exportBytes(n, sep) {
+        n = Math.max(0, Math.round(Number(n) || 0));
+
+        if (n < 1024) {
+            return n + ' B';
+        }
+
+        if (n < 1024 * 1024) {
+            return Math.round(n / 1024) + ' KB';
+        }
+
+        return String(Math.round(n / 104857.6) / 10).replace('.', sep || '.') + ' MB';
     }
 
     var EXPORT = {
         EXPORT_FORMATS: EXPORT_FORMATS, EXPORT_EDGES: EXPORT_EDGES, fileFormat: fileFormat, exportFormat: exportFormat,
-        exportDefaults: exportDefaults, exportSize: exportSize, exportMode: exportMode, exportRequest: exportRequest
+        exportDefaults: exportDefaults, exportSize: exportSize, exportMode: exportMode, exportRequest: exportRequest,
+        exportChange: exportChange, exportBytes: exportBytes
     };
 
     // -- vector pen and nodes (pg_image_editor_vector.js) --

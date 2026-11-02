@@ -1487,8 +1487,9 @@
             return;
         }
 
-        // Nothing changed is nothing to write over.
-        if (((mode === 'replace') || (mode === 'url')) && !this.dirty) {
+        // Nothing changed is nothing to write over; export settings are a
+        // change (the export part).
+        if (((mode === 'replace') || (mode === 'url')) && !this.dirty && !(this.exportRequest && this.exportRequest())) {
             this.finish(null);
             return;
         }

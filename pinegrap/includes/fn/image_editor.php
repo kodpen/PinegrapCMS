@@ -895,6 +895,18 @@ function pg_image_editor_save($request, $user)
         return $file['refusal'];
     }
 
+    // A file keeps its format and its address: a save in another format is
+    // a copy beside it.
+    $export = pg_image_editor_export_options(isset($request['export']) ? $request['export'] : null, pg_image_editor_export_format_of($file['type']), pg_image_editor_export_formats());
+
+    if ($export === false) {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    if (($export['format'] !== '') && ($mode === 'replace')) {
+        $mode = 'copy';
+    }
+
     if (($mode === 'replace') && !$file['replace']) {
         return $file['animated']
             ? pg_image_editor_refusal(lang('An animated image cannot be replaced. Save it as a new file instead.'))
@@ -1003,10 +1015,12 @@ function pg_image_editor_save($request, $user)
         return pg_image_editor_refusal(lang('Invalid request.'));
     }
 
-    // Encoded for quality, as the file manager's rotate button does: the
-    // operator asked for a changed picture, not a lighter file, and a replace
-    // is the next edit's original.
-    $report = pg_image_edit_apply($source, $edit, array('quality' => 92));
+    // Encoded for quality (92) in the file's own format and size, as the
+    // file manager's rotate button does: the operator asked for a changed
+    // picture, not a lighter file, and a replace is the next edit's
+    // original. The export panel's settings change these.
+    list($edit, $engine) = pg_image_editor_export_edit($edit, $export);
+    $report = pg_image_edit_apply($source, $edit, $engine);
 
     if ($overlay !== '') {
         @unlink($overlay);
@@ -1023,7 +1037,7 @@ function pg_image_editor_save($request, $user)
     }
 
     if ($mode === 'copy') {
-        $name = get_unique_name(array('name' => prepare_file_name($name), 'type' => 'file'));
+        $name = get_unique_name(array('name' => prepare_file_name(($export['format'] !== '') ? pg_image_editor_export_name($name, $export['format']) : $name), 'type' => 'file'));
 
         if (pg_upload_name_blocked($name)) {
             return pg_image_editor_refusal(pg_upload_blocked_message($name));
@@ -1034,7 +1048,8 @@ function pg_image_editor_save($request, $user)
         return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
     }
 
-    $record = pg_image_editor_record($mode, $name, (int) $file['row']['folder'], (string) $file['row']['type'], $file['row'], $user);
+    $type = ($export['format'] !== '') ? strtolower(pathinfo($name, PATHINFO_EXTENSION)) : (string) $file['row']['type'];
+    $record = pg_image_editor_record($mode, $name, (int) $file['row']['folder'], $type, $file['row'], $user);
 
     // A copy keeps no document: its pictures live in its pixels only.
     if ($mode === 'replace') {
@@ -1077,7 +1092,8 @@ function pg_image_editor_arrays($value)
  *       (and versions, doc, base: the versions this file has)
  *   { token, action: 'save', mode: 'replace'|'copy'|'new', file_id | folder_id,
  *     doc, base? (the version the document is drawn on), overlay?, picture?
- *     and name? (new) }
+ *     and name? (new), export? (pg_image_editor_export_options(): another
+ *     format makes a replace a copy) }
  *       -> { status, mode, id, name, folder, url, width, height, size }
  *   { token, action: '<name>', … }
  *       -> pg_image_editor_action_<name>($request, $user), a tool's own
@@ -2691,7 +2707,250 @@ function pg_image_editor_canvas_open_doc($file_id)
  */
 function pg_image_editor_strings_export()
 {
-    return array();
+    return array(
+        'hintExport'      => lang('Settings apply to the saved file; the original stays in versions.'),
+        'exportSettings'  => lang('Export settings…'),
+        'exFormat'        => lang('Format'),
+        'exKeep'          => lang('Original'),
+        'exQuality'       => lang('Quality'),
+        'exEdge'          => lang('Longest edge'),
+        'exOriginal'      => lang('Original'),
+        'exOptions'       => lang('Options'),
+        'exProgressive'   => lang('Progressive JPEG'),
+        'exColors'        => lang('Reduce to 256 colours'),
+        'exMeta'          => lang('Metadata'),
+        'exMetaNote'      => lang('Location (GPS) and camera details are removed.'),
+        'exResult'        => lang('Result'),
+        'exBefore'        => lang('Before'),
+        'exAfter'         => lang('After'),
+        'exWorking'       => lang('Calculating…'),
+        'exUnknown'       => lang('The size could not be calculated.'),
+        'exCopyNote'      => lang('Another format is saved as a copy; the file keeps its own format and address.'),
+        'exSaveWith'      => lang('Save with these settings'),
+    );
+}
+
+// The format name of an IMAGETYPE_*: jpeg, png, webp, avif, gif, bmp or ''.
+// Pure.
+function pg_image_editor_export_format_of($type)
+{
+    $names = array(IMAGETYPE_JPEG => 'jpeg', IMAGETYPE_PNG => 'png', IMAGETYPE_GIF => 'gif', IMAGETYPE_BMP => 'bmp');
+
+    if (defined('IMAGETYPE_WEBP')) {
+        $names[IMAGETYPE_WEBP] = 'webp';
+    }
+
+    if (defined('IMAGETYPE_AVIF')) {
+        $names[constant('IMAGETYPE_AVIF')] = 'avif';
+    }
+
+    return isset($names[(int) $type]) ? $names[(int) $type] : '';
+}
+
+// The formats a save may write on this server: JPEG and PNG always, WebP and
+// AVIF when a library here writes them.
+function pg_image_editor_export_formats()
+{
+    $formats = array('jpeg', 'png');
+
+    foreach (array('webp', 'avif') as $format) {
+        if (pg_image_format_writer($format) !== '') {
+            $formats[] = $format;
+        }
+    }
+
+    return $formats;
+}
+
+/**
+ * A save's export settings (the panel's, M.exportRequest()), checked. Pure.
+ *
+ * @param mixed  $value   the request's export: null keeps everything as it was
+ * @param string $own     the file's own format (pg_image_editor_export_format_of())
+ * @param array  $formats what this server writes (pg_image_editor_export_formats())
+ * @return array|false format ('' keeps the file's own), quality, edge (0 keeps
+ *                     the size), colors (0 or 256, PNG only), progressive
+ *                     (JPEG); false when a value is not one the panel sends
+ */
+function pg_image_editor_export_options($value, $own, $formats)
+{
+    $options = array('format' => '', 'quality' => 92, 'edge' => 0, 'colors' => 0, 'progressive' => true);
+
+    if ($value === null) {
+        return $options;
+    }
+
+    if (!is_array($value)) {
+        return false;
+    }
+
+    if (isset($value['format'])) {
+        if (!is_string($value['format']) || !in_array($value['format'], $formats, true)) {
+            return false;
+        }
+
+        $options['format'] = ($value['format'] === $own) ? '' : $value['format'];
+    }
+
+    if (isset($value['quality'])) {
+        if (!is_int($value['quality']) || ($value['quality'] < 40) || ($value['quality'] > 100)) {
+            return false;
+        }
+
+        $options['quality'] = $value['quality'];
+    }
+
+    if (isset($value['edge'])) {
+        if (!in_array($value['edge'], array(2560, 1920, 1280, 1080), true)) {
+            return false;
+        }
+
+        $options['edge'] = $value['edge'];
+    }
+
+    $format = ($options['format'] !== '') ? $options['format'] : $own;
+
+    if (isset($value['colors'])) {
+        if (($value['colors'] !== 256) || ($format !== 'png')) {
+            return false;
+        }
+
+        $options['colors'] = 256;
+    }
+
+    if (isset($value['progressive'])) {
+        if (($value['progressive'] !== false) || ($format !== 'jpeg')) {
+            return false;
+        }
+
+        $options['progressive'] = false;
+    }
+
+    return $options;
+}
+
+// A file name with the extension of another format: photo.png as jpeg is
+// photo.jpg. Pure.
+function pg_image_editor_export_name($name, $format)
+{
+    $extension = ($format === 'jpeg') ? 'jpg' : $format;
+    $dot = strrpos($name, '.');
+
+    return (($dot === false) || ($dot === 0) ? $name : substr($name, 0, $dot)) . '.' . $extension;
+}
+
+/**
+ * The recipe and the engine's options for the export settings: WebP and AVIF
+ * through the engine's format, JPEG and PNG as the type the edit writes, the
+ * longest edge, colour reduction and progressive JPEG as edit steps. Pure.
+ *
+ * @param array $edit    pg_image_edit_validate()'s recipe
+ * @param array $options pg_image_editor_export_options()
+ * @return array array(recipe, pg_process_image_file() options)
+ */
+function pg_image_editor_export_edit($edit, $options)
+{
+    $engine = array('quality' => $options['quality']);
+
+    if (($options['format'] === 'webp') || ($options['format'] === 'avif')) {
+        $engine['format'] = $options['format'];
+    } elseif ($options['format'] === 'jpeg') {
+        $edit['type'] = IMAGETYPE_JPEG;
+    } elseif ($options['format'] === 'png') {
+        $edit['type'] = IMAGETYPE_PNG;
+    }
+
+    if ($options['edge'] > 0) {
+        $edit['edge'] = $options['edge'];
+    }
+
+    if ($options['colors'] > 0) {
+        $edit['colors'] = $options['colors'];
+    }
+
+    if (!$options['progressive']) {
+        $edit['progressive'] = false;
+    }
+
+    return array($edit, $engine);
+}
+
+/**
+ * Action estimate: the size a save with these export settings would write,
+ * encoded here with the same engine; the overlay and the redaction are left
+ * out (they change a few bytes, not the format's weight), and on a server
+ * without Imagick the colour step too.
+ *
+ *   { file_id, doc, base?, export? }
+ *     -> { before: { size, width, height }, after: { size, width, height },
+ *          formats, colors }
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_estimate($request, $user)
+{
+    $check = pg_image_edit_validate(isset($request['doc']) ? $request['doc'] : null);
+
+    if (($check['error'] !== '') || $check['artboard']) {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    $file = pg_image_editor_file(isset($request['file_id']) ? $request['file_id'] : 0, $user);
+
+    if ($file['refusal']) {
+        return $file['refusal'];
+    }
+
+    $formats = pg_image_editor_export_formats();
+    $export = pg_image_editor_export_options(isset($request['export']) ? $request['export'] : null, pg_image_editor_export_format_of($file['type']), $formats);
+    $edit = $check['edit'];
+    $edit['first_frame'] = true;
+    $extend = pg_image_edit_extend(isset($request['extend']) ? $request['extend'] : null, $edit['out_w'], $edit['out_h']);
+
+    if (($export === false) || ($extend === false)) {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    if ($extend) {
+        $edit['extend'] = $extend;
+    }
+
+    if (!class_exists('Imagick')) {
+        $edit['color'] = null;
+    }
+
+    // Drawn on the version the browser opened, as a save is.
+    $source = $file['path'];
+    $base_id = isset($request['base']) ? (int) $request['base'] : 0;
+
+    if ($base_id > 0) {
+        $base = pg_file_versions_ready() ? pg_file_versions_row((int) $file['row']['id'], $base_id) : null;
+
+        if (!$base) {
+            return pg_image_editor_refusal(lang('Invalid request.'));
+        }
+
+        $source = pg_file_versions_path($base);
+    }
+
+    @set_time_limit(60);
+
+    list($edit, $engine) = pg_image_editor_export_edit($edit, $export);
+    $report = pg_image_edit_apply($source, $edit, $engine);
+    $size = @getimagesize($file['path']);
+    $result = array(
+        'status'  => 'success',
+        'before'  => array('size' => (int) @filesize($file['path']), 'width' => $size ? (int) $size[0] : 0, 'height' => $size ? (int) $size[1] : 0),
+        'after'   => null,
+        'formats' => $formats,
+        // Colour reduction is Imagick's; GD's palette loses the alpha.
+        'colors'  => class_exists('Imagick'));
+
+    if (($report['status'] === 'success') && is_string($report['data'])) {
+        $result['after'] = array('size' => strlen($report['data']), 'width' => (int) $report['width'], 'height' => (int) $report['height']);
+    }
+
+    return array($result, 200);
 }
 
 // -- Vector (pg_image_editor_vector.js) --

@@ -1769,6 +1769,70 @@
 
 /* -- Export (pg_image_editor_export.js) -- */
 
+/* The result card: before and after, a bar of after against before, the
+   change. */
+.pgie-excard {
+  padding: 10px 12px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 8px;
+  background: var(--pgie-bg);
+  font-size: 13px;
+}
+
+.pgie-excard.pgie-busy b {
+  color: var(--pgie-muted);
+  font-weight: 400;
+}
+
+.pgie-exrow {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.pgie-exrow b {
+  font-variant-numeric: tabular-nums;
+}
+
+.pgie-exdim {
+  margin-inline-start: auto;
+  color: var(--pgie-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.pgie-exbar {
+  height: 6px;
+  margin: 8px 0 6px;
+  border-radius: 3px;
+  background: var(--pgie-line);
+  overflow: hidden;
+}
+
+.pgie-exbar span {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: var(--pgie-sel);
+  transition: width 0.2s;
+}
+
+.pgie-exsave {
+  color: var(--pgie-ink);
+  font-weight: 600;
+  text-align: end;
+}
+
+.pgie-exsave.pgie-heavier {
+  color: var(--pgie-danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pgie-exbar span {
+    transition: none;
+  }
+}
+
 /* -- Vector (pg_image_editor_vector.js) -- */
 
 .pgie .pgie-wide {

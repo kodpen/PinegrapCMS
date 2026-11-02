@@ -3774,6 +3774,7 @@
     "The sitemap could not be submitted: {var:1}": "Site haritası gönderilemedi: {var:1}",
     "The sitemap was submitted to Google.": "Site haritası Google'a gönderildi.",
     "The six newest visitors who stopped by.": "Uğrayan en yeni altı ziyaretçi.",
+    "The size could not be calculated.": "Boyut hesaplanamadı.",
     "The size of the table, and a cleanup you can start yourself, are on the Database Engine screen.": "Tablonun boyutu ve elle başlatabileceğiniz temizlik Veritabanı Motoru ekranındadır.",
     "The size or fit is wrong": "Beden ya da ölçü uymadı",
     "The slides come from the product images at render time": "Slaytlar sayfa çizilirken ürün görsellerinden gelir",

@@ -2641,6 +2641,7 @@
     "Another figure": "Başka bir değer",
     "Another flow could not be started.": "Başka bir akış başlatılamadı.",
     "Another flow was started.": "Başka bir akış başlatıldı.",
+    "Another format is saved as a copy; the file keeps its own format and address.": "Başka bir biçim kopya olarak kaydedilir; dosya kendi biçimini ve adresini korur.",
     "Another instruction on the same task; it sees what it answered before.": "Aynı görev için yeni bir talimat; asistan önceki cevaplarını görür.",
     "Another of your saved replies has this shortcut.": "Bu kısayol kayıtlı yanıtlarınızdan birinde zaten var.",
     "Another page (#{var})": "Başka bir sayfa (#{var})",
