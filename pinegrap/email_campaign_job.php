@@ -1,6 +1,6 @@
 <?php
 /**
- * PineGrap - Enterprise Website Platform
+ * Pinegrap - Enterprise Website Platform
  *
  * Originally developed as LiveSite by Camelback Web Architects.
  * Since 2017, maintained and evolved by Erdal Güral (Kodpen) under the name PineGrap.
@@ -19,6 +19,14 @@
 require('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/iys/client.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_send.php');
+
+// The scheduler (CLI or the job.php dispatcher) has no session. A web request
+// must come from a signed-in manager, the same gate the scheduled jobs
+// settings sit behind; without it anybody could start the job from a browser.
+if (!pg_cron_is_background_run()) {
+    $user = validate_user();
+    validate_area_access($user, 'manager');
+}
 
 // if the e-mail campaign job is not activated, then output error
 if (email_campaign_job_enabled() == false) {
