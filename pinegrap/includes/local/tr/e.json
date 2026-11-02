@@ -675,6 +675,7 @@
     "Enter an amount for the price change.": "Fiyat değişikliği için bir tutar girin.",
     "Enter an amount greater than zero.": "Sıfırdan büyük bir tutar girin.",
     "Enter an exchange rate greater than zero.": "Sıfırdan büyük bir kur girin.",
+    "Enter an exchange rate no greater than {var:1}.": "En çok {var:1} olan bir döviz kuru girin.",
     "Enter an inventory quantity.": "Bir stok miktarı girin.",
     "Enter at least one line.": "En az bir satır girin.",
     "Enter both colours as #RRGGBB.": "İki rengi de #RRGGBB biçiminde girin.",

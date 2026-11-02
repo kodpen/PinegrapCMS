@@ -21706,6 +21706,22 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   z-index: 1030;
 }
 
+/* Unlayered: the DataTables stylesheet gives the column chooser a fixed
+   400px width centred with a -200px margin, which @layer custom cannot
+   override. On a phone that runs off both edges, so it takes the screen
+   width less a gutter, and one column. */
+@media (max-width: 575.98px) {
+  div.dt-button-collection.fixed.two-column {
+    width: calc(100vw - 2rem);
+    left: 1rem;
+    margin-left: 0;
+  }
+
+  div.dt-button-collection.fixed.two-column > :last-child {
+    column-count: 1;
+  }
+}
+
 /* Bootstrap 6 bridge: its theme variables read the panel's palette, its
    surfaces its gray scale. Text and line neutrals are Bootstrap 6's own.
    The panel's dark body (#101114) is lighter than Bootstrap's (gray-975),
