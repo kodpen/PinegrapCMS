@@ -3961,7 +3961,19 @@ function output_menu($properties = false)
     // screens beside Site Settings, under system_tools.php's own gate: the
     // screen first, then each group of pg_settings_tool_groups() opening a
     // panel of its screens, every one under its own gate.
-    $menu_tools_groups = ($user['role'] <= 2) ? pg_settings_tool_groups($user) : array();
+    // The groups live in the settings registry, which is not one of the
+    // function modules and loads only behind PG_SETTINGS_MENU.
+    $menu_tools_groups = array();
+
+    if ($user['role'] <= 2) {
+        if (!defined('PG_SETTINGS_MENU')) {
+            define('PG_SETTINGS_MENU', true);
+        }
+
+        include_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+        $menu_tools_groups = pg_settings_tool_groups($user);
+    }
 
     if ($user['role'] <= 2 && pg_settings_tool_count($menu_tools_groups) > 0) {
         $menu_tools = pg_menu_tools_markup($menu_tools_groups, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $output_parent_target, pg_menu_tone('settings-color'));
