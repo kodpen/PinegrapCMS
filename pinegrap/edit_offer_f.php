@@ -1707,10 +1707,14 @@ function _pg_offer_condition_chip($condition, $products)
     if ($condition['type'] == 'usage limit') {
         $customer = isset($condition['customer_limit']) ? (int) $condition['customer_limit'] : 0;
         $total = isset($condition['total_limit']) ? (int) $condition['total_limit'] : 0;
-        if ($customer > 0) {
-            return lang(array('string' => '{var:1}× per customer', 'vars' => $customer));
+        $parts = array();
+        if ($total > 0) {
+            $parts[] = lang(array('string' => 'max {var:1} use(s)', 'vars' => $total));
         }
-        return lang(array('string' => 'max {var:1} use(s)', 'vars' => $total));
+        if ($customer > 0) {
+            $parts[] = lang(array('string' => '{var:1}× per customer', 'vars' => $customer));
+        }
+        return implode(' · ', $parts);
     }
     if ($condition['type'] == 'product group') {
         $names = array();
@@ -1760,9 +1764,18 @@ function _pg_offer_action_chip($action, $products)
             }
             return _pg_offer_product_label($action['product_id'], $products) . ' ' . (($action['unit'] == 'amount') ? '−' : '') . _pg_offer_value_text($action);
         case 'add product':
-            return max(1, (int) $action['quantity']) . ' × ' . _pg_offer_product_label($action['product_id'], $products) . ' ' . lang('gift');
+            // "gift" only when the product is free, as in _pg_offer_action_text().
+            $chip = max(1, (int) $action['quantity']) . ' × ' . _pg_offer_product_label($action['product_id'], $products) . ' ';
+            if (($action['unit'] == 'percent') && ($action['value'] >= 100)) {
+                return $chip . lang('gift');
+            }
+            if ($action['value'] <= 0) {
+                return $chip . lang('full price');
+            }
+            return $chip . (($action['unit'] == 'amount') ? '−' : '') . _pg_offer_value_text($action);
         case 'discount shipping':
-            return lang('Shipping') . ' ' . _pg_offer_percent_text($action['value']);
+            // Its own key: the shared 'Shipping' reads "Nakliye", the editor says "Kargo".
+            return lang(array('string' => 'Shipping {var:1}', 'vars' => _pg_offer_percent_text($action['value'])));
     }
     return '';
 }

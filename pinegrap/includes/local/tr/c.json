@@ -2476,7 +2476,7 @@
     "care, cleaning, storage, jewellery care, leather care": "bakım, temizlik, saklama, takı bakımı, deri bakımı",
     "careers": "kariyer",
     "cart": "sepet",
-    "cart has at least {var:1} from {var:2}": "sepette {var:2} grubundan en az {var:1} ürün var",
+    "cart has at least {var:1} from {var:2}": "sepette {var:2} grubundan en az {var:1} ürün varsa",
     "cart has at least {var:1} of {var:2}": "sepette {var:2} ürününden en az {var:1} adet varsa",
     "cart holds at least {var:1} item(s)": "sepette en az {var:1} ürün varsa",
     "cart is {var:1} or more": "sepet {var:1} ve üzerindeyse",

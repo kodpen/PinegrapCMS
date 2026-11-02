@@ -1258,7 +1258,7 @@
     "Expiration is required.": "Son kullanma tarihi zorunludur.",
     "Expire Membership": "Üyeliği Sonlandır",
     "Expire membership.": "Üyeliği sona erdir.",
-    "Expired": "Süresi Doldu",
+    "Expired": "Süresi doldu",
     "Expired Balance": "Süresi Dolmuş Bakiye",
     "Expired Member": "Süresi Dolmuş Üye",
     "Expired on {var:1}": "{var:1} tarihinde süresi doldu",
