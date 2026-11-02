@@ -51,7 +51,7 @@ description: Generated from the module field of the memory files: each includes/
 - `google_reviews`: [[google-reviews-widget]]
 - `graph_canvas`: [[graph-canvas-core-module]]
 - `health_gauge`: [[dashboard-system-status-gauge]]
-- `image`: [[image-derivative-upkeep]], [[image-upload-cap]]
+- `image`: [[image-derivative-upkeep]], [[image-same-address-switches]], [[image-upload-cap]]
 - `image_editor`: [[image-editor-access]], [[image-editor-adjust]], [[image-editor-artboard]], [[image-editor-callers]], [[image-editor-canvas-save]], [[image-editor-draw]], [[image-editor-export]], [[image-editor-fonts]], [[image-editor-glyph]], [[image-editor-keys]], [[image-editor-layers]], [[image-editor-modal]], [[image-editor-motion]], [[image-editor-parts]], [[image-editor-recycle-bin]], [[image-editor-redact]], [[image-editor-save]], [[image-editor-sticker]], [[image-editor-svg]], [[image-editor-text]], [[image-editor-vector]], [[image-editor-versions]]
 - `imap_client`: [[mail-imap-client]]
 - `innodb`: [[panel-script-number-format]]

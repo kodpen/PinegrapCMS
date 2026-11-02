@@ -13,7 +13,7 @@ description: JPEG/PNG answered with its WebP derivative at its own address (get_
 - It reads `$router_config_row` (the router's `SELECT * FROM config`): no extra query.
 
 ## Which switches?
-- Bits of `config.image_derivative_formats` (no schema): 4 = answer the own address with WebP, needs 1 (WebP offered), so the switch is on only when `bits & 5 == 5`; 8 = the CDN in front keeps a copy per format. Nothing sets them before the settings step: a site sends exactly what it sent before, no `Vary` either.
+- Bits 4 and 8 of `config.image_derivative_formats`; settings, default and System Status line: `image-same-address-switches.md`.
 
 ## When does Vary: Accept go out?
 - On every answer while the switch is on for a negotiable file, the original and 304 included, appended (`header(..., false)`) so another layer's `Vary` stays.
