@@ -1618,3 +1618,31 @@ function erp_edoc_invoice_document($invoice_id, $format = 'pdf')
 
     return array_merge($none, erp_edoc_call('fetch_document', array($invoice, $format), $provider));
 }
+
+/**
+ * The headers the provider's copy of a document is sent with.
+ *
+ * What comes back is the provider's bytes: İşbaşı answers the PDF address
+ * with an HTML page of its own, which the browser shows inline. Served as it
+ * came, that page ran on the panel's origin with the operator's session and
+ * form token. The sandbox gives it an opaque origin; its own scripts (the QR
+ * code of the GİB layout) and printing still run. The caller adds nosniff
+ * (pg_send_nosniff()), so a mislabelled file is not promoted to a page. Pure.
+ *
+ * @param string $mime      The type the driver named
+ * @param string $filename  A name already reduced to safe characters
+ * @param bool   $download
+ * @return string[]
+ */
+function erp_edoc_document_headers($mime, $filename, $download)
+{
+    $mime = trim((string) $mime);
+
+    return array(
+        'Content-Type: ' . (($mime !== '') ? $mime : 'application/octet-stream'),
+        'Content-Disposition: ' . ($download ? 'attachment' : 'inline') . '; filename="' . (string) $filename . '"',
+        'Content-Security-Policy: sandbox allow-scripts allow-modals',
+        'X-Robots-Tag: noindex',
+        'Cache-Control: private, no-store',
+    );
+}
