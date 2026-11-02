@@ -23,11 +23,14 @@ module: mail_bounces
 
 ## Which answers lift a block?
 - Architect decision #5366 (review of #5241: anyone could type any address into a public form): only a write that proves the address is the person's own.
-- `pg_consent_log_answers()` clears, on a granted e-mail answer (`pg_consent_log_resubscribes()`) or a changed address (`previous_email` differs), only when its source is in the pure `pg_consent_log_proving_sources()`: `account` (signed-in, own account) and `panel` (staff, MD5's "Allow again" included).
+- `pg_consent_log_answers()` clears, on a granted e-mail answer (`pg_consent_log_resubscribes()`) or a changed address (`previous_email` differs), only when its source is in the pure `pg_consent_log_proving_sources()`: `account` (signed-in, own account) and `panel` (staff, the card's "Allow again" included).
 - `pg_fs_confirm()` (`includes/fn/form_subscription.php`) clears after its granted row: the signed double opt-in link proves the mailbox.
 - `form`, `checkout`, `signup`, `unsubscribe`, `import`, `api`, `iys`, `banner` still write consent rows but never clear. A complaint's `opt_in = 0` (#5036) is unchanged.
 
-## How was it verified?
-- `tests/mail_bounces_test.php` (keying, the state moves, the window, clearing, the recipient split, the campaign summary and marker, the proving sources and the clear call sites). No running instance: the queue run, the campaign paths, the consent rows and the migration were not exercised against a database.
+## Which screens show it?
+- Campaign counts, the Suppressed view and export column, the card's "Allow again", export and erasure: `mail-bounce-screens.md`.
 
-Related: mail-queue-permanent-errors.md, email-campaign-send.md, consent-log-writers.md, docs/memory/plans/mail-deliverability.md
+## How was it verified?
+- `tests/mail_bounces_test.php` (keying, state moves, window, clearing, recipient split, campaign summary and marker, proving sources, clear call sites). No database run.
+
+Related: mail-queue-permanent-errors.md, email-campaign-send.md, consent-log-writers.md

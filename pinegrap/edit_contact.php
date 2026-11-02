@@ -303,7 +303,7 @@ if (!$_POST) {
                                                 <div class="switch"><input class="" type="checkbox" id="opt_in" name="opt_in" value="1"' . ($row['opt_in'] ? ' checked="checked"' : '') . '></div>
                                                 <label class="" for="opt_in">' . lang('Opt-In Status') . '</label>
                                             </div>
-                                        </div>
+                                        </div>' . pg_mail_bounce_contact_badge(pg_mail_bounce_row($row['email_address'])) . '
                                     </div>
                                 </div>
                             </div>
@@ -346,7 +346,17 @@ if (!$_POST) {
 
 } else {
     validate_token_field();
-    
+
+    // "Allow again" on the suppressed badge: lift the block on the stored
+    // address and come back to the card; the rest of the form is not saved.
+    if (($_POST['submit_allow_again'] ?? '') == '1') {
+        pg_mail_bounce_allow_contact($id);
+
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_contact.php?id=' . $id
+            . ((isset($_REQUEST['send_to']) && is_string($_REQUEST['send_to']) && ($_REQUEST['send_to'] !== '')) ? '&send_to=' . urlencode($_REQUEST['send_to']) : ''));
+        exit();
+    }
+
     // if contact was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
         $audit_before = pg_audit_fetch('contacts', (int) ($_POST['id'] ?? 0));

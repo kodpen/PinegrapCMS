@@ -777,6 +777,7 @@
     "Repeated for each recipient": "Her alıcı için tekrarlanır",
     "Repeated for each record": "Her kayıt için tekrarlanır",
     "Repeated in the file": "Dosyada tekrar eden",
+    "Repeated soft bounces": "Tekrarlanan geçici geri dönmeler",
     "Repeating ERP invoice #{var:1} was stopped through the API.": "Tekrarlayan ERP faturası #{var:1} API üzerinden durduruldu.",
     "Repeating expenses": "Tekrarlayan giderler",
     "Repeating expenses come with the software update; run the update to use them.": "Tekrarlayan giderler yazılım güncellemesiyle gelir; kullanmak için güncellemeyi çalıştırın.",

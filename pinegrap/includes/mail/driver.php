@@ -19,7 +19,8 @@
  *                                   the API takes), webhook (whether the
  *                                   provider reports bounces to a webhook),
  *                                   raw (it sends the finished message whole,
- *                                   $message['mime'])
+ *                                   $message['mime']), webhook_signed (its
+ *                                   reports carry a signature)
  *   pg_mail_<key>_request($message, $settings)
  *                                   required, pure: the HTTP request as
  *                                   array(url, headers, body, userpwd)
@@ -29,7 +30,11 @@
  *   pg_mail_<key>_send($message, $settings)
  *                                   required: sends one message and answers
  *                                   pg_mail_transport_result()
- *   pg_mail_<key>_webhook(...)      optional: the provider's event reports
+ *   pg_mail_<key>_webhook($raw, $headers)
+ *                                   optional, pure: the provider's bounce,
+ *                                   complaint and delivery reports, and
+ *   pg_mail_<key>_webhook_verify($raw, $headers, $signing, $now)
+ *                                   for a signed one (includes/fn/mail_webhook.php)
  *
  * $message is the built message, pg_mail_transport_message(): from,
  * from_name, to, cc, bcc and reply_to as lists of array(address, name),

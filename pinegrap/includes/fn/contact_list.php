@@ -64,6 +64,7 @@ function pg_contact_list_filters($role)
         'my_contacts_by_user' => lang('My Contacts by User'),
         'my_contacts_by_business_address' => lang('My Contacts by Business Address'),
         'my_contacts_by_home_address' => lang('My Contacts by Home Address'),
+        'suppressed' => lang('Suppressed'),
     );
 
     if ($role < 3) {
@@ -350,6 +351,13 @@ function pg_contact_list_view($filter)
             $view['condition'] = "(" . $named . " AND ((" . $p . "address_1 != '') AND (" . $p . "city != '') AND (" . $p . "state != '') AND (" . $p . "zip_code != '')))";
             $view['heading'] = ($filter == 'my_contacts_by_business_address') ? lang('My Contacts by Business Address') : lang('My Contacts by Home Address');
             $view['subheading'] = ($filter == 'my_contacts_by_business_address') ? lang('All my contacts that have a business address.') : lang('All my contacts that have a home address.');
+            break;
+
+        case 'suppressed':
+            // Before the bounce record exists nobody is suppressed.
+            $view['condition'] = pg_mail_bounces_ready() ? pg_mail_bounce_suppressed_sql('contacts.email_address') : '(1 = 0)';
+            $view['heading'] = lang('Suppressed');
+            $view['subheading'] = lang('All my contacts whose e-mail address bounced, complained or was blocked, so no e-mail is sent to them.');
             break;
 
         case 'all_duplicate_contacts':
