@@ -11,7 +11,7 @@ description: Steps MD1-MD4 of plans/mail-deliverability.md: bounce record and se
 - MD1 (M) Bounce record and the send gate. Done, #5241.
   - Schema sub-step of the open version (`install_create_table()`, in `get_tables()`), rerun twice on a dev DB. New `includes/fn/mail_bounces.php`: `pg_mail_bounce_record($address, $kind, $source, $ref)`, `pg_mail_address_blocked($address)` (hard or complaint, or N soft in 30 days), `pg_mail_bounce_clear($address)` on an address change or resubscribe; `mail_queue.php` asks the gate before a send and marks the row `suppressed` (a queue outcome, not a failure); `email_campaign_send.php` skips suppressed addresses and counts them. Memory: `core/mail-bounces.md`.
 
-- MD2 (M) VERP return path and the mailbox reader. After MD1.
+- MD2 (M) VERP return path and the mailbox reader. Done, #5411.
   - `pg_mail_envelope_sender()` gains a signed per-message token (`bounce+<token>@<mail host>`, HMAC of queue id and address, no table); a Workspace mailbox marked "reads bounces" (mailbox settings, `includes/workspace/mail_settings.php`) hands DSNs (`multipart/report`, `message/delivery-status`, the common plain-text shapes) to `pg_mail_parse_dsn()` in `mail_parse.php`, which returns address, kind and the token; `ws_mail_fetch_box()` records the bounce and files the DSN out of the channel. Tests with real DSN samples from Gmail, Outlook, Yahoo and Postfix in `tests/fixtures/mail_dsn/`. Memory: `core/mail-bounce-verp.md`.
 
 - MD3 (M, two PRs) Transport drivers. MD3a done (#5235), MD3b done (#5348). Cut: MD3a the layer, the settings card and the four JSON drivers (Postmark, Mailgun, Brevo, Resend); MD3b `ses.php` with `includes/fn/aws_sign.php` (after MD3a, unless OS1 wrote it first).

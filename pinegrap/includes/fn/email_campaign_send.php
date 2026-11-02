@@ -21,7 +21,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * The email() properties of one campaign message. The purpose travels with
  * them: email() adds List-Unsubscribe and List-Unsubscribe-Post (RFC 8058)
  * only to a campaign whose purpose is commercial. The caller adds
- * notify_sender when it needs one.
+ * notify_sender when it needs one. With the campaign's id (id or
+ * email_campaign_id) the message carries bounce_ref for its return path.
  *
  * @param array  $campaign  from_name, from_email_address, reply_email_address,
  *                          bcc_email_address, format, purpose
@@ -33,7 +34,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_email_campaign_mail_properties($campaign, $to, $to_name, $subject, $body)
 {
-    return array(
+    $properties = array(
         'to' => (string) $to,
         'to_name' => (string) $to_name,
         'bcc' => (string) ($campaign['bcc_email_address'] ?? ''),
@@ -46,6 +47,17 @@ function pg_email_campaign_mail_properties($campaign, $to, $to_name, $subject, $
         'type' => 'campaign',
         'purpose' => (string) ($campaign['purpose'] ?? ''),
     );
+
+    // The return path's reference (includes/fn/mail_bounces.php): a bounce
+    // is recorded against the campaign. The job's rows name it
+    // email_campaign_id, Send now's campaign row id.
+    $campaign_id = (int) ($campaign['email_campaign_id'] ?? ($campaign['id'] ?? 0));
+
+    if ($campaign_id > 0) {
+        $properties['bounce_ref'] = pg_mail_bounce_ref('campaign', $campaign_id);
+    }
+
+    return $properties;
 }
 
 /**

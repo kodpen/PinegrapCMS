@@ -590,6 +590,9 @@ function pg_mail_queue_run($limit = 25, $seconds = 20)
             }
         }
 
+        // The return path's reference: a bounce names this row.
+        $properties['bounce_ref'] = pg_mail_bounce_ref('queue', $id);
+
         // The sender hears about a failure once, when the message is given
         // up on, rather than after every attempt. Before the last attempt
         // email() is asked to tell only a permanent failure, which ends the

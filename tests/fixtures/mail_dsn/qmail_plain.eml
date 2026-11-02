@@ -1,0 +1,20 @@
+Return-Path: <>
+Delivered-To: bounces+{TOKEN}@example.com
+From: MAILER-DAEMON@mx.oldhost.example.net
+To: bounces+{TOKEN}@example.com
+Subject: failure notice
+Date: 2 Nov 2026 19:10:00 -0000
+
+Hi. This is the qmail-send program at mx.oldhost.example.net.
+I'm afraid I wasn't able to deliver your message to the following addresses.
+This is a permanent error; I've given up. Sorry it didn't work out.
+
+<old.user@oldhost.example.net>:
+Sorry, no mailbox here by that name. (#5.1.1)
+
+--- Below this line is a copy of the message.
+
+Return-Path: <bounces+{TOKEN}@example.com>
+From: shop@example.com
+To: old.user@oldhost.example.net
+Subject: Welcome

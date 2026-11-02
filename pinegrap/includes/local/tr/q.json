@@ -72,6 +72,7 @@
     "Queue inactive": "Kuyruk devre dışı",
     "Queue {var:1} article(s) for listing?": "{var:1} ürün grubu ilan için sıraya alınsın mı?",
     "Queued": "Sırada",
+    "Queued and campaign e-mails are sent with this address as their return path, written with a + and a code after its name. Delivery failures that come back are recorded and leave the channel; an address that keeps failing gets no more mail. The mail server must deliver such addresses to this mailbox, and the site's sending address must be on the same domain.": "Kuyruktaki ve kampanya e-postaları bu adresi, adının arkasına + ve bir kod eklenerek dönüş adresi olarak kullanır. Geri gelen teslim hataları kaydedilir ve kanala düşmez; sürekli hata veren bir adrese artık e-posta gönderilmez. Posta sunucusu bu biçimdeki adresleri bu posta kutusuna teslim etmeli, sitenin gönderen adresi de aynı alan adında olmalıdır.",
     "Queued for sending": "Kuyruğa alındı",
     "Queued: sent within a few minutes.": "Sıraya alındı: birkaç dakika içinde gönderilir.",
     "Queued: the price and stock are sent to Merchant Center within a few minutes.": "Sıraya alındı: fiyat ve stok birkaç dakika içinde Merchant Center'a gönderilir.",

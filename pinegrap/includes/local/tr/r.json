@@ -173,6 +173,7 @@
     "Reading time (minutes)": "Okuma süresi (dakika)",
     "Readonly": "Salt Okunur",
     "Reads a Workspace mailbox of this account and sends its answers from it.": "Bu hesabın bir Çalışma Alanı posta kutusunu okur ve yanıtlarını bu hesaptan gönderir.",
+    "Reads bounces": "Geri dönen postaları okur",
     "Reads every page, visual editor record and linked file into the index the site search answers from.": "Her sayfayı, görsel düzenleyici kaydını ve bağlantılı dosyayı site aramasının yanıt verdiği dizine okur.",
     "Reads only": "Yalnızca okur",
     "Ready": "Hazır",
