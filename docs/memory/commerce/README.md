@@ -259,6 +259,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - tax-zone-commission-reward-boxes.md: Rate, commission and whole-number boxes read as their columns store them: tax zone rate, commission, reward points and goal, Site Settings whole numbers (pg_parse_whole_number())
 - tr-district-carriers.md: What sends and writes ship_tos.district (#3654): the four Turkish carrier drivers (district first, city fallback), the needs-district hook, the n11 and Trendyol imports
 - tr-district-plate-code.md: ship_tos.district and states.plate_code (step 11.0.134, decision #3569): the district as free text, the plate fill by province name, the readiness probe, what reads them so far
+- tr-place-list.md: The Turkish place list (includes/geo/places/TR.json, 81 provinces, 973 districts): lookup, the city box suggester, the spelling written at save, the order screen's note for an unlisted district
 - trendyol-api-facts.md: Trendyol seller API (V2) facts for the connector: hosts, Basic auth + mandatory User-Agent, stage IP whitelist (503), category tree, V2 attributes with separately paged values, limits, test call.
 - trendyol-common-label.md: Trendyol common label (#3123, PRs #3257, #3281, #3594): by cargo number, ZPL per box, card, order screen and bulk, kept as a label row, read again after the sweep; marketplace_carried
 - trendyol-invoice-link.md: Trendyol invoice link of an imported package: typed by the operator on the Imported orders card, the seller-invoice-links call, link checks, 409, invoice_sent, no removal

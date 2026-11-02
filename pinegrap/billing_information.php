@@ -164,6 +164,9 @@ if ($liveform->get_field_value('tax_exempt')) {
     $tax_exempt = 0;
 }
 
+// A Turkish district is saved in its listed spelling.
+pg_place_liveform_fix($liveform, 'billing_');
+
 // add data to orders table
 $query =
     "UPDATE orders
