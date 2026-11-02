@@ -178,7 +178,7 @@ function pg_container_form_script()
 
 /**
  * Check a posted container: name, length, width and height are required,
- * the dimensions must not be zero and the name must not be used by another
+ * the dimensions must be greater than zero and the name must not be used by another
  * container. Errors are marked on the liveform.
  *
  * @param liveform $liveform
@@ -205,8 +205,26 @@ function pg_container_form_validate($liveform, $container_id = 0)
         'length' => lang('Sorry, the length must be greater than zero.'),
         'width' => lang('Sorry, the width must be greater than zero.'),
         'height' => lang('Sorry, the height must be greater than zero.')) as $field => $message) {
-        if (($liveform->check_field_error($field) == false) && ($liveform->get_field_value($field) == 0)) {
+        if (($liveform->check_field_error($field) == false) && !pg_container_dimension_positive($liveform->get_field_value($field))) {
             $liveform->mark_error($field, $message);
         }
     }
+}
+
+/**
+ * Whether a posted length, width or height is a number greater than zero.
+ * The columns are unsigned decimals and the site runs a non-strict sql_mode,
+ * so a negative or non-numeric value would be stored as 0. A "== 0" test let
+ * those through on PHP 8, where "abc" == 0 and "-5" == 0 are both false.
+ *
+ * @param mixed $value
+ * @return bool
+ */
+function pg_container_dimension_positive($value)
+{
+    if (!is_scalar($value) || !is_numeric(trim((string) $value))) {
+        return false;
+    }
+
+    return (float) trim((string) $value) > 0;
 }

@@ -15,3 +15,6 @@ description: add_container.php and edit_container.php draw and check the contain
 
 ## How are the dimension boxes named?
 - `Dimensions` is the `<legend class="form-label fs-md">` of a `<fieldset>` holding the Inches/Cm radios and both rows. Each of the six boxes has its own visible `<label for>` (`Length`, `Width`, `Height`) and is a `form-adorn form-adorn-end` with an `aria-hidden` `in`/`cm`, three per `row g-3` (`col-12 sm:col-4`). The old English `L`/`W`/`H` add-ons and the placeholders that named the boxes are gone. Ids and the toggled wrappers `#length_inches` / `#length_cm` are kept. Test: `tests/commerce_form_group_names_test.php`.
+
+## Which dimensions are refused?
+- Length, width and height must be numbers greater than zero (`pg_container_dimension_positive()`, `tests/container_form_test.php`). The columns are unsigned decimals under a non-strict sql_mode, so before #5133 a negative or non-numeric value passed the old `== 0` test on PHP 8 and was stored as 0. Weight and cost are not checked here.
