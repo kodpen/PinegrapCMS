@@ -1210,6 +1210,7 @@
     "{var:1} past due": "{var:1} vadesi geçmiş",
     "{var:1} past the expected day": "{var:1} tanesi beklenen günü geçti",
     "{var:1} past their due date": "{var:1} gider vadesini geçti",
+    "{var:1} paused": "{var:1} duraklatıldı",
     "{var:1} payment method{suffix:1}": "{var:1} ödeme yöntemi",
     "{var:1} people": "{var:1} kişi",
     "{var:1} people are looking around the site right now.": "Şu anda {var:1} kişi siteyi geziyor.",

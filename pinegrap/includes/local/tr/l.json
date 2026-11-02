@@ -140,6 +140,7 @@
     "Last run of the general job": "Genel işin son çalışması",
     "Last run of the mail queue": "E-posta kuyruğunun son çalışması",
     "Last run {var:1}": "Son çalışma {var:1}",
+    "Last runs": "Son çalıştırmalar",
     "Last saved: {var}": "Son kayıt: {var}",
     "Last seen": "Son görülme",
     "Last sent": "Son gönderim",
