@@ -127,7 +127,7 @@ function test_request_scheme_peer_offer()
 	pg_assert_same(array('kind' => 'private', 'entries' => array('fd12:3456::1')), pg_https_peer_offer('fd12:3456::1'), 'ULA');
 
 	pg_assert_same(array('kind' => 'public', 'entries' => array()), pg_https_peer_offer('203.0.113.9'));
-	pg_assert_same(array('kind' => 'public', 'entries' => array()), pg_https_peer_offer('2001:db8::1'));
+	pg_assert_same(array('kind' => 'public', 'entries' => array()), pg_https_peer_offer('2a00:1450:4001:800::200e'));
 	pg_assert_same(array('kind' => 'public', 'entries' => array()), pg_https_peer_offer('104.16.1.1'), 'a Cloudflare edge is trusted before the offer is asked');
 
 	pg_assert_same(array('kind' => 'other', 'entries' => array()), pg_https_peer_offer('169.254.1.1'), 'link-local');
