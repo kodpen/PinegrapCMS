@@ -15,7 +15,7 @@ description: Site steps S1-S4 of plans/datetime-picker.md (after the panel stop)
 - S3b (S) **done (#4383)** The add-on files deleted (`assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.*`, about 1,950 vendored lines) and listed in `clean_up.php`, `tests/bs6_timepicker_addon_test.php` checking they are gone. After #3141 (`clean_up.php`) has merged. **Stop** after it.
 
 - S4a (M) **done (#5360)**. Native date, datetime-local and time inputs on site pages hooked by type, ISO kept (`ui/site-native-date-inputs.md`): every widget and hand-placed input; the server reads ISO date and time; express-order submit rewrite removed.
-- S4b (S) **done (#PR)**. ISO values in native inputs (`pg_native_date_value()`: designer form defaults, layout converter); starter layouts' time hints follow the clock (both languages). `style_designer.js` and the magazine/news templates needed nothing: the site hooks by type, the server reads ISO (`ui/site-native-date-inputs.md`).
+- S4b (S) **done (#5381)**. ISO values in native inputs (`pg_native_date_value()`: designer form defaults, layout converter); starter layouts' time hints follow the clock (both languages). `style_designer.js` and the magazine/news templates needed nothing: the site hooks by type, the server reads ISO (`ui/site-native-date-inputs.md`).
 - S4 (L), designer widgets and palette, ISO kept: cut into S4a and S4b above.
 
 ## What risks stay open?
