@@ -2558,6 +2558,133 @@
   }
 }
 
+/* -- Frames and Save animation (pg_image_editor_render.js) -- */
+
+.pgie-confirm-box.pgie-anim-box {
+  width: min(660px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  overflow: auto;
+}
+
+.pgie-anim-head,
+.pgie-anim-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pgie-anim-head h2 {
+  margin: 0;
+}
+
+.pgie-anim-body {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 20px;
+  margin: 16px 0;
+}
+
+.pgie-anim-side {
+  text-align: center;
+}
+
+.pgie-anim-preview {
+  max-width: 100%;
+  border: 1px solid var(--pgie-line);
+  border-radius: 10px;
+  background: repeating-conic-gradient(var(--pgie-hover) 0 25%, var(--pgie-surface) 0 50%) 0 0 / 16px 16px;
+}
+
+.pgie-confirm-box p.pgie-anim-cap {
+  margin: 6px 0 0;
+  font-size: 13px;
+}
+
+.pgie-anim-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.pgie-anim-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  color: var(--pgie-muted);
+  font-size: 13px;
+}
+
+.pgie-anim-label b {
+  color: var(--pgie-tx);
+}
+
+.pgie-anim-estimate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--pgie-pline);
+  border-radius: 10px;
+  background: var(--pgie-pw);
+  color: var(--pgie-muted);
+  font-size: 13px;
+}
+
+.pgie-anim-estimate b {
+  color: var(--pgie-tx);
+  font-size: 16px;
+}
+
+.pgie-anim-steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+}
+
+.pgie-anim-steps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 0;
+  color: var(--pgie-muted);
+}
+
+.pgie-anim-steps li.done {
+  color: var(--pgie-tx);
+}
+
+.pgie-anim-steps li.on {
+  color: var(--pgie-ink);
+  font-weight: 700;
+}
+
+.pgie-anim-dot {
+  width: 6px;
+  height: 6px;
+  margin: 0 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.pgie-confirm-box .pgie-anim-foot p {
+  margin: 0;
+}
+
+@media (max-width: 599.98px) {
+  .pgie-anim-body {
+    grid-template-columns: 1fr;
+  }
+
+  .pgie-animbtn .pgie-vlabel {
+    display: none;
+  }
+}
+
 /* -- Icons and emoji (pg_image_editor_glyph.js) -- */
 
 .pgie-glyphs {

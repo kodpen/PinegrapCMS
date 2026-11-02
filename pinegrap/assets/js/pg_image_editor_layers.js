@@ -663,9 +663,11 @@
     };
 
     // Each visible layer onto g, the box of the rotated space drawn at w x h:
-    // its type paints it in rotated-space units, its opacity set.
-    Editor.prototype.paintLayers = function (g, box, w, h) {
-        var self = this, sx = w / box.w, sy = h / box.h;
+    // its type paints it in rotated-space units, its opacity set. With a
+    // time (ms) each layer is painted as it moves then (paintMoving(), the
+    // render part); without one, at rest.
+    Editor.prototype.paintLayers = function (g, box, w, h, time) {
+        var self = this, sx = w / box.w, sy = h / box.h, timed = (time !== undefined) && (time !== null) && !!this.paintMoving;
 
         this.doc.layers.forEach(function (l) {
             var type = kind(l);
@@ -677,7 +679,12 @@
             g.save();
             g.setTransform(sx, 0, 0, sy, -box.x * sx, -box.y * sy);
             g.globalAlpha = (l.opacity === undefined) ? 1 : l.opacity;
-            type.paint.call(self, g, l);
+            if (timed) {
+                self.paintMoving(g, l, time, type);
+            } else {
+                type.paint.call(self, g, l);
+            }
+
             g.restore();
         });
     };

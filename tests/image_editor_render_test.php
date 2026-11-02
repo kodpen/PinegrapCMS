@@ -161,3 +161,50 @@ function test_image_editor_render_palette_rect_lzw()
 	pg_assert_same(null, $r['same'], 'nothing changed');
 	pg_assert_true($r['lzw'] < 60, 'a run compresses');
 }
+
+// The dialog's sizes, frames, samples, repeats, estimate and file name.
+function test_image_editor_render_model()
+{
+	$r = image_editor_render_node(
+		'console.log(JSON.stringify({' . "\n"
+		. ' size: M.animSize({ w: 2400, h: 1600 }, 480), small: M.animSize({ w: 300, h: 200 }, 480), tall: M.animSize({ w: 1000, h: 3000 }, 800),' . "\n"
+		. ' edges: M.animEdges({ w: 2400, h: 1600 }, "gif"), edgesSmall: M.animEdges({ w: 500, h: 300 }, "gif"), edgesTiny: M.animEdges({ w: 100, h: 50 }, "gif"),' . "\n"
+		. ' frames: [M.animFrames(5000, 15), M.animFrames(0, 15), M.animFrames(1234, 10)],' . "\n"
+		. ' samples: M.animSamples(75, 8), few: M.animSamples(3, 8),' . "\n"
+		. ' loops: [M.animLoops(0), M.animLoops(5)],' . "\n"
+		. ' defaults: M.animDefaults({ layers: [], motion: { duration: 4000, loop: 2 } }, "gif", false), phone: M.animDefaults({ layers: [] }, "nope", true).edge,' . "\n"
+		. ' estimate: M.animEstimate(800, 1000, 75),' . "\n"
+		. ' names: [M.animName("photos/editor-photo.jpg", "gif"), M.animName("a.b.png", "gif"), M.animName("", "gif")]' . "\n"
+		. '}));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array('w' => 480, 'h' => 320), $r['size'], 'longest edge 480');
+	pg_assert_same(array('w' => 300, 'h' => 200), $r['small'], 'never enlarged');
+	pg_assert_same(array('w' => 267, 'h' => 800), $r['tall'], 'a tall picture by its height');
+	pg_assert_same(array(240, 320, 480, 640, 800), $r['edges'], 'edges of a large picture');
+	pg_assert_same(array(240, 320, 480, 500), $r['edgesSmall'], 'a small picture adds its own edge');
+	pg_assert_same(array(100), $r['edgesTiny'], 'a tiny picture keeps its size');
+	pg_assert_same(array(75, 1, 12), $r['frames'], 'frame counts');
+	pg_assert_same(array(4, 14, 23, 32, 42, 51, 60, 70), $r['samples'], 'samples spread evenly');
+	pg_assert_same(array(0, 1, 2), $r['few'], 'no more samples than frames');
+	pg_assert_same(array(array(0, 1, 3), array(0, 1, 3, 5)), $r['loops'], 'repeat choices');
+	pg_assert_same(array('format' => 'gif', 'edge' => 480, 'fps' => 15, 'loop' => 2, 'dither' => true), $r['defaults'], 'defaults from the document');
+	pg_assert_same(240, $r['phone'], 'a small device starts small');
+	pg_assert_same(75801, $r['estimate'], 'estimate');
+	pg_assert_same(array('editor-photo.gif', 'a.b.gif', 'animation.gif'), $r['names'], 'file names');
+}
+
+// Action base refuses an artboard and a request without a document before
+// any file is read.
+function test_image_editor_render_base_refusals()
+{
+	$r = pg_image_editor_action_base(array('file_id' => 0), array('role' => 0));
+	pg_assert_same(200, $r[1], 'answered');
+	pg_assert_same('error', $r[0]['status'], 'no file, refused');
+	pg_assert_false(isset($r[0]['data']), 'no bytes');
+}

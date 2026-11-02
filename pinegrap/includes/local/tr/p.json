@@ -750,6 +750,7 @@
     "Picture Tile": "Görsel Karosu",
     "Picture address (the field with the RSS media role)": "Görsel adresi (RSS medya rolündeki alan)",
     "Picture from Files": "Dosyalardan görsel",
+    "Picture from the server": "Zemin sunucudan alınıyor",
     "Picture move": "Resim hareketi",
     "Picture tiles with a label": "Etiketli resim kutuları",
     "Picture {var}": "Görsel {var}",
