@@ -14,7 +14,7 @@ description: Signature form field (form_fields.type 'signature'): legal status, 
 | Did the signed document change later? | `document_hash` -> `pg_signature_document_matches()` |
 - The seal alone is not enough: editing the contract-text `information` field in the panel (no DB touch) moves the signature under another document.
 - The hash covers all field definitions (labels and `information` contents) and the given answers; the signature's own value is outside it.
-- Both sides read the answers from the stored `form_data` rows (`pg_signature_stored_document_hash()`): `custom_form.php` and `add_submitted_form.php` write the signature's row without a file, then call `pg_signature_store_pending()` after their field loop, which hashes, stores the record and sets the row's `file_id`. Until #<PR> the signing side hashed the posted values (a ticked box as a one-item list, a date as typed), so such documents always showed "changed"; records written before keep their old hash.
+- Both sides read the answers from the stored `form_data` rows (`pg_signature_stored_document_hash()`): `custom_form.php` and `add_submitted_form.php` write the signature's row without a file, then call `pg_signature_store_pending()` after their field loop, which hashes, stores the record and sets the row's `file_id`. Until #5131 the signing side hashed the posted values (a ticked box as a one-item list, a date as typed), so such documents always showed "changed"; records written before keep their old hash.
 
 ## Which invariants must every change keep?
 - Lock is in the schema: `UNIQUE (form_id, form_field_id)`; no second signature for the same field of a submission.
