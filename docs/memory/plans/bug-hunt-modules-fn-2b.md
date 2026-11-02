@@ -4,7 +4,7 @@ description: Module list of plans/bug-hunt.md, part 2b: includes/fn/ modules wid
 ---
 
 ## Which includes/fn/ modules (widgets to widgets_lists_checkout) are hunted?
-- `widgets`: open (#5128: page links on a pretty address carried the router's page name; checked, clean: calendar view and grid, search results, URL filter state and titles, hide-if-empty, token fill, order view access, custom form wrap, edit chip rules, record addresses)
+- `widgets`: taken by Arzu v15 worker (#5128: page links on a pretty address carried the router's page name; checked, clean: calendar view and grid, search results, URL filter state and titles, hide-if-empty, token fill, order view access, custom form wrap, edit chip rules, record addresses)
 - `widgets_account`: clean (return_to and account_done redirects, posted controls, tax columns, account e-mail pick and setting, subject, values; logout, change and set password with the token's day as set_password.php, profile, e-mail preferences lists and signed link as email_preferences.php, address book edit id on a refused post, security signed-out state, invoices, staff page access, order history, login region)
 - `widgets_ad_region`: done (#4999: a region placed twice shared its rows' ids)
 - `widgets_affiliate_sign_up`: done (#4998: posted next_page_id); rest clean (prefill as the classic screen, terms, confirmation, row changes)
