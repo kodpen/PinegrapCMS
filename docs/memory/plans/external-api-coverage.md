@@ -7,7 +7,7 @@ description: External API (integration.php): find what the panel can do that the
 - Endpoints for what the panel manages and `integration.php` lacks. Not the storefront API nor the vendor client.
 
 ## Which steps are there?
-- X0 gap list: done (PR #PRNUM). X1–X12 are `free`, most useful first. A write step first moves the screen's inline SQL into one `includes/fn/` function both call. New `store:read`/`store:write` scopes (manager ceiling); store reads under `orders:read` keep it too.
+- X0 gap list: done (PR #5239). X1–X12 are `free`, most useful first. A write step first moves the screen's inline SQL into one `includes/fn/` function both call. New `store:read`/`store:write` scopes (manager ceiling); store reads under `orders:read` keep it too.
 - X1 Shipping writes: create, update, `/delete` for `/store/shipping-methods`, `/store/zones`, `/store/tax-zones`. `store:write`. Events `shipping_method.created|updated|deleted`, `zone.changed`, `tax_zone.changed`.
 - X2 Returns: `GET /returns` (status, order_id, modified_since), `GET /returns/{id}`, `POST /returns/{id}` (approve, receive, refund, reject as `view_return.php`). `orders:*`. Events: existing `order.return.*`.
 - X3 `GET /subscriptions`, `/subscriptions/{id}` (`customers:read`); `POST /commissions/{id}` status, `POST /affiliates/{id}/approve`, `GET /commissions/recurring-profiles`; new `commissions:write`. Events `commission.status_changed`, `affiliate.approved`.
