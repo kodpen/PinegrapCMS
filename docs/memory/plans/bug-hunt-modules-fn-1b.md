@@ -42,7 +42,7 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 
 - `order_view`: clean (callers escape)
 
-- `output`: clean for list sort, quick edit, back URL, filter, period nav; header, menu, license, page panel open
+- `output`: clean for list sort, quick edit, back URL, filter, period nav; header, menu, license, page panel taken by PB
 
 - `page_bulk`: clean
 
