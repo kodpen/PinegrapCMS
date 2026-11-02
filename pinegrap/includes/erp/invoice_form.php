@@ -31,27 +31,14 @@ if (!defined('ERP_INVOICE_FORM_BLANK_ROWS')) {
 }
 
 /**
- * Unit codes offered on a line, UN/ECE Recommendation 20 codes as the
- * e-document side expects them. Free text is still accepted.
+ * Unit codes offered on a line: the one list of includes/erp/waybills.php,
+ * which every screen that shows a unit has loaded with the ERP.
  *
  * @return array  code => label
  */
 function erp_invoice_form_unit_codes()
 {
-    return array(
-        'C62' => lang('piece'),
-        'KGM' => lang('kilogram'),
-        'GRM' => lang('gram'),
-        'MTR' => lang('metre'),
-        'MTK' => lang('square metre'),
-        'LTR' => lang('litre'),
-        'HUR' => lang('hour'),
-        'DAY' => lang('day'),
-        'MON' => lang('month'),
-        'SET' => lang('set'),
-        'PA' => lang('package'),
-        'BX' => lang('box'),
-    );
+    return erp_waybill_unit_codes();
 }
 
 /**

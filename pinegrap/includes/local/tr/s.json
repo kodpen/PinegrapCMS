@@ -1350,7 +1350,7 @@
     "Ship to {var:1}": "{var:1} hedefine gönderi",
     "Ship-to name": "Teslimat adı",
     "Shipment Date": "Gönderim Tarihi",
-    "Shipment Time": "Sevk Saati",
+    "Shipment Time": "Gönderim Saati",
     "Shipment Tracking": "Gönderi Takibi",
     "Shipment Tracking Link": "Kargo Takip Linki",
     "Shipment Tracking for: {var:1}": "{var:1} için Gönderi Takibi",

@@ -642,6 +642,7 @@
     "Invoice total does not match the order total ({var:1} against {var:2}). The invoice was not created.": "Fatura toplamı sipariş toplamıyla eşleşmiyor ({var:1} / {var:2}). Fatura oluşturulmadı.",
     "Invoice {var:1}": "Fatura {var:1}",
     "Invoice {var:1} already has delivery note {var:2}.": "{var:1} faturasının irsaliyesi zaten var: {var:2}.",
+    "Invoice {var:1} belongs to another account; the delivery note has to be for the same account.": "{var:1} faturası başka bir cariye ait; irsaliye aynı cari için yazılmalı.",
     "Invoice {var:1} created.": "{var:1} numaralı fatura oluşturuldu.",
     "Invoice {var:1} is in {var:2}; record the payment in that currency.": "{var:1} faturası {var:2} cinsinden; ödemeyi o para biriminde kaydedin.",
     "Invoice {var:1} is in {var:2}; record the receipt in that currency.": "{var:1} faturası {var:2} cinsinden; tahsilatı o para biriminde kaydedin.",

@@ -256,6 +256,7 @@
     "A deleted group or product is switched off and waits here instead of disappearing, and a group brings everything under it along. Restoring puts it back the way it was. Anything still here after 30 days is removed for good.": "Silinen bir grup ya da ürün kaybolmaz: yayından kalkar ve burada bekler; bir grup altındaki her şeyi de beraberinde getirir. Geri yükleme onu eski hâline döndürür. 30 gün sonra burada kalanlar kalıcı olarak silinir.",
     "A delivery note can carry at most {var:1} lines.": "Bir irsaliye en fazla {var:1} satır taşıyabilir.",
     "A delivery note is written for a sale; a purchase bill has none.": "İrsaliye satış için kesilir; alış faturasının irsaliyesi olmaz.",
+    "A delivery note is written only for a sales invoice; {var:1} is not one.": "İrsaliye yalnız satış faturası için yazılır; {var:1} satış faturası değil.",
     "A delivery robot on its first test run in the new lab.": "Yeni laboratuvarda ilk deneme sürüşündeki bir teslimat robotu.",
     "A department": "Bir departman",
     "A department needs a name.": "Departmanın bir adı olmalı.",

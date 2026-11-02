@@ -44,6 +44,16 @@ if (!is_array($invoice)) {
 
 $invoice_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id;
 
+// Only an issued invoice takes a return: the form is not drawn, and not
+// read, for a draft, a cancelled invoice or a return document.
+if (($refusal = erp_return_refusal($invoice)) !== '') {
+    $refused_url = ((string) $invoice['status'] === 'draft')
+        ? OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice_draft.php?id=' . $invoice_id
+        : $invoice_url;
+    output_error(h($refusal) . ' <a href="' . h($refused_url) . '">' . lang('Invoice') . '</a>');
+    exit();
+}
+
 // If the form has not been submitted yet, then show it.
 if (!$_POST) {
 
@@ -66,6 +76,7 @@ if (!$_POST) {
         // Sent here after a card refund chosen by line (view_order.php), the
         // quantities are the ones refunded, so the money and the document agree.
         $preset_qty = (isset($_GET['qty']) && is_array($_GET['qty'])) ? $_GET['qty'] : null;
+        $decimal_mark = erp_decimal_comma() ? ',' : '.';
 
         foreach ($lines as $line) {
             // Each quantity is one number: an array (?qty[5][]=x) cast to 1
@@ -76,28 +87,28 @@ if (!$_POST) {
             $quantity = ($preset_qty !== null)
                 ? min((float) $line['remaining_qty'], max(0, is_scalar($preset) ? (float) $preset : 0))
                 : (((int) $line['line_total'] < 0) ? 0 : (float) $line['remaining_qty']);
+            // Written the way the box is read back (erp_quantity_in()): the
+            // store's decimal mark and no grouping, so 1250,5 is not taken
+            // for 1.25 nor 1.250 for one and a quarter.
             $liveform->assign_field_value('qty_' . (int) $line['id'],
-                ($quantity > 0) ? rtrim(rtrim(number_format($quantity, 4, '.', ''), '0'), '.') : '');
+                ($quantity > 0) ? rtrim(rtrim(number_format($quantity, 4, $decimal_mark, ''), '0'), $decimal_mark) : '');
         }
     }
 
     $output_lines = '';
 
     foreach ($lines as $line) {
-        $tidy = function ($value) {
-            return rtrim(rtrim(number_format((float) $value, 4, '.', ''), '0'), '.');
-        };
-
         $returned = (float) $line['returned_qty'];
 
         $output_lines .= '
             <tr>
-                <td class="align-middle fg-secondary">' . (int) $line['line_no'] . '</td>
-                <td class="align-middle">' . h($line['description']) . '</td>
-                <td class="align-middle text-end">' . h($tidy($line['quantity'])) . '</td>
-                <td class="align-middle text-end ' . (($returned > 0) ? 'fg-warning' : 'fg-secondary') . '">' . h($tidy($returned)) . '</td>
-                <td class="align-middle text-end">' . h(erp_money_out_currency((int) $line['unit_price'], (string) $invoice['currency'])) . '</td>
-                <td class="align-middle" style="width:9rem">'
+                <td class="align-middle fg-secondary d-none sm:d-table-cell">' . (int) $line['line_no'] . '</td>
+                <td class="align-middle">' . h($line['description'])
+                    . (($returned > 0) ? '<div class="small fg-warning sm:d-none">' . lang('Already Returned') . ': ' . h(erp_quantity_text($returned)) . '</div>' : '') . '</td>
+                <td class="align-middle text-end text-nowrap">' . h(erp_quantity_text($line['quantity'])) . '</td>
+                <td class="align-middle text-end text-nowrap d-none sm:d-table-cell ' . (($returned > 0) ? 'fg-warning' : 'fg-secondary') . '">' . h(erp_quantity_text($returned)) . '</td>
+                <td class="align-middle text-end text-nowrap d-none sm:d-table-cell">' . h(erp_money_out_currency((int) $line['unit_price'], (string) $invoice['currency'])) . '</td>
+                <td class="align-middle" style="width:7rem;min-width:6rem">'
                     . (($line['remaining_qty'] > 0.00001)
                         ? $liveform->output_field(array(
                             'type' => 'text', 'name' => 'qty_' . (int) $line['id'],
@@ -169,11 +180,11 @@ if (!$_POST) {
                         <table class="table table-hover align-middle mb-0">
                             <thead>
                                 <tr>
-                                    <th style="width:3rem">#</th>
+                                    <th class="d-none sm:d-table-cell" style="width:3rem">#</th>
                                     <th>' . lang('Description') . '</th>
                                     <th class="text-end">' . ((((string) $invoice['direction']) === 'purchase') ? lang('Bought') : lang('Sold')) . '</th>
-                                    <th class="text-end">' . lang('Already Returned') . '</th>
-                                    <th class="text-end">' . lang('Unit price') . '</th>
+                                    <th class="text-end d-none sm:d-table-cell">' . lang('Already Returned') . '</th>
+                                    <th class="text-end d-none sm:d-table-cell">' . lang('Unit price') . '</th>
                                     <th class="text-end">' . lang('Returning') . '</th>
                                 </tr>
                             </thead>
