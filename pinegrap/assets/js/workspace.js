@@ -16201,7 +16201,10 @@
                 var withFile = data.messages.filter(function (message) { return !!message.file; });
                 var images = withFile.filter(function (message) { return message.file.image; });
                 var videos = withFile.filter(function (message) { return message.file.kind === 'video'; });
-                var others = withFile.filter(function (message) { return !message.file.image && message.file.kind !== 'video'; });
+                // Voice messages and other sound files under their own title,
+                // not among the documents.
+                var audios = withFile.filter(function (message) { return !message.file.image && message.file.kind === 'audio'; });
+                var others = withFile.filter(function (message) { return !message.file.image && message.file.kind !== 'video' && message.file.kind !== 'audio'; });
 
                 if (!withFile.length) {
                     var empty = el('div', 'ws-empty');
@@ -16308,11 +16311,16 @@
                     pane.appendChild(reel);
                 }
 
-                if (others.length) {
-                    pane.appendChild(el('div', 'ws-section-title', t('documents') + ' · ' + others.length));
+                // A titled list of file rows: the sounds, then the documents.
+                var fileRows = function (title, rows) {
+                    if (!rows.length) {
+                        return;
+                    }
+
+                    pane.appendChild(el('div', 'ws-section-title', title + ' · ' + rows.length));
                     var list = el('div', 'ws-file-list');
 
-                    others.forEach(function (message) {
+                    rows.forEach(function (message) {
                         var row = el('div', 'ws-file-row');
                         var link = el('a', 'ws-file-link');
                         link.href = message.file.url;
@@ -16321,7 +16329,10 @@
                         link.appendChild(el('span', 'ws-file-ext', message.file.ext));
                         link.appendChild(el('span', 'text-truncate', message.file.name));
                         row.appendChild(link);
-                        row.appendChild(el('small', 'fg-secondary ws-grow', (message.sender ? message.sender.name + ' · ' : '') + message.time));
+                        // Sender and time on one line, cut short when the row is narrow.
+                        var meta = el('small', 'fg-secondary ws-grow ws-file-meta', (message.sender ? message.sender.name + ' · ' : '') + message.time);
+                        meta.title = meta.textContent;
+                        row.appendChild(meta);
 
                         if (message.file.kind === 'pdf' || message.file.kind === 'audio' || message.file.office) {
                             var look = button('btn btn-sm btn-text theme-secondary', '', message.file.kind === 'audio' ? 'bi-play-circle' : 'bi-eye', t('preview'));
@@ -16349,7 +16360,10 @@
                     });
 
                     pane.appendChild(list);
-                }
+                };
+
+                fileRows(t('voice_and_audio'), audios);
+                fileRows(t('documents'), others);
             }).catch(fail);
         },
 
