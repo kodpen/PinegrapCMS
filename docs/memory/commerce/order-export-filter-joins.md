@@ -1,6 +1,6 @@
 ---
 name: order-export-filter-joins
-description: The order exports of view_orders.php select DISTINCT while the product name or shipping filter joins order_items or ship_tos, so no order, recipient, item or tracking number is written twice
+description: Order exports of view_orders.php select DISTINCT while a product name or shipping filter joins order_items or ship_tos, so no row is written twice (PR #5210)
 ---
 
 ## Why can an export filter repeat rows?
