@@ -115,6 +115,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dashboard-scroll-regions.md: Dashboard card lists that scroll inside the square card become named keyboard regions (pg_widget_scroll_regions() in welcome.php)
 - dashboard-system-status-gauge.md: The System Status gauge, check chips and Release Notes dialog shared by dashboard widget 2 and the new dashboard's System Status card: functions, what stays byte for byte, the fixtures test
 - dashboard-v2-ai-card.md: New dashboard Assistant card (cards/ai.php, pg_dash_cards_assistant.js): connected or not, the proposals waiting for the person, giving Claude a job through ws_send; the daily summary held on #5014
+- dashboard-v2-chart-tips.md: New dashboard charts show each point's label and figure on hover and keyboard focus: pgDash.chartTips() in pg_dash.js, server texts from tips.php, which charts use it, keys
 - dashboard-v2-content-cards.md: New dashboard cards gsearch, ga, content, comments, files, activity: data sources, helpers shared with widgets 7, 18, 25, what was left out
 - dashboard-v2-edit-mode.md: New dashboard edit mode (#4856): presets.php, dashboard_layout_save and its clean-up, pg_dash_edit.js (bar, grip, drag, card tools and settings, greeting and status parts), what Cancel and Save do
 - dashboard-v2-flows-card.md: New dashboard Flows card (cards/flows.php, renderer in pg_dash_cards_work.js): tiles, the run going on now as a path of boxes, last runs with Approve and Try again through the Workspace actions

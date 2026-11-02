@@ -177,6 +177,12 @@ function pg_dashboard_v2_card_visitors($user, $period, $compare)
         );
     }
 
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/tips.php');
+
+    $tips = pg_dashboard_v2_tips($labels, $current['visits'], function ($n) {
+        return lang(array('string' => '{var:1} visit{suffix:1}', 'vars' => pg_format_number($n, 0)));
+    }, $compare_line, ($compare_line === null) ? '' : $compare_names[$compare]);
+
     return array('status' => 'success', 'data' => array(
         'tiles' => array(
             array('label' => lang('Visits'), 'text' => pg_format_number($visits, 0), 'note' => ($change === null) ? '' : $change['text'], 'tone' => ($change === null) ? '' : $change['tone']),
@@ -187,6 +193,7 @@ function pg_dashboard_v2_card_visitors($user, $period, $compare)
         'compare'       => $compare_line,
         'compare_label' => ($compare_line === null) ? '' : $compare_names[$compare],
         'labels'        => $labels,
+        'tips'          => $tips,
         'chart_label'   => $chart_labels[$period] ?? $chart_labels[0],
         'rows_title'    => lang('Most read'),
         'rows'          => $rows,
