@@ -2420,6 +2420,7 @@
     "An address banned again after its ban ran out is banned four times as long each time, up to this ceiling. 10080 is seven days.": "Yasağı bittikten sonra yeniden yasaklanan adres her seferinde dört kat daha uzun yasaklanır; bu tavanı aşmaz. 10080 yedi gündür.",
     "An administrator adds the other services' MCP servers under Workspace Settings › MCP servers. They appear here once they are on.": "Diğer hizmetlerin MCP sunucularını bir yönetici Çalışma Alanı Ayarları › MCP sunucuları altında ekler. Açıldıklarında burada görünürler.",
     "An administrator can open them from this screen, or set them writable over FTP.": "Bir yönetici bu ekrandan açabilir ya da FTP üzerinden yazılabilir yapılır.",
+    "An administrator connects Claude in the Workspace settings.": "Claude'u bir yönetici Çalışma Alanı ayarlarından bağlar.",
     "An administrator connects it by pressing Create Pinegrap AI's key on this card:": "Bir yönetici bu karttaki Pinegrap AI'ın anahtarını oluştur düğmesine basarak bağlar:",
     "An administrator connects it on this card, which explains every step:": "Bir yönetici bu karttan bağlar; kart her adımı anlatır:",
     "An administrator connects it on this card:": "Bir yönetici bu karttan bağlar:",
