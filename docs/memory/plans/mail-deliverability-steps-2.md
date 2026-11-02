@@ -9,7 +9,7 @@ description: Steps MD5-MD7 of plans/mail-deliverability.md: campaign hygiene, th
 - MD5 (S) Campaign hygiene. After MD1.
   - The campaign screens (`view_email_campaigns.php`, the campaign report) show suppressed, bounced and complained counts per send beside the delivered count; the contact list gets the filter "Suppressed" (`pg_contact_list_filters()` in `includes/fn/contact_list.php`) and a badge on the contact card with "Allow again"; a complaint sets `contacts.opt_in` to 0 and writes the consent log line (question 2, `core/consent-log-writers.md`); the contacts export carries the status; personal data export and erasure (`core/personal-data-export.md`, `-erasure.md`) cover the bounce rows. Tests on the count queries' SQL builders. Memory: `core/mail-bounces.md` grows a "Which screens show it?" section.
 
-- MD6 (M) Domain health card. Done, #PRNUM.
+- MD6 (M) Domain health card. Done, #5445.
   - Settings › E-mail card "Sending domain" (`includes/settings/`): `dns_get_record()` for the SPF record (does it name the sending host or the transport's include?), the DKIM selector TXT (does it match `pg_dkim_txt_record()`?), DMARC (`_dmarc` present, its policy); each line green, yellow or red with the exact record text to copy; the bounce and complaint rates of the last 30 days from MD1's table against the sends counted by the queue; ops alert `mail_reputation` in `includes/fn/ops_alerts.php` when a rate passes 5 % bounces or 0.3 % complaints (once a day, the alert rules of `platform/ops-alerts.md`). The DNS answers are parsed by pure functions tested on record samples; a DNS failure shows "could not check", never red. Memory: `platform/mail-domain-health.md`.
 
 - MD7 (S) Close-out. After MD1-MD6.
