@@ -615,6 +615,10 @@ function _pg_lfc_controls(&$nodes, $by_id, $page_id, &$used, &$moved, &$drawn)
                 if ($default !== '' && empty($n['props']['text'])) $n['props']['text'] = $default;
             } elseif ($tag === 'input') {
                 if ($default !== '' && _pg_lfc_attr($n, 'value') === null && ($f['type'] !== 'file upload')) {
+                    // The date, date-and-time and time inputs hold ISO only.
+                    if (isset($types[$f['type']]) && $f['type'] !== 'email address') {
+                        $default = pg_native_date_value($default, $types[$f['type']]);
+                    }
                     _pg_lfc_set_attr($n, 'value', $default);
                 }
             } else {

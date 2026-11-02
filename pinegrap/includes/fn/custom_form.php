@@ -2171,6 +2171,11 @@ function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0,
                 pg_cf_select_stored_option($tree, $stored);
             } elseif ($input_type !== 'file' && $input_type !== 'password') {
                 if (!is_array($stored) && $stored !== '') {
+                    // A date, date-and-time or time input holds ISO only: a
+                    // default in the site's format would be dropped.
+                    if (in_array($input_type, array('date', 'datetime-local', 'time'), true)) {
+                        $stored = pg_native_date_value($stored, $input_type);
+                    }
                     $set_attr($tree['props']['_attrs'], 'value', (string)$stored);
                 }
             }
