@@ -70,9 +70,14 @@ if (!$_POST) {
     validate_token_field();
     
     $liveform->add_fields_to_session();
+    $liveform->assign_field_value('code', pg_currency_form_code($liveform->get_field_value('code')));
     
-    $liveform->validate_required_field('name', lang(array('string'=>'{var:1} is required','vars'=>array(lang('Name')) )));
+    $liveform->validate_required_field('name', lang(array('string'=>'{var:1} is required','vars'=>array(lang(array('string'=>'{var:1} Name','vars'=>lang('Currency')))) )));
     $liveform->validate_required_field('code', lang(array('string'=>'{var:1} is required','vars'=>array(lang('Code')) )));
+
+    if (!$liveform->check_field_error('code') && (($code_error = pg_currency_form_code_error($liveform->get_field_value('code'))) !== '')) {
+        $liveform->mark_error('code', $code_error);
+    }
     
     // if there is an error, send the user back to the add currency screen
     if ($liveform->check_form_errors() == true) {

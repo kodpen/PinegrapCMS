@@ -414,7 +414,13 @@ class liveform {
                 if($size != ''){
                     $output_size = ' size="' . h($size) . '"';
                 }
-                return "<input type=\"$type\" name=\"" . h($field) . "\"" . $output_id_attribute . " value=\"" . h($value) . "\"  class=\"$class\" style=\"$style\"$output_readonly$output_onchange$output_onclick$output_onfocus$output_onblur$output_min$output_max$output_step " . $output_datalist . $output_placeholder . $output_size . $output_required . $output_aria_label . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . $output_inline_feedback;
+                // The browser's own format check (a currency code's three
+                // letters); the server checks the same rule again.
+                $output_pattern = '';
+                if (isset($attributes['pattern']) && is_scalar($attributes['pattern']) && ((string) $attributes['pattern'] !== '')) {
+                    $output_pattern = ' pattern="' . h((string) $attributes['pattern']) . '"';
+                }
+                return "<input type=\"$type\" name=\"" . h($field) . "\"" . $output_id_attribute . " value=\"" . h($value) . "\"  class=\"$class\" style=\"$style\"$output_readonly$output_onchange$output_onclick$output_onfocus$output_onblur$output_min$output_max$output_step " . $output_datalist . $output_placeholder . $output_size . $output_pattern . $output_required . $output_aria_label . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . $output_inline_feedback;
                 break;
 
             case 'checkbox':

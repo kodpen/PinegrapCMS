@@ -91,7 +91,7 @@ foreach ($wanted as $code) {
 
     if (!isset($fetched[$code])) {
         $liveform->mark_error('currency_' . $code, lang(array(
-            'string' => 'Failed to update exchange rate for currency {var:1}',
+            'string' => 'Failed to update exchange rate for currency {var:1}.',
             'vars' => array(h($code))
         )));
         continue;
@@ -135,7 +135,7 @@ if (($_GET['send_to'] ?? '')) {
     // A notice only for rates really written; failures are already marked above.
     if ($updated > 0) {
         $liveform->add_notice(lang(array(
-            'string' => '{var:1} exchange rates were updated',
+            'string' => '{var:1} exchange rates were updated.',
             'vars' => array($updated)
         )));
     }

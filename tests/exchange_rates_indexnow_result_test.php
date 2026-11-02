@@ -51,12 +51,12 @@ function test_exchange_rates_notice_counts_written_rates()
 	$source = _exchange_rates_result_source('update_exchange_rates.php');
 
 	pg_assert_true(strpos($source, "lang('The exchange rates have been updated.')") === false);
-	pg_assert_true(strpos($source, "'string' => '{var:1} exchange rates were updated'") !== false);
+	pg_assert_true(strpos($source, "'string' => '{var:1} exchange rates were updated.'") !== false);
 	pg_assert_true(strpos($source, 'if ($updated > 0) {') !== false);
 	pg_assert_true(strpos($source, '$updated++;') !== false);
 
 	// The per-currency mark stays.
-	pg_assert_true(strpos($source, "'string' => 'Failed to update exchange rate for currency {var:1}'") !== false);
+	pg_assert_true(strpos($source, "'string' => 'Failed to update exchange rate for currency {var:1}.'") !== false);
 }
 
 // No answer for any wanted currency: one error that the rates are unchanged.

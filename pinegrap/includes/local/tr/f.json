@@ -35,6 +35,7 @@
     "Failed to create ZIP archive. Error code: {var:1}": "ZIP arşivi oluşturulamadı. Hata kodu: {var:1}",
     "Failed to decode image data.": "Görsel verisi çözümlenemedi.",
     "Failed to update exchange rate for currency {var:1}": "{var:1} para biriminin döviz kuru güncellenemedi",
+    "Failed to update exchange rate for currency {var:1}.": "{var:1} para biriminin döviz kuru güncellenemedi.",
     "Failing": "Sorunlu",
     "Fails when fewer days are left than": "Kalan gün şundan azsa başarısız olur",
     "Fair": "Orta",
