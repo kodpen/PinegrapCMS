@@ -5268,10 +5268,12 @@ function product_submit_form_add_field(properties) {
     var container = $('#submit_form_' + action + '_field');
     var output;
 
-    output = '<div class="input-group w-100">\
-    <span class="input-group-text my-1">\
-    <label for="submit_form_' + action + '_field_' + field_number + '_form_field_id" class="form-label">Set &nbsp;</label>\
-    <select class="form-control my-1" id="submit_form_' + action + '_field_' + field_number + '_form_field_id" name="submit_form_' + action + '_field_' + field_number + '_form_field_id"><option value=""></option>';
+    // Label above each control in a wrapping row: on a narrow screen the
+    // two fields stack at full width instead of squeezing side by side.
+    output = '<div class="row g-5 align-items-end my-1 pg-submit-form-field-row">\
+    <div class="col-12 md:col-5">\
+    <label for="submit_form_' + action + '_field_' + field_number + '_form_field_id" class="form-label">' + prepare_content_for_html(lang('Field to set')) + '</label>\
+    <select class="form-control" id="submit_form_' + action + '_field_' + field_number + '_form_field_id" name="submit_form_' + action + '_field_' + field_number + '_form_field_id"><option value=""></option>';
 
     // Assume that the selected field type is "text box" until we find out otherwise.
     // We use this to determine if a text box or text area should be displayed for the value field.
@@ -5288,23 +5290,23 @@ function product_submit_form_add_field(properties) {
         }
         output += '<option value="' + submit_form_custom_form_fields[index]['id'] + '"' + status + '>' + prepare_content_for_html(submit_form_custom_form_fields[index]['name']) + '</option>';
     }
-    output += '</select></span>';
+    output += '</select></div>';
 
     if (field_type != 'text area') {
-        output += '<span class="input-group-text my-1" id="submit_form_' + action + '_field_' + field_number + '_value_cell">\
-        <label for="submit_form_' + action + '_field_' + field_number + '_value" class="form-label">to &nbsp;</label>\
+        output += '<div class="col-12 md:col-6" id="submit_form_' + action + '_field_' + field_number + '_value_cell">\
+        <label for="submit_form_' + action + '_field_' + field_number + '_value" class="form-label">' + prepare_content_for_html(lang('New value')) + '</label>\
         <input class="form-control" id="submit_form_' + action + '_field_' + field_number + '_value" name="submit_form_' + action + '_field_' + field_number + '_value" type="text" value="' + prepare_content_for_html(value) + '"/>\
-        </span>';
+        </div>';
     } else {
-        output += '<span class="input-group-text my-1" id="submit_form_' + action + '_field_' + field_number + '_value_cell">\
-        <label for="submit_form_' + action + '_field_' + field_number + '_value" class="form-label">to &nbsp;</label>\
+        output += '<div class="col-12 md:col-6" id="submit_form_' + action + '_field_' + field_number + '_value_cell">\
+        <label for="submit_form_' + action + '_field_' + field_number + '_value" class="form-label">' + prepare_content_for_html(lang('New value')) + '</label>\
         <textarea class="form-control" id="submit_form_' + action + '_field_' + field_number + '_value" name="submit_form_' + action + '_field_' + field_number + '_value">' + prepare_content_for_html(value) + '</textarea>\
-        </span>';
+        </div>';
     }
 
-    output += '<span class="input-group-text my-1">\
-    <button type="button" class="btn btn-solid theme-danger material-icons" onclick="this.parentNode.parentNode.parentNode.removeChild(this.parentNode.parentNode)">delete</button>\
-    </span>\
+    output += '<div class="col-12 md:col-1">\
+    <button type="button" class="btn btn-solid theme-danger material-icons" aria-label="' + prepare_content_for_html(lang('Remove')) + '" onclick="$(this).closest(\'.pg-submit-form-field-row\').remove()">delete</button>\
+    </div>\
     </div>';
     container.append(output);
 
@@ -5331,11 +5333,11 @@ function product_submit_form_add_field(properties) {
         var previous_value = $('#submit_form_' + action + '_field_' + field_number + '_value').val();
 
         if (field_type != 'text area') {
-            $('#submit_form_' + action + '_field_' + field_number + '_value_cell').html('<label for="submit_form_' + action + '_field_' + field_number + '_value" class="form-label">to &nbsp;</label>\
+            $('#submit_form_' + action + '_field_' + field_number + '_value_cell').html('<label for="submit_form_' + action + '_field_' + field_number + '_value" class="form-label">' + prepare_content_for_html(lang('New value')) + '</label>\
             <input class="form-control" id="submit_form_' + action + '_field_' + field_number + '_value" name="submit_form_' + action + '_field_' + field_number + '_value" type="text" value="' + prepare_content_for_html(previous_value) + '"/>');
 
         } else {
-            $('#submit_form_' + action + '_field_' + field_number + '_value_cell').html('<label for="submit_form_' + action + '_field_' + field_number + '_value" class="form-label">to &nbsp;</label>\
+            $('#submit_form_' + action + '_field_' + field_number + '_value_cell').html('<label for="submit_form_' + action + '_field_' + field_number + '_value" class="form-label">' + prepare_content_for_html(lang('New value')) + '</label>\
         <textarea class="form-control" id="submit_form_' + action + '_field_' + field_number + '_value" name="submit_form_' + action + '_field_' + field_number + '_value">' + prepare_content_for_html(previous_value) + '</textarea>');
 
         }

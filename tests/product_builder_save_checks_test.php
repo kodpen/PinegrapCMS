@@ -1,0 +1,102 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Checks the product screen makes before a save: count boxes read
+ * strictly, the quantity range (pg_pb_whole_number_from_input(),
+ * pg_pb_number_fields_problem()) and a variant set member's combination
+ * (pg_pb_variant_set_clash()).
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_TEST_RUNNER')) {
+	exit;
+}
+
+require_once(PG_FUNCTIONS_DIR . '/product_builder.php');
+
+
+function test_product_builder_whole_number_reads_digits_and_groups()
+{
+	pg_assert_same('', pg_pb_whole_number_from_input('', '.'), 'empty stays empty');
+	pg_assert_same('', pg_pb_whole_number_from_input('  ', '.'), 'blank stays empty');
+	pg_assert_same(0, pg_pb_whole_number_from_input('0', '.'), 'zero');
+	pg_assert_same(12, pg_pb_whole_number_from_input(' 12 ', '.'), 'digits');
+	pg_assert_same(7, pg_pb_whole_number_from_input('007', '.'), 'leading zeros');
+	pg_assert_same(1200, pg_pb_whole_number_from_input('1.200', '.'), 'Turkish grouping');
+	pg_assert_same(1200000, pg_pb_whole_number_from_input('1.200.000', '.'), 'two groups');
+	pg_assert_same(1200, pg_pb_whole_number_from_input('1 200', '.'), 'space grouping');
+	pg_assert_same(1200, pg_pb_whole_number_from_input('1,200', ','), 'English grouping');
+	pg_assert_same(5, pg_pb_whole_number_from_input(5, ','), 'an int');
+}
+
+function test_product_builder_whole_number_refuses_signs_fractions_letters()
+{
+	foreach (array('-2', '-0', '+3', '12,5', '3,5', '12.5', 'abc', '1e3', '1.20', '1,200', '12a') as $value) {
+		pg_assert_same(false, pg_pb_whole_number_from_input($value, '.'), 'refused with a dot separator: ' . $value);
+	}
+
+	pg_assert_same(false, pg_pb_whole_number_from_input('1.200', ','), 'a dot is no group with a comma separator');
+	pg_assert_same(false, pg_pb_whole_number_from_input(array('1'), '.'), 'an array');
+}
+
+function test_product_builder_number_fields_name_the_bad_field()
+{
+	pg_assert_same('', pg_pb_number_fields_problem(array(), '.'), 'nothing posted');
+	pg_assert_same('', pg_pb_number_fields_problem(array('number_of_payments' => '', 'reward_points' => '1.200', 'form_label_column_width' => '', 'price' => '12,50', 'weight' => '0'), '.'), 'valid values');
+
+	pg_assert_contains(lang('Number of Payments'), pg_pb_number_fields_problem(array('number_of_payments' => '-2'), '.'), 'negative payments');
+	pg_assert_contains(lang('Reward Points'), pg_pb_number_fields_problem(array('reward_points' => '12,5'), '.'), 'fractional points');
+	pg_assert_contains(lang('Start (days)'), pg_pb_number_fields_problem(array('start' => 'abc'), '.'), 'letters in start');
+	pg_assert_contains(lang('Access duration'), pg_pb_number_fields_problem(array('private_days' => '3,5'), '.'), 'fractional days');
+}
+
+function test_product_builder_label_width_and_signs()
+{
+	pg_assert_same('', pg_pb_number_fields_problem(array('form_label_column_width' => '35'), '.'), 'a width');
+	pg_assert_same('', pg_pb_number_fields_problem(array('form_label_column_width' => '100'), '.'), 'the top width');
+	pg_assert_same('', pg_pb_number_fields_problem(array('form_label_column_width' => '0'), '.'), 'a stored 0 reads as none');
+
+	foreach (array('abc', '101', '-5', '35%') as $value) {
+		pg_assert_contains(lang('Label Column Width'), pg_pb_number_fields_problem(array('form_label_column_width' => $value), '.'), 'width refused: ' . $value);
+	}
+
+	pg_assert_contains(lang('Unit Price'), pg_pb_number_fields_problem(array('price' => '-5'), '.'), 'negative price');
+	pg_assert_contains(lang('Weight'), pg_pb_number_fields_problem(array('weight' => ' -3'), '.'), 'negative weight');
+	pg_assert_same('', pg_pb_number_fields_problem(array('price' => '-0,00'), '.'), 'minus zero is zero');
+}
+
+function test_product_builder_quantity_range()
+{
+	pg_assert_same('', pg_pb_number_fields_problem(array('default_quantity' => '1', 'minimum_quantity' => '', 'maximum_quantity' => ''), '.'), 'no limits');
+	pg_assert_same('', pg_pb_number_fields_problem(array('default_quantity' => '2', 'minimum_quantity' => '2', 'maximum_quantity' => '5'), '.'), 'inside the range');
+	pg_assert_same('', pg_pb_number_fields_problem(array('default_quantity' => '10', 'minimum_quantity' => '10', 'maximum_quantity' => '0'), '.'), 'a zero maximum is no limit');
+
+	$problem = pg_pb_number_fields_problem(array('default_quantity' => '1', 'minimum_quantity' => '10', 'maximum_quantity' => '2'), '.');
+	pg_assert_contains(lang('Min. Quantity'), $problem, 'minimum above maximum');
+	pg_assert_contains(lang('Max. Quantity'), $problem, 'names the maximum');
+
+	pg_assert_contains(lang('Default Quantity'), pg_pb_number_fields_problem(array('default_quantity' => '1', 'minimum_quantity' => '3'), '.'), 'default below minimum');
+	pg_assert_contains(lang('Default Quantity'), pg_pb_number_fields_problem(array('default_quantity' => '9', 'maximum_quantity' => '5'), '.'), 'default above maximum');
+}
+
+function test_product_builder_variant_set_clash()
+{
+	$set = array(1, 2);
+	$siblings = array(202 => array(1 => 38, 2 => 10), 204 => array(1 => 39, 2 => 10), 205 => array(2 => 11, 1 => 39));
+	$pair = function ($size, $colour) {
+		return array(array('attribute_id' => 1, 'option_id' => $size), array('attribute_id' => 2, 'option_id' => $colour));
+	};
+
+	pg_assert_same(array(), pg_pb_variant_set_clash($pair(38, 11), $set, $siblings), 'a combination of its own');
+	pg_assert_same(array('clash' => 202), pg_pb_variant_set_clash($pair(38, 10), $set, $siblings), 'another member holds it');
+	pg_assert_same(array('clash' => 205), pg_pb_variant_set_clash($pair(39, 11), $set, $siblings), 'order of the pairs does not matter');
+	pg_assert_same(array('outside' => 3), pg_pb_variant_set_clash(array(array('attribute_id' => 3, 'option_id' => 5)), $set, $siblings), 'an attribute outside the set');
+	pg_assert_same(array(), pg_pb_variant_set_clash(array(array('attribute_id' => 3, 'option_id' => 5)), array(), array()), 'a set naming no attributes');
+	pg_assert_same(array(), pg_pb_variant_set_clash(array(array('attribute_id' => 1, 'option_id' => 38)), $set, $siblings), 'a part of a combination is not a clash');
+	pg_assert_same(array(), pg_pb_variant_set_clash(array(), $set, $siblings), 'nothing chosen');
+}

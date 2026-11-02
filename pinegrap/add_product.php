@@ -65,16 +65,6 @@ if ($_POST) {
         output_error(lang('Access denied') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
-    foreach (array('order_receipt_bcc_email_address', 'email_bcc') as $email_field) {
-
-        $email_address = isset($_POST[$email_field]) ? trim($_POST[$email_field]) : '';
-
-        if (($email_address !== '') && (validate_email_address($email_address) == FALSE)) {
-            output_error(
-                lang('The order receipt bcc e-mail address is invalid. <a href="javascript:history.go(-1);">Go back</a>.'));
-        }
-    }
-
     pg_pb_validate_product_post($user);
 
 
