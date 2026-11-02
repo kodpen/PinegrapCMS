@@ -976,6 +976,35 @@ function pg_process_image_file($file_path, $options = array())
 
 
 /**
+ * The jpeg:size hint Imagick reads a JPEG with when it is to be shrunk:
+ * libjpeg then decodes at 1/2, 1/4 or 1/8 of the size, as long as the result
+ * stays at least this large, instead of the whole frame. A 24-megapixel photo
+ * made into a 320 px thumbnail decodes at an eighth of the memory and time.
+ *
+ * Twice the target's longest edge on both sides, so the resize that follows
+ * still has pixels to spare whichever way the EXIF orientation turns it.
+ *
+ * @param int  $type          IMAGETYPE_* of the source
+ * @param bool $resize        whether the picture is shrunk
+ * @param int  $target_width
+ * @param int  $target_height
+ * @return string '' when no hint applies, else WxH
+ */
+function pg_image_jpeg_size_hint($type, $resize, $target_width, $target_height)
+{
+    $longest = max((int) $target_width, (int) $target_height);
+
+    if (!$resize || ((int) $type !== IMAGETYPE_JPEG) || ($longest < 1)) {
+        return '';
+    }
+
+    $side = 2 * $longest;
+
+    return $side . 'x' . $side;
+}
+
+
+/**
  * The Imagick half of pg_process_image_file(). Returns the encoded bytes.
  *
  * @return string|false
@@ -990,6 +1019,15 @@ function pg_process_image_with_imagick($file_path, $type, $resize, $target_width
 
     try {
         $image = new Imagick();
+
+        // An edit works on the full frame; a plain shrink of a JPEG may be
+        // decoded smaller (pg_image_jpeg_size_hint()).
+        $size_hint = $edit ? '' : pg_image_jpeg_size_hint($type, $resize, $target_width, $target_height);
+
+        if ($size_hint !== '') {
+            $image->setOption('jpeg:size', $size_hint);
+        }
+
         $image->readImage(empty($edit['first_frame']) ? $file_path : ($file_path . '[0]'));
 
         // Rotate the pixels to match the EXIF orientation and then drop the

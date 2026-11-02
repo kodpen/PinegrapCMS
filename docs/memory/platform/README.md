@@ -72,6 +72,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - image-editor-recycle-bin.md: The image editor's server refuses the Recycle Bin: a binned file is not opened, replaced or copied, and a new picture is not written into the bin folder (#4297)
 - image-editor-save.md: The image editor's save: image_editor_api.php open and save, the document check, the engine's edit option (turn, flip, straighten, crop, size, overlay, shape), replace, copy and new
 - image-files-left-alone.md: Images the engine refuses to process: animated (PR #1234), unreadable Exif orientation (PR #1242), ICC profile GD cannot carry (PR #1267, #1345); how each is told and handled
+- image-panel-thumbnails.md: Panel lists draw pictures from their 320 px WebP derivative (pg_image_panel_thumb_url(), thumbUrl()): which lists and files, 320 kept out of page srcset, warm-up pass, jpeg:size
 - image-processing-engine.md: Single image engine pg_process_image_file(): optimize vs resize jobs and the nine invariants (size guard, atomic write, EXIF, CMYK, GIF, memory, pixels, GIF transparency).
 - image-same-address-switches.md: WebP at a picture's own address: bits 4 and 8 of config.image_derivative_formats, the two Image Optimization switches, their clamp, the new-install default, the System Status line (#5350)
 - image-same-address.md: JPEG/PNG answered with its WebP derivative at its own address (get_file.php, image_negotiation.php): switch bits, Vary, CDN guard, f=original in downloads and mails, no door renames

@@ -820,3 +820,12 @@ function test_image_derivative_cached_finds_only_what_was_made()
 	}
 }
 
+
+function test_image_jpeg_size_hint()
+{
+	pg_assert_same('640x640', pg_image_jpeg_size_hint(IMAGETYPE_JPEG, true, 320, 213), 'twice the longest edge, both sides');
+	pg_assert_same('640x640', pg_image_jpeg_size_hint(IMAGETYPE_JPEG, true, 213, 320), 'upright the same');
+	pg_assert_same('', pg_image_jpeg_size_hint(IMAGETYPE_JPEG, false, 320, 213), 'not shrunk: the whole frame');
+	pg_assert_same('', pg_image_jpeg_size_hint(IMAGETYPE_PNG, true, 320, 213), 'a PNG has no reduced decode');
+	pg_assert_same('', pg_image_jpeg_size_hint(IMAGETYPE_JPEG, true, 0, 0), 'no target');
+}
