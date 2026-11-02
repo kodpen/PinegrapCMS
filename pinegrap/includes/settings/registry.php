@@ -291,6 +291,7 @@ function pg_settings_categories()
             'sections' => array(
                 'pgset-store'     => lang('Store'),
                 'pgset-shipping'  => lang('Shipping'),
+                'pgset-address-autocomplete' => lang('Address Autocomplete'),
                 'pgset-giftcards' => lang('Gift Cards & Rewards'),
                 'pgset-payments'  => lang('Payment Methods'),
                 'pgset-reference-price' => lang('Reference Price'),
@@ -300,6 +301,7 @@ function pg_settings_categories()
             'keywords' => array(
                 'pgset-store'     => pg_settings_keywords(lang('store, commerce, ecommerce, order number, tax, vat, barcode, currency')),
                 'pgset-shipping'  => pg_settings_keywords(lang('shipping, cargo, delivery, ups, fedex, usps, recipient, address verification')),
+                'pgset-address-autocomplete' => pg_settings_keywords(lang('address, autocomplete, suggestions, google places, mapbox, photon, openstreetmap')),
                 'pgset-giftcards' => pg_settings_keywords(lang('gift card, points, reward, givex')),
                 'pgset-payments'  => pg_settings_keywords(lang('payment, card, credit card, iyzico, iyzipay, paypal, stripe, installment, wire transfer, cash on delivery, 3d secure')),
                 'pgset-reference-price' => pg_settings_keywords(lang('reference price, price before discount, lowest price, 30 days, 10 days, compare-at price, omnibus, price label')),

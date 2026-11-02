@@ -83,6 +83,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
+    // The address autocomplete card (includes/fn/address_autocomplete.php).
+    $addr_settings_decision = pg_addr_settings_check($_POST, $liveform);
+
     if ($liveform->check_form_errors()) {
         return;
     }
@@ -237,6 +240,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
     // Stored after the card, then the connection test that was asked for.
     pg_label_settings_save($label_driver_decisions, USER_ID, $liveform);
+
+    // The address autocomplete account, then its test when asked for.
+    pg_addr_settings_save($addr_settings_decision, USER_ID, $liveform);
 
 
 
