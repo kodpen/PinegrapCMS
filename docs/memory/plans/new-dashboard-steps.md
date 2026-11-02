@@ -26,7 +26,8 @@ description: Steps N1-N14 and the visual pass V of plans/new-dashboard.md: size,
 
 - N11 Assistant and flows. Screens 01, 02, 15. Cut in two.
   - N11a (S) `flows` tiles, the current run, last runs with Approve and Retry through the flow endpoints. done (#4994).
-  - N11b (M) `ai` connected and not connected, proposals, giving a job, the daily summary as question 3 decided. `free`.
+  - N11b (M) `ai` connected and not connected, proposals, giving a job. done (#5013); `ui/dashboard-v2-ai-card.md`.
+  - N11c (S) `ai` daily summary as question 3 decided. Held: where its setting and the summary are kept, architect issue #5014.
 
 - N12 (M) Goals, pins, notes, performance, subscriptions. Screens 01, 04, 18, 19. Cut in three.
   - N12a (M) `goals` editor and rings, `notes`, the `dashboard_personal_save` action and the pin cleaning. done (#4981); `ui/dashboard-v2-personal-cards.md`.
