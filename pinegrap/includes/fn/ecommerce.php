@@ -13173,6 +13173,57 @@ function pg_import_heading($heading)
     return (string) preg_replace('/[\s\-]+/u', '_', $heading);
 }
 
+/**
+ * The heading row of a product import, read into the three lists the import
+ * loop uses. column_names is indexed by the file's column position, so
+ * ${name}_key and every array_search() over it point at the row cell of that
+ * column: a submit form column (sfc_/sfu_) and an unknown heading hold their
+ * place as false. A submit form column left out of the list moved every
+ * column after it one cell to the left, and a file with sfc_ columns first
+ * stored a form value as the product name.
+ *
+ * @param array    $headings the file's first row
+ * @param callable $convert  heading to products column, or false
+ * @return array column_names, submit_form_fields, unknown_headings
+ */
+function pg_products_import_headings($headings, $convert)
+{
+    $column_names = array();
+    $submit_form_fields = array();
+    $unknown_headings = array();
+
+    foreach (array_values((array) $headings) as $position => $heading) {
+        $heading = (string) $heading;
+        $prefix = substr($heading, 0, 4);
+
+        if (($prefix == 'sfc_') || ($prefix == 'sfu_')) {
+            $field_name = (string) substr($heading, 4);
+
+            if ($field_name != '') {
+                $submit_form_fields[] = array(
+                    'name' => $field_name,
+                    'action' => ($prefix == 'sfc_') ? 'create' : 'update',
+                    'column' => $position);
+            }
+
+            $column_names[$position] = false;
+            continue;
+        }
+
+        $column_name = call_user_func($convert, $heading);
+        $column_names[$position] = $column_name;
+
+        if ($column_name === false) {
+            $unknown_headings[] = $heading;
+        }
+    }
+
+    return array(
+        'column_names' => $column_names,
+        'submit_form_fields' => $submit_form_fields,
+        'unknown_headings' => $unknown_headings);
+}
+
 // The text of one column of a CSV row: '' when the file has no such column
 // (null, or false from array_search()) or the row ends before it.
 function pg_products_import_row_value($row, $key)
