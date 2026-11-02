@@ -835,3 +835,42 @@ function pg_geo_sort_by_label(array $rows, $label_key = 'label')
         return $pair[1];
     }, $keyed);
 }
+
+/**
+ * The labels of a state pick list: "Country: State" with the country named
+ * in the current language (pg_geo_country_label()) while states of more
+ * than one country exist, else the state name alone. With countries the
+ * rows follow the shown country name (pg_geo_sort_by_label()), so the list
+ * reads in the order it shows; states of one country keep the order of
+ * $states. A state with no country row keeps its bare name.
+ *
+ * @param array $states         rows of id, name, country_name, country_code
+ * @param bool  $foreign_states whether states of a non-default country exist
+ * @return array list of array('id', 'label'), labels as plain text
+ */
+function pg_geo_state_option_labels(array $states, $foreign_states)
+{
+    $options = array();
+
+    foreach ($states as $state) {
+        $name = (string) ($state['name'] ?? '');
+        $country = (string) ($state['country_name'] ?? '');
+        $country_label = ($foreign_states && (($country !== '') || (($state['country_code'] ?? '') !== '')))
+            ? pg_geo_country_label($country, (string) ($state['country_code'] ?? ''))
+            : '';
+
+        $options[] = array(
+            'id' => (string) ($state['id'] ?? ''),
+            'label' => ($country_label !== '') ? $country_label . ': ' . $name : $name,
+            'country_label' => $country_label,
+        );
+    }
+
+    if ($foreign_states) {
+        $options = pg_geo_sort_by_label($options, 'country_label');
+    }
+
+    return array_map(function ($option) {
+        return array('id' => $option['id'], 'label' => $option['label']);
+    }, $options);
+}

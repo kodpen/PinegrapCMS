@@ -1000,7 +1000,8 @@ function get_state_options()
     $query = "SELECT
             states.id,
             states.name,
-            countries.name as country_name
+            countries.name as country_name,
+            countries.code as country_code
         FROM states
         LEFT JOIN countries ON states.country_id = countries.id
         ORDER BY
@@ -1014,16 +1015,10 @@ function get_state_options()
     }
     $state_options = array();
     $state_options[''] = '';
-    // loop through each state in order to prepare options
-    foreach ($states as $state) {
-        // if foreign states exist, then output state label with country name prefix in order to prevent confusion
-        if ($foreign_states == true) {
-            $output_state_label = h($state['country_name']) . ': ' . h($state['name']);
-            // else foreign states do not exist, so just use state name for label
-        } else {
-            $output_state_label = h($state['name']);
-        }
-        $state_options[$output_state_label] = $state['id'];
+    // With foreign states the label carries the country, named in the
+    // current language and ordered by that name, like the list's filter.
+    foreach (pg_geo_state_option_labels($states, $foreign_states) as $option) {
+        $state_options[h($option['label'])] = $option['id'];
     }
     return $state_options;
 }
