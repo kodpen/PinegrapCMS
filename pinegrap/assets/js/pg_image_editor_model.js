@@ -363,7 +363,7 @@
 
     // Layers whose content a turn or a flip of the picture does not turn:
     // only their place follows it.
-    var UPRIGHT = ['text', 'sticker', 'image'];
+    var UPRIGHT = ['text', 'sticker', 'image', 'glyph'];
 
     function sourceTurns(doc) {
         var g = doc.geometry, src = doc.source || { width: 0, height: 0 };
@@ -3082,6 +3082,84 @@
 
     var GFONTS = { fontSearch: fontSearch, fontRecent: fontRecent };
 
+    // -- Icons and emoji of the Sticker tool (pg_image_editor_glyph.js) --
+
+    // A glyph layer: { type: 'glyph', set: 'bi'|'emoji', code, color, x, y,
+    // w, h, rot, opacity }. An icon's code is its Bootstrap Icons code point,
+    // an emoji's code the emoji itself.
+    var EMOJI = {
+        order: ['smileys', 'people', 'nature', 'food', 'travel', 'activities', 'objects', 'symbols'],
+        categories: {
+            smileys: ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '😉', '😍', '🥰', '😘', '😋', '😜', '🤪', '😎', '🤩', '🥳', '😏', '😢', '😭', '😡', '😱', '🤔', '🤗', '😴', '🙄', '😬', '🤯'],
+            people: ['👋', '👍', '👎', '👏', '🙌', '🙏', '🤝', '💪', '✌️', '🤞', '👌', '🤙', '👉', '👈', '👆', '👇', '✋', '👀', '👶', '🧒', '👩', '👨', '🧓', '👵', '👴', '👮', '👷', '🧑‍🍳', '🧑‍🎓', '🧑‍💻', '🧑‍🎨', '🏃'],
+            nature: ['🐶', '🐱', '🐭', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🦋', '🐝', '🐞', '🐢', '🐟', '🐬', '🐳', '🌵', '🌲', '🌳', '🌴', '🌱', '🍀', '🌸', '🌻', '🌹', '🌷', '🍁', '🌈', '☀️', '🌙', '⭐', '❄️'],
+            food: ['🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍒', '🍑', '🥝', '🥑', '🍅', '🥕', '🌽', '🥐', '🍞', '🧀', '🥚', '🍳', '🍔', '🍟', '🍕', '🌭', '🥙', '🌮', '🍝', '🍣', '🍰', '🎂', '🍩', '🍪', '🍫', '🍦', '☕', '🍵', '🥤', '🍷', '🍺', '🥂'],
+            travel: ['🚗', '🚕', '🚌', '🚑', '🚒', '🚓', '🚚', '🚲', '🛵', '🏍️', '🚆', '✈️', '🚀', '🚢', '⛵', '🚦', '🗺️', '🧭', '🏔️', '🏕️', '🏖️', '🏝️', '🏠', '🏡', '🏢', '🏥', '🏫', '🏛️', '🕌', '⛪', '🗼', '🌉'],
+            activities: ['⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏓', '🏸', '🥊', '🎯', '⛳', '🎳', '🚴', '🏊', '🧘', '🏆', '🥇', '🥈', '🥉', '🏅', '🎉', '🎊', '🎈', '🎁', '🎄', '🎃', '🎨', '🎬', '🎤', '🎧', '🎸', '🎮'],
+            objects: ['📱', '💻', '⌨️', '🖨️', '📷', '🎥', '📺', '📻', '⏰', '⌛', '💡', '🔦', '🔋', '🔌', '💰', '💳', '💎', '🔧', '🔨', '⚙️', '🔑', '🔒', '📦', '✉️', '📅', '📌', '📎', '✏️', '📝', '📚', '🛒', '🎀'],
+            symbols: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '💔', '💯', '✅', '☑️', '✔️', '❌', '❗', '❓', '⚠️', '🚫', '⛔', '♻️', '🔥', '✨', '⚡', '💥', '💫', '🆕', '🆓', '🆗', '🔝', '🔴', '🟢', '🔵']
+        }
+    };
+
+    // The icons (a Bootstrap Icons name => code point map) whose name holds
+    // the query, any case, spaces read as dashes; names starting with it
+    // first, then the rest, each group by name: [{ name, code }], at most
+    // limit of them and the total in found.
+    function iconSearch(map, query, limit) {
+        var q = String(query || '').trim().toLowerCase().replace(/\s+/g, '-'), first = [], rest = [];
+
+        Object.keys(map || {}).sort().forEach(function (name) {
+            var at = q ? name.indexOf(q) : 0, code = Number(map[name]);
+
+            if ((at < 0) || !(code > 0)) {
+                return;
+            }
+
+            (at === 0 ? first : rest).push({ name: name, code: code });
+        });
+
+        var all = first.concat(rest);
+
+        return { icons: all.slice(0, (limit > 0) ? limit : all.length), found: all.length };
+    }
+
+    // The last eight emoji used, newest first, each once; only short
+    // strings count.
+    function emojiRecent(list, emoji) {
+        var ok = function (e) { return (typeof e === 'string') && (e !== '') && (e.length <= 16); };
+        var keep = Array.isArray(list) ? list.filter(ok) : [];
+
+        if (!ok(emoji)) {
+            return keep.slice(0, 8);
+        }
+
+        return [emoji].concat(keep.filter(function (e) { return e !== emoji; })).slice(0, 8);
+    }
+
+    // The characters a glyph layer draws: an icon's code point or the emoji;
+    // '' for anything else.
+    function glyphText(l) {
+        if (!l) {
+            return '';
+        }
+
+        if (l.set === 'bi') {
+            var code = Number(l.code);
+
+            return ((code > 0) && (code <= 0x10ffff)) ? String.fromCodePoint(code) : '';
+        }
+
+        return ((l.set === 'emoji') && (typeof l.code === 'string')) ? l.code.slice(0, 16) : '';
+    }
+
+    // A glyph's font size in its box: the box's shorter side, so a stretched
+    // box keeps the glyph's own shape.
+    function glyphSize(l) {
+        return Math.max(1, Math.min(Number(l.w) || 0, Number(l.h) || 0));
+    }
+
+    var GLYPH = { EMOJI: EMOJI, iconSearch: iconSearch, emojiRecent: emojiRecent, glyphText: glyphText, glyphSize: glyphSize };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -3098,7 +3176,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, ACCESS, GFONTS].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, ACCESS, GFONTS, GLYPH].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

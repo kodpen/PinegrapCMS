@@ -599,7 +599,7 @@
 
     // The icon beside a layer's name in the list, by its type.
     var LAYER_ICONS = {
-        image: 'image', text: 'text', sticker: 'sticker', redact: 'redact', path: 'vector', svg: 'vector',
+        image: 'image', text: 'text', sticker: 'sticker', glyph: 'sticker', redact: 'redact', path: 'vector', svg: 'vector',
         pen: 'pen', rect: 'rect', ellipse: 'ellipse', arrow: 'arrow', line: 'line'
     };
 

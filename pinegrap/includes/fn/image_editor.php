@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'access', 'fonts');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'access', 'fonts', 'glyph');
 }
 
 /**
@@ -171,6 +171,8 @@ function pg_image_editor_config()
         'token'   => isset($_SESSION['software']['token']) ? (string) $_SESSION['software']['token'] : '',
         // Without Imagick the browser sends the colour step done.
         'serverColor' => class_exists('Imagick'),
+        // The Sticker tool's icons: the font and its name => code point map.
+        'icons'   => pg_image_editor_icon_urls(),
     );
 }
 
@@ -3278,6 +3280,56 @@ function pg_image_editor_strings_fonts()
         'fontCat_hand'      => lang('Handwriting'),
         'fontCat_mono'      => lang('Monospace'),
         'fontNone'          => lang('No font matches the search.'),
+    );
+}
+
+// -- Icons and emoji (pg_image_editor_glyph.js) --
+
+/**
+ * The Sticker tool's icons and emoji: labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_glyph()
+{
+    return array(
+        'layer_glyph'        => lang('Icon or emoji'),
+        'glyphIcons'         => lang('Icons'),
+        'glyphIcon'          => lang('Icon'),
+        'glyphEmoji'         => lang('Emoji'),
+        'glyphIconFind'      => lang('Search icons'),
+        'glyphIconNone'      => lang('No icon matches the search.'),
+        'glyphIconMore'      => lang('Search to find the other icons.'),
+        'glyphIconError'     => lang('The icons could not be loaded.'),
+        'glyphRecent'        => lang('Recently used'),
+        'glyphColor'         => lang('Icon colour'),
+        'glyphEmojiCategory' => lang('Emoji category'),
+        'emojiCat_smileys'   => lang('Smileys'),
+        'emojiCat_people'    => lang('People'),
+        'emojiCat_nature'    => lang('Animals and nature'),
+        'emojiCat_food'      => lang('Food and drink'),
+        'emojiCat_travel'    => lang('Travel and places'),
+        'emojiCat_activities' => lang('Activities'),
+        'emojiCat_objects'   => lang('Objects'),
+        'emojiCat_symbols'   => lang('Symbols'),
+    );
+}
+
+/**
+ * The Bootstrap Icons font the panel ships and its name => code point map,
+ * for the Sticker tool's icons; each address carries the file's time so a
+ * new icon set is fetched again.
+ *
+ * @return array font, map
+ */
+function pg_image_editor_icon_urls()
+{
+    $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/fonts/bootstrap-icons/';
+    $dir = PG_FUNCTIONS_DIR . '/assets/fonts/bootstrap-icons/';
+
+    return array(
+        'font' => $base . 'fonts/bootstrap-icons.woff2?v=' . (int) @filemtime($dir . 'fonts/bootstrap-icons.woff2'),
+        'map'  => $base . 'bootstrap-icons.json?v=' . (int) @filemtime($dir . 'bootstrap-icons.json'),
     );
 }
 

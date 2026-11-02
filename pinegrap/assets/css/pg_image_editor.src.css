@@ -2557,3 +2557,46 @@
     transform: translate(-50%, -50%);
   }
 }
+
+/* -- Icons and emoji (pg_image_editor_glyph.js) -- */
+
+.pgie-glyphs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 4px;
+  max-height: 264px;
+  overflow-y: auto;
+}
+
+.pgie-glyphs.pgie-glyph-recent {
+  max-height: none;
+}
+
+.pgie .pgie-glyph {
+  display: grid;
+  place-items: center;
+  height: 44px;
+  padding: 0;
+  border: 1px solid var(--pgie-line);
+  border-radius: 10px;
+  background: var(--pgie-hover);
+  color: inherit;
+  font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", "Segoe UI Symbol", sans-serif;
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pgie .pgie-glyph:hover {
+  border-color: var(--pgie-pline);
+}
+
+/* An icon is drawn from the font the editor loads as pgie-bi. */
+.pgie .pgie-glyph-bi {
+  font-family: pgie-bi;
+  font-size: 22px;
+}
+
+.pgie .pgie-glyphfind {
+  width: 100%;
+}

@@ -5,7 +5,7 @@ module: image_editor
 ---
 
 ## Where is the Google Fonts list?
-- `assets/js/pg_google_fonts.js` sets `window.PgGoogleFonts` (`order`, `categories`: sans, serif, display, hand, mono; `all()`): about two hundred families, most popular first, each once. It ships in the code (no API key, no live fetch).
+- `assets/js/pg_google_fonts.js` sets `window.PgGoogleFonts` (`order`, `categories`: sans, serif, display, hand, mono; `all()`): about two hundred families, most popular first, each once. It ships in the code (no API key, no live fetch). The faces load from Google as the site's own fonts do (the CSP lists Google Fonts, `waf/waf-csp-builtin-and-reporter.md`).
 - It is the first source of both `style_designer.min.js` and `pg_image_editor.min.js` (`pg_js_bundles()`); the designer's `GOOGLE_FONTS` is `['Default']` plus `all()`, with no copy of its own. `tests/js_bundles_test.php` lets this one file sit in two bundles.
 
 ## How does the Text tool offer it?
