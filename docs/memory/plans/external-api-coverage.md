@@ -12,7 +12,7 @@ description: External API (integration.php): find what the panel can do that the
 - X1b Shipping method writes: create, update, `/delete` for `/store/shipping-methods` through a write function shared with `add_/edit_shipping_method.php` (`pg_shipping_method_form_columns()` reads the panel's formatted text; the API needs its own typed input). `store:write`. Events `shipping_method.created|updated|deleted`. Free.
 - X2 Returns: `GET /returns` (status, order_id, modified_since), `GET /returns/{id}`, `POST /returns/{id}` (approve, receive, refund, reject as `view_return.php`). `orders:*`. Events: existing `order.return.*`.
 - X3 `GET /subscriptions`, `/subscriptions/{id}` (`customers:read`); `POST /commissions/{id}` status, `POST /affiliates/{id}/approve`, `GET /commissions/recurring-profiles`; new `commissions:write`. Events `commission.status_changed`, `affiliate.approved`.
-- X4 Users read: `GET /users`, `/users/{id}` (role, permission columns, last sign-in, MFA; no secrets). New `users:read`, designer ceiling. Writes: #5237.
+- X4 Users read: `GET /users`, `/users/{id}` (role, permission columns, last sign-in, MFA; no secrets). New `users:read`, designer ceiling. Writes: X13 (`external-api-coverage-2.md`).
 - X5 Countries, states, currencies: create, update, delete; `POST /store/currencies/rates` (`update_exchange_rates.php`). `store:write`. Event `currency.updated`.
 - X6 `POST /orders` as `add_order.php`, Idempotency-Key, dry run. `orders:write`. Event `order.created`.
 - X7 `POST /offers`, `POST /offers/{id}/duplicate` (`edit_offer_f.php` rules). `offers:write`. New events `offer.created|updated|deleted`.
@@ -23,7 +23,7 @@ description: External API (integration.php): find what the panel can do that the
 - X12 CRUD for ads, ad regions, auto dialogs, common regions under `/design/`. `design:*`. No events.
 
 ## What is not a step?
-- Redirects: short links with `redirect_code` and `*` patterns, covered. Saved reports and the back-in-stock list wait for a client. Settings, firewall, sessions, backups, updates: #5238.
+- Redirects: short links with `redirect_code` and `*` patterns, covered. Saved reports and the back-in-stock list wait for a client. Settings, firewall, sessions, backups, updates: no endpoint (#5238, `external-api-coverage-2.md`).
 - Issues #3411, #3412, #3413 (PR #3842), #3414 are done per `api/` memory and can be closed; #5085 (bell `group`, `fold`) is free work outside the steps.
 
 ## What is settled?
