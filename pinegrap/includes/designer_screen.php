@@ -633,6 +633,9 @@ function pg_designer_screen_render($ctx)
         <script src="assets/js/pg_custom_style.js?v=' . pg_designer_asset_stamp('assets/js/pg_custom_style.js') . '"></script>
         <!-- The search keyword chips (pgChips) and the date-and-time control of the page schedule and the filter rows. -->
         ' . get_date_picker_format() . pg_fields_script() . '
+        <!-- For the Prototype view: the graph canvas core, the link resolver and the link
+             collector: they only define their globals, so no defer. -->
+        ' . pg_js_bundle_tags('assets/js/pg_graph_canvas.min.js', false) . pg_js_bundle_tags('assets/js/pg_link_resolve.min.js', false) . pg_js_bundle_tags('assets/js/pg_proto_hotspots.min.js', false) . '
         ' . pg_js_bundle_tags('assets/js/style_designer.min.js', false) . '
         ' . pg_ai_write_assets() . '
         ' . (!empty($sd_ai['enabled']) ? '<script src="assets/js/designer_ai.js?v=' . pg_designer_asset_stamp('assets/js/designer_ai.js') . '"></script>' : '') . '

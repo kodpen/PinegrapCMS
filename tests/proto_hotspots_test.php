@@ -295,6 +295,74 @@ function test_proto_hotspots_mark_a_design()
 	pg_assert_true($result['untouched'], 'the design handed in is not changed');
 }
 
+// layout(): frames side by side as tall as their rows, a menu expanded
+// into rows, an unknown menu one broken row, one chip per mark and href
+// grouped by mark, an arrow from each row to its tab frame or chip, saved
+// positions kept.
+function test_proto_hotspots_layout()
+{
+	$marked = array(
+		'pages' => array(
+			array('key' => 'p1', 'name' => 'home', 'hotspots' => array(
+				array('nodeId' => 'a', 'source' => 'href', 'href' => '/about', 'label' => 'About', 'mark' => 'tab', 'tab' => 'p2', 'draft' => false),
+				array('nodeId' => 'b', 'source' => 'btn', 'href' => 'https://x.org/', 'label' => '', 'mark' => 'external', 'tab' => '', 'draft' => false),
+				array('nodeId' => 'm', 'source' => 'menu', 'name' => 'Top', 'links' => array(
+					array('href' => '/home', 'label' => 'Home', 'mark' => 'tab', 'tab' => 'p1'),
+					array('href' => '', 'label' => 'Private', 'mark' => 'hidden', 'tab' => ''),
+				)),
+				array('nodeId' => 'g', 'source' => 'menu', 'name' => 'Gone', 'links' => null),
+			)),
+			array('key' => 'p2', 'name' => 'about', 'hotspots' => array()),
+		),
+		'shared' => array(
+			array('id' => 5, 'name' => 'Header', 'pages' => 2, 'loaded' => true, 'hotspots' => array(
+				array('nodeId' => 'h', 'source' => 'href', 'href' => 'https://x.org/', 'label' => 'X', 'mark' => 'external', 'tab' => '', 'draft' => false),
+				array('nodeId' => 'i', 'source' => 'href', 'href' => '/old', 'label' => 'Old', 'mark' => 'broken', 'tab' => '', 'draft' => false),
+				array('nodeId' => 'j', 'source' => 'text', 'href' => '#top', 'label' => 'Top', 'mark' => 'anchor', 'tab' => '', 'draft' => false),
+			)),
+		),
+	);
+	$result = proto_hotspots_test_node('var l = H.layout(' . proto_hotspots_test_js($marked) . ', { "s:5": { x: 10, y: 900 }, "c:0": { x: "bad" } });'
+		. 'out = { frames: l.frames.map(function (f) { return [f.id, f.x, f.y, f.h, f.rows.map(function (r) { return r.port + " " + r.label + " " + r.mark; })]; }),'
+		. ' chips: l.chips.map(function (c) { return [c.id, c.mark, c.href, c.x, c.y]; }), edges: l.edges.map(function (e) { return e.id + ">" + e.to; }), y: H.rowY(l.frames[0], "h2") };');
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		array('p:p1', 0, 0, 44 + 5 * 30 + 10, array('h0 About tab', 'h1 https://x.org/ external', 'h2 Home tab', 'h3 Private hidden', 'h4 Gone broken')),
+		array('p:p2', 408, 0, 44 + 30 + 10, array()),
+		array('s:5', 10, 900, 44 + 3 * 30 + 10, array('h0 X external', 'h1 Old broken', 'h2 Top anchor')),
+	), $result['frames'], 'the frames, their rows and places');
+	pg_assert_same(array(
+		array('c:2', 'anchor', '#top', 1224, 0),
+		array('c:0', 'external', 'https://x.org/', 1224, 48),
+		array('c:1', 'broken', '/old', 1224, 96),
+	), $result['chips'], 'one chip per mark and href, grouped by mark; a bad saved place ignored');
+	pg_assert_same(array('p:p1|h0>p:p2', 'p:p1|h1>c:0', 'p:p1|h2>p:p1', 's:5|h0>c:0', 's:5|h1>c:1', 's:5|h2>c:2'), $result['edges'], 'an arrow per row that leads somewhere');
+	pg_assert_same(44 + 2 * 30 + 15, $result['y'], 'a row port in the middle of its row');
+}
+
+// The designer prints the canvas core, the resolver and the collector
+// without defer before style_designer.min.js, which reads them; the view
+// has its toolbar button and reads the prototype_map answer.
+function test_proto_hotspots_printed_before_the_designer()
+{
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+	$designer = strpos($screen, "pg_js_bundle_tags('assets/js/style_designer.min.js', false)");
+
+	foreach (array('pg_graph_canvas', 'pg_link_resolve', 'pg_proto_hotspots') as $name) {
+		$at = strpos($screen, "pg_js_bundle_tags('assets/js/" . $name . ".min.js', false)");
+		pg_assert_true(($at !== false) && ($designer !== false) && ($at < $designer), $name . ' is printed without defer before the designer');
+	}
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+
+	pg_assert_contains('id="sd-vb-proto"', $source, 'the toolbar button');
+	pg_assert_contains("_pgApiPost('prototype_map', designed.request)", $source, 'the view asks the map read');
+}
+
 // The collector is a bundle of its own.
 function test_proto_hotspots_is_bundled()
 {

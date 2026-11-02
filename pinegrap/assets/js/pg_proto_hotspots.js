@@ -20,6 +20,7 @@
  * - mark(): each hotspot's mark from that read through the resolver's twin
  *   (window.PGLinkResolve): tab, page, broken, hidden, external, contact,
  *   anchor, with a draft flag.
+ * - layout(): where the frames, rows, chips and arrows of the view go.
  *
  * Nothing runs at load but the definition of window.PGProtoHotspots.
  * Served minified as assets/js/pg_proto_hotspots.min.js (pg_js_bundles(),
@@ -556,7 +557,152 @@
         return { pages: frames(designed.pages || []), shared: frames(designed.shared || []), request: designed.request };
     }
 
+    // The sizes of what layout() places, in canvas units.
+    var FRAME = { w: 248, head: 44, row: 30, pad: 10, gap: 160, chipW: 200, chipH: 36, chipGap: 12 };
+
+    // The marks that end on a chip, in the order the chips are stacked.
+    var CHIP_MARKS = ['page', 'anchor', 'contact', 'external', 'hidden', 'broken'];
+
+    // The rows of one frame: one per link hotspot; a menu or region gives
+    // one row per link it holds, or one row marked broken when the read
+    // knows no such name. Each row: port, nodeId, source, label, href,
+    // mark, draft, tab, from (the menu or region name, '' for none).
+    function rowsOf(frame) {
+        var rows = [];
+
+        function add(spot, link, from) {
+            rows.push({
+                port: 'h' + rows.length,
+                nodeId: spot.nodeId,
+                source: spot.source,
+                label: str(link.label) || str(link.href) || '#',
+                href: str(link.href),
+                mark: str(link.mark) || 'broken',
+                draft: !!link.draft,
+                tab: str(link.tab),
+                from: from
+            });
+        }
+
+        (frame.hotspots || []).forEach(function (spot) {
+            if (spot.source === 'menu' || spot.source === 'region') {
+                if (!Array.isArray(spot.links)) {
+                    add(spot, { label: spot.name, href: '', mark: 'broken' }, spot.name);
+                    return;
+                }
+
+                spot.links.forEach(function (link) { add(spot, link, spot.name); });
+                return;
+            }
+
+            add(spot, spot, '');
+        });
+
+        return rows;
+    }
+
+    // Where everything of a marked design goes on the canvas and which
+    // arrows join it: frames (id 'p:<tab key>' or 's:<shared id>') side by
+    // side, each as tall as its rows; one chip (id 'c:<n>') per mark and
+    // href that ends outside the design's tabs, stacked right of the
+    // frames; an arrow (id '<frame id>|<port>') from each row to the tab
+    // frame it opens or to its chip. `saved` (id => { x, y }) puts a frame
+    // or chip back where the operator left it.
+    function layout(marked, saved) {
+        saved = isObject(saved) ? saved : {};
+
+        var frames = [];
+        var chips = [];
+        var chipByKey = {};
+        var edges = [];
+        var tabs = {};
+        var x = 0;
+
+        function place(item) {
+            var at = saved[item.id];
+
+            if (isObject(at) && isFinite(at.x) && isFinite(at.y)) {
+                item.x = Number(at.x);
+                item.y = Number(at.y);
+            }
+
+            return item;
+        }
+
+        (marked.pages || []).forEach(function (page) {
+            tabs[page.key] = 'p:' + page.key;
+        });
+
+        [['page', marked.pages || []], ['shared', marked.shared || []]].forEach(function (group) {
+            group[1].forEach(function (frame) {
+                var rows = rowsOf(frame);
+                var item = {
+                    id: (group[0] === 'page') ? 'p:' + frame.key : 's:' + frame.id,
+                    kind: group[0],
+                    key: (group[0] === 'page') ? frame.key : '',
+                    sharedId: (group[0] === 'shared') ? frame.id : 0,
+                    name: frame.name,
+                    pages: (group[0] === 'shared') ? frame.pages : 0,
+                    loaded: (group[0] === 'shared') ? frame.loaded : true,
+                    rows: rows,
+                    x: x,
+                    y: 0,
+                    w: FRAME.w,
+                    h: FRAME.head + Math.max(1, rows.length) * FRAME.row + FRAME.pad
+                };
+
+                x += FRAME.w + FRAME.gap;
+                frames.push(place(item));
+            });
+        });
+
+        frames.forEach(function (frame) {
+            frame.rows.forEach(function (row) {
+                var to = '';
+
+                if (row.mark === 'tab' && has(tabs, row.tab)) {
+                    to = tabs[row.tab];
+                } else if (CHIP_MARKS.indexOf(row.mark) >= 0 && !(row.from && row.href === '')) {
+                    var key = row.mark + '\n' + row.href;
+
+                    if (!has(chipByKey, key)) {
+                        chipByKey[key] = { id: 'c:' + chips.length, kind: 'chip', mark: row.mark, href: row.href, draft: row.draft, x: 0, y: 0, w: FRAME.chipW, h: FRAME.chipH };
+                        chips.push(chipByKey[key]);
+                    }
+
+                    to = chipByKey[key].id;
+                }
+
+                if (to !== '') {
+                    edges.push({ id: frame.id + '|' + row.port, from: frame.id, port: row.port, to: to, mark: row.mark });
+                }
+            });
+        });
+
+        // Chips grouped by mark, in CHIP_MARKS order, then as first met.
+        chips.sort(function (a, b) {
+            return (CHIP_MARKS.indexOf(a.mark) - CHIP_MARKS.indexOf(b.mark)) || (parseInt(a.id.substr(2), 10) - parseInt(b.id.substr(2), 10));
+        });
+        chips.forEach(function (chip, i) {
+            chip.x = x;
+            chip.y = i * (FRAME.chipH + FRAME.chipGap);
+            place(chip);
+        });
+
+        return { frames: frames, chips: chips, edges: edges };
+    }
+
+    // The y of a row's port from the top of its frame.
+    function rowY(frame, port) {
+        var index = parseInt(String(port).replace(/^h/, ''), 10) || 0;
+
+        return FRAME.head + index * FRAME.row + FRAME.row / 2;
+    }
+
     window.PGProtoHotspots = {
+        FRAME: FRAME,
+        layout: layout,
+        rowY: rowY,
         LIMITS: LIMITS,
         htmlLinks: htmlLinks,
         nodeLinks: nodeLinks,

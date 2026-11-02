@@ -1304,6 +1304,7 @@
     "Shared component \"{var:1}\"": "Ortak bileşen \"{var:1}\"",
     "Shared component id={var:1} contains nested shared references (not allowed in Phase 1).": "Ortak bileşen id={var:1} iç içe ortak referans içeriyor (Phase 1'de desteklenmiyor).",
     "Shared component name:": "Ortak bileşen adı:",
+    "Shared component {var:1}": "Paylaşılan bileşen {var:1}",
     "Shared components and system widgets": "Ortak bileşenler ve sistem widget'ları",
     "Shared components the User may edit": "Kullanıcının düzenleyebileceği Ortak Bileşenler",
     "Shared components used elsewhere on the site": "Sitenin başka yerlerinde kullanılan ortak bileşenler",
