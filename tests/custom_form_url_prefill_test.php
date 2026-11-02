@@ -421,6 +421,34 @@ function test_cf_url_render_pass()
 	pg_assert_same(null, _test_cf_url_attr(_test_cf_url_find($tree, 'f-board-g'), 'checked'), 'its sibling loses the default');
 }
 
+// A date, date-and-time or time input starts from a default in the site's
+// format as the ISO it holds; a browser would drop the site text.
+function test_cf_native_date_defaults_are_iso()
+{
+	if (!defined('DATE_FORMAT')) {
+		define('DATE_FORMAT', 'day_month');
+	}
+	$tree = _test_cf_url_tree(array(
+		_test_cf_url_control('input', array('type' => 'date', 'name' => 'day'), null, 'f-day'),
+		_test_cf_url_control('input', array('type' => 'datetime-local', 'name' => 'start'), null, 'f-start'),
+		_test_cf_url_control('input', array('type' => 'time', 'name' => 'hour'), null, 'f-hour'),
+		_test_cf_url_control('input', array('type' => 'text', 'name' => 'note'), null, 'f-note'),
+	));
+	$day = (DATE_FORMAT === 'month_day') ? '10/27/2026' : '27/10/2026';
+	$map = array(
+		'day' => _test_cf_url_row(21, 'day', 'date', array('default_value' => $day)),
+		'start' => _test_cf_url_row(22, 'start', 'date and time', array('default_value' => $day . ' 5:05 PM')),
+		'hour' => _test_cf_url_row(23, 'hour', 'time', array('default_value' => '5:05 PM')),
+		'note' => _test_cf_url_row(24, 'note', 'text box', array('default_value' => $day)),
+	);
+	pg_cf_apply_field_bindings($tree, $map, null, 0, false, array());
+
+	pg_assert_same('2026-10-27', _test_cf_url_attr(_test_cf_url_find($tree, 'f-day'), 'value'), 'a date');
+	pg_assert_same('2026-10-27T17:05', _test_cf_url_attr(_test_cf_url_find($tree, 'f-start'), 'value'), 'a date and time');
+	pg_assert_same('17:05', _test_cf_url_attr(_test_cf_url_find($tree, 'f-hour'), 'value'), 'a time');
+	pg_assert_same($day, _test_cf_url_attr(_test_cf_url_find($tree, 'f-note'), 'value'), 'a text box keeps the site text');
+}
+
 // -- the `_cf` record ---------------------------------------------------------------------
 
 function test_cf_url_node_record()

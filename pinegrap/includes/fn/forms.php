@@ -3418,6 +3418,45 @@ function pg_form_input_time_parts($text)
 
     return array('', (string) $parts[0], sprintf('%02d', $parts[1]), '');
 }
+/**
+ * The value a native <input type="date">, "datetime-local" or "time" takes
+ * for a stored, default or typed value: ISO ('2026-10-26',
+ * '2026-10-26T17:05', '17:05'). A browser drops any other text from such an
+ * input, so a default in the site's format ('26/10/2026', '5:05 PM') or a
+ * stored 'Y-m-d H:i' is converted; text that is no date or time is
+ * returned as it is.
+ *
+ * @param string $value
+ * @param string $type  the input's type: date, datetime-local or time
+ * @return string
+ */
+function pg_native_date_value($value, $type)
+{
+    $value = trim((string)$value);
+    $type = strtolower((string)$type);
+    if ($value === '') return '';
+
+    if ($type === 'date') {
+        if (preg_match('/^\d{4}-\d{1,2}-\d{1,2}/', $value, $m) && validate_date($m[0])) {
+            return (string)prepare_form_data_for_input($m[0], 'date');
+        }
+        // The date part of a site date and time ('26/10/2026 5:05 PM').
+        $date = preg_split('/\s+/', $value)[0];
+        return validate_date($date) ? (string)prepare_form_data_for_input($date, 'date') : $value;
+    }
+    if ($type === 'datetime-local') {
+        if (!validate_date_and_time($value)) {
+            // A date alone is midnight, as the date-and-time control reads it.
+            if (preg_match('/\s/', $value) || !validate_date($value)) return $value;
+            $value .= ' 00:00';
+        }
+        return str_replace(' ', 'T', (string)prepare_form_data_for_input($value, 'date and time'));
+    }
+    if ($type === 'time') {
+        return validate_time($value) ? (string)prepare_form_data_for_input($value, 'time') : $value;
+    }
+    return $value;
+}
 function prepare_form_data_for_input($data, $type)
 {
     if ($data) {

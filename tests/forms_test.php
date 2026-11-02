@@ -42,6 +42,28 @@ function test_forms_date_and_time_iso()
 	pg_assert_false(validate_date_and_time('2026-10-26'), 'a date alone, without a warning');
 }
 
+// The value a native date, date-and-time or time input takes: ISO, from a
+// stored value or a default in the site's format; other text stays.
+function test_forms_native_date_value()
+{
+	forms_test_date_format();
+
+	pg_assert_same('2026-10-26', pg_native_date_value('26/10/2026', 'date'), 'a site date');
+	pg_assert_same('2026-10-26', pg_native_date_value('2026-10-26', 'date'), 'already ISO');
+	pg_assert_same('2026-10-26', pg_native_date_value('2026-10-26 17:05:00', 'date'), 'a stored date and time');
+	pg_assert_same('2026-10-26', pg_native_date_value('26/10/2026 5:05 PM', 'date'), 'a site date and time');
+	pg_assert_same('2026-10-26T17:05', pg_native_date_value('26/10/2026 5:05 PM', 'datetime-local'), 'a site date and time');
+	pg_assert_same('2026-10-26T17:05', pg_native_date_value('2026-10-26 17:05:00', 'datetime-local'), 'a stored date and time');
+	pg_assert_same('2026-10-26T17:05', pg_native_date_value('2026-10-26T17:05', 'DATETIME-LOCAL'), 'already ISO');
+	pg_assert_same('2026-10-26T00:00', pg_native_date_value('26/10/2026', 'datetime-local'), 'a date alone is midnight');
+	pg_assert_same('17:05', pg_native_date_value('5:05 PM', 'time'), 'a 12-hour time');
+	pg_assert_same('09:30', pg_native_date_value('9:30', 'time'), 'a 24-hour time');
+	pg_assert_same('', pg_native_date_value('  ', 'date'), 'nothing');
+	pg_assert_same('soon', pg_native_date_value('soon', 'date'), 'no date stays');
+	pg_assert_same('soon later', pg_native_date_value('soon later', 'datetime-local'), 'no date and time stays');
+	pg_assert_same('26/10/2026', pg_native_date_value('26/10/2026', 'text'), 'another input type is left');
+}
+
 // A search term with no date or time parts is converted without a warning:
 // the missing parts count as empty.
 function test_forms_input_date_and_time_without_parts()
