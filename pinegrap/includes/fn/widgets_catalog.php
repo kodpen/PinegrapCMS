@@ -1260,6 +1260,9 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         if ($next_slash !== false) $segment = mb_substr($segment, 0, $next_slash, 'UTF-8');
         $segment = urldecode(trim($segment));
     }
+    // A group segment in the page's path is this widget's to answer: a
+    // drill-down or its own 404 below.
+    if (!$is_homepage_catalog && $segment !== '') pg_sw_segment_read(true);
     if ($segment !== '' && strlen($segment) <= 200) {
         $found_id = (int)db_value(
             "SELECT id FROM product_groups
@@ -4981,6 +4984,9 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             $segment = urldecode(trim($segment));
             if ($segment !== '' && strlen($segment) <= 200) {
                 $product_address_name = $segment;
+                // The product named here answers for the segment (a 404 of
+                // its own when it is not there).
+                pg_sw_segment_read(true);
             }
         }
     }
