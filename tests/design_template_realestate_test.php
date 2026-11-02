@@ -10,7 +10,9 @@
  * page link of the shared parts names a page of the finished template, the
  * shared parts carry no class of another template, a listing card reads
  * the Listings form's fields and an agent card opens the valuation form
- * with the agent chosen.
+ * with the agent chosen; the public pages (pages_public.php): their keys,
+ * one page per neighbourhood, links to known pages, filter links that name
+ * answers of the Listings form's lists, the listing widgets they place.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -34,7 +36,9 @@ function _test_re_load()
 	foreach (array_keys($agents) as $key) $agent_cards[$key] = $agent_card($key);
 	$listing_cards = array();
 	foreach (array_keys($listings) as $key) $listing_cards[$key] = $listing_card($key);
+	$public = include $dir . '/pages_public.php';
 	$out = array(
+		'public'         => $public,
 		'areas'          => $areas,
 		'deals'          => $deals,
 		'types'          => $property_types,
@@ -203,5 +207,103 @@ function test_realestate_agent_card_chooses_the_agent()
 		pg_assert_same(1, count($hrefs), "agent $key: one valuation link");
 		parse_str(substr($hrefs[0], strlen('{{page:valuation}}?')), $q);
 		pg_assert_true(in_array($q['agent'], $d['agent_choices'], true), "agent $key: the link names an Agent answer");
+	}
+}
+
+// Every {{page:}} key a tree links to, with the query each link carries.
+function _test_re_links($tree, &$keys, &$queries)
+{
+	$nodes = array();
+	_test_re_nodes($tree, $nodes);
+	foreach ($nodes as $node) {
+		foreach (array('href', 'text') as $prop) {
+			if (!isset($node['props'][$prop]) || !is_string($node['props'][$prop])) continue;
+			preg_match_all('/\{\{page:([a-z0-9_]+)\}\}(\?[^#"\s]*)?/', $node['props'][$prop], $m, PREG_SET_ORDER);
+			foreach ($m as $hit) {
+				$keys[] = $hit[1];
+				if (!empty($hit[2])) {
+					parse_str(substr($hit[2], 1), $q);
+					$queries[] = array($hit[1], $q);
+				}
+			}
+		}
+	}
+}
+
+// The template widgets a tree places.
+function _test_re_widgets($tree)
+{
+	$nodes = array();
+	_test_re_nodes($tree, $nodes);
+	$out = array();
+	foreach ($nodes as $node) {
+		if (isset($node['props']['templateWidget'])) $out[] = $node['props']['templateWidget'];
+	}
+	return $out;
+}
+
+function test_realestate_public_pages()
+{
+	$d = _test_re_load();
+	$keys = array();
+	$names = array();
+	foreach ($d['public'] as $p) {
+		pg_assert_same('public', $p['folder'], $p['key'] . ': public folder');
+		pg_assert_true(trim($p['name']) !== '' && trim($p['title']) !== '' && trim($p['meta_description']) !== '', $p['key'] . ': name, title, description');
+		pg_assert_true(!preg_match('/[^a-z0-9-]/', $p['name']), $p['key'] . ': page name is an address: ' . $p['name']);
+		$keys[] = $p['key'];
+		$names[] = $p['name'];
+	}
+	$expect = array('home', 'neighbourhoods');
+	foreach (array_keys($d['areas']) as $a) $expect[] = 'area_' . $a;
+	$expect = array_merge($expect, array('agents', 'services', 'about', 'faq', 'guide'));
+	pg_assert_same($expect, $keys, 'the public pages in order');
+	pg_assert_same(count($names), count(array_unique($names)), 'page names unique');
+
+	$known = array_flip(_test_re_page_keys());
+	$links = array();
+	$queries = array();
+	foreach ($d['public'] as $p) _test_re_links($p['tree'], $links, $queries);
+	foreach ($links as $key) pg_assert_true(isset($known[$key]), "public pages link a page of the template: $key");
+	// A filter or choice link names an answer of the list it fills, so the
+	// list or the form starts from words it knows.
+	$answers = array(
+		'deal'  => array_values($d['deals']),
+		'type'  => $d['type_titles'],
+		'area'  => $d['area_titles'],
+		'agent' => $d['agent_choices'],
+	);
+	pg_assert_true(count($queries) > 10, 'filter and choice links');
+	foreach ($queries as $hit) {
+		pg_assert_true(in_array($hit[0], array('listings', 'valuation'), true), 'a query only on the listings or the valuation form: ' . $hit[0]);
+		foreach ($hit[1] as $param => $value) {
+			pg_assert_true(isset($answers[$param]), "known parameter: $param");
+			pg_assert_true(in_array($value, $answers[$param], true), "$param names an answer: $value");
+		}
+	}
+}
+
+// The home places the featured listings, each neighbourhood its own list;
+// every neighbourhood page lists the agents who work there.
+function test_realestate_public_pages_place_the_listings()
+{
+	$d = _test_re_load();
+	$by_key = array();
+	foreach ($d['public'] as $p) $by_key[$p['key']] = $p;
+	$home = _test_re_widgets($by_key['home']['tree']);
+	foreach (array('home_listings', 'home_posts', 'google_reviews', 'newsletter_band') as $w) {
+		pg_assert_true(in_array($w, $home, true), "home places $w");
+	}
+	foreach ($d['areas'] as $key => $a) {
+		pg_assert_true(in_array('area_listings_' . $key, _test_re_widgets($by_key['area_' . $key]['tree']), true), "area $key: its listings");
+		$nodes = array();
+		_test_re_nodes($by_key['area_' . $key]['tree'], $nodes);
+		$cards = 0;
+		foreach ($nodes as $node) {
+			if (isset($node['props']['_label']) && $node['props']['_label'] === lang('Agent Card')) $cards++;
+		}
+		$expect = 0;
+		foreach ($d['agents'] as $ag) $expect += in_array($key, $ag['areas'], true) ? 1 : 0;
+		pg_assert_same($expect, $cards, "area $key: its agents");
 	}
 }
