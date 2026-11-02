@@ -145,6 +145,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - edit-user-return-key.md: Return in an Edit User field saves through a hidden nameless first submit; the Create Contact button saves the form first, then creates and opens the contact
 - email-campaign-profile-follow-ring.md: A campaign profile may not follow itself or a profile that follows it, on the edit screen and in the import
 - email-campaign-profile-gone-trigger.md: A campaign profile whose trigger item is deleted is marked "(deleted)" in the list and CSV, noted on its edit screen; Delete names its followers
+- email-campaign-profile-row-rules.md: How campaign profile values are checked on the form and the CSV import, midnight, length, required pickers
 - email-campaign-profile-shared-form.md: The campaign profile create and edit screens share includes/forms/email_campaign_profile_form.php
 - email-campaign-send-window.md: The Send E-mail Campaign pop-up draws once and sends its batches over fetch (?format=json) instead of a meta refresh; its bar is named, the count and finish announced
 - email-campaign-shared-form.md: The e-mail campaign create and edit screens share includes/forms/email_campaign_form.php: its helpers, the read-only flag, what stays in the screens

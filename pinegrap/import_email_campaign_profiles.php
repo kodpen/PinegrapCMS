@@ -216,7 +216,13 @@ if (!$_POST) {
             continue;
         }
 
-        $existing_profile = db_item("SELECT id, created_user_id, action, action_item_id FROM email_campaign_profiles WHERE name = '" . e($name) . "'");
+        $existing_profile = db_item(
+            "SELECT
+                id, created_user_id, name, enabled, action, action_item_id, format, page_id,
+                from_email_address, reply_email_address, bcc_email_address,
+                schedule_time, schedule_length, schedule_unit, schedule_period, schedule_base, purpose
+            FROM email_campaign_profiles
+            WHERE name = '" . e($name) . "'");
 
         // A basic user only sees and edits the profiles they created
         // (view_email_campaign_profiles.php, edit_email_campaign_profile.php).
@@ -231,11 +237,45 @@ if (!$_POST) {
             continue;
         }
 
-        // The trigger the profile has once the row is written: the file's
-        // value, else the stored one.
-        $action = isset($columns['action']) ? $row[$columns['action']['number']] : ($existing_profile ? $existing_profile['action'] : '');
-        $action_item_id = isset($columns['action_item_id']) ? $row[$columns['action_item_id']['number']] : ($existing_profile ? $existing_profile['action_item_id'] : '');
-        $follows_profile = (strtolower(trim((string) $action)) == 'email_campaign_sent');
+        // The profile as it is once the row is written: the file's cells over
+        // the stored values, or over the values a new profile starts with.
+        $values = $existing_profile ? $existing_profile : array(
+            'enabled' => '1',
+            'action' => '',
+            'action_item_id' => '0',
+            'format' => 'plain_text',
+            'page_id' => '0',
+            'from_email_address' => '',
+            'reply_email_address' => '',
+            'bcc_email_address' => '',
+            'schedule_time' => '',
+            'schedule_length' => '0',
+            'schedule_unit' => 'days',
+            'schedule_period' => '',
+            'schedule_base' => '',
+            'purpose' => 'commercial',
+        );
+
+        foreach ($columns as $column) {
+            $values[$column['name']] = $row[$column['number']];
+        }
+
+        $action = (string) $values['action'];
+        $action_item_id = (string) $values['action_item_id'];
+        $follows_profile = ($action == 'email_campaign_sent');
+
+        // Each row is checked with the rules of the create and edit form, so
+        // a value the form refuses is not written either.
+        $reason = pg_email_campaign_profile_values_problem($values, ECOMMERCE && USER_MANAGE_ECOMMERCE);
+
+        if ($reason === '') {
+            $reason = pg_email_campaign_profile_access_problem($values);
+        }
+
+        if ($reason !== '') {
+            $problems[] = array($line, $reason);
+            continue;
+        }
 
         // A profile that follows itself, one that follows it, or no profile
         // at all is refused: the first two send to the same contact without
@@ -252,22 +292,29 @@ if (!$_POST) {
             }
         }
 
+        // The columns written: the file's, with the time as stored, and for
+        // every action but a calendar event reservation the period and base
+        // the form saves ("after action"), whatever the file says.
+        $write = array();
+
+        foreach ($columns as $column) {
+            $write[$column['name']] = ($column['name'] == 'schedule_time')
+                ? pg_email_campaign_profile_schedule_time($row[$column['number']])
+                : $row[$column['number']];
+        }
+
+        if ($action != 'calendar_event_reserved') {
+            $write['schedule_period'] = 'after';
+            $write['schedule_base'] = 'action';
+        }
+
         // If an existing campaign profile has this name, then update campaign profile.
         if ($existing_profile) {
             $id = $existing_profile['id'];
             $sql_columns = '';
 
-            // Loop through columns to build SQL update values.
-            foreach ($columns as $column) {
-                // If this is the schedule time column then prepare time data for db.
-                if ($column['name'] == 'schedule_time') {
-                    $value = prepare_form_data_for_input($row[$column['number']], 'time');
-
-                } else {
-                    $value = $row[$column['number']];
-                }
-
-                $sql_columns .= $column['name'] . " = '" . e($value) . "',";
+            foreach ($write as $column_name => $value) {
+                $sql_columns .= $column_name . " = '" . e($value) . "',";
             }
 
             db(
@@ -283,29 +330,18 @@ if (!$_POST) {
 
         // Otherwise an existing campaign profile was not found, so create a new one.
         } else {
+            // If an enabled column was not included,
+            // then set campaign profile to be enabled by default.
+            if (!isset($write['enabled'])) {
+                $write['enabled'] = '1';
+            }
+
             $sql_columns = '';
             $sql_values = '';
 
-            // Loop through columns to build SQL update values.
-            foreach ($columns as $column) {
-                $sql_columns .= $column['name'] . ",";
-
-                // If this is the schedule time column then prepare time data for db.
-                if ($column['name'] == 'schedule_time') {
-                    $value = prepare_form_data_for_input($row[$column['number']], 'time');
-                    
-                } else {
-                    $value = $row[$column['number']];
-                }
-
+            foreach ($write as $column_name => $value) {
+                $sql_columns .= $column_name . ",";
                 $sql_values .= "'" . e($value) . "',";
-            }
-
-            // If an enabled column was not included,
-            // then set campaign profile to be enabled by default.
-            if (!isset($columns['enabled'])) {
-                $sql_columns .= "enabled,";
-                $sql_values .= "'1',";
             }
 
             db(
