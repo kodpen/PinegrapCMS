@@ -136,6 +136,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_claude_daily_summary();    // 11.0.145
 	upgrade_2026_11_0_site_search_daily();      // 11.0.147
 	upgrade_2026_11_0_product_questions();       // 11.0.148
+	upgrade_2026_11_0_page_vitals_hourly();      // 11.0.149
 
 }
 
@@ -4338,6 +4339,44 @@ function upgrade_2026_11_0_site_search_daily() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Site search: each day\'s searches are now counted by term, with the searches that found nothing and the clicks on their results. Days older than 400 are removed.');
+
+}
+
+// The real-user page speed rollup (2026.11.0, 11.0.149; includes/fn/page_vitals.php).
+// One row per hour, page and width class (desktop, mobile, tablet), aggregated
+// at write time: id is the SHA-1 of "day|hour|page_id|device", raised by one
+// INSERT ... ON DUPLICATE KEY UPDATE per beacon. views counts the beacons; for
+// each of LCP, INP (milliseconds) and CLS (× 1000) the sum of the measured
+// values and how many fell into the good, needs-work and poor buckets. A
+// figure a beacon did not measure adds to none of its columns. idx_day_page
+// serves the reports of a period and of a page. Nothing about a visitor is
+// kept; the general job removes days older than 400.
+function upgrade_2026_11_0_page_vitals_hourly() {
+
+	install_create_table('page_vitals_hourly', "CREATE TABLE page_vitals_hourly (
+		id          CHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		day         DATE NOT NULL,
+		hour        TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		page_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		device      ENUM('desktop','mobile','tablet') NOT NULL DEFAULT 'desktop',
+		views       INT UNSIGNED NOT NULL DEFAULT 0,
+		lcp_sum     BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		inp_sum     BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		cls_sum     BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		lcp_good    INT UNSIGNED NOT NULL DEFAULT 0,
+		lcp_needs   INT UNSIGNED NOT NULL DEFAULT 0,
+		lcp_poor    INT UNSIGNED NOT NULL DEFAULT 0,
+		inp_good    INT UNSIGNED NOT NULL DEFAULT 0,
+		inp_needs   INT UNSIGNED NOT NULL DEFAULT 0,
+		inp_poor    INT UNSIGNED NOT NULL DEFAULT 0,
+		cls_good    INT UNSIGNED NOT NULL DEFAULT 0,
+		cls_needs   INT UNSIGNED NOT NULL DEFAULT 0,
+		cls_poor    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_day_page (day, page_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Page speed: visitors\' browsers now report how fast each page loads, reacts and stays steady (LCP, INP, CLS), counted per page and hour with nothing about the visitor kept.');
 
 }
 

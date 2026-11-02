@@ -4,7 +4,8 @@
  *
  * The visitor beacon of the page cache: a page the router answered from a
  * stored copy posts here once it is shown, so the view is counted as if the
- * page had been drawn. A click on a site search result posts here too.
+ * page had been drawn. A click on a site search result and the page speed
+ * beacon post here too.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -44,6 +45,18 @@ if (pg_post_body_discarded()) {
 if (isset($_POST['sc'])) {
     if (pg_site_search_click_verify($_POST['sc'], $_POST['ss'] ?? '', defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '')) {
         pg_site_search_click($_POST['sc'], $_POST['u'] ?? '');
+    }
+    exit();
+}
+
+// The page speed beacon (pg_vitals.min.js): the figures of a page this site
+// signed, counted in the hour's rollup; nothing else is counted for it.
+if (isset($_POST['vp'])) {
+    $page_vitals_page = pg_vitals_verify($_POST['vp'], $_POST['vs'] ?? '', defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '');
+    $page_vitals = pg_vitals_parse($_POST['v'] ?? '');
+
+    if (($page_vitals_page > 0) && ($page_vitals !== null)) {
+        pg_vitals_record($page_vitals_page, $page_vitals);
     }
     exit();
 }

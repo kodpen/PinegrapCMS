@@ -3339,6 +3339,19 @@ if (function_exists('pg_version_assets')) {
 	$content = pg_version_assets($content);
 }
 
+// The real-user speed beacon (includes/fn/page_vitals.php): only on the page a
+// visitor sees, never to staff, the panel's preview or a background render.
+// Before the page cache, so the stored copy measures its visits too.
+if (function_exists('pg_vitals_beacon_inject')) {
+	$content = pg_vitals_beacon_inject($content, $page_id, array(
+		'rendered_html_page' => $rendered_html_page,
+		'toolbar' => $toolbar,
+		'panel_preview' => $pg_panel_preview,
+		'background' => pg_seo_rendering(),
+		'staff' => isset($user) && is_array($user) && ((int) $user['role'] < 3),
+	));
+}
+
 // While the page cache is on: a page drawn the same for every anonymous
 // visitor goes out with shared-cache headers, no cookie and no session token;
 // any other answer says why it was not (includes/fn/page_cache.php).
