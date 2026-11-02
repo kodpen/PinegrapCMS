@@ -924,7 +924,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                             <input type="text" id="member_id" name="member_id" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['member_id'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label for="expiration_date" class="form-label">' . lang('Expiration Date') . '</label>
+                            <label for="expiration_date" class="form-label">' . lang('Membership Expiration Date') . '</label>
                             <input type="text" id="expiration_date" name="expiration_date" class="form-control' . ($expiration_filter_invalid ? ' is-invalid' : '') . '" value="' . h(($_SESSION['software']['view_contacts']['expiration_date'] ?? '')) . '" data-pg-date' . ($expiration_filter_invalid ? ' aria-invalid="true" aria-describedby="expiration_date_error"' : '') . ' />
                             ' . ($expiration_filter_invalid ? '<div id="expiration_date_error" class="invalid-feedback">' . h(lang('The date is not valid.')) . '</div>' : '') . '
                             ' . get_date_picker_format() . pg_fields_script() . '

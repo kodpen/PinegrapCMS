@@ -2871,10 +2871,16 @@ function software_image_picker(properties) {
                 //default
                 $output_input_name = 'selected_images[]';
                 $output_input_value = decodeURIComponent(properties.image_name);
+                var _image_url_input = '';
                 if (properties.file_input_name !== undefined && properties.file_input_name !== '') {
                     $output_input_name = decodeURIComponent(properties.file_input_name);
                     if (properties.file_input_name == 'file_id') {
                         $output_input_value = properties.file_id;
+                        // An Unsplash image is no file (file_id 0): its address
+                        // goes along as image_url, or the pick was lost on save.
+                        if (/^https?:\/\//.test(properties.image_name)) {
+                            _image_url_input = '<input type="hidden" name="image_url" value="' + h(properties.image_name) + '"/>';
+                        }
                     }
                 }
                 // Support absolute URLs (e.g. Unsplash) — don't prepend path
@@ -2888,7 +2894,7 @@ function software_image_picker(properties) {
                                 <button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" aria-label="' + h(pgLang('Remove')) + '" onclick=" $(this).closest(\'.item\').remove();"></button>\
                             </div>\
                             <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4;background: radial-gradient(transparent, #00000024);" title="' + h(decodeURIComponent(properties.image_name)) + '">\
-                                <input type="hidden" name="' + $output_input_name + '" value="' + $output_input_value + '"/>\
+                                <input type="hidden" name="' + $output_input_name + '" value="' + $output_input_value + '"/>' + _image_url_input + '\
                                 <img class="object-fit-contain w-100 h-100" alt="" src="' + _img_src + '" />\
                             </div>\
                         </div>\
