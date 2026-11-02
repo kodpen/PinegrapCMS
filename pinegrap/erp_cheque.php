@@ -96,11 +96,13 @@ $step_form = function ($step, $title, $button, $class, $fields, $note) use ($che
             ' . get_token_field() . '
             <input type="hidden" name="id" value="' . $cheque_id . '" />
             <input type="hidden" name="step" value="' . $step . '" />
-            <div class="card-body row g-3 align-items-end">
+            <div class="card-body">
+                <div class="row g-3 align-items-end">
                 <div class="col-12 fw-semibold">' . $title . '</div>
                 ' . $fields . '
                 <div class="col-12 md:col-3"><button type="submit" class="btn btn-sm ' . $class . ' w-100">' . $button . '</button></div>
                 ' . (($note !== '') ? '<div class="col-12 form-text">' . $note . '</div>' : '') . '
+                </div>
             </div>
         </form>';
 };
@@ -185,7 +187,8 @@ pg_page_shell([
             ' . $output_left . '
 
             <div class="card my-7">
-                <div class="card-body row g-5">
+                <div class="card-body">
+                    <div class="row g-5">
                     <div class="col-6 md:col-3"><div class="small fg-secondary">' . lang('Status') . '</div><div><span class="badge theme-' . h($state[1]) . '">' . h($state[0]) . '</span></div></div>
                     ' . $fact(lang('Direction'), $received ? lang('Taken from a customer') : lang('Given to a supplier')) . '
                     ' . $fact(lang('Account'), (string) $cheque['account_title']) . '
@@ -198,6 +201,7 @@ pg_page_shell([
                     ' . $fact(lang('Bank account'), (string) $cheque['bank_till_name']) . '
                     ' . $fact(lang('Passed on to'), (string) $cheque['endorsed_title']) . '
                     ' . $fact(lang('Notes'), (string) $cheque['notes']) . '
+                    </div>
                 </div>
             </div>
 

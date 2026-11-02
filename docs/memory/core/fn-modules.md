@@ -17,7 +17,7 @@ description: Generated from the module field of the memory files: each includes/
 - `auth`: [[erp-link-rights]], [[filtered-folder-picker-path]], [[link-rights]], [[list-row-names]], [[settings-folder-pickers]], [[sign-in-one-message]]
 - `aws_sign`: [[aws-sigv4-signing]]
 - `background_render`: [[background-render]]
-- `backup`: [[backup-folder-download-zip]], [[fn-module-errors-mail-backup-consent]]
+- `backup`: [[backup-folder-download-zip]], [[backup-object-storage]], [[fn-module-errors-mail-backup-consent]]
 - `bundles`: [[product-bundles]], [[product-bundles-storefront]]
 - `calendar`: [[calendar-event-exception-endpoint]], [[calendar-location-availability]], [[calendar-view-date]]
 - `carrier_labels`: [[carrier-label-drivers]], [[carrier-label-text-cuts]]

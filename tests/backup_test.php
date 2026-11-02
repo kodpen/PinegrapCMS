@@ -100,103 +100,65 @@ function test_backup_prune_list_orders_new_year_weeks_by_time()
 	);
 }
 
-// SigV4 signing key, AWS IAM example.
-function test_backup_s3_signing_key_matches_aws_vector()
+// The backup destination's own fields become the shared client's settings;
+// an empty endpoint stays Amazon S3 in the region, as it always was.
+function test_backup_s3_client_config_maps_the_card_fields()
 {
-	pg_assert_same(
-		'c4afb1cc5771d871763a393e44b703571b55cc28424d1a5e86da6ed3c154a4b9',
-		bin2hex(pg_backup_s3_signing_key('wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY', '20150830', 'us-east-1', 'iam'))
-	);
-}
-
-// SigV4 signature of the example string to sign.
-function test_backup_s3_signature_matches_aws_vector()
-{
-	$string_to_sign = pg_backup_s3_string_to_sign(
-		'20150830T123600Z',
-		'20150830/us-east-1/iam/aws4_request',
-		'f536975d06c0309214f805bb90ccff089219ecd68b2577efef23edd43b7e1a59'
-	);
-
-	pg_assert_same(
-		"AWS4-HMAC-SHA256\n20150830T123600Z\n20150830/us-east-1/iam/aws4_request\nf536975d06c0309214f805bb90ccff089219ecd68b2577efef23edd43b7e1a59",
-		$string_to_sign,
-		'string to sign'
-	);
-
-	pg_assert_same(
-		'5d672d79c15b13162d9279b0855cfba6789a8edb4c82c400e06b5924a6f2b5d7',
-		pg_backup_s3_signature('wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY', '20150830', 'us-east-1', 'iam', $string_to_sign)
-	);
-}
-
-// SigV4 canonical request of the example: headers lower-cased and sorted.
-function test_backup_s3_canonical_request_matches_aws_vector()
-{
-	$canonical = pg_backup_s3_canonical_request(
-		'GET',
-		'/',
-		'Action=ListUsers&Version=2010-05-08',
-		array(
-			'X-Amz-Date'   => '20150830T123600Z',
-			'Host'         => 'iam.amazonaws.com',
-			'Content-Type' => 'application/x-www-form-urlencoded; charset=utf-8',
-		),
-		'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
-	);
-
-	pg_assert_same('content-type;host;x-amz-date', $canonical['signed_headers'], 'signed headers');
-	pg_assert_same('f536975d06c0309214f805bb90ccff089219ecd68b2577efef23edd43b7e1a59', hash('sha256', $canonical['request']), 'hash');
-
-	// The same query given as pairs is encoded and sorted into the same string.
-	$from_pairs = pg_backup_s3_canonical_request(
-		'GET',
-		'/',
-		array('Version' => '2010-05-08', 'Action' => 'ListUsers'),
-		array('Host' => 'iam.amazonaws.com', 'Content-Type' => 'application/x-www-form-urlencoded; charset=utf-8', 'X-Amz-Date' => '20150830T123600Z'),
-		'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'
-	);
-
-	pg_assert_same($canonical['request'], $from_pairs['request'], 'query from pairs');
-}
-
-// Object addresses: Amazon default, path style, virtual host, key encoding.
-function test_backup_s3_target_builds_urls()
-{
-	$config = pg_backup_remote_normalize('s3', array(
+	$config = pg_backup_s3_client_config(pg_backup_remote_normalize('s3', array(
 		'region'     => 'eu-central-1',
 		'bucket'     => 'site-backups',
 		'prefix'     => '/weekly/',
 		'access_key' => 'AK',
 		'secret_key' => 'SK',
-	));
+	)));
 
-	$amazon = pg_backup_s3_target($config, 'auto_backup_2026-10-41.zip');
+	pg_assert_same('https://s3.eu-central-1.amazonaws.com', $config['endpoint']);
+	pg_assert_same('eu-central-1', $config['region']);
+	pg_assert_same('weekly', $config['prefix']);
+	pg_assert_same('AK', $config['key_id']);
+	pg_assert_same('SK', $config['secret']);
+	pg_assert_true(pg_os_ready($config), 'ready to send');
 
-	pg_assert_same('https://site-backups.s3.eu-central-1.amazonaws.com/weekly/auto_backup_2026-10-41.zip', $amazon['url'], 'virtual host');
-	pg_assert_same('site-backups.s3.eu-central-1.amazonaws.com', $amazon['host'], 'virtual host header');
-	pg_assert_same('eu-central-1', $amazon['region'], 'region');
+	// The key and address an archive is sent under, unchanged from the old
+	// single PUT: the folder, then the archive's name.
+	$target = pg_os_target($config, pg_os_object_key($config, 'auto_backup_2026-10-41.zip'));
+	pg_assert_same('https://site-backups.s3.eu-central-1.amazonaws.com/weekly/auto_backup_2026-10-41.zip', $target['url'], 'virtual host');
 
-	$config['endpoint'] = 'http://127.0.0.1:9000';
-	$config['path_style'] = true;
+	$minio = pg_backup_s3_client_config(pg_backup_remote_normalize('s3', array(
+		'endpoint'   => 'http://127.0.0.1:9000',
+		'bucket'     => 'site-backups',
+		'prefix'     => 'weekly',
+		'access_key' => 'AK',
+		'secret_key' => 'SK',
+		'path_style' => '1',
+	)));
 
-	$minio = pg_backup_s3_target($config, 'a b+c.zip');
+	pg_assert_same('us-east-1', $minio['region'], 'empty region');
+	$target = pg_os_target($minio, pg_os_object_key($minio, 'a b+c.zip'));
+	pg_assert_same('http://127.0.0.1:9000/site-backups/weekly/a%20b%2Bc.zip', $target['url'], 'path style');
 
-	pg_assert_same('http://127.0.0.1:9000/site-backups/weekly/a%20b%2Bc.zip', $minio['url'], 'path style');
-	pg_assert_same('127.0.0.1:9000', $minio['host'], 'host keeps the port');
-	pg_assert_same('/site-backups/weekly/a%20b%2Bc.zip', $minio['uri'], 'canonical uri');
-
-	$config['endpoint'] = 'ftp://example.com';
-	pg_assert_same(array(), pg_backup_s3_target($config, 'x.zip'), 'only http and https');
+	$ftp = pg_backup_s3_client_config(pg_backup_remote_normalize('s3', array('endpoint' => 'ftp://example.com', 'bucket' => 'b', 'access_key' => 'A', 'secret_key' => 'S')));
+	pg_assert_same(array(), pg_os_target($ftp, ''), 'only http and https');
 }
 
-// The reason in an S3 error document is what the operator is shown.
-function test_backup_s3_error_message_reads_xml()
+// Only the names directly in the backup folder take part in the retention.
+function test_backup_s3_names_and_prune_choice()
 {
-	$body = '<?xml version="1.0" encoding="UTF-8"?><Error><Code>SignatureDoesNotMatch</Code><Message>The request signature we calculated does not match the signature you provided.</Message></Error>';
+	$items = array(
+		array('key' => 'auto_backup_2026-10-41.zip'),
+		array('key' => 'auto_backup_2026-10-42.zip'),
+		array('key' => 'auto_backup_2026-11-44.zip'),
+		array('key' => 'auto_backup_2026-11-45.zip'),
+		array('key' => 'other/auto_backup_2026-01-01.zip'),
+		array('key' => 'manual.zip'),
+		array('key' => 'auto_backup_2026-11-45.zip'),
+	);
 
-	pg_assert_contains('SignatureDoesNotMatch: The request signature we calculated does not match', pg_backup_s3_error_message(403, $body));
-	pg_assert_contains('403', pg_backup_s3_error_message(403, $body));
+	$names = pg_backup_s3_names($items);
+
+	pg_assert_same(array('auto_backup_2026-10-41.zip', 'auto_backup_2026-10-42.zip', 'auto_backup_2026-11-44.zip', 'auto_backup_2026-11-45.zip', 'manual.zip'), $names);
+	pg_assert_same(array('auto_backup_2026-10-42.zip', 'auto_backup_2026-10-41.zip'), pg_backup_prune_list($names, 2));
+	pg_assert_same(array(), pg_backup_prune_list($names, 0), 'keep everything');
 }
 
 // Settings are typed and defaulted whatever arrives.

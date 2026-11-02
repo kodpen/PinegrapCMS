@@ -1,0 +1,93 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Tests for the Cash and Bank screens and their doors: a receipt, payment
+ * or transfer is never written to a till that is missing or taken off
+ * (erp_cash_till_row_refusal(), includes/erp/cash.php), the read-only
+ * accountant is offered no write on the cash screens, the receipt form's
+ * invoice list follows the chosen account, and the small wording fixes.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_TEST_RUNNER')) {
+	exit;
+}
+
+require_once(PG_FUNCTIONS_DIR . '/includes/erp/cash.php');
+
+// The body of one function in a source file, up to the next top-level function.
+function erp_cash_screens_test_body($file, $function)
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+	$start = strpos($source, 'function ' . $function . '(');
+
+	if ($start === false) {
+		return '';
+	}
+
+	$end = strpos($source, "\nfunction ", $start + 1);
+
+	return ($end === false) ? substr($source, $start) : substr($source, $start, $end - $start);
+}
+
+function erp_cash_screens_test_source($file)
+{
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+}
+
+function test_erp_cash_till_row_refusal()
+{
+	pg_assert_same('', erp_cash_till_row_refusal(array('id' => 3, 'is_active' => 1)), 'an active till takes the movement');
+	pg_assert_same('', erp_cash_till_row_refusal(array('id' => 3, 'is_active' => '1')), 'database strings are read as numbers');
+	pg_assert_same(lang('That till or bank account is not active.'), erp_cash_till_row_refusal(array('id' => 3, 'is_active' => 0)), 'a till taken off is refused');
+	pg_assert_same(lang('That till or bank account could not be found.'), erp_cash_till_row_refusal(null), 'a missing till is refused');
+	pg_assert_same('', erp_cash_till_row_refusal(array('id' => 3, 'is_active' => 0), true), 'a cheque step may still leave a till taken off');
+	pg_assert_same(lang('That till or bank account could not be found.'), erp_cash_till_row_refusal(null, true), 'but never a missing one');
+}
+
+function test_erp_cash_doors_ask_the_till_gate()
+{
+	pg_assert_true(strpos(erp_cash_screens_test_body('includes/erp/cash.php', 'erp_post_receipt_check'), "erp_cash_till_refusal(\$cash_account_id, !empty(\$data['allow_inactive_till']))") !== false, 'the receipt check asks the till gate');
+	pg_assert_true(strpos(erp_cash_screens_test_body('includes/erp/cash.php', 'erp_post_transfer'), "erp_cash_till_refusal(\$till_id, !empty(\$data['allow_inactive_till']))") !== false, 'the transfer asks it for both tills');
+
+	// Only a cheque's later steps move money already in a till; its entry
+	// still needs an active till.
+	$step = erp_cash_screens_test_source('includes/erp/cheques.php');
+	pg_assert_same(2, substr_count($step, "'allow_inactive_till' => true"), 'the two step postings of a cheque skip the active check');
+}
+
+function test_erp_cash_screens_hide_writes_from_the_accountant()
+{
+	foreach (array('erp_cash.php', 'edit_erp_till.php', 'erp_receipt.php') as $file) {
+		pg_assert_true(strpos(erp_cash_screens_test_source($file), "\$readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;") !== false, $file . ' reads the read-only right');
+	}
+
+	pg_assert_true(strpos(erp_cash_screens_test_source('erp_cash.php'), "(\$readonly ? '' : '<a class=\"btn btn-sm btn-solid theme-primary rounded-pill px-5\" href=\"add_erp_receipt.php?direction=collection\"") !== false, 'the list hides the write buttons');
+	pg_assert_true(strpos(erp_cash_screens_test_source('edit_erp_till.php'), "(\$readonly ? '<fieldset disabled>'") !== false, 'the till form is shown disabled, without its save bar');
+	pg_assert_true(strpos(erp_cash_screens_test_source('erp_receipt.php'), "} elseif (\$readonly) {\n    \$output_cancel = '';") !== false, 'the receipt view offers no cancel');
+
+	foreach (array('add_erp_till.php', 'add_erp_transfer.php', 'add_erp_receipt.php') as $file) {
+		pg_assert_true(strpos(erp_cash_screens_test_source($file), "USER_ERP_READONLY && !validate_erp_access(\$user, 'write')") !== false, $file . ' refuses the accountant on arrival');
+	}
+}
+
+function test_erp_cash_receipt_invoice_list_follows_the_account()
+{
+	$source = erp_cash_screens_test_source('add_erp_receipt.php');
+
+	pg_assert_true(strpos($source, 'LIMIT 200") ') === false && strpos($source, ">= 200") !== false, 'the 200 cap is per account');
+	pg_assert_true(strpos($source, 'id="erp_receipt_invoice_accounts"') !== false, 'the invoice owners reach the page script');
+	pg_assert_true(strpos($source, 'window.jQuery(document).on("change", "#account_id", filter);') !== false, 'the list is filtered when the account changes');
+}
+
+function test_erp_cash_screen_wording()
+{
+	pg_assert_true(strpos(erp_cash_screens_test_source('add_erp_receipt.php'), "lang('Card')] = 'card';") !== false, 'the form names the method as every report does');
+	pg_assert_true(strpos(erp_cash_screens_test_source('erp_receipt.php'), "lang('The receipt has been cancelled.')") !== false, 'no "0 invoice(s) reopened"');
+	pg_assert_true(strpos(erp_cash_screens_test_source('edit_erp_till.php'), "erp_money_input((int) \$till['opening_balance'])") !== false, 'the opening balance box holds a plain figure');
+}

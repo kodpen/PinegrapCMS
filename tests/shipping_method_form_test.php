@@ -116,8 +116,15 @@ function test_shipping_method_form_date_time_value()
 function test_shipping_method_form_errors()
 {
 	$valid = array(
+		'name' => 'Standart',
 		'start_time' => shipping_method_form_test_date(27, 10, 2026) . ' 12:00 AM',
 		'end_time' => shipping_method_form_test_date(31, 12, 2099) . ' 11:59 PM',
+		'base_rate' => '12,50',
+		'item_rate' => '',
+		'handle_days' => '2',
+		'base_transit_days' => '',
+		'end_of_day' => '17:00',
+		'available_on_monday_cutoff_time' => '5:00 PM',
 	);
 
 	pg_assert_same(array(), pg_shipping_method_form_errors($valid), 'both times in the site\'s order');
@@ -125,7 +132,7 @@ function test_shipping_method_form_errors()
 	$swapped = (shipping_method_form_test_date_format() == 'month_day') ? '27/10/2026' : '10/27/2026';
 	$errors = pg_shipping_method_form_errors(array('start_time' => $swapped . ' 12:00 AM'));
 
-	pg_assert_same(array('start_time', 'end_time'), array_keys($errors), 'the swapped start and the missing end are named');
+	pg_assert_same(array('name', 'start_time', 'end_time'), array_keys($errors), 'the missing name, the swapped start and the missing end are named');
 	pg_assert_contains(lang('Start Time'), $errors['start_time'], 'the start message names its field');
 	pg_assert_contains(lang('End Time'), $errors['end_time'], 'the end message names its field');
 }
@@ -271,7 +278,7 @@ function test_shipping_method_form_columns()
 		pg_assert_true(is_string($value), $column . ' is bound as a string, as before');
 	}
 
-	$disabled = pg_shipping_method_form_columns($times + array('service' => 'ups_ground', 'realtime_rate' => '1'));
+	$disabled = pg_shipping_method_form_columns($times + array('name' => 'Courier', 'service' => 'ups_ground', 'realtime_rate' => '1'));
 	pg_assert_same('disabled', $disabled['status'], 'unticked status');
 	pg_assert_same('1', $disabled['realtime_rate'], 'a service with real-time rates keeps the box');
 }
@@ -315,4 +322,38 @@ function test_shipping_method_screens_use_shared_form()
 		pg_assert_contains('validate_token_field()', $source, $file . ' checks the token');
 		pg_assert_contains('get_token_field()', $source, $file . ' prints the token');
 	}
+}
+
+function test_shipping_method_form_errors_numbers_and_times()
+{
+	$post = array(
+		'name' => 'Standart',
+		'start_time' => shipping_method_form_test_date(27, 10, 2026) . ' 12:00 AM',
+		'end_time' => shipping_method_form_test_date(31, 12, 2099) . ' 11:59 PM',
+		'item_rate' => '-5,00',
+		'base_rate' => 'abc',
+		'handle_days' => '2.5',
+		'base_transit_days' => '-3',
+		'end_of_day' => '25:99',
+		'available_on_tuesday_cutoff_time' => 'xx',
+		'available_on_friday_cutoff_time' => '',
+	);
+	$errors = pg_shipping_method_form_errors($post);
+
+	pg_assert_same(array('base_rate', 'item_rate', 'handle_days', 'base_transit_days', 'end_of_day', 'available_on_tuesday_cutoff_time'), array_keys($errors), 'each wrong box is named, a blank cut-off is not');
+	pg_assert_contains(lang('Item Rate'), $errors['item_rate'], 'the fee message names its field');
+	pg_assert_contains(lang('Tuesday'), $errors['available_on_tuesday_cutoff_time'], 'the cut-off message names its day');
+
+	pg_assert_same(array('name' => $errors['name'] ?? null), array('name' => null), 'a name is there');
+	pg_assert_true(isset(pg_shipping_method_form_errors(array('name' => '   ') + $post)['name']), 'a blank name is refused');
+
+	pg_assert_true(pg_shipping_method_form_days_valid('65535', 65535), 'the column\'s largest value');
+	pg_assert_false(pg_shipping_method_form_days_valid('65536', 65535), 'above it');
+	pg_assert_false(pg_shipping_method_form_days_valid(array('1'), 65535), 'a list');
+	pg_assert_true(pg_shipping_method_form_amount_valid('1.234,56'), 'group and decimal separators');
+	pg_assert_false(pg_shipping_method_form_amount_valid(array('1')), 'a list is no amount');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/shipping_method_form.php');
+	pg_assert_same(2, substr_count($source, 'data-inputmask-alias="integer" data-inputmask-allowMinus="false"'), 'the day boxes take whole numbers only');
+	pg_assert_false(strpos($source, 'data-inputmask-alias="decimal"') !== false, 'no decimal mask left on a day box');
 }

@@ -64,7 +64,15 @@ if (!$_POST) {
 
 } else {
     validate_token_field();
-    
+
+    // Nothing is written while a field is wrong; the browser's back
+    // button returns to the form as it was typed.
+    $errors = pg_arrival_date_form_errors($_POST);
+
+    if ($errors) {
+        output_error(implode(' ', array_map('h', $errors)) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
 
     // create arrival date
     $query =

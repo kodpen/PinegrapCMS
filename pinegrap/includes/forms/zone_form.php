@@ -77,6 +77,44 @@ function pg_zone_form_name_error($name)
 }
 
 /**
+ * The messages for the rate boxes that hold no amount of 0 or more: rate
+ * field => message. The rate columns are unsigned and the save clamped a
+ * negative rate to 0 without a word; a blank box is 0.
+ *
+ * @param array $values pg_zone_form_post_values()
+ * @return array
+ */
+function pg_zone_form_rate_errors($values)
+{
+    $errors = array();
+
+    foreach (pg_zone_form_rate_labels() as $rate => $label) {
+        $value = preg_replace('/[\s\x{00A0}]+/u', '', (string) ($values[$rate] ?? ''));
+
+        if (($value !== '') && (preg_match('/^[0-9]+([.,][0-9]+)*$/', $value) !== 1)) {
+            $errors[$rate] = lang(array('string' => '{var:1} takes an amount, such as {var:2}.', 'vars' => array($label, pg_format_number(12.5, 2))));
+        }
+    }
+
+    return $errors;
+}
+
+/**
+ * The zone's rate fields and their labels, in form order.
+ *
+ * @return array field => label
+ */
+function pg_zone_form_rate_labels()
+{
+    return array(
+        'base_rate' => lang('Base Rate'),
+        'primary_weight_rate' => lang('Primary Weight Rate'),
+        'secondary_weight_rate' => lang('Secondary Weight Rate'),
+        'item_rate' => lang('Item Rate'),
+    );
+}
+
+/**
  * The options of a multiple select: the chosen items first, selected, then
  * the rest, each list in the order given.
  *
@@ -198,7 +236,8 @@ function pg_zone_form_selected_count($items, $selected_ids)
  *                                'secondary_weight_rate', 'item_rate' (plain text)
  * @param string $country_options pg_zone_form_choices()['countries']
  * @param string $state_options   pg_zone_form_choices()['states']
- * @param array  $errors          Field => message; 'name' is printed under the name field
+ * @param array  $errors          Field => message; 'name' and each rate are
+ *                                printed under their field
  * @param array  $summary         'countries', 'states' (chosen counts,
  *                                pg_zone_form_choices()), and on edit
  *                                'products', 'methods' (the zone's users)
@@ -214,19 +253,17 @@ function pg_zone_form_cards($values, $country_options, $state_options, $errors =
 
     $output_rates = '';
 
-    foreach (array(
-        'base_rate' => lang('Base Rate'),
-        'primary_weight_rate' => lang('Primary Weight Rate'),
-        'secondary_weight_rate' => lang('Secondary Weight Rate'),
-        'item_rate' => lang('Item Rate'),
-    ) as $rate => $label) {
+    foreach (pg_zone_form_rate_labels() as $rate => $label) {
+        $rate_error = isset($errors[$rate]) ? (string) $errors[$rate] : '';
+
         $output_rates .= '
                                         <div class="col-12 md:col-6 my-3">
                                             <label for="' . $rate . '" class="form-label">' . $label . '</label>
-                                            <label class="form-control form-adorn form-adorn-end">
+                                            <label class="form-control form-adorn form-adorn-end' . (($rate_error !== '') ? ' is-invalid' : '') . '">
                                                 <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
-                                                <input value="' . h($values[$rate]) . '" type="text" name="' . $rate . '" id="' . $rate . '" class="form-ghost" maxlength="12" inputmode="decimal"' . pg_money_mask_html() . ' style="text-align: right;" />
-                                            </label>
+                                                <input value="' . h($values[$rate]) . '" type="text" name="' . $rate . '" id="' . $rate . '" class="form-ghost" maxlength="12" inputmode="decimal"' . pg_money_mask_html() . ' data-inputmask-allowMinus="false" style="text-align: right;"' . (($rate_error !== '') ? ' aria-invalid="true" aria-describedby="' . $rate . '-error"' : '') . ' />
+                                            </label>' . (($rate_error !== '') ? '
+                                            <div id="' . $rate . '-error" class="invalid-feedback d-block">' . h($rate_error) . '</div>' : '') . '
                                         </div>';
     }
 
