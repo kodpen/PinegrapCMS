@@ -5,10 +5,10 @@ module: order_report
 ---
 
 ## Which orders does a new report count?
-- `pg_order_report_default_filters()`: `order_status is not equal to incomplete` and `… cancelled`, so a new report sums placed sales only. Saved reports keep their own filters; nothing is added to them. The status filter lists Cancelled beside Incomplete / Complete / Exported (PR #5791, issue #5758).
+- `pg_order_report_default_filters()`: `order_status is not equal to incomplete` and `… cancelled`, so a new report sums placed sales only. Saved reports keep their own filters; nothing is added to them. The status filter lists Cancelled beside Incomplete / Complete / Exported (PR #5812, issue #5758).
 
 ## How does a row open a group?
-- `pg_order_report_new_group($name, $previous)`: the previous-name trackers start at `null`, so the first row always opens its groups even when its value is empty (no billing state, no payment method). With `''` as the start an empty first value never built its bucket and every figure raised "Undefined array key" (#5759).
+- `pg_order_report_new_group($name, $previous)`: the previous-name trackers start at `null`, so the first row always opens its groups even when its value is empty (no billing state, no payment method). With `''` as the start an empty first value never built its bucket and every figure raised "Undefined array key" (PR #5812, #5759).
 
 ## How is a cart summed when a filter names a product or a recipient?
 - The report's WHERE only picks the carts (`orders.id IN (SELECT … $where AND status = 'incomplete')`); each picked cart is summed from all its active lines (`order_items AS cart_items`). Filtering the lines themselves dropped the cart's other products, and joining `ship_tos` on `orders.id` counted each line once per recipient (#5762).
