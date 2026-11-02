@@ -92,7 +92,17 @@
                 link.rel = 'stylesheet';
                 link.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(name) + ':ital,wght@0,300;0,400;0,600;0,700;0,900;1,400;1,700&display=swap';
                 link.onload = resolve;
-                link.onerror = resolve;
+                // A family without every one of those weights is refused
+                // whole: its regular face is linked instead.
+                link.onerror = function () {
+                    var plain = document.createElement('link');
+
+                    plain.rel = 'stylesheet';
+                    plain.href = 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(name) + '&display=swap';
+                    plain.onload = resolve;
+                    plain.onerror = resolve;
+                    document.head.appendChild(plain);
+                };
                 document.head.appendChild(link);
             });
         }
@@ -609,9 +619,15 @@
 
         body.appendChild(X.swatches(t('textColor'), l.color, function (c, live) { set({ color: c }, live ? 'text-color' : null, live); }));
 
+        var site = this.siteFonts();
+
+        // The site's fonts, then the Google families chosen last
+        // (pg_image_editor_fonts.js) that are not among them.
         FONTS.map(function (f) {
             return { value: f[0], label: t(f[1]) };
-        }).concat(this.siteFonts().map(function (name) {
+        }).concat(site.concat((this.recentFonts ? this.recentFonts() : []).filter(function (name) {
+            return site.indexOf(name) < 0;
+        })).map(function (name) {
             return { value: 'g:' + name, label: name, site: true };
         })).forEach(function (f) {
             var on = (l.font === f.value), sample = el('b', { text: 'Aa' });
@@ -627,6 +643,10 @@
             } }, [sample, el('span', { text: f.label })]));
         });
         body.appendChild(section(t('textFont'), fonts));
+
+        if (this.fontSheetButton) {
+            fonts.appendChild(this.fontSheetButton(l.font));
+        }
 
         body.appendChild(this.textSlider(t('textSize'), [4, Math.max(200, Math.round(Math.max(this.viewRect().h * 0.6, size)))], Math.round(size), function (n) { return n + ' px'; }, function (n) { return { size: n }; }, 'text-size'));
 
