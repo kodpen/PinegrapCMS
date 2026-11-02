@@ -647,6 +647,8 @@ function api_openapi_objects()
         'GiftCard'     => 'api_gift_card_schema',
         'GiftCardRedemption' => 'api_gift_card_redemption_schema',
         'Commission'   => 'api_commission_schema',
+        'CommissionRecurringProfile' => 'api_commission_recurring_profile_schema',
+        'Affiliate'    => 'api_affiliate_schema',
         'TrafficReport' => 'api_traffic_report_schema',
         'TopContent'   => 'api_top_content_schema',
         'VisitorBreakdown' => 'api_visitor_breakdown_schema',

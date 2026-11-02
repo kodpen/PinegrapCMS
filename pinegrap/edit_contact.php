@@ -424,9 +424,12 @@ if (!$_POST) {
 
         pg_contact_form_save_groups($user, $contact_id, pg_contact_form_all_groups(), $_POST);
 
-        // An affiliate approved just now gets a key code for the affiliate group offer.
+        // An affiliate approved just now gets a key code for the affiliate
+        // group offer, and the approval is announced as the approval link's
+        // screen announces it (no welcome e-mail from here, as before).
         if ((AFFILIATE_PROGRAM == TRUE) && (($_POST['affiliate_approved'] ?? '') == 1) && ($original_affiliate_approved == 0)) {
             pg_contact_form_affiliate_key_code($affiliate_code, $user['id']);
+            pg_announce('affiliate.approved', pg_affiliate_approved_event($contact_id, $affiliate_code, (string) ($columns['affiliate_name'] ?? '')));
         }
 
         log_activity( lang(array('string'=>'contact ({var:1} {var:2}) was modified','vars'=>array($_POST['first_name'],$_POST['last_name']) )), $_SESSION['sessionusername']);

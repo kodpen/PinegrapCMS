@@ -464,3 +464,77 @@ function pg_commission_list_query($base, $params, $search, $select, $order_by, $
 
     return array('total' => $total, 'filtered' => $filtered, 'rows' => $rows);
 }
+
+/**
+ * What commission.status_changed carries for a commission moved to $status:
+ * the row's identity and money, the new and the old status. Pure.
+ *
+ * @param array  $row    id, reference_code, affiliate_code, order_id, amount, status (the status before)
+ * @param string $status the status written
+ * @return array
+ */
+function pg_commission_status_event($row, $status)
+{
+    return array(
+        'id'              => (int) ($row['id'] ?? 0),
+        'reference_code'  => (string) ($row['reference_code'] ?? ''),
+        'status'          => (string) $status,
+        'previous_status' => (string) ($row['status'] ?? ''),
+        'affiliate_code'  => (string) ($row['affiliate_code'] ?? ''),
+        'order_id'        => ((int) ($row['order_id'] ?? 0) > 0) ? (int) $row['order_id'] : null,
+        'amount'          => (int) ($row['amount'] ?? 0),
+    );
+}
+
+/**
+ * Sets a commission's status, as edit_commission.php and the external API
+ * (POST /commissions/{id}) do: only a stored status is written
+ * (pg_commission_posted_status()), and the mark the order's cancellation
+ * left is cleared, so restoring the order does not undo the operator's
+ * choice. Announces commission.status_changed when the status moved; a
+ * save that keeps the status writes the user and the time and announces
+ * nothing.
+ *
+ * @param int    $id
+ * @param mixed  $status
+ * @param int    $user_id the person or the application's owner
+ * @return string|false the status before the save; false when the status
+ *                      is not a stored one, the commission does not exist
+ *                      or the query failed
+ */
+function pg_commission_status_save($id, $status, $user_id)
+{
+    $status = pg_commission_posted_status($status);
+
+    if ($status === '') {
+        return false;
+    }
+
+    $row = db_item("SELECT id, reference_code, affiliate_code, order_id, amount, status FROM commissions WHERE id = '" . (int) $id . "'");
+
+    if (!$row) {
+        return false;
+    }
+
+    $cancel_marker_sql = pg_schema_has('commissions', 'status_before_cancel') ? "status_before_cancel = ''," : '';
+
+    $result = db_q(
+        "UPDATE commissions
+        SET
+            status = ?,
+            " . $cancel_marker_sql . "
+            last_modified_user_id = ?,
+            last_modified_timestamp = UNIX_TIMESTAMP()
+        WHERE id = ?",
+        array($status, (string) (int) $user_id, (string) (int) $id));
+
+    if (!$result) {
+        return false;
+    }
+
+    if ((string) $row['status'] !== $status) {
+        pg_announce('commission.status_changed', pg_commission_status_event($row, $status));
+    }
+
+    return (string) $row['status'];
+}

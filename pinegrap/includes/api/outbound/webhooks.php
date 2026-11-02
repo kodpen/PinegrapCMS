@@ -89,6 +89,18 @@ function api_webhook_events() {
 		'subscription.cancelled' => 'A subscription was cancelled; it runs until next_charge_at and is not charged again (its end that day is not announced)',
 		'subscription.paused'    => 'A subscription was paused: nothing is charged until it is resumed',
 		'subscription.resumed'   => 'A paused subscription was resumed and is charged again from next_charge_at',
+		// An affiliate commission's status (includes/fn/commission_list.php,
+		// pg_commission_status_save()): id is the commission's; reference_code,
+		// status, previous_status, affiliate_code, order_id and amount follow.
+		// Announced where a person or an application moves it; an order's
+		// cancellation voiding its commissions, and a restore giving them
+		// back, are not (order.cancelled is), nor is a new commission.
+		'commission.status_changed' => 'A commission was moved to another status on the commissions screen or through the API (not the voiding by an order\'s cancellation or its restore; a new commission is not announced)',
+		// An affiliate approved (includes/fn/contacts.php, pg_affiliate_approve()
+		// and the contact form's tick): id is the contact's; affiliate_code and
+		// affiliate_name follow. An automatic approval on the sign-up form is
+		// not announced; customer.created is.
+		'affiliate.approved'        => 'A contact was approved as an affiliate from the approval link, on the contact form or through the API (not the sign-up form\'s automatic approval)',
 		'product.created'      => 'A new product was added',
 		'product.updated'      => 'A product was changed',
 		// Moving a product to the Recycle Bin through the API announces this

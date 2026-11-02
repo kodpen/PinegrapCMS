@@ -1700,6 +1700,39 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'commissions.recurring_profiles.list',
+			'method'  => 'GET',
+			'path'    => '/commissions/recurring-profiles',
+			'scope'   => 'commissions:read',
+			'handler' => 'api_commission_recurring_profiles_list',
+			'returns' => array('list' => 'CommissionRecurringProfile'),
+			'summary' => 'Recurring commission profiles',
+			'description' => 'The profiles a recurring commission is written from: one is made at checkout for a recurring product bought with an affiliate\'s code, and while it is enabled the daily check writes one commission per period (monthly or yearly) from its start date, commission_limit times in all (null: without limit). Money is in minor units. enabled is switched on the profiles screen; disabled_by_cancel marks one the order\'s cancellation switched off. Cursor paged and ordered by when each profile last changed, so updated_since picks up the ones switched since the last sync. affiliate_contact_id is the affiliate\'s record under GET /customers/{id}. Read only: the profile is made by the checkout and switched on its own screen.',
+			'params'  => array(
+				array('name' => 'affiliate_code', 'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Only the profiles of this affiliate.'),
+				array('name' => 'enabled',        'in' => 'query', 'type' => 'bool', 'description' => 'Only the profiles that still write commissions, or only the switched-off ones.'),
+				array('name' => 'order_id',       'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the profiles made for this order.'),
+				array('name' => 'updated_since',  'in' => 'query', 'type' => 'datetime', 'description' => 'Only profiles written or changed at or after this moment.'),
+				array('name' => 'limit',          'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',         'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'commissions.recurring_profiles.get',
+			'method'  => 'GET',
+			'path'    => '/commissions/recurring-profiles/{id}',
+			'scope'   => 'commissions:read',
+			'handler' => 'api_commission_recurring_profiles_get',
+			'returns' => 'CommissionRecurringProfile',
+			'summary' => 'One recurring commission profile',
+			'description' => 'The same fields as the list, for one profile.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
 			'id'      => 'commissions.get',
 			'method'  => 'GET',
 			'path'    => '/commissions/{id}',
@@ -1708,6 +1741,40 @@ function api_schema() {
 			'returns' => 'Commission',
 			'summary' => 'One affiliate commission',
 			'description' => 'The same fields as the list, for one commission.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'commissions.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/commissions/{id}',
+			'scope'   => 'commissions:write',
+			'handler' => 'api_commissions_update',
+			'dry_run' => true,
+			'returns' => 'Commission',
+			'summary' => 'Set a commission\'s status',
+			'description' => 'The move the commissions screen makes: pending, payable, ineligible or paid, nothing else changes. Paying the affiliate happens outside the site; set paid once it has. The mark an order\'s cancellation left on the commission is cleared, so restoring the order no longer gives the status back. A status that moved is announced as commission.status_changed; the same status again writes who and when and announces nothing. PATCH is accepted as well; on an IIS server send POST.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'status', 'in' => 'body', 'type' => 'enum', 'values' => array('pending', 'payable', 'ineligible', 'paid'), 'required' => true, 'description' => 'The status to set.')
+			)
+		),
+
+		/* ----- Affiliates --------------------------------------------------- */
+
+		array(
+			'id'      => 'affiliates.approve',
+			'method'  => 'POST',
+			'path'    => '/affiliates/{id}/approve',
+			'scope'   => 'customers:write',
+			'handler' => 'api_affiliates_approve',
+			'dry_run' => true,
+			'returns' => 'Affiliate',
+			'summary' => 'Approve a contact as an affiliate',
+			'description' => 'What the approval link in the affiliate sign-up e-mail does: the contact (id as under GET /customers/{id}) is marked approved, its affiliate code is kept or made, it gets a key code for the affiliate group offer when the site has one, the welcome e-mail is sent and affiliate.approved is announced. The customers row rule applies: an application whose owner has the user role reaches only the customers of the contact groups given to that account, 404 for the rest. 409 affiliate_already_approved for an approved affiliate (the link would approve it again and send the welcome once more; this does not), 409 affiliate_program_off while the affiliate program is switched off, 422 for a contact without an e-mail address. The commission rate, the name and the code stay the contact screen\'s to write.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
@@ -2163,6 +2230,42 @@ function api_schema() {
 				array('name' => 'description', 'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'A note on the record, as the panel shows it.'),
 				array('name' => 'lead_source', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'Where the customer came from: the code or the name (any case) of one of the store\'s referral sources, the Lead Source list of the contact screen. The code is stored and read back. An empty value clears it; a value the record already holds is kept even when it is no longer on the list; any other value is refused with 422.'),
 				array('name' => 'opt_in',      'in' => 'body', 'type' => 'bool', 'description' => 'Consent to be mailed. Send true only where you actually hold it; this endpoint does not subscribe anyone to a contact group.')
+			)
+		),
+
+		/* ----- Subscriptions ------------------------------------------------ */
+
+		array(
+			'id'      => 'subscriptions.list',
+			'method'  => 'GET',
+			'path'    => '/subscriptions',
+			'scope'   => 'customers:read',
+			'handler' => 'api_subscriptions_list',
+			'returns' => array('list' => 'Subscription'),
+			'summary' => 'Subscriptions',
+			'description' => 'Every subscription the store charges from a stored card, as the subscriptions screen lists them, with the same fields as GET /customers/{id}/subscriptions and the customer on each: customer_id is the account\'s contact record (null for an account that is no contact), the name and e-mail those of the first order. Cursor paged and ordered by when each subscription last changed (a status move, a renewal, a card change), so updated_since picks up the ones that moved since the last sync. The customers row rule applies: an application whose owner has the user role reaches only the subscriptions of the customers in the contact groups given to that account. Subscriptions of the older card gateways\' recurring profiles are not listed; a site without subscriptions answers an empty list. The moves are POST /customers/{id}/subscriptions/{subscription_id}/pause, /resume and /cancel.',
+			'params'  => array(
+				array('name' => 'status',        'in' => 'query', 'type' => 'enum', 'values' => array('active', 'past_due', 'paused', 'cancelled', 'ended')),
+				array('name' => 'customer_id',   'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the subscriptions of this customer record.'),
+				array('name' => 'product_id',    'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the subscriptions of this product.'),
+				array('name' => 'order_id',      'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the subscriptions started by this order.'),
+				array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only subscriptions made or changed at or after this moment.'),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'subscriptions.get',
+			'method'  => 'GET',
+			'path'    => '/subscriptions/{id}',
+			'scope'   => 'customers:read',
+			'handler' => 'api_subscriptions_get',
+			'returns' => 'Subscription',
+			'summary' => 'One subscription',
+			'description' => 'The same fields as the list, for one subscription; 404 for one outside the customers row rule.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
 		),
 

@@ -316,13 +316,13 @@ function test_api_commissions_recurring_profiles_list_filters()
 {
 	pg_assert_same(array(), api_commission_recurring_profiles_where(array('limit' => 50)), 'no filter');
 
+	// The affiliate code goes through escape(), which wants the connection.
 	pg_assert_same(array(
-		"recurring_commission_profiles.affiliate_code = 'Ayse'",
 		"recurring_commission_profiles.enabled = '1'",
 		"recurring_commission_profiles.order_id = '305'",
 		"recurring_commission_profiles.last_modified_timestamp >= '1760086400'",
 	), api_commission_recurring_profiles_where(array(
-		'affiliate_code' => 'Ayse', 'enabled' => true, 'order_id' => 305, 'updated_since' => 1760086400,
+		'enabled' => true, 'order_id' => 305, 'updated_since' => 1760086400,
 	)));
 
 	pg_assert_same(array("recurring_commission_profiles.enabled = '0'"), api_commission_recurring_profiles_where(array('enabled' => false)), 'disabled ones');

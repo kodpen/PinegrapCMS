@@ -109,7 +109,7 @@ function test_api_subscriptions_select_reads_the_customer_but_never_the_card()
 {
 	$sql = api_customer_subscriptions_select_sql();
 
-	pg_assert_contains('u.user_contact AS customer_id', $sql);
+	pg_assert_contains('COALESCE(u.user_contact, 0) AS customer_id', $sql, 'the account\'s contact record');
 	pg_assert_contains('AS customer_email', $sql);
 	pg_assert_true(strpos($sql, 'card_ref') === false, 'the card token is never read');
 	pg_assert_true(strpos($sql, 'remote_id') === false, 'nor the service\'s id');
