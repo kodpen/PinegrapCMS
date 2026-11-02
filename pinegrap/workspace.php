@@ -24,13 +24,17 @@ $viewer = ws_screen_gate($user);
 // is in, rather than an empty screen.
 ws_ensure_first_channel($viewer);
 
+// The heading of the view asked for; the script swaps it as the view changes.
+$headings = ws_channels_screen_headings();
+$heading = ((($_GET['view'] ?? '') === 'home') && empty($_GET['channel'])) ? $headings['home'] : $headings['channel'];
+
 echo
 pg_page_shell([
         'title' => lang('Workspace'),
         'extra classes' => 'workspace workspace_channels',
         'icon' => 'workspace',
-        'heading' => lang('Channels'),
-        'heading_description' => lang('Conversations about customers and work, with the tasks that come out of them.'),
+        'heading' => $heading['heading'],
+        'heading_description' => $heading['description'],
         'cancel' => false,
         'tour' => function_exists('ws_tour_key') ? ws_tour_key() : '',
     ]) . '
@@ -42,6 +46,7 @@ pg_page_shell([
 </main>
 ' . ws_screen_assets($viewer, 'channels', array(
     'open_channel' => (int) ($_GET['channel'] ?? 0),
+    'headings'     => $headings,
     // Back from connecting an account to an MCP server, or asked to offer it.
     'mcp'          => function_exists('ws_mcp_screen_config') ? ws_mcp_screen_config($viewer) : null,
 )) .

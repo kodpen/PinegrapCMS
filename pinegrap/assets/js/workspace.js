@@ -2452,6 +2452,34 @@
         return toggle;
     }
 
+    // The panel heading over the screen (output_header()'s .pg-navhead) for
+    // the view on show: Today, the scheduled lists or the channels. The
+    // popover attributes of the heading repeat both lines, so they follow.
+    function screenHeading(key) {
+        var entry = (CFG.headings || {})[key];
+        var head = document.querySelector('.pg-navhead');
+
+        if (!entry || !head) {
+            return;
+        }
+
+        var title = head.querySelector('.pg-navhead-title');
+        var desc = head.querySelector('.pg-navhead-desc');
+
+        if (title) {
+            title.textContent = entry.heading;
+        }
+
+        if (desc) {
+            desc.textContent = entry.description;
+        }
+
+        if (head.hasAttribute('data-bs-title')) {
+            head.setAttribute('data-bs-title', entry.heading);
+            head.setAttribute('data-bs-content', entry.description);
+        }
+    }
+
     // The main menu's current entry and its row's hint follow an address
     // changed without a page load.
     function menuAddressChanged() {
@@ -7331,6 +7359,7 @@
             self.channel = null;
             self.view = 'scheduled';
             self.drawSide();
+            screenHeading(staff ? 'scheduled_actions' : 'scheduled_messages');
 
             var center = clear(self.center);
             var head = el('div', 'ws-head');
@@ -7403,6 +7432,7 @@
             self.channel = null;
             self.view = 'home';
             self.drawSide();
+            screenHeading('home');
 
             var center = clear(self.center);
             var head = el('div', 'ws-head');
@@ -8087,6 +8117,7 @@
                 }
 
                 self.view = 'channel';
+                screenHeading('channel');
                 self.channel = data.channel;
                 self.era = data.era || null;
                 self.messages = data.messages;
