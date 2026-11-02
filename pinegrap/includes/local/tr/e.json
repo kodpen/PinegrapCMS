@@ -1270,6 +1270,7 @@
     "Export pending texts as CSV": "Bekleyen metinleri CSV olarak dışa aktar",
     "Export personal data": "Kişisel verileri dışa aktar",
     "Export selected": "Seçilileri dışa aktar",
+    "Export settings…": "Dışa aktarma ayarları…",
     "Export the person's data first if they asked for a copy. Orders and invoices are kept for the legal retention period without the person's name, address and contact details. The erasure is recorded in the audit trail without them.": "Kişi bir kopya istediyse önce verilerini dışa aktarın. Siparişler ve faturalar yasal saklama süresi boyunca kişinin adı, adresi ve iletişim bilgileri olmadan saklanır. Silme işlemi bunlar olmadan denetim kaydına yazılır.",
     "Export to PDF, attachments in Markdown exports and faster sync on phones.": "PDF'e aktarma, Markdown dışa aktarımlarında ekler ve telefonlarda daha hızlı eşitleme.",
     "Export to a File": "Dosyaya Aktar",

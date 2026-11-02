@@ -2122,7 +2122,103 @@
 
     // -- export (pg_image_editor_export.js) --
 
-    var EXPORT = {};
+    // The export panel's formats: keep writes the file's own; another is
+    // saved as a copy, so a file's bytes always match its name's extension.
+    var EXPORT_FORMATS = ['keep', 'jpeg', 'webp', 'avif', 'png'];
+
+    // Longest edges offered; 0 keeps the size.
+    var EXPORT_EDGES = [0, 2560, 1920, 1280, 1080];
+
+    // A file's own format from its name: jpeg, png, webp, avif, gif or ''.
+    function fileFormat(name) {
+        var m = /\.([a-z0-9]+)(?:[?#].*)?$/i.exec(String(name || '')), ext = m ? m[1].toLowerCase() : '';
+
+        return { jpg: 'jpeg', jpeg: 'jpeg', png: 'png', webp: 'webp', avif: 'avif', gif: 'gif' }[ext] || '';
+    }
+
+    // The format a save writes: the chosen one, or the file's own for keep.
+    function exportFormat(choice, own) {
+        return ((choice === 'keep') || (EXPORT_FORMATS.indexOf(choice) < 0)) ? (own || '') : choice;
+    }
+
+    // The settings as a save starts: the file's own format at the editor's
+    // quality and size, as before there was a panel.
+    function exportDefaults() {
+        return { format: 'keep', quality: 92, edge: 0, colors: false, progressive: true };
+    }
+
+    // w x h brought within a longest edge; never enlarged.
+    function exportSize(w, h, edge) {
+        var k = (edge > 0) ? Math.min(1, edge / Math.max(w, h, 1)) : 1;
+
+        return { w: Math.max(1, Math.round(w * k)), h: Math.max(1, Math.round(h * k)) };
+    }
+
+    // The mode a save takes: a replace that would change the format is a
+    // copy (the file keeps its format and its address).
+    function exportMode(mode, choice, own) {
+        return ((mode === 'replace') && (exportFormat(choice, own) !== own)) ? 'copy' : mode;
+    }
+
+    // What the save request carries: null when the settings change nothing.
+    function exportRequest(ex, own) {
+        var format = exportFormat(ex.format, own), out = {};
+
+        if (format !== own) {
+            out.format = format;
+        }
+
+        if (Math.round(ex.quality) !== 92) {
+            out.quality = Math.round(clamp(Number(ex.quality) || 92, 40, 100));
+        }
+
+        if (ex.edge > 0) {
+            out.edge = ex.edge;
+        }
+
+        if (ex.colors && (format === 'png')) {
+            out.colors = 256;
+        }
+
+        // A JPEG is written progressive unless asked otherwise.
+        if ((ex.progressive === false) && (format === 'jpeg')) {
+            out.progressive = false;
+        }
+
+        return Object.keys(out).length ? out : null;
+    }
+
+    // The panel's result card: after against before as a signed percent
+    // (negative is lighter) and the bar's width in percent (3-100).
+    function exportChange(before, after) {
+        if (!(before > 0) || !(after > 0)) {
+            return null;
+        }
+
+        return { percent: Math.round((after / before - 1) * 100), bar: Math.max(3, Math.min(100, Math.round(after / before * 1000) / 10)) };
+    }
+
+    // A file size for the result card: B, KB with no decimals, MB with one;
+    // sep is the panel's decimal separator.
+    function exportBytes(n, sep) {
+        n = Math.max(0, Math.round(Number(n) || 0));
+
+        if (n < 1024) {
+            return n + ' B';
+        }
+
+        if (n < 1024 * 1024) {
+            return Math.round(n / 1024) + ' KB';
+        }
+
+        return String(Math.round(n / 104857.6) / 10).replace('.', sep || '.') + ' MB';
+    }
+
+    var EXPORT = {
+        EXPORT_FORMATS: EXPORT_FORMATS, EXPORT_EDGES: EXPORT_EDGES, fileFormat: fileFormat, exportFormat: exportFormat,
+        exportDefaults: exportDefaults, exportSize: exportSize, exportMode: exportMode, exportRequest: exportRequest,
+        exportChange: exportChange, exportBytes: exportBytes
+    };
 
     // -- vector pen and nodes (pg_image_editor_vector.js) --
 
