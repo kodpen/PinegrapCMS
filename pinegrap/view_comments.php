@@ -87,6 +87,7 @@ $sort_columns = array(
     'name'           => lang('Name'),
     'published'      => lang('Published'),
     'featured'       => lang('Featured'),
+    'scheduled'      => lang('At a Scheduled Time'),
     'publish_cancel' => lang('Cancel if Added First'),
     'submitted'      => lang('Submitted'),
 );
@@ -102,6 +103,7 @@ $order_by = pg_list_order_by($sort_levels, array(
     'name'           => 'name',
     'published'      => 'published',
     'featured'       => 'featured',
+    'scheduled'      => 'publish_date_and_time',
     'publish_cancel' => 'publish_cancel',
     'submitted'      => 'created_timestamp',
 ));
@@ -243,7 +245,8 @@ foreach ($comments as $comment) {
         
         $output_date_and_time ='';
         if($comment['publish_date_and_time'] > 0 && $comment['publish_date_and_time'] != '0000-00-00 00:00:00'){
-            $output_date_and_time =h($comment['publish_date_and_time']);
+            // In the site's date and time format, as Edit Comment shows it.
+            $output_date_and_time = h(prepare_form_data_for_output($comment['publish_date_and_time'], 'date and time', false));
         }
 
 
@@ -293,7 +296,7 @@ foreach ($comments as $comment) {
                     <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                     ' . $output_reference_button . '
                 </td>
-                <td class="align-middle chart_label">' . h(pg_comment_display_name($comment['name'])) . ((int) $comment['verified_order_id'] > 0 ? ' <span class="badge theme-success fw-light">' . h(lang('Verified purchase')) . '</span>' : '') . (($comment['kind'] ?? 'comment') !== 'comment' ? ' <span class="badge ' . ((($comment['kind'] === 'question') && ((int) $comment['answer_count'] === 0)) ? 'theme-warning' : 'theme-secondary') . ' fw-light">' . h(pg_product_question_badge($comment['kind'], (int) $comment['answer_count'] > 0)) . '</span>' : '') . ($binned ? ' <span class="badge theme-secondary fw-light">' . h(lang('In the Recycle Bin')) . '</span>' : '') . '</td>
+                <td class="align-middle chart_label">' . pg_comment_list_name($comment['name']) . ((int) $comment['verified_order_id'] > 0 ? ' <span class="badge theme-success fw-light">' . h(lang('Verified purchase')) . '</span>' : '') . (($comment['kind'] ?? 'comment') !== 'comment' ? ' <span class="badge ' . ((($comment['kind'] === 'question') && ((int) $comment['answer_count'] === 0)) ? 'theme-warning' : 'theme-secondary') . ' fw-light">' . h(pg_product_question_badge($comment['kind'], (int) $comment['answer_count'] > 0)) . '</span>' : '') . ($binned ? ' <span class="badge theme-secondary fw-light">' . h(lang('In the Recycle Bin')) . '</span>' : '') . '</td>
                 <td class="align-middle text-center">' . $output_published_check_mark . '</td>
                 <td class="align-middle text-center">' . $output_featured_check_mark . '</td>
                 <td class="align-middle"><span class="badge theme-primary fw-light">'.$output_date_and_time.'</span></td>
@@ -312,7 +315,7 @@ $output_verified_filter = '';
 
 if ($reviews_ready) {
     $output_verified_filter = pg_filter_select('verified', array(
-        ''    => lang('All comments'),
+        ''    => lang('All purchase statuses'),
         'yes' => lang('Verified purchases'),
         'no'  => lang('Not verified'),
     ), $verified, array('label' => lang('Verified purchase'), 'action' => 'view_comments.php', 'id' => 'verified'));
@@ -325,7 +328,7 @@ $output_question_filter = '';
 if ($questions_ready) {
     $unanswered_count = pg_product_questions_unanswered_count((USER_ROLE < 3) ? null : get_folders_that_user_has_access_to(USER_ID));
     $output_question_filter = pg_filter_select('questions', array(
-        ''           => lang('All comments'),
+        ''           => lang('All comments and questions'),
         'questions'  => lang('Product questions'),
         'unanswered' => lang(array('string' => 'Unanswered questions ({var:1})', 'vars' => pg_format_number($unanswered_count, 0))),
     ), $question_filter, array('label' => lang('Product questions'), 'action' => 'view_comments.php', 'id' => 'questions'));
@@ -361,7 +364,7 @@ print
                                     <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
                                     <th>' . get_column_heading(lang('Published'), $sort_levels, '', '', 'published') . '</th>
                                     <th>' . get_column_heading(lang('Featured'), $sort_levels, '', '', 'featured') . '</th>
-                                    <th>' . lang('At a Scheduled Time') . '</th>
+                                    <th>' . get_column_heading(lang('At a Scheduled Time'), $sort_levels, '', '', 'scheduled') . '</th>
                                     <th>' . get_column_heading(lang('Cancel if Added First'), $sort_levels, '', '', 'publish_cancel') . '</th>
                                     <th>' . lang('Message') . '</th>
                                     <th>' . get_column_heading(lang('Submitted'), $sort_levels, '', '', 'submitted') . '</th>
