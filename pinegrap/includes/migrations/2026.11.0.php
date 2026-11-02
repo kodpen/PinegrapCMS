@@ -133,6 +133,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_form_field_product_group(); // 11.0.141
 	upgrade_2026_11_0_image_upload_cap();        // 11.0.142
 	upgrade_2026_11_0_dashboard_layout();        // 11.0.143
+	upgrade_2026_11_0_claude_daily_summary();    // 11.0.145
 
 }
 
@@ -4294,5 +4295,21 @@ function upgrade_2026_11_0_dashboard_layout() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('New dashboard: a switch at the top of the dashboard lets each person try the new design; their choice, layout and sign-in times are kept per person.');
+
+}
+
+// The Assistant card's daily summary (2026.11.0, 11.0.145;
+// includes/dashboard/v2/cards/ai.php, includes/workspace/claude.php). At the
+// chosen hour the hourly job queues one summary request; the routine answers
+// it as a message in the chosen channel, and the card reads that message by
+// id. 255 = off, the default, so an upgrade spends no run until someone turns
+// it on.
+function upgrade_2026_11_0_claude_daily_summary() {
+
+	install_add_column('config', 'ws_claude_summary_hour', "TINYINT UNSIGNED NOT NULL DEFAULT 255");
+	install_add_column('config', 'ws_claude_summary_channel_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('config', 'ws_claude_summary_message_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Assistant card: Claude can write a daily summary into a channel at a chosen hour; off until switched on under the Claude in the channels card.');
 
 }
