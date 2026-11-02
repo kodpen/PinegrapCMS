@@ -1401,7 +1401,7 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('That message could not be found.'));
             }
 
-            return ws_action_ok(array('versions' => ws_file_history($message['id'])));
+            return ws_action_ok(array('versions' => ws_file_history($message['id'], (int) $viewer['id'])));
 
         // The overview: what is coming, what was written to the person, the
         // latest decisions and the channels they could join.

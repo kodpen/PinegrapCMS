@@ -196,6 +196,8 @@ if ($picture['error'] !== '') {
 }
 
 $extension = $picture['extension'];
+// A canvas has no redaction to burn in.
+$redacted = !empty($picture['redacted']);
 $mime = array('jpg' => 'jpeg', 'png' => 'png', 'webp' => 'webp', 'gif' => 'gif');
 $data = 'data:image/' . $mime[$extension] . ';base64,' . base64_encode($picture['data']);
 unset($picture);
@@ -204,7 +206,7 @@ $name = ws_file_edit_name($message['file_name'], $extension);
 $as = (($_GET['as'] ?? '') === 'replace') ? 'replace' : 'send';
 
 if ($as === 'replace') {
-    $result = ws_message_file_replace($viewer, $message, $channel, $name, $data);
+    $result = ws_message_file_replace($viewer, $message, $channel, $name, $data, $redacted);
     $message_id = (int) $message['id'];
 } else {
     $result = ws_message_file_send($viewer, $message, $channel, $name, $data);

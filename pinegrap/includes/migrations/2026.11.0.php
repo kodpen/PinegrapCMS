@@ -133,6 +133,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_form_field_product_group(); // 11.0.141
 	upgrade_2026_11_0_image_upload_cap();        // 11.0.142
 	upgrade_2026_11_0_dashboard_layout();        // 11.0.143
+	upgrade_2026_11_0_ws_file_edit_redacted();   // 11.0.144
 
 }
 
@@ -4294,5 +4295,16 @@ function upgrade_2026_11_0_dashboard_layout() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('New dashboard: a switch at the top of the dashboard lets each person try the new design; their choice, layout and sign-in times are kept per person.');
+
+}
+
+// A Workspace picture replaced with a redaction burnt in: its earlier
+// version shows what the redaction covers, so ws_file_history() lists it for
+// the person who made the edit alone. Existing rows stay 0, listed as before.
+function upgrade_2026_11_0_ws_file_edit_redacted() {
+
+	install_add_column('ws_file_edits', 'redacted', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Workspace: when a picture is replaced with redacted areas, its earlier version is listed in the message history only for the person who edited it.');
 
 }

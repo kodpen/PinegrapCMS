@@ -2771,12 +2771,12 @@ function pg_image_editor_strings_access()
  * @param string $path
  * @param array  $request
  * @return array error: '' or why not; data: the bytes; extension: jpg,
- *               png, webp or gif
+ *               png, webp or gif; redacted: whether areas were burnt in
  */
 function pg_image_editor_render($path, $request)
 {
     $check = pg_image_edit_validate(isset($request['doc']) ? $request['doc'] : null);
-    $refused = array('error' => lang('Invalid request.'), 'data' => '', 'extension' => '');
+    $refused = array('error' => lang('Invalid request.'), 'data' => '', 'extension' => '', 'redacted' => false);
     $size = is_file($path) ? @getimagesize($path) : false;
     $types = array(IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_WEBP => 'webp', IMAGETYPE_GIF => 'gif');
 
@@ -2847,16 +2847,16 @@ function pg_image_editor_render($path, $request)
     pg_image_editor_drop_redactions($redactions);
 
     if (($report['status'] !== 'success') || !is_string($report['data'])) {
-        return array('error' => pg_image_editor_report_message($report, basename($path)), 'data' => '', 'extension' => '');
+        return array('error' => pg_image_editor_report_message($report, basename($path)), 'data' => '', 'extension' => '', 'redacted' => false);
     }
 
     $made = @getimagesizefromstring($report['data']);
 
     if (!$made || !isset($types[(int) $made[2]])) {
-        return array('error' => lang('Sorry, the file could not be saved.'), 'data' => '', 'extension' => '');
+        return array('error' => lang('Sorry, the file could not be saved.'), 'data' => '', 'extension' => '', 'redacted' => false);
     }
 
-    return array('error' => '', 'data' => $report['data'], 'extension' => $types[(int) $made[2]]);
+    return array('error' => '', 'data' => $report['data'], 'extension' => $types[(int) $made[2]], 'redacted' => !empty($redactions));
 }
 
 /**
