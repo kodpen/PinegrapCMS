@@ -61006,6 +61006,18 @@ const StyleDesigner = (function () {
             ])
         ]);
     }
+    // The state as a text box and a pick list, both named `name`: the page's
+    // script shows the one the chosen country uses (pg_sa_state_script()).
+    /* @pg-site-output */
+    function _swAcctStateField(idBase, name) {
+        var field = _swAcctField(_sdAddrLabel('state'), idBase + '_state', 'text', name, { autocomplete: 'address-level1', colCss: 'col-sm-6' });
+        field.children.push(createNode('semantic', { tag: 'select', cssClass: 'form-select', id: idBase + '_state_list',
+            _attrs: [{ name: 'name', value: name }, { name: 'hidden', value: '' }] }, [
+            createNode('semantic', { tag: 'option', text: _sdT('Filled by the server'), customName: _sdT('Option'),
+                _attrs: [{ name: 'value', value: '' }] })
+        ]));
+        return field;
+    }
     /* @pg-site-output */
     function _swAcctSubmit(text, name) {
         return createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary', text: text,
@@ -63113,7 +63125,7 @@ const StyleDesigner = (function () {
                         _swAcctField(_sdT('Address (line 2)'), apId + '_addr2', 'text', 'business_address_2', { autocomplete: 'address-line2' }),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('City') }, [
                             _swAcctField(_sdAddrLabel('city'), apId + '_city', 'text', 'business_city', { autocomplete: 'address-level2', colCss: 'col-sm-6' }),
-                            _swAcctField(_sdAddrLabel('state'), apId + '_state', 'text', 'business_state', { autocomplete: 'address-level1', colCss: 'col-sm-6' })
+                            _swAcctStateField(apId, 'business_state')
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('Country') }, [
                             _swAcctField(_sdT('Zip / Postal Code'), apId + '_zip', 'text', 'business_zip_code', { autocomplete: 'postal-code', colCss: 'col-sm-6' }),
@@ -63223,7 +63235,7 @@ const StyleDesigner = (function () {
                         _swAcctField(_sdT('Address (line 2)'), abId + '_addr2', 'text', 'address_2', { autocomplete: 'address-line2' }),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('City') }, [
                             _swAcctField(_sdAddrLabel('city'), abId + '_city', 'text', 'city', { required: true, autocomplete: 'address-level2', colCss: 'col-sm-6' }),
-                            _swAcctField(_sdAddrLabel('state'), abId + '_state', 'text', 'state', { autocomplete: 'address-level1', colCss: 'col-sm-6' })
+                            _swAcctStateField(abId, 'state')
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('Country') }, [
                             _swAcctField(_sdT('Zip / Postal Code'), abId + '_zip', 'text', 'zip_code', { autocomplete: 'postal-code', colCss: 'col-sm-6' }),

@@ -16,6 +16,7 @@ module: shipping
 - Express order: `_eo_fit_district_field()` stamps shipping and billing (country: the recipient's stored one, else `_eo_default_country()`); the server-drawn billing rows and per-recipient form use `pg_address_labels_html()`.
 - Shipping address, billing information, affiliate sign-up, account profile and address book: `pg_sa_address_labels($tree, $prefix, $country)` before the fill and the state split; each prints the script.
 
+- Account profile and address book draw the state as a text box and a pick list of the same name (`business_state`, `state`), like the other address widgets: `pg_sa_state_list_fit()` adds the hidden list beside the text box of a tree saved without it, `_pg_sa_state_controls()` fills it and `pg_sa_state_script()` switches them with the country. A state stored as a name ("İstanbul") is chosen by name (`pg_sa_state_pick()`). Tests: `tests/account_state_list_test.php`.
 - The editor's starters and canvas: `designer/address-labels-in-editor.md`.
 
 ## How do classic pages do it?
