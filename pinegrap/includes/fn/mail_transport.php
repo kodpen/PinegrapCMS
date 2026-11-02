@@ -41,6 +41,7 @@ function pg_mail_transports()
         'mailgun'  => array('label' => 'Mailgun', 'file' => 'mailgun.php', 'portal' => 'https://app.mailgun.com/'),
         'brevo'    => array('label' => 'Brevo', 'file' => 'brevo.php', 'portal' => 'https://app.brevo.com/settings/keys/api'),
         'resend'   => array('label' => 'Resend', 'file' => 'resend.php', 'portal' => 'https://resend.com/api-keys'),
+        'ses'      => array('label' => 'Amazon SES', 'file' => 'ses.php', 'portal' => 'https://console.aws.amazon.com/ses/home'),
     );
 }
 
@@ -208,9 +209,15 @@ function pg_mail_transport_address($address, $name = '')
  *
  * @param PHPMailer\PHPMailer\PHPMailer $mail configured as email() does
  * @param string                        $type 'system' or 'campaign'
+ * @param bool                          $raw  also the finished message as
+ *                                            an SMTP server receives it
+ *                                            ('mime', without Bcc), for a
+ *                                            driver that sends it whole
  * @return array
+ * @throws \PHPMailer\PHPMailer\Exception when $raw and PHPMailer cannot
+ *                                        build it
  */
-function pg_mail_transport_message($mail, $type)
+function pg_mail_transport_message($mail, $type, $raw = false)
 {
     $html = ($mail->ContentType === 'text/html');
     $headers = array();
@@ -245,6 +252,7 @@ function pg_mail_transport_message($mail, $type)
         'headers'     => $headers,
         'attachments' => $attachments,
         'type'        => ($type === 'campaign') ? 'campaign' : 'system',
+        'mime'        => ($raw && $mail->preSend()) ? $mail->getSentMIMEMessage() : '',
     );
 }
 
@@ -327,6 +335,23 @@ function pg_mail_transport_call($key, $request)
     $error = ($answer['error'] !== '') ? $answer['error'] : 'HTTP ' . (int) $response['status'];
 
     return pg_mail_transport_result(false, '', $label . ': ' . mb_substr($error, 0, 300, 'UTF-8'), pg_mail_transport_status_permanent($response['status']));
+}
+
+/**
+ * Whether a transport takes the finished message whole (capability 'raw').
+ *
+ * @param string $key
+ * @return bool
+ */
+function pg_mail_transport_raw($key)
+{
+    if (!pg_mail_transport_driver($key)) {
+        return false;
+    }
+
+    $capabilities = call_user_func('pg_mail_' . $key . '_capabilities');
+
+    return !empty($capabilities['raw']);
 }
 
 /**

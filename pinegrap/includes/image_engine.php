@@ -2656,10 +2656,19 @@ function pg_image_derivative_format($requested, $source_extension, $writable)
  * JPEG (image_resize_quality). AVIF holds up lower on its own scale than the
  * other two, hence its lower floor.
  *
- * @param array|null $row image_derivative_formats (bits: 1 WebP, 2 AVIF),
+ * The same column carries the plain-address switches (bit 4: a JPEG or PNG
+ * is answered with WebP at its own address, held only with bit 1, as a
+ * format switched off is never sent; bit 8: the CDN in front keeps a copy
+ * per format). get_file.php reads them through
+ * pg_image_same_address_settings() (includes/image_negotiation.php), which
+ * applies the same rule.
+ *
+ * @param array|null $row image_derivative_formats (bits: 1 WebP, 2 AVIF,
+ *                        4 own address, 8 CDN confirmed),
  *                        image_quality_webp, image_quality_avif,
  *                        image_resize_quality
- * @return array formats (webp, avif => bool), quality (webp, avif, source)
+ * @return array formats (webp, avif => bool), quality (webp, avif, source),
+ *               same_address (on, cdn => bool)
  */
 function pg_image_delivery_settings($row)
 {
@@ -2684,7 +2693,33 @@ function pg_image_delivery_settings($row)
         'quality' => array(
             'webp'   => $value('image_quality_webp', 80, 40),
             'avif'   => $value('image_quality_avif', 50, 20),
-            'source' => $value('image_resize_quality', 82, 40)));
+            'source' => $value('image_resize_quality', 82, 40)),
+        'same_address' => array(
+            'on'  => (($bits & 5) === 5),
+            'cdn' => (($bits & 8) === 8)));
+}
+
+
+/**
+ * config.image_derivative_formats as stored for these settings: the bits of
+ * pg_image_delivery_settings() put back together, so a save that changes one
+ * switch keeps the others and drops what the clamp refused.
+ *
+ * @param array|null $settings pg_image_delivery_settings(); null for the defaults
+ * @return int
+ */
+function pg_image_delivery_bits($settings)
+{
+    if (!is_array($settings) || !isset($settings['formats'])) {
+        $settings = pg_image_delivery_settings(null);
+    }
+
+    $same = isset($settings['same_address']) ? $settings['same_address'] : array();
+
+    return (!empty($settings['formats']['webp']) ? 1 : 0)
+        | (!empty($settings['formats']['avif']) ? 2 : 0)
+        | (!empty($same['on']) && !empty($settings['formats']['webp']) ? 4 : 0)
+        | (!empty($same['cdn']) ? 8 : 0);
 }
 
 

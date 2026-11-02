@@ -293,3 +293,31 @@ function test_products_import_leaves_a_binned_product_alone()
 	pg_assert_contains("WHERE id = '\" . (int) \$product_id . \"'\";", $source, 'the update finds the product by id');
 	pg_assert_same(0, substr_count($source, "WHERE name = '\" . escape(\$row[\$name_key]) . \"'"), 'not by name');
 }
+
+// A submit form column holds its place, so the columns after it are read
+// from their own cells.
+function test_products_import_headings_keep_positions_after_submit_form_columns()
+{
+	$convert = function ($heading) {
+		return in_array($heading, array('name', 'price', 'enabled'), true) ? $heading : false;
+	};
+
+	$read = pg_products_import_headings(array('sfc_email', 'name', 'sfu_', 'price', 'colour', 'enabled'), $convert);
+
+	pg_assert_same(1, array_search('name', $read['column_names'], true), 'name position');
+	pg_assert_same(3, array_search('price', $read['column_names'], true), 'price position');
+	pg_assert_same(5, array_search('enabled', $read['column_names'], true), 'enabled position');
+	pg_assert_same(array('colour'), $read['unknown_headings'], 'unknown headings');
+	pg_assert_same(
+		array(array('name' => 'email', 'action' => 'create', 'column' => 0)),
+		$read['submit_form_fields'],
+		'submit form fields');
+}
+
+// The import reads its heading row through the helper above.
+function test_products_import_reads_headings_through_the_helper()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/import_products.php');
+
+	pg_assert_true(strpos($source, "pg_products_import_headings(\$columns, 'convert_column_name')") !== false, 'heading row read by position');
+}

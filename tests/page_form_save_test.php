@@ -21,12 +21,45 @@ require_once(PG_FUNCTIONS_DIR . '/includes/forms/page_form.php');
 
 function test_page_form_clean_name()
 {
-	pg_assert_same(array('name' => 'my_page_x', 'error' => ''), pg_page_form_clean_name('my page&x', 'standard'));
+	pg_assert_same(array('name' => 'my_page_x', 'error' => '', 'too_long' => false), pg_page_form_clean_name('my page&x', 'standard'));
 	pg_assert_same('a/b', pg_page_form_clean_name('a/b', 'standard')['name'], 'a slash is kept on other types');
 	pg_assert_same('', pg_page_form_clean_name('a/b', 'standard')['error']);
 	pg_assert_true(pg_page_form_clean_name('a/b', 'catalog')['error'] !== '', 'catalog refuses a slash');
 	pg_assert_true(pg_page_form_clean_name('a/b', 'catalog detail')['error'] !== '', 'catalog detail refuses a slash');
 	pg_assert_same('', pg_page_form_clean_name('shop', 'catalog')['error']);
+}
+
+function test_page_form_clean_name_length()
+{
+	$fits = str_repeat('ş', 100);
+	pg_assert_same('', pg_page_form_clean_name($fits, 'standard')['error'], '100 characters fit, counted as characters');
+	$long = pg_page_form_clean_name($fits . 'a', 'standard');
+	pg_assert_true($long['too_long'], '101 characters are too long');
+	pg_assert_true($long['error'] !== '', 'a too long name is refused');
+	pg_assert_same(null, pg_page_form_bulk_name('a/b', 'catalog'), 'a slash is still refused in bulk');
+	pg_assert_same($fits . 'a', pg_page_form_bulk_name($fits . 'a', 'standard'), 'bulk edit checks the length itself');
+}
+
+function test_page_subnav_link_escapes()
+{
+	pg_assert_same('<a href="/x%22onmouseover%3D%22a">x&quot;onmouseover=&quot;a</a>', pg_page_subnav_link('x"onmouseover="a', '/'));
+	pg_assert_same('<a href="/pg-%3Ci%3Ex">pg-&lt;i&gt;x</a>', pg_page_subnav_link('pg-<i>x', '/'));
+}
+
+function test_page_rename_notice()
+{
+	$none = pg_page_rename_notice(array('notes' => array(), 'warnings' => array()), 'https://x/shop', 'https://x/pinegrap/edit_page.php?id=1');
+	pg_assert_same(array('location' => 'https://x/shop', 'form' => '', 'notes' => array(), 'warnings' => array()), $none, 'nothing to say keeps the target');
+
+	$site = pg_page_rename_notice(array('notes' => array('a <b>'), 'warnings' => array()), 'https://x/shop', 'https://x/pinegrap/edit_page.php?id=1');
+	pg_assert_same('https://x/pinegrap/edit_page.php?id=1', $site['location'], 'a site page target comes back to Edit Page');
+	pg_assert_same('edit_page', $site['form']);
+	pg_assert_same(array('a &lt;b&gt;'), $site['notes'], 'messages are escaped');
+
+	$panel = pg_page_rename_notice(array('notes' => array(), 'warnings' => array('w')), 'https://x/pinegrap/view_fields.php?page_id=1', 'e');
+	pg_assert_same('view_fields', $panel['form'], 'a panel screen target keeps the message');
+	pg_assert_same('https://x/pinegrap/view_fields.php?page_id=1', $panel['location']);
+	pg_assert_same(array('w'), $panel['warnings']);
 }
 
 function test_page_form_index_flags()
@@ -89,4 +122,15 @@ function test_page_form_save_wiring()
 	pg_assert_true(strpos($add, "/includes/fn/page_type_pane.php'") !== false, 'add_page.php loads the rights');
 	pg_assert_same(1, substr_count($add, 'pg_page_type_user_may_set('));
 	pg_assert_true(strpos($add, 'pg_page_form_designer_redirect($type, $_POST)') !== false, 'a new page redirects for every form that is on');
+}
+
+function test_bracket_suffix_name()
+{
+	pg_assert_same('a[1]', pg_bracket_suffix_name('a'));
+	pg_assert_same('a[3]', pg_bracket_suffix_name('a[2]'));
+	$hundred = 'pg-' . str_repeat('ğ', 97);
+	pg_assert_same(100, mb_strlen(pg_bracket_suffix_name($hundred, 100), 'UTF-8'), 'a page copy fits the column');
+	pg_assert_same(mb_substr($hundred, 0, 97, 'UTF-8') . '[1]', pg_bracket_suffix_name($hundred, 100), 'the base is cut, not the suffix');
+	pg_assert_same(mb_substr($hundred, 0, 96, 'UTF-8') . '[10]', pg_bracket_suffix_name(mb_substr($hundred, 0, 97, 'UTF-8') . '[9]', 100));
+	pg_assert_same($hundred . '[1]', pg_bracket_suffix_name($hundred), 'no limit for other types');
 }

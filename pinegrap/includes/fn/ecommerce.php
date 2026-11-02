@@ -9630,6 +9630,25 @@ function pg_duplicate_products_base_name($name, $new_text)
     return ($base === '') ? $name : $base;
 }
 
+/**
+ * The short description a bulk copy (duplicate_products.php) writes: the
+ * original's text minus its last $count letters, plus the typed letter or
+ * word. Letters are counted as characters, so a Turkish text loses exactly
+ * the letters asked for and is never left with half of a two-byte letter.
+ *
+ * @param string $text     the original's short description
+ * @param int    $count    the letters to remove, at least 1
+ * @param string $new_text the letter or word typed on the screen
+ * @return string
+ */
+function pg_duplicate_products_description($text, $count, $new_text)
+{
+    $text = (string) $text;
+    $keep = max(0, mb_strlen($text, 'UTF-8') - max(1, (int) $count));
+
+    return mb_substr($text, 0, $keep, 'UTF-8') . (string) $new_text;
+}
+
 function duplicate_product($id)
 {
     // get original product's info
@@ -13171,6 +13190,57 @@ function pg_import_heading($heading)
     $heading = mb_strtolower(trim((string) $heading), 'UTF-8');
 
     return (string) preg_replace('/[\s\-]+/u', '_', $heading);
+}
+
+/**
+ * The heading row of a product import, read into the three lists the import
+ * loop uses. column_names is indexed by the file's column position, so
+ * ${name}_key and every array_search() over it point at the row cell of that
+ * column: a submit form column (sfc_/sfu_) and an unknown heading hold their
+ * place as false. A submit form column left out of the list moved every
+ * column after it one cell to the left, and a file with sfc_ columns first
+ * stored a form value as the product name.
+ *
+ * @param array    $headings the file's first row
+ * @param callable $convert  heading to products column, or false
+ * @return array column_names, submit_form_fields, unknown_headings
+ */
+function pg_products_import_headings($headings, $convert)
+{
+    $column_names = array();
+    $submit_form_fields = array();
+    $unknown_headings = array();
+
+    foreach (array_values((array) $headings) as $position => $heading) {
+        $heading = (string) $heading;
+        $prefix = substr($heading, 0, 4);
+
+        if (($prefix == 'sfc_') || ($prefix == 'sfu_')) {
+            $field_name = (string) substr($heading, 4);
+
+            if ($field_name != '') {
+                $submit_form_fields[] = array(
+                    'name' => $field_name,
+                    'action' => ($prefix == 'sfc_') ? 'create' : 'update',
+                    'column' => $position);
+            }
+
+            $column_names[$position] = false;
+            continue;
+        }
+
+        $column_name = call_user_func($convert, $heading);
+        $column_names[$position] = $column_name;
+
+        if ($column_name === false) {
+            $unknown_headings[] = $heading;
+        }
+    }
+
+    return array(
+        'column_names' => $column_names,
+        'submit_form_fields' => $submit_form_fields,
+        'unknown_headings' => $unknown_headings);
 }
 
 // The text of one column of a CSV row: '' when the file has no such column

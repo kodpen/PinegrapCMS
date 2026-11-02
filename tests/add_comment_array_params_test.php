@@ -27,7 +27,7 @@ function test_add_comment_fields_are_single_values()
 	pg_assert_contains("new liveform('add_comment', \$_POST['page_id'] ?? 0);", $code, 'a missing page id is no notice');
 	pg_assert_true(strpos($code, $request) < strpos($code, "new liveform('add_comment'"), 'before the form is opened');
 
-	$list = "pg_liveform_single_values(\$liveform, array('send_to', 'page_id', 'item_id', 'item_type', 'name', 'name_type', 'message', 'watcher', 'parent_id', 'rating', 'publish', 'publish_date_and_time', 'publish_cancel'));";
+	$list = "pg_liveform_single_values(\$liveform, array('send_to', 'page_id', 'item_id', 'item_type', 'name', 'name_type', 'message', 'watcher', 'parent_id', 'kind', 'rating', 'publish', 'publish_date_and_time', 'publish_cancel'));";
 	pg_assert_contains($list, $code, 'every field the handler reads is one value');
 	$at = strpos($code, $list);
 	pg_assert_true($at !== false && $at > strpos($code, '$liveform->add_fields_to_session();'), 'after the fields are stored');

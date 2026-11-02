@@ -1741,9 +1741,54 @@ function validate_date($date)
         return false;
     }
 }
+/**
+ * A date typed into a panel field as an ISO date (YYYY-MM-DD), '' when it
+ * is no real date. Reads ISO itself and the site's day and month order
+ * (DATE_FORMAT) with any of the separators people type: '/', '-', ',' and
+ * '.', so the Turkish "31.12.2026" is read too. The year has four digits:
+ * "31/12/27" stood for the year 0027. prepare_form_data_for_input() turned
+ * a dotted or impossible date into text MySQL stored as 0000-00-00 or
+ * refused in a comparison.
+ *
+ * @param mixed $text the typed value
+ * @return string
+ */
+function pg_date_input_iso($text)
+{
+    if (!is_scalar($text)) {
+        return '';
+    }
+
+    $text = trim((string) $text);
+
+    if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})$/', $text, $parts)) {
+        list(, $year, $month, $day) = $parts;
+    } elseif (preg_match('/^(\d{1,2})\s*[-,\/.]\s*(\d{1,2})\s*[-,\/.]\s*(\d{4})$/', $text, $parts)) {
+        $year = $parts[3];
+
+        if (defined('DATE_FORMAT') && (DATE_FORMAT == 'month_day')) {
+            list(, $month, $day) = $parts;
+        } else {
+            list(, $day, $month) = $parts;
+        }
+    } else {
+        return '';
+    }
+
+    if (((int) $year < 1) || !checkdate((int) $month, (int) $day, (int) $year)) {
+        return '';
+    }
+
+    return sprintf('%04d-%02d-%02d', $year, $month, $day);
+}
 function validate_date_and_time($date_and_time)
 {
-    $date_and_time_parts = explode(' ', $date_and_time, 2);
+    // An ISO date and time ('2026-10-26T17:00'), as an <input
+    // type="datetime-local"> of a designed form or product form posts it.
+    if (preg_match('/^\s*(\d{4}-\d{1,2}-\d{1,2})[T ](\d{1,2}:\d{2}(?::\d{2})?)\s*$/', (string)$date_and_time, $iso)) {
+        return validate_date($iso[1]) && (pg_time_24_hour_parts($iso[2]) !== null);
+    }
+    $date_and_time_parts = explode(' ', (string)$date_and_time, 2) + array('', '');
     $date = $date_and_time_parts[0];
     $time = $date_and_time_parts[1];
     if ((validate_date($date) == true) && (validate_time($time) == true)) {
@@ -3442,6 +3487,12 @@ function prepare_form_data_for_input($data, $type)
                 return $year . '-' . $month . '-' . $day;
                 break;
             case 'date and time':
+                // Already ISO ('2026-10-26T17:00', as an <input
+                // type="datetime-local"> posts it, or with a space): read
+                // the site's way it was stored as '0026-10-2026 17:00'.
+                if (preg_match('/^\s*(\d{4})-(\d{1,2})-(\d{1,2})[T ](\d{1,2}):(\d{2})/', (string)$data, $iso)) {
+                    return sprintf('%04d-%02d-%02d %02d:%02d', $iso[1], $iso[2], $iso[3], $iso[4], $iso[5]);
+                }
                 // Parts missing from a value that is not in a date and time
                 // format (e.g. a search term) count as empty.
                 $date_and_time_parts = explode(' ', $data, 2) + array('', '');

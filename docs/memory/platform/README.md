@@ -31,6 +31,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - accessibility-report.md: Accessibility report (seo_a11y_job.php, includes/fn/a11y.php, view_accessibility.php): server-side WCAG 2.2 checks, a11y_ codes in seo_issue, the resumable pass, screen, PDF, API filter
 - accessibility-statement.md: Accessibility statement (system widget accessibility_statement, view_accessibility.php?statement=1): settings card, conformance verdict from the nightly report, known limitations, W3C structure
 - audit-rule-registry.md: Audit rule registry (includes/fn/audit_rules.php): per concept the SEO and a11y codes, WCAG criterion, severities, editor rule ids, document/browser flags; tools/check_audit_rules.php
+- aws-sigv4-signing.md: includes/fn/aws_sign.php: AWS Signature Version 4 without an SDK (header signing, presigned links), tested against the AWS test suite; used by Amazon SES, written for object storage too
 - background-render.md: pg_background_render(): the one in-process page render of the passes that draw many pages; what it catches, restores and lends; which pages each pass covers and as whom (audit_run.php)
 - backup-folder-download-zip.md: Backup Manager Download of a folder backup: the archive kept inside the folder is rebuilt when the backup was updated after it.
 - backup-upload-extraction.md: Backup archives: install-screen upload streamed into data/temp and checksum-checked; the file explorer's backup extract/upload and web-root zip extract follow the same rule plus name and size limits.
@@ -73,6 +74,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - image-editor-save.md: The image editor's save: image_editor_api.php open and save, the document check, the engine's edit option (turn, flip, straighten, crop, size, overlay, shape), replace, copy and new
 - image-files-left-alone.md: Images the engine refuses to process: animated (PR #1234), unreadable Exif orientation (PR #1242), ICC profile GD cannot carry (PR #1267, #1345); how each is told and handled
 - image-processing-engine.md: Single image engine pg_process_image_file(): optimize vs resize jobs and the nine invariants (size guard, atomic write, EXIF, CMYK, GIF, memory, pixels, GIF transparency).
+- image-same-address-switches.md: WebP at a picture's own address: bits 4 and 8 of config.image_derivative_formats, the two Image Optimization switches, their clamp, the new-install default, the System Status line (#5350)
 - image-same-address.md: JPEG/PNG answered with its WebP derivative at its own address (get_file.php, image_negotiation.php): switch bits, Vary, CDN guard, f=original in downloads and mails, no door renames
 - image-settings-and-product-upload.md: Image config keys and defaults, product upload pipeline (image_profile=product), files.image_width/height cache rule, optimizable-percent badge cost.
 - image-upload-cap.md: Upload size cap (config.image_upload_max_dimension, 11.0.142, #4700): library uploads above N px shrunk in their own format; 0 off, 2560 on a new site; the doors

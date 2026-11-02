@@ -637,6 +637,12 @@ if (!$_POST) {
                                <span class="translateable col fg-secondary">' . lang('Payment Method') . ':</span>
                                <span class="col translateable text-end">' . ($order_on_account ? lang('Put on account') : lang($payment_method)) . '</span>
                            </div>
+                           ' . (($order_paid_at !== null) && ($order_paid_at > 0) ?
+                               '<div class="row">
+                                   <span class="translateable col fg-secondary">' . lang('Paid on') . ':</span>
+                                   <span class="col text-end">' . get_absolute_time(array('timestamp' => $order_paid_at)) . '</span>
+                               </div>'
+                           : '') . '
                            ' . $output_credit_debit_card_information . '
                            ' . $transaction_id_row . '
                            ' . $authorization_code_row . '
@@ -968,6 +974,15 @@ if (!$_POST) {
                 
                 // If the order is complete, then output ship date and shipping tracking numbers.
                 if ($status != 'incomplete') {
+                  // A cancelled order shows what it had, read only: it takes
+                  // no shipment (update_order() refuses it).
+                  if ($status == 'cancelled') {
+                    foreach (array('ship_date' => 'output_ship_date_field', 'delivery_date' => 'output_delivery_date_field') as $date_column => $date_output) {
+                        $$date_output = ($ship_tos[$key][$date_column] != '0000-00-00')
+                            ? '<span class="form-control-plaintext p-0">' . h(prepare_form_data_for_output($ship_tos[$key][$date_column], 'date')) . '</span>'
+                            : '';
+                    }
+                  } else {
                     // If the form has not been submitted yet, and the ship date is not blank,
                     // then prefill ship date field.
                     if (($liveform->field_in_session('id') == false) && ($ship_tos[$key]['ship_date'] != '0000-00-00')) {
@@ -975,7 +990,7 @@ if (!$_POST) {
                     }
 
                     $output_ship_date_field =
-                        $liveform->output_field(array('class'=>'form-control', 'type' => 'text', 'id' => 'ship_to_id_' . $ship_tos[$key]['ship_to_id'] . '_ship_date', 'name' => 'ship_to_id_' . $ship_tos[$key]['ship_to_id'] . '_ship_date', 'size' => '10', 'maxlength' => '10', 'data-pg-date' => 'plain')) . pg_fields_script();
+                        $liveform->output_field(array('class'=>'form-control', 'type' => 'text', 'id' => 'ship_to_id_' . $ship_tos[$key]['ship_to_id'] . '_ship_date', 'name' => 'ship_to_id_' . $ship_tos[$key]['ship_to_id'] . '_ship_date', 'size' => '10', 'maxlength' => '10', 'data-pg-date' => '')) . pg_fields_script();
 
                     // If the form has not been submitted yet, and the delivery date is not blank,
                     // then prefill delivery date field.
@@ -987,7 +1002,8 @@ if (!$_POST) {
                     }
 
                     $output_delivery_date_field =
-                        $liveform->output_field(array('class'=>'form-control', 'type' => 'text', 'id' => 'ship_to_id_' . $ship_tos[$key]['ship_to_id'] . '_delivery_date', 'name' => 'ship_to_id_' . $ship_tos[$key]['ship_to_id'] . '_delivery_date', 'size' => '10', 'maxlength' => '10', 'data-pg-date' => 'plain')) . pg_fields_script();
+                        $liveform->output_field(array('class'=>'form-control', 'type' => 'text', 'id' => 'ship_to_id_' . $ship_tos[$key]['ship_to_id'] . '_delivery_date', 'name' => 'ship_to_id_' . $ship_tos[$key]['ship_to_id'] . '_delivery_date', 'size' => '10', 'maxlength' => '10', 'data-pg-date' => '')) . pg_fields_script();
+                  }
  
                     // The parcels of this address, each with its carrier, its
                     // status and the format warning the write path set
@@ -1043,7 +1059,7 @@ if (!$_POST) {
                                     ? '<a class="pg-link-secondary fw-medium text-break" href="' . h($shipment['url']) . '" target="_blank" rel="noopener noreferrer">' . h($shipment['number']) . '</a>'
                                     : '<span class="fw-medium text-break">' . h($shipment['number']) . '</span>') . '
                                 <span class="badge ' . pg_shipment_status_class($shipment['status']) . '"' . $shipment_status_title . '>' . h(pg_shipment_status_label($shipment['status'])) . '</span>
-                                <span class="ms-auto pg-print-none">' .
+                                <span class="ms-auto pg-print-none">' . (($status == 'cancelled') ? h($shipment['carrier_name']) :
                                     $liveform->output_field(array(
                                         'type'    => 'select',
                                         'name'    => $shipment_select,
@@ -1051,7 +1067,7 @@ if (!$_POST) {
                                         'class'   => 'form-control form-control-sm',
                                         'options' => pg_shipment_carrier_options($shipment_automatic['carrier_name'], $shipment_typed),
                                     )) . '
-                                    <label class="visually-hidden" for="' . h($shipment_select) . '">' . h(lang(array('string' => 'Shipping carrier of {var:1}', 'vars' => array($shipment['number'])))) . '</label>
+                                    <label class="visually-hidden" for="' . h($shipment_select) . '">' . h(lang(array('string' => 'Shipping carrier of {var:1}', 'vars' => array($shipment['number'])))) . '</label>') . '
                                 </span>
                                 ' . ($shipment['warning']
                                     ? '<span class="w-100 small fg-emphasis-warning bg-subtle-warning rounded-4 px-3 py-1"><i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>' . h(pg_shipment_warning_text($shipment['carrier_name'])) . '</span>'
@@ -1143,6 +1159,8 @@ if (!$_POST) {
                             </div>';
                     }
 
+                  // A cancelled order lists its numbers above but takes no new one.
+                  if ($status != 'cancelled') {
                   // if the form has not been submitted yet, then prefill tracking number field with tracking numbers
                   if ($liveform->field_in_session('id') == FALSE) {
                     $shipping_tracking_numbers_for_field = array();
@@ -1165,6 +1183,7 @@ if (!$_POST) {
                 // A label, not an aria-label: the chips box takes its name
                 // from the hidden input's <label>.
                 $output_tracking_numbers_caption = '<label class="col fg-secondary mt-5" for="' . h($shipment_numbers_field) . '">' . lang('Tracking Numbers') . ':</label>';
+                  }
                     
                 }
 
@@ -1408,8 +1427,14 @@ if (!$_POST) {
                 
                 $output_shipped_quantity_field = '';
                 
+                // A cancelled order shows the quantity it had, read only.
+                if ($status == 'cancelled') {
+                    if ($show_shipped_quantity == 1) {
+                        $output_shipped_quantity_field = '<span class="form-control-plaintext text-center">' . (int) $shipped_quantity . '</span>';
+                    }
+
                 // if the order is complete, then show shipped quantity field
-                if ($status != 'incomplete') {
+                } elseif ($status != 'incomplete') {
                     // if the form has not been submitted yet and show shipped quantity is enabled, then prefill shipped quantity field
                     if (
                         ($liveform->field_in_session('id') == FALSE)
@@ -1417,7 +1442,10 @@ if (!$_POST) {
                     ) {
                         $liveform->assign_field_value('order_item_id_' . $order_item_id . '_shipped_quantity', $shipped_quantity);
                     }
-                    $output_shipped_quantity_field = $liveform->output_field(array('class'=>'form-control text-center border-start-0 border-end-0','type'=>'text', 'id'=>'order_item_id_' . $order_item_id . '_shipped_quantity', 'name'=>'order_item_id_' . $order_item_id . '_shipped_quantity', 'size'=>'2', 'maxlength'=>'9', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'decimal', 'data-inputmask-placeholder'=>'0'));
+                    // A whole number from 0 to the ordered quantity (update_order()
+                    // refuses anything else); max stops the + button there.
+                    // Inputmask's right alignment would override text-center.
+                    $output_shipped_quantity_field = $liveform->output_field(array('class'=>'form-control text-center border-start-0 border-end-0','type'=>'text', 'id'=>'order_item_id_' . $order_item_id . '_shipped_quantity', 'name'=>'order_item_id_' . $order_item_id . '_shipped_quantity', 'size'=>'2', 'maxlength'=>'9', 'min'=>'0', 'max'=>(string) (int) $quantity, 'inputmode'=>'numeric', 'aria-label'=>lang('Shipped Qty'), 'data-inputmask-alias'=>'integer', 'data-inputmask-allowminus'=>'false', 'data-inputmask-rightalign'=>'false', 'data-inputmask-placeholder'=>'0'));
                     
                     
                     $output_shipped_quantity_field = '
@@ -1765,8 +1793,9 @@ if (!$_POST) {
         
         }
         
-        // if the order is complete, then output save
-        if ($status != 'incomplete') {
+        // if the order is complete, then output save (a cancelled order has
+        // nothing to save: its shipping is read only)
+        if (($status != 'incomplete') && ($status != 'cancelled')) {
             $output_save_button = '<button type="submit" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>';
         }
 
@@ -3447,9 +3476,30 @@ if (!$_POST) {
                 // and lose the ones it has.
                 if (array_key_exists('ship_to_id_' . $recipient['id'] . '_tracking_numbers', $_POST)) {
 
-                    $recipient['ship_date'] = prepare_form_data_for_input($liveform->get('ship_to_id_' . $recipient['id'] . '_ship_date'), 'date');
+                    // A date that is not a real day (a two-digit year, 32/13,
+                    // free text) or a delivery before the shipment is refused
+                    // and the saved dates stay; the dotted d.m.Y is read too.
+                    $ship_dates = array();
 
-                    $recipient['delivery_date'] = prepare_form_data_for_input($liveform->get('ship_to_id_' . $recipient['id'] . '_delivery_date'), 'date');
+                    foreach (array('ship_date', 'delivery_date') as $date_key) {
+                        $date_field = 'ship_to_id_' . $recipient['id'] . '_' . $date_key;
+                        $parsed_date = pg_order_ship_date_parse($liveform->get($date_field), DATE_FORMAT == 'month_day');
+
+                        if (!$parsed_date['ok']) {
+                            $liveform->mark_error($date_field, lang('Enter the date as day, month and a four-digit year, a date that exists.'));
+                            go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . (int) $order['id'] . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
+                        }
+
+                        $ship_dates[$date_key] = $parsed_date['date'];
+                    }
+
+                    if (!pg_order_ship_dates_in_order($ship_dates['ship_date'], $ship_dates['delivery_date'])) {
+                        $liveform->mark_error('ship_to_id_' . $recipient['id'] . '_delivery_date', lang('The delivery date cannot be before the ship date.'));
+                        go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . (int) $order['id'] . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
+                    }
+
+                    $recipient['ship_date'] = $ship_dates['ship_date'];
+                    $recipient['delivery_date'] = $ship_dates['delivery_date'];
 
                     // The carrier chosen for each number already on the
                     // address, by the number as the table compares it (case and
@@ -3513,8 +3563,11 @@ if (!$_POST) {
 
         $response = update_order(array('order' => $order));
 
+        // A refused save (a cancelled order, a shipped quantity out of
+        // range) comes back to the screen with what was typed.
         if ($response['status'] == 'error') {
-            output_error(h($response['message']));
+            $liveform->mark_error('_error', h($response['message']));
+            go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . (int) $order['id'] . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
         }
         
         // An order opened without send_to (Create Order, the notification

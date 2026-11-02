@@ -13,7 +13,7 @@ description: The side panels as drawn (C6 of workspace-channel-screen.md): the c
 - Everything stays in the channel menu too. `tests/workspace_channel_info_test.php`.
 
 ## What does a change made from the info panel redraw?
-- Notifications, Add to the channel and a person's × call `refreshInfo()`: `ws_channel_get` read into the same `self.channel` object, then `refreshHead()` (the header's faces and channel menu) and `drawInfo(false)`, and the sidebar from `ws_channels`. The channel is not opened again: `self.open()` emptied the panel, scrolled the messages and the composer took the focus (#4234).
+- Notifications, Add to the channel, a person's × and Edit channel's save (channel menu and info panel) call `refreshInfo()`: `ws_channel_get` read into the same `self.channel` object, then `refreshHead()` (the header's colour, title from `headTitle()`, faces and channel menu) and `drawInfo(false)`, and the sidebar from `ws_channels`. The channel is not opened again: `self.open()` emptied the panel, scrolled the messages and the composer took the focus (#4234), and after a settings save it dropped an open discussion's `&thread=` from the address while the panel stayed (#5190).
 - The focus goes back by `data-info-key` (`notify-<choice>`, `add-open`, `remove-<id>`); a removed person's × falls back to Add people, then the title. An open picker stays open.
 - The × is named "Remove <name> from the channel"; the picker's confirm button "Add to the channel" (opener "Add people"). `tests/workspace_channel_info_refresh_test.php`.
 

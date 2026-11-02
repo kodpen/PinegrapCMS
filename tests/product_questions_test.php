@@ -1,0 +1,148 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Tests for product questions on the comments system
+ * (includes/fn/product_questions.php): the kind a post stores, the widget's
+ * setting, the kind filters, the thread split by kind, the moderation badge,
+ * the answer text, the separate widget claim, the hidden kind field and the
+ * wiring of add_comment.php, edit_comment.php and view_comments.php.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_TEST_RUNNER')) {
+	exit;
+}
+
+function product_questions_test_source($relative)
+{
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $relative);
+}
+
+function test_product_question_post_kind()
+{
+	// Only a product thread, after the step, posting kind question.
+	pg_assert_same('comment', pg_product_question_post_kind('question', true, false, false, ''), 'before the columns');
+	pg_assert_same('comment', pg_product_question_post_kind('question', false, true, false, ''), 'not a product thread');
+	pg_assert_same('comment', pg_product_question_post_kind('', true, true, false, ''), 'nothing posted');
+	pg_assert_same('comment', pg_product_question_post_kind(array('question'), true, true, false, ''), 'an array');
+	pg_assert_same('comment', pg_product_question_post_kind('answer', true, true, true, 'question'), 'answer is never posted');
+
+	pg_assert_same('question', pg_product_question_post_kind('question', true, true, false, ''), 'a visitor asks');
+	pg_assert_same('question', pg_product_question_post_kind('question', true, true, true, ''), 'staff ask too');
+	pg_assert_same('question', pg_product_question_post_kind('question', true, true, false, 'question'), 'a visitor under a question asks again');
+	pg_assert_same('question', pg_product_question_post_kind('question', true, true, true, 'answer'), 'staff under an answer');
+	pg_assert_same('answer', pg_product_question_post_kind('question', true, true, true, 'question'), 'staff answer a question');
+	pg_assert_same('comment', pg_product_question_post_kind('question', true, true, true, 'comment'), 'a reply to a review stays a comment');
+}
+
+function test_product_question_widget_shows()
+{
+	pg_assert_same('questions', pg_product_question_widget_shows(array('shows' => 'questions')), 'questions');
+
+	foreach (array(array(), array('shows' => 'comments'), array('shows' => 'Questions'), array('shows' => array('questions')), null, 'questions') as $cfg) {
+		pg_assert_same('comments', pg_product_question_widget_shows($cfg), 'default: ' . var_export($cfg, true));
+	}
+}
+
+function test_product_question_kind_sql()
+{
+	pg_assert_same(" AND (comments.kind IN ('question', 'answer'))", pg_product_question_kind_sql('questions', true), 'questions');
+	pg_assert_same(" AND (comments.kind = 'comment')", pg_product_question_kind_sql('comments', true), 'comments');
+	pg_assert_same('', pg_product_question_kind_sql('', true), 'none');
+	pg_assert_same('', pg_product_question_kind_sql('questions', false), 'before the columns');
+
+	pg_assert_same("(comments.kind = 'question')", pg_product_question_filter_sql('questions', true), 'every question');
+	pg_assert_same(pg_product_question_unanswered_sql(), pg_product_question_filter_sql('unanswered', true), 'unanswered');
+	pg_assert_true(strpos(pg_product_question_unanswered_sql(), "answers.answer_of = comments.id") !== false, 'unanswered reads the answers');
+	pg_assert_same('', pg_product_question_filter_sql('unanswered', false), 'no filter before the columns');
+	pg_assert_same('', pg_product_question_filter_sql('other', true), 'unknown filter');
+}
+
+function test_product_question_split()
+{
+	$rows = array(
+		array('id' => '1', 'kind' => 'comment', 'message' => 'Great'),
+		array('id' => '2', 'kind' => 'question', 'answer_of' => '0', 'message' => 'Size?'),
+		array('id' => '3', 'kind' => 'question', 'answer_of' => '0', 'message' => 'Colour?'),
+		array('id' => '4', 'kind' => 'answer', 'answer_of' => '2', 'message' => 'Fits large'),
+		array('id' => '5', 'message' => 'Old comment'),
+		array('id' => '6', 'kind' => 'answer', 'answer_of' => '99', 'message' => 'Orphan'),
+		array('id' => '7', 'kind' => 'answer', 'answer_of' => '2', 'message' => 'Also'),
+		'not a row',
+	);
+
+	$split = pg_product_question_split($rows);
+
+	pg_assert_same(array('1', '5'), array_column($split['comments'], 'id'), 'comments in order, a row without kind is one');
+	pg_assert_same(2, count($split['questions']), 'two questions');
+	pg_assert_same('2', $split['questions'][0]['row']['id'], 'first question first');
+	pg_assert_same(array('4', '7'), array_column($split['questions'][0]['answers'], 'id'), 'its answers in order');
+	pg_assert_same(array(), $split['questions'][1]['answers'], 'second question unanswered');
+	pg_assert_same(array('comments' => array(), 'questions' => array()), pg_product_question_split(null), 'no rows');
+}
+
+function test_product_question_badge_and_text()
+{
+	pg_assert_same('', pg_product_question_badge('comment', false), 'a comment has none');
+	pg_assert_same('Question, answered', pg_product_question_badge('question', true), 'answered');
+	pg_assert_same('Question, not answered', pg_product_question_badge('question', false), 'waiting');
+	pg_assert_same('Answer', pg_product_question_badge('answer', false), 'answer');
+
+	pg_assert_same('Yes', pg_product_question_answer_text("  Yes \n"), 'trimmed');
+	pg_assert_same('', pg_product_question_answer_text(array('x')), 'an array');
+	pg_assert_same(5000, mb_strlen(pg_product_question_answer_text(str_repeat('ş', 6000))), 'capped at 5000 characters');
+}
+
+// The questions widget claims apart from the comments widget, and only the
+// comments claim stands the classic block down.
+function test_product_question_widget_claim()
+{
+	$old = pg_comments_widget_pages(array());
+
+	pg_assert_true(pg_comments_widget_claim(7, 'questions'), 'questions claimed');
+	pg_assert_false(pg_comments_widget_drawn(7), 'questions alone leave the classic block');
+	pg_assert_false(pg_comments_widget_claim(7, 'questions'), 'a second questions widget draws nothing');
+	pg_assert_true(pg_comments_widget_claim(7), 'the reviews widget still draws');
+	pg_assert_true(pg_comments_widget_drawn(7), 'the comments claim counts');
+	pg_assert_false(pg_comments_widget_claim('7'), 'a second comments widget draws nothing');
+
+	pg_comments_widget_pages($old);
+}
+
+function test_product_question_hidden_kind()
+{
+	$plain = pg_comments_form_hidden_html('', '/p', 5, 'product', 9, 0);
+	$asked = pg_comments_form_hidden_html('', '/p', 5, 'product', 9, 0, 'question');
+
+	pg_assert_true(strpos($plain, 'name="kind"') === false, 'no kind on the comments form');
+	pg_assert_true(strpos($asked, '<input type="hidden" name="kind" value="question">') !== false, 'the questions form posts its kind');
+	pg_assert_same(0, strpos($asked, $plain), 'the other fields unchanged');
+}
+
+function test_product_question_wiring()
+{
+	$add = product_questions_test_source('add_comment.php');
+	pg_assert_true(strpos($add, "'parent_id', 'kind', 'rating'") !== false, 'kind is a single value');
+	pg_assert_true(strpos($add, "if (\$comment_kind !== 'comment') {\n    \$is_product_review = false;") !== false, 'a question skips the purchase gate');
+	pg_assert_true(strpos($add, "(\$comment_kind === 'answer') ? (int) \$parent_id : 0") !== false, 'an answer names its question');
+
+	$edit = product_questions_test_source('edit_comment.php');
+	pg_assert_true(strpos($edit, 'pg_product_question_answer_save($comment_id') !== false, 'the answer is saved');
+	pg_assert_true(strpos($edit, "&& (\$comment_kind === 'comment');") !== false, 'no store reply on a question');
+
+	$list = product_questions_test_source('view_comments.php');
+	pg_assert_true(strpos($list, 'pg_product_question_filter_sql($question_filter, $questions_ready)') !== false, 'the list filters');
+
+	$widget = product_questions_test_source('includes/fn/widgets_comments.php');
+	pg_assert_true(strpos($widget, "\$read_options['kind'] = 'questions';") !== false, 'the widget reads questions');
+	pg_assert_true(strpos($widget, "\$questions ? pg_comments_widget_claim(\$page_id, 'questions') : pg_comments_widget_claim(\$page_id)") !== false, 'the widget claims by part');
+
+	$migration = product_questions_test_source('includes/migrations/2026.11.0.php');
+	pg_assert_true(strpos($migration, "upgrade_2026_11_0_product_questions();") !== false, 'the step is called');
+	pg_assert_true(strpos($migration, "ENUM('comment','question','answer') NOT NULL DEFAULT 'comment'") !== false, 'the kind column');
+}

@@ -60,8 +60,12 @@ foreach (array('page', 'a', 'o', 't', 'utm_source', 'utm_medium', 'utm_campaign'
 // completely, while sqlmap and Nikto (which contain none of the keywords)
 // were classified as ordinary human visitors.
 
+// The panel's own preview of the page (File Manager preview pane, Quick
+// look) is no visit: no visitor record, no page view.
+$pg_panel_preview = pg_request_is_panel_preview($_GET, isset($_SESSION['sessionusername']));
+
 // if visitor tracking is on, initialize tracking
-if (defined('VISITOR_TRACKING') && VISITOR_TRACKING)
+if (defined('VISITOR_TRACKING') && VISITOR_TRACKING && !$pg_panel_preview)
 {
 	init_tracking();
 }
@@ -3384,8 +3388,8 @@ if (($rendered_html_page == true) && ($toolbar == false)) {
 	pg_measurable_render(true);
 	pg_rendered_page($page_id);
 }
-// if visitor tracking is on
-if (VISITOR_TRACKING == true)
+// if visitor tracking is on, and this is not the panel's own preview
+if ((VISITOR_TRACKING == true) && !$pg_panel_preview)
 {
 	update_visitor_page_data($page_name, $page_id);
 }

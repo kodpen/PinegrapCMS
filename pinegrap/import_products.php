@@ -186,42 +186,14 @@ if (!$_POST) {
         exit();
     }
 
-    $submit_form_fields = array();
-    $column_names = array();
+    // The headings by position: a submit form column (e.g. sfc_example) is
+    // kept for later and holds its place, so every other column is read from
+    // its own cell (pg_products_import_headings()).
+    $headings_read = pg_products_import_headings($columns, 'convert_column_name');
+    $submit_form_fields = $headings_read['submit_form_fields'];
+    $column_names = $headings_read['column_names'];
     // Headings the import does not know, named in the result.
-    $unknown_headings = array();
-    
-    // create array with column field names
-    foreach ($columns as $key => $value) {
-        $prefix = substr($value, 0, 4);
-
-        // If this column is a submit form field (e.g. sfc_example), then store it for later.
-        if (($prefix == 'sfc_') || ($prefix == 'sfu_')) {
-            $field_name = substr($value, 4);
-
-            if ($field_name != '') {
-                if ($prefix == 'sfc_') {
-                    $action = 'create';
-                } else {
-                    $action = 'update';
-                }
-
-                $submit_form_fields[] = array(
-                    'name' => $field_name,
-                    'action' => $action,
-                    'column' => $key);
-            }
-
-        // Otherwise this is a normal column, so deal with it in the general way.
-        } else {
-            $column_name = convert_column_name($value);
-            $column_names[] = $column_name;
-
-            if ($column_name === false) {
-                $unknown_headings[] = $value;
-            }
-        }
-    }
+    $unknown_headings = $headings_read['unknown_headings'];
 
     // Assume that columns do not exist until we find out otherwise.
     $address_name_column_exists = false;
@@ -503,7 +475,7 @@ if (!$_POST) {
 
                             // if this column is address_name, then prepare address name
                             if ($column_name == 'address_name') {
-                                $column_value = prepare_catalog_item_address_name($column_value, $product_id);
+                                $column_value = prepare_catalog_item_address_name($column_value, $product_id, 'product');
                                 $new_address_name = $column_value;
                             }
 

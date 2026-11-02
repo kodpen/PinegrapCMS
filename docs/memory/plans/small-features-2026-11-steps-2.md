@@ -6,7 +6,7 @@ description: Steps SF4-SF8 of plans/small-features-2026-11.md: product questions
 ## Which steps are there?
 - Sizes, tests and memory rules as in `small-features-2026-11-steps.md`; all run side by side.
 
-- SF4 (M) Product questions. After question 2.
+- SF4 (M) Product questions. Cut in two: SF4a (model, widget, moderation) done (#5351, `designer/product-questions.md`); SF4b next: asker mail, structured data, API `kind`, templates' Questions section.
   - On the comments system: a question is a comment of kind `question` on the product (`comments-widget-product-page.md` thread), a staff reply of kind `answer` with `answer_of`; the Comments widget gains a "Questions" tab beside "Reviews" (the product page's two threads), unanswered questions on the panel bell and in the comments moderation screen (`comments-moderation-counters.md`), the asker mailed when answered (`comments-watcher-mail.md`), the question and its answer in the product's structured data (`Question`/`Answer`), the API's `comments` resource exposing `kind`. The marketplace question screens stay separate. Tests: the thread split by kind, the structured data. Memory: `designer/product-questions.md`.
 
 - SF5 (S) Pre-order. After question 3.
