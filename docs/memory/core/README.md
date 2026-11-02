@@ -52,6 +52,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - contact-holders.md: pg_contact_holders(): the one list of every place a contact id is kept, shared by merge_contacts() and the erasure; what the merge does with each, the ERP refusal, the drift test
 - contact-import-cells.md: Contact importer (import_contacts.php): cells read by pg_import_contact_value() (yes/no, dates, lengths, export guard undone), repeated headings left out, Turkish headings, the screen's hint
 - contact-lead-source.md: contacts.lead_source picked from referral_sources on the add/edit contact screens (#3427, decided #3416 3(a)); old free text kept; the same check on the external API (#4043); writers left as they were
+- contact-merge-columns.md: pg_contact_merge_select(): the one SELECT list both contact merge screens read, so no column of the merged contact is lost (#5325); the optional IYS columns
 - contact-merge-role.md: Who may merge duplicate contacts: a role above user (3) on both merge paths; view_contacts.php checks it itself (#5124)
 - content-translation-html-pieces.md: Translating stored HTML (custom HTML block, product description, form message): how a block is cut into texts so images, form controls, buttons and data-* attributes stay on the translated page
 - content-translation-jobs-duplicates.md: Translation jobs (includes/translate/jobs.php): why translate-on-save opens no second job while one is open, and why a job skips texts translated meanwhile
