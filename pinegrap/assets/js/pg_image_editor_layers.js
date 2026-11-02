@@ -586,6 +586,30 @@
                 act('duplicate', t('duplicate'), function () { self.addLayers(self.selected(), 10); }),
                 act('trash', t('delete'), function () { self.removeLayers(); }, !free.length)
             ]));
+
+            // The list is the rail's Layers button's, and Select's with
+            // nothing selected: the selection's own panel ends here.
+            return;
+        }
+
+        this.layerList(body);
+    };
+
+    // The icon beside a layer's name in the list, by its type.
+    var LAYER_ICONS = {
+        image: 'image', text: 'text', sticker: 'sticker', redact: 'redact', path: 'vector', svg: 'vector',
+        pen: 'pen', rect: 'rect', ellipse: 'ellipse', arrow: 'arrow', line: 'line'
+    };
+
+    // Every layer, the top one first, with show and hide and lock; a press
+    // on a name selects it (Shift adds). Select's panel with nothing
+    // selected and the rail's Layers button show it.
+    Editor.prototype.layerList = function (body) {
+        var self = this;
+
+        if (!this.doc.layers.length) {
+            body.appendChild(el('p', { class: 'pgie-note', text: t('noLayers') }));
+            return;
         }
 
         var list = el('ul', { class: 'pgie-layerlist', 'aria-label': t('layers') });
@@ -603,9 +627,15 @@
             };
 
             list.appendChild(el('li', { class: 'pgie-lrow' + (on ? ' on' : '') + (l.hidden ? ' off' : '') }, [
-                el('button', { type: 'button', class: 'pgie-lname', 'aria-pressed': on ? 'true' : 'false', text: self.layerName(l), onclick: function (e) {
+                el('button', { type: 'button', class: 'pgie-lname', 'aria-pressed': on ? 'true' : 'false', onclick: function (e) {
+                    // From a tool that does not select, Select takes over so
+                    // the chosen layer gets its handles.
+                    if (Editor.selectTools.indexOf(self.tool) < 0) {
+                        self.tool = 'select';
+                    }
+
                     self.select(e.shiftKey ? ((on ? self.sel.filter(function (id) { return id !== l.id; }) : self.sel.concat([l.id]))) : [l.id]);
-                } }),
+                } }, [X.icon(LAYER_ICONS[l.type] || 'draw'), el('span', { text: self.layerName(l) })]),
                 flag('hidden', l.hidden ? t('show') : t('hide'), l.hidden ? 'eyeoff' : 'eye'),
                 flag('locked', l.locked ? t('unlock') : t('lock'), l.locked ? 'lock' : 'unlock')
             ]));
@@ -670,5 +700,34 @@
     Editor.hints.select = 'hintSelect';
     Editor.pointers.select = { down: Editor.prototype.startDrag, move: Editor.prototype.moveDrag, up: Editor.prototype.endDrag, double: Editor.prototype.editLayer };
     Editor.keys.push(Editor.prototype.layerKey);
+
+    // The rail's Layers button: the list from any tool; a second press,
+    // another tool or Escape closes it. A crop being drawn is kept first,
+    // as leaving the tool keeps it.
+    Editor.prototype.toggleLayers = function (open) {
+        var show = (open === undefined) ? !this.layersOpen : !!open;
+
+        if (show && this.cropping()) {
+            this.applyCrop();
+        }
+
+        this.layersOpen = show;
+        this.sheetOpen = show || (this.tool !== 'select') || (this.sel.length > 0);
+        this.render();
+    };
+
+    Editor.inits.push(function () {
+        this.layersOpen = false;
+    });
+
+    Editor.escapes.unshift(function () {
+        if (!this.layersOpen) {
+            return false;
+        }
+
+        this.toggleLayers(false);
+
+        return true;
+    });
     Editor.views.push(Editor.prototype.renderLayers, Editor.prototype.renderSelection);
 }(window.PgImageEditor.parts));

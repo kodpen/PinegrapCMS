@@ -23,4 +23,4 @@ module: subscriptions_operator
 ## Tested?
 - `tests/subscriptions_operator_test.php`: actions and refusals, events, shared card, gate and token, menu, filters, list order, next charge, order cell, status and detail words. Not run on a database or in a browser.
 
-Related: commerce/subscriptions-account.md, commerce/subscriptions.md, commerce/subscriptions-mails.md, plans/subscriptions-iyzico-stripe.md
+Related: commerce/subscriptions-account.md, commerce/subscriptions.md, commerce/subscriptions-mails.md, commerce/subscriptions-decisions.md

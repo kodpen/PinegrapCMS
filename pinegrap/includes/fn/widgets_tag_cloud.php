@@ -292,3 +292,33 @@ function _render_system_widget_tag_cloud_region($tree_json, $widget_id, $cfg = a
     $static = pg_sw_uniquify_row_ids(pg_sw_sweep_tokens(_pg_sw_fill_tokens($static, $tokens)), $widget_id, 1000 + (++$placement));
     return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static);
 }
+
+/**
+ * What the designer's Tag Cloud page picker shows of each page it offers:
+ * the design the page is set in and whether an anonymous visitor may open
+ * it. A new widget takes a page of the design being edited that everyone
+ * can open, so keyword links never lead visitors to the login page of
+ * another design's draft. The first row of a name wins.
+ *
+ * @param array    $pages      rows (page_name, page_folder, page_style)
+ * @param array    $styles     design id => design name
+ * @param callable $access_of  folder id => access control type
+ * @return array page name => array('style' => id, 'design' => name, 'open' => bool)
+ */
+function pg_tcw_page_info($pages, $styles, $access_of)
+{
+    $out = array();
+    foreach (is_array($pages) ? $pages : array() as $row) {
+        if (!is_array($row) || !isset($row['page_name'])) continue;
+        $name = (string)$row['page_name'];
+        if ($name === '' || isset($out[$name])) continue;
+        $style = isset($row['page_style']) ? (int)$row['page_style'] : 0;
+        $folder = isset($row['page_folder']) ? (int)$row['page_folder'] : 0;
+        $out[$name] = array(
+            'style'  => $style,
+            'design' => isset($styles[$style]) ? (string)$styles[$style] : '',
+            'open'   => pg_sw_search_index_folder_open(call_user_func($access_of, $folder)),
+        );
+    }
+    return $out;
+}

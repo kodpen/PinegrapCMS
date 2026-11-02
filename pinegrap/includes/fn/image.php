@@ -509,9 +509,9 @@ function pg_image_can_be_resized($width, $height)
  * returns the percent as an integer (10 for 10%); the file screens print it
  * through lang('{var:1}%') so the sign sits where the panel language puts it.
  *
- * Expensive — it decodes and recompresses the whole image. view_files.php
- * caches the answer in files.optimization_percent and only computes it under
- * a threshold; nothing else should call it in a loop.
+ * Expensive — it decodes and recompresses the whole image.
+ * files.optimization_percent keeps an answer once one is known; nothing
+ * should call it in a loop over many files.
  *
  * @param string $file_path Full path to the image file
  * @return int Percentage, 0 when the image cannot be processed

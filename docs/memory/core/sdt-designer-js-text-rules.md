@@ -16,6 +16,9 @@ description: How visible text in style_designer.src.js must use _sdT('English') 
 - When the language is English the map is empty and `_sdT` returns the key as-is.
 - The scan result is cached in `data/temp/designer_i18n_keys.json`, stamped with mtime:size.
 
+## Which names may help text use?
+- Only the names the screen shows: the widget's or element's label ("Catalog" widget, "Variant Attribute" element), never its kind (`catalog_listing`, `variant_attr`). The Catalog Detail settings help kept both kinds after the row labels were fixed (#4817).
+
 ## How do variables and escaping work?
 - `_sdT(key, vars)`: `vars` is one value or an array filling `{var}` / `{var:N}`. Never build the key: no number, name or Turkish word in it (`_sdT('Tab {var}', 1)`, not `'Tab 1'`; `_sdT('It stays in {var} as it was.', owner)`). A built key is a different key for every value and is never translated.
 - `_sdT` output is NOT escaped: where it goes into HTML use `esc(_sdT(...))`.

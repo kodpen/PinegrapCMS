@@ -165,8 +165,6 @@ function pg_explorer_is_self_or_descendant($folder_id, $candidate_id)
 }
 
 // Recompute folder_level for every folder below $parent_id after a move.
-// Same walk edit_folder.php does; kept local so the endpoint has no
-// dependency on that screen being loaded.
 function pg_explorer_change_level($parent_id, $parent_level)
 {
     $rows = db_items("SELECT folder_id FROM folder WHERE folder_parent = '" . e($parent_id) . "'");
@@ -607,9 +605,8 @@ function pg_explorer_page_payload($page, $user)
 // One file row for the client.
 // The narrowings of the Files view.
 //
-// view_files.php offered these from a select; the file manager offers them
-// from a button on the same view. Pictures is not among them because it is a
-// view of its own, one entry up. Documents is what is left once pictures and
+// The file manager offers them from a button on the Files view. Pictures is
+// not among them because it is a view of its own, one entry up. Documents is what is left once pictures and
 // media are taken out, so the two lists below are the whole of the rule.
 function pg_explorer_file_scopes()
 {

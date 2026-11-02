@@ -26,7 +26,7 @@ function dashboard_gauge_source($path)
 // Every <svg …>…</svg> element of the gauge markup, opening tag and body.
 function dashboard_gauge_svgs()
 {
-	preg_match_all('/<svg\b([^>]*)>(.*?)<\/svg>/s', dashboard_gauge_source('includes/dashboard/widgets/widget_2.php'), $matches, PREG_SET_ORDER);
+	preg_match_all('/<svg\b([^>]*)>(.*?)<\/svg>/s', dashboard_gauge_source('includes/fn/health_gauge.php'), $matches, PREG_SET_ORDER);
 
 	return $matches;
 }
@@ -92,7 +92,7 @@ function test_dashboard_gauge_filters_in_hidden_layers()
 
 function test_dashboard_gauge_pauses_off_screen()
 {
-	$widget = dashboard_gauge_source('includes/dashboard/widgets/widget_2.php');
+	$widget = dashboard_gauge_source('includes/fn/health_gauge.php');
 	$css = dashboard_gauge_css();
 
 	pg_assert_contains('IntersectionObserver', $widget, 'the dial watches whether it is on screen');

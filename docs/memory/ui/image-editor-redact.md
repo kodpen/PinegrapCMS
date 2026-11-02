@@ -14,6 +14,7 @@ module: image_editor
 
 ## What does a save send and the server do?
 - The layer paints nothing into the overlay. `redactMasks()` sends `redact: [{mode, strength, x, y, mask}]`: per visible area a PNG of its output box (`M.redactRegion()`), opaque where the area is.
+- The save hook sends them for replace, copy and `url` (save.url, e.g. the Workspace): `pg_image_editor_render()` takes and burns them in as a save does, so a redacted picture saved on another endpoint no longer shows what was covered (E10b, #4745).
 - `pg_image_editor_take_redactions()` checks them before any pixel work (at most 50, known method, JSON numbers, whole pixels, a PNG inside the output) and writes the masks beside the file; the engine gets `edit['redact']`, the masks are removed on every path.
 - Step 4 runs after the colour step and the vignette, before the overlay: `pg_image_edit_redact_imagick()` (crop the box grown by 3 sigma or out to whole blocks, scale down and sample up, or blur; DSTIN the mask; composite) and `pg_image_edit_redact_gd()` (blur by shrinking, two 3 x 3 blurs and drawing back; the mask's opacity blends per pixel). Layers above a redaction in the list are still drawn over it, the overlay being last.
 

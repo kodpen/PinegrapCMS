@@ -19,7 +19,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 
 ## Files
 
-- architect-asking.md: How a session asks a decision question (2026-10-27): search the architect issues first, one issue per decision, the body with a Türkçe özet block, the PR back to draft, then the session ends
+- architect-asking.md: How a session asks a decision question or the owner's approval of screenshots: search first, one architect issue each, a Türkçe özet block, then the session ends
 - architect.md: Decision questions (2026-10-27): an architect issue; the architect analyses it, decides technical ones, asks the owner schema and product-behaviour ones as a selectable list (erdal), records it
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt or data/config.php change; warn above 1,000 product lines
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
@@ -30,7 +30,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-access.md: Decisions list, access part: public pi.php/si.php and test_secure_mode.php, guest order linking, backup, dashboard and role 3 gates, secrets shown on screen, the TLS escape flag, escape_url().
 - decisions-made-customers.md: Decisions list, customer data (owner, 2026-10-28): marketing boxes stay ticked, İYS never narrows sending, export unchanged, review order and photos, merge re-points all but consent_log
 - decisions-made-data.md: Decisions list, data part: starter dumps, orders.notes, tracking_company, secret_key*, order_items.tax, tracking_code, fixing a released migration, MySQL 5.7, ERP schema approval.
-- decisions-made-files.md: Decisions list, files part: a submitted-form file whose record no view shows stays refused in a public folder too (no fallback); the RSS media field counts as shown with the record.
+- decisions-made-files.md: Decisions list, files part: a form file no view shows stays refused in a public folder; RSS media counts as shown with its record; folders and files are managed in the File Manager
 - decisions-made-marketplace.md: Decisions list, marketplace part: n11 orders of products shipped from the n11 warehouse are not imported.
 - decisions-made-messages.md: Decisions list, messages part: which text messages are transactional (no İYS consent), the back-in-stock SMS, the cash-on-delivery code's orders, the member's SMS sign-in code.
 - decisions-made-panel.md: Decisions list, panel part: Bootstrap 6 breakpoints kept on purpose; the one date-and-time picker; the main menu in category headings; navigator screens; the front-end editing button box
@@ -42,7 +42,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-15.md: Decisions list, product part 15 (2026-10-31 on): affiliate commission voided on cancel; image editor redacted save, retention, site button, SVG animation; P7 api2 key; cash tills never below zero
 - decisions-made-product-16.md: Decisions list, product part 16 (2026-11-01 on): design templates finished (comments, events, testimonials); Turkish address fields (İl and İlçe); image editor animation and video
 - decisions-made-product-17.md: Decisions list, product part 17 (2026-11-01 midday on): WebP at a picture's own address; the new dashboard's four questions and its gauge; the Turkish district list and country place packs
-- decisions-made-product-18.md: Decisions list, product part 18 (2026-11-01 afternoon on): search and audits (one screen, defaults, editor findings); the editor's presentation and silent video; redacted Workspace replace
+- decisions-made-product-18.md: Decisions list, product part 18 (2026-11-01 afternoon on): search and audits; editor presentation and silent video; redacted Workspace replace; a thank-you page behind the registration gate
 - decisions-made-product-2.md: Decisions list, product part 2 (2026-10-29 on): guest account and receipt of a webhook-completed order; PayTR instalments; layout editor of a page not on a visual design; carrier drivers
 - decisions-made-product-3.md: Decisions list, product part 3 (2026-10-29 on): SVG and ZPL labels, the first international label driver, get_catalog.php's dead top-item block, the PHP 5 remnants, converted common regions' rows
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
@@ -66,7 +66,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-workspace-3.md: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold
 - decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): webhook URL digits exception, CRM seams 10 (N-days start, lead_source), "Edit here" on the AI draft card, flow run notices per chain
 - decisions-made-workspace-5.md: Decisions list, workspace part 5 (from 2026-10-30 evening): Workspace list and channel redrawn; who builds the design; one inbox; panel colours; a deleted Flows box takes its values; Today page
-- decisions-made-workspace-6.md: Decisions list, workspace part 6 (2026-11-01 on): a task event moved in the person's own Google/Outlook calendar writes the due date back through the drawer's check
+- decisions-made-workspace-6.md: Decisions list, workspace part 6 (2026-11-01 on): a task moved in the person's own calendar writes its due date back; the pinned My Notes row opens the Workspace list
 - decisions-made-workspace.md: Decisions list, workspace part: a typed @username in /task, a flow change box's rights, bulk product cards, model assistants, the Workspace list, the retired scheduled form
 - decisions-made.md: The decisions list: places reviewed and kept as they are on purpose; how to treat it and who adds to it, then the code and files that look dead or wrong but stay.
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git work, PR target, commit author, the PR footer (pointer), editing shared files without conflicts, API vs ERP files

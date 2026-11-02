@@ -496,3 +496,25 @@ function test_image_editor_model_fit_view_beside_panel()
 	pg_assert_same(1, $r['small']['k'], 'a small picture is never zoomed past its size');
 	pg_assert_true($r['covered']['k'] > 0 && $r['covered']['x'] >= 0, 'a panel wider than the stage still leaves a picture on it');
 }
+
+// The panel's title names what it shows: the open layers list, the
+// selection's one type or "Selection", the canvas or the list with nothing
+// selected, and any other tool by its name.
+function test_image_editor_model_panel_title()
+{
+	$r = image_editor_model_node(
+		'console.log(JSON.stringify(['
+		. ' M.panelTitle("crop", [], false, true), M.panelTitle("select", ["text"], false, true),'
+		. ' M.panelTitle("adjust", [], false, false), M.panelTitle("select", [], false, false),'
+		. ' M.panelTitle("select", [], true, false), M.panelTitle("select", ["text"], false, false),'
+		. ' M.panelTitle("select", ["rect", "rect"], true, false), M.panelTitle("select", ["text", "sticker"], false, false)'
+		. ']));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_same(array('layers', 'layers', 'tool_adjust', 'layers', 'tool_artboard', 'layer_text', 'layer_rect', 'selection'), $r, 'the title follows the list, the selection, the canvas and the tool');
+}

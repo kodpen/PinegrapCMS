@@ -930,10 +930,12 @@ function pg_seo_source_label($source)
 // link-graph pass both write findings for the same record and run at
 // different times, so a blanket delete would mean whichever ran last erased
 // the other's work. The accessibility pass ('a11y') owns the codes starting
-// with a11y_ and the other scopes leave them alone.
+// with a11y_ and the other scopes leave them alone. It leaves alone too the
+// a11y_ rows measured in the visual editor (source "editor:<time>"): only the
+// next save of the page replaces them (pg_a11y_store_measured()).
 function pg_seo_store_issues($type, $id, $findings, $scope = 'structure')
 {
-    $sql_scope = ($scope === 'a11y') ? " AND (LEFT(code, 5) = 'a11y_')" : " AND (LEFT(code, 5) <> 'a11y_')";
+    $sql_scope = ($scope === 'a11y') ? " AND (LEFT(code, 5) = 'a11y_') AND (LEFT(source, 7) <> 'editor:')" : " AND (LEFT(code, 5) <> 'a11y_')";
 
     if (($scope !== 'a11y') && function_exists('pg_seo_link_codes')) {
         if ($scope === 'graph') {
@@ -1314,12 +1316,7 @@ function pg_seo_analyze_page($page_id)
         && $folder_public
         && (((string) $page_row['folder_archived']) !== '1');
 
-    $context = array(
-        'title' => $page_row['page_title'],
-        'in_sitemap' => $in_sitemap,
-        'open_graph' => (!defined('OPEN_GRAPH') || OPEN_GRAPH),
-        'expect_jsonld' => in_array($page_row['page_type'], array('catalog', 'catalog detail', 'order form', 'express order')),
-    );
+    $context = pg_seo_document_context($page_row['page_title'], $in_sitemap, $page_row['page_type']);
 
     $render = pg_seo_render_page($page_id, $page_row);
 
@@ -1329,6 +1326,22 @@ function pg_seo_analyze_page($page_id)
     }
 
     return pg_seo_analyze_rendered_page($page_id, $page_row, $context, $render['html'], $render['error']);
+}
+
+// What pg_seo_analyze_html() needs to know of a whole rendered page that the
+// markup cannot say: the title (h1_equals_title), whether it is in the site
+// map (noindex_but_in_sitemap), whether the site writes Open Graph tags, and
+// whether its type should carry structured data. One builder for the
+// structure pass and the editor's check on the draft, so both judge a page
+// against the same context.
+function pg_seo_document_context($title, $in_sitemap, $page_type)
+{
+    return array(
+        'title' => (string) $title,
+        'in_sitemap' => (bool) $in_sitemap,
+        'open_graph' => (!defined('OPEN_GRAPH') || OPEN_GRAPH),
+        'expect_jsonld' => in_array((string) $page_type, array('catalog', 'catalog detail', 'order form', 'express order'), true),
+    );
 }
 
 // Render a page in process the way a signed-out visitor sees it.

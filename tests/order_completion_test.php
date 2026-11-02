@@ -319,6 +319,22 @@ function test_order_completion_extended_until()
 	pg_assert_same('2026-11-20', pg_order_extended_until('', 10, 1, '2026-11-10'), 'no end yet starts from today');
 }
 
+function test_order_completion_extended_until_over_a_clock_change()
+{
+	// A day the clocks go back has 25 hours: counting days as 86400 seconds
+	// from midnight ends an hour short, on the day before.
+	$zone = date_default_timezone_get();
+	date_default_timezone_set('Europe/Berlin');
+
+	try {
+		pg_assert_same('2026-11-09', pg_order_extended_until('', 30, 1, '2026-10-10'), 'thirty days over the autumn clock change');
+		pg_assert_same('2026-10-25', pg_order_extended_until('', 1, 1, '2026-10-24'), 'one day bought the day before the clock change');
+		pg_assert_same('2026-11-09', pg_order_recurring_commission_start('Monthly', '2026-10-10', strtotime('2026-10-10 00:30:00')), 'a monthly start over the clock change');
+	} finally {
+		date_default_timezone_set($zone);
+	}
+}
+
 function test_order_completion_folder_access_extends()
 {
 	pg_assert_true(pg_order_folder_access_extends('', ''), 'no access yet');
@@ -895,4 +911,17 @@ function test_order_completion_payment_records_the_installment_difference()
 	foreach (array('total', 'installment_charges', 'payment_installment') as $column) {
 		pg_assert_true(in_array($column, pg_order_complete_columns(), true), $column . ' is a completion column');
 	}
+}
+
+// Two orders redeeming one gift card at the same moment both read a balance
+// that covers them; the decrement itself must refuse the second one, or the
+// unsigned balance stops at 0 and the card pays twice.
+function test_order_completion_gift_card_redemption_guards_the_balance()
+{
+	$body = order_completion_test_function_text(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php', 'pg_order_complete_gift_cards');
+	$update = substr($body, (int) strpos($body, '"UPDATE gift_cards'));
+	$update = substr($update, 0, (int) strpos($update, 'output_error'));
+
+	pg_assert_true(strpos($update, 'AND (balance >= ?)') !== false, 'the decrement runs only while the balance covers the amount');
+	pg_assert_true(preg_match('/UPDATE gift_cards.*?mysqli_affected_rows\(db::\$con\) < 1/s', $body) === 1, 'a decrement that changed no row is a failed card');
 }

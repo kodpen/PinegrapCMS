@@ -1,6 +1,6 @@
 ---
 name: search-index-resumable-pass
-description: update_search_index.php as a resumable pass: stages, the cursor in data/temp/search_index.json, the skip rule, run budgets, the panel window's short requests, the sweep against the pass start
+description: update_search_index.php as a resumable pass (stages, cursor file, skip rule, run budgets, panel window requests, sweep against the pass start) and the hourly delta run between full passes
 ---
 
 ## How does an index pass run now?
@@ -13,6 +13,11 @@ description: update_search_index.php as a resumable pass: stages, the cursor in 
 
 ## How long does one run work?
 - Dispatched: `pg_cron_time_left(SEO_ANALYZE_TIME_BUDGET)`; unfinished, `pg_cron_due_again('update_search_index', 60)` and no `pg_cron_ran()` (no `_done` marker until the sweep). Panel window: `SEO_ANALYZE_BUTTON_BUDGET` (20 s) per request; the page says the stage and loads `update_search_index.php?continue=1` until the pass is done. Command line (crontab): no budget, the whole pass in one run.
-- Every run takes the job's lock (14400 s, kept for the command-line run); a dispatched tick and the panel window carry on the same pass.
+- Every run takes the job's lock; a dispatched tick and the panel window carry on the same pass. A dispatched tick and a panel request hold the catalogue's 600 s, a command-line run 14400 s (`pg_search_index_claim_seconds()`, `pg_cron_claim($name, $seconds)`; SA14). Before, every start held 14400 s, and a tick a host's job runner killed outright (no shutdown function, no release) kept the heavy lane closed for four hours.
 
-Tests: `tests/search_index_resume_test.php` (stages, cursor, skip rule, wiring).
+## What runs between full passes?
+- The job is hourly (`interval` 3600). A dispatched run with no pass under way and a full pass ended less than a day ago (`pg_search_index_full_due()` on `update_search_index_done`) is a delta (#4837): `pg_search_index_delta_targets()` takes the pages of the index's scope whose own row is older than `page_timestamp`, and the records whose `?r=` row is older than `forms.last_modified_timestamp` (`pg_search_index_record_code()`). It re-indexes those (a record through every visual-editor list that shows it, collected without drawing the pages), keeps no cursor, reads no files, sweeps nothing and writes no completion marker.
+- Waits for the full pass: a page or record without a row, a record indexed at its address name, a classic form record, a calendar event, a file.
+- `pg_search_index_refresh_soon()` (a new design) moves the `_done` marker back a day as well, so the next tick is a full pass: the new pages have no rows for a delta to find.
+
+Tests: `tests/search_index_resume_test.php` (stages, cursor, skip rule, wiring), `tests/search_index_delta_test.php`.

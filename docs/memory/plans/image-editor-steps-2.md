@@ -27,10 +27,10 @@ description: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboa
 - E16 (M) Workspace canvas. `free` after E9 and E11. Done (#4762, `ui/image-editor-workspace.md`); a note's canvas opens again only through its file.
   - "New canvas" in a channel and in notes; saved through `workspace_file_save.php` with its doc; texts edit later; a preview picture in the message.
 
-- E17 (S) Visual designer. `free` after E9 and E11.
+- E17 (S) Visual designer. `free` Done (#4777, `designer/image-editor-tool.md`).
   - The image widget's "Edit image" opens the modal over the designer; a saved version refreshes the picture (cache key); crop presets from the widget's ratio.
 
-- E18 (S) Access. `free` after E9.
+- E18 (S) Access. `free` after E9. Done (#4785, `ui/image-editor-access.md`).
   - Keyboard map and help sheet, names for every control, focus trap, reduced motion, two-finger rotate (the phone layout is E1b).
 
 - E19 SVG animation. AN10 of `image-editor-animation-steps.md` (owner, 2026-11-01).

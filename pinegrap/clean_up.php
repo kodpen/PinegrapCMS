@@ -184,6 +184,14 @@ $file_list = array(
     'assets/multiselect-checkbox',
     'assets/page_designer.css',
     'assets/page_designer.js',
+    // The folder screens and the classic files list, retired with 2026.11.0:
+    // folders are made, renamed, set up and given their access rules in the
+    // File Manager (view_folders.php), whose Files view has the list's
+    // filters, sorting and actions.
+    'add_folder.php',
+    'edit_folder.php',
+    'includes/forms/folder_form.php',
+    'view_files.php',
     // The legacy page designer, retired with 2026.11.0: a classic style
     // opens in the visual designer and a page's custom layout in
     // edit_page_layout.php.

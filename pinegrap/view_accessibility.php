@@ -119,11 +119,13 @@ $severity_badges = array(
 
 foreach (pg_a11y_report_rows($code, $row_limit) as $row) {
     $badge = isset($severity_badges[$row['severity']]) ? $severity_badges[$row['severity']] : $severity_badges['notice'];
+    $note = pg_a11y_measured_note($row['source']);
 
     $output_rows .=
         '<tr>
             <td class="align-middle"><a href="' . OUTPUT_PATH . h(encode_url_path($row['page_name'])) . '" target="_blank" rel="noopener">' . h($row['page_name']) . '</a></td>
-            <td class="align-middle"><span class="badge rounded-pill ' . $badge[0] . ' me-1">' . h($badge[1]) . '</span>' . h(pg_a11y_issue_label($row['code'])) . '</td>
+            <td class="align-middle"><span class="badge rounded-pill ' . $badge[0] . ' me-1">' . h($badge[1]) . '</span>' . h(pg_a11y_issue_label($row['code']))
+                . (($note !== '') ? '<div class="small fg-secondary">' . h($note) . '</div>' : '') . '</td>
             <td class="align-middle">' . (int) $row['occurrences'] . '</td>
             <td class="align-middle small font-monospace text-break">' . h($row['detail']) . '</td>
         </tr>';

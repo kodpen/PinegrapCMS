@@ -297,15 +297,19 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
 
             // Generated barcodes live in product_barcodes; a scan is resolved there
             // first and falls back to the product name, which older labels carry.
-            $product_id = (int) db_value("SELECT product_id FROM product_barcodes WHERE barcode = '" . escape($barcode) . "' LIMIT 1");
+            // A code that is a barcode of one product and the name of another is
+            // refused instead of moving either.
+            $scanned = pg_barcode_scan_product($barcode);
 
-            if ($product_id) {
-                $sql_where = "id = ?";
-                $where_values = array((string) $product_id);
-            } else {
-                $sql_where = "name = ?";
-                $where_values = array((string) $barcode);
+            if ($scanned['refusal'] !== '') {
+                echo encode_json(array(
+                    'status' => 'error',
+                    'message' => $scanned['refusal']));
+                exit();
             }
+
+            $sql_where = "id = ?";
+            $where_values = array((string) $scanned['id']);
 
             $query = "SELECT 
             
@@ -351,6 +355,15 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
             $inventory_quantity = $row['inventory_quantity'];
             
             $new_inventory_quantity = $inventory_quantity + $quantity;
+
+            // Past what products.inventory_quantity holds: MySQL would store
+            // the column's top while the screen showed the uncut sum.
+            if (pg_inventory_quantity_too_large($new_inventory_quantity)) {
+                echo encode_json(array(
+                    'status' => 'error',
+                    'message' => lang(array('string' => '{var:1} is too large.', 'vars' => array(lang('New Inventory Quantity'))))));
+                exit();
+            }
 
             $sql_out_of_stock = '';
             if($new_inventory_quantity > 0 && $inventory == 1){

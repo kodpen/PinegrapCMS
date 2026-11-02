@@ -17,11 +17,17 @@ description: Events and Conferences template (pinegrap-events): its parts folder
 ## How do tickets work without the shop?
 - The passes are products of a Tickets catalog group (`'catalog'` from `tickets.php`, `shippable => false`). The template has no `requires`: only the listing and the product, cart, checkout, order pages and `email_order` carry `requires => ecommerce`. The tickets page always stands, with what each pass includes and the registration form, so no link is dead without the shop.
 
+## Where do the ticket prices come from? (1.0.3, #4822)
+- One table, `$pass_prices` in `parts.php` (USD, EUR, GBP, TRY), feeds both the catalog products and the pass cards; `$money()` writes a price the way the shop does (`pg_money_text()`, base currency's figure and symbol, USD's figure for an unlisted currency, as `_pg_tpl_catalog()` chooses). The paid sample events use `$money()` too, and the conference reads `Passes from %s` with the Day Pass price. Before, the cards were fixed `lang('$149')` keys: "$149" on the card, "₺5.999,00" in the shop.
+
 ## What is deliberately not built?
 - Session collections, seat limits and QR check-in: new product behaviour.
 
 ## Why pev- and not pe-?
 - Bootstrap owns `pe-*` (padding-end; `pe-0` is used in the parts). The template's classes are `pev-brand` (header name), `pev-eyebrow` (section header line), `pev-hero` (home's first section), `pev-lift` (speaker and event cards), with two fonts (Space Grotesk, Inter) in `assets`.
+
+## Where are its Turkish words described?
+- [[design-template-events-words]].
 
 ## Which tests cover it?
 - `design_template_events_test.php` (data, public pages, events, registration, tickets), `…_standard_test.php`, `…_account_test.php` load the parts; `…_assembly_test.php` the main file: offered, pages in order, widgets once and all placed, placeholders name pages and folders, catalog, contact search sections, `pev-` classes equal rules. It is in the shared lists of the collection-form, account-e-mail, submitter-name and consent-privacy tests (no date field, so not the form-rules list).

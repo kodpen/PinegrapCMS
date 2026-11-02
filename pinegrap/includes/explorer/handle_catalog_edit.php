@@ -47,13 +47,19 @@ function pg_explorer_catalog_quick_price($value)
 // A typed stock count in whole units, or null when it is empty, not a number
 // or not whole. It is read by pg_normalize_amount(), as the price is, so a
 // grouped figure (1.200 on a Turkish panel) is twelve hundred, not 1. Stock
-// does not go negative: a shelf holds none or some.
+// does not go negative: a shelf holds none or some. A count past what the
+// column holds comes back as a float, for the caller to refuse
+// (pg_inventory_quantity_too_large()).
 function pg_explorer_catalog_quick_quantity($value)
 {
     $value = pg_normalize_amount((string) $value);
 
     if (($value === '') || (is_numeric($value) == false) || ((float) $value != floor((float) $value))) {
         return null;
+    }
+
+    if (pg_inventory_quantity_too_large($value)) {
+        return (float) $value;
     }
 
     $number = (int) $value;
@@ -166,6 +172,12 @@ function pg_explorer_handle_catalog_quick_edit($type, $request, $user)
 
         if ($quick_number === null) {
             respond(array('status' => 'error', 'message' => lang('Enter an inventory quantity.')));
+        }
+
+        // Refused rather than left to MySQL, which would store the top of
+        // the column and say nothing.
+        if (pg_inventory_quantity_too_large($quick_number)) {
+            respond(array('status' => 'error', 'message' => lang(array('string' => '{var:1} is too large.', 'vars' => array(lang('Inventory Quantity'))))));
         }
 
         // Out of stock is a consequence rather than a field: putting

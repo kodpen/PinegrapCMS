@@ -6,7 +6,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 ## Which root endpoint groups (account to offer) are hunted?
 - Endpoints `account` (2): taken by LY (account_security; only one root file starts with account): #4675
 
-- Endpoints `ad` (5): open
+- Endpoints `ad` (5): #4854 (sort order); the rest clean
 
 - Endpoints `affiliate` (5): open
 

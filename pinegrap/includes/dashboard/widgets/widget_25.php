@@ -19,70 +19,9 @@ if (!defined('PG_DASHBOARD_WIDGETS')) {
 
 function pg_dashboard_widget_25($request, $user)
 {
-    // ── Comment moderation ──────────────────────────────────
-    //
-    // An unapproved comment is invisible to the person who wrote
-    // it and to everyone else, and nothing on the dashboard has
-    // ever said one was waiting. view_comments.php exists, but a
-    // queue nobody is reminded of is a queue that grows.
-    //
-    // Scope follows view_comments.php exactly: the comment's page
-    // decides, through its folder. check_edit_access() returns
-    // true for every folder below role 3, so only contributors
-    // need the folder list — and resolving it in SQL keeps this
-    // to two queries instead of one recursive access check per
-    // row.
-    //
-    // Comments on pages in the Recycle Bin are left out for every
-    // role: the page is not on the site, its name is the bin's
-    // pgbin_ address, and purging it deletes them.
-    $cm_where = "(comments.published = '0')" . pg_comment_live_page_sql(pg_recycle_bin_folder_ids());
-    $cm_no_access = false;
-
-    if ($user['role'] == 3) {
-
-        $cm_folders = get_folders_that_user_has_access_to($user['id']);
-
-        if ($cm_folders) {
-
-            $cm_folder_ids = array();
-
-            foreach ($cm_folders as $cm_folder_id) {
-                $cm_folder_ids[] = "'" . e($cm_folder_id) . "'";
-            }
-
-            $cm_where .= " AND (page.page_folder IN (" . implode(',', $cm_folder_ids) . "))";
-
-        } else {
-            $cm_no_access = true;
-        }
-    }
-
-    $cm_items = array();
-    $cm_total = 0;
-
-    if (!$cm_no_access) {
-
-        $cm_items = db_items(
-            "SELECT
-                comments.id,
-                comments.name,
-                comments.message,
-                comments.rating,
-                comments.created_timestamp,
-                page.page_name
-             FROM comments
-             LEFT JOIN page ON comments.page_id = page.page_id
-             WHERE " . $cm_where . "
-             ORDER BY comments.created_timestamp DESC
-             LIMIT 5");
-
-        $cm_total = (int) db_value(
-            "SELECT COUNT(*)
-             FROM comments
-             LEFT JOIN page ON comments.page_id = page.page_id
-             WHERE " . $cm_where);
-    }
+    $cm_waiting = pg_dashboard_waiting_comments($user, 5);
+    $cm_items = $cm_waiting['items'];
+    $cm_total = $cm_waiting['total'];
 
     $cm_rows = '';
 
@@ -168,4 +107,84 @@ function pg_dashboard_widget_25($request, $user)
         'data' => $output_data,
     );
     return $response;
+}
+
+/**
+ * The comments waiting for approval that the person may moderate, newest
+ * first, and how many there are in all. Shared with the new dashboard's
+ * Comment moderation card, so both count the same queue.
+ *
+ * @param array $user
+ * @param int   $limit rows to return
+ * @return array items (id, name, message, rating, created_timestamp,
+ *               page_name), total
+ */
+function pg_dashboard_waiting_comments($user, $limit)
+{
+    // ── Comment moderation ──────────────────────────────────
+    //
+    // An unapproved comment is invisible to the person who wrote
+    // it and to everyone else, and nothing on the dashboard has
+    // ever said one was waiting. view_comments.php exists, but a
+    // queue nobody is reminded of is a queue that grows.
+    //
+    // Scope follows view_comments.php exactly: the comment's page
+    // decides, through its folder. check_edit_access() returns
+    // true for every folder below role 3, so only contributors
+    // need the folder list — and resolving it in SQL keeps this
+    // to two queries instead of one recursive access check per
+    // row.
+    //
+    // Comments on pages in the Recycle Bin are left out for every
+    // role: the page is not on the site, its name is the bin's
+    // pgbin_ address, and purging it deletes them.
+    $cm_where = "(comments.published = '0')" . pg_comment_live_page_sql(pg_recycle_bin_folder_ids());
+    $cm_no_access = false;
+
+    if ($user['role'] == 3) {
+
+        $cm_folders = get_folders_that_user_has_access_to($user['id']);
+
+        if ($cm_folders) {
+
+            $cm_folder_ids = array();
+
+            foreach ($cm_folders as $cm_folder_id) {
+                $cm_folder_ids[] = "'" . e($cm_folder_id) . "'";
+            }
+
+            $cm_where .= " AND (page.page_folder IN (" . implode(',', $cm_folder_ids) . "))";
+
+        } else {
+            $cm_no_access = true;
+        }
+    }
+
+    $cm_items = array();
+    $cm_total = 0;
+
+    if (!$cm_no_access) {
+
+        $cm_items = db_items(
+            "SELECT
+                comments.id,
+                comments.name,
+                comments.message,
+                comments.rating,
+                comments.created_timestamp,
+                page.page_name
+             FROM comments
+             LEFT JOIN page ON comments.page_id = page.page_id
+             WHERE " . $cm_where . "
+             ORDER BY comments.created_timestamp DESC
+             LIMIT " . (int) $limit);
+
+        $cm_total = (int) db_value(
+            "SELECT COUNT(*)
+             FROM comments
+             LEFT JOIN page ON comments.page_id = page.page_id
+             WHERE " . $cm_where);
+    }
+
+    return array('items' => $cm_items, 'total' => $cm_total);
 }

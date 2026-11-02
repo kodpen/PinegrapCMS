@@ -1231,6 +1231,13 @@ function pg_panel_save_product_barcode($request, $action)
     if ($conflict)
         respond(array('status' => 'error', 'message' => lang('This barcode is already assigned to another product.')));
 
+    // Nor another product's code: a scan resolves a barcode before a product
+    // code, so it would move this product's stock instead of that one's. The
+    // product's own code is a barcode it may carry.
+    $holder = pg_product_name_holder($barcode, $product_id, false);
+    if ($holder)
+        respond(array('status' => 'error', 'message' => pg_barcode_code_taken_text($barcode, $holder)));
+
     $now = date('Y-m-d H:i:s');
     db("INSERT INTO product_barcodes (product_id, barcode, barcode_type, created_at, updated_at)
             VALUES ('" . e($product_id) . "', '" . e($barcode) . "', '" . e($barcode_type) . "', '" . e($now) . "', '" . e($now) . "')");

@@ -9,7 +9,10 @@
  * and the booking form keeps what the Clinic's request flow relies on
  * (field names, the date rule, the office-only status, the consent link,
  * the e-mail pages), and the account and staff parts place only defined
- * widgets and build every page the links name.
+ * widgets and build every page the links name. Its comment threads are
+ * drawn by the Comments widget (a post's comments, a booking's messages, a
+ * conversation's replies, the reply e-mail's card) and a Google Reviews
+ * widget stands beside the sample words of the home page.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -20,6 +23,8 @@
 if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
+
+require_once(__DIR__ . '/helpers/template_threads.php');
 
 // The parts as the template file reads them: parts.php first, then each
 // page file in the same scope. Read once per run.
@@ -38,6 +43,7 @@ function _test_salon_load()
 		'categories' => $categories,
 		'services'   => $services,
 		'team'       => $team,
+		'times'      => $time_windows,
 		'pages'      => $public,
 		'booking'    => $booking,
 		'standard'   => $standard,
@@ -408,7 +414,7 @@ function test_salon_assembled_template()
 	pg_assert_same(count($d['booking']['widgets']) + count($d['standard']['widgets']) + count($d['account']['widgets']), count($tpl['widgets']));
 	pg_assert_same(array('account_bar', 'notice', 'header', 'footer', 'staff_bar', 'booking_band', 'email_header', 'email_footer'), array_keys($tpl['shared']));
 	pg_assert_true(isset($tpl['contact_groups']['newsletter']), 'the newsletter contact group');
-	pg_assert_same('1.0.0', $tpl['version']);
+	pg_assert_true(version_compare($tpl['version'], '1.1.1', '>='), 'the version moved');
 
 	// The contact page's details are a search section.
 	foreach ($tpl['pages'] as $p) {
@@ -430,4 +436,169 @@ function test_salon_assembled_template()
 	sort($used);
 	pg_assert_same($ruled, $used, 'psl- classes and rules match');
 	pg_assert_same(2, count(json_decode($tpl['assets']['fonts'], true)), 'two fonts');
+}
+
+// The salon's threads: widget key => its page, the record view above it,
+// its options, Reply and Share, the follow boxes.
+function _test_salon_threads()
+{
+	return array(
+		'post_comments' => array('page' => 'blog_post', 'view' => 'blog_post', 'reply' => true, 'watch' => true,
+			'options' => array('order' => 'oldest', 'featured' => 'first', 'layout' => 'threaded', 'max_depth' => 2, 'per_page' => 20)),
+		'appointment_messages' => array('page' => 'appointment_view', 'view' => 'appointment_detail', 'reply' => false, 'watch' => false,
+			'options' => array('order' => 'oldest', 'featured' => 'none', 'layout' => 'flat', 'max_depth' => 1, 'per_page' => 0)),
+		'conversation_replies' => array('page' => 'conversation', 'view' => 'conversation', 'reply' => false, 'watch' => false,
+			'options' => array('order' => 'oldest', 'featured' => 'none', 'layout' => 'flat', 'max_depth' => 1, 'per_page' => 0)),
+	);
+}
+
+// No fixed comments block is left; the widget kinds the salon ships.
+function test_salon_comment_widgets()
+{
+	$tpl = _tpl_threads_tpl('pinegrap-salon');
+	_tpl_threads_check_no_fixed_block('pinegrap-salon', array(
+		'appointment_messages' => 'comments', 'conversation_replies' => 'comments', 'email_comment' => 'comments', 'post_comments' => 'comments',
+	));
+	pg_assert_same('google_reviews', pg_sw_widget_kind($tpl['widgets']['google_reviews']['config']), 'and a Google Reviews widget');
+	// Each thread keeps its page's comment settings: signed-in writers,
+	// published at once, its label and its e-mail.
+	$labels = array('blog_post' => lang('Comment'), 'appointment_view' => lang('Message'), 'conversation' => lang('reply'));
+	foreach ($labels as $key => $label) {
+		$c = _tpl_threads_page($tpl, $key)['comments'];
+		pg_assert_same($label, $c['label'], $key . ': its label');
+		pg_assert_true($c['login'] && $c['auto_publish'], $key . ': signed in, published at once');
+	}
+}
+
+function test_salon_comment_threads()
+{
+	foreach (_test_salon_threads() as $key => $t) {
+		_tpl_threads_check_thread('pinegrap-salon', $key, $t);
+		_tpl_threads_check_draws('pinegrap-salon', $key, $t);
+	}
+	// A booking's messages are as private as the booking: the view above
+	// them shows it to its client only.
+	$tpl = _tpl_threads_tpl('pinegrap-salon');
+	foreach (array('appointment_detail', 'conversation') as $view) {
+		pg_assert_same('submitter_only', $tpl['widgets'][$view]['config']['access_control'], $view . ': the client\'s own');
+	}
+}
+
+function test_salon_comment_email()
+{
+	_tpl_threads_check_email_card('pinegrap-salon', 'email_comment', 'email_reply', array('blog_post', 'appointment_view', 'conversation'));
+}
+
+function test_salon_google_reviews()
+{
+	_tpl_threads_check_google_reviews('pinegrap-salon', 'google_reviews', 'home', lang('Testimonials'));
+	// The sample words stay, before the widget.
+	$tpl = _tpl_threads_tpl('pinegrap-salon');
+	$home = json_encode(_tpl_threads_page($tpl, 'home')['tree'], JSON_UNESCAPED_UNICODE);
+	$sample = strpos($home, lang('“Leyla did my wedding make-up. It looked perfect in every photo and lasted until the last dance.”'));
+	$widget = strpos($home, '"templateWidget":"google_reviews"');
+	pg_assert_true($sample !== false && $widget !== false && $sample < $widget, 'the sample words stay, the widget after them');
+}
+
+// The salon's Turkish says "hizmet" and "randevu" throughout: its booking
+// field, staff shortcut and statuses use keys of their own, not the shared
+// ones translated for other screens ("Servis", "rezervasyon", "Tamamlanmış").
+function test_salon_turkish_words()
+{
+	$map = pg_test_language_map('tr');
+	$text = '';
+	foreach (glob(PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-salon{,/*}.php', GLOB_BRACE) as $file) {
+		$text .= file_get_contents($file);
+	}
+	foreach (array('Service', 'Completed', 'Cancelled', 'Every booking, newest first, with its status.') as $shared) {
+		pg_assert_true(strpos($text, "lang('" . $shared . "')") === false, "the salon does not use the shared key: $shared");
+	}
+	pg_assert_same('Hizmet', $map['Treatment']);
+	pg_assert_same('Tamamlandı', $map['Appointment completed']);
+	pg_assert_same('İptal edildi', $map['Appointment cancelled']);
+	pg_assert_same('Bugünden itibaren randevu yok.', $map['No appointments from today on.']);
+	pg_assert_same(0, strpos($map['email-new-booking'], 'e-posta-'), 'e-mail page names start with e-posta-');
+	pg_assert_same(0, strpos($map['email-booking-received'], 'e-posta-'), 'e-mail page names start with e-posta-');
+}
+
+// The booking links of the team and services pages carry what was chosen
+// (#4801): each value lands in a booking form field that starts with it
+// from the page address, and a pick list's value is one of its answers.
+function test_salon_booking_links_fill_the_form()
+{
+	$d = _test_salon_load();
+	$controls = _pg_cf_controls($d['booking']['widgets']['appointment_form']['tree']);
+	$map = array();
+	foreach ($controls as $key => $c) {
+		$map[$key] = array('type' => isset($c['type']) ? $c['type'] : '', 'office_use_only' => '0', 'maxlength' => '0');
+	}
+	foreach (array('service' => 'service', 'stylist' => 'stylist', 'notes' => 'notes') as $field => $param) {
+		pg_assert_same($param, isset($controls[$field]['url_param']) ? $controls[$field]['url_param'] : '', $field . ' starts from ?' . $param);
+	}
+
+	$links = array();
+	foreach ($d['pages'] as $p) {
+		$nodes = array();
+		_test_salon_nodes($p['tree'], $nodes);
+		foreach ($nodes as $n) {
+			$href = isset($n['props']['href']) ? (string)$n['props']['href'] : '';
+			if (strpos($href, '{{page:appointment}}?') === 0) $links[] = array($p['key'], $href);
+		}
+	}
+	$by_page = array();
+	foreach ($links as $l) $by_page[$l[0]][] = $l[1];
+	pg_assert_same(count($d['team']), count(isset($by_page['team']) ? $by_page['team'] : array()), 'each stylist\'s card books with them');
+	pg_assert_same(3, count(isset($by_page['services']) ? $by_page['services'] : array()), 'each package books it');
+
+	$stylists = 0;
+	$notes = 0;
+	foreach ($links as $l) {
+		parse_str((string)parse_url(substr($l[1], strlen('{{page:appointment}}')), PHP_URL_QUERY), $request);
+		pg_assert_true(!empty($request), $l[0] . ': a choice in ' . $l[1]);
+		$values = pg_cf_url_prefill_values($controls, $map, $request);
+		foreach ($request as $param => $value) {
+			$field = array_search($param, array('service' => 'service', 'stylist' => 'stylist', 'notes' => 'notes'), true);
+			pg_assert_true($field !== false, $l[0] . ': ?' . $param . ' names a field');
+			pg_assert_same($value, isset($values[$field]) ? $values[$field] : null, $l[0] . ': ' . $field . ' starts with ' . $value);
+			if (!empty($controls[$field]['options'])) {
+				$options = array();
+				foreach ($controls[$field]['options'] as $o) $options[] = (string)$o['value'];
+				pg_assert_same($value, pg_cf_match_option($value, $options), $l[0] . ': ' . $value . ' is an answer of ' . $field);
+			}
+			$stylists += ($field === 'stylist') ? 1 : 0;
+			$notes += ($field === 'notes') ? 1 : 0;
+		}
+	}
+	pg_assert_same(count($d['team']), $stylists, 'every stylist named as the list names them');
+	pg_assert_same(3, $notes, 'every package goes into the notes');
+}
+
+// The sample words agree with the opening hours (Monday closed, Tuesday to
+// Friday 10:00-20:00, Saturday 09:00-19:00, Sunday 11:00-17:00): no stylist
+// works on a Monday, no time of day starts before 10:00, and one that runs
+// past Saturday's 19:00 says it is Tuesday to Friday only.
+function test_salon_sample_days_and_times_fit_the_hours()
+{
+	$d = _test_salon_load();
+	$week = array('Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday');
+	foreach ($d['team'] as $key => $t) {
+		pg_assert_true((bool)preg_match('/^(\w+) to (\w+)$/', $t['days'], $m), $key . ': days read "X to Y"');
+		$i = array_search($m[1], $week, true);
+		$last = array_search($m[2], $week, true);
+		pg_assert_true($i !== false && $last !== false, $key . ': days are week days');
+		for ($n = 0; $n < 7; $n++) {
+			pg_assert_true($week[$i] !== 'Monday', $key . ' does not work on Monday, when the salon is closed');
+			if ($i === $last) break;
+			$i = ($i + 1) % 7;
+		}
+	}
+	pg_assert_true(count($d['times']) > 0, 'times of day');
+	foreach ($d['times'] as $w) {
+		pg_assert_true((bool)preg_match('/\((\d\d):(\d\d)–(\d\d):(\d\d)/u', $w, $m), $w . ': a time range');
+		pg_assert_true($m[1] . $m[2] >= '1000', $w . ': starts when the salon is open');
+		pg_assert_true($m[3] . $m[4] <= '2000', $w . ': ends by closing time');
+		if ($m[3] . $m[4] > '1900') {
+			pg_assert_true(strpos($w, 'Tuesday–Friday') !== false, $w . ': says it is Tuesday to Friday only');
+		}
+	}
 }

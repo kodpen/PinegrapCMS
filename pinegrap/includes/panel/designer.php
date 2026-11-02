@@ -602,9 +602,11 @@ function pg_panel_designer($request, $action)
         // halves the site-wide score is made of, run on what is on the
         // canvas RIGHT NOW rather than on the saved row:
         //   meta      pg_seo_evaluate_meta on the settings-panel fields
-        //   structure pg_seo_analyze_html on the markup the editor
-        //             generates (fragment mode: the <head> the renderer
-        //             adds at request time is not there to judge)
+        //   structure pg_seo_analyze_html on the draft rendered by the
+        //             server as a whole page (document mode,
+        //             pg_seo_check_draft_render()); for a page not saved
+        //             yet, on the markup the editor generates (fragment
+        //             mode: the <head> is not there to judge)
         // Nothing is stored; the stored score is refreshed on save.
         case 'seo_check':
             require_once(PG_FUNCTIONS_DIR . '/seo.php');
@@ -639,13 +641,43 @@ function pg_panel_designer($request, $action)
             if (strlen($html) > 2000000) $html = substr($html, 0, 2000000);
             $findings = array();
             $structure_score = null;
-            if (trim($html) !== '') {
+            $raw = null;
+            // A saved page's draft is rendered by the server as the
+            // structure pass renders the saved page (head, shared
+            // components and system widgets drawn) and judged as a whole
+            // document with the page's Open Graph and JSON-LD context. A
+            // page not saved yet, or a draft the server cannot render, falls
+            // back to the markup the editor generates, judged as a fragment.
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/seo_draft.php');
+            $document = false;
+            $a11y = null;
+            $tree_json = (isset($request['tree_json']) && is_string($request['tree_json'])) ? $request['tree_json'] : '';
+            if ($page_id > 0 && $tree_json !== '' && strlen($tree_json) <= 4000000) {
+                $draft = pg_seo_check_draft_render($page_id, array(
+                    'page_title'            => $row['page_title'],
+                    'page_meta_description' => $row['page_meta_description'],
+                    'page_search_keywords'  => $row['page_search_keywords'],
+                    'noindex'               => !empty($request['page_noindex']) ? '1' : '0',
+                ), $tree_json, (isset($request['widgets']) && is_array($request['widgets'])) ? $request['widgets'] : array(), $user);
+                if ($draft !== null && $draft['error'] === '' && stripos((string)$draft['html'], '<html') !== false) {
+                    $document = true;
+                    // The accessibility report's checks on the same render,
+                    // each finding naming the editor nodes it was found on.
+                    require_once(PG_FUNCTIONS_DIR . '/includes/fn/a11y.php');
+                    $a11y = pg_seo_check_a11y_rows(pg_a11y_check_html($draft['html']));
+                    $raw = pg_seo_analyze_html($draft['html'], 'document',
+                        pg_seo_check_draft_context($row, $draft['page_type']));
+                }
+            }
+            if (!$document && trim($html) !== '') {
                 $raw = pg_seo_analyze_html($html, 'fragment', array(
                     'title'         => $row['page_title'],
                     'in_sitemap'    => ($row['sitemap'] === '1'),
                     'open_graph'    => false,
                     'expect_jsonld' => false,
                 ));
+            }
+            if ($raw !== null) {
                 foreach ($raw as $code => $f) {
                     $findings[] = array(
                         'code'        => $code,
@@ -656,33 +688,24 @@ function pg_panel_designer($request, $action)
                     );
                 }
                 // A fragment cannot answer the document-level checks, so
-                // pg_seo_analyze_html() skips them and the fragment scores
-                // against a shorter rule set than the stored score did. Carry
-                // the stored answers over - the same thing this endpoint
-                // already does for the link and speed groups - so the canvas
-                // and the pages list report the same number, and the ones the
-                // operator can act on from here (the title and description in
-                // Page Settings, a missing <main>) are listed rather than
-                // silently priced in.
-                if ($page_id > 0 && function_exists('pg_seo_document_only_codes') && function_exists('pg_seo_load_issues')) {
-                    $carried = pg_seo_document_only_codes();
-                    foreach (pg_seo_load_issues('page', $page_id) as $issue) {
-                        if (!in_array($issue['code'], $carried, TRUE)) continue;
-                        if (isset($raw[$issue['code']])) continue;
-                        $raw[$issue['code']] = array(
-                            'severity'    => $issue['severity'],
-                            'occurrences' => (int) $issue['occurrences'],
-                            'detail'      => (string) $issue['detail'],
-                        );
-                        $findings[] = array(
-                            'code'        => $issue['code'],
-                            'severity'    => $issue['severity'],
-                            'occurrences' => (int) $issue['occurrences'],
-                            'detail'      => (string) $issue['detail'],
-                            'label'       => pg_seo_issue_label($issue['code'], (int) $issue['occurrences'], (string) $issue['detail']),
-                            'stored'      => TRUE,
-                        );
-                    }
+                // pg_seo_analyze_html() skips them and the fragment would
+                // score against a shorter rule set than the stored score did.
+                // The stored answers are carried over - as this endpoint does
+                // for the link and speed groups - so the canvas and the pages
+                // list report the same number, and the ones the operator can
+                // act on from here are listed rather than silently priced in.
+                // A rendered draft answers them itself: nothing is carried.
+                $carried = ($page_id > 0) ? pg_seo_check_carried($raw, pg_seo_load_issues('page', $page_id), $document) : array();
+                foreach ($carried as $code => $issue) {
+                    $raw[$code] = $issue;
+                    $findings[] = array(
+                        'code'        => $code,
+                        'severity'    => $issue['severity'],
+                        'occurrences' => $issue['occurrences'],
+                        'detail'      => $issue['detail'],
+                        'label'       => pg_seo_issue_label($code, $issue['occurrences'], $issue['detail']),
+                        'stored'      => TRUE,
+                    );
                 }
                 $structure_score = pg_seo_structure_score($raw);
             }
@@ -719,6 +742,11 @@ function pg_panel_designer($request, $action)
                 'weights'         => pg_seo_group_weights($structure_score, $link_score, $speed_score),
                 'checks'          => $checks,
                 'findings'        => $findings,
+                'mode'            => $document ? 'document' : 'fragment',
+                // The accessibility findings of the rendered draft (null on a
+                // fragment) and the registry the panel groups everything by.
+                'a11y'            => $a11y,
+                'concepts'        => pg_seo_check_concepts(),
             ));
             break;
 
@@ -968,8 +996,9 @@ function pg_panel_designer($request, $action)
                 respond(array('status' => 'success', 'ready' => false, 'revisions' => array(), 'more' => false));
             }
             $rv_before = isset($request['before_no']) ? (int)$request['before_no'] : 0;
-            $rv_list   = pg_page_revisions_list($rv_page, 50, $rv_before);
-            respond(array('status' => 'success', 'ready' => true, 'revisions' => $rv_list, 'more' => (count($rv_list) === 50)));
+            // One row over the page size tells whether older ones remain.
+            list($rv_list, $rv_more) = pg_page_revisions_page(pg_page_revisions_list($rv_page, 51, $rv_before), 50);
+            respond(array('status' => 'success', 'ready' => true, 'revisions' => $rv_list, 'more' => $rv_more));
             break;
 
         case 'revision_get':
@@ -1156,8 +1185,8 @@ function pg_panel_designer_file($request, $action)
             if (!in_array($df_type, array('css', 'js', 'json'), true)) {
                 respond(array('status' => 'error', 'message' => 'Invalid file type.'));
             }
-            // Folder is required — view_files.php joins on folder.folder_id
-            // and excludes rows where the join misses, so a folder=0 file
+            // Folder is required — the file lists join on folder.folder_id
+            // and leave out rows where the join misses, so a folder=0 file
             // is invisible in the file manager. Reject the create instead
             // of silently writing an unreachable file.
             if ($df_folder <= 0) {

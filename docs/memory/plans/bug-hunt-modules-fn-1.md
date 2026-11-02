@@ -1,9 +1,9 @@
 ---
 name: bug-hunt-modules-fn-1
-description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y to pdf_merge, one line each with its state
+description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y to legal_documents, one line each with its state
 ---
 
-## Which includes/fn/ modules (a11y to pdf_merge) are hunted?
+## Which includes/fn/ modules (a11y to legal_documents) are hunted?
 - `a11y`: open
 
 - `ai_crawlers`: open
@@ -133,63 +133,3 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 - `layouts`: open
 
 - `legal_documents`: open
-
-- `link_resolve`: open
-
-- `list_paging`: open
-
-- `list_period`: open
-
-- `mail`: open
-
-- `mail_parse`: open
-
-- `mail_queue`: done #4654 (rest checked: retry ladder, give-up and notices, property encoding and attachments, job-alive check, claim race, sweeps, List-Unsubscribe headers)
-
-- `maintenance_mode`: open
-
-- `merchant_center`: open
-
-- `meta_tags`: open
-
-- `mfa`: taken by KY — #4590
-
-- `not_found_log`: open
-
-- `office`: open
-
-- `office_edit`: open
-
-- `ops_alerts`: open
-
-- `order_completion`: open
-
-- `order_list`: open
-
-- `order_report`: open
-
-- `order_status`: open
-
-- `order_view`: open
-
-- `output`: open
-
-- `page_bulk`: open
-
-- `page_cache`: clean (gate, serve and store checks, key, pack and write, stale lock, beacon, dirty rules, sweep checked)
-
-- `page_facts`: clean (empty cart '' is the owner's rule)
-
-- `page_revisions`: lead: panel `revisions_list` sends `more` on exactly 50 rows, so "Show older revisions" can load nothing; read 51 like the API (`includes/panel/designer.php`, held by #4786 then)
-
-- `page_schedule`: clean (time parsing and range, save plan, job pass and its overlap guard, API time checks, list chip escaping checked)
-
-- `page_type_pane`: clean (type rights, layout type rule, offer rights, contact group, private folder and custom form guards, form name check, pane CSRF, folder access and collaboration lock checked)
-
-- `parasut`: clean (request and 429 retry, credentials and token cache, connect and settings card escaping, inbox totals and list filters, VKN lookup, Create Invoice and E-Shipment flows, kept-id SQL, order screen notices checked)
-
-- `passkeys`: clean
-
-- `payments`: done (#4629)
-
-- `pdf_merge`: done (#4610)

@@ -2134,7 +2134,7 @@ function get_express_order($properties) {
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td><label for="' . $prefix . 'zip_code">Zip / Postal Code<span id="' . $prefix . 'zip_code_required" style="display: none">*</span></label></td>
+                                                <td><label for="' . $prefix . 'zip_code">' . h(lang('Zip / Postal Code')) . '<span id="' . $prefix . 'zip_code_required" style="display: none">*</span></label></td>
                                                 <td>' .
                                                     $form->output_field(array(
                                                         'type' => 'text',

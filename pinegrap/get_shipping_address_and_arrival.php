@@ -48,7 +48,7 @@ function get_shipping_address_and_arrival($properties) {
         // if no ship to is found, return error message
         if (!isset($_GET['ship_to_id']) || empty($_GET['ship_to_id'])) {
             $form = new liveform('shipping_address_and_arrival');
-            $form->mark_error('', 'We\'re sorry, shipping information can only be gathered during the checkout process. <a href="javascript:history.go(-1)">Go back</a>');
+            $form->mark_error('', h(lang('We\'re sorry, shipping information can only be gathered during the checkout process.')) . ' <a href="javascript:history.go(-1)">' . h(lang('Go back')) . '</a>');
             $content =
                 '<div class="software_shipping_address_and_arrival">
                     '  . $form->get_messages() . '
@@ -346,7 +346,7 @@ function get_shipping_address_and_arrival($properties) {
 
         // if recipient mode is multi-recipient, then prepare "for [ship to name]"
         if (ECOMMERCE_RECIPIENT_MODE == 'multi-recipient') {
-            $for_ship_to_name = ' for <span class="software_highlight">' . h($ship_to_name) . '</span>';
+            $for_ship_to_name = '<span class="software_highlight">' . h($ship_to_name) . '</span>';
         } else {
             $for_ship_to_name = '';
         }
@@ -362,14 +362,14 @@ function get_shipping_address_and_arrival($properties) {
                 
                 // if there is a page name, then page still exists, so output what is this link
                 if ($address_type_page_name != '') {
-                    $output_address_type_what_is_this_link = '&nbsp;&nbsp;&nbsp;&nbsp;<a href="' . OUTPUT_PATH . h(encode_url_path($address_type_page_name)) . '" target="_blank">What is this?</a>';
+                    $output_address_type_what_is_this_link = '&nbsp;&nbsp;&nbsp;&nbsp;<a href="' . OUTPUT_PATH . h(encode_url_path($address_type_page_name)) . '" target="_blank">' . h(lang('What is this?')) . '</a>';
                 }
             }
             
             $output_address_type_row =
                 '<tr>
-                    <td>Address Type*</td>
-                    <td style="padding-top: 0.5em; padding-bottom: 0.5em">' . $form->output_field(array('type'=>'radio', 'name'=>'address_type', 'id'=>'address_type_residential', 'value'=>'residential', 'class'=>'software_input_radio', 'required' => 'true')) . '<label for="address_type_residential"> Residential</label>&nbsp;&nbsp;&nbsp;&nbsp;' . $form->output_field(array('type'=>'radio', 'name'=>'address_type', 'id'=>'address_type_business', 'value'=>'business', 'class'=>'software_input_radio', 'required' => 'true')) . '<label for="address_type_business"> Business</label>' . $output_address_type_what_is_this_link . '</td>
+                    <td>' . h(lang('Address Type')) . '*</td>
+                    <td style="padding-top: 0.5em; padding-bottom: 0.5em">' . $form->output_field(array('type'=>'radio', 'name'=>'address_type', 'id'=>'address_type_residential', 'value'=>'residential', 'class'=>'software_input_radio', 'required' => 'true')) . '<label for="address_type_residential"> ' . h(lang('Residential')) . '</label>&nbsp;&nbsp;&nbsp;&nbsp;' . $form->output_field(array('type'=>'radio', 'name'=>'address_type', 'id'=>'address_type_business', 'value'=>'business', 'class'=>'software_input_radio', 'required' => 'true')) . '<label for="address_type_business"> ' . h(lang('Business')) . '</label>' . $output_address_type_what_is_this_link . '</td>
                 </tr>';
         }
         
@@ -379,7 +379,7 @@ function get_shipping_address_and_arrival($properties) {
         if ($shipping_same_as_billing) {
             $output_shipping_same_as_billing_option = '
                 <div style="margin-top: 1em">
-                    ' . $form->output_field(array('type'=>'checkbox', 'name'=>'shipping_same_as_billing', 'id'=>'shipping_same_as_billing', 'value'=>'1', 'class'=>'software_input_checkbox')) . '<label for="shipping_same_as_billing"> My billing address is the same as this shipping address.</label>
+                    ' . $form->output_field(array('type'=>'checkbox', 'name'=>'shipping_same_as_billing', 'id'=>'shipping_same_as_billing', 'value'=>'1', 'class'=>'software_input_checkbox')) . '<label for="shipping_same_as_billing"> ' . h(lang('My billing address is the same as this shipping address.')) . '</label>
                 </div>';
         }
         
@@ -400,46 +400,46 @@ function get_shipping_address_and_arrival($properties) {
         $output_shipping_address_fields =
             '<table>
                 <tr>
-                    <td>Salutation</td>
+                    <td>' . h(lang('Salutation')) . '</td>
                     <td>' . $form->output_field(array('type'=>'select', 'name'=>'salutation', 'options'=>get_salutation_options(), 'class'=>'software_select')) . '</td>
                 </tr>
                 <tr>
-                    <td>First Name*</td>
+                    <td>' . h(lang('First Name')) . '*</td>
                     <td>' . $form->output_field(array('type'=>'text', 'name'=>'first_name', 'size'=>'40', 'maxlength'=>'50', 'class'=>'software_input_text', 'required' => 'true')) . '</td>
                 </tr>
                 <tr>
-                    <td>Last Name*</td>
+                    <td>' . h(lang('Last Name')) . '*</td>
                     <td>' . $form->output_field(array('type'=>'text', 'name'=>'last_name', 'size'=>'40', 'maxlength'=>'50', 'class'=>'software_input_text', 'required' => 'true')) . '</td>
                 </tr>
                 <tr>
-                    <td>Company</td>
+                    <td>' . h(lang('Company')) . '</td>
                     <td>' . $form->output_field(array('type'=>'text', 'id'=>'company', 'name'=>'company', 'size'=>'40', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                 </tr>
                 <tr>
-                    <td>Address 1*</td>
+                    <td>' . h(lang('Address 1')) . '*</td>
                     <td>' . $form->output_field(array('type'=>'text', 'id'=>'address_1', 'name'=>'address_1', 'size'=>'40', 'maxlength'=>'50', 'class'=>'software_input_text', 'required' => 'true')) . '</td>
                 </tr>
                 <tr>
-                    <td>Address 2</td>
+                    <td>' . h(lang('Address 2')) . '</td>
                     <td>' . $form->output_field(array('type'=>'text', 'id'=>'address_2', 'name'=>'address_2', 'size'=>'40', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                 </tr>
                 <tr>
-                    <td><label for="city">City*</label></td>
+                    <td><label for="city">' . h(lang('City')) . '*</label></td>
                     <td>' . $form->output_field(array('type'=>'text', 'id'=>'city', 'name'=>'city', 'size'=>'40', 'maxlength'=>'50', 'class'=>'software_input_text', 'required' => 'true')) . '</td>
                 </tr>
                 ' . $output_district_row . '
                 <tr>
-                    <td>Country*</td>
+                    <td>' . h(lang('Country')) . '*</td>
                     <td>' . $form->output_field(array('type'=>'select', 'id'=>'country', 'name'=>'country', 'options'=>$country_options, 'class'=>'software_select', 'required' => 'true')) . '</td>
                 </tr>
                 <tr>
                     <td>
                         <label for="state_text_box">
-                            State / Province
+                            ' . h(lang('State / Province')) . '
                         </label>
 
                         <label for="state_pick_list" style="display: none">
-                            State / Province*
+                            ' . h(lang('State / Province')) . '*
                         </label>
                     </td>
                     <td>' .
@@ -449,12 +449,12 @@ function get_shipping_address_and_arrival($properties) {
                     </td>
                 </tr>
                 <tr>
-                    <td>Zip / Postal Code<span id="zip_code_required" style="display: none">*</span></td>
+                    <td>' . h(lang('Zip / Postal Code')) . '<span id="zip_code_required" style="display: none">*</span></td>
                     <td>' . $form->output_field(array('type'=>'text', 'id'=>'zip_code', 'name'=>'zip_code', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                 </tr>
                 ' . $output_address_type_row . '
                 <tr>
-                    <td>Phone</td>
+                    <td>' . h(lang('Phone')) . '</td>
                     <td>' . $form->output_field(array('type'=>'tel', 'name'=>'phone_number', 'maxlength'=>'50', 'class'=>'software_input_text')) . '</td>
                 </tr>
             </table>
@@ -604,7 +604,7 @@ function get_shipping_address_and_arrival($properties) {
                         </td>
                         <td class="verified mobile_left" style="vertical-align: top; float: right">
                             <fieldset id="verified_shipping_addresses" class="software_fieldset" style="padding: 1em">
-                                <legend class="software_legend">Shipping Address Help</legend>
+                                <legend class="software_legend">' . h(lang('Shipping Address Help')) . '</legend>
                                 <script type="text/javascript">
                                     var software_verified_states = new Array();
                                     ' . $output_verified_states_for_javascript . '
@@ -617,24 +617,24 @@ function get_shipping_address_and_arrival($properties) {
                                     });
                                 </script>
                                 <div class="verified_heading">
-                                    <div style="font-size: 125%; margin-bottom: .25em">Don\'t know the exact address?</div>
-                                    <div style="margin-bottom: 1em">Choose from one of our verified shipping addresses.</div>
+                                    <div style="font-size: 125%; margin-bottom: .25em">' . h(lang('Don\'t know the exact address?')) . '</div>
+                                    <div style="margin-bottom: 1em">' . h(lang('Choose from one of our verified shipping addresses.')) . '</div>
                                 </div>
                                 <div id="verified_country_container" style="margin-bottom: 1em">
-                                    <div>Select a Country:</div>
+                                    <div>' . h(lang('Select a Country')) . ':</div>
                                     <div><select id="verified_country_id" onchange="software_change_verified_country()"><option value=""></option>' . $output_verified_country_options . '</select></div>
                                 </div>
                                 <div id="verified_state_container" style="display: none; margin-bottom: 1em">
-                                    <div>Select a State:</div>
+                                    <div>' . h(lang('Select a State')) . ':</div>
                                     <div><select id="verified_state_id" onchange="software_change_verified_state()"></select></div>
                                 </div>
                                 <div id="verified_address_container" style="display: none; margin-bottom: 1em">
-                                    <div>Select a Verified Address:</div>
+                                    <div>' . h(lang('Select a Verified Address')) . ':</div>
                                     <div><select id="verified_address_id" onchange="software_change_verified_address()"></select></div>
                                 </div>
                                 <div id="verified_message" style="display: none; margin-bottom: .5em"></div>
                                 <div id="verified_summary" style="display: none; margin-bottom: 1em; font-weight: bold"></div>
-                                <div id="verified_button" style="display: none; margin-bottom: 1em"><input type="button" value="Use This Address" class="software_input_submit_primary address_button" onclick="software_use_verified_address()" /></div>
+                                <div id="verified_button" style="display: none; margin-bottom: 1em"><input type="button" value="' . h(lang('Use This Address')) . '" class="software_input_submit_primary address_button" onclick="software_use_verified_address()" /></div>
                             </fieldset>
                         </td>
                     </tr>
@@ -654,7 +654,7 @@ function get_shipping_address_and_arrival($properties) {
             // if there is a form name, then output form name
             if ($form_name != '') {
                 $output_form_name =
-                    '<div class="address heading">' . h($form_name) . $for_ship_to_name . '</div>';
+                    '<div class="address heading">' . ($for_ship_to_name !== '' ? lang(array('string' => '{var:1} for {var:2}', 'vars' => array(h($form_name), $for_ship_to_name))) : h($form_name)) . '</div>';
             }
             
             // get form info (form content, wysiwyg fields)
@@ -686,7 +686,7 @@ function get_shipping_address_and_arrival($properties) {
                 }
                 
                 $output_custom_shipping_form =
-                    '<div class="edit_mode" style="position: relative; outline: 1px dashed #4780C5; margin: -1px;"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&from=pages&send_to=' . h(urlencode(get_request_uri())) . '" style="background: #4780C5; position: absolute; display: block;  text-decoration: none; z-index: 10; line-height: normal; padding: 5px 8px; margin: -1px 25px 0 -1px; border: none; -webkit-border-bottom-right-radius: 6px; -moz-border-bottom-right-radius: 6px; border-bottom-right-radius: 6px;" title="' . $output_title . '">Edit</a>
+                    '<div class="edit_mode" style="position: relative; outline: 1px dashed #4780C5; margin: -1px;"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&from=pages&send_to=' . h(urlencode(get_request_uri())) . '" style="background: #4780C5; position: absolute; display: block;  text-decoration: none; z-index: 10; line-height: normal; padding: 5px 8px; margin: -1px 25px 0 -1px; border: none; -webkit-border-bottom-right-radius: 6px; -moz-border-bottom-right-radius: 6px; border-bottom-right-radius: 6px;" title="' . $output_title . '">' . h(lang('Edit')) . '</a>
                         ' . $output_custom_shipping_form . '
                     </div>';
             }
@@ -732,12 +732,12 @@ function get_shipping_address_and_arrival($properties) {
         // if there was at least one active arrival date, prepare requested arrival date area
         if ($output_arrival_dates) {
             $output_requested_arrival_date =
-                '<div class="arrival heading">Requested Arrival Date' . $for_ship_to_name . '</div>
+                '<div class="arrival heading">' . ($for_ship_to_name !== '' ? lang(array('string' => 'Requested Arrival Date for {var:1}', 'vars' => $for_ship_to_name)) : h(lang('Requested Arrival Date'))) . '</div>
                 <div class="data">
                     <table class="arrival_dates" style="margin-bottom: 15px">
                         <tr>
-                            <th style="width: 30%;text-align:left;">Select One</th>
-                            <th style="width: 70%;text-align:left;">Description</th>
+                            <th style="width: 30%;text-align:left;">' . h(lang('Select One')) . '</th>
+                            <th style="width: 70%;text-align:left;">' . h(lang('Description')) . '</th>
                         </tr>
                         ' . $output_arrival_dates . '
                     </table>
@@ -760,7 +760,7 @@ function get_shipping_address_and_arrival($properties) {
                 <input type="hidden" name="page_id" value="' . $page_id . '" />
                 <input type="hidden" name="ship_to_id" value="' . h($_GET['ship_to_id']) . '" />
                 <input type="hidden" name="folder_id" value="' . $folder_id_for_default_value . '" />
-                <div class="heading">Shipping Address' . $for_ship_to_name . '</div>
+                <div class="heading">' . ($for_ship_to_name !== '' ? lang(array('string' => 'Shipping Address for {var:1}', 'vars' => $for_ship_to_name)) : h(lang('Shipping Address'))) . '</div>
                 <div class="data" style="margin-bottom: 1.5em">
                     ' . $output_shipping_address . '
                 </div>
@@ -1057,7 +1057,7 @@ function get_shipping_address_and_arrival($properties) {
                 }
 
                 $edit_start =
-                    '<div class="edit_mode" style="position: relative; outline: 1px dashed #4780C5; margin: -1px;"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&from=pages&send_to=' . h(urlencode(REQUEST_URL)) . '" style="background: #4780C5; position: absolute; display: block;  text-decoration: none; z-index: 10; line-height: normal; padding: 5px 8px; margin: -1px 25px 0 -1px; border: none; -webkit-border-bottom-right-radius: 6px; -moz-border-bottom-right-radius: 6px; border-bottom-right-radius: 6px;" title="Custom Shipping Form' . $title . '">Edit</a>';
+                    '<div class="edit_mode" style="position: relative; outline: 1px dashed #4780C5; margin: -1px;"><a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $page_id . '&from=pages&send_to=' . h(urlencode(REQUEST_URL)) . '" style="background: #4780C5; position: absolute; display: block;  text-decoration: none; z-index: 10; line-height: normal; padding: 5px 8px; margin: -1px 25px 0 -1px; border: none; -webkit-border-bottom-right-radius: 6px; -moz-border-bottom-right-radius: 6px; border-bottom-right-radius: 6px;" title="Custom Shipping Form' . $title . '">' . h(lang('Edit')) . '</a>';
 
                 $edit_end = '</div>';
             }

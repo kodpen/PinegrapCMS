@@ -40,4 +40,4 @@ description: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion,
   - E19's content (`image-editor-animation-output.md`): the presets as `@keyframes` in the saved SVG.
 
 - AN11 (S) Access and close-out. The holder.
-  - Keys on the timeline (Space, Home, End, arrows by frame, with Shift by second), names, a warning for a loop longer than 5 s (WCAG 2.2.2); lasting decisions to topic files and these plan files deleted.
+  - Keys on the timeline (K, Home, End, arrows by frame, with Shift by second; Space pans the view), names, a warning for a loop longer than 5 s (WCAG 2.2.2); lasting decisions to topic files and these plan files deleted.

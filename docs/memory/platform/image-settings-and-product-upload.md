@@ -23,7 +23,7 @@ description: Image config keys and defaults, product upload pipeline (image_prof
 
 ## Why is the optimizable-percent badge expensive?
 - `calculate_optimizable_percent($path)` does a full decode + recompress.
-- `OPTIMIZE_PERCENT_THRESHOLD = 30` (view_files.php): compute only if the unoptimized image count is <= 30; above that show the button without a percentage.
+- The design files list (`view_design_files.php`) computes the Optimize button's percentage only while the unoptimized image count is <= 30; above that it shows the button without one. The File Manager shows no percentage (#4889).
 - Dashboard widget (includes/dashboard/widgets/widget_18.php) never computes; it reads only the cached column.
 - Supported types: `jpg`, `jpeg`, `png`, `gif`, `bmp`, `tiff`, `tif`, `webp`. `tif` only in the thumbnail/size list: `optimize_image()` rejects writing it, so offering the button guarantees an error.
 

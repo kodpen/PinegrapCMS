@@ -10,7 +10,7 @@ module: text_search
 - The server-paged lists bind the raw term (`pg_list_like_pattern()`) and never had the bug. `includes/fn/submitted_form_list.php` had the same bug and was left to its own PR.
 
 ## How does Find & Replace match in case-insensitive mode?
-- One pattern, `pg_search_ci_pattern($find)` = `'/' . preg_quote($find, '/') . '/iu'`, counts (`pg_search_ci_count()`), places the highlighted snippet and replaces (`pg_search_ci_replace()`, replacement through `pg_regex_replacement()` so `$40` stays literal).
+- One pattern, `pg_search_ci_pattern($find)` (the quoted term with `/iu`), counts (`pg_search_ci_count()`), places the highlighted snippet and replaces (`pg_search_ci_replace()`, replacement through `pg_regex_replacement()` so `$40` stays literal).
 - Before, it counted with `substr_count(mb_strtolower())` and replaced with `str_ireplace()`, which folds ASCII only: "Çerez … çerez" with find "çerez" listed 2 and replaced 1; when every match differed in Turkish letter case, Replace said no matches were found.
-- PCRE `/iu` does not fold İ to i, so "istanbul" does not count an "İstanbul" row the database returned; the row is skipped, not half-replaced.
+- PCRE `/iu` pairs i with I only, so "istanbul" counted no match in an "İstanbul" row the database returned and the row was skipped (bug hunt fix). Each i-letter of the term now becomes a class with caseless mode off: `i`/`İ` → `[iIİ]`, `ı` → `[ıI]`, `I` → `[Iiı]`. A dotless ı never finds a dotted i ("kır" is not "kir"); a capital I is ambiguous and finds both.
 - Pinned by `tests/capital_i_search_test.php`.

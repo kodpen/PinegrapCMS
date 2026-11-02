@@ -78,8 +78,6 @@ if(isset($_GET['folder_id']) && $_GET['folder_id'] != ''){
     $folder_id = $_GET['folder_id'];
 }
 
-$output_breadcrumb_link = '<li class="breadcrumb-item"><a class="pg-link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_files.php">' . lang('All My Files') . '</a></li>';
-
 if (!$_POST) {
     $max_file_uploads = ini_get('max_file_uploads');
 
@@ -191,9 +189,9 @@ if (!$_POST) {
             'icon'=>'file',
             'heading'=>lang('Upload File'),
             'heading_description' => lang('Drop files below, update the settings (if necessary), and then click Upload.'),
-            'cancel'=>array('enable'=>'true','url'=>pg_send_to_url('view_files.php')),
+            'cancel'=>array('enable'=>'true','url'=>pg_send_to_url('view_folders.php?view=files')),
             'breadcrumb' => array(
-                array('label' => lang('All My Files'), 'url' => pg_send_to_list_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_files.php')),
+                array('label' => lang('File Manager'), 'url' => pg_send_to_list_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php')),
                 array('label' => lang('Upload Files')),
             ),
 
@@ -310,7 +308,7 @@ if (!$_POST) {
 
                 this.on("successmultiple", function(files, response) {
                     // send_to is checked on the server: only a path on this site.
-                    window.location = ' . json_encode(pg_send_to_url('view_files.php'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
+                    window.location = ' . json_encode(pg_send_to_url('view_folders.php?view=files'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
                     
                 });
                 this.on("errormultiple", function(files, response, xhr) {
@@ -624,14 +622,15 @@ if (!$_POST) {
 
     include_once('liveform.class.php');
 
-    $liveform_view_files = new liveform('view_files');
+    // Left for the File Manager, where the upload lands (view_folders.php).
+    $liveform_view_folders = new liveform('view_folders');
 
     // Anything that did not make it, said on the screen the operator lands on
     // rather than only in the error log.
     // add_warning() rather than mark_error(): the errors on that screen are
     // tied to a form field, and there is no field here to attach a file to.
     foreach ($failed_files as $failed_file) {
-        $liveform_view_files->add_warning(h($failed_file['message']));
+        $liveform_view_folders->add_warning(h($failed_file['message']));
     }
 
     if (!$uploaded_files) {
@@ -650,11 +649,11 @@ if (!$_POST) {
         // variable, which after a failed last file names the file that did not
         // land.
         $file_name = $uploaded_files[0]['name'];
-        $liveform_view_files->add_notice( lang(array('string'=>'The file, {var:1}, has been uploaded.','vars'=>array('<a href="' . OUTPUT_PATH . h($file_name) . '" target="_blank">' . h($file_name) . '</a>'))) );
+        $liveform_view_folders->add_notice( lang(array('string'=>'The file, {var:1}, has been uploaded.','vars'=>array('<a href="' . OUTPUT_PATH . h($file_name) . '" target="_blank">' . h($file_name) . '</a>'))) );
 
     // Otherwise more than one file was uploaded, so prepare different notice for that.
     } else {
-        $liveform_view_files->add_notice(lang(array('string'=>'{var:1} files have been uploaded.','vars'=>array(pg_format_number($number_of_uploaded_files, 0)) )) );
+        $liveform_view_folders->add_notice(lang(array('string'=>'{var:1} files have been uploaded.','vars'=>array(pg_format_number($number_of_uploaded_files, 0)) )) );
     }
 
 
@@ -702,7 +701,7 @@ if (!$_POST) {
             
             // else send user to the default view
             } else {
-                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_files.php');
+                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_folders.php?view=files');
             }
         }
     }

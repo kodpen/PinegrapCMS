@@ -21,7 +21,7 @@ description: Webhook events of flow runs (A7, #2406): workspace.flow.run.finishe
 - Cancelled: `cancelled_by` (person id).
 - End: `result`, the box the result comes from (`ws_flow_run_result_step()`): failed = the first failed box (as the owner's notice); done = the box that finished last on done, end boxes passed over, the start box only when nothing else ran. Fields as WorkspaceFlowRunStep: node_id, kind, name, status, outcome, task_id, attempt, finished_at, outputs, result.
 - Waiting: `waiting` = the box (no outcome, finished_at) plus `for` (task, approval, delay, retry), `task_id`, `approval_id`, `until`.
-- There is no run-level result yet: C1 of `plans/workspace-flows-channels.md` defines the run's flag; it may add it to these bodies then.
+- The panel's run flag (state and one-line result) is `workspace-flows-run-flag.md` (#2903); here the End body's `result` stands for it.
 
 ## What do readers outside the channel not get?
 - Words (flow name, box name, sentence, outputs) only for a run of a public channel, as a task note's text (`ws_flow_run_event_words()`); a private channel, guest room or no channel gives ids and states alone. Even in public: the sentence and values a reader without edit reads (`ws_step_result_shown(..., false)`, no change or start-a-flow values).

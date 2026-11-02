@@ -516,14 +516,30 @@
   flex: 1;
   min-width: 0;
   height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   overflow: hidden;
   padding: 0 6px;
   border: 0;
   background: transparent;
   text-align: start;
-  text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer;
+}
+
+/* The layer's type before its name. */
+.pgie-lname .pgie-ic {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--pgie-muted);
+}
+
+.pgie-lname span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Adjust: the preview's filter, the vignette over the picture */
@@ -744,6 +760,12 @@
   background: var(--pgie-pw);
   color: var(--pgie-ink);
   font-weight: 650;
+}
+
+/* The caller's ratio (the shape the page shows the picture in). */
+.pgie .pgie-chip.pgie-chip-given {
+  border-style: dashed;
+  border-color: var(--pgie-pline);
 }
 
 .pgie-tiles {
@@ -1792,6 +1814,97 @@
   margin: -4px 0 0 -4px;
   border-color: #ffffff;
   background: var(--pgie-sel);
+}
+
+/* -- Access (pg_image_editor_access.js) -- */
+
+/* The keyboard help sheet: groups in two columns, one on a narrow box. */
+.pgie-confirm-box.pgie-helpbox {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: min(680px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  overflow-y: auto;
+}
+
+.pgie-helpbox .pgie-ph {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pgie-confirm-box.pgie-helpbox h2 {
+  margin: 0;
+}
+
+.pgie-keys {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px 24px;
+}
+
+.pgie-keygroup h3 {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pgie-muted);
+}
+
+.pgie-keylist {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 12px;
+  align-items: baseline;
+  margin: 0;
+  font-size: 13px;
+}
+
+.pgie-keylist dt {
+  white-space: nowrap;
+  color: var(--pgie-muted);
+}
+
+.pgie-keylist dt:empty {
+  display: none;
+}
+
+.pgie-keylist dt:empty + dd {
+  grid-column: 1 / -1;
+}
+
+.pgie-keylist dd {
+  margin: 0;
+}
+
+.pgie-keylist kbd {
+  display: inline-block;
+  min-width: 22px;
+  padding: 1px 6px;
+  border: 1px solid var(--pgie-line);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  background: var(--pgie-surface);
+  color: var(--pgie-tx);
+  font: inherit;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* Reduced motion: no transition or animation anywhere in the editor, its
+   smooth scrolling included. */
+@media (prefers-reduced-motion: reduce) {
+  .pgie-dialog,
+  .pgie-dialog::backdrop,
+  .pgie-dialog *,
+  .pgie-dialog *::before,
+  .pgie-dialog *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* Small screens. Below 768 px wide or 500 px tall the dialog fills the

@@ -522,7 +522,7 @@ echo $mode_banner;
 echo '<div class="row g-5 mb-7">
     <div class="col-6 lg:col-3">
         <div class="card h-100"><div class="card-body">
-            <div class="fg-secondary small text-uppercase">' . lang('Events') . '</div>
+            <div class="fg-secondary small text-uppercase">' . lang('Logged events') . '</div>
             <div class="h3 mb-0">' . pg_format_number((int) $summary['total'], 0) . '</div>
         </div></div>
     </div>

@@ -317,3 +317,50 @@ function test_image_editor_redact_drops_metadata()
 		@unlink($prefix);
 	}
 }
+
+// A save to another endpoint (save.url, pg_image_editor_render()) burns the
+// redaction in as a save does, refuses a bad area and leaves no mask behind.
+function test_image_editor_redact_through_render()
+{
+	if (!function_exists('imagecreatetruecolor')) {
+		pg_assert_true(true, 'GD is not loaded; skipped');
+		return;
+	}
+
+	$folder = sys_get_temp_dir() . '/pgieredact' . uniqid();
+	mkdir($folder);
+	$path = $folder . '/picture.png';
+	image_editor_redact_checker($path);
+
+	try {
+		$region = array('mode' => 'solid', 'strength' => 50, 'x' => 20, 'y' => 20, 'mask' => image_editor_redact_mask(40, 40, false));
+		$picture = pg_image_editor_render($path, array('doc' => image_editor_redact_doc(), 'redact' => array($region)));
+
+		pg_assert_same('', $picture['error'], 'rendered');
+		$image = imagecreatefromstring($picture['data']);
+		imagepalettetotruecolor($image);
+		pg_assert_same(array(17, 19, 23), array_values(array_slice(imagecolorsforindex($image, imagecolorat($image, 30, 30)), 0, 3)), 'the area is the solid colour');
+		pg_assert_same(array(255, 0), array(imagecolorat($image, 10, 10) & 0xff, imagecolorat($image, 11, 10) & 0xff), 'outside the area is left alone');
+		pg_image_destroy($image);
+		pg_assert_same(array('picture.png'), array_values(array_diff(scandir($folder), array('.', '..'))), 'no mask is left beside the picture');
+
+		$region['x'] = 100;
+		$refused = pg_image_editor_render($path, array('doc' => image_editor_redact_doc(), 'redact' => array($region)));
+		pg_assert_true($refused['error'] !== '', 'an area past the edge is refused');
+		pg_assert_same(array('picture.png'), array_values(array_diff(scandir($folder), array('.', '..'))), 'and leaves no file behind');
+	} finally {
+		foreach (glob($folder . '/*') as $file) {
+			@unlink($file);
+		}
+
+		@rmdir($folder);
+	}
+}
+
+// The redact part sends its masks for a save to another endpoint too.
+function test_image_editor_redact_masks_for_url()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_redact.js');
+
+	pg_assert_contains("(mode === 'url')", $source, 'the save hook covers save.url');
+}

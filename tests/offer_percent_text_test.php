@@ -79,12 +79,12 @@ function test_offer_editor_percent_uses_the_template()
 	pg_assert_contains("lang('{var:1} off shipping ({var:2})')", $php);
 }
 
-// The Optimize badges on Files, Design Files and Edit File.
+// The Optimize badges on Design Files and Edit File.
 function test_image_optimize_badges_follow_the_language()
 {
 	pg_assert_same(0, calculate_optimizable_percent('/nonexistent/' . md5('x') . '.png'));
 
-	foreach (array('view_files.php', 'view_design_files.php', 'edit_file.php') as $path) {
+	foreach (array('view_design_files.php', 'edit_file.php') as $path) {
 		$source = offer_percent_text_test_source($path);
 		pg_assert_true(strpos($source, "'{var:1}%'") !== false, $path . ' formats through the key');
 		pg_assert_true(strpos($source, "optimization_percent'] . '%") === false, $path . ' glues the sign');

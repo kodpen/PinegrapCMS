@@ -10,7 +10,7 @@ module: ecommerce
 - Import Contacts (both modes) and Import Users (the user's contact row): every cell through `pg_import_contact_cell($column, $value)`, which trims and sends `affiliate_commission_rate` through `pg_parse_commission_rate()`, the Site Settings reader. Empty is `0.00`, as before.
 
 ## And the stock quantity cell?
-- `inventory_quantity` is read with `pg_products_mass_quantity_value()` (Modify Selected's reader, `catalog-stock-quantity-input.md`): `1.200` on a Turkish panel is 1200. A cell that is not a whole count of zero or more (`2,5`, `-3`, words) leaves the row out, named with the decimal rows. Before (#4446) the raw cell went to SQL: `1.200` stored 1, `2.500` 3.
+- `inventory_quantity` is read with `pg_products_mass_quantity_value()` (Modify Selected's reader, `catalog-stock-quantity-input.md`): `1.200` on a Turkish panel is 1200. A cell that is not a whole count of zero or more (`2,5`, `-3`, words) leaves the row out, named with the decimal rows. Before (#4446) the raw cell went to SQL: `1.200` stored 1, `2.500` 3. A count past the column's top leaves the row out on its own list (`stock-quantity-column-bound.md`).
 - A file with an `inventory` or `inventory_quantity` column sets each written product's out-of-stock mark from the stored row with `pg_products_import_stock_flag()` (`pg_pb_apply_stock_flag()`'s rule, `product-stock-flag-on-create.md`); before, the import never touched `out_of_stock`.
 
 ## Why?

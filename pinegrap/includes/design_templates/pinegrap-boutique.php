@@ -149,10 +149,10 @@ $button = function ($text, $variant, $class = '', $extra = array()) {
     return array('type' => 'component', 'props' => array_merge(array('componentType' => 'btn', 'btnElement' => 'button', 'btnType' => 'submit',
         'variant' => $variant, 'text' => $text, 'cssClass' => $class), $extra), 'children' => array());
 };
-// The product card's Add to bag: the listing wraps the card in the form
+// The product card's Add to cart: the listing wraps the card in the form
 // that adds the product.
 $add_to_bag = function ($class = '') use ($button) {
-    return $button(lang('Add to bag'), 'dark', $class, array('size' => 'sm', 'outline' => true, '_bindings' => array('action' => 'catalog_add_to_cart')));
+    return $button(lang('Add to cart'), 'dark', $class, array('size' => 'sm', 'outline' => true, '_bindings' => array('action' => 'catalog_add_to_cart')));
 };
 // The favourite heart in the corner of a product card, above the card's
 // stretched link: the listing marks it with the card's product and draws it
@@ -378,7 +378,7 @@ $footer = function () use ($el, $para, $link, $icon, $span, $heading, $container
                         $link(lang('Inbox'), '{{page:inbox}}', $plain),
                         $link(lang('Log In'), '{{page:login}}', $plain),
                         $link(lang('Sign Up'), '{{page:register}}', $plain),
-                        $link(lang('Shopping bag'), '{{page:cart}}', $plain),
+                        $link(lang('Shopping Cart'), '{{page:cart}}', $plain),
                         $link(lang('Favourites'), '{{page:favourites}}', $plain),
                     )),
                 ), '4'),
@@ -834,7 +834,7 @@ $comment_thread = function ($w) use ($el, $heading, $para, $link, $span, $attr, 
         $fields[] = $el('div', 'alert alert-secondary py-2 small', lang('Replying To'), array(
             $span(lang('Replying to'), 'me-1', lang('Text')),
             $el('strong', '', lang('Name'), array(), array('text' => lang('Jane Cooper'), '_bindings' => array('text' => '__reply_to_name'))),
-            $link(lang('Cancel'), '#', 'ms-3 fw-semibold link-body-emphasis', array(), array('_bindings' => array('action' => 'comment_reply_cancel'))),
+            $link(lang('Cancel'), '#', 'ms-3 alert-link', array(), array('_bindings' => array('action' => 'comment_reply_cancel'))),
         ), $show_when('is_replying'));
     }
     $fields[] = $el('div', 'mb-3', lang('Rating'), array(
@@ -893,7 +893,7 @@ $comment_thread = function ($w) use ($el, $heading, $para, $link, $span, $attr, 
             $el('div', 'alert alert-secondary', lang('Closed'), array(), array('_bindings' => array('text' => '__comments_closed_message', 'eo_visible_if' => 'comments_closed'))),
             $el('div', 'alert alert-secondary d-flex flex-wrap align-items-center gap-2', lang('Sign in'), array(
                 $span($w['sign_in'], '', lang('Text')),
-                $link(lang('Sign in'), '#', 'fw-semibold link-body-emphasis', array(), array('rel' => 'nofollow', '_bindings' => array('href' => '__login_url'))),
+                $link(lang('Sign in'), '#', 'alert-link', array(), array('rel' => 'nofollow', '_bindings' => array('href' => '__login_url'))),
             ), $show_when('must_sign_in')),
             $el('form', 'border p-4', lang('Comment Form'), $fields, array('_bindings' => array('action' => 'comment_form', 'eo_visible_if' => 'can_comment'))),
         )),
@@ -1033,7 +1033,7 @@ $pages[] = array(
                             $el('blockquote', 'blockquote mb-3', lang('Quote Text'), array(
                                 $para(lang('“We opened the boutique to sell the things we would give our own friends: made with care, fairly priced and wrapped as if it mattered. It still does.”'), 'fs-4 mb-0'),
                             )),
-                            $el('figcaption', 'blockquote-footer mb-0', lang('Quote Author'), array(), array('text' => lang('Jane Cooper, founder of the boutique'))),
+                            $el('figcaption', 'blockquote-footer text-body-secondary mb-0', lang('Quote Author'), array(), array('text' => lang(array('string' => '{var:1}, founder of the boutique', 'vars' => array(lang('Jane Cooper')))))),
                         )),
                     ), '', '7'),
                     $col(array(
@@ -1307,7 +1307,7 @@ $pages[] = array(
                         $heading('h2', lang('How it started'), 'display-6 mb-4'),
                         $para(lang('The boutique began as a table of rings and cards at a Sunday market. People came back for the wrapping as much as for the rings, so we found a shop with a window and kept wrapping.'), 'mb-3'),
                         $para(lang('Today we work with more than forty small workshops. We visit most of them, we know how each piece is made, and we only sell what we would happily give ourselves.'), 'text-body-secondary mb-4'),
-                        $para(lang('Jane Cooper, founder'), 'fst-italic mb-0'),
+                        $para(lang(array('string' => '{var:1}, founder', 'vars' => array(lang('Jane Cooper')))), 'fst-italic mb-0'),
                     ), '', '6'),
                 ), '4', '', 'g-lg-5 align-items-center'),
             )),
@@ -1470,7 +1470,7 @@ $pages[] = array(
     'requires' => 'ecommerce',
     'name'     => lang('cart'),
     'folder'   => 'public',
-    'title'    => lang('Shopping bag'),
+    'title'    => lang('Shopping Cart'),
     'search'   => false,
     'sitemap'  => false,
     'noindex'  => true,
@@ -2074,7 +2074,7 @@ $widgets = array(
         )),
     ),
 
-    // The way to the shopping bag, beside the login region.
+    // The way to the shopping cart, beside the login region.
     'cart_link' => array(
         'page'     => '',
         'requires' => 'ecommerce',
@@ -2136,7 +2136,8 @@ $widgets = array(
     ),
     // The product's reviews (the comments widget reads the product in the
     // address): newest first, never pinned; a store reply shows under its
-    // review.
+    // review. Its own layout, so every word says review like the page's
+    // comments label, where the editor's starter says comment.
     'product_reviews' => array(
         'page'     => 'product',
         'requires' => 'ecommerce',
@@ -2148,7 +2149,21 @@ $widgets = array(
             'layout'     => 'flat',
             'per_page'   => 10,
         ),
-        'tree'     => 'starter',
+        'tree'     => $comment_thread(array(
+            'title'     => lang('Customer reviews'),
+            'empty'     => lang('No reviews yet. Be the first to review this product.'),
+            'heading'   => lang('Review this product'),
+            'label'     => lang('Your review'),
+            'sign_in'   => lang('Sign in to write a review.'),
+            'submit'    => lang('Submit review'),
+            'watch_box' => lang('Notify me when a new review is added.'),
+            'follow'    => lang('Notify me of new reviews'),
+            'unfollow'  => lang('Stop notifying me'),
+            'close'     => lang('Stop new reviews'),
+            'reopen'    => lang('Allow new reviews'),
+            'reply'     => true,
+            'watch'     => true,
+        )),
     ),
     'cart' => array(
         'page'     => 'cart',
@@ -2171,7 +2186,7 @@ $widgets = array(
             'next_page_id'                => '{{tab:order}}',
             'order_receipt_email_page_id' => '{{tab:email_order}}',
             'order_receipt_email_subject' => lang('Order Receipt #'),
-            'cart_section_label'          => lang('Your shopping bag'),
+            'cart_section_label'          => lang('Your cart'),
             'purchase_button_label'       => lang('Complete Order'),
             'update_button_label'         => lang('Update'),
         ),
@@ -2315,7 +2330,7 @@ $widgets = array(
                         ), $show_when('record_not_found')),
                         $el('article', '', lang('Post'), array(
                             $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 mb-4', lang('Toolbar'), array(
-                                $link(lang('All entries'), '{{page:blog}}', 'small link-body-emphasis link-offset-2'),
+                                $link(lang('All posts'), '{{page:blog}}', 'small link-body-emphasis link-offset-2'),
                                 $edit_button(),
                             )),
                             $el('header', 'text-center mb-4', lang('Post Header'), array(
@@ -3115,7 +3130,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Boutique'),
-    'version'     => '1.2.1',
+    'version'     => '1.2.4',
     'framework'   => 'bootstrap5',
     'order'       => 30,
     'icon'        => 'bi-gem',

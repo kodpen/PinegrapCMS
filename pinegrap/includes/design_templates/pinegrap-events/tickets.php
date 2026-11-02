@@ -30,14 +30,9 @@ $ticket_pages = array();
 // ── The catalog ─────────────────────────────────────────────────────────
 // Made once when the template is first opened (_pg_tpl_catalog()): the
 // Tickets group under the site's top group, a product for each pass found
-// again by its SKU. Prices in the base currency, USD for any currency not
-// listed. A pass is not shipped: the cart goes to checkout without a
-// shipping step.
-$pass_prices = array(
-    'day'  => array('USD' => 149, 'EUR' => 139, 'GBP' => 119, 'TRY' => 5999),
-    'full' => array('USD' => 249, 'EUR' => 229, 'GBP' => 199, 'TRY' => 9999),
-    'vip'  => array('USD' => 349, 'EUR' => 319, 'GBP' => 279, 'TRY' => 13999),
-);
+// again by its SKU. Prices in the base currency, USD's figure for any
+// currency not listed. A pass is not shipped: the cart goes to checkout without a
+// shipping step. The prices are $pass_prices (parts.php), the cards' too.
 $pass_products = array();
 foreach ($passes as $key => $p) {
     $pass_products[] = array(
@@ -78,7 +73,7 @@ foreach ($passes as $key => $p) {
         $el('div', 'card h-100 rounded-4 ' . ($is_featured ? 'border-primary border-2 shadow' : 'border-0 shadow-sm'), $p['title'], array_merge(
             $is_featured ? array($el('div', 'card-header bg-primary text-white text-center small fw-semibold border-0', lang('Badge'), array(), array('text' => lang('Most chosen')))) : array(),
             array($el('div', 'card-body d-flex flex-column p-4', lang('Card Body'), array(
-                $heading('h3', $p['title'], 'h5 fw-bold mb-2'),
+                $heading('h2', $p['title'], 'h5 fw-bold mb-2'),
                 $para($p['text'], 'small text-body-secondary mb-3'),
                 $para($p['price'], 'display-6 fw-bold mb-3'),
                 $check_list($p['items'], 'list-unstyled small mb-4'),
@@ -244,6 +239,7 @@ $ticket_widgets = array(
             'product_group_id'        => 0,
             'next_page_id'            => '{{tab:cart}}',
             'catalog_listing_page_id' => '{{tab:tickets}}',
+            'catalog_root_label'      => lang('Tickets'),
             'not_found_message'       => lang('Product not found.'),
         ),
         'tree'     => 'starter',

@@ -4,7 +4,8 @@
  *
  * Tests for the Word preview's reader (includes/fn/office.php): table rows
  * and cells inside content controls (repeating sections, custom XML), and
- * a paragraph whose numbering is taken off with numId 0.
+ * a paragraph whose numbering is taken off with numId 0, and run properties
+ * turned off with any of the format's off words.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -104,4 +105,36 @@ function test_office_docx_reader_numbering_taken_off()
 		$html,
 		'a heading and a paragraph without their numbering; the style\'s numbering where nothing takes it off'
 	);
+}
+
+// A run property turned off with any of the on/off words the format allows
+// (0, false, off) shows no formatting; on, true, 1 or no value turn it on.
+function test_office_docx_reader_run_properties_off_words()
+{
+	if (!pg_office_ready()) {
+		pg_assert_true(true, 'no zip extension here: the reader is not run');
+		return;
+	}
+
+	$run = function ($props, $text) {
+		return '<w:r><w:rPr>' . $props . '</w:rPr><w:t>' . $text . '</w:t></w:r>';
+	};
+
+	$html = office_docx_reader_test_html('<w:p>'
+		. $run('<w:b w:val="off"/>', 'BoldOff')
+		. $run('<w:i w:val="false"/>', 'ItalicFalse')
+		. $run('<w:strike w:val="0"/>', 'StrikeZero')
+		. $run('<w:u w:val="none"/>', 'UnderlineNone')
+		. $run('<w:b w:val="on"/>', 'BoldOn')
+		. $run('<w:i w:val="true"/>', 'ItalicTrue')
+		. $run('<w:strike/>', 'StrikeBare')
+		. '</w:p>');
+
+	pg_assert_false(strpos($html, '<strong>BoldOff') !== false, 'b off is not bold: ' . $html);
+	pg_assert_false(strpos($html, '<em>ItalicFalse') !== false, 'i false is not italic');
+	pg_assert_false(strpos($html, '<s>StrikeZero') !== false, 'strike 0 is not struck');
+	pg_assert_false(strpos($html, '<u>UnderlineNone') !== false, 'u none is not underlined');
+	pg_assert_true(strpos($html, '<strong>BoldOn</strong>') !== false, 'b on is bold');
+	pg_assert_true(strpos($html, '<em>ItalicTrue</em>') !== false, 'i true is italic');
+	pg_assert_true(strpos($html, '<s>StrikeBare</s>') !== false, 'a bare strike is struck');
 }

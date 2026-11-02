@@ -786,7 +786,7 @@ $comment_thread = function ($w) use ($el, $heading, $para, $link, $span, $attr, 
         $fields[] = $el('div', 'alert alert-secondary py-2 small', lang('Replying To'), array(
             $span(lang('Replying to'), 'me-1', lang('Text')),
             $el('strong', '', lang('Name'), array(), array('text' => lang('Jane Cooper'), '_bindings' => array('text' => '__reply_to_name'))),
-            $link(lang('Cancel'), '#', 'ms-3 fw-semibold', array(), array('_bindings' => array('action' => 'comment_reply_cancel'))),
+            $link(lang('Cancel'), '#', 'ms-3 alert-link', array(), array('_bindings' => array('action' => 'comment_reply_cancel'))),
         ), $show_when('is_replying'));
     }
     $fields[] = $el('div', 'mb-3', lang('Rating'), array(
@@ -845,7 +845,7 @@ $comment_thread = function ($w) use ($el, $heading, $para, $link, $span, $attr, 
             $el('div', 'alert alert-secondary', lang('Closed'), array(), array('_bindings' => array('text' => '__comments_closed_message', 'eo_visible_if' => 'comments_closed'))),
             $el('div', 'alert alert-secondary d-flex flex-wrap align-items-center gap-2', lang('Sign in'), array(
                 $span($w['sign_in'], '', lang('Text')),
-                $link(lang('Sign in'), '#', 'fw-semibold', array(), array('rel' => 'nofollow', '_bindings' => array('href' => '__login_url'))),
+                $link(lang('Sign in'), '#', 'alert-link', array(), array('rel' => 'nofollow', '_bindings' => array('href' => '__login_url'))),
             ), $show_when('must_sign_in')),
             $el('form', 'card card-body border-0 bg-body-tertiary rounded-4 p-4', lang('Comment Form'), $fields, array('_bindings' => array('action' => 'comment_form', 'eo_visible_if' => 'can_comment'))),
         )),
@@ -1925,7 +1925,8 @@ $widgets = array(
     ),
     // The product's reviews (the comments widget reads the product in the
     // address): newest first, never pinned; a store reply shows under its
-    // review.
+    // review. Its own layout, so every word says review like the page's
+    // comments label, where the editor's starter says comment.
     'product_reviews' => array(
         'page'     => 'product',
         'requires' => 'ecommerce',
@@ -1937,7 +1938,21 @@ $widgets = array(
             'layout'     => 'flat',
             'per_page'   => 10,
         ),
-        'tree'     => 'starter',
+        'tree'     => $comment_thread(array(
+            'title'     => lang('Customer reviews'),
+            'empty'     => lang('No reviews yet. Be the first to review this product.'),
+            'heading'   => lang('Review this product'),
+            'label'     => lang('Your review'),
+            'sign_in'   => lang('Sign in to write a review.'),
+            'submit'    => lang('Submit review'),
+            'watch_box' => lang('Notify me when a new review is added.'),
+            'follow'    => lang('Notify me of new reviews'),
+            'unfollow'  => lang('Stop notifying me'),
+            'close'     => lang('Stop new reviews'),
+            'reopen'    => lang('Allow new reviews'),
+            'reply'     => true,
+            'watch'     => true,
+        )),
     ),
     'cart' => array(
         'page'     => 'cart',
@@ -2892,7 +2907,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Online Store'),
-    'version'     => '1.2.1',
+    'version'     => '1.2.3',
     'framework'   => 'bootstrap5',
     'order'       => 20,
     'icon'        => 'bi-bag-heart',

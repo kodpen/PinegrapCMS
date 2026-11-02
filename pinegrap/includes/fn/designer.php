@@ -3510,33 +3510,12 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     // only what is allowed needs no such list — a change that is not copied
     // has not happened.
     if (is_array($tree) && $restricted) {
-        if ($page_id <= 0) {
-            // No stored page to merge into, and a content-level operator has
-            // no business creating one.
-            return array('ok' => false, 'page_id' => 0,
-                'errors' => array(lang('You do not have access to add pages.')), 'warnings' => $warnings);
+        $gate = pg_designer_gate_tree($tree, $page_id, $user);
+        if (!$gate['ok']) {
+            return array('ok' => false, 'page_id' => max(0, $page_id),
+                'errors' => array($gate['error']), 'warnings' => $warnings);
         }
-        if (pg_designer_page_access($page_id, $user) !== 'edit') {
-            return array('ok' => false, 'page_id' => $page_id,
-                'errors' => array(lang('You do not have access to edit this page.')), 'warnings' => $warnings);
-        }
-        $stored_json = pg_page_tree_json($page_id);
-        $stored_tree = ($stored_json !== '') ? json_decode($stored_json, true) : null;
-        if (is_array($stored_tree)) {
-            $tree = pg_designer_merge_restricted_tree($stored_tree, $tree);
-        } else {
-            // No stored tree to merge into (a page saved before the per-page
-            // tree existed). The submission is written, minus the nodes this
-            // level may never create: a custom_php node is eval()ed on every
-            // public render, so accepting one here would be code execution.
-            // The same marker typed into an ordinary text prop is defused,
-            // since the renderers emit that text into the page raw.
-            if (_pg_dm_locked_kind($tree) !== '') {
-                $tree = array('type' => 'root', 'props' => array(), 'children' => array());
-            }
-            pg_designer_drop_locked_nodes($tree);
-            _pg_dm_neutralise_markers($tree);
-        }
+        $tree = $gate['tree'];
     }
 
     // After the merge, so a content-level operator's note is stamped too, and
@@ -3875,6 +3854,15 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     // texts as a job for their engine (includes/translate/).
     if (function_exists('pg_tr_auto_update_page') && $multi_ready) {
         pg_tr_auto_update_page($page_id, (int)($user['id'] ?? 0));
+    }
+
+    // Contrast and target size measured on the editor's canvas (only a
+    // browser resolves the colours and sizes) are kept with the accessibility
+    // report and replaced on each save; a save that changed the page without
+    // measuring it (another tab, the API) clears them.
+    if ($page_id > 0 && ($changed || isset($page['a11y_measured']))) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/a11y.php');
+        pg_a11y_store_measured($page_id, isset($page['a11y_measured']) ? $page['a11y_measured'] : null);
     }
 
     // The revision this save wrote (0 for none), as pg_page_revision_record()
@@ -4372,7 +4360,9 @@ function pg_theme_switcher_inject($content)
 /**
  * The marker of a Bootstrap tooltip or popover: data-bs-toggle="tooltip"
  * (the Tooltip option of the editor's panel, _pg_node_title_attrs()) or
- * data-bs-toggle="popover" (Components > Popover), in any quoting. The
+ * data-bs-toggle="popover" (Components > Popover), in any quoting; and of
+ * tabs (data-bs-toggle="tab", "pill" or "list"), whose pane holding the
+ * address's anchor the same script shows. The
  * editor's Preview tests the markup with the same expression
  * (_SD_PAGE_SCRIPTS in assets/js/style_designer.js).
  *
@@ -4380,12 +4370,13 @@ function pg_theme_switcher_inject($content)
  */
 function pg_bs_tips_pattern()
 {
-    return '/data-bs-toggle\s*=\s*["\']?(?:tooltip|popover)\b/i';
+    return '/data-bs-toggle\s*=\s*["\']?(?:tooltip|popover|tab|pill|list)\b/i';
 }
 
 /**
- * The script that starts Bootstrap tooltips and popovers, for a visual
- * editor page whose HTML holds one (pg_bs_tips_pattern()).
+ * The script that starts Bootstrap tooltips and popovers and shows the tab
+ * holding the address's anchor, for a visual editor page whose HTML holds
+ * one of them (pg_bs_tips_pattern()).
  *
  * Bootstrap creates neither by itself, so without this a popover never opens
  * on the published page and a tooltip shows only the browser's own title.
@@ -4844,6 +4835,14 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
     if (!pg_sw_finish_active() && !empty($props['_bindings'])) {
         $props = pg_page_record_bind_props($props, $type === 'content'
             && in_array(isset($props['contentType']) ? $props['contentType'] : '', array('heading', 'link', 'paragraph', 'span', 'text'), true));
+    }
+
+    // The editor's audit render marks every element with the node it was
+    // drawn from, so a finding on the rendered page badges that node on the
+    // canvas (pg_designer_audit_render()). Never on a stored or served page.
+    if (pg_designer_audit_render() && !empty($node['_id']) && $type !== 'root') {
+        if (!isset($props['_attrs']) || !is_array($props['_attrs'])) $props['_attrs'] = array();
+        $props['_attrs'][] = array('name' => 'data-pg-node', 'value' => (string)$node['_id']);
     }
 
     // A stretched link covers the nearest positioned element around it; when
@@ -6120,11 +6119,8 @@ function _render_content_html($props, $pad, $kids = '')
             // An e-mail page and a background render (the editor's Preview,
             // the SEO pass) never show or use up the session's pending
             // messages: they belong to the page the visitor sees next.
-            if (function_exists('pg_seo_rendering') && pg_seo_rendering()) break;
-            if (function_exists('pg_sw_render_context')) {
-                $msg_ctx = pg_sw_render_context();
-                if (!empty($msg_ctx['email'])) break;
-            }
+            if (function_exists('pg_sw_messages_held_back') ? pg_sw_messages_held_back()
+                : (function_exists('pg_seo_rendering') && pg_seo_rendering())) break;
             $msg_form  = !empty($props['formName']) ? $props['formName'] : '';
             $msg_cls   = !empty($props['cssClass']) ? ' ' . h($props['cssClass']) : '';
             $msg_parts = array();
@@ -6415,6 +6411,7 @@ function get_style_designer_regions_as_json()
         'menu_sequence_regions'=> array(),
         'tag_cloud_regions'    => array(),
         'tag_cloud_widget_pages' => array(),
+        'tag_cloud_page_info'  => array(),
         'system_region_pages'  => array(),
     );
 
@@ -6439,8 +6436,12 @@ function get_style_designer_regions_as_json()
         $data['menu_sequence_regions'][]   = $row['name'];
     }
 
-    $result = mysqli_query(db::$con, "SELECT page_name as name FROM page WHERE page_type = 'search results' ORDER BY page_name ASC") or output_error(lang('Query failed.'));
-    while ($row = mysqli_fetch_assoc($result)) { $data['tag_cloud_regions'][] = $row['name']; }
+    $result = mysqli_query(db::$con, "SELECT page_name, page_folder, page_style FROM page WHERE page_type = 'search results' ORDER BY page_name ASC") or output_error(lang('Query failed.'));
+    $tag_cloud_pages = array();
+    while ($row = mysqli_fetch_assoc($result)) {
+        $data['tag_cloud_regions'][] = $row['page_name'];
+        $tag_cloud_pages[] = $row;
+    }
 
     // Pages built with the Search Results widget: the Tag Cloud widget links
     // to them too (the classic tag cloud region does not).
@@ -6450,6 +6451,19 @@ function get_style_designer_regions_as_json()
         }
         $data['tag_cloud_widget_pages'] = array_values(array_unique($data['tag_cloud_widget_pages']));
         sort($data['tag_cloud_widget_pages']);
+    }
+
+    // The design and the audience of each of those pages, so the picker
+    // can mark another design's page or a draft, and a new widget takes an
+    // open page of the design being edited.
+    if (function_exists('pg_tcw_page_info')) {
+        $styles = array();
+        $result = mysqli_query(db::$con, "SELECT style_id, style_name FROM style") or output_error(lang('Query failed.'));
+        while ($row = mysqli_fetch_assoc($result)) { $styles[(int)$row['style_id']] = (string)$row['style_name']; }
+        if (function_exists('pg_sw_widget_pages')) {
+            $tag_cloud_pages = array_merge($tag_cloud_pages, pg_sw_widget_pages('search_results'));
+        }
+        $data['tag_cloud_page_info'] = (object)pg_tcw_page_info($tag_cloud_pages, $styles, 'get_access_control_type');
     }
 
     $result = mysqli_query(db::$con, "SELECT page_name as name FROM page WHERE
@@ -9538,6 +9552,45 @@ function pg_designer_preview_input($page_id, $settings, $access)
 }
 
 /**
+ * Whether the tree renderer marks elements with their node ids
+ * (data-pg-node): on only while the editor's SEO check renders a draft
+ * (pg_seo_check_draft_render()), whose findings badge the canvas by them.
+ *
+ * @param bool|null $set true/false to switch, null to read
+ * @return bool
+ */
+function pg_designer_audit_render($set = null)
+{
+    static $on = false;
+    if ($set !== null) $on = (bool)$set;
+    return $on;
+}
+
+/**
+ * The editor's widget payload as pg_sw_preview_overrides() rows: sid =>
+ * tree_json and settings (a `tab:` page reads as nothing chosen), at most
+ * 40. Shared by the Preview and the SEO check on the draft. Pure.
+ *
+ * @param array $widgets [{id, tree_json, system_region_config}]
+ * @return array sid => array(tree_json, cfg)
+ */
+function pg_designer_preview_override_rows($widgets)
+{
+    $overrides = array();
+    foreach ((array)$widgets as $w) {
+        if (!is_array($w) || count($overrides) >= 40) continue;
+        $sid = isset($w['id']) ? (int)$w['id'] : 0;
+        if ($sid <= 0) continue;
+        $cfg = isset($w['system_region_config']) ? json_decode((string)$w['system_region_config'], true) : null;
+        $overrides[$sid] = array(
+            'tree_json' => isset($w['tree_json']) ? (string)$w['tree_json'] : '',
+            'cfg'       => is_array($cfg) ? _pg_preview_drop_tab_refs($cfg) : null,
+        );
+    }
+    return $overrides;
+}
+
+/**
  * The editor's Preview: the system widgets on a page, rendered by the server,
  * which the blob page the editor opens cannot do.
  *
@@ -9568,17 +9621,7 @@ function pg_designer_preview_input($page_id, $settings, $access)
 function pg_designer_preview_widgets($page_id, $widgets, $comment_settings = array())
 {
     $page_id   = (int)$page_id;
-    $overrides = array();
-    foreach ((array)$widgets as $w) {
-        if (!is_array($w) || count($overrides) >= 40) continue;
-        $sid = isset($w['id']) ? (int)$w['id'] : 0;
-        if ($sid <= 0) continue;
-        $cfg = isset($w['system_region_config']) ? json_decode((string)$w['system_region_config'], true) : null;
-        $overrides[$sid] = array(
-            'tree_json' => isset($w['tree_json']) ? (string)$w['tree_json'] : '',
-            'cfg'       => is_array($cfg) ? _pg_preview_drop_tab_refs($cfg) : null,
-        );
-    }
+    $overrides = pg_designer_preview_override_rows($widgets);
     if (empty($overrides)) return array();
 
     $page_name = ($page_id > 0) ? (string)db_value("SELECT page_name FROM page WHERE page_id = '" . $page_id . "' LIMIT 1") : '';
@@ -9975,4 +10018,91 @@ function pg_designer_tab_layout_save($style_id, $layout, $user)
     $out['ok'] = true;
     $out['layout'] = pg_designer_tab_layout_export($norm);
     return $out;
+}
+
+/**
+ * The messages a request left for the visual designer screen, as the list its
+ * own toasts show (sdDesign.messages, sdToast() in style_designer.js).
+ *
+ * The editor is a full-height application screen: the panel's alert boxes
+ * printed above it pushed the toolbar, canvas and side panels down by their
+ * own height. Errors come first and stay until closed; warnings next; the
+ * notices last, in the panel's success tone. Each message is markup already
+ * escaped by whoever added it to the liveform, as the alert boxes print it.
+ *
+ * Pure: no query.
+ *
+ * @return array list of array('type' => 'error'|'warning'|'success', 'message' => string)
+ */
+function pg_designer_screen_messages($errors, $warnings, $notices)
+{
+    $out = array();
+    foreach (array('error' => $errors, 'warning' => $warnings, 'success' => $notices) as $type => $list) {
+        foreach ((array)$list as $message) {
+            if (!is_string($message) || trim($message) === '') continue;
+            $out[] = array('type' => $type, 'message' => $message);
+        }
+    }
+    return $out;
+}
+
+/**
+ * The editor's blank tab (sdDesign.pages entry): a page not saved yet,
+ * created by the first save. Opened in add mode, for a design with no page,
+ * and for a classic style opened in the designer that no page names as its
+ * own style; that one starts with the tree placing the style's frame
+ * (pg_classic_style_page_tree()) and is marked converted, so it opens
+ * unsaved and the frame shows on the canvas and in the tree.
+ *
+ * Pure: no query.
+ *
+ * @param int        $draft  1 when the new page starts as a draft
+ * @param array|null $tree   decoded tree, null for an empty canvas
+ * @return array
+ */
+function pg_designer_blank_page($draft, $tree = null)
+{
+    $tree = is_array($tree) ? $tree : null;
+    return array(
+        'key'                   => 'new1',
+        'page_id'               => 0,
+        'page_name'             => '',
+        'page_folder'           => 0,
+        'page_draft'            => $draft ? 1 : 0,
+        'page_title'            => '',
+        'page_meta_description' => '',
+        'page_search'           => 1,
+        'page_search_keywords'  => '',
+        'page_sitemap'          => 1,
+        'page_home'             => 0,
+        'page_noindex'          => 0,
+        'page_nofollow'         => 0,
+        'pg_comments'           => 0,
+        'pg_comments_label'     => '',
+        'pg_comments_allow_new' => 1,
+        'pg_comments_rating'    => 0,
+        'pg_comments_auto_publish' => 0,
+        'pg_comments_show_date'    => 0,
+        'pg_comments_login'        => 0,
+        'pg_comments_email_page'    => 0,
+        'pg_comments_email_subject' => '',
+        'pg_comments_notify_email'  => '',
+        'pg_comments_attachments'      => 0,
+        'pg_comments_select_name'      => 0,
+        'pg_comments_message'          => '',
+        'pg_comments_closed_message'   => '',
+        'pg_comments_watchers_managed' => 0,
+        'page_meta_tags'        => '',
+        'page_custom_jsonld'    => '',
+        'page_canonical_url'    => '',
+        'page_noarchive'        => 0,
+        'page_max_snippet'      => '',
+        'page_publish_at'       => '',
+        'page_unpublish_at'     => '',
+        'tree'                  => $tree,
+        'treeLoadWarning'       => false,
+        'formSettings'          => array(),
+        'access'                => 'edit',
+        'converted'             => $tree !== null ? 1 : 0,
+    );
 }

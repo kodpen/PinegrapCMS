@@ -41,7 +41,7 @@ function pg_test_panel_exempt_names()
 {
 	return array(
 		'add_to_cart', 'ai_write', 'backend_search', 'bulk_assign_barcodes',
-		'check_unread_notifications', 'contact_quick_save', 'dashboard_switch',
+		'check_unread_notifications', 'contact_quick_save', 'dashboard_cards', 'dashboard_layout_save', 'dashboard_personal_save', 'dashboard_switch',
 		'database_deep_check', 'delete_product_barcode', 'designer',
 		'designer_file', 'edit_notifications', 'eo_default_tree',
 		'eo_get_installments', 'eo_required_sections', 'eo_tax_totals',
