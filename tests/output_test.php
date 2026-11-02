@@ -205,7 +205,7 @@ function test_output_license_card_refusals_of_the_kodpen_api()
 	}
 
 	pg_assert_contains(lang('Suspended'), output_test_license_card(array('status' => 'error', 'error_code' => 'suspended', 'type' => 'premium', 'sites_used' => 1, 'sites_total' => 1)), 'suspended state');
-	pg_assert_contains(lang('Premium'), output_test_license_card(array('status' => 'error', 'error_code' => 'suspended', 'type' => 'premium', 'sites_used' => 1, 'sites_total' => 1)), 'a suspended licence keeps its type');
+	pg_assert_contains('Pinegrap ' . lang('Demo') . ' · ' . lang('Suspended'), output_test_license_card(array('status' => 'error', 'error_code' => 'suspended', 'type' => 'demo', 'sites_used' => 1, 'sites_total' => 1)), 'a suspended licence keeps its type');
 	pg_assert_contains(lang('Buy License'), output_test_license_card(array('status' => 'error', 'error_code' => 'seats_full')), 'no free right: buy one');
 	pg_assert_same(false, strpos(output_test_license_card(array('status' => 'error', 'error_code' => 'access_blocked')), lang('Buy License')), 'closed access: nothing to buy');
 
@@ -223,12 +223,14 @@ function test_output_license_card_shows_type_and_site_rights()
 	$html = output_test_license_card(array('status' => 'success', 'expiration_date_formatted' => $valid, 'countdown' => 200,
 		'type' => 'enterprise', 'sites_used' => 3, 'sites_total' => 5));
 
-	pg_assert_contains(lang('Enterprise'), $html, 'the type');
+	pg_assert_contains('<span class="pg-lic-label">Pinegrap ' . lang('Enterprise') . ' · ' . lang('Active') . '</span>', $html, 'the type on the row');
+	pg_assert_same(false, strpos($html, 'Pinegrap Premium'), 'an enterprise licence is not called Premium');
 	pg_assert_contains('3 / 5', $html, 'the site rights');
 	pg_assert_contains(lang('Active'), $html, 'still active');
 
 	$old = output_test_license_card(array('status' => 'success', 'expiration_date_formatted' => $valid, 'countdown' => 200, 'source' => null));
-	pg_assert_same(false, strpos($old, 'pg-lic-type'), 'an answer of the old server: no type line');
+	pg_assert_contains('<span class="pg-lic-label">Pinegrap Premium™ · ' . lang('Active') . '</span>', $old, 'an answer of the old server: the name as before');
+	pg_assert_same(0, substr_count((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/output.php'), "format('d M Y')"), 'the card writes no English month name');
 }
 
 // With the switch on, a state without source 'v1' is asked again at once;

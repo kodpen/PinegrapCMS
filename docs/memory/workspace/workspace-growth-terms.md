@@ -1,15 +1,15 @@
 ---
 name: workspace-growth-terms
-description: Shared names and single owners across the Workspace growth plans (2026-10-23): workflow tables, Workspace canvas, the two quote kinds, registries, engine words, agent keys, one proposal route
+description: Shared names and single owners of the Workspace growth work (2026-10-23): workflow tables, Workspace canvas, quote kinds, registries, engine words, agent keys, one proposal route, personal by default
 ---
 
 ## Which names do the plans share?
-- Workflow tables: `ws_wtables`, `ws_wtable_columns`, `ws_wtable_rows`, `ws_wtable_shares`; `ws_wtable_*` in includes/workspace/wtables.php; screen workspace_wtables.php; events `workspace.wtable.*`; `ws_refs` source `wtable_row` (all proposed). UI "Workflow table" / "İş akışı tablosu". Never `ws_table_*`: Markdown note tables use it (`ws_calc_grid()`, `openTable()`).
-- Workspace canvas: a flow drawn on workspace_flows.php; `ws_flows`, `ws_flow_versions`, `ws_flow_runs`, `ws_flow_run_steps` (proposed). UI "Flow" / "Akış", made of "boxes" and "arrows". A bare "canvas" in memory means the visual designer's.
+- Workflow tables: `ws_wtables`, `ws_wtable_columns`, `ws_wtable_rows`, `ws_wtable_shares`; `ws_wtable_*` in includes/workspace/wtables.php; screen workspace_wtables.php; events `workspace.wtable.*`; `ws_refs` source `wtable_row`. UI "Workflow table" / "İş akışı tablosu". Never `ws_table_*`: Markdown note tables use it (`ws_calc_grid()`, `openTable()`).
+- Workspace canvas: a flow drawn on workspace_flows.php; `ws_flows`, `ws_flow_versions`, `ws_flow_runs`, `ws_flow_run_steps`. UI "Flow" / "Akış", made of "boxes" and "arrows". A bare "canvas" in memory means the visual designer's.
 - "Board view (the channel Board tab component)", never "plan board" (`manage_workspace_board`, /workspace/plan).
 - Quotes, never mixed and never a bare "quote" (a quoted message: `ws_message_quotes`; tr.json "Quote" = "Alıntı"):
   - ERP: kind `erp_quote`, "Sales quote" / "Satış teklifi", tag prefixes `satis`, `salesquote` (table `erp_quotes` exists).
-  - Site: kind `cart_quote`, `cart_quotes` / `cart_quote_items` (proposed), events `cart_quote.*`, "Cart quote" / "Sepet teklifi", prefixes `sepet`, `cartquote`.
+  - Site: kind `cart_quote`, `cart_quotes` / `cart_quote_items`, events `cart_quote.*`, "Cart quote" / "Sepet teklifi", prefixes `sepet`, `cartquote`.
   - "Offer" (`offers`, a discount) is a third thing and keeps `teklif` until the owner decides.
 - Registries: record kinds `ws_record_kinds()` (refs.php); slash commands `ws_commands()` (commands.php); agents `ws_assistants()` (delegation.php).
 - Engine: "scheduled action" (`ws_scheduled_actions`, kind ENUM action/message stays), "step" (`ws_scheduled_do()`), "rule" (at, event, trigger); "flow" is a published graph of boxes on the flows engine (a hidden scheduled action is its trigger); "workflow mode" compiles table rows into a flow's task boxes. `ws_event()` queues triggers in `ws_events_in`; `ws_events` is the calendar.
@@ -21,8 +21,12 @@ description: Shared names and single owners across the Workspace growth plans (2
 - Direct record writes by AI apps (one owner question): the MCP plan; catalogue and quotes follow its answer.
 - Scheduled-actions API and who may create actions: workspace/workspace-scheduled-actions-api.md.
 - Flows (canvas, rules, process templates), their engine and step library: workspace/workspace-flows-decisions.md (built).
-- One follow-up opener `ws_followup_task_open()` (proposed): built, workspace/workspace-followups.md; quote expiry and the ERP overdue job (erp/erp-overdue-reminders.md) call it.
+- One follow-up opener `ws_followup_task_open()`: workspace/workspace-followups.md; quote expiry and the ERP overdue job (erp/erp-overdue-reminders.md) call it.
 - Saved replies: workspace/workspace-saved-replies.md (built). Channel `/` commands: workspace/workspace-command-registry.md (built); other plans add registry entries (`/product` after its slice 2).
 - Contacts in the audit trail and erasure: core/audit-trail-writers.md, core/personal-data-erasure.md; the CRM merge and erasure share one list of every `contact_id` holder (with `cart_quotes` and workflow-table cells).
 - Recorded audio and transcripts: workspace/workspace-voice-recording.md (done); live dictation: composer tools.
 - The site's own MCP server: api/api-mcp-server.md; outside MCP servers the Workspace calls: workspace/workspace-mcp-servers-card.md, api/api-mcp-client.md.
+
+## Which rules bound every growth slice and still hold?
+- Every feature ships its API with `dry_run`; MCP tools follow from routes; no `ws_` screen, tool or file reaches a site member.
+- Personal things (workflow tables, canvases, notes) are owner-only by default; shares are explicit; nothing forces a link to a channel, task or record.

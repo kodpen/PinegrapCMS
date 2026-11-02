@@ -11,7 +11,7 @@ description: Forum template 1.3.0: the conversation, guide-on-the-desk and repor
 ## Which words and settings?
 - Conversation: Write a reply, Your reply, Send reply; the topic's signed-with-profile message, closed "This conversation is closed."
 - Desk: Write a message, Your message, Send message, Stop or Allow new messages; closed "This guide takes no new messages."
-- Report: Add a note, Your note, Add note, Stop or Allow new comments; message "Notes are for the moderators only…", closed "This report takes no new notes."
+- Report: Add a note (heading and button), Your note, Stop or Allow new notes (1.3.3, #4875; were "comments" and "Add Note"); message "Notes are for the moderators only…", closed "This report takes no new notes."
 - Labels unchanged (`Message`, `Note`); attachments and select_name off.
 
 ## Who sees them?

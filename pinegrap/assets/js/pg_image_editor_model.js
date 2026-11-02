@@ -992,6 +992,26 @@
         return (after[index] && (after[index].cls === was.cls)) ? index : -1;
     }
 
+    // The label key of the panel's title: the layers list when it is open;
+    // Select names what is selected (the layers' one type, else "Selection")
+    // and, with nothing selected, the list (a canvas shows the canvas first);
+    // any other tool its own name. types: the selected layers' types.
+    function panelTitle(tool, types, artboard, layersOpen) {
+        if (layersOpen) {
+            return 'layers';
+        }
+
+        if (tool !== 'select') {
+            return 'tool_' + tool;
+        }
+
+        if (!types || !types.length) {
+            return artboard ? 'tool_artboard' : 'layers';
+        }
+
+        return types.every(function (type) { return type === types[0]; }) ? 'layer_' + types[0] : 'selection';
+    }
+
     // ---- the tools' own maths ----
     // Each tool keeps its pure functions in its section here, so the tests
     // reach them under Node (tests/image_editor_<tool>_test.php), and names
@@ -2258,6 +2278,144 @@
         moveKnot: moveKnot, moveHandle: moveHandle, nearestOnPath: nearestOnPath, splitAt: splitAt, shapeKnots: shapeKnots
     };
 
+    // -- access (pg_image_editor_access.js) --
+
+    // A letter picks a tool of the call: the first of its tools the call
+    // has, so A is Adjust on the rail and Arrow on the mini bar.
+    var KEY_TOOLS = {
+        v: ['select'], c: ['crop'], a: ['adjust', 'arrow'], d: ['draw'], t: ['text'], r: ['redact'], u: ['rect'], s: ['sticker'],
+        f: ['frame'], p: ['vector', 'pen'], b: ['artboard'], i: ['image'], e: ['export'], l: ['line'], o: ['ellipse']
+    };
+
+    function toolForKey(key, list) {
+        var k = String(key || '').toLowerCase(), i;
+
+        if (!list || !KEY_TOOLS.hasOwnProperty(k)) {
+            return null;
+        }
+
+        for (i = 0; i < KEY_TOOLS[k].length; i++) {
+            if (list.indexOf(KEY_TOOLS[k][i]) >= 0) {
+                return KEY_TOOLS[k][i];
+            }
+        }
+
+        return null;
+    }
+
+    // The letter that picks tool id in a call with these tools, upper case,
+    // or '' when another tool of the call takes it first.
+    function toolKey(id, list) {
+        var keys = Object.keys(KEY_TOOLS), i;
+
+        for (i = 0; i < keys.length; i++) {
+            if ((KEY_TOOLS[keys[i]].indexOf(id) >= 0) && (toolForKey(keys[i], list || [id]) === id)) {
+                return keys[i].toUpperCase();
+            }
+        }
+
+        return '';
+    }
+
+    // Tab in a box that keeps the focus: the next control (back: the one
+    // before), round from the last to the first; -1 with none. From outside
+    // the list Tab starts at the first, Shift+Tab at the last.
+    function trapFocus(count, index, back) {
+        if (!(count > 0)) {
+            return -1;
+        }
+
+        if ((index < 0) || (index >= count)) {
+            return back ? count - 1 : 0;
+        }
+
+        return (index + (back ? count - 1 : 1)) % count;
+    }
+
+    // A layer's angle under a two-finger twist: its angle at the start plus
+    // the turn of the line between the fingers (radians, from and to),
+    // within -180 to 180, held on a right angle or a half one within 4
+    // degrees, to a tenth of a degree.
+    function twistAngle(rot, from, to) {
+        var a = (Number(rot) || 0) + ((to - from) * 180 / Math.PI), near;
+
+        a = ((a % 360) + 360) % 360;
+        a = (a > 180) ? a - 360 : a;
+        near = Math.round(a / 45) * 45;
+
+        if (Math.abs(a - near) <= 4) {
+            a = near;
+        }
+
+        a = Math.round(a * 10) / 10;
+
+        return (a <= -180) ? a + 360 : (a === 0 ? 0 : a);
+    }
+
+    // The help sheet's groups for a call's tools: { title, rows: [{ keys,
+    // label }] }, keys as tokens (Mod is Ctrl, or Cmd on a Mac; Space,
+    // Delete, Arrows and Drag are named by the sheet), title and label as
+    // label keys. Layer keys show only with a tool that makes layers, Enter
+    // only with Crop.
+    var KEY_NOLAYERS = ['crop', 'adjust', 'export'];
+
+    function keyMap(list) {
+        list = list || [];
+
+        var tools = [], layers = list.some(function (id) { return KEY_NOLAYERS.indexOf(id) < 0; });
+        var groups = [];
+
+        list.forEach(function (id) {
+            var k = toolKey(id, list);
+
+            if (k) {
+                tools.push({ keys: [k], label: 'tool_' + id });
+            }
+        });
+
+        if (tools.length) {
+            groups.push({ title: 'keysTools', rows: tools });
+        }
+
+        groups.push({ title: 'keysEdit', rows: [
+            { keys: ['Mod', 'Z'], label: 'undo' },
+            { keys: ['Mod', 'Shift', 'Z'], label: 'redo' },
+            { keys: ['Mod', 'S'], label: 'save' }
+        ].concat((list.indexOf('crop') >= 0) ? [{ keys: ['Enter'], label: 'keyApply' }] : [], [
+            { keys: ['Esc'], label: 'keyEscape' },
+            { keys: ['?'], label: 'keyHelp' }
+        ]) });
+
+        if (layers) {
+            groups.push({ title: 'keysLayers', rows: [
+                { keys: ['Arrows'], label: 'keyNudge' },
+                { keys: ['Shift', 'Arrows'], label: 'keyNudgeMore' },
+                { keys: ['Delete'], label: 'keyDelete' },
+                { keys: ['Mod', 'D'], label: 'keyDuplicate' },
+                { keys: ['Mod', 'C'], label: 'keyCopy' },
+                { keys: ['Mod', 'V'], label: 'keyPaste' },
+                { keys: ['Mod', 'A'], label: 'keySelectAll' }
+            ] });
+        }
+
+        groups.push({ title: 'keysView', rows: [
+            { keys: ['+'], label: 'zoomIn' },
+            { keys: ['-'], label: 'zoomOut' },
+            { keys: ['0'], label: 'zoomFit' },
+            { keys: ['1'], label: 'zoomActual' },
+            { keys: ['Space', 'Drag'], label: 'keyPan' }
+        ] });
+
+        groups.push({ title: 'keysTouch', rows: [
+            { keys: [], label: 'touchPan' },
+            { keys: [], label: 'touchFit' }
+        ].concat(layers ? [{ keys: [], label: 'touchTwist' }] : []) });
+
+        return groups;
+    }
+
+    var ACCESS = { KEY_TOOLS: KEY_TOOLS, toolForKey: toolForKey, toolKey: toolKey, trapFocus: trapFocus, twistAngle: twistAngle, keyMap: keyMap };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -2269,12 +2427,12 @@
         colorMatrix: colorMatrix, applyColor: applyColor, vignetteStops: vignetteStops, sharpenKernel: sharpenKernel,
         newId: newId, corners: corners, bounds: bounds, local: local, hitLayer: hitLayer, insideBox: insideBox, resizeBox: resizeBox, angleTo: angleTo,
         align: align, distribute: distribute, snapBox: snapBox, reorder: reorder,
-        ownsKey: ownsKey, focusMatch: focusMatch
+        ownsKey: ownsKey, focusMatch: focusMatch, panelTitle: panelTitle
     };
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, ACCESS].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

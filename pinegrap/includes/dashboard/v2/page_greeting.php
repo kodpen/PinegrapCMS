@@ -152,7 +152,7 @@ function pg_dashboard_v2_greeting($user)
     require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/figures.php');
 
     $now = time();
-    $row = pg_dashboard_v2_row($user['id']);
+    $row = pg_dashboard_v2_row_for($user);
     $settings = pg_dashboard_v2_greeting_settings((string) ($row['layout'] ?? ''), defined('ECOMMERCE') && (ECOMMERCE === true));
 
     $when = get_absolute_time(array('timestamp' => $now, 'type' => 'date', 'size' => 'long'))

@@ -133,8 +133,6 @@ function db_q_pages_regions_test_files()
 		'add_menu.php' => 1,
 		'add_login_region.php' => 1,
 		'includes/forms/login_region_form.php' => 1,
-		'add_folder.php' => 2,
-		'view_files.php' => 0,
 		'view_design_files.php' => 0,
 		'get_theme_designer_module.php' => 1,
 		'editor_edit_file.php' => 2,

@@ -9,7 +9,7 @@ description: The channel a flow run opens its tasks in: the flow's home as the r
 
 ## When is a named channel accepted?
 - `ws_flow_run_channel_check($viewer, $flow, $channel_id, $owner = null)`: a public or private channel (the kinds a run's readers are counted in) that the starter reads (`ws_can_read_channel()`) and the flow's owner may write in (`ws_can_post_channel()`): the tasks carry the owner's name. Else 403, field `channel_id`; a channel that is gone gets the same 403, so its existence is not told. Pure part `ws_flow_run_channel_allowed()`.
-- Decision #2413 (a). The composer's Add › Start a flow (C2 of plans/workspace-flows-channels.md) uses the same function.
+- Decision #2413 (a). The composer's Add › Start a flow (#3048, `workspace-flows-channel-run-card.md`) uses the same function.
 
 ## Where is it checked?
 - In `ws_flow_run_start_check()` after the token's run is answered and the owner is known, so the API's dry run meets the same refusal; the check answers `channel_id` (null for the home) and `ws_flow_run_start()` writes it into the context.

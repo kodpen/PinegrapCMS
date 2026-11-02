@@ -1556,7 +1556,9 @@ function pg_order_extended_until($end, $days, $quantity, $today)
 {
     $from = ((string) $end <= (string) $today) ? $today : $end;
 
-    return date('Y-m-d', strtotime($from) + ($days * $quantity * 86400));
+    // Counted in calendar days: a day the clocks go back has 25 hours, so
+    // whole 86400-second days from midnight would end on the day before.
+    return date('Y-m-d', strtotime('+' . ((int) $days * (int) $quantity) . ' day', strtotime($from)));
 }
 
 /**
@@ -3568,8 +3570,28 @@ function pg_order_complete_gift_cards($order_id, $order_number, $required_amount
             $gift_card = mysqli_fetch_assoc($result) ?: array('id' => '');
 
             // Deleted, or its balance went down meanwhile (another order
-            // submitted at the same moment): the card is removed.
-            if (($gift_card['id'] == '') || ($gift_card['balance'] < $amount)) {
+            // submitted at the same moment): the card is removed. The read
+            // alone cannot see an order completing between it and the
+            // decrement, so the decrement only runs while the balance still
+            // covers the amount and a refused one is the same failure.
+            $redeemed = false;
+
+            if (($gift_card['id'] != '') && ($gift_card['balance'] >= $amount)) {
+                db_q(
+                    "UPDATE gift_cards
+                    SET
+                        balance = balance - ?,
+                        last_modified_user_id = ?,
+                        last_modified_timestamp = UNIX_TIMESTAMP()
+                    WHERE (id = ?) AND (balance >= ?)",
+                    array((int) round($amount), (string) $actor, (string) $gift_card['id'], (int) round($amount))) or output_error('Query failed.');
+
+                // Affected rows count changed rows only: a zero amount may
+                // change none and is still redeemed.
+                $redeemed = ($amount <= 0) || !(mysqli_affected_rows(db::$con) < 1);
+            }
+
+            if (!$redeemed) {
                 $gift_card_errors[] = array(
                     'gift_card_code' => $applied_gift_card['code'],
                     'amount' => $amount,
@@ -3580,15 +3602,6 @@ function pg_order_complete_gift_cards($order_id, $order_number, $required_amount
                 db_q("DELETE FROM applied_gift_cards WHERE id = ?", array((string) $applied_gift_card['id'])) or output_error('Query failed.');
 
             } else {
-                db_q(
-                    "UPDATE gift_cards
-                    SET
-                        balance = balance - ?,
-                        last_modified_user_id = ?,
-                        last_modified_timestamp = UNIX_TIMESTAMP()
-                    WHERE id = ?",
-                    array((int) round($amount), (string) $actor, (string) $gift_card['id'])) or output_error('Query failed.');
-
                 $result = db_q("SELECT balance FROM gift_cards WHERE id = ?", array((string) $gift_card['id'])) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $new_balance = isset($row['balance']) ? $row['balance'] : '';
@@ -3820,7 +3833,8 @@ function pg_order_commission(array $products, $affiliate_rate, $discount, $subto
 function pg_order_recurring_commission_start($period, $start_date, $now)
 {
     if ($start_date <= date('Y-m-d', $now)) {
-        return date('Y-m-d', $now + 86400 * (($period == 'Yearly') ? 365 : 30));
+        // Calendar days, so a clock change on the way moves no date.
+        return date('Y-m-d', strtotime('+' . (($period == 'Yearly') ? 365 : 30) . ' day', $now));
     }
 
     return date('Y-m-d', strtotime($start_date));

@@ -100,6 +100,13 @@ if (!$_POST) {
             $liveform->add_error(lang('Enter an inventory quantity.'));
             go(PATH . SOFTWARE_DIRECTORY . '/view_products.php');
         }
+
+        // Past what products.inventory_quantity holds: MySQL would store the
+        // column's top without a word.
+        if (pg_inventory_quantity_too_large($quantity_value)) {
+            $liveform->add_error(lang(array('string' => '{var:1} is too large.', 'vars' => array(lang('Inventory Quantity')))));
+            go(PATH . SOFTWARE_DIRECTORY . '/view_products.php');
+        }
     }
 
     // If at least one product was selected then continue.
@@ -133,6 +140,7 @@ if (!$_POST) {
 
                     $number_of_unchanged_price_products = 0;
                     $number_of_too_large_price_products = 0;
+                    $number_of_too_large_quantity_products = 0;
                     $number_of_price_changed_products = 0;
                     $number_of_binned_products = 0;
                     $change_besides_price = pg_products_mass_change_besides_price($_POST, $quantity_value);
@@ -251,8 +259,23 @@ if (!$_POST) {
                         // Catalog Manager's rule: never below zero.
                         if ($quantity_value !== null) {
                             $inventory_quantity = (int) ($stock_stored['inventory_quantity'] ?? 0);
-                            $new_inventory_quantity = (int) pg_explorer_bulk_product_new_quantity($inventory_quantity, $quantity_process, $quantity_value);
-                            $sql_inventory_quantity = "inventory_quantity = '" . $new_inventory_quantity . "',";
+                            $new_inventory_quantity = pg_explorer_bulk_product_new_quantity($inventory_quantity, $quantity_process, $quantity_value);
+
+                            // An increase past what the column holds keeps the
+                            // stock as it is and is counted, not cut to the top.
+                            if (pg_inventory_quantity_too_large($new_inventory_quantity)) {
+                                $number_of_too_large_quantity_products++;
+                                $new_inventory_quantity = null;
+
+                                // Nothing else was asked for this product: it
+                                // is neither written nor counted as updated.
+                                if (($sql_new_prices === '') && !pg_products_mass_change_besides_price($_POST, null)) {
+                                    continue;
+                                }
+                            } else {
+                                $new_inventory_quantity = (int) $new_inventory_quantity;
+                                $sql_inventory_quantity = "inventory_quantity = '" . $new_inventory_quantity . "',";
+                            }
                         }
 
                         // Stock tracking on or off, when it was chosen.
@@ -395,6 +418,10 @@ if (!$_POST) {
 
                     if ($number_of_binned_products > 0) {
                         $liveform->add_error(lang(array('string' => '{var:1} product(s) were not changed because they are in the Recycle Bin.', 'vars' => array($number_of_binned_products))));
+                    }
+
+                    if ($number_of_too_large_quantity_products > 0) {
+                        $liveform->add_error(lang(array('string' => '{var:1} product(s) kept their stock quantity because the new quantity would be too large.', 'vars' => array($number_of_too_large_quantity_products))));
                     }
 
                     // If at least one product was modified, then log activity.

@@ -39,7 +39,6 @@ if(isset($_GET['from'])){
 }
 
 
-$liveform_view_files = new liveform('view_files');
 // get file's folder in order to validate folder access
 $result = db_q("SELECT design, folder FROM files WHERE id = ?", array((string) $_REQUEST['id'])) or output_error('Query failed');
 $row = mysqli_fetch_assoc($result);
@@ -85,7 +84,7 @@ $editable_formats = array('json', 'txt', 'svg', 'xml', 'css', 'js', 'html', 'htm
 
 // Cancel and the breadcrumb go back where the operator came from, when the
 // screen that opened this one said where that was.
-$back_url = pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_files.php');
+$back_url = pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files');
 $viewable_formats = array_merge($editable_formats, array('key', 'pub'));
 
 if (!isset($_POST['name'])) {
@@ -515,7 +514,7 @@ if (!isset($_POST['name'])) {
                 'url'=>$back_url
             ),
             'breadcrumb' => array(
-                array('label' => lang('Files'), 'url' => pg_send_to_list_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_files.php')),
+                array('label' => lang('File Manager'), 'url' => pg_send_to_list_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php')),
                 array('label' => $file_name),
             ),
         )
@@ -701,9 +700,10 @@ $liveform->remove_form('edit_file');
         log_activity(lang(array('string'=>'file ({var:1}) was deleted','vars'=>$name)), $_SESSION['sessionusername']);
 
         include_once('liveform.class.php');
-        $liveform = new liveform('view_files');
+        // The File Manager prints the notices left for it (view_folders.php).
+        $liveform = new liveform('view_folders');
         $liveform->add_notice(lang('The file was deleted successfully.'));
-        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_files.php'));
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?view=files'));
         exit();
     }
 
@@ -1068,9 +1068,9 @@ $liveform->remove_form('edit_file');
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($_POST['id']) . '&send_to=' . urlencode(pg_send_to_url('')));
             exit();
         } elseif (!empty($_POST['submit_save_and_return']) && ($_POST['submit_save_and_return'] ?? '') === 'Save & Return') {
-            $liveform = new liveform('view_files');
+            $liveform = new liveform('view_folders');
             $liveform->add_notice(lang('The file was edited successfully.'));
-            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_files.php'));
+            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?view=files'));
             exit();
         }
     }

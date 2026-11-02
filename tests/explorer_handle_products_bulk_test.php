@@ -165,3 +165,54 @@ function test_products_mass_change_quantity_is_read_before_the_write()
 
 	pg_assert_contains("'data-inputmask-alias'=>'integer'", $box, 'the box is an integer field');
 }
+
+// products.inventory_quantity is INT UNSIGNED and the session is not strict,
+// so a larger count was stored as 4294967295 without a word.
+function test_inventory_quantity_too_large()
+{
+	pg_assert_same(4294967295, (int) PG_INVENTORY_QUANTITY_MAX, 'the INT UNSIGNED top');
+	pg_assert_false(pg_inventory_quantity_too_large(0));
+	pg_assert_false(pg_inventory_quantity_too_large(4294967295), 'the top itself fits');
+	pg_assert_true(pg_inventory_quantity_too_large(4294967296), 'one past it');
+	pg_assert_true(pg_inventory_quantity_too_large(5000000000.0), 'a float');
+	pg_assert_true(pg_inventory_quantity_too_large('5000000000'), 'text');
+}
+
+function test_bulk_quantity_value_past_the_column()
+{
+	pg_assert_same(4294967295, pg_explorer_bulk_quantity_value('4294967295'), 'the top');
+	pg_assert_true(pg_inventory_quantity_too_large(pg_explorer_bulk_quantity_value('5000000000')), 'handed back for the screen to refuse');
+	pg_assert_true(pg_inventory_quantity_too_large(pg_products_mass_quantity_value('5000000000')), 'Edit Selected and the import read the same');
+	pg_assert_true(pg_inventory_quantity_too_large(pg_explorer_bulk_product_new_quantity(20, 'increase', 4294967290)), 'an increase past the top is seen');
+	pg_assert_false(pg_inventory_quantity_too_large(pg_explorer_bulk_product_new_quantity(5, 'increase', 4294967290)), 'one that reaches it is not');
+}
+
+// Each stock writer refuses or skips a count past the column before it
+// writes: the Catalog Manager's bulk edit, Edit Selected, the product import
+// and the barcode increase.
+function test_stock_writers_refuse_a_count_past_the_column()
+{
+	$bulk = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/handle_products_bulk.php');
+
+	pg_assert_contains('pg_inventory_quantity_too_large($bulk_quantity_value)', $bulk, 'Catalog Manager: the typed figure');
+	pg_assert_contains('pg_inventory_quantity_too_large($new_quantity)', $bulk, 'Catalog Manager: each product\'s new count');
+	pg_assert_contains('$quantity_too_large++', $bulk, 'skipped and counted');
+	pg_assert_contains("'quantity_too_large' => \$quantity_too_large", $bulk, 'in the answer');
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_products.php');
+	$loop = strpos($screen, 'foreach ($_POST[\'products\'] as $product_id)');
+
+	pg_assert_true(strpos($screen, 'pg_inventory_quantity_too_large($quantity_value)') < $loop, 'Edit Selected: the typed figure, before any product is touched');
+	pg_assert_true(strpos($screen, 'pg_inventory_quantity_too_large($new_inventory_quantity)') > $loop, 'Edit Selected: each product\'s new count');
+	pg_assert_contains('$number_of_too_large_quantity_products', $screen, 'skipped and counted');
+
+	$import = (string) file_get_contents(PG_FUNCTIONS_DIR . '/import_products.php');
+
+	pg_assert_contains('pg_inventory_quantity_too_large($row_quantity)', $import, 'import: the row is left out');
+	pg_assert_contains('$rows_quantity_too_large[] = $row_label', $import, 'named by its number');
+
+	$scan = (string) file_get_contents(PG_FUNCTIONS_DIR . '/barcode_increase_inventory.php');
+
+	pg_assert_true(strpos($scan, 'pg_inventory_quantity_too_large($new_inventory_quantity)') !== false, 'barcode increase: refused');
+	pg_assert_true(strpos($scan, 'pg_inventory_quantity_too_large($new_inventory_quantity)') < strpos($scan, 'UPDATE products'), 'before the write');
+}

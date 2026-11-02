@@ -208,6 +208,23 @@ function pg_shipment_delivery_entered($before, $after, $today)
 }
 
 /**
+ * Whether a requested arrival date lies before today, so no shipping method
+ * can still meet it. An empty, zero (At once) or impossible date has not
+ * passed: whether it is valid is checked on its own.
+ *
+ * @param  string $date  Y-m-d
+ * @param  string $today Y-m-d in the site's time zone
+ * @return bool
+ */
+function pg_arrival_date_passed($date, $today)
+{
+    $date = pg_shipment_date($date);
+    $today = pg_shipment_date($today);
+
+    return ($date !== '') && ($today !== '') && ($date < $today);
+}
+
+/**
  * Validates the check digit of a UPU S10 item number (two letters, eight
  * digits, a check digit, two letters: PTT's international parcels and
  * registered mail, "RR123456785TR").

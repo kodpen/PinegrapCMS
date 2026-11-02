@@ -115,7 +115,7 @@ $account_pages[] = array(
                     $col(array(
                         $span(lang('Staff only'), 'badge rounded-pill text-bg-primary mb-3', lang('Badge')),
                         $heading('h1', lang('Welcome to the staff area'), 'display-6 fw-semibold mb-3'),
-                        $para(lang('The coming bookings, the conversations with clients and the blog are kept here. To confirm or cancel a booking, open it and press Change Status.'), 'lead text-body-secondary mb-4'),
+                        $para(lang('The coming bookings, the conversations with clients and the blog are kept here. To confirm or cancel a booking, open it and press Change Status; what you write under it reaches the client by e-mail.'), 'lead text-body-secondary mb-4'),
                         $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
                             $link(lang('Open the control panel'), $panel_url, 'btn btn-primary rounded-pill px-4'),
                             $link(lang('All Bookings'), '{{page:my_appointments}}', 'btn btn-outline-primary rounded-pill px-4'),
@@ -134,7 +134,7 @@ $account_pages[] = array(
             $container(array(
                 $section_header(lang('Staff'), lang('Shortcuts')),
                 $row(array(
-                    $staff_shortcut('bi-calendar2-week', lang('All Bookings'), lang('Every booking, newest first, with its status.'), '{{page:my_appointments}}'),
+                    $staff_shortcut('bi-calendar2-week', lang('All Bookings'), lang('Every appointment, newest first, with its status.'), '{{page:my_appointments}}'),
                     $staff_shortcut('bi-chat-heart', lang('All Conversations'), lang('Every message from the contact page. Answer below each one.'), '{{page:inbox}}'),
                     $staff_shortcut('bi-journal-plus', lang('New Blog Post'), lang('Write a post; it appears on the blog as soon as you send it.'), '{{page:blog_new}}'),
                     $staff_shortcut('bi-person-plus', lang('Add to the Staff Directory'), lang('Add a colleague to the directory clients see.'), '{{page:staff_entry}}'),

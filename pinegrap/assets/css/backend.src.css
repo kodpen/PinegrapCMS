@@ -251,14 +251,18 @@ input.btn-check:disabled + .btn {
   }
 }
 /* v5's alert: a block with its radius and bottom margin (v6 lays it out
-   as a flex row with a gap); pg-alert-dismissible is v5's alert-dismissible. */
+   as a flex row with a gap); pg-alert-dismissible is v5's alert-dismissible.
+   liveform's messages print the v6 row (d-flex) once the panel frame has
+   started; one printed before it keeps v5's alert-dismissible, read here
+   the same way. */
 .alert {
   --bs-alert-border-radius: var(--pg-radius);
   position: relative;
   display: block;
   margin-bottom: 1rem;
 }
-.pg-alert-dismissible {
+.pg-alert-dismissible,
+.alert[class~="alert-dismissible"] {
   padding-right: 3rem;
 }
 /* Alerts that renderers shared with the site print with v5's colour
@@ -351,7 +355,8 @@ input.btn-check:disabled + .btn {
   --bs-theme-focus-ring: var(--bs-inverse-focus-ring);
   --bs-theme-contrast: var(--bs-inverse-contrast);
 }
-.pg-alert-dismissible > .btn-close {
+.pg-alert-dismissible > .btn-close,
+.alert[class~="alert-dismissible"] > .btn-close {
   position: absolute;
   top: 0;
   right: 0;
@@ -2348,6 +2353,23 @@ body:not(.toolbar) .software-content {
 #menu .list-group .list-group-item .pg-menu-badge {
   position: absolute;
   right: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.3em 0.55em;
+  pointer-events: none;
+}
+/* The same count on the panel entry it is about (the ERP's Overdue): in
+   the entry's right padding, so the label's ellipsis never cuts it. */
+#menu .menu-body .pg-menu-panel-body > a.pg-menu-has-badge {
+  position: relative;
+  padding-right: 2.75rem;
+}
+#menu .menu-body .pg-menu-panel-body > a .pg-menu-badge {
+  position: absolute;
+  right: 0.625rem;
   top: 50%;
   transform: translateY(-50%);
   font-size: 0.7rem;

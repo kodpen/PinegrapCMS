@@ -550,8 +550,9 @@ function pg_dashboard_activity_update_row($item)
             $icon = 'bi-file-earmark';
             break;
         case 'folder':
+            // A folder has no screen of its own: it opens in the File Manager.
             $type_name = lang('Folder');
-            $href = 'edit_folder.php?id=' . $id;
+            $href = 'view_folders.php?folder=' . $id;
             $icon = 'bi-folder';
             break;
         case 'calendar':

@@ -7,7 +7,6 @@
 		{"name": "main-menu-expanded", "path": "welcome.php", "crop": "#menu", "cookies": {"softwaremenustatus": "expanded"}, "viewports": ["wide"], "kept": true},
 		{"name": "footer", "path": "welcome.php", "crop": "#footer", "kept": true},
 		{"name": "workspace", "path": "workspace.php?channel={channel_id}", "kept": true},
-		{"name": "view_files", "path": "view_files.php", "kept": true},
 		{"name": "product_builder", "path": "edit_product.php?id={product_id}", "kept": true},
 		{"name": "product_builder-new", "path": "add_product.php", "kept": true},
 		{"name": "edit_user", "path": "edit_user.php?id={user_id}", "kept": true},

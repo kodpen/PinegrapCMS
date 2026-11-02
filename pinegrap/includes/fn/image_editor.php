@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'access');
 }
 
 /**
@@ -82,6 +82,7 @@ function pg_image_editor_strings_core()
         'zoomActual'     => lang('Actual size'),
         'tools'          => lang('Tools'),
         'layers'         => lang('Layers'),
+        'selection'      => lang('Selection'),
         'closePanel'     => lang('Close the panel'),
         'customColor'    => lang('Custom color'),
         'colorTransparent' => lang('Transparent'),
@@ -2394,6 +2395,45 @@ function pg_image_editor_strings_vector()
         'pathClosed'     => lang('Closed'),
         'finishPath'     => lang('Finish'),
         'convertToPath'  => lang('Convert to path'),
+    );
+}
+
+// -- Access (pg_image_editor_access.js) --
+
+/**
+ * The access part's labels: the keyboard help sheet, key names, the stage's
+ * name.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_access()
+{
+    return array(
+        'keySpace'      => lang('Space'),
+        'keyDeleteName' => lang('Delete'),
+        'keyArrows'     => lang('Arrow keys'),
+        'keyDrag'       => lang('drag'),
+        'stageLabel'    => lang('Picture. Press ? for the keyboard shortcuts.'),
+        'keysTitle'     => lang('Keyboard shortcuts'),
+        'keysTools'     => lang('Tools'),
+        'keysEdit'      => lang('Editing'),
+        'keysLayers'    => lang('Layers'),
+        'keysView'      => lang('View and zoom'),
+        'keysTouch'     => lang('Touch'),
+        'keyApply'      => lang('Apply the crop'),
+        'keyEscape'     => lang('Cancel, clear the selection, then close'),
+        'keyHelp'       => lang('Show the keyboard shortcuts'),
+        'keyNudge'      => lang('Move the selection by 1 pixel'),
+        'keyNudgeMore'  => lang('Move the selection by 10 pixels'),
+        'keyDelete'     => lang('Delete the selection'),
+        'keyDuplicate'  => lang('Duplicate the selection'),
+        'keyCopy'       => lang('Copy the selection'),
+        'keyPaste'      => lang('Paste a picture or the copied layers'),
+        'keySelectAll'  => lang('Select every layer'),
+        'keyPan'        => lang('Move the view'),
+        'touchPan'      => lang('Two fingers: move and zoom the view'),
+        'touchFit'      => lang('Double tap: actual size or fit to screen'),
+        'touchTwist'    => lang('Hold a layer and twist with a second finger: turn it'),
     );
 }
 

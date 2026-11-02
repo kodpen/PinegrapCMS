@@ -1,6 +1,6 @@
 ---
 name: search-and-audits-steps-2
-description: Steps SA6-SA13 of plans/search-and-audits.md: rule registry, same input, editor checks on the draft, audit panel, editor measurements, the screen, delta stage; claim as [plan:search-and-audits] SA<n>
+description: Steps SA6-SA14 of plans/search-and-audits.md: registry, same input, editor checks on the draft, audit panel, editor measurements, screen, delta, tick lock; claim as [plan:search-and-audits] SA<n>
 ---
 
 ## Which steps are there?
@@ -28,6 +28,10 @@ description: Steps SA6-SA13 of plans/search-and-audits.md: rule registry, same i
 
 - SA12 (S) Delta stage. After SA4. Done (#4837).
   - Each tick first re-indexes pages whose `page_timestamp` and records whose `forms.last_modified_timestamp` is newer than their row; the daily full run stays.
+
+- SA14 (S) The index's tick lock in minutes; a failed designer record keeps its row. Done (#4983).
+  - The catalogue's `update_search_index` lock 600 s (was 14400): a dispatched tick and a panel request work within a budget, and a tick a host's job runner killed outright released nothing for four hours, the heavy lane with it. A command-line run, the whole pass, claims 14400 s (`pg_search_index_claim_seconds()`, `pg_cron_claim($name, $seconds)`).
+  - A designer record whose render throws keeps its row (`pg_search_index_keep_item()`), as question 5 decided; SA1 left it out.
 
 - SA13 (S) Close-out.
   - Lasting behaviour and decisions to the `designer/`, `platform/` and `visitors/` topic files; the five plan files deleted.

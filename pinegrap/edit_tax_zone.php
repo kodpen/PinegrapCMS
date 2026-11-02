@@ -30,10 +30,34 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM tax_zones WHERE id = '" .
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
-if (!$_POST) {
+// A save with a blank name draws the form again with what was typed and
+// the message under the name; nothing is written. Delete is never held
+// back by it.
+$values = null;
+$errors = array();
 
-    $tax_zone = db_item("SELECT name, tax_rate FROM tax_zones WHERE id = '" . $id . "'");
-    $choices = pg_tax_zone_form_choices($id);
+if ($_POST) {
+    validate_token_field();
+
+    if (($_POST['submit_delete'] ?? '') != 'Delete') {
+        $values = pg_tax_zone_form_post_values($_POST);
+        $name_error = pg_tax_zone_form_name_error($values['name']);
+
+        if ($name_error !== '') {
+            $errors['name'] = $name_error;
+        }
+    }
+}
+
+if (!$_POST || $errors) {
+
+    if ($errors) {
+        $choices = pg_tax_zone_form_choices($id, $values);
+    } else {
+        $tax_zone = db_item("SELECT name, tax_rate FROM tax_zones WHERE id = '" . $id . "'");
+        $values = array('name' => $tax_zone['name'], 'tax_rate' => $tax_zone['tax_rate']);
+        $choices = pg_tax_zone_form_choices($id);
+    }
 
     $output =
         pg_page_shell([
@@ -53,7 +77,7 @@ if (!$_POST) {
                     <form name="form" action="edit_tax_zone.php" method="post">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $id . '">
-                        ' . pg_tax_zone_form_cards(array('name' => $tax_zone['name'], 'tax_rate' => $tax_zone['tax_rate']), $choices['countries'], $choices['states']) . '
+                        ' . pg_tax_zone_form_cards($values, $choices['countries'], $choices['states'], $errors) . '
                         <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                             <div class="container">
                                 <div class="btn-group flex-wrap justify-content-center">
@@ -72,8 +96,6 @@ if (!$_POST) {
     print $output;
 
 } else {
-    validate_token_field();
-
     // tax_zones.tax_rate is NOT NULL: a blank or unreadable rate is refused
     // before the zone's countries and states are dropped, and "8,25" is read
     // as 8.25, not 8.
@@ -98,7 +120,7 @@ if (!$_POST) {
         $query = "DELETE FROM tax_zones WHERE id = ?";
         db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
-        log_activity(lang(array('string' => 'tax zone ({var:1}) was deleted', 'vars' => $_POST['name'])), $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => 'tax zone ({var:1}) was deleted', 'vars' => (string) ($_POST['name'] ?? ''))), $_SESSION['sessionusername']);
 
     } else {
 
@@ -108,11 +130,11 @@ if (!$_POST) {
                     user = ?,
                     timestamp = UNIX_TIMESTAMP()
                 WHERE id = ?";
-        db_q($query, array((string) ($_POST['name'] ?? ''), $tax_rate, (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        db_q($query, array($values['name'], $tax_rate, (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         pg_tax_zone_form_save_links($id, $_POST);
 
-        log_activity(lang(array('string' => 'tax zone ({var:1}) was modified', 'vars' => $_POST['name'])), $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => 'tax zone ({var:1}) was modified', 'vars' => $values['name'])), $_SESSION['sessionusername']);
     }
 
     header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/view_tax_zones.php');

@@ -177,49 +177,18 @@ function pg_designer_screen_render($ctx)
     if (empty($js_pages)) {
         // Add mode, or a design that somehow lost its pages: open one blank
         // tab so the operator has somewhere to work. It is created on save.
-        $js_pages[] = array(
-            'key'                   => 'new1',
-            'page_id'               => 0,
-            'page_name'             => '',
-            'page_folder'           => 0,
-            // A page the editor creates starts as a draft (Save keeps it
-            // off the site, Publish puts it on) where drafts exist and the
-            // operator decides them.
-            'page_draft'            => ($access === PG_DESIGNER_ACCESS_FULL && pg_page_draft_ready()) ? 1 : 0,
-            'page_title'            => '',
-            'page_meta_description' => '',
-            'page_search'           => 1,
-            'page_search_keywords'  => '',
-            'page_sitemap'          => 1,
-            'page_home'             => 0,
-            'page_noindex'          => 0,
-            'page_nofollow'         => 0,
-            'pg_comments'           => 0,
-            'pg_comments_label'     => '',
-            'pg_comments_allow_new' => 1,
-            'pg_comments_rating'    => 0,
-            'pg_comments_auto_publish' => 0,
-            'pg_comments_show_date'    => 0,
-            'pg_comments_login'        => 0,
-            'pg_comments_email_page'    => 0,
-            'pg_comments_email_subject' => '',
-            'pg_comments_notify_email'  => '',
-            'pg_comments_attachments'      => 0,
-            'pg_comments_select_name'      => 0,
-            'pg_comments_message'          => '',
-            'pg_comments_closed_message'   => '',
-            'pg_comments_watchers_managed' => 0,
-            'page_meta_tags'        => '',
-            'page_custom_jsonld'    => '',
-            'page_canonical_url'    => '',
-            'page_noarchive'        => 0,
-            'page_max_snippet'      => '',
-            'page_publish_at'       => '',
-            'page_unpublish_at'     => '',
-            'tree'                  => null,
-            'treeLoadWarning'       => false,
-            'formSettings'          => array(),
-            'access'                => 'edit',
+        // A page the editor creates starts as a draft (Save keeps it off the
+        // site, Publish puts it on) where drafts exist and the operator
+        // decides them. A classic style with no page of its own
+        // (?classic=1) starts the tab with the tree placing its frame, so
+        // the style's content is on the canvas and in the tree.
+        $blank_tree = null;
+        if (!empty($ctx['classic_frame_tree'])) {
+            $blank_tree = pg_designer_tree_decode((string)$ctx['classic_frame_tree']);
+        }
+        $js_pages[] = pg_designer_blank_page(
+            ($access === PG_DESIGNER_ACCESS_FULL && pg_page_draft_ready()) ? 1 : 0,
+            $blank_tree
         );
         $active = 0;
     }
@@ -274,6 +243,10 @@ function pg_designer_screen_render($ctx)
 
     $design_js = json_encode(array(
         'mode'          => $mode,
+        // What the request left in the liveform (errors, warnings, notices):
+        // shown as the editor's own toasts once the canvas is up, never as
+        // the panel's alert boxes, which pushed the full-height editor down.
+        'messages'      => pg_designer_screen_messages($liveform->get_errors(), $liveform->get_warning_messages(), $liveform->get_notices()),
         'styleId'       => $style_id,
         'styleName'     => (string)$style['name'],
         'activeKey'     => $active_key,
@@ -467,9 +440,6 @@ function pg_designer_screen_render($ctx)
         <link rel="stylesheet" href="assets/fonts/bootstrap-icons/bootstrap-icons.min.css">
         <link rel="stylesheet" href="assets/css/style_designer.css?v=' . pg_designer_asset_stamp('assets/css/style_designer.css') . '">
         <main id="content" style="padding:0; max-width:100%;">
-            ' . $liveform->output_errors() . '
-            ' . $liveform->output_notices() . '
-            ' . $liveform->get_warnings() . '
             ' . ((!empty($ctx['classic_folder_pages']) && function_exists('pg_classic_style_folder_pages_field')) ? pg_classic_style_folder_pages_field($ctx['classic_folder_pages']) : '') . '
             <!-- disable_shortcut: the editor answers Ctrl+S itself, with what its
                  main button says on the page on screen (style_designer.js). -->

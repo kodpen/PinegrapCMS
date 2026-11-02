@@ -47,6 +47,20 @@
         return JSON.parse(JSON.stringify(value));
     }
 
+    // The side panel (pg_dash_panel.js) follows the edit mode through
+    // pgDash.panel: opened, closed, cancel, saved and changed (the grid or
+    // the top section changed here).
+    function hook(name) {
+        if (pgDash.panel && (typeof pgDash.panel[name] === "function")) {
+            pgDash.panel[name]();
+        }
+    }
+
+    // The look the panel changed, or null when it is untouched.
+    function panelLook() {
+        return (pgDash.panel && (typeof pgDash.panel.look === "function")) ? pgDash.panel.look() : null;
+    }
+
     function announce(text) {
         if (typeof window.pgAnnounce === "function") {
             window.pgAnnounce(text);
@@ -84,7 +98,7 @@
     }
 
     function dirty() {
-        return editing && (greetingDirty || (JSON.stringify(current()) !== JSON.stringify(snapshot)));
+        return editing && (greetingDirty || (panelLook() !== null) || (JSON.stringify(current()) !== JSON.stringify(snapshot)));
     }
 
     function save(quiet, saveButton) {
@@ -92,10 +106,19 @@
             saveButton.disabled = true;
         }
 
+        var data = {action: "dashboard_layout_save", token: software_token, layout: current()};
+        var look = editing ? panelLook() : null;
+
+        // The look is sent only once the person picked one; until then the
+        // site's Appearance values keep reaching them.
+        if (look) {
+            data.look = look;
+        }
+
         $.ajax({
             contentType: "application/json",
             url: "api.php",
-            data: JSON.stringify({action: "dashboard_layout_save", token: software_token, layout: current()}),
+            data: JSON.stringify(data),
             type: "POST",
             dataType: "json"
         }).done(function (answer) {
@@ -122,6 +145,8 @@
     // The greeting's figures and counts are drawn by the server, so a
     // changed greeting is shown by loading the page again.
     function saved() {
+        hook("saved");
+
         if (greetingDirty) {
             editing = false;
             window.location.reload();
@@ -164,6 +189,7 @@
             decorateAll();
             drawGreeting();
             drawStatus();
+            hook("opened");
         }
 
         if (cardId && pgDash.frame(cardId)) {
@@ -174,6 +200,7 @@
     }
 
     function leave() {
+        hook("closed");
         editing = false;
         snapshot = null;
         root.classList.remove("pg-dash-editing");
@@ -208,6 +235,7 @@
         state.actions = copy(snapshot.actions);
         state.tiles = copy(snapshot.tiles);
         pgDash.place(entries);
+        hook("cancel");
         leave();
     }
 
@@ -291,6 +319,7 @@
         decorateAll();
         drawGreeting();
         drawPresetPicks();
+        hook("changed");
         announce(preset.title);
     }
 
@@ -307,6 +336,7 @@
         decorateAll();
         drawGreeting();
         drawStatus();
+        hook("changed");
         announce(S["default"]);
     }
 
@@ -446,7 +476,8 @@
         announce(fmt(S.moved, boxes.indexOf(item.box) + 1, boxes.length));
     }
 
-    function removeCard(item) {
+    // keepFocus: the gallery removed it and keeps focus itself.
+    function removeCard(item, keepFocus) {
         var entries = pgDash.layout();
         var index = entries.indexOf(item.entry);
         var title = config.cards[item.entry.id].title;
@@ -454,10 +485,15 @@
         entries.splice(index, 1);
         pgDash.place(entries);
         refreshTools();
+        hook("changed");
+        announce(fmt(S.removed, title));
+
+        if (keepFocus) {
+            return;
+        }
 
         var next = entries[Math.min(index, entries.length - 1)];
         (next ? pgDash.frame(next.id).box.querySelector(".pg-dash-grip") : bar.querySelector(".pg-dash-bar-title")).focus();
-        announce(fmt(S.removed, title));
     }
 
     // Dragging by the grip: the mouse picks the card up once it moves a few
@@ -726,6 +762,15 @@
                 list.appendChild(item);
             });
         }
+
+        // A part switched off in the top section stays drawn, hidden, so
+        // switching it on again shows it as it was.
+        [["since", ".pg-dash-since"], ["actions", ".pg-dash-actions"], ["tiles", ".pg-dash-tiles"]].forEach(function (pair) {
+            var node = greeting.querySelector(pair[1]);
+            if (node) {
+                node.hidden = !state.top[pair[0]];
+            }
+        });
     }
 
     // The greeting's nav or list, made where the server drew none.
@@ -782,6 +827,7 @@
 
         toggle.textContent = off ? S.show : S.hide;
         toggle.setAttribute("aria-pressed", off ? "true" : "false");
+        hook("changed");
     }
 
     // ── Start ──────────────────────────────────────────────────────────────
@@ -803,7 +849,33 @@
             tiles: copy(config.edit.tiles)
         };
 
-        pgDash.edit = {enter: enter};
+        // What the side panel uses: the state it edits, and the redraws a
+        // change of it needs.
+        pgDash.edit = {
+            enter: enter,
+            editing: function () {
+                return editing;
+            },
+            state: function () {
+                return state;
+            },
+            // The layout as it stands on screen, in the form Save sends.
+            layout: current,
+            greetingChanged: function () {
+                greetingDirty = true;
+                drawGreeting();
+            },
+            statusChanged: drawStatus,
+            cardsChanged: function () {
+                decorateAll();
+                hook("changed");
+            },
+            remove: function (id) {
+                if (pgDash.frame(id)) {
+                    removeCard(pgDash.frame(id), true);
+                }
+            }
+        };
 
         // Outside edit mode a changed period is kept at once.
         pgDash.periodChanged = function () {

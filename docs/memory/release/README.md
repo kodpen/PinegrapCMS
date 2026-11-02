@@ -29,6 +29,7 @@ Versions, migrations and upgrade steps, change log rules, release status.
 - released-vs-open-version.md: Released versions are closed, unreleased ones open: where the status is recorded, how the upgrade loop compares versions, no new number while one is open.
 - rerun-upgrade-steps.md: How to re-run an open version's upgrade steps on a dev DB (config.version rollback by SQL or the Yazılımı Onar card, which versions it offers) and the package repair card.
 - schema-probe-rules.md: Code that reads a table/column added by a migration probes first with pg_schema_has() (cache file, invalidation, pg_schema_forget() for a recheck); which hot probes use it, the router's config check
+- schema-probe-without-db.md: waf_table_has_column() with no db class loaded answers false, so pure functions that probe a column run in unit tests alone
 - stale-migration-file-protection.md: Why a stale migration file survived a zip upload (0555 folders) and the protection layers: permission scan, update screen, status card, repair, extraction.
 - upgrade-automation-and-testing.md: Cron/automated upgrade entry points (AUTOMATED_UPGRADE_SECRET), admin-session behavior, and where the upgrade system test protocol lives.
 - upgrade-bridge-rule.md: Upgrade bridge rule: code lands before the schema, so login, install lock and initialize_user() must run on the previous schema; gate and mandatory test.

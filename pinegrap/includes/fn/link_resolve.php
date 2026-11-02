@@ -130,6 +130,68 @@ function pg_link_parse($href, $env)
 }
 
 /**
+ * The key of a name map that a name reaches, as the router's database
+ * lookup finds it: the exact key, else one that differs only in letter case
+ * (the name columns compare without case, so /About opens the page about).
+ * The map's folded index (pg_link_maps_fold()) is used when the maps carry
+ * one; else the map is walked.
+ *
+ * @param array  $maps the name maps
+ * @param string $kind pages, files, short_links, products or product_groups
+ * @param string $name
+ * @return string|null the key; null when the name reaches none
+ */
+function pg_link_map_key($maps, $kind, $name)
+{
+    $name = (string) $name;
+    $map = isset($maps[$kind]) ? $maps[$kind] : array();
+
+    if (isset($map[$name])) {
+        return $name;
+    }
+
+    $folded = mb_strtolower($name, 'UTF-8');
+
+    if (isset($maps['folded'][$kind])) {
+        return isset($maps['folded'][$kind][$folded]) ? (string) $maps['folded'][$kind][$folded] : null;
+    }
+
+    foreach ($map as $key => $value) {
+        if (mb_strtolower((string) $key, 'UTF-8') === $folded) {
+            return (string) $key;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * The maps with a folded index added: for each name map, the lower-case
+ * name => the map's key (the first one when two differ only in case).
+ *
+ * @param array $maps
+ * @return array
+ */
+function pg_link_maps_fold($maps)
+{
+    $maps['folded'] = array();
+
+    foreach (array('pages', 'files', 'short_links', 'products', 'product_groups') as $kind) {
+        $maps['folded'][$kind] = array();
+
+        foreach ((isset($maps[$kind]) ? $maps[$kind] : array()) as $key => $value) {
+            $folded = mb_strtolower((string) $key, 'UTF-8');
+
+            if (!isset($maps['folded'][$kind][$folded])) {
+                $maps['folded'][$kind][$folded] = (string) $key;
+            }
+        }
+    }
+
+    return $maps;
+}
+
+/**
  * Looks one item name up in the router's own order: the home page, files,
  * short links, pages, then a pretty address (a page name, a slash, an item
  * that page shows). 'unknown' is the only answer that counts as broken, and
@@ -157,16 +219,20 @@ function pg_link_resolve_item($item_name, $maps, $form_names = array())
         return array('type' => 'page', 'id' => isset($maps['home_page_id']) ? (int) $maps['home_page_id'] : 0, 'class' => 'page');
     }
 
-    if (isset($maps['files'][$item_name])) {
-        return array('type' => 'file', 'id' => (int) $maps['files'][$item_name], 'class' => 'file');
+    $file = pg_link_map_key($maps, 'files', $item_name);
+
+    if ($file !== null) {
+        return array('type' => 'file', 'id' => (int) $maps['files'][$file], 'class' => 'file');
     }
 
-    if (isset($maps['short_links'][$item_name])) {
+    if (pg_link_map_key($maps, 'short_links', $item_name) !== null) {
         return array('type' => 'short_link', 'id' => 0, 'class' => 'short_link');
     }
 
-    if (isset($pages[$item_name])) {
-        return array('type' => 'page', 'id' => (int) $pages[$item_name]['id'], 'class' => 'page');
+    $page_name = pg_link_map_key($maps, 'pages', $item_name);
+
+    if ($page_name !== null) {
+        return array('type' => 'page', 'id' => (int) $pages[$page_name]['id'], 'class' => 'page');
     }
 
     $unknown = array('type' => 'unknown', 'id' => 0, 'class' => 'unknown');
@@ -178,7 +244,9 @@ function pg_link_resolve_item($item_name, $maps, $form_names = array())
     $prefix = mb_substr($item_name, 0, mb_strpos($item_name, '/'));
     $slug = trim(mb_substr($item_name, mb_strpos($item_name, '/') + 1), '/');
 
-    if (!isset($pages[$prefix])) {
+    $prefix = pg_link_map_key($maps, 'pages', $prefix);
+
+    if ($prefix === null) {
         return $unknown;
     }
 
@@ -192,12 +260,16 @@ function pg_link_resolve_item($item_name, $maps, $form_names = array())
 
     if (($page['type'] === 'catalog') || ($page['type'] === 'catalog detail') || ($page['layout_type'] === 'system')) {
 
-        if (isset($maps['products'][$slug])) {
-            return array('type' => 'product', 'id' => (int) $maps['products'][$slug], 'class' => 'product');
+        $product = pg_link_map_key($maps, 'products', $slug);
+
+        if ($product !== null) {
+            return array('type' => 'product', 'id' => (int) $maps['products'][$product], 'class' => 'product');
         }
 
-        if (isset($maps['product_groups'][$slug])) {
-            return array('type' => 'product_group', 'id' => (int) $maps['product_groups'][$slug], 'class' => 'product_group');
+        $group = pg_link_map_key($maps, 'product_groups', $slug);
+
+        if ($group !== null) {
+            return array('type' => 'product_group', 'id' => (int) $maps['product_groups'][$group], 'class' => 'product_group');
         }
 
         // A system-layout page can host widgets this resolver does not
@@ -216,7 +288,7 @@ function pg_link_resolve_item($item_name, $maps, $form_names = array())
             $form_names = call_user_func($form_names);
         }
 
-        return isset($form_names[$slug]) ? $reaches_page : $unknown;
+        return (pg_link_map_key(array('form_names' => (array) $form_names), 'form_names', $slug) !== null) ? $reaches_page : $unknown;
     }
 
     // Some other page type carrying a path segment - a calendar view, a
@@ -344,7 +416,7 @@ function pg_link_maps_for_items($items)
         }
     }
 
-    return $maps;
+    return pg_link_maps_fold($maps);
 }
 
 // Name lookups the SEO resolver needs, loaded once per request.
@@ -403,6 +475,8 @@ function pg_seo_link_maps()
             $maps['product_groups'][(string) $row['address_name']] = (int) $row['id'];
         }
     }
+
+    $maps = pg_link_maps_fold($maps);
 
     return $maps;
 }
