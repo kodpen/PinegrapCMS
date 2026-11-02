@@ -115,7 +115,17 @@ if (!$_POST) {
 
 } else {
     validate_token_field();
-    
+
+    // Nothing is written, the cut-offs included, while a field is wrong;
+    // delete is never held back by it.
+    if (($_POST['submit_delete'] ?? '') != 'Delete') {
+        $errors = pg_arrival_date_form_errors($_POST);
+
+        if ($errors) {
+            output_error(implode(' ', array_map('h', $errors)) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+    }
+
     // delete shipping cut-offs (we do this regardless of whether the arrival date is being deleted or edited)
     $query = "DELETE FROM shipping_cutoffs WHERE arrival_date_id = ?";
     $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');

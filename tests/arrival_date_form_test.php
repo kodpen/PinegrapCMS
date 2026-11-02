@@ -83,3 +83,55 @@ function test_arrival_date_form_screens_use_the_shared_form()
 
 	pg_assert_same(substr_count($form, '<div'), substr_count($form, '</div>'), 'balanced markup');
 }
+
+// A date typed in the site's order.
+function arrival_date_form_test_date($day, $month, $year)
+{
+	if (!defined('DATE_FORMAT')) {
+		define('DATE_FORMAT', 'day_month');
+	}
+
+	return (DATE_FORMAT == 'month_day') ? $month . '/' . $day . '/' . $year : $day . '/' . $month . '/' . $year;
+}
+
+function test_arrival_date_form_errors()
+{
+	$valid = array(
+		'name' => 'Anneler Günü',
+		'start_date' => arrival_date_form_test_date(2, 11, 2026),
+		'end_date' => arrival_date_form_test_date(31, 12, 2026),
+		'arrival_date' => arrival_date_form_test_date(24, 12, 2026),
+		'sort_order' => '3',
+	);
+
+	pg_assert_same(array(), pg_arrival_date_form_errors($valid), 'a valid arrival date');
+
+	$errors = pg_arrival_date_form_errors(array('name' => ' ', 'start_date' => arrival_date_form_test_date(31, 2, 2027), 'arrival_date' => 'abc', 'sort_order' => '12,5') + $valid);
+	pg_assert_same(array('name', 'start_date', 'arrival_date', 'sort_order'), array_keys($errors), 'the blank name, the impossible start, the text arrival date and the decimal sort order');
+
+	$errors = pg_arrival_date_form_errors(array('end_date' => arrival_date_form_test_date(1, 11, 2026)) + $valid);
+	pg_assert_same(array('end_date'), array_keys($errors), 'an end before the start');
+
+	$custom = array('custom' => '1', 'arrival_date' => '', 'custom_maximum_arrival_date' => '') + $valid;
+	pg_assert_same(array(), pg_arrival_date_form_errors($custom), 'a customer-entered date needs no arrival date');
+	pg_assert_same(array('custom_maximum_arrival_date'), array_keys(pg_arrival_date_form_errors(array('custom_maximum_arrival_date' => 'abc') + $custom)), 'but its latest date is a real one when given');
+	pg_assert_same(array('arrival_date'), array_keys(pg_arrival_date_form_errors(array('arrival_date' => '') + $valid)), 'otherwise the arrival date is required');
+
+	foreach (array('add_arrival_date.php', 'edit_arrival_date.php') as $file) {
+		$source = arrival_date_form_test_source($file);
+		pg_assert_true(strpos($source, 'pg_arrival_date_form_errors($_POST)') < strpos($source, 'pg_arrival_date_form_values($_POST'), $file . ': checked before the write');
+	}
+
+	$edit = arrival_date_form_test_source('edit_arrival_date.php');
+	pg_assert_true(strpos($edit, 'pg_arrival_date_form_errors($_POST)') < strpos($edit, 'DELETE FROM shipping_cutoffs'), 'the cut-offs stay while a field is wrong');
+}
+
+function test_arrival_date_form_date_text()
+{
+	pg_assert_same('', pg_arrival_date_form_date_text('0000-00-00'), 'an unset date is empty, not 0/0/0000');
+	pg_assert_same('', pg_arrival_date_form_date_text(''), 'blank');
+	pg_assert_same('', pg_arrival_date_form_date_text(null), 'null');
+	pg_assert_true(pg_arrival_date_form_date_text('2026-12-24') !== '', 'a real date is written');
+	pg_assert_contains('2026', pg_arrival_date_form_date_text('2026-12-24'), 'with its year');
+	pg_assert_contains('pg_arrival_date_form_date_text($row[\'arrival_date\'])', arrival_date_form_test_source('view_arrival_dates.php'), 'the list uses it');
+}

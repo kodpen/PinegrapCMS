@@ -29,8 +29,9 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM zones WHERE id = '" . $id
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
-// A save with a blank name draws the form again with what was typed and
-// the message under the name; nothing is written. Delete is never held
+// A save with a blank name or a rate that is no amount of 0 or more draws
+// the form again with what was typed and the message under the field;
+// nothing is written. Delete is never held
 // back by it.
 $selected = null;
 $errors = array();
@@ -44,6 +45,11 @@ if ($_POST) {
 
         if ($name_error !== '') {
             $errors['name'] = $name_error;
+        }
+
+        $errors += pg_zone_form_rate_errors($values);
+
+        if ($errors) {
             $selected = $values;
         }
     }

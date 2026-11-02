@@ -127,3 +127,19 @@ function test_zone_form_selected_count()
 	pg_assert_same(2, pg_zone_form_selected_count($items, array('3', 1, '9')), 'only listed items count, ids as text');
 	pg_assert_same(0, pg_zone_form_selected_count($items, array()), 'none chosen');
 }
+
+function test_zone_form_rate_errors()
+{
+	$values = array('base_rate' => '12,50', 'primary_weight_rate' => '', 'secondary_weight_rate' => '-5,00', 'item_rate' => 'abc');
+	$errors = pg_zone_form_rate_errors($values);
+
+	pg_assert_same(array('secondary_weight_rate', 'item_rate'), array_keys($errors), 'a negative rate and text are named, an amount and a blank box are not');
+	pg_assert_contains(lang('Secondary Weight Rate'), $errors['secondary_weight_rate'], 'the message names its field');
+	pg_assert_same(array(), pg_zone_form_rate_errors(array('base_rate' => '1.234,56', 'item_rate' => '0')), 'group separators and zero pass');
+
+	foreach (array('add_zone.php', 'edit_zone.php') as $file) {
+		pg_assert_contains('pg_zone_form_rate_errors($values)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file . ': a wrong rate is refused before the save');
+	}
+
+	pg_assert_contains('data-inputmask-allowMinus="false"', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/zone_form.php'), 'the rate boxes take no minus sign');
+}
