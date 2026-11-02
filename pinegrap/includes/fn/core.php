@@ -1029,8 +1029,11 @@ function escape_javascript($string)
     $string = str_replace('"', '\\"', $string);
     // escape new line
     $string = str_replace(array("\r\n", "\n", "\r"), '\n', $string);
-    // prevent breaking out of script tag
-    $string = str_ireplace('</script>', '<\/script>', $string);
+    // Prevent breaking out of the script block: the HTML parser ends it at
+    // "</script" followed by a space, a slash or ">", and "<!--" switches it
+    // into a state where a later "<script" changes where it ends. "<\/" and
+    // "<\!" read the same inside a JavaScript string.
+    $string = str_replace(array('</', '<!'), array('<\/', '<\!'), $string);
     return $string;
 }
 
