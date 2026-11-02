@@ -176,7 +176,7 @@ function erp_invoice_form_lines($liveform, $stored_rows = array())
  * @param bool       $withholding_shown  Whether the withholding column is open
  * @return string  HTML <tr>
  */
-function erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown = false)
+function erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown = false, $campaign_shown = true)
 {
     $name = function ($field) use ($index) {
         return 'lines[' . $index . '][' . $field . ']';
@@ -246,7 +246,7 @@ function erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown 
                     'value' => $line['unit_price'],
                     'class' => 'form-control form-control-sm text-end', 'maxlength' => '15', 'inputmode' => 'decimal', 'autocomplete' => 'off',
                     'aria-label' => lang('Unit price'))) . '</td>
-                <td>
+                <td' . ($campaign_shown ? '' : ' class="d-none"') . '>
                     <input type="hidden" name="' . h($name('offer_id')) . '" value="' . (int) $line['offer_id'] . '" data-erp-offer-id />
                     ' . $liveform->output_field(array(
                     'type' => 'text', 'id' => $id('offer_discount_rate'), 'name' => $name('offer_discount_rate'),
@@ -336,7 +336,9 @@ function erp_invoice_form_cards($liveform, $options = array())
     $account_options[lang('Choose an account')] = '';
     // liveform prints option labels as-is; account titles come from contact names typed at checkout.
     // Keyed by id with the title as the label, so two accounts of the same name stay two options.
-    foreach (erp_accounts(array('status' => 'active')) as $account) {
+    // A purchase order goes to a supplier: accounts kept as customers only
+    // are left out (erp_purchase_order_account_refusal()).
+    foreach (erp_accounts(array('status' => 'active', 'kind' => $is_order ? 'supplier' : '')) as $account) {
         $account_options['account_' . (int) $account['id']] = array('label' => h($account['title']), 'value' => (string) (int) $account['id']);
     }
 
@@ -390,10 +392,10 @@ function erp_invoice_form_cards($liveform, $options = array())
 
     $output_rows = '';
     foreach (array_values($lines) as $index => $line) {
-        $output_rows .= erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown);
+        $output_rows .= erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown, !$is_order);
     }
 
-    $output_template = erp_invoice_form_line_row($liveform, '__INDEX__', erp_invoice_form_line(array(), false), $withholding_shown);
+    $output_template = erp_invoice_form_line_row($liveform, '__INDEX__', erp_invoice_form_line(array(), false), $withholding_shown, !$is_order);
 
     $date_format = (defined('DATE_FORMAT') && (DATE_FORMAT == 'month_day')) ? 'month_day' : 'day_month';
 
@@ -530,7 +532,7 @@ function erp_invoice_form_cards($liveform, $options = array())
                             <th class="text-end" style="width:8%">' . lang('Quantity') . '</th>
                             <th style="width:11%">' . lang('Unit') . '</th>
                             <th class="text-end" style="width:11%">' . lang('Unit price') . '</th>
-                            <th class="text-end" style="width:7%">' . lang('Campaign %') . '</th>
+                            <th class="text-end' . ($is_order ? ' d-none' : '') . '" style="width:7%">' . lang('Campaign %') . '</th>
                             <th class="text-end" style="width:7%">' . lang('Discount %') . '</th>
                             <th class="text-end" style="width:7%">' . h(erp_tax_label('percent')) . '</th>' . (erp_tax2_enabled() ? '
                             <th class="text-end" style="width:7%">' . h(erp_tax2_name() . ' %') . '</th>' : '') . '
@@ -543,7 +545,7 @@ function erp_invoice_form_cards($liveform, $options = array())
                 </table>
             </div>
             <template data-erp-line-template>' . $output_template . '</template>
-            <div class="form-text" id="erp_lines_columns_hint">' . lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Campaign %'), lang('The store\'s campaign on the product, applied before the typed discount. Clear it to sell at the list price.')))) . ' ' . lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Discount %'), lang('Your discount, applied on what the campaign leaves.')))) . '</div>
+            <div class="form-text" id="erp_lines_columns_hint">' . ($is_order ? '' : lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Campaign %'), lang('The store\'s campaign on the product, applied before the typed discount. Clear it to sell at the list price.')))) . ' ') . lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Discount %'), $is_order ? lang('The discount the supplier gives on the line.') : lang('Your discount, applied on what the campaign leaves.')))) . '</div>
             <div class="form-text">' . lang('Amounts are in the document currency. Empty rows are ignored. Picking a product fills the line; everything on it stays editable.') . '</div>
         </div>
     </div>

@@ -147,8 +147,16 @@ if ($_POST) {
 $status_key = (string) $order['status'];
 $statuses = erp_purchase_order_statuses();
 $editable = erp_purchase_order_editable($order) && !$readonly;
+$status = $statuses[$status_key] ?? array($status_key, 'secondary');
 $money = function ($kurus) use ($order) {
     return h(erp_money_out_currency((int) $kurus, (string) $order['currency']));
+};
+
+// A quantity with its unit's name ("2 kilogram"), as the PDF prints it.
+$quantity = function ($value, $unit_code) {
+    $unit = trim((string) $unit_code);
+
+    return h(erp_quantity_text($value)) . (($unit !== '') ? ' <span class="fg-secondary">' . h(erp_waybill_unit_label($unit)) . '</span>' : '');
 };
 
 // The actions: each is a small form, so a readonly account never sees one.
@@ -161,8 +169,10 @@ $action_button = function ($action, $label, $icon, $class, $confirm = '') use ($
 // What has come against each line, and the invoices it came on.
 $progress = erp_purchase_order_order_progress($order);
 $remaining_total = 0.0;
+$received_any = false;
 foreach ($progress as $row) {
     $remaining_total += (float) $row['remaining'];
+    $received_any = $received_any || ((float) $row['received'] > 0);
 }
 $can_invoice = !$readonly && in_array($status_key, array('open', 'sent', 'partial'), true) && ($remaining_total > 0);
 
@@ -175,7 +185,7 @@ if (!$readonly) {
         $output_actions .= $action_button('sent', lang('Mark as sent'), 'bi-send-check', 'btn-outline theme-primary', lang('Mark this order as sent to the supplier (by phone, on paper)? Sending it by e-mail does this by itself.'));
     }
     if (in_array($status_key, array('open', 'sent', 'partial'), true)) {
-        $output_actions .= $action_button('cancelled', lang('Cancel'), 'bi-x-circle', 'btn-outline theme-secondary', lang('Cancel this purchase order? It stays on the list, marked cancelled; what has already come in stays on its purchase invoices.'));
+        $output_actions .= $action_button('cancelled', lang('Cancel the order'), 'bi-x-circle', 'btn-outline theme-secondary', lang('Cancel this purchase order? It stays on the list, marked cancelled; what has already come in stays on its purchase invoices.'));
     }
     if ($status_key === 'cancelled') {
         $output_actions .= $action_button('open', lang('Open again'), 'bi-arrow-counterclockwise', 'btn-outline theme-secondary');
@@ -221,7 +231,7 @@ if ($editable) {
             <tr>
                 <td>' . (int) $line['line_no'] . '</td>
                 <td>' . h((string) $line['description']) . ((trim((string) ($line['product_name'] ?? '')) !== '' && (trim((string) $line['product_name']) !== trim((string) $line['description']))) ? '<div class="small fg-secondary">' . h((string) $line['product_name']) . '</div>' : '') . '</td>
-                <td class="text-end">' . h(erp_quantity_text($line['quantity'])) . '</td>
+                <td class="text-end text-nowrap">' . $quantity($line['quantity'], $line['unit_code'] ?? '') . '</td>
                 <td class="text-end">' . $money($line['unit_price']) . '</td>
                 <td class="text-end">' . (((int) $line['discount_amount'] > 0) ? $money($line['discount_amount']) : '') . '</td>
                 <td class="text-end">' . h(erp_percent_text($line['tax_rate'])) . '</td>
@@ -258,17 +268,23 @@ $output_goods = '';
 $linked_invoices = erp_purchase_order_invoices($order_id);
 
 if (!empty($linked_invoices) || in_array($status_key, array('partial', 'received'), true)) {
+    $units = array();
+    foreach (erp_purchase_order_lines($order) as $line) {
+        $units[(int) $line['line_no']] = (string) ($line['unit_code'] ?? '');
+    }
+
     $goods_rows = '';
     foreach ($progress as $row) {
+        $unit = $units[(int) $row['line_no']] ?? '';
         $full = ((float) $row['ordered'] > 0) && ((float) $row['received'] >= (float) $row['ordered']);
         $goods_rows .= '
             <tr>
                 <td>' . (int) $row['line_no'] . '</td>
                 <td>' . h($row['description']) . '</td>
-                <td class="text-end">' . h(erp_quantity_text($row['ordered'])) . '</td>
-                <td class="text-end' . ($full ? ' fg-success fw-semibold' : '') . '">' . h(erp_quantity_text($row['received'])) . '</td>
-                <td class="text-end fg-secondary">' . (((float) $row['drafted'] > 0) ? h(erp_quantity_text($row['drafted'])) : '—') . '</td>
-                <td class="text-end' . (((float) $row['open'] > 0) ? ' fw-semibold' : ' fg-secondary') . '">' . h(erp_quantity_text($row['open'])) . '</td>
+                <td class="text-end text-nowrap">' . $quantity($row['ordered'], $unit) . '</td>
+                <td class="text-end text-nowrap' . ($full ? ' fg-success fw-semibold' : '') . '">' . $quantity($row['received'], $unit) . '</td>
+                <td class="text-end text-nowrap fg-secondary">' . (((float) $row['drafted'] > 0) ? $quantity($row['drafted'], $unit) : '—') . '</td>
+                <td class="text-end text-nowrap' . (((float) $row['open'] > 0) ? ' fw-semibold' : ' fg-secondary') . '">' . $quantity($row['open'], $unit) . '</td>
             </tr>';
     }
 
@@ -342,7 +358,9 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
             </tr>';
     }
 
-    $can_mail = !$readonly && ($status_key !== 'cancelled');
+    // The same refusal as erp_purchase_order_mail_send(): a cancelled order
+    // and one whose goods have all come are not sent to the supplier again.
+    $can_mail = !$readonly && (erp_purchase_order_status_refusal($order, 'sent') === '');
     $output_mail_form = '';
 
     if ($can_mail) {
@@ -389,7 +407,6 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
     }
 }
 
-$status = $statuses[$status_key] ?? array($status_key, 'secondary');
 
 // A copy is always a new open order, whatever became of this one.
 $output_copy_button = (!$readonly && erp_purchase_orders_ready())
@@ -401,12 +418,19 @@ $output_audit_button = (function_exists('erp_audit_ready') && erp_audit_ready() 
     ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_audit.php?type=purchase_order&amp;id=' . $order_id . '"><i class="bi bi-shield-check me-1" aria-hidden="true"></i>' . lang('Audit trail') . '</a>'
     : '';
 
-$heading_parts = array((string) $order['account_title']);
+// Who the order went to and when, beside the status in the page body: the
+// heading's description is hidden below 1024px, and an order that can no
+// longer be edited shows its supplier nowhere else.
+$facts = array(
+    '<span class="fg-secondary me-2">' . lang('Status') . '</span><span class="badge theme-' . h($status[1]) . '">' . h($status[0]) . '</span>',
+    '<span class="fg-secondary me-2">' . lang('Supplier') . '</span><a class="pg-link-body-emphasis fw-semibold" href="edit_erp_account.php?id=' . (int) $order['account_id'] . '">' . h((string) $order['account_title']) . '</a>',
+    '<span class="fg-secondary me-2">' . lang('Order Date') . '</span>' . h(prepare_form_data_for_output((string) $order['issue_date'], 'date', false)),
+);
 if ((string) $order['expected_date'] > '0000-00-00') {
-    $heading_parts[] = lang(array('string' => 'Expected {var:1}', 'vars' => prepare_form_data_for_output((string) $order['expected_date'], 'date', false)));
+    $facts[] = h(lang(array('string' => 'Expected {var:1}', 'vars' => prepare_form_data_for_output((string) $order['expected_date'], 'date', false))));
 }
 if ((int) $order['sent_at'] > 0) {
-    $heading_parts[] = lang(array('string' => 'Sent {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $order['sent_at']), 'date and time', false)));
+    $facts[] = h(lang(array('string' => 'Sent {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $order['sent_at']), 'date and time', false))));
 }
 
 echo
@@ -415,8 +439,9 @@ pg_page_shell([
     'extra classes' => 'erp erp_invoices',
     'icon' => 'erp',
     'heading' => h(lang(array('string' => 'Purchase order {var:1}', 'vars' => (string) $order['full_number']))) . ' <span class="badge theme-' . h($status[1]) . ' ms-1 align-middle fs-md">' . h($status[0]) . '</span>',
-    'heading_description' => implode(' · ', array_filter($heading_parts, 'strlen')),
-    'cancel' => array('enable' => 'true', 'url' => pg_send_to_url('erp_purchase_orders.php')),
+    // The back arrow is named for where it goes: "Cancel" read the same as
+    // the button that cancels the order.
+    'cancel' => array('enable' => 'true', 'url' => pg_send_to_url('erp_purchase_orders.php')) + array('title' => lang('Purchase orders')),
     'breadcrumb' => array(
         array('label' => lang('Purchase orders'), 'url' => pg_send_to_list_url($list_url)),
         array('label' => (string) $order['full_number']),
@@ -428,7 +453,7 @@ pg_page_shell([
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
-            <div class="mb-3"><span class="small fg-secondary me-2">' . lang('Status') . '</span><span class="badge theme-' . h($status[1]) . '">' . h($status[0]) . '</span></div>
+            <div class="mb-3 small d-flex flex-wrap align-items-center column-gap-5 row-gap-1"><span>' . implode('</span><span>', $facts) . '</span></div>
 
             <nav id="button_bar" class="pg-toolbar navigation d-flex flex-wrap gap-1" aria-label="' . lang('Button Bar') . '">
                 <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_purchase_order_pdf.php?id=' . $order_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>
@@ -440,7 +465,9 @@ pg_page_shell([
             </nav>
 
             ' . ((!$editable && !$readonly && in_array($status_key, array('partial', 'received'), true)) ? '<div class="form-text mb-3">' . lang('Goods have come in against this order, so its lines are no longer changed; a new order asks for more.') . '</div>' : '') . '
-            ' . ((!$editable && !$readonly && ($status_key === 'cancelled')) ? '<div class="form-text mb-3">' . lang('A cancelled order is not changed; "Open again" makes it editable.') . '</div>' : '') . '
+            ' . ((!$editable && !$readonly && ($status_key === 'cancelled')) ? '<div class="form-text mb-3">' . ($received_any
+                ? lang('A cancelled order is not changed. Goods have already come in against it, so "Open again" brings back its received status and its lines stay as they are.')
+                : lang('A cancelled order is not changed; "Open again" makes it editable.')) . '</div>' : '') . '
             ' . $output_body . '
             ' . $output_goods . '
             ' . $output_mail . '

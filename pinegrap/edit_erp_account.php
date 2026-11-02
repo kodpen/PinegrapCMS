@@ -188,8 +188,13 @@ if (!$_POST) {
     // A sales quote is written to a customer, so a pure supplier gets no quote links.
     $show_quotes = function_exists('erp_quotes_ready') && erp_quotes_ready() && ((string) $account['kind'] !== 'supplier');
 
-    // A purchase order goes to a supplier, so a pure customer gets no order links.
-    $show_purchase_orders = function_exists('erp_purchase_orders_ready') && erp_purchase_orders_ready() && ((string) $account['kind'] !== 'customer');
+    // A purchase order goes to a supplier, so a pure customer gets no new
+    // order (erp_purchase_order_account_refusal()); its list still shows the
+    // orders written to it before it became a customer only.
+    $purchase_orders_on = function_exists('erp_purchase_orders_ready') && erp_purchase_orders_ready();
+    $can_order = $purchase_orders_on && ((string) $account['kind'] !== 'customer');
+    $show_purchase_orders = $can_order || ($purchase_orders_on
+        && ((int) db_value("SELECT COUNT(*) FROM erp_purchase_orders WHERE account_id = '" . (int) $account_id . "'") > 0));
 
     echo
     pg_page_shell([
@@ -219,7 +224,7 @@ if (!$_POST) {
                         ' . ($show_quotes ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_quotes.php?account_id=' . $account_id . '"><i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>' . lang('Quotes') . '</a>' : '') . '
                         ' . (($show_quotes && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_quote.php?account_id=' . $account_id . '"><i class="bi bi-file-earmark-plus me-1" aria-hidden="true"></i>' . lang('New quote') . '</a>' : '') . '
                         ' . ($show_purchase_orders ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_purchase_orders.php?account_id=' . $account_id . '"><i class="bi bi-cart-check me-1" aria-hidden="true"></i>' . lang('Purchase orders') . '</a>' : '') . '
-                        ' . (($show_purchase_orders && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_purchase_order.php?account_id=' . $account_id . '"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang('New purchase order') . '</a>' : '') . '
+                        ' . (($can_order && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_purchase_order.php?account_id=' . $account_id . '"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang('New purchase order') . '</a>' : '') . '
                         ' . $output_card_sync . '
                         ' . $output_workspace_button . '
                     </nav>
