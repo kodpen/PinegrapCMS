@@ -678,13 +678,19 @@ function pg_file_storage_reconcile_run($limit = 500)
  * object just sent whose row is about to be marked is never taken. Pure.
  *
  * @param array $items pg_os_list() items: key, modified
- * @param array $referenced storage_key => true for every stored row
+ * @param array|null $referenced storage_key => true for every stored row;
+ *                               null when the rows could not be read
  * @param int $now
- * @return array keys to delete
+ * @return array keys to delete; none without a confirmed list of rows
  */
-function pg_file_storage_orphans(array $items, array $referenced, $now)
+function pg_file_storage_orphans(array $items, $referenced, $now)
 {
     $orphans = array();
+
+    // A failed read would make every object look unnamed and delete live files.
+    if (!is_array($referenced)) {
+        return $orphans;
+    }
 
     foreach ($items as $item) {
         $key = isset($item['key']) ? (string) $item['key'] : '';
@@ -730,13 +736,8 @@ function pg_file_storage_orphan_sweep()
         return 0;
     }
 
-    $referenced = array();
-
-    foreach ((array) db_values("SELECT storage_key FROM files WHERE storage = 's3'") as $key) {
-        $referenced[(string) $key] = true;
-    }
-
     $deleted = 0;
+    $referenced = pg_file_storage_referenced_keys();
 
     foreach (array_slice(pg_file_storage_orphans($listing['items'], $referenced, time()), 0, 200) as $key) {
         $done = pg_os_delete($config, $key);
@@ -747,4 +748,41 @@ function pg_file_storage_orphan_sweep()
     }
 
     return $deleted;
+}
+
+
+/**
+ * The object keys the stored rows hold. Read with mysqli_query() itself: a
+ * failed read must stop only the sweep, where db_values() answers it with an
+ * empty list (during an upgrade) or ends the whole job (pg_db_run()). An
+ * empty list is trusted only when a count of stored rows confirms it.
+ *
+ * @return array|null storage_key => true; null when the rows cannot be read
+ */
+function pg_file_storage_referenced_keys()
+{
+    if (!class_exists('db') || empty(db::$con)) {
+        return null;
+    }
+
+    $result = @mysqli_query(db::$con, "SELECT storage_key FROM files WHERE storage = 's3'");
+
+    if (!$result) {
+        return null;
+    }
+
+    $referenced = array();
+
+    while ($row = mysqli_fetch_row($result)) {
+        $referenced[(string) $row[0]] = true;
+    }
+
+    if ($referenced) {
+        return $referenced;
+    }
+
+    $count = @mysqli_query(db::$con, "SELECT COUNT(*) FROM files WHERE storage = 's3'");
+    $row = $count ? mysqli_fetch_row($count) : null;
+
+    return (is_array($row) && ((int) $row[0] === 0)) ? $referenced : null;
 }

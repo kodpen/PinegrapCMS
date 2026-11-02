@@ -105,6 +105,8 @@ function test_object_storage_serve_orphans()
 
 	pg_assert_same(array('files/5/b.jpg'), pg_file_storage_orphans($items, array('files/4/a.jpg' => true), $now),
 		'only old move-job keys no row names');
+
+	pg_assert_same(array(), pg_file_storage_orphans($items, null, $now), 'rows not read: nothing is deleted');
 }
 
 function test_object_storage_serve_scripts_stay_local()
