@@ -14,9 +14,12 @@ description: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboa
   - Artboard tool: handles on the edges and corners; the artwork stays where it is, the board slides over it; width and height with a nine-point anchor; fit to content or to the selection; Shift keeps the ratio, Alt sizes from the centre. On a photo the same tool extends or trims the canvas with a fill; with it a frame may grow the canvas outward (the Polaroid of screen 08; E8 draws frames on the picture's edge).
   - File Manager "New image" opens it (today `createBlankImage()` sends a white PNG to the old editor).
 
-- E13 (M) Optimisation. Screen 11. `free` after E12.
-  - Export panel: format (original, JPEG, WebP, AVIF, PNG from the server's list), quality with the exact size from `estimate`, longest edge (original, 2560, 1920, 1280, 1080), metadata (location always removed, camera details optional), sRGB or the kept profile, progressive JPEG, PNG colour reduction; size before and after.
-  - Profile `optimise`: the File Manager opens a picture straight on this panel.
+- E13 (M) Optimisation. Screen 11. `free` after E12. Done (#5030, `ui/image-editor-export.md`).
+  - Export panel: format (original, JPEG, WebP, AVIF, PNG from the server's list), quality with the exact size from `estimate`, longest edge (original, 2560, 1920, 1280, 1080), progressive JPEG, PNG colour reduction; size before and after; another format saved as a copy (#4676, 6a).
+  - Profile `optimise`: the File Manager's "Export settings…" opens a picture straight on this panel.
+
+- E13b (S) Metadata and profile. `free` after E13.
+  - Camera details kept on request without the location (the engine strips all metadata today) and sRGB instead of the kept profile (Imagick only); the metadata note becomes screen 11's checkboxes.
 
 - E14 (M) Vector pen and nodes. Screen 09. Done in #4564 (`ui/image-editor-vector.md`).
   - Bezier pen (click for corners, drag for curves), node editing (move, handles, add, delete, corner or smooth), open and closed paths, "convert to path" for shapes.

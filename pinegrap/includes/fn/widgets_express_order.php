@@ -3471,16 +3471,7 @@ function _eo_prefill_billing_fields($lf, $order_id, $ghost)
         elseif (!empty($contact['lead_source']))      $rs = (string)$contact['lead_source'];
         if ($rs !== '') $lf->assign_field_value('referral_source', $rs);
     }
-    if (!$lf->field_in_session('opt_in')) {
-        $lf->assign_field_value('opt_in', !empty($order['opt_in']) ? '1' : '');
-    }
-    // The SMS box starts ticked, as the e-mail box of a new order does.
-    if (!$lf->field_in_session('opt_in_sms')) {
-        $lf->assign_field_value('opt_in_sms', '1');
-    }
-    if (!$lf->field_in_session('tax_exempt')) {
-        $lf->assign_field_value('tax_exempt', !empty($order['tax_exempt']) ? '1' : '');
-    }
+    _eo_prefill_billing_boxes($lf, $order);
     // Identity / tax number and tax office: kept on the contact, not on the
     // order, so a member finds them filled in the next time.
     foreach (array('tax_number', 'tax_office') as $f) {
@@ -3495,15 +3486,24 @@ function _eo_prefill_billing_fields($lf, $order_id, $ghost)
     if ($lf->prefill()) {
         $lf->assign_field_value('billing_same_as_shipping', empty($order['billing_address_1']) ? '1' : '');
     }
-    // update_contact: default ON for logged-in users (matches legacy intent).
-    if (!$lf->field_in_session('update_contact')) {
-        $session_pref = isset($_SESSION['software']['update_contact']) ? $_SESSION['software']['update_contact'] : null;
-        if ($session_pref === false) {
-            $lf->assign_field_value('update_contact', '');
-        } else {
-            $lf->assign_field_value('update_contact', '1');
-        }
-    }
+}
+
+// The tick boxes of the billing part: opt_in and tax_exempt from the order,
+// opt_in_sms ticked as the e-mail box of a new order is, update_contact
+// ticked unless the visitor turned it off earlier in the session. Only
+// before the visitor's first submit, as the classic express order page
+// fills them: an unticked box posts nothing, so field_in_session() cannot
+// tell "unticked" from "never shown", and a refused submit would bring an
+// unticked SMS or e-mail consent back ticked.
+function _eo_prefill_billing_boxes($lf, $order)
+{
+    if (!$lf || !$lf->prefill()) return;
+    $order = is_array($order) ? $order : array();
+    $lf->assign_field_value('opt_in', !empty($order['opt_in']) ? '1' : '');
+    $lf->assign_field_value('opt_in_sms', '1');
+    $lf->assign_field_value('tax_exempt', !empty($order['tax_exempt']) ? '1' : '');
+    $session_pref = isset($_SESSION['software']['update_contact']) ? $_SESSION['software']['update_contact'] : null;
+    $lf->assign_field_value('update_contact', ($session_pref === false) ? '' : '1');
 }
 
 // ── Helper: prefill shipping_<rid>_* fields from saved sources ──────────────

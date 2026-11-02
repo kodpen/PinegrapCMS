@@ -3098,6 +3098,88 @@ function pg_folder_option_label($folder_name, $left_out_parents = array())
 
     return implode(' › ', $parts);
 }
+/**
+ * The Workspace's own folder (config.ws_folder_id), 0 while the Workspace
+ * never made it. Read, never created: ws_root_folder_id() makes the folder
+ * on first use, which a settings screen must not do.
+ *
+ * @return int
+ */
+function pg_workspace_folder_id()
+{
+    static $id = null;
+
+    if ($id === null) {
+        $id = (function_exists('waf_table_has_column') && waf_table_has_column('config', 'ws_folder_id'))
+            ? (int) db_value("SELECT ws_folder_id FROM config")
+            : 0;
+    }
+
+    return $id;
+}
+
+/**
+ * Whether a folder may be a Site Settings folder choice (product images,
+ * API uploads, the folder an order grants access to). Not the Workspace's
+ * folder nor anything below it: its files belong to conversations, other
+ * customers' guest channels and internal notes, and an order granting
+ * access there would open them to every buyer. Not the Recycle Bin either.
+ * 0 (nothing chosen) is allowed. Pure over the rows.
+ *
+ * @param int   $folder_id
+ * @param array $rows      folder_id => folder_parent
+ * @param int   $workspace the Workspace folder, 0 when none
+ * @param int   $bin       the Recycle Bin folder, 0 when none
+ * @return bool
+ */
+function pg_settings_folder_choice_verdict($folder_id, $rows, $workspace, $bin)
+{
+    $folder_id = (int) $folder_id;
+
+    if ($folder_id <= 0) {
+        return true;
+    }
+
+    return !pg_folder_in_bin_chain($rows, $folder_id, (int) $workspace)
+        && !pg_folder_in_bin_chain($rows, $folder_id, (int) $bin);
+}
+
+/**
+ * pg_settings_folder_choice_verdict() over the site's folders.
+ *
+ * @param int $folder_id
+ * @return bool
+ */
+function pg_settings_folder_choice_ok($folder_id)
+{
+    $tree = pg_folder_access_tree();
+
+    return pg_settings_folder_choice_verdict($folder_id, $tree['rows'], pg_workspace_folder_id(), $tree['bin']);
+}
+
+/**
+ * The options of a Site Settings folder picker: select_folder() without the
+ * Workspace's folder and what is below it. A stored folder the list leaves
+ * out is added selected and marked, so the screen shows what is saved; the
+ * save refuses it until another folder is chosen.
+ *
+ * @param int    $folder_id           the stored choice
+ * @param string $access_control_type as select_folder()
+ * @return string
+ */
+function pg_settings_select_folder($folder_id, $access_control_type = '')
+{
+    $folder_id = (int) $folder_id;
+    $output = select_folder($folder_id, 0, pg_workspace_folder_id(), 0, array(), array(), $access_control_type);
+
+    if (($folder_id > 0) && !pg_settings_folder_choice_ok($folder_id)) {
+        $name = (string) db_value("SELECT folder_name FROM folder WHERE folder_id = '" . $folder_id . "'");
+        $output .= '<option value="' . $folder_id . '" selected>' . h($name) . ' ' . lang('(no longer offered)') . '</option>';
+    }
+
+    return $output;
+}
+
 // You can pass the access control type in order to limit the folders to those with that type of access control.
 // $left_out_parents holds the names of the parents above this level that the
 // access type filter did not print; the next printed folder carries them.

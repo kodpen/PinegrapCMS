@@ -47,7 +47,7 @@ $pg_settings_cards[] = '
                                                         </div>
                                                         <div class="pg-f-lg">
                                                             <label for="product_upload_folder_id" class="form-label">' . lang('Folder for product images') . '</label>
-                                                            <select name="product_upload_folder_id" id="product_upload_folder_id" class="form-control">' . select_folder($product_upload_folder_id, 0) . '</select>
+                                                            <select name="product_upload_folder_id" id="product_upload_folder_id" class="form-control">' . pg_settings_select_folder($product_upload_folder_id) . '</select>
                                                             <div class="form-text">' . lang('The product and product group screens open on this folder when an image is uploaded. It can still be changed while uploading.') . '</div>
                                                         </div>
                                                         <div class="col-12 ">
@@ -618,7 +618,7 @@ $pg_settings_cards[] = '
                                                                                                 <div class="popover-body">
                                                                                                    <div class="row gy-5">
                                                                                                         <div class="pg-f-md">
-                                                                                                            <label class="form-label" for="iyzipay_protected_currency_code">' . lang('Currency to be converted in submiting order for currency protection') . '</label>
+                                                                                                            ' . (($output_iyzipay_protected_currency_select !== '') ? '<label class="form-label" for="iyzipay_protected_currency_code">' . lang('Currency to be converted in submiting order for currency protection') . '</label>' : '') . '
                                                                                                             ' . $output_iyzipay_protected_currency_select . '
                                                                                                         </div>
                                                                                                     </div>
@@ -711,7 +711,7 @@ $pg_settings_cards[] = '
                                                             <label class="form-label" for="ecommerce_private_folder_id">'. lang('Grant Private Access') . '</label>
                                                             <select class="form-control" id="ecommerce_private_folder_id" name="ecommerce_private_folder_id">
                                                                 <option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Folder')) )) . '-</option>
-                                                                ' . select_folder($ecommerce_private_folder_id, 0, 0, 0, array(), array(), 'private') . '
+                                                                ' . pg_settings_select_folder($ecommerce_private_folder_id, 'private') . '
                                                             </select>
                                                         </div>
                                                         <div class="pg-f-lg">

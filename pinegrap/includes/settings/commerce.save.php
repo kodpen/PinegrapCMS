@@ -73,6 +73,16 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $liveform->mark_error($email_field, $email_error);
     }
 
+    // Neither folder may be the Workspace's or below it, nor in the Recycle
+    // Bin (pg_settings_folder_choice_ok()): granted access there would open
+    // conversation files to every buyer, and product images there could not
+    // be shown to visitors.
+    foreach (array('product_upload_folder_id', 'ecommerce_private_folder_id') as $folder_field) {
+        if (!pg_settings_folder_choice_ok((int) post_value($folder_field))) {
+            $liveform->mark_error($folder_field, lang('Choose a folder outside the Workspace and the Recycle Bin.'));
+        }
+    }
+
     if ($liveform->check_form_errors()) {
         return;
     }
@@ -113,6 +123,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         ? "review_photos = '" . ((post_value('review_photos') == 1) ? 1 : 0) . "',"
         : '';
 
+    // The protected currency box is drawn only while Multiple Currencies is
+    // on; a save without it keeps the stored currency instead of blanking it.
+    $sql_iyzipay_protected_currency = array_key_exists('iyzipay_protected_currency_code', $_POST)
+        ? "iyzipay_protected_currency_code = '" . escape(post_value('iyzipay_protected_currency_code')) . "',"
+        : '';
+
     // Only what the cards on this screen edit.
     db("UPDATE config
         SET
@@ -126,7 +142,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             ecommerce_show_product_images = '" . escape(post_value('ecommerce_show_product_images')) . "',
             barcode_enabled        = '" . escape(post_value('barcode_enabled'))        . "',
             barcode_default_type   = '" . escape(trim(post_value('barcode_default_type') ?: 'CODE128')) . "',
-            iyzipay_protected_currency_code = '" . escape(post_value('iyzipay_protected_currency_code')) . "',
+            " . $sql_iyzipay_protected_currency . "
             ecommerce_shipping = '" . escape(post_value('ecommerce_shipping')) . "',
             ecommerce_recipient_mode = '" . escape(post_value('ecommerce_recipient_mode')) . "',
             ecommerce_address_verification = '" . escape(post_value('ecommerce_address_verification')) . "',

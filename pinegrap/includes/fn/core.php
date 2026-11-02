@@ -2047,6 +2047,8 @@ function pg_timezone_offset_label($zone, $year = null)
 // outputted for the absolute time tooltip.
 // timezone_type: "user" (default) or "site".  This property allows you output a time
 // for the user's timezone (if user has one set) or the site's timezone.
+// mid_sentence: true when the result is printed inside a sentence ("Last modified
+// a moment ago by admin"), so "a moment ago" starts with a small letter.
 function get_relative_time($properties)
 {
     $timestamp = '';
@@ -2089,7 +2091,9 @@ function get_relative_time($properties)
     }
     // if the difference is less than 1 minute, then return "a moment ago/from now"
     if ($difference_in_seconds < 60) {
-        $relative_time = lang(array('string' => 'A moment {var:1}', 'vars' => array($past_or_future_message)));
+        $relative_time = empty($properties['mid_sentence'])
+            ? lang(array('string' => 'A moment {var:1}', 'vars' => array($past_or_future_message)))
+            : lang(array('string' => 'a moment {var:1}', 'vars' => array($past_or_future_message)));
         // else if the difference is less than 1 hour, then return minutes
     } else if ($difference_in_seconds < 3600) {
         $difference_in_minutes = round($difference_in_seconds / 60);
