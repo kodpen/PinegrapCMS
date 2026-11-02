@@ -8,7 +8,7 @@ description: Steps MD1-MD4 of plans/mail-deliverability.md: bounce record and se
 - S under 400 product lines, M about 1,000. Each step: tests in `tests/mail_<topic>_test.php` (pure functions, red first), its memory file under `core/` (`platform/` for the card), texts through `tr_add.php`.
 
 ## Which steps are there?
-- MD1 (M) Bounce record and the send gate. `free` after questions 1-2.
+- MD1 (M) Bounce record and the send gate. Done, #5241.
   - Schema sub-step of the open version (`install_create_table()`, in `get_tables()`), rerun twice on a dev DB. New `includes/fn/mail_bounces.php`: `pg_mail_bounce_record($address, $kind, $source, $ref)`, `pg_mail_address_blocked($address)` (hard or complaint, or N soft in 30 days), `pg_mail_bounce_clear($address)` on an address change or resubscribe; `mail_queue.php` asks the gate before a send and marks the row `suppressed` (a queue outcome, not a failure); `email_campaign_send.php` skips suppressed addresses and counts them. Memory: `core/mail-bounces.md`.
 
 - MD2 (M) VERP return path and the mailbox reader. After MD1.
