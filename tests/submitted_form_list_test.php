@@ -202,3 +202,16 @@ function test_submitted_form_list_options_keep_every_form()
 	pg_assert_same(array('1609', '1654', '1584'), array_values($options), 'each form is its own option');
 	pg_assert_same(array('Blog — blog', 'Blog — blog (#1654)', 'Contact &amp; Co'), array_keys($options), 'a label still equal gets the form id; labels are escaped');
 }
+
+// A field filter is a condition on the form, not a join: a check box group
+// stores one row per ticked box, and a join on a filter two of them match
+// listed the form twice and counted it twice.
+function test_submitted_form_list_field_condition_is_one_per_form()
+{
+	$condition = pg_submitted_form_list_field_condition(12, 'e');
+
+	pg_assert_same(0, preg_match('/\bJOIN\b/i', $condition['sql']), 'no join');
+	pg_assert_contains('EXISTS (SELECT 1 FROM form_data', $condition['sql']);
+	pg_assert_contains('(form_data.form_id = forms.id)', $condition['sql']);
+	pg_assert_same(array('12', pg_list_like_pattern('e')), $condition['params']);
+}
