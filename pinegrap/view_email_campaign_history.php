@@ -204,7 +204,7 @@ if ($email_campaigns) {
             </td>
             <td class="align-middle">' . $output_to . '</td>
             <td class="align-middle">' . h($email_campaign['email_campaign_profile_name']) . '</td>
-            <td class="align-middle">' . h($email_campaign['subject']) . '</td>
+            <td class="align-middle text-break">' . h($email_campaign['subject']) . '</td>
             <td class="align-middle">' . h($email_campaign['page_name']) . '</td>
             ' . $output_start_time_cell . '
             <td class="align-middle">' . get_email_campaign_status_name($email_campaign['status']) . '</td>

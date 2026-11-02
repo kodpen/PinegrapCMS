@@ -105,7 +105,9 @@ if (!$_POST) {
             }
             
             // prepare option
-            $output_page_options .= '<option value="' . $page['id'] . '"' . $selected . '>' . h($page['name']) . '</option>';
+            // The preview frame loads the URL the option carries, built from
+            // the page name, never from the option's label.
+            $output_page_options .= '<option value="' . $page['id'] . '" data-url="' . h(OUTPUT_PATH . encode_url_path($page['name']) . '?edit=no&email=true') . '"' . $selected . '>' . h($page['name']) . '</option>';
         }
     }
     
@@ -213,7 +215,7 @@ if (!$_POST) {
                                         <div class="row">
                                             <div class="col-12 sm:col-8 my-1">
                                                 <label class="form-label" for="page_id">' . lang('Page') . '</label>
-                                                <select class="form-control collapse-if-selected" id="page_id" name="page_id" onchange="document.getElementById(\'body_preview_iframe\').src = \'' . OUTPUT_PATH . '\' + this.options[this.selectedIndex].firstChild.nodeValue + \'?edit=no&email=true\';" data-bs-target="#body_preview_row"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . $output_page_options . '</select>
+                                                <select class="form-control collapse-if-selected" id="page_id" name="page_id" onchange="document.getElementById(\'body_preview_iframe\').src = this.options[this.selectedIndex].getAttribute(\'data-url\') || \'about:blank\';" data-bs-target="#body_preview_row"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . $output_page_options . '</select>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="body_preview_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
@@ -268,7 +270,36 @@ if (!$_POST) {
 // else form has been submitted
 } else {
     validate_token_field();
-    
+
+    // The format and purpose are ones the form offers, and the subject and
+    // addresses are checked before anything is stored: a campaign without
+    // a sender address only failed later, at every delivery.
+    $_POST['format'] = pg_email_campaign_allowed_value('format', $_POST['format'] ?? null);
+    $_POST['purpose'] = pg_email_campaign_allowed_value('purpose', $_POST['purpose'] ?? null);
+    $_POST['page_id'] = (isset($_POST['page_id']) && is_scalar($_POST['page_id'])) ? (string) $_POST['page_id'] : '';
+
+    $field_errors = pg_email_campaign_field_errors(array(
+        'subject' => $_POST['subject'] ?? '',
+        'from_email_address' => $_POST['from_email_address'] ?? '',
+        'reply_email_address' => $_POST['reply_email_address'] ?? '',
+    ));
+
+    if ($_POST['format'] === null) {
+        $field_errors['format'] = lang('Select a format.');
+    }
+
+    if ($_POST['purpose'] === null) {
+        $field_errors['purpose'] = lang('Select a purpose.');
+    }
+
+    if ($field_errors) {
+        output_error(pg_email_campaign_field_errors_html($field_errors));
+    }
+
+    $_POST['subject'] = trim((string) $_POST['subject']);
+    $_POST['from_email_address'] = trim((string) $_POST['from_email_address']);
+    $_POST['reply_email_address'] = trim((string) ($_POST['reply_email_address'] ?? ''));
+
     // if the user selected plain text, then clear the page id, so we don't store it with the e-mail campaign
     if ($_POST['format'] == 'plain_text') {
         $_POST['page_id'] = '';
@@ -416,7 +447,7 @@ if (!$_POST) {
     }
     
     // if entered e-mail address was entered
-    if ($_POST['entered_email_address']) {
+    if (is_string($_POST['entered_email_address'] ?? null) && ($_POST['entered_email_address'] !== '')) {
         // if e-mail address is valid
         if (validate_email_address($_POST['entered_email_address']) == true) {
             $recipients[] = mb_strtolower($_POST['entered_email_address']);
@@ -450,7 +481,7 @@ if (!$_POST) {
 
         // else e-mail address is not valid, so generate error
         } else {
-            output_error(lang('The e-mail address you entered under Enter Recipient is invalid.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+            output_error(lang('The address you entered under Also send message to the following e-mail address is not valid.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
     }
 
