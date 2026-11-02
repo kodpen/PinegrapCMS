@@ -75,6 +75,7 @@ description: Generated from the module field of the memory files: each includes/
 - `merchant_center_push`: [[merchant-center-push]]
 - `mfa`: [[two-step-sign-in-expiry]]
 - `notify_channels`: [[notification-channels]], [[notification-channels-delivery]]
+- `object_storage`: [[object-storage-client]]
 - `order_completion`: [[order-completion]], [[order-completion-account]], [[order-completion-after-lines]], [[order-completion-before-lock]], [[order-completion-context]], [[order-completion-from-payment]], [[order-completion-line-comments]], [[order-completion-lines]], [[order-completion-shipping-less]]
 - `order_list`: [[orders-list-amount-column]]
 - `order_report`: [[order-report-totals]]

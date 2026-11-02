@@ -505,6 +505,80 @@ $pg_settings_cards[] = '
         </div>
     </div>';
 
+// ── Storage ──
+//
+// The S3-compatible object store (includes/fn/object_storage.php): any
+// service that speaks the S3 API, named by its endpoint. Kept in one sealed
+// connect_apps entry, so the save module writes it only when this card was
+// drawn (object_storage_card). The secret is drawn empty; an empty box keeps
+// it. "Save and test" saves first, then writes, reads and deletes one small
+// file.
+if (!$object_storage_ready) {
+
+    $output_object_storage_settings = '
+                    <div class="col-12"><div class="alert theme-secondary mb-0">' . lang('The storage keeps its secret key encrypted, which needs the site\'s encryption key and the connected accounts tables. Run the upgrade, and check that the encryption key is set.') . '</div></div>';
+
+} else {
+
+    $output_object_storage_settings = '
+                    <input type="hidden" name="object_storage_card" value="1"/>
+                    <div class="col-12">
+                        <div class="form-field">
+                            <div class="switch"><input value="1"' . ($object_storage['enabled'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="object_storage_enabled" name="object_storage_enabled"/></div>
+                            <label class="" for="object_storage_enabled">' . lang('Use object storage') . '</label><div class="form-text">' . lang('A bucket on any service with an S3-compatible API, hosted or on your own server. Switched off, nothing is sent there.') . '</div>
+                        </div>
+                    </div>
+                    <div class="pg-f-lg">
+                        <label for="object_storage_endpoint" class="form-label">' . lang('Endpoint address') . '</label>
+                        <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="object_storage_endpoint" id="object_storage_endpoint" maxlength="255" class="form-control" value="' . h($object_storage['endpoint']) . '" placeholder="https://s3.example.com" />
+                        <div class="form-text">' . lang('The service\'s S3 API address, as its documentation gives it. Plain http only for a store on the same server or network.') . '</div>
+                    </div>
+                    <div class="pg-f-sm">
+                        <label for="object_storage_region" class="form-label">' . lang('Region') . '</label>
+                        <input type="text" spellcheck="false" autocapitalize="off" name="object_storage_region" id="object_storage_region" maxlength="32" class="form-control" value="' . h($object_storage['region']) . '" placeholder="us-east-1" />
+                    </div>
+                    <div class="pg-f-md">
+                        <label for="object_storage_bucket" class="form-label">' . lang('Bucket name') . '</label>
+                        <input type="text" spellcheck="false" autocapitalize="off" name="object_storage_bucket" id="object_storage_bucket" maxlength="63" class="form-control" value="' . h($object_storage['bucket']) . '" />
+                    </div>
+                    <div class="pg-f-md">
+                        <label for="object_storage_prefix" class="form-label">' . lang('Folder in the bucket') . '</label>
+                        <input type="text" spellcheck="false" autocapitalize="off" name="object_storage_prefix" id="object_storage_prefix" maxlength="200" class="form-control" value="' . h($object_storage['prefix']) . '" placeholder="pinegrap" />
+                    </div>
+                    <div class="pg-f-md">
+                        <label for="object_storage_key_id" class="form-label">' . lang('Access Key') . '</label>
+                        <input type="text" spellcheck="false" autocapitalize="off" name="object_storage_key_id" id="object_storage_key_id" maxlength="255" class="form-control" value="' . h($object_storage['key_id']) . '" autocomplete="off" />
+                    </div>
+                    <div class="pg-f-md">
+                        <label for="object_storage_secret" class="form-label">' . lang('Secret Key') . '</label>
+                        <input type="password" name="object_storage_secret" id="object_storage_secret" class="form-control" value="" autocomplete="new-password" placeholder="' . h($object_storage['secret_stored'] ? lang('Saved') : '') . '" />
+                        <div class="form-text">' . lang('Stored encrypted and never shown again. Leave empty to keep the saved key.') . '</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-field">
+                            <div class="switch"><input value="1"' . ($object_storage['path_style'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="object_storage_path_style" name="object_storage_path_style"/></div>
+                            <label class="" for="object_storage_path_style">' . lang('Path-style addresses') . '</label><div class="form-text">' . lang('The bucket goes in the path instead of the host name. MinIO and most self-hosted stores need this; Amazon S3 does not.') . '</div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" name="object_storage_test" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . lang('Save and test the connection') . '</button>
+                        <div class="form-text">' . lang('Writes a small file to the bucket, reads it back and deletes it.') . '</div>
+                    </div>';
+}
+
+$pg_settings_cards[] = '
+    <div id="pgset-storage" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                ' . lang('Storage') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">' . $output_object_storage_settings . '
+                </div>
+            </div>
+        </div>
+    </div>';
+
 // ── Alerts ──
 //
 // Who is told when a backup fails, a scheduled task stops or the software
