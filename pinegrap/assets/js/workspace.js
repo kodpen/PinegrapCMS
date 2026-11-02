@@ -963,13 +963,31 @@
     }
 
     // The image editor's loader (pg_image_editor_includes() on the channel
-    // screen) fetches its files the first time a picture is edited.
+    // and notes screens) fetches its files the first time a picture is
+    // edited or a canvas drawn.
     function loadImageEditor() {
         if (!window.pgImageEditor) {
             return Promise.reject(new Error(t('file_editor_missing')));
         }
 
         return window.pgImageEditor.load();
+    }
+
+    // The canvas document a message's picture was drawn from, or null: then
+    // it opens as any picture (includes/workspace/canvas.php).
+    function canvasDoc(messageId) {
+        return fetch(CFG.urls.file_save + '?message=' + encodeURIComponent(messageId), {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ token: CFG.token, action: 'canvas' })
+        }).then(function (res) {
+            return res.json();
+        }).then(function (data) {
+            return (data && (data.status === 'success') && data.doc && data.doc.artboard) ? data.doc : null;
+        }).catch(function () {
+            return null;
+        });
     }
 
     // The drawing code of the Word and Excel preview (assets/js/pg_office_view.js),
@@ -10345,21 +10363,55 @@
         // own message the edited picture takes the old one's place (which
         // stays as an earlier version); on anybody else's it is sent as the
         // person's own message in reply, the original left as it was.
+        // A canvas drawn here (newCanvas()) opens with its layers again.
         editImage: function (message) {
             var self = this;
             var mine = !!message.mine;
+            var url = CFG.urls.file_save + '?message=' + message.id + '&as=' + (mine ? 'replace' : 'send');
 
             toast(t('file_editor_loading'));
 
-            loadImageEditor().then(function () {
-                window.openImageEditor({
-                    src: message.file.url,
+            Promise.all([loadImageEditor(), canvasDoc(message.id)]).then(function (loaded) {
+                var doc = loaded[1];
+                var options = {
                     fileName: message.file.name,
-                    saveUrl: CFG.urls.file_save + '?message=' + message.id + '&as=' + (mine ? 'replace' : 'send'),
-                    saveLabel: mine ? t('file_edit_put') : t('file_edit_send'),
-                    onSaved: function () {
+                    save: { mode: 'url', url: url, label: mine ? t('file_edit_put') : t('file_edit_send') },
+                    onSave: function () {
                         toast(mine ? t('file_replaced') : t('file_copy_sent'), 'success');
                         self.sync(!mine);
+                    }
+                };
+
+                if (doc) {
+                    options.blank = doc.artboard;
+                    options.doc = doc;
+                } else {
+                    options.src = message.file.url;
+                }
+
+                window.pgImageEditor.open(options);
+            }).catch(function () {
+                toast(t('file_editor_missing'), 'danger');
+            });
+        },
+
+        // A new canvas in the image editor, posted here as the person's own
+        // message when saved (workspace_file_save.php?channel=).
+        newCanvas: function () {
+            var self = this;
+            var channel = self.channel;
+
+            loadImageEditor().then(function () {
+                window.pgImageEditor.open({
+                    blank: { width: 1080, height: 1080, background: '#ffffff' },
+                    fileName: t('canvas_new'),
+                    save: { mode: 'url', url: CFG.urls.file_save + '?channel=' + channel.id, label: t('canvas_send') },
+                    onSave: function () {
+                        toast(t('canvas_sent'), 'success');
+
+                        if (self.channel === channel) {
+                            self.sync(true);
+                        }
                     }
                 });
             }).catch(function () {
@@ -13295,6 +13347,7 @@
                     { icon: 'bi-table', label: t('insert_table'), action: function () { self.tablePicker(box.left, box.top - 6); } },
                     { icon: 'bi-calculator', label: t('insert_calc'), action: function () { self.insertCalc(); } },
                     { icon: 'bi-ui-checks', label: t('insert_checklist'), action: function () { self.insertChecklist(); } },
+                    window.pgImageEditor ? { icon: 'bi-easel', label: t('canvas_new'), action: function () { self.newCanvas(); } } : null,
                     self.rich ? { icon: 'bi-code-slash', label: t('insert_code'), action: function () { self.insertCode(); } } : null,
                     BOOT.interact ? { icon: 'bi-bar-chart-line', label: t('start_poll'), action: function () { self.pollForm({}); } } : null,
                     (CFG.approvals && window.PGWsApprovals) ? { icon: 'bi-patch-question', label: t('apv_new'), action: function () {
@@ -21156,15 +21209,9 @@
 
         // The row in the menu, added or taken away without a reload; the
         // next page draws it on the server the same way (includes/fn/output.php).
+        // It opens the Workspace list, the workspace row's own panel, which
+        // stays when the row is taken away.
         function drawMenuRow(svg) {
-            // The pinned row's panel, if open, goes back to the rows first:
-            // without its row it would stay open, and be kept for the tab.
-            var openPanel = document.querySelector('#menu_panel_24.is-open [data-pg-menu-back]');
-
-            if (openPanel && !menuPinned) {
-                openPanel.click();
-            }
-
             Array.prototype.forEach.call(document.querySelectorAll('#menu_item_24'), function (row) {
                 row.remove();
             });
@@ -21177,10 +21224,9 @@
 
                 var row = el('a', 'list-group-item list-group-item-action border-0 no-popover active');
                 var label = el('span', 'list-group-text', t('notes_menu_label'));
-                // The panel of the pinned row (My Notes, Add Note) is drawn by
-                // the server whenever the notes are open to this person, pinned
-                // or not (output_menu()), so the new row opens it like any other.
-                var panel = document.getElementById('menu_panel_24');
+                // The Workspace list (output_menu(), slot 23), drawn for every
+                // workspace member, so the new row opens it like the server's.
+                var panel = document.getElementById('menu_panel_23');
 
                 row.id = 'menu_item_24';
                 row.href = CFG.urls.notes;
@@ -21202,7 +21248,8 @@
                     row.classList.add('pg-menu-parent');
                     row.setAttribute('data-pg-menu-panel', panel.id);
                     row.setAttribute('aria-controls', panel.id);
-                    row.setAttribute('aria-expanded', 'false');
+                    // On the notes screen the list is usually open already.
+                    row.setAttribute('aria-expanded', panel.classList.contains('is-open') ? 'true' : 'false');
                     row.appendChild(el('span', 'pg-menu-hint'));
                     row.appendChild(icon('bi-chevron-right', 'pg-menu-chevron'));
                 }
@@ -23574,6 +23621,40 @@
             }).catch(fail);
         }
 
+        // A canvas drawn in the image editor, kept as the note's own file
+        // with its document (workspace_file_save.php?note=) and linked where
+        // the caret was.
+        function drawCanvas() {
+            if (!current || !editable() || !field) {
+                return;
+            }
+
+            save().then(function () {
+                if (!current.id) {
+                    dirty = true;
+                    return save();
+                }
+            }).then(function () {
+                var note = current;
+
+                return loadImageEditor().then(function () {
+                    // Linked once the editor has closed: while it is open the
+                    // caret is in its dialog, not in the note.
+                    return window.pgImageEditor.open({
+                        blank: { width: 1080, height: 1080, background: '#ffffff' },
+                        fileName: t('canvas_new'),
+                        save: { mode: 'url', url: CFG.urls.file_save + '?note=' + note.id, label: t('canvas_to_note') }
+                    }).then(function (result) {
+                        if (current && (current.id === note.id) && field && result && result.file) {
+                            field.rich.insertLink(result.file.name, result.file.url);
+                        }
+                    });
+                }, function () {
+                    toast(t('file_editor_missing'), 'danger');
+                });
+            }).catch(fail);
+        }
+
         // A recording made in the note: kept as the note's own file like a
         // dropped one (attach(), ws_note_file) and linked where the caret
         // was. The recorder's row stands above the text while it runs.
@@ -23725,6 +23806,10 @@
             });
 
             var files = [picker, tool('bi-paperclip', t('notes_attach'), function () { picker.click(); })];
+
+            if (window.pgImageEditor && CFG.urls.file_save) {
+                files.push(tool('bi-easel', t('canvas_new'), drawCanvas));
+            }
 
             if (window.PGWsVoice && window.PGWsVoice.supported()) {
                 files.push(tool('bi-mic', t('notes_voice'), recordVoice));

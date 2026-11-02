@@ -403,7 +403,10 @@ function pg_cron_jobs()
         'update_search_index' => array(
             'label'       => lang('Search index'),
             'script'      => 'update_search_index.php',
-            'interval'    => 86400,
+            // Hourly: a run between full passes only re-indexes what changed
+            // since its row; a full pass starts once a day
+            // (pg_search_index_full_due()).
+            'interval'    => 3600,
             'stale_after' => 172800,
             'dispatch'    => true,
             'lane'        => 'heavy',

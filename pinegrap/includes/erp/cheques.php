@@ -144,6 +144,51 @@ function erp_cheque_receipt_refusal($cheque)
 }
 
 /**
+ * Why a movement of a bounced cheque or note takes no allocation: the
+ * collection that took it in and the payment that sent it back cancel each
+ * other out, so neither paid an invoice. Allocating the collection again
+ * would close the invoice the bounce reopened; the payment could close a
+ * purchase invoice of the same account. Empty for any other cheque, and for
+ * a receipt that belongs to none.
+ *
+ * @param array|null $cheque erp_cheque()
+ * @return string
+ */
+function erp_cheque_allocation_refusal($cheque)
+{
+    if (!is_array($cheque) || ((string) ($cheque['status'] ?? '') !== 'bounced')) {
+        return '';
+    }
+
+    $kinds = erp_cheque_kinds();
+    $name = trim(($kinds[(string) ($cheque['kind'] ?? '')] ?? $kinds['cheque']) . ' ' . (string) ($cheque['serial_no'] ?? ''));
+
+    return lang(array(
+        'string' => '{var:1} bounced: the movement that took it in and the one that sent it back cancel each other out, so neither is allocated to an invoice.',
+        'vars' => $name,
+    ));
+}
+
+/**
+ * The allocations still on a bounced cheque's or note's receipt. A bounce
+ * takes them off in its own step; one bounced before it did leaves the
+ * invoices reading as paid by money that never came.
+ *
+ * @param array $cheque erp_cheque()
+ * @return array erp_txn_settlements() rows, empty for any other cheque
+ */
+function erp_cheque_bounced_allocations($cheque)
+{
+    if (((string) ($cheque['status'] ?? '') !== 'bounced') || ((int) ($cheque['open_cash_id'] ?? 0) <= 0)) {
+        return array();
+    }
+
+    $receipt = erp_receipt((int) $cheque['open_cash_id']);
+
+    return is_array($receipt) ? erp_txn_settlements((int) $receipt['ledger_id']) : array();
+}
+
+/**
  * The register, soonest due first.
  *
  * @param array $filters  direction ('received'|'given'|''), status, search

@@ -23,7 +23,7 @@ description: Steps SA1-SA5 of plans/search-and-audits.md: index isolation, overl
   - The accessibility pass writes its cursor after every page; resumable passes lock for minutes, not hours.
   - `tests/cron_resume_test.php`. Memory: `platform/accessibility-report.md` (its "handed out on the next tick" was not true), the `pg_cron_jobs()` comment.
 
-- SA4 (M) Resumable index. After SA1-SA3 and SA5.
+- SA4 (M) Resumable index. After SA1-SA3 and SA5. Done (#4789).
   - Stages (pages, events, classic records, designer records, files, sweep); a cursor in `data/temp/search_index.json` written after every item with the run's start time; the sweep only after the last stage, against that time. The item a killed tick left unfinished is skipped and named next time. Renders through `pg_background_render()`; `UPDATE_SEARCH_INDEX` stays set.
   - The panel window drives the same pass with short requests and shows progress.
   - Tests: the stage and cursor logic pure (`pg_search_index_next()`), the skip rule.

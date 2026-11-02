@@ -34,14 +34,16 @@ function test_email_campaign_preview_frames_have_a_title()
 function test_email_campaign_radio_headings_are_legends()
 {
 	$files = array(
-		'includes/forms/email_campaign_profile_form.php' => array('Format', 'Purpose'),
+		'includes/forms/email_campaign_profile_form.php' => array('Format' => 'form-label fs-md', 'Purpose' => 'visually-hidden'),
 	);
 
 	foreach ($files as $file => $headings) {
 		$src = email_campaign_screens_source($file);
-		foreach ($headings as $heading) {
+		// The Purpose card's title says it already, so its legend is read
+		// by screen readers only.
+		foreach ($headings as $heading => $legend_class) {
 			pg_assert_false(strpos($src, '<label class="form-label">' . "' . lang('" . $heading . "')") !== false, $file . ' has no unbound ' . $heading . ' label');
-			pg_assert_contains('<legend class="form-label fs-md">' . "' . lang('" . $heading . "') . '" . '</legend>', $src, $file . ' heads ' . $heading . ' with a legend');
+			pg_assert_contains('<legend class="' . $legend_class . '">' . "' . lang('" . $heading . "') . '" . '</legend>', $src, $file . ' heads ' . $heading . ' with a legend');
 		}
 	}
 }

@@ -504,6 +504,12 @@ function erp_invoice_draft_save($data, $invoice_id = 0)
         return $fail(lang('The invoice cannot fall due before its date.'), 'due_date');
     }
 
+    // A draft opened from a delivery note stays with the note's account.
+    if (($invoice_id > 0) && function_exists('erp_waybills_for_invoice')
+        && (($refusal = erp_waybill_account_refusal(erp_waybills_for_invoice($invoice_id), (int) $header['account_id'])) !== '')) {
+        return $fail($refusal, 'account_id');
+    }
+
     $built = erp_manual_lines_build($data['lines'] ?? array());
     if ($built['error'] !== '') {
         return $fail($built['error'], $built['field']);
@@ -691,13 +697,15 @@ function erp_invoice_draft_save($data, $invoice_id = 0)
  * draft as it was and the series untouched. The header totals are never
  * trusted: the lines are the document, the totals are derived from them.
  *
- * Refused when the row is not a draft, the account is passive, there are no
- * lines, or a foreign-currency document has no rate and none is recorded for
- * its issue date.
+ * Refused when the row is not a draft, the account is passive or is not the
+ * one of the delivery note the draft was opened from, there are no lines, or
+ * a foreign-currency document has no rate and none is recorded for its issue
+ * date.
  *
  * @param int $invoice_id
  * @param int $created_by
- * @return array ['success' => bool, 'invoice_id' => int, 'full_number' => string, 'error' => string]
+ * @return array ['success' => bool, 'invoice_id' => int, 'full_number' => string, 'error' => string,
+ *               'written_back' => array (erp_waybill_write_back(), on success)]
  */
 function erp_invoice_issue($invoice_id, $created_by = 0)
 {
@@ -733,6 +741,13 @@ function erp_invoice_issue($invoice_id, $created_by = 0)
     if ((string) $account['status'] !== 'active') {
         erp_tx_rollback();
         return $fail(lang('That account is passive. Make it active before invoicing it.'));
+    }
+
+    // A draft opened from a delivery note goes to the note's account only.
+    if (function_exists('erp_waybills_for_invoice')
+        && (($refusal = erp_waybill_account_refusal(erp_waybills_for_invoice($invoice_id), (int) $invoice['account_id'])) !== '')) {
+        erp_tx_rollback();
+        return $fail($refusal);
     }
 
     // A draft saved before the due date was checked against the date.
@@ -930,6 +945,17 @@ function erp_invoice_issue($invoice_id, $created_by = 0)
         return $fail($error);
     }
 
+    // A delivery note the draft was opened from (erp_waybill_invoice())
+    // hands over its ship date and carrier where the invoice has none, as an
+    // order's note does, before the event and the e-document read it.
+    $written_back = array();
+
+    if (function_exists('erp_waybill_write_back')) {
+        foreach (erp_waybills_for_invoice($invoice_id) as $waybill) {
+            $written_back = array_merge($written_back, erp_waybill_write_back((int) $waybill['id']));
+        }
+    }
+
     if (!erp_tx_commit()) {
         $error = erp_db_error();
         erp_tx_rollback();
@@ -940,7 +966,7 @@ function erp_invoice_issue($invoice_id, $created_by = 0)
 
     erp_event_invoice($invoice_id, 'erp.invoice.created');
 
-    return array('success' => true, 'invoice_id' => $invoice_id, 'full_number' => $numbered['full'], 'error' => '');
+    return array('success' => true, 'invoice_id' => $invoice_id, 'full_number' => $numbered['full'], 'error' => '', 'written_back' => $written_back);
 }
 
 /**

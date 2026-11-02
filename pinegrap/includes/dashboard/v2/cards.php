@@ -65,6 +65,9 @@ function pg_dashboard_v2_periods()
  */
 function pg_dashboard_v2_cards()
 {
+    // The cards whose function exists.
+    $built = array('visitors', 'engagement', 'gsearch', 'ga', 'content', 'comments', 'files', 'activity', 'firewall', 'team', 'mytasks', 'waiting', 'week', 'calendars', 'queue');
+
     $card = function ($title, $icon, $category, $width, $period, $gate) {
         return array(
             'title'    => $title,
@@ -77,7 +80,8 @@ function pg_dashboard_v2_cards()
         );
     };
 
-    return array(
+    $cards = array(
+
         // General
         'ai'         => $card(lang('Assistant'), 'bi-stars', 'general', 'M', null, 'workspace'),
         'goals'      => $card(lang('My goals'), 'bi-bullseye', 'general', 'S', null, 'all'),
@@ -96,7 +100,7 @@ function pg_dashboard_v2_cards()
         'visitmap'   => $card(lang('Visitor map'), 'bi-geo-alt', 'visitors', 'S', 2, 'visitors'),
         'engagement' => $card(lang('Online Engagement'), 'bi-broadcast-pin', 'visitors', 'S', null, 'staff'),
         'gsearch'    => $card(lang('Google Search'), 'bi-google', 'visitors', 'S', 1, 'gsearch'),
-        'ga'         => $card(lang('Google Analytics'), 'bi-bar-chart-line', 'visitors', 'M', 1, 'ga'),
+        'ga'         => $card(lang('Google Analytics'), 'bi-bar-chart-line', 'visitors', 'M', null, 'ga'),
         // Security
         'firewall'   => $card(lang('Firewall'), 'bi-shield-check', 'security', 'S', 0, 'staff'),
         // Team
@@ -115,6 +119,27 @@ function pg_dashboard_v2_cards()
         // System
         'perf'       => $card(lang('Performance'), 'bi-speedometer2', 'system', 'S', null, 'perf'),
         'subs'       => $card(lang('Subscriptions'), 'bi-patch-check', 'system', 'S', null, 'designer'),
+    );
+
+    foreach ($built as $id) {
+        $cards[$id]['built'] = true;
+    }
+
+    return $cards;
+}
+
+/**
+ * The cards drawn again at the session's refresh time (their content moves
+ * minute to minute), and the slow ones asked for on their own beside the
+ * batch so they do not hold the others back.
+ *
+ * @return array refresh => ids, solo => ids
+ */
+function pg_dashboard_v2_card_timing()
+{
+    return array(
+        'refresh' => array('engagement', 'firewall', 'visitors'),
+        'solo'    => array('gsearch', 'ga', 'flows'),
     );
 }
 

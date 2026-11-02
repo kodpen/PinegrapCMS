@@ -82,6 +82,9 @@ if ($_POST['forms']) {
             
             // delete views for this submitted form that the form view directory feature uses
             pg_sfv_delete_views('submitted_form_id', $form_id);
+
+            // delete the record's comments, their attachments, watchers and counters
+            pg_comment_delete_record_thread($form_id);
             
             $number_of_forms++;
         }

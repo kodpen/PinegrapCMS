@@ -251,14 +251,18 @@ input.btn-check:disabled + .btn {
   }
 }
 /* v5's alert: a block with its radius and bottom margin (v6 lays it out
-   as a flex row with a gap); pg-alert-dismissible is v5's alert-dismissible. */
+   as a flex row with a gap); pg-alert-dismissible is v5's alert-dismissible.
+   liveform's messages print the v6 row (d-flex) once the panel frame has
+   started; one printed before it keeps v5's alert-dismissible, read here
+   the same way. */
 .alert {
   --bs-alert-border-radius: var(--pg-radius);
   position: relative;
   display: block;
   margin-bottom: 1rem;
 }
-.pg-alert-dismissible {
+.pg-alert-dismissible,
+.alert[class~="alert-dismissible"] {
   padding-right: 3rem;
 }
 /* Alerts that renderers shared with the site print with v5's colour
@@ -351,7 +355,8 @@ input.btn-check:disabled + .btn {
   --bs-theme-focus-ring: var(--bs-inverse-focus-ring);
   --bs-theme-contrast: var(--bs-inverse-contrast);
 }
-.pg-alert-dismissible > .btn-close {
+.pg-alert-dismissible > .btn-close,
+.alert[class~="alert-dismissible"] > .btn-close {
   position: absolute;
   top: 0;
   right: 0;
@@ -773,53 +778,16 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
      so one ink serves the whole palette in both themes. */
   --pg-on-accent: #1a1c1e;
 
-  /* Bootstrap accent bridge. Bootstrap derives .bg-*, .border-*, .text-bg-*,
-     .alert-*, .list-group-item-* and the -subtle/-emphasis pairs from these
-     five variables per colour, so binding them once re-tints every one of
-     those. Buttons, form controls, pagination, nav-pills, progress and the
-     range thumb are NOT token driven in Bootstrap - it writes literal hex for
-     them - which is why they are re-declared further down. */
+  /* Plain accent fills under their Bootstrap 5 names. Bootstrap 6 reads
+     none of them (its theme variables are set in the bridge at the end of
+     this file); the panel charts read them through getPropertyValue()
+     (view_orders.php, erp_profit.php). */
   --bs-primary: var(--pg-primary);
-  --bs-primary-rgb: var(--pg-primary-rgb);
-  --bs-primary-text-emphasis: var(--pg-primary-ink);
-  --bs-primary-bg-subtle: var(--pg-primary-subtle);
-  --bs-primary-border-subtle: var(--pg-primary-line);
-
   --bs-secondary: var(--pg-secondary);
-  --bs-secondary-rgb: var(--pg-secondary-rgb);
-  --bs-secondary-text-emphasis: var(--pg-secondary-ink);
-  --bs-secondary-bg-subtle: var(--pg-secondary-subtle);
-  --bs-secondary-border-subtle: var(--pg-secondary-line);
-
   --bs-success: var(--pg-success);
-  --bs-success-rgb: var(--pg-success-rgb);
-  --bs-success-text-emphasis: var(--pg-success-ink);
-  --bs-success-bg-subtle: var(--pg-success-subtle);
-  --bs-success-border-subtle: var(--pg-success-line);
-
   --bs-danger: var(--pg-danger);
-  --bs-danger-rgb: var(--pg-danger-rgb);
-  --bs-danger-text-emphasis: var(--pg-danger-ink);
-  --bs-danger-bg-subtle: var(--pg-danger-subtle);
-  --bs-danger-border-subtle: var(--pg-danger-line);
-
   --bs-warning: var(--pg-warning);
-  --bs-warning-rgb: var(--pg-warning-rgb);
-  --bs-warning-text-emphasis: var(--pg-warning-ink);
-  --bs-warning-bg-subtle: var(--pg-warning-subtle);
-  --bs-warning-border-subtle: var(--pg-warning-line);
-
   --bs-info: var(--pg-info);
-  --bs-info-rgb: var(--pg-info-rgb);
-  --bs-info-text-emphasis: var(--pg-info-ink);
-  --bs-info-bg-subtle: var(--pg-info-subtle);
-  --bs-info-border-subtle: var(--pg-info-line);
-
-  /* Links take the readable ink, never the pastel fill. */
-  --bs-link-color: var(--pg-primary-ink);
-  --bs-link-color-rgb: var(--pg-primary-ink-rgb);
-  --bs-link-hover-color: var(--pg-primary-ink-hover);
-  --bs-link-hover-color-rgb: var(--pg-primary-ink-hover-rgb);
 }
 
 :root,
@@ -1654,12 +1622,12 @@ body .bg-software-navbar {
   --bs-bg-opacity: 1;
 }
 body .bg-software-navbar .border-end {
-  --bs-border-color: #b3b5b7;
-  --pg-border-color: #b3b5b7;
+  --bs-border-color: var(--bs-gray-300);
+  --pg-border-color: var(--bs-gray-300);
 }
 html[data-bs-theme="dark"] body .bg-software-navbar .border-end {
-  --bs-border-color: #495057;
-  --pg-border-color: #495057;
+  --bs-border-color: var(--bs-gray-700);
+  --pg-border-color: var(--bs-gray-700);
 }
 
 /*DASHBOARD*/
@@ -2385,6 +2353,23 @@ body:not(.toolbar) .software-content {
 #menu .list-group .list-group-item .pg-menu-badge {
   position: absolute;
   right: 0.6rem;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+  font-weight: 600;
+  line-height: 1;
+  padding: 0.3em 0.55em;
+  pointer-events: none;
+}
+/* The same count on the panel entry it is about (the ERP's Overdue): in
+   the entry's right padding, so the label's ellipsis never cuts it. */
+#menu .menu-body .pg-menu-panel-body > a.pg-menu-has-badge {
+  position: relative;
+  padding-right: 2.75rem;
+}
+#menu .menu-body .pg-menu-panel-body > a .pg-menu-badge {
+  position: absolute;
+  right: 0.625rem;
   top: 50%;
   transform: translateY(-50%);
   font-size: 0.7rem;
@@ -9488,7 +9473,7 @@ html:has(.mpp-bulk:not(.d-none)) {
   color: var(--pg-primary-fg-emphasis);
 }
 .btn-check:focus-visible + .pg-role-card {
-  outline: var(--pg-focus-ring-width) solid var(--pg-focus-ring-color);
+  outline: var(--pg-focus-ring-width) solid var(--pg-primary-ink);
   outline-offset: var(--pg-focus-ring-offset);
 }
 .btn-check:disabled + .pg-role-card {
@@ -21540,19 +21525,16 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   z-index: 1030;
 }
 
-/* Bootstrap 6 bridge: its theme, neutral and radius variables
-   read the panel's palette and Bootstrap 5's neutrals, so the panel keeps
-   its look until the tokens are tuned. */
+/* Bootstrap 6 bridge: its theme variables read the panel's palette, its
+   surfaces its gray scale. Text and line neutrals are Bootstrap 6's own.
+   The panel's dark body (#101114) is lighter than Bootstrap's (gray-975),
+   so the dark surfaces sit one step lighter than Bootstrap's to stay
+   apart from it: gray-900 and gray-800 instead of gray-950 and gray-900. */
 :root,
 [data-bs-theme] {
   --bs-bg-body: rgb(var(--pg-body-bg-rgb));
-  --bs-bg-1: light-dark(#f8f9fa, #2b3035);
-  --bs-bg-2: light-dark(#e9ecef, #343a40);
-  --bs-fg-body: light-dark(#212529, #dee2e6);
-  --bs-fg-2: light-dark(rgba(33, 37, 41, 0.75), rgba(222, 226, 230, 0.75));
-  --bs-fg-3: light-dark(rgba(33, 37, 41, 0.5), rgba(222, 226, 230, 0.5));
-  --bs-border-color: light-dark(#dee2e6, #495057);
-  --bs-border-color-translucent: light-dark(rgba(0, 0, 0, 0.175), rgba(255, 255, 255, 0.15));
+  --bs-bg-1: light-dark(var(--bs-gray-025), var(--bs-gray-900));
+  --bs-bg-2: light-dark(var(--bs-gray-050), var(--bs-gray-800));
   --bs-link-color: var(--pg-primary-ink);
   --bs-link-hover-color: var(--pg-primary-ink-hover);
   --bs-focus-ring-color: var(--pg-focus-ring-color);
@@ -21576,7 +21558,6 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   --bs-primary-bg: var(--pg-primary);
   --bs-primary-fg: var(--pg-primary-ink);
   --bs-primary-fg-emphasis: var(--pg-primary-ink);
-  --bs-primary-bg-subtle: var(--pg-primary-subtle);
   --bs-primary-bg-muted: var(--pg-primary-line);
   --bs-primary-border: var(--pg-primary-line);
   --bs-primary-contrast: var(--pg-on-accent);
@@ -21585,7 +21566,6 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   --bs-secondary-bg: var(--pg-secondary);
   --bs-secondary-fg: var(--pg-secondary-ink);
   --bs-secondary-fg-emphasis: var(--pg-secondary-ink);
-  --bs-secondary-bg-subtle: var(--pg-secondary-subtle);
   --bs-secondary-bg-muted: var(--pg-secondary-line);
   --bs-secondary-border: var(--pg-secondary-line);
   --bs-secondary-contrast: var(--pg-on-accent);
@@ -21594,7 +21574,6 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   --bs-success-bg: var(--pg-success);
   --bs-success-fg: var(--pg-success-ink);
   --bs-success-fg-emphasis: var(--pg-success-ink);
-  --bs-success-bg-subtle: var(--pg-success-subtle);
   --bs-success-bg-muted: var(--pg-success-line);
   --bs-success-border: var(--pg-success-line);
   --bs-success-contrast: var(--pg-on-accent);
@@ -21603,7 +21582,6 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   --bs-danger-bg: var(--pg-danger);
   --bs-danger-fg: var(--pg-danger-ink);
   --bs-danger-fg-emphasis: var(--pg-danger-ink);
-  --bs-danger-bg-subtle: var(--pg-danger-subtle);
   --bs-danger-bg-muted: var(--pg-danger-line);
   --bs-danger-border: var(--pg-danger-line);
   --bs-danger-contrast: var(--pg-on-accent);
@@ -21612,7 +21590,6 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   --bs-warning-bg: var(--pg-warning);
   --bs-warning-fg: var(--pg-warning-ink);
   --bs-warning-fg-emphasis: var(--pg-warning-ink);
-  --bs-warning-bg-subtle: var(--pg-warning-subtle);
   --bs-warning-bg-muted: var(--pg-warning-line);
   --bs-warning-border: var(--pg-warning-line);
   --bs-warning-contrast: var(--pg-on-accent);
@@ -21621,7 +21598,6 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   --bs-info-bg: var(--pg-info);
   --bs-info-fg: var(--pg-info-ink);
   --bs-info-fg-emphasis: var(--pg-info-ink);
-  --bs-info-bg-subtle: var(--pg-info-subtle);
   --bs-info-bg-muted: var(--pg-info-line);
   --bs-info-border: var(--pg-info-line);
   --bs-info-contrast: var(--pg-on-accent);

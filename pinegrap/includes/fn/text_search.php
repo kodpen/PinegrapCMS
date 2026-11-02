@@ -38,14 +38,30 @@ function pg_search_lower($term)
 
 /**
  * The Unicode case-insensitive pattern that finds a plain (not regex) term:
- * "çerez" matches "Çerez", "ŞUBAT" matches "şubat".
+ * "çerez" matches "Çerez", "ŞUBAT" matches "şubat", "istanbul" matches
+ * "İstanbul".
+ *
+ * PCRE's caseless mode pairs i with I only, while the row filter
+ * (pg_search_lower()) finds "İstanbul" for "istanbul"; a row it found then
+ * counted no match and was never replaced. Each i-letter of the term becomes
+ * the letters it is a case variant of in Turkish or English: a dotted i (or
+ * İ) finds i, I and İ, a dotless ı finds ı and I, and a capital I (dotless in
+ * Turkish, dotted in English) finds I, i and ı. Caseless mode is off inside
+ * those classes, or it would add i to every I and join ı to i.
  *
  * @param mixed $find
  * @return string
  */
 function pg_search_ci_pattern($find)
 {
-    return '/' . preg_quote((string) $find, '/') . '/iu';
+    $pattern = strtr(preg_quote((string) $find, '/'), array(
+        'i'         => '(?-i:[iIİ])',
+        "\u{0130}"  => '(?-i:[iIİ])',
+        "\u{0131}"  => '(?-i:[ıI])',
+        'I'         => '(?-i:[Iiı])',
+    ));
+
+    return '/' . $pattern . '/iu';
 }
 
 /**

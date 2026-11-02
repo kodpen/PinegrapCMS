@@ -850,6 +850,44 @@ function pg_cf_confirmation_shows_message($type, $page_id)
 }
 
 /**
+ * Whether the registration folder gate lets a visitor without a session
+ * through to a custom form's confirmation page: the request must carry the
+ * reference code (r=) of a form this session submitted. A form that opens an
+ * account on its first submission puts its own thank-you page behind sign-in
+ * otherwise. The record shown there keeps its own submitter_only rule.
+ * Codes compare as strings, strictly.
+ */
+function pg_cf_submitter_gate_pass($is_confirmation_page, $code, $session_codes)
+{
+    if (!$is_confirmation_page) return false;
+    if (!is_string($code) || $code === '') return false;
+    if (!is_array($session_codes)) return false;
+    foreach ($session_codes as $known) {
+        if (is_scalar($known) && (string)$known === $code) return true;
+    }
+    return false;
+}
+
+/**
+ * pg_cf_submitter_gate_pass() for the requested page: whether the page is a
+ * custom form's confirmation page (its main or its alternative one) is looked
+ * up only when the request and the session both carry a code.
+ */
+function pg_cf_registration_gate_lets_submitter($page_id)
+{
+    $code = isset($_GET['r']) ? $_GET['r'] : null;
+    $codes = isset($_SESSION['software']['submitted_form_reference_codes'])
+        ? $_SESSION['software']['submitted_form_reference_codes'] : null;
+    if (!pg_cf_submitter_gate_pass(true, $code, $codes)) return false;
+    $page_id = (int)$page_id;
+    if ($page_id <= 0) return false;
+    $is_confirmation = (bool)db_value(
+        "SELECT COUNT(*) FROM custom_form_pages
+         WHERE confirmation_page_id = '$page_id' OR confirmation_alternative_page_id = '$page_id'");
+    return pg_cf_submitter_gate_pass($is_confirmation, $code, $codes);
+}
+
+/**
  * The confirmation message as the visitor sees it: an empty one would leave
  * the page blank where the form was, so it says thank you instead.
  */

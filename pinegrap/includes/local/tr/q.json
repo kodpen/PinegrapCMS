@@ -54,11 +54,13 @@
     "Questions about an order or a product? Write to us.": "Bir sipariş ya da ürünle ilgili sorunuz mu var? Bize yazın.",
     "Questions about an order or a product? Write to us; we answer on weekdays.": "Bir sipariş ya da ürünle ilgili sorunuz mu var? Bize yazın; hafta içi yanıtlıyoruz.",
     "Questions about an order, a book or an event? Write to us or come by the shop.": "Bir sipariş, kitap ya da etkinlik hakkında sorunuz mu var? Bize yazın ya da mağazaya uğrayın.",
+    "Questions about paying": "Ödemeyle ilgili sorular",
     "Questions about the app get the quickest answer as a topic in the forum. For anything about your account or the community itself, write to the moderators.": "Uygulamayla ilgili sorulara en hızlı yanıt forumda açılan bir konuda gelir. Hesabınız ya da topluluğun kendisiyle ilgili her konuda moderatörlere yazın.",
     "Questions about this letter": "Bu mektupla ilgili sorular için",
     "Questions about your account or the community: the moderators read every message.": "Hesabınız ya da toplulukla ilgili sorular: moderatörler her mesajı okur.",
     "Questions are read from the marketplace when you ask: the last two weeks, every status.": "Sorular istediğinizde pazaryerinden okunur: son iki hafta, tüm durumlar.",
     "Questions from {var:1}": "{var:1} soruları",
+    "Questions? Read the FAQ": "Sorunuz mu var? SSS'yi okuyun",
     "Queue active": "Kuyruk etkin",
     "Queue inactive": "Kuyruk devre dışı",
     "Queue {var:1} article(s) for listing?": "{var:1} ürün grubu ilan için sıraya alınsın mı?",
@@ -125,5 +127,6 @@
     "quantity must be between {var:1} and {var:2}.": "quantity {var:1} ile {var:2} arasında olmalıdır.",
     "quantity must be numeric.": "quantity sayısal olmalıdır.",
     "question": "soru",
+    "questions": "sorular",
     "quote, catering order, offer, event catering, request": "teklif, catering siparişi, fiyat teklifi, etkinlik catering, talep"
 }

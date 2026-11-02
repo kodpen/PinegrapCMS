@@ -1959,7 +1959,7 @@ if (!$_POST) {
                         ' . get_token_field() . '
                         <input type="hidden" name="send_to" value="' . h($send_to) . '" />
                         <div id="content_footer" class="buttons" style="padding-bottom: 1em\9;">
-                            <button type="submit" name="submit_button" value="Save" class="submit-primary">' . lang('Save') . '</button>&nbsp;&nbsp;&nbsp;<button type="submit" name="submit_button" value="Duplicate" class="submit-secondary">' . lang('Duplicate') . '</button>&nbsp;&nbsp;&nbsp;<input type="button" name="cancel" value="' . lang('Cancel') . '" onclick="theme_designer_cancel_confirm(\'' . h(escape_javascript($send_to)) . '\')" class="submit-secondary">
+                            <button type="submit" name="submit_button" value="Save" class="submit-primary">' . lang('Save') . '</button>&nbsp;&nbsp;&nbsp;<button type="submit" name="submit_button" value="Duplicate" class="submit-secondary">' . lang('Duplicate') . '</button>&nbsp;&nbsp;&nbsp;<a href="' . h('clear_theme_designer_session.php?file_id=' . urlencode($_GET['id']) . '&send_to=' . urlencode($send_to)) . '" class="submit-secondary" data-confirm-content="' . h(lang('WARNING: If you leave this page, then your unsaved changes will be lost.')) . '">' . lang('Cancel') . '</a>
                         </div>
                     </form>
                 </div>

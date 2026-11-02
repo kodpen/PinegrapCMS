@@ -95,7 +95,8 @@ while ($row = mysqli_fetch_assoc($result)) {
 }
 $output_rows = '';
 
-// Threshold for the optimization percentage (same logic as view_files.php).
+// Threshold for the optimization percentage: past it the percentages are not
+// computed, since each one decodes and recompresses an image.
 $unoptimized_image_types = ['jpg','jpeg','png','gif','bmp','tiff','tif','webp'];
 $unoptimized_count = 0;
 if ($files) {

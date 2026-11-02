@@ -1596,6 +1596,15 @@ function get_shipping_methods($properties) {
                 // Convert arrival date to y-m-d, because code below requires that
                 $arrival_date = prepare_form_data_for_input($arrival_date, 'date');
 
+                // A day that has passed: no method can meet it, and it is no
+                // address problem, so it carries the arrival date code too.
+                if (pg_arrival_date_passed($arrival_date, date('Y-m-d'))) {
+                    return array(
+                        'status' => 'error',
+                        'code' => 'arrival_date',
+                        'message' => lang('Sorry, the requested arrival date has already passed. Please choose a later date.'));
+                }
+
             // Otherwise, the arrival date does not allow a custom date, so use standard date
             } else {
                 $arrival_date = $arrival_date_item['arrival_date'];
@@ -1882,10 +1891,11 @@ function get_shipping_methods($properties) {
         }
 
         // If there are no valid shipping methods now then that means that the arrival date caused
-        // issue so return error about that
+        // issue so return error about that. The code tells the checkout that the address is fine.
         if (!$shipping_methods) {
             return array(
                 'status' => 'error',
+                'code' => 'arrival_date',
                 'message' => lang('Sorry, we could not find a shipping method that would guarantee delivery of your shipment by the Requested Arrival Date. Please select a different Requested Arrival Date to continue.'));
         }
     }

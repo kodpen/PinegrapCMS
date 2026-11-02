@@ -85,3 +85,24 @@ function test_tag_cloud_widget_search_widget_pages()
 	$widget = (string)file_get_contents($root . 'includes/fn/widgets_tag_cloud.php');
 	pg_assert_contains('pg_tcw_widget_search_page($name)', $widget, 'the widget reads a Search Results widget page');
 }
+
+function test_tag_cloud_widget_page_info()
+{
+	$access = array(10 => 'public', 20 => 'private', 30 => 'registration');
+	$info = pg_tcw_page_info(array(
+		array('page_name' => 'destek-merkezi', 'page_folder' => '20', 'page_style' => '7'),
+		array('page_name' => 'yardim-merkezi', 'page_folder' => '10', 'page_style' => '3'),
+		array('page_name' => 'arama', 'page_folder' => '30', 'page_style' => '0'),
+		array('page_name' => 'yardim-merkezi', 'page_folder' => '20', 'page_style' => '7'),
+		array('page_folder' => '10'),
+	), array(3 => 'Cafe', 7 => 'Online Store'), function ($folder) use ($access) {
+		return isset($access[$folder]) ? $access[$folder] : 'private';
+	});
+	pg_assert_same(array('destek-merkezi', 'yardim-merkezi', 'arama'), array_keys($info), 'one entry per name; a row without a name is skipped');
+	pg_assert_same(array('style' => 7, 'design' => 'Online Store', 'open' => false), $info['destek-merkezi'], 'a draft of another design');
+	pg_assert_same(array('style' => 3, 'design' => 'Cafe', 'open' => true), $info['yardim-merkezi'], 'the first row of a name wins');
+	pg_assert_same(array('style' => 0, 'design' => '', 'open' => true), $info['arama'], 'a registration folder is open to visitors');
+
+	$js = (string)file_get_contents(dirname(__DIR__) . '/pinegrap/assets/js/style_designer.src.js');
+	pg_assert_contains('cfg.search_page_name = _sdTagCloudDefaultPage();', $js, 'a new widget takes an open page of this design, never simply the first');
+}

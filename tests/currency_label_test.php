@@ -49,3 +49,17 @@ function test_currency_screens_use_the_label()
 	pg_assert_contains('pg_format_number((float) $currency[\'exchange_rate\'], 5)', $list, 'the list formats the rate');
 	pg_assert_contains('h(pg_currency_label($currency[\'name\']))', $card, 'the card names by label');
 }
+
+// The ERP currency select (invoice, receipt, expense and account forms) and
+// the order report's currency filter name a currency through the label too.
+// Before, a Turkish panel showed "GBP - British pound" there while the
+// settings screen said "GBP - İngiliz Sterlini".
+function test_currency_erp_select_and_order_report_use_the_label()
+{
+	$fx = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/fx.php');
+	$report = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_order_report.php');
+
+	pg_assert_contains("' - ' . pg_currency_label(\$names[\$base])", $fx, 'the base currency names by label');
+	pg_assert_contains("' - ' . pg_currency_label(\$names[\$code])", $fx, 'the allowed currencies name by label');
+	pg_assert_contains("pg_currency_label(\$row['name']) . ' (' . \$row['code'] . ')'", $report, 'the report filter names by label');
+}

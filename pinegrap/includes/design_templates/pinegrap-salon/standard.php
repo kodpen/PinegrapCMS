@@ -4,9 +4,10 @@
  *
  * Design template "Beauty Salon", the pages every template carries, first
  * part: contact and the inbox (a message becomes a conversation), the
- * newsletter, the blog and its post page, the help center that searches the
- * whole site, the error page, the message and newsletter e-mails, and the
- * widgets that draw them. Included after parts.php and mail.php in the same
+ * newsletter, the blog and its post page, the comment threads of a post and
+ * a conversation, the help center that searches the whole site, the error
+ * page, the message and newsletter e-mails, the home page's Google Reviews,
+ * and the widgets that draw them. Included after parts.php and mail.php in the same
  * scope; returns array('pages' => ..., 'widgets' => ...).
  *
  * @author      Erdal Güral (Kodpen)
@@ -162,7 +163,7 @@ $standard_pages[] = array(
                                 'notify_email' => '{{site_email}}'),
     'tree'             => $page(array(
         $widget('blog_post'),
-        $comments_section(lang('Comments')),
+        $comments_section(lang('Comments'), 'post_comments'),
     )),
 );
 
@@ -214,7 +215,7 @@ $standard_pages[] = array(
                         'notify_email' => '{{site_email}}'),
     'tree'     => $page(array(
         $widget('conversation'),
-        $comments_section(lang('Replies')),
+        $comments_section(lang('Replies'), 'conversation_replies'),
     ), false),
 );
 
@@ -403,6 +404,59 @@ $standard_widgets = array(
         )),
     ),
 
+    // The salon's rating and newest reviews on Google, under the sample
+    // words of the home page. The widget draws nothing until a Places key
+    // and the salon's Place ID are saved, and this layout shows only while
+    // Google returns reviews. Google asks for each review's author and its
+    // link, and for "Google Maps" beside what is shown without a map.
+    'google_reviews' => array(
+        'page'   => 'home',
+        'slug'   => lang('google-reviews'),
+        'config' => array('regionType' => 'google_reviews'),
+        'tree'   => $widget_root(array(
+            $el('div', 'mt-5 pt-4 border-top', lang('Google Reviews'), array(
+                $el('div', 'd-flex flex-wrap align-items-center gap-2 mb-4', lang('Rating'), array(
+                    $heading('h3', lang('Reviews on Google'), 'h5 fw-bold mb-0 me-2'),
+                    $icon('bi-star-fill', 'text-warning'),
+                    $span(lang('4.9'), 'fw-bold', lang('Average Rating'), $bind('__place_rating')),
+                    $el('span', 'small text-body-secondary', lang('Number of ratings'), array(
+                        $span('120', '', lang('Number'), $bind('__place_review_count')),
+                        $span(' ' . lang('ratings'), '', lang('Label')),
+                    )),
+                )),
+                $row(array($loop(array($col(array(
+                    $el('article', 'd-flex flex-column h-100 p-4 rounded-4 border bg-body', lang('Review'), array(
+                        $el('div', 'd-flex align-items-center gap-2 mb-3', lang('Author'), array(
+                            $image('', '', 'rounded-circle flex-shrink-0 object-fit-cover', array('width' => '40', 'height' => '40',
+                                '_attrs' => array($attr('referrerpolicy', 'no-referrer')),
+                                '_bindings' => array('src' => '__review_author_photo', 'eo_visible_if' => 'review_has_photo'))),
+                            $el('div', 'small', lang('Name and time'), array(
+                                $link(lang('Author name'), '#', 'd-block fw-semibold text-body text-decoration-none', array(),
+                                    array('target' => '_blank', 'rel' => 'noopener', '_bindings' => array('href' => '__review_author_url', 'text' => '__review_author_name'))),
+                                $span(lang('2 weeks ago'), 'text-body-secondary', lang('When'), $bind('__review_relative_time')),
+                            )),
+                        )),
+                        $el('p', 'small mb-2', lang('Review rating'), array(
+                            $icon('bi-star-fill', 'text-warning'),
+                            $span('5', 'ms-1', lang('Rating'), $bind('__review_rating')),
+                            $span('/5', '', lang('Out of')),
+                        )),
+                        $el('p', 'mb-3', lang('Review text'), array(), array('text' => lang('Review text'),
+                            '_bindings' => array('text' => '__review_text', 'eo_visible_if' => 'review_has_text'))),
+                        $link(lang('Read on Google Maps'), '#', 'small mt-auto', array(),
+                            array('target' => '_blank', 'rel' => 'noopener', '_bindings' => array('href' => '__review_url'))),
+                    )),
+                ), '6', '4')))), '4'),
+                $el('div', 'd-flex flex-wrap justify-content-between align-items-center gap-2 mt-4 small', lang('Attribution'), array(
+                    $link(lang('See all reviews on Google Maps'), '#', '', array(),
+                        array('target' => '_blank', 'rel' => 'noopener', '_bindings' => array('href' => '__place_maps_url'))),
+                    $span('Google Maps', 'text-body-secondary notranslate', lang('Google attribution'),
+                        array('_attrs' => array($attr('translate', 'no')), '_bindings' => array('text' => '__google_attribution'))),
+                )),
+            ), $show_when('has_reviews')),
+        )),
+    ),
+
     // The three newest posts on the home page.
     'home_posts' => array(
         'page'   => 'home',
@@ -496,6 +550,39 @@ $standard_widgets = array(
                     ), '', '8'),
                 ), '', 'center'),
             ), 'py-5'),
+        )),
+    ),
+
+    // A post's comments: the post page's own Comments widget, under the
+    // post view (whose record the comments belong to). Oldest first, an
+    // answer under the comment it answers and one more level under that; a
+    // featured comment comes first. Twenty comments with their answers to a
+    // page, each a permalink.
+    'post_comments' => array(
+        'page'   => 'blog_post',
+        'slug'   => lang('comments'),
+        'config' => array(
+            'regionType' => 'comments',
+            'order'      => 'oldest',
+            'featured'   => 'first',
+            'layout'     => 'threaded',
+            'max_depth'  => 2,
+            'per_page'   => 20,
+        ),
+        'tree'   => $comment_thread(array(
+            'title'     => lang('Comments'),
+            'empty'     => lang('No comments yet. Be the first to share your thoughts.'),
+            'heading'   => lang('Leave a comment'),
+            'label'     => lang('Your comment'),
+            'sign_in'   => lang('Sign in to add your comment.'),
+            'submit'    => lang('Post comment'),
+            'watch_box' => lang('Notify me when a new comment is added.'),
+            'follow'    => lang('Notify me of new comments'),
+            'unfollow'  => lang('Stop notifying me'),
+            'close'     => lang('Stop new comments'),
+            'reopen'    => lang('Allow new comments'),
+            'reply'     => true,
+            'watch'     => true,
         )),
     ),
 
@@ -603,6 +690,39 @@ $standard_widgets = array(
                     ), '', '8'),
                 ), '', 'center'),
             ), 'py-5'),
+        )),
+    ),
+
+    // The answers in a conversation: the conversation page's own Comments
+    // widget, which shows them only to whoever may read the conversation
+    // above it. Oldest first, one after another, all on one page, never
+    // pinned. No Reply, Share or follow box: the conversation has two sides,
+    // its sender is e-mailed every answer and the staff every new message.
+    'conversation_replies' => array(
+        'page'   => 'conversation',
+        'slug'   => lang('comments'),
+        'config' => array(
+            'regionType' => 'comments',
+            'order'      => 'oldest',
+            'featured'   => 'none',
+            'layout'     => 'flat',
+            'max_depth'  => 1,
+            'per_page'   => 0,
+        ),
+        'tree'   => $comment_thread(array(
+            'title'     => lang('Replies'),
+            'empty'     => lang('No replies yet. Our answer will appear here.'),
+            'heading'   => lang('Write a reply'),
+            'label'     => lang('Your reply'),
+            'sign_in'   => lang('Sign in to reply.'),
+            'submit'    => lang('Send reply'),
+            'watch_box' => '',
+            'follow'    => '',
+            'unfollow'  => '',
+            'close'     => lang('Stop new replies'),
+            'reopen'    => lang('Allow new replies'),
+            'reply'     => false,
+            'watch'     => false,
         )),
     ),
 

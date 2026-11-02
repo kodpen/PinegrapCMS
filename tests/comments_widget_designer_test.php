@@ -424,7 +424,8 @@ function test_comments_widget_designer_js_field_lists()
 }
 
 // The editor screen has a hidden input for every setting, and both page
-// lists it sends carry every one.
+// lists it sends carry every one: the saved pages' list in the screen and
+// the blank tab (pg_designer_blank_page()).
 function test_comments_widget_designer_screen_wiring()
 {
 	if (!comments_widget_designer_test_has('pg_comment_editor_keys')) {
@@ -433,14 +434,15 @@ function test_comments_widget_designer_screen_wiring()
 
 	$screen = comments_widget_designer_test_source('includes/designer_screen.php');
 	$parts = explode('$js_pages[] = array(', $screen);
-	pg_assert_same(3, count($parts), 'two page lists');
+	pg_assert_same(2, count($parts), 'one page list in the screen');
+	$literals = array(substr($parts[1], 0, (int) strpos($parts[1], "\n        );")));
+
+	$blank = pg_designer_blank_page(0, null);
 
 	foreach (array_keys(pg_comment_editor_keys()) as $key) {
 		pg_assert_contains('<input type="hidden" name="' . $key . '"', $screen, 'hidden input ' . $key);
-		for ($i = 1; $i < count($parts); $i++) {
-			$literal = substr($parts[$i], 0, (int) strpos($parts[$i], "\n        );"));
-			pg_assert_contains("'" . $key . "'", $literal, 'page list ' . $i . ' carries ' . $key);
-		}
+		pg_assert_contains("'" . $key . "'", $literals[0], 'the saved pages\' list carries ' . $key);
+		pg_assert_true(array_key_exists($key, $blank), 'the blank tab carries ' . $key);
 	}
 }
 

@@ -140,6 +140,25 @@ foreach (array('open_cash_id', 'close_cash_id') as $column) {
     }
 }
 
+// A cheque bounced before the bounce took the allocations off its receipt
+// still closes those invoices; Remove on the receipt's screen opens them.
+$left = erp_cheque_bounced_allocations($cheque);
+$output_left = '';
+
+if (!empty($left)) {
+    $output_left = '
+            <div class="alert theme-warning d-flex flex-wrap align-items-center gap-3 my-7">
+                <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                <span class="flex-grow-1">' . h(lang(array(
+                    'string' => 'Its receipt is still allocated to {var:1}: those invoices read as paid by money that never came. Remove the allocations on the receipt\'s screen.',
+                    'vars' => implode(', ', array_map(function ($row) {
+                        return (string) $row['full_number'];
+                    }, $left)),
+                ))) . '</span>
+                <a class="btn btn-sm btn-outline theme-primary" href="erp_receipt.php?id=' . (int) $cheque['open_cash_id'] . '"><i class="bi bi-arrow-right me-1" aria-hidden="true"></i>' . lang('Open the receipt') . '</a>
+            </div>';
+}
+
 $fact = function ($label, $value) {
     return ((string) $value !== '') ? '<div class="col-6 md:col-3"><div class="small fg-secondary">' . $label . '</div><div>' . h((string) $value) . '</div></div>' : '';
 };
@@ -163,6 +182,7 @@ pg_page_shell([
             ' . $liveform->output_errors() . '
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
+            ' . $output_left . '
 
             <div class="card my-7">
                 <div class="card-body row g-5">

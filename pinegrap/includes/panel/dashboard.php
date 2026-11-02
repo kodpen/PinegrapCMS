@@ -17,6 +17,9 @@
  *   update_dashboard_widgets     the caller's dashboard widget layout
  *   update_dashboard_appearance  the dashboard's backdrop and look
  *   dashboard_switch             the caller's new dashboard on or off
+ *   dashboard_cards              the new dashboard's card data
+ *                                (includes/dashboard/v2/run.php)
+ *   dashboard_layout_save        the caller's new dashboard layout and look
  *                                (includes/dashboard/v2/layout.php)
  *   tour_seen                    a guided tour has been watched or skipped
  *   contact_quick_save           the account menu's quick form for one's own
@@ -264,6 +267,20 @@ function pg_panel_update_dashboard_widgets($request, $action)
     exit();
 }
 
+function pg_panel_dashboard_cards($request, $action)
+{
+    // Kept global like get_widget_data: helpers read `global $user`.
+    global $user;
+
+    $user = validate_user();
+    session_write_close();
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/layout.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/run.php');
+
+    respond(pg_dashboard_v2_cards_run($request, $user));
+}
+
 function pg_panel_dashboard_switch($request, $action)
 {
     // Exempt from the general gate because every panel role reaches the
@@ -290,6 +307,57 @@ function pg_panel_dashboard_switch($request, $action)
         'status' => 'success',
         'on' => $on,
     ));
+}
+
+function pg_panel_dashboard_layout_save($request, $action)
+{
+    // Every panel role arranges its own dashboard; the session and the
+    // token are checked here, the row written is the caller's own.
+    if (!USER_LOGGED_IN) {
+        respond(panel_login_refusal());
+    }
+
+    validate_token();
+
+    global $user;
+    $user = validate_user();
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/layout.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/presets.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/figures.php');
+
+    $refused = function ($message) {
+        respond(array('status' => 'error', 'message' => $message));
+    };
+
+    if (pg_dashboard_v2_role_locked((int) $user['role'])) {
+        $refused(lang('Your dashboard layout is locked by an administrator.'));
+    }
+
+    $row = pg_dashboard_v2_row($user['id']);
+    $old = json_decode((string) ($row['layout'] ?? ''), true);
+
+    $layout = pg_dashboard_v2_layout_clean(
+        $request['layout'] ?? null,
+        $old,
+        array_keys(pg_dashboard_v2_cards_for($user)),
+        pg_dashboard_v2_shortcuts_allowed($user),
+        pg_dashboard_v2_figures_allowed($user),
+        defined('ECOMMERCE') && (ECOMMERCE === true)
+    );
+
+    if ($layout === null) {
+        $refused(lang('The change could not be saved.'));
+    }
+
+    $json = json_encode($layout, JSON_UNESCAPED_UNICODE);
+    $look = isset($request['look']) ? json_encode(pg_dashboard_v2_look_clean($request['look'])) : null;
+
+    if (($json === false) || (strlen($json) > PG_DASHBOARD_V2_MAX_LAYOUT) || !pg_dashboard_v2_layout_write($user['id'], $json, $look)) {
+        $refused(lang('The change could not be saved.'));
+    }
+
+    respond(array('status' => 'success', 'layout' => $layout));
 }
 
 function pg_panel_update_dashboard_appearance($request, $action)

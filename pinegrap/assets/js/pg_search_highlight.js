@@ -12,7 +12,8 @@
  * element - the section is outlined for a moment and scrolled to, and the
  * parameter leaves the address so a copied link is the plain page. Escape
  * takes the marks away. A mark in a folded part - an accordion's answer, a
- * closed <details> - opens that part, so what the search found is in view.
+ * closed <details>, a tab not shown - opens that part, so what the search
+ * found is in view.
  *
  * Matching ignores case, and for Turkish i / ı / İ / I are one letter, as a
  * visitor types them. Text in scripts, styles, form fields and code is left
@@ -130,14 +131,30 @@
         return (window.CSS && window.CSS.escape) ? window.CSS.escape(id) : id.replace(/([^\w-])/g, '\\$1');
     }
 
+    // A tab pane not shown is shown through Bootstrap's own Tab, from the
+    // button or link naming it, so the other panes and the buttons follow.
+    function showTab(pane) {
+        var bs = window.bootstrap;
+        if (!pane.id || !bs || !bs.Tab) return;
+        var toggles = document.querySelectorAll('[data-bs-toggle="tab"], [data-bs-toggle="pill"], [data-bs-toggle="list"]');
+        for (var t = 0; t < toggles.length; t++) {
+            var named = toggles[t].getAttribute('data-bs-target') || toggles[t].getAttribute('href') || '';
+            if (named !== '#' + pane.id) continue;
+            try { bs.Tab.getOrCreateInstance(toggles[t]).show(); } catch (e) {}
+            return;
+        }
+    }
+
     // Open the folded parts the marks sit in: a Bootstrap collapse gets the
     // class it shows with and its toggles the state Bootstrap gives them, so
-    // the next click folds it as usual; a <details> opens.
+    // the next click folds it as usual; a <details> opens; a tab is shown.
+    // The first mark's tab only: of two tabs, one can be shown.
     function reveal(marks) {
         for (var i = 0; i < marks.length; i++) {
             for (var p = marks[i].parentNode; p && p !== document.body; p = p.parentNode) {
                 if (p.nodeType !== 1) continue;
                 if (p.nodeName.toUpperCase() === 'DETAILS') p.open = true;
+                if (i === 0 && p.classList && p.classList.contains('tab-pane') && !p.classList.contains('active')) showTab(p);
                 if (p.classList && p.classList.contains('collapse') && !p.classList.contains('show')) {
                     p.classList.add('show');
                     if (!p.id) continue;

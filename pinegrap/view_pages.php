@@ -73,65 +73,9 @@ if (isset($_GET['recalculate_seo']) && (USER_ROLE < 3)) {
     go($seo_return);
 }
 
-// The HTML structure pass, on demand instead of waiting for tonight. It runs
-// exactly what the nightly job runs - pages, products, product groups, and the
-// link graph once the queue empties - with a much smaller time budget, because
-// this one is inside a browser request and a page render is a full request's
-// worth of work.
-//
-// The queue is the state, so a click that runs out of budget is not a failed
-// run: it leaves the rest queued and the next click, or the job tonight,
-// continues from there.
-//
-// Worth knowing: rendered here the pages are rendered inside a signed-in
-// administrator's session, which the nightly job does not have. Content behind
-// a membership gate is therefore visible to this pass and not to the job. The
-// job re-analyzes on its own schedule, so the difference does not persist.
-if (isset($_GET['analyze_seo']) && (USER_ROLE < 3)) {
-    validate_token_field();
-
-    require_once(dirname(__FILE__) . '/seo_structure.php');
-
-    if (!pg_seo_structure_schema_ready()) {
-        $liveform->add_notice(lang('Please run the software upgrade to enable SEO scores.'));
-
-        go($seo_return);
-    }
-
-    if (!class_exists('DOMDocument')) {
-        $liveform->add_notice(lang('The PHP DOM extension is not available, so the HTML structure cannot be analyzed.'));
-
-        go($seo_return);
-    }
-
-    // Deliberately shorter than the job's budget. A browser request that keeps
-    // an administrator waiting a full minute reads as a hung screen, and there
-    // is nothing lost by stopping early.
-    $analyze_budget = defined('SEO_ANALYZE_BUTTON_BUDGET') ? (int) SEO_ANALYZE_BUTTON_BUDGET : 20;
-
-    $analyze_run = pg_seo_analyze_batch($analyze_budget);
-
-    if ($analyze_run['remaining'] > 0) {
-        $liveform->add_notice(lang(array(
-            'string' => 'The HTML structure of {var:1} record{suffix:1} was analyzed. {var:2} record{suffix:2} still need to be analyzed - click Analyze HTML Structure again to continue.',
-            'vars' => array($analyze_run['analyzed'], $analyze_run['remaining']),
-            'suffix' => array((($analyze_run['analyzed'] == 1) ? '' : 's'), (($analyze_run['remaining'] == 1) ? '' : 's')))));
-    } elseif ($analyze_run['analyzed'] > 0) {
-        $liveform->add_notice(lang(array(
-            'string' => 'The HTML structure of {var:1} record{suffix:1} was analyzed.',
-            'vars' => $analyze_run['analyzed'],
-            'suffix' => (($analyze_run['analyzed'] == 1) ? '' : 's'))));
-    } else {
-        // Nothing analyzed and nothing left: the queue was already empty. This
-        // is what the operator sees on every click after the first full pass,
-        // so it says so rather than reporting a run of zero records.
-        $liveform->add_notice(lang('The HTML structure of every record is already up to date.'));
-    }
-
-    log_activity(lang('analyzed HTML structure'), $_SESSION['sessionusername']);
-
-    go($seo_return);
-}
+// The HTML structure pass on demand (Analyze HTML Structure) runs in
+// audit_run.php, which renders the pages as a visitor who is not signed in,
+// as the nightly job does, and returns here with what it did.
 
 $output_clear_button = '';
 
@@ -333,16 +277,17 @@ if (($user['role'] < '3') || ($user['create_pages'] == TRUE)) {
         $view_pages_primary = array('label' => lang('Add Page'), 'url' => 'add_page.php', 'icon' => 'bi-plus-circle');
     }
 
-    // If advanced search is enabled and the user is a manager or above then offer "Update Search Index".
-    if ((SEARCH_TYPE == 'advanced') && (USER_ROLE != 3)) {
-        $view_pages_tools[] = '<li><button type="button" class="menu-item pg-link-body-emphasis" onclick="window.open(\'update_search_index.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\');"><i class="bi bi-search me-3" aria-hidden="true"></i>' . lang('Update Search Index') . '</button></li>';
+    // The search index, SEO scores, structure and accessibility passes on one
+    // screen (search_audits.php), managers and above.
+    if (USER_ROLE < 3) {
+        $view_pages_tools[] = '<li><a class="menu-item pg-link-body-emphasis" href="search_audits.php"><i class="bi bi-activity me-3" aria-hidden="true"></i>' . lang('Search and audits') . '</a></li>';
     }
 
     // SEO score refresh sits with the other maintenance tools. Managers and
     // above, same threshold the scores themselves matter to.
     if (USER_ROLE < 3) {
         $view_pages_tools[] = '<li><a class="menu-item pg-link-body-emphasis" href="view_pages.php?recalculate_seo=1' . $output_filter_for_links . get_token_query_string_field() . '"><i class="bi bi-speedometer2 me-3" aria-hidden="true"></i>' . lang('Refresh SEO Scores') . '</a></li>';
-        $view_pages_tools[] = '<li><a class="menu-item pg-link-body-emphasis" href="view_pages.php?analyze_seo=1' . $output_filter_for_links . get_token_query_string_field() . '" title="' . lang('Renders each page and examines the resulting HTML. Covers products and product groups too. Slower than a score refresh, and it may take several clicks on a large site.') . '"><i class="bi bi-code-slash me-3" aria-hidden="true"></i>' . lang('Analyze HTML Structure') . '</a></li>';
+        $view_pages_tools[] = '<li><a class="menu-item pg-link-body-emphasis" href="audit_run.php?pass=structure' . $output_filter_for_links . get_token_query_string_field() . '" title="' . lang('Renders each page and examines the resulting HTML. Covers products and product groups too. Slower than a score refresh, and it may take several clicks on a large site.') . '"><i class="bi bi-code-slash me-3" aria-hidden="true"></i>' . lang('Analyze HTML Structure') . '</a></li>';
         $view_pages_tools[] = '<li><a class="menu-item pg-link-body-emphasis" href="view_accessibility.php"><i class="bi bi-universal-access me-3" aria-hidden="true"></i>' . lang('Accessibility report') . '</a></li>';
     }
 }

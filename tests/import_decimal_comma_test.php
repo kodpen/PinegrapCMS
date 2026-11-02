@@ -70,29 +70,29 @@ function test_products_import_decimal_cell_reads_a_spreadsheet_exponent()
 	pg_assert_same('1500.0000', pg_products_import_decimal_cell('length', '1.5e+3'), 'exponent with a fraction');
 }
 
-function test_products_import_row_decimals_refuses_a_cell_that_is_not_a_number()
+function test_products_import_row_decimals_problem()
 {
 	// The issue's Turkish ';' row: name;price;weight;length;width;height;commission_rate_limit
 	$positions = array('weight' => 2, 'length' => 3, 'width' => 4, 'height' => 5, 'commission_rate_limit' => 6);
 
-	pg_assert_same(false, pg_products_import_row_decimals_refused(array('K', '1.250,50', '1,5', '30,5', '20,25', '10,75', '7,5'), $positions), 'Turkish decimals');
-	pg_assert_same(false, pg_products_import_row_decimals_refused(array('K', '1', ' 0.1250 ', '', '', '', ''), $positions), 'exported dots and empty cells');
-	pg_assert_same(false, pg_products_import_row_decimals_refused(array('K', '1', '1 234,5'), $positions), 'space-grouped, short row');
-	pg_assert_same(false, pg_products_import_row_decimals_refused(array('K', '1', '1E-3'), $positions), 'spreadsheet exponent');
-	pg_assert_same(false, pg_products_import_row_decimals_refused(array('K', '1', '1,5', '30,5', '20,25', '10,75', '1500'), $positions), 'rate above the top is held, as on the product screen');
+	pg_assert_same('', pg_products_import_row_decimals_problem(array('K', '1.250,50', '1,5', '30,5', '20,25', '10,75', '7,5'), $positions), 'Turkish decimals');
+	pg_assert_same('', pg_products_import_row_decimals_problem(array('K', '1', ' 0.1250 ', '', '', '', ''), $positions), 'exported dots and empty cells');
+	pg_assert_same('', pg_products_import_row_decimals_problem(array('K', '1', '1 234,5'), $positions), 'space-grouped, short row');
+	pg_assert_same('', pg_products_import_row_decimals_problem(array('K', '1', '1E-3'), $positions), 'spreadsheet exponent');
+	pg_assert_same('', pg_products_import_row_decimals_problem(array('K', '1', '1,5', '30,5', '20,25', '10,75', '1500'), $positions), 'rate above the top is held, as on the product screen');
 
-	pg_assert_same(true, pg_products_import_row_decimals_refused(array('K', '1', 'abc'), $positions), 'words');
-	pg_assert_same(true, pg_products_import_row_decimals_refused(array('K', '1', '1,5 kg'), $positions), 'a unit');
-	pg_assert_same(true, pg_products_import_row_decimals_refused(array('K', '1', '-2'), $positions), 'negative (unsigned column)');
-	pg_assert_same(true, pg_products_import_row_decimals_refused(array('K', '1', '1', '1', '1', '1', 'yedi'), $positions), 'rate not a number');
-	pg_assert_same(true, pg_products_import_row_decimals_refused(array('K', '1', '', '100000000'), $positions), 'above decimal(12,4)');
-	pg_assert_same(true, pg_products_import_row_decimals_refused(array('K', '1', '.,'), $positions), 'separators only');
-	pg_assert_same(false, pg_products_import_row_decimals_refused(array('K', 'abc'), array()), 'no decimal column');
+	pg_assert_same('not_number', pg_products_import_row_decimals_problem(array('K', '1', 'abc'), $positions), 'words');
+	pg_assert_same('not_number', pg_products_import_row_decimals_problem(array('K', '1', '1,5 kg'), $positions), 'a unit');
+	pg_assert_same('not_number', pg_products_import_row_decimals_problem(array('K', '1', '-2'), $positions), 'negative (unsigned column)');
+	pg_assert_same('not_number', pg_products_import_row_decimals_problem(array('K', '1', '1', '1', '1', '1', 'yedi'), $positions), 'rate not a number');
+	pg_assert_same('too_large', pg_products_import_row_decimals_problem(array('K', '1', '', '100000000'), $positions), 'above decimal(12,4)');
+	pg_assert_same('not_number', pg_products_import_row_decimals_problem(array('K', '1', '.,'), $positions), 'separators only');
+	pg_assert_same('', pg_products_import_row_decimals_problem(array('K', 'abc'), array()), 'no decimal column');
 }
 
 function test_products_import_leaves_out_a_row_whose_decimal_cell_is_not_a_number()
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/import_products.php');
-	pg_assert_true(strpos($source, 'pg_products_import_row_decimals_refused(') !== false, 'the import loop checks the row');
+	pg_assert_true(strpos($source, 'pg_products_import_row_decimals_problem(') !== false, 'the import loop checks the row');
 	pg_assert_true(strpos($source, 'is not a number: {var:1}.') !== false, 'the rows left out are named');
 }

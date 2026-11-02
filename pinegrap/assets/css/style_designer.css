@@ -3580,6 +3580,16 @@ body.sd-resizing * { cursor: col-resize !important; }
 .sd-icon-btn-danger:hover { background: rgba(231,76,60,.15); }
 .sd-icon-btn[disabled], .sd-icon-btn.disabled { opacity: .4; pointer-events: none; }
 
+/* The classic style's "Also convert the pages that take it from their
+   folder" choice (pg_classic_style_folder_pages_field()). It sits outside the
+   form, beside the full-height editor: in the flow above it, it pushed the
+   toolbar and the canvas down. Floating bottom left, it stays in the DOM, so
+   its checkbox (form="style_designer_form") still goes with every save. */
+.sd-classic-folder-pages {
+    position: fixed; bottom: 24px; left: 24px; z-index: 1050;
+    max-width: 360px; max-height: 50vh; overflow: auto;
+}
+
 /* ========================= TOAST NOTIFICATIONS ========================= */
 /* sdToast() draws Bootstrap's .toast; Bootstrap shows and fades it. The
    stack is the editor's own: bottom right, newest at the bottom. Each type

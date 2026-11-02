@@ -311,9 +311,23 @@ if (!$_POST) {
     // each product it writes, as the product screens do.
     $stock_columns_in_file = in_array('inventory', $column_names, true) || ($inventory_quantity_position !== false);
 
+    // A file with a price, stock or enabled column queues every product it
+    // updates for the marketplaces, at the end of the import.
+    $marketplace_columns_in_file = pg_products_import_marketplace_columns($column_names);
+    $marketplace_product_ids = array();
+
     $rows_not_amounts = array();
+    $rows_price_too_large = array();
     $rows_not_numbers = array();
+    $rows_decimal_too_large = array();
+    $rows_quantity_not_whole = array();
     $rows_not_customs = array();
+    $rows_quantity_too_large = array();
+    // Rows of products in the Recycle Bin, never written: Edit Product,
+    // Modify Selected and the Catalog Manager leave a binned product alone
+    // too. Before the bin's upgrade step there is no recycled column.
+    $rows_binned = array();
+    $bin_ready = pg_catalog_bin_ready();
     // Rows of products already on file, left as they are because Update
     // Existing Products is off.
     $rows_left_alone = array();
@@ -334,9 +348,17 @@ if (!$_POST) {
             // The row is named by its number among the rows read (the header
             // is 1; a spreadsheet's empty rows are not written to the CSV, so
             // they are not counted) and by its name, which finds it in any
-            // file. The message is HTML, so the name is escaped.
+            // file. The message is HTML, so the name is escaped. Each list
+            // below names its own reason, so the operator knows what to fix.
+            $row_label = $row_number . ' (' . htmlspecialchars((string) $row[$name_key], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ')';
+
             if ($row_read['refused']) {
-                $rows_not_amounts[] = $row_number . ' (' . htmlspecialchars((string) $row[$name_key], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ')';
+                if ($row_read['too_large']) {
+                    $rows_price_too_large[] = $row_label;
+                } else {
+                    $rows_not_amounts[] = $row_label;
+                }
+
                 continue;
             }
 
@@ -349,16 +371,41 @@ if (!$_POST) {
                 $row_quantity = pg_products_mass_quantity_value($quantity_cell);
             }
 
-            if (pg_products_import_row_decimals_refused($row, $decimal_positions)
-                || (($quantity_cell !== '') && ($row_quantity === null))) {
-                $rows_not_numbers[] = $row_number . ' (' . htmlspecialchars((string) $row[$name_key], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ')';
+            $decimals_problem = pg_products_import_row_decimals_problem($row, $decimal_positions);
+
+            if ($decimals_problem === 'too_large') {
+                $rows_decimal_too_large[] = $row_label;
+                continue;
+            }
+
+            if ($decimals_problem === 'not_number') {
+                $rows_not_numbers[] = $row_label;
+                continue;
+            }
+
+            // A stock cell with a fraction or a minus sign ("1,5", "-3") is a
+            // number, just not a count; anything else is not a number.
+            if (($quantity_cell !== '') && ($row_quantity === null)) {
+                if (pg_products_import_quantity_refusal($quantity_cell) === 'not_whole') {
+                    $rows_quantity_not_whole[] = $row_label;
+                } else {
+                    $rows_not_numbers[] = $row_label;
+                }
+
+                continue;
+            }
+
+            // A count past what products.inventory_quantity holds leaves the
+            // row out: MySQL would store the column's top without a word.
+            if (($row_quantity !== null) && pg_inventory_quantity_too_large($row_quantity)) {
+                $rows_quantity_too_large[] = $row_label;
                 continue;
             }
 
             $customs_row = pg_product_customs_import_row($row, $customs_positions);
 
             if ($customs_row === false) {
-                $rows_not_customs[] = $row_number . ' (' . htmlspecialchars((string) $row[$name_key], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ')';
+                $rows_not_customs[] = $row_label;
                 continue;
             }
 
@@ -373,7 +420,7 @@ if (!$_POST) {
                     full_description,
                     details,
                     seo_analysis_current,
-                    address_name
+                    address_name" . ($bin_ready ? ', recycled' : '') . "
                 FROM products
                 WHERE name = ?";
             $result = db_q($query, array((string) $row[$name_key])) or output_error('Query failed.');
@@ -386,6 +433,14 @@ if (!$_POST) {
                 $details = $row_2['details'];
                 $seo_analysis_current = $row_2['seo_analysis_current'];
                 $address_name = $row_2['address_name'];
+
+                // A code a binned product still holds cannot be given to a
+                // new one either, so the row is left out whatever Update
+                // Existing Products says.
+                if ($bin_ready && ((int) $row_2['recycled'] === 1)) {
+                    $rows_binned[] = $row_label;
+                    continue;
+                }
 
                 $new_address_name = '';
                 
@@ -602,7 +657,7 @@ if (!$_POST) {
                             $sql_seo_analysis_current
                             user = '" . $user['id'] . "',
                             timestamp = UNIX_TIMESTAMP()
-                        WHERE name = '" . escape($row[$name_key]) . "'";
+                        WHERE id = '" . (int) $product_id . "'";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
                     if ($stock_columns_in_file) {
@@ -610,6 +665,10 @@ if (!$_POST) {
                     }
 
                     pg_price_history_queue($product_id, 'import');
+
+                    if ($marketplace_columns_in_file) {
+                        $marketplace_product_ids[] = $product_id;
+                    }
 
                     // If an enabled column exists and the product is disabled, then delete tag cloud keywords.
                     if (
@@ -933,6 +992,12 @@ if (!$_POST) {
     // stock or price the file gave a bundle itself is replaced by that too.
     pg_bundle_refresh_all();
 
+    // The products the file updated go to the marketplace queue, as from any
+    // other stock or price writer; the queue writes one row per product and
+    // calls no marketplace here. A new product has no marketplace mapping
+    // yet, so only the updated ones are queued.
+    pg_marketplace_products_changed($marketplace_product_ids);
+
     // The rest of the queued products. A row is written only for a product
     // whose price is not the newest one in its history (or that has no
     // history yet), so a file without a price column adds rows for the
@@ -952,6 +1017,14 @@ if (!$_POST) {
         $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because a price, compare-at price or extra shipping cost in them is not an amount: {var:1}.', 'vars' => array($rows_listed))));
     }
 
+    // Rows left out because a money cell is more than the price columns hold,
+    // with that top in the base currency.
+    if ($rows_price_too_large) {
+        $rows_listed = implode(', ', array_slice($rows_price_too_large, 0, 50)) . ((count($rows_price_too_large) > 50) ? ', ...' : '');
+        $price_top = h(pg_money_text(PG_PRODUCT_PRICE_MAX / 100, defined('BASE_CURRENCY_SYMBOL') ? BASE_CURRENCY_SYMBOL : ''));
+        $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because a price, compare-at price or extra shipping cost in them is too large (at most {var:1}): {var:2}.', 'vars' => array($price_top, $rows_listed))));
+    }
+
     // Rows left out because a weight, dimension, commission limit or stock
     // quantity cell is not a number.
     if ($rows_not_numbers) {
@@ -959,10 +1032,36 @@ if (!$_POST) {
         $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because a weight, length, width, height, commission rate limit or stock quantity in them is not a number: {var:1}.', 'vars' => array($rows_listed))));
     }
 
+    // Rows left out because a weight or a dimension is more than its column
+    // holds.
+    if ($rows_decimal_too_large) {
+        $rows_listed = implode(', ', array_slice($rows_decimal_too_large, 0, 50)) . ((count($rows_decimal_too_large) > 50) ? ', ...' : '');
+        $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because a weight, length, width or height in them is too large: {var:1}.', 'vars' => array($rows_listed))));
+    }
+
+    // Rows left out because their stock quantity has a fraction or a minus
+    // sign.
+    if ($rows_quantity_not_whole) {
+        $rows_listed = implode(', ', array_slice($rows_quantity_not_whole, 0, 50)) . ((count($rows_quantity_not_whole) > 50) ? ', ...' : '');
+        $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because their stock quantity is not a whole number of zero or more: {var:1}.', 'vars' => array($rows_listed))));
+    }
+
+    // Rows left out because their stock quantity is more than the column holds.
+    if ($rows_quantity_too_large) {
+        $rows_listed = implode(', ', array_slice($rows_quantity_too_large, 0, 50)) . ((count($rows_quantity_too_large) > 50) ? ', ...' : '');
+        $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because their stock quantity is too large: {var:1}.', 'vars' => array($rows_listed))));
+    }
+
     // Rows left out because an HS code or a country of origin cannot be stored.
     if ($rows_not_customs) {
         $rows_listed = implode(', ', array_slice($rows_not_customs, 0, 50)) . ((count($rows_not_customs) > 50) ? ', ...' : '');
         $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because their HS code or country of origin is not valid: {var:1}.', 'vars' => array($rows_listed))));
+    }
+
+    // Rows left out because their product is in the Recycle Bin.
+    if ($rows_binned) {
+        $rows_listed = implode(', ', array_slice($rows_binned, 0, 50)) . ((count($rows_binned) > 50) ? ', ...' : '');
+        $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because their product is in the Recycle Bin: {var:1}.', 'vars' => array($rows_listed))));
     }
 
     if (pg_csv_headings_text($unknown_headings) !== '') {

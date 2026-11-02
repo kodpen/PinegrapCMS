@@ -80,13 +80,15 @@ function pg_panel_backend_search($request, $action)
     }
     if ($gate['folders']) {
         $actions[] = array('label' => lang('File Manager'), 'icon' => 'bi-folder2', 'url' => $base_url . '/view_folders.php', 'keys' => array('klasor', 'klasör', 'folder', 'fol', 'kla', 'dosya', 'yonetici', 'file', 'manager'));
-        $actions[] = array('label' => lang('Add Folder'), 'icon' => 'bi-folder-plus', 'url' => $base_url . '/add_folder.php', 'keys' => array('klasor ekle', 'add folder', 'yeni klasor', 'klasorekle'));
     }
     if ($gate['manage']) {
         $actions[] = array('label' => lang('Short Links'), 'icon' => 'bi-link-45deg', 'url' => $base_url . '/view_short_links.php', 'keys' => array('kisa link', 'kisa', 'short', 'link', 'kis'));
     }
     if ($gate['not_found_log']) {
         $actions[] = array('label' => lang('404 Log'), 'icon' => 'bi-sign-dead-end', 'url' => $base_url . '/view_not_found_log.php', 'keys' => array('404', 'bulunamadi', 'bulunamayan', 'not found', 'kirik link', 'broken link', 'yonlendirme', 'redirect'));
+    }
+    if ($gate['manage']) {
+        $actions[] = array('label' => lang('Search and audits'), 'icon' => 'bi-activity', 'url' => $base_url . '/search_audits.php', 'keys' => array('arama dizini', 'dizin', 'search index', 'index', 'denetim', 'audit', 'seo', 'tarama', 'yapi', 'structure'));
     }
     if ($gate['manage']) {
         $actions[] = array('label' => lang('Accessibility report'), 'icon' => 'bi-universal-access', 'url' => $base_url . '/view_accessibility.php', 'keys' => array('erisilebilirlik', 'erişilebilirlik', 'accessibility', 'a11y', 'wcag', 'engelli'));
@@ -100,7 +102,7 @@ function pg_panel_backend_search($request, $action)
 
     // ── Files ─────────────────────────────────────────────────────────────
     if ($gate['folders']) {
-        $actions[] = array('label' => lang('Files'), 'icon' => 'bi-folder2-open', 'url' => $base_url . '/view_files.php', 'keys' => array('dosya', 'dosyalar', 'file', 'files', 'fil', 'dos'));
+        $actions[] = array('label' => lang('Files'), 'icon' => 'bi-folder2-open', 'url' => $base_url . '/view_folders.php?view=files', 'keys' => array('dosya', 'dosyalar', 'file', 'files', 'fil', 'dos'));
         $actions[] = array('label' => lang('Add File'), 'icon' => 'bi-file-earmark-arrow-up', 'url' => $base_url . '/add_file.php', 'keys' => array('dosya yukle', 'dosya ekle', 'upload', 'add file', 'yukle'));
     }
 

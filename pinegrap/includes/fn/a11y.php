@@ -31,30 +31,30 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 /**
  * Every check: its severity, the WCAG 2.2 success criterion it reads and that
- * criterion's level. 'document' rules need a whole page and are skipped for
- * output that is not one (seo-structure-non-html-output.md).
+ * criterion's level, in checklist order; read from the audit rule registry
+ * (includes/fn/audit_rules.php). 'document' rules need a whole page and are
+ * skipped for output that is not one (seo-structure-non-html-output.md).
  *
  * @return array<string,array>
  */
 function pg_a11y_rules()
 {
-    return array(
-        'a11y_page_title'        => array('severity' => 'error',   'criterion' => '2.4.2', 'level' => 'A',  'document' => true),
-        'a11y_html_lang'         => array('severity' => 'error',   'criterion' => '3.1.1', 'level' => 'A',  'document' => true),
-        'a11y_main_missing'      => array('severity' => 'warning', 'criterion' => '2.4.1', 'level' => 'A',  'document' => true),
-        'a11y_heading_order'     => array('severity' => 'warning', 'criterion' => '1.3.1', 'level' => 'A',  'document' => false),
-        'a11y_img_alt'           => array('severity' => 'error',   'criterion' => '1.1.1', 'level' => 'A',  'document' => false),
-        'a11y_form_label'        => array('severity' => 'error',   'criterion' => '1.3.1', 'level' => 'A',  'document' => false),
-        'a11y_idref_broken'      => array('severity' => 'warning', 'criterion' => '1.3.1', 'level' => 'A',  'document' => false),
-        'a11y_error_association' => array('severity' => 'warning', 'criterion' => '3.3.1', 'level' => 'A',  'document' => false),
-        'a11y_link_name'         => array('severity' => 'error',   'criterion' => '2.4.4', 'level' => 'A',  'document' => false),
-        'a11y_link_generic'      => array('severity' => 'notice',  'criterion' => '2.4.4', 'level' => 'A',  'document' => false),
-        'a11y_button_name'       => array('severity' => 'error',   'criterion' => '4.1.2', 'level' => 'A',  'document' => false),
-        'a11y_frame_title'       => array('severity' => 'error',   'criterion' => '4.1.2', 'level' => 'A',  'document' => false),
-        'a11y_media_autoplay'    => array('severity' => 'warning', 'criterion' => '1.4.2', 'level' => 'A',  'document' => false),
-        'a11y_contrast'          => array('severity' => 'warning', 'criterion' => '1.4.3', 'level' => 'AA', 'document' => false),
-        'a11y_target_size'       => array('severity' => 'notice',  'criterion' => '2.5.8', 'level' => 'AA', 'document' => false),
-    );
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/audit_rules.php');
+
+    $rules = array();
+
+    foreach (pg_audit_rules() as $rule) {
+        if ($rule['a11y'] !== '') {
+            $rules[$rule['a11y']] = array(
+                'severity'  => $rule['severity']['a11y'],
+                'criterion' => $rule['criterion'],
+                'level'     => $rule['level'],
+                'document'  => in_array('a11y', $rule['document'], true),
+            );
+        }
+    }
+
+    return $rules;
 }
 
 // WCAG 2.2 success criteria the checks read, by number, with their names.
@@ -115,6 +115,50 @@ function pg_a11y_issue_label($code)
 }
 
 /**
+ * One example of a finding, and the editor node it was drawn from: the
+ * nearest element at or above $element carrying data-pg-node (the editor's
+ * audit render writes it; a served page has none) is noted for
+ * pg_a11y_example_nodes().
+ *
+ * @param DOMNode $element
+ * @param string  $text the example
+ * @return string $text
+ */
+function pg_a11y_example($element, $text)
+{
+    for ($n = $element; $n instanceof DOMElement; $n = $n->parentNode) {
+        if ($n->hasAttribute('data-pg-node')) {
+            pg_a11y_example_nodes(false, $n->getAttribute('data-pg-node'));
+            break;
+        }
+    }
+
+    return $text;
+}
+
+/**
+ * The node ids noted by pg_a11y_example() since the last reset, once each,
+ * in the order found.
+ *
+ * @param bool        $reset start a new list
+ * @param string|null $add   a node id to note
+ * @return string[]
+ */
+function pg_a11y_example_nodes($reset = false, $add = null)
+{
+    static $nodes = array();
+
+    if ($reset) {
+        $nodes = array();
+    }
+    if (($add !== null) && ($add !== '') && !in_array($add, $nodes, true)) {
+        $nodes[] = (string) $add;
+    }
+
+    return $nodes;
+}
+
+/**
  * Every finding of the checks over one piece of markup, keyed by code: code,
  * severity, occurrences and the first example as detail.
  *
@@ -153,7 +197,9 @@ function pg_a11y_check_html($html)
             continue;
         }
 
+        pg_a11y_example_nodes(true);
         $examples = call_user_func('pg_a11y_rule_' . substr($code, 5), $xpath);
+        $nodes = pg_a11y_example_nodes();
 
         if ($examples) {
             $findings[$code] = array(
@@ -162,6 +208,11 @@ function pg_a11y_check_html($html)
                 'occurrences' => count($examples),
                 'detail'      => mb_substr((string) $examples[0], 0, 250),
             );
+            // The editor's audit render marks elements with their node
+            // (data-pg-node); the finding names them for the canvas badges.
+            if ($nodes) {
+                $findings[$code]['nodes'] = array_slice($nodes, 0, 50);
+            }
         }
     }
 
@@ -330,7 +381,7 @@ function pg_a11y_rule_heading_order($xpath)
         }
 
         if ($previous && ($level > $previous + 1)) {
-            $examples[] = 'h' . $previous . ' → h' . $level . ': ' . mb_substr(pg_a11y_text($heading), 0, 80);
+            $examples[] = pg_a11y_example($heading, 'h' . $previous . ' → h' . $level . ': ' . mb_substr(pg_a11y_text($heading), 0, 80));
         }
 
         $previous = $level;
@@ -358,7 +409,7 @@ function pg_a11y_rule_img_alt($xpath)
             continue;
         }
 
-        $examples[] = $image->hasAttribute('src') ? $image->getAttribute('src') : $image->getAttribute('href');
+        $examples[] = pg_a11y_example($image, $image->hasAttribute('src') ? $image->getAttribute('src') : $image->getAttribute('href'));
     }
 
     return $examples;
@@ -394,7 +445,7 @@ function pg_a11y_rule_form_label($xpath)
             continue;
         }
 
-        $examples[] = ($control->getAttribute('name') !== '') ? $control->getAttribute('name') : $control->nodeName;
+        $examples[] = pg_a11y_example($control, ($control->getAttribute('name') !== '') ? $control->getAttribute('name') : $control->nodeName);
     }
 
     return $examples;
@@ -408,7 +459,7 @@ function pg_a11y_rule_idref_broken($xpath)
 
     foreach ($xpath->query('//label[@for]') as $label) {
         if ((trim($label->getAttribute('for')) !== '') && !pg_a11y_by_id($xpath, $label->getAttribute('for'))) {
-            $examples[] = 'for="' . $label->getAttribute('for') . '"';
+            $examples[] = pg_a11y_example($label, 'for="' . $label->getAttribute('for') . '"');
         }
     }
 
@@ -416,7 +467,7 @@ function pg_a11y_rule_idref_broken($xpath)
         foreach (array('aria-labelledby', 'aria-describedby', 'aria-errormessage') as $attribute) {
             foreach (pg_a11y_idrefs($element->getAttribute($attribute)) as $id) {
                 if (!pg_a11y_by_id($xpath, $id)) {
-                    $examples[] = $attribute . '="' . $id . '"';
+                    $examples[] = pg_a11y_example($element, $attribute . '="' . $id . '"');
                 }
             }
         }
@@ -445,7 +496,7 @@ function pg_a11y_rule_error_association($xpath)
         }
 
         if (!$described) {
-            $examples[] = ($control->getAttribute('name') !== '') ? $control->getAttribute('name') : $control->nodeName;
+            $examples[] = pg_a11y_example($control, ($control->getAttribute('name') !== '') ? $control->getAttribute('name') : $control->nodeName);
         }
     }
 
@@ -459,7 +510,7 @@ function pg_a11y_rule_link_name($xpath)
 
     foreach ($xpath->query('//a[@href]') as $link) {
         if (!pg_a11y_hidden($link) && (pg_a11y_name($xpath, $link) === '')) {
-            $examples[] = $link->getAttribute('href');
+            $examples[] = pg_a11y_example($link, $link->getAttribute('href'));
         }
     }
 
@@ -483,7 +534,7 @@ function pg_a11y_rule_link_generic($xpath)
         $name = mb_strtolower(trim(pg_a11y_name($xpath, $link), " \t\n.…:»›>→"));
 
         if (($name !== '') && isset($generic[$name]) && !pg_a11y_hidden($link)) {
-            $examples[] = $name;
+            $examples[] = pg_a11y_example($link, $name);
         }
     }
 
@@ -504,7 +555,7 @@ function pg_a11y_rule_button_name($xpath)
         $name = ($button->nodeName === 'input') ? trim($button->getAttribute('value')) : '';
 
         if (($name === '') && (pg_a11y_name($xpath, $button) === '')) {
-            $examples[] = ($button->getAttribute('class') !== '') ? $button->nodeName . '.' . preg_replace('/\s+/', '.', trim($button->getAttribute('class'))) : $button->nodeName;
+            $examples[] = pg_a11y_example($button, ($button->getAttribute('class') !== '') ? $button->nodeName . '.' . preg_replace('/\s+/', '.', trim($button->getAttribute('class'))) : $button->nodeName);
         }
     }
 
@@ -523,7 +574,7 @@ function pg_a11y_rule_frame_title($xpath)
         $named = (trim($frame->getAttribute('title')) !== '') || (trim($frame->getAttribute('aria-label')) !== '') || $frame->hasAttribute('aria-labelledby');
 
         if (!$named && !pg_a11y_hidden($frame)) {
-            $examples[] = $frame->getAttribute('src');
+            $examples[] = pg_a11y_example($frame, $frame->getAttribute('src'));
         }
     }
 
@@ -544,7 +595,7 @@ function pg_a11y_rule_media_autoplay($xpath)
             $source = $inner ? $inner->getAttribute('src') : $media->nodeName;
         }
 
-        $examples[] = $source;
+        $examples[] = pg_a11y_example($media, $source);
     }
 
     return $examples;
@@ -665,7 +716,7 @@ function pg_a11y_rule_contrast($xpath)
         $ratio = _pg_theme_contrast($foreground, $background);
 
         if ($ratio < ($large ? 3 : 4.5)) {
-            $examples[] = sprintf('%.2f:1 %s / %s', floor($ratio * 100) / 100, _pg_theme_hex($foreground), _pg_theme_hex($background));
+            $examples[] = pg_a11y_example($element, sprintf('%.2f:1 %s / %s', floor($ratio * 100) / 100, _pg_theme_hex($foreground), _pg_theme_hex($background)));
         }
     }
 
@@ -690,7 +741,7 @@ function pg_a11y_rule_target_size($xpath)
         }
 
         if ((((float) $w[1] < 24) || ((float) $h[1] < 24)) && !pg_a11y_hidden($target)) {
-            $examples[] = $w[1] . '×' . $h[1];
+            $examples[] = pg_a11y_example($target, $w[1] . '×' . $h[1]);
         }
     }
 
@@ -707,19 +758,22 @@ function pg_a11y_state_path()
 }
 
 /**
- * The pages the report covers, page_id => row: published (public folder, not
- * archived) and of a type the structure pass can render. Classic pages are
- * read like visual ones; nothing in their markup is changed.
+ * The pages the report covers, page_id => row: the audits' scope
+ * (pg_render_pass_scope('a11y'): public folder, not archived, a type the
+ * structure pass can render). Classic pages are read like visual ones;
+ * nothing in their markup is changed.
  *
  * @return array<int,array>
  */
 function pg_a11y_pages()
 {
-    $types = pg_seo_renderable_page_types();
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/background_render.php');
+
+    $scope = pg_render_pass_scope('a11y');
     $pages = array();
 
     $rows = db_items(
-        "SELECT page.page_id, page.page_name, page.page_type, page.page_folder
+        "SELECT page.page_id, page.page_name, page.page_type, page.page_folder, folder.folder_archived
         FROM page
         LEFT JOIN folder ON page.page_folder = folder.folder_id
         WHERE (folder.folder_archived IS NULL) OR (folder.folder_archived <> '1')
@@ -730,7 +784,7 @@ function pg_a11y_pages()
 
     foreach ($rows as $row) {
 
-        if (!in_array($row['page_type'], $types, true)) {
+        if (!in_array($row['page_type'], $scope['types'], true)) {
             continue;
         }
 
@@ -738,7 +792,9 @@ function pg_a11y_pages()
             $public[$row['page_folder']] = (get_access_control_type($row['page_folder']) === 'public');
         }
 
-        if ($public[$row['page_folder']]) {
+        $row['folder_public'] = $public[$row['page_folder']];
+
+        if (pg_render_pass_covers($scope, $row)) {
             $pages[(int) $row['page_id']] = $row;
         }
     }
@@ -824,6 +880,157 @@ function pg_a11y_run($time_budget)
     return array('checked' => $checked, 'failed' => $failed, 'done' => true, 'ready' => true);
 }
 
+// ---- Measured in the editor -----------------------------------------------
+
+/**
+ * The seo_issue.source of a finding measured on the visual editor's canvas:
+ * "editor:" and the time of the save that sent it. The nightly pass leaves
+ * these rows alone (pg_seo_store_issues()); the next save of the page
+ * replaces them (pg_a11y_store_measured()).
+ *
+ * @param int $time
+ * @return string
+ */
+function pg_a11y_measured_source($time)
+{
+    return 'editor:' . (int) $time;
+}
+
+/**
+ * When a stored finding was measured in the editor: the save time its source
+ * names, 0 for a finding of the server's checks.
+ *
+ * @param string $source seo_issue.source
+ * @return int
+ */
+function pg_a11y_measured_time($source)
+{
+    return preg_match('/^editor:(\d{1,10})$/', (string) $source, $m) ? (int) $m[1] : 0;
+}
+
+/**
+ * The findings to store for what the editor measured on the canvas, keyed by
+ * code: only the browser-only concepts of the audit rule registry (contrast,
+ * target size), by their editor rule ids; occurrences counted, the first
+ * label as the example. Anything else the request carries is dropped.
+ *
+ * @param mixed $measured list of array('rule' => editor rule id, 'label' => text)
+ * @param int   $time     the save's time
+ * @return array<string,array>
+ */
+function pg_a11y_measured_findings($measured, $time)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/audit_rules.php');
+
+    $codes = array();
+
+    foreach (pg_audit_rules() as $rule) {
+        if ($rule['browser'] && ($rule['a11y'] !== '')) {
+            foreach ($rule['editor'] as $editor_rule) {
+                $codes[$editor_rule] = array($rule['a11y'], $rule['severity']['a11y']);
+            }
+        }
+    }
+
+    $findings = array();
+
+    foreach (array_slice(is_array($measured) ? $measured : array(), 0, 1000) as $item) {
+
+        if (!is_array($item) || !isset($item['rule']) || !is_string($item['rule']) || !isset($codes[$item['rule']])) {
+            continue;
+        }
+
+        list($code, $severity) = $codes[$item['rule']];
+
+        if (isset($findings[$code])) {
+            $findings[$code]['occurrences']++;
+            continue;
+        }
+
+        $findings[$code] = array(
+            'code'        => $code,
+            'severity'    => $severity,
+            'occurrences' => 1,
+            'source'      => pg_a11y_measured_source($time),
+            'detail'      => mb_substr(trim((string) (isset($item['label']) && is_scalar($item['label']) ? $item['label'] : '')), 0, 250),
+        );
+    }
+
+    return $findings;
+}
+
+/**
+ * Replace a page's findings measured in the editor with those of this save.
+ * $measured null (the save measured nothing: another tab, the API, the AI
+ * editor) clears them, since they described the page before the save.
+ *
+ * @param int        $page_id
+ * @param array|null $measured as for pg_a11y_measured_findings()
+ * @return void
+ */
+function pg_a11y_store_measured($page_id, $measured)
+{
+    $page_id = (int) $page_id;
+
+    if (($page_id <= 0) || !pg_schema_has('seo_issue')) {
+        return;
+    }
+
+    db(
+        "DELETE FROM seo_issue
+        WHERE
+            (entity_type = 'page') AND (entity_id = '" . $page_id . "')
+            AND (LEFT(code, 5) = 'a11y_') AND (LEFT(source, 7) = 'editor:')");
+
+    // A page the report does not cover (a private folder, a type the
+    // passes do not render) keeps none, as the nightly pass would leave it.
+    $findings = pg_a11y_measured_findings($measured, time());
+
+    if (!$findings || !pg_a11y_page_covered($page_id)) {
+        return;
+    }
+
+    foreach ($findings as $finding) {
+        db(
+            "INSERT INTO seo_issue (entity_type, entity_id, code, severity, occurrences, source, detail)
+            VALUES (
+                'page',
+                '" . $page_id . "',
+                '" . e($finding['code']) . "',
+                '" . e($finding['severity']) . "',
+                '" . min(65535, (int) $finding['occurrences']) . "',
+                '" . e($finding['source']) . "',
+                '" . e($finding['detail']) . "')");
+    }
+}
+
+/**
+ * Whether the report covers one page, as pg_a11y_pages() decides for all.
+ *
+ * @param int $page_id
+ * @return bool
+ */
+function pg_a11y_page_covered($page_id)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/background_render.php');
+    require_once(PG_FUNCTIONS_DIR . '/seo.php');
+    require_once(PG_FUNCTIONS_DIR . '/seo_structure.php');
+
+    $row = db_item(
+        "SELECT page.page_type, page.page_folder, folder.folder_archived
+        FROM page
+        LEFT JOIN folder ON page.page_folder = folder.folder_id
+        WHERE page.page_id = '" . (int) $page_id . "'");
+
+    if (!$row) {
+        return false;
+    }
+
+    $row['folder_public'] = (get_access_control_type($row['page_folder']) === 'public');
+
+    return pg_render_pass_covers(pg_render_pass_scope('a11y'), $row);
+}
+
 // ---- The report -----------------------------------------------------------
 
 /**
@@ -878,12 +1085,27 @@ function pg_a11y_report_rows($code, $limit)
     $sql_code = isset($rules[$code]) ? " AND (seo_issue.code = '" . e($code) . "')" : " AND (LEFT(seo_issue.code, 5) = 'a11y_')";
 
     return db_items(
-        "SELECT seo_issue.entity_id AS page_id, page.page_name, seo_issue.code, seo_issue.severity, seo_issue.occurrences, seo_issue.detail
+        "SELECT seo_issue.entity_id AS page_id, page.page_name, seo_issue.code, seo_issue.severity, seo_issue.occurrences, seo_issue.detail, seo_issue.source
         FROM seo_issue
         JOIN page ON page.page_id = seo_issue.entity_id
         WHERE (seo_issue.entity_type = 'page')" . $sql_code . "
         ORDER BY FIELD(seo_issue.severity, 'error', 'warning', 'notice'), seo_issue.code, page.page_name
         LIMIT " . (int) $limit);
+}
+
+/**
+ * Where a finding was measured, for the screen and the PDF: '' for the
+ * server's checks of the published markup, else "Measured in the editor" and
+ * the time of the save that kept it.
+ *
+ * @param string $source seo_issue.source
+ * @return string plain text
+ */
+function pg_a11y_measured_note($source)
+{
+    $time = pg_a11y_measured_time($source);
+
+    return $time ? lang(array('string' => 'Measured in the editor, {var:1}', 'vars' => array(date('Y-m-d H:i', $time)))) : '';
 }
 
 /**
@@ -917,7 +1139,8 @@ function pg_a11y_report_html($summary, $rows, $pages, $last_run, $site)
         . '<h1>' . h(lang('Accessibility report')) . '</h1>'
         . '<p>' . h($site) . ' · ' . h(lang(array('string' => '{var:1} published pages checked', 'vars' => array($pages)))) . ' · '
         . h($last_run ? lang(array('string' => 'last full check {var:1}', 'vars' => array(date('Y-m-d H:i', $last_run)))) : lang('no full check has finished yet')) . '</p>'
-        . '<p class="muted">' . h(lang('The checks read the published markup of each page against WCAG 2.2. They cover only what can be checked automatically; every criterion still needs a person to review the rest.')) . '</p>'
+        . '<p class="muted">' . h(lang('The checks read the published markup of each page against WCAG 2.2. They cover only what can be checked automatically; every criterion still needs a person to review the rest.')) . ' '
+        . h(lang('Contrast and target size are also measured in the visual editor when a page is saved; those findings say so and when.')) . '</p>'
         . '<h2>' . h(lang('Checklist')) . '</h2><table><tr><th>' . h(lang('Criterion')) . '</th><th>' . h(lang('Level')) . '</th><th>' . h(lang('Check')) . '</th><th>' . h(lang('Result')) . '</th></tr>';
 
     foreach ($by_criterion as $number => $codes) {
@@ -944,7 +1167,9 @@ function pg_a11y_report_html($summary, $rows, $pages, $last_run, $site)
         $html .= '<h2>' . h(lang('Findings')) . '</h2><table><tr><th>' . h(lang('Page')) . '</th><th>' . h(lang('Problem')) . '</th><th>' . h(lang('Times')) . '</th><th>' . h(lang('Example')) . '</th></tr>';
 
         foreach ($rows as $row) {
-            $html .= '<tr><td>' . h($row['page_name']) . '</td><td>' . h(pg_a11y_issue_label($row['code'])) . '</td><td>' . (int) $row['occurrences'] . '</td><td>' . h($row['detail']) . '</td></tr>';
+            $note = pg_a11y_measured_note(isset($row['source']) ? $row['source'] : '');
+            $html .= '<tr><td>' . h($row['page_name']) . '</td><td>' . h(pg_a11y_issue_label($row['code']))
+                . (($note !== '') ? '<br><span class="muted">' . h($note) . '</span>' : '') . '</td><td>' . (int) $row['occurrences'] . '</td><td>' . h($row['detail']) . '</td></tr>';
         }
 
         $html .= '</table>';

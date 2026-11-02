@@ -8,7 +8,7 @@ description: Screens of plans/image-editor-animation.md (AN0), 26 to 32 in plans
 - They fix behaviour and layout; icons, words and spacing may be bettered in the step, said in its PR.
 
 ## Which screen goes with which step?
-- 26-motion (AN1): the Animate tool on a photo. The panel: the selected layer, In, Loop and Out, ten entrance presets, direction, delay, duration, ease, a sentence of the timing, Remove. Under the stage the play bar: play, time, scrub with a tick at each layer's start, loop, total duration. Paused at 0.6 s the title rises below its selection box, which stays at rest; the other layers have not started.
+- 26-motion (AN1): the Animate tool on a photo. The panel: the selected layer, In, Loop and Out, ten entrance presets, direction, delay, duration, ease, a sentence of the timing, Remove. Under the stage the play bar: play, time, scrub with a tick at each layer's start, loop, total duration; the hint line names K for play and pause (Space pans the view). Paused at 0.6 s the title rises below its selection box, which stays at rest; the other layers have not started.
 - 27-motion-tracks (AN2, AN9): a canvas with a row per layer under the play bar: entrance bars, a hatched loop, faded exits, a thin line while a layer only stays, the selected bar's grips and its times, the playhead. The sticker's diamonds are AN9's keyframes. The typing text is half written at 2.1 s.
 - 28-motion-save (AN3, AN5, AN6): the Save animation dialog: a preview, format (GIF, APNG, WebP, Video; PDF only with scenes), width, frame rate, repeat, dithering, the estimate with the upload limit; Download and Save to Files.
 - 29-motion-progress (AN3): the same dialog while it works: base, frames, encoding, saving, a bar and the frame count; Cancel writes nothing.

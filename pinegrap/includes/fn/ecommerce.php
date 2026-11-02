@@ -2051,6 +2051,45 @@ function pg_marketplace_product_changed($product_id, $priority = 5)
     return mp_enqueue($product_id, 'stock_price', $priority);
 }
 
+/**
+ * Queues many products for the marketplaces at once, for a writer that
+ * refreshes the bundles itself (the product import's pg_bundle_refresh_all()):
+ * pg_marketplace_product_changed() without its per-product bundle refresh.
+ *
+ * @param array $product_ids
+ * @return int queue rows written
+ */
+function pg_marketplace_products_changed($product_ids)
+{
+    $ids = array();
+
+    foreach ((array) $product_ids as $product_id) {
+        if (is_scalar($product_id) && ((int) $product_id > 0)) {
+            $ids[(int) $product_id] = true;
+        }
+    }
+
+    if (!$ids or !defined('DB_CONNECTED')) {
+        return 0;
+    }
+
+    $connectors = PG_FUNCTIONS_DIR . '/includes/api/outbound/connectors/base.php';
+
+    if (!is_file($connectors)) {
+        return 0;
+    }
+
+    require_once($connectors);
+
+    $written = 0;
+
+    foreach (array_keys($ids) as $product_id) {
+        $written += (int) mp_enqueue($product_id, 'stock_price', 5);
+    }
+
+    return $written;
+}
+
 
 /**
  * The low-stock line this site runs, 0 when it runs none.
@@ -2853,6 +2892,24 @@ function pg_catalog_variant_set_check($data)
         }
     }
 
+    // What the rules give a row is a price too: a factor or a percentage can
+    // take a base the column holds past its top, which the session (not
+    // strict) would store as 2147483647 without a word.
+    if (!$errors && !empty($data['price_rules'])) {
+
+        $base = isset($data['price_base']) ? $data['price_base'] : 0;
+
+        foreach ($variants as $variant) {
+
+            $priced = pg_catalog_variant_set_priced($variant, $base, $data['price_rules']);
+
+            if ($priced['too_large']) {
+                $errors[] = array('field' => 'variants', 'message' => lang(array('string' => 'The price rules give {var:1} a price that is too large.', 'vars' => array(trim((string) $variant['name'])))));
+                break;
+            }
+        }
+    }
+
     return $errors;
 }
 
@@ -2882,19 +2939,35 @@ function pg_catalog_variant_set_name($data)
  */
 function pg_catalog_variant_set_price($variant, $base_cents, $rules)
 {
+    $priced = pg_catalog_variant_set_priced($variant, $base_cents, $rules);
+
+    return $priced['cents'];
+}
+
+/**
+ * One variant's price as pg_variant_price_compute() reports it: the row's
+ * own price when it was typed over the rules or the set has none.
+ *
+ * @param array      $variant    a row, price in minor units
+ * @param int        $base_cents
+ * @param array|null $rules      canonical rules
+ * @return array 'cents' => int, 'clamped' => bool, 'too_large' => bool (the
+ *               rules went past PG_PRODUCT_PRICE_MAX; 'cents' must not be
+ *               written then)
+ */
+function pg_catalog_variant_set_priced($variant, $base_cents, $rules)
+{
     if (!$rules || !empty($variant['price_manual'])) {
-        return $variant['price'];
+        return array('cents' => $variant['price'], 'clamped' => FALSE, 'too_large' => FALSE);
     }
 
     $selection = array();
 
-    foreach ($variant['attributes'] as $pair) {
+    foreach ((isset($variant['attributes']) ? (array) $variant['attributes'] : array()) as $pair) {
         $selection[(int) $pair['attribute_id']] = (int) $pair['option_id'];
     }
 
-    $priced = pg_variant_price_compute($base_cents, $rules, $selection);
-
-    return $priced['cents'];
+    return pg_variant_price_compute($base_cents, $rules, $selection);
 }
 
 /**
@@ -3179,6 +3252,26 @@ define('PG_PRODUCT_PRICE_MAX', 2147483647);
 function pg_product_price_too_large($minor)
 {
     return ((float) $minor > PG_PRODUCT_PRICE_MAX);
+}
+
+/**
+ * The largest stock count products.inventory_quantity holds: an INT UNSIGNED.
+ * The session is not strict, so MySQL would store this top for anything
+ * larger without a word; every stock writer refuses a larger count first.
+ */
+define('PG_INVENTORY_QUANTITY_MAX', 4294967295);
+
+/**
+ * True when a stock count is more than products.inventory_quantity holds,
+ * compared as a float, so a count past the integer range of a 32-bit build
+ * is not wrapped before the check.
+ *
+ * @param int|float|string $quantity
+ * @return bool
+ */
+function pg_inventory_quantity_too_large($quantity)
+{
+    return ((float) $quantity > PG_INVENTORY_QUANTITY_MAX);
 }
 
 /**
@@ -12698,7 +12791,9 @@ function pg_variant_price_rules_owned($rules)
  * @param int   $base_cents the product's price, used unless an option sets it
  * @param array $rules      canonical rules
  * @param array $selection  attribute_id => option_id of the variant
- * @return array 'cents' => int, 'clamped' => bool (the rules went below zero)
+ * @return array 'cents' => int, 'clamped' => bool (the rules went below zero),
+ *               'too_large' => bool (they went past PG_PRODUCT_PRICE_MAX;
+ *               'cents' is then that top, which must not be written)
  */
 function pg_variant_price_compute($base_cents, $rules, $selection)
 {
@@ -12749,13 +12844,20 @@ function pg_variant_price_compute($base_cents, $rules, $selection)
     // The inner round() strips floating-point noise before the cent is
     // decided (0.1 * 3 is 0.30000000000000004); the browser does the same
     // with toFixed(6).
-    $cents = (int) round(round($price, 6));
+    $rounded = round(round($price, 6));
 
-    if ($cents < 0) {
-        return array('cents' => 0, 'clamped' => TRUE);
+    // Compared as a float before the int cast, which wraps on a 32-bit build.
+    if (pg_product_price_too_large($rounded)) {
+        return array('cents' => PG_PRODUCT_PRICE_MAX, 'clamped' => FALSE, 'too_large' => TRUE);
     }
 
-    return array('cents' => $cents, 'clamped' => FALSE);
+    $cents = (int) $rounded;
+
+    if ($cents < 0) {
+        return array('cents' => 0, 'clamped' => TRUE, 'too_large' => FALSE);
+    }
+
+    return array('cents' => $cents, 'clamped' => FALSE, 'too_large' => FALSE);
 }
 
 
@@ -12943,51 +13045,74 @@ function pg_product_more_images($product_ids)
 // Needs product_builder.php for the typed reader.
 function pg_products_import_price_cents($value)
 {
+    return pg_products_import_price_read($value)['cents'];
+}
+
+/**
+ * A price cell of an import file read as pg_products_import_price_cents()
+ * reads it, with the reason a refused cell is refused, so the import names
+ * the real one. 'too_large' is an amount the price columns cannot hold:
+ * above PG_PRODUCT_PRICE_MAX minor units (21.474.836,47), or more than
+ * fifteen digits, as on the product screen (pg_pb_price_above_column_top()).
+ * A cell that is not an amount at all is refused with 'too_large' false.
+ *
+ * @param mixed $value
+ * @return array  'cents' (int, or null when refused), 'too_large' (bool)
+ */
+function pg_products_import_price_read($value)
+{
+    $refused = array('cents' => null, 'too_large' => false);
+    $too_large = array('cents' => null, 'too_large' => true);
     $value = trim((string) $value);
 
     if (preg_match('/^\d+(\.\d+)?([eE][+-]?\d+)?$/', $value)) {
 
         $amount = round(((float) $value) * 100);
 
-        if (!is_finite($amount) || ($amount > 2147483647)) {
-            return null;
+        if (!is_finite($amount) || pg_product_price_too_large($amount)) {
+            return $too_large;
         }
 
-        return (int) $amount;
+        return array('cents' => (int) $amount, 'too_large' => false);
     }
 
     // A symbol or a code before or after the figure, and spaces or
     // apostrophes that group its digits, are left out; whatever else is
     // there makes it not an amount.
     if (!preg_match('/^[\p{Sc}\p{L}\s\x{00A0}\x{202F}]*([0-9.,][0-9.,\s\x{00A0}\x{202F}\'\x{2019}]*)[\p{Sc}\p{L}\s\x{00A0}\x{202F}]*$/u', $value, $matches)) {
-        return null;
+        return $refused;
     }
 
     $figure = (string) preg_replace('/[^0-9.,]/', '', $matches[1]);
     $digits = strlen((string) preg_replace('/[^0-9]/', '', $figure));
 
-    if (($digits === 0) || ($digits > 15)) {
-        return null;
+    if ($digits === 0) {
+        return $refused;
+    }
+
+    if ($digits > 15) {
+        return $too_large;
     }
 
     // Bounded as a float, before the int cast: on a 32-bit build the cast
     // would wrap an amount above the top into a wrong or negative price.
     $amount = round(((float) pg_pb_price_figure($figure)) * 100);
 
-    if (!is_finite($amount) || ($amount > 2147483647)) {
-        return null;
+    if (!is_finite($amount) || pg_product_price_too_large($amount)) {
+        return $too_large;
     }
 
-    return (int) $amount;
+    return array('cents' => (int) $amount, 'too_large' => false);
 }
 
 // The money cells of one import row, read before the database is touched.
 // $money_positions maps each money column the header has (price,
 // extra_shipping_cost, compare_at_price) to its position. Returns
-// array('prices' => array(column => minor units), 'refused' => bool): an
-// empty cell (or spaces alone) is left out, as is a compare_at_price that
-// starts with a minus sign, which leaves the stored one alone; a cell that is
-// not an amount refuses the whole row.
+// array('prices' => array(column => minor units), 'refused' => bool,
+// 'too_large' => bool): an empty cell (or spaces alone) is left out, as is a
+// compare_at_price that starts with a minus sign, which leaves the stored one
+// alone; a cell that is not an amount, or is one the price columns cannot
+// hold ('too_large'), refuses the whole row.
 //
 // A function of its own because the importer keeps each header column's
 // position in a script variable named <column>_key: a loop there with a
@@ -13003,16 +13128,16 @@ function pg_products_import_row_prices($row, $money_positions)
             continue;
         }
 
-        $cents = pg_products_import_price_cents($cell);
+        $read = pg_products_import_price_read($cell);
 
-        if ($cents === null) {
-            return array('prices' => array(), 'refused' => true);
+        if ($read['cents'] === null) {
+            return array('prices' => array(), 'refused' => true, 'too_large' => $read['too_large']);
         }
 
-        $prices[$money_column] = $cents;
+        $prices[$money_column] = $read['cents'];
     }
 
-    return array('prices' => $prices, 'refused' => false);
+    return array('prices' => $prices, 'refused' => false, 'too_large' => false);
 }
 
 // The column name an import file's heading stands for: trimmed, lower-cased
@@ -13071,22 +13196,22 @@ function pg_products_import_decimal_cell($column_name, $value)
 }
 
 /**
- * Whether a product import row is left out because one of its weight,
- * length, width, height or commission_rate_limit cells is not a number.
+ * Why a product import row is left out for one of its weight, length,
+ * width, height or commission_rate_limit cells, or '' when none refuses it.
  * $decimal_positions maps those columns to their position in the row. A
  * number is digits with "." or "," as decimal point or grouping (spaces
  * group too: "1 234,5"), or a spreadsheet's exponent form; an empty cell
  * leaves the column as it is. Words, a unit ("1,5 kg") or a minus sign
- * (the columns are unsigned) refuse the row, as do weight and dimensions
- * above decimal(12,4)'s top: the non-strict session would store 0 or the
- * top without a word. A commission rate above 999.99 is held to it, as on
- * the product screen.
+ * (the columns are unsigned) are 'not_number'; weight and dimensions above
+ * decimal(12,4)'s top are 'too_large': the non-strict session would store 0
+ * or the top without a word. A commission rate above 999.99 is held to it,
+ * as on the product screen. The first refused cell gives the reason.
  *
  * @param array $row
  * @param array $decimal_positions column => position
- * @return bool
+ * @return string  '', 'not_number' or 'too_large'
  */
-function pg_products_import_row_decimals_refused($row, $decimal_positions)
+function pg_products_import_row_decimals_problem($row, $decimal_positions)
 {
     foreach ($decimal_positions as $decimal_column => $decimal_position) {
         $cell = str_replace(' ', '', trim(pg_products_import_row_value($row, $decimal_position)));
@@ -13097,16 +13222,31 @@ function pg_products_import_row_decimals_refused($row, $decimal_positions)
 
         if (!preg_match('/^\d+(\.\d+)?[eE][+-]?\d+$/', $cell)
             && !preg_match('/^[0-9.,]*[0-9][0-9.,]*$/', $cell)) {
-            return true;
+            return 'not_number';
         }
 
         if (($decimal_column !== 'commission_rate_limit')
             && ((float) pg_products_import_decimal_cell($decimal_column, $cell) > 99999999.9999)) {
-            return true;
+            return 'too_large';
         }
     }
 
-    return false;
+    return '';
+}
+
+/**
+ * Why a product import's stock quantity cell that is not a whole count of
+ * zero or more (pg_products_mass_quantity_value() gave null) is refused:
+ * 'not_whole' for a number with a fraction or a minus sign ("1,5", "-3"),
+ * read with the separators pg_normalize_amount() reads, 'not_number' for
+ * anything else ("ten", "5 pcs").
+ *
+ * @param mixed $cell
+ * @return string  'not_whole' or 'not_number'
+ */
+function pg_products_import_quantity_refusal($cell)
+{
+    return is_numeric(pg_normalize_amount(trim((string) $cell))) ? 'not_whole' : 'not_number';
 }
 
 /**
@@ -13138,6 +13278,77 @@ function pg_barcode_scan_quantity($value)
     }
 
     return (int) $value;
+}
+
+/**
+ * Which product a scanned code moves, from the product carrying it as a
+ * barcode and the product whose product code (products.name) it is: the
+ * barcode's, else the code's, which older labels carry. A code that is a
+ * barcode of one product and the code of another moves neither (null): taking
+ * the barcode silently moved the stock of the wrong product.
+ *
+ * @param int $barcode_of the product carrying the code as a barcode, 0 for none
+ * @param int $code_of    the product whose code it is, 0 for none
+ * @return int|null the product id, 0 for none, null when they are two products
+ */
+function pg_barcode_scan_choice($barcode_of, $code_of)
+{
+    $barcode_of = (int) $barcode_of;
+    $code_of = (int) $code_of;
+
+    if ($barcode_of && $code_of && ($barcode_of !== $code_of)) {
+        return null;
+    }
+
+    return $barcode_of ? $barcode_of : $code_of;
+}
+
+/**
+ * The product a scan on the barcode stock screens moves
+ * (barcode_increase_inventory.php, barcode_decrease_inventory.php), or why
+ * none is moved (pg_barcode_scan_choice()).
+ *
+ * @param string $code the scanned code
+ * @return array 'id' => int (0 when no product has the code),
+ *               'refusal' => string ('' unless the code is two products')
+ */
+function pg_barcode_scan_product($code)
+{
+    $code = is_scalar($code) ? (string) $code : '';
+
+    $barcode_of = (int) db_value("SELECT product_id FROM product_barcodes WHERE barcode = '" . e($code) . "' LIMIT 1");
+
+    // Another product than the barcode's, so a product whose own code is its
+    // barcode is not taken for two.
+    $code_of = (int) db_value(
+        "SELECT id FROM products
+        WHERE (name = '" . e($code) . "')" . ($barcode_of ? " AND (id != '" . e($barcode_of) . "')" : '') . "
+        LIMIT 1");
+
+    $id = pg_barcode_scan_choice($barcode_of, $code_of);
+
+    if ($id !== null) {
+        return array('id' => $id, 'refusal' => '');
+    }
+
+    $holder = db_item("SELECT id, short_description FROM products WHERE id = '" . e($barcode_of) . "'");
+
+    return array('id' => 0, 'refusal' => lang(array(
+        'string' => '{var:1} is a barcode of {var:2} and the product code of another product. Change one of them, then scan again.',
+        'vars' => array($code, pg_product_holder_label($holder ? $holder : array('id' => $barcode_of))))));
+}
+
+/**
+ * Whether an import file carries a column the marketplaces receive (price,
+ * extra shipping, stock, tracking or the enabled flag), so the products it
+ * updates are queued for them.
+ *
+ * @param array $column_names the file's column names
+ * @return bool
+ */
+function pg_products_import_marketplace_columns($column_names)
+{
+    return (bool) array_intersect(array('price', 'extra_shipping_cost', 'inventory', 'inventory_quantity', 'enabled'), (array) $column_names);
 }
 
 /**
@@ -13179,11 +13390,17 @@ function pg_products_import_stock_flag($product_id)
  * same code. A product in the Recycle Bin still holds its code, since
  * restoring it brings the code back.
  *
+ * Another product's barcode holds the code too ('barcode' => '1'): a scan
+ * resolves a barcode before a product code (pg_barcode_scan_product()), so
+ * the two would be one label for two products.
+ *
  * @param string $name
  * @param int    $except_id the product being edited
- * @return array|null id, name, short_description, recycled ('0' or '1')
+ * @param bool   $barcodes  false: product codes only (a barcode's own check)
+ * @return array|null id, name, short_description, recycled ('0' or '1'),
+ *                    barcode ('1' when the code is that product's barcode)
  */
-function pg_product_name_holder($name, $except_id = 0)
+function pg_product_name_holder($name, $except_id = 0, $barcodes = true)
 {
     $name = trim((string) $name);
 
@@ -13191,11 +13408,23 @@ function pg_product_name_holder($name, $except_id = 0)
         return null;
     }
 
+    $recycled = pg_catalog_bin_ready() ? "products.recycled" : "'0'";
+    $except = ((int) $except_id > 0) ? " AND (products.id != '" . e((int) $except_id) . "')" : '';
+
     $holder = db_item(
-        "SELECT id, name, short_description, " . (pg_catalog_bin_ready() ? "recycled" : "'0' AS recycled") . "
+        "SELECT products.id, products.name, products.short_description, " . $recycled . " AS recycled, '0' AS barcode
         FROM products
-        WHERE (name = '" . e($name) . "')" . (((int) $except_id > 0) ? " AND (id != '" . e((int) $except_id) . "')" : '') . "
+        WHERE (products.name = '" . e($name) . "')" . $except . "
         LIMIT 1");
+
+    if (!$holder && $barcodes) {
+        $holder = db_item(
+            "SELECT products.id, products.name, products.short_description, " . $recycled . " AS recycled, '1' AS barcode
+            FROM product_barcodes
+            INNER JOIN products ON products.id = product_barcodes.product_id
+            WHERE (product_barcodes.barcode = '" . e($name) . "')" . $except . "
+            LIMIT 1");
+    }
 
     return $holder ? $holder : null;
 }
@@ -13233,8 +13462,9 @@ function pg_product_names_repeated($names)
 
 /**
  * What the product screen says about a code another product holds: the code
- * and the product, by its title, else by its number. With $html the values
- * are escaped for a page.
+ * and the product, by its title, else by its number, and whether the code is
+ * that product's code or its barcode. With $html the values are escaped for a
+ * page.
  *
  * @param string $name   the code as typed
  * @param array  $holder pg_product_name_holder()
@@ -13243,16 +13473,18 @@ function pg_product_names_repeated($names)
  */
 function pg_product_name_taken_text($name, $holder, $html = false)
 {
-    $label = trim((string) $holder['short_description']);
-
-    if ($label === '') {
-        $label = '#' . (int) $holder['id'];
-    }
-
-    $vars = array((string) $name, $label);
+    $vars = array((string) $name, pg_product_holder_label($holder));
 
     if ($html) {
         $vars = array_map('h', $vars);
+    }
+
+    if (!empty($holder['barcode'])) {
+        return lang(array(
+            'string' => !empty($holder['recycled'])
+                ? 'The product code {var:1} is already a barcode of {var:2}, which is in the Recycle Bin. Restore it and change its barcode, or delete it for good.'
+                : 'The product code {var:1} is already a barcode of {var:2}.',
+            'vars' => $vars));
     }
 
     return lang(array(
@@ -13260,6 +13492,44 @@ function pg_product_name_taken_text($name, $holder, $html = false)
             ? 'The product code {var:1} is already used by {var:2}, which is in the Recycle Bin. Restore it and change its code, or delete it for good.'
             : 'The product code {var:1} is already used by {var:2}.',
         'vars' => $vars));
+}
+
+/**
+ * Why a barcode cannot be given to a product: it is the product code of
+ * $holder (pg_product_name_holder() without barcodes), so a scan of it would
+ * move the wrong product.
+ *
+ * @param string $barcode
+ * @param array  $holder  id, short_description, recycled
+ * @param bool   $html    escaped for a page
+ * @return string
+ */
+function pg_barcode_code_taken_text($barcode, $holder, $html = false)
+{
+    $vars = array((string) $barcode, pg_product_holder_label($holder));
+
+    if ($html) {
+        $vars = array_map('h', $vars);
+    }
+
+    return lang(array(
+        'string' => !empty($holder['recycled'])
+            ? 'The barcode {var:1} is the product code of {var:2}, which is in the Recycle Bin.'
+            : 'The barcode {var:1} is the product code of {var:2}.',
+        'vars' => $vars));
+}
+
+/**
+ * A product named in a refusal: its short description, else #id.
+ *
+ * @param array $holder id, short_description
+ * @return string
+ */
+function pg_product_holder_label($holder)
+{
+    $label = isset($holder['short_description']) ? trim((string) $holder['short_description']) : '';
+
+    return ($label !== '') ? $label : '#' . (int) $holder['id'];
 }
 
 /**

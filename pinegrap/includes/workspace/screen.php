@@ -757,6 +757,11 @@ function ws_screen_config($viewer, $mode, $extra = array())
         $strings = array_merge($strings, ws_file_edit_js_strings());
     }
 
+    // New canvas in a channel and in a note (includes/workspace/canvas.php).
+    if (function_exists('ws_canvas_js_strings')) {
+        $strings = array_merge($strings, ws_canvas_js_strings());
+    }
+
     // A file of the file manager picked under the paperclip (library.php).
     $strings = array_merge($strings, ws_library_js_strings());
 
@@ -940,8 +945,8 @@ function ws_screen_assets($viewer, $mode, $extra = array())
     $lightbox = function_exists('_pg_lightbox_assets_once') ? _pg_lightbox_assets_once() : '';
 
     // The image editor's loader: its files are fetched the first time a
-    // picture is edited (assets/js/workspace.js).
-    if ($mode === 'channels') {
+    // picture is edited or a canvas drawn (assets/js/workspace.js).
+    if (($mode === 'channels') || ($mode === 'notes')) {
         $lightbox .= pg_image_editor_includes();
     }
 

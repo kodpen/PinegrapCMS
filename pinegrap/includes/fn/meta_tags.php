@@ -196,7 +196,10 @@ function pg_meta_tags_attribute($name)
 
 /**
  * The design's tags and the page's in the order they are written: the
- * design's first, without the names the page sets itself, then the page's.
+ * design's first, without the names the page sets itself and their
+ * structured properties (a page og:image takes the design's og:image:alt,
+ * :width and :height with it, since they describe the design's picture),
+ * then the page's.
  */
 function pg_meta_tags_merge($design, $page)
 {
@@ -212,7 +215,15 @@ function pg_meta_tags_merge($design, $page)
     $out = array();
 
     foreach ($design as $row) {
-        if (!isset($own[strtolower($row['name'])])) {
+        $name = strtolower($row['name']);
+        $taken = isset($own[$name]);
+
+        // og:image:alt belongs to og:image: each name the colons end.
+        for ($cut = strrpos($name, ':'); !$taken && ($cut !== false); $cut = strrpos(substr($name, 0, $cut), ':')) {
+            $taken = isset($own[substr($name, 0, $cut)]);
+        }
+
+        if (!$taken) {
             $out[] = $row;
         }
     }

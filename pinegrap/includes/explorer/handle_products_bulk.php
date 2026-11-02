@@ -134,7 +134,8 @@ function pg_products_mass_price_value($method, $value)
 // The quantity of a bulk stock change in whole units, or null when it is
 // empty, not a number or not whole. It is read by pg_normalize_amount(), as
 // the price is, so a grouped figure (1.200 on a Turkish panel) is twelve
-// hundred, not 1.
+// hundred, not 1. A figure past what the stock column holds comes back as a
+// float, for the caller to refuse (pg_inventory_quantity_too_large()).
 function pg_explorer_bulk_quantity_value($value)
 {
     $value = pg_normalize_amount(trim((string) $value));
@@ -143,7 +144,7 @@ function pg_explorer_bulk_quantity_value($value)
         return null;
     }
 
-    return (int) $value;
+    return pg_inventory_quantity_too_large($value) ? (float) $value : (int) $value;
 }
 
 // The quantity of the product list's Modify Selected stock change: read as
@@ -164,7 +165,9 @@ function pg_products_mass_quantity_value($value)
 
 // A product's stock quantity after a bulk change: set to the value ('value'),
 // raised by it ('increase') or lowered by it (anything else). Stock does not
-// go negative: a shelf holds none or some.
+// go negative: a shelf holds none or some. A result past what the column
+// holds is returned as it is, for the caller to skip
+// (pg_inventory_quantity_too_large()).
 function pg_explorer_bulk_product_new_quantity($current_quantity, $mode, $value)
 {
     if ($mode === 'value') {
@@ -350,6 +353,10 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
         if ($bulk_quantity_value === null) {
             respond(array('status' => 'error', 'message' => lang('Enter an inventory quantity.')));
         }
+
+        if (pg_inventory_quantity_too_large($bulk_quantity_value)) {
+            respond(array('status' => 'error', 'message' => lang(array('string' => '{var:1} is too large.', 'vars' => array(lang('Inventory Quantity'))))));
+        }
     }
 
     $bulk_tax_sql = '';
@@ -404,6 +411,7 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
     $price_changed = 0;
     $price_skipped = 0;
     $price_too_large = 0;
+    $quantity_too_large = 0;
     $barcodes_assigned = 0;
     $notes = array();
 
@@ -469,7 +477,14 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
 
             $new_quantity = pg_explorer_bulk_product_new_quantity($current_quantity, $bulk_quantity_mode, $bulk_quantity_value);
 
-            $sql_parts[] = "inventory_quantity = '" . e($new_quantity) . "'";
+            // An increase past what the column holds keeps the stock as it
+            // is and is counted, not cut to the column's top.
+            if (pg_inventory_quantity_too_large($new_quantity)) {
+                $quantity_too_large++;
+                $new_quantity = null;
+            } else {
+                $sql_parts[] = "inventory_quantity = '" . e($new_quantity) . "'";
+            }
         }
 
         if ($bulk_inventory !== '') {
@@ -680,14 +695,21 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
             'vars' => $price_too_large));
     }
 
+    if ($quantity_too_large > 0) {
+        $message .= ' ' . lang(array(
+            'string' => 'The stock quantity was left alone on {var:1} of them, because the new quantity would be too large.',
+            'vars' => $quantity_too_large));
+    }
+
     log_activity($message, $_SESSION['sessionusername']);
 
     respond(array(
-        'status' => (($price_skipped > 0) || ($price_too_large > 0)) ? 'partial' : 'success',
+        'status' => (($price_skipped > 0) || ($price_too_large > 0) || ($quantity_too_large > 0)) ? 'partial' : 'success',
         'request' => $type,
         'updated' => $updated,
         'price_skipped' => $price_skipped,
         'price_too_large' => $price_too_large,
+        'quantity_too_large' => $quantity_too_large,
         'barcodes' => $barcodes_assigned,
         'message' => $message));
 }

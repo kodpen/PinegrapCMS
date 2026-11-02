@@ -394,8 +394,10 @@
         return list;
     };
 
+    // save.url ('url') draws the picture on another endpoint, which burns the
+    // masks in as a replace does (pg_image_editor_render()).
     Editor.saveHooks.push(function (body, mode) {
-        if ((mode === 'replace') || (mode === 'copy')) {
+        if ((mode === 'replace') || (mode === 'copy') || (mode === 'url')) {
             var masks = this.redactMasks();
 
             if (masks.length) {
