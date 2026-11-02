@@ -3854,7 +3854,7 @@ function ws_ai_tools($row)
         // A flow, drafted from the boxes the catalogue offers (flow_draft.php),
         // waits under the answer to be opened on the canvas.
         if (function_exists('ws_flow_ai_offered') && ws_flow_ai_offered($row, $asker)) {
-            $tools[] = ws_flow_ai_tool(ws_flow_kind_catalogue());
+            $tools[] = ws_flow_ai_tool(ws_flow_ai_catalogue());
             $tools[] = $tool('read_flow', 'Read a flow the person who asked reaches, with its boxes and arrows (id), or find flows by a word of their name (query).', array(
                 'id'    => array('type' => 'integer'),
                 'query' => array('type' => 'string'),

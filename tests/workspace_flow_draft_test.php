@@ -170,6 +170,73 @@ function test_ws_flow_ai_tool_from_catalogue()
 	pg_assert_contains('manual "', ws_flow_ai_catalogue_text($catalogue), 'the start box');
 }
 
+// The catalogue the model reads says what a Started by hand box's subject
+// is and what shape a condition's rule takes, so neither is invented, and
+// the tool tells a yes-or-no question (an approval box) from a condition and
+// from a box that starts the flow.
+function test_ws_flow_ai_catalogue_hints()
+{
+	$plain = ws_flow_kind_catalogue();
+	$catalogue = ws_flow_ai_catalogue_hints($plain, array('order', 'task'));
+	$text = ws_flow_ai_catalogue_text($catalogue);
+
+	pg_assert_same(count($plain), count($catalogue), 'every kind kept');
+	pg_assert_contains('subject (text: one of order, task;', $text, 'the kinds of record a start may be about');
+	pg_assert_contains('left out when the flow is about no record', $text, 'or none');
+	pg_assert_contains('rule (object: {"type":"value","ref":"{{node.ID.VALUE}} or {{trigger.FIELD}}","op":"eq|neq|gt|gte|lt|lte|contains|empty|not_empty"', $text, 'the rule\'s shape and operators');
+	pg_assert_contains('{"type":"workday"}', $text, 'the other rules');
+	pg_assert_false(strpos(ws_flow_ai_catalogue_text($plain), 'one of order') !== false, 'the plain catalogue says nothing of it');
+
+	$description = ws_flow_ai_tool($catalogue)['function']['description'];
+	pg_assert_contains('A box that starts the flow (manual, schedule, event, join, row, no_order) asks nothing and no arrow leads into it.', $description, 'a start box is no step');
+	pg_assert_contains('is an approval box, whose arrows leave on approved and rejected', $description, 'a yes-or-no question is an approval');
+	pg_assert_contains('a condition box only compares', $description, 'a condition is no question');
+}
+
+// What goes back to the model with the problems: the kinds a subject takes
+// when one was invented, the rule's shape when a condition has none, and
+// the approval box when a box that starts the flow was used as a step.
+function test_ws_flow_ai_problem_hints()
+{
+	$catalogue = ws_flow_ai_catalogue_hints(ws_flow_kind_catalogue(), array('order', 'task'));
+	$keys = workspace_flow_draft_keys();
+	$wrong = ws_flow_ai_graph(array(
+		'boxes'  => array(
+			array('id' => 'start', 'kind' => 'manual', 'settings' => array('subject' => 'Pinegrap AI make flow')),
+			array('id' => 'ask', 'kind' => 'event', 'label' => 'Ask'),
+			array('id' => 'yes', 'kind' => 'condition', 'label' => 'Yes?'),
+			array('id' => 'say', 'kind' => 'post', 'settings' => array('body' => 'Yes it is')),
+		),
+		'arrows' => array(
+			array('from' => 'start', 'to' => 'ask'),
+			array('from' => 'ask', 'to' => 'yes'),
+			array('from' => 'yes', 'to' => 'say', 'on' => 'yes'),
+		),
+	), $keys)['graph'];
+	$hints = ws_flow_ai_problem_hints($wrong, $catalogue);
+
+	pg_assert_same(3, count($hints), 'one hint for each');
+	pg_assert_contains('subject of a Started by hand box is one of: order, task', $hints[0], 'the kinds, not the invented one');
+	pg_assert_contains('{"type":"value"', $hints[1], 'the rule\'s shape');
+	pg_assert_contains('approval box', $hints[2], 'the question box');
+
+	$right = ws_flow_ai_graph(array(
+		'boxes'  => array(
+			array('id' => 'start', 'kind' => 'manual', 'settings' => array('subject' => 'order')),
+			array('id' => 'ask', 'kind' => 'approval', 'settings' => array('title' => 'Yes?', 'channel_id' => 3)),
+			array('id' => 'say', 'kind' => 'post', 'settings' => array('body' => 'Yes it is', 'channel_id' => 3)),
+		),
+		'arrows' => array(array('from' => 'start', 'to' => 'ask'), array('from' => 'ask', 'to' => 'say', 'on' => 'approved')),
+	), $keys)['graph'];
+	pg_assert_same(array(), ws_flow_ai_problem_hints($right, $catalogue), 'nothing to add');
+
+	$second = ws_flow_ai_graph(array(
+		'boxes'  => array(array('id' => 'start', 'kind' => 'manual'), array('id' => 'later', 'kind' => 'schedule'), array('id' => 'say', 'kind' => 'post')),
+		'arrows' => array(array('from' => 'start', 'to' => 'say'), array('from' => 'later', 'to' => 'say')),
+	), $keys)['graph'];
+	pg_assert_same(1, count(ws_flow_ai_problem_hints($second, $catalogue)), 'a second start box alone brings the hint');
+}
+
 // No invented kind and no invented setting.
 function test_ws_flow_ai_node_refusals()
 {
@@ -301,7 +368,8 @@ function test_ws_flow_patch_apply()
 // that flow's draft.
 function test_ws_flow_ai_wiring()
 {
-	pg_assert_contains('ws_flow_ai_tool(ws_flow_kind_catalogue())', workspace_flow_draft_code('ws_ai_tools'), 'schema from the catalogue');
+	pg_assert_contains('ws_flow_ai_tool(ws_flow_ai_catalogue())', workspace_flow_draft_code('ws_ai_tools'), 'schema from the catalogue with its hints');
+	pg_assert_contains('ws_scheduled_record_types()', workspace_flow_draft_code('ws_flow_ai_catalogue'), 'the kinds of record a start may be about');
 	pg_assert_contains('ws_flow_ai_offered(', workspace_flow_draft_code('ws_ai_tools'), 'only where offered');
 	pg_assert_contains('ws_flow_ai_propose(', workspace_flow_draft_code('ws_ai_tool_run'), 'handled');
 	pg_assert_true(in_array('propose_flow', ws_ai_tool_names(), true), 'named');
@@ -310,6 +378,7 @@ function test_ws_flow_ai_wiring()
 	pg_assert_contains('ws_flow_draft_proposal_row(', $propose, 'the A8 check and card');
 	pg_assert_contains('ws_flow_save_check(', $propose, 'a patch rehearsed as a draft save');
 	pg_assert_contains('ws_flow_ai_problem_texts(', $propose, 'the publish problems handed back');
+	pg_assert_contains('ws_flow_ai_problem_hints(', $propose, 'with what fixes them');
 
 	foreach (array('ws_flow_save(', 'ws_flow_publish', 'ws_changes_store(') as $write) {
 		pg_assert_false(strpos($propose, $write) !== false, 'drafting writes nothing: ' . $write);
@@ -666,6 +735,10 @@ function test_ws_flow_ai_sketch_draft_second_try()
 	pg_assert_true(!empty($texts), 'no start is a problem');
 	pg_assert_contains('It could not be published like this: ' . implode(' ', $texts), $asked[1][3]['content'], 'problem texts sent');
 
+	$no_rule = json_encode(array('name' => 'X', 'boxes' => array(array('id' => 'start', 'kind' => 'manual'), array('id' => 'if', 'kind' => 'condition')), 'arrows' => array(array('from' => 'start', 'to' => 'if'))));
+	ws_flow_ai_sketch_draft('call', $catalogue, 'English', workspace_flow_sketch_asker(array($no_rule, workspace_flow_sketch_answer()), $asked), 'workspace_flow_sketch_problems');
+	pg_assert_contains('{"type":"value"', $asked[1][3]['content'], 'the rule\'s shape sent with the problem');
+
 	$kept = ws_flow_ai_sketch_draft('call', $catalogue, 'English', workspace_flow_sketch_asker(array($no_start, $no_start, workspace_flow_sketch_answer()), $asked), 'workspace_flow_sketch_problems');
 	pg_assert_true($kept['ok'], 'kept after the second try');
 	pg_assert_true(!empty($kept['problems']), 'problems named');
@@ -746,6 +819,7 @@ function test_ws_flow_ai_sketch_wiring()
 
 	$code = workspace_flow_draft_code('ws_action_flow_ai_sketch');
 	pg_assert_contains('ws_flow_ai_sketch(', $code, 'drafted by the server function');
+	pg_assert_contains('ws_flow_ai_catalogue()', workspace_flow_draft_code('ws_flow_ai_sketch'), 'the catalogue with its hints');
 	pg_assert_false(strpos($code, 'publish') !== false, 'never published');
 
 	$config = workspace_flow_draft_code('ws_flow_js_config');
