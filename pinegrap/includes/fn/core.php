@@ -1717,49 +1717,14 @@ function error($content, $response_code = 0)
             </div>
         </div>';
 }
-// we should check sometime to see if we can use the built-in function preg_quote() instead of this
-// PHP 4 and 5 both appear to support preg_quote()
-// if we start using preg_quote(), make sure to also pass the delimiter also (e.g. preg_quote($string, '/'))
+// Text made safe to place in a /-delimited regular expression, so it matches
+// itself. preg_quote() covers every metacharacter, the backslash and the dollar
+// sign included: a tag holding "$50" never matched, and one holding "C:\pics"
+// made the pattern fail to compile, which turned the caller's preg_replace()
+// result into null.
 function escape_regex($string)
 {
-    // set patterns to replace
-    $patterns = array(
-        '/\//',
-        '/\^/',
-        '/\./',
-        '/\$/',
-        '/\|/',
-        '/\(/',
-        '/\)/',
-        '/\[/',
-        '/\]/',
-        '/\*/',
-        '/\+/',
-        '/\?/',
-        '/\{/',
-        '/\}/',
-        '/\,/'
-    );
-    // set the replacement characters
-    $replace = array(
-        '\/',
-        '\^',
-        '\.',
-        '\$',
-        '\|',
-        '\(',
-        '\)',
-        '\[',
-        '\]',
-        '\*',
-        '\+',
-        '\?',
-        '\{',
-        '\}',
-        '\,'
-    );
-    // return the modified string
-    return preg_replace($patterns, $replace, $string);
+    return preg_quote((string) $string, '/');
 }
 
 /**
