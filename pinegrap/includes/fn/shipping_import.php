@@ -47,10 +47,31 @@ function pg_shipping_import_delimiter($line)
 }
 
 /**
+ * The single-byte encoding a cell that is not UTF-8 is read as: Windows-1254
+ * where mbstring knows it, ISO-8859-9 otherwise (the two differ only in the
+ * 0x80-0x9F range).
+ *
+ * @return string
+ */
+function pg_shipping_import_fallback_encoding()
+{
+    static $encoding = null;
+
+    if ($encoding === null) {
+        $known = array_map('strtolower', mb_list_encodings());
+        $encoding = in_array('windows-1254', $known, true) ? 'Windows-1254' : 'ISO-8859-9';
+    }
+
+    return $encoding;
+}
+
+/**
  * The rows of a tracking-number CSV: order_number, number, carrier (the
  * carrier may be left out). A first row whose first cell is "order_number" is
  * the header and is skipped; blank lines are skipped; cells are trimmed and a
- * byte order mark is removed. A row's line is the file's line, so the result
+ * byte order mark is removed. A cell that is not UTF-8 is read as Excel's
+ * Turkish encoding (Windows-1254), so 'Yurtiçi Kargo' saved by Excel in a
+ * Turkish locale names the carrier. A row's line is the file's line, so the result
  * list can point at it.
  *
  * @param  resource $handle an open stream at its start
@@ -79,7 +100,13 @@ function pg_shipping_import_read($handle, $limit)
         $line++;
 
         $cells = array_map(function ($cell) {
-            return trim((string) $cell);
+            $cell = (string) $cell;
+
+            if (!mb_check_encoding($cell, 'UTF-8')) {
+                $cell = mb_convert_encoding($cell, 'UTF-8', pg_shipping_import_fallback_encoding());
+            }
+
+            return trim($cell);
         }, (array) $cells);
 
         if ($line === 1) {
@@ -137,6 +164,12 @@ function pg_shipping_import_row_error($row)
 
     if (mb_strlen($row['number']) > 100) {
         return lang('A tracking number cannot be longer than 100 characters.');
+    }
+
+    $refusal = pg_tracking_number_refusal($row['number']);
+
+    if ($refusal !== '') {
+        return $refusal;
     }
 
     if (($row['carrier'] !== '') && (pg_shipping_method_carrier($row['carrier']) === '')) {
@@ -393,10 +426,10 @@ function pg_shipping_import_run($path, $notify, $max_rows)
             <table class="table table-sm align-middle">
                 <thead>
                     <tr>
-                        <th class="text-end">' . h(lang('Line')) . '</th>
+                        <th class="text-end">' . h(lang('Row')) . '</th>
                         <th>' . h(lang('Order Number')) . '</th>
                         <th>' . h(lang('Tracking Number')) . '</th>
-                        <th>' . h(lang('Carrier')) . '</th>
+                        <th>' . h(lang('Shipping carrier')) . '</th>
                         <th>' . h(lang('Result')) . '</th>
                     </tr>
                 </thead>
@@ -464,7 +497,7 @@ function pg_shipping_import_order($order_number, $rows, $notify)
 
     foreach ($entries['status'] as $line => $status) {
         $out[$line] = ($status === 'add')
-            ? array('success', lang('Added'))
+            ? array('success', lang('Added to the order'))
             : array('secondary', lang('Already on the order'));
     }
 
@@ -507,7 +540,7 @@ function pg_shipping_import_order($order_number, $rows, $notify)
 
     foreach ($rows as $row) {
         if ($out[$row['line']][0] === 'success' && isset($warned[mb_strtolower($row['number'])])) {
-            $out[$row['line']] = array('warning', lang('Added') . ' ' . pg_shipment_warning_text(''));
+            $out[$row['line']] = array('warning', lang('Added to the order') . ' ' . pg_shipment_warning_text(''));
         }
     }
 

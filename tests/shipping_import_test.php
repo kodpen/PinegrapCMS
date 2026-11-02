@@ -194,3 +194,42 @@ function test_update_order_does_not_mail_marketplace_buyer()
 	pg_assert_false(pg_order_cancellation_mails_customer(array('type' => 'marketplace')));
 	pg_assert_true(pg_order_cancellation_mails_customer(array('type' => 'online')));
 }
+
+// Excel in a Turkish locale saves its CSV in Windows-1254: the cells are read
+// as UTF-8, so 'Yurtiçi Kargo' is a carrier the store knows and is shown.
+function test_shipping_import_read_windows_1254()
+{
+	$text = "order_number;number;carrier\n1203;PGTEST3;Yurti\xE7i Kargo\n1204;PGTEST4;S\xFCrat Kargo\n";
+
+	$read = pg_shipping_import_read(shipping_import_test_stream($text), 100);
+
+	pg_assert_same('Yurtiçi Kargo', $read['rows'][0]['carrier']);
+	pg_assert_same('Sürat Kargo', $read['rows'][1]['carrier']);
+	pg_assert_same('', pg_shipping_import_row_error($read['rows'][0]));
+	pg_assert_same('', pg_shipping_import_row_error($read['rows'][1]));
+
+	// A UTF-8 file is left as it is.
+	$read = pg_shipping_import_read(shipping_import_test_stream("1203,PGTEST3,Yurtiçi Kargo\n"), 100);
+	pg_assert_same('Yurtiçi Kargo', $read['rows'][0]['carrier']);
+}
+
+// The order screen keeps an address's numbers in one comma-separated field,
+// so a number with a comma in it would be split into two parcels there.
+function test_shipping_import_row_error_comma()
+{
+	$row = array('line' => 1, 'order_number' => '1203', 'number' => 'pg-test, virgüllü', 'carrier' => '');
+
+	pg_assert_same(pg_tracking_number_refusal('1234,5678'), pg_shipping_import_row_error($row));
+	pg_assert_true(pg_tracking_number_refusal('1234,5678') !== '');
+	pg_assert_same('', pg_tracking_number_refusal('1Z999AA10123456784'));
+}
+
+// The result keeps the switch as it was posted: off stays off, so the next
+// part of a long list does not mail its customers by surprise.
+function test_shipping_import_notify_switch_kept()
+{
+	$src = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/import_shipments.php');
+
+	pg_assert_true(strpos($src, 'id="notify" value="1" class="" checked>') === false, 'switch is not always on');
+	pg_assert_contains('$notify_checked', $src);
+}

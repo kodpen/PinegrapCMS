@@ -34,6 +34,10 @@ $shipping_import_max_bytes = 1048576;
 $output_result = '';
 $output_error = '';
 
+// The switch comes back as it was posted, so the next part of a long list is
+// not mailed to its customers because the switch turned itself on again.
+$notify_checked = ($_SERVER['REQUEST_METHOD'] !== 'POST') || !empty($_POST['notify']);
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     validate_token_field();
@@ -87,11 +91,11 @@ print
 10046,1Z999AA10123456784,</pre>
                         <div class="my-5">
                             <label for="file" class="form-label">' . h(lang('CSV File')) . '</label>
-                            <input name="file" id="file" type="file" accept=".csv,text/csv,text/plain" class="form-control w-auto" required>
+                            <input name="file" id="file" type="file" accept=".csv,text/csv,text/plain" class="form-control w-auto" style="max-width:100%;min-width:0" required>
                             ' . pg_upload_limit_hint($shipping_import_max_bytes) . '
                         </div>
                         <div class="form-field my-5">
-                            <div class="switch"><input type="checkbox" name="notify" id="notify" value="1" class="" checked></div>
+                            <div class="switch"><input type="checkbox" name="notify" id="notify" value="1" class=""' . ($notify_checked ? ' checked' : '') . '></div>
                             <label class="" for="notify">' . h(lang('Send customers the shipping e-mail')) . '</label>
                         </div>
                     </div>
