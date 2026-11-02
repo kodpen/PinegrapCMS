@@ -1462,13 +1462,13 @@ if (!$_POST) {
     // else the user is being edited
     } else {
 
-        // The role arrives as text. Cast it before the ceiling check so a
-        // non-numeric value cannot slip past the comparison and reach the SQL,
-        // where a lenient server would store it as 0 (administrator).
+        // Only a whole number from 0 to 3 is a role: text such as 'abc'
+        // would cast to 0 (administrator). The last administrator's role
+        // cards are disabled and post nothing, which keeps the stored role.
         if (isset($_POST['role'])) {
-            $_POST['role'] = (int) $_POST['role'];
+            $_POST['role'] = pg_user_form_role($_POST['role']);
 
-            if (in_array($_POST['role'], array(0, 1, 2, 3), true) == false) {
+            if ($_POST['role'] === null) {
                 log_activity(lang('access denied because user does not have access to set the requested role for a user'), $_SESSION['sessionusername']);
                 output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
             }
@@ -1505,6 +1505,10 @@ if (!$_POST) {
         if (mysqli_num_rows($result) > 0) {
             output_error(lang('The email address that you entered is already in use') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
+
+        // A checked private folder whose date is not one stops here, before
+        // anything is written; a date already gone is named after the save.
+        $past_expiry_folders = pg_user_form_check_expiry_dates($_POST);
 
         $username = $_POST['username'];
         
@@ -1702,6 +1706,10 @@ if (!$_POST) {
         }
 
         $liveform_view_users->add_notice(lang('The user has been saved.'));
+
+        if ($past_expiry_folders) {
+            $liveform_view_users->add_warning(pg_user_form_past_expiry_warning($past_expiry_folders));
+        }
         
         // If there is a send to value then send user back to that screen
         if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {
