@@ -137,6 +137,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_mail_bounces();            // 11.0.146
 	upgrade_2026_11_0_site_search_daily();      // 11.0.147
 	upgrade_2026_11_0_product_questions();       // 11.0.148
+	upgrade_2026_11_0_product_preorder();        // 11.0.151
 
 }
 
@@ -4441,5 +4442,19 @@ function upgrade_2026_11_0_product_questions() {
 	install_add_index('comments', 'idx_answer_of', "INDEX idx_answer_of (answer_of)");
 
 	install_note('Comments: visitors can ask a question about a product and staff can answer it; every comment written before this version stays a comment.');
+
+}
+
+// Pre-order of a product (2026.11.0, 11.0.151; includes/fn/preorder.php).
+//
+// preorder marks a product sold before its stock arrives, preorder_date the
+// day it ships from. 0 and NULL mean no pre-order, so the two columns change
+// nothing on existing rows.
+function upgrade_2026_11_0_product_preorder() {
+
+	install_add_column('products', 'preorder', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('products', 'preorder_date', "DATE NULL DEFAULT NULL");
+
+	install_note('Products: a product can be sold on pre-order until the date its stock is expected; the catalog, the cart and the order mails show the date it ships from.');
 
 }
