@@ -2612,6 +2612,7 @@
     "The link is yours alone and takes one answer. It works until {var:1}; no account is needed.": "Bağlantı yalnız size aittir ve tek bir yanıt alır. {var:1} tarihine kadar geçerlidir; hesap gerekmez.",
     "The link of this cart quote stops working. This cannot be undone.": "Bu sepet teklifinin bağlantısı çalışmayı bırakır. Bu işlem geri alınamaz.",
     "The link puts these products into the customer's cart at the store's prices on the day it is used.": "Bağlantı bu ürünleri, kullanıldığı gündeki mağaza fiyatlarıyla müşterinin sepetine ekler.",
+    "The link the customer already has stops working. Make a new link?": "Müşterinin elindeki bağlantı çalışmayı bırakır. Yeni bağlantı oluşturulsun mu?",
     "The link was revoked. It no longer opens the prototype.": "Bağlantı iptal edildi. Artık prototipi açmıyor.",
     "The link works for 24 hours. If you did not ask for it, ignore this e-mail; your password stays the same.": "Bağlantı 24 saat geçerlidir. Bu isteği siz yapmadıysanız bu e-postayı yok sayın; parolanız değişmez.",
     "The link works through this day. Leave it empty for a link without an end.": "Bağlantı bu günün sonuna kadar çalışır. Süresiz bir bağlantı için boş bırakın.",

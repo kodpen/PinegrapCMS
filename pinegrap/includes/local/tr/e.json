@@ -207,6 +207,7 @@
     "Each person their own open tasks": "Herkese kendi açık görevleri",
     "Each person their own tasks": "Herkese kendi görevleri",
     "Each product is processed at its tax-deducted price and tax rates are processed in a separate column.": "Her ürün, vergisi düşülmüş fiyatı üzerinden işlenir ve vergi oranları ayrı bir sütuna işlenir.",
+    "Each product needs a whole quantity from 1 to {var:1}.": "Her ürünün adedi 1 ile {var:1} arasında bir tam sayı olmalı.",
     "Each proposed task is an object with a title.": "Önerilen her görev, başlığı olan bir nesnedir.",
     "Each request has its own page with its status and the lawyer's messages; the client follows it from their account and sends documents there.": "Her talebin durumu ve avukatın mesajlarıyla kendi sayfası vardır; müvekkil onu hesabından izler ve belgeleri oradan gönderir.",
     "Each result is an object with a hash and a text.": "Her sonuç hash ve text alanları olan bir nesnedir.",
