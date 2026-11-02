@@ -54,6 +54,22 @@ function pg_aff_page_row_changes($row, $cfg)
 }
 
 /**
+ * The page affiliate_sign_up_form.php sends the applicant to and mails as
+ * the confirmation: the one the posting page's affiliate_sign_up_form_pages
+ * row names. The posted next_page_id is not trusted, as the handler draws
+ * that page into the applicant's own e-mail without any access check.
+ *
+ * @param array|null $row the row of the posted current_page_id, null when there is none
+ * @return int the page id, 0 for none
+ */
+function pg_aff_handler_next_page_id($row)
+{
+    if (!is_array($row) || !isset($row['next_page_id'])) return 0;
+    $id = (int)$row['next_page_id'];
+    return $id > 0 ? $id : 0;
+}
+
+/**
  * The form's starting values for a visitor who has not posted it: the
  * contact's business address, company and website, as the classic page
  * prefills them; the website box opens with "http://" when there is none.

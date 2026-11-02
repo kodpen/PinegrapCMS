@@ -59,10 +59,14 @@ if (!isset($_POST['submit'])) {
         'city', 'state', 'zip_code', 'country', 'phone_number', 'fax_number', 'email_address',
         'affiliate_name', 'affiliate_website', 'affiliate_code', 'terms_and_conditions'));
 
-    // The pages the form names to come back to and to go on to. Either can be
-    // left out, and only a string can name one.
+    // The page the form names to come back to; it can be left out, and only
+    // a string can name one. The page to go on to is the one that page's
+    // affiliate_sign_up_form_pages row names, never the posted one: its
+    // content is mailed to the applicant without an access check.
     $current_page_id = (isset($_POST['current_page_id']) && is_string($_POST['current_page_id'])) ? $_POST['current_page_id'] : '';
-    $next_page_id = (isset($_POST['next_page_id']) && is_string($_POST['next_page_id'])) ? $_POST['next_page_id'] : '';
+    $next_page_id = pg_aff_handler_next_page_id((int) $current_page_id > 0
+        ? db_item("SELECT next_page_id FROM affiliate_sign_up_form_pages WHERE page_id = '" . (int) $current_page_id . "'")
+        : null);
 
     $liveform->validate_required_field('first_name', lang('First Name is required.'));
     $liveform->validate_required_field('last_name', lang('Last Name is required.'));

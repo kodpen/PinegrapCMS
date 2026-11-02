@@ -15,7 +15,7 @@ module: widgets_affiliate_sign_up
 - Country and state as the shipping address widget does them (`_pg_sa_state_controls()`, `pg_sa_state_script()`). The terms box is dropped without a terms page, required with one. Flags `has_terms`, `no_terms`; tokens `__submit_button_label`, `__terms_url`.
 
 ## What happens once the application is sent?
-- A next page (the widget's or the row's): the visitor goes there and its content is the e-mail they get, as before.
+- A next page: the visitor goes there and its content is the e-mail they get. The handler reads it from the `affiliate_sign_up_form_pages` row of `current_page_id` (`pg_aff_handler_next_page_id()`), never from the posted `next_page_id`: the page is drawn into the e-mail without an access check, so a posted id mailed any page, a members-only one included (bug hunt, PR #NNNN).
 - None, on a designed page (since step 5d, PR #2697; decided in #2436 answer 1b): the form posts `pg_widget_id`; `affiliate_sign_up_form.php` reads that widget's settings (`pg_member_widget_cfg()`), leaves the liveform `screen=confirm` and the notice `pg_member_confirmation_notice()` (its `confirmation_message`, else "Thank you. Your affiliate application has been sent.") and returns to `current_page_id`. The widget then keeps its design, drops its controls and draws no form (as forgot password does). The e-mail stays the classic confirmation screen. The legacy page still goes to `affiliate_sign_up_confirmation.php`.
 
 ## What is left out?
