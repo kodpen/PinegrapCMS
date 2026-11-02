@@ -376,6 +376,22 @@ function pg_subscription_operator_order_status_label($status)
 }
 
 /**
+ * The words staff read for an event in a subscription's history: the
+ * customer's words, except where those address the customer.
+ *
+ * @param string $kind subscription_events.kind
+ * @return string empty for an unknown kind
+ */
+function pg_subscription_operator_event_label($kind)
+{
+    if ((string) $kind === 'confirm_needed') {
+        return lang('Payment awaits the customer\'s confirmation');
+    }
+
+    return pg_subscription_customer_event_label($kind);
+}
+
+/**
  * An event's stored detail as the history shows it: the operator's
  * "operator: <name> (#<id>)" as "Staff: <name>", the customer's "customer"
  * as "Customer" and a price notice's Y-m-d date in the panel's date format;

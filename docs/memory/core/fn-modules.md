@@ -129,7 +129,7 @@ description: Generated from the module field of the memory files: each includes/
 - `subscription_renewal`: [[subscriptions-mails]], [[subscriptions-number-of-payments]], [[subscriptions-price-notice]], [[subscriptions-renewal]]
 - `subscriptions`: [[subscriptions]], [[subscriptions-iyzico]], [[subscriptions-later-start]], [[subscriptions-stripe]]
 - `subscriptions_account`: [[subscriptions-account]]
-- `subscriptions_operator`: [[subscriptions-operator-screen]]
+- `subscriptions_operator`: [[subscriptions-operator-screen]], [[subscriptions-operator-words-errors]]
 - `svg_sanitize`: [[image-editor-svg]]
 - `text_search`: [[capital-i-search-term]]
 - `translate`: [[error-screen-language-and-status]]
