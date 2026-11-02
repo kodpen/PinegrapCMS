@@ -105,24 +105,31 @@ $step_form = function ($step, $title, $button, $class, $fields, $note) use ($che
         </form>';
 };
 
-$date_field = '<div class="col-6 md:col-3"><label class="form-label small">' . lang('Date') . '</label><input type="date" data-pg-date class="form-control form-control-sm" name="date" value="' . h(max(date('Y-m-d'), (string) $cheque['doc_date'])) . '" min="' . h((string) $cheque['doc_date']) . '" /></div>';
-$bank_field = '<div class="col-6 md:col-4"><label class="form-label small">' . lang('Bank account') . '</label><select class="form-control form-control-sm" name="bank_till_id" aria-label="' . h(lang('Bank account')) . '">' . $tills . '</select>' . erp_no_till_hint($till_count, 'cheque') . '</div>';
+// Each step form has its own fields, so every id carries the step. The date
+// box people type in is drawn by pg_fields.js next to the hidden input and
+// takes its aria-label, the only name it can have.
+$date_field = function ($step) use ($cheque) {
+    return '<div class="col-6 md:col-3"><label class="form-label small" for="erp_' . $step . '_date">' . lang('Date') . '</label><input type="date" data-pg-date class="form-control form-control-sm" id="erp_' . $step . '_date" name="date" aria-label="' . h(lang('Date')) . '" value="' . h(max(date('Y-m-d'), (string) $cheque['doc_date'])) . '" min="' . h((string) $cheque['doc_date']) . '" /></div>';
+};
+$bank_field = function ($step) use ($tills, $till_count) {
+    return '<div class="col-6 md:col-4"><label class="form-label small" for="erp_' . $step . '_bank_till_id">' . lang('Bank account') . '</label><select class="form-control form-control-sm" id="erp_' . $step . '_bank_till_id" name="bank_till_id">' . $tills . '</select>' . erp_no_till_hint($till_count, 'cheque') . '</div>';
+};
 
 $output_steps = '';
 if (!$readonly) {
     if ($received && ($status === 'portfolio')) {
-        $output_steps .= $step_form('deposit', lang('Handed to the bank for collection'), lang('At the bank'), 'btn-outline theme-info', $bank_field, lang('Only its place changes; the money moves when the bank collects it.'));
+        $output_steps .= $step_form('deposit', lang('Handed to the bank for collection'), lang('Hand to the bank'), 'btn-outline theme-info', $bank_field('deposit'), lang('Only its place changes; the money moves when the bank collects it.'));
     }
     if ($received && in_array($status, array('portfolio', 'deposited'), true)) {
-        $output_steps .= $step_form('collect', lang('Collected'), lang('Collected'), 'btn-solid theme-success', $date_field . $bank_field, lang('The amount moves from the portfolio to the bank account.'));
-        $output_steps .= $step_form('bounce', lang('Bounced'), lang('Bounced'), 'btn-outline theme-danger', $date_field . '<div class="col-12 md:col-6"><label class="form-label small">' . lang('Reason') . '</label><input type="text" class="form-control form-control-sm" name="reason" maxlength="150" aria-label="' . h(lang('Reason')) . '" /></div>', lang('The amount leaves the portfolio and goes back on the customer\'s account: they owe it again.'));
+        $output_steps .= $step_form('collect', lang('Collected'), lang('Mark as collected'), 'btn-solid theme-success', $date_field('collect') . $bank_field('collect'), lang('The amount moves from the portfolio to the bank account.'));
+        $output_steps .= $step_form('bounce', lang('Bounced'), lang('Mark as bounced'), 'btn-outline theme-danger', $date_field('bounce') . '<div class="col-12 md:col-6"><label class="form-label small" for="erp_bounce_reason">' . lang('Reason') . '</label><input type="text" class="form-control form-control-sm" id="erp_bounce_reason" name="reason" maxlength="150" /></div>', lang('The amount leaves the portfolio and goes back on the customer\'s account: they owe it again.'));
     }
     if ($received && ($status === 'portfolio')) {
-        $output_steps .= $step_form('endorse', lang('Passed on to a supplier'), lang('Pass on'), 'btn-outline theme-secondary', $date_field . '<div class="col-12 md:col-6"><label class="form-label small" for="erp_endorse_account_id">' . lang('Account') . '</label><select class="form-control form-control-sm" data-pg-combobox id="erp_endorse_account_id" name="account_id"><option value="">' . lang('Choose an account') . '</option>' . $accounts . '</select>' . erp_account_quick_link('#erp_endorse_account_id', 'supplier') . '</div>', lang('A payment to that account out of the portfolio: what the store owes it comes down.'));
+        $output_steps .= $step_form('endorse', lang('Passed on to a supplier'), lang('Pass on'), 'btn-outline theme-secondary', $date_field('endorse') . '<div class="col-12 md:col-6"><label class="form-label small" for="erp_endorse_account_id">' . lang('Account') . '</label><select class="form-control form-control-sm" data-pg-combobox id="erp_endorse_account_id" name="account_id"><option value="">' . lang('Choose an account') . '</option>' . $accounts . '</select>' . erp_account_quick_link('#erp_endorse_account_id', 'supplier') . '</div>', lang('A payment to that account out of the portfolio: what the store owes it comes down.'));
         $output_steps .= erp_account_quick_modal();
     }
     if (!$received && ($status === 'given')) {
-        $output_steps .= $step_form('pay', lang('Paid by the bank'), lang('Paid'), 'btn-solid theme-success', $date_field . $bank_field, lang('The amount moves from the bank account to the till the given ones are kept in.'));
+        $output_steps .= $step_form('pay', lang('Paid by the bank'), lang('Mark as paid'), 'btn-solid theme-success', $date_field('pay') . $bank_field('pay'), lang('The amount moves from the bank account to the till the given ones are kept in.'));
     }
 }
 

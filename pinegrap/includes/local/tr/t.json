@@ -1016,6 +1016,7 @@
     "The allocation has been removed.": "Tahsis kaldırıldı.",
     "The alt text is a file name": "Alt metni dosya adı",
     "The amount and the way of this refund were not kept.": "Bu iadenin tutarı ve yapılış yolu kaydedilmemiş.",
+    "The amount is too large.": "Tutar çok büyük.",
     "The amount leaves the portfolio and goes back on the customer's account: they owe it again.": "Tutar portföyden çıkar ve müşterinin carisine geri yazılır: yeniden borçlu olur.",
     "The amount moves from the bank account to the till the given ones are kept in.": "Tutar banka hesabından verilenlerin tutulduğu kasaya geçer.",
     "The amount moves from the portfolio to the bank account.": "Tutar portföyden banka hesabına geçer.",
