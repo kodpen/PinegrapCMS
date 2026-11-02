@@ -29,5 +29,5 @@ description: Steps VA1-VA6 of plans/voice-to-assistants.md: deaf hint, keyless h
   - The route has a dry run, a `ws_voice_message_check()` shared with the panel and the `workspace:write` scope. It answers `voice_unavailable` when no speech service is set.
   - Claude's instructions, Pinegrap AI's tools and the site's MCP server (the Claude and ChatGPT connectors) offer it. `workspace-api-endpoint-rules.md` applies.
 
-- VA6 (S) MCP agents by voice. Done, #PRNUM (`workspace/workspace-voice-mcp-agents.md`).
+- VA6 (S) MCP agents by voice. Done, #5802 (`workspace/workspace-voice-mcp-agents.md`).
   - `voiceAnswers()` also answers an MCP agent's message, and `ws_voice_ask()` asks the agent whose request the reply continues. Tests: the microphone on an agent's message, the ask after the transcript, and a discussion.
