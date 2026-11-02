@@ -47,12 +47,12 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 - `text_search`: taken by MM — #4819
 - `tour`: clean (OF)
 - `translate`: taken by MM — #4753, #4776
-- `update`: open
+- `update`: clean (OV; read: archive extraction and its checks, backup and rollback, signed vendor update steps, CA bundle)
 - `user_list`: #5169 (OF)
 - `vendor_api`: clean
 - `visitor_ip`: clean
-- `visitor_partitions`: open
-- `visitor_retention`: open
+- `visitor_partitions`: clean (OV)
+- `visitor_retention`: clean (OV; read: cleanup with summary and partition drop, move to InnoDB, rebuild)
 - `visitor_texts`: clean
 - `voice_text`: clean
 - `waf_log_list`: clean
