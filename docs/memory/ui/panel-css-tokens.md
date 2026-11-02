@@ -4,7 +4,7 @@ description: The panel's --pg-* CSS token layer (Bootstrap 6 step B3): names rul
 ---
 
 ## What may a panel rule read?
-- B10 values: `panel-colour-tokens.md`, `panel-radius-tokens.md`.
+- B10 values: `panel-colour-tokens.md`, `panel-radius-tokens.md`, `panel-spacing-tokens.md`.
 - Only `--pg-*` tokens, never Bootstrap's `--bs-*` variables directly (`check_bs6.php` counts what is left): Bootstrap 6 renamed or dropped most v5 variables.
 - Accent fills: the palette `--pg-primary`, `--pg-secondary`, `--pg-success`, `--pg-danger`, `--pg-warning`, `--pg-info`.
 - Accent text, surface, line: `--pg-<colour>-fg-emphasis`, `-bg-subtle`, `-border-subtle` (v5 `-text-emphasis`, `-bg-subtle`, `-border-subtle`). The palette's `-ink`, `-subtle`, `-line` are inputs of the bridge, not names for rules.
