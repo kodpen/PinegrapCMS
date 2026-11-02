@@ -3834,6 +3834,7 @@
     "auto campaign sent": "otomatik kampanya gönderildi",
     "auto campaign was created because gift card was ordered ({var:1})": "otomatik kampanya oluşturuldu, çünkü hediye kartı sipariş edildi ({var:1})",
     "auto dialog": "otomatik diyalog",
+    "available_until must not be before available_from.": "available_until, available_from tarihinden önce olamaz.",
     "average course rating": "ortalama kurs puanı",
     "average rating from our patients": "hastalarımızın ortalama puanı",
     "awaiting payment": "ödeme bekliyor",

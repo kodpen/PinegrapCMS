@@ -151,6 +151,11 @@ function api_webhook_events() {
 		'tax_zone.created'     => 'A tax zone was created',
 		'tax_zone.updated'     => 'A tax zone was changed: its name, rate, countries or states',
 		'tax_zone.deleted'     => 'A tax zone was deleted',
+		// Shipping methods (includes/fn/shipping_methods.php): announced from
+		// the shared write functions, so the screens and the API alike.
+		'shipping_method.created' => 'A shipping method was created',
+		'shipping_method.updated' => 'A shipping method was changed',
+		'shipping_method.deleted' => 'A shipping method was deleted',
 		// Uploads from the panel's file screen and writes through the API alike.
 		// A design or theme import brings its own files in bulk and stays quiet,
 		// for the same reason the contact import does.

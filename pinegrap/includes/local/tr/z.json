@@ -37,5 +37,6 @@
     "Zoom the canvas in / out": "Canvas yakınlaştır / uzaklaştır",
     "Zoom with the mouse wheel": "Fare tekerleğiyle zoom",
     "Zooming": "Yakınlaşma",
-    "zone": "bölge"
+    "zone": "bölge",
+    "zone_ids names a zone that does not exist (GET /store/zones).": "zone_ids var olmayan bir bölgeyi gösteriyor (GET /store/zones)."
 }

@@ -311,7 +311,7 @@ function test_shipping_method_screens_use_shared_form()
 		pg_assert_contains('includes/forms/shipping_method_form.php', $source, $file . ' loads the form');
 		pg_assert_contains('pg_shipping_method_form_cards(', $source, $file . ' prints the shared cards');
 		pg_assert_contains('pg_shipping_method_form_columns($_POST)', $source, $file . ' saves the shared columns');
-		pg_assert_contains('pg_shipping_method_save_links(', $source, $file . ' writes zones and excluded dates');
+		pg_assert_contains('pg_shipping_method_save(', $source, $file . ' writes through the shared shipping method function');
 		pg_assert_contains('validate_token_field()', $source, $file . ' checks the token');
 		pg_assert_contains('get_token_field()', $source, $file . ' prints the token');
 	}
