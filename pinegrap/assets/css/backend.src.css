@@ -36,13 +36,14 @@
 .btn-text:is(:disabled, .disabled) {
   border-color: transparent;
 }
-/* v5's card: block body and header, v5 paddings and cap tint, children
-   keep their own margins (v6 zeroes them and spaces them with a gap). */
+/* Card: block body and header, v5's cap tint, children keep their own
+   margins (v6 zeroes them and spaces them with a gap). Bootstrap 6's
+   padding; the header text starts where the body text does. */
 .card {
-  --bs-card-spacer-y: 1rem;
-  --bs-card-spacer-x: 1rem;
-  --bs-card-cap-padding-y: 0.5rem;
-  --bs-card-cap-padding-x: 1rem;
+  --bs-card-spacer-y: var(--bs-spacer-6);
+  --bs-card-spacer-x: var(--bs-spacer-6);
+  --bs-card-cap-padding-y: var(--bs-spacer-4);
+  --bs-card-cap-padding-x: var(--bs-card-spacer-x);
   --bs-card-cap-bg: color-mix(in srgb, var(--pg-fg-body) 3%, transparent);
   --bs-card-border-color: var(--pg-border-color-translucent);
 }
@@ -208,18 +209,20 @@ input.btn-check:disabled + .btn {
 :where(h6, .h6):not(.menu-header, .popover-header) {
   font-size: 1rem;
 }
-/* v5's dropdown menu: 1rem text, full-width items with no gap or radius,
-   v5 paddings (a heading in a menu keeps the header's own size). */
+/* Dropdown menu: 1rem text, rows inset from the menu's edge on Bootstrap 6's
+   spacers, rounded to the menu's radius minus that inset so the corners
+   nest (a heading in a menu keeps the header's own size). */
 .menu {
   --bs-menu-font-size: 1rem;
-  --bs-menu-padding-x: 0;
-  --bs-menu-padding-y: 0.5rem;
+  --bs-menu-padding-x: var(--bs-spacer-1);
+  --bs-menu-padding-y: var(--bs-spacer-1);
   --bs-menu-gap: 0;
   --bs-menu-item-gap: 0;
-  --bs-menu-item-padding-x: 1rem;
-  --bs-menu-item-border-radius: 0;
-  --bs-menu-header-padding-x: 1rem;
-  --bs-menu-header-padding-y: 0.5rem;
+  --bs-menu-item-padding-x: var(--bs-spacer-4);
+  --bs-menu-item-padding-y: var(--bs-spacer-2);
+  --bs-menu-item-border-radius: var(--pg-radius-lg);
+  --bs-menu-header-padding-x: var(--bs-spacer-4);
+  --bs-menu-header-padding-y: var(--bs-spacer-3);
   --bs-menu-divider-margin-x: 0;
   --bs-menu-divider-margin-y: 0.5rem;
 }
@@ -1077,8 +1080,6 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
 .card {
   --bs-card-border-radius: var(--pg-radius-surface);
   --bs-card-border-width: 1px;
-  --bs-card-cap-padding-y: 1rem;
-  --bs-card-cap-padding-x: 1rem;
   --bs-card-inner-border-radius: calc(
     var(--bs-card-border-radius) - (var(--pg-border-width))
   );
