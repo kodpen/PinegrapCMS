@@ -27,16 +27,16 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 - `short_link_redirects`: clean (NY)
 - `signature`: #5131 (NY)
 - `signin`: clean
-- `site_datetime`: open
-- `site_icon`: open
-- `site_log_list`: open
+- `site_datetime`: clean (NY)
+- `site_icon`: clean (NY)
+- `site_log_list`: clean (NY)
 - `site_search`: taken by LX, #4678
-- `site_time_sql`: open
+- `site_time_sql`: clean (NY)
 - `sms`: #4674 (LW; rest clean)
 - `sms_campaigns`: taken by MC, #4707
 - `sms_codes`: clean (#4614)
-- `sms_messages`: open
-- `speculation`: open
+- `sms_messages`: clean (NY)
+- `speculation`: clean (NY)
 - `stock_notify`: #4668
 - `submitted_form_list`: open
 - `subscription_renewal`: fault fixed by LN, #4622 (renewals stop at the line's number of payments, decided in #4623)

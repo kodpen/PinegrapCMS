@@ -262,8 +262,6 @@ function pg_submitted_form_list_filter($user)
     $start_timestamp = mktime(0, 0, 0, (int) $state['start_month'], (int) $state['start_day'], (int) $state['start_year']);
     $stop_timestamp = mktime(23, 59, 59, (int) $state['stop_month'], (int) $state['stop_day'], (int) $state['stop_year']);
 
-    $joins = '';
-    $join_params = array();
     $conditions = array('(forms.' . $date_type_column . ' >= ?)', '(forms.' . $date_type_column . ' <= ?)');
     $params = array($start_timestamp, $stop_timestamp);
 
@@ -273,12 +271,13 @@ function pg_submitted_form_list_filter($user)
         if ($checked) {
             $form_conditions = array();
             $data_conditions = array();
+            $data_params = array();
 
             foreach ($checked as $custom_form) {
                 $form_conditions[] = '(forms.page_id = ?)';
                 $params[] = (string) $custom_form;
 
-                // A field with a filter value joins its data and asks for it.
+                // A field with a filter value asks for a stored value holding it.
                 $field_conditions = array();
                 $result = db_q("SELECT form_fields.id FROM form_fields WHERE form_fields.page_id = ? ORDER BY form_fields.sort_order", array((string) $custom_form));
 
@@ -287,10 +286,9 @@ function pg_submitted_form_list_filter($user)
                     $value = pg_submitted_form_list_value($state, 'form_field_' . $field_id);
 
                     if ($value !== '') {
-                        $joins .= ' LEFT JOIN form_data AS form_data_' . $field_id . ' ON ((forms.id = form_data_' . $field_id . '.form_id) AND (form_data_' . $field_id . '.form_field_id = ?) AND (form_data_' . $field_id . '.data LIKE ?))';
-                        $join_params[] = (string) $field_id;
-                        $join_params[] = pg_list_like_pattern($value);
-                        $field_conditions[] = '(form_data_' . $field_id . '.data IS NOT NULL)';
+                        $condition = pg_submitted_form_list_field_condition($field_id, $value);
+                        $field_conditions[] = $condition['sql'];
+                        $data_params = array_merge($data_params, $condition['params']);
                     }
                 }
 
@@ -303,6 +301,7 @@ function pg_submitted_form_list_filter($user)
 
             if ($data_conditions) {
                 $conditions[] = '(' . implode(' OR ', $data_conditions) . ')';
+                $params = array_merge($params, $data_params);
             }
         } else {
             // No custom form checked finds no form.
@@ -421,14 +420,32 @@ function pg_submitted_form_list_filter($user)
             LEFT JOIN contacts ON forms.contact_id = contacts.id
             LEFT JOIN user AS submitted_user ON forms.user_id = submitted_user.user_id
             LEFT JOIN user AS last_modified_user ON forms.last_modified_user_id = last_modified_user.user_id
-            LEFT JOIN user AS form_editor_user ON forms.form_editor_user_id = form_editor_user.user_id' . $joins,
+            LEFT JOIN user AS form_editor_user ON forms.form_editor_user_id = form_editor_user.user_id',
         'where' => 'WHERE ' . implode(' AND ', $conditions),
-        'params' => array_merge($join_params, $params),
+        'params' => $params,
         'order_by' => $order_by,
         'sort_columns' => $sort_columns,
         'sort_default' => $sort_default,
         'sort_levels' => $sort_levels,
         'date_type_column' => $date_type_column,
+    );
+}
+
+/**
+ * The condition a field's filter value puts on a submitted form: one of its
+ * stored values holds the text. A condition, not a join: a check box group
+ * keeps one form_data row per ticked box, and a join listed and counted a
+ * form once for every row the text matched. Pure.
+ *
+ * @param int    $field_id
+ * @param string $value the filter text
+ * @return array array('sql' => condition, 'params' => its values)
+ */
+function pg_submitted_form_list_field_condition($field_id, $value)
+{
+    return array(
+        'sql' => '(EXISTS (SELECT 1 FROM form_data WHERE (form_data.form_id = forms.id) AND (form_data.form_field_id = ?) AND (form_data.data LIKE ?)))',
+        'params' => array((string) (int) $field_id, pg_list_like_pattern((string) $value)),
     );
 }
 
