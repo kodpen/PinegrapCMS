@@ -157,6 +157,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-till-below-zero.md: A cash till (drawer, received-cheque portfolio) never goes below zero on a transfer, payment or expense: the one check, where it is asked, who skips it, what an already negative till does
 - erp-till-inactive-payments.md: No expense, receipt, payment or transfer uses a missing till or one taken off (is_active = 0): the gates, who meets them, the cheque exception, what a repeat does then
 - erp-translation-traps.md: Short translation keys that read wrong as ERP labels (Quote, By, From, To, Count, Record, Due, Net, Method) and the longer keys ERP screens use instead.
+- erp-typed-line-numbers.md: How the document editors refuse a signed or lettered quantity or rate and a line amount past the cap
 - erp-vat-per-rate-group.md: How the ERP takes a document's VAT, withholding and second tax per rate group, as Paraşüt does (owner decision 2026-10-21), where the rule applies, and where the checkout and charge decisions are kept
 - erp-vat-report.md: ERP VAT report: the one place tax totals are added up (vat_report.php), calculated, deductible and difference, what never counts, and the report's name in the menu.
 - erp-vat-withholding.md: VAT withholding (tevkifat, migration 4.68) on ERP documents: what tax_total, withholding_total and grand_total hold, the line columns, the code list rule, returns, document type.

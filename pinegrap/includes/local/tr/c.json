@@ -1545,6 +1545,7 @@
     "Completed": "Tamamlanmış",
     "Completed order": "Tamamlanmış sipariş",
     "Completed orders that are linked to a contact and have not been invoiced yet.": "Tamamlanmış, bir kişiye bağlı ve henüz faturalanmamış siparişler.",
+    "Completed orders that are linked to a contact or an account and have not been invoiced yet. Orders still awaiting payment are marked.": "Tamamlanmış, bir kişiye ya da cariye bağlı ve henüz faturalanmamış siparişler. Ödemesi beklenenler işaretlidir.",
     "Completed orders without an invoice": "Faturası kesilmemiş tamamlanan siparişler",
     "Completing…": "Tamamlanıyor…",
     "Completions": "Tamamlamalar",

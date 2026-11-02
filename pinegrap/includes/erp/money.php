@@ -20,6 +20,15 @@ if (!defined('PG_ERP_ENTRY')) {
     exit;
 }
 
+// The largest line amount in kurus (ten trillion in the main unit) and the
+// largest quantity a line takes; erp_line_amount_fits() checks both.
+if (!defined('ERP_MAX_LINE_AMOUNT')) {
+    define('ERP_MAX_LINE_AMOUNT', 1000000000000000);
+}
+if (!defined('ERP_MAX_QUANTITY')) {
+    define('ERP_MAX_QUANTITY', 1000000000000);
+}
+
 /**
  * Read an amount typed by an operator and return whole kurus.
  *
@@ -111,6 +120,36 @@ function erp_decimal_comma()
 function erp_csv_delimiter()
 {
     return erp_decimal_comma() ? ';' : ',';
+}
+
+/**
+ * Whether a typed quantity or rate is a number the readers may take.
+ *
+ * erp_quantity_in() and erp_fx_rate_in() drop every character that is not a
+ * digit or a separator, so -3 read as 3 and 2O (a letter O) as 2. A box
+ * that must hold a plain amount asks this first and refuses anything else.
+ * Spaces and a trailing percent sign are allowed; an empty box is too.
+ *
+ * @param mixed $value
+ * @return bool
+ */
+function erp_typed_number_ok($value)
+{
+    if (is_int($value) || is_float($value)) {
+        return $value >= 0;
+    }
+
+    if (!is_string($value)) {
+        return false;
+    }
+
+    $raw = preg_replace('/[\s\x{00A0}\x{202F}]+/u', '', $value);
+
+    if (($raw === null) || ($raw === '')) {
+        return true;
+    }
+
+    return (bool) preg_match('/^(?=.*[0-9])[0-9.,]+%?$/', $raw);
 }
 
 /**
@@ -466,6 +505,28 @@ function erp_to_base($kurus, $exchange_rate)
 function erp_line_total($unit_price, $quantity)
 {
     return erp_multiply_units((int) $unit_price, erp_decimal_units($quantity, 4), 10000);
+}
+
+/**
+ * Whether a line's quantity or price can be multiplied safely.
+ *
+ * The cap keeps every total within an integer: 200 lines at the cap, with
+ * both taxes at 100%, stay far under PHP_INT_MAX. Past it the product wrapped
+ * when cast and a draft saved with random totals.
+ *
+ * @param int|float $unit_price  Kurus
+ * @param float     $quantity
+ * @return bool
+ */
+function erp_line_amount_fits($unit_price, $quantity)
+{
+    $quantity = abs((float) $quantity);
+
+    if ($quantity >= ERP_MAX_QUANTITY) {
+        return false;
+    }
+
+    return (abs((float) $unit_price) * $quantity) <= ERP_MAX_LINE_AMOUNT;
 }
 
 /**
