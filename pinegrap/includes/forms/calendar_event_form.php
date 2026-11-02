@@ -164,6 +164,52 @@ function pg_calendar_event_recurrence_dates($start_date, $recurrence_number, $re
     return $dates;
 }
 
+// The largest count the nine-digit number fields take (repeats, spots).
+if (!defined('PG_CALENDAR_EVENT_MAX_NUMBER')) {
+    define('PG_CALENDAR_EVENT_MAX_NUMBER', 999999999);
+}
+
+/**
+ * Whether a typed number is a whole number from $min to $max: digits only,
+ * so a sign, a decimal separator or a letter is refused.
+ *
+ * @param mixed $value
+ * @param int   $min
+ * @param int   $max
+ * @return bool
+ */
+function pg_calendar_event_whole_number_ok($value, $min, $max)
+{
+    if (!is_scalar($value)) {
+        return false;
+    }
+
+    $value = trim((string) $value);
+
+    if (($value === '') || !ctype_digit($value) || (strlen(ltrim($value, '0')) > 10)) {
+        return false;
+    }
+
+    return ((int) $value >= $min) && ((int) $value <= $max);
+}
+
+/**
+ * The event's start and end as the location check reads them: 'Y-m-d H:i',
+ * from the values as entered in the site's date order (an all day event
+ * carries 12:00 AM and 11:59 PM).
+ *
+ * @param string $start_time
+ * @param string $end_time
+ * @return array  'start' and 'end'
+ */
+function pg_calendar_event_form_check_window($start_time, $end_time)
+{
+    return array(
+        'start' => prepare_form_data_for_input($start_time, 'date and time'),
+        'end' => prepare_form_data_for_input($end_time, 'date and time'),
+    );
+}
+
 /**
  * Marks a location as taken when another event holds it during the given time.
  *
@@ -266,13 +312,10 @@ function pg_calendar_event_form_validate($liveform, $calendar_event_id = '0')
         $liveform->validate_required_field('total_recurrence_number', lang('Repeat number is required when you enable Repeat.'));
         $liveform->validate_required_field('recurrence_type', lang('Repeat type is required when you enable Repeat.'));
 
+        // A whole number: '2.5' passed is_numeric() and was stored as 3.
         if (
             ($liveform->check_field_error('total_recurrence_number') == false)
-            &&
-            (
-                (is_numeric($liveform->get_field_value('total_recurrence_number')) == false)
-                || ($liveform->get_field_value('total_recurrence_number') <= 0)
-            )
+            && !pg_calendar_event_whole_number_ok($liveform->get_field_value('total_recurrence_number'), 1, PG_CALENDAR_EVENT_MAX_NUMBER)
         ) {
             $liveform->mark_error('total_recurrence_number', lang('Please enter a valid number that is greater than 0 for the repeat number.'));
         }
@@ -321,8 +364,13 @@ function pg_calendar_event_form_validate($liveform, $calendar_event_id = '0')
         }
 
         if (($selected_locations) && ($liveform->get_field_value('recurrence') == 0)) {
+            // The availability check reads the time with strtotime(), which
+            // cannot read the site's day/month order: '15/12/2026 10:00' is
+            // false and '05/12/2026' is read as 12 May.
+            $check_window = pg_calendar_event_form_check_window($start_time, $end_time);
+
             foreach ($selected_locations as $calendar_event_location) {
-                pg_calendar_event_form_check_location($liveform, $calendar_event_location, $start_time, $end_time, $calendar_event_id);
+                pg_calendar_event_form_check_location($liveform, $calendar_event_location, $check_window['start'], $check_window['end'], $calendar_event_id);
             }
 
         // A repeating event is checked instance by instance; on the edit
@@ -339,8 +387,9 @@ function pg_calendar_event_form_validate($liveform, $calendar_event_id = '0')
                 }
             }
 
-            $event_start_date_and_time_parts = explode(' ', prepare_form_data_for_input($start_time, 'date and time'));
-            $event_end_date_and_time_parts = explode(' ', prepare_form_data_for_input($end_time, 'date and time'));
+            $check_window = pg_calendar_event_form_check_window($start_time, $end_time);
+            $event_start_date_and_time_parts = explode(' ', $check_window['start']);
+            $event_end_date_and_time_parts = explode(' ', $check_window['end']);
             $event_start_time = $event_start_date_and_time_parts[1];
             $event_end_time = $event_end_date_and_time_parts[1];
 
@@ -392,6 +441,29 @@ function pg_calendar_event_form_validate($liveform, $calendar_event_id = '0')
 
     if ($calendar_selected == false) {
         $liveform->mark_error('', lang('Please select at least one calendar.'));
+    }
+
+    // The session runs without strict SQL mode, so a value its column
+    // cannot hold was cut or rounded silently: 99999 unpublish days became
+    // 65535 and -12 spots became 0.
+    $whole_numbers = array();
+
+    if ($liveform->get_field_value('published') == 1) {
+        $whole_numbers['unpublish_days'] = array(lang('Unpublish'), 65535);
+    }
+
+    if (($liveform->get_field_value('reservations') == 1) && ($liveform->get_field_value('limit_reservations') == 1)) {
+        $whole_numbers['number_of_initial_spots'] = array(lang('Number Of Initial Spots'), PG_CALENDAR_EVENT_MAX_NUMBER);
+        $whole_numbers['number_of_remaining_spots'] = array(lang('Remaining Spots'), PG_CALENDAR_EVENT_MAX_NUMBER);
+    }
+
+    foreach ($whole_numbers as $field => $rule) {
+        $value = trim((string) $liveform->get_field_value($field));
+
+        // Empty: no unpublishing, or no spots.
+        if (($value !== '') && !pg_calendar_event_whole_number_ok($value, 0, $rule[1])) {
+            $liveform->mark_error($field, lang(array('string' => '{var:1} must be a whole number from {var:2} to {var:3}.', 'vars' => array($rule[0], '0', (string) $rule[1]))));
+        }
     }
 
     if ($liveform->get_field_value('reservations') == 1) {
@@ -597,7 +669,8 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                         'class' => 'form-control text-end',
                                         'maxlength' => '5',
                                         'inputmode'=>'numeric',
-                                        'data-inputmask-alias'=>'decimal')) . '
+                                        'data-inputmask-alias'=>'integer',
+                                        'data-inputmask-allowminus'=>'false')) . '
                                     <span class="input-group-text" title="' . lang('day(s) after event ends') . '">' . lang('day(s)') . '</span>
                                 </div>
                                 <div class="form-text">' . lang('leave blank to never unpublish automatically') . '</div>
@@ -691,7 +764,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
         $output_number_of_remaining_spots_row = '
                                                                         <div class="col-12 sm:col-auto my-3" id="number_of_remaining_spots_row" style="display:block;">
                                                                             <label class="form-label" for="number_of_remaining_spots">' . lang('Remaining Spots') . '</label>
-                                                                            ' . $liveform->output_field(array('type'=>'text', 'id'=>'number_of_remaining_spots', 'name'=>'number_of_remaining_spots', 'size'=>'3', 'maxlength'=>'9', 'class' => 'form-control text-end', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'integer')) . '
+                                                                            ' . $liveform->output_field(array('type'=>'text', 'id'=>'number_of_remaining_spots', 'name'=>'number_of_remaining_spots', 'size'=>'3', 'maxlength'=>'9', 'class' => 'form-control text-end', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'integer', 'data-inputmask-allowminus'=>'false')) . '
                                                                         </div> ';
         $product_id = $liveform->get_field_value('product_id');
     }
@@ -742,7 +815,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                         </div>
                                         <div class="col-12 md:col-6 my-3">
                                             <div class="border-1 border p-3 my-3 rounded-4">
-                                                <label for="start_time" class="form-label">' . lang('Start Date') . '<span id="start_time_label"> ' . lang('& Time') . '</span></label>
+                                                <label for="start_time" class="form-label">' . lang('Start Date') . '<span id="start_time_suffix"> ' . lang('& Time') . '</span><span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                                                 ' . $liveform->output_field($start_time_attributes) . '
                                                 <span id="show_start_time_container">
                                                     <div class="form-field ms-1 mt-3">
@@ -754,7 +827,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                         </div>
                                         <div class="col-12 md:col-6 my-3">
                                             <div class="border-1 border p-3 my-3 rounded-4">
-                                                <label for="end_time" class="form-label">' . lang('End Date') . '<span id="end_time_label"> ' . lang('& Time') . '</span></label>
+                                                <label for="end_time" class="form-label">' . lang('End Date') . '<span id="end_time_suffix"> ' . lang('& Time') . '</span><span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                                                 ' . $liveform->output_field($end_time_attributes) . '
                                                 <span id="show_end_time_container">
                                                     <div class="form-field ms-1 mt-3">
@@ -778,7 +851,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                                         <div class="col-auto my-1">
                                                             <div class="input-group">
                                                                 <div class="input-group-text">' . lang('Up To') . ':</div>
-                                                                ' . $liveform->output_field(array('type'=>'text', 'id'=>'total_recurrence_number', 'name'=>'total_recurrence_number', 'aria-label'=>lang('Up To'), 'size'=>'5', 'maxlength'=>'9', 'class' => 'form-control text-end', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'decimal')) . ' 
+                                                                ' . $liveform->output_field(array('type'=>'text', 'id'=>'total_recurrence_number', 'name'=>'total_recurrence_number', 'aria-label'=>lang('Up To'), 'size'=>'5', 'maxlength'=>'9', 'class' => 'form-control text-end', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'integer', 'data-inputmask-allowminus'=>'false')) . ' 
                                                                 ' . $liveform->output_field(array('type'=>'select', 'id'=>'recurrence_type', 'name'=>'recurrence_type', 'aria-label'=>lang('Repeat'), 'class' => 'form-control', 'options'=>$recurrence_type_options, 'onchange'=>'change_calendar_event_recurrence_type()')) . '
                                                             </div>
                                                         </div>
@@ -904,7 +977,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                     <div class="row">
                                         <div class="col-12 my-3">
                                             <div class="form-field">
-                                                <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'reservations', 'name' => 'reservations', 'value' => '1', 'class' => 'collapse-switcher no-bs', 'data-bs-target'=>'#show_or_hide_reservations_row')) . '</div>
+                                                <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'reservations', 'name' => 'reservations', 'value' => '1', 'class' => 'collapse-switcher no-bs', 'onclick' => 'toggle_calendar_event_recurrence()', 'data-bs-target'=>'#show_or_hide_reservations_row')) . '</div>
                                                 <label class="" for="reservations">' . lang('Accept Reservations') . '</label>
                                             </div>
                                             <div class="collapse popover  fade bs-popover-bottom p-0 mb-3" id="show_or_hide_reservations_row">
@@ -928,7 +1001,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                                                     <div class="row">
                                                                         <div class="col-12 sm:col-auto my-3" id="number_of_initial_spots_row" style="display:' . $number_of_initial_spots_row_display . ';">
                                                                             <label class="form-label" for="number_of_initial_spots">' . lang('Number Of Initial Spots') . '</label>
-                                                                            ' . $liveform->output_field(array('type'=>'text', 'id'=>'number_of_initial_spots', 'name'=>'number_of_initial_spots', 'size'=>'3', 'maxlength'=>'9', 'class' => 'form-control text-end', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'integer')) . '
+                                                                            ' . $liveform->output_field(array('type'=>'text', 'id'=>'number_of_initial_spots', 'name'=>'number_of_initial_spots', 'size'=>'3', 'maxlength'=>'9', 'class' => 'form-control text-end', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'integer', 'data-inputmask-allowminus'=>'false')) . '
                                                                         </div> ' . $output_number_of_remaining_spots_row . '
                                                                         <div class="col-12 my-3">
                                                                             <label class="form-label" for="no_remaining_spots_message">' . lang('No Longer Available Message') . '</label>

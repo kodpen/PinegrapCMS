@@ -7218,8 +7218,8 @@ function init_edit_comment_publish() {
 function toggle_calendar_event_all_day() {
     // If all day is checked, then prepare start and end date fields to just contain dates.
     if (document.getElementById('all_day').checked == true) {
-        document.getElementById('start_time_label').style.display = 'none';
-        document.getElementById('end_time_label').style.display = 'none';
+        document.getElementById('start_time_suffix').style.display = 'none';
+        document.getElementById('end_time_suffix').style.display = 'none';
         document.getElementById('show_start_time_container').style.display = 'none';
         document.getElementById('show_end_time_container').style.display = 'none';
 
@@ -7241,8 +7241,8 @@ function toggle_calendar_event_all_day() {
 
         // Otherwise all day is not checked, so prepare start and end date fields to contain both dates and times.
     } else {
-        document.getElementById('start_time_label').style.display = '';
-        document.getElementById('end_time_label').style.display = '';
+        document.getElementById('start_time_suffix').style.display = '';
+        document.getElementById('end_time_suffix').style.display = '';
         document.getElementById('show_start_time_container').style.display = '';
         document.getElementById('show_end_time_container').style.display = '';
 
@@ -7344,7 +7344,7 @@ function create_shipping_cutoff(properties) {
 
     // prepare content for shipping method id cell
     var shipping_method_id_cell_html =
-        '<select id="shipping_cutoff_' + shipping_cutoff_number + '_shipping_method_id" name="shipping_cutoff_' + shipping_cutoff_number + '_shipping_method_id" class="form-control">\n\
+        '<select id="shipping_cutoff_' + shipping_cutoff_number + '_shipping_method_id" name="shipping_cutoff_' + shipping_cutoff_number + '_shipping_method_id" class="form-control" aria-label="' + prepare_content_for_html(lang('Shipping Method')) + '">\n\
             <option value=""></option>';
 
     // loop through all shipping method id options in order to prepare options for pick list
@@ -7367,11 +7367,11 @@ function create_shipping_cutoff(properties) {
 
     // prepare content for date and time cell
     var td_2 = document.createElement('td');
-    td_2.innerHTML = '<input id="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" name="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" class="form-control" type="text" value="' + prepare_content_for_html(String(properties['date_and_time'] || '')) + '" size="20" maxlength="22" data-pg-datetime />';
+    td_2.innerHTML = '<input id="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" name="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" class="form-control" type="text" aria-label="' + prepare_content_for_html(lang('Cut-off Date & Time')) + '" value="' + prepare_content_for_html(String(properties['date_and_time'] || '')) + '" size="20" maxlength="22" data-pg-datetime />';
 
     // prepare content for delete cell
     var td_3 = document.createElement('td');
-    td_3.innerHTML = '<button type="button" class="btn btn-solid theme-danger material-icons" onclick="delete_shipping_cutoff(this.parentNode.parentNode)" >delete</button>';
+    td_3.innerHTML = '<button type="button" class="btn btn-solid theme-danger" onclick="delete_shipping_cutoff(this.parentNode.parentNode)" aria-label="' + prepare_content_for_html(lang('Delete')) + '" title="' + prepare_content_for_html(lang('Delete')) + '"><span class="material-icons" aria-hidden="true">delete</span></button>';
 
     tr.appendChild(td_1);
     tr.appendChild(td_2);

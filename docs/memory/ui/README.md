@@ -66,6 +66,8 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - browser-prepared-submit.md: A form that prepares data in the browser before posting it (Image Editor, Edit File's SVG to raster conversion) sends once, through requestSubmit(), and only when the data is ready.
 - button-busy-state.md: Buttons never change their label or lock for a fixed time while a request runs; the window-level guard against double submits and double clicks (3 s); how an Ajax button disables itself.
 - calendar-event-edit-screen.md: Edit calendar event screen (edit_calendar_event.php): which recurring instance it edits (recurrence_number) and how a missing or array value is read
+- calendar-event-exception-endpoint.md: update_calendar_event_exception.php (Remove / Unremove a repeating event's instance): parameter check, instance range, no second row
+- calendar-event-form-checks.md: Calendar event form: whole-number fields and their server check, the location check's time window, the all day label suffix ids, the reservations switch re-running the repeat toggle
 - calendar-event-location-shared-form.md: The calendar event location create and edit screens share includes/forms/calendar_event_location_form.php: what it holds, what stays in the screens
 - calendar-event-shared-form.md: add_calendar_event.php and edit_calendar_event.php draw and check the event form through includes/forms/calendar_event_form.php; what differs between the two calls
 - calendar-location-availability.md: How check_calendar_event_location_availability() finds a room already booked, including recurring, overnight and multi-day events
@@ -80,6 +82,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - client-list-turkish-search.md: Turkish search of DataTables lists searched in the browser (orders, pages, styles, menus): which lists, the rule, why a matcher, how the list state keeps the typed text
 - code-editor-escape-in-dialogs.md: Escape inside a code editor that sits in a dialog: an Escape the editor used (completion list, search panel, full window) stops at the editor; only a free one closes the dialog
 - code-field-keyboard-exit.md: Leaving a code field from the keyboard: Tab indents, Ctrl+M (Mac Shift+Alt+M) switches Tab to moving focus, the hint line under an editable field and its aria-describedby
+- combobox-native-size.md: Why the posted select behind a pg_fields.js combobox is pinned to 1px with !important, and the inline width:100% it overrides (#5558)
 - command-palette-chips.md: Which Ctrl+K search chips a viewer gets: the same role, right and module rule as the main-menu entry that opens the same screen
 - command-palette-ranking.md: Panel search box (Ctrl+K) results: the relevance score, Turkish I folding, a fixed per-type cap read best first and the full tie-break that keep Load More pages disjoint
 - command-palette.md: Panel search box (Ctrl+K): where the chips come from, how text is matched, why every key must be a string (the "503" crash), chips that open a dialog
@@ -400,6 +403,8 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - step-rail.md: Numbered steps on panel screens: Bootstrap 6 .stepper (edit_offer cards, installer, ERP import), why every edit_offer item is .active, theme-reset on the cards
 - stored-choice-kept.md: Selects that drop the stored choice add it back selected and marked (product private folder, Workspace template, select_page(), calendar Next Page, disabled offers)
 - stored-times-site-order.md: Subscriptions, Firewall log rows, short link state lines and the Paraşüt connection line print stored times through get_absolute_time(), not date()
+- submitted-form-add-delete.md: Add Submitted Form reads the pressed button from the request, its e-mail box, Delete Selected skipping missing forms, and the field filter labels of the Forms screen
+- submitted-form-import-export.md: How Import Submitted Forms reads an exported file (fixed record columns, status, one column per field), converts date cells and checks the chosen custom form
 - submitted-form-shared-form.md: The submitted form create and edit screens share includes/forms/submitted_form_form.php
 - suggestion-lists.md: Search-as-you-type lists the screens build themselves (ERP account contact, product bundle, Create Order, ERP lines): keyboard, focus after a pick, how an empty or failed answer is said
 - system-status-gauge-layers.md: System Status gauge (widget 2) as five stacked SVGs: paint order, which layer animates, will-change, the off-screen pause and its redraw guard, reduced motion

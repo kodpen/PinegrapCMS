@@ -18,6 +18,7 @@
 
 include('init.php');
 require_once(dirname(__FILE__) . '/includes/forms/email_campaign_form.php');
+require_once(dirname(__FILE__) . '/includes/fn/email_campaign_send.php');
 $user = validate_user();
 validate_email_access($user);
 
@@ -252,6 +253,19 @@ if (!$_POST) {
         if ($number_of_failed_email_recipients > 0) {
             $output_failed_email_recipients = '<p class="small fg-danger mb-0">' . lang(array('string' => '{var:1} could not be delivered', 'vars' => array(pg_format_number($number_of_failed_email_recipients, 0)))) . '</p>';
         }
+
+        // The stored reason of the deliveries still waiting or given up, so
+        // the sender learns what to fix (often the mail server settings).
+        $delivery_problem = pg_email_campaign_delivery_problem($_GET['id']);
+        $problem_line = pg_email_campaign_problem_line($delivery_problem['error'], $delivery_problem['count']);
+
+        if ($problem_line !== '') {
+            $output_failed_email_recipients .= '<p class="small fg-danger mb-0 text-break">' . h($problem_line) . '</p>';
+
+            if ($user['role'] <= 2) {
+                $output_failed_email_recipients .= '<p class="small mb-0"><a href="smtp_settings.php">' . lang('SMTP Settings') . '</a></p>';
+            }
+        }
     }
 
     $output_format = '';
@@ -408,10 +422,10 @@ if (!$_POST) {
     print
     pg_page_shell(
         array(
-            'title'=> lang('Edit Campaign'),
+            'title'=> $output_heading,
             'extra classes'=>'campaign',
             'icon'=>'campaign', 
-            'heading'=> lang('Edit Campaign'),
+            'heading'=> $output_heading,
             'heading_description' => $output_subheading,
             'cancel'=>array('enable'=>'true','url'=>'view_email_campaigns.php')
         ,
@@ -454,9 +468,9 @@ if (!$_POST) {
                         'from_email_address' => $from_email_address,
                         'reply_email_address' => $reply_email_address,
                     ), $readonly) . pg_email_campaign_schedule_card($start_time, $readonly) . pg_email_campaign_purpose_card($purpose, $readonly) . '
-                    ' . $output_buttons . '
-                    ' . $output_form_end . '
                 </div>
+                ' . $output_buttons . '
+                ' . $output_form_end . '
             </div>
         
 </main>' .
@@ -488,6 +502,36 @@ if (!$_POST) {
         output_error(lang('You may not edit a completed campaign.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
+    // The status is one the form offers ('complete' is set only by sending),
+    // and the subject and addresses are checked as on create. BCC is drawn
+    // only for an automatic campaign.
+    $new_status = pg_email_campaign_allowed_value('status', $_POST['status'] ?? null);
+    $new_purpose = pg_email_campaign_allowed_value('purpose', $_POST['purpose'] ?? null);
+
+    $checked_fields = array(
+        'subject' => $_POST['subject'] ?? '',
+        'from_email_address' => $_POST['from_email_address'] ?? '',
+        'reply_email_address' => $_POST['reply_email_address'] ?? '',
+    );
+
+    if ($type == 'automatic') {
+        $checked_fields['bcc_email_address'] = $_POST['bcc_email_address'] ?? '';
+    }
+
+    $field_errors = pg_email_campaign_field_errors($checked_fields);
+
+    if ($new_status === null) {
+        $field_errors['status'] = lang('Select a status.');
+    }
+
+    if ($new_purpose === null) {
+        $field_errors['purpose'] = lang('Select a purpose.');
+    }
+
+    if ($field_errors) {
+        output_error(pg_email_campaign_field_errors_html($field_errors));
+    }
+
     $sql_body = "";
 
     // if the format is plain text, then allow the body to be updated
@@ -499,7 +543,7 @@ if (!$_POST) {
 
     // If the campaign is an automatic campaign, then allow BCC email address to be updated.
     if ($type == 'automatic') {
-        $sql_bcc_email_address = "bcc_email_address = '" . escape($_POST['bcc_email_address'] ?? '') . "',";
+        $sql_bcc_email_address = "bcc_email_address = '" . escape(trim((string) ($_POST['bcc_email_address'] ?? ''))) . "',";
     }
     
     // The send time field is drawn only while the campaign job is on; without
@@ -513,15 +557,15 @@ if (!$_POST) {
     $query =
         "UPDATE email_campaigns
         SET
-            status = '" . escape($_POST['status'] ?? '') . "',
-            subject = '" . escape($_POST['subject'] ?? '') . "',
+            status = '" . escape($new_status) . "',
+            subject = '" . escape(trim((string) $_POST['subject'])) . "',
             " . $sql_body . "
             from_name = '" . escape($_POST['from_name'] ?? '') . "',
-            from_email_address = '" . escape($_POST['from_email_address'] ?? '') . "',
-            reply_email_address = '" . escape($_POST['reply_email_address'] ?? '') . "',
+            from_email_address = '" . escape(trim((string) $_POST['from_email_address'])) . "',
+            reply_email_address = '" . escape(trim((string) ($_POST['reply_email_address'] ?? ''))) . "',
             " . $sql_bcc_email_address . "
             " . $sql_start_time . "
-            purpose = '" . e($_POST['purpose'] ?? '') . "',
+            purpose = '" . e($new_purpose) . "',
             last_modified_user_id = '" . $user['id'] . "',
             last_modified_timestamp = UNIX_TIMESTAMP()
         WHERE id = '" . escape($_POST['id'] ?? '') . "'";

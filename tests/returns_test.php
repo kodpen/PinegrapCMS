@@ -614,6 +614,39 @@ function test_returns_approval_defaults()
 	pg_assert_same(array('carrier' => 'Kendi Kargomuz', 'carrier_code' => 'KK-1'), pg_return_approval_defaults('', '', $typed), 'a carrier typed by hand');
 }
 
+// A code that came from a return label is that one parcel's barcode: it is
+// never offered to another request, while the carrier it went with still is.
+function test_returns_approval_defaults_skip_label_codes()
+{
+	$previous = array(
+		array('carrier' => 'yurtici', 'carrier_code' => 'BARCODE-1', 'labelled' => '1'),
+		array('carrier' => 'yurtici', 'carrier_code' => 'YK-123', 'labelled' => '0'),
+		array('carrier' => 'aras', 'carrier_code' => 'AR-LABEL', 'labelled' => 1),
+	);
+
+	pg_assert_same(array('carrier' => 'yurtici', 'carrier_code' => 'YK-123'), pg_return_approval_defaults('yurtici', '', $previous), 'the contracted code, not the label\'s');
+	pg_assert_same(array('carrier' => 'yurtici', 'carrier_code' => 'YK-123'), pg_return_approval_defaults('', '', $previous), 'the labelled row still names the carrier');
+	pg_assert_same(array('carrier' => 'aras', 'carrier_code' => ''), pg_return_approval_defaults('aras', '', $previous), 'only a label code for that carrier');
+}
+
+// Each carrier's contracted code, for the form to switch to when staff
+// change the carrier.
+function test_returns_approval_codes()
+{
+	$previous = array(
+		array('carrier' => 'aras', 'carrier_code' => 'AR-77'),
+		array('carrier' => 'yurtici', 'carrier_code' => 'BARCODE-1', 'labelled' => '1'),
+		array('carrier' => 'yurtici', 'carrier_code' => 'YK-123'),
+		array('carrier' => 'aras', 'carrier_code' => 'AR-OLD'),
+		array('carrier' => 'mng', 'carrier_code' => ''),
+		array('carrier' => 'Kendi Kargomuz', 'carrier_code' => 'KK-1'),
+	);
+
+	pg_assert_same(array('aras' => 'AR-77', 'yurtici' => 'YK-123', 'Kendi Kargomuz' => 'KK-1'), pg_return_approval_codes($previous));
+	pg_assert_same(array(), pg_return_approval_codes(array()));
+	pg_assert_same(array(), pg_return_approval_codes(null));
+}
+
 // From its screen staff may make every move but the refund.
 function test_returns_staff_actions()
 {

@@ -252,6 +252,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - shipment-tracking.md: Carrier status polling (2026.11.0, PR #3157): shipment_tracking_job hourly in the light lane, which parcels are open, track() answers written back through the shipment write path, budgets, places
 - shipment-write-path.md: The single shipment write path (includes/fn/shipping.php): pg_shipment_record() upsert, pg_shipment_prune(), pg_shipment_delivered() once per address, the format warning, who calls it
 - shipping-bulk-import.md: Bulk "mark shipped" on the order list and the tracking-number CSV upload (import_shipments.php): what each writes through update_order(), what is refused and why
+- shipping-panel-terms.md: The Turkish words the shipping screens use for fees, handling and transit days, cut-offs and adjustment direction, and which shared keys carry them (#5556, #5557, #5567)
 - shipping-today.md: How shipping works today (checked 2026-10-20): tracking tables and write paths, the four meanings of "shipped", estimated dates, known gaps and reusable Turkish validation helpers
 - short-link-binned-destination.md: A short link whose page or file is in the Recycle Bin: the list shows the original name marked, the CSV writes it, a 301/302 sends nobody to the parked pgbin_ address
 - short-link-recycle-bin.md: How short links treat a product, product group, page or file in the Recycle Bin (lists, save checks on every entry point), where a deleted short link goes, and posted lists on the short link screens.

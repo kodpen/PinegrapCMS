@@ -150,3 +150,38 @@ function pg_shipping_method_delete($shipping_method_id, $name = '')
 
     return true;
 }
+
+/**
+ * The word under a shipping method's name on the list when checkout does
+ * not offer it: Disabled when switched off, Inactive when on but outside its
+ * start and end time, '' when offered. The name's red colour alone told a
+ * colour-blind user or a screen reader nothing.
+ *
+ * @param array  $method 'status', 'start_time', 'end_time'
+ * @param string $now    'Y-m-d H:i:s' on the clock the times are stored in
+ * @return string  The untranslated word, or ''
+ */
+function pg_shipping_method_list_state($method, $now)
+{
+    if (($method['status'] ?? '') != 'enabled') {
+        return 'Disabled';
+    }
+
+    if ((string) ($method['start_time'] ?? '') > $now || (string) ($method['end_time'] ?? '') < $now) {
+        return 'Inactive';
+    }
+
+    return '';
+}
+
+/**
+ * Whether the list shows the Service and Real-Time Rate columns: only
+ * while a method names a carrier service; otherwise both are empty on every
+ * row and squeeze the name and message.
+ *
+ * @return bool
+ */
+function pg_shipping_method_list_has_service()
+{
+    return (int) db_value("SELECT COUNT(*) FROM shipping_methods WHERE service != ''") > 0;
+}

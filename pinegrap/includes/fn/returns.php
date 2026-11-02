@@ -2543,12 +2543,12 @@ function pg_return_refund_due($return)
  * The carrier is the one the delivery came with (its parcel row, or the one
  * recognised from the shipping method), else the site's default carrier,
  * else the one of the latest earlier approval. The code is the one given with
- * the latest earlier approval for that carrier: a shop's contracted return
- * code stays the same from one return to the next.
+ * the latest earlier approval for that carrier (pg_return_approval_codes()):
+ * a shop's contracted return code stays the same from one return to the next.
  *
  * @param string $delivery_carrier the delivery's carrier key, or ''
  * @param string $site_default     pg_shipping_default_carrier()
- * @param array  $previous         earlier approvals, newest first: carrier, carrier_code
+ * @param array  $previous         earlier approvals, newest first: carrier, carrier_code, labelled
  * @return array carrier, carrier_code
  */
 function pg_return_approval_defaults($delivery_carrier, $site_default, $previous)
@@ -2567,10 +2567,8 @@ function pg_return_approval_defaults($delivery_carrier, $site_default, $previous
     $code = '';
 
     if ($carrier !== '') {
-        foreach ($previous as $row) {
-            $given = pg_return_text(isset($row['carrier_code']) ? $row['carrier_code'] : '', 64);
-
-            if (($given !== '') && (strcasecmp(pg_return_carrier(isset($row['carrier']) ? $row['carrier'] : ''), $carrier) === 0)) {
+        foreach (pg_return_approval_codes($previous) as $key => $given) {
+            if (strcasecmp((string) $key, $carrier) === 0) {
                 $code = $given;
                 break;
             }
@@ -2578,6 +2576,44 @@ function pg_return_approval_defaults($delivery_carrier, $site_default, $previous
     }
 
     return array('carrier' => $carrier, 'carrier_code' => $code);
+}
+
+/**
+ * Each carrier's contracted return code: the code given with its latest
+ * earlier approval. A request that got a return label carries that label's
+ * barcode or tracking number (pg_return_create_label()), which belongs to
+ * that one parcel and is never handed to another customer, so such a row
+ * gives no code. Pure.
+ *
+ * @param array $previous earlier approvals, newest first: carrier, carrier_code, labelled
+ * @return array carrier => code, newest carrier first
+ */
+function pg_return_approval_codes($previous)
+{
+    $codes = array();
+
+    foreach (is_array($previous) ? $previous : array() as $row) {
+        if (!is_array($row) || !empty($row['labelled'])) {
+            continue;
+        }
+
+        $carrier = pg_return_carrier(isset($row['carrier']) ? $row['carrier'] : '');
+        $given = pg_return_text(isset($row['carrier_code']) ? $row['carrier_code'] : '', 64);
+
+        if (($carrier === '') || ($given === '')) {
+            continue;
+        }
+
+        foreach (array_keys($codes) as $key) {
+            if (strcasecmp((string) $key, $carrier) === 0) {
+                continue 2;
+            }
+        }
+
+        $codes[$carrier] = $given;
+    }
+
+    return $codes;
 }
 
 /**
@@ -2604,21 +2640,41 @@ function pg_return_suggested_approval($return, $state = null)
         }
     }
 
-    $previous = db_items(
-        "SELECT carrier, carrier_code
+    return pg_return_approval_defaults(
+        $delivery_carrier,
+        function_exists('pg_shipping_default_carrier') ? pg_shipping_default_carrier() : '',
+        pg_return_previous_approvals($return['id']));
+}
+
+/**
+ * The shop's latest approvals before a return, newest first, for
+ * pg_return_approval_defaults() and pg_return_approval_codes(): labelled is
+ * 1 when the request has a return label of its own, whose code is that
+ * parcel's barcode.
+ *
+ * @param int $return_id the return to leave out
+ * @return array carrier, carrier_code, labelled
+ */
+function pg_return_previous_approvals($return_id)
+{
+    $labelled = "'0'";
+
+    if (function_exists('pg_shipment_labels_ready') && pg_shipment_labels_ready() && pg_shipment_labels_link_returns()) {
+        $labelled = "(EXISTS (SELECT 1 FROM shipment_labels WHERE shipment_labels.order_return_id = order_returns.id))";
+    }
+
+    $rows = db_items(
+        "SELECT carrier, carrier_code, " . $labelled . " AS labelled
         FROM order_returns
         WHERE
-            (id != '" . (int) $return['id'] . "')
+            (id != '" . (int) $return_id . "')
             AND (decided_at > 0)
             AND (status != 'rejected')
             AND (carrier != '')
         ORDER BY decided_at DESC, id DESC
         LIMIT 20");
 
-    return pg_return_approval_defaults(
-        $delivery_carrier,
-        function_exists('pg_shipping_default_carrier') ? pg_shipping_default_carrier() : '',
-        $previous);
+    return is_array($rows) ? $rows : array();
 }
 
 /**

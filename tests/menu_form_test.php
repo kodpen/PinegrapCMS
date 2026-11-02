@@ -23,7 +23,7 @@ function test_menu_form_screens_use_shared_form()
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 
 		pg_assert_contains('includes/forms/menu_form.php', $source, $file . ' loads the form');
-		pg_assert_contains('pg_menu_form_card($liveform)', $source, $file . ' prints the shared card');
+		pg_assert_contains('pg_menu_form_card($liveform', $source, $file . ' prints the shared card');
 		pg_assert_contains('pg_menu_form_validate_name($liveform, ', $source, $file . ' checks the name the shared way');
 		pg_assert_contains('pg_menu_form_values($liveform)', $source, $file . ' saves the shared values');
 		pg_assert_contains('validate_token_field()', $source, $file . ' checks the token');
@@ -33,4 +33,11 @@ function test_menu_form_screens_use_shared_form()
 	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/menu_form.php');
 	pg_assert_contains("PG_FUNCTIONS_DIR", $form, 'the form has the gate');
 	pg_assert_contains('SELECT id FROM menus WHERE (name = ?)', $form, 'the uniqueness check binds the name');
+}
+
+function test_menu_form_name_pattern()
+{
+	pg_assert_same('[A-Za-z0-9\\-]+', pg_menu_form_name_pattern(null), 'a new name takes letters, numbers and dashes');
+	pg_assert_same('[A-Za-z0-9\\-]+', pg_menu_form_name_pattern('main-menu'), 'a stored name without an underscore');
+	pg_assert_same('[A-Za-z0-9_\\-]+', pg_menu_form_name_pattern('main_menu'), 'a stored name with an underscore keeps it');
 }

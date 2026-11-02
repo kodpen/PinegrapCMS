@@ -67,9 +67,25 @@ function test_menu_item_form_screens_use_shared_form()
 		pg_assert_contains('includes/forms/menu_item_form.php', $source, $file . ' loads the form');
 		pg_assert_contains('pg_menu_item_form_card(', $source, $file . ' prints the shared card');
 		pg_assert_contains('pg_menu_item_form_link(', $source, $file . ' takes the link the shared way');
-		pg_assert_contains('pg_menu_item_form_last_sort_order(', $source, $file . ' puts a moved or new item last');
+		pg_assert_contains($file === 'add_menu_item.php' ? 'pg_menu_item_form_last_sort_order(' : 'pg_menu_item_form_level_order(', $source, $file . ' puts a moved or new item last');
 		pg_assert_contains('pg_menu_item_form_touch_menu(', $source, $file . ' stamps the menu');
 		pg_assert_contains('validate_token_field()', $source, $file . ' checks the token');
 		pg_assert_contains('pg_menu_item_url_problem(', $source, $file . ' checks the URL');
 	}
+}
+
+function test_menu_item_form_level_order_position()
+{
+	pg_assert_same(array(5, 1, 2), pg_menu_item_form_level_order(array(1, 2), 5, 'top', false), 'top goes first');
+	pg_assert_same(array(1, 5, 2), pg_menu_item_form_level_order(array(1, 2), 5, '1', false), 'below a sibling');
+	pg_assert_same(array(1, 2, 5), pg_menu_item_form_level_order(array(1, 2), 5, '2', false), 'below the last sibling');
+	pg_assert_same(array(5), pg_menu_item_form_level_order(array(), 5, 'top', false), 'alone on its level');
+}
+
+function test_menu_item_form_level_order_new_parent_goes_last()
+{
+	pg_assert_same(array(1, 2, 5), pg_menu_item_form_level_order(array(1, 2), 5, 'top', true), 'top of the old level is ignored');
+	pg_assert_same(array(1, 2, 5), pg_menu_item_form_level_order(array(1, 2), 5, '1', true), 'a sibling of the old level is ignored');
+	pg_assert_same(array(1, 2, 5), pg_menu_item_form_level_order(array(1, 2), 5, '9', false), 'an unknown position goes last');
+	pg_assert_same(array(1, 2, 5), pg_menu_item_form_level_order(array(1, 2), 5, '', false), 'no position goes last');
 }
