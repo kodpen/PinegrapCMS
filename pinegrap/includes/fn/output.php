@@ -1748,6 +1748,20 @@ function pg_output_email_off_close()
     return '<!--/email_off-->';
 }
 
+// The screen's name in front of the <title>, ending in " - "; '' for none.
+// Escaped: a title can carry text from outside, such as the name an OAuth
+// client registered for itself on the consent screen, and a "</title>" in
+// it would end the element and open markup. Entities already written in a
+// translated title (&amp;) are kept as they are.
+function pg_output_page_title($title)
+{
+    if (!is_string($title) || ($title === '')) {
+        return '';
+    }
+
+    return htmlspecialchars($title, ENT_QUOTES, 'UTF-8', false) . ' - ';
+}
+
 function output_header_secure($properties = false)
 {
     // Messages printed from here on are panel markup (liveform::panel_output()).
@@ -1755,10 +1769,7 @@ function output_header_secure($properties = false)
         define('PG_PANEL_OUTPUT', true);
     }
 
-    $software_page_title = '';
-    if (isset($properties['title'])) {
-        $software_page_title = $properties['title'] . ' - ';
-    }
+    $software_page_title = pg_output_page_title(is_array($properties) && isset($properties['title']) ? $properties['title'] : '');
 
     $software_title = '';
     if (!defined('PRIVATE_LABEL') or !PRIVATE_LABEL) {
@@ -1862,10 +1873,7 @@ function output_header($properties = false)
         $output_body_class = $properties['extra classes'];
     }
 
-    $software_page_title = '';
-    if (isset($properties['title'])) {
-        $software_page_title = $properties['title'] . ' - ';
-    }
+    $software_page_title = pg_output_page_title(is_array($properties) && isset($properties['title']) ? $properties['title'] : '');
 
     if (defined('ADVANCED_VISUAL_EFFECTS') && ADVANCED_VISUAL_EFFECTS == 1) {
         $output_body_class .= ' advanced-visuals';
