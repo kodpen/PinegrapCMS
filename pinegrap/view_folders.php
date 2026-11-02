@@ -225,6 +225,7 @@ if ($initial_mode == 'short_links') {
 // Strings the client-side renderer needs. Keys stay English (tr.json rule).
 $explorer_lang = array(
     'loading' => lang('Loading'),
+    'more' => lang('More'),
     'request_failed' => lang('The request failed. Please try again.'),
     'session_expired' => lang('Your session has expired. Please sign in again.'),
     // Shown in the content area when a folder listing cannot be fetched --
@@ -1487,7 +1488,28 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 @media (max-width: 1023.98px) {
     #explorer_main > #explorer_tree_pane, #explorer_preview_pane { display: none !important; }
     #explorer_app { height: calc(100vh - 120px); }
+
+    /* Below the width that has room for the preview panel, "Details" (item
+       menu, Quick look) opens the same panel as a sheet over the right-hand
+       side, so size, access, folder, SEO and "Where is it used?" can be read
+       on a tablet or phone too. */
+    #explorer_app.details-sheet-open #explorer_preview_pane { display: block !important; position: fixed; top: 0; right: 0; bottom: 0; width: min(100%, 420px); min-width: 0; z-index: 1085; padding-top: 3.25rem; background: var(--pg-bg-body); box-shadow: 0 0 2rem color-mix(in srgb, var(--pg-fg-body) 25%, transparent); }
+    #explorer_app.details-sheet-open #explorer_details_backdrop { display: block; position: fixed; inset: 0; z-index: 1084; background: color-mix(in srgb, var(--pg-fg-body) 30%, transparent); }
+    #explorer_app.details-sheet-open #explorer_details_close { display: inline-flex; position: fixed; top: .6rem; right: .6rem; z-index: 1086; }
 }
+#explorer_details_close, #explorer_details_backdrop { display: none; }
+
+/* A touch screen has no Space bar or arrow keys to be told about. */
+@media (hover: none) and (pointer: coarse) {
+    #explorer_quicklook .ql-hint { display: none; }
+}
+
+/* The Files view adds the scope menu to the bar; the search box and the
+   breadcrumb give up the room for it instead of pushing the view switches,
+   the bin and the more menu onto a second row. */
+#explorer_toolbar:has(#file_scope_wrap:not(.d-none)) #explorer_search_wrap { width: auto; flex: 0 1 200px; min-width: 7rem; }
+#explorer_toolbar:has(#file_scope_wrap:not(.d-none)) #explorer_breadcrumb { min-width: 7rem; }
+#file_scope_label { display: inline-block; max-width: 9rem; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
 }</style>
 
 <div id="explorer_app" class="my-3" data-area="<?php echo $explorer_area; ?>">
@@ -1718,6 +1740,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             <div id="explorer_upload_overlay"><div class="text-center fw-bold fg-primary"><span class="bi bi-cloud-arrow-up fs-4xl d-block"></span><?php echo lang('Drop files here to upload them into this folder'); ?></div></div>
         </div>
         <div id="explorer_preview_pane" class="d-none lg:d-block"></div>
+        <div id="explorer_details_backdrop" aria-hidden="true"></div>
+        <button type="button" class="btn btn-sm btn-solid theme-secondary rounded-pill no-popover" id="explorer_details_close" aria-label="<?php echo h(lang('Close')); ?>" title="<?php echo h(lang('Close')); ?>"><i class="bi bi-x-lg"></i></button>
     </div>
     <div id="explorer_statusbar"></div>
 </div>
@@ -2155,6 +2179,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         <span class="ql-name" id="quicklook_name"></span>
         <span class="ql-meta" id="quicklook_meta"></span>
         <span class="ms-auto d-flex align-items-center gap-1" id="quicklook_tools"></span>
+        <button type="button" class="btn btn-sm btn-text theme-secondary no-popover lg:d-none" id="quicklook_details" aria-label="<?php echo h(lang('Details')); ?>" title="<?php echo h(lang('Details')); ?>"><i class="bi bi-info-circle"></i></button>
         <button type="button" class="btn btn-sm btn-text theme-secondary no-popover" id="quicklook_close" aria-label="<?php echo h(lang('Close')); ?>" title="<?php echo lang('Close'); ?>"><i class="bi bi-x-lg"></i></button>
     </div>
     <div class="ql-stage" id="quicklook_stage">
@@ -4343,7 +4368,86 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // every draw ends scrolled to the last crumb.
     function renderBreadcrumb() {
         drawBreadcrumb();
+        fitBreadcrumb();
         showBreadcrumbEnd();
+    }
+
+    // When the crumbs do not fit, the leading ones go under a "..." menu one
+    // by one, from the left, until the rest fits; the open folder always
+    // stays. Scrolled alone, the bar showed a crumb cut in the middle of a
+    // word ("erim / ...") behind its fade. The hidden crumbs stay in the
+    // markup and the menu entries click them, so each keeps its own action
+    // (folder, catalog group, backup path, ERP folder).
+    var breadcrumbFitWidth = -1;
+
+    function refitBreadcrumb() {
+        if (document.getElementById('explorer_breadcrumb').clientWidth !== breadcrumbFitWidth) {
+            fitBreadcrumb();
+        }
+        showBreadcrumbEnd();
+    }
+
+    function fitBreadcrumb() {
+        var bar = document.getElementById('explorer_breadcrumb');
+        var list = bar.querySelector('.breadcrumb');
+
+        breadcrumbFitWidth = bar.clientWidth;
+
+        if (!list) { return; }
+
+        list.querySelectorAll('.crumb-overflow-entry').forEach(function (entry) { entry.remove(); });
+        list.querySelectorAll('.crumb-overflow').forEach(function (entry) { entry.remove(); });
+        list.querySelectorAll('.breadcrumb-item.crumb-folded').forEach(function (crumb) { crumb.classList.remove('crumb-folded', 'd-none'); });
+
+        if (list.scrollWidth <= list.clientWidth + 1) { return; }
+
+        var crumbs = Array.prototype.slice.call(list.children);
+        var last = crumbs[crumbs.length - 1];
+        var existing = list.querySelector('.breadcrumb-item.pg-menu-wrap');
+        var foldable = crumbs.filter(function (crumb) {
+            return (crumb !== last) && (crumb !== existing) && crumb.classList.contains('breadcrumb-item');
+        });
+
+        if (!foldable.length) { return; }
+
+        // The deep-path "..." menu, when there is one, takes the folded
+        // crumbs too, so the bar never shows two of them.
+        var holder = existing;
+
+        if (!holder) {
+            holder = document.createElement('li');
+            holder.className = 'breadcrumb-item pg-menu-wrap crumb-overflow';
+            holder.innerHTML = '<a href="#" draggable="false" class="pg-link-secondary" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false" role="button" aria-label="' + esc(L.more) + '">&hellip;</a><ul class="menu shadow" style="border-radius:.75rem;"></ul>';
+            list.insertBefore(holder, foldable[0]);
+        }
+
+        var menu = holder.querySelector('ul');
+        var before = menu.firstChild;
+
+        foldable.some(function (crumb) {
+            if (list.scrollWidth <= list.clientWidth + 1) { return true; }
+
+            var target = crumb.querySelector('a, button');
+            var entry = document.createElement('li');
+            var label = (crumb.textContent || '').trim();
+
+            entry.className = 'crumb-overflow-entry';
+            entry.innerHTML = '<a href="#" draggable="false" class="menu-item"><span class="bi bi-folder me-3"></span>' + esc(label) + '</a>';
+            entry.firstChild.addEventListener('click', function (event) {
+                event.preventDefault();
+                if (target) { target.click(); }
+            });
+
+            // Crumbs left of the existing menu come before its entries, the
+            // ones right of it after, so the menu keeps the path's order.
+            var leftOfMenu = !!(existing && (crumb.compareDocumentPosition(existing) & Node.DOCUMENT_POSITION_FOLLOWING));
+
+            if (leftOfMenu) { menu.insertBefore(entry, before); } else { menu.appendChild(entry); }
+
+            crumb.classList.add('crumb-folded', 'd-none');
+
+            return false;
+        });
     }
 
     // Scrolls the bar to its end and fades its left edge while crumbs are
@@ -6934,6 +7038,40 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
     }
 
+    // ── Details sheet (narrow screens) ──────────────────────────────────
+    //
+    // Below 1024 px the preview panel has no room beside the grid. The same
+    // panel, filled by renderPreview(), then opens over the right-hand side
+    // on request and closes with its button, the backdrop or Escape.
+    var detailsSheetReturnFocus = null;
+
+    function detailsSheetWidth() {
+        return !!(window.matchMedia && window.matchMedia('(max-width: 1023.98px)').matches);
+    }
+
+    function detailsSheetIsOpen() {
+        return document.getElementById('explorer_app').classList.contains('details-sheet-open');
+    }
+
+    function openDetailsSheet(item) {
+        if (!item) { return; }
+
+        if (quickLookIsOpen()) { closeQuickLook(); }
+
+        detailsSheetReturnFocus = document.activeElement;
+        setSelection([item], item);
+        document.getElementById('explorer_app').classList.add('details-sheet-open');
+        document.getElementById('explorer_details_close').focus({ preventScroll: true });
+    }
+
+    function closeDetailsSheet() {
+        if (!detailsSheetIsOpen()) { return; }
+
+        document.getElementById('explorer_app').classList.remove('details-sheet-open');
+        restoreFocus(detailsSheetReturnFocus);
+        detailsSheetReturnFocus = null;
+    }
+
     function quickLookIsOpen() {
         return !document.getElementById('explorer_quicklook').classList.contains('d-none');
     }
@@ -7974,6 +8112,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             html += menuItem('bi-box-arrow-up-right', item.kind === 'folder' ? L.open_folder : L.open_in_new_tab, 'open', multi);
             html += menuItem('bi-eye', L.quick_look + ' (Space)', 'quick_look', multi || !quickLookable(item));
 
+            // The preview panel is not on screen below its width; this opens
+            // it as a sheet.
+            if (detailsSheetWidth()) {
+                html += menuItem('bi-info-circle', L.details, 'details', multi);
+            }
+
             if (item.kind === 'file') {
                 html += menuItem('bi-pencil', L.edit, 'edit', multi || !item.can_edit);
                 if (state.mode === 'all') {
@@ -8354,6 +8498,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             case 'empty_bin': emptyRecycleBin(); break;
             case 'open': openItem(item); break;
             case 'quick_look': if (item) { openQuickLook(item); } break;
+            case 'details': if (item) { openDetailsSheet(item); } break;
             // Answered in the panel, which is opened first if it is not on
             // screen: the report is about the file that is being looked at.
             case 'pin_toggle': if (item) { togglePin(item.id, item.name); } break;
@@ -15370,10 +15515,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     // A wider or narrower bar keeps the open folder in view. Scroll does not
     // bubble and the list is redrawn, so the bar listens in the capture phase.
+    // A width change folds the crumbs again; folding itself leaves the width
+    // alone, so the observer does not call itself back.
     if (window.ResizeObserver) {
-        new ResizeObserver(showBreadcrumbEnd).observe(document.getElementById('explorer_breadcrumb'));
+        new ResizeObserver(refitBreadcrumb).observe(document.getElementById('explorer_breadcrumb'));
     } else {
-        window.addEventListener('resize', showBreadcrumbEnd);
+        window.addEventListener('resize', refitBreadcrumb);
     }
 
     document.getElementById('explorer_breadcrumb').addEventListener('scroll', function (event) {
@@ -15545,6 +15692,19 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     });
 
     document.getElementById('quicklook_close').addEventListener('click', closeQuickLook);
+    document.getElementById('quicklook_details').addEventListener('click', function () { if (quickLookItem) { openDetailsSheet(quickLookItem); } });
+    document.getElementById('explorer_details_close').addEventListener('click', closeDetailsSheet);
+    document.getElementById('explorer_details_backdrop').addEventListener('click', closeDetailsSheet);
+
+    // Escape closes the sheet before any of the screen's own Escape handling
+    // (clearing the selection) sees the key.
+    document.addEventListener('keydown', function (event) {
+        if ((event.key === 'Escape') && detailsSheetIsOpen()) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            closeDetailsSheet();
+        }
+    }, true);
 
     // Escape closes Quick Look in one press, taken on the window before the
     // tooltip of the focused Close button, whose own capture handler on the
