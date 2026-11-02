@@ -13,7 +13,8 @@ module: widgets
 - Rows of lists (`menu.children` …) were already unique: the finish pass suffixes them with the template and the copy (`pg_sw_lists_expand()`).
 
 ## Which renderers use it?
-- `menu_region`, `language_switcher`, `google_reviews`, `tag_cloud_region`, `ad_region` (ad rows: before the ad's markup goes in, so ids inside an ad stay as written). The account and cart widgets suffix their whole output per placement instead.
+- `menu_region`, `language_switcher`, `google_reviews`, `tag_cloud_region`, `folder_view`, `ad_region` (ad rows: before the ad's markup goes in, so ids inside an ad stay as written). The account and cart widgets suffix their whole output per placement instead.
 
 ## What did it fix?
-- Before, the loop rows of the second copy had the same ids as the first (`more_pgw5r1` twice): only the static part was made unique. Test: `tests/widget_repeat_placement_test.php`.
+- Before, the loop rows of the second copy had the same ids as the first (`more_pgw5r1` twice): only the static part was made unique.
+- `folder_view` made no id unique per placement, static part included, until #5060. Test: `tests/widget_repeat_placement_test.php`.
