@@ -950,9 +950,22 @@ function pg_upload_limit_sentence($app_max = 0, $file_max = null)
         return '';
     }
 
+    // A whole unit is written whole ('1 MB', as the screens' own refusals
+    // say it), never '1,024.0 KB'.
+    $units = array('B', 'KB', 'MB', 'GB');
+    $unit = 0;
+
+    while (($unit < 3) && ($max >= pow(1024, $unit + 1))) {
+        $unit++;
+    }
+
+    $size = (($max % pow(1024, $unit)) === 0)
+        ? pg_format_number(intdiv($max, pow(1024, $unit)), 0) . ' ' . $units[$unit]
+        : convert_bytes_to_string($max, 'auto');
+
     return lang(array(
         'string' => 'The file can be at most {var:1}.',
-        'vars'   => array(convert_bytes_to_string($max, 1))));
+        'vars'   => array($size)));
 }
 
 /**
