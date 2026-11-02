@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-19
-description: Decisions list, product part 19 (2026-11-02 on): the owner answers of the 2026-11 feature plans (booking, importers, forms, mail complaints, Fediverse, stock)
+description: Decisions list, product part 19 (2026-11-02 on): the owner answers of the 2026-11 feature plans (booking, importers, forms, mail complaints, Fediverse, stock, EU VAT)
 ---
 
 ## Where are the rules and the earlier parts?
@@ -24,3 +24,6 @@ description: Decisions list, product part 19 (2026-11-02 on): the owner answers 
 
 ## Stock locations: the order's location must hold the units (2026-11-02, #5042)
 - Owner: when the order's location (the shipping method's, the chosen pickup point, else the default) lacks the units, the checkout refuses as it does when the total is short; nothing is taken from another location. Reason: the promised stock is the stock at that place.
+
+## EU VAT: a VIES-validated id is tax-exempt on its own (2026-11-02, #5047)
+- Owner: an EU VAT id that VIES confirms sets the existing tax-exempt flag (reverse charge) without a confirmation box; the id and the check time are written on the order. Reason: no extra step for a B2B customer, and the accountant's proof is on the order.

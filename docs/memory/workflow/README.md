@@ -43,7 +43,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-16.md: Decisions list, product part 16 (2026-11-01 on): design templates finished (comments, events, testimonials); Turkish address fields (İl and İlçe); image editor animation and video
 - decisions-made-product-17.md: Decisions list, product part 17 (2026-11-01 midday on): WebP at a picture's own address; the new dashboard's four questions and its gauge; the Turkish district list and country place packs
 - decisions-made-product-18.md: Decisions list, product part 18 (2026-11-01 afternoon on): search and audits; editor presentation and silent video; redacted Workspace replace; a thank-you page behind the registration gate
-- decisions-made-product-19.md: Decisions list, product part 19 (2026-11-02 on): the owner answers of the 2026-11 feature plans (booking, importers, forms, mail complaints, Fediverse, stock)
+- decisions-made-product-19.md: Decisions list, product part 19 (2026-11-02 on): the owner answers of the 2026-11 feature plans (booking, importers, forms, mail complaints, Fediverse, stock, EU VAT)
 - decisions-made-product-2.md: Decisions list, product part 2 (2026-10-29 on): guest account and receipt of a webhook-completed order; PayTR instalments; layout editor of a page not on a visual design; carrier drivers
 - decisions-made-product-3.md: Decisions list, product part 3 (2026-10-29 on): SVG and ZPL labels, the first international label driver, get_catalog.php's dead top-item block, the PHP 5 remnants, converted common regions' rows
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch

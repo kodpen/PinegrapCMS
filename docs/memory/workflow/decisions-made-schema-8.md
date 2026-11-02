@@ -22,3 +22,4 @@ description: Decisions list, schema part 8 (2026-11-02 on): tables and columns o
 - Web vitals (#5040): rollups `page_vitals_hourly`, `ai_fetch_daily`, 400 days.
 - ActivityPub (#5041): `ap_followers`, `ap_outbox`, `ap_blocks`, `comments.remote_actor`, `remote_id`, settings and sealed keys in `config.ap_*`.
 - Stock locations (#5042): `stock_locations`, `product_stock`, `stock_moves`, `shipping_methods.stock_location_id`, `orders.stock_location_id`; no data move in the migration, the first location seeds the rows.
+- Small features (#5047): `site_search_daily` rollup, `config.search_synonyms` and `search_promoted` TEXT JSON; `comments.kind`, `answer_of`; `products.preorder`, `preorder_date`.
