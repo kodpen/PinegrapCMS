@@ -9,7 +9,9 @@
  * lists), every page link of the shared parts names a page of the finished
  * template, and the shared parts carry no class of another template; the
  * public pages (pages_public.php): their keys, one page per area, links to
- * known pages and consultation links that name answers of the form's lists.
+ * known pages and consultation links that name answers of the form's lists;
+ * the consultation and careers part (consultation.php): its pages, forms,
+ * widgets, e-mails and the placeholders they name.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -31,9 +33,12 @@ function _test_law_load()
 	include $dir . '/parts.php';
 	$cards = array();
 	foreach (array_keys($lawyers) as $key) $cards[] = $lawyer_card($key);
+	include $dir . '/mail.php';
 	$public = include $dir . '/pages_public.php';
+	$consultation = include $dir . '/consultation.php';
 	$out = array(
 		'public'         => $public,
+		'consultation'   => $consultation,
 		'areas'          => $practice_areas,
 		'lawyers'        => $lawyers,
 		'figures'        => $figures,
@@ -65,6 +70,7 @@ function _test_law_page_keys()
 		'home', 'practice', 'lawyers', 'results', 'fees', 'about', 'faq', 'careers',
 		'consultation', 'consultation_view', 'my_consultations', 'staff_consultations', 'privacy',
 		'application', 'application_view', 'staff_applications',
+		'email_consultation_new', 'email_consultation_received', 'email_application_new', 'email_application_received', 'email_reply',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
 		'change_password', 'email_preferences', 'address_book', 'staff_directory', 'staff_entry', 'forgot_password',
@@ -240,5 +246,123 @@ function test_law_public_search_sections()
 			$ids[] = $node['props']['id'];
 		}
 		pg_assert_same(count($ids), count(array_unique($ids)), $p['key'] . ': search section ids unique');
+	}
+}
+
+// The values of a form's control: its options' values, in order.
+function _test_law_options($node)
+{
+	$out = array();
+	foreach ($node['children'] as $o) {
+		foreach ($o['props']['_attrs'] as $a) {
+			if ($a['name'] === 'value' && $a['value'] !== '') $out[] = $a['value'];
+		}
+	}
+	return $out;
+}
+
+// The form controls of a tree by their name attribute.
+function _test_law_controls($tree)
+{
+	$nodes = array();
+	_test_law_nodes($tree, $nodes);
+	$out = array();
+	foreach ($nodes as $node) {
+		if (!in_array($node['props']['tag'] ?? '', array('input', 'select', 'textarea'), true)) continue;
+		foreach ($node['props']['_attrs'] ?? array() as $a) {
+			if ($a['name'] === 'name') $out[$a['value']][] = $node;
+		}
+	}
+	return $out;
+}
+
+function test_law_consultation_pages_and_widgets()
+{
+	$d = _test_law_load();
+	$c = $d['consultation'];
+	$keys = array();
+	foreach ($c['pages'] as $p) $keys[] = $p['key'];
+	pg_assert_same(array(
+		'consultation', 'consultation_view', 'my_consultations', 'staff_consultations', 'privacy', 'careers', 'application',
+		'application_view', 'staff_applications', 'email_consultation_new', 'email_consultation_received',
+		'email_application_new', 'email_application_received', 'email_reply',
+	), $keys, 'the consultation and careers pages in order');
+
+	$known = array_flip(_test_law_page_keys());
+	$pages = array();
+	foreach ($c['pages'] as $p) {
+		$pages[$p['key']] = $p;
+		pg_assert_true(isset($known[$p['key']]), $p['key'] . ': a page the template carries');
+		if (strpos($p['key'], 'email_') === 0 || strpos($p['key'], 'staff_') === 0) {
+			pg_assert_same('private', $p['folder'], $p['key'] . ': private');
+		}
+	}
+	pg_assert_same('registration', $pages['consultation_view']['folder'], 'a consultation needs an account');
+	pg_assert_true(!empty($pages['consultation_view']['comments']['attachments']), 'messages may carry a file');
+
+	// Every placed widget is defined, on the page it names, once; every
+	// defined widget is placed.
+	$placed = array();
+	foreach ($c['pages'] as $p) {
+		$nodes = array();
+		_test_law_nodes($p['tree'], $nodes);
+		foreach ($nodes as $node) {
+			if (isset($node['props']['templateWidget'])) $placed[$node['props']['templateWidget']][] = $p['key'];
+		}
+	}
+	foreach ($c['widgets'] as $key => $w) {
+		pg_assert_same(array($w['page']), $placed[$key] ?? array(), "widget $key placed once, on its page");
+	}
+
+	// Every {{tab:}} and {{page:}} of the part names a page; every
+	// {{folder:}} the private folder.
+	$json = json_encode($c);
+	preg_match_all('/\{\{(tab|page):([a-z0-9_]+)\}\}/', $json, $m);
+	foreach ($m[2] as $key) pg_assert_true(isset($known[$key]), "placeholder names a page: $key");
+	preg_match_all('/\{\{folder:([a-z0-9_]+)\}\}/', $json, $m);
+	pg_assert_same(array('private'), array_values(array_unique($m[1])), 'uploads go to the private folder');
+}
+
+// The consultation form's lists are the firm's own answers, start from the
+// links' query (?area=, ?lawyer=), and the status is the staff's.
+function test_law_consultation_form()
+{
+	$d = _test_law_load();
+	$w = $d['consultation']['widgets'];
+	$controls = _test_law_controls($w['consultation_form']['tree']);
+	foreach (array('practice_area', 'lawyer', 'client_type', 'company', 'other_party', 'summary', 'deadline', 'documents',
+	               'contact_method', 'preferred_time', 'first_name', 'last_name', 'email', 'phone', 'status', 'consent') as $name) {
+		pg_assert_true(isset($controls[$name]), "consultation form: $name");
+	}
+	pg_assert_same($d['area_titles'], _test_law_options($controls['practice_area'][0]), 'area answers');
+	pg_assert_same($d['lawyer_choices'], _test_law_options($controls['lawyer'][0]), 'lawyer answers');
+	pg_assert_same($d['time_windows'], _test_law_options($controls['preferred_time'][0]), 'time answers');
+	pg_assert_same('area', $controls['practice_area'][0]['props']['_cf']['url_param'], 'area from ?area=');
+	pg_assert_same('lawyer', $controls['lawyer'][0]['props']['_cf']['url_param'], 'lawyer from ?lawyer=');
+	pg_assert_true(!empty($controls['status'][0]['props']['_cf']['office_use_only']), 'status is office use only');
+	pg_assert_same('{{folder:private}}', $controls['documents'][0]['props']['_cf']['upload_folder_id'], 'documents kept private');
+
+	$app = _test_law_controls($w['application_form']['tree']);
+	foreach (array('position', 'first_name', 'last_name', 'email', 'phone', 'cv', 'cover_letter', 'status', 'consent') as $name) {
+		pg_assert_true(isset($app[$name]), "application form: $name");
+	}
+	pg_assert_true(!empty($app['status'][0]['props']['_cf']['office_use_only']), 'application status is office use only');
+	pg_assert_same('position', $app['position'][0]['props']['_cf']['url_param'], 'position from ?position=');
+
+	// The careers page's links name a position of the form's list.
+	$positions = _test_law_options($app['position'][0]);
+	foreach ($d['consultation']['pages'] as $p) {
+		if ($p['key'] !== 'careers') continue;
+		$nodes = array();
+		_test_law_nodes($p['tree'], $nodes);
+		$n = 0;
+		foreach ($nodes as $node) {
+			$href = $node['props']['href'] ?? '';
+			if (strpos($href, '{{page:application}}?') !== 0) continue;
+			parse_str(substr($href, strlen('{{page:application}}?')), $q);
+			pg_assert_true(in_array($q['position'], $positions, true), 'careers link names a position: ' . $q['position']);
+			$n++;
+		}
+		pg_assert_same(count($positions), $n, 'a link per position and the open application');
 	}
 }
