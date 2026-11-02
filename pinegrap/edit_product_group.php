@@ -719,7 +719,7 @@ if (!$_POST) {
         $address_name = pg_product_group_form_address_source($_POST);
         
         // prepare the address name for the database
-        $address_name = prepare_catalog_item_address_name($address_name, $_POST['id']);
+        $address_name = prepare_catalog_item_address_name($address_name, $_POST['id'], 'product_group');
         
         // get current product group information
         $query =

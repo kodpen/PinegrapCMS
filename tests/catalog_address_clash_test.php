@@ -26,3 +26,20 @@ function test_catalog_address_clash_skips_only_the_items_own_table()
 	// Callers that do not name the type keep skipping the id in both tables.
 	pg_assert_same(array('products' => '5', 'product_groups' => '5'), pg_catalog_address_excluded_ids(5, ''), 'no type: both tables');
 }
+
+// Every caller that saves an existing item names its kind, so no save falls
+// back to skipping the id in both tables.
+function test_catalog_address_clash_callers_name_their_item_type()
+{
+	$calls = array(
+		'edit_product_group.php' => "prepare_catalog_item_address_name(\$address_name, \$_POST['id'], 'product_group')",
+		'product_builder.php'    => "prepare_catalog_item_address_name(\$address_source, \$product_id, 'product')",
+		'import_products.php'    => "prepare_catalog_item_address_name(\$column_value, \$product_id, 'product')",
+	);
+
+	foreach ($calls as $file => $call) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+
+		pg_assert_true(strpos($source, $call) !== false, $file . ' names its item type');
+	}
+}

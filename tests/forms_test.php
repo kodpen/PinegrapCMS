@@ -23,6 +23,25 @@ function forms_test_date_format()
 	}
 }
 
+// An ISO date and time, as an <input type="datetime-local"> of a designed
+// form or a product form posts it, is valid and stored as it is, never read
+// the site's way ('0026-10-2026 17:00').
+function test_forms_date_and_time_iso()
+{
+	forms_test_date_format();
+
+	pg_assert_same('2026-10-26 17:05', prepare_form_data_for_input('2026-10-26T17:05', 'date and time'));
+	pg_assert_same('2026-10-26 07:05', prepare_form_data_for_input('2026-10-26 7:05', 'date and time'));
+	pg_assert_same('2026-10-26 17:05', prepare_form_data_for_input('2026-10-26T17:05:30', 'date and time'));
+	pg_assert_true(validate_date_and_time('2026-10-26T17:05'), 'the posted datetime-local value');
+	pg_assert_true(validate_date_and_time('2026-10-26T17:05:30'), 'with seconds');
+	pg_assert_true(validate_date_and_time('2026-10-26 17:05'), 'with a space');
+	pg_assert_true(validate_date_and_time('26/10/2026 5:05 PM'), 'the site text still');
+	pg_assert_false(validate_date_and_time('2026-02-30T17:05'), 'a day the month has not');
+	pg_assert_false(validate_date_and_time('2026-10-26T25:05'), 'an hour the clock has not');
+	pg_assert_false(validate_date_and_time('2026-10-26'), 'a date alone, without a warning');
+}
+
 // A search term with no date or time parts is converted without a warning:
 // the missing parts count as empty.
 function test_forms_input_date_and_time_without_parts()
