@@ -31,7 +31,7 @@ description: Steps N1-N14 and the visual pass V of plans/new-dashboard.md: size,
   - `shop`, `salesmap`, `ops`, `orders`, `offers`, `fx`.
 
 - N10 Pipeline and queue. Screens 02, 03. Cut in four, each `free` after N4 unless said.
-  - N10a (M) `pipeline` per preset with sparklines, flags and filtered links. `free`.
+  - N10a (M) `pipeline` per preset with sparklines, flags and filtered links. done (#4973).
   - N10b (S) `queue`: rows, tags, tones, actions; sources forms (24 h), comments waiting, critical SEO, accessibility, overdue tasks, approvals; renderer file `pg_dash_cards_work.js`. In #4895.
   - N10c (S) `queue` sources of the shop and accounting (unshipped orders, low stock, refund requests, overdue invoices) and drafts ready, through N9's Operations Desk helpers. `free` after N9.
   - N10d (S) `visitmap` as question 2 decided. Held: a raw `visitors` count clashes with the `visitors/` key rules; architect issue #4896.

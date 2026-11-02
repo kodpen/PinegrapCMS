@@ -884,6 +884,7 @@
     "OpenSSL is disabled": "OpenSSL devre dışı",
     "Opened after signing in.": "Girişten sonra açılır.",
     "Opened as a flow by {var:1} · {var:2}": "{var:1} akış olarak açtı · {var:2}",
+    "Opened as tasks": "Görev olarak açıldı",
     "Opened as {var:1} by {var:2}": "{var:2} tarafından {var:1} olarak açıldı",
     "Opened by the flow “{var:1}”, run {var:2}, at the box {var:3}.": "“{var:1}” akışının {var:2} numaralı çalıştırması {var:3} kutusunda açtı.",
     "Opened for inspection: reading only.": "Denetim için açıldı: yalnızca okunur.",
