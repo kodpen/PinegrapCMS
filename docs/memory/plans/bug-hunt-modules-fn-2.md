@@ -42,7 +42,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 - `subscription_renewal`: fault fixed by LN, #4622 (renewals stop at the line's number of payments, decided in #4623)
 - `subscriptions`: clean (#4621)
 - `subscriptions_account`: #5154 (OF)
-- `subscriptions_operator`: taken by OF, #PR (moves fixed with #5154)
+- `subscriptions_operator`: taken by OF, #5181 (moves fixed with #5154)
 - `system_status`: clean (OF; read: PHP2Shell and build date, integrity paths, write-permission repair, check output escaping)
 - `text_search`: taken by MM — #4819
 - `tour`: clean (OF)
