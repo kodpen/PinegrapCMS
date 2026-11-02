@@ -3,7 +3,7 @@ name: workspace-claude-daily-summary
 description: The daily summary Claude writes for the dashboard's Assistant card: its setting, how its request is queued and told apart, where the card finds the message, why config holds no message id
 ---
 
-## What is it? (N11c, #PR)
+## What is it? (N11c, #5080)
 - At an hour an administrator picks on the "Claude in the channels" card (Workspace settings), Claude writes three lines on what is waiting into a chosen channel; the new dashboard's `ai` card shows them above the proposals, each line opening the message. Off by default (`config.ws_claude_summary_hour` = 255, `WS_CLAUDE_SUMMARY_OFF`); architect issue #5014.
 - Only channels Claude may be asked in are offered (`ws_claude_summary_channels()`); the card shows the summary only to people who read its channel.
 
