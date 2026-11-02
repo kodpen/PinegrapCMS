@@ -20,7 +20,7 @@ description: Module list of plans/bug-hunt.md, part 2b: includes/fn/ modules wid
 - `widgets_express_order`: open
 - `widgets_fill`: clean (filter parse, case with Turkish i, number, truncate, escaping, typed fills)
 - `widgets_finish`: clean (conditions, chips, row positions, hide-if-empty, stage order)
-- `widgets_folder_view`: clean (rows, access and archive as the classic folder view, hidden page types)
+- `widgets_folder_view`: done (#5060: placed twice, shared static and row ids; rest clean: rows, access and archive as the classic folder view, hidden page types)
 - `widgets_gallery`: clean (template layouts, page map, starters)
 - `widgets_google_reviews`: done (#4999: placed twice, shared row ids; rest clean)
 - `widgets_language`: done (#4999: placed twice, shared row ids; rows, address and query clean)

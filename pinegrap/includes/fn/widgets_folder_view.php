@@ -251,6 +251,7 @@ function _pg_fv_read($root_id, $include_pages, $include_files)
 // cfg: include_pages, include_files.
 function _render_system_widget_folder_view($tree_json, $widget_id, $cfg = array(), $mode = 'preview')
 {
+    static $placement = 0;
     $widget_id = (int)$widget_id;
     if ($tree_json === '' || $tree_json === null) return '';
     if (!is_array($cfg)) $cfg = array();
@@ -294,11 +295,14 @@ function _render_system_widget_folder_view($tree_json, $widget_id, $cfg = array(
     // that drew such a list keeps them.
     pg_sw_list_publish('folder_view', array('folder_view.children' => $by_folder));
 
+    // A page may draw it twice (a sidebar and an offcanvas copy).
+    $placed = ++$placement;
+    $again  = pg_sw_widget_drawn_before($widget_id) ? $placed : 0;
     $loop_rendered = '';
     if ($loop_template !== '') {
         foreach ($top as $i => $row) {
             $row_html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($loop_template, pg_sw_escape_token_values($row)));
-            $loop_rendered .= pg_sw_uniquify_row_ids($row_html, $widget_id, $i + 1);
+            $loop_rendered .= pg_sw_uniquify_loop_row_ids($row_html, $widget_id, $i + 1, $again);
         }
     }
     $static_values = pg_sw_escape_token_values(array(
@@ -307,6 +311,6 @@ function _render_system_widget_folder_view($tree_json, $widget_id, $cfg = array(
         // The key a folder list reads outside the main loop: the top level.
         '__folder_item_key' => (string)$folder_id,
     ));
-    $static_html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($static_html, $static_values));
+    $static_html = pg_sw_uniquify_row_ids(pg_sw_sweep_tokens(_pg_sw_fill_tokens($static_html, $static_values)), $widget_id, 1000 + $placed);
     return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html);
 }
