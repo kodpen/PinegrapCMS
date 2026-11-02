@@ -20,7 +20,7 @@ if (!defined('PG_TEST_RUNNER')) {
 function test_money_boxes_open_the_decimal_keyboard()
 {
 	$files = glob(dirname(__DIR__) . '/pinegrap/includes/forms/*.php');
-	$boxes = 0;
+	$forms = array();
 
 	foreach ($files as $file) {
 		foreach (file($file) as $number => $line) {
@@ -28,7 +28,8 @@ function test_money_boxes_open_the_decimal_keyboard()
 				continue;
 			}
 
-			$boxes++;
+			// A form may draw its boxes in a loop, so count the forms.
+			$forms[basename($file)] = true;
 			$where = basename($file) . ':' . ($number + 1);
 
 			pg_assert_true(
@@ -37,7 +38,7 @@ function test_money_boxes_open_the_decimal_keyboard()
 		}
 	}
 
-	pg_assert_true($boxes >= 10, 'the money boxes of the zone, shipping method, gift card and currency forms are found');
+	pg_assert_true(count($forms) >= 4, 'the money boxes of the zone, shipping method, gift card and currency forms are found');
 }
 
 function test_integer_boxes_keep_the_numeric_keyboard()
