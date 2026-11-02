@@ -65,6 +65,39 @@ function pg_state_form_required_errors($values)
 }
 
 /**
+ * Whether a country with the id exists.
+ *
+ * @param int $country_id
+ * @return bool
+ */
+function pg_state_form_country_exists($country_id)
+{
+    $result = db_q("SELECT id FROM countries WHERE id = ? LIMIT 1", array((int) $country_id)) or output_error('Query failed.');
+
+    return mysqli_num_rows($result) > 0;
+}
+
+/**
+ * The message for a country id that names no country, or ''. A state
+ * saved under a deleted or hand-edited id shows no country in the list,
+ * and its edit screen would select another one.
+ *
+ * @param string   $country_id The posted or stored country id
+ * @param callable $exists     Lookup as pg_state_form_country_exists() (tests stub it)
+ * @return string
+ */
+function pg_state_form_country_error($country_id, $exists = 'pg_state_form_country_exists')
+{
+    $country_id = trim((string) $country_id);
+
+    if (!preg_match('/^[1-9][0-9]{0,9}$/', $country_id)) {
+        return lang('Select a country.');
+    }
+
+    return $exists((int) $country_id) ? '' : lang('The selected country was not found. Select a country.');
+}
+
+/**
  * Whether another state of the country already has the code.
  *
  * @param string   $code       The code
@@ -127,12 +160,17 @@ function pg_state_form_code_error($values, $stored, $except_id, $taken = 'pg_sta
  * @param array|null $values 'name', 'code', 'country_id' of a stored state
  *                           or a refused post (plain text); null on create,
  *                           which prints no values
- * @param array      $errors Field => message; 'name' and 'code' are printed
- *                           under their fields
+ * @param array      $errors Field => message; 'name', 'code' and
+ *                           'country_id' are printed under their fields
  * @return string  HTML
  */
 function pg_state_form_card($values, $errors = array())
 {
+    $country_error = isset($errors['country_id']) ? (string) $errors['country_id'] : '';
+    $country_class = ($country_error !== '') ? ' is-invalid' : '';
+    $country_aria = ($country_error !== '') ? ' aria-invalid="true" aria-describedby="country_id-error"' : '';
+    $country_feedback = ($country_error !== '') ? '
+                                                <div id="country_id-error" class="invalid-feedback d-block">' . h($country_error) . '</div>' : '';
     $name_error = isset($errors['name']) ? (string) $errors['name'] : '';
     $name_class = ($name_error !== '') ? ' is-invalid' : '';
     $name_aria = ($name_error !== '') ? ' aria-invalid="true" aria-describedby="name-error"' : '';
@@ -170,11 +208,11 @@ function pg_state_form_card($values, $errors = array())
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label for="code" class="form-label">' . lang('State Code') . '</label>
                                                 <input ' . $code_value . 'name="code" id="code" type="text" class="form-control' . $code_class . '" maxlength="50" required' . $code_aria . ' />' . $code_feedback . '
-                                                <div class="text-end form-text">' . lang('New State/Province Code for Order Reporting') . '</div>
+                                                <div class="form-text">' . lang('State/Province Code for Order Reporting') . '</div>
                                             </div>
                                             <div class="col-12 md:col-12 lg:col-4 my-3">
                                                 <label for="country_id" class="form-label">' . lang('Country') . '</label>
-                                                <select name="country_id" id="country_id"  class="form-control">' .  $country_options . '</select>
+                                                <select name="country_id" id="country_id" class="form-control' . $country_class . '" required' . $country_aria . '>' . $country_options . '</select>' . $country_feedback . '
                                             </div>
                                         </div>
                                     </div>
