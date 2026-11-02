@@ -4,9 +4,9 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 ---
 
 ## Which root endpoint groups (optimize to zone) are hunted?
-- Endpoints `optimize` (2): open
+- Endpoints `optimize` (2): clean (optimize, optimize_image)
 
-- Endpoints `order` (22): open
+- Endpoints `order` (22): done #5115 (order_form, order_history_*, order_invoice_print, order_preview, order_return); lead: order_invoice_print.php output_error texts are not lang()
 
 - Endpoints `page` (10): open
 
