@@ -518,6 +518,22 @@ if ($file_move['moved'] > 0) {
     )), 'UNKNOWN');
 }
 
+// A stored file whose name has bytes on the disk again was replaced: its
+// row goes back to local and the pass above sends the new bytes later
+// (pg_file_storage_reconcile_run(), 500 rows a tick). Once a day the objects
+// no row names any more go: every delete door removes only the row
+// (pg_file_storage_orphan_sweep()).
+pg_file_storage_reconcile_run(500);
+
+$file_orphans = pg_file_storage_orphan_sweep();
+
+if ($file_orphans > 0) {
+    log_activity(lang(array(
+        'string' => 'general job deleted {var:1} object(s) of deleted or replaced files from the object store',
+        'vars'   => array(pg_format_number($file_orphans, 0)),
+    )), 'UNKNOWN');
+}
+
 // Copies of stored files fetched for readers that need a path
 // (pg_file_local_copy()): once an hour, those unused for a week and then the
 // least recently used above 1 GB go.

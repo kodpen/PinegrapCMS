@@ -6047,21 +6047,6 @@ function initialize_developer_security()
 }
 
 /**
- * Decrypt API/Secret keys stored in DB.
- */
-function decode_ssl_keys($key_base64, $iv_base64)
-{
-    $crypto_method = 'aes-256-cbc';
-    $crypto_key = substr(hash('sha256', ENCRYPTION_KEY, true), 0, 32);
-    $key = base64_decode($key_base64);
-    $iv = base64_decode($iv_base64);
-    if ($key === false || $iv === false)
-        return '';
-    $decrypted = openssl_decrypt($key, $crypto_method, $crypto_key, OPENSSL_RAW_DATA, $iv);
-    return ($decrypted !== false) ? $decrypted : '';
-}
-
-/**
  * Encrypt a string with AES-256-CBC and return [encrypted_base64, iv_base64].
  */
 function encrypt_string_with_iv($plaintext)
