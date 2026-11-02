@@ -14,5 +14,5 @@ description: Steps WV1-WV3 of plans/web-vitals-ai-visibility.md: the vitals beac
 - WV2 (M) Figures and API. After WV1.
   - `includes/fn/page_vitals.php`: `pg_vitals_site($from, $to)` (p75 estimated from the buckets and sums, the good share), `pg_vitals_pages($from, $to, $order, $limit)` (slowest first), `pg_vitals_trend()` (per day); the API route `reports/vitals` in `includes/api/resources/reports.php` with its schema row (`api/api-endpoint-rules.md`), MCP tool follows; the general job keeps 400 days. Tests on the p75 estimate against a known distribution. Memory: `visitors/page-vitals-figures.md`.
 
-- WV3 (M) AI fetch counter. `free` after questions 1-2.
+- WV3 (M) AI fetch counter. Done in #5398.
   - In the firewall's bot path (`waf_handle_bot()`, after the verdict): a verified AI fetcher or indexer, and with question 2 an unverified AI token, counts into `ai_fetch_daily` (schema sub-step, key `sha1(date|bot|page_id)`, `bot` the catalogue name, `page_id` from the router when the request is a page, 0 otherwise) through the counter rules of `visitors/high-volume-counter-rules.md`; no row for a blocked request. Tests: the counting decision per verdict and class. Memory: `visitors/ai-fetch-counter.md`.
