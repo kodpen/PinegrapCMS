@@ -28,7 +28,7 @@ description: Steps N1-N14 and the visual pass V of plans/new-dashboard.md: size,
   - Phone pass (390x844, 844x390, touch), keyboard and screen reader, reduced motion, forced colours, every screen in light and dark.
 
 - V (visual pass, owner 2026-11-01). After N14. One step per screen group, M each.
-  - V0 (S): hover and focus figures for the charts N4-N8 drew (`pg_dash.js` helpers). `free` now.
+  - V0 (S): hover and focus figures for the charts N4-N8 drew (`pg_dash.js` helpers). done (#5054); `ui/dashboard-v2-chart-tips.md`.
   - V1 01 top, V2 03/04 cards, V3 05-09 edit and gallery, V4 12-14 looks, V5 16-19 shop and other cards, V6 20 phone: the screen opened in the sandbox beside its picture, every difference in colour, spacing, type, radius, shadow and icon fixed. The System Status gauge (SVG and animation) stays as it is.
   - Each V PR carries before/after/picture shots and asks the owner through an approval issue (`workflow/architect-asking.md`).
   - After V6: topic files under `ui/`, the decisions moved there, this plan deleted.
