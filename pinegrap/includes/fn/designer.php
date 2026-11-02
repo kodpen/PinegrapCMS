@@ -1426,13 +1426,23 @@ function _split_widget_tree($tree, $outside_markers = false)
     );
 }
 
+// The visitor's query parameters a widget's own links start from: those of
+// _pg_sw_query_params() (widgets.php), which drops the router's page name on
+// a pretty address, so a page link reads /blog?page_number=2 and not
+// /blog?page=blog&page_number=2.
+function _pg_sw_link_params()
+{
+    if (function_exists('_pg_sw_query_params')) return _pg_sw_query_params();
+    return is_array($_GET) ? $_GET : array();
+}
+
 // Helper: build a URL query string with one or more keys removed.
 // Avoids chained `_pg_sw_build_query` calls when clearing multiple filters
 // at once (active filter chips' clear-all link, price chip's bilateral
 // pmin+pmax clear).
 function _build_clear_filters_query($keys_to_clear)
 {
-    $params = (is_array($_GET)) ? $_GET : array();
+    $params = _pg_sw_link_params();
     foreach ($keys_to_clear as $k) {
         if (isset($params[$k])) unset($params[$k]);
     }
@@ -1442,10 +1452,11 @@ function _build_clear_filters_query($keys_to_clear)
 // Build a URL query string with ONE parameter changed (or removed if value is '').
 // Optionally clears a SECOND parameter at the same time — used by the search box
 // "clear" button which resets both the query and the page index in one step.
-// Preserves all OTHER current $_GET params verbatim.
+// Preserves all OTHER current $_GET params verbatim, except the router's
+// page name on a pretty address (_pg_sw_link_params()).
 function _pg_sw_build_query($key, $value, $reset_key = null, $reset_value = null)
 {
-    $params = (is_array($_GET)) ? $_GET : array();
+    $params = _pg_sw_link_params();
     if ($value === '' || $value === null) {
         unset($params[$key]);
     } else {
