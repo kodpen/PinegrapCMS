@@ -3427,10 +3427,7 @@ function pg_parse_commission_rate($raw)
 
 /**
  * One cell of a contact row in the contact or user importer, trimmed, as the
- * contacts column stores it. affiliate_commission_rate (decimal(5,2)
- * unsigned) goes through pg_parse_commission_rate(), as Site Settings reads
- * its rate: a ';' CSV from a Turkish spreadsheet writes "12,5", which the
- * non-strict session would cut to 12.00. Empty stays 0.00.
+ * contacts column stores it (pg_import_contact_value() without its problem).
  *
  * @param string $column_name contacts column
  * @param mixed  $value
@@ -3438,15 +3435,161 @@ function pg_parse_commission_rate($raw)
  */
 function pg_import_contact_cell($column_name, $value)
 {
-    $value = trim((string) $value);
+    $read = pg_import_contact_value($column_name, $value);
 
-    if ($column_name === 'affiliate_commission_rate') {
-        return pg_parse_commission_rate($value);
-    }
-
-    return $value;
+    return $read['value'];
 }
 
+/**
+ * The yes/no columns of a contact row and what an empty or unknown cell is
+ * stored as: 0, so a contact is never opted in or approved on a guess.
+ *
+ * @return array column => true
+ */
+function pg_import_contact_yes_no_columns()
+{
+    return array('opt_in' => true, 'affiliate_approved' => true);
+}
+
+/**
+ * A yes/no cell as 1 or 0: 1/0, yes/no, y/n, true/false, on/off and the
+ * Turkish evet/hayır, e/h, in any case; null for anything else.
+ *
+ * @param string $value the trimmed cell
+ * @return int|null
+ */
+function pg_import_yes_no($value)
+{
+    $word = function_exists('pg_list_search_fold') ? pg_list_search_fold($value) : mb_strtolower($value, 'UTF-8');
+
+    if (in_array($word, array('1', 'yes', 'y', 'true', 'on', 'evet', 'e', 'x'), true)) {
+        return 1;
+    }
+
+    if (in_array($word, array('0', 'no', 'n', 'false', 'off', 'hayir', 'h', '-'), true)) {
+        return 0;
+    }
+
+    return null;
+}
+
+/**
+ * One cell of a contact row read for the contacts column, with the problem
+ * the result names for its line. The cell is trimmed and loses the
+ * apostrophe the export's formula guard put in front of = + - @
+ * (pg_csv_formula_unguard()), so an export imports back unchanged.
+ * - affiliate_commission_rate: pg_parse_commission_rate() ("12,5" from a
+ *   Turkish spreadsheet is 12.50; empty is 0.00).
+ * - opt_in, affiliate_approved: pg_import_yes_no(); empty or unknown is 0,
+ *   an unknown one with a problem ("Evet" stored as 0 before, silently).
+ * - expiration_date: pg_date_input_iso() (site order with / - , . or ISO);
+ *   empty or unreadable is 0000-00-00 (no end), an unreadable one with a
+ *   problem ("31.12.2026" was stored as no end, silently).
+ * - a text cell longer than $max_length is cut there, with a problem (the
+ *   non-strict session cut it without a word).
+ *
+ * @param string $column_name contacts column
+ * @param mixed  $value       the cell
+ * @param int    $max_length  the column's length in characters, 0 for none
+ * @param string $heading     the file's heading, named in the problem
+ * @return array array('value' => string, 'problem' => '' or a sentence)
+ */
+function pg_import_contact_value($column_name, $value, $max_length = 0, $heading = '')
+{
+    $value = trim((string) pg_csv_formula_unguard(trim((string) $value)));
+    $heading = ($heading !== '') ? $heading : $column_name;
+
+    if ($column_name === 'affiliate_commission_rate') {
+        return array('value' => pg_parse_commission_rate($value), 'problem' => '');
+    }
+
+    if (isset(pg_import_contact_yes_no_columns()[$column_name])) {
+        if ($value === '') {
+            return array('value' => '0', 'problem' => '');
+        }
+
+        $yes = pg_import_yes_no($value);
+
+        if ($yes === null) {
+            return array('value' => '0', 'problem' => lang(array('string' => 'Column {var:1}: "{var:2}" is not yes or no, so it was imported as no.', 'vars' => array($heading, $value))));
+        }
+
+        return array('value' => (string) $yes, 'problem' => '');
+    }
+
+    if ($column_name === 'expiration_date') {
+        if (($value === '') || ($value === '0000-00-00')) {
+            return array('value' => '0000-00-00', 'problem' => '');
+        }
+
+        $date = pg_date_input_iso($value);
+
+        if ($date === '') {
+            return array('value' => '0000-00-00', 'problem' => lang(array('string' => 'Column {var:1}: "{var:2}" is not a date, so it was left empty.', 'vars' => array($heading, $value))));
+        }
+
+        return array('value' => $date, 'problem' => '');
+    }
+
+    if (((int) $max_length > 0) && (mb_strlen($value, 'UTF-8') > (int) $max_length)) {
+        return array('value' => mb_substr($value, 0, (int) $max_length, 'UTF-8'), 'problem' => lang(array('string' => 'Column {var:1}: the value was longer than {var:2} characters and was cut.', 'vars' => array($heading, (int) $max_length))));
+    }
+
+    return array('value' => $value, 'problem' => '');
+}
+
+/**
+ * The character lengths of a table's text columns from SHOW COLUMNS rows:
+ * varchar(n) and char(n) give n; other types are left out.
+ *
+ * @param array $rows SHOW COLUMNS rows (Field, Type)
+ * @return array column => length
+ */
+function pg_import_column_lengths($rows)
+{
+    $lengths = array();
+
+    foreach ((array) $rows as $row) {
+        if (isset($row['Field'], $row['Type']) && preg_match('/^(?:var)?char\((\d+)\)/i', (string) $row['Type'], $match)) {
+            $lengths[(string) $row['Field']] = (int) $match[1];
+        }
+    }
+
+    return $lengths;
+}
+
+/**
+ * The file's columns kept for the insert: the first heading for each
+ * contacts column; a later one that names the same column (Outlook writes
+ * both "Title" and "Job Title") is left out, as the insert named the column
+ * twice and MySQL refused the whole import.
+ *
+ * @param array $column_names file column index => contacts column or false
+ * @return array array('columns' => index => column, 'repeated' => list of
+ *               indexes left out for repeating a column)
+ */
+function pg_import_unique_columns($column_names)
+{
+    $columns = array();
+    $taken = array();
+    $repeated = array();
+
+    foreach ((array) $column_names as $key => $column) {
+        if ($column === false) {
+            continue;
+        }
+
+        if (isset($taken[$column])) {
+            $repeated[] = $key;
+            continue;
+        }
+
+        $taken[$column] = true;
+        $columns[$key] = $column;
+    }
+
+    return array('columns' => $columns, 'repeated' => $repeated);
+}
 
 /**
  * The reward program goal (points) typed in Site Settings as
