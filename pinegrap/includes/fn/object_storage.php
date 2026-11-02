@@ -8,7 +8,8 @@
  *
  * Any service that speaks the S3 API works by its endpoint address; nothing
  * here names a vendor. Requests are signed with SigV4
- * (includes/fn/aws_sign.php) and sent through pg_curl_run(): https, the
+ * (includes/fn/aws_sign.php, paths not normalised, as S3 wants) and sent
+ * through pg_curl_run(): https, the
  * site's proxy and pg_curl_tls() on every call. An endpoint on plain http
  * (a store on the same host or LAN) is allowed for that request only.
  *
@@ -249,7 +250,10 @@ function pg_os_target(array $config, $object_key, array $query = array())
     }
 
     $scheme = strtolower($parts['scheme']);
-    $host = strtolower($parts['host']) . (isset($parts['port']) ? ':' . (int) $parts['port'] : '');
+
+    // A default port is left out, as the signer names the host.
+    $port = isset($parts['port']) ? (int) $parts['port'] : 0;
+    $host = strtolower($parts['host']) . ((($port > 0) && !in_array($port, array(80, 443), true)) ? ':' . $port : '');
     $base = isset($parts['path']) ? rtrim($parts['path'], '/') : '';
     $object_key = (string) $object_key;
 
@@ -260,13 +264,49 @@ function pg_os_target(array $config, $object_key, array $query = array())
         $path = $base . '/' . $object_key;
     }
 
-    $url = $scheme . '://' . $host . pg_aws_canonical_path($path);
+    $url = $scheme . '://' . $host . pg_os_uri_encode($path, true);
 
     if ($query) {
-        $url .= '?' . pg_aws_canonical_query($query);
+        $url .= '?' . pg_os_query($query);
     }
 
     return array('url' => $url, 'host' => $host, 'path' => $path, 'scheme' => $scheme);
+}
+
+
+/**
+ * RFC 3986 encoding: every byte but A-Z a-z 0-9 - . _ ~ as %XX.
+ *
+ * @param string $value
+ * @param bool $keep_slash true for a path
+ * @return string
+ */
+function pg_os_uri_encode($value, $keep_slash)
+{
+    // PHP before 7.3 encoded the tilde, which RFC 3986 leaves alone.
+    $encoded = str_replace('%7E', '~', rawurlencode((string) $value));
+
+    return $keep_slash ? str_replace('%2F', '/', $encoded) : $encoded;
+}
+
+
+/**
+ * A query string from name => value pairs, each encoded, sorted by name.
+ *
+ * @param array $query
+ * @return string
+ */
+function pg_os_query(array $query)
+{
+    ksort($query, SORT_STRING);
+
+    $parts = array();
+
+    foreach ($query as $name => $value) {
+        $parts[] = pg_os_uri_encode($name, false) . '=' . pg_os_uri_encode($value, false);
+    }
+
+    return implode('&', $parts);
 }
 
 
@@ -341,7 +381,7 @@ function pg_os_error(array $result)
  * @param array $config pg_os_settings()
  * @param string $method
  * @param string $object_key the full key, '' for the bucket
- * @param array $options query (raw pairs), headers (name => value, signed and
+ * @param array $options query (name => value), headers (name => value, signed and
  *                       sent), body (string), upload (array('file', 'size',
  *                       'hash')), sink, cap, response_headers, timeout
  * @return array pg_curl_run(), or pg_os_fail() when it could not be sent
@@ -359,36 +399,35 @@ function pg_os_request(array $config, $method, $object_key, array $options = arr
         return pg_os_fail('endpoint', lang('The storage endpoint address is not valid.'));
     }
 
-    if (isset($options['upload'])) {
-        $payload_hash = $options['upload']['hash'];
-    } elseif (isset($options['body'])) {
-        $payload_hash = hash('sha256', (string) $options['body']);
-    } else {
-        $payload_hash = pg_aws_empty_hash();
+    if (!function_exists('pg_aws_authorization')) {
+        return pg_os_fail('not_configured', lang('The object storage is not set up.'));
     }
 
-    $headers = array('host' => $target['host'], 'x-amz-content-sha256' => $payload_hash);
+    $body = isset($options['body']) ? (string) $options['body'] : '';
+
+    // A file streamed from disk is signed with its digest, never read into
+    // memory to be hashed.
+    $sign = array('normalize' => false);
+
+    if (isset($options['upload'])) {
+        $sign['payload_hash'] = $options['upload']['hash'];
+    }
+
+    $headers = array(array('Host', $target['host']));
 
     foreach ((isset($options['headers']) ? $options['headers'] : array()) as $name => $value) {
-        $headers[strtolower($name)] = (string) $value;
+        $headers[] = array(strtolower($name), (string) $value);
     }
-
-    $signed = pg_aws_authorization(array(
-        'method'       => $method,
-        'path'         => $target['path'],
-        'query'        => $query,
-        'headers'      => $headers,
-        'payload_hash' => $payload_hash,
-    ), array('key' => $config['key_id'], 'secret' => $config['secret']), $config['region'], 's3', time());
 
     $lines = array();
 
-    foreach ($headers as $name => $value) {
-        $lines[] = $name . ': ' . $value;
+    foreach ($headers as $header) {
+        $lines[] = $header[0] . ': ' . $header[1];
     }
 
-    $lines[] = 'x-amz-date: ' . $signed['amz_date'];
-    $lines[] = 'Authorization: ' . $signed['authorization'];
+    $lines = array_merge($lines, pg_aws_authorization(
+        array('id' => $config['key_id'], 'secret' => $config['secret']),
+        $config['region'], 's3', $method, $target['url'], $headers, $body, null, $sign));
 
     $run = array(
         'headers'    => $lines,
@@ -880,19 +919,12 @@ function pg_os_multipart_put(array $config, $object_key, $file, $size, array $he
  * @param string $key below the prefix
  * @param int $expires seconds
  * @param array $overrides content_type, disposition: the answer's headers
- * @param int|null $time the signing time (now when null)
+ * @param string|null $amz_date the signing time (20130524T000000Z; now when null)
  * @return string the address, '' when the settings are incomplete
  */
-function pg_os_presign(array $config, $key, $expires = 300, array $overrides = array(), $time = null)
+function pg_os_presign(array $config, $key, $expires = 300, array $overrides = array(), $amz_date = null)
 {
-    if (!pg_os_ready($config)) {
-        return '';
-    }
-
-    $object_key = pg_os_object_key($config, $key);
-    $target = pg_os_target($config, $object_key);
-
-    if (!$target) {
+    if (!pg_os_ready($config) || !function_exists('pg_aws_presign')) {
         return '';
     }
 
@@ -906,14 +938,14 @@ function pg_os_presign(array $config, $key, $expires = 300, array $overrides = a
         $query['response-content-disposition'] = (string) $overrides['disposition'];
     }
 
-    $signed = pg_aws_presign(array(
-        'method'  => 'GET',
-        'path'    => $target['path'],
-        'query'   => $query,
-        'headers' => array('host' => $target['host']),
-    ), array('key' => $config['key_id'], 'secret' => $config['secret']), $config['region'], 's3', ($time === null) ? time() : (int) $time, $expires);
+    $target = pg_os_target($config, pg_os_object_key($config, $key), $query);
 
-    return $target['scheme'] . '://' . $target['host'] . pg_aws_canonical_path($target['path']) . '?' . $signed['query'];
+    if (!$target) {
+        return '';
+    }
+
+    return pg_aws_presign(array('id' => $config['key_id'], 'secret' => $config['secret']), $config['region'], 's3',
+        'GET', $target['url'], $expires, array(), 'UNSIGNED-PAYLOAD', $amz_date, false);
 }
 
 

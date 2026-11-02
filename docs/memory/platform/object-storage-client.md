@@ -1,12 +1,12 @@
 ---
 name: object-storage-client
 description: The S3-compatible client (aws_sign.php SigV4, object_storage.php put/get/head/delete/list/multipart/presign), its answers, where its settings live, the Storage card and its test (PR #5349)
-module: aws_sign, object_storage
+module: object_storage
 ---
 
 ## What signs a request?
-- `includes/fn/aws_sign.php`, pure SigV4: `pg_aws_canonical_request()`, `pg_aws_string_to_sign()`, `pg_aws_signing_key()`, `pg_aws_authorization()` (header form) and `pg_aws_presign()` (query form). Paths are encoded once, never normalised (S3). Tested against the AWS signing test suite copied into `tests/fixtures/aws_sigv4/` and the S3 documentation examples (`tests/object_storage_sign_test.php`). Any later AWS API (SES) reuses it.
-- `includes/fn/backup.php` still has its own older SigV4 copy (`pg_backup_s3_*`) for the backup type `s3`, which already existed before this plan. OS2 moves that type onto `pg_os_*` and drops the copy.
+- `includes/fn/aws_sign.php` (written by the SES step of `mail-deliverability`, #5348): `pg_aws_authorization()` and `pg_aws_presign()` on a URL. The client calls them with `normalize` off (S3 paths are not normalised) and, for a file streamed from disk, the `payload_hash` option (its `hash_file()` digest). `pg_os_target()` builds the URL with its own RFC 3986 encoding (`pg_os_uri_encode()`, `pg_os_query()`) and drops a default port, as the signer names the host.
+- `includes/fn/backup.php` still has its own older SigV4 copy (`pg_backup_s3_*`) for the backup type `s3`, which existed before this plan. OS2 moves that type onto `pg_os_*` and drops the copy.
 
 ## Which calls are there, and what do they answer?
 - `includes/fn/object_storage.php`: `pg_os_put($config, $key, $file, $options)` (`data` sends a string; above 64 MB a multipart upload in 16 MB parts, one retry per part on a network or 5xx failure, abort on any failure, a completion that answers 200 with an `<Error>` body counts as failed), `pg_os_get($config, $key, $target)` (to a file through `sink`, a half-written file deleted; `null` reads into memory with a 1 MB cap), `pg_os_head()`, `pg_os_delete()` (a missing object counts as deleted), `pg_os_list($config, $prefix)` (ListObjectsV2, pages up to `limit`), `pg_os_presign($config, $key, $expires, $overrides)`, `pg_os_test()`.
