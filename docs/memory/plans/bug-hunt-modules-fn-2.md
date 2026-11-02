@@ -24,8 +24,8 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 - `shipment_tracking`: clean (MJ)
 - `shipping`: taken by LL, #4625
 - `shipping_import`: clean (NY)
-- `short_link_redirects`: open
-- `signature`: open
+- `short_link_redirects`: clean (NY)
+- `signature`: #5131 (NY)
 - `signin`: clean
 - `site_datetime`: open
 - `site_icon`: open
