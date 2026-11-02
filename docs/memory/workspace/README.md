@@ -97,6 +97,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-channel-search-scope.md: A search narrowed to one channel (palette "Only in #channel", ws_message_search) reads the channel's discussions too: ws_channel_search_ids()/ws_channel_search_sql(), #4239
 - workspace-checklist-to-task.md: A checklist item of a Workspace message made into a task (ws_checklist_item_task(), step 9b): read as /task reads it, item tied by message + words, button, tag, edits, rights, API
 - workspace-claude-bootstrap.md: Claude's routine reads its instructions and each request's briefing (ws_ai_briefing()) from the site; the short versioned bootstrap pasted on claude.ai and the card's warning
+- workspace-claude-daily-summary.md: The daily summary Claude writes for the dashboard's Assistant card: its setting, how its request is queued and told apart, where the card finds the message, why config holds no message id
 - workspace-claude-key-reads.md: Workspace reads with Claude's application key keep to the channels Claude may be asked in (ws_claude_channel_allowed()): which reads, record refs narrowed, the leak it fixed
 - workspace-claude-routine.md: "@Claude" in Workspace channels through one site-wide claude.ai routine: how it runs, limits, setup on claude.ai, security rules, what was never tested live
 - workspace-colon-emoji.md: ":" and two letters in a Workspace writing box with the emoji button suggest matching emoji (colonEmojiAt(), colonEmojiList()): where it opens, order, keys, undo, which boxes

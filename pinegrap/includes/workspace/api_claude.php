@@ -292,6 +292,13 @@ function ws_api_claude_request_present($viewer, $row)
         $body = (string) $row['note_text'];
     }
 
+    // The daily summary (claude.php): no message asked, the site does.
+    $summary = function_exists('ws_claude_is_summary_request') && ws_claude_is_summary_request($row);
+
+    if ($summary) {
+        $body = ws_claude_summary_instruction();
+    }
+
     $kind = '';
 
     if ($channel) {
@@ -328,6 +335,7 @@ function ws_api_claude_request_present($viewer, $row)
         ),
         'design'           => $design,
         'task'             => $task,
+        'summary'          => $summary,
         'requested_by'     => array('user_id' => (int) $row['requested_by'], 'name' => ws_person_name($row['requested_by'])),
         'reply_message_id' => ((int) $row['reply_message_id'] > 0) ? (int) $row['reply_message_id'] : null,
         'error'            => (string) $row['error'],
@@ -347,6 +355,7 @@ function ws_api_claude_request_schema()
         'note'             => array('id' => 'integer', 'title' => 'string', 'body' => 'string'),
         'design'           => array('page_id' => 'integer', 'page_name' => 'string', 'node_id' => 'string', 'scope' => 'string', 'from_editor' => 'boolean'),
         'task'             => ws_api_claude_task_schema(),
+        'summary'          => 'boolean',
         'requested_by'     => array('user_id' => 'integer', 'name' => 'string'),
         'reply_message_id' => 'integer?',
         'error'            => 'string',
@@ -907,12 +916,18 @@ function ws_api_claude_answer($params)
         api_fail_validation($changes['error'], 'changes');
     }
 
-    // The person who asked is told, whatever the answer says.
+    // The person who asked is told, whatever the answer says; nobody asked
+    // for the daily summary, so it mentions nobody.
+    $summary = ws_claude_is_summary_request($row);
     $text = trim((string) $params['text']);
     $mention = '<@user:' . (int) $row['requested_by'] . '>';
 
-    if (strpos($text, $mention) === false) {
+    if (!$summary && (strpos($text, $mention) === false)) {
         $text = $mention . ' ' . $text;
+    }
+
+    if ($summary && (!empty($params['tasks']) || !empty($params['changes']))) {
+        api_fail_validation(lang('The daily summary is answered with text only: no tasks, no changes.'), empty($params['tasks']) ? 'changes' : 'tasks');
     }
 
     $options = array(

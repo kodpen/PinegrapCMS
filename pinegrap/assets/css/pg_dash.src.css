@@ -2858,6 +2858,34 @@
     margin-bottom: .75rem;
   }
 
+  .pg-dash-ai-summary {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    margin: 0 0 .75rem;
+    padding: 0;
+    list-style: none;
+  }
+
+  .pg-dash-ai-summary-line {
+    display: block;
+    padding: .375rem .5rem;
+    border-radius: var(--pg-border-radius);
+    background: var(--pg-tint);
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .pg-dash-ai-summary-line:hover,
+  .pg-dash-ai-summary-line:focus-visible {
+    text-decoration: underline;
+  }
+
+  .pg-dash-ai-summary-when {
+    font-weight: 400;
+    text-transform: none;
+  }
+
   .pg-dash-ai-chips {
     display: flex;
     flex-wrap: wrap;
