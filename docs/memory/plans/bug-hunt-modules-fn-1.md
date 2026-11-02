@@ -26,17 +26,17 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `backup_restore`: open
 
-- `bundles`: clean (contents cleaning and refusals, stock and price, refresh, cart allowance, sale and return of components, contents and saving checked)
+- `bundles`: clean
 
 - `calendar`: done #4632 #4646 (recurring overnight/multi-day events and room availability, unpadded view date; rest reviewed: escaping, access, recurrence expansion)
 
 - `captcha`: clean (siteverify outcomes, token, widget escaping, settings card and save order checked)
 
-- `carrier_api`: done #5159 (FedEx weight under 0.005 lb sent as 0; rest reviewed: token cache and lock, 401 retry, error text, settings fields and escaping, UPS, USPS rate fit and address answers)
+- `carrier_api`: done #5159 (FedEx weight under 0.005 lb sent as 0)
 
-- `carrier_labels`: clean (answer shape, document and SVG checks with the image-only serving, secret masking, settings decide/store/test, card escaping checked)
+- `carrier_labels`: clean
 
-- `carrier_webhook`: clean (key and signature checks, body limit, rate limit, label lookup, decide order, sync and by-hand keys, card escaping checked)
+- `carrier_webhook`: clean
 
 - `cart_quotes`: clean (line cleaning, plan against stock/minimum/maximum/bin, create and open checks, apply and its repeat guard, completion, link page escaping checked)
 
