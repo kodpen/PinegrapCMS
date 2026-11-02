@@ -342,25 +342,6 @@ function pg_member_email_repeat_ok($email, $repeat)
     return ((string) $repeat === (string) $email);
 }
 
-// Whether an address someone gave (typed into a form, or reported by a
-// sign-in provider) is an account's stored address, letter case aside.
-// A lookup on user.user_email compares under the column's collation, which
-// also folds accents: "jane@şirket.com" finds the account of
-// "jane@sirket.com" and the other way round, two different domains. A flow
-// that sends a secret to the address, or ties an identity to the account,
-// asks this after the lookup and treats any other row as not found.
-function pg_email_address_matches($given, $stored)
-{
-    $given  = is_scalar($given) ? trim((string) $given) : '';
-    $stored = is_scalar($stored) ? trim((string) $stored) : '';
-
-    if (($given === '') || ($stored === '')) {
-        return false;
-    }
-
-    return mb_strtolower($given, 'UTF-8') === mb_strtolower($stored, 'UTF-8');
-}
-
 // Whether a member widget's tree (the decoded shared_components.tree_json)
 // asks the marketing question: it has a control named opt_in (opt_in_sms for
 // the SMS question), the names pg_member_register() and pg_member_activate()
