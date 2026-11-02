@@ -98,6 +98,7 @@ description: Generated from the module field of the memory files: each includes/
 - `shipment_lookup`: [[guest-shipment-lookup]]
 - `shipment_tracking`: [[shipment-tracking]]
 - `shipping`: [[address-labels-by-country]], [[address-labels-in-editor]], [[checkout-requested-arrival-date]], [[n11-old-address-order]], [[order-address-postcode-note]], [[tr-district-carriers]], [[tr-district-plate-code]]
+- `short_link_redirects`: [[short-link-binned-destination]]
 - `site_datetime`: [[site-datetime-loader]]
 - `site_icon`: [[site-icon]]
 - `site_log_list`: [[site-log-paging]]
