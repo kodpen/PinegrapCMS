@@ -226,6 +226,7 @@
     "A copy was made for {var:1}: <strong>{var:2}</strong>": "{var:1} için kopya oluşturuldu: <strong>{var:2}</strong>",
     "A cough for two weeks that will not go away.": "İki haftadır geçmeyen bir öksürük.",
     "A count": "Bir sayaç",
+    "A count can be at most {var:1}.": "Sayım en çok {var:1} olabilir.",
     "A count is a whole number of pieces.": "Sayım tam sayı adet olmalı.",
     "A count marked + is cut at {var:1} records; the JSON file is cut at the same place.": "+ işaretli sayı {var:1} kayıtta kesildi; JSON dosyası da aynı yerde kesilir.",
     "A country road seen from a bicycle in the morning light": "Sabah ışığında bisikletten görülen bir köy yolu",
