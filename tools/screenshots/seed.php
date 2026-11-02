@@ -218,6 +218,8 @@ if (!$contact_id) {
 		'business_city' => 'İzmir',
 		'business_country' => 'TR',
 		'mobile_phone' => '+90 532 000 00 00',
+		// LONGTEXT NOT NULL without a default: strict mode refuses the row without it.
+		'description' => '',
 		'timestamp' => $now,
 		'user' => $admin_id,
 	));

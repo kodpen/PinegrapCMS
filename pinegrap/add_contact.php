@@ -82,7 +82,7 @@ if (!$_POST) {
             if (photos) {
                 photos.addEventListener("click", function (event) {
                     if (event.target.closest(".item .card-header button[onclick]")) {
-                        photos.parentNode.querySelector(".card-footer button").focus();
+                        photos.closest(".card").querySelector(".card-footer button").focus();
                     }
                 }, true);
             }
