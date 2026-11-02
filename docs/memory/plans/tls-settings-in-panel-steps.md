@@ -17,9 +17,9 @@ description: Steps TP1-TP4 of plans/tls-settings-in-panel.md: scheme helper, Sec
 
 - TP2 (M) Secure Mode one-click offer. After TP1.
   - `includes/settings/firewall.save.php`: when Secure Mode is asked for, the request is untrusted and `pg_forwarded_https()` is true, the screen shows the peer and the entries to add. A second POST (with token) writes them through `waf_proxy_list_on_save()`, checks again, saves Secure Mode and calls `log_activity()`.
-  - What is added depends on the peer:
+  - What is added depends on the peer (#5375: the peer's own address, never its network):
     - loopback: both `127.0.0.1` and `::1` (a local tunnel may use either);
-    - private IPv4: its /24; ULA: its /64 (container and LAN proxies move within their network);
+    - private IPv4 or ULA: that one address (/32, /128); a proxy that moves within its network is listed by hand on Trusted Proxies;
     - public: never added with Secure Mode on. The screen says a CDN or load balancer needs all its published ranges listed first.
   - Texts that name `TRUST_PROXY_SSL_HEADERS` or the config file as the fix (`init.php`, `get_file.php`, `firewall.php`, `firewall.save.php`) point at Trusted Proxies instead. `test_secure_mode.php` still opens no database (`decisions-made-access.md`); it names the peer, its kind and the entries to add.
 

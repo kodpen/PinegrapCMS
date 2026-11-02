@@ -128,7 +128,7 @@ function pg_ship_date_adjustment_form_card($liveform)
                                             <div class="col-12 md:col-auto my-3">
                                                 <div class="form-label" id="adjustment_label">' . lang('Adjustment') . '</div>
                                                 <div class="input-group w-auto" role="group" aria-labelledby="adjustment_label">
-                                                    <input style="width:100px;max-width:100%;" type="text" name="adjustment_days" id="adjustment_days" required aria-labelledby="adjustment_label adjustment_days_unit" maxlength="3" value="' . h($liveform->get_field_value('adjustment_days')) . '" class="form-control' . ($liveform->check_field_error('adjustment_days') ? ' is-invalid' : '') . '"/>
+                                                    <input style="width:100px;max-width:100%;" type="text" name="adjustment_days" id="adjustment_days" required inputmode="numeric" pattern="[0-9]*" aria-labelledby="adjustment_label adjustment_days_unit" maxlength="3" value="' . h($liveform->get_field_value('adjustment_days')) . '" class="form-control' . ($liveform->check_field_error('adjustment_days') ? ' is-invalid' : '') . '"/>
                                                     <span class="input-group-text" id="adjustment_days_unit">' . lang('days') . '</span>
                                                     <span class="visually-hidden" id="adjustment_type_label">' . lang('Direction') . '</span>
                                                     <select style="width:100px;max-width:100%;" name="adjustment_type" id="adjustment_type" aria-labelledby="adjustment_label adjustment_type_label" class="form-control' . ($liveform->check_field_error('adjustment_type') ? ' is-invalid' : '') . '">' . $output_adjustment_type_options . '</select>
@@ -143,8 +143,9 @@ function pg_ship_date_adjustment_form_card($liveform)
 
 /**
  * Checks a posted adjustment and marks its errors: the required fields, a
- * three character zip code prefix, a prefix and shipping method no other
- * adjustment uses, and a positive number of days.
+ * three character zip code prefix, a shipping method that exists, a prefix
+ * and shipping method no other adjustment uses, earlier or later, and a
+ * whole number of days from 1.
  *
  * @param liveform $liveform
  * @param string|null $id  the adjustment being edited, null on create
@@ -190,14 +191,59 @@ function pg_ship_date_adjustment_form_check($liveform, $id)
         }
     }
 
+    // A hand-made post can name a method that does not exist; the list
+    // showed such an adjustment with an empty method.
+    if ($liveform->check_field_error('shipping_method_id') == false) {
+        $result = db_q("SELECT COUNT(*) FROM shipping_methods WHERE id = ?", array((int) $liveform->get_field_value('shipping_method_id'))) or output_error('Query failed.');
+        $row = mysqli_fetch_row($result);
+
+        if ((int) $row[0] < 1) {
+            $liveform->mark_error('shipping_method_id', lang('Shipping Method is required.'));
+        }
+    }
+
+    if (
+        ($liveform->check_field_error('adjustment_type') == false)
+        && !pg_ship_date_adjustment_form_type_valid($liveform->get_field_value('adjustment_type'))
+    ) {
+        $liveform->mark_error('adjustment_type', lang('"earlier" or "later" is required.'));
+    }
+
     if (
         ($liveform->check_field_error('adjustment_days') == false)
-        &&
-        (
-            (is_numeric($liveform->get_field_value('adjustment_days')) == false)
-            || ($liveform->get_field_value('adjustment_days') <= 0)
-        )
+        && !pg_ship_date_adjustment_form_days_valid($liveform->get_field_value('adjustment_days'))
     ) {
         $liveform->mark_error('adjustment_days', lang('Please enter a valid number of days.'));
     }
+}
+
+/**
+ * Whether a posted number of days is a whole number from 1 to 999 (the box
+ * holds three characters). is_numeric() let 1.5 through, which the
+ * smallint column rounded to 2, and 1e2, stored as 100.
+ *
+ * @param mixed $days
+ * @return bool
+ */
+function pg_ship_date_adjustment_form_days_valid($days)
+{
+    if (!is_scalar($days)) {
+        return false;
+    }
+
+    $days = trim((string) $days);
+
+    return ($days !== '') && ctype_digit($days) && (strlen($days) <= 3) && ((int) $days >= 1);
+}
+
+/**
+ * Whether a posted direction is one the form offers: any other value was
+ * saved as later.
+ *
+ * @param mixed $type
+ * @return bool
+ */
+function pg_ship_date_adjustment_form_type_valid($type)
+{
+    return in_array($type, array('earlier', 'later'), true);
 }

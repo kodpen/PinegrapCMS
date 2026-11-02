@@ -23,8 +23,17 @@ validate_area_access($user, 'user');
 validate_token_field();
 
 include_once('liveform.class.php');
-$liveform = new liveform('allow_or_disallow_new_comments', $_POST['page_id']);
+
+// The page id names the form's slot in the session, so it has to be one value:
+// an array (page_id[]=) there is an illegal offset that stops the request.
+pg_request_single_values(array('page_id'));
+
+$liveform = new liveform('allow_or_disallow_new_comments', $_POST['page_id'] ?? 0);
 $liveform->add_fields_to_session();
+
+// Every field this handler reads holds one value; one posted as an array
+// counts as not given.
+pg_liveform_single_values($liveform, array('send_to', 'page_id', 'item_id', 'item_type', 'action'));
 
 // get values from form
 $send_to = $liveform->get_field_value('send_to');
@@ -42,6 +51,12 @@ $query =
     WHERE page_id = ?";
 $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
+
+// A page that does not exist (any more) changes nothing.
+if (!$row) {
+    $liveform->remove_form();
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
 
 $page_name = $row['page_name'];
 $folder_id = $row['folder_id'];

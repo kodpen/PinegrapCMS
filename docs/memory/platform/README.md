@@ -23,6 +23,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - Cut a name a person gave (upload, archive entry, link) with `pg_basename()` and take its stem with `pg_file_name_stem()`, never `basename()` or `pathinfo()`: before PHP 8.0 they drop the non-ASCII letters the name starts with (`file-name-last-segment.md`).
 - Ask `pg_dir_writable()` whether a folder takes a file, never `is_writable()`: PHP on Windows reads the folder's read-only attribute, which OneDrive and Explorer set and which stops no write (`windows-folder-is-writable.md`).
 - Make a key with `pg_openssl_key_new()` and export it with the arguments it returns, never `openssl_pkey_new()` directly: without an OpenSSL config file (Windows PHP) both fail (`openssl-key-generation.md`).
+- Keep a file's bytes matching its name's extension: a format change is a new file or a derivative, never a rename or rewrite in place, and the upload stays the master (`image-same-address-why.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -34,6 +35,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - aws-sigv4-signing.md: includes/fn/aws_sign.php: AWS Signature Version 4 without an SDK (header signing, presigned links), tested against the AWS test suite; used by Amazon SES, written for object storage too
 - background-render.md: pg_background_render(): the one in-process page render of the passes that draw many pages; what it catches, restores and lends; which pages each pass covers and as whom (audit_run.php)
 - backup-folder-download-zip.md: Backup Manager Download of a folder backup: the archive kept inside the folder is rebuilt when the backup was updated after it.
+- backup-object-storage.md: The backup destination "S3-compatible storage" (remote type s3): its own card fields mapped onto the shared object storage client, multipart upload, the bucket's retention prune
 - backup-upload-extraction.md: Backup archives: install-screen upload streamed into data/temp and checksum-checked; the file explorer's backup extract/upload and web-root zip extract follow the same rule plus name and size limits.
 - browser-image-preshrink.md: Browser-side pre-shrink of images over server upload limits: when, EXIF orientation check, quality-before-pixels order, shrinkTo/shrinkQuality, blob name.
 - ca-bundle-panel-update.md: Panel CA bundle update (ca_bundle_update, pg_ca_bundle_update): https-only source, validation checks, atomic write to data/cacert.pem.
@@ -77,6 +79,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - image-panel-thumbnails.md: Panel lists draw pictures from their 320 px WebP derivative (pg_image_panel_thumb_url(), thumbUrl()): which lists and files, 320 kept out of page srcset, warm-up pass, jpeg:size
 - image-processing-engine.md: Single image engine pg_process_image_file(): optimize vs resize jobs and the nine invariants (size guard, atomic write, EXIF, CMYK, GIF, memory, pixels, GIF transparency).
 - image-same-address-switches.md: WebP at a picture's own address: bits 4 and 8 of config.image_derivative_formats, the two Image Optimization switches, their clamp, the new-install default, the System Status line (#5350)
+- image-same-address-why.md: Why a JPEG/PNG keeps its address and file and WebP is negotiated there: options weighed, outside facts, owner decisions, the bytes-match-extension rule
 - image-same-address.md: JPEG/PNG answered with its WebP derivative at its own address (get_file.php, image_negotiation.php): switch bits, Vary, CDN guard, f=original in downloads and mails, no door renames
 - image-settings-and-product-upload.md: Image config keys and defaults, product upload pipeline (image_profile=product), files.image_width/height cache rule, optimizable-percent badge cost.
 - image-upload-cap.md: Upload size cap (config.image_upload_max_dimension, 11.0.142, #4700): library uploads above N px shrunk in their own format; 0 off, 2560 on a new site; the doors

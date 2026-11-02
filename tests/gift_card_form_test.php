@@ -67,6 +67,62 @@ function test_gift_card_form_card_add_mode()
 	pg_assert_contains('name="expiration_date"', $card, 'the expiration date');
 	pg_assert_contains('name="notes"', $card, 'the notes');
 	pg_assert_false(strpos($card, 'name="balance"') !== false, 'no balance on create');
+	pg_assert_contains('data-inputmask-alias="integer"', $card, 'the quantity takes whole numbers only');
+	pg_assert_contains('data-inputmask-allowminus="false"', $card, 'and no minus');
+	pg_assert_false(strpos($card, 'data-inputmask-alias="decimal"') !== false, 'no decimal mask on the quantity');
+	pg_assert_contains('rows="5"', $card, 'the notes open five lines high');
+	pg_assert_false(strpos($card, 'cols=""') !== false, 'no empty cols');
+	pg_assert_false(strpos($card, 'id="gift_card_code"') !== false, 'a card being created has no code yet');
+}
+
+/**
+ * The edit screen names the card it changes (the code was printed only in
+ * the log after the screen moved to the page shell).
+ */
+function test_gift_card_form_edit_shows_the_code()
+{
+	$card = pg_test_gift_card_form_card('edit', array('symbol' => '$', 'scripts' => '', 'original_amount' => '$5.00', 'code' => '4059-4366-4285-0475', 'status_class' => 'status_disabled fg-danger', 'status_word' => '<div class="small fg-secondary">Expired</div>'));
+
+	pg_assert_contains('fs-xl fw-bold status_disabled fg-danger" id="gift_card_code">4059-4366-4285-0475</span>', $card, 'the code in the state colour');
+	pg_assert_contains('>Expired</div>', $card, 'the state word');
+
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_gift_card.php');
+	pg_assert_contains("'code' => \$output_code", $edit, 'the screen passes the code');
+	pg_assert_contains("array('label' => \$output_code)", $edit, 'the breadcrumb names the card');
+	pg_assert_false(strpos($edit, 'chart-buttons justify-content-end d-flex flex-wrap"></div>') !== false, 'no empty header strip over the redemption history');
+}
+
+/**
+ * The whole value must be a date: '5/5/20271' used to pass validate_date()
+ * and be stored as 0000-00-00 (never expires), while '15.12.2027' failed.
+ */
+function test_gift_card_form_expiration()
+{
+	if (!defined('DATE_FORMAT')) {
+		define('DATE_FORMAT', 'day_month');
+	}
+
+	pg_assert_same('0000-00-00', pg_gift_card_form_expiration(''), 'blank is no expiration');
+	pg_assert_same('0000-00-00', pg_gift_card_form_expiration('  '), 'spaces are blank');
+	pg_assert_same('2027-12-15', pg_gift_card_form_expiration('2027-12-15'), 'ISO');
+	pg_assert_same('', pg_gift_card_form_expiration('5/5/20271'), 'a five-digit year');
+	pg_assert_same('', pg_gift_card_form_expiration('1/1/2027xx'), 'letters after the year');
+	pg_assert_same('', pg_gift_card_form_expiration('31/31/2027'), 'no such day');
+	pg_assert_same('', pg_gift_card_form_expiration(array('1')), 'an array');
+
+	if (DATE_FORMAT == 'day_month') {
+		pg_assert_same('2027-12-15', pg_gift_card_form_expiration('15.12.2027'), 'the Turkish dotted date');
+		pg_assert_same('2027-12-15', pg_gift_card_form_expiration('15/12/2027'), 'day first with slashes');
+	} else {
+		pg_assert_same('2027-12-15', pg_gift_card_form_expiration('12.15.2027'), 'month first with dots');
+		pg_assert_same('2027-12-15', pg_gift_card_form_expiration('12/15/2027'), 'month first with slashes');
+	}
+
+	foreach (array('add_gift_card.php', 'edit_gift_card.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_contains('e(pg_gift_card_form_expiration($expiration_date))', $source, $file . ' stores the checked date');
+		pg_assert_false(strpos($source, "prepare_form_data_for_input(\$expiration_date, 'date')") !== false, $file . ' no longer pads an unchecked date');
+	}
 }
 
 function test_gift_card_form_card_edit_mode()
@@ -120,7 +176,9 @@ function test_gift_card_form_quantity_is_a_whole_number()
 {
 	pg_assert_same(1, pg_gift_card_form_quantity('1'), 'one card');
 	pg_assert_same(25, pg_gift_card_form_quantity(' 25 '), 'spaces around');
-	pg_assert_same(1000, pg_gift_card_form_quantity('1,000'), 'thousands comma');
+	pg_assert_same(1000, pg_gift_card_form_quantity('1000'), 'the limit');
+	pg_assert_same(false, pg_gift_card_form_quantity('1,5'), 'a Turkish decimal comma is no fifteen');
+	pg_assert_same(false, pg_gift_card_form_quantity('1,000'), 'no separator is dropped');
 	pg_assert_same(false, pg_gift_card_form_quantity('0'), 'zero');
 	pg_assert_same(false, pg_gift_card_form_quantity('0.5'), 'a half creates no card');
 	pg_assert_same(false, pg_gift_card_form_quantity('2.5'), 'a fraction');

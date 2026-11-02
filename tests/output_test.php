@@ -265,3 +265,13 @@ function test_output_page_fact_page_encodes_the_name_and_names_a_missing_page()
 		'a deleted page is not set, with no link to the home page');
 	pg_assert_same('[' . lang('Not Set') . ']', pg_page_fact_page('Skip Page', null, '/')['text'], 'null name');
 }
+
+function test_output_page_title_escapes_markup_and_keeps_entities()
+{
+	pg_assert_same('Connect &lt;/title&gt;&lt;script&gt;x()&lt;/script&gt; - ', pg_output_page_title('Connect </title><script>x()</script>'), 'a registered client name cannot end the title');
+	pg_assert_same('Orders &amp; Carts - ', pg_output_page_title('Orders &amp; Carts'), 'an entity is not escaped twice');
+	pg_assert_same('Orders &amp; Carts - ', pg_output_page_title('Orders & Carts'), 'a bare ampersand is escaped');
+	pg_assert_same('Login - ', pg_output_page_title('Login'), 'plain title');
+	pg_assert_same('', pg_output_page_title(''), 'no title');
+	pg_assert_same('', pg_output_page_title(null), 'missing title');
+}

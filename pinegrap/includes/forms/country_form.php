@@ -4,7 +4,7 @@
  *
  * The country form, shared by the create and the edit screens
  * (add_country.php, edit_country.php): the options card (name, code, the
- * zip code and default switches, transit adjustment days) and the posted
+ * zip code and default switches, extra delivery days) and the posted
  * values both screens write. The screens keep what differs: the edit screen
  * loads the country, posts its id, offers delete and clears the states, zone
  * links and addresses of a deleted country; each writes its own row.
@@ -39,17 +39,51 @@ function pg_country_form_values($post)
 
     $values['name'] = trim($values['name']);
     $values['code'] = trim($values['code']);
+    $values['transit_adjustment_days'] = trim($values['transit_adjustment_days']);
 
     return $values;
 }
 
 /**
+ * The message for transit adjustment days that are not a whole number of
+ * zero or more, or ''. The column is INT UNSIGNED and the session runs
+ * without strict mode, so MySQL would store '-5' as 0 and '12,50' as 12
+ * without a word; an empty box means 0 (pg_country_form_transit_days()).
+ *
+ * @param string $value The posted value (pg_country_form_values())
+ * @return string
+ */
+function pg_country_form_transit_days_error($value)
+{
+    $value = trim((string) $value);
+
+    return (($value === '') || preg_match('/^[0-9]{1,9}$/', $value))
+        ? ''
+        : lang('Enter a whole number of days, 0 or more.');
+}
+
+/**
+ * The transit adjustment days to store: a value that passed
+ * pg_country_form_transit_days_error() as an integer, an empty box as 0.
+ *
+ * @param string $value
+ * @return int
+ */
+function pg_country_form_transit_days($value)
+{
+    $value = trim((string) $value);
+
+    return preg_match('/^[0-9]{1,9}$/', $value) ? (int) $value : 0;
+}
+
+/**
  * The required fields left blank, as field => message. A country with no
  * name prints an empty row in every list and picker, and one with no code
- * cannot be matched by checkout or written to an order.
+ * cannot be matched by checkout or written to an order. Transit adjustment
+ * days that are not a whole number of zero or more are refused too.
  *
  * @param array $values pg_country_form_values()
- * @return array  'name' and/or 'code' => message
+ * @return array  'name', 'code' and/or 'transit_adjustment_days' => message
  */
 function pg_country_form_required_errors($values)
 {
@@ -61,6 +95,12 @@ function pg_country_form_required_errors($values)
 
     if (trim((string) ($values['code'] ?? '')) === '') {
         $errors['code'] = lang('Enter a code.');
+    }
+
+    $transit_error = pg_country_form_transit_days_error($values['transit_adjustment_days'] ?? '');
+
+    if ($transit_error !== '') {
+        $errors['transit_adjustment_days'] = $transit_error;
     }
 
     return $errors;
@@ -122,8 +162,9 @@ function pg_country_form_code_error($code, $stored_code, $except_id, $taken = 'p
  * @param array|null $values The fields of pg_country_form_values() from a
  *                           stored country or a refused post; null on
  *                           create, which prints no values and no switch on
- * @param array      $errors Field => message; 'name' and 'code' are printed
- *                           under their fields
+ * @param array      $errors Field => message; 'name', 'code' and
+ *                           'transit_adjustment_days' are printed under
+ *                           their fields
  * @return string  HTML
  */
 function pg_country_form_card($values, $errors = array())
@@ -144,7 +185,12 @@ function pg_country_form_card($values, $errors = array())
     $name_aria = ($name_error !== '') ? ' aria-invalid="true" aria-describedby="name-error"' : '';
     $name_feedback = ($name_error !== '') ? '
                                                 <div id="name-error" class="invalid-feedback d-block">' . h($name_error) . '</div>' : '';
-    $zip_checked =$values['zip_code_required'] ? ' checked' : '';
+    $transit_error = isset($errors['transit_adjustment_days']) ? (string) $errors['transit_adjustment_days'] : '';
+    $transit_class = ($transit_error !== '') ? ' is-invalid' : '';
+    $transit_aria = ($transit_error !== '') ? ' aria-invalid="true" aria-describedby="transit_adjustment_days-error"' : '';
+    $transit_feedback = ($transit_error !== '') ? '
+                                                <div id="transit_adjustment_days-error" class="invalid-feedback d-block">' . h($transit_error) . '</div>' : '';
+    $zip_checked = $values['zip_code_required'] ? ' checked' : '';
     $default_checked = ($values['default_selected'] == 1) ? ' checked' : '';
 
     return '
@@ -164,7 +210,7 @@ function pg_country_form_card($values, $errors = array())
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label for="code" class="form-label">' . lang('Code') . '</label>
                                                 <input type="text" name="code" id="code" class="form-control' . $code_class . '" maxlength="50" required' . $code_value . $code_aria . ' />' . $code_feedback . '
-                                                <div class="form-text">' . lang('New Country Code for Order Reporting') . '</div>
+                                                <div class="form-text">' . lang('Country Code for Order Reporting') . '</div>
                                             </div>
 
                                             <div class="col-12 my-1 mt-5">
@@ -182,12 +228,12 @@ function pg_country_form_card($values, $errors = array())
                                             </div>
 
                                             <div class="col-12 md:col-6 lg:col-4 my-1">
-                                                <label for="transit_adjustment_days" class="form-label">' . lang('Transit Adjustment Days') . '</label>
+                                                <label for="transit_adjustment_days" class="form-label">' . lang('Extra Delivery Days') . '</label>
                                                 <div class="input-group number-controls">
                                                     <button class="btn material-icons minus border border-end-0" type="button" aria-label="' . h(lang('Decrease')) . '">remove</button>
-                                                    <input class="form-control text-center border-start-0 border-end-0" value="' . h($values['transit_adjustment_days']) . '" type="text" name="transit_adjustment_days" id="transit_adjustment_days" maxlength="9" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"/>
+                                                    <input class="form-control text-center border-start-0 border-end-0' . $transit_class . '" value="' . h($values['transit_adjustment_days']) . '" type="text" name="transit_adjustment_days" id="transit_adjustment_days" maxlength="9" min="0" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowMinus="false" data-inputmask-placeholder="0"' . $transit_aria . '/>
                                                     <button class="btn material-icons plus border border-start-0" type="button" aria-label="' . h(lang('Increase')) . '">add</button>
-                                                </div>
+                                                </div>' . $transit_feedback . '
                                                 <div class="form-text">' . lang('Shipping Delays Specific to this Country') . '</div>
                                             </div>
                                         </div>

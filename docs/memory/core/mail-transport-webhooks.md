@@ -28,4 +28,4 @@ module: mail_webhook
 ## How was it verified?
 - `tests/mail_webhook_test.php`: each provider's documented payload, both signatures (good, wrong, stale), the decisions, the replay list, the card's save decision. No provider posted to a running site; the card was not opened in a browser.
 
-Related: mail-bounces.md, mail-transports.md, docs/memory/plans/mail-deliverability.md
+Related: mail-bounces.md, mail-transports.md

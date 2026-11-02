@@ -169,18 +169,207 @@ function pg_email_campaign_profile_action_values($action, $fields)
 
 /**
  * The schedule time as stored. 00:00:00 means "send at any time", so a
- * chosen 12:00 AM is stored as 00:01:00.
+ * chosen midnight (12:00 AM, or 00:00 with the 24-hour clock) is stored as
+ * 00:01:00.
  *
- * @param string $time  As typed, e.g. "9:30 AM", or ''
+ * @param string $time  As typed, e.g. "9:30 AM", "00:00", or ''
  * @return string
  */
 function pg_email_campaign_profile_schedule_time($time)
 {
-    if (mb_strtolower((string) $time) == '12:00 am') {
+    $time = trim((string) $time);
+
+    // An empty time also converts to 00:00, and means "any time".
+    if ($time === '') {
+        return prepare_form_data_for_input($time, 'time');
+    }
+
+    $stored = (string) prepare_form_data_for_input($time, 'time');
+
+    if (($stored === '00:00') || ($stored === '00:00:00')) {
         return '00:01:00';
     }
 
-    return prepare_form_data_for_input($time, 'time');
+    return $stored;
+}
+
+/**
+ * Whether a schedule length is a whole number of days or hours: digits
+ * only, at most 9 (the column is int unsigned). Empty is allowed and
+ * stored as 0.
+ *
+ * @param mixed $length
+ * @return bool
+ */
+function pg_email_campaign_profile_schedule_length_valid($length)
+{
+    if (!is_scalar($length)) {
+        return false;
+    }
+
+    $length = trim((string) $length);
+
+    return ($length === '') || (preg_match('/^\d{1,9}$/', $length) === 1);
+}
+
+/**
+ * The problem with a campaign profile's stored values as a whole, checked
+ * with the same rules as the create and edit form, without the access
+ * checks (pg_email_campaign_profile_access_problem()). Used by the import,
+ * where every column comes from a file cell.
+ *
+ * @param array $values    Column name => value: name, enabled, action,
+ *                         action_item_id, format, page_id, from_email_address,
+ *                         reply_email_address, bcc_email_address,
+ *                         schedule_time, schedule_length, schedule_unit,
+ *                         schedule_period, schedule_base, purpose
+ * @param bool  $commerce  Whether the user may pick a commerce action
+ * @return string  The reason the values cannot be saved, '' when they can
+ */
+function pg_email_campaign_profile_values_problem($values, $commerce)
+{
+    $value = function ($name) use ($values) {
+        return (isset($values[$name]) && is_scalar($values[$name])) ? trim((string) $values[$name]) : '';
+    };
+
+    $name = $value('name');
+
+    if ($name === '') {
+        return lang(array('string' => '{var:1} is required', 'vars' => lang('Name')));
+    }
+
+    // The name column is varchar(100); a longer name would be cut and no
+    // longer match the row on the next import.
+    if (mb_strlen($name) > 100) {
+        return lang('The name is longer than 100 characters.');
+    }
+
+    if (!in_array($value('enabled'), array('0', '1'), true)) {
+        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'enabled'));
+    }
+
+    $action = $value('action');
+    $actions = array_merge(array('calendar_event_reserved', 'custom_form_submitted', 'email_campaign_sent'), pg_email_campaign_profile_commerce_actions());
+
+    if (!in_array($action, $actions, true)) {
+        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'action'));
+    }
+
+    if (!$commerce && in_array($action, pg_email_campaign_profile_commerce_actions(), true)) {
+        return lang('Sorry, you do not have access to that action.');
+    }
+
+    if (
+        (pg_email_campaign_profile_action_item_field($action) !== '')
+        && !preg_match('/^[1-9]\d{0,9}$/', $value('action_item_id'))
+    ) {
+        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'action_item_id'));
+    }
+
+    if (!in_array($value('format'), array('plain_text', 'html'), true)) {
+        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'format'));
+    }
+
+    if (($value('format') === 'html') && !preg_match('/^[1-9]\d{0,9}$/', $value('page_id'))) {
+        return lang(array('string' => '{var:1} is required', 'vars' => lang('Page')));
+    }
+
+    if (!validate_email_address($value('from_email_address'))) {
+        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'from_email_address'));
+    }
+
+    foreach (array('reply_email_address', 'bcc_email_address') as $column) {
+        if (($value($column) !== '') && !validate_email_address($value($column))) {
+            return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => $column));
+        }
+    }
+
+    if (($value('schedule_time') !== '') && !validate_time($value('schedule_time'))) {
+        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'schedule_time'));
+    }
+
+    if (!pg_email_campaign_profile_schedule_length_valid($value('schedule_length'))) {
+        return lang('Please enter a valid number of days or hours.');
+    }
+
+    if (!in_array($value('schedule_unit'), array('days', 'hours'), true)) {
+        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'schedule_unit'));
+    }
+
+    // Only a calendar event reservation takes its period and base from the
+    // row (pg_email_campaign_profile_action_values()).
+    if ($action === 'calendar_event_reserved') {
+        if (!in_array($value('schedule_period'), array('before', 'after'), true)) {
+            return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'schedule_period'));
+        }
+
+        if (!in_array($value('schedule_base'), array('action', 'calendar_event_start_time'), true)) {
+            return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'schedule_base'));
+        }
+
+        if (($value('schedule_period') === 'before') && ($value('schedule_base') === 'action')) {
+            return lang('Sorry, you may not select \'before action\'.  Try setting \'after action\'.');
+        }
+    }
+
+    if (!in_array($value('purpose'), array('commercial', 'transactional'), true)) {
+        return lang(array('string' => 'Please enter a valid {var:1}.', 'vars' => 'purpose'));
+    }
+
+    return '';
+}
+
+/**
+ * The access problem with a profile's trigger item and body page, checked
+ * as the form checks them: the calendar event, the custom form (edit
+ * access), the followed profile (a basic user's own only) and the HTML
+ * body page (view access).
+ *
+ * @param array $values  As for pg_email_campaign_profile_values_problem(),
+ *                       already valid there
+ * @return string  The reason, '' when the user may pick them
+ */
+function pg_email_campaign_profile_access_problem($values)
+{
+    $item_id = (int) ($values['action_item_id'] ?? 0);
+
+    switch ($values['action'] ?? '') {
+        case 'calendar_event_reserved':
+            if (!validate_calendar_event_access($item_id)) {
+                return lang('Sorry, you do not have access to that calendar event.');
+            }
+
+            break;
+
+        case 'custom_form_submitted':
+            $folder = db_value("SELECT page_folder FROM page WHERE page_id = '" . $item_id . "'");
+
+            if (!$folder || !check_edit_access($folder)) {
+                return lang('Sorry, you do not have access to that custom form.');
+            }
+
+            break;
+
+        case 'email_campaign_sent':
+            if (
+                (USER_ROLE == 3)
+                && (USER_ID != db_value("SELECT created_user_id FROM email_campaign_profiles WHERE id = '" . $item_id . "'"))
+            ) {
+                return lang('Sorry, you do not have access to that campaign profile.');
+            }
+
+            break;
+    }
+
+    if (($values['format'] ?? '') === 'html') {
+        $folder = db_value("SELECT page_folder FROM page WHERE page_id = '" . (int) ($values['page_id'] ?? 0) . "'");
+
+        if (!$folder || !check_view_access($folder)) {
+            return lang('You are not authorized to select that page. Please select a different page.');
+        }
+    }
+
+    return '';
 }
 
 /**
@@ -553,9 +742,9 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
 
         $output_product_id_row =
             '<div class="col-12 md:col-6 lg:col-4 my-3 collapse ' . $rows['product_id'] . '" id="product_id_row">
-                <label for="product_id" class="form-label">' . lang('Product') . '</label>
+                <label for="product_id" class="form-label">' . lang('Product') . '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                 ' . $gone_notices['product_id'] . '
-                ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-control', 'options'=>get_product_options(true, $product_id) )) . '
+                ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-control', 'required'=>($rows['product_id'] == 'show' ? 'required' : ''), 'options'=>get_product_options(true, $product_id) )) . '
             </div>';
     }
 
@@ -578,22 +767,22 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
                                 </div>
                                 <div class="col-12 md:col-6 my-3">
                                     <label for="action" class="form-label">' . lang('Action') . '</label>
-                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'action', 'id'=>'action', 'class'=>'form-control', 'options'=>$action_options, 'onchange'=>'change_email_campaign_profile_action()')) . '
+                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'action', 'id'=>'action', 'class'=>'form-control', 'options'=>$action_options, 'onchange'=>'change_email_campaign_profile_action()', 'required'=>'required')) . '
                                 </div>
                                 <div class="col-12 md:col-6 my-3 collapse ' . $rows['calendar_event_id'] . '" id="calendar_event_id_row">
-                                    <label for="calendar_event_id" class="form-label">' . lang('Calendar Event') . '</label>
+                                    <label for="calendar_event_id" class="form-label">' . lang('Calendar Event') . '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                                     ' . $gone_notices['calendar_event_id'] . '
-                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'calendar_event_id', 'id'=>'calendar_event_id', 'class'=>'form-control', 'options'=>get_calendar_event_options(array('reservations' => true)) )) . '
+                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'calendar_event_id', 'id'=>'calendar_event_id', 'class'=>'form-control', 'required'=>($rows['calendar_event_id'] == 'show' ? 'required' : ''), 'options'=>get_calendar_event_options(array('reservations' => true)) )) . '
                                 </div>
                                 <div class="col-12 md:col-6 my-3 collapse ' . $rows['custom_form_page_id'] . '" id="custom_form_page_id_row">
-                                    <label for="custom_form_page_id" class="form-label">' . lang('Custom Form') . '</label>
+                                    <label for="custom_form_page_id" class="form-label">' . lang('Custom Form') . '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                                     ' . $gone_notices['custom_form_page_id'] . '
-                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'custom_form_page_id', 'id'=>'custom_form_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'any form', 'edit', false, $keep_pages['custom_form_page_id'] ?? 0) )) . '
+                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'custom_form_page_id', 'id'=>'custom_form_page_id', 'class'=>'form-control', 'required'=>($rows['custom_form_page_id'] == 'show' ? 'required' : ''), 'options'=>get_page_options('', 'any form', 'edit', false, $keep_pages['custom_form_page_id'] ?? 0) )) . '
                                 </div>
                                 <div class="col-12 md:col-6 my-3 collapse ' . $rows['email_campaign_profile_id'] . '" id="email_campaign_profile_id_row">
-                                    <label for="email_campaign_profile_id" class="form-label">' . lang('Campaign Profile for Campaign that was sent') . '</label>
+                                    <label for="email_campaign_profile_id" class="form-label">' . lang('Campaign Profile for Campaign that was sent') . '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                                     ' . $gone_notices['email_campaign_profile_id'] . '
-                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'email_campaign_profile_id', 'id'=>'email_campaign_profile_id', 'class'=>'form-control', 'options'=>get_email_campaign_profile_options($exclude_ids, $keep_pages['email_campaign_profile_id'] ?? 0) )) . '
+                                    ' . $liveform->output_field(array('type'=>'select', 'name'=>'email_campaign_profile_id', 'id'=>'email_campaign_profile_id', 'class'=>'form-control', 'required'=>($rows['email_campaign_profile_id'] == 'show' ? 'required' : ''), 'options'=>get_email_campaign_profile_options($exclude_ids, $keep_pages['email_campaign_profile_id'] ?? 0) )) . '
                                 </div>
                                 ' . $output_product_id_row . '
                                 ' . $output_subscription_fields_row . '
@@ -638,9 +827,9 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
                                         <div class="popover-body">
                                             <div class="row">
                                                 <div class="col-12 sm:col-8 my-1">
-                                                    <label class="form-label" for="page_id">' . lang('Page') . '</label>
+                                                    <label class="form-label" for="page_id">' . lang('Page') . '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                                                     ' . $page_gone_notice . '
-                                                    ' . $liveform->output_field(array('type'=>'select', 'id'=>'page_id', 'name'=>'page_id', 'class'=>'form-control collapse-if-selected', 'options'=>get_page_options('', '', 'view', true, $keep_pages['page_id'] ?? 0), 'data-bs-target'=>'#body_preview_row', 'onchange'=>'document.getElementById(\'body_preview_iframe\').src = \'' . OUTPUT_PATH . '\' + this.options[this.selectedIndex].firstChild.nodeValue + \'?edit=no&email=true\';')) . '
+                                                    ' . $liveform->output_field(array('type'=>'select', 'id'=>'page_id', 'name'=>'page_id', 'class'=>'form-control collapse-if-selected', 'required'=>($liveform->get_field_value('format') == 'html' ? 'required' : ''), 'options'=>get_page_options('', '', 'view', true, $keep_pages['page_id'] ?? 0), 'data-bs-target'=>'#body_preview_row', 'onchange'=>'document.getElementById(\'body_preview_iframe\').src = \'' . OUTPUT_PATH . '\' + this.options[this.selectedIndex].firstChild.nodeValue + \'?edit=no&email=true\';')) . '
                                                 </div>
                                                 <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="body_preview_row">
                                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
@@ -693,12 +882,19 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0,
                             <div class="row">
                                 <div class="col-12 my-3">
                                     <div class="form-label">' . lang('Send e-mail') . '</div>
-                                    <div class="input-group">
-                                        ' . $liveform->output_field(array('type'=>'text', 'name'=>'schedule_length', 'aria-label'=>lang('Send e-mail'), 'class'=>'form-control text-end', 'value'=>'1', 'size'=>'3', 'maxlength'=>'9', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'decimal', 'data-inputmask-digits'=>'9', 'data-inputmask-placeholder'=>'1' )) . '
-                                        ' . $liveform->output_field(array('type'=>'select', 'name'=>'schedule_unit', 'aria-label'=>lang('Day(s)/Hour(s)'), 'class'=>'form-control', 'options'=>array(lang('day(s)') => 'days', lang('hour(s)') => 'hours'))) . '
-                                        ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-control collapse ' . $rows['calendar_schedule'], 'name'=>'schedule_period', 'aria-label'=>lang('Before/After'), 'id'=>'schedule_period', 'options'=>array('' => '', lang('before') => 'before', lang('after') => 'after'))) . '
-                                        ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-control collapse ' . $rows['calendar_schedule'], 'name'=>'schedule_base', 'aria-label'=>lang('From Action/From Calendar event start time'), 'id'=>'schedule_base', 'options'=>array('' => '', lang('from action') => 'action', lang('from calendar event start time') => 'calendar_event_start_time'))) . '
-                                        <span class="collapse input-group-text ' . $rows['standard_schedule'] . '" id="standard_schedule_period_and_base">&nbsp;' . lang('after action') . '</span>
+                                    <!-- The before/after and base pickers of a calendar event
+                                         reservation are a second group, so on a narrow screen
+                                         they wrap below the length instead of squeezing it. -->
+                                    <div class="d-flex flex-wrap gap-3">
+                                        <div class="input-group flex-nowrap w-auto">
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'schedule_length', 'aria-label'=>lang('Send e-mail'), 'class'=>'form-control text-end', 'value'=>'1', 'size'=>'3', 'maxlength'=>'9', 'min'=>'0', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'integer', 'data-inputmask-allowminus'=>'false', 'data-inputmask-placeholder'=>'1' )) . '
+                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'schedule_unit', 'aria-label'=>lang('Day(s)/Hour(s)'), 'class'=>'form-control', 'options'=>array(lang('day(s)') => 'days', lang('hour(s)') => 'hours'))) . '
+                                            <span class="collapse input-group-text ' . $rows['standard_schedule'] . '" id="standard_schedule_period_and_base">&nbsp;' . lang('after action') . '</span>
+                                        </div>
+                                        <div class="input-group flex-nowrap w-auto">
+                                            ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-control collapse ' . $rows['calendar_schedule'], 'name'=>'schedule_period', 'aria-label'=>lang('Before/After'), 'id'=>'schedule_period', 'options'=>array('-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Before/After')))) . '-' => '', lang('before') => 'before', lang('after') => 'after'))) . '
+                                            ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-control collapse ' . $rows['calendar_schedule'], 'name'=>'schedule_base', 'aria-label'=>lang('From Action/From Calendar event start time'), 'id'=>'schedule_base', 'options'=>array('-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Start')))) . '-' => '', lang('from action') => 'action', lang('from calendar event start time') => 'calendar_event_start_time'))) . '
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="col-12 md:col-6 my-3">
@@ -916,6 +1112,12 @@ function pg_email_campaign_profile_form_validate($liveform, $profile_id = 0)
         && (validate_time($liveform->get_field_value('schedule_time')) == false)
     ) {
         $liveform->mark_error('schedule_time', lang(array('string'=>'Please enter a valid {var:1}.','vars'=>lang('time'))));
+    }
+
+    // The length column is int unsigned: a minus sign, a decimal point or a
+    // decimal comma would be cut or rounded without a word.
+    if (!pg_email_campaign_profile_schedule_length_valid($liveform->get_field_value('schedule_length'))) {
+        $liveform->mark_error('schedule_length', lang('Please enter a valid number of days or hours.'));
     }
 
     $liveform->validate_required_field('schedule_unit', lang(array('string'=>'{var:1} is required','vars'=>lang('Day(s)/Hour(s)'))));

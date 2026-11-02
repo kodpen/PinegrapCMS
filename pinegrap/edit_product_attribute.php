@@ -39,7 +39,7 @@ $product_attribute = db_item(
     FROM product_attributes
     WHERE id = '" . escape($_REQUEST['id']) . "'");
 
-$options = db_items(
+$stored_options = db_items(
     "SELECT
         id,
         label,
@@ -54,7 +54,7 @@ if (!$_POST) {
     if ($liveform->field_in_session('id') == false) {
         $liveform->assign_field_value('name', $product_attribute['name']);
         $liveform->assign_field_value('label', $product_attribute['label']);
-        $liveform->assign_field_value('options', encode_json($options));
+        $liveform->assign_field_value('options', encode_json($stored_options));
     }
 
     echo
@@ -138,65 +138,74 @@ if (!$_POST) {
                 last_modified_timestamp = UNIX_TIMESTAMP()
             WHERE id = '" . escape($liveform->get_field_value('id')) . "'");
 
-        // Loop through the options in order to update or add new ones.
+        // Update the options of this attribute and add the new ones. An id
+        // that is not one of this attribute's options is added as a new
+        // option, so a posted id never reaches another attribute's option.
+        $attribute_id = (int) $liveform->get_field_value('id');
+        $existing_ids = array();
+
+        foreach ($stored_options as $stored_option) {
+            $existing_ids[(int) $stored_option['id']] = true;
+        }
 
         $sort_order = 0;
-        $sql_delete_exception = "";
+        $kept_ids = array();
 
         foreach ($options as $option) {
             $sort_order++;
 
-            // If there is an id for an existing option, then update option.
-            if ($option['id']) {
-                db(
+            if ($option['id'] && isset($existing_ids[$option['id']])) {
+                db_q(
                     "UPDATE product_attribute_options
                     SET
-                        label = '" . e($option['label']) . "',
-                        no_value = '" . e($option['no_value']) . "',
-                        sort_order = '$sort_order'
-                    WHERE id = '" . e($option['id']) . "'");
+                        label = ?,
+                        no_value = ?,
+                        sort_order = ?
+                    WHERE (id = ?) AND (product_attribute_id = ?)",
+                    array($option['label'], $option['no_value'], $sort_order, $option['id'], $attribute_id));
 
-                $id = $option['id'];
+                $kept_ids[] = (int) $option['id'];
 
-            // Otherwise there is not an id, so create new option.
             } else {
-                db(
+                db_q(
                     "INSERT INTO product_attribute_options (
                         product_attribute_id,
                         label,
                         no_value,
                         sort_order)
-                    VALUES (
-                        '" . e($liveform->get_field_value('id')) . "',
-                        '" . e($option['label']) . "',
-                        '" . e($option['no_value']) . "',
-                        '$sort_order')");
+                    VALUES (?, ?, ?, ?)",
+                    array($attribute_id, $option['label'], $option['no_value'], $sort_order));
 
-                $id = mysqli_insert_id(db::$con);
+                $kept_ids[] = (int) mysqli_insert_id(db::$con);
             }
-
-            // Update delete exception so that later we don't delete this option.
-            $sql_delete_exception .= " AND (id != '" . e($id) . "')";
         }
 
-        // Get all options that we need to delete.
-        $deleted_options = db_items(
-            "SELECT id
-            FROM product_attribute_options
-            WHERE
-                (product_attribute_id = '" . e($liveform->get_field_value('id')) . "')
-                $sql_delete_exception");
+        // Remove the options that were taken off: their product links go, and
+        // a product group that preselected one preselects none instead of an
+        // option that is gone (as the external API does).
+        $removed_ids = array();
 
-        // Loop through all options that need to be deleted in order to delete them.
-        foreach ($deleted_options as $option) {
-            // Delete option.
-            db("DELETE FROM product_attribute_options WHERE id = '" . $option['id'] . "'");
-
-            // Delete product associations with this option.
-            db("DELETE FROM products_attributes_xref WHERE option_id = '" . $option['id'] . "'");
+        foreach (array_keys($existing_ids) as $existing_id) {
+            if (!in_array($existing_id, $kept_ids, true)) {
+                $removed_ids[] = (int) $existing_id;
+            }
         }
-        
-        log_activity(lang(array('string' => '{var:1} ({var:2}) was modified', 'vars' => array(lang('product attribute'), $product_attribute['name']))), $_SESSION['sessionusername']);
+
+        if ($removed_ids) {
+            $in = implode(',', $removed_ids);
+
+            db_q("DELETE FROM product_attribute_options WHERE (id IN (" . $in . ")) AND (product_attribute_id = ?)", array($attribute_id));
+            db("DELETE FROM products_attributes_xref WHERE option_id IN (" . $in . ")");
+            db_q("UPDATE product_groups_attributes_xref SET default_option_id = 0 WHERE (attribute_id = ?) AND (default_option_id IN (" . $in . "))", array($attribute_id));
+        }
+
+        // The log names the attribute by its new name, with the old one when
+        // the name changed, so a search for either finds the change.
+        $old_name = (string) $product_attribute['name'];
+        $new_name = (string) $liveform->get_field_value('name');
+        $log_name = ($old_name === $new_name) ? $new_name : $old_name . ' → ' . $new_name;
+
+        log_activity(lang(array('string' => '{var:1} ({var:2}) was modified', 'vars' => array(lang('product attribute'), $log_name))), $_SESSION['sessionusername']);
         
         $liveform_view_product_attributes = new liveform('view_product_attributes');
         $liveform_view_product_attributes->add_notice(lang('The product attribute has been saved.'));

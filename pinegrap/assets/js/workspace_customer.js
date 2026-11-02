@@ -370,7 +370,11 @@
         var actions = h.el('div', 'd-flex flex-wrap justify-content-end gap-3');
         var body = h.el('div', 'card-body');
 
-        header.appendChild(h.el('span', 'text-uppercase h5 fg-primary fw-bold mb-0', h.t('customer')));
+        // The Workspace card title: as the overview cards draw theirs.
+        var heading = h.el('h3', 'h6 mb-0');
+        heading.appendChild(h.icon('bi-person-vcard', 'me-1'));
+        heading.appendChild(document.createTextNode(h.t('customer')));
+        header.appendChild(heading);
         header.appendChild(actions);
         node.appendChild(header);
 

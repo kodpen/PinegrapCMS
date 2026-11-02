@@ -201,6 +201,32 @@ function erp_purchase_order_line_keys($lines, $new_key = null)
 }
 
 /**
+ * Why the account cannot be the order's supplier, '' when it can.
+ *
+ * An order goes to a supplier: an account kept as a customer only is
+ * refused, as the form does not offer it and the account card lists no
+ * orders for it. The account an order was already written to stays
+ * allowed, so an order saved before the account's kind changed can still
+ * be changed.
+ *
+ * @param array|null $account          From erp_account()
+ * @param int        $kept_account_id  The stored order's account, 0 for a new order
+ * @return string
+ */
+function erp_purchase_order_account_refusal($account, $kept_account_id = 0)
+{
+    if (!is_array($account)) {
+        return lang('Choose an account.');
+    }
+
+    if (((string) ($account['kind'] ?? '') === 'customer') && ((int) $account['id'] !== (int) $kept_account_id)) {
+        return lang('A purchase order goes to a supplier. Choose an account kept as a supplier, or make this account a supplier on its card first.');
+    }
+
+    return '';
+}
+
+/**
  * Save a new purchase order, which takes its number, or rewrite one that can
  * still be changed (erp_purchase_order_editable()).
  *
@@ -228,6 +254,14 @@ function erp_purchase_order_save($data, $order_id, $user_id)
     }
 
     $header = $built_header['header'];
+
+    $stored = ((int) $order_id > 0) ? erp_purchase_order((int) $order_id) : null;
+    $account_refusal = erp_purchase_order_account_refusal(erp_account((int) $header['account_id']), is_array($stored) ? (int) $stored['account_id'] : 0);
+
+    if ($account_refusal !== '') {
+        return $fail($account_refusal, 'account_id');
+    }
+
     $built = erp_manual_lines_build($data['lines'] ?? array());
 
     if ($built['error'] !== '') {
@@ -369,6 +403,10 @@ function erp_purchase_order_status_refusal($order, $to)
 
     switch ((string) $to) {
         case 'sent':
+            if ($status === 'received') {
+                return lang('Everything on the purchase order has come in; it is not sent to the supplier again.');
+            }
+
             return ($status === 'cancelled') ? lang('A cancelled purchase order is not sent. Open it again first.') : '';
 
         case 'cancelled':
@@ -482,7 +520,8 @@ function erp_purchase_order_document_source($order)
         'issue_date' => (string) $order['issue_date'],
         'due_date' => (string) $order['expected_date'],
         'doc_type' => 'purchase_order',
-        'status' => 'issued',
+        // A cancelled order is printed marked as such (invoice.is_cancelled).
+        'status' => ((string) $order['status'] === 'cancelled') ? 'cancelled' : 'issued',
         'direction' => 'purchase',
         'order_id' => 0,
         'order_number' => '',
@@ -536,6 +575,7 @@ function erp_purchase_order_document_source($order)
             'invoice_date' => lang('Order Date'),
             'due_date' => lang('Expected delivery'),
             'bill_to' => lang('SUPPLIER'),
+            'cancelled' => lang('CANCELLED'),
         ),
     );
 }

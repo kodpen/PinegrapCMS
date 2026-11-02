@@ -1623,6 +1623,18 @@ function get_shipping_methods($properties) {
         $arrival_date = '0000-00-00';
     }
 
+    // A requested arrival date before a pre-order of the order ships cannot
+    // be met (includes/fn/preorder.php); it is no address problem either.
+    $preorder_from = (pg_preorder_date_parse($arrival_date) != '') ? pg_preorder_order_earliest_arrival($order_id) : '';
+    $preorder_problem = pg_preorder_arrival_problem($arrival_date, $preorder_from);
+
+    if ($preorder_problem !== '') {
+        return array(
+            'status' => 'error',
+            'code' => 'arrival_date',
+            'message' => lang(array('string' => $preorder_problem, 'vars' => array(pg_preorder_date_text($preorder_from)))));
+    }
+
     // Get all items in cart for this ship to.
     $items = db_items(
         "SELECT

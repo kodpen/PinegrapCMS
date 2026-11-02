@@ -650,6 +650,7 @@ function api_openapi_objects()
         'TrafficReport' => 'api_traffic_report_schema',
         'TopContent'   => 'api_top_content_schema',
         'VisitorBreakdown' => 'api_visitor_breakdown_schema',
+        'AiVisibilityReport' => 'api_ai_visibility_report_schema',
         'SiteLogEntry' => 'api_site_log_schema',
         'AuditLogEntry' => 'api_audit_log_schema',
         'Campaign'     => 'api_campaign_schema',

@@ -47,7 +47,7 @@ if (!isset($_POST['name'])) {
     $form_name = $cregion_name;
     $form_content = $cregion_content;
     $form_type = 'designer';
-    $name_taken = $liveform->check_field_error('name');
+    $name_error = pg_region_form_name_error_text($liveform);
 
     if ($liveform->field_in_session('name')) {
         list($form_name, $form_content) = pg_designer_region_form_values(array('name' => $liveform->get_field_value('name'), 'content' => $liveform->get_field_value('content')));
@@ -87,7 +87,7 @@ if (!isset($_POST['name'])) {
                                             <label for="type" class="form-label">' . lang('Region Type') . '</label>
                                             <select name="type" id="type" class="form-control"><option value="common"' . ($form_type == 'common' ? ' selected="selected"' : '') . '>' . lang('Common Region') . '</option><option value="designer"' . ($form_type == 'designer' ? ' selected="selected"' : '') . '>' . lang('Designer Region') . '</option></select>
                                             <div class="form-text text-end">' . lang('You can change Region Type') . '</div>
-                                        </div>', $name_taken) . '
+                                        </div>', $name_error) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -124,12 +124,14 @@ $liveform->remove_form();
     } else {
         list($name, $content) = pg_designer_region_form_values($_POST);
 
-        // A rename onto a name another region already has is refused: the
-        // site reads only one row per name. The screen comes back with the
-        // posted values.
-        if (pg_cregion_name_taken($name, $id)) {
+        // A blank or too long name, or a rename onto a name another region
+        // already has (the site reads only one row per name), is refused. The
+        // screen comes back with the posted values.
+        $name_error = pg_region_form_name_refusal($name, pg_cregion_name_taken($name, $id));
+
+        if ($name_error !== '') {
             $liveform->add_fields_to_session(array('trim' => false));
-            $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
+            $liveform->mark_error('name', $name_error);
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_designer_region.php?id=' . $id . ((($_POST['send_to'] ?? '') != '') ? '&send_to=' . urlencode((string) $_POST['send_to']) : ''));
             exit();
         }

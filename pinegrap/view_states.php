@@ -75,11 +75,18 @@ while ($row = mysqli_fetch_assoc($result)) {
 // language's order, not by the stored English name the query orders by.
 // Rows of one country keep the query's order (the further sort levels);
 // descending reverses around the stable sort so they keep it there too.
-if ((($sort_levels[0]['sort'] ?? '') === 'country') && $state_rows) {
+// Sorted by name first: likewise by the panel language's order, as the
+// collation sorts Ş among the S's and Ç among the C's.
+$first_sort = $sort_levels[0]['sort'] ?? '';
+$label_keys = array('country' => 'country_label', 'name' => 'name');
+
+if (isset($label_keys[$first_sort]) && $state_rows) {
+    $label_key = $label_keys[$first_sort];
+
     if (($sort_levels[0]['order'] ?? 'asc') === 'desc') {
-        $state_rows = array_reverse(pg_geo_sort_by_label(array_reverse($state_rows), 'country_label'));
+        $state_rows = array_reverse(pg_geo_sort_by_label(array_reverse($state_rows), $label_key));
     } else {
-        $state_rows = pg_geo_sort_by_label($state_rows, 'country_label');
+        $state_rows = pg_geo_sort_by_label($state_rows, $label_key);
     }
 }
 
@@ -113,7 +120,7 @@ foreach ($state_rows as $row) {
             <td class="align-middle chart_label">' . $name . '</td>
             <td class="align-middle">' . $code . '</td>
             <td class="align-middle">' . h($country_name) . '</td>
-            <td class="align-middle">' . get_relative_time(array('timestamp' => $timestamp)) . ' ' . h($last_modified_username) . '</td>
+            <td class="align-middle">' . pg_list_when($timestamp, $last_modified_username) . '</td>
         </tr>';
 }
 

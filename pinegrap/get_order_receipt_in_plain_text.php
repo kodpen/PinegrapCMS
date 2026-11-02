@@ -191,7 +191,9 @@ function get_order_receipt_in_plain_text($order_id)
                     products.form,
                     products.form_name,
                     products.form_label_column_width,
-                    products.form_quantity_type
+                    products.form_quantity_type,
+                    products.inventory,
+                    products.inventory_quantity" . pg_preorder_select_sql('products', pg_product_preorder_ready()) . "
                 FROM order_items
                 LEFT JOIN products ON order_items.product_id = products.id
                 WHERE
@@ -244,6 +246,14 @@ function get_order_receipt_in_plain_text($order_id)
                     $calendar_event = get_calendar_event($calendar_event_id, $recurrence_number);
                     
                     $short_description .= ' - ' . $calendar_event['name'] . ' - ' . $calendar_event['date_and_time_range'];
+                }
+
+                // "Pre-order, ships from <date>" while the product's pre-order
+                // runs (includes/fn/preorder.php).
+                $preorder_label = pg_preorder_label($order_item, pg_preorder_today());
+
+                if ($preorder_label !== '') {
+                    $short_description .= ' - ' . $preorder_label;
                 }
 
                 $total_price = $product_price * $quantity;

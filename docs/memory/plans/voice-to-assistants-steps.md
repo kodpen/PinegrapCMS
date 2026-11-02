@@ -4,7 +4,7 @@ description: Steps VA1-VA6 of plans/voice-to-assistants.md: deaf hint, keyless h
 ---
 
 ## Which run side by side?
-- Wave 1: VA1, VA3 and VA6, which touch different files. VA2 waits for question 1. Wave 2: VA4 and VA5 after VA3; VA4 also waits for question 2. The last step to land moves the decisions to `workspace/` and deletes both plan files.
+- Wave 1: VA1, VA3 and VA6, which touch different files. VA2 is free (question 1 decided in #5390). Wave 2: VA4 and VA5 after VA3; VA4 also needed question 2, decided in #5390. The last step to land moves the decisions to `workspace/` and deletes both plan files.
 - S is under 400 product lines, M about 1,000. Pure parts get `tests/workspace_voice_*_test.php`. Texts go in only through `tr_add.php`. Run `php tools/build_js.php` after editing workspace.js. Changelog: one `[NEW]` line for voice answers and voice messages from assistants, named in VA4's PR body.
 
 ## Which steps are there?
@@ -12,7 +12,7 @@ description: Steps VA1-VA6 of plans/voice-to-assistants.md: deaf hint, keyless h
   - While transcripts are off or the channel closes them, the recorder says that assistants will not hear the recording. Role 0 gets a link to Workspace Settings › Voice message transcripts.
   - `ws_voice_heard()` writes the reason (off, failed or skipped). Claude's instructions and Pinegrap AI's prompt answer with that reason and the setting's place.
 
-- VA2 (M) Hearing without a key. After question 1.
+- VA2 (M) Hearing without a key. Question 1 is decided (#5390): the browser route.
   - (c): with no service set, `PGVoiceText` writes the sender's recording out on the device before the upload and sends it as the transcript (`provider` browser). The server keeps it only for a recorder file, as machine text. A browser without the model gets VA1's hint.
   - (b): the voice card offers "Pinegrap AI" on the subscription key.
 
@@ -20,7 +20,7 @@ description: Steps VA1-VA6 of plans/voice-to-assistants.md: deaf hint, keyless h
   - The voice card gets a speech part: OpenAI-compatible `/audio/speech`, with the same address and key by default, a model and a voice from a list, stored as `config_text` rows. The consent line names the provider.
   - `ws_voice_speak($text, $locale)` is a pure request builder plus `api_http_request()`. It returns a file kept like a recording: a `voice-…` name and a `done` `ws_voice` row whose transcript is the text. Text over 1,500 characters is cut at a sentence end.
 
-- VA4 (M) Spoken answers. After VA3 and question 2.
+- VA4 (M) Spoken answers. After VA3; question 2 is decided (#5390).
   - Where an assistant's answer is written (Claude's answer route, Pinegrap AI, MCP agents), an answer to a recording gets its sound from `ws_voice_speak()` on the same message.
   - Without a speech service, the asker's browser reads the answer aloud (`speakAnswer()`). This applies in channels and discussions alike, and the answer's text stays as it is.
 

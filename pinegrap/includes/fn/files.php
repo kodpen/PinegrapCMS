@@ -1736,7 +1736,7 @@ function pg_name_max_length()
  */
 function pg_unique_name_limit($type)
 {
-    return in_array($type, array('page', 'folder', 'product', 'product_group'), true) ? pg_name_max_length() : 0;
+    return in_array($type, array('page', 'folder', 'product', 'product_group', 'common_region', 'designer_region'), true) ? pg_name_max_length() : 0;
 }
 
 /**

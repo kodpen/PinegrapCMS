@@ -37,6 +37,12 @@ if ($_POST) {
     if (($code_error !== '') && !isset($errors['code'])) {
         $errors['code'] = $code_error;
     }
+
+    $country_error = pg_state_form_country_error($values['country_id']);
+
+    if ($country_error !== '') {
+        $errors['country_id'] = $country_error;
+    }
 }
 
 if (!$_POST || $errors) {

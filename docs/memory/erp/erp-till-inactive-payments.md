@@ -1,13 +1,18 @@
 ---
 name: erp-till-inactive-payments
-description: An expense is never paid from a till or bank account that was taken off (is_active = 0): the one gate, who goes through it, what a repeat does then, how its till is changed
+description: No expense, receipt, payment or transfer uses a missing till or one taken off (is_active = 0): the gates, who meets them, the cheque exception, what a repeat does then
 ---
 
 ## Which till can pay an expense?
 - `erp_expense_till_refusal($cash_account_id, $currency)` (`includes/erp/expenses.php`) reads the till and asks `erp_expense_till_row_refusal($till, $currency)` (pure, `tests/erp_expense_till_test.php`): missing → "Choose a till or bank account.", `is_active` not 1 → "That till or bank account is not active." (the API's own wording), then the currency rule while foreign currency is on.
 - Every payment of an expense goes through it: `erp_expense_pay()` (panel, API pay), `erp_expense_save()` with `pay` (new expense, API, bank statement line, the repeat run) and `erp_expense_recurrence_create()` for a repeat written as paid.
 
-## What was wrong before?
+## Which till can take a receipt, payment or transfer? (#5544)
+- `erp_cash_till_refusal($id, $allow_inactive)` (`includes/erp/cash.php`) over the pure `erp_cash_till_row_refusal()` (`tests/erp_cash_screens_test.php`): missing → "That till or bank account could not be found.", inactive → "That till or bank account is not active.", the API's words. `erp_post_receipt_check()` asks it for the till, `erp_post_transfer()` for both, so the panel forms, the bank statement lines and the counter sale meet it.
+- Before, the panel checked only `id > 0`: a form left open while its till was taken off, or a hand-made id, wrote the movement to a till no total counts, or to none.
+- `allow_inactive_till` skips only the active check, and only a cheque's later steps (collect, bank pays, endorse, bounce) pass it: the cheque already sits in its portfolio, and taking that till off must not strand it. A cheque's entry needs an active till.
+
+## What was wrong before for expenses?
 - The gate read `is_active` and never compared it. The screens list only active tills, so the hole was a repeat "paid from Bank A" after Bank A was taken off: the run kept writing paid expenses out of it, and since "total of active tills" and the cash forecast skip inactive tills, the money left no trace in any summary (#1079, PR #1229).
 
 ## What does a repeat do now?

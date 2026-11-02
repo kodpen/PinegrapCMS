@@ -260,7 +260,8 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <form method="get" action="erp_profit.php" class="card my-7" id="erp_profit_period">
-                <div class="card-body row g-3 align-items-end">
+                <div class="card-body">
+                    <div class="row g-3 align-items-end">
                     <div class="col-6 md:col-2">
                         <label class="form-label small fg-secondary mb-1" for="range">' . lang('Period') . '</label>
                         <select class="form-control form-control-sm" id="range" name="range">' . $range_options . '</select>
@@ -297,6 +298,7 @@ pg_page_shell([
                         <a class="btn btn-sm btn-outline theme-secondary" href="' . $export_url . '"><i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i>' . lang('Excel') . '</a>
                     </div>
                     <div class="col-12 small fg-secondary">' . h(prepare_form_data_for_output($period['from'], 'date', false) . ' – ' . prepare_form_data_for_output($period['to'], 'date', false)) . '</div>
+                    </div>
                 </div>
             </form>
 

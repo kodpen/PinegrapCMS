@@ -30,7 +30,7 @@ description: Coordinator session: one per account, keeps its cloud workers on fr
 ## When does it hand over to a fresh coordinator?
 - Past about 200k tokens of context (`get_session` `context_usage.used_tokens`, at a check-in): each wake pays for all of it.
 - The workers go with it. Its note: each worker's session id and PR, waits it named to the owner, its to-do list, and the schedules the new one sets up (chain, routine, check-ins).
-- First it archives its workers whose work is done (PR merged, session ended; `archive_session`), then starts the new one with `create_session` and the note, sends each running worker the new coordinator's session id (`send_message`), cancels its own schedules and ends. The new coordinator's first act is to archive the previous one. A worker's failure event then reaches no one: the new one's 10-minute check finds a stopped worker. It hands over on any turn.
+- First it archives its finished workers (PR merged, session ended; `archive_session`), then starts the new one with `create_session` (under depth 6, `coordinator-limits.md`) and the note, sends each running worker the new coordinator's session id (`send_message`), cancels its own schedules and ends. The new coordinator's first act is to archive the previous one. A worker's failure event then reaches no one: the new one's 10-minute check finds a stopped worker.
 
 ## How is one started?
 - A new desktop session on the account, told: "You are the coordinator: read `CLAUDE.md` and `docs/memory/workflow/coordinator.md`, then start the workers and keep the 10-minute check-in."
