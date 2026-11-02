@@ -17,4 +17,4 @@ description: The new dashboard's shop cards (shop, salesmap, orders, offers, fx)
 - `pg_dash_cards_shop.js` fetches the map file once a page and copies only path ids and shapes into a fresh SVG (`role="img"`, labelled); a region with sales gets `data-step` 1-4, coloured from the card colour; the legend repeats the steps. Region figures are also in the rows, so the colours never carry them alone.
 
 ## What is left?
-- `ops` (Operations desk) is step N9b: widget 9's lanes build HTML beside their queries and need a data part first.
+- `ops` (Operations desk) is step N9b: widget 9's lanes build HTML beside their queries; their counts are already helpers (`pg_dashboard_ops_*_summary()`, `pg_dashboard_ops_stock_counts()`, `ui/dashboard-v2-queue-card.md`), the row lists still need a data part.

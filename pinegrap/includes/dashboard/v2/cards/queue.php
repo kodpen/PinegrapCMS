@@ -9,9 +9,12 @@
  *
  * Sources: form submissions of the last 24 hours, comments waiting for
  * moderation, pages with a critical SEO score, accessibility issues, the
- * person's overdue Workspace tasks and the approvals waiting on them. Each
- * is read as the tile figure or the old dashboard's widget reads the same
- * rows, behind the same gate.
+ * person's overdue Workspace tasks and the approvals waiting on them; the
+ * shop's refunds, unshipped orders and products out of stock or running low,
+ * as the Operations Desk counts them; overdue sales invoices, as the ERP
+ * dashboard counts them; and draft pages ready to publish. Each is read as
+ * the tile figure or the old dashboard's widget reads the same rows, behind
+ * the same gate.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -39,7 +42,10 @@ if (!defined('PG_DASHBOARD_V2_QUEUE_ROWS')) {
  *                      the person may not see the source; sources: forms
  *                      (count, oldest, url), comments (count), seo (critical,
  *                      average), a11y (issues, pages), overdue (count, open),
- *                      approvals (count, url)
+ *                      approvals (count, url), refunds (count, owed, late,
+ *                      url), unshipped (count, packages, late, url), stock
+ *                      (out, low, threshold), invoices (count, owed, days),
+ *                      drafts (count, title, url); owed is money as text
  * @param int   $limit
  * @return array rows: module, tag, text, note, tone, action, url
  */
@@ -49,10 +55,15 @@ function pg_dashboard_v2_queue_rows($counts, $limit = PG_DASHBOARD_V2_QUEUE_ROWS
         'form'    => lang('Form'),
         'content' => lang('Content'),
         'team'    => lang('Team'),
+        'shop'    => lang('Shop'),
+        'erp'     => lang('Accounting'),
     );
 
     $n = function ($source, $name) use ($counts) {
         return isset($counts[$source]) && is_array($counts[$source]) ? (int) ($counts[$source][$name] ?? 0) : 0;
+    };
+    $text = function ($source, $name) use ($counts) {
+        return isset($counts[$source]) && is_array($counts[$source]) ? (string) ($counts[$source][$name] ?? '') : '';
     };
     $url = function ($source, $default) use ($counts) {
         $value = isset($counts[$source]['url']) ? (string) $counts[$source]['url'] : '';
@@ -128,7 +139,76 @@ function pg_dashboard_v2_queue_rows($counts, $limit = PG_DASHBOARD_V2_QUEUE_ROWS
             'plain', lang('Show'), 'view_accessibility.php');
     }
 
-    return array_slice($rows, 0, max(1, (int) $limit));
+    if ($n('refunds', 'count') > 0) {
+        $count = $n('refunds', 'count');
+        $rows[] = $row('shop',
+            lang(array('string' => '{var:1} refund{suffix:1} waiting', 'vars' => $number($count), 'suffix' => $suffix($count))),
+            lang(array('string' => '{var:1} to pay back', 'vars' => $text('refunds', 'owed'))),
+            $n('refunds', 'late') ? 'bad' : 'warn', lang('Pay back'), $url('refunds', 'view_orders.php'));
+    }
+
+    if ($n('unshipped', 'count') > 0) {
+        $count = $n('unshipped', 'count');
+        $packages = $n('unshipped', 'packages');
+        $rows[] = $row('shop',
+            lang(array('string' => '{var:1} order{suffix:1} not shipped', 'vars' => $number($count), 'suffix' => $suffix($count))),
+            $n('unshipped', 'late')
+                ? lang('Waiting for more than two days')
+                : lang(array('string' => '{var:1} package{suffix:1}', 'vars' => $number($packages), 'suffix' => $suffix($packages))),
+            $n('unshipped', 'late') ? 'bad' : 'warn', lang('Ship'), $url('unshipped', 'view_orders.php'));
+    }
+
+    if ($n('stock', 'out') > 0) {
+        $count = $n('stock', 'out');
+        $rows[] = $row('shop',
+            lang(array('string' => '{var:1} product{suffix:1} out of stock', 'vars' => $number($count), 'suffix' => $suffix($count))),
+            lang('Not selling'),
+            'bad', lang('Add stock'), 'view_products.php?filter=out_of_stock_products');
+    }
+
+    if ($n('stock', 'low') > 0) {
+        $count = $n('stock', 'low');
+        $rows[] = $row('shop',
+            lang(array('string' => '{var:1} product{suffix:1} running low', 'vars' => $number($count), 'suffix' => $suffix($count))),
+            lang(array('string' => '{var:1} or fewer left', 'vars' => $number($n('stock', 'threshold')))),
+            'warn', lang('Add stock'), 'view_products.php');
+    }
+
+    if ($n('invoices', 'count') > 0) {
+        $count = $n('invoices', 'count');
+        $days = $n('invoices', 'days');
+        $rows[] = $row('erp',
+            lang(array('string' => '{var:1} overdue invoice{suffix:1}', 'vars' => $number($count), 'suffix' => $suffix($count))),
+            lang(array('string' => '{var:1} past due, the oldest by {var:2} day{suffix:1}', 'vars' => array($text('invoices', 'owed'), $number($days)), 'suffix' => $suffix($days))),
+            'bad', lang('Remind'), 'erp_invoices.php?filter=overdue&direction=sales');
+    }
+
+    if ($n('drafts', 'count') > 0) {
+        $count = $n('drafts', 'count');
+        $title = $text('drafts', 'title');
+        $rows[] = $row('content',
+            (($count === 1) && ($title !== ''))
+                ? lang(array('string' => '“{var:1}” is ready to publish', 'vars' => $title))
+                : lang(array('string' => '{var:1} draft page{suffix:1} ready to publish', 'vars' => $number($count), 'suffix' => $suffix($count))),
+            lang('Draft · Visual Editor'),
+            'plain', lang('Publish'), $url('drafts', 'view_system_styles.php'));
+    }
+
+    // Most urgent first, each tone in the order the sources were added
+    // (usort() keeps equal rows in order only from PHP 8.0).
+    $weight = array('bad' => 0, 'warn' => 1, 'plain' => 2);
+    $keys = array_keys($rows);
+    usort($keys, function ($a, $b) use ($rows, $weight) {
+        $order = $weight[$rows[$a]['tone']] - $weight[$rows[$b]['tone']];
+        return ($order !== 0) ? $order : ($a - $b);
+    });
+
+    $sorted = array();
+    foreach ($keys as $key) {
+        $sorted[] = $rows[$key];
+    }
+
+    return array_slice($sorted, 0, max(1, (int) $limit));
 }
 
 /**
@@ -143,7 +223,8 @@ function pg_dashboard_v2_queue_counts($user)
     require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets.php');
 
     $now = time();
-    $counts = array_fill_keys(array('forms', 'comments', 'seo', 'a11y', 'overdue', 'approvals'), null);
+    $counts = array_fill_keys(array('forms', 'comments', 'seo', 'a11y', 'overdue', 'approvals',
+        'refunds', 'unshipped', 'stock', 'invoices', 'drafts'), null);
 
     if (pg_dashboard_v2_figure_allowed('forms', $user)) {
         $raw = pg_dashboard_v2_figure_raw('forms', $user);
@@ -176,6 +257,80 @@ function pg_dashboard_v2_queue_counts($user)
         $signals = pg_dashboard_v2_ws_signals($user);
         $counts['overdue'] = array('count' => (int) ($signals['overdue'] ?? 0), 'open' => (int) ($signals['open'] ?? 0));
         $counts['approvals'] = array('count' => (int) ($signals['approvals'] ?? 0), 'url' => (string) ($signals['approval_url'] ?? ''));
+    }
+
+    // The Operations Desk's own counts, behind its gate (widget 9).
+    if (pg_dashboard_v2_gate('shop', $user)) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets/widget_9.php');
+
+        // Refunds: every type of order, from the oldest one waiting, as the
+        // lane's "more waiting" link opens the list.
+        if (pg_schema_has('orders', 'refund_status')) {
+            $refunds = pg_dashboard_ops_refund_summary();
+            $counts['refunds'] = array(
+                'count' => $refunds['count'],
+                'owed'  => pg_dashboard_v2_money($refunds['owed']),
+                'late'  => (int) (($refunds['oldest'] > 0) && ($refunds['oldest'] < ($now - 172800))),
+                'url'   => pg_dashboard_list_url('view_orders.php', array(
+                    'reset'  => 'true',
+                    'status' => 'refund_pending',
+                    'type'   => 'any'), ($refunds['oldest'] > 0) ? $refunds['oldest'] : $now, $now),
+            );
+        }
+
+        if (defined('ECOMMERCE_SHIPPING') && (ECOMMERCE_SHIPPING === true)) {
+            $shipping = pg_dashboard_ops_shipping_summary();
+            $counts['unshipped'] = array(
+                'count'    => $shipping['orders'],
+                'packages' => $shipping['packages'],
+                'late'     => (int) $shipping['late'],
+                // The list's unshipped filter over the lane's window.
+                'url'      => pg_dashboard_list_url('view_orders.php', array(
+                    'reset'            => 'true',
+                    'advanced_filters' => 'true',
+                    'shipping_status'  => 'unshipped'), pg_dashboard_days_back(strtotime(date('Y-m-d', $now)), $shipping['window_days']), $now),
+            );
+        }
+
+        $stock = pg_dashboard_ops_stock_counts();
+        $counts['stock'] = array(
+            'out'       => $stock['out'],
+            'low'       => $stock['low'],
+            'threshold' => defined('ECOMMERCE_LOW_STOCK_THRESHOLD') ? (int) ECOMMERCE_LOW_STOCK_THRESHOLD : 0,
+        );
+    }
+
+    // Overdue sales invoices, read as the ERP dashboard's card reads them
+    // (includes/erp/aging.php), for whoever may open the ERP.
+    if (defined('ERP_ENABLED') && ERP_ENABLED && (((int) $user['role'] < 3) || !empty($user['manage_erp']))) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
+
+        $overdue = erp_aging_invoices('sales', date('Y-m-d', $now), array('overdue' => true));
+        $counts['invoices'] = array(
+            'count' => count($overdue),
+            'owed'  => erp_money_out(array_sum(array_column($overdue, 'open_base'))),
+            'days'  => empty($overdue) ? 0 : max(array_map('intval', array_column($overdue, 'days'))),
+        );
+    }
+
+    // Drafts: only a designer can publish one. A draft with a time of its
+    // own goes on the site by itself, so it is not waiting for anyone.
+    if (pg_dashboard_v2_gate('designer', $user) && pg_page_draft_ready() && (pg_page_draft_folder_id(false) > 0)) {
+        $scheduled = pg_schema_has('page', 'publish_at');
+        $where = "page.page_folder = '" . (int) pg_page_draft_folder_id(false) . "'"
+            . ($scheduled ? " AND (COALESCE(page.publish_at, 0) <= " . (int) $now . ")" : '');
+
+        $count = (int) db_value("SELECT COUNT(*) FROM page WHERE " . $where);
+        $counts['drafts'] = array('count' => $count, 'title' => '', 'url' => '');
+
+        if ($count === 1) {
+            $page = db_item("SELECT page.page_id, page.page_name, page.page_title FROM page WHERE " . $where);
+            if ($page) {
+                $title = trim((string) $page['page_title']);
+                $counts['drafts']['title'] = ($title !== '') ? $title : (string) $page['page_name'];
+                $counts['drafts']['url'] = pg_page_edit_url_by_id((int) $page['page_id']);
+            }
+        }
     }
 
     return $counts;
