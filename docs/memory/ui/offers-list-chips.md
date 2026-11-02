@@ -1,7 +1,6 @@
 ---
 name: offers-list-chips
 description: Offers list (view_offers.php) Flow chips and status filter chips: gift only when free, both usage limits, optional chips drawn hidden and shown by recount(), the offer-only 'Shipping {var:1}' key
-module: edit_offer_f
 ---
 
 ## What does a Flow chip say?
