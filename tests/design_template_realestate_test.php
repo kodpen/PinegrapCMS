@@ -89,6 +89,7 @@ function _test_re_page_keys()
 		'valuation', 'valuation_view', 'my_valuations', 'staff_valuations', 'privacy',
 		'email_viewing_new', 'email_viewing_received', 'email_valuation_new', 'email_valuation_received', 'email_reply',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
+		'email_new_message', 'email_message_received', 'email_welcome',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
 		'change_password', 'email_preferences', 'address_book', 'staff_directory', 'staff_entry', 'forgot_password',
 	);
