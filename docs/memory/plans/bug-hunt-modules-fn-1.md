@@ -24,7 +24,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `backup_cloud`: open
 
-- `backup_restore`: clean (archive read and extraction with resume and checksums, statement classification and renaming, session replay, kill recovery, partition fallback, swap and leftovers checked)
+- `backup_restore`: open
 
 - `bundles`: clean (contents cleaning and refusals, stock and price, refresh, cart allowance, sale and return of components, contents and saving checked)
 
