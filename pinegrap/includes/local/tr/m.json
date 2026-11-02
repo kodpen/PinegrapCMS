@@ -752,6 +752,8 @@
     "More help": "Daha fazla yardım",
     "More item details (loop)": "Diğer ürün satırı bilgileri (döngü)",
     "More order details": "Diğer sipariş bilgileri",
+    "More photos or a question? Write to us on the request's page; the valuation comes there too.": "Daha fazla fotoğraf ya da bir sorunuz mu var? Talebin sayfasından bize yazın; değerleme de oraya gelir.",
+    "More photos or a question? Write to your agent below; the written valuation comes here too.": "Daha fazla fotoğraf ya da bir sorunuz mu var? Aşağıdan danışmanınıza yazın; yazılı değerleme de buraya gelir.",
     "More planned than the day holds": "Günün kaldıracağından fazla iş planlı",
     "More product details": "Diğer ürün bilgileri",
     "More recipient details": "Diğer alıcı bilgileri",
@@ -1119,6 +1121,8 @@
     "my-reservations": "rezervasyonlarim",
     "my-stories": "gonderdigim-yazilar",
     "my-topics": "konularim",
+    "my-valuations": "degerleme-taleplerim",
+    "my-viewings": "gezme-taleplerim",
     "myself": "kendime",
     "mysqldump.php is missing from the software directory.": "Yazılım dizininde mysqldump.php yok.",
     "m²": "m²"

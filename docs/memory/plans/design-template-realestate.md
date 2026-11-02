@@ -23,7 +23,7 @@ description: Plan for the Real Estate Agency template (pinegrap-realestate): lis
 
 - 3 Done (#5132). Listings: `listings.php` returns `pages`/`widgets`; viewing button is a `__page_link` to `viewing` with `listing` = title, so step 4's Listing field reads `url_param` `listing`; tests use `_test_re_controls()`.
 
-- 4 Requests: `mail.php`, `requests.php` (`viewing`, `viewing_view`, `my_viewings`, `staff_viewings`, `valuation`, `valuation_view`, `my_valuations`, `staff_valuations`, `privacy`, `email_reply`, their widgets and notify e-mails).
+- 4 Done (#5141). Requests: `mail.php` (e-mails, teal `#0f766e` inline), `requests.php` (viewing and valuation pages, lists, e-mails, `privacy`, `email_reply`); `privacy` places `newsletter_band`, which step 5 defines.
 
 - 5 Standard: `standard.php` (contact, inbox, conversation, newsletter as listing alerts, blog as "Market News", blog post, search, error); test `…_standard_test.php`.
 
