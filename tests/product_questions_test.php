@@ -146,3 +146,92 @@ function test_product_question_wiring()
 	pg_assert_true(strpos($migration, "upgrade_2026_11_0_product_questions();") !== false, 'the step is called');
 	pg_assert_true(strpos($migration, "ENUM('comment','question','answer') NOT NULL DEFAULT 'comment'") !== false, 'the kind column');
 }
+
+function test_product_question_answer_mail_text()
+{
+	$text = pg_product_question_answer_mail_text(' Blue shirt ', " Size? \n", 'Fits large', 'https://example.com/shop/blue-shirt?comment=4#c-4');
+
+	pg_assert_same('Your question about Blue shirt was answered', $text['subject'], 'the subject names the product');
+	pg_assert_same("Your question:\nSize?\n\nAnswer:\nFits large\n\nSee it on the product page:\nhttps://example.com/shop/blue-shirt?comment=4#c-4\n", $text['body'], 'the body quotes both and links');
+	pg_assert_same('Your question was answered', pg_product_question_answer_mail_text('', 'Q', 'A', '')['subject'], 'no product name');
+	pg_assert_true(strpos(pg_product_question_answer_mail_text('', 'Q', 'A', '')['body'], 'product page') === false, 'no link line without a link');
+}
+
+function test_product_question_answer_mail_due()
+{
+	$question = array('published' => '1', 'created_user_id' => '7');
+	$answer = array('published' => '1', 'created_user_id' => '2');
+
+	pg_assert_true(pg_product_question_answer_mail_due($question, $answer, 'a@example.com'), 'a member asked, staff answered');
+	pg_assert_false(pg_product_question_answer_mail_due(array('created_user_id' => '0') + $question, $answer, 'a@example.com'), 'a guest left no address');
+	pg_assert_false(pg_product_question_answer_mail_due($question, $answer, ''), 'no address');
+	pg_assert_false(pg_product_question_answer_mail_due($question, array('created_user_id' => '7') + $answer, 'a@example.com'), 'not the one who answered');
+	pg_assert_false(pg_product_question_answer_mail_due(array('published' => '0') + $question, $answer, 'a@example.com'), 'a held question');
+	pg_assert_false(pg_product_question_answer_mail_due($question, array('published' => '0') + $answer, 'a@example.com'), 'a held answer');
+	pg_assert_false(pg_product_question_answer_mail_due($question, null, 'a@example.com'), 'no answer');
+}
+
+function test_product_question_jsonld_items()
+{
+	$rows = array(
+		array('question' => ' Size? ', 'question_name' => 'Ali', 'question_at' => '1700000000', 'answer' => 'Fits large', 'answer_name' => '', 'answer_at' => '1700003600'),
+		array('question' => 'Colour?', 'answer' => ''),
+		array('question' => '', 'answer' => 'Orphan'),
+		'not a row',
+	);
+	$items = pg_product_question_jsonld_items($rows);
+
+	pg_assert_same(1, count($items), 'only answered questions');
+	pg_assert_same('Question', $items[0]['@type'], 'a Question');
+	pg_assert_same('Size?', $items[0]['name'], 'trimmed');
+	pg_assert_same(1, $items[0]['answerCount'], 'one answer');
+	pg_assert_same(array('@type' => 'Person', 'name' => 'Ali'), $items[0]['author'], 'the asker');
+	pg_assert_same(gmdate('c', 1700000000), $items[0]['dateCreated'], 'when asked');
+	pg_assert_same('Answer', $items[0]['acceptedAnswer']['@type'], 'its answer');
+	pg_assert_same('Anonymous', $items[0]['acceptedAnswer']['author']['name'], 'no name reads Anonymous');
+	pg_assert_same(2, count(pg_product_question_jsonld_items(array_fill(0, 5, $rows[0]), 2)), 'capped');
+	pg_assert_same(array(), pg_product_question_jsonld_items(null), 'no rows');
+}
+
+function test_product_question_jsonld_in_product_markup()
+{
+	$item = array('@type' => 'Question', 'name' => 'Size?');
+	$catalog = product_questions_test_source('includes/fn/widgets_catalog.php');
+	pg_assert_true(strpos($catalog, "\$data['subjectOf'] = array_values(\$questions);") !== false, 'the Product carries its questions');
+
+	$page = product_questions_test_source('get_page_content.php');
+	pg_assert_true(strpos($page, 'pg_product_question_markup_shown($page_id, $_pg_sw_product_id) ? pg_product_question_jsonld($page_id, $_pg_sw_product_id) : array()') !== false, 'only while the page shows them');
+	pg_assert_same('Question', $item['@type'], 'item shape');
+}
+
+function test_product_question_census_kind()
+{
+	$census = product_questions_test_source('includes/fn/widgets_comments.php');
+	pg_assert_true(strpos($census, "\$kind = 'comments_questions';") !== false, 'a questions widget is no second comments widget');
+
+	$facts = pg_comments_page_census_facts(array('refs' => array(4 => 1, 5 => 1), 'blocks' => 0), array(
+		4 => array('type' => 'comments', 'census' => array('refs' => array(), 'blocks' => 0)),
+		5 => array('type' => 'comments_questions', 'census' => array('refs' => array(), 'blocks' => 0)),
+	));
+	pg_assert_same(1, $facts['widgets'], 'reviews and questions widgets: one thread widget');
+}
+
+function test_product_question_api_kind()
+{
+	pg_assert_same('question', api_comment_kind(array('kind' => 'question')), 'question');
+	pg_assert_same('answer', api_comment_kind(array('kind' => 'answer')), 'answer');
+	pg_assert_same('comment', api_comment_kind(array('kind' => 'other')), 'unknown');
+	pg_assert_same('comment', api_comment_kind(array()), 'before the step');
+
+	$products = product_questions_test_source('includes/api/resources/products.php');
+	pg_assert_true(strpos($products, "'kind'      => 'comment',") !== false, 'reviews leave questions out');
+}
+
+function test_product_question_mail_wiring()
+{
+	$edit = product_questions_test_source('edit_comment.php');
+	pg_assert_true(strpos($edit, "if (\$answer_saved === 'added') {\n                pg_product_question_answer_mail(\$comment_id);") !== false, 'the Answer box mails once');
+
+	$add = product_questions_test_source('add_comment.php');
+	pg_assert_true(strpos($add, "if ((\$comment_kind === 'answer') && (\$published == '1') && (\$comment_id > 0)) {\n    pg_product_question_answer_mail(\$parent_id);") !== false, 'a published answer from the page mails');
+}

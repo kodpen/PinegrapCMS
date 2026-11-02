@@ -639,6 +639,11 @@ if (!$_POST) {
         if ($comment_kind === 'question') {
             $answer_saved = pg_product_question_answer_save($comment_id, $liveform->get_field_value('question_answer'), (int) $user['id'], (string) ($user['username'] ?? ''));
 
+            // The asker hears of a new answer once.
+            if ($answer_saved === 'added') {
+                pg_product_question_answer_mail($comment_id);
+            }
+
             if ($answer_saved !== '') {
                 log_activity(lang(array('string' => 'answer to a product question on page ({var:1}) was saved', 'vars' => get_page_name($page_id))), $_SESSION['sessionusername']);
             }

@@ -138,8 +138,10 @@ function test_shop_comments_no_fixed_block()
 			}
 		}
 		ksort($kinds);
-		pg_assert_same(array('conversation_replies' => 'comments', 'email_comment' => 'comments', 'post_comments' => 'comments', 'product_reviews' => 'comments'),
-			$kinds, $id . ': the four comments widgets');
+		// product_questions shows the product's questions beside the reviews.
+		pg_assert_same(array('conversation_replies' => 'comments', 'email_comment' => 'comments', 'post_comments' => 'comments', 'product_questions' => 'comments', 'product_reviews' => 'comments'),
+			$kinds, $id . ': the five comments widgets');
+		pg_assert_same('questions', pg_product_question_widget_shows($tpl['widgets']['product_questions']['config']), $id . ': the questions widget');
 
 		// The product reviews ship their own layout, worded as reviews like
 		// the page's comments label (#4812: the starter said comment).

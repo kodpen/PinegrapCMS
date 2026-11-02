@@ -1187,6 +1187,13 @@ $pages[] = array(
                 ), '', 'center'),
             )),
         )),
+        $el('section', 'py-5 border-top', lang('Questions'), array(
+            $container(array(
+                $row(array(
+                    $col(array($widget('product_questions')), '', '8'),
+                ), '', 'center'),
+            )),
+        )),
         $el('section', 'py-5 border-top bg-body-tertiary', lang('Benefits'), array(
             $container(array(
                 $row(array(
@@ -2286,6 +2293,38 @@ $widgets = array(
             'reopen'    => lang('Allow new reviews'),
             'reply'     => true,
             'watch'     => true,
+        )),
+    ),
+    // The product's questions (includes/fn/product_questions.php): a second
+    // comments widget on the product page, beside the reviews. Anyone signed
+    // in asks without a purchase; staff answer under the question.
+    'product_questions' => array(
+        'page'     => 'product',
+        'requires' => 'ecommerce',
+        'slug'     => lang('questions'),
+        'config'   => array(
+            'regionType' => 'comments',
+            'shows'      => 'questions',
+            'order'      => 'newest',
+            'featured'   => 'none',
+            'layout'     => 'threaded',
+            'max_depth'  => 1,
+            'per_page'   => 10,
+        ),
+        'tree'     => $comment_thread(array(
+            'title'     => lang('Questions and answers'),
+            'empty'     => lang('No questions yet. Ask the first one about this product.'),
+            'heading'   => lang('Ask a question'),
+            'label'     => lang('Your question'),
+            'sign_in'   => lang('Sign in to ask a question.'),
+            'submit'    => lang('Send question'),
+            'watch_box' => lang('Notify me when a new question is asked.'),
+            'follow'    => lang('Notify me of new questions'),
+            'unfollow'  => lang('Stop notifying me'),
+            'close'     => lang('Stop new questions'),
+            'reopen'    => lang('Allow new questions'),
+            'reply'     => true,
+            'watch'     => false,
         )),
     ),
     'cart' => array(
