@@ -65130,7 +65130,7 @@ const StyleDesigner = (function () {
     // "PHP Messages" box in the middle of the header that the page never shows.
     // An e-mail shows no alerts either (_render_system_widget_account_email()).
     // A list of recent comments takes no form either (_render_system_widget_comments_recent()).
-    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1, tag_cloud_region: 1, google_reviews: 1, accessibility_statement: 1 };
+    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1, accessibility_statement: 1, tag_cloud_region: 1, google_reviews: 1 };
 
     // Removes every Messages block from a tree; true when there was one.
     function _sdDropMessagesNodes(n) {

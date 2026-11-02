@@ -90,3 +90,16 @@ function test_a11y_statement_print_view_escapes()
 	pg_assert_false($flags['a11y_assessed'], 'not assessed before the first pass');
 	pg_assert_true($flags['no_limitations'], 'no limitation rows');
 }
+
+function test_a11y_statement_registered()
+{
+	$labels = pg_sw_type_labels();
+	pg_assert_true(isset($labels['accessibility_statement']), 'panel label');
+	$designer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
+	pg_assert_contains("_render_system_widget_accessibility_statement(", $designer, 'dispatched by _expand_system_widgets()');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	pg_assert_contains("{ type: 'accessibility_statement'", $js, 'in SW_TYPES');
+	pg_assert_contains("case 'accessibility_statement': {", $js, 'has a starter tree');
+	pg_assert_contains("accessibility_statement: SW_ACCESSIBILITY_STATEMENT_TOKEN_GROUPS", $js, 'has a token palette');
+	pg_assert_contains("accessibility_statement: 1, tag_cloud_region: 1", $js, 'draws no Messages block');
+}
