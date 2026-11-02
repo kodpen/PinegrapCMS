@@ -6,7 +6,7 @@ module: background_render
 
 ## What is the background renderer?
 - `pg_background_render($render, $get)` in `includes/fn/background_render.php`, loaded by the passes, not by `functions.php`. `$render` is a callable returning the page's HTML; `$get` the address values the render reads (`page`, a widget's `r`/`id`/`form_id`).
-- `pg_seo_render_page()` (`seo_structure.php`) keeps the type check and `pg_seo_render_context()` and renders through it; the structure pass and the accessibility pass (`pg_a11y_check_page()`) both go through `pg_seo_render_page()`. The search index moves to it in SA4 of `plans/search-and-audits.md`.
+- `pg_seo_render_page()` (`seo_structure.php`) keeps the type check and `pg_seo_render_context()` and renders through it; the structure pass and the accessibility pass (`pg_a11y_check_page()`) both go through `pg_seo_render_page()`. The search index keeps its own `pg_search_index_render()` (`includes/fn/site_search.php`, #4733): the same `catch (Throwable)`, buffer level and `$_GET` restore under `pg_error_throws(true)`, without the lent token, the catalog reset or the rendering flag, which its pages do not need.
 
 ## What does it catch and restore?
 - `catch (Throwable)`: an `Exception` from `output_error()` and an `Error` (a call on null, an undefined constant on PHP 8) both come back as `error`; an `Error` message carries its class, file and line. Before, only `Exception` was caught: one page with an `Error` ended the pass, and the structure queue and the accessibility cursor never got past it.

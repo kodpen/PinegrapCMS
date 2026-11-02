@@ -6,7 +6,7 @@ module: a11y
 
 ## What is kept?
 - On save, the page on the canvas (the active tab, not marked unchanged) carries `a11y_measured`: the `{rule, label}` of its canvas findings `low_contrast` and `target_size` (`_sdMeasuredA11y()` in `style_designer.src.js`, at most 1,000). Only a browser resolves those colours and sizes (`designer-audit-contrast.md`, `designer-audit-targets-entry.md`).
-- `pg_designer_save_page()` calls `pg_a11y_store_measured()` (`includes/fn/a11y.php`): the registry's browser-only concepts map the editor rule to `a11y_contrast` / `a11y_target_size` with its a11y severity; one row per code, occurrences counted, the first label as `detail`, `source = 'editor:<save time>'`. No column of its own: owner decision 4 of the search-and-audits plan, kept without a schema change.
+- `pg_designer_save_page()` calls `pg_a11y_store_measured()` (`includes/fn/a11y.php`): the registry's browser-only concepts map the editor rule to `a11y_contrast` / `a11y_target_size` with its a11y severity; one row per code, occurrences counted, the first label as `detail`, `source = 'editor:<save time>'`. No column of its own: owner decision of 2026-11-01 (`workflow/decisions-made-product-18.md`), kept without a schema change.
 
 ## When are they replaced or cleared?
 - Every save that changed the page, or sent measurements, deletes the page's `a11y_` rows whose source starts `editor:` and writes the new ones. A save that changed the page without measuring it (another tab, the API, the AI editor, a canvas that could not be measured) leaves none: they described the page before it.
