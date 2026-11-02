@@ -413,7 +413,7 @@ if (mysqli_num_rows($result) > 0) {
 
         }
         
-        $properties = pg_email_campaign_mail_properties($email_campaign, $email_recipient['email_address'], $mail_merge_dynamic_data, $subject, $body);
+        $properties = pg_email_campaign_mail_properties(array('id' => $id) + $email_campaign, $email_recipient['email_address'], $mail_merge_dynamic_data, $subject, $body);
 
         if ($retry_ready) {
 

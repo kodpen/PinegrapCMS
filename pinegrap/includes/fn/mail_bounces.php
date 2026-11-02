@@ -427,3 +427,275 @@ function pg_mail_bounce_clear($address)
 
     return true;
 }
+
+/**
+ * The reference a return path carries: what the message was, and its id.
+ * Pure. q = a mail_outbox row, c = a campaign; anything else is m, no id.
+ *
+ * @param string $type  queue, campaign, mail
+ * @param int    $id
+ * @return string  q<base36>, c<base36> or m
+ */
+function pg_mail_bounce_ref($type, $id)
+{
+    $id = (int) $id;
+
+    if (($id > 0) && ($type === 'queue')) {
+        return 'q' . base_convert((string) $id, 10, 36);
+    }
+
+    if (($id > 0) && ($type === 'campaign')) {
+        return 'c' . base_convert((string) $id, 10, 36);
+    }
+
+    return 'm';
+}
+
+/**
+ * The parts of a reference. Pure.
+ *
+ * @param string $ref
+ * @return array|null type (queue, campaign, mail), id
+ */
+function pg_mail_bounce_ref_parts($ref)
+{
+    if (preg_match('/^(?:([qc])([0-9a-z]{1,12})|m)$/', (string) $ref, $match) !== 1) {
+        return null;
+    }
+
+    if (!isset($match[1]) || ($match[1] === '')) {
+        return array('type' => 'mail', 'id' => 0);
+    }
+
+    return array('type' => ($match[1] === 'q') ? 'queue' : 'campaign', 'id' => (int) base_convert($match[2], 36, 10));
+}
+
+/**
+ * The signed token of one message to one address: the reference, a dot and
+ * the first 16 hex characters of HMAC-SHA256(key, reference and address).
+ * No table: the bounce that brings it back is checked against the address
+ * it reports. '' without a key or a keyable address. Pure.
+ *
+ * @param string $ref      pg_mail_bounce_ref()
+ * @param string $address  the one recipient
+ * @param string $key      the site's signing key
+ * @return string
+ */
+function pg_mail_bounce_token($ref, $address, $key)
+{
+    $address = pg_mail_bounce_address($address);
+    $key = (string) $key;
+
+    if (($address === '') || ($key === '') || (pg_mail_bounce_ref_parts($ref) === null)) {
+        return '';
+    }
+
+    return $ref . '.' . substr(hash_hmac('sha256', $ref . "\n" . $address, $key), 0, 16);
+}
+
+/**
+ * Whether a token was signed for this address. Pure.
+ *
+ * @param string $token
+ * @param string $address
+ * @param string $key
+ * @return bool
+ */
+function pg_mail_bounce_token_valid($token, $address, $key)
+{
+    $token = strtolower((string) $token);
+    $dot = strpos($token, '.');
+
+    if ($dot === false) {
+        return false;
+    }
+
+    $expected = pg_mail_bounce_token(substr($token, 0, $dot), $address, $key);
+
+    return ($expected !== '') && hash_equals($expected, $token);
+}
+
+/**
+ * The tokens written in a text after a "+" of an address. Pure.
+ *
+ * @param string $text
+ * @return string[]  each once, lower-cased
+ */
+function pg_mail_bounce_tokens_in($text)
+{
+    preg_match_all('/\+((?:[qc][0-9a-z]{1,12}|m)\.[0-9a-f]{16})@/i', (string) $text, $matches);
+
+    return array_values(array_unique(array_map('strtolower', $matches[1])));
+}
+
+/**
+ * The return path of a message: the bounce mailbox's address with the token
+ * after a "+" (sub-addressing, so the server delivers it to that mailbox).
+ * '' when either is missing or the local part would pass 64 characters.
+ * Pure.
+ *
+ * @param string $mailbox  the address of the mailbox that reads bounces
+ * @param string $token
+ * @return string
+ */
+function pg_mail_bounce_return_path($mailbox, $token)
+{
+    $mailbox = strtolower(trim((string) $mailbox));
+    $at = strrpos($mailbox, '@');
+
+    if (($token === '') || ($at === false) || ($at === 0)) {
+        return '';
+    }
+
+    $local = substr($mailbox, 0, $at) . '+' . $token;
+
+    return (strlen($local) > 64) ? '' : $local . substr($mailbox, $at);
+}
+
+/**
+ * The envelope sender with VERP: the return path replaces the sender only
+ * when both are on the same domain, so the SMTP account that may send as
+ * the sender may send as the return path too, and SPF checks the same
+ * domain. Pure.
+ *
+ * @param string $sender       pg_mail_envelope_sender()'s answer
+ * @param string $return_path  pg_mail_bounce_return_path()
+ * @return string
+ */
+function pg_mail_bounce_envelope($sender, $return_path)
+{
+    $sender = (string) $sender;
+    $return_path = (string) $return_path;
+
+    if (($return_path === '') || (strpos($sender, '@') === false)) {
+        return $sender;
+    }
+
+    $sender_domain = strtolower(substr(strrchr($sender, '@'), 1));
+    $return_domain = strtolower(substr(strrchr($return_path, '@'), 1));
+
+    return ($sender_domain === $return_domain) ? $return_path : $sender;
+}
+
+/**
+ * Which address a bounce report is about: the first candidate one of its
+ * tokens was signed for. A report with no token, or none that matches, is
+ * not the site's to record: anyone can send a mailbox a report. Pure.
+ *
+ * @param array  $dsn  pg_mail_parse_dsn()
+ * @param string $key
+ * @return array|null address, token, ref (pg_mail_bounce_ref_parts())
+ */
+function pg_mail_bounce_dsn_match($dsn, $key)
+{
+    if (!is_array($dsn) || empty($dsn['tokens'])) {
+        return null;
+    }
+
+    $candidates = (array) ($dsn['candidates'] ?? array());
+
+    foreach ($candidates as $address) {
+        foreach ((array) $dsn['tokens'] as $token) {
+            if (pg_mail_bounce_token_valid($token, $address, $key)) {
+                return array(
+                    'address' => pg_mail_bounce_address($address),
+                    'token'   => (string) $token,
+                    'ref'     => pg_mail_bounce_ref_parts(substr((string) $token, 0, strpos((string) $token, '.'))),
+                );
+            }
+        }
+    }
+
+    return null;
+}
+
+/**
+ * The site's signing key for return-path tokens.
+ *
+ * @return string
+ */
+function pg_mail_bounce_key()
+{
+    return defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '';
+}
+
+/**
+ * The address of the Workspace mailbox that reads bounces: the first box
+ * that is on and has "reads bounces" ticked (settings.reads_bounces), or ''.
+ * Read once per request.
+ *
+ * @return string
+ */
+function pg_mail_bounce_mailbox()
+{
+    static $address = null;
+
+    if ($address !== null) {
+        return $address;
+    }
+
+    $address = '';
+
+    if (!pg_schema_has('ws_mail_boxes', 'settings') || !pg_mail_bounces_ready()) {
+        return $address;
+    }
+
+    foreach ((array) db_items("SELECT address, settings FROM ws_mail_boxes WHERE enabled = 1 ORDER BY id") as $box) {
+        $settings = json_decode((string) $box['settings'], true);
+
+        if (is_array($settings) && !empty($settings['reads_bounces']) && filter_var((string) $box['address'], FILTER_VALIDATE_EMAIL)) {
+            $address = strtolower((string) $box['address']);
+            break;
+        }
+    }
+
+    return $address;
+}
+
+/**
+ * The return path for one message, or '' to keep the envelope as it is:
+ * VERP needs a bounce mailbox, a key and exactly one recipient.
+ *
+ * @param string $ref  pg_mail_bounce_ref()
+ * @param mixed  $to   email()'s to
+ * @return string
+ */
+function pg_mail_bounce_return_path_for($ref, $to)
+{
+    $to = (array) $to;
+
+    if (count($to) !== 1) {
+        return '';
+    }
+
+    $mailbox = pg_mail_bounce_mailbox();
+
+    if ($mailbox === '') {
+        return '';
+    }
+
+    return pg_mail_bounce_return_path($mailbox, pg_mail_bounce_token($ref, reset($to), pg_mail_bounce_key()));
+}
+
+/**
+ * Record what a bounce report says, when one of its tokens signs the
+ * address it is about.
+ *
+ * @param array|null $dsn  pg_mail_parse_dsn()
+ * @return bool  whether a bounce was recorded
+ */
+function pg_mail_bounce_record_dsn($dsn)
+{
+    $match = pg_mail_bounce_dsn_match($dsn, pg_mail_bounce_key());
+
+    if ($match === null) {
+        return false;
+    }
+
+    pg_mail_bounce_record($match['address'], $dsn['kind'], 'dsn', array(
+        'message_id'  => (string) ($dsn['original_id'] ?? ''),
+        'campaign_id' => ($match['ref']['type'] === 'campaign') ? $match['ref']['id'] : 0,
+    ));
+
+    return true;
+}
