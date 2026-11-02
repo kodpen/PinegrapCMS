@@ -97,4 +97,7 @@ function test_settings_long_messages_are_full_width()
 
 	$seo = (string) file_get_contents($root . 'seo.php');
 	pg_assert_same(1, preg_match('/<div class="col-12">\s*<label for="setting_meta_description"/', $seo), 'the meta description box is full width');
+
+	$languages = (string) file_get_contents($root . 'languages.php');
+	pg_assert_same(1, preg_match('/<div class="col-12">\s*<label for="translation_style_note"/', $languages), 'the AI style note box is full width');
 }
