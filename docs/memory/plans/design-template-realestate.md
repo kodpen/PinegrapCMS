@@ -25,7 +25,7 @@ description: Plan for the Real Estate Agency template (pinegrap-realestate): lis
 
 - 4 Done (#5141). Requests: `mail.php` (e-mails, teal `#0f766e` inline), `requests.php` (viewing and valuation pages, lists, e-mails, `privacy`, `email_reply`); `privacy` places `newsletter_band`, which step 5 defines.
 
-- 5 Standard: `standard.php` (contact, inbox, conversation, newsletter as listing alerts, blog as "Market News", blog post, search, error); test `…_standard_test.php`.
+- 5 Done (#5165). Standard: `standard.php` (contact, inbox, conversation, listing alerts on contact group `listing_alerts`, "Market News", blog post, search, error, their e-mails, `newsletter_band`, `home_posts`, `google_reviews`).
 
 - 6 Account and staff: `account.php` (sign-in pages, My Account, `staff`, `blog_new` with sample posts, `staff_directory`, `staff_entry`, account e-mails); test `…_account_test.php`.
 
