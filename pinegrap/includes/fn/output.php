@@ -6916,6 +6916,8 @@ function pg_js_bundles()
         // The link resolver's browser twin (window.PGLinkResolve,
         // includes/fn/link_resolve.php).
         'assets/js/pg_link_resolve.min.js'         => array('assets/js/pg_link_resolve.js'),
+        // The Prototype view's hotspot collector (window.PGProtoHotspots).
+        'assets/js/pg_proto_hotspots.min.js'       => array('assets/js/pg_proto_hotspots.js'),
         'assets/js/workspace_flow.min.js'          => array('assets/js/workspace_flow.js'),
         'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_guest.js'),
         // The Workspace list of the main menu, on every panel page of the
