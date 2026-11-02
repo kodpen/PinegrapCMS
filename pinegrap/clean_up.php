@@ -283,20 +283,19 @@ if (!$_POST) {
     $folder_counter = 0;
     $file_counter = 0;
     foreach($file_directory_files_diff as $file){
-        $file_icon = '<span class="material-icons me-5">insert_drive_file</span>';
         $file_counter++;
-        $files .= '<li class="list-group-item bg-reset border-0 fg-danger">' . $file_icon . $file . '</li>';
+        $files .= pg_clean_up_list_row('insert_drive_file', $file);
     }
     foreach($file_list as $file){
         if(file_exists($file)){
             if(is_dir($file)){
-                $file_icon = '<span class="material-icons me-5">folder</span>';
+                $file_icon = 'folder';
                 $folder_counter++;
             }else{
-                $file_icon = '<span class="material-icons me-5">insert_drive_file</span>';
+                $file_icon = 'insert_drive_file';
                 $file_counter++;
             }
-            $files .= '<li class="list-group-item bg-reset border-0 fg-danger">' . $file_icon . $file . '</li>';
+            $files .= pg_clean_up_list_row($file_icon, $file);
         }
     }
 

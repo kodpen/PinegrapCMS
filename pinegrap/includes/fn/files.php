@@ -397,6 +397,21 @@ function pg_upload_neutralize_name($file_name)
     return $result;
 }
 
+/**
+ * One line of the Cleanup tool's list (clean_up.php): a Material icon and a
+ * name. The name is a path on disk; a file left in data/files outside the
+ * uploader (FTP, an unpacked archive) keeps whatever name it was given, so it
+ * is printed as text.
+ *
+ * @param string $icon the Material icon name (folder, insert_drive_file)
+ * @param string $name
+ * @return string
+ */
+function pg_clean_up_list_row($icon, $name)
+{
+    return '<li class="list-group-item bg-reset border-0 fg-danger"><span class="material-icons me-5">' . h((string) $icon) . '</span>' . h((string) $name) . '</li>';
+}
+
 // Create a function that is used in various areas where files are added,
 // in order to reduce the file name length (if necessary) and replace special characters.
 function prepare_file_name($file_name)
