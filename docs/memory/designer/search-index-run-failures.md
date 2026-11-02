@@ -4,12 +4,12 @@ description: How update_search_index.php survives a bad page, event, record or f
 ---
 
 ## What did it fix?
-- One page whose render threw an `Error`, failed a query (`output_error()` exits) or one office file the converter could not read ended the run, and every later run at the same place: later pages and every designer record never got in (SA1).
+- One page whose render threw an `Error`, failed a query (`output_error()` exits) or one office file the converter could not read ended the run, and every later run at the same place: later pages and every designer record never got in (fixed by #4733).
 - Before that (#1197 follow-up) a run that left designer records out still said "updated successfully"; only one `error_log` line knew.
 
 ## How is each item read?
 - Pages, calendar events and classic form records: `pg_search_index_render($page_id, $properties)` (`includes/fn/site_search.php`): `pg_error_throws(true)`, `catch (Throwable)`, `finally` puts back `$_GET` (whole array), the output buffer level and the flag. Designer records keep their own `try` ([[designer-records-site-search]]).
-- A page, event, classic or designer record that fails keeps its row: `pg_search_index_keep_item($url, $timestamp)` sets its `timestamp` to the run's, so the sweep spares it with its last text (designer records since SA14). A failed page's events or records are still read. A record list whose query fails names no records: their rows go with the sweep.
+- A page, event, classic or designer record that fails keeps its row: `pg_search_index_keep_item($url, $timestamp)` sets its `timestamp` to the run's, so the sweep spares it with its last text (designer records since #4983). A failed page's events or records are still read. A record list whose query fails names no records: their rows go with the sweep.
 - Files: each file's text extraction in its own `try` under the flag; a failure keeps the old row. `shell_exec` only after `function_exists()` (named in `disable_functions` it is "Call to undefined function" on PHP 8). `.doc`/`.ppt` read through `pg_search_index_file_bytes()`: '' for a missing, unreadable or empty file (`fread()` on a failed `fopen()` was a `TypeError`, on 0 bytes a `ValueError`).
 
 ## What does a run write?
