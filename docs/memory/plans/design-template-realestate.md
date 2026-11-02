@@ -21,7 +21,7 @@ description: Plan for the Real Estate Agency template (pinegrap-realestate): lis
 
 - 2 Done (#5120). Public pages: `pages_public.php`; places `home_listings` and `area_listings_<key>` (step 3) and links `valuation?area=&agent=` (step 4).
 
-- 3 Listings: `listings.php` (`listing_new` with the Listings collection and its samples, `buy`, `rent`, `listings` with filters and sorts, `listing` record page with photos, facts, features, agent and the viewing button, the list widgets the home and area pages place).
+- 3 Done (#5132). Listings: `listings.php` returns `pages`/`widgets`; viewing button is a `__page_link` to `viewing` with `listing` = title, so step 4's Listing field reads `url_param` `listing`; tests use `_test_re_controls()`.
 
 - 4 Requests: `mail.php`, `requests.php` (`viewing`, `viewing_view`, `my_viewings`, `staff_viewings`, `valuation`, `valuation_view`, `my_valuations`, `staff_valuations`, `privacy`, `email_reply`, their widgets and notify e-mails).
 
