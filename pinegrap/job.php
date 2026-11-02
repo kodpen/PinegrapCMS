@@ -663,6 +663,20 @@ if (function_exists('pg_site_search_sweep_due') && pg_site_search_sweep_due()) {
     }
 }
 
+// The AI fetch rollup (includes/fn/ai_visibility.php): once a day the days
+// older than the retention period go.
+if (function_exists('pg_ai_fetch_sweep_due') && pg_ai_fetch_sweep_due()) {
+
+    $ai_fetch_removed = pg_ai_fetch_sweep();
+
+    if ($ai_fetch_removed > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} row(s) from the AI fetch statistics',
+            'vars'   => array(pg_format_number($ai_fetch_removed, 0)),
+        )), 'UNKNOWN');
+    }
+}
+
 // Image versions (includes/fn/image_editor.php): once a day the versions of
 // files deleted where no direct call took them along. A tick with nothing
 // due reads one small file.
