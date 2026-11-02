@@ -20,7 +20,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `contacts`: done #4624
 
-- `content`: taken by OO, #5343 and the product group side (rest of the module not hunted yet)
+- `content`: open, partly hunted (#5343 #5364: product and group address names; checked: address name, transliteration, byte sizes, thumbnails; next worker starts at the rest)
 
 - `core`: open
 
