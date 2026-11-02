@@ -277,8 +277,8 @@ function pg_zone_form_cards($values, $country_options, $state_options, $errors =
                                 </div>
                             </div>
                             <div class="row">
-                                <div class="col-12 xl:col-6">
-                                    <div class="card mb-7 h-100">
+                                <div class="col-12 xl:col-6 mb-7">
+                                    <div class="card h-100">
                                         <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                             ' . lang('Shipping Zone Countries') . '
                                         </h2>
@@ -288,8 +288,8 @@ function pg_zone_form_cards($values, $country_options, $state_options, $errors =
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-12 xl:col-6">
-                                    <div class="card mb-7 h-100">
+                                <div class="col-12 xl:col-6 mb-7">
+                                    <div class="card h-100">
                                         <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                             ' . lang('Shipping Zone States or Provinces') . '
                                         </h2>
