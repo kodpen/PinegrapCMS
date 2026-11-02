@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'access');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'access');
 }
 
 /**
@@ -2956,6 +2956,24 @@ function pg_image_editor_strings_motion()
         'motionPause'          => lang('Pause (K)'),
         'motionScrub'          => lang('Playhead'),
         'motionRepeat'         => lang('Repeat the preview'),
+    );
+}
+
+// -- Tracks (pg_image_editor_tracks.js) --
+
+/**
+ * The tracks part's labels: the rows under the play bar and the Animate
+ * tool's hint while they show.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_tracks()
+{
+    return array(
+        'tracksRegion' => lang('Animation tracks'),
+        'tracksNote'   => lang('Drag a bar on its track to change when it plays, and its ends to change how long. Shift turns off the 0.1 s step.'),
+        'tracksLayers' => lang('Layers'),
+        'hintTracks'   => lang('Tracks: drag to move, ends change the duration, Shift turns off the 0.1 s step. K: play or pause'),
     );
 }
 

@@ -61,6 +61,12 @@
     var UNDRAWABLE = ['text', 'image', 'sticker', 'redact'];
     var PHONE = '(max-width: 599.98px)';
 
+    // Rows under the play bar (the tracks part): { key, node, update, note },
+    // each called on the editor. key() joins the bar's key, node() is put
+    // under the bar (null for none), update() runs with the playhead, note()
+    // goes under a phase's fields in the panel (null for none).
+    Editor.motionDocks = [];
+
     function seconds(ms) {
         return X.decimal(ms / 1000) + ' ' + t('motionSecondsUnit');
     }
@@ -242,6 +248,14 @@
         }
 
         body.appendChild(el('p', { class: 'pgie-note pgie-msays', text: this.motionSays(l) }));
+
+        Editor.motionDocks.forEach(function (d) {
+            var n = d.note.call(self);
+
+            if (n) {
+                body.appendChild(n);
+            }
+        });
     };
 
     // A time slider in steps of a tenth of a second.
@@ -386,7 +400,7 @@
 
     // The bar under the stage, or first in the sheet on a phone.
     Editor.prototype.renderMotion = function () {
-        var onPhone = window.matchMedia && window.matchMedia(PHONE).matches;
+        var self = this, onPhone = window.matchMedia && window.matchMedia(PHONE).matches;
         var wanted = (this.tool === 'motion') && !onPhone, had = !!this.stageBar;
 
         if (this.tool !== 'motion') {
@@ -397,7 +411,7 @@
 
         // Drawn again only when what it shows changed: a zoom redraws the
         // view, and a scrub in progress must keep its slider.
-        var key = wanted ? [this.motionEnd(), this.playing, this.motionRepeat, JSON.stringify(this.doc.layers.map(function (l) { return l.anim || 0; }))].join('|') : '';
+        var key = wanted ? [this.motionEnd(), this.playing, this.motionRepeat, JSON.stringify(this.doc.layers.map(function (l) { return l.anim || 0; }))].concat(Editor.motionDocks.map(function (d) { return d.key.call(self); })).join('|') : '';
 
         if (this.stageBar && (key !== this.stageBarKey)) {
             this.stageBar.remove();
@@ -405,7 +419,12 @@
         }
 
         if (wanted && !this.stageBar) {
-            this.stageBar = this.motionBar();
+            this.stageBar = el('div', { class: 'pgie-mdock' }, [this.motionBar()].concat(Editor.motionDocks.map(function (d) { return d.node.call(self); })));
+            // The dock sits on the stage: a press, a double click or a wheel
+            // on it is its own, not the stage's (select, drag, zoom).
+            ['pointerdown', 'dblclick', 'wheel'].forEach(function (type) {
+                self.stageBar.addEventListener(type, function (e) { e.stopPropagation(); });
+            });
             this.stageBarKey = key;
             this.stage.appendChild(this.stageBar);
         }
@@ -447,6 +466,8 @@
         e.scrub.value = String(now);
         e.scrub.setAttribute('aria-valuetext', clockText(now));
         e.clock.textContent = clockText(now);
+
+        Editor.motionDocks.forEach(function (d) { d.update.call(this); }, this);
     };
 
     Editor.prototype.togglePlay = function () {

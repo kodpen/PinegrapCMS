@@ -2808,6 +2808,132 @@
         docMotion: docMotion, baseAt: baseAt, hasMotion: hasMotion
     };
 
+    // -- tracks (pg_image_editor_tracks.js) --
+    //
+    // A row per layer under the play bar: a bar per phase from M.motionSpans(),
+    // dragged whole (its delay) or by an end (its length). Times are ms.
+
+    var TRACK_STEP = 100, TRACK_FINE = 10, TRACK_MIN = 100;
+
+    // A layer's bars in time order: { phase, from, to }; the loop has no end grip.
+    function trackBars(l, end) {
+        var sp = motionSpans(l, end), bars = [];
+
+        if (sp.inStart !== null) {
+            bars.push({ phase: 'in', from: sp.inStart, to: sp.inEnd });
+        }
+
+        if ((sp.loopStart !== null) && (sp.loopEnd > sp.loopStart)) {
+            bars.push({ phase: 'loop', from: sp.loopStart, to: sp.loopEnd });
+        }
+
+        if (sp.outStart !== null) {
+            bars.push({ phase: 'out', from: sp.outStart, to: sp.outEnd });
+        }
+
+        return bars;
+    }
+
+    // The times a dragged end snaps to: the start, the end and every bar's
+    // ends of the other layers, sorted, once each.
+    function trackTargets(layers, end, skipId) {
+        var seen = [0, end];
+
+        (layers || []).forEach(function (l) {
+            if (l.id === skipId) {
+                return;
+            }
+
+            trackBars(l, end).forEach(function (b) {
+                seen.push(b.from, b.to);
+            });
+        });
+
+        return seen.filter(function (n, i) { return seen.indexOf(n) === i; }).sort(function (a, b) { return a - b; });
+    }
+
+    // The nearest target within slack ms, or null.
+    function trackNear(ms, targets, slack) {
+        var best = null;
+
+        (targets || []).forEach(function (n) {
+            if ((Math.abs(n - ms) <= slack) && ((best === null) || (Math.abs(n - ms) < Math.abs(best - ms)))) {
+                best = n;
+            }
+        });
+
+        return best;
+    }
+
+    // A time on the grid: a tenth of a second, a hundredth with fine (Shift).
+    function trackRound(ms, fine) {
+        var step = fine ? TRACK_FINE : TRACK_STEP;
+
+        return Math.round(ms / step) * step;
+    }
+
+    // One end moved to ms: another bar's end within slack, else the grid.
+    function trackSnap(ms, targets, slack, fine) {
+        var near = fine ? null : trackNear(ms, targets, slack);
+
+        return (near === null) ? trackRound(ms, fine) : near;
+    }
+
+    // The phase patch ({ delay, ms } or { delay }) for a drag of dt ms on
+    // layer l as it was at the press: grip 'move' shifts the bar, 'start'
+    // and 'end' move one end. Clamped to the timeline and a 0.1 s bar; null
+    // for a phase the layer lacks. opts: { targets, slack, fine }.
+    function trackEdit(l, phase, grip, dt, end, opts) {
+        var o = opts || {}, sp = motionSpans(l, end), a = (l && l.anim && l.anim[phase]) || null;
+        var from = sp[phase + 'Start'], to = sp[phase + 'End'], len, nf, nt, s1, s2, base;
+
+        if (!a || (from === null)) {
+            return null;
+        }
+
+        // A loop runs to the exit: only its start moves.
+        if (phase === 'loop') {
+            base = (sp.inEnd === null) ? 0 : sp.inEnd;
+            nf = clamp(trackSnap(from + dt, o.targets, o.slack || 0, o.fine), base, Math.max(base, to - TRACK_MIN));
+
+            return { delay: Math.max(0, nf - base) };
+        }
+
+        len = to - from;
+
+        if (grip === 'move') {
+            nf = from + dt;
+            nt = to + dt;
+            s1 = o.fine ? null : trackNear(nf, o.targets, o.slack || 0);
+            s2 = o.fine ? null : trackNear(nt, o.targets, o.slack || 0);
+
+            if ((s1 !== null) && ((s2 === null) || (Math.abs(s1 - nf) <= Math.abs(s2 - nt)))) {
+                nf = s1;
+            } else if (s2 !== null) {
+                nf = s2 - len;
+            } else {
+                nf = trackRound(nf, o.fine);
+            }
+
+            nf = clamp(nf, 0, Math.max(0, end - len));
+            nt = nf + len;
+        } else if (grip === 'start') {
+            nt = to;
+            nf = clamp(trackSnap(from + dt, o.targets, o.slack || 0, o.fine), 0, Math.max(0, to - TRACK_MIN));
+        } else {
+            nf = from;
+            nt = clamp(trackSnap(to + dt, o.targets, o.slack || 0, o.fine), Math.min(end, from + TRACK_MIN), end);
+        }
+
+        if (phase === 'in') {
+            return { delay: Math.round(nf), ms: Math.round(nt - nf) };
+        }
+
+        return { delay: Math.round(end - nt), ms: Math.round(nt - nf) };
+    }
+
+    var TRACKS = { TRACK_STEP: TRACK_STEP, trackBars: trackBars, trackTargets: trackTargets, trackSnap: trackSnap, trackEdit: trackEdit };
+
     // -- access (pg_image_editor_access.js) --
 
     // A letter picks a tool of the call: the first of its tools the call
@@ -2963,7 +3089,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, ACCESS].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, TRACKS, ACCESS].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');
