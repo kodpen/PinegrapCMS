@@ -42,7 +42,7 @@ description: Steps N1-N14 and the visual pass V of plans/new-dashboard.md: size,
 - N12 (M) Goals, pins, notes, performance, subscriptions. Screens 01, 04, 18, 19. `free` after N5.
   - `goals` editor and rings, `pins`, `notes`, `perf`, `subs` (hidden until the vendor licence answers).
 
-- N13 (S) Share with the team. Screen 10. `free` after N6.
+- N13 (S) Share with the team. Screen 10. done (#4975).
   - `dashboard_role_default`, the section for role < 2, the lock in read and save, the chip.
 
 - N14 (M) Phone, keyboard and close-out. Screen 20. After N2-N13.

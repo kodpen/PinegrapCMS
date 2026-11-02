@@ -143,7 +143,8 @@ function pg_dashboard_v2_config($user, $row = null, $look = null)
         'periods'    => pg_dashboard_v2_periods(),
         'refresh'    => pg_dashboard_refresh_seconds($_SESSION['software']['welcome']['widget']['refresh'] ?? '', 60),
         'edit'       => array(
-            'locked'    => pg_dashboard_v2_role_locked((int) $user['role']),
+            'locked'    => pg_dashboard_v2_locked_for($user),
+            'share'     => pg_dashboard_v2_share_config($user),
             'preset'    => $settings['preset'],
             'top'       => $settings['top'],
             'actions'   => pg_dashboard_v2_shortcuts_pick($settings['actions'], array_keys($shortcuts)),

@@ -8,7 +8,7 @@ description: New dashboard edit mode (#4856): presets.php, dashboard_layout_save
 - `pg_dashboard_v2_config()` (`page_grid.php`) sends the script `edit`: locked, preset, top, actions, tiles, every preset's drawn cards, the shortcuts and figures the person may pick, and the texts (`pg_dashboard_v2_edit_strings()`).
 
 ## What does dashboard_layout_save check?
-- `pg_panel_dashboard_layout_save()` (`includes/panel/dashboard.php`, exempt, token): signed in, token, not locked (`pg_dashboard_v2_role_locked()`: a role row with `user_id` 0, role = the person's or 9, `locked` 1).
+- `pg_panel_dashboard_layout_save()` (`includes/panel/dashboard.php`, exempt, token): signed in, token, not locked (`pg_dashboard_v2_locked_for()`: a role row with `user_id` 0, role = the person's or 9, `locked` 1; never roles 0-1, `dashboard-v2-share.md`).
 - `pg_dashboard_v2_layout_clean()` (`layout.php`, pure): only cards the person may see, once each; width S/M/L, period and compare 0-2, badge 0/1; shortcuts and tiles only from the allowed pools (6 and 4 at most); top since/actions/tiles/status 0/1. Stored cards the person may not see go back at their old index. Goals, pins and notes are always taken from the stored layout (the edit mode does not send them). JSON over 64 KB is refused. A look, when sent, goes through `pg_dashboard_v2_look_clean()`.
 
 ## How does the script work?

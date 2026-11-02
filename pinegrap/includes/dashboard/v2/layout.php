@@ -340,3 +340,202 @@ function pg_dashboard_v2_layout_write($user_id, $layout, $look = null)
         VALUES ('" . $user_id . "', 0, '" . escape($layout) . "', '" . escape((string) $look) . "', '" . $now . "', '" . $user_id . "')
         ON DUPLICATE KEY UPDATE layout = VALUES(layout)" . $look_sql . ", updated_at = VALUES(updated_at), updated_by = VALUES(updated_by)");
 }
+
+/**
+ * The roles a layout can be made the default for, everyone (9) first, then
+ * by role number: Administrator (0), Designer (1), Manager (2), User (3).
+ *
+ * @return array role => label
+ */
+function pg_dashboard_v2_share_roles()
+{
+    return array(
+        9 => lang('Everyone'),
+        0 => lang('Administrator'),
+        1 => lang('Designer'),
+        2 => lang('Manager'),
+        3 => lang('User'),
+    );
+}
+
+/**
+ * @param mixed $role
+ * @return bool
+ */
+function pg_dashboard_v2_share_role_valid($role)
+{
+    if (is_int($role)) {
+        $number = $role;
+    } elseif (is_string($role) && ctype_digit($role)) {
+        $number = (int) $role;
+    } else {
+        return false;
+    }
+
+    return array_key_exists($number, pg_dashboard_v2_share_roles());
+}
+
+/**
+ * Only administrators and designers make a role's default and lock it.
+ *
+ * @param int $role the person's role
+ * @return bool
+ */
+function pg_dashboard_v2_can_share($role)
+{
+    return (int) $role <= 1;
+}
+
+/**
+ * The default row for a role: its own, else the one for everyone. A locked
+ * row wins over an unlocked one, so the lock that pg_dashboard_v2_role_locked()
+ * reports is also the layout drawn.
+ *
+ * @param int $role
+ * @return array|null
+ */
+function pg_dashboard_v2_role_default($role)
+{
+    $result = @mysqli_query(db::$con,
+        "SELECT layout, look, locked FROM dashboard_layout
+        WHERE user_id = 0 AND role IN ('" . (int) $role . "', 9)
+        ORDER BY locked DESC, (role = 9) ASC LIMIT 1");
+
+    if (!$result) {
+        return null;
+    }
+
+    $row = mysqli_fetch_assoc($result);
+
+    return is_array($row) ? $row : null;
+}
+
+/**
+ * The row the dashboard is drawn from: the person's own, with the role
+ * default's layout where they saved none and its look where they picked
+ * none. While the default is locked, its layout and look replace theirs;
+ * their own stay stored for when the lock lifts. Other fields (the switch,
+ * sign-in times) are always the person's.
+ *
+ * @param array|null $own
+ * @param array|null $default
+ * @return array|null
+ */
+function pg_dashboard_v2_row_effective($own, $default)
+{
+    if (!is_array($default)) {
+        return $own;
+    }
+
+    $row = is_array($own) ? $own : array();
+    $locked = !empty($default['locked']);
+
+    foreach (array('layout', 'look') as $field) {
+        $mine = isset($row[$field]) ? (string) $row[$field] : '';
+        if ($locked || ($mine === '')) {
+            $row[$field] = (string) ($default[$field] ?? '');
+        }
+    }
+
+    return $row;
+}
+
+/**
+ * pg_dashboard_v2_row_effective() for a person.
+ *
+ * @param array $user the row validate_user() returned
+ * @return array|null
+ */
+function pg_dashboard_v2_row_for($user)
+{
+    $default = pg_dashboard_v2_role_default((int) $user['role']);
+
+    // The lock does not bind those who set it (pg_dashboard_v2_locked_for()).
+    if (is_array($default) && pg_dashboard_v2_can_share((int) $user['role'])) {
+        $default['locked'] = 0;
+    }
+
+    return pg_dashboard_v2_row_effective(pg_dashboard_v2_row($user['id']), $default);
+}
+
+/**
+ * Whether the person's layout is locked. Administrators and designers make
+ * and lift the lock from their own edit mode, so it never binds them: a lock
+ * on their own role or on everyone would otherwise leave nobody able to lift
+ * it.
+ *
+ * @param array $user the row validate_user() returned
+ * @return bool
+ */
+function pg_dashboard_v2_locked_for($user)
+{
+    return !pg_dashboard_v2_can_share((int) $user['role']) && pg_dashboard_v2_role_locked((int) $user['role']);
+}
+
+/**
+ * Make a layout and look a role's default, locked or not.
+ *
+ * @param int    $role    0-3, or 9 for everyone
+ * @param string $layout  JSON
+ * @param string $look    JSON
+ * @param bool   $locked
+ * @param int    $user_id who made it
+ * @return bool
+ */
+function pg_dashboard_v2_role_default_write($role, $layout, $look, $locked, $user_id)
+{
+    if (!pg_dashboard_v2_share_role_valid($role)) {
+        return false;
+    }
+
+    return (bool) @mysqli_query(db::$con,
+        "INSERT INTO dashboard_layout (user_id, role, layout, look, locked, updated_at, updated_by)
+        VALUES (0, '" . (int) $role . "', '" . escape($layout) . "', '" . escape($look) . "', '" . ($locked ? 1 : 0) . "', '" . time() . "', '" . (int) $user_id . "')
+        ON DUPLICATE KEY UPDATE layout = VALUES(layout), look = VALUES(look), locked = VALUES(locked), updated_at = VALUES(updated_at), updated_by = VALUES(updated_by)");
+}
+
+/**
+ * The confirmation shown once a default is made.
+ *
+ * @param int  $role
+ * @param bool $locked
+ * @return string
+ */
+function pg_dashboard_v2_share_done($role, $locked)
+{
+    $roles = pg_dashboard_v2_share_roles();
+    $text = ((int) $role === 9)
+        ? lang('Default for everyone')
+        : lang(array('string' => 'Default for the {var:1} role', 'vars' => $roles[(int) $role] ?? ''));
+
+    return $locked ? $text . ' · ' . lang('locked') : $text;
+}
+
+/**
+ * What the side panel's Share with the team section needs, or null for a
+ * person who may not share. Roles are a list of pairs so their order holds
+ * in the script.
+ *
+ * @param array $user the row validate_user() returned
+ * @return array|null
+ */
+function pg_dashboard_v2_share_config($user)
+{
+    if (!pg_dashboard_v2_can_share((int) $user['role'])) {
+        return null;
+    }
+
+    $roles = array();
+    foreach (pg_dashboard_v2_share_roles() as $value => $label) {
+        $roles[] = array($value, $label);
+    }
+
+    return array(
+        'roles'   => $roles,
+        'title'   => lang('Share with the team'),
+        'hint'    => lang('Only administrators and designers see this.'),
+        'label'   => lang('Make this layout the default for'),
+        'lock'    => lang('Lock: people in this role cannot change the layout'),
+        'button'  => lang('Make default'),
+    );
+}
