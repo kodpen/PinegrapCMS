@@ -8,7 +8,7 @@ description: Module list of plans/bug-hunt.md, part 5: the single root endpoints
 
 - Endpoints browse_catalog_menu, cancel_order, carrier_webhook, chat, clean_up, clear_theme_designer_session: open
 
-- Endpoints cloudflare, confirm_subscription, connected_apps, connections, consent_answer, view_countries: open
+- Endpoints cloudflare, confirm_subscription, connected_apps, connections, consent_answer, view_countries: taken by worker fix/bug-hunt-cloudflare
 
 - Endpoints create_file, get_cross_sell_items, csp_report, view_currencies, database_engine, developer_lock: open
 
