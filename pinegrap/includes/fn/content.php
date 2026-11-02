@@ -3529,6 +3529,30 @@ function get_unique_image_id($image_name, $number = 0)
 }
 function update_image_in_content($content, $original_image_name, $new_image_name)
 {
+    return pg_update_image_in_content($content, $original_image_name, $new_image_name, function ($name) {
+        $size = @getimagesize(FILE_DIRECTORY_PATH . '/' . $name);
+
+        return is_array($size) ? array((int) $size[0], (int) $size[1]) : null;
+    });
+}
+
+/**
+ * update_image_in_content() with the image size read through $image_size
+ * (file name => array(width, height), or null when it cannot be read), so
+ * the tag rewrite itself has no file system. Pure apart from that callable.
+ *
+ * Every tag of the image is replaced as written: the rest of the content and
+ * the tag's other attributes ("$5 off" in an alt text) are never read as
+ * back references.
+ *
+ * @param string   $content
+ * @param string   $original_image_name
+ * @param string   $new_image_name
+ * @param callable $image_size
+ * @return string
+ */
+function pg_update_image_in_content($content, $original_image_name, $new_image_name, $image_size)
+{
     // if there are image tags in the content that are in the files directory, then find the image that needs to be updated and update it's attributes
     if (preg_match_all('/<img.*?src="(.*?)".*?>/i', $content, $matches) != 0) {
         // split image tags and names into their own arrays
@@ -3555,14 +3579,19 @@ function update_image_in_content($content, $original_image_name, $new_image_name
                 // If the orignal file name is different than the current file name,
                 // then update the src, title and alt attributes in the image tag.
                 if ($original_image_name != $new_image_name) {
-                    $image_content = preg_replace('/src=".*?"/i', 'src="{path}' . h($new_image_name) . '"', $image_content);
-                    $image_content = preg_replace('/alt=".*?"/i', 'alt="' . h($new_image_name) . '"', $image_content);
-                    $image_content = preg_replace('/title=".*?"/i', 'title="' . h($new_image_name) . '"', $image_content);
+                    $image_content = preg_replace('/src=".*?"/i', pg_regex_replacement('src="{path}' . h($new_image_name) . '"'), $image_content);
+                    $image_content = preg_replace('/alt=".*?"/i', pg_regex_replacement('alt="' . h($new_image_name) . '"'), $image_content);
+                    $image_content = preg_replace('/title=".*?"/i', pg_regex_replacement('title="' . h($new_image_name) . '"'), $image_content);
                 }
-                // Get the dimensions of the new image
-                $image_size = getimagesize(FILE_DIRECTORY_PATH . '/' . $new_image_name);
-                $image_width = $image_size[0];
-                $image_height = $image_size[1];
+                // Get the dimensions of the new image; a file whose size
+                // cannot be read keeps the tag's own dimensions.
+                $dimensions = call_user_func($image_size, $new_image_name);
+                if (!is_array($dimensions)) {
+                    $content = str_replace($image_tags[$key], $image_content, $content);
+                    continue;
+                }
+                $image_width = (int) $dimensions[0];
+                $image_height = (int) $dimensions[1];
                 // Update the width and height attributes in the image tag.
                 // The standard image plugin for CKEditor uses style="width: 100px; height: 100px;"
                 // instead of width="100" height="100", so we have added support for that
@@ -3574,7 +3603,7 @@ function update_image_in_content($content, $original_image_name, $new_image_name
                 $image_content = preg_replace('/height=".*?"/i', 'height="' . $image_height . '"', $image_content);
                 $image_content = preg_replace('/height:.*?px/i', 'height: ' . $image_height . 'px', $image_content);
                 // return the updated image tag
-                $content = preg_replace('/' . escape_regex($image_tags[$key]) . '/i', $image_content, $content);
+                $content = str_replace($image_tags[$key], $image_content, $content);
             }
         }
     }
