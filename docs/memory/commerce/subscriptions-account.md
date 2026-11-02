@@ -22,4 +22,4 @@ module: subscriptions_account
 ## Tested?
 - `tests/subscriptions_account_test.php` (stand-in io: ownership, each allowed/refused move, events, shared card, card page, period end, section forms). Not run on a database or against a live service.
 
-Related: commerce/subscriptions.md, commerce/subscriptions-renewal.md, commerce/subscriptions-stripe.md, api/api-customer-subscriptions.md (the same moves over the API), plans/subscriptions-iyzico-stripe.md
+Related: commerce/subscriptions.md, commerce/subscriptions-renewal.md, commerce/subscriptions-stripe.md, api/api-customer-subscriptions.md (the same moves over the API), commerce/subscriptions-decisions.md

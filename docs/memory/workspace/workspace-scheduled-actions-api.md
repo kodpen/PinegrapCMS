@@ -13,6 +13,6 @@ description: The /workspace/scheduled-actions routes were removed before 2026.11
 
 ## What stays?
 - `/workspace/scheduled-messages` (api_threads.php): a person's "Send later" messages are not flows.
-- The panel's `ws_scheduled_*` actions and the engine in scheduled.php: the scheduled-action form and the flows' anchors still run on them until every action is converted (`plans/workspace-flows-channels.md`, C6).
+- The panel's `ws_scheduled_*` actions and the engine in scheduled.php: the flows' anchors run on them; every action is converted in the 2026.11.0 upgrade (5a #2558, 5b #2606) and the form is retired (`workspace-flows-form-retirement.md`).
 - A connected app's `{type: scheduled, action: draft}` proposal (`workspace-scheduled-draft-proposals.md`): `data` is still the action as an object of name, rules, action, follow and channel_id; it becomes a flow draft card in C5b.
 - The parity table lost its `api_routes` group and the `ws_api_scheduled_body_params` limit line with the file (`workspace-flows-parity-test.md`).
