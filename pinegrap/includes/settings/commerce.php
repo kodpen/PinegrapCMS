@@ -618,7 +618,7 @@ $pg_settings_cards[] = '
                                                                                                 <div class="popover-body">
                                                                                                    <div class="row gy-5">
                                                                                                         <div class="pg-f-md">
-                                                                                                            <label class="form-label" for="iyzipay_protected_currency_code">' . lang('Currency to be converted in submiting order for currency protection') . '</label>
+                                                                                                            ' . (($output_iyzipay_protected_currency_select !== '') ? '<label class="form-label" for="iyzipay_protected_currency_code">' . lang('Currency to be converted in submiting order for currency protection') . '</label>' : '') . '
                                                                                                             ' . $output_iyzipay_protected_currency_select . '
                                                                                                         </div>
                                                                                                     </div>

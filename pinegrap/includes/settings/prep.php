@@ -864,7 +864,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
         if ($og_default_forms) {
             $og_default_forms_notice = '
-                                            <div class="form-text fg-warning"><span class="bi bi-exclamation-triangle-fill me-1"></span>' . lang(array('string' => 'The record pages of these forms have no media field and share this picture: {var:1}. Choose a Share Image Field in their form settings.', 'vars' => array(h(implode(', ', $og_default_forms))))) . '</div>';
+                                            <div class="form-text fg-warning"><span class="bi bi-exclamation-triangle-fill me-1"></span>' . lang(array('string' => 'The record pages of these forms have no media field and share this picture: {var:1}. Choose a Share Image Field in their form settings.', 'vars' => array(h(pg_record_forms_sharing_default_image_text($og_default_forms))))) . '</div>';
         }
 
         $output_share_image_pickers = '
