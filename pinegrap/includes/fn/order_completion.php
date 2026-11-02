@@ -532,15 +532,24 @@ function pg_order_complete_from_payment($order_id, $status, array $paid = array(
     // The recipient that gave up the shipping's minor units at checkout
     // (pg_order_charges_reachable()) keeps the cost the order was charged,
     // as submit_order() writes it before its completion.
-    $result = db_q("SELECT SUM(shipping_cost) AS shipping FROM ship_tos WHERE order_id = ?", array((string) $order_id)) or output_error('Query failed.');
-    $row = mysqli_fetch_assoc($result);
-    $shipping_less = (int) ($row['shipping'] ?? 0) - (int) $order['shipping'];
+    // Rows and sum come from one statement, and the write is a compare-and-
+    // set on the value read: of two payment callbacks for the same order
+    // (both pass the incomplete check above, before pg_order_complete()'s
+    // lock), only one lowers the recipient.
+    $result = db_q("SELECT id, shipping_cost FROM ship_tos WHERE order_id = ?", array((string) $order_id)) or output_error('Query failed.');
+    $ship_to_rows = array();
 
-    if ($shipping_less > 0) {
+    while ($row = mysqli_fetch_assoc($result)) {
+        $ship_to_rows[] = $row;
+    }
+
+    $shipping_step = pg_order_shipping_less_step($ship_to_rows, (int) $order['shipping']);
+
+    if ($shipping_step !== null) {
         db_q(
-            "UPDATE ship_tos SET shipping_cost = shipping_cost - ?
-            WHERE order_id = ? AND shipping_cost >= ?
-            ORDER BY id DESC LIMIT 1", array((string) $shipping_less, (string) $order_id, (string) $shipping_less)) or output_error('Query failed.');
+            "UPDATE ship_tos SET shipping_cost = ?
+            WHERE id = ? AND order_id = ? AND shipping_cost = ?",
+            array((string) $shipping_step['to'], (string) $shipping_step['id'], (string) $order_id, (string) $shipping_step['from'])) or output_error('Query failed.');
     }
 
     $now = time();
@@ -581,6 +590,46 @@ function pg_order_complete_from_payment($order_id, $status, array $paid = array(
     pg_erp_auto_invoice($order_id, 'order_paid', true);
 
     return array('status' => 'completed', 'order_number' => $order_number);
+}
+
+/**
+ * The ship_tos row that gives up the shipping's minor units the order was not
+ * charged (pg_order_charges_reachable()): the newest recipient whose cost
+ * covers the difference between the rows' sum and the order's shipping, with
+ * its cost before and after, or null when the rows do not exceed the order.
+ * Pure.
+ *
+ * @param array $rows           id and shipping_cost of the order's ship_tos
+ * @param int   $order_shipping orders.shipping
+ * @return array|null id, from, to
+ */
+function pg_order_shipping_less_step(array $rows, $order_shipping)
+{
+    $sum = 0;
+
+    foreach ($rows as $row) {
+        $sum += (int) $row['shipping_cost'];
+    }
+
+    $less = $sum - (int) $order_shipping;
+
+    if ($less <= 0) {
+        return null;
+    }
+
+    $chosen = null;
+
+    foreach ($rows as $row) {
+        if (((int) $row['shipping_cost'] >= $less) && (($chosen === null) || ((int) $row['id'] > (int) $chosen['id']))) {
+            $chosen = $row;
+        }
+    }
+
+    if ($chosen === null) {
+        return null;
+    }
+
+    return array('id' => (int) $chosen['id'], 'from' => (int) $chosen['shipping_cost'], 'to' => (int) $chosen['shipping_cost'] - $less);
 }
 
 /**
