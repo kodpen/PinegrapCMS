@@ -18,9 +18,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 /**
  * Why a tag name breaks the name rule, or '' when it does not. A new name
- * takes letters, numbers and dashes; underscores stay allowed only for a
- * record whose stored name already has one, because the theme designer
- * does not support them and renaming would break its styles.
+ * takes English letters (a-z), numbers and dashes; underscores stay
+ * allowed only for a record whose stored name already has one, because
+ * the theme designer does not support them and renaming would break its
+ * styles.
  *
  * @param string $name
  * @param string|null $previous_name  Stored name on edit, null on create
@@ -30,13 +31,13 @@ function pg_tag_name_error($name, $previous_name)
 {
     if ($previous_name === null) {
         $regex = '/[^A-Za-z0-9-]/';
-        $message = lang('Please only enter letters, numbers, and dashes for the name.');
+        $message = lang('Please only enter English letters (a-z), numbers, and dashes for the name.');
     } elseif (mb_strpos($previous_name, '_') !== false) {
         $regex = '/[^A-Za-z0-9_-]/';
-        $message = lang('Please only enter letters, numbers, dashes, and underscores for the name.');
+        $message = lang('Please only enter English letters (a-z), numbers, dashes, and underscores for the name.');
     } else {
         $regex = '/[^A-Za-z0-9-]/';
-        $message = lang('Please only enter letters, numbers, or dashes for the name.');
+        $message = lang('Please only enter English letters (a-z), numbers, or dashes for the name.');
     }
 
     return (preg_match($regex, (string) $name) == 1) ? $message : '';

@@ -560,6 +560,7 @@
     "Internal note. Customers never see it.": "İç not. Müşteriler asla görmez.",
     "Interval": "Aralık",
     "Interval (ms)": "Aralık (ms)",
+    "Interval must be a whole number of seconds from 1 to 999, or blank.": "Aralık 1 ile 999 saniye arasında bir tam sayı olmalı ya da boş bırakılmalı.",
     "Interview": "Görüşme",
     "Interviews, user flows, wireframes and a clickable prototype you test with real people.": "Görüşmeler, kullanıcı akışları, tel çerçeveler ve gerçek kişilerle test ettiğiniz tıklanabilir bir prototip.",
     "Into a note": "Nota ekle",
