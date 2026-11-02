@@ -4,7 +4,7 @@ description: Module list of plans/bug-hunt.md, part 2b: includes/fn/ modules wid
 ---
 
 ## Which includes/fn/ modules (widgets to widgets_lists_checkout) are hunted?
-- `widgets`: open
+- `widgets`: open (#5128: page links on a pretty address carried the router's page name; checked, clean: calendar view and grid, search results, URL filter state and titles, hide-if-empty, token fill, order view access, custom form wrap, edit chip rules, record addresses)
 - `widgets_account`: open (checked, clean: return_to and account_done redirects, posted controls, tax columns, account e-mail pick and setting, subject, values)
 - `widgets_ad_region`: done (#4999: a region placed twice shared its rows' ids)
 - `widgets_affiliate_sign_up`: done (#4998: posted next_page_id); rest clean (prefill as the classic screen, terms, confirmation, row changes)

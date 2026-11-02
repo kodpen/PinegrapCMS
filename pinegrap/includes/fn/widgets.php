@@ -5795,12 +5795,15 @@ function _pg_sw_current_path()
 
 // The visitor's query parameters. On a pretty address (/widget-takvim) the
 // router puts the page's name into $_GET['page'] itself; carrying it into our
-// own links and forms would only repeat the path. On /index.php?page=… it is
+// own links and forms would only repeat the path. On /index.php?page=… and
+// on the site's root (/?page=…, which the router hands on as it came) it is
 // the address and stays.
 function _pg_sw_query_params()
 {
     $params = is_array($_GET) ? $_GET : array();
-    if (isset($params['page']) && !preg_match('/\.php$/i', _pg_sw_current_path())) unset($params['page']);
+    $path   = _pg_sw_current_path();
+    $root   = defined('OUTPUT_PATH') ? (string)OUTPUT_PATH : '/';
+    if (isset($params['page']) && !preg_match('/\.php$/i', $path) && $path !== $root && $path !== '/') unset($params['page']);
     return $params;
 }
 
