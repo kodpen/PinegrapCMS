@@ -550,6 +550,9 @@ function erp_cheque_step($id, $step, $options, $user_id)
             'description' => mb_substr((($step === 'collect') ? lang(array('string' => '{var:1} collected', 'vars' => $name)) : lang(array('string' => '{var:1} paid by the bank', 'vars' => $name))), 0, 255),
             'created_by' => (int) $user_id,
             'allow_below_zero' => true,
+            // The cheque already sits in its portfolio; taking that till off
+            // must not strand it there.
+            'allow_inactive_till' => true,
         ));
 
         if (empty($moved['success'])) {
@@ -591,6 +594,7 @@ function erp_cheque_step($id, $step, $options, $user_id)
                 : lang(array('string' => '{var:1} bounced', 'vars' => $name))) . (($reason !== '') ? ': ' . $reason : ''), 0, 255),
             'created_by' => (int) $user_id,
             'allow_below_zero' => true,
+            'allow_inactive_till' => true,
         ));
 
         if (empty($posted['success'])) {

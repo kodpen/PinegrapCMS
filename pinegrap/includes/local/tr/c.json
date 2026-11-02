@@ -259,6 +259,7 @@
     "Cancelled in the Workspace, on Claude's proposal.": "Çalışma Alanı'nda Claude'un önerisiyle iptal edildi.",
     "Cancelled invoices are never exported. Return documents are counted and left out.": "İptal edilen faturalar hiç aktarılmaz. İade belgeleri sayılır ve dışarıda bırakılır.",
     "Cancelled on the marketplace before it was imported. No order was written.": "İçe aktarılmadan önce pazaryerinde iptal edilmiş; sipariş oluşturulmadı.",
+    "Cancelled on {var:1}": "{var:1} tarihinde iptal edildi",
     "Cancelled on {var:1} (order {var:2}).": "{var:1} üzerinde iptal edildi ({var:2} numaralı sipariş).",
     "Cancelled on {var:1}: {var:2}": "{var:1} tarihinde iptal edildi: {var:2}",
     "Cancelled order": "İptal edilmiş sipariş",

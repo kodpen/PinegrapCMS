@@ -136,7 +136,7 @@ if (!$_POST) {
     $method_options = array(
         lang('Cash') => 'cash',
         lang('Bank transfer') => 'transfer',
-        lang('Credit card') => 'card',
+        lang('Card') => 'card',
         lang('Cheque') => 'cheque',
         lang('Other') => 'other',
     );
