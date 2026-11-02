@@ -8,15 +8,15 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 
 - Endpoints `ad` (5): #4854 (sort order); the rest clean
 
-- Endpoints `affiliate` (5): taken by NJ (affiliate_sign_up_confirmation, affiliate_sign_up_form, get_affiliate_sign_up_confirmation_screen_content, get_affiliate_sign_up_form_screen_content, get_affiliate_welcome_screen_content)
+- Endpoints `affiliate` (5): done #4998 (affiliate_sign_up_confirmation, affiliate_sign_up_form, get_affiliate_sign_up_confirmation_screen_content, get_affiliate_sign_up_form_screen_content, get_affiliate_welcome_screen_content)
 
 - Endpoints `api` (5): taken by LF (api, api_docs, api_settings, api_sync_job, api_webhook_job): #4615; the rest clean
 
-- Endpoints `arrival` (3): taken by NJ
+- Endpoints `arrival` (3): clean (add_arrival_date, edit_arrival_date, view_arrival_dates)
 
-- Endpoints `auto` (4): taken by NJ
+- Endpoints `auto` (4): clean (add_auto_dialog, edit_auto_dialog, view_auto_dialogs, auto_backup)
 
-- Endpoints `barcode` (3): taken by NJ
+- Endpoints `barcode` (3): clean (barcode_decrease_inventory, barcode_increase_inventory, barcode_menu; the decrease to 0 is a decision)
 
 - Endpoints `billing` (2): open
 
