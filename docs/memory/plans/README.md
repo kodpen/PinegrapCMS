@@ -40,7 +40,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bug-hunt-modules-fn-1.md: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y to legal_documents, one line each with its state
 - bug-hunt-modules-fn-1b.md: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules link_resolve to pdf_merge, one line each with its state
 - bug-hunt-modules-fn-2.md: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules price_history to waf_rescue, one line each with its state
-- bug-hunt-modules-fn-2b.md: Module list of plans/bug-hunt.md, part 2b: includes/fn/ modules widgets to wishlist, one line each with its state
+- bug-hunt-modules-fn-2b.md: Module list of plans/bug-hunt.md, part 2b: includes/fn/ modules widgets to widgets_lists_checkout, one line each with its state
+- bug-hunt-modules-fn-2c.md: Module list of plans/bug-hunt.md, part 2c: includes/fn/ modules widgets_lists_menu to wishlist, one line each with its state
 - bug-hunt.md: Plan: module-by-module bug hunt when no plan step is free; how a module is taken, hunted and closed; the module lists are in bug-hunt-modules-*.md
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, nested named functions, CI checks, and the parked explicit "who may write PHP" rule
