@@ -2945,6 +2945,28 @@ function get_page_type_name($page_type)
 
     return isset($names[$page_type]) ? $names[$page_type] : null;
 }
+
+/**
+ * The type a File Manager page item shows beside "Page": the panel-language
+ * name of a non-standard type ('custom form' -> "Custom Form"), '' for a
+ * standard page, and the stored code itself for a type no name is known for,
+ * so the column is never drawn empty.
+ *
+ * @param  string $page_type stored page.page_type
+ * @return string
+ */
+function pg_explorer_page_type_name($page_type)
+{
+    $page_type = (string) $page_type;
+
+    if (($page_type === '') || ($page_type === 'standard')) {
+        return '';
+    }
+
+    $name = get_page_type_name($page_type);
+
+    return ($name !== null) ? $name : $page_type;
+}
 function get_currency_name_from_code($currency_code)
 {
     // if the currency code is not blank, then get name from code
