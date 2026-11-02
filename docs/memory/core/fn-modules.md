@@ -15,7 +15,7 @@ description: Generated from the module field of the memory files: each includes/
 - `audit_view`: [[audit-trail-screen]], [[audit-trail-settings-name]]
 - `auth`: [[erp-link-rights]], [[filtered-folder-picker-path]], [[link-rights]], [[list-row-names]], [[settings-folder-pickers]], [[sign-in-one-message]]
 - `background_render`: [[background-render]]
-- `backup`: [[fn-module-errors-mail-backup-consent]]
+- `backup`: [[backup-folder-download-zip]], [[fn-module-errors-mail-backup-consent]]
 - `bundles`: [[product-bundles]], [[product-bundles-storefront]]
 - `calendar`: [[calendar-location-availability]], [[calendar-view-date]]
 - `carrier_labels`: [[carrier-label-drivers]], [[carrier-label-text-cuts]]

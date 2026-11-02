@@ -248,6 +248,56 @@ function pg_backup_zip_create($zip_path, array $sources)
 
 
 /**
+ * Whether the archive kept inside a backup folder still holds that folder.
+ *
+ * The Backup Manager zips a folder backup into the folder itself on its first
+ * download and serves that archive afterwards. Updating the backup (the same
+ * name again, or the weekly automatic folder) rewrites the dump, files and
+ * layouts but leaves the archive, so it is current only while no other file
+ * under the folder is as new as it is: a file from the same second may have
+ * been written after it.
+ *
+ * @param string $zip_path the archive
+ * @param string $folder   the backup folder it was made from
+ * @return bool false when the archive is missing, older, or the folder cannot be read
+ */
+function pg_backup_folder_zip_current($zip_path, $folder)
+{
+    if (!is_file($zip_path) || !is_dir($folder)) {
+        return false;
+    }
+
+    $zip_time = filemtime($zip_path);
+    $zip_real = realpath($zip_path);
+
+    if (($zip_time === false) || ($zip_real === false)) {
+        return false;
+    }
+
+    try {
+        $iterator = new RecursiveIteratorIterator(
+            new RecursiveDirectoryIterator($folder, RecursiveDirectoryIterator::SKIP_DOTS),
+            RecursiveIteratorIterator::LEAVES_ONLY
+        );
+
+        foreach ($iterator as $entry) {
+            if ($entry->isDir() || ($entry->getRealPath() === $zip_real)) {
+                continue;
+            }
+
+            if ($entry->getMTime() >= $zip_time) {
+                return false;
+            }
+        }
+    } catch (UnexpectedValueException $e) {
+        return false;
+    }
+
+    return true;
+}
+
+
+/**
  * Remove a directory and everything under it.
  *
  * @param string $path

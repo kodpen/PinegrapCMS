@@ -216,8 +216,9 @@ if (!$_POST) {
 		    // its own files, as it always was.
 		    $zip_file = is_file($dir) ? $dir : $dir . '/' . $backup_folder . '.zip';
 				
-		    // Create ZIP if it doesn't exist
-		    if (!file_exists($zip_file)) {
+		    // Write the folder's ZIP when there is none, or when the backup was
+		    // updated after the last download wrote it.
+		    if (!is_file($dir) && !pg_backup_folder_zip_current($zip_file, $dir)) {
 			
 		        $rootPath = realpath($dir);
 		        if (!$rootPath || !is_dir($rootPath)) {
@@ -236,8 +237,12 @@ if (!$_POST) {
 		            RecursiveIteratorIterator::LEAVES_ONLY
 		        );
 			
+		        // The previous archive sits in the same folder and is never
+		        // packed into the new one.
+		        $oldZipPath = realpath($zip_file);
+
 		        foreach ($iterator as $file) {
-		            if (!$file->isDir()) {
+		            if (!$file->isDir() && ($file->getRealPath() !== $oldZipPath)) {
 		                $filePath = $file->getRealPath();
 		                $relativePath = substr($filePath, strlen($rootPath) + 1);
 					
