@@ -54,7 +54,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `config_text`: clean
 
-- `connect`: taken by OO
+- `connect`: done #5245 (renewal read another owner's row; rest reviewed: scopes, PKCE, claims, tokens, revoke)
 
 - `consent`: done #4577, #4587
 
