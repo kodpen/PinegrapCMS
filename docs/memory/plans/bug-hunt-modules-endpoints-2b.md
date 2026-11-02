@@ -6,7 +6,7 @@ description: Module list of plans/bug-hunt.md, part 5: the single root endpoints
 ## Which single endpoints are hunted?
 - Endpoints view_accessibility, update_address_book, allow_or_disallow_new_comments, approve_affiliate, view_audit_log, backups: done #5130 (backups: a folder backup's download served the archive of an earlier version after an update; rest clean)
 
-- Endpoints browse_catalog_menu, cancel_order, carrier_webhook, chat, clean_up, clear_theme_designer_session: open
+- Endpoints browse_catalog_menu, cancel_order, carrier_webhook, chat, clean_up, clear_theme_designer_session: done #5142 (clean_up: names in the delete list printed raw; rest clean; leads: clear_theme_designer_session array file_id fatal, browse_catalog_menu previous_url_id not urlencoded)
 
 - Endpoints cloudflare, confirm_subscription, connected_apps, connections, consent_answer, view_countries: open
 
