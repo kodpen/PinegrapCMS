@@ -38,10 +38,13 @@ function test_unticked_zone_lists()
 		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $screen . '.php');
 
 		foreach (array('allowed_countries', 'allowed_states') as $key) {
-			pg_assert_same(0, substr_count($source, "= \$_POST['" . $key . "'];"), $screen . ' reads ' . $key . ' without a check');
-			pg_assert_same(1, substr_count($source, "(isset(\$_POST['" . $key . "']) && is_array(\$_POST['" . $key . "'])) ? \$_POST['" . $key . "'] : array();"), $screen . ' reads ' . $key . ' as an array');
+			pg_assert_same(0, substr_count($source, "\$_POST['" . $key . "']"), $screen . ' reads ' . $key . ' only through the form helper');
+			pg_assert_contains("\$values['" . $key . "']", $source, $screen . ' writes the helper\'s ' . $key);
 		}
 	}
+
+	$form = file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/zone_form.php');
+	pg_assert_contains("(isset(\$post[\$key]) && is_array(\$post[\$key])) ? \$post[\$key] : array();", $form, 'the form helper reads both lists as arrays');
 }
 
 // The Paraşüt export reads Product taxes included with a default.

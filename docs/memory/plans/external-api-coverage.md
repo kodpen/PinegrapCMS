@@ -7,15 +7,16 @@ description: External API (integration.php): find what the panel can do that the
 - Endpoints for what the panel manages and `integration.php` lacks. Not the storefront API nor the vendor client.
 
 ## Which steps are there?
-- X0 gap list: done (PR #5239). X1–X12 are `free`, most useful first. A write step first moves the screen's inline SQL into one `includes/fn/` function both call. New `store:read`/`store:write` scopes (manager ceiling); store reads under `orders:read` keep it too.
-- X1 Shipping writes: create, update, `/delete` for `/store/shipping-methods`, `/store/zones`, `/store/tax-zones`. `store:write`. Events `shipping_method.created|updated|deleted`, `zone.changed`, `tax_zone.changed`.
+- X0 gap list: done (PR #5239). X1–X12 are `free`, most useful first. A write step first moves the screen's inline SQL into one `includes/fn/` function both call. Store writes take `store:write` (commerce ceiling); store reads stay under `orders:read`.
+- X1a Zone and tax zone writes (create, update, `/delete`, GET one), `store:write`, events `zone.*`, `tax_zone.*`: PR #5377 (`api/api-store-zone-writes.md`).
+- X1b Shipping method writes: create, update, `/delete` for `/store/shipping-methods` through a write function shared with `add_/edit_shipping_method.php` (`pg_shipping_method_form_columns()` reads the panel's formatted text; the API needs its own typed input). `store:write`. Events `shipping_method.created|updated|deleted`. Free.
 - X2 Returns: `GET /returns` (status, order_id, modified_since), `GET /returns/{id}`, `POST /returns/{id}` (approve, receive, refund, reject as `view_return.php`). `orders:*`. Events: existing `order.return.*`.
 - X3 `GET /subscriptions`, `/subscriptions/{id}` (`customers:read`); `POST /commissions/{id}` status, `POST /affiliates/{id}/approve`, `GET /commissions/recurring-profiles`; new `commissions:write`. Events `commission.status_changed`, `affiliate.approved`.
 - X4 Users read: `GET /users`, `/users/{id}` (role, permission columns, last sign-in, MFA; no secrets). New `users:read`, designer ceiling. Writes: #5237.
 - X5 Countries, states, currencies: create, update, delete; `POST /store/currencies/rates` (`update_exchange_rates.php`). `store:write`. Event `currency.updated`.
 - X6 `POST /orders` as `add_order.php`, Idempotency-Key, dry run. `orders:write`. Event `order.created`.
 - X7 `POST /offers`, `POST /offers/{id}/duplicate` (`edit_offer_f.php` rules). `offers:write`. New events `offer.created|updated|deleted`.
-- X8 CRUD `/store/arrival-dates`, `/store/ship-date-adjustments`, `/store/verified-addresses`, `/store/referral-sources`. `store:*`. No events.
+- X8 CRUD `/store/arrival-dates`, `/store/ship-date-adjustments`, `/store/verified-addresses`, `/store/referral-sources`. `orders:read`, `store:write`. No events.
 - X9 `POST /campaigns` (draft), `POST /campaigns/{id}/schedule`, campaign profiles CRUD, `GET /campaigns/sms`. `campaigns:*`. Event `campaign.sent`.
 - X10 Calendars create/update/delete, `/calendars/locations` CRUD, `GET /calendars/events/{id}/reservations`. `calendars:*` with the role-3 row rule. Event `calendar_event.reserved`.
 - X11 `POST /forms/{id}/submissions`, its `/delete`, `GET /forms/{id}/fields`. `forms:*`. Event `form.submission.deleted`; `form.submitted` exists.

@@ -668,6 +668,7 @@ function api_settings_group_text($key, $group = array()) {
 		'products'  => array(lang('Products'),   lang('Reading the catalogue; writing products, product groups and product attributes, and deleting them'), 'bi-box-seam'),
 		'inventory' => array(lang('Inventory'),  lang('Setting a quantity and adjusting it - reading is under Products'), 'bi-grid-3x3-gap'),
 		'orders'    => array(lang('Orders'),     lang('Reading orders and their lines, and the shipping methods, zones, taxes, countries and currencies they are computed with; writing status and notes'), 'bi-cart3'),
+		'store'     => array(lang('Store settings'), lang('Writing the shipping zones and tax zones checkout charges by - reading them is under Orders'), 'bi-geo-alt'),
 		'customers' => array(lang('Customers'),  lang('The people who buy (address book records); writing includes deleting one'), 'bi-person-lines-fill'),
 		'pages'     => array(lang('Pages'),      lang('Page details, comment settings, folders, menus and short links'), 'bi-file-earmark'),
 		'design'    => array(lang('Page design'), lang('The layout of the Visual Page Editor\'s pages; writing means proposing a change a designer applies, adding a page as a draft, setting when a page goes on the site and comes off it, putting back a published revision, or sharing the drafts as a prototype by a link'), 'bi-palette'),
