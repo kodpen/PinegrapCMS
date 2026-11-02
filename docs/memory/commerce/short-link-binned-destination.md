@@ -1,6 +1,6 @@
 ---
 name: short-link-binned-destination
-description: A short link whose page or file is in the Recycle Bin: the list shows the original name marked, the CSV writes it, a 301/302 sends nobody to the parked pgbin_ address
+description: A short link whose page or file is in the Recycle Bin (list, CSV, redirect), and a name held by a short link in the bin (the form's message)
 module: short_link_redirects
 ---
 
@@ -21,3 +21,10 @@ besides the names.
 A 301 to `/pgbin_…` (410) was cached by browsers and search engines and kept
 sending visitors there after a restore; the list and the CSV leaked the
 internal name (#5337).
+
+## What does the form say when a binned short link holds the name?
+`pg_short_link_form_name_binned()` (`includes/forms/short_link_form.php`):
+a short link in the bin keeps its name and is off the list, so the form says
+so and points at the File Manager instead of the plain "already in use"
+(#5341). The tracking code is checked against its 100 characters there too:
+the panel's non-strict `sql_mode` cut a longer one without an error (#5338).
