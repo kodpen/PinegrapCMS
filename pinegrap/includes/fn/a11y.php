@@ -311,9 +311,11 @@ function pg_a11y_name($xpath, $element)
         return trim($element->getAttribute('aria-label'));
     }
 
-    $name = pg_a11y_text($element);
+    // A select or textarea takes no name from its content: option texts and
+    // the default text are its value, not a label.
+    $name = in_array($element->nodeName, array('select', 'textarea'), true) ? '' : pg_a11y_text($element);
 
-    if ($name === '') {
+    if (($name === '') && !in_array($element->nodeName, array('select', 'textarea'), true)) {
         foreach ($xpath->query('.//img[@alt]|.//*[local-name()="svg"]/*[local-name()="title"]|.//*[@aria-label]', $element) as $inner) {
             $value = ($inner->nodeName === 'img') ? $inner->getAttribute('alt')
                 : ($inner->hasAttribute('aria-label') ? $inner->getAttribute('aria-label') : $inner->textContent);

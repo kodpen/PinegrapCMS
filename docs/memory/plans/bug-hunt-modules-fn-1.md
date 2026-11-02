@@ -4,7 +4,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 ---
 
 ## Which includes/fn/ modules (a11y to legal_documents) are hunted?
-- `a11y`: open
+- `a11y`: done #5093 (a select or textarea named by its own options or text; rest reviewed: rules, idrefs, contrast, nightly pass, editor findings, report escaping)
 
 - `ai_crawlers`: open
 
