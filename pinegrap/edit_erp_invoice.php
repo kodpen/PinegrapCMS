@@ -138,9 +138,9 @@ if ($_POST) {
             go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query);
         }
 
-        $result = erp_settlement_remove((int) ($_POST['settlement_id'] ?? 0), (int) $user['id']);
+        $result = erp_settlement_remove((int) ($_POST['settlement_id'] ?? 0), (int) $user['id'], array('invoice_id' => $invoice_id));
 
-        if ($result['success'] && ((int) $result['invoice_id'] === $invoice_id)) {
+        if ($result['success']) {
             log_activity(lang(array('string' => 'erp allocation was removed from invoice ({var:1})', 'vars' => $invoice['full_number'])), $_SESSION['sessionusername']);
             $liveform->add_notice(lang('The allocation has been removed.'));
         } else {

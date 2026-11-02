@@ -516,11 +516,18 @@ function erp_txn_unallocated($account_txn_id)
  * invoice was foreign and no longer counts as paid, the exchange difference
  * that its closing posted is reversed too.
  *
- * @param int $settlement_id
- * @param int $created_by
+ * A screen names the record the allocation must hang on ($owner: the
+ * invoice it shows, or the receipt's ledger row); an allocation of another
+ * record is refused before anything is written. Without it the invoice and
+ * receipt screens removed the other record's allocation, then reported that
+ * nothing was found and logged nothing.
+ *
+ * @param int   $settlement_id
+ * @param int   $created_by
+ * @param array $owner  Optional: 'invoice_id' and/or 'account_txn_id' it must match
  * @return array ['success' => bool, 'invoice_id' => int, 'error' => string]
  */
-function erp_settlement_remove($settlement_id, $created_by = 0)
+function erp_settlement_remove($settlement_id, $created_by = 0, $owner = array())
 {
     $settlement_id = (int) $settlement_id;
 
@@ -536,6 +543,12 @@ function erp_settlement_remove($settlement_id, $created_by = 0)
 
     if (!is_array($settlement)) {
         return $fail(lang('The allocation could not be found.'));
+    }
+
+    foreach (array('invoice_id', 'account_txn_id') as $owner_key) {
+        if (isset($owner[$owner_key]) && ((int) $owner[$owner_key] !== (int) $settlement[$owner_key])) {
+            return $fail(lang('The allocation could not be found.'));
+        }
     }
 
     if ((string) $settlement['source_type'] === 'gift_card') {
