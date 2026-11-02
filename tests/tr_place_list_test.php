@@ -180,3 +180,62 @@ function test_tr_place_list_wiring()
 	pg_assert_true(strpos($read('shipping_address_and_arrival.php'), "pg_place_liveform_fix(\$liveform, '')") !== false);
 	pg_assert_same(2, substr_count($read('view_order.php'), 'pg_place_district_note('));
 }
+
+// Any includes/geo/places/<CC>.json is a pack; an address's country is read
+// by code or name.
+function test_place_packs_country()
+{
+	pg_assert_true(in_array('TR', pg_places_countries(), true));
+	pg_assert_same('TR', pg_places_country('TR'));
+	pg_assert_same('TR', pg_places_country('Türkiye'));
+	pg_assert_same('TR', pg_places_country('TÜRKİYE', 'Türkiye'));
+	pg_assert_same('', pg_places_country('DE'));
+	pg_assert_same('', pg_places_country(''));
+}
+
+// A province of another country's pack: by its name or the part of its code
+// after "<CC>-"; Turkey keeps the plate and the older spellings.
+function test_place_packs_province()
+{
+	$pack = array(
+		'US-CA' => array('name' => 'California', 'districts' => array('Los Angeles', 'San Diego')),
+		'US-NY' => array('name' => 'New York', 'districts' => array('Buffalo')));
+
+	pg_assert_same('US-CA', pg_place_province('US', $pack, 'california'));
+	pg_assert_same('US-NY', pg_place_province('us', $pack, 'NY'));
+	pg_assert_same('', pg_place_province('US', $pack, 'Texas'));
+	pg_assert_same('', pg_place_province('US', $pack, ''));
+	pg_assert_same('TR-03', pg_place_province('TR', pg_places_pack('TR'), 'Afyon'));
+	pg_assert_same('TR-06', pg_place_province('TR', pg_places_pack('TR'), '', '6'));
+	pg_assert_same('', pg_place_province('TR', array(), 'Ankara'));
+	pg_assert_same('San Diego', pg_place_district($pack, pg_place_province('US', $pack, 'CA'), 'san diego')['name']);
+}
+
+// The browser list of another country's pack is keyed by the code after
+// "<CC>-" and finds the shop's states row by name or code.
+function test_place_packs_client_list()
+{
+	$pack = array('US-CA' => array('name' => 'California', 'districts' => array('Los Angeles', 'San Diego')));
+	$list = pg_places_client_list($pack, array(array('code' => 'CA', 'name' => 'Kaliforniya', 'plate_code' => '')), 'US');
+
+	pg_assert_same(array('CA' => array('n' => 'California', 'c' => 'CA', 's' => 'Kaliforniya', 'd' => 'Los Angeles|San Diego')), $list);
+}
+
+// The forms whose names do not follow <prefix>city / <prefix>country mark
+// their district box: the ERP account card and delivery note, the panel's
+// verified address; the ERP forms print the suggester themselves.
+function test_place_packs_form_marks()
+{
+	pg_assert_same(' data-pg-place-country="country_code" data-pg-place-state="city"', pg_places_input_attrs('country_code', 'city'));
+	pg_assert_same(' data-pg-place-country="&quot;x" data-pg-place-state="y"', pg_places_input_attrs('"x', 'y'));
+
+	$read = function ($file) {
+		return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+	};
+
+	pg_assert_contains("pg_places_input_attrs('country_code', 'city')", $read('includes/erp/account_form.php'));
+	pg_assert_contains('pg_places_suggest_script()', $read('includes/erp/account_form.php'));
+	pg_assert_contains("pg_places_input_attrs('ship_to_country', 'ship_to_city')", $read('includes/erp/waybill_form.php'));
+	pg_assert_contains('pg_places_suggest_script()', $read('includes/erp/waybill_form.php'));
+	pg_assert_contains("pg_places_input_attrs('TR', 'state_id')", $read('includes/forms/verified_shipping_address_form.php'));
+}
