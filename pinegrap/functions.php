@@ -171,6 +171,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/collections.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/record_revisions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/reviews.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/comments.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_questions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/wishlist.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/stock_notify.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/bundles.php');

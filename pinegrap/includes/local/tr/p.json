@@ -1556,6 +1556,8 @@
     "Product not found: {var:1}": "Ürün bulunamadı: {var:1}",
     "Product or code": "Ürün ya da kod",
     "Product patch failed: {var:1}": "Ürün güncellenemedi: {var:1}",
+    "Product questions": "Ürün soruları",
+    "Product questions: on a product page, visitors ask and staff answer; a second widget beside the reviews.": "Ürün soruları: ürün sayfasında ziyaretçiler sorar, personel yanıtlar; değerlendirmelerin yanında ikinci bir bileşen.",
     "Product retrieved successfully.": "Ürün başarıyla getirildi.",
     "Product reviews": "Ürün incelemeleri",
     "Product row (loop_area)": "Ürün satırı (loop_area)",

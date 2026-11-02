@@ -420,6 +420,7 @@ function pg_notification_display($notification, $reader_role = null)
 		$comment = db_item("SELECT
 				comments.id AS id,
 				comments.page_id,
+				" . ((function_exists('pg_product_questions_ready') && pg_product_questions_ready()) ? "comments.kind," : "'comment' AS kind,") . "
 				page.comments_label
 			FROM comments
 			LEFT JOIN page ON page.page_id = comments.page_id
@@ -428,6 +429,13 @@ function pg_notification_display($notification, $reader_role = null)
 		$comments_label = ($comment) ? $comment['comments_label'] : '';
 
 		$display['title']       = lang(array('string' => 'There is a new {var:1} exist.', 'vars' => array(h($comments_label))));
+
+		// A question about a product (includes/fn/product_questions.php)
+		// waits for staff to answer it on the comment's screen.
+		if ($comment && ($comment['kind'] === 'question')) {
+			$display['title'] = lang('A product question is waiting for an answer.');
+		}
+
 		$display['description'] = h($comments_label) . ': ' . h($notification['title']);
 		$display['url']         = 'edit_comment.php?id=' . (($comment) ? (int) $comment['id'] : '');
 		$display['icon']     = 'assets/images/notification-comment.png';

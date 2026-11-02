@@ -86,6 +86,7 @@ description: Generated from the module field of the memory files: each includes/
 - `privacy_retention`: [[privacy-log-retention]]
 - `product_customs`: [[carrier-label-customs]], [[product-customs-fields]]
 - `product_list`: [[product-list-paging]]
+- `product_questions`: [[product-questions]]
 - `prototype`: [[designer-prototype-viewer]]
 - `prototype_links`: [[designer-prototype-share-links]]
 - `record_revisions`: [[collection-history]], [[collection-revisions]]
