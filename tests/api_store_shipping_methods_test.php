@@ -174,3 +174,16 @@ function test_api_shipping_method_routes_and_events()
 		pg_assert_false(strpos($source, 'INSERT INTO shipping_methods') !== false || strpos($source, 'DELETE FROM shipping_methods') !== false, $file . ' writes no shipping method row itself');
 	}
 }
+
+// The module answers a failed write with 0 or false (the API then answers
+// 500 in JSON, the screens output_error()), so no write's result is dropped.
+function test_shipping_method_module_checks_every_write()
+{
+	foreach (array('includes/fn/shipping_methods.php', 'includes/fn/store_zones.php') as $file) {
+		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+
+		pg_assert_same(0, preg_match_all('/^\s*db_q\(/m', $source), $file . ' leaves no db_q() write unchecked');
+		pg_assert_true(preg_match_all('/(if \(!db_q\(|\$saved = db_q\()/', $source) >= 6, $file . ' checks its writes');
+	}
+}
+
