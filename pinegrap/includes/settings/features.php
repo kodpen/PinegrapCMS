@@ -470,6 +470,8 @@ if (function_exists('pg_page_cache_ttl')) {
 $signature_tsa_url = isset($row['signature_tsa_url']) ? (string) $row['signature_tsa_url'] : '';
 $signature_tsa_auth = (isset($row['signature_tsa_auth']) && ($row['signature_tsa_auth'] === 'basic')) ? 'basic' : 'none';
 $signature_tsa_username = isset($row['signature_tsa_username']) ? (string) $row['signature_tsa_username'] : '';
+// Read only to tell whether one is saved: the password is never sent back to
+// the browser (pg_signature_tsa_password_to_store()).
 $signature_tsa_password = isset($row['signature_tsa_password']) ? (string) $row['signature_tsa_password'] : '';
 
 $pg_settings_cards[] = '
@@ -502,7 +504,12 @@ $pg_settings_cards[] = '
                                         </div>
                                         <div class="pg-f-md">
                                             <label for="signature_tsa_password" class="form-label">' . lang('Password') . '</label>
-                                            <input type="password" name="signature_tsa_password" id="signature_tsa_password" maxlength="100" class="form-control" value="' . h($signature_tsa_password) . '" />
+                                            <input type="password" name="signature_tsa_password" id="signature_tsa_password" maxlength="100" class="form-control" value="" autocomplete="new-password" placeholder="' . (($signature_tsa_password !== '') ? h(lang('Saved')) : '') . '" />'
+    . (($signature_tsa_password !== '') ? '
+                                            <div class="form-field mb-0 mt-1">
+                                                <input value="1" class="check" type="checkbox" id="signature_tsa_password_clear" name="signature_tsa_password_clear" />
+                                                <label class="fg-danger" for="signature_tsa_password_clear">' . lang('Remove the saved value') . '</label>
+                                            </div>' : '') . '
                                         </div>
                                         <div class="col-12">
                                             <button type="submit" name="submit_test_tsa" value="1" class="btn btn-sm btn-outline theme-secondary">

@@ -110,6 +110,8 @@ function test_settings_pickers_use_the_mark()
 	$prep = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/prep.php');
 
 	foreach (array('$site_icon', '$og_default_image', '$organization_logo', '$app_icon') as $value) {
-		pg_assert_contains('pg_stored_file_option(' . $value . ', ', $prep, $value);
+		// Through the public picture pickers' own mark, which falls back to
+		// pg_stored_file_option() (includes/fn/files.php).
+		pg_assert_contains('pg_public_image_stored_option(' . $value . ')', $prep, $value);
 	}
 }

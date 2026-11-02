@@ -73,6 +73,16 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $liveform->mark_error($email_field, $email_error);
     }
 
+    // Neither folder may be the Workspace's or below it, nor in the Recycle
+    // Bin (pg_settings_folder_choice_ok()): granted access there would open
+    // conversation files to every buyer, and product images there could not
+    // be shown to visitors.
+    foreach (array('product_upload_folder_id', 'ecommerce_private_folder_id') as $folder_field) {
+        if (!pg_settings_folder_choice_ok((int) post_value($folder_field))) {
+            $liveform->mark_error($folder_field, lang('Choose a folder outside the Workspace and the Recycle Bin.'));
+        }
+    }
+
     if ($liveform->check_form_errors()) {
         return;
     }
