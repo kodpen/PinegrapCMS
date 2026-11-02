@@ -2251,8 +2251,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         // picture and og:type=product, like its legacy twin.
                         $pg_og_sw_product_image_name = (string) ($_pg_sw_product['image_name'] ?? '');
                         $_pg_sw_canonical_url = is_array($pg_sw_item) ? $canonical_url : URL_SCHEME . HOSTNAME_SETTING . $_pg_sw_canonical_path;
+                        $_pg_sw_product_id = isset($_pg_sw_product['id']) ? $_pg_sw_product['id'] : 0;
+                        // A product's answered questions, while the page's
+                        // questions widget shows them.
                         $_pg_sw_jsonld = _pg_build_product_jsonld($_pg_sw_product, $_pg_sw_canonical_url,
-                            pg_comment_product_view_rating_shown($page_id, isset($_pg_sw_product['id']) ? $_pg_sw_product['id'] : 0));
+                            pg_comment_product_view_rating_shown($page_id, $_pg_sw_product_id),
+                            pg_product_question_markup_shown($page_id, $_pg_sw_product_id) ? pg_product_question_jsonld($page_id, $_pg_sw_product_id) : array());
                         $content = preg_replace(
                             '/<\/head>/i',
                             pg_regex_replacement("\n<!-- Start Structured Data -->\n<script type=\"application/ld+json\">" . json_encode($_pg_sw_jsonld, JSON_UNESCAPED_UNICODE) . "</script>\n<!-- End Structured Data -->\n") . '</head>',
