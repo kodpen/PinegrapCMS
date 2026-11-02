@@ -108,6 +108,19 @@ function test_a11y_form_label()
 	pg_assert_same('soyad', $findings['a11y_form_label']['detail']);
 }
 
+// A select or textarea takes no name from its content: the option texts and
+// the default text are values, not a label.
+function test_a11y_form_label_ignores_control_content()
+{
+	$html = a11y_test_page('<select name="il"><option>İstanbul</option><option>Ankara</option></select>'
+		. '<textarea name="not">Varsayılan metin</textarea>'
+		. '<select name="ilce" aria-label="İlçe"><option>Kadıköy</option></select>');
+	$findings = pg_a11y_check_html($html);
+
+	pg_assert_same(2, isset($findings['a11y_form_label']) ? $findings['a11y_form_label']['occurrences'] : 0, 'option text and default text are no label');
+	pg_assert_same('il', isset($findings['a11y_form_label']) ? $findings['a11y_form_label']['detail'] : '');
+}
+
 function test_a11y_idref_broken()
 {
 	$findings = pg_a11y_check_html(a11y_test_page('<label for="yok">Ad</label><input id="ad" aria-label="Ad" aria-describedby="ipucu gone"><p id="ipucu">İpucu</p>'));
