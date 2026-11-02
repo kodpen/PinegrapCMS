@@ -144,6 +144,35 @@ function pg_explorer_breadcrumb($folder_id, $folders_that_user_has_access_to)
 
 // True when $candidate_id equals $folder_id or lives anywhere below it.
 // Used to refuse moving a folder into itself or into its own subtree.
+// The answer of a paste or a Duplicate: how many items were copied and, for
+// each copy that took another name than its original (the name was taken in
+// the target, or a file name had to lose letters an address cannot carry),
+// the name it now has, since that name is its address on the site. Plain
+// text: the File Manager writes it with textContent.
+function pg_explorer_paste_message($copied, $renamed, $duplicate)
+{
+    $copied = (int) $copied;
+    $renamed = is_array($renamed) ? $renamed : array();
+
+    if ($duplicate && ($copied === 1) && (count($renamed) === 1)) {
+        return lang(array('string' => 'Duplicated as {var:1}.', 'vars' => array((string) $renamed[0][1])));
+    }
+
+    $message = $duplicate
+        ? lang(array('string' => '{var:1} item(s) were duplicated.', 'vars' => $copied))
+        : lang(array('string' => '{var:1} item(s) were pasted.', 'vars' => $copied));
+
+    if (count($renamed) > 0) {
+        $pairs = array();
+        foreach ($renamed as $pair) {
+            $pairs[] = (string) $pair[0] . ' → ' . (string) $pair[1];
+        }
+        $message .= ' ' . lang(array('string' => 'Copied under a new name: {var:1}.', 'vars' => array(implode(', ', $pairs))));
+    }
+
+    return $message;
+}
+
 function pg_explorer_is_self_or_descendant($folder_id, $candidate_id)
 {
     $map = pg_explorer_folder_map();

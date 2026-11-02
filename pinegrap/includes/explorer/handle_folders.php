@@ -112,8 +112,8 @@ function pg_explorer_handle_folder_settings_get($type, $request, $user)
 
     if ($user['role'] < 3) {
         $styles = array(
-            'desktop' => select_style($folder['folder_style']),
-            'mobile' => get_mobile_style_options($folder['mobile_style_id']));
+            'desktop' => select_style($folder['folder_style'], 'Default (from the parent folder)'),
+            'mobile' => get_mobile_style_options($folder['mobile_style_id'], 'Default (from the parent folder)'));
     }
 
     respond(array(
@@ -170,8 +170,19 @@ function pg_explorer_handle_folder_settings_set($type, $request, $user)
 
     log_activity(lang(array('string' => 'folder ({var:1}) was modified', 'vars' => array($folder['folder_name']))), $_SESSION['sessionusername']);
 
+    $message = lang('The folder was edited successfully.');
+
+    // Archiving closes the pages directly in the folder to visitors
+    // (get_page.php answers 410), so the save says how many that was.
+    if (($archived === '1') && ($folder['folder_archived'] != '1')) {
+        $closed = (int) db_value("SELECT COUNT(*) FROM page WHERE page_folder = '" . e($folder_id) . "'");
+        if ($closed > 0) {
+            $message .= ' ' . lang(array('string' => '{var:1} page(s) in it are now closed to visitors.', 'vars' => $closed));
+        }
+    }
+
     respond(array(
         'status' => 'success',
         'request' => $type,
-        'message' => lang('The folder was edited successfully.')));
+        'message' => $message));
 }

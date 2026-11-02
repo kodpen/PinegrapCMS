@@ -83,6 +83,46 @@ function pg_recycle_item_types_sql($user = null)
     return "'" . implode("', '", $types) . "'";
 }
 
+// The SQL condition that is true for a recycle_bin row whose item no longer
+// exists: a folder, page, file or short link deleted for good by another
+// path while its restore record stayed. Such a row can be neither restored
+// nor listed. A page style is not in it: its row waits in item_data.
+function pg_recycle_orphan_condition_sql()
+{
+    return "("
+        . "((recycle_bin.item_type = 'folder') AND NOT EXISTS (SELECT 1 FROM folder WHERE folder.folder_id = recycle_bin.item_id))"
+        . " OR ((recycle_bin.item_type = 'page') AND NOT EXISTS (SELECT 1 FROM page WHERE page.page_id = recycle_bin.item_id))"
+        . " OR ((recycle_bin.item_type = 'file') AND NOT EXISTS (SELECT 1 FROM files WHERE files.id = recycle_bin.item_id))"
+        . " OR ((recycle_bin.item_type = 'short_link') AND NOT EXISTS (SELECT 1 FROM short_links WHERE short_links.id = recycle_bin.item_id))"
+        . ")";
+}
+
+// The number of items in the bin, as the bin lists them: records whose item
+// is gone are not counted.
+function pg_recycle_count($user = null)
+{
+    return (int) db_value(
+        "SELECT COUNT(*) FROM recycle_bin
+        WHERE (recycle_bin.item_type IN (" . pg_recycle_item_types_sql($user) . "))
+        AND NOT " . pg_recycle_orphan_condition_sql());
+}
+
+// Remove the restore records whose item is gone (see above).
+function pg_recycle_drop_orphans()
+{
+    db("DELETE FROM recycle_bin WHERE " . pg_recycle_orphan_condition_sql());
+}
+
+// Remove the restore record of an item a classic screen deleted for good.
+function pg_recycle_forget($item_type, $item_id)
+{
+    if (!pg_recycle_ready()) {
+        return;
+    }
+
+    db("DELETE FROM recycle_bin WHERE (item_type = '" . e($item_type) . "') AND (item_id = '" . e($item_id) . "')");
+}
+
 function pg_recycle_retention_days()
 {
     $days = (int) db_value("SELECT recycle_retention_days FROM config");

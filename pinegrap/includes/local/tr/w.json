@@ -390,6 +390,7 @@
     "Weekly Traffic": "Haftalık Trafik",
     "Weekly Visitor Summary": "Haftalık Ziyaretçi Özeti",
     "Weekly Visitors": "Haftalık Ziyaretçi",
+    "Weekly automatic backup · week {var:1} ({var:2} – {var:3})": "Haftalık otomatik yedek · {var:1}. hafta ({var:2} – {var:3})",
     "Weekly sales": "Haftalık satış",
     "Weeks": "Haftalar",
     "Weeks of the calendar": "Takvimin haftaları",

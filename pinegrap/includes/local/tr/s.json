@@ -253,6 +253,7 @@
     "Saved Product (loop_area)": "Kayıtlı Ürün (loop_area)",
     "Saved Products": "Kayıtlı Ürünler",
     "Saved addresses…": "Kayıtlı adresler…",
+    "Saved as {var:1}: a file name is its address, so letters an address cannot carry are replaced and a taken name gets a number.": "{var:1} olarak kaydedildi: dosyanın adı adresidir; adreste kullanılamayan harfler değiştirilir, kullanılan bir ada numara eklenir.",
     "Saved barcode {var:1} for product #{var:2}.": "Ürün #{var:2} için {var:1} barkodu kaydedildi.",
     "Saved barcode {var:1} for product {var:2}.": "{var:2} ürünü için {var:1} barkodu kaydedildi.",
     "Saved by {var:1} · {var:2}": "{var:1} kaydetti · {var:2}",
