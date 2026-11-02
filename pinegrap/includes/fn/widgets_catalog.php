@@ -1063,6 +1063,30 @@ function _pg_catalog_variant_flags_keep($html, $flags, $switched = array('has_ra
     }, $html);
 }
 
+/**
+ * The query string of the listing's "clear filters" address: the visitor's
+ * parameters without the filters (pmin, pmax, stock, sort, attr and the
+ * attribute filters' pg_attr_<id>), the page number and any array value,
+ * keys and values encoded. The search text and a homepage catalog's group
+ * (cat) stay: they are not filters. The caller passes
+ * _pg_sw_query_params(), so the router's page name on a pretty address is
+ * not repeated (/shop/shoes?page=shop%2Fshoes&query=x).
+ *
+ * @param array  $params     the query parameters
+ * @param string $page_param the listing's page number parameter
+ * @return string            without the leading '?', '' when nothing is left
+ */
+function _pg_catalog_clear_filters_query($params, $page_param)
+{
+    $drop  = array('pmin', 'pmax', 'stock', 'sort', 'attr', (string)$page_param);
+    $pairs = array();
+    foreach (is_array($params) ? $params : array() as $k => $v) {
+        if (in_array((string)$k, $drop, true) || strncmp((string)$k, 'pg_attr_', 8) === 0 || is_array($v)) continue;
+        $pairs[] = urlencode((string)$k) . '=' . urlencode((string)$v);
+    }
+    return implode('&', $pairs);
+}
+
 function _render_system_widget_catalog_listing($product_group_id, $tree_json, $widget_id, $cfg = array())
 {
     $product_group_id = (int)$product_group_id;  // 0 = all groups
@@ -2800,21 +2824,10 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     $_pg_off_id = 'pgFilters' . (int)$widget_id;
     $_pg_any_filter_ui = ($price_filter_enabled || $stock_filter_enabled || $attr_filter_enabled);
 
-    $clear_query_keys = array('pmin','pmax','stock','sort','attr');
-    $clear_query_pairs = array();
-    $clear_query_raw   = array();
-    if (!empty($_GET) && is_array($_GET)) {
-        foreach ($_GET as $k => $v) {
-            if (in_array($k, $clear_query_keys, true) || $k === $page_param) continue;
-            if (is_array($v)) continue;
-            $clear_query_pairs[] = h($k) . '=' . urlencode((string)$v);
-            $clear_query_raw[]   = $k . '=' . urlencode((string)$v);
-        }
-    }
-    $clear_url = '?' . implode('&', $clear_query_pairs);
     // The same address unescaped, for the clear button of the filter chip
     // parts (^^__clear_filters_url^^), which the token fill escapes once.
-    $clear_url_raw = '?' . implode('&', $clear_query_raw);
+    $clear_url_raw = '?' . _pg_catalog_clear_filters_query(_pg_sw_query_params(), $page_param);
+    $clear_url     = h($clear_url_raw);
     // `$stock_filter_active` reflects the CURRENT state — including the
     // configured default ("show only in-stock"). Treating that default as
     // "an active filter" makes the chip strip + clear button render on
