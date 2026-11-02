@@ -8361,49 +8361,7 @@
                 head.setAttribute('data-ws-colored', '1');
             }
 
-            var title = el('div', 'ws-head-title ws-head-row');
-            var h = el('h2');
-            var tile = el('span', 'ws-head-icon');
-            tile.setAttribute('aria-hidden', 'true');
-            tile.appendChild(channelIcon(channel));
-            h.appendChild(tile);
-            h.appendChild(el('span', 'ws-head-name', channel.name));
-
-            if (channel.topic) {
-                h.title = channel.topic;
-            }
-
-            title.appendChild(h);
-
-            var tags = el('div', 'ws-head-tags');
-
-            // How the work stands, from the latest status update
-            // (workspace_status.js).
-            var statusPill = window.PGWsStatus ? window.PGWsStatus.pill(channel, self, featureHelpers()) : null;
-
-            if (statusPill) {
-                tags.appendChild(statusPill);
-            }
-
-            if (channel.department) {
-                var departmentBadge = tags.appendChild(el('span', 'badge ws-head-tag', channel.department.name));
-                departmentBadge.style.background = channel.department.color;
-                departmentBadge.style.color = readableInk(channel.department.color);
-            }
-
-            // The customer, and beside it the records tied to it.
-            var customer = self.customerNode(channel);
-
-            if (customer) {
-                customer.classList.add('ws-head-tag');
-                tags.appendChild(customer);
-            }
-
-            if (tags.firstChild) {
-                title.appendChild(tags);
-            }
-
-            head.appendChild(title);
+            head.appendChild(self.headTitle(channel));
 
             var actions = el('div', 'ws-head-actions');
             var faces = button('btn btn-sm btn-text theme-secondary ws-head-faces ws-head-wide', '', '', t('members'));
@@ -8698,7 +8656,7 @@
 
             if (channel.can_manage) {
                 item(t('edit_channel'), 'bi-pencil', function () {
-                    channelForm(channel, {}, function (id) { self.reloadChannels(id); });
+                    channelForm(channel, {}, function () { self.refreshInfo(); });
                 });
             }
 
@@ -9180,7 +9138,7 @@
                 var settings = button('btn btn-sm btn-outline theme-secondary rounded-pill w-100 ws-info-settings', t('edit_channel'), 'bi-gear');
 
                 settings.addEventListener('click', function () {
-                    channelForm(channel, {}, function (id) { self.reloadChannels(id); });
+                    channelForm(channel, {}, function () { self.refreshInfo(); });
                 });
                 body.appendChild(settings);
             }
@@ -9264,8 +9222,58 @@
             });
         },
 
-        // The header's people and menu, read from the channel as it is now
-        // (refreshInfo()); the rest of the header does not change there.
+        // The header's sign, name and tags (how the work stands, the
+        // department, the customer), drawn by drawCenter() and anew by
+        // refreshHead() after the channel's settings are saved.
+        headTitle: function (channel) {
+            var self = this;
+            var title = el('div', 'ws-head-title ws-head-row');
+            var h = el('h2');
+            var tile = el('span', 'ws-head-icon');
+            tile.setAttribute('aria-hidden', 'true');
+            tile.appendChild(channelIcon(channel));
+            h.appendChild(tile);
+            h.appendChild(el('span', 'ws-head-name', channel.name));
+
+            if (channel.topic) {
+                h.title = channel.topic;
+            }
+
+            title.appendChild(h);
+
+            var tags = el('div', 'ws-head-tags');
+
+            // How the work stands, from the latest status update
+            // (workspace_status.js).
+            var statusPill = window.PGWsStatus ? window.PGWsStatus.pill(channel, self, featureHelpers()) : null;
+
+            if (statusPill) {
+                tags.appendChild(statusPill);
+            }
+
+            if (channel.department) {
+                var departmentBadge = tags.appendChild(el('span', 'badge ws-head-tag', channel.department.name));
+                departmentBadge.style.background = channel.department.color;
+                departmentBadge.style.color = readableInk(channel.department.color);
+            }
+
+            // The customer, and beside it the records tied to it.
+            var customer = self.customerNode(channel);
+
+            if (customer) {
+                customer.classList.add('ws-head-tag');
+                tags.appendChild(customer);
+            }
+
+            if (tags.firstChild) {
+                title.appendChild(tags);
+            }
+
+            return title;
+        },
+
+        // The header read from the channel as it is now (refreshInfo()): its
+        // colour, title, people and menu.
         refreshHead: function () {
             var self = app;
             var channel = self.channel;
@@ -9273,6 +9281,21 @@
 
             if (!actions || !channel) {
                 return;
+            }
+
+            var head = actions.closest('.ws-head-channel');
+            var title = head.querySelector(':scope > .ws-head-title');
+
+            if (channel.hex) {
+                head.style.setProperty('--ws-ch', channel.hex);
+                head.setAttribute('data-ws-colored', '1');
+            } else {
+                head.style.removeProperty('--ws-ch');
+                head.removeAttribute('data-ws-colored');
+            }
+
+            if (title) {
+                head.replaceChild(self.headTitle(channel), title);
             }
 
             var faces = actions.querySelector('.ws-head-faces');
