@@ -32,7 +32,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `captcha`: clean (siteverify outcomes, token, widget escaping, settings card and save order checked)
 
-- `carrier_api`: taken by worker OG (FedEx weight under 0.005 lb sent as 0)
+- `carrier_api`: done #5159 (FedEx weight under 0.005 lb sent as 0; rest reviewed: token cache and lock, 401 retry, error text, settings fields and escaping, UPS, USPS rate fit and address answers)
 
 - `carrier_labels`: clean (answer shape, document and SVG checks with the image-only serving, secret masking, settings decide/store/test, card escaping checked)
 
