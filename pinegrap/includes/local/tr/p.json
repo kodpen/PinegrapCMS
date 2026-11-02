@@ -1362,6 +1362,7 @@
     "Print notes in the light theme": "Notlar açık temayla yazdırılsın",
     "Print the Delivery Note": "İrsaliyeyi yazdır",
     "Print the Invoice": "Faturayı yazdır",
+    "Print the statement": "Beyanı yazdır",
     "Print the {var:1}": "{var:1} yazdır",
     "Print these from their orders.": "Bunları kendi siparişlerinden yazdırın.",
     "Printable invoice URL": "Yazdırılabilir fatura URL'i",
