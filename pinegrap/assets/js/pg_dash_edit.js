@@ -859,6 +859,8 @@
             state: function () {
                 return state;
             },
+            // The layout as it stands on screen, in the form Save sends.
+            layout: current,
             greetingChanged: function () {
                 greetingDirty = true;
                 drawGreeting();

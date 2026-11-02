@@ -10,7 +10,10 @@
  *                Add or "On the dashboard · Remove";
  *   Top section  switches for the greeting's parts and System Status;
  *   Look         card style, backdrop, density, lights and shadows, shown
- *                at once and saved with the layout.
+ *                at once and saved with the layout;
+ *   Share        (administrators and designers) the layout and look on
+ *                screen as a role's default, locked or not, sent at once
+ *                to api.php's dashboard_role_default.
  *
  * It also draws the Add card tile that ends the grid, which opens edit mode
  * on the gallery. pg_dash_edit.js owns the state and calls the hooks on
@@ -420,6 +423,87 @@
         return section;
     }
 
+    // ── Share with the team ────────────────────────────────────────────────
+
+    function drawShare(share) {
+        var section = el("section", "pg-dash-side-part");
+        section.setAttribute("aria-labelledby", "pg_dash_share_title");
+        section.appendChild(el("h2", "pg-dash-side-title", share.title)).id = "pg_dash_share_title";
+        section.appendChild(el("p", "pg-dash-side-hint", share.hint));
+
+        var label = el("label", "pg-dash-settings-label", share.label);
+        label.setAttribute("for", "pg_dash_share_role");
+        section.appendChild(label);
+        var select = el("select", "form-control form-control-sm");
+        select.id = "pg_dash_share_role";
+        share.roles.forEach(function (pair) {
+            var option = el("option", "", pair[1]);
+            option.value = String(pair[0]);
+            select.appendChild(option);
+        });
+        section.appendChild(select);
+
+        var field = el("div", "form-field");
+        var lock = el("input", "check");
+        lock.type = "checkbox";
+        lock.id = "pg_dash_share_lock";
+        field.appendChild(lock);
+        var lockLabel = el("label", "", share.lock);
+        lockLabel.setAttribute("for", lock.id);
+        field.appendChild(lockLabel);
+        section.appendChild(field);
+
+        var row = el("div", "pg-dash-share-row");
+        var make = button("btn btn-outline theme-secondary btn-sm", share.button);
+        var done = el("span", "pg-dash-saved");
+        done.setAttribute("role", "status");
+        done.hidden = true;
+        row.appendChild(make);
+        row.appendChild(done);
+        section.appendChild(row);
+
+        // A new choice hides the last confirmation, which named another one.
+        [select, lock].forEach(function (input) {
+            input.addEventListener("change", function () {
+                done.hidden = true;
+            });
+        });
+
+        make.addEventListener("click", function () {
+            make.disabled = true;
+            done.hidden = true;
+            $.ajax({
+                contentType: "application/json",
+                url: "api.php",
+                data: JSON.stringify({
+                    action: "dashboard_role_default",
+                    token: software_token,
+                    role: parseInt(select.value, 10),
+                    locked: lock.checked ? 1 : 0,
+                    layout: pgDash.edit.layout(),
+                    look: look
+                }),
+                type: "POST",
+                dataType: "json"
+            }).done(function (answer) {
+                if (answer && answer.status === "success") {
+                    done.textContent = answer.message;
+                    done.hidden = false;
+                } else if (typeof window.pgToast === "function") {
+                    window.pgToast({variant: "danger", message: (answer && answer.message) || S.failed});
+                }
+            }).fail(function () {
+                if (typeof window.pgToast === "function") {
+                    window.pgToast({variant: "danger", message: S.failed});
+                }
+            }).always(function () {
+                make.disabled = false;
+            });
+        });
+
+        return section;
+    }
+
     // ── Opening and closing ────────────────────────────────────────────────
 
     // The greeting, status and grid move into the work area's main column
@@ -443,6 +527,9 @@
         aside.appendChild(drawGallery());
         aside.appendChild(drawTop());
         aside.appendChild(drawLook());
+        if (config.edit.share) {
+            aside.appendChild(drawShare(config.edit.share));
+        }
         work.appendChild(aside);
         syncTop();
     }

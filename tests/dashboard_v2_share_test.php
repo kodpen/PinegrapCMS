@@ -77,3 +77,15 @@ function test_dashboard_v2_share_roles()
 	pg_assert_same(false, pg_dashboard_v2_share_role_valid('x'), 'not a number');
 	pg_assert_same(true, pg_dashboard_v2_share_role_valid('2'), 'number as text');
 }
+
+// The confirmation names the role and the lock; the section is drawn only
+// for those who may share, with the roles in order.
+function test_dashboard_v2_share_texts_and_config()
+{
+	pg_assert_same('Default for everyone', pg_dashboard_v2_share_done(9, false), 'everyone');
+	pg_assert_same('Default for the Manager role · locked', pg_dashboard_v2_share_done(2, true), 'manager locked');
+
+	pg_assert_same(null, pg_dashboard_v2_share_config(array('role' => 2)), 'manager: no section');
+	$config = pg_dashboard_v2_share_config(array('role' => 1));
+	pg_assert_same(array(9, 0, 1, 2, 3), array_map(function ($pair) { return $pair[0]; }, $config['roles']), 'role order');
+}

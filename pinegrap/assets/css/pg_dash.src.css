@@ -1751,6 +1751,17 @@
     color: var(--pg-fg-2);
   }
 
+  .pg-dash-saved[hidden] {
+    display: none;
+  }
+
+  .pg-dash-share-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem;
+  }
+
   .pg-dash-gal-pills {
     display: flex;
     flex-wrap: wrap;

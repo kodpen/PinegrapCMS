@@ -21,6 +21,8 @@
  *                                (includes/dashboard/v2/run.php)
  *   dashboard_layout_save        the caller's new dashboard layout and look
  *                                (includes/dashboard/v2/layout.php)
+ *   dashboard_role_default       the caller's layout and look as a role's
+ *                                default, locked or not
  *   tour_seen                    a guided tour has been watched or skipped
  *   contact_quick_save           the account menu's quick form for one's own
  *                                name
@@ -330,7 +332,7 @@ function pg_panel_dashboard_layout_save($request, $action)
         respond(array('status' => 'error', 'message' => $message));
     };
 
-    if (pg_dashboard_v2_role_locked((int) $user['role'])) {
+    if (pg_dashboard_v2_locked_for($user)) {
         $refused(lang('Your dashboard layout is locked by an administrator.'));
     }
 
@@ -358,6 +360,63 @@ function pg_panel_dashboard_layout_save($request, $action)
     }
 
     respond(array('status' => 'success', 'layout' => $layout));
+}
+
+function pg_panel_dashboard_role_default($request, $action)
+{
+    // Keeps the general gate (signed in, role 1 or better); checked again
+    // here so the rule lives beside the write.
+    if (!USER_LOGGED_IN) {
+        respond(panel_login_refusal());
+    }
+
+    validate_token();
+
+    global $user;
+    $user = validate_user();
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/layout.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/presets.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/figures.php');
+
+    $refused = function ($message) {
+        respond(array('status' => 'error', 'message' => $message));
+    };
+
+    if (!pg_dashboard_v2_can_share((int) $user['role'])) {
+        $refused(lang('Only administrators and designers can share a dashboard layout.'));
+    }
+
+    $role = $request['role'] ?? null;
+
+    if (!pg_dashboard_v2_share_role_valid($role)) {
+        $refused(lang('The change could not be saved.'));
+    }
+
+    // The layout on the sharer's screen, cleaned as their own save would
+    // clean it; each person later sees only the cards they may see.
+    $layout = pg_dashboard_v2_layout_clean(
+        $request['layout'] ?? null,
+        null,
+        array_keys(pg_dashboard_v2_cards_for($user)),
+        pg_dashboard_v2_shortcuts_allowed($user),
+        pg_dashboard_v2_figures_allowed($user),
+        defined('ECOMMERCE') && (ECOMMERCE === true)
+    );
+
+    if ($layout === null) {
+        $refused(lang('The change could not be saved.'));
+    }
+
+    $json = json_encode($layout, JSON_UNESCAPED_UNICODE);
+    $look = isset($request['look']) ? json_encode(pg_dashboard_v2_look_clean($request['look'])) : '';
+    $locked = !empty($request['locked']);
+
+    if (($json === false) || (strlen($json) > PG_DASHBOARD_V2_MAX_LAYOUT) || !pg_dashboard_v2_role_default_write((int) $role, $json, (string) $look, $locked, $user['id'])) {
+        $refused(lang('The change could not be saved.'));
+    }
+
+    respond(array('status' => 'success', 'message' => pg_dashboard_v2_share_done((int) $role, $locked)));
 }
 
 function pg_panel_update_dashboard_appearance($request, $action)
