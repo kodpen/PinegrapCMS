@@ -82,6 +82,7 @@ function pg_image_editor_strings_core()
         'zoomActual'     => lang('Actual size'),
         'tools'          => lang('Tools'),
         'layers'         => lang('Layers'),
+        'selection'      => lang('Selection'),
         'closePanel'     => lang('Close the panel'),
         'customColor'    => lang('Custom color'),
         'colorTransparent' => lang('Transparent'),

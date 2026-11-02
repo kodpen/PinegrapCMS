@@ -516,14 +516,30 @@
   flex: 1;
   min-width: 0;
   height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   overflow: hidden;
   padding: 0 6px;
   border: 0;
   background: transparent;
   text-align: start;
-  text-overflow: ellipsis;
   white-space: nowrap;
   cursor: pointer;
+}
+
+/* The layer's type before its name. */
+.pgie-lname .pgie-ic {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--pgie-muted);
+}
+
+.pgie-lname span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Adjust: the preview's filter, the vignette over the picture */

@@ -992,6 +992,26 @@
         return (after[index] && (after[index].cls === was.cls)) ? index : -1;
     }
 
+    // The label key of the panel's title: the layers list when it is open;
+    // Select names what is selected (the layers' one type, else "Selection")
+    // and, with nothing selected, the list (a canvas shows the canvas first);
+    // any other tool its own name. types: the selected layers' types.
+    function panelTitle(tool, types, artboard, layersOpen) {
+        if (layersOpen) {
+            return 'layers';
+        }
+
+        if (tool !== 'select') {
+            return 'tool_' + tool;
+        }
+
+        if (!types || !types.length) {
+            return artboard ? 'tool_artboard' : 'layers';
+        }
+
+        return types.every(function (type) { return type === types[0]; }) ? 'layer_' + types[0] : 'selection';
+    }
+
     // ---- the tools' own maths ----
     // Each tool keeps its pure functions in its section here, so the tests
     // reach them under Node (tests/image_editor_<tool>_test.php), and names
@@ -2269,7 +2289,7 @@
         colorMatrix: colorMatrix, applyColor: applyColor, vignetteStops: vignetteStops, sharpenKernel: sharpenKernel,
         newId: newId, corners: corners, bounds: bounds, local: local, hitLayer: hitLayer, insideBox: insideBox, resizeBox: resizeBox, angleTo: angleTo,
         align: align, distribute: distribute, snapBox: snapBox, reorder: reorder,
-        ownsKey: ownsKey, focusMatch: focusMatch
+        ownsKey: ownsKey, focusMatch: focusMatch, panelTitle: panelTitle
     };
 
     // A name taken twice would hide a function: the model refuses to load,
