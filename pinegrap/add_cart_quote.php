@@ -102,9 +102,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     for ($row = 1; $row <= ADD_CART_QUOTE_ROWS; $row++) {
         $product = $liveform->get_field_value('product_' . $row);
 
-        // A row left empty is no line.
+        // A row left empty is no line; a chosen product's quantity is
+        // checked on its own box, so the row with the wrong one is marked.
         if ((string) $product !== '') {
-            $lines[] = array('product_id' => (string) $product, 'quantity' => trim((string) $liveform->get_field_value('quantity_' . $row)));
+            $quantity = trim((string) $liveform->get_field_value('quantity_' . $row));
+
+            if (!pg_cart_quote_quantity_valid($quantity)) {
+                $liveform->mark_error('quantity_' . $row, h(lang(array(
+                    'string' => 'Product {var:1}: enter a whole quantity from 1 to {var:2}.',
+                    'vars'   => array($row, PG_CART_QUOTE_MAX_QUANTITY)))));
+            }
+
+            $lines[] = array('product_id' => (string) $product, 'quantity' => $quantity);
         }
     }
 
@@ -142,6 +151,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 if (!$liveform->field_in_session('valid_until')) {
     $liveform->set('valid_until', prepare_form_data_for_output(date('Y-m-d', strtotime('+' . PG_CART_QUOTE_DEFAULT_DAYS . ' days')), 'date'));
 
+    // Each quantity starts at one; after a refusal the boxes show what was
+    // sent, an emptied one included.
+    for ($row = 1; $row <= ADD_CART_QUOTE_ROWS; $row++) {
+        $liveform->set('quantity_' . $row, '1');
+    }
+
     $given = is_scalar($_GET['contact_id'] ?? null) ? (int) $_GET['contact_id'] : 0;
 
     if ($given > 0) {
@@ -173,7 +188,7 @@ for ($row = 1; $row <= ADD_CART_QUOTE_ROWS; $row++) {
                             </select>
                         </div>
                         <div class="col-3">
-                            <input class="form-control" type="number" min="1" step="1" id="quantity_' . $row . '" name="quantity_' . $row . '" value="' . h(($quantity !== '') ? $quantity : '1') . '" aria-label="' . h(lang(array('string' => 'Quantity {var:1}', 'vars' => $row))) . '">
+                            <input class="form-control' . ($liveform->check_field_error('quantity_' . $row) ? ' is-invalid' : '') . '" type="number" min="1" max="' . PG_CART_QUOTE_MAX_QUANTITY . '" step="1" id="quantity_' . $row . '" name="quantity_' . $row . '" value="' . h($quantity) . '" aria-label="' . h(lang(array('string' => 'Quantity {var:1}', 'vars' => $row))) . '">
                         </div>
                     </div>';
 }

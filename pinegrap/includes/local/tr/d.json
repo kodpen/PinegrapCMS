@@ -344,6 +344,7 @@
     "Deleted": "Silindi",
     "Deleted barcode #{var:1} for product #{var:2}.": "Ürün #{var:2} için #{var:1} numaralı barkod silindi.",
     "Deleted barcode {var:1} from product {var:2}.": "{var:2} ürününden {var:1} barkodu silindi.",
+    "Deleted contact": "Silinmiş kişi",
     "Deleted customer": "Silinmiş müşteri",
     "Deleted folders, pages and files wait here instead of disappearing, and restoring one puts it back where it came from. Anything still here after 30 days is removed for good.": "Silinen klasör, sayfa ve dosyalar kaybolmak yerine burada bekler; geri yüklediğinizde geldiği yere döner. 30 gün sonra burada kalanlar kalıcı olarak silinir.",
     "Deleted for good in": "Kalıcı silinmeye",

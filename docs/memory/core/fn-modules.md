@@ -22,7 +22,7 @@ description: Generated from the module field of the memory files: each includes/
 - `calendar`: [[calendar-event-exception-endpoint]], [[calendar-location-availability]], [[calendar-view-date]]
 - `carrier_labels`: [[carrier-label-drivers]], [[carrier-label-text-cuts]]
 - `carrier_webhook`: [[carrier-webhook]], [[carrier-webhook-basitkargo]], [[carrier-webhook-drivers]]
-- `cart_quotes`: [[cart-quotes]], [[cart-quotes-api]]
+- `cart_quotes`: [[cart-quotes]], [[cart-quotes-api]], [[cart-quotes-screens]]
 - `classic_style_design`: [[classic-style-design-files]], [[classic-style-folder-pages]], [[classic-style-to-design]]
 - `cloud_file_picker`: [[cloud-file-picker]], [[cloud-file-picker-onedrive]]
 - `cloudflare_tools`: [[cloudflare-image-vary-rule]], [[cloudflare-tools-failed-reads]], [[panel-turkish-terms-2]]
