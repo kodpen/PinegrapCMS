@@ -2144,7 +2144,7 @@
     // The settings as a save starts: the file's own format at the editor's
     // quality and size, as before there was a panel.
     function exportDefaults() {
-        return { format: 'keep', quality: 92, edge: 0, colors: false, progressive: true };
+        return { format: 'keep', quality: 92, edge: 0, colors: false, progressive: true, camera: false, srgb: false };
     }
 
     // w x h brought within a longest edge; never enlarged.
@@ -2185,7 +2185,21 @@
             out.progressive = false;
         }
 
+        // Camera details (never the location) go from a JPEG into a JPEG.
+        if (ex.camera && exportCamera(format, own)) {
+            out.camera = true;
+        }
+
+        if (ex.srgb) {
+            out.srgb = true;
+        }
+
         return Object.keys(out).length ? out : null;
+    }
+
+    // Whether camera details can be kept: a JPEG saved as a JPEG.
+    function exportCamera(format, own) {
+        return (own === 'jpeg') && (format === 'jpeg');
     }
 
     // The panel's result card: after against before as a signed percent
@@ -2217,7 +2231,7 @@
     var EXPORT = {
         EXPORT_FORMATS: EXPORT_FORMATS, EXPORT_EDGES: EXPORT_EDGES, fileFormat: fileFormat, exportFormat: exportFormat,
         exportDefaults: exportDefaults, exportSize: exportSize, exportMode: exportMode, exportRequest: exportRequest,
-        exportChange: exportChange, exportBytes: exportBytes
+        exportChange: exportChange, exportBytes: exportBytes, exportCamera: exportCamera
     };
 
     // -- vector pen and nodes (pg_image_editor_vector.js) --

@@ -64,6 +64,8 @@ function test_image_editor_export_model()
 		. ' low: M.exportRequest({ format: "keep", quality: 3, edge: 0, colors: false }, "jpeg"),'
 		. ' flat: M.exportRequest({ format: "jpeg", quality: 92, edge: 0, colors: false, progressive: false }, "png"),'
 		. ' flatPng: M.exportRequest({ format: "keep", quality: 92, edge: 0, colors: false, progressive: false }, "png"),'
+		. ' camera: [M.exportRequest({ format: "keep", quality: 92, edge: 0, camera: true }, "jpeg"), M.exportRequest({ format: "keep", quality: 92, edge: 0, camera: true }, "png"), M.exportRequest({ format: "webp", quality: 92, edge: 0, camera: true }, "jpeg")],'
+		. ' srgb: M.exportRequest({ format: "keep", quality: 92, edge: 0, srgb: true }, "png"),'
 		. ' change: [M.exportChange(1000, 250), M.exportChange(1000, 1200), M.exportChange(1000, 10), M.exportChange(0, 10)],'
 		. ' bytes: [M.exportBytes(900), M.exportBytes(250880), M.exportBytes(1468006, ","), M.exportBytes(-3)] }));'
 	);
@@ -83,6 +85,8 @@ function test_image_editor_export_model()
 	pg_assert_same(array('quality' => 40), $r['low'], 'quality within 40-100');
 	pg_assert_same(array('format' => 'jpeg', 'progressive' => false), $r['flat'], 'a baseline JPEG asked for');
 	pg_assert_same(null, $r['flatPng'], 'progressive is for JPEG only');
+	pg_assert_same(array(array('camera' => true), null, array('format' => 'webp')), $r['camera'], 'camera details from a JPEG into a JPEG only');
+	pg_assert_same(array('srgb' => true), $r['srgb'], 'sRGB asked for');
 	pg_assert_same(array(array('percent' => -75, 'bar' => 25), array('percent' => 20, 'bar' => 100), array('percent' => -99, 'bar' => 3), null), $r['change'], 'the result card\'s change and bar');
 	pg_assert_same(array('900 B', '245 KB', '1,4 MB', '0 B'), $r['bytes'], 'sizes in B, KB and MB with the panel\'s separator');
 }
@@ -91,14 +95,16 @@ function test_image_editor_export_model()
 function test_image_editor_export_options()
 {
 	$formats = array('jpeg', 'png', 'webp');
-	$defaults = array('format' => '', 'quality' => 92, 'edge' => 0, 'colors' => 0, 'progressive' => true);
+	$defaults = array('format' => '', 'quality' => 92, 'edge' => 0, 'colors' => 0, 'progressive' => true, 'camera' => false, 'srgb' => false);
 
 	pg_assert_same($defaults, pg_image_editor_export_options(null, 'jpeg', $formats), 'no settings keep everything');
 	pg_assert_same($defaults, pg_image_editor_export_options(array('format' => 'jpeg'), 'jpeg', $formats), 'the own format is no change');
-	pg_assert_same(array('format' => 'webp', 'quality' => 80, 'edge' => 1920, 'colors' => 0, 'progressive' => true),
+	pg_assert_same(array_merge($defaults, array('format' => 'webp', 'quality' => 80, 'edge' => 1920)),
 		pg_image_editor_export_options(array('format' => 'webp', 'quality' => 80, 'edge' => 1920), 'jpeg', $formats), 'WebP at 80, 1920 px');
 	pg_assert_same(256, pg_image_editor_export_options(array('colors' => 256), 'png', $formats)['colors'], 'a PNG down to 256 colours');
 	pg_assert_false(pg_image_editor_export_options(array('format' => 'jpeg', 'progressive' => false), 'png', $formats)['progressive'], 'a baseline JPEG');
+	pg_assert_true(pg_image_editor_export_options(array('camera' => true), 'jpeg', $formats)['camera'], 'camera details kept');
+	pg_assert_true(pg_image_editor_export_options(array('srgb' => true), 'png', $formats)['srgb'], 'sRGB asked for');
 
 	$refused = array(
 		'not an object'          => array('webp', 'jpeg'),
@@ -111,7 +117,11 @@ function test_image_editor_export_options()
 		'colours not 256'        => array(array('colors' => 16), 'png'),
 		'colours turned to WebP' => array(array('format' => 'webp', 'colors' => 256), 'png'),
 		'progressive for a PNG'  => array(array('progressive' => false), 'png'),
-		'progressive true'       => array(array('progressive' => true), 'jpeg'));
+		'progressive true'       => array(array('progressive' => true), 'jpeg'),
+		'camera from a PNG'      => array(array('format' => 'jpeg', 'camera' => true), 'png'),
+		'camera into WebP'       => array(array('format' => 'webp', 'camera' => true), 'jpeg'),
+		'camera as text'         => array(array('camera' => 'yes'), 'jpeg'),
+		'sRGB false'             => array(array('srgb' => false), 'jpeg'));
 
 	foreach ($refused as $label => $case) {
 		pg_assert_false(pg_image_editor_export_options($case[0], $case[1], $formats), 'refused: ' . $label);
@@ -127,7 +137,7 @@ function test_image_editor_export_name_and_recipe()
 	pg_assert_same('png', pg_image_editor_export_format_of(IMAGETYPE_PNG), 'a PNG');
 	pg_assert_same('jpeg', pg_image_editor_export_format_of(IMAGETYPE_JPEG), 'a JPEG');
 
-	$base = array('format' => '', 'quality' => 92, 'edge' => 0, 'colors' => 0, 'progressive' => true);
+	$base = array('format' => '', 'quality' => 92, 'edge' => 0, 'colors' => 0, 'progressive' => true, 'camera' => false, 'srgb' => false);
 
 	pg_assert_same(array(array('rot' => 0), array('quality' => 92)), pg_image_editor_export_edit(array('rot' => 0), $base), 'the defaults add nothing');
 	pg_assert_same(array(array('edge' => 1280), array('quality' => 75, 'format' => 'webp')),
@@ -136,6 +146,7 @@ function test_image_editor_export_name_and_recipe()
 		pg_image_editor_export_edit(array('type' => IMAGETYPE_PNG), array_merge($base, array('format' => 'jpeg', 'progressive' => false))), 'JPEG as the type the edit writes');
 	pg_assert_same(array(array('type' => IMAGETYPE_PNG, 'colors' => 256), array('quality' => 92)),
 		pg_image_editor_export_edit(array(), array_merge($base, array('format' => 'png', 'colors' => 256))), 'PNG with its colours');
+	pg_assert_same(array(array('srgb' => true), array('quality' => 92)), pg_image_editor_export_edit(array(), array_merge($base, array('srgb' => true))), 'sRGB as an edit step');
 }
 
 // GD writes the longest edge, the other format and a baseline JPEG.
@@ -168,7 +179,7 @@ function test_image_editor_export_gd_encode()
 
 		pg_assert_same('', $check['error'], 'the document is valid');
 
-		$options = array('format' => 'jpeg', 'quality' => 80, 'edge' => 1080, 'colors' => 0, 'progressive' => false);
+		$options = array('format' => 'jpeg', 'quality' => 80, 'edge' => 1080, 'colors' => 0, 'progressive' => false, 'camera' => false, 'srgb' => false);
 		list($edit, $engine) = pg_image_editor_export_edit($check['edit'], $options);
 		$kept = pg_image_edit_apply($source, $edit, $engine);
 
@@ -190,5 +201,101 @@ function test_image_editor_export_gd_encode()
 	} finally {
 		@unlink($source);
 		@rmdir($folder);
+	}
+}
+
+// An Exif TIFF block from IFDs given as array(tag => array(type, count,
+// value bytes)), little-endian; a pointer tag (0x8769, 0x8825) given as
+// array('ifd' => index) points at that IFD; $next links IFD0 to another.
+function image_editor_export_tiff($ifds, $next = -1)
+{
+	$offsets = array();
+	$at = 8;
+
+	foreach ($ifds as $i => $ifd) {
+		$offsets[$i] = $at;
+		$at += 2 + 12 * count($ifd) + 4;
+	}
+
+	$blocks = '';
+	$data = '';
+
+	foreach ($ifds as $i => $ifd) {
+		ksort($ifd);
+		$blocks .= pack('v', count($ifd));
+
+		foreach ($ifd as $tag => $entry) {
+			if (isset($entry['ifd'])) {
+				$entry = array(4, 1, pack('V', $offsets[$entry['ifd']]));
+			}
+
+			$value = $entry[2];
+
+			if (strlen($value) > 4) {
+				$pointer = pack('V', $at + strlen($data));
+				$data .= $value;
+				$value = $pointer;
+			}
+
+			$blocks .= pack('vvV', $tag, $entry[0], $entry[1]) . str_pad($value, 4, "\x00");
+		}
+
+		$blocks .= pack('V', (($i === 0) && ($next >= 0)) ? $offsets[$next] : 0);
+	}
+
+	return 'II' . pack('v', 42) . pack('V', 8) . $blocks . $data;
+}
+
+// Camera details pass; location, thumbnail, maker note and orientation do not.
+function test_image_editor_export_exif_camera()
+{
+	$tiff = image_editor_export_tiff(array(
+		array(0x010F => array(2, 6, "Canon\x00"), 0x0112 => array(3, 1, pack('v', 6)), 0x8769 => array('ifd' => 1), 0x8825 => array('ifd' => 2)),
+		array(0x829D => array(5, 1, pack('VV', 28, 10)), 0x9003 => array(2, 20, "2026:11:02 10:00:00\x00"), 0x927C => array(7, 8, 'SECRETXX')),
+		array(0x0002 => array(5, 3, pack('VVVVVV', 41, 1, 0, 1, 0, 1))),
+		array(0x0201 => array(4, 1, pack('V', 0)))), 3);
+
+	$camera = pg_image_exif_camera($tiff);
+	$ifd0 = pg_image_exif_ifd($camera, 8, false);
+
+	pg_assert_same(array(0x010F, 0x8769), array_keys($ifd0), 'IFD0 keeps the make and the Exif pointer only');
+	pg_assert_same("Canon\x00", $ifd0[0x010F]['value'], 'the make as written');
+	pg_assert_same(0, pg_image_exif_long(substr($camera, 8 + 2 + 12 * 2, 4), false), 'no IFD1, so no thumbnail');
+
+	$exif = pg_image_exif_ifd($camera, pg_image_exif_long($ifd0[0x8769]['value'], false), false);
+
+	pg_assert_same(array(0x829D, 0x9003), array_keys($exif), 'the Exif IFD without the maker note');
+	pg_assert_same(pack('VV', 28, 10), $exif[0x829D]['value'], 'the f-number as written');
+	pg_assert_false(strpos($camera, 'SECRET') !== false, 'the maker note\'s bytes are gone');
+	pg_assert_same(1, pg_image_exif_tiff_orientation($camera), 'no orientation: the pixels are upright');
+	pg_assert_same('', pg_image_exif_camera(image_editor_export_tiff(array(array(0x8825 => array('ifd' => 1)), array(0x0002 => array(5, 1, pack('VV', 1, 1)))))), 'a block with only a location keeps nothing');
+	pg_assert_same('', pg_image_exif_camera('junk'), 'an unreadable block keeps nothing');
+
+	if (!function_exists('imagecreatetruecolor') || !function_exists('imagejpeg')) {
+		return;
+	}
+
+	$image = imagecreatetruecolor(20, 10);
+	ob_start();
+	imagejpeg($image);
+	$jpeg = ob_get_clean();
+	pg_image_destroy($image);
+
+	$with = pg_image_jpeg_embed_exif($jpeg, $camera);
+	$file = tempnam(sys_get_temp_dir(), 'pgieexif');
+	file_put_contents($file, $with);
+
+	try {
+		pg_assert_same(array(20, 10), array_slice(getimagesizefromstring($with), 0, 2), 'still a JPEG');
+		pg_assert_same(array("Exif\x00\x00" . $camera), pg_image_jpeg_app_segments($file, 0xE1, "Exif\x00\x00"), 'one Exif segment, the camera block');
+
+		$file_options = array('camera' => true);
+		file_put_contents($file, pg_image_jpeg_embed_exif($jpeg, $tiff));
+		$saved = pg_image_editor_export_camera($jpeg, $file_options, $file);
+
+		pg_assert_same($with, $saved, 'a save takes the opened picture\'s camera details');
+		pg_assert_same($jpeg, pg_image_editor_export_camera($jpeg, array('camera' => false), $file), 'not asked: nothing added');
+	} finally {
+		@unlink($file);
 	}
 }
