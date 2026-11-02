@@ -12910,8 +12910,8 @@ window.pgCodeEditorReady = function (markup, done) {
      */
     function asked(link) {
 
-        // The main menu's Site Settings links lead to the settings pages on
-        // purpose (pg_menu_settings_entries()).
+        // A link carrying data-pg-settings-page asks for the settings page
+        // itself, not the dialog.
         if (link.hasAttribute('data-pg-settings-page')) {
             return null;
         }

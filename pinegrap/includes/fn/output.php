@@ -3220,30 +3220,32 @@ function pg_menu_icon($name, $color_class = '')
                 '</g>';
             break;
 
-        case 'settings':
-            // A gear of eight teeth, the hub in the accent colour.
-            $gear = 'M10.30 4.90 L10.50 2.52 L13.50 2.52 L13.70 4.90 L15.81 5.78 L17.64 4.23 L19.77 6.36 L18.22 8.19 L19.10 10.30 L21.48 10.50 L21.48 13.50 L19.10 13.70 L18.22 15.81 L19.77 17.64 L17.64 19.77 L15.81 18.22 L13.70 19.10 L13.50 21.48 L10.50 21.48 L10.30 19.10 L8.19 18.22 L6.36 19.77 L4.23 17.64 L5.78 15.81 L4.90 13.70 L2.52 13.50 L2.52 10.50 L4.90 10.30 L5.78 8.19 L4.23 6.36 L6.36 4.23 L8.19 5.78Z';
-            $body =
-                '<g class="pg-mi-gear">' .
-                '<path' . $d . ' d="' . $gear . '"/>' .
-                '<path d="' . $gear . '"/>' .
-                '</g>' .
-                '<g class="pg-mi-a">' .
-                '<circle' . $a . ' cx="12" cy="12" r="3.2"/>' .
-                '<circle cx="12" cy="12" r="3.2" stroke-width="1.5"/>' .
-                '</g>';
-            break;
-
         case 'tools':
-            // A toolbox, its latch in the accent colour.
-            $box = 'M3 9.5A2.5 2.5 0 0 1 5.5 7h13A2.5 2.5 0 0 1 21 9.5v8a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z';
+            // A toolbox: the box with its latch (accent) on the front, and the
+            // lid with its handle over it. A screwdriver and a spanner
+            // (accent) wait inside, hidden at rest because the box and the
+            // lid are opaque (.pg-mi-solid, backend.src.css); on hover the lid
+            // swings open on its right hinge and the two tools come up out of
+            // the box.
+            $lid = 'M3 12V9.5A2.5 2.5 0 0 1 5.5 7h13A2.5 2.5 0 0 1 21 9.5V12z';
+            $box = 'M3 12h18v5.5a2.5 2.5 0 0 1-2.5 2.5h-13A2.5 2.5 0 0 1 3 17.5z';
             $body =
-                '<path' . $d . ' d="' . $box . '"/>' .
+                '<g class="pg-mi-a pg-mi-kit">' .
+                '<rect' . $a . ' x="5.9" y="8.6" width="2.2" height="3.2" rx=".8"/>' .
+                '<rect x="5.9" y="8.6" width="2.2" height="3.2" rx=".8" stroke-width="1.3"/>' .
+                '<path d="M7 11.8V15M10.6 11.4V15" stroke-width="1.5"/>' .
+                '<circle cx="10.6" cy="10" r="1.4" stroke-width="1.4"/>' .
+                '</g>' .
+                '<path class="pg-mi-2 pg-mi-solid"' . $tint . ' d="' . $box . '"/>' .
                 '<path d="' . $box . '"/>' .
-                '<path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3 13h7M14 13h7"/>' .
-                '<g class="pg-mi-a">' .
-                '<rect' . $a . ' x="10" y="11" width="4" height="4" rx="1"/>' .
-                '<rect x="10" y="11" width="4" height="4" rx="1" stroke-width="1.5"/>' .
+                '<g class="pg-mi-lid">' .
+                '<path class="pg-mi-2 pg-mi-solid"' . $tint . ' d="' . $lid . '"/>' .
+                '<path d="' . $lid . '"/>' .
+                '<path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7"/>' .
+                '</g>' .
+                '<g class="pg-mi-a pg-mi-latch">' .
+                '<rect class="pg-mi-at pg-mi-solid"' . $tint . ' x="10" y="12.6" width="4" height="3.2" rx="1"/>' .
+                '<rect x="10" y="12.6" width="4" height="3.2" rx="1" stroke-width="1.5"/>' .
                 '</g>';
             break;
 
@@ -3259,8 +3261,8 @@ function output_menu($properties = false)
     // get user informations.
     global $user;
     $menu_items = array();
-    // Panels drawn without a row of their own: the second level of Site
-    // Settings and of System tools.
+    // Panels drawn without a row of their own: the second level of System
+    // tools.
     $menu_panels_nested = '';
     // What follows the rows and panels: the Workspace list's data and script.
     $menu_tail = '';
@@ -3319,6 +3321,12 @@ function output_menu($properties = false)
         // they may edit. Roles 0-1 have the editor's own row (21).
         if ($user['role'] >= 2) {
             $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_system_styles.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-magic bi-me-2\'>' . lang('Visual Page Editor') . '</a>';
+        }
+        // PAGES > Translations. translations.php admits managers
+        // (validate_area_access($user, 'manager')); roles 0-1 have it in the
+        // Visual Page Editor row (21), so this entry is the manager's way to it.
+        if ((int) $user['role'] === 2) {
+            $menu_items[2]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/translations.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-translate bi-me-2\'>' . lang('Translations') . '</a>';
         }
         // PAGES > Search and audits (search_audits.php: the search index and
         // the SEO, structure and accessibility passes, managers and up)
@@ -3798,7 +3806,7 @@ function output_menu($properties = false)
 
     // ERP. Slot 22: the numbers are what an operator pins in
     // user.selected_appmenu_items_array, so they are never reused and never
-    // shuffled. Slot 20 is the empty one left behind by Site Settings.
+    // shuffled. Slot 20, the Site Settings row, is retired.
     if (defined('ERP_ENABLED') && ERP_ENABLED && (($user['role'] < 3) || USER_MANAGE_ERP)) {
 
         $menu_items[22]['id'] = 22;
@@ -3943,29 +3951,12 @@ function output_menu($properties = false)
         }
     }
 
-    // SITE SETTINGS. Slot 20, last in the menu. The gear in the header opens
-    // the settings over the current screen (the modal); this row leads to
-    // their pages instead (settings_<category>.php), for whoever wants a
-    // whole screen. Its panel lists the categories of the modal's sidebar,
-    // from the same function and under the same gate
-    // (pg_settings_modal_markup(): role <= 2), each opening its sections
-    // (pg_menu_settings_entries()).
-    if ($user['role'] <= 2) {
-        $menu_settings = pg_menu_settings_entries($user, $output_parent_target);
+    // Slot 20, the Site Settings row, is retired: the settings open from the
+    // gear in the header (the modal), and their pages from links inside
+    // screens.
 
-        $menu_items[20]['id'] = 20;
-        $menu_items[20]['href'] = $menu_settings['href'];
-        $menu_items[20]['menu_icon'] = 'settings';
-        $menu_items[20]['color_class'] = 'settings-color';
-        $menu_items[20]['title'] = 'Site Settings';
-        $menu_items[20]['context'] = true;
-        $menu_items[20]['data-bs-content'] = $menu_settings['entries'];
-        $menu_items[20]['row_attributes'] = ' data-pg-settings-page';
-        $menu_panels_nested .= $menu_settings['panels'];
-    }
-
-    // SYSTEM TOOLS. Slot 25: 3, 13, 18 and 19 are retired and 22 to 24 are
-    // taken, and operators pin rows by their slot
+    // SYSTEM TOOLS. Slot 25: 3, 13, 18, 19 and 20 are retired and 22 to 24
+    // are taken, and operators pin rows by their slot
     // (user.selected_appmenu_items_array), so no slot is ever reused. The
     // screens beside Site Settings, under system_tools.php's own gate: the
     // screen first, then each group of pg_settings_tool_groups() opening a
@@ -3973,7 +3964,7 @@ function output_menu($properties = false)
     $menu_tools_groups = ($user['role'] <= 2) ? pg_settings_tool_groups($user) : array();
 
     if ($user['role'] <= 2 && pg_settings_tool_count($menu_tools_groups) > 0) {
-        $menu_tools = pg_menu_tools_markup($menu_tools_groups, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $output_parent_target);
+        $menu_tools = pg_menu_tools_markup($menu_tools_groups, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $output_parent_target, pg_menu_tone('settings-color'));
 
         $menu_items[25]['id'] = 25;
         $menu_items[25]['href'] = 'system_tools.php';
@@ -4306,23 +4297,12 @@ function output_menu($properties = false)
             }
             break;
 
-        // The pages of Site Settings and the screens its category panels
-        // list (pg_settings_category_screens()).
-        case 'settings_general.php':
-        case 'settings_appearance.php':
-        case 'settings_features.php':
-        case 'settings_seo.php':
-        case 'settings_contact.php':
-        case 'settings_security.php':
-        case 'settings_firewall.php':
-        case 'settings_commerce.php':
-        case 'settings_api.php':
-        case 'settings_accounting.php':
-        case 'settings_privacy.php':
-        case 'settings_maintenance.php':
-        case 'settings_languages.php':
+        // The pages of Site Settings (settings_<category>.php) have no row
+        // since slot 20 was retired, so they mark none.
         case 'translations.php':
-            $active_menu = 20;
+            // A manager reaches it from the Pages panel; row 21 is built for
+            // role < 2 only.
+            $active_menu = ($user['role'] < 2) ? 21 : 2;
             break;
 
         // System tools and the screens of its group panels
@@ -4430,7 +4410,7 @@ function output_menu($properties = false)
 
             // A row that opens another row's panel draws none of its own.
             if ($menu_panel_id === 'menu_panel_' . (int) $options['id']) {
-                $output_menu_panels .= pg_menu_panel($menu_panel_id, 'menu_item_' . $options['id'], lang($options['title']), $menu_panel_entries);
+                $output_menu_panels .= pg_menu_panel($menu_panel_id, 'menu_item_' . $options['id'], lang($options['title']), $menu_panel_entries, pg_menu_tone(isset($options['color_class']) ? $options['color_class'] : ''));
                 $menu_panels_drawn[(int) $options['id']] = true;
             }
         }
@@ -4532,7 +4512,8 @@ function pg_menu_categories()
         // The ERP has its own switch and rights, and runs without the store.
         'accounting' => array('label' => 'Accounting', 'slots' => array(22)),
         'marketing'  => array('label' => 'Marketing', 'slots' => array(6, 7, 9, 16)),
-        'system'     => array('label' => 'System', 'slots' => array(8, 20, 25)),
+        // Slot 20, the retired Site Settings row, is listed no more.
+        'system'     => array('label' => 'System', 'slots' => array(8, 25)),
     );
 }
 
@@ -4606,94 +4587,6 @@ function pg_menu_heading($key, $label)
 }
 
 /**
- * The entries of the Site Settings row, and the second-level panels they open.
- *
- * The same list as the sidebar of the settings modal, from the same function
- * and so under the same gate (pg_settings_modal_markup()): every category of
- * pg_settings_categories(). The screens beside them have their own row
- * (pg_menu_tools_markup()).
- *
- * @param array  $user          the row validate_user() returned
- * @param string $parent_target ' target=\'_parent\'' in the front-end toolbar
- * @return array see pg_menu_settings_markup()
- */
-function pg_menu_settings_entries($user, $parent_target)
-{
-    if (!defined('PG_SETTINGS_MENU')) {
-        define('PG_SETTINGS_MENU', true);
-    }
-
-    include_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
-
-    $categories = pg_settings_categories();
-    $screens = pg_settings_category_screens($user);
-
-    foreach ($categories as $key => $category) {
-        $categories[$key]['url'] = pg_settings_url($key);
-        $categories[$key]['screens'] = isset($screens[$key]) ? $screens[$key] : array();
-    }
-
-    return pg_menu_settings_markup($categories, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $parent_target);
-}
-
-/**
- * The Site Settings row's entries and second-level panels, from its lists.
- *
- * Each category opens a panel with its page, its sections and, under a
- * divider, the screens that go with it (pg_settings_category_screens()). The
- * category pages are the page path of the settings (settings_<category>.php),
- * so every link to them carries data-pg-settings-page, which tells
- * pgSettingsModal not to answer it with the modal (backend.src.js).
- *
- * @param array  $categories    key => label, icon, url, sections (id => label),
- *                              screens (optional: label, icon, url)
- * @param string $base          the panel folder's address, ending in /
- * @param string $parent_target ' target=\'_parent\'' in the front-end toolbar
- * @return array href (the first category's page), entries (first level),
- *               panels (the second level, as markup)
- */
-function pg_menu_settings_markup($categories, $base, $parent_target)
-{
-    $class = 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ';
-    $chevron = '<i class=\'bi bi-chevron-right pg-menu-chevron\' aria-hidden=\'true\'></i>';
-
-    $href = '';
-    $entries = '';
-    $panels = '';
-
-    foreach ($categories as $key => $category) {
-
-        $page = $category['url'];
-        $entry_id = 'menu_entry_20_' . $key;
-        $panel_id = 'menu_panel_20_' . $key;
-
-        if ($href === '') {
-            $href = $page;
-        }
-
-        $entries .= '<a id=\'' . $entry_id . '\' href=\'' . h($base . $page) . '\'' . $parent_target . ' class=\'' . $class . h($category['icon']) . ' bi-me-2 pg-menu-parent\' data-pg-settings-page data-pg-menu-panel=\'' . $panel_id . '\' aria-controls=\'' . $panel_id . '\' aria-expanded=\'false\'>' . h($category['label']) . $chevron . '</a>';
-
-        $sections = '<a href=\'' . h($base . $page) . '\'' . $parent_target . ' class=\'' . $class . h($category['icon']) . ' bi-me-2\' data-pg-settings-page>' . h($category['label']) . '</a>';
-
-        foreach ($category['sections'] as $section => $label) {
-            $sections .= '<a href=\'' . h($base . $page . '#' . $section) . '\'' . $parent_target . ' class=\'' . $class . 'bi-dot bi-me-2\' data-pg-settings-page>' . h($label) . '</a>';
-        }
-
-        if (!empty($category['screens'])) {
-            $sections .= '<hr class=\'divider my-3\' />';
-
-            foreach ($category['screens'] as $screen) {
-                $sections .= '<a href=\'' . h($base . $screen['url']) . '\'' . $parent_target . ' class=\'' . $class . h($screen['icon']) . ' bi-me-2\'>' . h($screen['label']) . '</a>';
-            }
-        }
-
-        $panels .= pg_menu_panel($panel_id, $entry_id, $category['label'], $sections);
-    }
-
-    return array('href' => $href, 'entries' => $entries, 'panels' => $panels);
-}
-
-/**
  * The System tools row's entries and second-level panels.
  *
  * First the System tools screen itself, then one entry per group of
@@ -4704,10 +4597,12 @@ function pg_menu_settings_markup($categories, $base, $parent_target)
  * @param array  $groups        label, icon, items (label, icon, url, target, confirm)
  * @param string $base          the panel folder's address, ending in /
  * @param string $parent_target ' target=\'_parent\'' in the front-end toolbar
+ * @param string $tone          the row's module (pg_menu_tone()), for the
+ *                              group panels' icons
  * @return array entries (first level), panels (the second level, as markup);
  *               both empty when no group has a screen
  */
-function pg_menu_tools_markup($groups, $base, $parent_target)
+function pg_menu_tools_markup($groups, $base, $parent_target, $tone = '')
 {
     $class = 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ';
     $chevron = '<i class=\'bi bi-chevron-right pg-menu-chevron\' aria-hidden=\'true\'></i>';
@@ -4738,7 +4633,7 @@ function pg_menu_tools_markup($groups, $base, $parent_target)
 
         $entries .= '<a id=\'' . $entry_id . '\' href=\'' . h($base . $first['url']) . '\'' . $parent_target . ' class=\'' . $class . h($group['icon']) . ' bi-me-2 pg-menu-parent\' data-pg-menu-panel=\'' . $panel_id . '\' aria-controls=\'' . $panel_id . '\' aria-expanded=\'false\'>' . h($group['label']) . $chevron . '</a>';
 
-        $panels .= pg_menu_panel($panel_id, $entry_id, $group['label'], $items);
+        $panels .= pg_menu_panel($panel_id, $entry_id, $group['label'], $items, $tone);
     }
 
     if ($entries === '') {
@@ -4839,16 +4734,6 @@ function pg_menu_row_panel_id($options, $entries, $drawn)
 }
 
 /**
- * One panel of the main menu: what a row with several entries opens inside
- * the menu in place of the rows, headed by the way back and the row's name.
- *
- * @param string $panel_id id of the panel (menu_panel_<row id>)
- * @param string $row_id   id of the row that opens it
- * @param string $title    the row's name, translated
- * @param string $entries  the row's entries, as output_menu() built them
- * @return string
- */
-/**
  * The red count pill of a menu row or of a panel entry.
  *
  * Zero or less draws nothing: an empty pill would read as "something".
@@ -4870,9 +4755,42 @@ function pg_menu_count_badge($count, $title = '')
     return '<span class="pg-menu-badge badge rounded-pill theme-danger"' . (($title !== '') ? ' title="' . h($title) . '"' : '') . '>' . (($count > 99) ? '99+' : (string) $count) . '</span>';
 }
 
-function pg_menu_panel($panel_id, $row_id, $title, $entries)
+/**
+ * The module a colour class names: 'pages' for 'pages-color'.
+ *
+ * A panel carries it as data-pg-menu-tone, which backend.src.css turns into
+ * the module's two shades for its entries' icons, so they are two-coloured
+ * like the row that opens the panel.
+ *
+ * @param string $color_class a row's color_class (<module>-color)
+ * @return string the module name, or '' when the class is not one
+ */
+function pg_menu_tone($color_class)
 {
-    return '<div id="' . $panel_id . '" class="pg-menu-panel" data-pg-menu-row="' . $row_id . '" role="group" aria-labelledby="' . $panel_id . '_title">'
+    if (preg_match('/^([a-z]+)-color$/', (string) $color_class, $match)) {
+        return $match[1];
+    }
+
+    return '';
+}
+
+/**
+ * One panel of the main menu: what a row with several entries opens inside
+ * the menu in place of the rows, headed by the way back and the row's name.
+ *
+ * @param string $panel_id id of the panel (menu_panel_<row id>)
+ * @param string $row_id   id of the row that opens it
+ * @param string $title    the row's name, translated
+ * @param string $entries  the row's entries, as output_menu() built them
+ * @param string $tone     the row's module (pg_menu_tone()), which colours
+ *                         the entries' icons; '' leaves them plain
+ * @return string
+ */
+function pg_menu_panel($panel_id, $row_id, $title, $entries, $tone = '')
+{
+    $tone = preg_match('/^[a-z]+$/', (string) $tone) ? ' data-pg-menu-tone="' . $tone . '"' : '';
+
+    return '<div id="' . $panel_id . '" class="pg-menu-panel" data-pg-menu-row="' . $row_id . '"' . $tone . ' role="group" aria-labelledby="' . $panel_id . '_title">'
         . '<div class="pg-menu-panel-head">'
         . '<button type="button" class="pg-menu-back no-popover" data-pg-menu-back aria-label="' . h(lang('Back')) . '" title="' . h(lang('Back')) . '"><i class="bi bi-arrow-left" aria-hidden="true"></i></button>'
         . '<span id="' . $panel_id . '_title" class="pg-menu-panel-title">' . h($title) . '</span>'

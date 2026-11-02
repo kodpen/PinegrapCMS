@@ -21,12 +21,13 @@ description: Plan (owner 2026-11-02): eight small independent features: address 
 - Legacy and totals: SF5 and SF6 change no totals code; pre-order rides the backorder path, reverse charge the `tax_exempt` flag the billing widget already posts. Every outside call goes through `pg_curl_run()` with a sealed key; a provider that fails leaves the box as typed.
 - Texts through `tr_add.php`; each step writes its memory topic file and tests; a schema change is one sub-step of the open version's migration, asked first.
 
-## Which questions are decided? (#5047, #5065)
+## Which questions are decided? (#5047, #5065, #5076)
 1. SF3: `site_search_daily` (`sha1(date|term)`) and `config.search_synonyms` / `config.search_promoted` TEXT JSON; shape in the issue.
 2. SF4: `comments.kind` ENUM(comment, question, answer) and `comments.answer_of`.
 3. SF5: `products.preorder` TINYINT and `products.preorder_date` DATE.
 4. SF6, owner: a VIES-validated id sets the tax-exempt flag on its own; the id and the check time are written on the order.
 5. SF7 site manifest (#5065): no switch and no column; `site.webmanifest` is linked and served while the site icon is set (`platform/site-icon.md`); a follow-up adds at most `theme_color`.
+6. SF8 delivery (#5076): no schema; targets in one sealed `notify_channels` entry, messages as `api_webhook_queue` rows with `webhook_id = 0` on the same retry ladder; stuck counts take `webhook_id > 0`; no token or URL in error texts.
 
 ## Where does it start?
 - SF1, SF2, SF7 and SF8 need no answer and start at once; SF3-SF6 after their question. Steps: `small-features-2026-11-steps.md` (SF1-SF3), `-steps-2.md` (SF4-SF8).

@@ -50,7 +50,8 @@ function test_address_labels_editor_starters()
 {
 	$js = address_labels_editor_test_source('assets/js/style_designer.src.js');
 	pg_assert_same(8, substr_count($js, "_sdAddrLabel('city')"), 'city labels');
-	pg_assert_same(8, substr_count($js, "_sdAddrLabel('state')"), 'state labels');
+	// Account profile and address book share _swAcctStateField().
+	pg_assert_same(7, substr_count($js, "_sdAddrLabel('state')"), 'state labels');
 	foreach (array("'shipping_city'", "'shipping_state'", "'billing_city'", "'billing_state'") as $field) {
 		pg_assert_true(!preg_match("~_sdT\\('(City|State|State / Province)'\\),\\s*" . preg_quote($field, '~') . '~', $js), $field . ' starter label');
 	}

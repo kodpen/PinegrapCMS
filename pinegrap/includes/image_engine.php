@@ -629,7 +629,11 @@ function pg_image_engine_no_gain($bytes_after, $bytes_before, $format_conversion
  *                         (a PNG's path, the canvas's size),
  *                         first_frame (an animated picture gives its first
  *                         frame instead of being refused), type (the
- *                         IMAGETYPE_* to write, the read one by default).
+ *                         IMAGETYPE_* to write, the read one by default),
+ *                         edge (the longest edge of the result, never
+ *                         enlarged), colors (a PNG reduced to that many
+ *                         colours; Imagick only), progressive (false writes
+ *                         a baseline JPEG).
  *                         Applied to the upright picture before encoding
  *                         (pg_image_edit_imagick(), pg_image_edit_gd()); no
  *                         resize or rotate on top, and the result is written
@@ -1030,6 +1034,16 @@ function pg_process_image_with_imagick($file_path, $type, $resize, $target_width
             return false;
         }
 
+        // The export's longest edge, after the overlay: the result as a
+        // whole is scaled.
+        if ($edit && !empty($edit['edge'])) {
+            list($edge_width, $edge_height) = pg_image_scaled_dimensions($image->getImageWidth(), $image->getImageHeight(), (int) $edit['edge']);
+
+            if (($edge_width !== $image->getImageWidth()) || ($edge_height !== $image->getImageHeight())) {
+                $image->resizeImage($edge_width, $edge_height, Imagick::FILTER_LANCZOS, 1);
+            }
+        }
+
         if ($resize) {
 
             // The orientation fix above can have swapped the edges, so the
@@ -1072,8 +1086,9 @@ function pg_process_image_with_imagick($file_path, $type, $resize, $target_width
         } elseif ($write_type == IMAGETYPE_JPEG) {
             $image->setImageCompression(Imagick::COMPRESSION_JPEG);
             // Progressive: the picture appears at low detail and sharpens,
-            // instead of filling in one band at a time.
-            $image->setInterlaceScheme(Imagick::INTERLACE_PLANE);
+            // instead of filling in one band at a time. The image editor's
+            // export may ask for a baseline one.
+            $image->setInterlaceScheme((isset($edit['progressive']) && !$edit['progressive']) ? Imagick::INTERLACE_NO : Imagick::INTERLACE_PLANE);
             $image->setImageCompressionQuality($quality);
 
         } elseif ($write_type == IMAGETYPE_PNG) {
@@ -1082,6 +1097,12 @@ function pg_process_image_with_imagick($file_path, $type, $resize, $target_width
             $image->setImageCompression(Imagick::COMPRESSION_ZIP);
             $image->setOption('png:compression-level', '9');
             $image->setOption('png:compression-filter', '5');
+
+            // The image editor's colour reduction: a palette PNG, alpha
+            // kept, no dithering (flat graphics stay flat).
+            if (!empty($edit['colors'])) {
+                $image->quantizeImage((int) $edit['colors'], Imagick::COLORSPACE_SRGB, 0, false, false);
+            }
 
         } elseif (defined('IMAGETYPE_WEBP') && ($write_type == IMAGETYPE_WEBP)) {
             $image->setImageCompressionQuality($quality);
@@ -1218,6 +1239,14 @@ function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $ta
         if (!empty($edit['shape']) && ($edit['shape'] !== 'rect')) {
             $gif_transparent = true;
         }
+
+        if (!empty($edit['edge'])) {
+            $image = pg_image_edit_gd_edge($image, (int) $edit['edge']);
+
+            if (!$image) {
+                return false;
+            }
+        }
     }
 
     if ($resize) {
@@ -1328,7 +1357,7 @@ function pg_process_image_with_gd($file_path, $type, $resize, $target_width, $ta
     switch ($write_type) {
 
         case IMAGETYPE_JPEG:
-            imageinterlace($image, true);
+            imageinterlace($image, !isset($edit['progressive']) || (bool) $edit['progressive']);
             $written = imagejpeg($image, null, $quality);
             break;
 
@@ -1820,6 +1849,39 @@ function pg_image_edit_gd($image, $edit, $alpha)
 
     return $out;
 }
+
+/**
+ * The export's longest edge under GD: the result scaled down, its alpha
+ * kept; never enlarged. The picture given is destroyed when scaled.
+ *
+ * @param resource|GdImage $image
+ * @param int              $edge
+ * @return resource|GdImage|false
+ */
+function pg_image_edit_gd_edge($image, $edge)
+{
+    $width = imagesx($image);
+    $height = imagesy($image);
+
+    list($target_width, $target_height) = pg_image_scaled_dimensions($width, $height, $edge);
+
+    if (($target_width === $width) && ($target_height === $height)) {
+        return $image;
+    }
+
+    $scaled = pg_image_edit_gd_canvas($target_width, $target_height);
+
+    if (!$scaled) {
+        pg_image_destroy($image);
+        return false;
+    }
+
+    imagecopyresampled($scaled, $image, 0, 0, 0, 0, $target_width, $target_height, $width, $height);
+    pg_image_destroy($image);
+
+    return $scaled;
+}
+
 
 /**
  * The canvas step under GD: the picture placed at x, y on a w x h canvas of

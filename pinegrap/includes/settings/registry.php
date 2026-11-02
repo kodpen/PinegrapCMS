@@ -6,8 +6,8 @@
  * into, and the neighbouring screens that live beside them.
  *
  * Read by four places -- the dialog's sidebar and the link helper
- * (includes/fn/output.php), the main menu's Site Settings row
- * (pg_menu_settings_entries(), same file), the category screens
+ * (includes/fn/output.php), the main menu's System tools row
+ * (output_menu(), same file), the category screens
  * (includes/settings/screen.php) and the command palette (api.php). One list, because they all name the same
  * screens with the same gates, and copies of that answer drift: a screen added
  * to one is missing from the others and nothing says so.
@@ -627,35 +627,6 @@ function pg_settings_legacy_anchors()
 
 
 /**
- * Screens that belong with a category without being one of its sections.
- *
- * The main menu lists them in the category's panel, under its sections
- * (pg_menu_settings_markup()), so a screen that no other menu path reaches
- * for some of the people its own gate admits has a home beside the settings
- * it goes with. Same rule as the groups below: each item under the gate of
- * the screen itself, and the gate decides visibility only.
- *
- * @param array $user the row validate_user() returned
- * @return array category key => array of array(label, icon, url)
- */
-function pg_settings_category_screens($user)
-{
-    $role = isset($user['role']) ? (int) $user['role'] : 3;
-
-    $screens = array();
-
-    // The translations of the pages and texts: validate_area_access($user,
-    // 'manager'). Its other entry, in the Visual Page Editor panel, is drawn
-    // for role < 2 only, so a manager had no way to it.
-    if ($role <= 2) {
-        $screens['languages'][] = array('label' => lang('Translations'), 'icon' => 'bi-translate', 'url' => 'translations.php');
-    }
-
-    return $screens;
-}
-
-
-/**
  * The screens the Integrations category links, each under its own gate.
  *
  * Application Access, Connected accounts and Marketplaces open for a manager
@@ -980,7 +951,8 @@ function pg_settings_tools_link($groups)
 
 
 /**
- * "Last modified 5 hours ago by admin", or an empty string.
+ * "Last modified 5 hours ago by admin", or an empty string. The relative
+ * time sits mid-sentence, so "a moment ago" keeps a small letter.
  *
  * Shown by the hub and by the category screens, from one place: the hub is
  * often opened to find out what somebody else changed, and the answer must not
@@ -997,7 +969,7 @@ function pg_settings_last_modified($row)
         return '';
     }
 
-    $output = lang('Last modified') . ' ' . get_relative_time(array('timestamp' => $timestamp)) . ' ';
+    $output = lang('Last modified') . ' ' . get_relative_time(array('timestamp' => $timestamp, 'mid_sentence' => true)) . ' ';
 
     $user_id = isset($row['last_modified_user_id']) ? (int) $row['last_modified_user_id'] : 0;
 
