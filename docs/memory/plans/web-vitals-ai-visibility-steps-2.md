@@ -6,7 +6,7 @@ description: Steps WV4-WV6 of plans/web-vitals-ai-visibility.md: AI visibility f
 ## Which steps are there?
 - Sizes, tests and memory rules as in `web-vitals-ai-visibility-steps.md`; WV4 runs beside WV2, WV5 after both.
 
-- WV4 (M) AI visibility figures and referrals. After WV3.
+- WV4 (M) AI visibility figures and referrals. Done in #5601.
   - `includes/fn/ai_visibility.php`: fetches per bot and day, the pages each bot reads most, pages never fetched although in the sitemap, the llms.txt and robots state per bot beside it (`pg_ai_crawler_settings()`); visits from AI assistants: `pg_visitor_ai_hosts()` (chatgpt.com, perplexity.ai, copilot.microsoft.com, gemini.google.com, claude.ai, you.com and the rest) applied to `visitors.referring_host_name` in the summary queries; when `plans/visitors-overview.md` V4 lands, its `ai` channel replaces the list and this function reads the channel. API `reports/ai-visibility`. The general job removes `ai_fetch_daily` days older than 400 (WV3 created the table without a sweep). Memory: `visitors/ai-visibility-figures.md`.
 
 - WV5 (M) Screens and the dashboard card. After WV2 and WV4.
