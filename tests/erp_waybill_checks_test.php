@@ -90,11 +90,16 @@ function test_erp_waybill_ship_to_fill_keeps_what_was_typed()
 	pg_assert_same('Bayern', $typed['ship_to_state'], 'the typed state stays');
 	pg_assert_same('DE', $typed['ship_to_country'], 'the typed country stays');
 	pg_assert_same('', $typed['ship_to_address'], 'no street of the account under another city');
+	pg_assert_same('', erp_waybill_ship_to_fill(array('ship_to_title' => '', 'ship_to_city' => 'Ankara', 'ship_to_country' => 'TR'), $account, 'TR')['ship_to_district'] ?? '', 'a typed city takes no district of the account');
 
 	$empty = erp_waybill_ship_to_fill(array('ship_to_title' => '', 'ship_to_address' => '', 'ship_to_country' => ''), $account);
 	pg_assert_same('Atatürk Cd. 1', $empty['ship_to_address'], 'an empty place is the account\'s');
 	pg_assert_same('İstanbul', $empty['ship_to_city'], 'with its city');
 	pg_assert_same('TR', $empty['ship_to_country'], 'and its country');
+
+	$abroad = array('country_code' => 'DE') + $account;
+	pg_assert_same('DE', erp_waybill_ship_to_fill(array('ship_to_title' => '', 'ship_to_country' => 'TR'), $abroad, 'TR')['ship_to_country'], 'the form\'s default country gives way to the account\'s');
+	pg_assert_same('FR', erp_waybill_ship_to_fill(array('ship_to_title' => '', 'ship_to_country' => 'FR'), $abroad, 'TR')['ship_to_country'], 'a country chosen by hand stays');
 
 	$named = erp_waybill_ship_to_fill(array('ship_to_title' => 'Depo', 'ship_to_city' => ''), $account);
 	pg_assert_same('Depo', $named['ship_to_title'], 'a named recipient is left alone');
@@ -105,7 +110,7 @@ function test_erp_waybill_ship_to_fill_keeps_what_was_typed()
 function test_erp_waybill_refusals_name_their_field()
 {
 	$built = erp_waybill_lines_build(array(3 => array('description' => 'Saat', 'quantity' => '1'), 5 => array('description' => 'Kayış', 'quantity' => 'abc')));
-	pg_assert_same('lines[5][quantity]', $built['field'] ?? '', 'the quantity of the posted row');
+	pg_assert_same('lines[1][quantity]', $built['field'] ?? '', 'the quantity of the second row, as the form draws it again');
 
 	$built = erp_waybill_lines_build(array(0 => array('description' => '', 'quantity' => '2')));
 	pg_assert_same('lines[0][description]', $built['field'] ?? '', 'the description');

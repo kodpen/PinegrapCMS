@@ -398,7 +398,7 @@ function erp_drawer_waybill($waybill_id)
         lang('Address') => h($address),
         lang('Account') => ((int) $waybill['account_id'] > 0) ? '<a href="edit_erp_account.php?id=' . (int) $waybill['account_id'] . '" class="pg-link-body-emphasis">' . h((string) $waybill['account_title']) . '</a>' : '',
         lang('Date') => h(prepare_form_data_for_output((string) $waybill['issue_date'], 'date')),
-        lang('Ship Date') => ((string) $waybill['ship_date'] > '0000-00-00') ? h(prepare_form_data_for_output((string) $waybill['ship_date'], 'date')) : '',
+        lang('Shipment Date') => ((string) $waybill['ship_date'] > '0000-00-00') ? h(prepare_form_data_for_output((string) $waybill['ship_date'], 'date')) : '',
         lang('Carrier') => h(trim((string) $waybill['carrier_title'] . (((string) $waybill['carrier_vkn'] !== '') ? ' · ' . $waybill['carrier_vkn'] : ''))),
         lang('Plate') => h((string) $waybill['plate']),
         lang('Order') => erp_order_link_html($waybill['order_id'], $waybill['order_number'], $waybill['order_exists'] !== null, 'pg-link-body-emphasis'),

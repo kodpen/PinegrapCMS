@@ -149,6 +149,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-recurring-invoice-day.md: The day of the month a repeating invoice keeps: the 31st repeats on each month's last day, not the 28th; upgrade step 11.0.60 moves recurrences written before back
 - erp-return-documents.md: ERP return (credit) documents: series naming, full vs partial return arithmetic, currency and date of a return, line VAT rate, returned_qty and parent_line_id.
 - erp-return-quantities-and-currency.md: An ERP return's currency, rate and date, and how returned quantities are tracked on the parent (returned_qty, parent_line_id 4.50, the product-match fallback, withholding and second tax caps).
+- erp-return-screen.md: Which invoice the return screen opens for (erp_return_refusal(): issued invoices only) and how it writes quantities and fits a phone (PR #5708).
 - erp-screen-status-column-pattern.md: Owner decision on ERP screen width: form column plus sticky status column and sticky save bar, modeled on product_builder.php.
 - erp-settings-cards.md: ERP settings cards from includes/erp/settings_cards.php: Accounting pane for role < 3, erp_settings.php for role 3 only; how each saves; why the template editor stays.
 - erp-stock-count.md: ERP stock count (4.100): scanning and corrections, applying it to products in one transaction, why it writes no stock move and carries no cost, what is kept, the event and the marketplace hook.
@@ -163,3 +164,4 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-vat-report.md: ERP VAT report: the one place tax totals are added up (vat_report.php), calculated, deductible and difference, what never counts, and the report's name in the menu.
 - erp-vat-withholding.md: VAT withholding (tevkifat, migration 4.68) on ERP documents: what tax_total, withholding_total and grand_total hold, the line columns, the code list rule, returns, document type.
 - erp-vuk-509-fields.md: VUK 509 e-Arsiv fields on erp_invoices: what the order bridge derives for each, where orders.paid_at comes from, the carrier columns, and what a return copies.
+- erp-waybill-save-checks.md: What a delivery note's save checks and fills (named invoice, empty recipient, field-level refusals), the one unit list, the list's three invoice states and the shipment-date term (PR #5708).
