@@ -790,6 +790,29 @@ function pg_sw_uniquify_row_ids($html, $widget_id, $row_id)
     return $html;
 }
 
+// Whether widget $widget_id was drawn before in this request; the call
+// counts this drawing, so a renderer asks once per drawing.
+function pg_sw_widget_drawn_before($widget_id)
+{
+    static $drawn = array();
+    $widget_id = (int)$widget_id;
+    $before = isset($drawn[$widget_id]);
+    $drawn[$widget_id] = true;
+    return $before;
+}
+
+// pg_sw_uniquify_row_ids() for a row of a widget's main loop. $again: 0
+// when the widget is drawn for the first time in the request, else its
+// placement's number, whose suffix (1000 + n) the static part takes: the
+// row's ids take it too, so a widget placed twice (a header and an
+// offcanvas menu) shares no id or toggle target between its copies. The
+// first drawing keeps the ids it always had.
+function pg_sw_uniquify_loop_row_ids($html, $widget_id, $row_id, $again = 0)
+{
+    $html = pg_sw_uniquify_row_ids($html, $widget_id, $row_id);
+    return ((int)$again > 0) ? pg_sw_uniquify_row_ids($html, $widget_id, 1000 + (int)$again) : $html;
+}
+
 // The token keys whose values are HTML on purpose: the rich-text columns an
 // operator writes in the editor, and the blocks the renderer builds itself
 // (filter chips, variant picker, the strike-through

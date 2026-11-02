@@ -185,6 +185,9 @@ function _render_system_widget_language_switcher($tree_json, $widget_id, $cfg = 
         $static_html = trim(_render_tree_node($split['static_tree'], 0, 0));
     }
 
+    // A header and an offcanvas menu may both carry it.
+    $placed = ++$placement;
+    $again  = pg_sw_widget_drawn_before($widget_id) ? $placed : 0;
     $show_codes = !empty($cfg['show_codes']);
     $loop_rendered = '';
 
@@ -198,7 +201,7 @@ function _render_system_widget_language_switcher($tree_json, $widget_id, $cfg = 
                 '__language_aria_current' => $row['current'] ? 'page' : '',
             ));
             $row_html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($loop_template, $values));
-            $loop_rendered .= pg_sw_uniquify_row_ids($row_html, $widget_id, $i);
+            $loop_rendered .= pg_sw_uniquify_loop_row_ids($row_html, $widget_id, $i, $again);
         }
     }
 
@@ -208,8 +211,7 @@ function _render_system_widget_language_switcher($tree_json, $widget_id, $cfg = 
         '__language_count'         => (string) count($rows),
     ));
 
-    // A header and an offcanvas menu may both carry it.
-    $static_html = pg_sw_uniquify_row_ids(pg_sw_sweep_tokens(_pg_sw_fill_tokens($static_html, $static_values)), $widget_id, 1000 + (++$placement));
+    $static_html = pg_sw_uniquify_row_ids(pg_sw_sweep_tokens(_pg_sw_fill_tokens($static_html, $static_values)), $widget_id, 1000 + $placed);
 
     return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html);
 }
