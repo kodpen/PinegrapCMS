@@ -15,6 +15,7 @@ module: ecommerce, commission_list
 
 ## How does a hand edit interact?
 - Saving `edit_commission.php` clears `status_before_cancel`, saving `edit_recurring_commission_profile.php` clears `disabled_by_cancel`: a restore never undoes the operator's later choice.
+- `edit_commission.php` saves only `pending`, `payable`, `ineligible` or `paid` (`pg_commission_posted_status()`, `includes/fn/commission_list.php`); anything else goes back to the screen with an error. Before #5113 an unknown value was stored as `''` (enum column, non-strict sql_mode) and the commission left every status total.
 
 ## What does the Commissions screen show?
 - `pg_commission_list_cancelled_badge(orders.status)`: a "Cancelled order" badge beside the status on the commissions list and beside the order number on the recurring profiles list, for every status (a paid one is seen for clawback). Totals stay by status; no separate total.

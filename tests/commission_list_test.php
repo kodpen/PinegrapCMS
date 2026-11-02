@@ -146,3 +146,18 @@ function test_commission_list_cancelled_order_badge()
 	);
 	pg_assert_contains(lang('Cancelled order'), pg_list_row_html(pg_commission_profile_list_row($profile)), 'the profile of a cancelled order is marked');
 }
+
+function test_commission_posted_status()
+{
+	// Only the four stored statuses are saved; anything else would be
+	// written as '' into the enum column under the site's non-strict
+	// sql_mode and drop the commission out of every total.
+	foreach (array('pending', 'payable', 'ineligible', 'paid') as $status) {
+		pg_assert_same($status, pg_commission_posted_status($status), $status . ' is kept');
+	}
+	pg_assert_same('', pg_commission_posted_status('approved'), 'an unknown status is refused');
+	pg_assert_same('', pg_commission_posted_status(''), 'an empty status is refused');
+	pg_assert_same('', pg_commission_posted_status('Paid'), 'the stored value is lower case');
+	pg_assert_same('', pg_commission_posted_status(array('paid')), 'an array is refused');
+	pg_assert_same('', pg_commission_posted_status(null), 'a missing status is refused');
+}

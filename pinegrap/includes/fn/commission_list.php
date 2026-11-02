@@ -78,6 +78,24 @@ function pg_commission_list_statuses()
 }
 
 /**
+ * A posted commission status when it is one of the stored values, else ''.
+ * The status column is an enum and the site runs a non-strict sql_mode, so
+ * an unknown value would be stored as '' and the commission would drop out
+ * of every status total.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function pg_commission_posted_status($value)
+{
+    if (!is_string($value) || !array_key_exists($value, pg_commission_list_statuses())) {
+        return '';
+    }
+
+    return $value;
+}
+
+/**
  * The recurring periods as the lists show them; '' is a one-time
  * commission, which has no profile.
  *
