@@ -1453,7 +1453,7 @@ function pg_page_cache_panel_sub_actions()
                 'widget_ghosts', 'preview_widgets', 'legacy_region_preview', 'page_regions_import', 'template_prepare', 'template_from_design',
                 'template_delete', 'template_discard', 'tab_layout', 'revisions_list', 'revision_get',
                 'theme_look_css', 'theme_palette_css',
-                'prototype_links', 'prototype_link_create', 'prototype_link_address', 'prototype_link_revoke',
+                'prototype_links', 'prototype_link_create', 'prototype_link_address', 'prototype_link_revoke', 'prototype_map',
                 'ai_state', 'ai_ask', 'ai_status', 'ai_cancel', 'ai_apply', 'ai_dismiss'),
         ),
         'designer_file' => array(
