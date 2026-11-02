@@ -134,6 +134,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_image_upload_cap();        // 11.0.142
 	upgrade_2026_11_0_dashboard_layout();        // 11.0.143
 	upgrade_2026_11_0_claude_daily_summary();    // 11.0.145
+	upgrade_2026_11_0_mail_bounces();            // 11.0.146
 	upgrade_2026_11_0_site_search_daily();      // 11.0.147
 	upgrade_2026_11_0_product_questions();       // 11.0.148
 
@@ -4314,6 +4315,61 @@ function upgrade_2026_11_0_claude_daily_summary() {
 	install_add_column('config', 'ws_claude_summary_channel_id', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Assistant card: Claude can write a daily summary into a channel at a chosen hour; off until switched on under the Claude in the channels card.');
+
+}
+
+// The bounce record and the send gate (2026.11.0, 11.0.146;
+// includes/fn/mail_bounces.php). One row per address with its current
+// state: kind of the last record, soft bounces counted from first_at, the
+// message it came from, and suppressed, which the mail queue and campaigns
+// read before every send. mail_outbox.status gains 'suppressed', the queue's
+// outcome for a message the gate stopped; it is widened first, because the
+// gate only runs once the table exists. Nothing is suppressed on a running
+// site until a bounce is recorded.
+function upgrade_2026_11_0_mail_bounces() {
+
+	$status = install_column_info('mail_outbox', 'status');
+
+	if ($status) {
+
+		if (strpos((string) $status['Type'], "'suppressed'") !== false) {
+
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'mail_outbox.status suppressed')));
+
+		} else {
+
+			preg_match_all("/'((?:[^']|'')*)'/", (string) $status['Type'], $matches);
+
+			$values = $matches[1];
+			$values[] = 'suppressed';
+
+			$definition = "ENUM('" . implode("','", $values) . "')"
+				. ((($status['Null'] ?? '') === 'YES') ? ' NULL' : ' NOT NULL')
+				. (($status['Default'] !== null) ? " DEFAULT '" . e((string) $status['Default']) . "'" : '');
+
+			install_modify_column('mail_outbox', 'status', $definition);
+
+		}
+
+	}
+
+	install_create_table('mail_bounces', "CREATE TABLE mail_bounces (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		address     VARCHAR(191) NOT NULL DEFAULT '',
+		kind        ENUM('hard','soft','complaint','manual') NOT NULL DEFAULT 'hard',
+		source      VARCHAR(40) NOT NULL DEFAULT '',
+		soft_count  SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		first_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		last_at     INT UNSIGNED NOT NULL DEFAULT 0,
+		message_id  VARCHAR(255) NOT NULL DEFAULT '',
+		campaign_id INT UNSIGNED NOT NULL DEFAULT 0,
+		suppressed  TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		cleared_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_address (address)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('E-mail: an address that bounces hard, is reported as spam or bounces softly three times in 30 days gets no more mail; the mail queue shows such messages as suppressed and campaigns count the skipped addresses.');
 
 }
 

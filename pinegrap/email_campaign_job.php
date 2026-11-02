@@ -473,6 +473,7 @@ if (!pg_email_retry_ready()) {
 } else {
 
     $count = 0;
+    $suppressed = 0;
 
     // Claims that a run left behind - it died, or was killed, between taking
     // its recipients and finishing with them - are released after fifteen
@@ -579,6 +580,13 @@ if (!pg_email_retry_ready()) {
 
         $email_recipient_id = (int) $email_recipient['id'];
 
+        // An address that bounced or complained gets nothing, whatever the
+        // purpose (includes/fn/mail_bounces.php); the campaign counts it.
+        if (pg_email_campaign_skip_suppressed($email_recipient_id, $email_recipient['email_address'], true, $run)) {
+            $suppressed++;
+            continue;
+        }
+
         $prepared = email_campaign_job_prepare($email_recipient);
 
         // Opted out since the campaign was created: drop the recipient.
@@ -672,6 +680,11 @@ foreach ($email_campaigns as $email_campaign_id) {
 // if e-mail campaign job e-mailed at least 1 recipient, then log action
 if ($count > 0) {
     log_activity(lang(array('string' => 'e-mail campaign job sent e-mail(s) to {var:1} recipient(s)', 'vars' => array($count))), $_SESSION['sessionusername']);
+}
+
+// Recipients the send gate skipped: their address bounced or complained.
+if (!empty($suppressed)) {
+    log_activity(lang(array('string' => 'e-mail campaign job skipped {var:1} recipient(s) whose address bounced or complained', 'vars' => array($suppressed))), $_SESSION['sessionusername']);
 }
 
 // Scheduled-task health: record that this job finished. See pg_cron_ran().

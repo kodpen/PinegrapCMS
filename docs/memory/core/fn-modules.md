@@ -65,6 +65,7 @@ description: Generated from the module field of the memory files: each includes/
 - `list_paging`: [[list-label-sort]], [[list-page-number]], [[server-paged-lists]]
 - `list_period`: [[list-period-navigator-and-clock]], [[list-period-order]], [[list-period-week]]
 - `mail`: [[mail-transport-failure]], [[single-email-address-boxes]]
+- `mail_bounces`: [[mail-bounces]]
 - `mail_parse`: [[mail-parse]]
 - `mail_queue`: [[fn-module-errors-mail-backup-consent]], [[mail-failure-reason]], [[mail-transport-failure]]
 - `mail_transport`: [[mail-transports]]
