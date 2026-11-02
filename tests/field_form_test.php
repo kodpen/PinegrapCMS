@@ -248,3 +248,57 @@ function test_field_form_pick_by_name()
 	pg_assert_same('851', pg_field_form_pick_by_name($rows, 'klasőr')['id'], 'no closer name: the first row, as the database matched it');
 	pg_assert_same(null, pg_field_form_pick_by_name(array(), 'klasor'), 'no row');
 }
+
+function test_field_form_types()
+{
+	$custom = pg_field_form_types('custom', false);
+	pg_assert_true(in_array('text box', $custom, true), 'custom form: text box');
+	pg_assert_true(in_array('file upload', $custom, true), 'custom form: file upload');
+	pg_assert_true(!in_array('signature', $custom, true), 'no signature column: no signature');
+	pg_assert_true(in_array('signature', pg_field_form_types('custom', true), true), 'signature column: signature');
+
+	$product = pg_field_form_types('product', true);
+	pg_assert_true(!in_array('file upload', $product, true), 'product form: no file upload');
+	pg_assert_true(!in_array('signature', $product, true), 'product form: no signature');
+	pg_assert_true(in_array('time', $product, true), 'product form: time');
+	pg_assert_true(!in_array('', $product, true), 'no empty type');
+}
+
+function test_field_form_number()
+{
+	pg_assert_same(array(true, 0), pg_field_form_number('', 1000), 'empty is 0');
+	pg_assert_same(array(true, 0), pg_field_form_number('  ', 1000), 'blank is 0');
+	pg_assert_same(array(true, 25), pg_field_form_number(' 25 ', 1000), 'a number');
+	pg_assert_same(array(true, 1000), pg_field_form_number('1000', 1000), 'the maximum');
+	pg_assert_same(array(false, 0), pg_field_form_number('1001', 1000), 'above the maximum');
+	pg_assert_same(array(false, 0), pg_field_form_number('-5', 1000), 'negative');
+	pg_assert_same(array(false, 0), pg_field_form_number('12.50', 1000), 'decimal');
+	pg_assert_same(array(false, 0), pg_field_form_number('12,50', 1000), 'decimal comma');
+	pg_assert_same(array(false, 0), pg_field_form_number('99999999999', 65535), 'too large');
+	pg_assert_same(array(false, 0), pg_field_form_number('abc', 1000), 'not a number');
+	pg_assert_same(array(false, 0), pg_field_form_number(array('1'), 1000), 'an array');
+}
+
+function test_field_form_option_lines_skip_blank()
+{
+	$options = pg_field_form_option_lines("Yes\n\n  \r\nNo\n");
+	pg_assert_same(2, count($options), 'blank lines skipped');
+	pg_assert_same('Yes', $options[0]['label'], 'first');
+	pg_assert_same('No', $options[1]['label'], 'second');
+
+	$options = pg_field_form_option_lines("Select…|\n|\nRed|red|on");
+	pg_assert_same(2, count($options), 'a labelled empty value stays, a bare bar goes');
+	pg_assert_same('', $options[0]['value'], 'labelled empty value');
+	pg_assert_same(1, $options[1]['default_selected'], 'third part kept');
+
+	pg_assert_same(array(), pg_field_form_option_lines(''), 'nothing');
+}
+
+function test_field_form_number_boxes()
+{
+	pg_assert_same(array('size', 'maxlength'), pg_field_form_number_boxes('text box'), 'text box');
+	pg_assert_same(array('maxlength', 'rows', 'cols'), pg_field_form_number_boxes('text area'), 'text area');
+	pg_assert_same(array('size'), pg_field_form_number_boxes('pick list'), 'pick list');
+	pg_assert_same(array(), pg_field_form_number_boxes('radio button'), 'radio button');
+	pg_assert_same(array(), pg_field_form_number_boxes(''), 'no type');
+}
