@@ -120,6 +120,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/dashboard.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/system_status.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/image.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/image_editor.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/svg_sanitize.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/parasut.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/update.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/vendor_api.php');

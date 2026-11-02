@@ -1843,6 +1843,21 @@
   background: var(--pgie-sel);
 }
 
+/* -- SVG (pg_image_editor_svg.js) -- */
+
+/* The text of an SVG text element, edited in the panel. */
+.pgie .pgie-svgtext {
+  width: 100%;
+  min-height: 72px;
+  padding: 8px 10px;
+  border: 1px solid var(--pgie-line);
+  border-radius: 9px;
+  background: var(--pgie-surface);
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+
 /* -- Access (pg_image_editor_access.js) -- */
 
 /* The keyboard help sheet: groups in two columns, one on a narrow box. */

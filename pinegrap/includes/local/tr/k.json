@@ -65,6 +65,7 @@
     "Kept as text: formulas are not worked out here.": "Metin olarak tutuldu: formüller burada hesaplanmaz.",
     "Kept by {var:1}, {var:2}": "{var:1} sakladı, {var:2}",
     "Kept copy": "Saklı kopya",
+    "Kept element": "Korunan öğe",
     "Kept encrypted with the site's key and never shown again.": "Sitenin anahtarıyla şifreli saklanır ve bir daha gösterilmez.",
     "Kept for": "Saklama süresi",
     "Kept in": "Tutulduğu yer",

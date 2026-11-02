@@ -1100,6 +1100,7 @@
     "Poll": "Oylama",
     "Poll result: **{var:1}** ({var:2} of {var:3} voters) - {var:4}": "Oylama sonucu: **{var:1}** ({var:3} kişiden {var:2} oy) - {var:4}",
     "Polygon": "Çokgen",
+    "Polyline": "Çoklu çizgi",
     "Pool of {var:1}": "{var:1} havuzu",
     "Poor": "Kötü",
     "Pop-up": "Açılır",
