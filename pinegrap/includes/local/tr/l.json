@@ -65,6 +65,8 @@
     "Last 24 hours": "Son 24 saat",
     "Last 30 Days": "Son 30 Gün",
     "Last 30 days": "Son 30 gün",
+    "Last 30 days, {var:1} e-mail(s) sent: {var:2}. Mailbox providers may send the site's mail to spam.": "Son 30 günde {var:1} e-posta gönderildi: {var:2}. Posta sağlayıcıları sitenin e-postalarını spama gönderebilir.",
+    "Last 30 days: {var:1} sent, bounces {var:2} (limit {var:3}), complaints {var:4} (limit {var:5}).": "Son 30 gün: {var:1} gönderildi, geri dönme {var:2} (sınır {var:3}), şikâyet {var:4} (sınır {var:5}).",
     "Last 7 Days": "Son 7 Gün",
     "Last 7 days": "Son 7 gün",
     "Last 90 days": "Son 90 gün",

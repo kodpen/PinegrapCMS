@@ -90,6 +90,11 @@ function pg_ops_alert_codes()
             'url'   => 'mail_queue.php',
             'direct' => true,
         ),
+        'mail_reputation' => array(
+            'label' => lang('Too many e-mails bounce or are marked as spam'),
+            'type'  => 'warning',
+            'url'   => 'smtp_settings.php#mail_domain_card',
+        ),
         'webhook_failing' => array(
             'label' => lang('An event address stopped answering'),
             'type'  => 'warning',
@@ -1127,6 +1132,39 @@ function pg_ops_alerts_check_mail($now)
 }
 
 /**
+ * Mail reputation: the bounce or complaint rate of the last 30 days over the
+ * limits mailbox providers throttle at (5 % bounces, 0.3 % complaints), once
+ * at least PG_MAIL_REPUTATION_MIN_SENDS were sent. Before the bounce table
+ * exists nothing is counted, so nothing is told.
+ *
+ * @param int $now
+ * @return string the code of the problem found, '' for none; pg_ops_alert()
+ *                decides whether it is told again
+ */
+function pg_ops_alerts_check_mail_reputation($now)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_domain_health.php');
+
+    if (!function_exists('pg_mail_bounces_ready') || !pg_mail_bounces_ready()) {
+        return '';
+    }
+
+    $counts = pg_mail_reputation_counts($now);
+    $rates = pg_mail_reputation_rates($counts['sent'], $counts['bounces'], $counts['complaints']);
+
+    if (!$rates['over']) {
+        return '';
+    }
+
+    pg_ops_alert('mail_reputation', lang(array(
+        'string' => 'Last 30 days, {var:1} e-mail(s) sent: {var:2}. Mailbox providers may send the site\'s mail to spam.',
+        'vars'   => array($rates['sent'], implode(', ', pg_mail_reputation_alert_parts($rates))),
+    )));
+
+    return 'mail_reputation';
+}
+
+/**
  * Webhooks: an event address that stopped answering and is no longer tried.
  *
  * The dispatcher marks a subscription failing after six failures in a row and
@@ -1358,6 +1396,7 @@ function pg_ops_alert_sources()
         'errors'      => 'pg_ops_alerts_check_errors',
         'disk'        => 'pg_ops_alerts_check_disk',
         'mail'        => 'pg_ops_alerts_check_mail',
+        'mail_reputation' => 'pg_ops_alerts_check_mail_reputation',
         'webhooks'    => 'pg_ops_alerts_check_webhooks',
         // Last: the only one that may wait on the network, for up to ten
         // seconds once a day.

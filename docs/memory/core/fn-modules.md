@@ -67,6 +67,7 @@ description: Generated from the module field of the memory files: each includes/
 - `mail`: [[mail-transport-failure]], [[single-email-address-boxes]]
 - `mail_bounce_report`: [[mail-bounce-screens]]
 - `mail_bounces`: [[mail-bounce-verp]], [[mail-bounces]]
+- `mail_domain_health`: [[mail-domain-health]]
 - `mail_parse`: [[mail-parse]]
 - `mail_queue`: [[fn-module-errors-mail-backup-consent]], [[mail-failure-reason]], [[mail-transport-failure]]
 - `mail_transport`: [[mail-transports]]
