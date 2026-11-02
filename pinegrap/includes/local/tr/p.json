@@ -1634,6 +1634,7 @@
     "Property": "Mülk",
     "Property purchases, leases and urban renewal projects, from the first check to the title deed.": "İlk kontrolden tapuya kadar gayrimenkul alımları, kiralar ve kentsel dönüşüm projeleri.",
     "Proposal": "Öneri",
+    "Proposals waiting for your approval · {var:1}": "Onayını bekleyen öneriler · {var:1}",
     "Propose a talk": "Konuşma önerin",
     "Proposed by {var:1}": "{var:1} önerdi",
     "Proposed for {var:1}, {var:2}": "{var:1} için önerildi, {var:2}",

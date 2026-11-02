@@ -1002,6 +1002,7 @@
     "{var:1} missing a title": "{var:1} tanesinde başlık yok",
     "{var:1} months": "{var:1} ay",
     "{var:1} more copies of repeating tasks are coming this month.": "Bu ay tekrarlayan görevlerin {var:1} kopyası daha gelecek.",
+    "{var:1} more in the Workspace": "Çalışma Alanı'nda {var:1} tane daha",
     "{var:1} more note file(s) were not read: one import reads at most {var:2}.": "{var:1} not dosyası daha okunmadı: bir içe aktarma en fazla {var:2} dosya okur.",
     "{var:1} more open": "{var:1} açık daha",
     "{var:1} more out of stock": "{var:1} ürün daha tükendi",
