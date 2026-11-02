@@ -61,7 +61,9 @@ if (!defined('PG_INIT_LOADED')) {
 									</td>
 									<td class="align-middle text-center">
 										<?php if ($auto_dialog['enabled']): ?>
-											<span class="material-icons">task_alt</span>
+											<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden"><?=lang('Yes')?></span>
+										<?php else: ?>
+											<span class="visually-hidden"><?=lang('No')?></span>
 										<?php endif ?>
 									</td>
 									<td class="align-middle"><?=h($auto_dialog['url'])?></td>
