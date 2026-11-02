@@ -113,7 +113,7 @@ description: Generated from the module field of the memory files: each includes/
 - `svg_sanitize`: [[image-editor-svg]]
 - `text_search`: [[capital-i-search-term]]
 - `translate`: [[error-screen-language-and-status]]
-- `user_list`: [[server-paged-lists]], [[user-screens-names-and-dates]]
+- `user_list`: [[server-paged-lists]], [[user-list-folder-filters]], [[user-screens-names-and-dates]]
 - `vendor_api`: [[vendor-api-client]]
 - `voice_text`: [[voice-browser-to-text]]
 - `waf_log_list`: [[waf-log-paging]]
