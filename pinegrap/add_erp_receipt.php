@@ -16,7 +16,9 @@
 
 include('init.php');
 $user = validate_user();
-if (!validate_erp_access($user, 'cash')) {
+// The read-only accountant is told on arrival, not after filling the form in.
+if (!validate_erp_access($user, 'cash')
+    || (defined('USER_ERP_READONLY') && USER_ERP_READONLY && !validate_erp_access($user, 'write'))) {
     exit();
 }
 
@@ -181,7 +183,7 @@ if ($preset_refusal !== '') {
     $method_options = array();
     $method_options[lang('Cash')] = 'cash';
     $method_options[lang('Bank transfer')] = 'transfer';
-    $method_options[lang('Credit card')] = 'card';
+    $method_options[lang('Card')] = 'card';
     $method_options[lang('Cheque')] = 'cheque';
     $method_options[lang('Other')] = 'other';
 
@@ -193,7 +195,10 @@ if ($preset_refusal !== '') {
 
     if (($preset_invoice === null) && $is_collection) {
 
-        $open_invoices = (array) db_items("SELECT i.id, i.doc_type, i.full_number, i.issue_date, i.currency,
+        // Every account's oldest open invoices, at most 200 each; the page's
+        // script keeps only the chosen account's on the list, since an
+        // invoice of another account is refused on save.
+        $open_invoices = (array) db_items("SELECT i.id, i.account_id, i.doc_type, i.full_number, i.issue_date, i.currency,
                 i.grand_total, i.paid_total, i.status, a.title AS account_title
             FROM erp_invoices i
             LEFT JOIN erp_accounts a ON i.account_id = a.id
@@ -201,27 +206,38 @@ if ($preset_refusal !== '') {
               AND i.doc_type = 'invoice'
               AND i.status IN ('issued', 'partially_paid')
               AND i.grand_total > i.paid_total
-            ORDER BY i.issue_date ASC, i.id ASC
-            LIMIT 200");
+            ORDER BY i.account_id ASC, i.issue_date ASC, i.id ASC");
 
-        if (!empty($open_invoices)) {
+        $invoice_options = array();
+        $invoice_accounts = array();
+        $per_account = array();
 
-            $invoice_options = array();
-            $invoice_options[lang('Leave it on the open account')] = '';
+        foreach ($open_invoices as $open_invoice) {
+            $invoice_account_id = (int) $open_invoice['account_id'];
 
-            foreach ($open_invoices as $open_invoice) {
-                // Goods that went back are not money still to come in, so an
-                // invoice covered by a return does not belong on this list.
-                $still_open = erp_invoice_open_amount($open_invoice);
-
-                if ($still_open <= 0) {
-                    continue;
-                }
-
-                $label = h($open_invoice['account_title'] . ' - ' . $open_invoice['full_number']
-                    . ' - ' . erp_money_out_currency($still_open, (string) $open_invoice['currency']));
-                $invoice_options[$label] = (string) (int) $open_invoice['id'];
+            if (($per_account[$invoice_account_id] ?? 0) >= 200) {
+                continue;
             }
+
+            // Goods that went back are not money still to come in, so an
+            // invoice covered by a return does not belong on this list.
+            $still_open = erp_invoice_open_amount($open_invoice);
+
+            if ($still_open <= 0) {
+                continue;
+            }
+
+            $per_account[$invoice_account_id] = ($per_account[$invoice_account_id] ?? 0) + 1;
+
+            $label = h($open_invoice['full_number'] . ' - ' . prepare_form_data_for_output((string) $open_invoice['issue_date'], 'date', false)
+                . ' - ' . erp_money_out_currency($still_open, (string) $open_invoice['currency']));
+            $invoice_options['invoice_' . (int) $open_invoice['id']] = array('label' => $label, 'value' => (string) (int) $open_invoice['id']);
+            $invoice_accounts[(string) (int) $open_invoice['id']] = $invoice_account_id;
+        }
+
+        if (!empty($invoice_options)) {
+
+            $invoice_options = array(lang('Leave it on the open account') => '') + $invoice_options;
 
             $output_invoice_picker = '
                         <div class="row">
@@ -231,6 +247,7 @@ if ($preset_refusal !== '') {
                                     'type' => 'select', 'id' => 'invoice_id', 'name' => 'invoice_id',
                                     'class' => 'form-control', 'options' => $invoice_options)) . '
                                 <div class="form-text">' . lang('Optional. The invoice has to belong to the account chosen above. Anything over what it is short of stays on the open account.') . '</div>
+                                <script type="application/json" id="erp_receipt_invoice_accounts">' . json_encode((object) $invoice_accounts, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . '</script>
                             </div>
                         </div>';
         }
@@ -370,6 +387,34 @@ if ($preset_refusal !== '') {
         currency.addEventListener("change", function () {
             document.getElementById("erp_receipt_currency_label").textContent = currency.value;
         });
+    }
+
+    // The invoice list shows only the chosen account\'s open invoices, and
+    // nothing to pick before an account is chosen.
+    var invoice = document.getElementById("invoice_id");
+    var map = document.getElementById("erp_receipt_invoice_accounts");
+    if (invoice && map && window.jQuery) {
+        var owners = JSON.parse(map.textContent || "{}");
+        var all = Array.prototype.slice.call(invoice.options);
+        var filter = function () {
+            var account = document.getElementById("account_id");
+            var chosen = account ? String(account.value) : "";
+            var keep = invoice.value;
+            while (invoice.options.length) {
+                invoice.remove(0);
+            }
+            all.forEach(function (option) {
+                if ((option.value === "") || ((chosen !== "") && (String(owners[option.value]) === chosen))) {
+                    invoice.add(option);
+                }
+            });
+            invoice.value = (owners[keep] !== undefined && String(owners[keep]) === chosen) ? keep : "";
+            invoice.disabled = (invoice.options.length < 2);
+        };
+        // Delegated through jQuery: the account box is a combobox whose
+        // change is a jQuery event, which a native listener never hears.
+        window.jQuery(document).on("change", "#account_id", filter);
+        filter();
     }
 })();
 </script>
