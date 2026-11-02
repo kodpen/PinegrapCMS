@@ -989,11 +989,13 @@ function pg_backup_run_auto()
 
         pg_backup_remote_record($sent);
 
-        // The cloud folder keeps as many weeks as data/backups does.
-        if ($sent['ok'] && pg_backup_cloud_is_type($settings['backup_remote_type'])) {
+        // The bucket or cloud folder keeps as many weeks as data/backups does.
+        if ($sent['ok'] && (($settings['backup_remote_type'] === 's3') || pg_backup_cloud_is_type($settings['backup_remote_type']))) {
 
             list($type, $config) = pg_backup_remote_config();
-            $pruned = pg_backup_cloud_prune($type, $config, $settings['backup_keep']);
+            $pruned = ($type === 's3')
+                ? pg_backup_s3_prune($config, $settings['backup_keep'])
+                : pg_backup_cloud_prune($type, $config, $settings['backup_keep']);
 
             foreach ($pruned['deleted'] as $name) {
                 log_activity(lang(array('string' => 'Old automatic backup {var:1} was deleted from the remote copy.', 'vars' => array($name))), 'SYSTEM');
@@ -1363,202 +1365,36 @@ function pg_backup_ftp_put($file, array $config)
 
 
 /**
- * URI-encode a string the way Signature Version 4 expects.
+ * The shared object storage client's settings (includes/fn/object_storage.php)
+ * for the backup destination "S3-compatible storage", which keeps its own
+ * fields on the Backups card.
  *
- * Every byte except A-Z a-z 0-9 - _ . ~ is percent-encoded with upper-case
- * hex; "/" is kept when encoding an object key path.
- *
- * @param string $value
- * @param bool $keep_slash
- * @return string
- */
-function pg_backup_s3_uri_encode($value, $keep_slash)
-{
-    $encoded = rawurlencode((string) $value);
-
-    // rawurlencode() leaves "~" alone since PHP 5.3, which is what SigV4 wants.
-    return $keep_slash ? str_replace('%2F', '/', $encoded) : $encoded;
-}
-
-
-/**
- * The SigV4 signing key: HMAC chain over date, region, service.
- *
- * @param string $secret
- * @param string $date YYYYMMDD
- * @param string $region
- * @param string $service
- * @return string raw binary key
- */
-function pg_backup_s3_signing_key($secret, $date, $region, $service)
-{
-    $key = hash_hmac('sha256', $date, 'AWS4' . $secret, true);
-    $key = hash_hmac('sha256', $region, $key, true);
-    $key = hash_hmac('sha256', $service, $key, true);
-
-    return hash_hmac('sha256', 'aws4_request', $key, true);
-}
-
-
-/**
- * The SigV4 canonical request.
- *
- * @param string $method
- * @param string $uri already URI-encoded path
- * @param string|array $query a canonical query string, or name => value pairs to encode and sort
- * @param array $headers name => value; names are lower-cased and sorted here
- * @param string $payload_hash hex sha256 of the body
- * @return array array('request' => string, 'signed_headers' => string)
- */
-function pg_backup_s3_canonical_request($method, $uri, $query, array $headers, $payload_hash)
-{
-    if (is_array($query)) {
-        $pairs = array();
-        foreach ($query as $name => $value) {
-            $pairs[pg_backup_s3_uri_encode($name, false)] = pg_backup_s3_uri_encode($value, false);
-        }
-        ksort($pairs, SORT_STRING);
-        $parts = array();
-        foreach ($pairs as $name => $value) {
-            $parts[] = $name . '=' . $value;
-        }
-        $query = implode('&', $parts);
-    }
-
-    $canonical = array();
-
-    foreach ($headers as $name => $value) {
-        $canonical[strtolower(trim($name))] = preg_replace('/\s+/', ' ', trim((string) $value));
-    }
-
-    ksort($canonical, SORT_STRING);
-
-    $lines = '';
-
-    foreach ($canonical as $name => $value) {
-        $lines .= $name . ':' . $value . "\n";
-    }
-
-    $signed_headers = implode(';', array_keys($canonical));
-
-    return array(
-        'request' => strtoupper($method) . "\n"
-            . (($uri === '') ? '/' : $uri) . "\n"
-            . (string) $query . "\n"
-            . $lines . "\n"
-            . $signed_headers . "\n"
-            . $payload_hash,
-        'signed_headers' => $signed_headers,
-    );
-}
-
-
-/**
- * The SigV4 string to sign.
- *
- * @param string $amz_date YYYYMMDD'T'HHMMSS'Z'
- * @param string $scope date/region/service/aws4_request
- * @param string $canonical_hash hex sha256 of the canonical request
- * @return string
- */
-function pg_backup_s3_string_to_sign($amz_date, $scope, $canonical_hash)
-{
-    return "AWS4-HMAC-SHA256\n" . $amz_date . "\n" . $scope . "\n" . $canonical_hash;
-}
-
-
-/**
- * The SigV4 signature of a string to sign.
- *
- * @return string lower-case hex
- */
-function pg_backup_s3_signature($secret, $date, $region, $service, $string_to_sign)
-{
-    return hash_hmac('sha256', $string_to_sign, pg_backup_s3_signing_key($secret, $date, $region, $service));
-}
-
-
-/**
- * Where an object goes: URL, Host header and canonical path.
- *
- * An empty endpoint is Amazon S3 in the configured region. An endpoint with no
- * scheme is taken as https. Path style puts the bucket in the path (MinIO and
- * most self-hosted stores); virtual-hosted style puts it in the host name.
+ * An empty endpoint has always meant Amazon S3 in the region given, so a
+ * site set up that way keeps sending where it did.
  *
  * @param array $config pg_backup_remote_normalize('s3', ...)
- * @param string $file_name
- * @return array array('url', 'host', 'uri', 'region') or array() when the endpoint cannot be read
+ * @return array pg_os_normalize() plus enabled
  */
-function pg_backup_s3_target(array $config, $file_name)
+function pg_backup_s3_client_config(array $config)
 {
     $region = ($config['region'] !== '') ? $config['region'] : 'us-east-1';
 
-    $endpoint = ($config['endpoint'] !== '') ? $config['endpoint'] : 'https://s3.' . $region . '.amazonaws.com';
-
-    if (!preg_match('#^[a-z][a-z0-9+.-]*://#i', $endpoint)) {
-        $endpoint = 'https://' . $endpoint;
-    }
-
-    $parts = parse_url($endpoint);
-
-    if (!is_array($parts) || empty($parts['host']) || !in_array(strtolower($parts['scheme']), array('http', 'https'), true)) {
-        return array();
-    }
-
-    $scheme = strtolower($parts['scheme']);
-    $host   = strtolower($parts['host']) . (isset($parts['port']) ? ':' . (int) $parts['port'] : '');
-    $base   = isset($parts['path']) ? rtrim($parts['path'], '/') : '';
-
-    $key = (($config['prefix'] !== '') ? $config['prefix'] . '/' : '') . $file_name;
-    $key = pg_backup_s3_uri_encode($key, true);
-
-    if ($config['path_style']) {
-        $uri = $base . '/' . pg_backup_s3_uri_encode($config['bucket'], false) . '/' . $key;
-    } else {
-        $host = $config['bucket'] . '.' . $host;
-        $uri  = $base . '/' . $key;
-    }
-
-    return array(
-        'url'    => $scheme . '://' . $host . $uri,
-        'host'   => $host,
-        'uri'    => $uri,
-        'region' => $region,
-    );
+    return pg_os_normalize(array(
+        'endpoint'   => ($config['endpoint'] !== '') ? $config['endpoint'] : 'https://s3.' . $region . '.amazonaws.com',
+        'region'     => $region,
+        'bucket'     => $config['bucket'],
+        'prefix'     => $config['prefix'],
+        'path_style' => $config['path_style'],
+        'key_id'     => $config['access_key'],
+        'secret'     => $config['secret_key'],
+    )) + array('enabled' => true);
 }
 
 
 /**
- * The reason an S3-compatible service gave for refusing a request.
- *
- * @param int $http
- * @param string $body the XML error document, if any
- * @return string
- */
-function pg_backup_s3_error_message($http, $body)
-{
-    $code = '';
-    $message = '';
-
-    if (preg_match('#<Code>(.*?)</Code>#s', (string) $body, $match)) {
-        $code = trim(html_entity_decode($match[1], ENT_QUOTES, 'UTF-8'));
-    }
-
-    if (preg_match('#<Message>(.*?)</Message>#s', (string) $body, $match)) {
-        $message = trim(html_entity_decode($match[1], ENT_QUOTES, 'UTF-8'));
-    }
-
-    $reason = trim($code . (($code !== '' && $message !== '') ? ': ' : '') . $message);
-
-    return lang(array('string' => 'The storage service answered HTTP {var:1}. {var:2}', 'vars' => array((int) $http, $reason)));
-}
-
-
-/**
- * Upload a file to an S3-compatible bucket with a single signed PUT.
- *
- * The body is streamed from disk; the payload hash is the file's sha256, so
- * the service verifies the bytes it received.
+ * Upload a backup archive to an S3-compatible bucket, under the folder in
+ * the bucket and the archive's own name. An archive above 64 MB goes up in
+ * parts (pg_os_put()), so its size is not bound by one request.
  *
  * @param string $file
  * @param array $config pg_backup_remote_normalize('s3', ...)
@@ -1574,90 +1410,84 @@ function pg_backup_s3_put($file, array $config)
         return array('ok' => false, 'error' => lang('The bucket, the access key and the secret key are all required.'));
     }
 
-    $target = pg_backup_s3_target($config, basename($file));
+    $client = pg_backup_s3_client_config($config);
 
-    if (!$target) {
+    if (!pg_os_target($client, '')) {
         return array('ok' => false, 'error' => lang('The storage endpoint address is not valid.'));
     }
 
-    $size = filesize($file);
-    $payload_hash = hash_file('sha256', $file);
+    $sent = pg_os_put($client, pg_basename($file), $file, array('content_type' => 'application/zip'));
 
-    if (($size === false) || ($payload_hash === false)) {
-        return array('ok' => false, 'error' => lang(array('string' => 'The file {var:1} cannot be read.', 'vars' => array(basename($file)))));
+    return array('ok' => $sent['ok'], 'error' => $sent['ok'] ? '' : $sent['message']);
+}
+
+
+/**
+ * The names an S3 listing holds directly in the backup folder: keys with no
+ * further folder in them. Backups kept in a deeper folder of the same prefix
+ * are not this site's and are never pruned.
+ *
+ * @param array $items pg_os_list() items
+ * @return array names
+ */
+function pg_backup_s3_names(array $items)
+{
+    $names = array();
+
+    foreach ($items as $item) {
+        $key = isset($item['key']) ? (string) $item['key'] : '';
+
+        if (($key !== '') && (strpos($key, '/') === false)) {
+            $names[] = $key;
+        }
     }
 
-    $time     = time();
-    $amz_date = gmdate('Ymd\THis\Z', $time);
-    $date     = gmdate('Ymd', $time);
-    $scope    = $date . '/' . $target['region'] . '/s3/aws4_request';
+    return array_values(array_unique($names));
+}
 
-    $headers = array(
-        'host'                 => $target['host'],
-        'x-amz-content-sha256' => $payload_hash,
-        'x-amz-date'           => $amz_date,
-    );
 
-    $canonical = pg_backup_s3_canonical_request('PUT', $target['uri'], '', $headers, $payload_hash);
+/**
+ * Delete the automatic backups beyond the retention from the bucket's
+ * backup folder, as pg_backup_cloud_prune() does for the cloud accounts.
+ *
+ * @param array $config pg_backup_remote_normalize('s3', ...)
+ * @param int $keep weeks to keep; below 1 keeps everything
+ * @return array array('ok' => bool, 'deleted' => array, 'error' => string)
+ */
+function pg_backup_s3_prune(array $config, $keep)
+{
+    $outcome = array('ok' => true, 'deleted' => array(), 'error' => '');
 
-    $signature = pg_backup_s3_signature(
-        $config['secret_key'],
-        $date,
-        $target['region'],
-        's3',
-        pg_backup_s3_string_to_sign($amz_date, $scope, hash('sha256', $canonical['request']))
-    );
-
-    $handle = @fopen($file, 'rb');
-
-    if (!$handle) {
-        return array('ok' => false, 'error' => lang(array('string' => 'The file {var:1} cannot be read.', 'vars' => array(basename($file)))));
+    if ((int) $keep < 1) {
+        return $outcome;
     }
 
-    $ch = curl_init($target['url']);
+    $client = pg_backup_s3_client_config($config);
 
-    curl_setopt_array($ch, array(
-        CURLOPT_UPLOAD         => true,
-        CURLOPT_INFILE         => $handle,
-        CURLOPT_INFILESIZE     => $size,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_FOLLOWLOCATION => false,
-        CURLOPT_CONNECTTIMEOUT => 15,
-        // Two minutes, or one second per 50 KB for a large archive.
-        CURLOPT_TIMEOUT        => (int) max(120, ceil($size / 51200)),
-        CURLOPT_HTTPHEADER     => array(
-            'Host: ' . $target['host'],
-            'x-amz-content-sha256: ' . $payload_hash,
-            'x-amz-date: ' . $amz_date,
-            'Content-Type: application/zip',
-            'Authorization: AWS4-HMAC-SHA256 Credential=' . $config['access_key'] . '/' . $scope
-                . ', SignedHeaders=' . $canonical['signed_headers']
-                . ', Signature=' . $signature,
-        ),
-    ));
+    // Automatic backup names start alike; listing by that start keeps a
+    // bucket shared with other files from being read whole.
+    $listed = pg_os_list($client, 'auto_backup_');
 
-    // Sent with no User-Agent the request looks like an anonymous client to
-    // the receiving side's firewall.
-    curl_setopt($ch, CURLOPT_USERAGENT, function_exists('pinegrap_user_agent') ? pinegrap_user_agent() : 'Pinegrap');
-
-    // The archive holds the whole database; it is only sent to a verified peer.
-    pg_curl_tls($ch);
-
-    $body  = curl_exec($ch);
-    $errno = curl_errno($ch);
-    $error = curl_error($ch);
-    $http  = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-    unset($ch);
-    fclose($handle);
-
-    if ($errno) {
-        return array('ok' => false, 'error' => trim('cURL ' . $errno . ': ' . $error . pg_curl_tls_hint($errno)));
+    if (!$listed['ok']) {
+        return array('ok' => false, 'deleted' => array(), 'error' => $listed['message']);
     }
 
-    if ($http !== 200) {
-        return array('ok' => false, 'error' => pg_backup_s3_error_message($http, (string) $body));
+    foreach (pg_backup_prune_list(pg_backup_s3_names($listed['items']), (int) $keep) as $name) {
+
+        // Asked again at the point of deletion, as for the local copies.
+        if (!pg_backup_is_auto_name($name)) {
+            continue;
+        }
+
+        $gone = pg_os_delete($client, $name);
+
+        if ($gone['ok']) {
+            $outcome['deleted'][] = $name;
+        } else {
+            $outcome['ok'] = false;
+            $outcome['error'] = $gone['message'];
+        }
     }
 
-    return array('ok' => true, 'error' => '');
+    return $outcome;
 }
