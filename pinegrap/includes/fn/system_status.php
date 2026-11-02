@@ -3338,11 +3338,13 @@ function get_system_status_checks()
 
             // Deliveries that ran out of attempts. next_attempt_at is set to
             // zero when a row is given up on, which is what separates them from
-            // the ones still waiting their turn.
+            // the ones still waiting their turn. Chat notifications
+            // (webhook_id 0) are no subscription; their failures show on
+            // their target in Site Settings.
             $webhook_stuck = 0;
 
             $webhook_queue = @mysqli_query(db::$con,
-                "SELECT COUNT(*) AS total FROM api_webhook_queue WHERE next_attempt_at = 0");
+                "SELECT COUNT(*) AS total FROM api_webhook_queue WHERE next_attempt_at = 0 AND webhook_id > 0");
 
             if ($webhook_queue !== false) {
                 $webhook_queue_row = mysqli_fetch_assoc($webhook_queue);

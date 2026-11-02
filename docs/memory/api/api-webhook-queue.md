@@ -21,3 +21,6 @@ description: Outgoing webhook queue (includes/api/outbound/webhooks.php): which 
 ## How are they counted?
 - Held rows count as waiting: API `pending` (`next_attempt_at > 0 OR attempts = 0`) and the panel's waiting count; given up is `next_attempt_at = 0 AND attempts > 0`. Ops alert `webhook_stuck` counts both.
 - The Events tab error line comes from the newest row with `attempts > 0`, as the API's `last_error` does. A held row carries no error, so reading the newest row of all hid the 401/404 reason as soon as one event was held.
+
+## What are the `webhook_id = 0` rows?
+- Slack, Teams and Telegram messages (`platform/notification-channels.md`, #5076): no subscription, the target in a sealed entry, the body sent as built. `api_webhook_deliver()` passes them to `pg_notify_deliver()` before the subscription lookup. Subscription paths filter by `webhook_id` and never touch them; System Status' given-up count reads `webhook_id > 0`.

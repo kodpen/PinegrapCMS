@@ -24,6 +24,38 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $result = mysqli_query(db::$con, "SELECT * FROM config") or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
+    // ── Chat notifications ───────────────────────────────────────────────
+    // Only when the card was drawn: a site that cannot seal draws a note
+    // instead, and its save must leave the sealed entry alone. A new target
+    // whose address or token its service does not give out refuses the save
+    // before anything is written. Written at the end of this module.
+    $notify_save = (post_value('notify_channels_card') && function_exists('pg_notify_targets')
+        && pg_connect_schema_ready() && pg_connect_can_seal());
+    $notify_new = null;
+
+    if ($notify_save && (trim((string) post_value('notify_new_kind')) !== '')) {
+
+        $notify_new = pg_notify_target_clean(array(
+            'id'      => substr(md5(uniqid('', true) . mt_rand()), 0, 16),
+            'kind'    => (string) post_value('notify_new_kind'),
+            'label'   => (string) post_value('notify_new_label'),
+            'url'     => (string) post_value('notify_new_url'),
+            'token'   => (string) post_value('notify_new_token'),
+            'chat_id' => (string) post_value('notify_new_chat_id'),
+            'codes'   => (array) post_value('notify_new_codes'),
+            'events'  => (array) post_value('notify_new_events'),
+        ), array_keys(pg_ops_alert_codes()), array_keys(pg_notify_events()));
+
+        if ($notify_new === null) {
+            $liveform->mark_error((post_value('notify_new_kind') === 'telegram') ? 'notify_new_token' : 'notify_new_url',
+                lang('This is not an address or token the chosen service gives out. Check the bot token and the chat ID for Telegram.'));
+        }
+
+        if ($liveform->check_form_errors()) {
+            return;
+        }
+    }
+
     // ── Scheduled job dispatch ───────────────────────────────────────────
     // Same fragment pattern: an install that has not run the 2026.4.2 upgrade
     // saves nothing here instead of failing the whole screen on an unknown
@@ -396,4 +428,60 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                 $liveform->add_notice(lang(array('string' => 'The remote backup destination refused the test file: {var:1}', 'vars' => array(h($backup_test_result['error'])))));
             }
         }
+
+    if ($notify_save) {
+
+        $notify_targets_now = pg_notify_targets(true);
+        $notify_labels = (array) post_value('notify_target_label');
+        $notify_codes = (array) post_value('notify_target_codes');
+        $notify_events = (array) post_value('notify_target_events');
+        $notify_delete = (array) post_value('notify_target_delete');
+        $notify_kept = array();
+
+        foreach ($notify_targets_now as $notify_id => $notify_target) {
+
+            $notify_id = (string) $notify_id;
+
+            if (!empty($notify_delete[$notify_id])) {
+                continue;
+            }
+
+            // A target the card did not draw (added meanwhile in another
+            // tab) is kept as it is.
+            if (!array_key_exists($notify_id, $notify_labels)) {
+                $notify_kept[$notify_id] = $notify_target;
+                continue;
+            }
+
+            $notify_clean = pg_notify_target_clean(array(
+                'label'  => (string) $notify_labels[$notify_id],
+                'codes'  => isset($notify_codes[$notify_id]) ? (array) $notify_codes[$notify_id] : array(),
+                'events' => isset($notify_events[$notify_id]) ? (array) $notify_events[$notify_id] : array(),
+            ) + $notify_target, array_keys(pg_ops_alert_codes()), array_keys(pg_notify_events()));
+
+            $notify_kept[$notify_id] = ($notify_clean !== null) ? $notify_clean : $notify_target;
+        }
+
+        if ($notify_new !== null) {
+            $notify_kept[$notify_new['id']] = $notify_new;
+        }
+
+        if ($notify_kept !== $notify_targets_now) {
+            pg_notify_targets_save($notify_kept);
+        }
+
+        // "Save and send a test": sent at once, outside the queue, after the
+        // save, so it tests what is stored. Reported as a notice, like the
+        // backup connection test.
+        $notify_test_id = (string) post_value('notify_test');
+
+        if (($notify_test_id !== '') && isset($notify_kept[$notify_test_id])) {
+
+            $notify_test = pg_notify_test($notify_test_id);
+
+            $liveform->add_notice($notify_test['ok']
+                ? lang(array('string' => 'The test message was sent to {var:1}.', 'vars' => array(h($notify_kept[$notify_test_id]['label']))))
+                : lang(array('string' => 'The test message to {var:1} was refused: {var:2}', 'vars' => array(h($notify_kept[$notify_test_id]['label']), h($notify_test['error'])))));
+        }
     }
+}

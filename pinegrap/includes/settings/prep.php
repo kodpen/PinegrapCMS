@@ -2427,6 +2427,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $ops_alert_mail_failures = isset($row['ops_alert_mail_failures']) ? (int) $row['ops_alert_mail_failures'] : 10;
     $ops_alert_cert_days = isset($row['ops_alert_cert_days']) ? (int) $row['ops_alert_cert_days'] : 14;
 
+    // Chat notifications card: the Slack, Teams and Telegram targets, read
+    // from their sealed entry. The address and the token are never drawn
+    // back; the card shows where a target sends (scheme and host) only.
+    $notify_ready = function_exists('pg_notify_targets') && pg_connect_schema_ready() && pg_connect_can_seal();
+    $notify_targets = $notify_ready ? pg_notify_targets(true) : array();
+    $notify_job_on = function_exists('pg_cron_job_is_enabled') && pg_cron_job_is_enabled('api_webhook_job');
+
     // Maintenance mode card (2026.11.0, 11.0.7). The end time goes into a
     // datetime-local box, which takes the site's own time zone.
     $maintenance_ready = array_key_exists('maintenance_mode', $row);

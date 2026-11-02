@@ -602,6 +602,165 @@ $pg_settings_cards[] = '
         </div>
     </div>';
 
+// ── Chat notifications ──
+//
+// Slack, Teams and Telegram targets (includes/fn/notify_channels.php), kept
+// in one sealed entry rather than a config column. The save module writes
+// them only when this card was drawn (notify_channels_card), so a site that
+// cannot seal draws a note and its save leaves the entry alone. An address
+// or a token is never drawn back: a target shows where it sends.
+$notify_checks = function ($name, $id_prefix, $options, $chosen) {
+    $out = '';
+
+    foreach ($options as $value => $label) {
+        $id = $id_prefix . '_' . substr(md5($value), 0, 8);
+        $out .= '
+                                <div class="col-12 md:col-6">
+                                    <div class="form-field">
+                                        <input value="' . h($value) . '"' . (in_array($value, $chosen, true) ? ' checked="checked"' : '') . ' class="check" type="checkbox" id="' . h($id) . '" name="' . h($name) . '[]"/>
+                                        <label for="' . h($id) . '">' . h($label) . '</label>
+                                    </div>
+                                </div>';
+    }
+
+    return $out;
+};
+
+$notify_alert_options = array();
+
+foreach (pg_ops_alert_codes() as $notify_code => $notify_alert) {
+    $notify_alert_options[$notify_code] = $notify_alert['label'];
+}
+
+$notify_event_options = function_exists('pg_notify_events') ? pg_notify_events() : array();
+$notify_kinds = function_exists('pg_notify_channel_kinds') ? pg_notify_channel_kinds() : array();
+
+if (!$notify_ready) {
+
+    $output_notify_settings = '
+                    <div class="col-12"><div class="alert theme-secondary mb-0">' . lang('Chat notifications keep their addresses and tokens encrypted, which needs the site\'s encryption key and the connected accounts tables. Run the upgrade, and check that the encryption key is set.') . '</div></div>';
+
+} else {
+
+    $output_notify_settings = '
+                    <input type="hidden" name="notify_channels_card" value="1"/>
+                    <div class="col-12">
+                        <div class="form-text">' . lang('Operations alerts and chosen Workspace events can also go to a Slack or Microsoft Teams channel through an incoming webhook, or to a Telegram chat through a bot. Messages go out with the webhook deliveries and are retried the same way.') . '</div>
+                    </div>' . ($notify_job_on ? '' : '
+                    <div class="col-12"><div class="alert theme-warning mb-0 py-5 small">' . lang('Messages are sent by the Webhook delivery job, which has to be selected under Cron Jobs. The test button sends at once.') . '</div></div>');
+
+    foreach ($notify_targets as $notify_id => $notify_target) {
+        $notify_id = (string) $notify_id;
+        $notify_kind = (string) ($notify_target['kind'] ?? '');
+
+        if (!isset($notify_kinds[$notify_kind])) {
+            continue;
+        }
+
+        $notify_failure = (isset($notify_target['failure']) && is_array($notify_target['failure'])) ? $notify_target['failure'] : null;
+
+        $output_notify_settings .= '
+                    <div class="col-12">
+                        <div class="border rounded-4 p-7">
+                            <div class="row gy-7">
+                                <div class="pg-f-md">
+                                    <label for="notify_label_' . h($notify_id) . '" class="form-label">' . lang('Name') . '</label>
+                                    <input type="text" name="notify_target_label[' . h($notify_id) . ']" id="notify_label_' . h($notify_id) . '" maxlength="100" class="form-control" value="' . h($notify_target['label'] ?? '') . '" />
+                                    <div class="form-text">' . h($notify_kinds[$notify_kind]['label']) . ' · ' . h(pg_notify_target_where($notify_kind, $notify_target)) . '</div>
+                                </div>' . ($notify_failure ? '
+                                <div class="col-12"><div class="alert theme-danger mb-0 py-5 small">' . lang(array(
+                                    'string' => 'Last failure {var:1}: {var:2}',
+                                    'vars'   => array(h(date('Y-m-d H:i', (int) ($notify_failure['at'] ?? 0))), h((string) ($notify_failure['reason'] ?? ''))),
+                                )) . '</div></div>' : '') . '
+                                <div class="col-12"><div class="form-label">' . lang('Operations alerts') . '</div></div>'
+                                . $notify_checks('notify_target_codes[' . $notify_id . ']', 'notify_code_' . $notify_id, $notify_alert_options, (array) ($notify_target['codes'] ?? array())) . '
+                                <div class="col-12"><div class="form-label">' . lang('Workspace') . '</div></div>'
+                                . $notify_checks('notify_target_events[' . $notify_id . ']', 'notify_event_' . $notify_id, $notify_event_options, (array) ($notify_target['events'] ?? array())) . '
+                                <div class="col-12 d-flex flex-wrap gap-7 align-items-center">
+                                    <button type="submit" name="notify_test" value="' . h($notify_id) . '" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Save and send a test') . '</button>
+                                    <div class="form-field">
+                                        <input value="1" class="check" type="checkbox" id="notify_delete_' . h($notify_id) . '" name="notify_target_delete[' . h($notify_id) . ']"/>
+                                        <label for="notify_delete_' . h($notify_id) . '">' . lang('Delete this target') . '</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>';
+    }
+
+    $notify_kind_options = '';
+
+    foreach ($notify_kinds as $notify_kind => $notify_kind_row) {
+        $notify_kind_options .= '<option value="' . h($notify_kind) . '">' . h($notify_kind_row['label']) . '</option>';
+    }
+
+    $output_notify_settings .= '
+                    <div class="col-12">
+                        <div class="h6 fw-bold mb-0">' . lang('Add a target') . '</div>
+                    </div>
+                    <div class="pg-f-sm">
+                        <label for="notify_new_kind" class="form-label">' . lang('Service') . '</label>
+                        <select name="notify_new_kind" id="notify_new_kind" class="form-control"><option value="">' . lang('None') . '</option>' . $notify_kind_options . '</select>
+                    </div>
+                    <div class="pg-f-md" data-notify-fields="slack teams telegram">
+                        <label for="notify_new_label" class="form-label">' . lang('Name') . '</label>
+                        <input type="text" name="notify_new_label" id="notify_new_label" maxlength="100" class="form-control" value="" />
+                    </div>
+                    <div class="col-12" data-notify-fields="slack teams">
+                        <label for="notify_new_url" class="form-label">' . lang('Webhook address') . '</label>
+                        <input type="password" name="notify_new_url" id="notify_new_url" maxlength="2000" class="form-control" value="" autocomplete="off" spellcheck="false" />
+                        <div class="form-text">' . lang('Slack: an incoming webhook (https://hooks.slack.com/services/…). Teams: an incoming webhook or a Workflows address. The address is a password: it is kept encrypted and not shown again.') . '</div>
+                    </div>
+                    <div class="pg-f-md" data-notify-fields="telegram">
+                        <label for="notify_new_token" class="form-label">' . lang('Bot token') . '</label>
+                        <input type="password" name="notify_new_token" id="notify_new_token" maxlength="100" class="form-control" value="" autocomplete="off" spellcheck="false" />
+                    </div>
+                    <div class="pg-f-sm" data-notify-fields="telegram">
+                        <label for="notify_new_chat_id" class="form-label">' . lang('Chat ID') . '</label>
+                        <input type="text" name="notify_new_chat_id" id="notify_new_chat_id" maxlength="40" class="form-control" value="" autocomplete="off" spellcheck="false" />
+                        <div class="form-text">' . lang('A number (negative for a group) or @channelname. The bot has to be a member of the chat.') . '</div>
+                    </div>
+                    <div class="col-12" data-notify-fields="slack teams telegram"><div class="form-label">' . lang('Operations alerts') . '</div></div>
+                    <div class="col-12" data-notify-fields="slack teams telegram"><div class="row gy-5">' . $notify_checks('notify_new_codes', 'notify_new_code', $notify_alert_options, array_keys($notify_alert_options)) . '</div></div>
+                    <div class="col-12" data-notify-fields="slack teams telegram"><div class="form-label">' . lang('Workspace') . '</div></div>
+                    <div class="col-12" data-notify-fields="slack teams telegram"><div class="row gy-5">' . $notify_checks('notify_new_events', 'notify_new_event', $notify_event_options, array()) . '</div></div>';
+
+    // The fields of the chosen service only; the others stay in the form
+    // and are posted empty.
+    $pg_settings_scripts[] = '
+    <script>
+        (function () {
+            var kind = document.getElementById("notify_new_kind");
+
+            if (!kind) {
+                return;
+            }
+
+            function sync() {
+                document.querySelectorAll("[data-notify-fields]").forEach(function (box) {
+                    box.classList.toggle("d-none", box.getAttribute("data-notify-fields").split(" ").indexOf(kind.value) < 0);
+                });
+            }
+
+            kind.addEventListener("change", sync);
+            sync();
+        })();
+    </script>';
+}
+
+$pg_settings_cards[] = '
+    <div id="pgset-chat-notify" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                ' . lang('Chat notifications') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-12">' . $output_notify_settings . '
+                </div>
+            </div>
+        </div>
+    </div>';
+
 // ── Maintenance Mode ──
 //
 // What a visitor sees while the site is being worked on
