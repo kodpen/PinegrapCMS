@@ -42,7 +42,8 @@ function get_custom_form_confirmation_screen_content($properties)
     // Otherwise, a reference code should have been passed in the query string
     // so deal with that.
     } else {
-        $_GET['r'] = trim($_GET['r'] ?? '');
+        // An array (?r[]=x) reads as no reference code: trim() would throw.
+        $_GET['r'] = is_string($_GET['r'] ?? null) ? trim($_GET['r']) : '';
 
         // If there is no reference code, then output error.
         if ($_GET['r'] == '') {
