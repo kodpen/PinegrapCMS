@@ -31,7 +31,7 @@ description: Generated from the module field of the memory files: each includes/
 - `consent`: [[fn-module-errors-mail-backup-consent]]
 - `contact_list`: [[contact-list-names]], [[contact-merge-role]], [[contact-user-list-view-kept]], [[panel-image-alt]], [[server-paged-lists]]
 - `contacts`: [[contact-holders]], [[contact-lead-source]], [[deleted-picture-fallback]], [[panel-avatar]], [[panel-avatar-sites]]
-- `core`: [[error-screen-language-and-status]], [[send-to-url-safety]], [[style-tag-css]], [[time-zone-list-labels]]
+- `core`: [[app-screen-messages]], [[error-screen-language-and-status]], [[send-to-url-safety]], [[style-tag-css]], [[time-zone-list-labels]]
 - `cron`: [[scheduled-job-resume]]
 - `currency_rates`: [[exchange-rates-update]]
 - `custom_form`: [[collection-template-refs]], [[custom-form-field-rules]], [[form-field-errors]], [[registration-gate-form-submitter]], [[sms-consent-custom-form]]
