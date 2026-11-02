@@ -3383,11 +3383,17 @@ function get_column_heading($column, $sort, $order, $extras = '', $key = null)
         return ('<a href="' . h($_SERVER["PHP_SELF"]) . '?sort=' . h(urlencode($key)) . '&order=asc' . $extras . '" class="link-top-row btn btn-sm">' . h($column) . '<span class="material-icons">unfold_more</span></a>');
     }
 }
-function get_acl_folder_tree($type, $parent_folder_id = 0, $level = 0, $folders = array(), $folders_that_user_has_access_to = array(), $user_id = '')
+// The view tree lists only private folders, so a folder's parents that are
+// not private are left out of it: they lead its label
+// ("pinegrap_cafe › private") through $left_out_parents (never the root
+// folder, as in select_folder()), and the indentation
+// counts only the folders printed above it, as many sites hold several
+// folders named 'private' under different parents.
+function get_acl_folder_tree($type, $parent_folder_id = 0, $level = 0, $folders = array(), $folders_that_user_has_access_to = array(), $user_id = '', $left_out_parents = array())
 {
     // The view tree's expiry fields are drawn by pgDatePicker
     // (pg_fields.js), bound by backend.src.js when a box opens.
-    $output = ($type == 'view' && $level == 0) ? pg_fields_script() : '';
+    $output = ($type == 'view' && $parent_folder_id == 0) ? pg_fields_script() : '';
     // if this is the first time this function has run, then get folders
     if ($parent_folder_id == 0) {
         // get all folders
@@ -3429,8 +3435,15 @@ function get_acl_folder_tree($type, $parent_folder_id = 0, $level = 0, $folders 
             $indentation .= '&nbsp;&nbsp;&nbsp;&nbsp;';
         }
         $next_level = $level + 1;
+        $child_left_out_parents = array();
         // if type is edit or type is view and folder is private, then output line for this folder
-        if (($type == 'edit') || (($type == 'view') && (get_access_control_type($folder['id']) == 'private'))) {
+        $folder_is_listed = (($type == 'edit') || (($type == 'view') && (get_access_control_type($folder['id']) == 'private')));
+        if (!$folder_is_listed) {
+            // The root folder is never named: it would only lead every path.
+            $next_level = $level;
+            $child_left_out_parents = ($parent_folder_id != 0) ? array_merge($left_out_parents, array($folder['name'])) : $left_out_parents;
+        }
+        if ($folder_is_listed) {
             $checked = '';
             // if the user has access to this folder, then prepare to check check box
             if (in_array($folder['id'], $folders_that_user_has_access_to) == true) {
@@ -3495,10 +3508,10 @@ function get_acl_folder_tree($type, $parent_folder_id = 0, $level = 0, $folders 
                     . '</span>'
                     . '</span>';
             }
-            $output .= '<div class="form-field"><input type="checkbox" name="' . $type . '_' . $folder['id'] . '" id="' . $type . '_' . $folder['id'] . '" value="1" class="check  multiselect-checkbox"' . $checked . $output_onclick . ' /><label class="" for="' . $type . '_' . $folder['id'] . '">' . $indentation . h($folder['name']) . '</label>' . $output_expiration_date_container . '</div>';
+            $output .= '<div class="form-field"><input type="checkbox" name="' . $type . '_' . $folder['id'] . '" id="' . $type . '_' . $folder['id'] . '" value="1" class="check  multiselect-checkbox"' . $checked . $output_onclick . ' /><label class="" for="' . $type . '_' . $folder['id'] . '">' . $indentation . h(pg_folder_option_label($folder['name'], $left_out_parents)) . '</label>' . $output_expiration_date_container . '</div>';
         }
         // get lines for child folders
-        $output .= get_acl_folder_tree($type, $folder['id'], $next_level, $folders, $folders_that_user_has_access_to, $user_id);
+        $output .= get_acl_folder_tree($type, $folder['id'], $next_level, $folders, $folders_that_user_has_access_to, $user_id, $child_left_out_parents);
     }
     return $output;
 }
@@ -5734,6 +5747,34 @@ function pg_reset_password_notice($set_password_url, $sent)
     }
 
     return lang('The user\'s password has been reset, and the user has been e-mailed to set a new password with "Forgot password" on the sign-in page.');
+}
+
+/**
+ * The notice after a user was created: whether the new account's e-mail was
+ * sent (email()'s answer), and the random password only for a user who was
+ * not notified, who has no other way in. Not escaped. Pure.
+ *
+ * @param bool $notified  "Notify User" was on
+ * @param bool $sent  email() returned true
+ * @param string $set_password_url  The link the e-mail carried, '' for none
+ * @param string $password  The random password the account was given
+ * @return string
+ */
+function pg_new_user_notice($notified, $sent, $set_password_url, $password)
+{
+    if (!$notified) {
+        return lang('The user has been created. ') . lang(array('string' => 'The password is \'{var:1}\'. The user has not been notified.', 'vars' => array((string) $password)));
+    }
+
+    if (!$sent) {
+        return lang('The user has been created, but the e-mail could not be sent. The user can set a password with "Forgot password" on the sign-in page.');
+    }
+
+    if ((string) $set_password_url !== '') {
+        return lang('The user has been created. ') . lang('A link to set a password has been emailed to the user.');
+    }
+
+    return lang('The user has been created. ') . lang('The user has been emailed and can set a password with "Forgot password" on the sign-in page.');
 }
 
 

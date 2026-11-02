@@ -49,6 +49,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-bundle-lines.md: A product bundle on an ERP invoice (#2727): one line, the component snapshot in erp_invoice_item_components, one stock move per component on issue, return and cancel, the profit report.
 - erp-cash-forecast.md: ERP cash forecast: what counts as money in and out over 30, 60 or 90 days, the item shape, cheque tills left out of today's cash, how a new source is added, the API's scope.
 - erp-cashflow-report.md: ERP cash flow report: transfers excluded in all-till view, opening balance rule, period slice keys, payment-method labels, toolbar and tr.json traps.
+- erp-cheque-form-checks.md: Cheque and note form and step checks (PR #5636): the amount limit, the step reason in the notes, the full status filter, required and labelled fields, action-named step buttons.
 - erp-cheque-receipts.md: Why a cheque's or note's receipt is not cancelled on its own (screen, erp_receipt_cancel(), API 409 receipt_belongs_to_cheque), and what to do with a cheque entered by mistake
 - erp-cheques.md: ERP cheques and promissory notes (4.101): the steps, money only through erp_post_receipt and erp_post_transfer, a step never rewrites an earlier movement, which tills hold them.
 - erp-counter-sale-completion.md: Counter sale completion in local_sale_complete(): the claim and numbering order, the invoice for every sale with the ERP on, receipts and split payment, the cash right, failures as warnings.
@@ -156,6 +157,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-till-below-zero.md: A cash till (drawer, received-cheque portfolio) never goes below zero on a transfer, payment or expense: the one check, where it is asked, who skips it, what an already negative till does
 - erp-till-inactive-payments.md: No expense, receipt, payment or transfer uses a missing till or one taken off (is_active = 0): the gates, who meets them, the cheque exception, what a repeat does then
 - erp-translation-traps.md: Short translation keys that read wrong as ERP labels (Quote, By, From, To, Count, Record, Due, Net, Method) and the longer keys ERP screens use instead.
+- erp-typed-line-numbers.md: How the document editors refuse a signed or lettered quantity or rate and a line amount past the cap
 - erp-vat-per-rate-group.md: How the ERP takes a document's VAT, withholding and second tax per rate group, as Paraşüt does (owner decision 2026-10-21), where the rule applies, and where the checkout and charge decisions are kept
 - erp-vat-report.md: ERP VAT report: the one place tax totals are added up (vat_report.php), calculated, deductible and difference, what never counts, and the report's name in the menu.
 - erp-vat-withholding.md: VAT withholding (tevkifat, migration 4.68) on ERP documents: what tax_total, withholding_total and grand_total hold, the line columns, the code list rule, returns, document type.

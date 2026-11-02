@@ -51,7 +51,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - designer-form-logic-steps.md: Steps FL1-FL4 of plans/designer-form-logic.md: Shown when rules, form steps with progress, the browser draft, the fee setting and order writer; claim as [plan:designer-form-logic] FL<n>
 - designer-form-logic.md: Plan (owner 2026-11-02): designed forms get Shown-when rules, steps with progress, and a payment step that places a one-line order through the payment drivers; steps FL1-FL8
 - designer-prototype-links-code.md: What the code holds for plans/designer-prototype-links.md: where links sit, the two href places, page links by id, renames, the resolver's limits, editor state, rights and Publish
-- designer-prototype-links-steps.md: Steps of plans/designer-prototype-links.md slice 1 (read-only Prototype map), one PR each, about 1,000 product lines
 - designer-prototype-links.md: Plan (2026-10-24; ready to start, owner 2026-11-01): a Figma/XD-like prototype view in the visual designer: pages as frames, menu items and links as hotspots, an arrow sets the page a click opens
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19): auto invoice with its two filters and the e-Fatura threshold warning built (#697, #958, #1773); only the internet-sale UBL fields (step 3) left
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
@@ -129,9 +128,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - web-vitals-ai-visibility-steps-2.md: Steps WV4-WV6 of plans/web-vitals-ai-visibility.md: AI visibility figures and referrals, the Speed and AI sections with the card, close-out; claim as [plan:web-vitals-ai-visibility] WV<n>
 - web-vitals-ai-visibility-steps.md: Steps WV1-WV3 of plans/web-vitals-ai-visibility.md: the vitals beacon and rollup, the figures and API route, the AI fetch counter; claim as [plan:web-vitals-ai-visibility] WV<n>
 - web-vitals-ai-visibility.md: Plan (owner 2026-11-02): real-user web vitals per page from a beacon into an hourly rollup, and an AI visibility view (AI crawler fetches, AI referrals); steps WV1-WV6
-- webp-same-address-options.md: Research of 2026-11-01 behind plans/webp-same-address.md: the options weighed for WebP without breaking addresses, and the outside facts (browsers, mail, social sites, marketplaces, Cloudflare)
-- webp-same-address-steps.md: Steps W1-W10 of plans/webp-same-address.md: negotiation, switches, encode cap, convert doors, Cloudflare rule, panel thumbnails, Workspace previews, upload cap; claim as [plan:webp-same-address] W<n>
-- webp-same-address.md: Plan (owner request 2026-11-01): a JPEG or PNG keeps its address and its file; a browser that asks for WebP gets a WebP copy there, every other reader the original; steps W1-W10
 - workspace-agent-handles.md: Plan (2026-10-21, steps 1 and 5 done, 4 waits for 2): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
 - workspace-assistant-key-setup.md: Plan (2026-10-23; steps 1-3 (#1462, #1523, #1726) and question 6 done): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
 - workspace-menu-layout.md: Plan (owner decision 2026-10-30) for a tidier Workspace list in the main menu: search, places, one Channels section, discussions, Tools tiles; channel screen unchanged

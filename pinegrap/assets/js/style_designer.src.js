@@ -6975,6 +6975,7 @@ const StyleDesigner = (function () {
             '<span class="sd-vb-sep"></span>' +
             '<button type="button" class="sd-vb-btn" id="sd-vb-find" title="' + esc(_sdT('Find & Replace (Ctrl+F)')) + '"><span class="bi bi-search"></span> <span class="sd-vb-txt">' + esc(_sdT('Find')) + '</span></button>' +
             '<button type="button" class="sd-vb-btn" id="sd-vb-snapshots" title="' + esc(_sdT('History')) + '"><span class="bi bi-clock-history"></span> <span class="sd-vb-txt">' + esc(_sdT('History')) + '</span></button>' +
+            '<button type="button" class="sd-vb-btn sd-vb-toggle" id="sd-vb-proto" aria-pressed="false" title="' + esc(_sdT('Prototype: the links between the pages')) + '"><span class="bi bi-diagram-3"></span> <span class="sd-vb-txt">' + esc(_sdT('Prototype')) + '</span></button>' +
             '<button type="button" class="sd-vb-btn" id="sd-vb-preview" title="' + esc(_sdT('Preview in a new window (Ctrl+Alt+P)')) + '"><span class="bi bi-window" ></span> <span class="sd-vb-txt">' + esc(_sdT('Preview')) + '</span></button>' +
             // Preview renders the UNSAVED canvas in a blank window; this one
             // opens the page as the site actually serves it — theme, common
@@ -7110,6 +7111,8 @@ const StyleDesigner = (function () {
         var _previewBtn   = document.getElementById('sd-vb-preview');
         var _shortcutsBtn = document.getElementById('sd-vb-shortcuts');
         if (_previewBtn)   _previewBtn.addEventListener('click', openPreview);
+        var _protoBtn = document.getElementById('sd-vb-proto');
+        if (_protoBtn) _protoBtn.addEventListener('click', _sdProtoToggle);
         if (_shortcutsBtn) _shortcutsBtn.addEventListener('click', openShortcutsModal);
 
         // The tab strip was rendered before this bar existed, so its first
@@ -67462,6 +67465,402 @@ const StyleDesigner = (function () {
             _sdShowPreview(_sdPreviewDocHtml({}, raw), w);
             _sdLivePreviewAgain();
         });
+    }
+
+    // ── Prototype view ──
+    // The design's links as a map (plans: designer-prototype-links slice
+    // 1): every tab and every shared component a frame on the graph canvas
+    // core (window.PGGraphCanvas), every link a row with its own port, an
+    // arrow from each row to the tab it opens or to a chip for what lies
+    // outside the design (a site page, an anchor, mail or phone, another
+    // site, a hidden page, a broken link). Read-only: frames and chips move,
+    // their places kept per browser and design; a row's click selects its
+    // element on the canvas. window.PGProtoHotspots collects and marks the
+    // links (with window.PGLinkResolve and the server's prototype_map read);
+    // all three are printed before this script.
+    var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null };
+
+    var SD_PROTO_MARKS = {
+        tab: { icon: 'bi-file-earmark-arrow-right', text: function () { return _sdT('Opens a page of this design'); } },
+        page: { icon: 'bi-globe2', text: function () { return _sdT('A site page outside this design'); } },
+        anchor: { icon: 'bi-hash', text: function () { return _sdT('A place on the same page'); } },
+        contact: { icon: 'bi-envelope', text: function () { return _sdT('E-mail, phone or text message'); } },
+        external: { icon: 'bi-box-arrow-up-right', text: function () { return _sdT('Another website'); } },
+        hidden: { icon: 'bi-eye-slash', text: function () { return _sdT('A page you cannot see'); } },
+        broken: { icon: 'bi-exclamation-triangle', text: function () { return _sdT('Broken link'); } }
+    };
+
+    function _sdProtoReady() {
+        return !!(window.PGGraphCanvas && window.PGProtoHotspots && window.PGLinkResolve);
+    }
+
+    function _sdProtoStoreKey() {
+        return 'pg_proto_pos_' + ((_design && _design.styleId) ? _design.styleId : 'new');
+    }
+
+    function _sdProtoSaved() {
+        try {
+            var raw = window.localStorage.getItem(_sdProtoStoreKey());
+            var parsed = raw ? JSON.parse(raw) : null;
+            return (parsed && typeof parsed === 'object') ? parsed : {};
+        } catch (e) {
+            return {};
+        }
+    }
+
+    function _sdProtoKeep(item) {
+        var saved = _sdProtoSaved();
+        saved[item.id] = { x: item.x, y: item.y };
+        try { window.localStorage.setItem(_sdProtoStoreKey(), JSON.stringify(saved)); } catch (e) {}
+    }
+
+    function _sdProtoEl(tag, cls, text) {
+        var el = document.createElement(tag);
+        if (cls) el.className = cls;
+        if (text !== undefined) el.textContent = text;
+        return el;
+    }
+
+    function _sdProtoButton(icon, label, onClick) {
+        var b = _sdProtoEl('button', 'sd-vb-btn');
+        b.type = 'button';
+        b.title = label;
+        b.setAttribute('aria-label', label);
+        b.innerHTML = '<span class="bi ' + icon + '" aria-hidden="true"></span>';
+        b.addEventListener('click', onClick);
+        return b;
+    }
+
+    // The overlay over the canvas: its bar and the graph canvas stage.
+    function _sdProtoBuild() {
+        var area = document.querySelector('#sd-canvas .sd-iframe-area');
+        if (!area) return null;
+        var G = window.PGGraphCanvas;
+        var ui = {};
+
+        ui.root = _sdProtoEl('section', 'sd-proto');
+        ui.root.id = 'sd-proto';
+        ui.root.hidden = true;
+        ui.root.setAttribute('aria-label', _sdT('Prototype'));
+
+        var bar = _sdProtoEl('div', 'sd-proto-bar');
+        bar.appendChild(_sdProtoEl('span', 'sd-proto-title', _sdT('Prototype')));
+        ui.status = _sdProtoEl('span', 'sd-proto-status');
+        ui.status.setAttribute('role', 'status');
+        bar.appendChild(ui.status);
+        var tools = _sdProtoEl('div', 'sd-proto-tools');
+        ui.zoomLabel = _sdProtoEl('span', 'sd-vb-zoom', '100%');
+        tools.appendChild(_sdProtoButton('bi-zoom-out', _sdT('Zoom Out'), function () { if (_sdProto.canvas) _sdProto.canvas.view.zoomBy(1 / 1.2); }));
+        tools.appendChild(ui.zoomLabel);
+        tools.appendChild(_sdProtoButton('bi-zoom-in', _sdT('Zoom In'), function () { if (_sdProto.canvas) _sdProto.canvas.view.zoomBy(1.2); }));
+        tools.appendChild(_sdProtoButton('bi-arrows-fullscreen', _sdT('Fit to screen'), function () { if (_sdProto.canvas) _sdProto.canvas.view.fit(); }));
+        tools.appendChild(_sdProtoButton('bi-arrow-clockwise', _sdT('Read the links again'), function () { _sdProtoLoad(); }));
+        tools.appendChild(_sdProtoButton('bi-x-lg', _sdT('Close the prototype view'), function () { _sdProtoClose(); }));
+        bar.appendChild(tools);
+        ui.root.appendChild(bar);
+
+        ui.live = _sdProtoEl('div', 'sd-proto-sr');
+        ui.live.setAttribute('aria-live', 'polite');
+        ui.viewport = _sdProtoEl('div', 'pgc-viewport');
+        ui.viewport.tabIndex = -1;
+        ui.viewport.setAttribute('role', 'application');
+        ui.viewport.setAttribute('aria-roledescription', _sdT('Prototype map'));
+        ui.viewport.setAttribute('aria-label', _sdT('Drag to move the map, Ctrl and the mouse wheel to zoom; a link row selects its element.'));
+        ui.layer = _sdProtoEl('div', 'pgc-layer');
+        ui.svg = G.svgEl('svg', 'pgc-edges');
+        ui.svg.setAttribute('aria-hidden', 'true');
+        ui.svg.setAttribute('width', '1');
+        ui.svg.setAttribute('height', '1');
+        ui.svg.innerHTML = '<defs>' +
+            '<marker id="sd-proto-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="pgc-arrowhead" d="M0 0L10 5L0 10z"/></marker>' +
+            '<marker id="sd-proto-arrow-on" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="pgc-arrowhead-on" d="M0 0L10 5L0 10z"/></marker>' +
+            '</defs>';
+        ui.temp = G.svgEl('path', 'pgc-edge-temp pgc-hidden');
+        ui.svg.appendChild(ui.temp);
+        ui.boxes = _sdProtoEl('div', 'pgc-boxes');
+        ui.layer.appendChild(ui.svg);
+        ui.layer.appendChild(ui.boxes);
+        ui.viewport.appendChild(ui.layer);
+        ui.stage = _sdProtoEl('div', 'pgc-stage sd-proto-stage');
+        ui.stage.appendChild(ui.viewport);
+        ui.stage.appendChild(ui.live);
+        ui.root.appendChild(ui.stage);
+        area.appendChild(ui.root);
+
+        _sdProto.ui = ui;
+        _sdProto.canvas = G.create({
+            ui: ui,
+            text: function (key) { return key === 'pgc_box' ? _sdT('Frame') : ''; },
+            boxRole: function () { return _sdT('Frame'); },
+            item: function (id) { return _sdProto.byId[id] || null; },
+            // Frames and chips move; no arrow is drawn by hand here.
+            editable: function () { return true; },
+            size: function (item) { return { w: item.w, h: item.h }; },
+            zoomMin: 0.1,
+            portAt: function (item, name) { return item.rows ? { y: window.PGProtoHotspots.rowY(item, name) } : null; },
+            select: function (selected) { _sdProtoSelect(selected); },
+            moved: function (item) { _sdProtoKeep(item); },
+            canConnect: function () { return false; },
+            connected: function () {},
+            view: function (next) {
+                if (next) _sdProto.view = next;
+                return _sdProto.view;
+            },
+            items: function () { return _sdProto.items; },
+            // A row: no drag, its element selected on release.
+            press: function (event, next) {
+                var row = event.target.closest ? event.target.closest('.sd-proto-row') : null;
+                if (row) {
+                    next.kind = 'row';
+                    next.row = row;
+                }
+            },
+            move: function () {},
+            release: function (event, done) {
+                if (done.kind === 'row' && !done.moved && event.type === 'pointerup') _sdProtoOpenRow(done.row);
+            },
+            cancel: function () {},
+            key: function (event) {
+                if (event.key === 'Escape') { _sdProtoClose(); return true; }
+                var row = event.target.closest ? event.target.closest('.sd-proto-row') : null;
+                if (row && (event.key === 'Enter' || event.key === ' ')) { _sdProtoOpenRow(row); return true; }
+                return false;
+            }
+        });
+        _sdProto.canvas.bind();
+        return ui;
+    }
+
+    function _sdProtoSelect(selected) {
+        _sdProto.selected = selected;
+        if (_sdProto.canvas) _sdProto.canvas.mark(selected);
+    }
+
+    function _sdProtoStatus(text) {
+        if (_sdProto.ui) _sdProto.ui.status.textContent = text || '';
+    }
+
+    function _sdProtoToggle() {
+        if (_sdProto.open) _sdProtoClose();
+        else _sdProtoOpen();
+    }
+
+    function _sdProtoButtonState() {
+        var btn = document.getElementById('sd-vb-proto');
+        if (!btn) return;
+        btn.classList.toggle('active', _sdProto.open);
+        btn.setAttribute('aria-pressed', _sdProto.open ? 'true' : 'false');
+    }
+
+    function _sdProtoOpen() {
+        if (!_sdProtoReady()) {
+            sdToast(esc(_sdT('The prototype view could not be loaded. Reload the page and try again.')), 'warning', 5000);
+            return;
+        }
+        if (!_sdProto.ui && !_sdProtoBuild()) return;
+        _sdProto.open = true;
+        _sdProto.ui.root.hidden = false;
+        _sdProtoButtonState();
+        _sdProtoLoad();
+        _sdProto.ui.viewport.focus({ preventScroll: true });
+    }
+
+    function _sdProtoClose() {
+        if (!_sdProto.open) return;
+        _sdProto.open = false;
+        _sdProto.seq++;
+        if (_sdProto.canvas) _sdProto.canvas.cancel();
+        if (_sdProto.ui) _sdProto.ui.root.hidden = true;
+        _sdProtoButtonState();
+        var btn = document.getElementById('sd-vb-proto');
+        if (btn) btn.focus();
+    }
+
+    // The tabs as the collector reads them: the open tab's live tree.
+    function _sdProtoTabs() {
+        return _pages.map(function (p) {
+            return { key: p.key, page_id: p.page_id, page_name: p.page_name, tree: _pgTreeOf(p) };
+        });
+    }
+
+    // Collect, fetch the shared components not drawn yet (once), ask the
+    // server what the links lead to, draw. A later load or a close drops
+    // the answer of an earlier one.
+    function _sdProtoLoad() {
+        var H = window.PGProtoHotspots;
+        var seq = ++_sdProto.seq;
+        var tabs = _sdProtoTabs();
+        var designed = H.design(tabs, _sharedCache);
+        var missing = designed.shared.filter(function (s) { return !s.loaded; }).map(function (s) { return s.id; });
+
+        _sdProtoStatus(_sdT('Reading the links…'));
+
+        var ask = function () {
+            if (seq !== _sdProto.seq) return;
+            designed = H.design(tabs, _sharedCache);
+            _pgApiPost('prototype_map', designed.request).then(function (read) {
+                if (seq !== _sdProto.seq) return;
+                if (!read || read.status !== 'success') {
+                    _sdProtoStatus((read && read.message) ? read.message : _sdT('The links could not be read.'));
+                    return;
+                }
+                _sdProtoDraw(H.mark(designed, read, tabs));
+            }, function () {
+                if (seq === _sdProto.seq) _sdProtoStatus(_sdT('The links could not be read.'));
+            });
+        };
+
+        if (missing.length) prefetchShared(missing, ask);
+        else ask();
+    }
+
+    function _sdProtoMarkIcon(mark) {
+        var m = SD_PROTO_MARKS[mark] || SD_PROTO_MARKS.broken;
+        var icon = _sdProtoEl('span', 'bi ' + m.icon + ' sd-proto-icon');
+        icon.title = m.text();
+        icon.setAttribute('role', 'img');
+        icon.setAttribute('aria-label', m.text());
+        return icon;
+    }
+
+    function _sdProtoFrameName(item) {
+        if (item.kind === 'shared') return item.name || _sdT('Shared component {var:1}', item.sharedId);
+        return item.name || _sdT('Untitled page');
+    }
+
+    function _sdProtoFill(item, node) {
+        var canvas = _sdProto.canvas;
+        var head = _sdProtoEl('div', 'sd-proto-head');
+        head.appendChild(_sdProtoEl('span', 'bi ' + (item.kind === 'shared' ? 'bi-puzzle' : 'bi-file-earmark') + ' sd-proto-kind'));
+        head.lastChild.setAttribute('aria-hidden', 'true');
+        head.appendChild(_sdProtoEl('span', 'sd-proto-name', _sdProtoFrameName(item)));
+        var meta = '';
+        if (item.kind === 'shared') {
+            meta = !item.loaded ? _sdT('Not loaded') : (item.pages === 1 ? _sdT('On 1 page') : _sdT('On {var:1} pages', item.pages));
+        } else if (item.key === _activeKey) {
+            meta = _sdT('Open tab');
+        }
+        if (meta) head.appendChild(_sdProtoEl('span', 'sd-proto-meta', meta));
+        node.appendChild(head);
+        node.setAttribute('aria-label', _sdProtoFrameName(item));
+
+        if (!item.rows.length) {
+            node.appendChild(_sdProtoEl('div', 'sd-proto-empty', _sdT('No links')));
+            return;
+        }
+
+        item.rows.forEach(function (row, i) {
+            var r = _sdProtoEl('div', 'sd-proto-row sd-proto-mark-' + row.mark);
+            r.tabIndex = 0;
+            r.setAttribute('role', 'button');
+            r.setAttribute('data-row', String(i));
+            r.title = row.href || '';
+            r.appendChild(_sdProtoMarkIcon(row.mark));
+            r.appendChild(_sdProtoEl('span', 'sd-proto-label', row.from ? row.from + ' › ' + row.label : row.label));
+            if (row.draft) r.appendChild(_sdProtoEl('span', 'sd-proto-draft', _sdT('Draft')));
+            r.appendChild(canvas.port('out', row.port));
+            node.appendChild(r);
+        });
+    }
+
+    function _sdProtoChipText(chip) {
+        if (chip.mark === 'hidden') return _sdT('Hidden page');
+        if (chip.mark === 'broken' && chip.href === '') return _sdT('No address');
+        return chip.href;
+    }
+
+    function _sdProtoDraw(marked) {
+        var H = window.PGProtoHotspots;
+        var G = window.PGGraphCanvas;
+        var canvas = _sdProto.canvas;
+        var ui = _sdProto.ui;
+        var first = !_sdProto.layout;
+        var l = H.layout(marked, _sdProtoSaved());
+
+        _sdProto.layout = l;
+        _sdProto.items = l.frames.concat(l.chips);
+        _sdProto.byId = {};
+        _sdProto.items.forEach(function (item) { _sdProto.byId[item.id] = item; });
+
+        Array.prototype.slice.call(ui.svg.querySelectorAll('g.pgc-edge')).forEach(function (g) { g.parentNode.removeChild(g); });
+        ui.boxes.innerHTML = '';
+
+        l.frames.forEach(function (item) {
+            ui.boxes.appendChild(canvas.box(item, {
+                className: 'sd-proto-frame sd-proto-' + item.kind + (item.key && item.key === _activeKey ? ' sd-proto-active' : ''),
+                into: true,
+                fill: function (node) { _sdProtoFill(item, node); }
+            }));
+        });
+        l.chips.forEach(function (chip) {
+            ui.boxes.appendChild(canvas.box(chip, {
+                className: 'sd-proto-chip sd-proto-mark-' + chip.mark,
+                into: true,
+                fill: function (node) {
+                    node.appendChild(_sdProtoMarkIcon(chip.mark));
+                    node.appendChild(_sdProtoEl('span', 'sd-proto-label', _sdProtoChipText(chip)));
+                    if (chip.draft) node.appendChild(_sdProtoEl('span', 'sd-proto-draft', _sdT('Draft')));
+                    node.setAttribute('aria-label', (SD_PROTO_MARKS[chip.mark] || SD_PROTO_MARKS.broken).text() + ': ' + _sdProtoChipText(chip));
+                }
+            }));
+        });
+
+        var slots = G.spread(l.edges.map(function (e) {
+            var from = _sdProto.byId[e.from];
+            return { to: e.to, y: from.y + H.rowY(from, e.port) };
+        }));
+        l.edges.forEach(function (e, i) {
+            var drawn = canvas.edge(e.id, _sdProto.byId[e.from], _sdProto.byId[e.to], { port: e.port, slot: slots[i].slot, slots: slots[i].slots });
+            drawn.group.classList.add('sd-proto-edge-' + e.mark);
+        });
+
+        var count = l.edges.length;
+        var broken = l.chips.filter(function (c) { return c.mark === 'broken'; }).length;
+        _sdProtoStatus(_sdT('{var:1} links', count) + (broken ? ' · ' + _sdT('{var:1} broken', broken) : ''));
+        canvas.announce(_sdT('{var:1} links', count));
+        if (first) canvas.view.fit();
+        else canvas.view.apply();
+        _sdProtoSelect(_sdProto.selected);
+    }
+
+    // A row's element selected on the canvas: its tab opened first (a
+    // shared component's on a tab placing it), the prototype view closed.
+    function _sdProtoOpenRow(rowEl) {
+        var box = rowEl.closest('[data-node]');
+        var item = box ? _sdProto.byId[box.getAttribute('data-node')] : null;
+        var row = item && item.rows ? item.rows[parseInt(rowEl.getAttribute('data-row'), 10) || 0] : null;
+        if (!row) return;
+
+        var key = item.key;
+        if (item.kind === 'shared') {
+            var here = {};
+            collectSharedIds(tree, here);
+            key = here[item.sharedId] ? _activeKey : '';
+            for (var i = 0; !key && i < _pages.length; i++) {
+                var ids = {};
+                if (_pgTreeOf(_pages[i])) collectSharedIds(_pgTreeOf(_pages[i]), ids);
+                if (ids[item.sharedId]) key = _pages[i].key;
+            }
+        }
+        var page = key ? _pgPageByKey(key) : null;
+        if (page && page.access === 'locked') {
+            sdToast(esc(_sdT('You do not have content rights for this page\'s folder.')), 'warning', 4000);
+            return;
+        }
+
+        _sdProtoClose();
+        if (key && key !== _activeKey) _pgTabsSwitch(key);
+
+        setTimeout(function () {
+            var root = (item.kind === 'shared') ? (_sharedCache[item.sharedId] && _sharedCache[item.sharedId].tree) : tree;
+            var node = root ? findNodeById(row.nodeId, root) : null;
+            if (!node) return;
+            selectedNodes = [];
+            selectedNode = node;
+            renderSelectionOnly();
+            renderProperties();
+            scrollCanvasToNode(node);
+        }, 0);
     }
 
     // ── Live preview ──

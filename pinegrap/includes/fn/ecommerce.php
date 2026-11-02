@@ -17,6 +17,26 @@
 if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
+// The Featured Order box of Edit Featured & New Items: '' when it is empty
+// (the item is not featured), the order as an int when it is a whole number
+// from 0 to 65535 (featured_sort_order is smallint unsigned), false
+// otherwise. MySQL would store 'abc' or -5 as 0 and '12,50' as 12 without a
+// word, so the screen refuses them instead.
+function pg_featured_sort_order_value($value)
+{
+    $value = trim((string) $value);
+
+    if ($value === '') {
+        return '';
+    }
+
+    if (!preg_match('/^[0-9]{1,5}$/', $value) || (int) $value > 65535) {
+        return false;
+    }
+
+    return (int) $value;
+}
+
 // The quantity a product enters the cart with when the visitor gives none
 // (a checked or auto-selected product, a quick add, a donation without a
 // quantity box): products.default_quantity, at least 1. The column is NULL on
