@@ -12,7 +12,9 @@
  * the Listings form's fields and an agent card opens the valuation form
  * with the agent chosen; the public pages (pages_public.php): their keys,
  * one page per neighbourhood, links to known pages, filter links that name
- * answers of the Listings form's lists, the listing widgets they place.
+ * answers of the Listings form's lists, the listing widgets they place; the
+ * listings (listings.php): the Listings collection and its sample records,
+ * the lists' filters and the widgets the other pages place.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -37,8 +39,10 @@ function _test_re_load()
 	$listing_cards = array();
 	foreach (array_keys($listings) as $key) $listing_cards[$key] = $listing_card($key);
 	$public = include $dir . '/pages_public.php';
+	$listing_part = include $dir . '/listings.php';
 	$out = array(
 		'public'         => $public,
+		'listing_part'   => $listing_part,
 		'areas'          => $areas,
 		'deals'          => $deals,
 		'types'          => $property_types,
@@ -305,5 +309,115 @@ function test_realestate_public_pages_place_the_listings()
 		$expect = 0;
 		foreach ($d['agents'] as $ag) $expect += in_array($key, $ag['areas'], true) ? 1 : 0;
 		pg_assert_same($expect, $cards, "area $key: its agents");
+	}
+}
+
+// The controls of a widget tree by field name: tag, kind, options.
+function _test_re_controls($tree)
+{
+	$nodes = array();
+	_test_re_nodes($tree, $nodes);
+	$out = array();
+	foreach ($nodes as $node) {
+		if (!in_array($node['props']['tag'] ?? '', array('input', 'select', 'textarea'), true)) continue;
+		$name = '';
+		foreach ($node['props']['_attrs'] ?? array() as $a) {
+			if ($a['name'] === 'name') $name = $a['value'];
+		}
+		if ($name === '') continue;
+		$options = array();
+		foreach ($node['children'] ?? array() as $o) {
+			foreach ($o['props']['_attrs'] ?? array() as $a) {
+				if ($a['name'] === 'value' && $a['value'] !== '') $options[] = $a['value'];
+			}
+		}
+		$out[$name] = array('tag' => $node['props']['tag'], 'kind' => $node['props']['_cf']['kind'] ?? '', 'options' => $options);
+	}
+	return $out;
+}
+
+function test_realestate_listings_form_and_samples()
+{
+	$d = _test_re_load();
+	$pages = array();
+	foreach ($d['listing_part']['pages'] as $p) $pages[$p['key']] = $p;
+	pg_assert_same(array('buy', 'rent', 'listings', 'listing', 'listing_new'), array_keys($pages), 'the listing pages in order');
+	$form = $pages['listing_new']['form'];
+	pg_assert_same(1, $form['collection'], 'Listings is a collection');
+	pg_assert_same('private', $pages['listing_new']['folder'], 'the staff page is private');
+	$controls = _test_re_controls($d['listing_part']['widgets']['listing_form']['tree']);
+	foreach (array('price', 'bedrooms', 'bathrooms', 'size') as $f) pg_assert_same('number', $controls[$f]['kind'], "$f is a number");
+	foreach (array('cover', 'photo_2', 'photo_3') as $f) pg_assert_same('image', $controls[$f]['kind'], "$f is an image");
+	pg_assert_same(array_values($d['deals']), $controls['deal']['options'], 'deal answers');
+	pg_assert_same($d['type_titles'], $controls['type']['options'], 'type answers');
+	pg_assert_same($d['area_titles'], $controls['area']['options'], 'neighbourhood answers');
+	pg_assert_same($d['statuses'], $controls['status']['options'], 'status answers');
+	pg_assert_same(count($d['listings']), count($form['sample_records']), 'a record per sample listing');
+	foreach ($form['sample_records'] as $n => $r) {
+		foreach ($r as $field => $value) pg_assert_true(isset($controls[$field]), "sample $n: $field is a field of the form");
+		foreach (array('deal', 'type', 'area', 'status', 'agent') as $f) {
+			pg_assert_true(in_array($r[$f], $controls[$f]['options'], true), "sample $n: $f is an answer of its list");
+		}
+		foreach (array('price', 'bedrooms', 'bathrooms', 'size') as $f) pg_assert_true(ctype_digit($r[$f]), "sample $n: $f is a plain number");
+	}
+	pg_assert_same('cover', $form['share_image_field'], 'the cover is the share image');
+}
+
+// Every list reads the Listings form, filters on its fields, takes its
+// URL values under names a list may read, and every listing widget the
+// public pages place is defined here, on the page that places it.
+function test_realestate_listing_widgets()
+{
+	$d = _test_re_load();
+	$widgets = $d['listing_part']['widgets'];
+	$controls = _test_re_controls($widgets['listing_form']['tree']);
+	$reserved = function_exists('pg_sw_url_param_reserved') ? pg_sw_url_param_reserved() : array();
+	$pages = array();
+	foreach (array_merge($d['public'], $d['listing_part']['pages']) as $p) $pages[$p['key']] = $p;
+	foreach ($widgets as $key => $w) {
+		pg_assert_true(isset($pages[$w['page']]), "$key: on a page of the template");
+		pg_assert_true(in_array($key, _test_re_widgets($pages[$w['page']]['tree']), true), "$key: placed by its page");
+		if ($w['config']['regionType'] !== 'form_list_view') continue;
+		pg_assert_same('{{tab:listing_new}}', $w['config']['custom_form_page_id'], "$key: reads Listings");
+		pg_assert_same('{{tab:listing}}', $w['config']['detail_page_id'], "$key: opens the listing page");
+		foreach ($w['config']['filters'] ?? array() as $f) {
+			pg_assert_true(isset($controls[$f['field']]), "$key: filters on a field of the form: " . $f['field']);
+			if ($f['dynamic_value'] === 'url parameter') {
+				pg_assert_true((bool)preg_match('/^[a-z][a-z0-9_]{0,31}$/', $f['dynamic_value_attribute']), "$key: parameter name");
+				pg_assert_false(in_array($f['dynamic_value_attribute'], $reserved, true), "$key: parameter not reserved");
+			} elseif ($f['value'] !== '') {
+				pg_assert_true(in_array($f['value'], $controls[$f['field']]['options'], true), "$key: fixed value is an answer: " . $f['value']);
+			}
+		}
+		foreach ($w['config']['search_fields'] ?? array() as $f) pg_assert_true(isset($controls[$f]), "$key: searches a field: $f");
+	}
+	// The widgets the public pages place are all here.
+	foreach ($d['public'] as $p) {
+		foreach (_test_re_widgets($p['tree']) as $w) {
+			if (strpos($w, 'listings') === false) continue;
+			pg_assert_true(isset($widgets[$w]), "{$p['key']}: places a defined listing widget: $w");
+		}
+	}
+	// The listing page's viewing button sends the listing's title.
+	$nodes = array();
+	_test_re_nodes($widgets['listing_detail']['tree'], $nodes);
+	$sends = 0;
+	foreach ($nodes as $node) {
+		if (($node['props']['_bindings']['href'] ?? '') !== '__page_link') continue;
+		pg_assert_same('{{tab:viewing}}', $node['props']['_bindParams']['href']['page_id'], 'viewing link');
+		pg_assert_same(array(array('name' => 'listing', 'token' => 'title')), $node['props']['_bindParams']['href']['params'], 'sends the title');
+		$sends++;
+	}
+	pg_assert_same(1, $sends, 'one viewing button');
+	// The filter links of the list pages name answers of the lists.
+	$links = array();
+	$queries = array();
+	foreach ($d['listing_part']['pages'] as $p) _test_re_links($p['tree'], $links, $queries);
+	$known = array_flip(_test_re_page_keys());
+	foreach ($links as $k) pg_assert_true(isset($known[$k]), "listing pages link a page of the template: $k");
+	foreach ($queries as $hit) {
+		foreach ($hit[1] as $param => $value) {
+			pg_assert_true(isset($controls[$param]) && in_array($value, $controls[$param]['options'], true), "$param names an answer: $value");
+		}
 	}
 }
