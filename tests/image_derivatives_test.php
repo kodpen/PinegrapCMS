@@ -43,7 +43,9 @@ function test_image_derivative_request_ignores_the_rest()
 
 function test_image_derivative_width_rounds_up_and_caps()
 {
-	pg_assert_same(480, pg_image_derivative_width(1, 4000), 'the narrowest');
+	pg_assert_same(320, pg_image_derivative_width(1, 4000), 'the narrowest, the panel lists\' rung');
+	pg_assert_same(320, pg_image_derivative_width(320, 4000), 'the panel thumbnail');
+	pg_assert_same(480, pg_image_derivative_width(321, 4000), 'past the panel rung');
 	pg_assert_same(480, pg_image_derivative_width(480, 4000), 'exactly a step');
 	pg_assert_same(960, pg_image_derivative_width(481, 4000), 'just past a step');
 	pg_assert_same(960, pg_image_derivative_width(700, 4000), 'between steps');
@@ -140,6 +142,27 @@ function test_image_delivery_settings()
 // Bits 4 (WebP at a picture's own address) and 8 (the CDN keeps a copy per
 // format) of the same column: 4 holds only with 1, as a format switched off
 // is never sent.
+// The page markup starts at 480: the 320 rung is for panel lists, so the
+// pages' srcset did not change when it was added.
+function test_image_derivative_page_widths()
+{
+	pg_assert_same(array(320, 480, 960, 1440, 1920), pg_image_derivative_widths(), 'narrowest first');
+	pg_assert_same(array(480, 960, 1440, 1920), pg_image_derivative_page_widths(), 'pages from 480');
+}
+
+function test_image_panel_thumb_url()
+{
+	pg_assert_same('/p.jpg?w=320&f=webp', pg_image_panel_thumb_url('/p.jpg'), 'a JPEG');
+	pg_assert_same('/a/P.PNG?v=12&w=320&f=webp', pg_image_panel_thumb_url('/a/P.PNG?v=12'), 'a PNG with a query, any case');
+	pg_assert_same('/p.webp?w=320', pg_image_panel_thumb_url('/p.webp'), 'a WebP is only made narrower');
+	pg_assert_same('/p.gif', pg_image_panel_thumb_url('/p.gif'), 'a GIF may move: as it is');
+	pg_assert_same('/p.svg', pg_image_panel_thumb_url('/p.svg'), 'a vector: as it is');
+	pg_assert_same('/p.jpg?f=original', pg_image_panel_thumb_url('/p.jpg?f=original'), 'a format already asked for');
+	pg_assert_same('/p.jpg?w=960', pg_image_panel_thumb_url('/p.jpg?w=960'), 'a width already asked for');
+	pg_assert_same('/p.jpg?w=320&f=webp#x', pg_image_panel_thumb_url('/p.jpg#x'), 'a fragment stays last');
+	pg_assert_same('', pg_image_panel_thumb_url(''), 'nothing');
+}
+
 function test_image_delivery_same_address_bits()
 {
 	$same = function ($bits) {

@@ -696,7 +696,7 @@ function pg_img_responsive_sets($src, $source_width, $source_extension, $formats
     $source_width = (int) $source_width;
     $widths = array();
 
-    foreach (pg_image_derivative_widths() as $width) {
+    foreach (pg_image_derivative_page_widths() as $width) {
         if ($width < $source_width) {
             $widths[] = $width;
         }

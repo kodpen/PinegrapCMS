@@ -2471,7 +2471,67 @@ function pg_image_apply_gd_orientation($image, $file_path)
  */
 function pg_image_derivative_widths()
 {
-    return array(480, 960, 1440, 1920);
+    return array(320, 480, 960, 1440, 1920);
+}
+
+
+/**
+ * The widths the pages' srcset offers: every derivative width but the 320
+ * rung, which is there for panel lists (File Manager tiles, the product
+ * table, the image pickers: pg_image_panel_thumb_url()) and left the pages'
+ * markup as it was.
+ *
+ * @return array
+ */
+function pg_image_derivative_page_widths()
+{
+    return array_values(array_filter(pg_image_derivative_widths(), function ($width) {
+        return $width >= 480;
+    }));
+}
+
+
+/**
+ * The address a panel list draws a picture's thumbnail from: its 320 px
+ * derivative, as WebP for a JPEG or PNG, instead of the original a list used
+ * to load for every tile. A GIF (it may move), a vector or an address that
+ * already asks for a width or format stays as it is. The JavaScript twin is
+ * thumbUrl() in view_folders.php.
+ *
+ * @param string $url the picture's address, with or without a query
+ * @return string
+ */
+function pg_image_panel_thumb_url($url)
+{
+    $url = (string) $url;
+    $fragment = '';
+    $hash = strpos($url, '#');
+
+    if ($hash !== false) {
+        $fragment = substr($url, $hash);
+        $url = substr($url, 0, $hash);
+    }
+
+    $question = strpos($url, '?');
+    $path = ($question === false) ? $url : substr($url, 0, $question);
+    $query = ($question === false) ? '' : substr($url, $question + 1);
+
+    if (preg_match('/(^|&)(w|f)=/i', $query)) {
+        return $url . $fragment;
+    }
+
+    $dot = strrpos($path, '.');
+    $extension = ($dot === false) ? '' : strtolower(substr($path, $dot + 1));
+
+    if (in_array($extension, array('jpg', 'jpeg', 'jpe', 'png'), true)) {
+        $add = 'w=320&f=webp';
+    } elseif ($extension === 'webp') {
+        $add = 'w=320';
+    } else {
+        return $url . $fragment;
+    }
+
+    return $url . (($question === false) ? '?' : '&') . $add . $fragment;
 }
 
 
