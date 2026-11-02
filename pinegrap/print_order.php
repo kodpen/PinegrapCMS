@@ -47,7 +47,7 @@ $query = "SELECT
          LEFT JOIN user ON orders.user_id = user.user_id
          LEFT JOIN contacts ON orders.contact_id = contacts.id
          WHERE orders.id = ?";
-$result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
+$result = db_q($query, array((string) $id)) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 $status = $row['status'];
 $order_number = $row['order_number'] ?? '';
@@ -312,7 +312,7 @@ if ($gift_card_discount > 0) {
         FROM applied_gift_cards
         WHERE order_id = ?
         ORDER BY id ASC";
-    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
+    $result = db_q($query, array((string) $id)) or output_error('Query failed.');
     
     $applied_gift_cards = array();
     
@@ -531,7 +531,7 @@ if (AFFILIATE_PROGRAM and $affiliate_code) {
         </div>';
 }
 $output_custom_billing_information = '';
-$output_custom_billing_form = get_submitted_form_content_without_form_fields(array('type' => 'custom_billing_form', 'order_id' => $_GET['id'], 'style' => 'padding: 10px'));
+$output_custom_billing_form = get_submitted_form_content_without_form_fields(array('type' => 'custom_billing_form', 'order_id' => $id, 'style' => 'padding: 10px'));
 if ($output_custom_billing_form != '') {
     $output_custom_billing_information =
         '<div class="card mt-5 border-0 bg-transparent">
@@ -575,7 +575,7 @@ $query = "SELECT
          LEFT JOIN shipping_methods ON ship_tos.shipping_method_id = shipping_methods.id
          WHERE order_items.order_id = ?
          ORDER BY ship_to_id";
-$result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
+$result = db_q($query, array((string) $id)) or output_error('Query failed.');
 $ship_tos = array();
 // assume that there are no real ship tos until we find out that there is one
 $ship_to_exists = false;
@@ -605,7 +605,7 @@ if ($ship_to_exists == true) {
             (order_id = ?)
             AND (ship_to_id != '0')
         ORDER BY id ASC";
-    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
+    $result = db_q($query, array((string) $id)) or output_error('Query failed.');
     
     // initialize array that will be used for storing custom shipping form data for ship tos
     $ship_tos_for_custom_fields = array();
@@ -841,7 +841,7 @@ if ($ship_to_exists == true) {
                  FROM order_items
                  LEFT JOIN products ON order_items.product_id = products.id
                  WHERE order_id = ? AND ship_to_id = ?";
-        $result = db_q($query, array((string) $_GET['id'], (string) $ship_tos[$key]['ship_to_id'])) or output_error('Query failed.');
+        $result = db_q($query, array((string) $id, (string) $ship_tos[$key]['ship_to_id'])) or output_error('Query failed.');
         
         $order_items = array();
         
@@ -1227,7 +1227,7 @@ if ($ship_to_exists == true) {
              FROM order_items
              LEFT JOIN products ON order_items.product_id = products.id
              WHERE order_id = ?";
-    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
+    $result = db_q($query, array((string) $id)) or output_error('Query failed.');
     
     $order_items = array();
     
