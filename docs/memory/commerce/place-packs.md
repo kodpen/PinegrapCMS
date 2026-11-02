@@ -23,3 +23,7 @@ module: places
 
 ## How is a country added?
 - Add the file and a test for its counts (as `tests/tr_place_list_test.php` does). If its city box is not the district, the pack still lists what that box holds.
+
+## What is left out on purpose?
+- Filling `states` for more countries: once a country has states, `get_valid_zones_for_destination()` and `get_tax_rate_for_address()` match a zone by state, so zones listing only the country stop matching.
+- Neighbourhood (mahalle) lists, a downloaded list (GeoNames), a data step for older rows (they cannot be told apart). Address autocomplete is its own layer (`address-autocomplete.md`).
