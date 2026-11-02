@@ -11723,21 +11723,27 @@ var pgSettingsModal = (function () {
 
     /**
      * The unsaved-changes question, asked the way the software asks questions.
+     * Switching to another category keeps the window open, so it is asked in
+     * its own words there instead of the closing ones.
+     *
+     * @param {boolean} [switching] true when another category is about to load
      */
-    function ask() {
+    function ask(switching) {
+
+        var message = say(switching ? 'switch' : 'leave');
 
         if (typeof window.pgConfirm === 'function') {
 
             return window.pgConfirm({
                 title: say('leavetitle'),
-                message: say('leave'),
-                confirmText: say('discard'),
+                message: message,
+                confirmText: say(switching ? 'switchdiscard' : 'discard'),
                 cancelText: say('stay'),
                 variant: 'warning'
             });
         }
 
-        return Promise.resolve(window.confirm(say('leave')));
+        return Promise.resolve(window.confirm(message));
     }
 
 
@@ -12286,7 +12292,7 @@ var pgSettingsModal = (function () {
             return;
         }
 
-        ask().then(function (agreed) {
+        ask(true).then(function (agreed) {
             if (agreed) {
                 drawer(false);
                 load(key);
