@@ -123,3 +123,47 @@ function pg_mail_postmark_send($message, $settings)
 {
     return pg_mail_transport_call('postmark', pg_mail_postmark_request($message, $settings));
 }
+
+/**
+ * A Postmark webhook message (Bounce, SpamComplaint and Delivery records):
+ * one record a message. Bounce types not about the address (an
+ * auto-responder, a challenge, a subscribe request) are read as ''. Pure.
+ *
+ * https://postmarkapp.com/developer/webhooks/bounce-webhook
+ *
+ * @param string $raw
+ * @param array  $headers lower-case name => value
+ * @return array|false list of id, kind, address, message_id
+ */
+function pg_mail_postmark_webhook($raw, $headers)
+{
+    $data = json_decode((string) $raw, true);
+
+    if (!is_array($data) || !isset($data['RecordType']) || !is_string($data['RecordType'])) {
+        return false;
+    }
+
+    $record = $data['RecordType'];
+    $type = isset($data['Type']) ? (string) $data['Type'] : '';
+    $kinds = array(
+        'HardBounce' => 'hard', 'BadEmailAddress' => 'hard', 'ManuallyDeactivated' => 'hard',
+        'SoftBounce' => 'soft', 'Transient' => 'soft', 'DnsError' => 'soft', 'InboxFull' => 'soft',
+        'SpamComplaint' => 'complaint',
+    );
+
+    if ($record === 'Bounce') {
+        $kind = isset($kinds[$type]) ? $kinds[$type] : '';
+    } elseif ($record === 'SpamComplaint') {
+        $kind = 'complaint';
+    } elseif ($record === 'Delivery') {
+        $kind = 'delivered';
+    } else {
+        $kind = '';
+    }
+
+    $address = isset($data['Email']) ? (string) $data['Email'] : (isset($data['Recipient']) ? (string) $data['Recipient'] : '');
+    $message_id = isset($data['MessageID']) ? (string) $data['MessageID'] : '';
+    $id = isset($data['ID']) ? (string) $data['ID'] : $message_id . ':' . $address;
+
+    return array(array('id' => 'postmark:' . $record . ':' . $id, 'kind' => $kind, 'address' => $address, 'message_id' => $message_id));
+}

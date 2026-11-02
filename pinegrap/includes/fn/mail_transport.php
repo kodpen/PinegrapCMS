@@ -502,6 +502,8 @@ function pg_mail_transport_settings_save($post, $user_id, $liveform)
         pg_connect_app_save(pg_mail_transport_app_key($decision['chosen']), '', $decision['write']['secret'], $decision['write']['values'], true, $user_id);
     }
 
+    pg_mail_webhook_settings_save($post, $decision['chosen']);
+
     if (($decision['write'] !== null) || $decision['disable']) {
         $was = 'smtp';
 
@@ -573,6 +575,8 @@ function pg_mail_transport_settings_fields()
                     ' . $input . $help . '
                 </div>';
         }
+
+        $pane .= pg_mail_webhook_settings_fields($key);
 
         $panes .= '
             <div class="row" data-mail-transport="' . h($key) . '"' . (($key === $shown) ? '' : ' hidden') . '>' . $pane . '

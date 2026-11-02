@@ -226,6 +226,7 @@
     "Save the palette": "Paleti kaydet",
     "Save the purchase order": "Satın alma siparişini kaydet",
     "Save the quote": "Teklifi kaydet",
+    "Save the service to get the address its bounce and complaint reports are posted to.": "Hizmetin geri dönen e-posta ve şikâyet bildirimlerini göndereceği adresi almak için hizmeti kaydedin.",
     "Save the settings to start sending the backups there.": "Yedeklerin oraya gitmeye başlaması için ayarları kaydedin.",
     "Save the statement as Excel (.xlsx or .xls), OpenDocument (.ods) or CSV and take it in again.": "Ekstreyi Excel (.xlsx ya da .xls), OpenDocument (.ods) veya CSV olarak kaydedip yeniden yükleyin.",
     "Save the statement from internet banking as CSV (in Excel: Save As, CSV). You choose the columns on the next screen; they are remembered for this bank account. A line already taken in is not added twice.": "Ekstreyi internet bankacılığından CSV olarak kaydedin (Excel'de: Farklı Kaydet, CSV). Sütunları sonraki ekranda seçersiniz; bu banka hesabı için hatırlanır. Daha önce alınan satır iki kez eklenmez.",
