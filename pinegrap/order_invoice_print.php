@@ -35,12 +35,12 @@
 include('init.php');
 
 if (!defined('ECOMMERCE') || ECOMMERCE !== true) {
-    output_error('E-commerce is not enabled on this site.');
+    output_error(lang('E-commerce is not enabled on this site.'));
 }
 
 $order_id = isset($_GET['order_id']) ? (int)$_GET['order_id'] : 0;
 if ($order_id <= 0) {
-    output_error('Order id is missing.');
+    output_error(lang('Order id is missing.'));
 }
 
 $current_user_id = defined('USER_ID') ? (int)USER_ID : 0;
@@ -65,7 +65,7 @@ $order = db_item(
 );
 
 if (!$order) {
-    output_error('Order not found.');
+    output_error(lang('Order not found.'));
 }
 
 // The parcel numbers, for the customer's own copy. They live in
@@ -89,7 +89,7 @@ if (is_array($tracking_rows)) {
 if (!$is_admin) {
     if ($current_user_id <= 0 || (int)$order['user_id'] !== $current_user_id) {
         log_activity(pg_log_lang(array('string' => 'Access denied — non-owner attempted to print invoice for order #{var:1}', 'vars' => array($order_id))));
-        output_error('You are not allowed to view this invoice.');
+        output_error(lang('You are not allowed to view this invoice.'));
     }
 }
 
@@ -163,7 +163,7 @@ if (!empty($ship_to)) {
 
 header('Content-Type: text/html; charset=utf-8');
 ?><!DOCTYPE html>
-<html lang="tr">
+<html lang="<?= h(lang(array('info' => true))) ?>">
 <head>
 <meta charset="utf-8">
 <title><?= h(lang('Invoice') . ' #' . (string)$order['order_number']) ?></title>
