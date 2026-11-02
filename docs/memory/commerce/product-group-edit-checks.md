@@ -1,6 +1,6 @@
 ---
 name: product-group-edit-checks
-description: Edit Product Group, Duplicate Product Group and Featured and New Items: the Recycle Bin left out of status changes and lists, the parent checked on the server, the duplicate form cleared
+description: Edit Product Group, Duplicate Product Group and Featured and New Items (PR #5551): the Recycle Bin left out of status changes and lists, the parent checked on the server, the duplicate form cleared
 ---
 
 ## Does enabling a group switch on what is in the Recycle Bin?
