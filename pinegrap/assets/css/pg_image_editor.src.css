@@ -2091,12 +2091,13 @@
   font-size: 13px;
 }
 
-.pgie-stage > .pgie-mbar {
+.pgie-stage > .pgie-mdock {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 2;
+  background: var(--pgie-surface);
 }
 
 .pgie-pb > .pgie-mbar {
@@ -2182,8 +2183,203 @@
 }
 
 .pgie-pb > .pgie-mbar .pgie-mlength,
-.pgie-mbar.pgie-mshort .pgie-mlength {
+.pgie-mshort .pgie-mlength {
   display: none;
+}
+
+/* Tracks: a row per layer under the play bar; the names on the left, the
+   lanes in seconds on the right, the playhead over them. */
+.pgie-mtracks {
+  --pgie-mlbl: 168px;
+  position: relative;
+  max-height: 188px;
+  overflow-y: auto;
+  border-top: 1px solid var(--pgie-line);
+  font-size: 12.5px;
+}
+
+.pgie-mrhead {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  height: 26px;
+  background: var(--pgie-surface);
+  border-bottom: 1px solid var(--pgie-line);
+}
+
+.pgie-mrlabel {
+  width: var(--pgie-mlbl);
+  flex: none;
+  padding: 5px 12px;
+  color: var(--pgie-muted);
+  font-weight: 600;
+}
+
+.pgie-mruler {
+  position: relative;
+  flex: 1;
+  margin: 0 14px 0 4px;
+  cursor: pointer;
+}
+
+.pgie-mruler span {
+  position: absolute;
+  top: 5px;
+  padding-left: 3px;
+  border-left: 1px solid var(--pgie-line);
+  color: var(--pgie-muted);
+  white-space: nowrap;
+}
+
+.pgie-mrow {
+  display: flex;
+  height: 30px;
+}
+
+.pgie-mrow.on {
+  background: var(--pgie-pw);
+}
+
+.pgie .pgie-mrname {
+  width: var(--pgie-mlbl);
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 0 12px;
+  border: 0;
+  background: none;
+  color: var(--pgie-tx);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.pgie-mrname span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pgie-mrname .pgie-ic {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+
+/* The lane: a thin line the length of the animation, the bars over it. */
+.pgie-mlane {
+  position: relative;
+  flex: 1;
+  margin: 0 14px 0 4px;
+  background: linear-gradient(var(--pgie-line), var(--pgie-line)) center / 100% 2px no-repeat;
+}
+
+.pgie-mseg {
+  position: absolute;
+  top: 7px;
+  height: 16px;
+  min-width: 4px;
+  border-radius: 5px;
+  background: var(--pgie-primary);
+  cursor: grab;
+  touch-action: none;
+}
+
+.pgie-mseg-out {
+  opacity: 0.55;
+}
+
+/* The loop is hatched, so it differs from a bar by more than its colour. */
+.pgie-mseg-loop {
+  background: repeating-linear-gradient(-45deg, var(--pgie-primary) 0 4px, transparent 4px 8px);
+  opacity: 0.6;
+  cursor: default;
+}
+
+.pgie-mseg.pgie-mdrag {
+  cursor: grabbing;
+}
+
+.pgie-mgrip {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 9px;
+  border: 1.5px solid var(--pgie-primary);
+  border-radius: 4px;
+  background: var(--pgie-surface);
+  cursor: ew-resize;
+  display: none;
+}
+
+.pgie-mgrip[data-part="start"] {
+  left: -4px;
+}
+
+.pgie-mgrip[data-part="end"] {
+  right: -4px;
+}
+
+.pgie-mrow.on .pgie-mgrip,
+.pgie-mseg-loop .pgie-mgrip {
+  display: block;
+}
+
+.pgie-mseg-loop .pgie-mgrip {
+  opacity: 0;
+}
+
+.pgie-mseg-loop:hover .pgie-mgrip,
+.pgie-mrow.on .pgie-mseg-loop .pgie-mgrip {
+  opacity: 1;
+}
+
+.pgie-mtip {
+  position: absolute;
+  top: 3px;
+  z-index: 3;
+  margin-left: 10px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--pgie-tx);
+  color: var(--pgie-surface);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.pgie-mlanes {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--pgie-mlbl) + 4px);
+  right: 14px;
+  pointer-events: none;
+}
+
+.pgie-mhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  z-index: 3;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--pgie-danger);
+}
+
+/* A dock stopped short by an open sheet keeps more room for the lanes. */
+.pgie-mshort .pgie-mtracks {
+  --pgie-mlbl: 112px;
+}
+
+/* No room for tracks on a short screen: the panel's fields set the same. */
+@media (max-height: 599.98px), (max-width: 599.98px) {
+  .pgie-mtracks,
+  .pgie-mtracknote {
+    display: none;
+  }
 }
 
 @media (max-width: 767.98px), (max-height: 499.98px) {

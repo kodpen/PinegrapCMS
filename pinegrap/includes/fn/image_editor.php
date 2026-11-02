@@ -2956,6 +2956,8 @@ function pg_image_editor_strings_motion()
         'motionPause'          => lang('Pause (K)'),
         'motionScrub'          => lang('Playhead'),
         'motionRepeat'         => lang('Repeat the preview'),
+        'motionTracks'         => lang('Animation tracks'),
+        'motionTracksNote'     => lang('Drag a bar on its track to change when it plays, and its ends to change how long. Shift turns off the 0.1 s step.'),
     );
 }
 
