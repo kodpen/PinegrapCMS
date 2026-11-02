@@ -18,7 +18,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 
 - Endpoints `barcode` (3): clean (barcode_decrease_inventory, barcode_increase_inventory, barcode_menu; the decrease to 0 is a decision)
 
-- Endpoints `billing` (2): open
+- Endpoints `billing` (2): done #5016 (billing_information, get_billing_information)
 
 - Endpoints `calendar` (13): open
 
