@@ -1279,6 +1279,7 @@
     "Writes": "Yazar",
     "Writes a decision; it is kept on the Decisions tab.": "Bir karar yazar; Kararlar sekmesinde saklanır.",
     "Writes a note; it is kept on the Decisions tab.": "Bir not yazar; Kararlar sekmesinde saklanır.",
+    "Writes a small file to the bucket, reads it back and deletes it.": "Kovaya küçük bir dosya yazar, geri okur ve siler.",
     "Writes about books, music and the small places that keep them.": "Kitaplar, müzik ve onları yaşatan küçük yerler üzerine yazar.",
     "Writes about work, prices and household money.": "İş, fiyatlar ve hane bütçesi üzerine yazıyor.",
     "Writes define('CURL_CA_BUNDLE', dirname(__FILE__) . '/cacert.pem'); into data/config.php, replacing the current CURL_CA_BUNDLE line. Nothing else in the file is changed.": "data/config.php'ye define('CURL_CA_BUNDLE', dirname(__FILE__) . '/cacert.pem'); satırını yazar, mevcut CURL_CA_BUNDLE satırının yerine. Dosyadaki başka hiçbir şey değişmez.",
