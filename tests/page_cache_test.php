@@ -314,14 +314,15 @@ function test_page_cache_request_scheme()
 	pg_assert_same(array('https', ''), pg_page_cache_request_scheme(array('SERVER_PORT' => '443')));
 	pg_assert_same(array('http', 'https'), pg_page_cache_request_scheme(array('HTTP_X_FORWARDED_PROTO' => 'HTTPS, http')));
 
-	// Every header Secure Mode trusts (check_proxy_ssl_headers()) says https
-	// the same way; anything else is no word at all, so a made-up header
-	// value cannot make a copy of its own.
+	// Every header Secure Mode reads (pg_forwarded_https()) says https the
+	// same way; anything else is no word at all, so a made-up header value
+	// cannot make a copy of its own.
 	$says_https = array(
 		'cf' => array('HTTP_CF_VISITOR' => '{"scheme":"https"}'),
 		'forwarded' => array('HTTP_FORWARDED' => 'for=192.0.2.1;proto=https'),
 		'ssl' => array('HTTP_X_FORWARDED_SSL' => 'on'),
 		'front_end' => array('HTTP_FRONT_END_HTTPS' => 'On'),
+		'arr' => array('HTTP_X_ARR_SSL' => '2048|256|C=US|CN=www.example.com'),
 		'port' => array('HTTP_X_FORWARDED_PORT' => '443'),
 	);
 

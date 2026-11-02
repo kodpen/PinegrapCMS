@@ -142,13 +142,15 @@ define('SOFTWARE_AUTO_BACKUP', true);
 // Require HTTPS for all requests
 define('REQUIRE_SECURE_MODE', false);
 
-// Trust the SSL headers forwarded by a reverse proxy or CDN
-// (X-Forwarded-Proto, CF-Visitor, X-Forwarded-SSL, Front-End-Https).
+// Trust the SSL headers forwarded by a reverse proxy or CDN (X-Forwarded-Proto,
+// Forwarded, X-Forwarded-SSL, Front-End-Https, X-ARR-SSL, CF-Visitor,
+// X-Forwarded-Port) from ANY peer.
 //
-// Required when SSL is terminated before the request reaches this server, so
-// that the origin leg is plain HTTP - Cloudflare "Flexible" SSL, nginx/HAProxy
-// offloading, most load balancers. Without this, Secure Mode cannot tell that
-// the visitor is on HTTPS and will refuse or redirect every request.
+// Normally not needed: when SSL is terminated before the request reaches this
+// server (Cloudflare "Flexible" SSL, nginx/HAProxy offloading, a load balancer,
+// a tunnel), these headers are believed from a proxy listed in Settings >
+// Firewall > Trusted Proxies and from Cloudflare's edge addresses, and Secure
+// Mode works without any edit here.
 //
 // SECURITY: these headers are sent by the client, so anyone who can reach this
 // server directly can forge them and bypass Secure Mode. Only enable it when

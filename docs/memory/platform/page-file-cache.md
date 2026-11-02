@@ -10,7 +10,7 @@ description: Pinegrap's own page cache on disk (PR #1402): router serving, the k
 
 ## When does the router serve?
 - `pg_page_cache_serve_check()`: TTL on, file cache on, `page_cache_generation` in the config row, GET/HEAD, no `?`, Host = `config.hostname` (no copy per made-up Host), no Authorization, no `pg_nc` / `software[auth]` / `pg_consent` cookie, `config.mobile` off, `maintenance_mode` off.
-- Key: sha1 of scheme (HTTPS/port 443), whether a proxy says https (the headers of `check_proxy_ssl_headers()`, reduced to `https` or ''), host, path, `config.version`. Secure Mode may redirect on the proxy's word, so both are in it; a made-up header value draws no copy of its own.
+- Key: sha1 of scheme (HTTPS/port 443), whether a proxy says https (`pg_forwarded_https()`, `platform/proxy-https-trust.md`, reduced to `https` or ''), host, path, `config.version`. Secure Mode may redirect on the proxy's word, so both are in it; a made-up header value draws no copy of its own.
 
 ## When is a page stored?
 - Only where the router named it: `router_page_cache_store_here()` before the home-page and page fall-through `get_page.php` requires. Never a short link (its address draws another page) or a pattern 404.

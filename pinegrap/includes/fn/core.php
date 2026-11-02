@@ -2508,14 +2508,20 @@ function get_absolute_time($properties)
 // Direct TLS termination on the origin is detected via $_SERVER['HTTPS'] / SERVER_PORT.
 //
 // When the site sits behind a reverse proxy or CDN that terminates TLS itself
-// (Cloudflare "Flexible" SSL, nginx/HAProxy offloading, load balancers), the
-// origin leg is plain HTTP on port 80 and neither of those variables is set,
-// even though the visitor's connection is encrypted. In that topology the only
-// evidence is a forwarded header. Those headers are trivially spoofable by any
-// client that can reach the origin directly, so they are honoured ONLY when the
-// administrator opts in with TRUST_PROXY_SSL_HEADERS in the config file.
-// Enable it only when the origin is not directly reachable (firewalled to the
-// proxy's IP ranges, or Cloudflare "Authenticated Origin Pulls").
+// (Cloudflare "Flexible" SSL, nginx/HAProxy offloading, load balancers, a
+// tunnel), the origin leg is plain HTTP on port 80 and neither of those
+// variables is set, even though the visitor's connection is encrypted. In that
+// topology the only evidence is a forwarded header (pg_forwarded_https()).
+// Those headers are trivially spoofable by any client that can reach the
+// origin directly, so they are honoured only from a peer whose word counts
+// (pg_https_peer_trusted()): one listed in Settings > Firewall > Trusted
+// Proxies, a Cloudflare edge address, or any peer when the administrator opts
+// in with TRUST_PROXY_SSL_HEADERS in the config file. The list counts whether
+// or not the firewall is on; every web entry point loads waf.php before this
+// is asked, and a script without it trusts only Cloudflare and the constant.
+//
+// get_file.php keeps a copy of this function (it never loads functions.php):
+// keep the two the same, or downloads and pages disagree about the scheme.
 function check_if_request_is_secure()
 {
     // Direct TLS on the origin. Always trusted - set by the web server, not the client.
@@ -2526,57 +2532,24 @@ function check_if_request_is_secure()
         return true;
     }
 
-    // Everything below is client-supplied, so require the administrator to opt in.
-    if (!defined('TRUST_PROXY_SSL_HEADERS') || TRUST_PROXY_SSL_HEADERS !== true) {
+    if (!pg_forwarded_https($_SERVER)) {
         return false;
     }
 
-    return check_proxy_ssl_headers();
+    $remote = isset($_SERVER['REMOTE_ADDR']) ? (string) $_SERVER['REMOTE_ADDR'] : '';
+
+    $trusted = function_exists('waf_setting') ? (string) waf_setting('waf_trusted_proxies', '') : '';
+
+    return pg_https_peer_trusted($remote, $trusted);
 }
 
-// Inspect the forwarded-protocol headers set by reverse proxies and CDNs.
-// Split out from check_if_request_is_secure() so that the diagnostics page can
-// report what the origin sees without having to duplicate the parsing rules.
-// NOTE: these headers are attacker-controlled unless the origin only accepts
-// traffic from the proxy - see check_if_request_is_secure().
+// What the forwarded-protocol headers of this request claim, whoever sent
+// them: the diagnostics of the Secure Mode guard tell "a proxy says https but
+// is not trusted" from "nothing says https" with it. The parsing rules are
+// pg_forwarded_https()'s (includes/fn/request_scheme.php).
 function check_proxy_ssl_headers()
 {
-    // Standard de-facto header, also sent by Cloudflare. May contain a comma
-    // separated chain when several proxies are involved ("https, http") - the
-    // left-most entry is the one the visitor actually used.
-    if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
-        $forwarded_proto = explode(',', $_SERVER['HTTP_X_FORWARDED_PROTO']);
-        if (strtolower(trim($forwarded_proto[0])) === 'https') {
-            return true;
-        }
-    }
-
-    // Cloudflare specific, e.g. {"scheme":"https"}
-    if (!empty($_SERVER['HTTP_CF_VISITOR']) && stripos($_SERVER['HTTP_CF_VISITOR'], '"scheme":"https"') !== false) {
-        return true;
-    }
-
-    // RFC 7239 Forwarded header, e.g. for=1.2.3.4;proto=https
-    if (!empty($_SERVER['HTTP_FORWARDED']) && preg_match('/proto\s*=\s*"?https"?/i', $_SERVER['HTTP_FORWARDED'])) {
-        return true;
-    }
-
-    // Older nginx / AWS ELB style header.
-    if (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && strtolower($_SERVER['HTTP_X_FORWARDED_SSL']) === 'on') {
-        return true;
-    }
-
-    // Microsoft ISA/TMG and IIS ARR.
-    if (!empty($_SERVER['HTTP_FRONT_END_HTTPS']) && strtolower($_SERVER['HTTP_FRONT_END_HTTPS']) === 'on') {
-        return true;
-    }
-
-    // Some proxies rewrite the port instead of the scheme.
-    if (!empty($_SERVER['HTTP_X_FORWARDED_PORT']) && $_SERVER['HTTP_X_FORWARDED_PORT'] == '443') {
-        return true;
-    }
-
-    return false;
+    return pg_forwarded_https($_SERVER);
 }
 
 

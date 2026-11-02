@@ -754,23 +754,13 @@ function check_directory_file_integrity()
 
 /**
  * Checks whether the current request is securely served over HTTPS
- * and returns 'success' or 'warning' for UI feedback.
+ * and returns 'success' or 'warning' for UI feedback. The answer is Secure
+ * Mode's own (check_if_request_is_secure(): direct TLS, or a forwarded
+ * header from a trusted peer), so the card and the guard never disagree.
  */
 function check_ssl_status()
 {
-    // Common server variables that indicate HTTPS usage
-    $https_enabled = (
-        (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
-        (!empty($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) ||
-        (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
-        (!empty($_SERVER['REQUEST_SCHEME']) && $_SERVER['REQUEST_SCHEME'] === 'https')
-    );
-
-    if ($https_enabled) {
-        return 'success';
-    } else {
-        return 'warning';
-    }
+    return check_if_request_is_secure() ? 'success' : 'warning';
 }
 
 /**

@@ -40,6 +40,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/image_engine.php');
 // a media player's Range request with them.
 require_once(PG_FUNCTIONS_DIR . '/includes/http_range.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/core.php');
+// The forwarded-scheme parser and the peer trust check. Shared with
+// get_file.php and the router's page cache module, which load it alone.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/request_scheme.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/lang.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/auth.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/mfa.php');

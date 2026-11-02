@@ -57,6 +57,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/lang_files.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/lang.php');
+// The forwarded-scheme parser and the peer trust check, which the local
+// check_if_request_is_secure() below decides with.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/request_scheme.php');
 pg_software_language_define(isset($router_config_row['software_language']) ? $router_config_row['software_language'] : '');
 
 // If this request was made over the web instead of a cron job,
@@ -87,7 +90,7 @@ if (!empty($_SERVER['HTTP_HOST'])) {
             );
 
         // Redirect loop guard - see the matching block in init.php.
-        } elseif (check_proxy_ssl_headers() === TRUE) {
+        } elseif (pg_forwarded_https($_SERVER) === TRUE) {
             output_error(
                 'Secure Mode is enabled and your connection appears to be secure, but this server cannot verify it because SSL is terminated by a proxy or CDN (for example Cloudflare Flexible SSL). Enable TRUST_PROXY_SSL_HEADERS in the config file, or turn off Secure Mode.',
                 500
@@ -1696,11 +1699,12 @@ function get_request_uri()
     }
 }
 
-// Local copy of the helper in functions.php. This script is required directly by
-// router.php without loading functions.php, so it has to stand on its own.
-// KEEP IN SYNC with check_if_request_is_secure() / check_proxy_ssl_headers()
-// in functions.php - a mismatch means downloads and pages disagree about
-// whether the visitor is on HTTPS.
+// Local copy of the helper in includes/fn/core.php. This script is required
+// directly by router.php without loading functions.php, so it has to stand on
+// its own. KEEP IN SYNC with check_if_request_is_secure() in core.php - a
+// mismatch means downloads and pages disagree about whether the visitor is on
+// HTTPS. The parsing and the peer trust are includes/fn/request_scheme.php's,
+// loaded above, so only the direct check and the two calls are repeated here.
 function check_if_request_is_secure()
 {
     // Direct TLS on the origin. Always trusted - set by the web server, not the client.
@@ -1711,53 +1715,17 @@ function check_if_request_is_secure()
         return TRUE;
     }
 
-    // Forwarded headers are client-supplied, so require an explicit opt-in.
-    // See the long explanation above check_if_request_is_secure() in functions.php.
-    if (!defined('TRUST_PROXY_SSL_HEADERS') || TRUST_PROXY_SSL_HEADERS !== TRUE) {
+    // Forwarded headers are client-supplied: believed only from a trusted
+    // peer (Trusted Proxies, a Cloudflare edge, or the config constant).
+    if (!pg_forwarded_https($_SERVER)) {
         return FALSE;
     }
 
-    return check_proxy_ssl_headers();
-}
+    $remote = isset($_SERVER['REMOTE_ADDR']) ? (string) $_SERVER['REMOTE_ADDR'] : '';
 
-// Local copy - KEEP IN SYNC with check_proxy_ssl_headers() in functions.php.
-function check_proxy_ssl_headers()
-{
-    // Standard de-facto header, also sent by Cloudflare. May contain a comma
-    // separated chain when several proxies are involved ("https, http").
-    if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
-        $forwarded_proto = explode(',', $_SERVER['HTTP_X_FORWARDED_PROTO']);
-        if (strtolower(trim($forwarded_proto[0])) === 'https') {
-            return TRUE;
-        }
-    }
+    $trusted = function_exists('waf_setting') ? (string) waf_setting('waf_trusted_proxies', '') : '';
 
-    // Cloudflare specific, e.g. {"scheme":"https"}
-    if (!empty($_SERVER['HTTP_CF_VISITOR']) && stripos($_SERVER['HTTP_CF_VISITOR'], '"scheme":"https"') !== FALSE) {
-        return TRUE;
-    }
-
-    // RFC 7239 Forwarded header, e.g. for=1.2.3.4;proto=https
-    if (!empty($_SERVER['HTTP_FORWARDED']) && preg_match('/proto\s*=\s*"?https"?/i', $_SERVER['HTTP_FORWARDED'])) {
-        return TRUE;
-    }
-
-    // Older nginx / AWS ELB style header.
-    if (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && strtolower($_SERVER['HTTP_X_FORWARDED_SSL']) === 'on') {
-        return TRUE;
-    }
-
-    // Microsoft ISA/TMG and IIS ARR.
-    if (!empty($_SERVER['HTTP_FRONT_END_HTTPS']) && strtolower($_SERVER['HTTP_FRONT_END_HTTPS']) === 'on') {
-        return TRUE;
-    }
-
-    // Some proxies rewrite the port instead of the scheme.
-    if (!empty($_SERVER['HTTP_X_FORWARDED_PORT']) && $_SERVER['HTTP_X_FORWARDED_PORT'] == '443') {
-        return TRUE;
-    }
-
-    return FALSE;
+    return pg_https_peer_trusted($remote, $trusted);
 }
 
 // Create a function that we can use to set the timezone before we need to use date functions

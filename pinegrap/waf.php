@@ -3112,7 +3112,7 @@ function waf_send_csp_header()
     // HSTS rides with the document headers rather than the base set, for one
     // reason: the decision "was this request HTTPS" must be the SAME decision
     // Secure Mode makes, and that function (check_if_request_is_secure, with
-    // its TRUST_PROXY_SSL_HEADERS opt-in and its test page) exists only once
+    // its peer trust check and its test page) exists only once
     // functions.php is loaded - which is this stage. Two notions of "secure"
     // in one product would be one too many. A browser applies HSTS per host
     // from any response, so documents alone are enough. Never without Secure
