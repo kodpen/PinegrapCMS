@@ -859,6 +859,7 @@
     "Send Test": "Testi Gönder",
     "Send Time": "Gönderim Zamanı",
     "Send User to a Specific Page on Login": "Kullanıcıyı Oturum Açarken Belirli Bir Sayfaya Gönder",
+    "Send WebP at the picture's own address": "Resmin kendi adresinde WebP gönder",
     "Send a code by SMS to {var:1}": "{var:1} numarasına SMS ile kod gönder",
     "Send a copy to the sender as well": "Kopyasını gönderene de yolla",
     "Send a direct message": "Doğrudan mesaj gönder",

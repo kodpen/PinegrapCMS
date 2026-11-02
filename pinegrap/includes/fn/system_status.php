@@ -1907,6 +1907,7 @@ function get_system_status_checks()
         'Google Merchant Center'   => 'Merchant',
         'Incoming E-mail'          => 'Mailboxes',
         'e-Fatura Threshold'       => 'e-Fatura',
+        'WebP At Own Address'      => 'WebP',
     );
 
     // The three checks that answer "can someone get in": files that have been
@@ -3000,6 +3001,62 @@ function get_system_status_checks()
             '',
             array()
         );
+    }
+
+    // 🖼 WebP at a picture's own address (includes/image_negotiation.php)
+    //
+    // Reported, not scored: an upgraded site has the switch off until the
+    // operator turns it on, which is a choice, not a fault. Yellow when it is
+    // on and still sends the original: the server writes no WebP, or the
+    // panel came through a CDN nobody confirmed keeps a copy per format.
+    if (function_exists('pg_image_delivery_ready') && pg_image_delivery_ready()) {
+
+        require_once(PG_FUNCTIONS_DIR . '/includes/image_negotiation.php');
+
+        $webp_written = pg_image_derivative_formats(pg_image_derivative_directory());
+        $webp_state = pg_image_same_address_state(
+            pg_image_delivery()['same_address'],
+            !empty($webp_written['webp']),
+            pg_image_behind_proxy($_SERVER));
+        $webp_href = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_features.php#pgset-images';
+
+        if ($webp_state === 'off') {
+            $output .= $makeIcon(
+                'bi-filetype-jpg',
+                'fg-secondary',
+                'WebP At Own Address',
+                'Pictures are sent as uploaded at their own address. Switch on WebP at the picture\'s own address in Image Optimization to send browsers that read WebP a lighter copy.',
+                lang('Off'),
+                $webp_href
+            );
+        } elseif ($webp_state === 'no_webp') {
+            $output .= $makeIcon(
+                'bi-filetype-jpg',
+                'fg-warning',
+                'WebP At Own Address',
+                'WebP at the picture\'s own address is on, but this server cannot write WebP, so every reader gets the original.',
+                lang('No WebP'),
+                $webp_href
+            );
+        } elseif ($webp_state === 'cdn') {
+            $output .= $makeIcon(
+                'bi-filetype-jpg',
+                'fg-warning',
+                'WebP At Own Address',
+                'WebP at the picture\'s own address is on, but this site is reached through a CDN that is not confirmed to keep a copy per format, so requests through it get the original. Set up the CDN to cache pictures per Accept value, then confirm it in Image Optimization.',
+                lang('CDN not confirmed'),
+                $webp_href
+            );
+        } else {
+            $output .= $makeIcon(
+                'bi-filetype-jpg',
+                'fg-success',
+                'WebP At Own Address',
+                'Browsers that read WebP get a lighter WebP copy of each JPEG and PNG at its own address; every other reader gets the original.',
+                lang('On'),
+                $webp_href
+            );
+        }
     }
 
     $group = 'maintenance';
