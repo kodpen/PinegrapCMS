@@ -12,11 +12,11 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `ai_write`: done #5126 (page regions read from the style's collection and into a designer tree's region tags; rest reviewed: targets, context cleaning, prompt, answer and tidy, cut, HTML escaping, daily counter, access, marks and fingerprints, browser path)
 
-- `audit`: open
+- `audit`: clean (secret masking checked against every column of the traced tables, diff, compaction, JSON masking, actor, request id, fetch-by-column guard, recycle-bin label)
 
-- `audit_list`: open
+- `audit_list`: clean (link query and date round trip, sort, search, value and changes escaping, row links and Open gate, paging queries; its user link fault fixed in audit_view #5145)
 
-- `audit_view`: open
+- `audit_view`: done #5145 (a username made of digits read as a user id by the User filter; rest reviewed: filters, sides and values, CSV formula guard, live records, labels, settings names)
 
 - `auth`: done #4523
 
