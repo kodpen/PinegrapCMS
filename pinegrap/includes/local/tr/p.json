@@ -1773,6 +1773,7 @@
     "page ({var:1}) was published at its scheduled time": "sayfa ({var:1}) zamanı gelince yayına alındı",
     "page ({var:1}) was taken off the site as a draft": "sayfa ({var:1}) taslağa alınarak yayından kaldırıldı",
     "page ({var:1}) was taken off the site at its scheduled time": "sayfa ({var:1}) zamanı gelince yayından kaldırıldı",
+    "page name(s) skipped: blank, or a forward slash in a catalog or catalog detail page name.": "sayfa adı atlandı: boş ya da katalog veya katalog detay sayfası adında eğik çizgi var.",
     "page name(s) skipped: name already in use.": "sayfa adı atlandı: ad zaten kullanımda.",
     "page style": "sayfa stili",
     "page style set to {var:1}": "sayfa stili {var:1} olarak ayarlandı",

@@ -3727,6 +3727,33 @@ function pg_page_form_clean_name($name, $page_type)
 }
 
 /**
+ * The name mass_edit.php saves a page under, by the rules the page screens
+ * apply: trimmed and cleaned (pg_page_form_clean_name()). Null when the
+ * page screens would refuse it: blank once trimmed, or a forward slash in a
+ * catalog or catalog detail page name. Pure.
+ *
+ * @param mixed  $name      The posted or replaced name
+ * @param string $page_type The page's type
+ * @return string|null
+ */
+function pg_page_form_bulk_name($name, $page_type)
+{
+    if (!is_scalar($name)) {
+        return null;
+    }
+
+    $name = trim((string) $name);
+
+    if ($name === '') {
+        return null;
+    }
+
+    $clean = pg_page_form_clean_name($name, (string) $page_type);
+
+    return ($clean['error'] === '') ? $clean['name'] : null;
+}
+
+/**
  * Marks the errors on the screen's liveform and sends the user back to the
  * form. Returns only when there is no error.
  *
