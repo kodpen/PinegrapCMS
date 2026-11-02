@@ -35,22 +35,38 @@ function convert_html_to_text($html)
     $content = preg_replace('/<title[^>]*>.*?<\/title>/i', '', $content);
     $content = preg_replace('/<script[^>]*>.*?<\/script>/i', '', $content);
     $content = preg_replace('/<style[^>]*>.*?<\/style>/i', '', $content);
-    $content = preg_replace_callback('/<h[123][^>]*>(.+?)<\/h[123]>/i', function ($matches) {
-        return "\n\n" . mb_strtoupper($matches[1]) . "\n\n";
+    // Capitals and title case change the text only, never a tag: a link
+    // inside bold or a heading keeps its address (paths and signed queries
+    // are case-sensitive).
+    $text_case = function ($html, $case) {
+        $pieces = preg_split('/(<[^>]*>)/', $html, -1, PREG_SPLIT_DELIM_CAPTURE);
+
+        foreach ($pieces as $index => $piece) {
+            if (($index % 2) === 0) {
+                $pieces[$index] = ($case === 'upper') ? mb_strtoupper($piece) : ucwords($piece);
+            }
+        }
+
+        return implode('', $pieces);
+    };
+    // A tag name is matched whole: <b> is not <body> or <blockquote>, <i> is
+    // not <img> or <iframe>, <em> is not <embed>.
+    $content = preg_replace_callback('/<h[123](?:\s[^>]*)?>(.+?)<\/h[123]>/i', function ($matches) use ($text_case) {
+        return "\n\n" . $text_case($matches[1], 'upper') . "\n\n";
     }, $content);
-    $content = preg_replace_callback('/<h[456][^>]*>(.+?)<\/h[456]>/i', function ($matches) {
-        return "\n\n" . ucwords($matches[1]) . "\n\n";
+    $content = preg_replace_callback('/<h[456](?:\s[^>]*)?>(.+?)<\/h[456]>/i', function ($matches) use ($text_case) {
+        return "\n\n" . $text_case($matches[1], 'title') . "\n\n";
     }, $content);
     $content = preg_replace('/<p[^>]*>/i', "\n\n", $content);
     $content = preg_replace('/<br[^>]*>/i', "\n", $content);
-    $content = preg_replace_callback('/<b[^>]*>(.+?)<\/b>/i', function ($matches) {
-        return mb_strtoupper($matches[1]);
+    $content = preg_replace_callback('/<b(?:\s[^>]*)?>(.+?)<\/b>/i', function ($matches) use ($text_case) {
+        return $text_case($matches[1], 'upper');
     }, $content);
-    $content = preg_replace_callback('/<strong[^>]*>(.+?)<\/strong>/i', function ($matches) {
-        return mb_strtoupper($matches[1]);
+    $content = preg_replace_callback('/<strong(?:\s[^>]*)?>(.+?)<\/strong>/i', function ($matches) use ($text_case) {
+        return $text_case($matches[1], 'upper');
     }, $content);
-    $content = preg_replace('/<i[^>]*>(.+?)<\/i>/i', '_\\1_', $content);
-    $content = preg_replace('/<em[^>]*>(.+?)<\/em>/i', '_\\1_', $content);
+    $content = preg_replace('/<i(?:\s[^>]*)?>(.+?)<\/i>/i', '_\\1_', $content);
+    $content = preg_replace('/<em(?:\s[^>]*)?>(.+?)<\/em>/i', '_\\1_', $content);
     $content = preg_replace('/(<ul[^>]*>|<\/ul>)/i', "\n\n", $content);
     $content = preg_replace('/(<ol[^>]*>|<\/ol>)/i', "\n\n", $content);
     $content = preg_replace('/<link[^>]*>/i', '', $content);
@@ -60,8 +76,8 @@ function convert_html_to_text($html)
     $content = preg_replace('/(<table[^>]*>|<\/table>)/i', "\n\n", $content);
     $content = preg_replace('/(<tr[^>]*>|<\/tr>)/i', "\n", $content);
     $content = preg_replace('/<td[^>]*>(.+?)<\/td>/i', "\t\t\\1\n", $content);
-    $content = preg_replace_callback('/<th[^>]*>(.+?)<\/th>/i', function ($matches) {
-        return "\t\t" . mb_strtoupper($matches[1]) . "\n";
+    $content = preg_replace_callback('/<th[^>]*>(.+?)<\/th>/i', function ($matches) use ($text_case) {
+        return "\t\t" . $text_case($matches[1], 'upper') . "\n";
     }, $content);
     $content = preg_replace('/&nbsp;/i', ' ', $content);
     $content = preg_replace('/&quot;/i', '"', $content);

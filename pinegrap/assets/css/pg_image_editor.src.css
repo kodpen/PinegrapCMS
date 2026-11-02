@@ -356,6 +356,51 @@
   color: var(--pgie-ink);
 }
 
+/* The Layers button stays at the rail's foot while the tools scroll under
+   it: at the bottom of the column, at the right end of a phone's bar, with
+   a line between it and the tools. */
+.pgie-rail .pgie-layersbtn {
+  position: sticky;
+  right: 0;
+  bottom: 0;
+  background: var(--pgie-surface);
+}
+
+.pgie-rail .pgie-layersbtn::before {
+  content: "";
+  position: absolute;
+  top: -3px;
+  right: 12px;
+  left: 12px;
+  height: 1px;
+  background: var(--pgie-line);
+}
+
+/* A rail too short for its buttons (fitRail()): first closer, then icons
+   only. A small screen has its own rail. */
+@media (min-width: 768px) and (min-height: 500px) {
+  .pgie-rail.pgie-rail-tight {
+    gap: 2px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .pgie-rail-tight .pgie-tool {
+    gap: 1px;
+    padding: 5px 2px 4px;
+    font-size: 11px;
+    line-height: 1.25;
+  }
+
+  .pgie-rail-icons .pgie-tool {
+    padding: 8px 2px;
+  }
+
+  .pgie .pgie-rail-icons .pgie-tool span {
+    display: none;
+  }
+}
+
 .pgie-stage {
   position: relative;
   flex: 1;
@@ -2105,6 +2150,15 @@
 
   .pgie-rail .pgie-grow {
     display: none;
+  }
+
+  .pgie-rail .pgie-layersbtn::before {
+    top: 10px;
+    right: auto;
+    bottom: 10px;
+    left: -2px;
+    width: 1px;
+    height: auto;
   }
 
   .pgie-tool {

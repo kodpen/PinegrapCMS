@@ -65,3 +65,16 @@ function test_billing_information_widget_registered()
 	pg_assert_contains("{ type: 'billing_information'", $js, 'in SW_TYPES');
 	pg_assert_contains("case 'billing_information': {", $js, 'has a starter tree');
 }
+
+// The classic billing screen reads ?value_<id> only as one string: an array
+// (value_<id>[]=) reached trim() and stopped the checkout page on PHP 8.
+// The handler's custom field errors go through lang() like the others.
+function test_billing_information_query_value_and_custom_field_errors()
+{
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_billing_information.php');
+	pg_assert_contains("is_string(\$_GET['value_' . \$field['id']])", $screen, 'an array value is not trimmed');
+	$handler = (string) file_get_contents(PG_FUNCTIONS_DIR . '/billing_information.php');
+	pg_assert_false(strpos($handler, "' is required.'") !== false, 'no untranslated "is required."');
+	pg_assert_contains("lang(array('string' => '{var:1} is required.', 'vars' => h(\$custom_field_1_label)))", $handler, 'custom field 1');
+	pg_assert_contains("lang(array('string' => '{var:1} is required.', 'vars' => h(\$custom_field_2_label)))", $handler, 'custom field 2');
+}
