@@ -688,6 +688,7 @@
     "The Bread That Takes Three Days": "Üç Günde Olan Ekmek",
     "The Business District café is closed at the weekend.": "İş Merkezi şubesi hafta sonu kapalıdır.",
     "The CA bundle could not be updated.": "CA paketi güncellenemedi.",
+    "The CDN keeps a copy per format": "CDN her biçim için ayrı kopya tutuyor",
     "The CSS classes of the ^^__order_status_badge^^ token. The status text comes from the order; you pick its colour here. Left empty, the default is used.": "^^__order_status_badge^^ token'ının CSS sınıfları. Durum metni siparişten gelir; rengi buradan sen belirlersin. Boş bırakılırsa varsayılan kullanılır.",
     "The CSS classes of the badge in elements bound to \"{var}\". The status text comes from the order; you pick its colour here. Left empty, the default is used.": "\"{var}\" alanına bağlanan öğelerdeki rozetin CSS sınıfları. Durum metni siparişten gelir; rengi buradan sen belirlersin. Boş bırakılırsa varsayılan kullanılır.",
     "The CSS file was edited successfully.": "CSS dosyası başarıyla düzenlendi.",
