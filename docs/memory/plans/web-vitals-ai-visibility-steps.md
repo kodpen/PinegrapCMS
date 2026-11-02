@@ -8,7 +8,7 @@ description: Steps WV1-WV3 of plans/web-vitals-ai-visibility.md: the vitals beac
 - S under 400 product lines, M about 1,000. Tests in `tests/vitals_<topic>_test.php` and `tests/ai_visibility_<topic>_test.php` (pure functions), memory under `visitors/`, texts through `tr_add.php`, `php tools/build_js.php` after the script.
 
 ## Which steps are there?
-- WV1 (M) Beacon and rollup. `free` after question 1.
+- WV1 (M) Beacon and rollup. Done in #5397.
   - `assets/js/pg_vitals.src.js` and `.min.js` (registered in `pg_js_bundles()`): LCP, INP and CLS through `PerformanceObserver` (`buffered: true`), the final values sent once on `visibilitychange` hidden or `pagehide` with `navigator.sendBeacon()`; no value for a page restored from the back-forward cache. `output.php` prints it for public pages only (not the designer, Preview, prototype, or a staff session). `page_view.php` reads `v=` (three numbers, device class, connection) after the token check, validates ranges (LCP 0-60 s, INP 0-10 s, CLS 0-10) and writes the schema sub-step's table `page_vitals_hourly` (`install_create_table()`, in `get_tables()`, rerun twice) with `INSERT ... ON DUPLICATE KEY UPDATE`: counts, sums, good/needs-work/poor buckets per Google's thresholds. Tests: the bucket function, the validation, the key. Memory: `visitors/page-vitals-beacon.md`.
 
 - WV2 (M) Figures and API. After WV1.
