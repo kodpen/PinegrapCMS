@@ -358,18 +358,31 @@ function ws_message_file_send($viewer, $message, $channel, $name, $data)
 }
 
 /**
- * Whether a row of ws_file_edits is listed for a viewer: the earlier version
- * of a redacted edit shows what the redaction covers, so only the person who
- * made the edit sees it; the file itself stays in the file manager under its
- * folder's access.
+ * The rows of ws_file_edits a viewer may see. Every version up to the newest
+ * redacted edit - that edit's own earlier version and all older ones - shows
+ * what the redaction covers, so only the person who made that edit sees
+ * them; versions after it are listed for everyone. The files themselves stay
+ * in the file manager under their folder's access.
  *
- * @param array $row       edited_by and, from 11.0.144, redacted
- * @param int   $viewer_id
- * @return bool
+ * @param array[] $rows      id, edited_by and, from 11.0.144, redacted
+ * @param int     $viewer_id
+ * @return array[] the visible rows, in their order
  */
-function ws_file_edit_visible($row, $viewer_id)
+function ws_file_edits_visible($rows, $viewer_id)
 {
-    return empty($row['redacted']) || (((int) $viewer_id > 0) && ((int) $row['edited_by'] === (int) $viewer_id));
+    $cut = null;
+
+    foreach ((array) $rows as $row) {
+        if (!empty($row['redacted']) && (($cut === null) || ((int) $row['id'] > (int) $cut['id']))) {
+            $cut = $row;
+        }
+    }
+
+    if (($cut === null) || (((int) $viewer_id > 0) && ((int) $cut['edited_by'] === (int) $viewer_id))) {
+        return array_values((array) $rows);
+    }
+
+    return array_values(array_filter((array) $rows, function ($row) use ($cut) { return (int) $row['id'] > (int) $cut['id']; }));
 }
 
 /**
@@ -389,7 +402,7 @@ function ws_file_history($message_id, $viewer_id = 0)
         LEFT JOIN files f ON f.id = e.original_file_id
         WHERE e.message_id = '" . (int) $message_id . "'
         ORDER BY e.id DESC LIMIT 50");
-    $rows = array_values(array_filter($rows, function ($row) use ($viewer_id) { return ws_file_edit_visible($row, $viewer_id); }));
+    $rows = ws_file_edits_visible($rows, $viewer_id);
 
     $people = ws_people(array_map(function ($row) { return (int) $row['edited_by']; }, $rows));
     $out = array();

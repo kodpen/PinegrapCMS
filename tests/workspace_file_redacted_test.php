@@ -18,19 +18,30 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
 
-// A redacted edit's earlier version is the editor's alone; any other edit is
-// listed for everyone who reads the channel.
+// A redacted edit hides its own earlier version and every older one from
+// all but its editor: each of them still shows what the redaction covers.
+// Rows come newest first, as ws_file_history() reads them.
 function test_workspace_file_redacted_history_rows()
 {
-	$plain = array('edited_by' => 4, 'redacted' => 0);
-	$redacted = array('edited_by' => 4, 'redacted' => 1);
-	$before = array('edited_by' => 4);
+	$ids = function ($rows) { return array_map(function ($row) { return (int) $row['id']; }, $rows); };
+	// O posted; a plain edit O -> E1 by 4; a redacted edit E1 -> R by 7.
+	$rows = array(
+		array('id' => 2, 'edited_by' => 7, 'redacted' => 1),
+		array('id' => 1, 'edited_by' => 4, 'redacted' => 0));
 
-	pg_assert_true(ws_file_edit_visible($plain, 9), 'a plain edit is listed for another reader');
-	pg_assert_true(ws_file_edit_visible($before, 9), 'a row from before the column is listed');
-	pg_assert_true(ws_file_edit_visible($redacted, 4), 'a redacted edit is listed for its editor');
-	pg_assert_false(ws_file_edit_visible($redacted, 9), 'and for nobody else');
-	pg_assert_false(ws_file_edit_visible(array('edited_by' => '4', 'redacted' => '1'), 0), 'nor for no viewer');
+	pg_assert_same(array(), $ids(ws_file_edits_visible($rows, 9)), 'a reader sees no earlier version');
+	pg_assert_same(array(), $ids(ws_file_edits_visible($rows, 4)), 'nor does the plain editor');
+	pg_assert_same(array(), $ids(ws_file_edits_visible($rows, 0)), 'nor no viewer');
+	pg_assert_same(array(2, 1), $ids(ws_file_edits_visible($rows, 7)), 'the person who redacted sees both');
+
+	// A plain edit R -> E2 after the redaction is listed for everyone.
+	array_unshift($rows, array('id' => 3, 'edited_by' => 4, 'redacted' => 0));
+	pg_assert_same(array(3), $ids(ws_file_edits_visible($rows, 9)), 'a later plain edit is listed for a reader');
+	pg_assert_same(array(3, 2, 1), $ids(ws_file_edits_visible($rows, 7)), 'and all of them for the person who redacted');
+
+	// Rows without a redaction, or from before the column, are listed as before.
+	$plain = array(array('id' => 5, 'edited_by' => 4), array('id' => 4, 'edited_by' => 4, 'redacted' => '0'));
+	pg_assert_same(array(5, 4), $ids(ws_file_edits_visible($plain, 9)), 'plain rows are listed for everyone');
 }
 
 // The render answers whether it burnt a redaction in.
