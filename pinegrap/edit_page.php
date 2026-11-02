@@ -1228,6 +1228,10 @@ if (!$_POST) {
         $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         pg_audit_record('delete', 'page', $page_id, $audit_before);
+        // A page deleted from the bin leaves no restore record behind.
+        if (function_exists('pg_recycle_forget')) {
+            pg_recycle_forget('page', $page_id);
+        }
         
         // delete regions
         $query = "DELETE FROM pregion WHERE pregion_page = ?";

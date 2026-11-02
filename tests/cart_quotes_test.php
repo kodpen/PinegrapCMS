@@ -94,9 +94,41 @@ function test_cart_quote_lines_clean_caps_lines_and_quantities()
 	pg_assert_same('many', pg_cart_quote_lines_clean($many)['problem'], 'one line too many');
 	pg_assert_same('', pg_cart_quote_lines_clean(array_slice($many, 0, PG_CART_QUOTE_MAX_LINES))['problem'], 'the most lines');
 
-	$big = pg_cart_quote_lines_clean(array(array('product_id' => 3, 'quantity' => PG_CART_QUOTE_MAX_QUANTITY), array('product_id' => 3, 'quantity' => 5)));
+	$top = pg_cart_quote_lines_clean(array(array('product_id' => 3, 'quantity' => PG_CART_QUOTE_MAX_QUANTITY)));
 
-	pg_assert_same(PG_CART_QUOTE_MAX_QUANTITY, $big['lines'][0]['quantity'], 'a sum stops at the largest quantity');
+	pg_assert_same(PG_CART_QUOTE_MAX_QUANTITY, $top['lines'][0]['quantity'], 'the largest quantity is kept');
+
+	// A quantity past the top is refused, never cut down to it without a word.
+	pg_assert_same('quantity', pg_cart_quote_lines_clean(array(array('product_id' => 3, 'quantity' => PG_CART_QUOTE_MAX_QUANTITY + 1)))['problem'], 'one line past the top');
+	pg_assert_same('quantity', pg_cart_quote_lines_clean(array(array('product_id' => 3, 'quantity' => PG_CART_QUOTE_MAX_QUANTITY), array('product_id' => 3, 'quantity' => 5)))['problem'], 'a sum past the top');
+}
+
+function test_cart_quote_quantity_valid_takes_whole_numbers_up_to_the_top()
+{
+	pg_assert_same(true, pg_cart_quote_quantity_valid('1'), 'one');
+	pg_assert_same(true, pg_cart_quote_quantity_valid(PG_CART_QUOTE_MAX_QUANTITY), 'the top');
+	pg_assert_same(false, pg_cart_quote_quantity_valid(''), 'empty');
+	pg_assert_same(false, pg_cart_quote_quantity_valid('0'), 'zero');
+	pg_assert_same(false, pg_cart_quote_quantity_valid('2.5'), 'a fraction');
+	pg_assert_same(false, pg_cart_quote_quantity_valid('-3'), 'negative');
+	pg_assert_same(false, pg_cart_quote_quantity_valid((string) (PG_CART_QUOTE_MAX_QUANTITY + 1)), 'past the top');
+	pg_assert_same(false, pg_cart_quote_quantity_valid(null), 'nothing');
+}
+
+// The list shows the first products and how many more, so one long quote
+// does not push the state and date columns off the screen.
+function test_cart_quote_lines_summary_names_the_first_products()
+{
+	$lines = array();
+
+	for ($i = 1; $i <= 10; $i++) {
+		$lines[] = array('name' => 'P' . $i, 'quantity' => $i);
+	}
+
+	pg_assert_same('', pg_cart_quote_lines_summary(array()), 'no lines');
+	pg_assert_same('P1 × 1, P2 × 2', pg_cart_quote_lines_summary(array_slice($lines, 0, 2)), 'two lines');
+	pg_assert_same('P1 × 1, P2 × 2, P3 × 3', pg_cart_quote_lines_summary(array_slice($lines, 0, 3)), 'three lines, all named');
+	pg_assert_same('P1 × 1, P2 × 2, P3 × 3 and 7 more', pg_cart_quote_lines_summary($lines), 'ten lines');
 }
 
 function test_cart_quote_plan_leaves_out_what_cannot_be_ordered()
@@ -201,6 +233,10 @@ function test_cart_quote_create_refusal_names_the_field()
 	pg_assert_same(array('lines_invalid', 'lines'), $refused(array('lines' => array())), 'no line');
 	pg_assert_same(array('lines_invalid', 'lines'), $refused(array('lines' => array(array('product_id' => 7, 'quantity' => 0)))), 'no quantity');
 	pg_assert_same(array('lines_invalid', 'lines'), $refused(array('lines' => array(array('product_id' => 7, 'quantity' => 1.5)))), 'not a whole number');
+
+	// The text says what is wrong: no product, or a quantity.
+	pg_assert_same('Add at least one product.', cart_quotes_test_create_refusal(array('lines' => array()))['error'], 'no line, its text');
+	pg_assert_same('Each product needs a whole quantity from 1 to 100000.', cart_quotes_test_create_refusal(array('lines' => array(array('product_id' => 7, 'quantity' => 0))))['error'], 'a quantity, its text');
 
 	$many = array();
 

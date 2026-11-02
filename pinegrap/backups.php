@@ -87,6 +87,75 @@ if($directory){
 }
 
 
+// Archives in the bucket of the "S3-compatible storage" destination. The
+// bucket is read only when asked (?remote=1), so a slow or unreachable store
+// never holds the screen up.
+$backup_s3_on = (function_exists('pg_backup_settings_ready') && pg_backup_settings_ready()
+	&& (pg_backup_settings()['backup_remote_type'] === 's3'));
+$output_remote_card = '';
+
+if (!$_POST && $backup_s3_on) {
+
+	$output_remote_body = '
+	                            <div class="p-5">
+	                                <p class="form-text mt-0">' . lang('The archives the automatic backup copied to the bucket. Bring one to this server to download it or restore it from the installation screen.') . '</p>
+	                                <a href="backups.php?remote=1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . lang('Show the archives in the bucket') . '</a>
+	                            </div>';
+
+	if (isset($_GET['remote'])) {
+
+		$remote_archives = pg_backup_s3_archives();
+
+		if (!$remote_archives['ok']) {
+			$output_remote_body = '
+	                            <div class="p-5"><div class="alert theme-warning mb-0">' . h($remote_archives['error']) . '</div></div>';
+		} elseif (!$remote_archives['rows']) {
+			$output_remote_body = '
+	                            <div class="p-5 form-text">' . lang('The bucket holds no backup archive.') . '</div>';
+		} else {
+			$output_remote_rows = '';
+
+			foreach ($remote_archives['rows'] as $remote_row) {
+				$remote_here = file_exists('data/backups/' . $remote_row['name']);
+				$output_remote_rows .= '
+	                                    <tr>
+	                                        <td class="align-middle text-start actions-buttons">' . ($remote_here
+					? '<span class="badge rounded-pill theme-secondary">' . lang('On this server') . '</span>'
+					: '<button type="submit" name="fetch_remote" value="' . h($remote_row['name']) . '" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . h(lang('Bring to this server')) . '" aria-label="' . h(lang(array('string' => 'Bring {var:1} to this server', 'vars' => array($remote_row['name'])))) . '"><i class="bi bi-cloud-download" aria-hidden="true"></i></button>') . '</td>
+	                                        <td>' . h($remote_row['name']) . '</td>
+	                                        <td data-order="' . (int) $remote_row['modified'] . '">' . ($remote_row['modified'] ? h(get_absolute_time(array('timestamp' => $remote_row['modified'], 'format' => 'plain_text'))) : '') . '</td>
+	                                        <td data-order="' . (int) $remote_row['size'] . '">' . h(convert_bytes_to_string($remote_row['size'], 2)) . '</td>
+	                                    </tr>';
+			}
+
+			$output_remote_body = '
+	                            <table class="table table-hover mb-0">
+	                                <thead>
+	                                    <tr>
+	                                        <th>' . lang('Action') . '</th>
+	                                        <th>' . lang('Name') . '</th>
+	                                        <th>' . lang('Last Modified') . '</th>
+	                                        <th>' . lang('Size') . '</th>
+	                                    </tr>
+	                                </thead>
+	                                <tbody>' . $output_remote_rows . '
+	                                </tbody>
+	                            </table>' . ($remote_archives['truncated'] ? '
+	                            <div class="p-5 form-text">' . lang('Only the first 2,000 objects of the bucket were read.') . '</div>' : '');
+		}
+	}
+
+	$output_remote_card = '
+	                    <div class="card my-7" id="backup-remote">
+	                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+	                            ' . lang('Copies in the bucket') . '
+	                        </div>
+	                        <div class="card-body p-0">' . $output_remote_body . '
+	                        </div>
+	                    </div>';
+}
+
+
 if (!$_POST) {
 
 
@@ -135,6 +204,8 @@ if (!$_POST) {
 	                            </table>
 	                        </div>
 	                    </div>
+
+	                    ' . $output_remote_card . '
 
 	                    <div class="card my-7">
 	                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
@@ -204,6 +275,37 @@ if (!$_POST) {
 	$liveform->add_fields_to_session();
 	$backup_location ='data/backups/';
 
+
+	// Bring an archive of the bucket here. Only a name the bucket lists now is
+	// fetched, with the size it lists, so nothing posted reaches another key.
+	if (isset($_POST['fetch_remote']) && is_string($_POST['fetch_remote']) && $backup_s3_on) {
+
+		$remote_archives = pg_backup_s3_archives();
+		$remote_found = null;
+
+		foreach ($remote_archives['rows'] as $remote_row) {
+			if ($remote_row['name'] === $_POST['fetch_remote']) {
+				$remote_found = $remote_row;
+			}
+		}
+
+		if (!$remote_archives['ok']) {
+			$liveform->add_warning(h($remote_archives['error']));
+		} elseif ($remote_found === null) {
+			$liveform->add_warning(lang('That archive is no longer in the bucket.'));
+		} else {
+			$remote_fetched = pg_backup_s3_fetch($remote_found);
+
+			if ($remote_fetched['ok']) {
+				$liveform->add_notice(lang(array('string' => 'The archive {var:1} was brought to this server.', 'vars' => array(h($remote_found['name'])))));
+				log_activity(lang(array('string' => 'The archive {var:1} was brought from the backup bucket to this server.', 'vars' => array($remote_found['name']))), $_SESSION['sessionusername']);
+			} else {
+				$liveform->add_warning(lang(array('string' => 'The archive {var:1} could not be brought to this server: {var:2}', 'vars' => array(h($remote_found['name']), h($remote_fetched['error'])))));
+			}
+		}
+
+		go(PATH . SOFTWARE_DIRECTORY . '/backups.php?remote=1');
+	}
 
 	// Find if download or delete button selected
 	foreach($directory as $backup_folder) {

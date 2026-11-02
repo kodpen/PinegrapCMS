@@ -19,7 +19,11 @@ description: The e-mail campaign create and edit screens share includes/forms/em
 - Format choices and Purpose radios sit in `<fieldset><legend class="form-label fs-md">`; a fixed format and a read-only purpose print a `<div class="form-label">` heading, never a `<label>` without a field. Pinned by `tests/email_campaign_screens_names_test.php` with the screens' names (contact group radios, extra address, Status, BCC, body, `{var:1}%` progress).
 
 ## When is the form read-only?
-- Edit sets `$readonly = ($status == 'complete')` and passes it to every helper: values print as `<p>`, no form, no Save.
+- Edit sets `$readonly = ($status == 'complete')` and passes it to every helper: values print as `<p>` under a `<div class="form-label">` (no `<label for>` to a missing field), no form, no Save; title and heading read "View Campaign" (#5652).
+
+## What does a save check?
+- `pg_email_campaign_field_errors()`: Subject and From address required, From/Reply-to/BCC valid when given (BCC only when posted). `pg_email_campaign_allowed_value()`: status ready/paused/cancelled (`complete` only by sending), format, purpose. Create and edit refuse with `pg_email_campaign_field_errors_html()`; inputs carry `required` (#5415).
+- Edit's Save bar and `</form>` sit after the `.row`, as on create: inside it they overflowed 4 px at 375 px.
 
 ## What stays in the screens?
 - Create: the page_id single-value guard, the page and contact-group queries, the contact-group table, the entered address, Create, the whole save.

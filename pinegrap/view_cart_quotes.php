@@ -75,18 +75,18 @@ $contacts_access = (validate_contacts_access($user, true) == true);
 foreach ($rows as $row) {
     $id = (int) $row['id'];
     $state = pg_cart_quote_state($row, $now);
-    $names = array();
     $quantity = 0;
 
     foreach ($row['lines'] as $line) {
         $quantity += $line['quantity'];
-        $names[] = $line['name'] . ' × ' . $line['quantity'];
     }
+
+    $names = pg_cart_quote_lines_summary($row['lines']);
 
     $actions = '';
 
     if ($state === 'open') {
-        $actions = '<button type="submit" name="link" value="' . $id . '" class="btn-data-control m-1 btn btn-outline theme-primary border-2" title="' . h(lang('New link')) . '" aria-label="' . h(lang('New link')) . '"><i class="bi bi-link-45deg" aria-hidden="true"></i></button>'
+        $actions = '<button type="submit" name="link" value="' . $id . '" class="btn-data-control m-1 btn btn-outline theme-primary border-2" data-confirm-content="' . h(lang('The link the customer already has stops working. Make a new link?')) . '" title="' . h(lang('New link')) . '" aria-label="' . h(lang('New link')) . '"><i class="bi bi-link-45deg" aria-hidden="true"></i></button>'
             . '<button type="submit" name="cancel" value="' . $id . '" class="btn-data-control m-1 btn btn-outline theme-danger border-2" data-confirm-content="' . h(lang('The link of this cart quote stops working. This cannot be undone.')) . '" title="' . h(lang('Cancel the cart quote')) . '" aria-label="' . h(lang('Cancel the cart quote')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>';
     }
 
@@ -94,6 +94,8 @@ foreach ($rows as $row) {
 
     if ((int) $row['contact_id'] < 1) {
         $output_contact = '<span class="fg-secondary">' . h(lang('Nobody named')) . '</span>';
+    } elseif (!$row['contact_found']) {
+        $output_contact = '<span class="fg-secondary">' . h(lang('Deleted contact')) . '</span>';
     } elseif (pg_can_open_contact($user, $row['contact_id'], $contacts_access)) {
         $output_contact = '<a href="edit_contact.php?id=' . (int) $row['contact_id'] . '">' . $contact_label . '</a>';
     } else {
@@ -109,7 +111,7 @@ foreach ($rows as $row) {
                 <td class="align-middle text-start col-reorder-none action-buttons">' . $actions . '</td>
                 <td class="align-middle" data-order="' . $id . '"><a href="view_cart_quotes.php?id=' . $id . '" aria-label="' . h(lang('Cart quote') . ' #' . $id) . '">#' . $id . '</a><div class="small fg-secondary">' . h((string) $row['token_hint']) . '…</div></td>
                 <td class="align-middle">' . $output_contact . '</td>
-                <td class="align-middle">' . h(lang(array('string' => '{var:1} item(s)', 'vars' => array($quantity)))) . (($names !== array()) ? '<div class="small fg-secondary">' . h(implode(', ', $names)) . '</div>' : '') . '</td>
+                <td class="align-middle">' . h(lang(array('string' => '{var:1} item(s)', 'vars' => array($quantity)))) . (($names !== '') ? '<div class="small fg-secondary" style="white-space: normal; min-width: 12rem; max-width: 24rem">' . h($names) . '</div>' : '') . '</td>
                 <td class="align-middle"><span class="' . h($badges[$state] ?? 'badge theme-secondary') . '">' . h(pg_cart_quote_state_label($state)) . '</span>' . $output_order . '</td>
                 <td class="align-middle" data-order="' . (int) $row['valid_until'] . '">' . h(((int) $row['valid_until'] > 0) ? date('d.m.Y', (int) $row['valid_until']) : lang('No end')) . '</td>
                 <td class="align-middle" data-order="' . (int) $row['created_at'] . '">' . h(date('d.m.Y H:i', (int) $row['created_at'])) . '<div class="small fg-secondary">' . h((string) $row['creator']) . '</div></td>

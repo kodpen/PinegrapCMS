@@ -275,3 +275,32 @@ function test_backup_dump_charset_follows_the_site_connection()
 
 	pg_assert_same('utf8mb4', $settings['default-character-set']);
 }
+
+// Only an archive directly in the bucket's folder, under a name safe for
+// data/backups, can be brought back.
+function test_backup_s3_archive_name_ok()
+{
+	foreach (array('auto_backup_2026-11-45.zip', 'site.backup-1.zip', 'A_b.zip') as $name) {
+		pg_assert_true(pg_backup_s3_archive_name_ok($name), $name);
+	}
+
+	foreach (array('.hidden.zip', 'a/b.zip', '../x.zip', 'x.tar', 'a b.zip', 'x.zip/', '', 'x.ZIP.php', str_repeat('a', 200) . '.zip') as $name) {
+		pg_assert_false(pg_backup_s3_archive_name_ok($name), $name);
+	}
+}
+
+// The bucket's archives, newest first; other keys and repeats left out.
+function test_backup_s3_archive_rows()
+{
+	$rows = pg_backup_s3_archive_rows(array(
+		array('key' => 'auto_backup_2026-10-41.zip', 'size' => 10, 'modified' => 100, 'etag' => 'a'),
+		array('key' => 'notes.txt', 'size' => 1, 'modified' => 500, 'etag' => 'b'),
+		array('key' => 'other/auto_backup_2026-10-42.zip', 'size' => 1, 'modified' => 600, 'etag' => 'c'),
+		array('key' => 'manual.zip', 'size' => 30, 'modified' => 300, 'etag' => 'd'),
+		array('key' => 'auto_backup_2026-11-44.zip', 'size' => 20, 'modified' => 300, 'etag' => 'e'),
+		array('key' => 'manual.zip', 'size' => 99, 'modified' => 999, 'etag' => 'f'),
+	));
+
+	pg_assert_same(array('manual.zip', 'auto_backup_2026-11-44.zip', 'auto_backup_2026-10-41.zip'), array_column($rows, 'name'));
+	pg_assert_same(array('name' => 'manual.zip', 'size' => 30, 'modified' => 300, 'etag' => 'd'), $rows[0]);
+}

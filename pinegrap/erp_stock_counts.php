@@ -53,7 +53,7 @@ foreach (erp_stock_count_list() as $row) {
     $status = $statuses[(string) $row['status']] ?? array((string) $row['status'], 'secondary');
     $output_rows .= '
         <tr>
-            <td><a class="pg-link-body-emphasis fw-semibold" href="erp_stock_count.php?id=' . (int) $row['id'] . '">' . h((string) $row['title']) . '</a></td>
+            <td class="text-wrap text-break" style="max-width:280px"><a class="pg-link-body-emphasis fw-semibold" href="erp_stock_count.php?id=' . (int) $row['id'] . '">' . h((string) $row['title']) . '</a></td>
             <td class="text-nowrap" data-sort="' . (int) $row['created_at'] . '">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $row['created_at']), 'date and time')) . '</td>
             <td>' . h((string) $row['created_by_name']) . '</td>
             <td class="text-end">' . (int) $row['line_count'] . '</td>

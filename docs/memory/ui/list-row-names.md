@@ -19,7 +19,7 @@ module: seo, auth
 ## Why do folder names, descriptions, labels and shipping names wrap?
 - They were cut in a 100px (folder, about 7 letters) or 200px box with `text-truncate`; the full text sat only in a td `title`, which `pgBindTitlePopovers()` turns into a hover popover on a cell that takes no focus, so keyboard, touch and zoomed users never read it (#3170).
 - `pg_folder_list_name()` (`includes/fn/auth.php`) prints access mark, ligature and the name as `badge … text-wrap text-break`; the cell carries `text-wrap`, since `table.chart td` is `nowrap` and BS6 `.badge` sets `nowrap` itself. Used by the files, pages, design files and themes lists.
-- Descriptions (files, design files), form field labels and the shipping method Name and Message cells sit in `<div class="text-wrap text-break" style="max-width:20rem;">`, with no title.
+- Descriptions (files, design files) and form field labels sit in `<div class="text-wrap text-break" style="max-width:20rem;">`, with no title. The shipping method Name and Message cells add a floor (`min-width:12rem` / `15rem`, message up to `24rem`): without one DataTables squeezed them to 103 and 122 px at 1280 px and a short message ran to 3-7 lines (#5564).
 - A form's `information` field keeps the 200px cut preview with its title: it is sanitized rich text that can run to paragraphs.
 
 Test: `tests/list_row_names_test.php`, `tests/list_names_wrap_test.php`.
