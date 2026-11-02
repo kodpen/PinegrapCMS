@@ -1156,6 +1156,7 @@
     "Everything is running, though system health has slipped to {var:1}%.": "Her şey çalışıyor ama sistem sağlığı %{var:1} seviyesine gerilemiş.",
     "Everything on the menu comes in a box or a cup to take away. Bring your own cup and the coffee costs less.": "Menüdeki her şey paket ya da bardakta da verilir. Kendi bardağınızı getirirseniz kahve daha ucuz.",
     "Everything on the purchase order has come in.": "Satın alma siparişindeki her şey teslim alındı.",
+    "Everything on the purchase order has come in; it is not sent to the supplier again.": "Satın alma siparişindeki her şey teslim alındı; sipariş tedarikçiye yeniden gönderilmez.",
     "Everything on the purchase order has come in; there is nothing left to cancel.": "Satın alma siparişindeki her şey teslim alındı; iptal edilecek bir şey kalmadı.",
     "Everything on this invoice has already been returned.": "Bu faturanın tamamı zaten iade edilmiş.",
     "Everything people send in the chat is filed here, so it can be found in the File Manager afterwards.": "Sohbette gönderilen dosyalar buraya kaydedilir, böylece sonradan Dosya Yöneticisi'nde bulunabilir.",

@@ -25,13 +25,13 @@
   and state where they belong), followed by the country when it is not the
   store's own.
   invoice  .full_number .title .issue_date .due_date .doc_type .is_return
-           .status_label .order_number .against_number .currency
+           .status_label .is_cancelled .order_number .against_number .currency
            .is_foreign .base_currency .exchange_rate .exchange_rate_date
            .grand_total_base
            .is_internet_sale .payment_method_label .payment_date
            .shipment_date .carrier_title .carrier_vkn .web_address .notes
            .is_purchase .supplier_invoice_no .supplier_invoice_date
-  lines    (list) .no .description .quantity .unit .unit_price .discount
+  lines    (list) .no .description .quantity .unit .unit_name .unit_price .discount
            .has_discount .base .tax_rate .tax .total .withholding
            .tax2_rate .tax2
   The totals box adds up to the grand total: shipping and surcharge are

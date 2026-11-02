@@ -20,3 +20,11 @@ description: ERP purchase orders (10.58): own table and series, the line key tha
 
 ## How is an invoice made from an order?
 - Only `erp_purchase_order_to_invoice()`: a purchase invoice draft dated today for what has not come and is not on another draft, at the order's prices. Repeatable, one draft per delivery.
+
+## Which accounts can an order go to?
+- Suppliers and accounts kept as both: the form lists only those (`erp_accounts(['kind' => 'supplier'])`), `erp_purchase_order_save()` refuses a customer-only account with `erp_purchase_order_account_refusal()` on `account_id` (screen and API), and the account card offers New purchase order only to them. An order already written to an account that later became customer-only stays editable and listed on its card (#5502).
+
+## What does the order's document say about its status?
+- A cancelled order prints `label.cancelled` under the title (`invoice.is_cancelled`, set by `erp_invoice_document_data()` from the source row's status). Every quantity carries its unit's name (`lines[].unit_name`, `erp_waybill_unit_label()`), on the PDF and on the screen's tables (#5504, #5505).
+- An order whose goods have all come (`received`) is not e-mailed or marked sent again: `erp_purchase_order_status_refusal($order, 'sent')` refuses it, and the screen hides the form by the same call (#5505).
+- The screen shows supplier, order date, expected and sent beside the status in the body, not in the heading's description (hidden below 1024px); the order editor hides the sales-only Campaign % column (#5503, #5506).
