@@ -20,7 +20,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 
 - Endpoints `billing` (2): done #5016 (billing_information, get_billing_information)
 
-- Endpoints `calendar` (13): open
+- Endpoints `calendar` (13): taken by NJ (add_calendar, add_calendar_event, add_calendar_event_location, calendars, duplicate_calendar_event, edit_calendar, edit_calendar_event, edit_calendar_event_location, get_calendar_event_view_screen_content, get_calendar_view_screen_content, reserve_calendar_event, update_calendar_event_exception, view_calendar_event_locations, view_calendars; workspace_calendar* belong to workspace)
 
 - Endpoints `cart` (4): done #4561 (add_cart_quote, cart_action, cart_quote, view_cart_quotes)
 
