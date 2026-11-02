@@ -2122,7 +2122,71 @@
 
     // -- export (pg_image_editor_export.js) --
 
-    var EXPORT = {};
+    // The export panel's formats: keep writes the file's own; another is
+    // saved as a copy, so a file's bytes always match its name's extension.
+    var EXPORT_FORMATS = ['keep', 'jpeg', 'webp', 'avif', 'png'];
+
+    // Longest edges offered; 0 keeps the size.
+    var EXPORT_EDGES = [0, 2560, 1920, 1280, 1080];
+
+    // A file's own format from its name: jpeg, png, webp, avif, gif or ''.
+    function fileFormat(name) {
+        var m = /\.([a-z0-9]+)(?:[?#].*)?$/i.exec(String(name || '')), ext = m ? m[1].toLowerCase() : '';
+
+        return { jpg: 'jpeg', jpeg: 'jpeg', png: 'png', webp: 'webp', avif: 'avif', gif: 'gif' }[ext] || '';
+    }
+
+    // The format a save writes: the chosen one, or the file's own for keep.
+    function exportFormat(choice, own) {
+        return ((choice === 'keep') || (EXPORT_FORMATS.indexOf(choice) < 0)) ? (own || '') : choice;
+    }
+
+    // The settings as a save starts: the file's own format at the editor's
+    // quality and size, as before there was a panel.
+    function exportDefaults() {
+        return { format: 'keep', quality: 92, edge: 0, colors: false };
+    }
+
+    // w x h brought within a longest edge; never enlarged.
+    function exportSize(w, h, edge) {
+        var k = (edge > 0) ? Math.min(1, edge / Math.max(w, h, 1)) : 1;
+
+        return { w: Math.max(1, Math.round(w * k)), h: Math.max(1, Math.round(h * k)) };
+    }
+
+    // The mode a save takes: a replace that would change the format is a
+    // copy (the file keeps its format and its address).
+    function exportMode(mode, choice, own) {
+        return ((mode === 'replace') && (exportFormat(choice, own) !== own)) ? 'copy' : mode;
+    }
+
+    // What the save request carries: null when the settings change nothing.
+    function exportRequest(ex, own) {
+        var format = exportFormat(ex.format, own), out = {};
+
+        if (format !== own) {
+            out.format = format;
+        }
+
+        if (Math.round(ex.quality) !== 92) {
+            out.quality = Math.round(clamp(Number(ex.quality) || 92, 40, 100));
+        }
+
+        if (ex.edge > 0) {
+            out.edge = ex.edge;
+        }
+
+        if (ex.colors && (format === 'png')) {
+            out.colors = 256;
+        }
+
+        return Object.keys(out).length ? out : null;
+    }
+
+    var EXPORT = {
+        EXPORT_FORMATS: EXPORT_FORMATS, EXPORT_EDGES: EXPORT_EDGES, fileFormat: fileFormat, exportFormat: exportFormat,
+        exportDefaults: exportDefaults, exportSize: exportSize, exportMode: exportMode, exportRequest: exportRequest
+    };
 
     // -- vector pen and nodes (pg_image_editor_vector.js) --
 
