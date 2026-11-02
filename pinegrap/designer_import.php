@@ -24,22 +24,38 @@
  */
 
 include('init.php');
-$user = validate_user();
-validate_area_access($user, 'designer');
+include_once('includes/designer_import.php');
 
 header('Content-Type: application/json; charset=utf-8');
 
 // post_max_size exceeded → PHP drops the whole body before we run; without
-// this the script would see "no file" and blame the operator.
+// this the script would see "no file" (or no token) and blame the operator
+// or the session.
 if (function_exists('pg_post_body_discarded') && pg_post_body_discarded()) {
     http_response_code(413);
     echo encode_json(array('status' => 'error', 'message' => lang('The upload is larger than this server accepts in one request.')));
     exit();
 }
 
-validate_token_field();
+// The editor reads the answer as JSON: a missing session, a lower role or a
+// stale token is refused in JSON before the HTML gates below.
+$import_refusal = pg_designer_import_refusal(
+    defined('USER_LOGGED_IN') && USER_LOGGED_IN,
+    defined('USER_ROLE') ? USER_ROLE : 3,
+    $_SESSION['software']['token'] ?? '',
+    $_POST['token'] ?? ''
+);
 
-include_once('includes/designer_import.php');
+if ($import_refusal !== null) {
+    http_response_code($import_refusal[0]);
+    header('Cache-Control: no-store');
+    echo encode_json(array('status' => 'error', 'message' => $import_refusal[1]));
+    exit();
+}
+
+$user = validate_user();
+validate_area_access($user, 'designer');
+validate_token_field();
 
 if (empty($_FILES['file']) || !is_array($_FILES['file']) || (int)$_FILES['file']['error'] !== UPLOAD_ERR_OK || !is_uploaded_file($_FILES['file']['tmp_name'])) {
     $code = isset($_FILES['file']['error']) ? (int)$_FILES['file']['error'] : UPLOAD_ERR_NO_FILE;
