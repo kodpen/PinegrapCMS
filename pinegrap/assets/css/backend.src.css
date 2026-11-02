@@ -1571,6 +1571,13 @@ html[data-bs-theme="dark"] .accordion {
   box-shadow: 0 0 0 var(--pg-focus-ring-width)
     color-mix(in srgb, var(--pg-danger) 35%, transparent);
 }
+/* A form's own fixed message after a field (Required Area, shown by the
+   browser's validation) stays hidden while liveform's message sits before
+   it: Bootstrap's .is-invalid ~ .invalid-feedback showed both, "already in
+   use" over "Required Area". */
+.pg-inline-feedback ~ .invalid-feedback:not(.pg-inline-feedback) {
+  display: none;
+}
 .form-control.is-valid,
 .form-adorn:has(.form-ghost.is-valid),
 .chip-input:has(.form-ghost.is-valid),

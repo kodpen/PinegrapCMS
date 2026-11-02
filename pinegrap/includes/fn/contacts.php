@@ -318,6 +318,86 @@ function pg_contact_merge_audit($keep_id, array $before)
     }
 }
 
+/**
+ * The contacts columns a merge reads, as one SELECT list for both merge
+ * screens (Merge Contacts on view_contacts.php, Merge Selected on
+ * edit_contacts.php): every data column of the contact, so a blank one on
+ * the contact that stays is filled from the merged contact
+ * (merge_contacts()). Each screen listed its own columns, and neither had
+ * tax_number, tax_office, parasut_contact_id or the IYS statuses, so a merge
+ * silently lost the merged contact's tax id and consent answers; Merge
+ * Selected did not carry the picture either (#5325). erp_account_id is not
+ * read: pg_contact_holders_move() sets it when the ERP account moves.
+ * Pure.
+ *
+ * @param array $optional  the columns of the open version's migration steps
+ *                         the schema already has (pg_contact_merge_optional_columns())
+ * @return string  the SELECT list, ending with contacts.timestamp
+ */
+function pg_contact_merge_select(array $optional = array())
+{
+    $columns = array(
+        'id', 'image', 'file_id',
+        'salutation', 'first_name', 'last_name', 'suffix', 'nickname',
+        'company', 'title', 'department', 'office_location',
+        'business_address_1', 'business_address_2', 'business_city', 'business_state', 'business_country', 'business_zip_code', 'business_phone', 'business_fax',
+        'home_address_1', 'home_address_2', 'home_city', 'home_state', 'home_country', 'home_zip_code', 'home_phone', 'home_fax',
+        'mobile_phone', 'email_address', 'website', 'lead_source', 'opt_in', 'description',
+        'tax_number', 'tax_office', 'parasut_contact_id',
+        'member_id', 'expiration_date', 'warning_expiration_date',
+        'affiliate_approved', 'affiliate_name', 'affiliate_code', 'affiliate_commission_rate',
+        'user',
+    );
+
+    foreach ($optional as $column) {
+        if (preg_match('/^[a-z_]+$/', (string) $column) && !in_array($column, $columns, true)) {
+            $columns[] = (string) $column;
+        }
+    }
+
+    $select = '';
+
+    foreach ($columns as $column) {
+        $select .= "contacts." . $column . ",\n            ";
+    }
+
+    return $select . "contact_user.user_id as user_id,\n            contacts.timestamp";
+}
+
+/**
+ * The merge columns added by the open version's migration steps
+ * (contacts.iys_email_status, 11.0.39; contacts.iys_sms_status, 11.0.136)
+ * that the schema already has, from a column => present map. Pure.
+ *
+ * @param array $present  column => bool, pg_contact_merge_schema_columns()
+ * @return array
+ */
+function pg_contact_merge_optional_columns(array $present)
+{
+    $columns = array();
+
+    foreach (array('iys_email_status', 'iys_sms_status') as $column) {
+        if (!empty($present[$column])) {
+            $columns[] = $column;
+        }
+    }
+
+    return $columns;
+}
+
+/**
+ * Which of the merge's optional columns this site's contacts table has.
+ *
+ * @return array  column => bool
+ */
+function pg_contact_merge_schema_columns()
+{
+    return array(
+        'iys_email_status' => pg_schema_has('contacts', 'iys_email_status'),
+        'iys_sms_status'   => pg_schema_has('contacts', 'iys_sms_status'),
+    );
+}
+
 // This function merges duplicate contacts together and then forwards the user back to the all duplicate contacts view.
 // Every record that names a merged contact is re-pointed to the contact that stays (pg_contact_holders()); a group
 // of duplicates where more than one contact has an ERP account is left as it is and counted in $refused.

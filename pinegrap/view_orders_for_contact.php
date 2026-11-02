@@ -72,6 +72,7 @@ $last_name = $row['last_name'];
 $sort_columns = array(
     'order_number' => lang('Order Number'),
     'total'        => lang('Total'),
+    'status'       => lang('Status'),
     'order_date'   => lang('Order Date'),
 );
 
@@ -85,16 +86,22 @@ $sort_levels = $list_state['sorts'];
 $order_by = pg_list_order_by($sort_levels, array(
     'order_number' => 'order_number',
     'total'        => 'total',
+    'status'       => 'status',
     'order_date'   => 'order_date',
 ));
+
+// The Awaiting Payment badge reads paid_at, which an older schema lacks.
+$paid_at_column_exists = pg_schema_has('orders', 'paid_at');
 
 // The sort links keep the contact in the address, so the access check at
 // the top sees the same contact the list shows.
 $sort_query = array('id' => $id);
 $sort_extras = h('&id=' . urlencode($id));
 
-// set where clause
-$where = "WHERE contact_id = ? ";
+// An open cart (status incomplete) is not an order yet: it has no number
+// and a zero total, and the contacts list's My Customers view leaves it out
+// too.
+$where = "WHERE contact_id = ? AND status != 'incomplete' ";
 
 
 // get total number of results for all screens, so that we can output links to different screens
@@ -107,12 +114,15 @@ $number_of_results = $row[0];
 
 
 /* get results for just this screen*/
-$query = "SELECT id, order_number, total, order_date ".
+$query = "SELECT id, order_number, total, order_date, status, payment_method, parasut_exported, parasut_invoice_id" . ($paid_at_column_exists ? ", paid_at" : "") . " ".
          "FROM orders ".
          $where.
          "ORDER BY $order_by ";
 $result = db_q($query, array((string) $id)) or output_error('Query failed.');
 while ($row = mysqli_fetch_assoc($result)) {
+    // The status badge the orders list draws (cancelled, exported, awaiting
+    // payment, the Paraşüt mark).
+    $output_status = pg_order_list_status_html($row, $paid_at_column_exists);
     $row['total'] = pg_format_money($row['total'] / 100, BASE_CURRENCY_SYMBOL);
     $row['order_date'] = get_relative_time(array('timestamp' => $row['order_date']));
 
@@ -127,6 +137,7 @@ while ($row = mysqli_fetch_assoc($result)) {
         </td>
         <td>' . h($row['order_number'] ?? '') . '</td>
         <td nowrap>' . $row['total'] . '</td>
+        <td nowrap>' . $output_status . '</td>
         <td nowrap>' . $row['order_date'] . '</td>
     </tr>';
 }
@@ -161,6 +172,7 @@ pg_page_shell(
                                 <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
                                 <th nowrap>' . get_column_heading(lang('Order Number'), $sort_levels, '', $sort_extras, 'order_number') . '</th>
                                 <th nowrap>' . get_column_heading(lang('Total'), $sort_levels, '', $sort_extras, 'total') . '</th>
+                                <th nowrap>' . get_column_heading(lang('Status'), $sort_levels, '', $sort_extras, 'status') . '</th>
                                 <th nowrap>' . get_column_heading(lang('Order Date'), $sort_levels, '', $sort_extras, 'order_date') . '</th>
                             </tr>
                         </thead>
