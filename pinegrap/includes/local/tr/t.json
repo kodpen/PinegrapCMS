@@ -2791,6 +2791,7 @@
     "The name field now holds the registered name.": "Ad alanına kayıtlı unvan yazıldı.",
     "The name field now holds the registered name; save the account to keep it.": "Ad alanına kayıtlı unvan yazıldı; saklamak için cariyi kaydedin.",
     "The name in the list of designs. Visitors never see it; left empty, it takes the name of the first page.": "Tasarımlar listesinde görünen ad. Ziyaretçiler görmez; boş bırakılırsa ilk sayfanın adını alır.",
+    "The name is longer than 100 characters.": "Ad 100 karakterden uzun.",
     "The name is longer than {var:1} characters.": "Ad {var:1} karakterden uzun.",
     "The name may contain letters, numbers and . _ - / [ ] ~ ( ) + , ! = @; a * stands for any part of an address.": "Ad harf, rakam ve . _ - / [ ] ~ ( ) + , ! = @ içerebilir; * bir adresin herhangi bir bölümünün yerini tutar.",
     "The name may only contain letters, numbers, periods, underscores, hyphens, and forward slashes.": "Ad yalnızca harf, sayı, nokta, alt çizgi, kısa çizgi ve eğik çizgi içerebilir.",
