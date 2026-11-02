@@ -261,7 +261,7 @@ function pg_a11y_statement_flags($parts)
 {
     $t = $parts['tokens'];
 
-    return array(
+    $flags = array(
         'has_limitations' => (bool) $parts['rows'],
         'no_limitations'  => !$parts['rows'],
         'has_contact'     => $t['__a11y_contact'] !== '',
@@ -270,6 +270,8 @@ function pg_a11y_statement_flags($parts)
         'has_last_check'  => $t['__a11y_last_check'] !== '',
         'a11y_assessed'   => $parts['verdict'] !== 'unchecked',
     );
+
+    return $flags;
 }
 
 /**
@@ -345,7 +347,8 @@ function _render_system_widget_accessibility_statement($tree_json, $widget_id, $
         $parts = pg_a11y_statement_parts(pg_a11y_statement_settings(), pg_a11y_statement_data(), pg_a11y_rules(), HOSTNAME_SETTING);
     }
 
-    _eo_apply_visibility_bindings($tree, pg_a11y_statement_flags($parts));
+    $flags = pg_a11y_statement_flags($parts);
+    _eo_apply_visibility_bindings($tree, $flags);
     _pg_inject_messages_node($tree, 'accessibility_statement');
 
     $placed = ++$placement;
