@@ -2017,7 +2017,9 @@ function select_country($country_id = '')
 
 /**
  * The option tags of select_country() from rows with 'id', 'label' and
- * 'default_selected', in the order given.
+ * 'default_selected', in the order given. A country id that matches no row
+ * (the country was deleted) gets an empty, selected "Select a country"
+ * option first, so the browser does not select the first country instead.
  *
  * @param array      $rows
  * @param int|string $country_id The selected country; '' selects the default one
@@ -2026,12 +2028,19 @@ function select_country($country_id = '')
 function pg_country_select_options($rows, $country_id = '')
 {
     $output = '';
+    $matched = false;
 
     foreach ($rows as $row) {
-        $selected = (((string) $row['id'] === (string) $country_id) || (($row['default_selected'] == 1) && ((string) $country_id === '')))
+        $match = ((string) $row['id'] === (string) $country_id);
+        $matched = $matched || $match;
+        $selected = ($match || (($row['default_selected'] == 1) && ((string) $country_id === '')))
             ? ' selected="selected"'
             : '';
         $output .= '<option value="' . h($row['id']) . '"' . $selected . '>' . h($row['label']) . '</option>';
+    }
+
+    if (!$matched && ((string) $country_id !== '')) {
+        $output = '<option value="" selected="selected">' . h(lang('Select a country')) . '</option>' . $output;
     }
 
     return $output;

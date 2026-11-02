@@ -53,6 +53,20 @@ if ($_POST) {
         if (($code_error !== '') && !isset($errors['code'])) {
             $errors['code'] = $code_error;
         }
+
+        $country_error = pg_state_form_country_error($values['country_id']);
+
+        if ($country_error !== '') {
+            $errors['country_id'] = $country_error;
+        }
+    }
+} else {
+    // A state whose country is gone is shown with an empty country choice
+    // and the message, so a save cannot move it to another country unseen.
+    $country_error = pg_state_form_country_error($values['country_id']);
+
+    if ($country_error !== '') {
+        $errors['country_id'] = $country_error;
     }
 }
 

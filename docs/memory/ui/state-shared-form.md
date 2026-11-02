@@ -16,5 +16,8 @@ description: add_state.php and edit_state.php draw the state/province options ca
 ## Are the name and the code required?
 - Yes (#4413, PR #4456): `pg_state_form_required_errors($values)` ('Enter a name.' / 'Enter a code.'), `required` boxes, the message under the field; checked on create and save, never on delete. The country select (`select_country()`, `includes/fn/forms.php`) names and orders countries in the panel language (#4426, `commerce/country-names-display.md`); its value stays the country id.
 
+## Must the country exist?
+- Yes (#5598): `pg_state_form_country_error()` answers 'Select a country.' for an id that is no positive number and 'The selected country was not found. Select a country.' for one no `countries` row has; create and save refuse it under the Country field. The edit screen shows the message for a state whose stored country is gone, and `pg_country_select_options()` then puts an empty selected 'Select a country' option first. Why: the state was saved under a deleted country, listed with no country, and the edit screen's select fell back to the first country, so a save moved it there unseen.
+
 ## What changed for a posted value?
 - `pg_state_form_values()` (pure, tests in `tests/state_form_test.php`): a missing or non-scalar value is empty; before, an array was saved as "Array" with a notice. The name and code are trimmed; the code error compares against the trimmed stored code (PAD SPACE ignores only trailing spaces, so ' TX' passed beside 'TX' and checkout's trimmed lookup missed it).
