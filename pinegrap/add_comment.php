@@ -54,10 +54,7 @@ $watcher = $liveform->get_field_value('watcher');
 $parent_id_posted = $liveform->get_field_value('parent_id');
 
 // The stars are one to five, or none (0); whatever else was posted is none.
-$rating = (int) $liveform->get_field_value('rating');
-if (($rating < 1) || ($rating > 5)) {
-    $rating = 0;
-}
+$rating = pg_comment_rating_value($liveform->get_field_value('rating'));
 
 
 
