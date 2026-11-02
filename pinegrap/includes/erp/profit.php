@@ -12,9 +12,11 @@
  *   in it; a cancelled document counts for nothing.
  * - Cost of goods: what the stock moves recorded for each line sold or taken
  *   back (includes/erp/stock.php). A line with a product but no move - an
- *   invoice issued before stock was kept - is costed at the product's average
- *   cost today, and the report says how much of the cost was estimated so. A
- *   line with no product (a service, shipping) has no cost of goods.
+ *   invoice issued before stock was kept - or a move of no cost - the product
+ *   had no cost yet when it was sold - is costed at the product's average
+ *   cost today, and the report says how much of the cost was estimated so;
+ *   with no average either, the line counts as of unknown cost. A line with
+ *   no product (a service, shipping) has no cost of goods.
  * - Costs from purchase invoices: the lines of purchase invoices that carry no
  *   product (a service bought on an invoice), less what went back.
  * - Expenses: the expense receipts of the period (includes/erp/expenses.php),
@@ -35,21 +37,39 @@ if (!defined('PG_ERP_ENTRY')) {
 }
 
 /**
+ * The first and last year a report period may reach. A date outside them is
+ * a typing slip, and the month loops must never run towards year 10000.
+ */
+const ERP_PROFIT_FIRST_YEAR = 1970;
+const ERP_PROFIT_LAST_YEAR = 2100;
+
+/**
  * A period from what the screen sent: a month, a quarter, a year or two
- * dates; this month when nothing usable was sent.
+ * dates; this month when nothing usable was sent, and this month with an
+ * error when a date falls outside ERP_PROFIT_FIRST_YEAR - ERP_PROFIT_LAST_YEAR.
  *
- * @param array $input  range (month|quarter|year|dates), month (Y-m),
- *                      quarter (Y-Qn), year (Y), from, to
+ * @param array       $input  range (month|quarter|year|dates), month (Y-m),
+ *                            quarter (Y-Qn), year (Y), from, to
+ * @param string|null $today  Y-m-d, today when null
  * @return array ['from', 'to', 'range', 'error']
  */
-function erp_profit_period($input)
+function erp_profit_period($input, $today = null)
 {
     $range = (string) ($input['range'] ?? 'month');
-    $today = date('Y-m-d');
+    $today = (is_string($today) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $today)) ? $today : date('Y-m-d');
+    $this_month = array('from' => substr($today, 0, 8) . '01', 'to' => date('Y-m-t', strtotime($today)), 'range' => 'month', 'error' => '');
+    $in_bounds = function ($year) {
+        return ((int) $year >= ERP_PROFIT_FIRST_YEAR) && ((int) $year <= ERP_PROFIT_LAST_YEAR);
+    };
+    $refused = $this_month;
+    $refused['error'] = lang('Please enter a valid date.');
 
     switch ($range) {
         case 'quarter':
             if (preg_match('/^(\d{4})-Q([1-4])$/', (string) ($input['quarter'] ?? ''), $parts)) {
+                if (!$in_bounds($parts[1])) {
+                    return $refused;
+                }
                 $first = sprintf('%04d-%02d-01', (int) $parts[1], ((int) $parts[2] - 1) * 3 + 1);
                 return array('from' => $first, 'to' => date('Y-m-t', strtotime($first . ' +2 month')), 'range' => 'quarter', 'error' => '');
             }
@@ -57,6 +77,9 @@ function erp_profit_period($input)
 
         case 'year':
             if (preg_match('/^\d{4}$/', (string) ($input['year'] ?? ''))) {
+                if (!$in_bounds($input['year'])) {
+                    return $refused;
+                }
                 return array('from' => $input['year'] . '-01-01', 'to' => $input['year'] . '-12-31', 'range' => 'year', 'error' => '');
             }
             break;
@@ -64,12 +87,12 @@ function erp_profit_period($input)
         case 'dates':
             $from = (string) ($input['from'] ?? '');
             $to = (string) ($input['to'] ?? '');
-            $valid = function ($date) {
-                return preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $parts) && checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1]);
+            $valid = function ($date) use ($in_bounds) {
+                return preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $parts) && checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1]) && $in_bounds($parts[1]);
             };
 
             if (!$valid($from) || !$valid($to)) {
-                return array('from' => date('Y-m-01'), 'to' => date('Y-m-t'), 'range' => 'month', 'error' => lang('Please enter a valid date.'));
+                return $refused;
             }
             if ($from > $to) {
                 return array('from' => $to, 'to' => $from, 'range' => 'dates', 'error' => '');
@@ -82,12 +105,114 @@ function erp_profit_period($input)
 
         default:
             if (preg_match('/^(\d{4})-(\d{2})$/', (string) ($input['month'] ?? ''), $parts) && ((int) $parts[2] >= 1) && ((int) $parts[2] <= 12)) {
+                if (!$in_bounds($parts[1])) {
+                    return $refused;
+                }
                 $first = $parts[1] . '-' . $parts[2] . '-01';
                 return array('from' => $first, 'to' => date('Y-m-t', strtotime($first)), 'range' => 'month', 'error' => '');
             }
     }
 
-    return array('from' => date('Y-m-01', strtotime($today)), 'to' => date('Y-m-t', strtotime($today)), 'range' => 'month', 'error' => '');
+    return $this_month;
+}
+
+/**
+ * Every month from the month of $from to the month of $to, in order, as
+ * 'Y-m'. Counted as year * 12 + month, never by comparing strings: after
+ * '9999-12' a date string turns into '10000-01', which sorts before it.
+ *
+ * @param string $from Y-m-d (or Y-m)
+ * @param string $to   Y-m-d (or Y-m)
+ * @return string[]
+ */
+function erp_profit_months($from, $to)
+{
+    $months = array();
+
+    if (!preg_match('/^(\d{4})-(\d{2})/', (string) $from, $start) || !preg_match('/^(\d{4})-(\d{2})/', (string) $to, $end)) {
+        return $months;
+    }
+
+    $first = (int) $start[1] * 12 + (int) $start[2] - 1;
+    $last = (int) $end[1] * 12 + (int) $end[2] - 1;
+
+    for ($index = $first; $index <= $last; $index++) {
+        $months[] = sprintf('%04d-%02d', intdiv($index, 12), $index % 12 + 1);
+    }
+
+    return $months;
+}
+
+/**
+ * The choices of the period picker's month, quarter and year lists: the
+ * last 24 months, 8 quarters and 6 years, plus the period shown when it is
+ * older or newer than those, so the list always shows it selected and a
+ * submit keeps it.
+ *
+ * @param array       $period erp_profit_period()
+ * @param string|null $today  Y-m-d, today when null
+ * @return array ['month' => ['Y-m' => bool selected], 'quarter' => ['Y-Qn' => bool], 'year' => ['Y' => bool]]
+ */
+function erp_profit_period_choices($period, $today = null)
+{
+    $today = (is_string($today) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $today)) ? $today : date('Y-m-d');
+    $year = (int) substr($today, 0, 4);
+    $month = (int) substr($today, 5, 2);
+    $range = (string) ($period['range'] ?? '');
+    $from = (string) ($period['from'] ?? '');
+    $choices = array('month' => array(), 'quarter' => array(), 'year' => array());
+
+    $index = $year * 12 + $month - 1;
+    for ($i = 0; $i < 24; $i++, $index--) {
+        $choices['month'][sprintf('%04d-%02d', intdiv($index, 12), $index % 12 + 1)] = false;
+    }
+
+    $index = $year * 4 + intdiv($month - 1, 3);
+    for ($i = 0; $i < 8; $i++, $index--) {
+        $choices['quarter'][sprintf('%04d-Q%d', intdiv($index, 4), $index % 4 + 1)] = false;
+    }
+
+    for ($i = 0; $i < 6; $i++) {
+        $choices['year'][(string) ($year - $i)] = false;
+    }
+
+    if (preg_match('/^(\d{4})-(\d{2})-01$/', $from, $parts) && isset($choices[$range])) {
+        $shown = ($range === 'month') ? $parts[1] . '-' . $parts[2]
+            : (($range === 'quarter') ? $parts[1] . '-Q' . (intdiv((int) $parts[2] - 1, 3) + 1) : $parts[1]);
+        $choices[$range][$shown] = true;
+        krsort($choices[$range], SORT_STRING);
+    }
+
+    return $choices;
+}
+
+/**
+ * The <option> lists of the period picker, from erp_profit_period_choices().
+ *
+ * @param array $period erp_profit_period()
+ * @return array ['month' => html, 'quarter' => html, 'year' => html]
+ */
+function erp_profit_period_options($period)
+{
+    $html = array('month' => '', 'quarter' => '', 'year' => '');
+
+    foreach (erp_profit_period_choices($period) as $range => $values) {
+        foreach ($values as $value => $selected) {
+            $value = (string) $value;
+
+            if ($range === 'month') {
+                $label = get_month_name_from_number(substr($value, 5, 2)) . ' ' . substr($value, 0, 4);
+            } elseif ($range === 'quarter') {
+                $label = lang(array('string' => '{var:1} / Q{var:2}', 'vars' => array(substr($value, 0, 4), substr($value, 6, 1))));
+            } else {
+                $label = $value;
+            }
+
+            $html[$range] .= '<option value="' . h($value) . '"' . ($selected ? ' selected' : '') . '>' . h($label) . '</option>';
+        }
+    }
+
+    return $html;
 }
 
 /**
@@ -234,7 +359,7 @@ function erp_profit_report($from, $to, $options = array())
 
     // Every month of the period, in order, so a month with nothing in it is
     // still a row.
-    for ($month = substr($from, 0, 7); $month <= substr($to, 0, 7); $month = date('Y-m', strtotime($month . '-01 +1 month'))) {
+    foreach (erp_profit_months($from, $to) as $month) {
         $months[$month] = erp_profit_blank();
     }
 
@@ -359,9 +484,11 @@ function erp_profit_report($from, $to, $options = array())
         if ($product_id > 0) {
             $key = ($return ? 'sales_return:' : 'sale:') . (int) $line['id'];
 
-            if (isset($moves[$key])) {
+            // A move of no cost was written while the product had no cost
+            // yet (erp_stock_record()): the cost was unknown, not nothing.
+            if (!empty($moves[$key])) {
                 $cost = $moves[$key];
-            } elseif ($return && isset($parent) && isset($moves['sale:' . (int) $parent['id']]) && ((float) $parent['quantity'] > 0)) {
+            } elseif ($return && isset($parent) && !empty($moves['sale:' . (int) $parent['id']]) && ((float) $parent['quantity'] > 0)) {
                 $cost = (int) round($moves['sale:' . (int) $parent['id']] * $quantity / (float) $parent['quantity']);
             } elseif (($unit = $average($product_id)) !== null) {
                 $cost = (int) round($unit * $quantity);
@@ -715,6 +842,10 @@ function erp_profit_workbook($report, $path)
         $summary_rows[] = array(lang('Of the cost of goods, estimated at today\'s average cost'), $totals['cogs_estimated']);
     }
 
+    if ((int) $report['uncosted_lines'] > 0) {
+        $summary_rows[] = array(lang('Lines of products with no cost known (profit overstated)'), array('t' => 'int', 'v' => (int) $report['uncosted_lines']));
+    }
+
     $sheets = array();
 
     $sheets['summary'] = array('title' => lang('Profit and loss'), 'columns' => array(
@@ -747,7 +878,7 @@ function erp_profit_workbook($report, $path)
             $product['cost'],
             $product['profit'],
             ($product['margin'] !== null) ? (float) $product['margin'] : '',
-            ((int) $product['estimated'] > 0) ? lang('Estimated') : '',
+            ((int) $product['uncosted'] > 0) ? lang('Not known') : (((int) $product['estimated'] > 0) ? lang('Estimated') : ''),
         );
     }
 

@@ -53,8 +53,12 @@ function test_visit_details_erp_quarter_translated()
 	foreach (array('erp_profit.php', 'erp_vat_report.php') as $file) {
 		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 		pg_assert_false(strpos($source, "' / Q'") !== false, $file . ': no English quarter abbreviation outside lang()');
-		pg_assert_contains("h(lang(array('string' => '{var:1} / Q{var:2}', 'vars' => array(substr(\$first, 0, 4), \$quarter))))", $source, $file . ': quarter option through lang()');
+		pg_assert_contains('erp_profit_period_options($period)', $source, $file . ': quarter options from the shared builder');
 	}
+
+	// The shared builder of the period picker names a quarter through lang().
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/erp/profit.php');
+	pg_assert_contains("lang(array('string' => '{var:1} / Q{var:2}', 'vars' => array(substr(\$value, 0, 4), substr(\$value, 6, 1))))", $source, 'profit.php: quarter option through lang()');
 
 	pg_assert_same('{var:1} / {var:2}. Çeyrek', pg_lang_map('tr')['{var:1} / Q{var:2}'] ?? null, 'tr: quarter wording');
 }
