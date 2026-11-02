@@ -996,6 +996,9 @@ function pg_image_editor_save($request, $user)
         return pg_image_editor_refusal(lang('Invalid request.'));
     }
 
+    // The picture as it was opened, for its camera details.
+    $picture = $source;
+
     // A server without Imagick has no colour matrix: the browser sends the
     // picture it loaded with the colour step done (the colour layer), of its
     // shape and no larger, and the rest is drawn from that in the file's type.
@@ -1042,6 +1045,8 @@ function pg_image_editor_save($request, $user)
     if (($report['status'] !== 'success') || !is_string($report['data'])) {
         return pg_image_editor_refusal(pg_image_editor_report_message($report, $name));
     }
+
+    $report['data'] = pg_image_editor_export_camera($report['data'], $export, $picture);
 
     if ($mode === 'copy') {
         $name = get_unique_name(array('name' => prepare_file_name(($export['format'] !== '') ? pg_image_editor_export_name($name, $export['format']) : $name), 'type' => 'file'));
@@ -2726,7 +2731,10 @@ function pg_image_editor_strings_export()
         'exProgressive'   => lang('Progressive JPEG'),
         'exColors'        => lang('Reduce to 256 colours'),
         'exMeta'          => lang('Metadata'),
-        'exMetaNote'      => lang('Location (GPS) and camera details are removed.'),
+        'exGps'           => lang('Location (GPS) is always removed'),
+        'exExif'          => lang('Remove camera details'),
+        'exExifGone'      => lang('Camera details are kept only when a JPEG is saved as a JPEG.'),
+        'exSrgb'          => lang('Convert colours to sRGB'),
         'exResult'        => lang('Result'),
         'exBefore'        => lang('Before'),
         'exAfter'         => lang('After'),
@@ -2777,11 +2785,13 @@ function pg_image_editor_export_formats()
  * @param array  $formats what this server writes (pg_image_editor_export_formats())
  * @return array|false format ('' keeps the file's own), quality, edge (0 keeps
  *                     the size), colors (0 or 256, PNG only), progressive
- *                     (JPEG); false when a value is not one the panel sends
+ *                     (JPEG), camera (camera details kept, JPEG to JPEG),
+ *                     srgb (converted to sRGB where the server can); false
+ *                     when a value is not one the panel sends
  */
 function pg_image_editor_export_options($value, $own, $formats)
 {
-    $options = array('format' => '', 'quality' => 92, 'edge' => 0, 'colors' => 0, 'progressive' => true);
+    $options = array('format' => '', 'quality' => 92, 'edge' => 0, 'colors' => 0, 'progressive' => true, 'camera' => false, 'srgb' => false);
 
     if ($value === null) {
         return $options;
@@ -2833,6 +2843,23 @@ function pg_image_editor_export_options($value, $own, $formats)
         $options['progressive'] = false;
     }
 
+    // Camera details go from a JPEG into a JPEG (M.exportCamera()).
+    if (isset($value['camera'])) {
+        if (($value['camera'] !== true) || ($own !== 'jpeg') || ($format !== 'jpeg')) {
+            return false;
+        }
+
+        $options['camera'] = true;
+    }
+
+    if (isset($value['srgb'])) {
+        if ($value['srgb'] !== true) {
+            return false;
+        }
+
+        $options['srgb'] = true;
+    }
+
     return $options;
 }
 
@@ -2844,6 +2871,27 @@ function pg_image_editor_export_name($name, $format)
     $dot = strrpos($name, '.');
 
     return (($dot === false) || ($dot === 0) ? $name : substr($name, 0, $dot)) . '.' . $extension;
+}
+
+/**
+ * The written JPEG with the camera details of $picture (the file as it was
+ * opened) when the settings keep them: make, model, lens, exposure, dates,
+ * never the location or the thumbnail (pg_image_exif_camera()). Anything
+ * else, or a picture without them, is $data as it was.
+ *
+ * @return string
+ */
+function pg_image_editor_export_camera($data, $options, $picture)
+{
+    if (empty($options['camera'])) {
+        return $data;
+    }
+
+    $segments = pg_image_jpeg_app_segments($picture, 0xE1, "Exif\x00\x00");
+    $tiff = $segments ? pg_image_exif_camera(substr($segments[0], 6)) : '';
+    $with = ($tiff !== '') ? pg_image_jpeg_embed_exif($data, $tiff) : false;
+
+    return is_string($with) ? $with : $data;
 }
 
 /**
@@ -2877,6 +2925,10 @@ function pg_image_editor_export_edit($edit, $options)
 
     if (!$options['progressive']) {
         $edit['progressive'] = false;
+    }
+
+    if ($options['srgb']) {
+        $edit['srgb'] = true;
     }
 
     return array($edit, $engine);
@@ -2951,10 +3003,12 @@ function pg_image_editor_action_estimate($request, $user)
         'after'   => null,
         'formats' => $formats,
         // Colour reduction is Imagick's; GD's palette loses the alpha.
-        'colors'  => class_exists('Imagick'));
+        'colors'  => class_exists('Imagick'),
+        // sRGB needs Imagick converting through lcms and the sRGB profile.
+        'srgb'    => pg_image_imagick_converts() && (pg_image_srgb_icc() !== ''));
 
     if (($report['status'] === 'success') && is_string($report['data'])) {
-        $result['after'] = array('size' => strlen($report['data']), 'width' => (int) $report['width'], 'height' => (int) $report['height']);
+        $result['after'] = array('size' => strlen(pg_image_editor_export_camera($report['data'], $export, $source)), 'width' => (int) $report['width'], 'height' => (int) $report['height']);
     }
 
     return array($result, 200);

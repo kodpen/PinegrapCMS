@@ -2,7 +2,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Image editor: export settings: format, quality, longest edge, progressive
- * JPEG, PNG colour reduction, and the size before and after.
+ * JPEG, PNG colour reduction, camera details and the colour profile, and the
+ * size before and after.
  *
  * The panel's settings go with a save as export (M.exportRequest()); a
  * format other than the file's own is saved as a copy, so the file keeps its
@@ -136,7 +137,13 @@
         var input = el('input', { type: 'checkbox' });
 
         input.checked = !!on;
-        input.addEventListener('change', function () { change(input.checked); });
+
+        // Without a change handler it is shown, fixed.
+        if (change) {
+            input.addEventListener('change', function () { change(input.checked); });
+        } else {
+            input.disabled = true;
+        }
 
         return el('label', { class: 'pgie-check' }, [input, el('span', { text: label })]);
     }
@@ -187,7 +194,21 @@
             body.appendChild(section(t('exOptions'), el('div', {}, options)));
         }
 
-        body.appendChild(section(t('exMeta'), el('p', { class: 'pgie-note', text: t('exMetaNote') })));
+        // The location always goes; camera details only from a JPEG into a
+        // JPEG, the profile only where the server converts colours.
+        var meta = [check(t('exGps'), true, null)];
+
+        if (M.exportCamera(format, own)) {
+            meta.push(check(t('exExif'), !ex.camera, function (on) { self.setExport({ camera: !on }); }));
+        } else {
+            meta.push(el('p', { class: 'pgie-note', text: t('exExifGone') }));
+        }
+
+        if (info.srgb) {
+            meta.push(check(t('exSrgb'), ex.srgb, function (on) { self.setExport({ srgb: on }); }));
+        }
+
+        body.appendChild(section(t('exMeta'), el('div', {}, meta)));
 
         this.exportCard = el('div', { class: 'pgie-excard', 'aria-live': 'polite' });
         body.appendChild(section(t('exResult'), this.exportCard));

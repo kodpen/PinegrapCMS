@@ -633,7 +633,9 @@ function pg_image_engine_no_gain($bytes_after, $bytes_before, $format_conversion
  *                         edge (the longest edge of the result, never
  *                         enlarged), colors (a PNG reduced to that many
  *                         colours; Imagick only), progressive (false writes
- *                         a baseline JPEG).
+ *                         a baseline JPEG), srgb (a non-sRGB picture
+ *                         converted to sRGB; Imagick with lcms only,
+ *                         pg_image_imagick_converts()).
  *                         Applied to the upright picture before encoding
  *                         (pg_image_edit_imagick(), pg_image_edit_gd()); no
  *                         resize or rotate on top, and the result is written
@@ -1012,6 +1014,17 @@ function pg_process_image_with_imagick($file_path, $type, $resize, $target_width
         if ($image->getImageColorspace() != Imagick::COLORSPACE_CMYK) {
             $profiles = $image->getImageProfiles('icc', true);
             $icc = isset($profiles['icc']) ? (string) $profiles['icc'] : '';
+        }
+
+        // The image editor's export may ask for sRGB pixels instead of the
+        // kept profile: converted through lcms, so nothing is put back.
+        if (($icc !== '') && !empty($edit['srgb']) && !pg_image_icc_is_srgb($icc) && pg_image_imagick_converts() && (pg_image_srgb_icc() !== '')) {
+            try {
+                $image->profileImage('icc', pg_image_srgb_icc());
+                $icc = '';
+            } catch (\Exception $exception) {
+                // Kept as it was: the profile still describes the pixels.
+            }
         }
 
         $image->stripImage();
@@ -4314,4 +4327,253 @@ function pg_image_derivative($file_id, $source_path, $request, $directory, $sett
     $made['made'] = true;
 
     return $made;
+}
+
+
+/**
+ * The camera details of an Exif TIFF block, as a new block: make, model,
+ * software, dates, artist and copyright from IFD0, the exposure, the lens
+ * and the date taken from the Exif IFD. Nothing else is carried: no GPS
+ * IFD (the location), no IFD1 (its thumbnail shows the unedited picture),
+ * no maker note (a vendor block that may hold anything), no orientation
+ * (the pixels are written upright). Values keep their byte order. Pure.
+ *
+ * @param string $tiff the block after "Exif\0\0"
+ * @return string the new block; '' when none of these tags is there or the
+ *                block cannot be read
+ */
+function pg_image_exif_camera($tiff)
+{
+    $keep_ifd0 = array(0x010F, 0x0110, 0x0131, 0x0132, 0x013B, 0x8298);
+    $keep_exif = array(0x829A, 0x829D, 0x8822, 0x8827, 0x8830, 0x8832, 0x9000, 0x9003, 0x9004, 0x9010, 0x9011, 0x9012,
+        0x9201, 0x9202, 0x9203, 0x9204, 0x9205, 0x9207, 0x9208, 0x9209, 0x920A, 0xA402, 0xA403, 0xA404, 0xA405, 0xA406,
+        0xA432, 0xA433, 0xA434);
+
+    $tiff = (string) $tiff;
+    $order = substr($tiff, 0, 2);
+
+    if (($order !== 'II') && ($order !== 'MM')) {
+        return '';
+    }
+
+    $big = ($order === 'MM');
+    $ifd0 = pg_image_exif_ifd($tiff, pg_image_exif_long(substr($tiff, 4, 4), $big), $big);
+
+    if ($ifd0 === false) {
+        return '';
+    }
+
+    $exif = array();
+
+    if (isset($ifd0[0x8769]) && (strlen($ifd0[0x8769]['value']) === 4)) {
+        $exif = pg_image_exif_ifd($tiff, pg_image_exif_long($ifd0[0x8769]['value'], $big), $big);
+        $exif = ($exif === false) ? array() : array_intersect_key($exif, array_flip($keep_exif));
+    }
+
+    $ifd0 = array_intersect_key($ifd0, array_flip($keep_ifd0));
+
+    if (!$ifd0 && !$exif) {
+        return '';
+    }
+
+    $short = $big ? 'n' : 'v';
+    $long = $big ? 'N' : 'V';
+
+    // IFD0 (its entries and the Exif pointer), then the Exif IFD, then the
+    // values longer than four bytes.
+    $first_size = 2 + 12 * (count($ifd0) + ($exif ? 1 : 0)) + 4;
+    $exif_offset = 8 + $first_size;
+    $data_offset = $exif_offset + ($exif ? 2 + 12 * count($exif) + 4 : 0);
+
+    if ($exif) {
+        $ifd0[0x8769] = array('type' => 4, 'count' => 1, 'value' => pack($long, $exif_offset));
+    }
+
+    $data = '';
+    $blocks = '';
+
+    foreach (array($ifd0, $exif) as $entries) {
+        if (!$entries) {
+            continue;
+        }
+
+        ksort($entries);
+        $block = pack($short, count($entries));
+
+        foreach ($entries as $tag => $entry) {
+            $value = $entry['value'];
+
+            if (strlen($value) > 4) {
+                $pointer = pack($long, $data_offset + strlen($data));
+                $data .= $value . ((strlen($value) % 2) ? "\x00" : '');
+                $value = $pointer;
+            }
+
+            $block .= pack($short, $tag) . pack($short, $entry['type']) . pack($long, $entry['count']) . str_pad($value, 4, "\x00");
+        }
+
+        $blocks .= $block . pack($long, 0);
+    }
+
+    return $order . pack($short, 42) . pack($long, 8) . $blocks . $data;
+}
+
+// A four-byte unsigned value of an Exif block. Pure.
+function pg_image_exif_long($bytes, $big)
+{
+    if (strlen($bytes) !== 4) {
+        return -1;
+    }
+
+    $value = unpack($big ? 'N' : 'V', $bytes);
+
+    return $value[1];
+}
+
+/**
+ * The entries of one IFD of an Exif block: tag => type, count and the value's
+ * bytes (read through the offset when longer than four). Pure.
+ *
+ * @return array|false false when the IFD lies outside the block
+ */
+function pg_image_exif_ifd($tiff, $offset, $big)
+{
+    $sizes = array(1 => 1, 2 => 1, 3 => 2, 4 => 4, 5 => 8, 6 => 1, 7 => 1, 8 => 2, 9 => 4, 10 => 8, 11 => 4, 12 => 8);
+    $length = strlen($tiff);
+
+    // A negative offset is a value over 2 GB read on 32-bit PHP.
+    if (($offset < 8) || ($offset + 2 > $length)) {
+        return false;
+    }
+
+    $count = unpack($big ? 'n' : 'v', substr($tiff, $offset, 2));
+    $count = $count[1];
+
+    if ($offset + 2 + 12 * $count > $length) {
+        return false;
+    }
+
+    $entries = array();
+
+    for ($i = 0; $i < $count; $i++) {
+        $entry = substr($tiff, $offset + 2 + 12 * $i, 12);
+        $head = unpack($big ? 'ntag/ntype' : 'vtag/vtype', substr($entry, 0, 4));
+        $items = pg_image_exif_long(substr($entry, 4, 4), $big);
+
+        if (!isset($sizes[$head['type']]) || ($items < 0) || ($items > 65535)) {
+            continue;
+        }
+
+        $bytes = $sizes[$head['type']] * $items;
+
+        if ($bytes <= 4) {
+            $value = substr($entry, 8, $bytes);
+        } else {
+            $at = pg_image_exif_long(substr($entry, 8, 4), $big);
+
+            if (($at < 8) || ($at + $bytes > $length)) {
+                continue;
+            }
+
+            $value = substr($tiff, $at, $bytes);
+        }
+
+        $entries[$head['tag']] = array('type' => $head['type'], 'count' => $items, 'value' => $value);
+    }
+
+    return $entries;
+}
+
+/**
+ * A JPEG with $tiff as its Exif APP1 segment, after a JFIF APP0 when there is
+ * one; an Exif segment already there is dropped. Pure.
+ *
+ * @param string $jpeg
+ * @param string $tiff an Exif TIFF block (pg_image_exif_camera())
+ * @return string|false false when the bytes are not a JPEG whose leading
+ *                      segments can be walked, or the block does not fit
+ */
+function pg_image_jpeg_embed_exif($jpeg, $tiff)
+{
+    $jpeg = (string) $jpeg;
+    $segment = "Exif\x00\x00" . (string) $tiff;
+    $length = strlen($jpeg);
+
+    if (($tiff === '') || (strlen($segment) > 65533) || (substr($jpeg, 0, 2) !== "\xFF\xD8")) {
+        return false;
+    }
+
+    $jfif = '';
+    $rest = '';
+    $offset = 2;
+
+    while (true) {
+
+        if (($offset + 4 > $length) || ($jpeg[$offset] !== "\xFF")) {
+            return false;
+        }
+
+        $marker = ord($jpeg[$offset + 1]);
+
+        if (($marker < 0xE0) || ($marker > 0xEF)) {
+            break;
+        }
+
+        $size = unpack('n', substr($jpeg, $offset + 2, 2));
+        $size = $size[1];
+
+        if (($size < 2) || ($offset + 2 + $size > $length)) {
+            return false;
+        }
+
+        $current = substr($jpeg, $offset, 2 + $size);
+
+        if (($marker === 0xE0) && ($offset === 2)) {
+            $jfif = $current;
+        } elseif (($marker !== 0xE1) || (substr($current, 4, 6) !== "Exif\x00\x00")) {
+            $rest .= $current;
+        }
+
+        $offset += 2 + $size;
+    }
+
+    return "\xFF\xD8" . $jfif . "\xFF\xE1" . pack('n', 2 + strlen($segment)) . $segment . $rest . substr($jpeg, $offset);
+}
+
+
+// The sRGB profile a picture is converted to: the one the bundled dompdf
+// ships; '' when it is missing.
+function pg_image_srgb_icc()
+{
+    static $icc = null;
+
+    if ($icc === null) {
+        $path = PG_FUNCTIONS_DIR . '/includes/dompdf/vendor/dompdf/dompdf/lib/res/sRGB2014.icc';
+        $icc = is_readable($path) ? (string) @file_get_contents($path) : '';
+    }
+
+    return $icc;
+}
+
+// Whether Imagick converts between colour profiles: ImageMagick built with
+// lcms. Without it profileImage() only attaches the profile, and the pixels
+// would be read in the wrong colours.
+function pg_image_imagick_converts()
+{
+    static $converts = null;
+
+    if ($converts === null) {
+        $converts = false;
+
+        if (class_exists('Imagick') && method_exists('Imagick', 'getConfigureOptions')) {
+            try {
+                $options = Imagick::getConfigureOptions('DELEGATES');
+                $converts = isset($options['DELEGATES']) && (stripos((string) $options['DELEGATES'], 'lcms') !== false);
+            } catch (\Exception $exception) {
+                $converts = false;
+            }
+        }
+    }
+
+    return $converts;
 }

@@ -18,7 +18,7 @@ description: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboa
   - Export panel: format (original, JPEG, WebP, AVIF, PNG from the server's list), quality with the exact size from `estimate`, longest edge (original, 2560, 1920, 1280, 1080), progressive JPEG, PNG colour reduction; size before and after; another format saved as a copy (#4676, 6a).
   - Profile `optimise`: the File Manager's "Export settings…" opens a picture straight on this panel.
 
-- E13b (S) Metadata and profile. `free` after E13.
+- E13b (S) Metadata and profile. `free` after E13. Done (#5099, `ui/image-editor-export.md`).
   - Camera details kept on request without the location (the engine strips all metadata today) and sRGB instead of the kept profile (Imagick only); the metadata note becomes screen 11's checkboxes.
 
 - E14 (M) Vector pen and nodes. Screen 09. Done in #4564 (`ui/image-editor-vector.md`).
