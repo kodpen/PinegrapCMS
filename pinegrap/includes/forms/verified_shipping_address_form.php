@@ -101,7 +101,7 @@ function pg_verified_shipping_address_form_card($liveform)
                                             </div>
                                             <div class="col-12 lg:col-4 my-3">
                                                 <label for="state_id" class="form-label"' . $state_label['attrs'] . '>' . $state_label['text'] . '</label>
-                                                <select style="width:100%" data-pg-combobox class="form-control' . ($liveform->check_field_error('state_id') ? ' is-invalid' : '') . '" data-placeholder="' . lang('Click to select state') . '" id="state_id" name="state_id">' . $output_state_options . '</select>' . pg_fields_script() . pg_ship_to_district_script() . '
+                                                <select style="width:100%" data-pg-combobox class="form-control' . ($liveform->check_field_error('state_id') ? ' is-invalid' : '') . '" data-placeholder="' . lang('Click to select state') . '" id="state_id" name="state_id" required>' . $output_state_options . '</select>' . pg_fields_script() . pg_ship_to_district_script() . '
                                             </div>
                                             <div class="col-12 lg:col-2 my-3">
                                                 <label for="zip_code" class="form-label">' . lang('Zip Code') . '</label>
