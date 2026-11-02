@@ -104,10 +104,14 @@ if (($user['role'] == 3) && ($created_user_id != $user['id'])) {
     output_error_in_popup(lang('Access denied.'));
 }
 
-// if e-mail campaign status is cancelled, then output error
-if ($status == 'cancelled') {
-    output_error_in_popup(lang('The e-mail campaign may not be sent because it is cancelled.  Please update the status in order to send the e-mail campaign.'));
+// Only a ready campaign is sent: a paused or cancelled one stops here even
+// when the window was opened from an earlier link. A complete one skips
+// the send and shows its summary.
+$send_refusal = pg_email_campaign_send_refusal($status);
+if ($send_refusal !== '') {
+    output_error_in_popup(h($send_refusal));
 }
+$already_complete = ($status == 'complete');
 
 // A delivery email() refuses is stored as an attempt, as the campaign job
 // does, and the recipient waits out the mail backoff: the next batches skip
@@ -133,7 +137,7 @@ $query =
 $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
 
 // if there is at least one e-mail recipient left
-if (mysqli_num_rows($result) > 0) {
+if (!$already_complete && (mysqli_num_rows($result) > 0)) {
     $email_recipients = array();
     
     // loop through e-mail recipients
@@ -517,11 +521,11 @@ if (mysqli_num_rows($result) > 0) {
                     <span id="campaign_send_percent" class="fw-bold" aria-hidden="true">' . lang(array('string' => '{var:1}%', 'vars' => array($percent_complete))) . '</span>
                 </div>
                 <h3 id="campaign_send_count">(' . pg_format_number($number_of_completed_email_recipients, 0) . lang(' of ') . pg_format_number($number_of_email_recipients, 0) . ')</h3>
-                <div class="alert theme-danger"><p>' . lang('Closing this browser window before completion will pause this Campaign, but it can be resumed at any time.') . '</p></div>
+                <div class="alert theme-danger"><p>' . lang('If you close this window before sending ends, sending stops; Send Campaign resumes it where it stopped.') . '</p></div>
             </div>
             <div class="col-12" id="campaign_sent" hidden>
                 <h3 id="campaign_sent_heading">' . lang('Campaign Sent') . '.</h3>
-                <div id="campaign_sent_alert" class="alert theme-success"><p>' . lang('The e-mail campaign has been sent to all recipients.') . '</p></div>
+                <div id="campaign_sent_alert" class="alert theme-success"><p>' . lang('The e-mail campaign has been sent to all recipients.') . '</p><p id="campaign_sent_problem" class="mb-0" hidden></p><p id="campaign_sent_smtp" class="mb-0" hidden><a href="#" target="_blank" rel="noopener">' . lang('SMTP Settings') . '</a></p></div>
             </div>
             <div class="col-12">
                 <p id="campaign_send_status" role="status" class="visually-hidden"></p>
@@ -586,6 +590,16 @@ if (mysqli_num_rows($result) > 0) {
                 alert.classList.remove(\'theme-success\');
                 alert.classList.add(\'theme-warning\');
             }
+            if (answer.problem) {
+                var problem = document.getElementById(\'campaign_sent_problem\');
+                problem.textContent = answer.problem;
+                problem.hidden = false;
+            }
+            if (answer.smtp_url) {
+                var smtp = document.getElementById(\'campaign_sent_smtp\');
+                smtp.querySelector(\'a\').href = answer.smtp_url;
+                smtp.hidden = false;
+            }
             document.getElementById(\'campaign_sending\').hidden = true;
             document.getElementById(\'campaign_sent\').hidden = false;
             document.getElementById(\'campaign_send_header_close\').onclick = close.onclick;
@@ -633,7 +647,24 @@ if (mysqli_num_rows($result) > 0) {
     $row = mysqli_fetch_row($result);
     $number_of_waiting_email_recipients = (int) $row[0];
 
-    $summary = pg_email_campaign_send_summary($number_of_email_recipients, $number_of_delivered_email_recipients, $number_of_failed_email_recipients, $number_of_waiting_email_recipients, $number_of_suppressed_email_recipients);
+    // The stored reason of the deliveries that failed, and when a waiting
+    // recipient may be tried again: without the job only another Send now
+    // retries them, so the text names that instead of an automatic retry.
+    $delivery_problem = pg_email_campaign_delivery_problem($id);
+    $next_attempt_text = ($delivery_problem['next_attempt_at'] > time()) ? date('H:i', $delivery_problem['next_attempt_at']) : '';
+
+    $summary = pg_email_campaign_send_summary($number_of_email_recipients, $number_of_delivered_email_recipients, $number_of_failed_email_recipients, $number_of_waiting_email_recipients, $number_of_suppressed_email_recipients, email_campaign_job_enabled(), $next_attempt_text);
+    $problem_line = $summary['all_sent'] ? '' : pg_email_campaign_problem_line($delivery_problem['error'], $delivery_problem['count']);
+
+    // SMTP Settings is where a refused delivery is usually fixed; it opens
+    // for a manager and above.
+    $smtp_link = (($problem_line !== '') && ($user['role'] <= 2)) ? OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/smtp_settings.php' : '';
+
+    // A campaign that was already complete was finished by an earlier run:
+    // it is not finished, logged or followed up again.
+    if ($already_complete) {
+        $summary['complete'] = false;
+    }
 
     // Recipients waiting for another attempt keep the campaign open: the
     // job, or the next Send now, tries them again.
@@ -650,7 +681,9 @@ if (mysqli_num_rows($result) > 0) {
     }
     
     // log end of sending e-mails
-    if ($summary['all_sent']) {
+    if ($already_complete) {
+        // Nothing was sent in this run.
+    } elseif ($summary['all_sent']) {
         log_activity(lang(array('string'=>'e-mail campaign (subject: {var:1}) was sent to {var:2} recipients','vars'=>array($subject_template . $log_page, pg_format_number($number_of_email_recipients, 0)))), $_SESSION['sessionusername']);
     } else {
         log_activity(lang(array('string'=>'e-mail campaign (subject: {var:1}) was delivered to {var:2} of {var:3} recipients; {var:4} could not be delivered','vars'=>array($subject_template . $log_page, pg_format_number($number_of_delivered_email_recipients, 0), pg_format_number($number_of_email_recipients, 0), pg_format_number($number_of_failed_email_recipients + $number_of_waiting_email_recipients, 0)))), $_SESSION['sessionusername']);
@@ -677,6 +710,8 @@ if (mysqli_num_rows($result) > 0) {
             'all_sent' => $summary['all_sent'],
             'heading' => $summary['heading'],
             'message' => $summary['message'],
+            'problem' => $problem_line,
+            'smtp_url' => $smtp_link,
             'percent' => $summary['percent'],
             'percent_text' => lang(array('string' => '{var:1}%', 'vars' => array($summary['percent']))),
             'count' => pg_format_number($number_of_delivered_email_recipients, 0) . lang(' of ') . pg_format_number($number_of_email_recipients, 0)));
@@ -722,7 +757,7 @@ if (mysqli_num_rows($result) > 0) {
             </div>
             <div class="col-12">
                 <h3>' . h($summary['heading']) . '.</h3>
-                <div class="alert ' . ($summary['all_sent'] ? 'theme-success' : 'theme-warning') . '"><p>' . h($summary['message']) . '</p></div>
+                <div class="alert ' . ($summary['all_sent'] ? 'theme-success' : 'theme-warning') . '"><p>' . h($summary['message']) . '</p>' . send_email_campaign_problem_html($problem_line, $smtp_link) . '</div>
             </div>
         </div>
         <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
@@ -787,4 +822,21 @@ function send_email_campaign_json($answer, $status = 200)
     header('Cache-Control: no-store');
     echo pg_json_encode_answer(array_merge(array('sent' => 0, 'total' => 0, 'done' => false, 'error' => ''), $answer));
     exit();
+}
+
+// The delivery problem under the finish message: the most frequent stored
+// error and, for a manager, a link to SMTP Settings.
+function send_email_campaign_problem_html($problem_line, $smtp_link)
+{
+    $html = '';
+
+    if ($problem_line !== '') {
+        $html .= '<p class="mb-0">' . h($problem_line) . '</p>';
+    }
+
+    if ($smtp_link !== '') {
+        $html .= '<p class="mb-0"><a href="' . h($smtp_link) . '" target="_blank" rel="noopener">' . lang('SMTP Settings') . '</a></p>';
+    }
+
+    return $html;
 }

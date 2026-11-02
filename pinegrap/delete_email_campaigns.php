@@ -24,18 +24,18 @@ validate_token_field();
 
 include_once('liveform.class.php');
 
-if (mb_strpos($_POST['send_to'], 'view_email_campaign_history.php') !== false) {
+if (mb_strpos((string) ($_POST['send_to'] ?? ''), 'view_email_campaign_history.php') !== false) {
     $liveform = new liveform('view_email_campaign_history');
 } else {
     $liveform = new liveform('view_email_campaigns');
 }
 
 // if at least one e-mail campaign was selected
-if ($_POST['email_campaigns']) {
+if ($_POST['email_campaigns'] ?? array()) {
     $number_of_email_campaigns = 0;
     
     // Loop through all email campaigns that where selected.
-    foreach ($_POST['email_campaigns'] as $email_campaign_id) {
+    foreach ((array) $_POST['email_campaigns'] as $email_campaign_id) {
         // assume that the user has access to this e-mail campaign until we find out otherwise
         $access = true;
         
@@ -83,7 +83,7 @@ if ($_POST['email_campaigns']) {
 }
 
 // If there is a send to set, then forward user to send to.
-if ($_POST['send_to'] != '') {
+if (($_POST['send_to'] ?? '') != '') {
     header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(($_POST['send_to'] ?? '')));
     
 // Otherwise there is not a send to set, so forward user to view e-mail campaigns screen.
