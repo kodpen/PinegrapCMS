@@ -18,7 +18,7 @@ description: Plan (2026-10-24; ready to start, owner 2026-11-01): a Figma/XD-lik
 - Drafts played as a prototype, a view-only link to it, flow shares: plans/prototype-sharing.md.
 
 ## Slices (one PR each)
-1. Read-only map: frames and arrows from every tab (`_pgTreeOf()`, shared components prefetched), classic menus (`pg_menu_tree()`) and legacy regions by a new read, the resolver's JS twin with tests (PHP split done in #1579), broken, draft and external marks; a hotspot selects its node.
+1. `free`. Read-only map: frames and arrows from every tab (`_pgTreeOf()`, shared components prefetched), classic menus (`pg_menu_tree()`) and legacy regions by a new read, the resolver's JS twin with tests (PHP split done in #1579), broken, draft and external marks; a hotspot selects its node.
 2. Draw and re-point arrows within today's rights, undo, the shared and Publish warnings, Save.
 3. Done #1867 in the Preview (designer/designer-preview-play.md): a page link plays the open tab of that name, unsaved tabs too; the Prototype view's hotspots reuse `_sdPreviewPlay()`.
 4. Shared positions, thumbnails; links by page id that survive a rename, built from `__page_link` (outside widgets a new tree prop and renderer: ask first).

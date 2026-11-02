@@ -8,7 +8,7 @@ description: Image editor: Google Fonts picker under the Text tool's font tiles,
 - Sticker tool: an option to add Bootstrap Icons and emoji to the picture.
 
 ## Which steps are there?
-- F1 (M) Google Fonts in the Text tool. Ready to start.
+- F1 (M) Google Fonts in the Text tool. `free`.
   - One catalogue for both editors: the designer's hard-coded `GOOGLE_FONTS` (`style_designer.src.js`, about 210 families, no API key) moves to one source (a PHP list in an `includes/fn/` module sent in both configs, or one shared JS file); the designer reads it from there, no second copy.
   - Under the tiles: a button opening a sheet with a search box, the categories (sans, serif, display, handwriting, mono) and rows drawn in their own face as they scroll into view (lazy `<link>`, the editor's existing `loadTextFont()`), a sample with Turkish letters (`Ağ Iı Şş Çç`).
   - A choice sets `font: 'g:<family>'` (no new layer field; the save already waits for the face). The last five Google families used appear as tiles after the site's fonts (browser storage, per viewer).
