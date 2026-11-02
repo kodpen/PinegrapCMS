@@ -3580,6 +3580,7 @@
     "access denied to add watcher to page ({var:1}) because the visitor did not have view access to submitted form ({var:2})": "({var:1}) sayfasına izleyici ekleme erişimi reddedildi çünkü ziyaretçinin gönderilen formu ({var:2}) görüntüleme erişimi yok",
     "access denied to all duplicate contacts view": "tüm kopya kişiler görünümüne erişim reddedildi",
     "access denied to allow or disallow new comments for an item for page ({var:1}) because user does not have access to modify folder that the page is in": "({var:1}) sayfasındaki bir öğe için yeni yorumlara izin verme veya vermeme erişimi reddedildi çünkü kullanıcının sayfanın bulunduğu klasörü değiştirme erişimi yok",
+    "access denied to approve affiliate because user does not have access to a contact group that the contact is in": "kişinin bulunduğu bir kişi grubuna erişimi olmadığı için ortak onayına erişim reddedildi",
     "access denied to archived page ({var:1})": "arşivlenmiş sayfaya erişim reddedildi ({var:1})",
     "access denied to calendars": "takvimlere erişim reddedildi",
     "access denied to calendars because user did not have access to at least one calendar": "kullanıcının en az bir takvime erişimi olmadığı için takvimlere erişim reddedildi",
