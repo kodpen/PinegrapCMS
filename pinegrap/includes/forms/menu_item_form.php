@@ -62,14 +62,10 @@ function pg_menu_item_form_card($liveform, $parent_id_options, $extra = '', $kee
                                         <div class="col-12 mt-7"><h3 class="h5">' . lang('Link Menu Item To') . '</h3></div>
                                         <div class="col-12 md:col-12 lg:col-5 my-3">
                                             <label for="link_page_id" class="form-label">' . lang('Page') . '</label>
-                                            <div class="input-group flex-wrap">
-                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'link_page_id', 'id'=>'link_page_id', 'class'=>'form-control', 'style'=>'min-width:100px', 'options'=>get_page_options('', '', 'edit', true, $keep_page_id), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'link_url\').value = \'\'}')) . '
-                                                <div class="input-group-text">
-                                                    <div class="form-field">
-                                                        <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'security', 'id'=>'security', 'value'=>'1', 'class'=>'no-bs', 'aria-describedby'=>'security_hint')) . '</div>
-                                                        <label class="" for="security">' . lang('Enable Security') . '</label>
-                                                    </div>
-                                                </div>
+                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'link_page_id', 'id'=>'link_page_id', 'class'=>'form-control', 'options'=>get_page_options('', '', 'edit', true, $keep_page_id), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'link_url\').value = \'\'}')) . '
+                                            <div class="form-field mt-3">
+                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'security', 'id'=>'security', 'value'=>'1', 'class'=>'no-bs', 'aria-describedby'=>'security_hint')) . '</div>
+                                                <label class="" for="security">' . lang('Enable Security') . '</label>
                                             </div>
                                             <div class="form-text" id="security_hint">' . lang('only show Menu Item if Visitor has access to view Page') . '</div>
                                         </div>
@@ -184,6 +180,45 @@ function pg_menu_item_form_last_sort_order($menu_id, $parent_id)
 
     // An empty level starts at 1.
     return (int) ($row['sort_order'] ?? 0) + 1;
+}
+
+/**
+ * The ids of a level in their new order after an item is saved on it.
+ * The position is 'top' or the id of the sibling the item goes below; on a
+ * new parent, or when the position names no sibling of this level, the item
+ * goes last, because the position list was drawn for the level it left.
+ *
+ * @param array $sibling_ids  The level's other ids, in their sort order
+ * @param int|string $item_id
+ * @param string $position
+ * @param bool $parent_changed
+ * @return array
+ */
+function pg_menu_item_form_level_order($sibling_ids, $item_id, $position, $parent_changed)
+{
+    $position = (string) $position;
+    $order = array();
+    $placed = false;
+
+    if (!$parent_changed && $position === 'top') {
+        $order[] = $item_id;
+        $placed = true;
+    }
+
+    foreach ($sibling_ids as $sibling_id) {
+        $order[] = $sibling_id;
+
+        if (!$parent_changed && !$placed && ((string) $sibling_id === $position)) {
+            $order[] = $item_id;
+            $placed = true;
+        }
+    }
+
+    if (!$placed) {
+        $order[] = $item_id;
+    }
+
+    return $order;
 }
 
 /**

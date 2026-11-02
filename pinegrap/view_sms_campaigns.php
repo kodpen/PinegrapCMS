@@ -82,6 +82,9 @@ while ($campaign = mysqli_fetch_assoc($result)) {
     }
 
     $name = ($campaign['name'] !== '') ? $campaign['name'] : '[' . lang('No name') . ']';
+    // Cut like the text: table cells do not wrap, and a 100-character name
+    // would push the status and time columns off the screen.
+    $short_name = (mb_strlen($name) > 50) ? mb_substr($name, 0, 50) . '…' : $name;
     $text = (mb_strlen($campaign['body']) > 80) ? mb_substr($campaign['body'], 0, 80) . '…' : $campaign['body'];
 
     $when = '';
@@ -119,7 +122,7 @@ while ($campaign = mysqli_fetch_assoc($result)) {
         '<tr>
             <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="sms_campaigns[]" value="' . (int) $campaign['id'] . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($name)))) . '" /></td>
             <td class="align-middle text-start"><a class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . h(lang('Edit')) . '" aria-label="' . h(lang(array('string' => 'Edit {var:1}', 'vars' => array($name)))) . '" href="edit_sms_campaign.php?id=' . (int) $campaign['id'] . '"><i class="bi bi-pencil" aria-hidden="true"></i></a></td>
-            <td class="align-middle">' . h($name) . '</td>
+            <td class="align-middle"' . (($short_name !== $name) ? ' title="' . h($name) . '"' : '') . '>' . h($short_name) . '</td>
             <td class="align-middle">' . h($text) . '</td>
             <td class="align-middle">' . h($statuses[$campaign['status']] ?? $campaign['status']) . '</td>
             <td class="align-middle">' . $when . '</td>

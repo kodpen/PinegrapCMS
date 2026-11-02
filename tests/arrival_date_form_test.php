@@ -135,3 +135,28 @@ function test_arrival_date_form_date_text()
 	pg_assert_contains('2026', pg_arrival_date_form_date_text('2026-12-24'), 'with its year');
 	pg_assert_contains('pg_arrival_date_form_date_text($row[\'arrival_date\'])', arrival_date_form_test_source('view_arrival_dates.php'), 'the list uses it');
 }
+
+// The cut-off rows backend.src.js adds carry their names: the select and
+// the date box had none, and the delete button read its icon name.
+function test_arrival_date_cutoff_row_names()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
+	$start = strpos($source, 'function create_shipping_cutoff(');
+	$body = substr($source, $start, 4000);
+
+	pg_assert_contains('aria-label="\' + prepare_content_for_html(lang(\'Shipping Method\'))', $body, 'the method select');
+	pg_assert_contains('aria-label="\' + prepare_content_for_html(lang(\'Cut-off Date & Time\'))', $body, 'the date and time box');
+	pg_assert_contains('title="\' + prepare_content_for_html(lang(\'Delete\'))', $body, 'the delete button');
+	pg_assert_contains('<span class="material-icons" aria-hidden="true">delete</span>', $body, 'its icon is hidden from screen readers');
+}
+
+// The posted select of a combobox stays 1px wide whatever its inline
+// style: width:100% pushed a 375px page 2px sideways.
+function test_combobox_native_select_size()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	$rule = substr($css, strpos($css, '.pg-combobox-native {'), 200);
+
+	pg_assert_contains('width: 1px !important;', $rule, 'width');
+	pg_assert_contains('height: 1px !important;', $rule, 'height');
+}

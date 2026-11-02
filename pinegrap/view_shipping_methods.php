@@ -40,6 +40,9 @@ validate_ecommerce_access($user);
 // The rates an operator can change on the list without opening the method.
 $quick_edit = pg_shipping_method_edit_columns();
 
+// Service and Real-Time Rate are drawn only while a method has a service.
+$has_service = pg_shipping_method_list_has_service();
+
 // The columns this list sorts by, in the order the table shows them.
 // pg_list_state() keeps the choice in the session as a code, so it survives
 // a language change, and falls back to the default for anything else.
@@ -60,6 +63,10 @@ $sort_columns = array(
     'protected'             => lang('Protected'),
     'last_modified'         => lang('Last Modified'),
 );
+
+if (!$has_service) {
+    unset($sort_columns['service'], $sort_columns['realtime_rate']);
+}
 
 $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 
@@ -127,25 +134,17 @@ while ($row = mysqli_fetch_array($result)) {
     $name = $row['name'];
     $description = $row['description'];
     $code = $row['code'];
-    $status = $row['status'];
-    $start_time = $row['start_time'];
-    $end_time = $row['end_time'];
     $service = $row['service'];
     $primary_weight_rate = sprintf("%01.2lf", $row['primary_weight_rate'] / 100);
     $secondary_weight_rate = sprintf("%01.2lf", $row['secondary_weight_rate'] / 100);
     $handle_days = $row['handle_days'];
     $base_transit_days = $row['base_transit_days'];
     
-    $current_time = date('Y-m-d H:i:s');
-    
-    // if the shipping method is active, use green status color
-    if (($status == 'enabled') && ($start_time <= $current_time) && ($end_time >= $current_time)) {
-        $status_color_class = ' fg-success';
-    
-    // else shipping method is inactive, so use red status color
-    } else {
-        $status_color_class = ' fg-danger';
-    }
+    // Green when checkout offers the method, else red with the reason
+    // under the name.
+    $list_state = pg_shipping_method_list_state($row, date('Y-m-d H:i:s'));
+    $status_color_class = ($list_state === '') ? ' fg-success' : ' fg-danger';
+    $output_state = ($list_state === 'Disabled') ? pg_list_status_word(lang('Disabled')) : (($list_state === 'Inactive') ? pg_list_status_word(lang('Inactive')) : '');
 
     $realtime_rate = '';
 
@@ -210,11 +209,11 @@ while ($row = mysqli_fetch_array($result)) {
                 <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                 <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
-            <td class="align-middle chart_label ' . $status_color_class . '"><div class="text-wrap text-break" style="max-width:20rem;">' . h($name) . '</div></td>
-            <td class="align-middle"><div class="text-wrap text-break" style="max-width:20rem;">' . h($description) . '</div></td>
-            <td class="align-middle"><span class="badge fg-body fw-light">' . h($code) . '</span></td>
+            <td class="align-middle chart_label ' . $status_color_class . '"><div class="text-wrap text-break" style="min-width:12rem;max-width:20rem;">' . h($name) . '</div>' . $output_state . '</td>
+            <td class="align-middle"><div class="text-wrap text-break" style="min-width:15rem;max-width:24rem;">' . h($description) . '</div></td>
+            <td class="align-middle"><span class="badge fg-body fw-light">' . h($code) . '</span></td>' . ($has_service ? '
             <td class="align-middle">' . h(get_shipping_service_name($service)) . '</td>
-            <td class="align-middle text-center">' . $realtime_rate . '</td>
+            <td class="align-middle text-center">' . $realtime_rate . '</td>' : '') . '
             <td class="' . $list_cells['base_rate']['class'] . '"' . ($row['variable_base_rate'] ? '' : pg_list_edit_cell($quick_edit, 'base_rate', $id, pg_format_input_amount($row['base_rate'] / 100))) . '>' . $list_cells['base_rate']['html'] . '</td>
             <td class="align-middle text-end">' . pg_format_money($primary_weight_rate, BASE_CURRENCY_SYMBOL) . '</td>
             <td class="align-middle text-end">' . pg_format_money($secondary_weight_rate, BASE_CURRENCY_SYMBOL) . '</td>
@@ -253,8 +252,8 @@ pg_page_shell([
                                 <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
                                 <th>' . get_column_heading(lang('Message'), $sort_levels, '', '', 'message') . '</th>
                                 <th>' . get_column_heading(lang('Code'), $sort_levels, '', '', 'code') . '</th>
-                                <th>' . get_column_heading(lang('Service'), $sort_levels, '', '', 'service') . '</th>
-                                <th class="text-center">' . get_column_heading(lang('Real-Time Rate'), $sort_levels, '', '', 'realtime_rate') . '</th>
+                                ' . ($has_service ? '<th>' . get_column_heading(lang('Service'), $sort_levels, '', '', 'service') . '</th>
+                                <th class="text-center">' . get_column_heading(lang('Real-Time Rate'), $sort_levels, '', '', 'realtime_rate') . '</th>' : '') . '
                                 <th class="text-end">' . get_column_heading(lang('Base Rate'), $sort_levels, '', '', 'base_rate') . '</th>
                                 <th class="text-end">' . get_column_heading(lang('Primary W. Rate'), $sort_levels, '', '', 'primary_weight_rate') . '</th>
                                 <th class="text-end">' . get_column_heading(lang('Secondary W. Rate'), $sort_levels, '', '', 'secondary_weight_rate') . '</th>

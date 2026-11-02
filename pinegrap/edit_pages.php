@@ -441,6 +441,10 @@ if (!$_POST) {
                         $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
 
                         pg_audit_record('delete', 'page', $page_id, $audit_before);
+                        // A page deleted from the bin leaves no restore record behind.
+                        if (function_exists('pg_recycle_forget')) {
+                            pg_recycle_forget('page', $page_id);
+                        }
 
                         // Stored SEO findings for this page. The single-page
                         // delete in edit_page.php clears these; this screen

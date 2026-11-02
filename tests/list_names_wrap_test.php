@@ -59,7 +59,9 @@ function test_list_names_wrap_text_cells()
 	pg_assert_contains('<td title="\' . h(pg_liveform_message_text($label_or_information)) . \'"><span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;">\' . $label_or_information . \'</span></td>', $fields);
 
 	$shipping = list_names_wrap_source('view_shipping_methods.php');
-	pg_assert_contains('<td class="align-middle chart_label \' . $status_color_class . \'">' . $wrap . '\' . h($name) . \'</div></td>', $shipping);
-	pg_assert_contains('<td class="align-middle">' . $wrap . '\' . h($description) . \'</div></td>', $shipping);
+	// The name and message wrap with a floor width, so DataTables does not
+	// squeeze them to a word per line next to one-line columns.
+	pg_assert_contains('<td class="align-middle chart_label \' . $status_color_class . \'"><div class="text-wrap text-break" style="min-width:12rem;max-width:20rem;">\' . h($name) . \'</div>\' . $output_state . \'</td>', $shipping);
+	pg_assert_contains('<td class="align-middle"><div class="text-wrap text-break" style="min-width:15rem;max-width:24rem;">\' . h($description) . \'</div></td>', $shipping);
 	pg_assert_false(strpos($shipping, 'text-nowrap text-truncate') !== false, 'shipping: no truncated cells');
 }

@@ -71,7 +71,7 @@ foreach ($rows as $row) {
     $output_rows .= '
         <tr' . ($enabled ? '' : ' class="opacity-75"') . '>
             ' . ($can_order ? '<td class="align-middle" style="width:2.5rem"><input type="checkbox" class="check" form="erp_order_form" name="products[]" value="' . $product_id . '" aria-label="' . h(lang(array('string' => 'Order {var:1}', 'vars' => erp_stock_product_label($row)))) . '" data-erp-order-pick /></td>' : '') . '
-            <td class="align-middle">' . h(erp_stock_product_label($row))
+            <td class="align-middle text-wrap text-break" style="max-width:14rem">' . h(erp_stock_product_label($row))
                 . (((trim((string) $row['product_sku']) !== '') && (trim((string) $row['product_sku']) !== trim(erp_stock_product_label($row)))) ? '<div class="small fg-secondary font-monospace">' . h((string) $row['product_sku']) . '</div>' : '')
                 . ($enabled ? '' : '<span class="badge theme-secondary">' . lang('Not on sale') . '</span>') . '</td>
             <td class="' . $cells['stock']['class'] . '" data-sort="' . $cells['stock']['sort'] . '" data-pg-cell="stock">' . $cells['stock']['html'] . '</td>
