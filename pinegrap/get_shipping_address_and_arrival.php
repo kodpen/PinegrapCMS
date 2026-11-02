@@ -887,7 +887,8 @@ function get_shipping_address_and_arrival($properties) {
                 // (e.g. the form has not been submitted by the customer),
                 // then set default value.
                 if (!isset($attributes['value'])) {
-                    $value_from_query_string = trim($_GET['value_' . $field['id']] ?? '');
+                    // An array (value_<id>[]=) is not a value for one field, so it counts as not passed.
+                    $value_from_query_string = trim((isset($_GET['value_' . $field['id']]) && is_string($_GET['value_' . $field['id']])) ? $_GET['value_' . $field['id']] : '');
 
                     // If a default value was passed in the query string, then use that.
                     if ($value_from_query_string != '') {
