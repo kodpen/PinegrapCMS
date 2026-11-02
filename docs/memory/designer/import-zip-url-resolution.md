@@ -16,3 +16,7 @@ description: How the Import ZIP File screen resolves relative references (url_to
 - Path, query and fragment accept a space and raw bytes 0x80-0xff, so `görseller/ürün 1.jpg` resolves to the same key as the archive entry; dot segments are split on the `/` byte (`explode()`, not a `/u` pattern), so a non-UTF-8 (Latin-1) name resolves too instead of a TypeError. Percent-encoded references are not decoded (`decode` defaults to false): `g%C3%B6rsel.png` does not match the entry `görsel.png`.
 - An empty reference resolves to the base; a base without a path (`<base href="http://example.com">`) merges from the root; a path ending in `.` or `..` keeps its trailing slash (`./g/.` -> `.../g/`).
 - `join_url()`'s `$encode` branch is unused and its IPv6 pattern is malformed; left alone.
+
+## How is a tag's reference read and rewritten?
+- Through `pg_imported_tag_pattern($tag, $attribute)` (the first attribute of that name with white space before it) and `pg_imported_tag_set_attribute()` (that one attribute, once, value taken literally). Before #5121 the patterns took the last `src=` of the tag and rewrote every `…src=`, so `<img data-src="photo.jpg" src="placeholder.gif">` came out with both pointing at the placeholder (lazy-loading themes lost their images). Tests: `tests/imported_tag_attribute_test.php`.
+- Lead, not fixed: a reference with no imported item reads `$imported_items[<url>]['name']` of a missing key, a PHP 8 warning per reference.
