@@ -20492,6 +20492,24 @@ button.ws-ack-count:hover {
 .pgc-port-out:hover {
   transform: scale(1.2);
 }
+/* A named port (a row's, data-port) sits at the middle of its row's edge:
+   the user makes the row the dot's positioned parent, as wide as the box. */
+.pgc-node [data-port] {
+  z-index: 1;
+}
+/* A box's picture holder (thumb()), filled once the box is in sight. */
+.pgc-thumb {
+  display: block;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--pg-bg-2);
+  border-radius: var(--pgc-radius-sm, var(--pg-radius-sm));
+}
+.pgc-thumb > img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
 /* The Flows canvas on the core: its arrowhead markers, a box's border and
    ports in its group's colour (kindClasses() in workspace_flow.js), its
    problem state. */
