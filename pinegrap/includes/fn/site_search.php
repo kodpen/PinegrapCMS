@@ -242,6 +242,20 @@ function pg_search_fulltext_items($sql, array $params)
 }
 
 /**
+ * How long a search index run that the dispatcher did not start holds the
+ * job's lock: a panel window request works within its budget and takes the
+ * catalogue's lock (null); a command-line run does the whole pass in one
+ * process and holds the job for up to four hours. Pure.
+ *
+ * @param bool $web The run answers an HTTP request.
+ * @return int|null Seconds, or null for the catalogue's lock.
+ */
+function pg_search_index_claim_seconds($web)
+{
+    return $web ? null : 14400;
+}
+
+/**
  * The closing sweep of a search index run: every row older than the run's
  * start goes. Older, not different: a run started later has rewritten its
  * rows with its own, newer time, and an earlier run that ends first must

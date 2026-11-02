@@ -4,7 +4,7 @@ description: Steps SA1-SA5 of plans/search-and-audits.md: index isolation, overl
 ---
 
 ## Which steps are there?
-- S under 400 product lines, M about 1,000. SA1, SA3 and SA5 touch different files and may run side by side; SA2 and SA4 follow SA1 (`update_search_index.php`), SA6 follows SA3 and SA5. SA6-SA13: `search-and-audits-steps-2.md`.
+- S under 400 product lines, M about 1,000. SA1, SA3 and SA5 touch different files and may run side by side; SA2 and SA4 follow SA1 (`update_search_index.php`), SA6 follows SA3 and SA5. SA6-SA14: `search-and-audits-steps-2.md`.
 
 - SA1 (M) Index survives a bad item. Done (#4733).
   - Pages, calendar events and classic form records drawn as designer records are (`pg_error_throws(true)`, `try`/`catch (Throwable)`/`finally` putting back `$_GET`, the buffer level, the flag). A failed item keeps its row (its `timestamp` set to the run's, so the sweep spares it), counted and named by `pg_search_index_failure_note()`, which gains the item's kind.
