@@ -10,7 +10,7 @@ description: Module list of plans/bug-hunt.md, part 2b: includes/fn/ modules wid
 - `widgets_affiliate_sign_up`: done (#4998: posted next_page_id); rest clean (prefill as the classic screen, terms, confirmation, row changes)
 - `widgets_attrs`: clean (denied names and tokens, placeholders and carriers, empty switches dropped)
 - `widgets_billing_information`: clean (start values, liveform restore, flags and dropped controls, page row changes as the classic page)
-- `widgets_cart`: taken by fix/bug-hunt-widgets-cart (checked, clean: cart link subtotal and placement ids, express order charged totals)
+- `widgets_cart`: open (#5140: a cart on the home page was not recorded as the cart page; checked, clean: tax estimate, express order tax addresses, live tax fields and answer, recurring schedule and rules, tax and shipping notice, currency picker, offline payment box, pending offers, quick add, quantity box retarget, empty state, cart URL, cart link subtotal and placement ids, express order charged totals)
 - `widgets_catalog`: open (#5134: clear filters kept the attribute filters; checked, clean: RSS and JSON-LD parts, group paths and subtree, item resolution, breadcrumb rows, group tree, card templates, variant flag marks, variant attribute markers, wishlist and stock-notify controls)
 - `widgets_comments`: open (checked, clean: options, order, paginate, page param and URLs, quote excerpt, link values, mask email, watcher label, row root id and anchor links)
 - `widgets_comments_recent`: clean (source decisions, access and scope SQL, record gate, rows read again under the scope, titles)

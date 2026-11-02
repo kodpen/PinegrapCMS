@@ -35,6 +35,24 @@ function _pg_cart_default_labels($keys)
 }
 
 /**
+ * The page id the shopping cart and express order widgets record as the
+ * visitor's cart page (shopping_cart_page_id, express_order_page_id): the
+ * page the address names, else the page being rendered. The home page at the
+ * site root has no name in the address; without the fallback a cart there
+ * was never recorded, so the cart link and remove_item_from_cart.php went to
+ * a cart page seen earlier.
+ *
+ * @param int|string|null $named_page_id    the page whose name $_GET['page'] holds, 0 when none
+ * @param int|string      $rendered_page_id pg_rendered_page()
+ * @return int
+ */
+function _pg_cart_widget_page_id($named_page_id, $rendered_page_id)
+{
+    $named_page_id = (int)$named_page_id;
+    return ($named_page_id > 0) ? $named_page_id : max(0, (int)$rendered_page_id);
+}
+
+/**
  * The empty cart's own block: the message as a plain paragraph and a
  * Continue Shopping button to the shop, like the legacy cart page prints a
  * plain paragraph rather than a success alert. A part with no text is left
@@ -532,13 +550,15 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     // further down by the hidden page_id fields on the coupon + update
     // forms — those fields are what shopping_cart.php's POST handler reads
     // to look up properties for this cart page.
-    $_pg_cart_pid = 0;
-    if (isset($_GET['page'])) {
-        $_pg_cart_pid = (int)db_value("SELECT page_id FROM page WHERE page_name = '" . e((string)$_GET['page']) . "' LIMIT 1");
-        if ($_pg_cart_pid > 0) {
-            $_SESSION['ecommerce']['shopping_cart_page_id'] = $_pg_cart_pid;
-            unset($_SESSION['ecommerce']['express_order_page_id']);
-        }
+    // A page reached without its name (the home page at the site root) is
+    // the page being rendered, as for the express order widget.
+    $_pg_cart_pid = _pg_cart_widget_page_id(
+        isset($_GET['page']) ? db_value("SELECT page_id FROM page WHERE page_name = '" . e((string)$_GET['page']) . "' LIMIT 1") : 0,
+        pg_rendered_page()
+    );
+    if ($_pg_cart_pid > 0) {
+        $_SESSION['ecommerce']['shopping_cart_page_id'] = $_pg_cart_pid;
+        unset($_SESSION['ecommerce']['express_order_page_id']);
     }
 
     // ── POST-handling moved to cart_action.php ─────────────────────────────
@@ -2417,14 +2437,10 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
     // the express_order_pages config row. express_order.php turns away an id
     // that names no express order page, so a page reached without its name
     // (the home page at the site root) takes the id of the page being rendered.
-    $_eo_page_id = 0;
-    if (isset($_GET['page'])) {
-        $_eo_page_id = (int)db_value("SELECT page_id FROM page WHERE page_name = '"
-            . e((string)$_GET['page']) . "' LIMIT 1");
-    }
-    if ($_eo_page_id <= 0) {
-        $_eo_page_id = (int)pg_rendered_page();
-    }
+    $_eo_page_id = _pg_cart_widget_page_id(
+        isset($_GET['page']) ? db_value("SELECT page_id FROM page WHERE page_name = '" . e((string)$_GET['page']) . "' LIMIT 1") : 0,
+        pg_rendered_page()
+    );
     if ($_eo_page_id > 0) {
         $_SESSION['ecommerce']['express_order_page_id'] = $_eo_page_id;
         unset($_SESSION['ecommerce']['shopping_cart_page_id']);
