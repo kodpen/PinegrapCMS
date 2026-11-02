@@ -739,8 +739,8 @@ foreach ($records as $r) {
             </form>
         </td>
         <td><span class="badge theme-info">' . htmlspecialchars((string)$r['type'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '</span></td>
-        <td>'.truncate($r['name'],50).'</td>
-        <td>'.truncate($data_content,50).'</td>
+        <td>' . h(truncate($r['name'], 50)) . '</td>
+        <td>' . h(truncate($data_content, 50)) . '</td>
         <td>'.(($r['ttl'] == 1) ? lang('Auto') : (int)$r['ttl']).'</td>
         <td>'.(!empty($r['proxied']) ? '<span class="badge theme-success">' . lang('Yes') . '</span>' : '<span class="badge theme-secondary">' . lang('No') . '</span>').'</td>
     </tr>';
