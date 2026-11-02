@@ -47,9 +47,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - content-importers-steps-2.md: Steps IM4-IM7 of plans/content-importers.md: the WooCommerce and Shopify readers, redirects and undo, close-out; claim as [plan:content-importers] IM<n>
 - content-importers-steps.md: Steps IM1-IM3 of plans/content-importers.md: the import framework and screen, the WordPress WXR reader, pages and media fetches; claim as [plan:content-importers] IM<n>
 - content-importers.md: Plan (owner 2026-11-02): importers for WordPress (WXR), WooCommerce and Shopify (CSV): records, pages, media, comments, customers, products, old addresses as redirects; steps IM1-IM7
-- datetime-picker-site-steps.md: Site steps S1-S4 of plans/datetime-picker.md (after the panel stop): on-demand loader, classic renderers, checkout, designer widgets and palette; claim as [plan:datetime-picker] S<n>
-- datetime-picker-steps.md: Panel steps P1-P11 of plans/datetime-picker.md: what each changes, its files, tests and size, its dependencies; claim as [plan:datetime-picker] P<n>
-- datetime-picker.md: Plan (decided in #2693, 2026-10-28): one date-and-time control for the whole software, the time in the same popup, on vanilla-calendar-pro; panel P1-P11, sites S1-S4, steps in datetime-picker-steps.md
 - designer-form-logic-steps-2.md: Steps FL5-FL8 of plans/designer-form-logic.md: the payment step on the site, the staff side and API, template fees, close-out; claim as [plan:designer-form-logic] FL<n>
 - designer-form-logic-steps.md: Steps FL1-FL4 of plans/designer-form-logic.md: Shown when rules, form steps with progress, the browser draft, the fee setting and order writer; claim as [plan:designer-form-logic] FL<n>
 - designer-form-logic.md: Plan (owner 2026-11-02): designed forms get Shown-when rules, steps with progress, and a payment step that places a one-line order through the payment drivers; steps FL1-FL8

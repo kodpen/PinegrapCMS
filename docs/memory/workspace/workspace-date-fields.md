@@ -25,4 +25,4 @@ description: Workspace date and time fields on the one control: pgDateField(), t
 - Workspace screens print `get_date_picker_format() . pg_fields_script()` before `workspace.min.js` (`ws_screen_assets()`), unless the screen printed the control already.
 - A record's screen (`ws_record_loader()`, `core/js-bundles.md`) keeps `get_date_picker_format() . pg_fields_script_tags()` in `<template id="ws-fields-assets">`; the first click loads them before the bundle when `window.pgFields` is missing, each script made again with its attributes (calendar settings, labels). `pg_fields_script_tags()` has no once-per-request guard, so the screen's own later `pg_fields_script()` still prints.
 
-Related: docs/memory/ui/pg-date-stores.md, docs/memory/core/js-bundles.md, docs/memory/plans/datetime-picker-steps.md
+Related: docs/memory/ui/pg-date-stores.md, docs/memory/core/js-bundles.md, docs/memory/ui/datetime-control-history.md

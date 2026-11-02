@@ -23,4 +23,4 @@ description: Native date, datetime-local and time inputs on site pages get the d
 ## Where is it tested?
 - `tests/site_datetime_test.php` (`test_site_datetime_native_inputs`, `test_site_datetime_express_order_posts_iso`), `tests/pg_fields_test.php` (`dp_native`), `tests/forms_test.php` (`test_forms_date_and_time_iso`, `test_forms_native_date_value`), `tests/custom_form_url_prefill_test.php`, `tests/layout_form_convert_test.php`.
 
-Related: docs/memory/ui/site-datetime-loader.md, docs/memory/ui/pg-date-stores.md, docs/memory/plans/datetime-picker-site-steps.md
+Related: docs/memory/ui/site-datetime-loader.md, docs/memory/ui/pg-date-stores.md, docs/memory/ui/datetime-control-history.md
