@@ -42,13 +42,13 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 - `subscription_renewal`: fault fixed by LN, #4622 (renewals stop at the line's number of payments, decided in #4623)
 - `subscriptions`: clean (#4621)
 - `subscriptions_account`: #5154 (OF)
-- `subscriptions_operator`: open (moves fixed with #5154; search still takes escape_like())
+- `subscriptions_operator`: taken by OF, #PR (moves fixed with #5154)
 - `system_status`: clean (OF; read: PHP2Shell and build date, integrity paths, write-permission repair, check output escaping)
 - `text_search`: taken by MM — #4819
 - `tour`: clean (OF)
 - `translate`: taken by MM — #4753, #4776
 - `update`: open
-- `user_list`: taken by OF, #5169
+- `user_list`: #5169 (OF)
 - `vendor_api`: clean
 - `visitor_ip`: clean
 - `visitor_partitions`: open

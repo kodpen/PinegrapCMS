@@ -167,7 +167,9 @@ function pg_subscription_operator_where($filter)
     }
 
     if ((string) ($filter['q'] ?? '') !== '') {
-        $like = "'%" . e(escape_like((string) $filter['q'])) . "%'";
+        // pg_list_like_pattern() escapes the backslash too: escape_like()
+        // leaves it as LIKE's escape character for the next one.
+        $like = "'" . e(pg_list_like_pattern((string) $filter['q'])) . "'";
         $columns = array('o.billing_first_name', 'o.billing_last_name', "CONCAT(o.billing_first_name, ' ', o.billing_last_name)",
             'o.billing_email_address', 'u.user_username', 'u.user_email');
         $alternatives = array();
