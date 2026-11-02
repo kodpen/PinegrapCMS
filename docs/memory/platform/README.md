@@ -54,7 +54,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - docker-image-publishing.md: Docker images on GHCR (PR #737): docker-publish.yml on a published release, pinegrap-app/-web for amd64 and arm64, tags v<version> and latest, re-run by tag, compose PG_IMAGE_TAG, package visibility
 - docker.md: docker/ compose stack (PR #565): app (PHP-FPM 8.3), web (nginx), MariaDB 10.11, cron gated on the database version, one-shot install service, data volume, nginx rules in step, CI check
 - editor-image-upload-refusals.md: The rich text editor's Image > Upload (editor_add_file.php): a discarded body, a missing file, an upload error code or a failed copy() is refused in the dialog, never inserted as a picture.
-- erp-documents-in-file-manager.md: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the four doors that refuse it by name, and the image editor's save that used to write over it
+- erp-documents-in-file-manager.md: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the five doors that refuse it by name, and the image editor's save that used to write over it
 - error-reporting.md: How PHP error_reporting is set in init.php and router.php via SET_ERROR_REPORTING, and why E_DEPRECATED is not overridable from config.
 - file-manager-where-used-by-id.md: "Where used" counts form, comment and contact attachments by file id, only those the viewer may open; Edit Submitted Form marks a binned or deleted attachment
 - file-manager-where-used.md: The file manager's "Where used" (explorer_file_usage): the sources it scans by name, what it reads by id, the cap, the answer
