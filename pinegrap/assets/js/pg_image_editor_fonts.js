@@ -114,7 +114,7 @@
             search, cats, list
         ]);
 
-        this.fontBox = el('div', { class: 'pgie-confirm', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'pgie-gf-title' }, [box]);
+        this.fontBox = el('div', { class: 'pgie-confirm pgie-gfwrap', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'pgie-gf-title' }, [box]);
         this.fontList = list;
         this.fontWatch = observe(list, this);
         this.fontBox.addEventListener('pointerdown', function (e) {
@@ -127,7 +127,7 @@
         this.fontBox.addEventListener('keydown', function (e) { self.fontKey(e, search); });
         this.root.appendChild(this.fontBox);
         this.renderFontRows();
-        search.focus();
+        search.focus({ preventScroll: true });
     };
 
     Editor.prototype.renderFontRows = function () {

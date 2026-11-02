@@ -1958,7 +1958,14 @@
   gap: 6px;
 }
 
-/* The sheet: search, categories and a scrolling list of families. */
+/* The sheet: search, categories and a scrolling list of families. Its
+   overlay's one row is the overlay's height, so the list scrolls inside
+   the box instead of making the row as tall as every family. */
+.pgie-confirm.pgie-gfwrap {
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .pgie-confirm-box.pgie-gfbox {
   display: flex;
   flex-direction: column;
@@ -1988,8 +1995,19 @@
   font: inherit;
 }
 
-.pgie-gf-cats {
-  flex-wrap: wrap;
+/* The categories stay one row, each as wide as its word; on a narrow
+   sheet the row scrolls. */
+.pgie-seg.pgie-gf-cats {
+  grid-auto-columns: max-content;
+  min-width: 0;
+  margin-bottom: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.pgie-seg.pgie-gf-cats button {
+  padding: 0 12px;
+  white-space: nowrap;
 }
 
 .pgie-gf-list {
