@@ -9,17 +9,16 @@ description: The eleven feature plans approved 2026-11-02: index and order, how 
 - Pinegrap's audience is mixed (bloggers, shops, agencies, corporate sites) and global: nothing in these plans is built around one country, and products or invoices are never put first.
 
 ## Which plans, in which order?
-1. `mail-deliverability.md` (MD1-MD7): bounces, complaints, API transports, domain health.
-2. `object-storage.md` (OS1-OS7): S3-compatible backup target, then media.
-3. `web-vitals-ai-visibility.md` (WV1-WV6): real-user web vitals, AI crawler and AI referral figures.
-4. `designer-form-logic.md` (FL1-FL8): shown-when rules, steps, a payment step in designed forms.
-5. `appointment-booking.md` (BK1-BK10): services, staff hours, slots, a booking widget.
-6. `page-experiments.md` (PX1-PX8): A/B variants of a page and audience rules on elements.
-7. `audiences.md` (AU1-AU6): rule-driven contact groups.
-8. `content-importers.md` (IM1-IM7): WordPress WXR, WooCommerce and Shopify CSV.
-9. `store-credit.md` (SC1-SC7): spendable points, refunds to credit, auto-applied balance.
-10. `activitypub.md` (AP1-AP8): the site as a Fediverse actor. Plan file follows in its own PR.
-11. `stock-locations.md` (SL1-SL7): stock per location, the product's total unchanged. Plan file follows in its own PR.
+1. `object-storage.md` (OS1-OS7): S3-compatible backup target, then media.
+2. `web-vitals-ai-visibility.md` (WV1-WV6): real-user web vitals, AI crawler and AI referral figures.
+3. `designer-form-logic.md` (FL1-FL8): shown-when rules, steps, a payment step in designed forms.
+4. `appointment-booking.md` (BK1-BK10): services, staff hours, slots, a booking widget.
+5. `page-experiments.md` (PX1-PX8): A/B variants of a page and audience rules on elements.
+6. `audiences.md` (AU1-AU6): rule-driven contact groups.
+7. `content-importers.md` (IM1-IM7): WordPress WXR, WooCommerce and Shopify CSV.
+8. `store-credit.md` (SC1-SC7): spendable points, refunds to credit, auto-applied balance.
+9. `activitypub.md` (AP1-AP8): the site as a Fediverse actor. Plan file follows in its own PR.
+10. `stock-locations.md` (SL1-SL7): stock per location, the product's total unchanged. Plan file follows in its own PR.
 
 ## How does a coordinator hold a plan?
 - It claims nothing itself and writes no code (`workflow/coordinator.md`). It gives its workers only step lines that say `free` or whose "After" steps are merged, at most five at once and never two on the same files; the steps file says which run side by side.

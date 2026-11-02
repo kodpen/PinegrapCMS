@@ -5,7 +5,7 @@ module: mail_domain_health
 ---
 
 ## Where is it?
-- `smtp_settings.php`, card `#mail_domain_card` under the DKIM card; logic in `includes/fn/mail_domain_health.php`, loaded by the screen and by `pg_ops_alerts_check_mail_reputation()` (not by `functions.php`). Settings has no E-mail category in `includes/settings/`: SMTP Settings is the e-mail screen. 2026.11.0, plan mail-deliverability MD6.
+- `smtp_settings.php`, card `#mail_domain_card` under the DKIM card; logic in `includes/fn/mail_domain_health.php`, loaded by the screen and by `pg_ops_alerts_check_mail_reputation()` (not by `functions.php`). Settings has no E-mail category in `includes/settings/`: SMTP Settings is the e-mail screen. 2026.11.0, #5445.
 
 ## Which domain and records are checked?
 - Domain: `DKIM_DOMAIN` unless empty or the default config's `example.com`, else the domain of `EMAIL_ADDRESS` (`pg_mail_sending_domain()`). Selector `DKIM_SELECTOR`, else `pinegrap` (as `email()` signs).

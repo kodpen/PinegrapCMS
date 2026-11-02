@@ -16,7 +16,7 @@ description: Plan (owner 2026-11-02): an S3-compatible object store (S3, R2, B2,
 ## Which decisions bind it?
 - Legacy unchanged: a site that configures nothing keeps every file local; the `s3` backup type keeps its settings, the three accounts stay. A file never changes its address (the same-address rule of `webp-same-address.md`).
 - Access checks stay in `get_file.php`: a presigned URL is minted only after them, lives minutes, and is never written into a page or a mail (mails and feeds keep the site address, as `platform/image-same-address.md` asks).
-- The SigV4 code is shared with `mail-deliverability.md` MD3 (Amazon SES): the first to land writes `aws_sign.php`, the other reuses it.
+- The SigV4 code already exists: `includes/fn/aws_sign.php` (written for Amazon SES mail, `platform/aws-sigv4-signing.md`); reuse it.
 
 ## Which questions are decided? (#5037)
 1. `files.storage` ENUM(local, s3) and `files.storage_key`; Workspace channel files join in OS5.

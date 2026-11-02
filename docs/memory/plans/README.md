@@ -78,9 +78,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - kodpen-vendor-api-client-design.md: Client contract of plans/kodpen-vendor-api-client.md: calls and headers, the licence check, card and key field, what is stored where, the switch line; updates in -design-update
 - kodpen-vendor-api-client-steps.md: Steps P1-P8 of plans/kodpen-vendor-api-client.md: changes, files, tests, memory, size, order; claim as [plan:kodpen-vendor-api-client] P<n>
 - kodpen-vendor-api-client.md: Plan (owner 2026-10-25 to 27): 2026.11.0 asks api.kodpen.com/v1 for licences and signed updates behind one switch line, no api2 fallback; steps P1-P8 in -steps, contract in the -design files
-- mail-deliverability-steps-2.md: Steps MD5-MD7 of plans/mail-deliverability.md: campaign hygiene, the sending-domain health card and its alert, close-out; claim as [plan:mail-deliverability] MD<n>
-- mail-deliverability-steps.md: Steps MD1-MD4 of plans/mail-deliverability.md: bounce record and send gate, VERP and mailbox parsing, transport drivers, webhooks; claim as [plan:mail-deliverability] MD<n>
-- mail-deliverability.md: Plan (owner 2026-11-02): bounces and complaints stop sending to an address, API mail transports beside SMTP, a sending-domain health card; steps MD1-MD7
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer; Trendyol 1, 2, 2b-i, 2b-ii, 3, 4a-4c, 5a, 5b (with rejection), 5c, 6, A, B, common label done; Hepsiburada open
 - mobile-api-shelved.md: Team-device API work for the closed-source Pinegrap Mobile app (restarted 2026-10-24 outside this repo): what M1–M6 built, what M7 (native push) and M8 add, decisions, how its needs arrive
 - new-dashboard-build.md: New dashboard plan: the page branch in welcome.php, the files (page, script bundle, stylesheet), charts, refresh, light and dark, phone, keyboard, texts; how card steps stay out of each other's files
