@@ -979,6 +979,7 @@
     "{var:1} line(s) recorded as suggested; {var:2} could not be.": "{var:1} satır önerildiği gibi kaydedildi; {var:2} satır kaydedilemedi.",
     "{var:1} line(s) recorded as suggested; {var:2} could not be: {var:3}": "{var:1} satır önerildiği gibi kaydedildi; {var:2} satır kaydedilemedi: {var:3}",
     "{var:1} line(s) sold before the ERP kept stock moves are costed at the product's average cost today.": "ERP stok hareketi tutmaya başlamadan önce satılan {var:1} satır, ürünün bugünkü ortalama maliyetiyle hesaplandı.",
+    "{var:1} line(s) sold before the ERP knew their cost are costed at the product's average cost today.": "Maliyeti henüz bilinmezken satılan {var:1} satır, ürünün bugünkü ortalama maliyetiyle hesaplandı.",
     "{var:1} line(s) taken in, {var:2} matched to the books; {var:3} skipped (not a dated amount, or taken in before).": "{var:1} satır alındı, {var:2} satır defterle eşleşti; {var:3} satır atlandı (tarihli tutar değil ya da önceden alınmış).",
     "{var:1} lines added, {var:2} removed against the revision.": "Sürüme göre {var:1} satır eklendi, {var:2} satır silindi.",
     "{var:1} lines · {var:2} units": "{var:1} kalem · {var:2} adet",

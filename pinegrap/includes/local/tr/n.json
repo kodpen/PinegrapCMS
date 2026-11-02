@@ -1364,6 +1364,7 @@
     "Not in use: the oldest OAuth app applies. The site serves one OAuth app, so the scopes chosen here reach no connection; change them on the app in use, or delete this one.": "Kullanılmıyor: en eski OAuth uygulaması geçerli. Site tek bir OAuth uygulaması kullanır; burada seçilen izinler hiçbir bağlantıya ulaşmaz. İzinleri kullanılan uygulamada değiştirin ya da bunu silin.",
     "Not indexed (visitors only)": "İndekslenmez (yalnız ziyaretçiler için)",
     "Not kept on the card: the number on the card is a different one. Save the account first.": "Karta işlenmedi: karttaki numara başka. Önce cariyi kaydedin.",
+    "Not known": "Bilinmiyor",
     "Not linked": "Bağlı değil",
     "Not loaded": "Yüklenmedi",
     "Not marked": "İşaretlenmez",
