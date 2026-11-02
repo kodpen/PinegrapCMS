@@ -1130,7 +1130,9 @@
     Editor.prototype.change = function (mutate, key, viewOnly) {
         this.history.push(M.clone(this.doc), key);
         mutate(this.doc);
-        this.dirty = true;
+        // A change that brings the opening document back (a filter put
+        // back, a slider back at 0) leaves nothing to save.
+        this.settleDirty();
         this.layersDirty = true;
         // A ratio, a shape or a box drag can change the saved size.
         this.renderMeta();
@@ -1606,15 +1608,26 @@
                 el('div', { class: 'pgie-confirm-actions' }, [keep, drop])
             ])
         ]);
+        // Closing the question gives the focus back to this control.
+        this.confirmReturn = document.activeElement;
         this.root.appendChild(this.confirmBox);
         keep.focus();
     };
 
+    // The focused button goes with the question, which would leave the focus
+    // on the page body where the editor's keys no longer arrive: the control
+    // that had it before the question takes it back, else the stage.
     Editor.prototype.closeConfirm = function () {
-        if (this.confirmBox) {
-            this.confirmBox.parentNode.removeChild(this.confirmBox);
-            this.confirmBox = null;
+        if (!this.confirmBox) {
+            return;
         }
+
+        var back = this.confirmReturn;
+
+        this.confirmBox.parentNode.removeChild(this.confirmBox);
+        this.confirmBox = null;
+        this.confirmReturn = null;
+        ((back && !back.disabled && this.dialog.contains(back)) ? back : this.stage).focus({ preventScroll: true });
     };
 
     // The dialog closed without finish(): the browser let a close request
