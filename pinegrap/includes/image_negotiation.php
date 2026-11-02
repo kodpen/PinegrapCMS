@@ -174,6 +174,24 @@ function pg_image_original_asked($query)
 }
 
 /**
+ * Whether the request is Cloudflare Tools' edge check (?pg_vary_check= and
+ * 16 hex characters, fresh for every check): it is negotiated through a CDN
+ * before the operator confirmed the CDN, since the check is what confirms
+ * it. Its own query makes it its own cache entry, so a CDN that ignores Vary
+ * hands that copy to no other reader of the picture.
+ *
+ * @param array $query $_GET
+ * @return bool
+ */
+function pg_image_vary_check_asked($query)
+{
+    return is_array($query)
+        && isset($query['pg_vary_check'])
+        && is_string($query['pg_vary_check'])
+        && (preg_match('/^[a-f0-9]{16}$/', $query['pg_vary_check']) === 1);
+}
+
+/**
  * The format a picture asked for at its own address is answered in.
  *
  * Only a JPEG or PNG asked for without f= (plain or with w=) is negotiated:
@@ -209,7 +227,7 @@ function pg_image_negotiated_format($row, $extension, $query, $server)
         return $none;
     }
 
-    if (pg_image_behind_proxy($server) && !$settings['cdn']) {
+    if (pg_image_behind_proxy($server) && !$settings['cdn'] && !pg_image_vary_check_asked($query)) {
         return array('format' => '', 'vary' => true);
     }
 
