@@ -9610,6 +9610,45 @@ function pg_product_copy_extra_sql($row, $ai_fields)
 
     return array('columns' => $columns, 'values' => $values);
 }
+
+/**
+ * The product code a bulk copy (duplicate_products.php) asks for: the
+ * original's code with its last letter replaced by the typed letter or word.
+ * The letter is cut by characters, so a Turkish last letter (Ş, Ç) is not
+ * split into a broken byte. A code that would come out empty keeps the
+ * original. The caller still makes the result unique (get_unique_name()).
+ *
+ * @param string $name     the original's product code
+ * @param string $new_text the letter or word typed on the screen
+ * @return string
+ */
+function pg_duplicate_products_base_name($name, $new_text)
+{
+    $name = (string) $name;
+    $base = mb_substr($name, 0, max(0, mb_strlen($name, 'UTF-8') - 1), 'UTF-8') . (string) $new_text;
+
+    return ($base === '') ? $name : $base;
+}
+
+/**
+ * The short description a bulk copy (duplicate_products.php) writes: the
+ * original's text minus its last $count letters, plus the typed letter or
+ * word. Letters are counted as characters, so a Turkish text loses exactly
+ * the letters asked for and is never left with half of a two-byte letter.
+ *
+ * @param string $text     the original's short description
+ * @param int    $count    the letters to remove, at least 1
+ * @param string $new_text the letter or word typed on the screen
+ * @return string
+ */
+function pg_duplicate_products_description($text, $count, $new_text)
+{
+    $text = (string) $text;
+    $keep = max(0, mb_strlen($text, 'UTF-8') - max(1, (int) $count));
+
+    return mb_substr($text, 0, $keep, 'UTF-8') . (string) $new_text;
+}
+
 function duplicate_product($id)
 {
     // get original product's info
@@ -12442,12 +12481,12 @@ function pg_carrier_number_field($value)
     if (pg_erp_store_country() === 'TR') {
         return '<label for="carrier_vkn" class="form-label">' . lang('Carrier VKN') . '</label>
             <input value="' . $value . '" type="text" name="carrier_vkn" id="carrier_vkn" class="form-control" maxlength="11" inputmode="numeric" />
-            <div class="form-text text-end">' . lang('Tax number of the carrier (10 digits) or ID number (11 digits)') . '</div>';
+            <div class="form-text">' . lang('Tax number of the carrier (10 digits) or ID number (11 digits)') . '</div>';
     }
 
     return '<label for="carrier_vkn" class="form-label">' . lang('Carrier tax number') . '</label>
         <input value="' . $value . '" type="text" name="carrier_vkn" id="carrier_vkn" class="form-control" maxlength="' . pg_carrier_number_width() . '" />
-        <div class="form-text text-end">' . lang('The tax number of the carrier, as it prints it on its own invoices.') . '</div>';
+        <div class="form-text">' . lang('The tax number of the carrier, as it prints it on its own invoices.') . '</div>';
 }
 
 /**
@@ -12961,7 +13000,7 @@ function pg_product_image_cell_content($key, $image_name, $name, $short_descript
         . ' data-pg-lb-src="' . h(PATH . encode_url_path($image_name)) . '"'
         . ' data-pg-lb-alt="' . h($caption) . '" data-pg-lb-caption="' . h($caption) . '"'
         . ' aria-label="' . h(lang('View images')) . '">'
-        . '<img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" alt="" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(PATH . encode_url_path($image_name)) . '" />'
+        . '<img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" alt="" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(pg_image_panel_thumb_url(PATH . encode_url_path($image_name))) . '" />'
         . '</button>';
 
     $index = 1;
@@ -13151,6 +13190,57 @@ function pg_import_heading($heading)
     $heading = mb_strtolower(trim((string) $heading), 'UTF-8');
 
     return (string) preg_replace('/[\s\-]+/u', '_', $heading);
+}
+
+/**
+ * The heading row of a product import, read into the three lists the import
+ * loop uses. column_names is indexed by the file's column position, so
+ * ${name}_key and every array_search() over it point at the row cell of that
+ * column: a submit form column (sfc_/sfu_) and an unknown heading hold their
+ * place as false. A submit form column left out of the list moved every
+ * column after it one cell to the left, and a file with sfc_ columns first
+ * stored a form value as the product name.
+ *
+ * @param array    $headings the file's first row
+ * @param callable $convert  heading to products column, or false
+ * @return array column_names, submit_form_fields, unknown_headings
+ */
+function pg_products_import_headings($headings, $convert)
+{
+    $column_names = array();
+    $submit_form_fields = array();
+    $unknown_headings = array();
+
+    foreach (array_values((array) $headings) as $position => $heading) {
+        $heading = (string) $heading;
+        $prefix = substr($heading, 0, 4);
+
+        if (($prefix == 'sfc_') || ($prefix == 'sfu_')) {
+            $field_name = (string) substr($heading, 4);
+
+            if ($field_name != '') {
+                $submit_form_fields[] = array(
+                    'name' => $field_name,
+                    'action' => ($prefix == 'sfc_') ? 'create' : 'update',
+                    'column' => $position);
+            }
+
+            $column_names[$position] = false;
+            continue;
+        }
+
+        $column_name = call_user_func($convert, $heading);
+        $column_names[$position] = $column_name;
+
+        if ($column_name === false) {
+            $unknown_headings[] = $heading;
+        }
+    }
+
+    return array(
+        'column_names' => $column_names,
+        'submit_form_fields' => $submit_form_fields,
+        'unknown_headings' => $unknown_headings);
 }
 
 // The text of one column of a CSV row: '' when the file has no such column

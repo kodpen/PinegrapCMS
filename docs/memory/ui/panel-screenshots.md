@@ -9,7 +9,7 @@ description: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/p
 
 ## How do I run it?
 1. `bash tools/setup_sandbox.sh` (a few minutes; MariaDB, installer, `127.0.0.1:8000`). It rewrites `pinegrap/data/config.php`: never commit it (leave it out of `git add`).
-2. `node tools/screenshots/shoot.js --out=<scratch dir>/shots --label="$(git rev-parse --short HEAD)"`: seeds, signs in as `admin` / `sandbox-admin`, writes `<screen>-<light|dark>-<wide|tablet|phone>.png` (1440, 834, 390 px) and `index.html`, a contact sheet. About 3 minutes for the whole list.
+2. `node tools/screenshots/shoot.js --out=<scratch dir>/shots --label="$(git rev-parse --short HEAD)"`: seeds, signs in as `admin` / `sandbox-admin`, writes `<screen>-<light|dark>-<wide|tablet|phone>.png` (1440, 834, 390 px) and `index.html`, a contact sheet..
 - Narrow a run: `--only=edit_offer,view_offers`, `--theme=dark`, `--viewport=tablet`. `--no-seed` for an instance that is not the sandbox; `--base`, `--user`, `--password` for another address or account.
 - Exit 1 on an HTTP error, a redirect to sign-in, a script error or a crop off screen; listed on the sheet. Chromium and Playwright are preinstalled in a cloud container.
 
@@ -22,7 +22,7 @@ description: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/p
 - Publish the output folder as a private Artifact: `index.html` as the page, the PNGs as its files (relative paths already match). Link it in the PR; never attach or commit images.
 
 ## What do seed.php and screens.json hold?
-- `tools/screenshots/seed.php` adds what the `turkish_default` starter lacks: a second user (`ayse.yilmaz`, role 3), Workspace on, a channel `urun-lansmani` with four messages and tasks. Found by fixed name (reruns change nothing); any database but `pinegrap_sandbox` is refused (`PG_SCREENSHOT_SEED_ANY_DB=1` overrides). Last line: JSON ids (`user_id`, `channel_id`, `product_id`, `offer_id`).
+- `tools/screenshots/seed.php` adds what the `turkish_default` starter lacks: a second user (`ayse.yilmaz`, role 3), Workspace on, a channel `urun-lansmani` with four messages and tasks. Found by fixed name; any database but `pinegrap_sandbox` is refused (`PG_SCREENSHOT_SEED_ANY_DB=1` overrides). Last line: JSON ids (`user_id`, `channel_id`, `product_id`, `offer_id`, `product_group_id`).
 - `tools/screenshots/screens.json`: `name`, `path` under `/pinegrap/` with `{id}` placeholders from the seed, optional `crop` (one element), `click` (string, or per viewport), `cookies`, `viewports`, `kept` (screens the owner wants kept as they are), `signed_out` (sign-in, forgot password). The visual editor is shot through `add_system_style.php`. `tests/screenshot_screens_test.php` checks files exist, placeholders are seeded and the kept list is complete.
 - product_builder is reached through `edit_product.php` / `add_product.php` (it is included, not called). The main menu is shot mini and expanded (cookie `softwaremenustatus`) on wide, and as the open drawer on phone.
 

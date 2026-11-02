@@ -33,6 +33,7 @@
     "Unable to write to config file. Please check that the data/ directory exists and is writable by the web server.": "Yapılandırma dosyasına yazılamıyor. Lütfen data/ dizininin var olduğunu ve web sunucusu tarafından yazılabilir olduğunu denetleyin.",
     "Unallocated": "Tahsis edilmemiş",
     "Unanswered": "Yanıtsız",
+    "Unanswered questions ({var:1})": "Yanıtlanmamış sorular ({var:1})",
     "Unanswered topics": "Yanıtsız konular",
     "Unavailable": "Kullanılamıyor",
     "Unbilled": "Faturalanmamış",

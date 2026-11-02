@@ -134,6 +134,8 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_image_upload_cap();        // 11.0.142
 	upgrade_2026_11_0_dashboard_layout();        // 11.0.143
 	upgrade_2026_11_0_claude_daily_summary();    // 11.0.145
+	upgrade_2026_11_0_site_search_daily();      // 11.0.147
+	upgrade_2026_11_0_product_questions();       // 11.0.148
 
 }
 
@@ -4312,5 +4314,76 @@ function upgrade_2026_11_0_claude_daily_summary() {
 	install_add_column('config', 'ws_claude_summary_channel_id', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Assistant card: Claude can write a daily summary into a channel at a chosen hour; off until switched on under the Claude in the channels card.');
+
+}
+
+// The site search rollup (2026.11.0, 11.0.147; includes/fn/site_search_stats.php).
+// One row per day and search term, aggregated at write time: id is the SHA-1
+// of "day|term", raised by one INSERT ... ON DUPLICATE KEY UPDATE per search
+// (a visit counts a term once a day), so a busy search box adds no row per
+// request. searches counts the searches, zero_results those that found
+// nothing, clicks the result clicks. idx_day serves the report's top terms of
+// a period. The general job removes days older than 400.
+function upgrade_2026_11_0_site_search_daily() {
+
+	install_create_table('site_search_daily', "CREATE TABLE site_search_daily (
+		id            CHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		day           DATE NOT NULL,
+		term          VARCHAR(191) NOT NULL DEFAULT '',
+		searches      INT UNSIGNED NOT NULL DEFAULT 0,
+		zero_results  INT UNSIGNED NOT NULL DEFAULT 0,
+		clicks        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_day (day, searches)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Site search: each day\'s searches are now counted by term, with the searches that found nothing and the clicks on their results. Days older than 400 are removed.');
+
+}
+
+// Product questions (2026.11.0, 11.0.148; includes/fn/product_questions.php).
+// A question about a product is a comment of kind 'question' on the product's
+// thread, the staff answer a comment of kind 'answer' whose answer_of names
+// the question (and whose parent_id names it too, so the threaded widget
+// draws it under the question). Every comment written before this step is
+// kind 'comment'. idx_answer_of finds a question's answer; the unanswered
+// count reads kind with the thread index.
+//
+// As 11.0.31 for the same table: the columns are added in place where the
+// server can; on a copying server neither the columns nor the index is
+// started once this pass's budget is spent (install_pass_spent()), they wait
+// for the next pass.
+function upgrade_2026_11_0_product_questions() {
+
+	$columns = array(
+		'kind'      => "ENUM('comment','question','answer') NOT NULL DEFAULT 'comment'",
+		'answer_of' => "INT UNSIGNED NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('comments', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			if (install_pass_spent()) {
+
+				install_pause(lang(array('string' => 'comments: product questions are being added; {var:1} follows in the next pass', 'vars' => $column)));
+
+			}
+
+			install_add_column('comments', $column, $definition);
+
+		}
+
+	}
+
+	if (install_pass_spent() && !install_index_exists('comments', 'idx_answer_of')) {
+
+		install_pause(lang(array('string' => 'comments: product questions are being added; {var:1} follows in the next pass', 'vars' => 'idx_answer_of')));
+
+	}
+
+	install_add_index('comments', 'idx_answer_of', "INDEX idx_answer_of (answer_of)");
+
+	install_note('Comments: visitors can ask a question about a product and staff can answer it; every comment written before this version stays a comment.');
 
 }

@@ -6745,8 +6745,10 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
 
     // The visit records the search once: a later results page of the same
     // search does not add it again.
+    // The day's rollup counts it the same once (pg_site_search_count()).
     if ($current_page === 1 && !isset($_GET[$page_param])) {
         pg_search_record_visit_term($query);
+        if ($query !== '') pg_site_search_count($query, $total);
     }
 
     _pg_sw_apply_search_form_bindings($tree, array(
@@ -6844,7 +6846,12 @@ function _render_system_widget_search_results($tree_json, $widget_id, $cfg = arr
         return pg_sw_sweep_tokens(_pg_sw_fill_tokens($loop_template, $static_values));
     }
     $static_html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($static_html, $static_values));
-    return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html);
+    // A click on a result shown here is counted for the term through
+    // page_view.php (pg_site_search_click()).
+    $click_script = ($loop_rendered !== '')
+        ? pg_site_search_click_script_for($query, array_column(array_slice($rows, $offset, $per_page), 'url'))
+        : '';
+    return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static_html) . $click_script;
 }
 
 // Render a 'registration' system widget.

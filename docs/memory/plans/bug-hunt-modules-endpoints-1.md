@@ -33,7 +33,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 - Endpoints `editor` (4): #5167 (editor_add_file: a closing script tag got out of escape_javascript()); editor_edit_file, editor_select_image, editor_select_page_or_file clean
 - Endpoints `email` (16): clean (access, CSRF and role-3 creator checks on the panel screens; email_a_friend, email_preferences one-click unsubscribe; email_campaign_job is web-callable by design)
 - Endpoints `erp` (77): open
-- Endpoints `expres` (2): open
+- Endpoints `expres` (2): #5265 (a posted recurring payment period was stored unchecked); express_order.php read, the rest clean; open: get_express_order.php (only the output escaping spot-checked: calendar range, custom form content, offer code label and message)
 - Endpoints `field` (4): open
 - Endpoints `file` (6): open
 - Endpoints `find` (2): open

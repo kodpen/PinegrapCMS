@@ -11,7 +11,7 @@ description: Steps W1-W10 of plans/webp-same-address.md: negotiation, switches, 
   - `get_file.php`, after the access checks, for jpg/jpeg/jpe/png asked without `f`, not an attachment, ERP or workspace file: the switch through one function on `$router_config_row` (the router read `SELECT *`: no extra query; bit 4, question 3); the derivative as webp at the asked width (0 = own); `Vary: Accept` on every answer that could differ; download name `<stem>.webp`; `f=original` skips it. Nothing sets the switch before W2, so W1 alone changes no site.
   - Memory: `platform/image-derivatives.md` (plain-address copies); `page-cache-proxy-rules.md` (pictures and `Vary`).
 
-- W2 (S) Switches and status. After W1.
+- W2 (S) Switches and status. Done (#5350).
   - Two switches in Settings › Features › Image Optimization (texts through `tr_add.php`), the clamp in `pg_image_delivery_settings()`, the default of question 1 (on for a new install, off on a running site); a System Status line: on or off, WebP written or not, a CDN in front without confirmation.
 
 - W3 (M) Encode cap and warm-up. Done (#4688).
@@ -23,7 +23,7 @@ description: Steps W1-W10 of plans/webp-same-address.md: negotiation, switches, 
 - W5 (S) Cloudflare rule. After W2.
   - Cloudflare Tools writes the Cache Rule (phase `http_request_cache_settings`; jpg, jpeg, png; Vary `accept` normalize, media type `image/webp`) when the token may, else shows the steps; a check fetches one picture through the edge with two `Accept` values and sets the confirmation only when each gets its own type.
 
-- W7 (S) Panel thumbnails. After W3.
+- W7 (S) Panel thumbnails. Done (#5376).
   - 320 appended to `pg_image_derivative_widths()` (a copy's name carries its width: nothing stored is invalidated); File Manager tiles and list, the product table and the image pickers ask for `?w=320&f=webp`; W3's warm-up makes the 320 copies of the newest files first (Imagick reads a JPEG at a reduced scale, `jpeg:size`).
 
 - W8 (S) Workspace previews. After W7.

@@ -1,6 +1,6 @@
 ---
 name: decisions-made-panel-2
-description: Decisions list, panel part 2 (2026-11-02 on): no Site Settings row in the main menu; every menu icon in two colours, the System tools toolbox animated
+description: Decisions list, panel part 2 (2026-11-02 on): no Site Settings row in the main menu; menu icons in two colours; app-like screens print no alert boxes; user-rights trees keep the Workspace folder
 ---
 
 ## Why is there no Site Settings row in the main menu? (owner, 2026-11-02)
@@ -11,3 +11,6 @@ description: Decisions list, panel part 2 (2026-11-02 on): no Site Settings row 
 
 ## Why do the File Manager and the visual designer print no alert boxes? (owner, 2026-11-02)
 - The owner set the standard: a screen that works like an application (full height, its own toolbar) never prints the panel's alert boxes; pending errors, warnings and notices are shown as the screen's own toasts. The visual designer did it first (#4892, `designer/designer-screen-messages.md`), the File Manager follows (#5216, `ui/app-screen-messages.md`). Not missing messages; do not bring the boxes back.
+
+## Why do the user-rights folder trees still list the Workspace folder? (owner, 2026-11-02)
+- The Site Settings pickers leave the Workspace folder (`config.ws_folder_id`) out (#5086), and the page folder pickers (Add Page, Edit Page, the Pages list's move picker) leave it out too: a page is never filed under the Workspace (#5102). The folder trees of Add User, Edit User and Import Users (`get_acl_folder_tree()`) keep listing it so an administrator can grant a user view or edit rights on Workspace folders. `select_folder()` keeps its default; a page picker passes the Workspace folder as the excluded one and shows a stored Workspace folder selected and marked "(no longer offered)", as the settings pickers do; the row is never rewritten. Not a missing filter.

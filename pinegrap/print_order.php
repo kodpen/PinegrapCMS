@@ -30,6 +30,14 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM orders WHERE id = '" . $i
 include_once('liveform.class.php');
 $liveform = new liveform('view_order');
 
+// The payment period, number of payments and start date columns only when
+// the order has a recurring line: otherwise they are three empty cells on
+// every printed row.
+$print_order_recurring = ((int) db_value("SELECT COUNT(*) FROM order_items WHERE order_id = '" . $id . "' AND recurring_payment_period != ''") > 0);
+$output_recurring_headings = $print_order_recurring
+    ? '<th>' . lang('Payment Period') . '</th><th>' . lang('Number of Payments') . '</th><th>' . lang('Start Date') . '</th>'
+    : '';
+
 
 $query = "SELECT
             orders.*,
@@ -809,9 +817,7 @@ if ($ship_to_exists == true) {
                             <th>' . lang('Shipped Qty') . '</th>
                             <th>' . lang('Price') . '</th>
                             <th>' . lang('Total') . '</th>
-                            <th>' . lang('Payment Period') . '</th>
-                            <th>' . lang('Number of Payments') . '</th>
-                            <th>' . lang('Start Date') . '</th>
+                            ' . $output_recurring_headings . '
                             ' . $output_custom_field_1_heading . '
                             ' . $output_custom_field_2_heading . '
                             ' . $output_custom_field_3_heading . '
@@ -1101,7 +1107,7 @@ if ($ship_to_exists == true) {
             
             // if there is a form to output, then prepare form row
             if (($output_forms != '') || ($output_gift_cards != '')) {
-                $colspan = 8;
+                $colspan = $print_order_recurring ? 8 : 5;
                 // If there is an extra column for the first custom product field, the add one to the colspan.
                 if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
                     $colspan++;
@@ -1138,9 +1144,7 @@ if ($ship_to_exists == true) {
                         <td>' . $output_shipped_quantity . '</td>
                         <td style="text-align: right">' . prepare_amount($product_price) . '</td>
                         <td style="text-align: right">' . prepare_amount($product_total) . '</td>
-                        <td>' . $output_recurring_payment_period . '</td>
-                        <td>' . $output_recurring_number_of_payments . '</td>
-                        <td>' . $output_recurring_start_date . '</td>
+                        ' . ($print_order_recurring ? '<td>' . $output_recurring_payment_period . '</td><td>' . $output_recurring_number_of_payments . '</td><td>' . $output_recurring_start_date . '</td>' : '') . '
                         ' . $output_custom_field_1_cell . '
                         ' . $output_custom_field_2_cell . '
                         ' . $output_custom_field_3_cell . '
@@ -1197,9 +1201,7 @@ if ($ship_to_exists == true) {
                 <th>' . lang('Qty') . '</th>
                 <th>' . lang('Price') . '</th>
                 <th>' . lang('Total') . '</th>
-                <th>' . lang('Payment Period') . '</th>
-                <th>' . lang('Number of Payments') . '</th>
-                <th>' . lang('Start Date') . '</th>
+                ' . $output_recurring_headings . '
                 ' . $output_custom_field_1_heading . '
                 ' . $output_custom_field_2_heading . '
                 ' . $output_custom_field_3_heading . '
@@ -1470,7 +1472,7 @@ if ($ship_to_exists == true) {
         
         // if there is a form to output, then prepare form row
         if (($output_forms != '') || ($output_gift_cards != '')) {
-            $colspan = 7;
+            $colspan = $print_order_recurring ? 7 : 4;
             // If there is an extra column for the first custom product field, the add one to the colspan.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
                 $colspan++;
@@ -1506,9 +1508,7 @@ if ($ship_to_exists == true) {
                     <td>' . $quantity . '</td>
                     <td style="text-align: right">' . prepare_amount($product_price) . '</td>
                     <td style="text-align: right">' . prepare_amount($product_total) . '</td>
-                    <td>' . $output_recurring_payment_period . '</td>
-                    <td>' . $output_recurring_number_of_payments . '</td>
-                    <td>' . $output_recurring_start_date . '</td>
+                    ' . ($print_order_recurring ? '<td>' . $output_recurring_payment_period . '</td><td>' . $output_recurring_number_of_payments . '</td><td>' . $output_recurring_start_date . '</td>' : '') . '
                     ' . $output_custom_field_1_cell . '
                     ' . $output_custom_field_2_cell . '
                     ' . $output_custom_field_3_cell . '

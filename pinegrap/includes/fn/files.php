@@ -83,15 +83,10 @@ function get_unique_name($properties)
     // so prepare new name differently based on the item type.
     switch ($type) {
         default:
-            // If there is already a bracket area on the end of the name,
-            // then just increase number in bracket.
-            if (preg_match('/(.*?)\[(\d+)\]$/', $name, $matches) == 1) {
-                $new_name = $matches[1] . '[' . ($matches[2] + 1) . ']';
-                // Otherwise there is not already a bracket area on the end of the name,
-                // so add bracket area with a 1.
-            } else {
-                $new_name = $name . '[1]';
-            }
+            // A page name is cut to fit page_name (100 characters) before its
+            // suffix: a longer one would be cut by the column after the
+            // suffix and come out as the name it was meant to differ from.
+            $new_name = pg_bracket_suffix_name($name, ($type === 'page') ? pg_name_max_length() : 0);
             break;
         case 'file':
             $position_of_last_period = mb_strrpos($name, '.');
@@ -1730,6 +1725,37 @@ function pg_public_image_stored_option($value)
 function pg_name_max_length()
 {
     return 100;
+}
+
+/**
+ * The next name in the [n] series: the number in a bracket at the end of the
+ * name goes up by one, a name without one gets [1]. With a limit, the part
+ * before the bracket is cut so that the whole name fits in that many
+ * characters. Pure.
+ *
+ * @param string $name
+ * @param int    $limit 0 for no limit
+ * @return string
+ */
+function pg_bracket_suffix_name($name, $limit = 0)
+{
+    $name = (string) $name;
+
+    if (preg_match('/^(.*?)\[(\d+)\]$/su', $name, $matches) == 1) {
+        $base = $matches[1];
+        $suffix = '[' . ($matches[2] + 1) . ']';
+    } else {
+        $base = $name;
+        $suffix = '[1]';
+    }
+
+    $limit = (int) $limit;
+
+    if (($limit > 0) && (mb_strlen($base . $suffix, 'UTF-8') > $limit)) {
+        $base = mb_substr($base, 0, max(0, $limit - mb_strlen($suffix, 'UTF-8')), 'UTF-8');
+    }
+
+    return $base . $suffix;
 }
 
 // True when a name is longer than its column. The session is not strict, so

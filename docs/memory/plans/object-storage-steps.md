@@ -8,8 +8,8 @@ description: Steps OS1-OS7 of plans/object-storage.md: SigV4 client, backup targ
 - S under 400 product lines, M about 1,000. Tests in `tests/object_storage_<topic>_test.php`, memory under `platform/`, texts through `tr_add.php`.
 
 ## Which steps are there?
-- OS1 (M) Client and settings card. Held by #5349, waits for #5348.
-  - Signing from `aws_sign.php` of MD3b (#5348), plus a `payload_hash` option. `includes/fn/object_storage.php`: the five calls plus multipart (16 MB parts, abort on failure) over `pg_curl_run()` with `sink` for downloads; errors as `['ok' => false, 'code', 'message']`, never thrown. Settings › Storage card (`includes/settings/`): endpoint, region, bucket, key id, secret sealed, path-style, prefix, Test. Memory: `platform/object-storage-client.md`.
+- OS1 (M) Client and settings card. Done (#5349).
+  - `includes/fn/aws_sign.php` (#5348, `platform/aws-sigv4-signing.md`) with a `payload_hash` option (#5349). `includes/fn/object_storage.php`: the five calls plus multipart (16 MB parts, abort on failure) over `pg_curl_run()` with `sink` for downloads; errors as `['ok' => false, 'code', 'message']`, never thrown. Settings › Storage card (`includes/settings/`): endpoint, region, bucket, key id, secret sealed, path-style, prefix, Test. Memory: `platform/object-storage-client.md`.
 
 - OS2 (M) Backup target. After OS1.
   - The existing backup type `s3` (`pg_backup_s3_put()`) sends through `pg_os_put()` and its SigV4 copy in `backup.php` goes; whether its fields give way to the Storage card is OS2's choice; remote prune by `pg_backup_prune_list()` over `pg_os_list()`; the restore screen (`backup_restore.php`) lists remote archives and downloads one to `data/temp` with the checksum and size caps of `platform/backup-upload-extraction.md`; ops alert `backup_copy_failed` reuses the existing failed-backup code. Tests: the key names and prune choice from fixed lists. Memory: `platform/backup-object-storage.md`.

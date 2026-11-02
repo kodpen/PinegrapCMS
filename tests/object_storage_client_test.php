@@ -6,8 +6,7 @@
  * normalised and checked, object addresses in both styles, presigned
  * addresses, the answers of the service read (errors, headers, lists) and
  * the parts of a multipart upload. Also the upload option of
- * pg_curl_run_options(). The presigned addresses need the SigV4 signer
- * (includes/fn/aws_sign.php) and are skipped without it.
+ * pg_curl_run_options().
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -19,6 +18,7 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/aws_sign.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/object_storage.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/update.php');
 
@@ -115,10 +115,6 @@ function test_object_storage_client_target_path_style()
 
 function test_object_storage_client_presign_matches_the_s3_example()
 {
-	if (!function_exists('pg_aws_presign')) {
-		return;
-	}
-
 	$config = pg_os_normalize(array(
 		'endpoint' => 'https://s3.amazonaws.com',
 		'region'   => 'us-east-1',
@@ -137,10 +133,6 @@ function test_object_storage_client_presign_matches_the_s3_example()
 
 function test_object_storage_client_presign_overrides_are_signed()
 {
-	if (!function_exists('pg_aws_presign')) {
-		return;
-	}
-
 	$config = object_storage_client_test_config();
 	$url = pg_os_presign($config, 'a.pdf', 300, array('content_type' => 'application/pdf', 'disposition' => 'attachment; filename="r.pdf"'), '20231114T221320Z');
 

@@ -33225,17 +33225,25 @@ const StyleDesigner = (function () {
             return '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(text) + '</div>';
         };
         var layout = word('layout', ['flat', 'threaded'], 'flat');
+        // 'questions' draws a product's questions with the staff answers
+        // under them (pg_product_question_widget_shows()); the replies and
+        // featured choices do not apply there.
+        var shows = word('shows', ['comments', 'questions'], 'comments');
         return sect('bi-sliders', _sdT('Display'),
             '<div style="font-size:.7rem;color:#6c757d;line-height:1.4;margin-bottom:6px">' +
                 esc(_sdT('Shared: every page that shows this widget uses these options.')) + '</div>' +
+            row(_sdT('Shows'), choice('shows',
+                [['comments', _sdT('Comments and reviews')], ['questions', _sdT('Product questions')]], shows) +
+                hint(_sdT('Product questions: on a product page, visitors ask and staff answer; a second widget beside the reviews.'))) +
             row(_sdT('Comment order'), choice('order',
                 [['oldest', _sdT('Oldest first')], ['newest', _sdT('Newest first')]], word('order', ['oldest', 'newest'], 'oldest'))) +
+            (shows === 'questions' ? '' :
             row(_sdT('Featured comments'), choice('featured',
                 [['first', _sdT('First, then the others')], ['filter', _sdT('Only these, until Show all')], ['none', _sdT('Not marked')]],
                 word('featured', ['first', 'filter', 'none'], 'first'))) +
             row(_sdT('Replies'), choice('layout',
-                [['flat', _sdT('In time order, quoting the comment answered')], ['threaded', _sdT('Under the comment they answer')]], layout)) +
-            (layout === 'threaded'
+                [['flat', _sdT('In time order, quoting the comment answered')], ['threaded', _sdT('Under the comment they answer')]], layout))) +
+            (layout === 'threaded' && shows !== 'questions'
                 ? row(_sdT('Reply depth'), choice('max_depth', [['1', '1'], ['2', '2'], ['3', '3']], String(depth)))
                 : '') +
             row(_sdT('Comments per page'), choice('per_page',

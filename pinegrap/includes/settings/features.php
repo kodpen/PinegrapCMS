@@ -270,6 +270,32 @@ $pg_settings_cards[] = '
                             </div>';
             }
 
+            // A JPEG or PNG answered with its WebP copy at its own address
+            // (bit 4, includes/image_negotiation.php), and the operator's word
+            // that the CDN in front keeps a copy per format (bit 8): until it
+            // is given, a request that came through a CDN gets the original.
+            $image_same_address = $image_settings['delivery']['same_address'];
+
+            $image_same_address_note = empty($image_formats_written['webp'])
+                ? '<div class="form-text fg-emphasis-warning">' . lang(array('string' => 'This server cannot write {var:1}, so it is not offered while that stays so.', 'vars' => array('WebP'))) . '</div>'
+                : '';
+
+            $output_image_delivery_fields .= '
+                            <div class="col-12 ">
+                                <div class="form-field">
+                                    <div class="switch"><input value="1"' . ($image_same_address['on'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="image_same_address" name="image_same_address"/></div>
+                                    <label class="" for="image_same_address">' . lang('Send WebP at the picture\'s own address') . '</label>
+                                    <div class="form-text">' . lang('A JPEG or PNG keeps its address and its file; a browser that reads WebP gets a lighter WebP copy there, every other reader the original. Needs WebP offered above.') . '</div>' . $image_same_address_note . '
+                                </div>
+                            </div>
+                            <div class="col-12 ">
+                                <div class="form-field">
+                                    <div class="switch"><input value="1"' . ($image_same_address['cdn'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="image_same_address_cdn" name="image_same_address_cdn"/></div>
+                                    <label class="" for="image_same_address_cdn">' . lang('The CDN keeps a copy per format') . '</label>
+                                    <div class="form-text">' . lang('A CDN that ignores the Accept header would give its first copy to everyone, so requests through a CDN get the original until this is on. Switch it on only once the CDN caches pictures separately for each Accept value (on Cloudflare, a Cache Rule).') . '</div>
+                                </div>
+                            </div>';
+
             // The % sign goes on the side the panel language writes it
             // (Turkish: %80), as on the resize quality slider above.
             $image_quality_sign_first = (strpos(lang('{var:1}%'), '%') === 0);

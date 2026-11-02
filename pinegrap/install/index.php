@@ -6429,6 +6429,21 @@ else {
 
 		}
 
+		// A new site answers a JPEG or PNG with its WebP copy at its own address
+		// (bit 4 of image_derivative_formats, includes/image_negotiation.php),
+		// where WebP is offered. The upgrade above left it off, as it is on every
+		// upgraded site. Only a starter site: a restored backup keeps the switch
+		// it was taken with.
+		if ((get_starter_site_language($install_directory_path) !== '') && (install_column_exists('config', 'image_derivative_formats'))) {
+
+			db("UPDATE config SET image_derivative_formats = image_derivative_formats | 4 WHERE (image_derivative_formats & 1) = 1");
+
+			$install_expected_steps++;
+
+			add_install_step(lang('Pictures are sent as WebP at their own address to browsers that read it'), lang('Site Settings › Features › Image Optimization'));
+
+		}
+
 		// The administrator row above was written as MD5 because the starter
 		// template predates user_password_algo. Now that the upgrades have added
 		// the column, store the modern hash right away instead of leaving the
@@ -8966,6 +8981,7 @@ function get_tables() {
 		'messages',
 		'next_order_number',
 		'not_found_log',
+		'site_search_daily',
 		'oauth_clients',
 		'oauth_codes',
 		'offer_actions',

@@ -783,12 +783,15 @@ function pg_period_unit($range, $first_day = null)
  *                           for day, week, month and year
  * @param string $range_html the range as text, already escaped
  * @param string $class      extra classes for the group (' d-none' hides it)
+ * @param array  $query      more values every link carries, e.g. the view of a
+ *                           screen that reads it only from the address
+ *                           (view_contacts.php's filter)
  * @return string
  */
-function pg_period_nav($url, $range, $periods, $range_html, $class = '')
+function pg_period_nav($url, $range, $periods, $range_html, $class = '', $query = array())
 {
-    $link = function ($to) use ($url) {
-        return $url . '?' . http_build_query(array(
+    $link = function ($to) use ($url, $query) {
+        return $url . '?' . http_build_query($query + array(
             'start_month' => $to['start_month'], 'start_day' => $to['start_day'], 'start_year' => $to['start_year'],
             'stop_month' => $to['stop_month'], 'stop_day' => $to['stop_day'], 'stop_year' => $to['stop_year'],
         ));

@@ -4530,6 +4530,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         return sortCollator;
     }
 
+    // A page sorts by the type name it shows ("Page", "Page · Custom Form"),
+    // so the order matches the column; the rest by their stored type.
+    function typeSortValue(item) {
+        return (item.kind === 'page') ? itemTypeLabel(item) : (item.type || '');
+    }
+
     function sortItems(list) {
         var key = state.sort.key;
         var dir = state.sort.dir === 'desc' ? -1 : 1;
@@ -4539,7 +4545,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var va, vb;
             if (key === 'size') { va = a.size || 0; vb = b.size || 0; }
             else if (key === 'timestamp') { va = a.timestamp || 0; vb = b.timestamp || 0; }
-            else if (key === 'type') { va = (a.type || ''); vb = (b.type || ''); }
+            else if (key === 'type') { va = typeSortValue(a); vb = typeSortValue(b); }
             // Keys the table has and the menu does not: a heading can be
             // clicked for any column that holds something worth ordering by.
             else if (key === 'folder') { va = (a.folder_name || ''); vb = (b.folder_name || ''); }
@@ -4792,6 +4798,43 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         return item.url + ((item.url.indexOf('?') === -1) ? '?' : '&') + 'v=' + stamp;
     }
 
+    // The address a tile draws a picture from: its 320 px derivative, as
+    // WebP for a JPEG or PNG, rather than the original, which for a camera
+    // photo is megabytes for a box 116 px wide. A GIF (it may move), a vector
+    // or an address that already asks for a width or format stays as it is.
+    // Twin of pg_image_panel_thumb_url() (includes/image_engine.php).
+    function thumbUrl(url) {
+        url = String(url || '');
+
+        var fragment = '';
+        var hash = url.indexOf('#');
+
+        if (hash !== -1) {
+            fragment = url.slice(hash);
+            url = url.slice(0, hash);
+        }
+
+        var question = url.indexOf('?');
+        var urlPath = (question === -1) ? url : url.slice(0, question);
+        var query = (question === -1) ? '' : url.slice(question + 1);
+
+        if (/(^|&)(w|f)=/i.test(query)) { return url + fragment; }
+
+        var dot = urlPath.lastIndexOf('.');
+        var extension = (dot === -1) ? '' : urlPath.slice(dot + 1).toLowerCase();
+        var add = '';
+
+        if (['jpg', 'jpeg', 'jpe', 'png'].indexOf(extension) !== -1) {
+            add = 'w=320&f=webp';
+        } else if (extension === 'webp') {
+            add = 'w=320';
+        } else {
+            return url + fragment;
+        }
+
+        return url + ((question === -1) ? '?' : '&') + add + fragment;
+    }
+
     // A thumbnail that loads on demand rather than the moment it is drawn.
     //
     // The address goes in data-src, not src, so the browser does not fetch it
@@ -4925,7 +4968,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // corner keeps it readable as a group rather than a product.
             if (item.image_name && withPicture) {
                 return '<span class="thumb-wrap">' +
-                    lazyThumb(path + item.image_name) +
+                    lazyThumb(thumbUrl(path + item.image_name)) +
                     '<span class="access-badge bi ' + groupIcon + ' fg-primary"></span></span>';
             }
 
@@ -4939,7 +4982,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // the two are told apart at a glance.
             if (item.image_name && withPicture) {
                 return '<span class="thumb-wrap">' +
-                    lazyThumb(path + item.image_name) +
+                    lazyThumb(thumbUrl(path + item.image_name)) +
                     '<span class="access-badge bi bi-box2-heart fg-secondary"></span></span>';
             }
 
@@ -4965,7 +5008,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // drag (whose URL payload would navigate the tab on a missed
             // drop) — the tile itself is the draggable thing.
             return '<span class="thumb-wrap ' + item.access_control_type + '">' +
-                lazyThumb(imageUrl(item)) + badge + '</span>';
+                lazyThumb(item.erp ? imageUrl(item) : thumbUrl(imageUrl(item))) + badge + '</span>';
         }
 
         var typeIcon = FILETYPE_ICONS[item.type] || 'bi-file-earmark';
@@ -5104,6 +5147,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             '<span class="bi ' + target + ' sl-target"></span></span>';
     }
 
+    // A page loaded by the preview pane or Quick look: the marker tells the
+    // site not to count the draw as a visit (pg_request_is_panel_preview()).
+    function pagePreviewUrl(url) {
+        url = String(url || '');
+        if (url === '') { return url; }
+        return url + ((url.indexOf('?') === -1) ? '?' : '&') + 'pg_preview=1';
+    }
+
     function itemTypeLabel(item) {
         if (item.short_link) { return shortLinkTypeLabel(item.destination_type); }
         if (item.erp) { return erpTypeLabel(item); }
@@ -5111,7 +5162,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (item.kind === 'group') { return isVariantSet(item) ? L.variant_set : L.category; }
         if (item.kind === 'product') { return L.product; }
         if (item.kind === 'folder') { return L.folder; }
-        if (item.kind === 'page') { return L.page + (item.type && item.type !== 'standard' ? ' (' + item.type + ')' : ''); }
+        if (item.kind === 'page') { return L.page + (item.type_name ? ' · ' + item.type_name : ''); }
         return (item.type || '').toUpperCase();
     }
 
@@ -6724,7 +6775,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 : ('<div class="text-center empty-note"><i class="bi ' + ((item.kind === 'group') ? 'bi-boxes' : 'bi-box2-heart') + ' pg-display-1 d-block mb-3"></i>' + esc(L.no_preview) + '</div>');
         }
 
-        if (item.kind === 'page') { return '<iframe loading="lazy" src="' + esc(item.url) + '" title="' + esc(item.name) + '" referrerpolicy="no-referrer"></iframe>'; }
+        if (item.kind === 'page') { return '<iframe loading="lazy" src="' + esc(pagePreviewUrl(item.url)) + '" title="' + esc(item.name) + '" referrerpolicy="no-referrer"></iframe>'; }
         // An ERP picture has no thumbnail sizes; the kept file is shown as is.
         if (item.erp && item.picture) { return '<img draggable="false" src="' + esc(item.url) + '" alt="" />'; }
         if (item.is_image) { return '<img draggable="false" src="' + esc(imageUrl(item)) + '" alt="" />'; }
@@ -7028,7 +7079,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     '<a class="btn btn-sm btn-outline theme-primary" href="' + esc(backupDownloadUrl(item.path)) + '"><span class="bi bi-download me-1"></span>' + esc(L.download) + '</a></div>');
 
         } else if (item.kind === 'page') {
-            media = '<iframe loading="lazy" src="' + esc(item.url) + '" title="' + esc(item.name) + '" referrerpolicy="no-referrer"></iframe>';
+            media = '<iframe loading="lazy" src="' + esc(pagePreviewUrl(item.url)) + '" title="' + esc(item.name) + '" referrerpolicy="no-referrer"></iframe>';
         } else if (item.kind === 'file' && item.is_image) {
             media = '<a href="' + esc(imageUrl(item)) + '" target="_blank" draggable="false" aria-label="' + esc(L.open_in_new_tab + ': ' + item.name) + '"><img class="preview-media" draggable="false" src="' + esc(imageUrl(item)) + '" alt="" /></a>';
         } else if (item.kind === 'file' && item.type === 'pdf') {

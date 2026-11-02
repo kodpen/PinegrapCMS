@@ -2149,7 +2149,7 @@ function email($properties)
         }
 
         if ($transport !== 'smtp') {
-            $delivery = pg_mail_transport_deliver($transport, pg_mail_transport_message($mail, $type));
+            $delivery = pg_mail_transport_deliver($transport, pg_mail_transport_message($mail, $type, pg_mail_transport_raw($transport)));
 
             if (!$delivery['ok']) {
                 $permanent = $delivery['permanent'];

@@ -580,6 +580,7 @@ function pg_explorer_page_payload($page, $user)
         'folder_id' => $page_folder_id,
         'folder_name' => isset($map[$page_folder_id]) ? $map[$page_folder_id]['folder_name'] : '',
         'type' => $page['page_type'],
+        'type_name' => pg_explorer_page_type_name($page['page_type']),
         'home' => ($page['page_home'] == 'yes'),
         // Kept off the site in the private drafts folder (2026.4.7).
         'draft' => function_exists('pg_page_is_draft') && pg_page_is_draft($page['page_folder']),

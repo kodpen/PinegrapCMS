@@ -251,3 +251,100 @@ function test_contact_list_merge_needs_a_role_above_user()
 	$check = strpos($branch, 'pg_contact_list_may_merge($user)');
 	pg_assert_true(($check !== false) && ($check < strpos($branch, 'merge_contacts(')), 'the merge action checks the role first');
 }
+
+// A group the list does not offer (deleted, or [Tümü] left from a panel in
+// another language) falls back to [All], so the picker and the list agree.
+function test_contact_list_clean_groups_keeps_only_offered_groups()
+{
+	$all = '[' . lang('All') . ']';
+	$none = '[' . lang('None') . ']';
+
+	$state = pg_contact_list_clean_groups(array('contact_group' => '99999'), array('4', '9'), true);
+	pg_assert_same($all, $state['contact_group'], 'a deleted group');
+
+	$state = pg_contact_list_clean_groups(array('contact_group' => '[Tümü-x]'), array('4'), true);
+	pg_assert_same($all, $state['contact_group'], 'a label of another language');
+
+	$state = pg_contact_list_clean_groups(array('contact_group' => array('4')), array('4'), true);
+	pg_assert_same($all, $state['contact_group'], 'an array');
+
+	$state = pg_contact_list_clean_groups(array('contact_group' => '9'), array('4', 9), true);
+	pg_assert_same('9', $state['contact_group'], 'an offered group stays');
+
+	$state = pg_contact_list_clean_groups(array('contact_group' => $none), array('4'), true);
+	pg_assert_same($none, $state['contact_group'], '[None] above the user role');
+
+	$state = pg_contact_list_clean_groups(array('contact_group' => $none), array('4'), false);
+	pg_assert_same($all, $state['contact_group'], 'no [None] for the user role');
+
+	$state = pg_contact_list_clean_groups(array('contact_groups' => array('4', '99999', $none, array('9'))), array('4', '9'), true);
+	pg_assert_same(array('4', $none), $state['contact_groups'], 'checked groups lose what is not offered');
+
+	$state = pg_contact_list_clean_groups(array('contact_groups' => 'x'), array('4'), true);
+	pg_assert_false(isset($state['contact_groups']), 'checked groups that are no list');
+	pg_assert_same($all, $state['contact_group'], 'a missing group is [All]');
+}
+
+// Opening the advanced filters from [All] leaves the list as it was: the
+// contacts in no group stay ([None] checked).
+function test_contact_list_initial_checked_groups()
+{
+	$all = '[' . lang('All') . ']';
+	$none = '[' . lang('None') . ']';
+
+	pg_assert_same(array('4', '9', $none), pg_contact_list_initial_checked($all, array('4', 9), true));
+	pg_assert_same(array('4', '9'), pg_contact_list_initial_checked($all, array('4', '9'), false), 'no [None] for the user role');
+	pg_assert_same(array('9'), pg_contact_list_initial_checked('9', array('4', '9'), true), 'a picked group');
+}
+
+function test_contact_list_filter_description_in_every_view()
+{
+	contact_list_test_state(array('advanced_filters' => true, 'contact_groups' => array('3'), 'description' => 'xyz', 'opt_in_status' => 'opt_out'));
+
+	$list = pg_contact_list_filter(array('role' => 0, 'id' => 1), 'my_subscribers', array());
+	pg_assert_contains('contacts.description LIKE ?', $list['where'], 'the subscribers view filters by description');
+	pg_assert_false(strpos($list['where'], "(contacts.opt_in = '0')") !== false, 'but has no opt-in box');
+	pg_assert_same(contact_list_test_placeholders($list), count($list['params']), 'one value per placeholder');
+
+	$list = pg_contact_list_filter(array('role' => 0, 'id' => 1), 'default', array());
+	pg_assert_contains('contacts.description LIKE ?', $list['where']);
+	pg_assert_contains("(contacts.opt_in = '0')", $list['where']);
+}
+
+function test_contact_list_filter_box_matches_like_the_search()
+{
+	contact_list_test_state(array('advanced_filters' => true, 'contact_groups' => array('3'), 'first_name' => 'AÇIKLAMA'));
+	$list = pg_contact_list_filter(array('role' => 0, 'id' => 1), 'default', array());
+	$expected = pg_list_search_where(array('AÇIKLAMA'), array('contacts.first_name'));
+
+	pg_assert_contains($expected['sql'], $list['where'], 'the box condition is the search condition');
+	pg_assert_same(contact_list_test_placeholders($list), count($list['params']), 'one value per placeholder');
+}
+
+// A dotted Turkish date is read; one that is no date is left out instead of
+// failing the query.
+function test_contact_list_filter_expiration_date()
+{
+	contact_list_test_state(array('advanced_filters' => true, 'contact_groups' => array('3'), 'expiration_date' => '31.12.2026'));
+	$list = pg_contact_list_filter(array('role' => 0, 'id' => 1), 'default', array());
+	pg_assert_contains('(contacts.expiration_date = ?)', $list['where']);
+	pg_assert_same('2026-12-31', end($list['params']));
+
+	foreach (array('abc', '32/13/2026', '0000-00-31.12.2026') as $bad) {
+		contact_list_test_state(array('advanced_filters' => true, 'contact_groups' => array('3'), 'expiration_date' => $bad));
+		$list = pg_contact_list_filter(array('role' => 0, 'id' => 1), 'default', array());
+		pg_assert_false(strpos($list['where'], 'contacts.expiration_date = ?') !== false, $bad . ' is left out');
+		pg_assert_same(contact_list_test_placeholders($list), count($list['params']), 'one value per placeholder');
+	}
+}
+
+function test_contact_list_screen_wiring()
+{
+	$source = file_get_contents(dirname(__DIR__) . '/pinegrap/view_contacts.php');
+
+	pg_assert_contains('pg_contact_list_prepare($user, $contact_groups, $_REQUEST)', $source, 'the screen hands its range to the prepare step');
+	pg_assert_contains("array('filter' => \$filter)", $source, 'the period links keep the view');
+	pg_assert_contains('csv_cell($value)', $source, 'the export guards formula cells');
+	pg_assert_true(strpos($source, '$show_hide_contact_group_select = ($filter == \'all_duplicate_contacts\')') < strpos($source, '$output_contact_group_selection = \''), 'the duplicates view hides the group picker before its markup is built');
+	pg_assert_true(strpos($source, "db_q(\$query, \$list_filter['params']) or output_error('Query failed.');\n\n    pg_csv_download_start('contacts.csv')") !== false, 'the export queries before the download starts');
+}

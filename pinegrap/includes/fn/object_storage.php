@@ -32,6 +32,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/aws_sign.php');
+
 
 /**
  * The connect_apps key the settings live under.

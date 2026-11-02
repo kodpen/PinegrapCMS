@@ -1987,6 +1987,11 @@ function _pg_comments_first_int($rows)
  *   purchasers' reviews and forbid ordering them to its liking. A comment
  *   from before the 11.0.14 columns and a staff comment under a product are
  *   not shown there.
+ * - 'kind': 'questions' reads only a product's questions and their answers
+ *   (includes/fn/product_questions.php) and is never a review read;
+ *   'comments' leaves those out. Unset, or before 11.0.148, no kind filter.
+ *   Either adds comments.kind and comments.answer_of to the rows ('comment'
+ *   and 0 before the step).
  *
  * A failed query ends on the db helpers' error page.
  *
@@ -2008,7 +2013,12 @@ function pg_comments_rows($page_id, $thread, $viewer, $options = array(), $fetch
     $page = _pg_comments_sql_value($page_id);
     $where = pg_comments_thread_sql($thread) . pg_comments_visible_sql($viewer);
 
-    if (array_key_exists('review', $options)) {
+    $kind = (isset($options['kind']) && in_array($options['kind'], array('questions', 'comments'), true)) ? $options['kind'] : '';
+    $where .= pg_product_question_kind_sql($kind, ($kind !== '') && pg_product_questions_ready());
+
+    if ($kind === 'questions') {
+        $review = false;
+    } elseif (array_key_exists('review', $options)) {
         $review = ($options['review'] === true);
     } else {
         $review = is_array($thread) && function_exists('pg_review_gate_applies')
@@ -2050,6 +2060,16 @@ function pg_comments_rows($page_id, $thread, $viewer, $options = array(), $fetch
             comments.parent_id"
             : ",
             0 AS parent_id";
+    }
+
+    if ($kind !== '') {
+        $parent .= pg_product_questions_ready()
+            ? ",
+            comments.kind,
+            comments.answer_of"
+            : ",
+            'comment' AS kind,
+            0 AS answer_of";
     }
 
     if (!empty($options['thread_key'])) {

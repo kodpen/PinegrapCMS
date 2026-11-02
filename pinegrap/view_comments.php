@@ -53,6 +53,28 @@ if ($reviews_ready) {
     }
 }
 
+// The product question filter (includes/fn/product_questions.php): ''
+// lists every comment, 'questions' the questions, 'unanswered' those still
+// waiting for an answer. Kept in the session like the verified filter; sites
+// before 11.0.148 have no filter.
+$questions_ready = pg_product_questions_ready();
+$question_filter = '';
+
+if ($questions_ready) {
+    if (isset($_GET['questions'])) {
+        $_SESSION['software']['comments']['questions'] =
+            (is_string($_GET['questions']) && in_array($_GET['questions'], array('', 'questions', 'unanswered'), true))
+                ? $_GET['questions']
+                : '';
+    }
+
+    $question_filter = (string) ($_SESSION['software']['comments']['questions'] ?? '');
+
+    if (!in_array($question_filter, array('', 'questions', 'unanswered'), true)) {
+        $question_filter = '';
+    }
+}
+
 // these are only ever appended to further below, so they have to start out empty
 $where = '';
 $output_rows = '';
@@ -110,6 +132,12 @@ if ($sql_verified !== '') {
     $conditions[] = '(' . $sql_verified . ')';
 }
 
+$sql_questions = pg_product_question_filter_sql($question_filter, $questions_ready);
+
+if ($sql_questions !== '') {
+    $conditions[] = '(' . $sql_questions . ')';
+}
+
 if ($conditions) {
     $where .= 'WHERE ' . implode(' AND ', $conditions);
 }
@@ -142,6 +170,9 @@ $query =
         product_groups.address_name as product_group_address_name,
         products.address_name as product_address_name,
         " . ($reviews_ready ? "comments.verified_order_id," : "0 AS verified_order_id,") . "
+        " . ($questions_ready
+            ? "comments.kind, (SELECT COUNT(*) FROM comments AS answers WHERE (answers.answer_of = comments.id) AND (answers.kind = 'answer')) AS answer_count,"
+            : "'comment' AS kind, 0 AS answer_count,") . "
         comments.created_timestamp
     FROM comments
     LEFT JOIN forms ON forms.id = comments.item_id
@@ -262,7 +293,7 @@ foreach ($comments as $comment) {
                     <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                     ' . $output_reference_button . '
                 </td>
-                <td class="align-middle chart_label">' . h(pg_comment_display_name($comment['name'])) . ((int) $comment['verified_order_id'] > 0 ? ' <span class="badge theme-success fw-light">' . h(lang('Verified purchase')) . '</span>' : '') . ($binned ? ' <span class="badge theme-secondary fw-light">' . h(lang('In the Recycle Bin')) . '</span>' : '') . '</td>
+                <td class="align-middle chart_label">' . h(pg_comment_display_name($comment['name'])) . ((int) $comment['verified_order_id'] > 0 ? ' <span class="badge theme-success fw-light">' . h(lang('Verified purchase')) . '</span>' : '') . (($comment['kind'] ?? 'comment') !== 'comment' ? ' <span class="badge ' . ((($comment['kind'] === 'question') && ((int) $comment['answer_count'] === 0)) ? 'theme-warning' : 'theme-secondary') . ' fw-light">' . h(pg_product_question_badge($comment['kind'], (int) $comment['answer_count'] > 0)) . '</span>' : '') . ($binned ? ' <span class="badge theme-secondary fw-light">' . h(lang('In the Recycle Bin')) . '</span>' : '') . '</td>
                 <td class="align-middle text-center">' . $output_published_check_mark . '</td>
                 <td class="align-middle text-center">' . $output_featured_check_mark . '</td>
                 <td class="align-middle"><span class="badge theme-primary fw-light">'.$output_date_and_time.'</span></td>
@@ -287,6 +318,19 @@ if ($reviews_ready) {
     ), $verified, array('label' => lang('Verified purchase'), 'action' => 'view_comments.php', 'id' => 'verified'));
 }
 
+// The question filter beside it; its unanswered choice carries the count
+// of questions waiting on the pages this user may edit.
+$output_question_filter = '';
+
+if ($questions_ready) {
+    $unanswered_count = pg_product_questions_unanswered_count((USER_ROLE < 3) ? null : get_folders_that_user_has_access_to(USER_ID));
+    $output_question_filter = pg_filter_select('questions', array(
+        ''           => lang('All comments'),
+        'questions'  => lang('Product questions'),
+        'unanswered' => lang(array('string' => 'Unanswered questions ({var:1})', 'vars' => pg_format_number($unanswered_count, 0))),
+    ), $question_filter, array('label' => lang('Product questions'), 'action' => 'view_comments.php', 'id' => 'questions'));
+}
+
 print
     pg_page_shell(
         array(
@@ -305,7 +349,7 @@ print
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
             ' . pg_screen_toolbar(array(
-                'search' => array(pg_list_sort_menu('view_comments.php', $sort_columns, $sort_levels, $sort_default), $output_verified_filter),
+                'search' => array(pg_list_sort_menu('view_comments.php', $sort_columns, $sort_levels, $sort_default), $output_verified_filter, $output_question_filter),
             )) . '
             <div class="disable_shortcut">
                 <div class="card my-7">

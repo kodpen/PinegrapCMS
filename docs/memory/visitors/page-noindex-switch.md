@@ -22,6 +22,7 @@ Three things at once; if one is missing it is a bug:
 
 ## Which PHP and JS code must change together?
 - The save-side `sitemap = 0` forcing (`pg_page_form_index_flags()` for the two page screens) and `bindPageIndexingSwitches(ids)` (backend.src.js) state the same rule; update in lockstep. The function takes element ids: page screen defaults (`noindex` / `nofollow` / `sitemap`), panel `pg_page_*`, and a `hint`.
+- While noindex locks the site map switch, `bindPageIndexingSwitches()` keeps the state it had and puts it back when noindex goes off; before, a noindex switched on and off left the page out of the site map on save (#5250).
 - Never rely on a `disabled` checkbox not being submitted: the POST need not come from that screen. (Page screen sends bare checkboxes, so a disabled one never goes; panel pairs it with hidden `value="0"`, so zero goes. Same result.)
 
 ## What if the meta tag placeholder is gone?

@@ -5,7 +5,7 @@ description: Image delivery settings (2026.11.0 step 11.0.9): formats offered (b
 
 ## What can the operator set?
 - Site Settings › Features › Image Optimization (the existing image card, not Appearance: every image setting in one card).
-- `config.image_derivative_formats`: bits 1 WebP, 2 AVIF, default 3. A number because `config` takes no VARCHAR (InnoDB row, `tests/innodb_test.php`).
+- `config.image_derivative_formats`: bits 1 WebP, 2 AVIF, default 3; bits 4 and 8 are the own-address switches (`image-same-address.md`). A number because `config` takes no VARCHAR (InnoDB row, `tests/innodb_test.php`).
 - `config.image_quality_webp` (80, 40–100) and `image_quality_avif` (50, 20–100). Resized JPEG/PNG derivatives use `image_resize_quality` (2026.4.4).
 - Hidden until the columns exist (`pg_image_delivery_ready()`); the defaults are what the code did before the settings.
 - The `CDN` constant (Google-hosted libraries) has no part in image delivery and was left as it was.

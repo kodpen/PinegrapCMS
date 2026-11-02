@@ -34,7 +34,7 @@ $liveform->add_fields_to_session();
 // Every field this handler reads holds one value. One posted as an array
 // (message[]=) counts as not given, as for an empty field, instead of reaching
 // the string functions and stopping the request on PHP 8.
-pg_liveform_single_values($liveform, array('send_to', 'page_id', 'item_id', 'item_type', 'name', 'name_type', 'message', 'watcher', 'parent_id', 'rating', 'publish', 'publish_date_and_time', 'publish_cancel'));
+pg_liveform_single_values($liveform, array('send_to', 'page_id', 'item_id', 'item_type', 'name', 'name_type', 'message', 'watcher', 'parent_id', 'kind', 'rating', 'publish', 'publish_date_and_time', 'publish_cancel'));
 
 // The form uploads one attachment; a multi-file post (file[]=) is no attachment.
 if (isset($_FILES['file']) && !is_string($_FILES['file']['name'] ?? null)) {
@@ -130,6 +130,18 @@ if ($comment_thread['accept']) {
 // other thread by the page's switch.
 $review_photo_thread = $comment_thread['accept'] && pg_review_gate_applies($item_type, $item_id);
 $comments_allow_file_attachments = pg_comment_attachments_allowed(($comments_allow_file_attachments == 1), $review_photo_thread, pg_review_photos_on()) ? 1 : 0;
+
+// A question about a product (includes/fn/product_questions.php) comes from
+// the widget that shows the product's questions: it takes no file and no
+// stars. Whether staff answer a question is decided once the comment it
+// answers is known, further down.
+$kind_posted = $liveform->get_field_value('kind');
+$question_post = (pg_product_question_post_kind($kind_posted, $review_photo_thread, pg_product_questions_ready(), false, '') !== 'comment');
+
+if ($question_post) {
+    $comments_allow_file_attachments = 0;
+    $rating = 0;
+}
 
 $comment_label = get_comment_label(array('label' => $comments_label));
 $output_comment_label = h($comment_label);
@@ -469,6 +481,20 @@ if ($parent_id === 0) {
     $comment_parent = null;
 }
 
+// The kind stored: a question, staff's answer to the question it replies
+// to, or a comment.
+$comment_kind = pg_product_question_post_kind(
+    $kind_posted,
+    $review_photo_thread,
+    pg_product_questions_ready(),
+    check_edit_access($folder_id) == true,
+    ($parent_id > 0) ? pg_product_question_state($parent_id)['kind'] : ''
+);
+
+if ($comment_kind !== 'comment') {
+    $rating = 0;
+}
+
 // A review of a product comes from somebody who bought it
 // (includes/fn/reviews.php): signed in, with a bought order holding the
 // product that no review of it names yet. The page's own form says so before
@@ -476,6 +502,11 @@ if ($parent_id === 0) {
 // page, write as the store and are not asked.
 $verified_order_id = 0;
 $is_product_review = pg_review_gate_applies($item_type, $item_id);
+
+// A question or its answer is no review: no purchase asked, no rating.
+if ($comment_kind !== 'comment') {
+    $is_product_review = false;
+}
 
 if ($is_product_review && !check_edit_access($folder_id)) {
     $review = pg_review_eligibility((int) $user_id, $item_type, $item_id);
@@ -642,6 +673,17 @@ if (pg_comment_replies_ready()) {
         parent_id";
     $sql_parent_value = ",
         '" . (int) $parent_id . "'";
+}
+
+// The kind and the question an answer answers, once the columns are there
+// (11.0.148).
+if (pg_product_questions_ready()) {
+    $sql_parent_column .= ",
+        kind,
+        answer_of";
+    $sql_parent_value .= ",
+        '" . e($comment_kind) . "',
+        '" . (($comment_kind === 'answer') ? (int) $parent_id : 0) . "'";
 }
 
 // add comment to database

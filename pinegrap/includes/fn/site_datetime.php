@@ -4,7 +4,8 @@
  *
  * The one date-and-time control on site pages, loaded on demand: a page
  * whose HTML holds a date hook (data-pg-date, data-pg-datetime,
- * data-pg-time, data-pg-date-selects) gets vanilla-calendar-pro's own
+ * data-pg-time, data-pg-date-selects) or a native date, date-and-time or
+ * time input gets vanilla-calendar-pro's own
  * stylesheet, the site rules of the control, the picker options when the
  * page has none, and the tags of assets/js/pg_datetime.js and
  * assets/js/pg_fields.js, which draw the hooked fields as in the panel.
@@ -32,6 +33,20 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 function pg_site_datetime_pattern()
 {
     return '/\sdata-pg-(?:date|datetime|time|date-selects|date-bind)(?=[\s=>\/])/i';
+}
+
+/**
+ * A native date, date-and-time or time input (<input type="date">,
+ * "datetime-local", "time"): designed pages, system widgets and inputs
+ * placed by hand print these, and pg_fields.js gives each one without a
+ * hook the hook of its type on a site page, so it keeps its ISO store and
+ * shows the one control instead of the browser's own picker.
+ *
+ * @return string
+ */
+function pg_site_datetime_native_pattern()
+{
+    return '/<input\b[^>]*?\stype\s*=\s*(["\']?)(?:date|datetime-local|time)\1(?=[\s>\/])/i';
 }
 
 /**
@@ -109,7 +124,8 @@ function pg_site_datetime_scripts($options = true)
 /**
  * The control's stylesheets before </head> (at the start of a fragment) and
  * its scripts before the last </body>, for a page whose HTML holds a date
- * hook (pg_site_datetime_pattern()). Once a page: a second call finds the
+ * hook (pg_site_datetime_pattern()) or a native date, date-and-time or time
+ * input (pg_site_datetime_native_pattern()). Once a page: a second call finds the
  * stylesheet's id and changes nothing.
  *
  * @param string $content page HTML
@@ -117,7 +133,8 @@ function pg_site_datetime_scripts($options = true)
  */
 function pg_site_datetime_inject($content)
 {
-    if (stripos($content, 'data-pg-') === false || !preg_match(pg_site_datetime_pattern(), $content)) return $content;
+    $hooked = stripos($content, 'data-pg-') !== false && preg_match(pg_site_datetime_pattern(), $content);
+    if (!$hooked && (stripos($content, 'type') === false || !preg_match(pg_site_datetime_native_pattern(), $content))) return $content;
     // Once a page; a page that printed the panel's tags (pg_fields_script())
     // draws its fields with those.
     if (strpos($content, 'id="pg-datetime-site-css"') !== false || strpos($content, '/assets/js/pg_datetime.js') !== false) return $content;

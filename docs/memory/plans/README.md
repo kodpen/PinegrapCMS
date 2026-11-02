@@ -19,9 +19,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - activitypub-steps.md: Steps AP1-AP4 of plans/activitypub.md: actor, WebFinger and signatures, inbox and followers, publishing through the outbox queue, replies as comments; claim as [plan:activitypub] AP<n>
 - activitypub.md: Plan (owner 2026-11-02): the site as a Fediverse actor over ActivityPub: WebFinger and actor, followers, posts delivered to inboxes, replies as comments, moderation, a settings screen; steps AP1-AP8
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, not before 2026.11.0 ships): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
-- address-fields-by-country-places.md: Every place an address's city, state or district is asked, shown or read, checked on 2026-11-01 for plans/address-fields-by-country.md, with what each needs
-- address-fields-by-country-steps.md: Steps A1-A8 of plans/address-fields-by-country.md: site labels and district rule, editor starters, account state list, panel and ERP, place lists; claim as [plan:address-fields-by-country] A<n>
-- address-fields-by-country.md: Plan (owner request 2026-11-01): Turkish addresses as İl and İlçe (the city box is the district) in every form, the district box rule, then per-country place lists; steps A1-A8
 - agent-channel.md: DRAFT, not to be started (owner, 2026-10-29): a Workspace channel as the messaging space of agents and people: wake rules, claim queue, memory, doors; the full plan stays with the owner
 - appointment-booking-steps-2.md: Steps BK6-BK10 of plans/appointment-booking.md: Workspace calendar rows, My bookings and manage page, API, deposits, templates and close-out; claim as [plan:appointment-booking] BK<n>
 - appointment-booking-steps.md: Steps BK1-BK5 of plans/appointment-booking.md: schema and slot engine, settings, the staff agenda, the booking widget, mails, SMS and reminders; claim as [plan:appointment-booking] BK<n>
@@ -37,7 +34,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bug-hunt-modules-endpoints-1.md: Module list of plans/bug-hunt.md, part 3: root endpoint groups account to offer by area word, one line each with its state
 - bug-hunt-modules-endpoints-2.md: Module list of plans/bug-hunt.md, part 4: root endpoint groups optimize to zone by area word; single endpoints in bug-hunt-modules-endpoints-2b.md, one line each with its state
 - bug-hunt-modules-endpoints-2b.md: Module list of plans/bug-hunt.md, part 5: the single root endpoints (one file per area word), six to a line, each line with its state
-- bug-hunt-modules-fn-1.md: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y to legal_documents, one line each with its state
+- bug-hunt-modules-fn-1.md: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y to cloudflare_tools, one line each with its state
+- bug-hunt-modules-fn-1a.md: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules collections to legal_documents, one line each with its state
 - bug-hunt-modules-fn-1b.md: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules link_resolve to pdf_merge, one line each with its state
 - bug-hunt-modules-fn-2.md: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules price_history to waf_rescue, one line each with its state
 - bug-hunt-modules-fn-2b.md: Module list of plans/bug-hunt.md, part 2b: includes/fn/ modules widgets to widgets_lists_checkout (widgets_cart and widgets_catalog in part 2d), one line each with its state
