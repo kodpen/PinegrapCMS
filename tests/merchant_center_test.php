@@ -210,3 +210,21 @@ function test_merchant_center_accounts_and_country()
 	pg_assert_same('', pg_merchant_default_country('', 'EUR'), 'the euro names no country');
 	pg_assert_same('https://merchants.google.com/mc/products/diagnostics?a=123', pg_merchant_center_url('123'));
 }
+
+// A data source keeps the feed label it was created with (Google does not
+// change it), so the label the pushes name is the registered source's, not a
+// country chosen on the card afterwards.
+function test_merchant_center_registered_feed_label()
+{
+	$source = array('name' => 'accounts/1/dataSources/2', 'primaryProductDataSource' => array('feedLabel' => 'TR', 'countries' => array('TR')));
+	pg_assert_same('TR', pg_merchant_source_feed_label($source));
+	pg_assert_same('', pg_merchant_source_feed_label(array('name' => 'x')), 'no label in the answer');
+	pg_assert_same('', pg_merchant_source_feed_label(array('primaryProductDataSource' => array('feedLabel' => 'tr x'))), 'a malformed label is not taken');
+
+	$state = pg_merchant_state_parse(array('country' => 'DE', 'feed_label' => 'TR'));
+	pg_assert_same('TR', $state['feed_label']);
+	pg_assert_same('TR', pg_merchant_push_label($state), 'country changed after registering: the registered label');
+	pg_assert_same('DE', pg_merchant_push_label(pg_merchant_state_parse(array('country' => 'DE'))), 'nothing registered: the country');
+	pg_assert_same('', pg_merchant_state_parse(array('feed_label' => 'tr?'))['feed_label']);
+	pg_assert_same('TR', pg_merchant_feed_label(pg_merchant_push_label($state)), 'the label survives the push key cleaning');
+}

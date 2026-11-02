@@ -18,7 +18,7 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 
 - `maintenance_mode`: clean
 
-- `merchant_center`: clean; lead: a country change keeps the registered data source's feed label, so pushes name another label
+- `merchant_center`: done (#5059: a country change made pushes name another feed label than the registered data source)
 
 - `meta_tags`: done (#4952: a page `og:image` kept the design's `og:image:alt` and size)
 
