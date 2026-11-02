@@ -4,11 +4,11 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 ---
 
 ## Which includes/fn/ modules (link_resolve to pdf_merge) are hunted?
-- `link_resolve`: open
+- `link_resolve`: done (#4976: names in other letter case were broken links)
 
 - `list_paging`: open
 
-- `list_period`: open
+- `list_period`: clean
 
 - `mail`: open
 
@@ -16,7 +16,7 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 
 - `mail_queue`: done #4654 (rest checked: retry ladder, give-up and notices, property encoding and attachments, job-alive check, claim race, sweeps, List-Unsubscribe headers)
 
-- `maintenance_mode`: open
+- `maintenance_mode`: clean
 
 - `merchant_center`: open
 
