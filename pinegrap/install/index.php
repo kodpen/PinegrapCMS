@@ -8982,6 +8982,7 @@ function get_tables() {
 		'next_order_number',
 		'not_found_log',
 		'site_search_daily',
+		'ai_fetch_daily',
 		'oauth_clients',
 		'oauth_codes',
 		'offer_actions',

@@ -136,6 +136,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_claude_daily_summary();    // 11.0.145
 	upgrade_2026_11_0_site_search_daily();      // 11.0.147
 	upgrade_2026_11_0_product_questions();       // 11.0.148
+	upgrade_2026_11_0_ai_fetch_daily();          // 11.0.150
 
 }
 
@@ -4385,5 +4386,30 @@ function upgrade_2026_11_0_product_questions() {
 	install_add_index('comments', 'idx_answer_of', "INDEX idx_answer_of (answer_of)");
 
 	install_note('Comments: visitors can ask a question about a product and staff can answer it; every comment written before this version stays a comment.');
+
+}
+
+// The AI fetch counter (2026.11.0, 11.0.150; waf_ai_fetch_flush() in
+// waf.php). One row per day, bot and page, aggregated at write time: id is
+// the SHA-1 of "day|bot|page_id", raised by one INSERT ... ON DUPLICATE KEY
+// UPDATE per request the firewall let through from an AI user fetcher or
+// search indexer. bot is the catalogue name (ChatGPT-User) for a fetcher the
+// published ranges proved, 'unverified' for a claim they did not, always on
+// page 0; page_id is 0 for anything that is not a page. idx_day_bot serves the
+// fetches per bot and day. Derived data: a wrong bucket is truncated and the
+// next days fill again.
+function upgrade_2026_11_0_ai_fetch_daily() {
+
+	install_create_table('ai_fetch_daily', "CREATE TABLE ai_fetch_daily (
+		id       CHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		day      DATE NOT NULL,
+		bot      VARCHAR(40) NOT NULL DEFAULT '',
+		page_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		fetches  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_day_bot (day, bot)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('AI crawlers: each day\'s fetches by AI assistants and AI search indexers are now counted per page.');
 
 }
