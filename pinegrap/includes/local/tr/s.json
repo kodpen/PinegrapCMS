@@ -1431,6 +1431,7 @@
     "Shipping zone ({var:1}) was changed through the API by the application {var:2} (key {var:3}).": "Kargo bölgesi ({var:1}) API üzerinden {var:2} uygulaması tarafından değiştirildi (anahtar {var:3}).",
     "Shipping zone ({var:1}) was created through the API by the application {var:2} (key {var:3}).": "Kargo bölgesi ({var:1}) API üzerinden {var:2} uygulaması tarafından oluşturuldu (anahtar {var:3}).",
     "Shipping zone ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).": "Kargo bölgesi ({var:1}) API üzerinden {var:2} uygulaması tarafından silindi (anahtar {var:3}).",
+    "Shipping {var:1}": "Kargo {var:1}",
     "Shipping, returns and products that do not sell": "Kargo, iade ve satılamayan ürünler",
     "Shippo could not make the label.": "Shippo etiketi oluşturamadı.",
     "Shippo does not say which carrier account a label was bought at.": "Shippo, bir etiketin hangi kargo hesabından satın alındığını bildirmiyor.",

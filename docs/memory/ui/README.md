@@ -263,6 +263,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - notifications-one-inbox.md: The bell as the panel's one inbox (#3817): All, Site, Workspace filters, a flow's runs folded, the meeting call, pgBellOpen(), the Workspace list's Inbox opening it with the row's count
 - offer-code-key-codes.md: A saved offer's code change moves its key codes to the new code (unless another offer keeps the old one); the editor warns while the code changes; All Key Codes names an orphan
 - offer-editor.md: Offer editor (edit_offer.php, offer_editor.js) rules: single JSON save, auto names, copy shared rows, two-sided type registry, write order, currency entity.
+- offers-list-chips.md: Offers list (view_offers.php) Flow chips and status filter chips: gift only when free, both usage limits, optional chips drawn hidden and shown by recount(), the offer-only 'Shipping {var:1}' key
 - order-filter-names.md: Advanced Filters panel: printed after the toolbar on every list; on Orders, filter_ ids named by labels, Date Type name, no address autofill, phone and e-mail keyboards
 - order-report-totals.md: Order Report figures: gift card, card surcharge and installment charge columns so every row adds up to Total; carts read from their active lines in every summarize-by
 - order-screen-destinations.md: Where View Order's Save, Delete and back arrow go (send_to, else All Orders), and how its Paraşüt and label reloads keep send_to

@@ -3837,7 +3837,7 @@
     "assignment, project, homework, feedback, grade": "ödev, proje, geri bildirim, not",
     "astronomy, volunteers": "gökbilim, gönüllüler",
     "at least": "en az",
-    "at most {var:1} time(s) per customer": "müşteri başına en çok {var:1} kez",
+    "at most {var:1} time(s) per customer": "müşteri başına en çok {var:1} kez kullanılmışsa",
     "at the limit": "sınırda",
     "at {var:1}": "{var:1} kurundan",
     "attendees last time": "katılımcı (geçen yıl)",
