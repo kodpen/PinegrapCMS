@@ -234,3 +234,20 @@ function test_contact_list_row_address_and_duplicates_views()
 	$row = pg_contact_list_row($contact, array('role' => 0), 'default', '', 'pic.png');
 	pg_assert_contains('data-src="/pic.png"', $row['cells'][2]['html'], 'a picture from the file manager');
 }
+
+function test_contact_list_merge_needs_a_role_above_user()
+{
+	// Merging deletes contacts and moves their records, so a user with the
+	// user role (3) may not run it from any filter of the list.
+	pg_assert_same(true, pg_contact_list_may_merge(array('role' => 0)), 'an administrator may merge');
+	pg_assert_same(true, pg_contact_list_may_merge(array('role' => 2)), 'a manager may merge');
+	pg_assert_same(false, pg_contact_list_may_merge(array('role' => 3)), 'a user may not merge');
+	pg_assert_same(false, pg_contact_list_may_merge(array('role' => '3')), 'a stored role string counts');
+	pg_assert_same(false, pg_contact_list_may_merge(array()), 'no role, no merge');
+
+	// The list's merge action asks it before anything is read.
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/view_contacts.php');
+	$branch = substr($source, strpos($source, "== 'Merge Contacts') {"));
+	$check = strpos($branch, 'pg_contact_list_may_merge($user)');
+	pg_assert_true(($check !== false) && ($check < strpos($branch, 'merge_contacts(')), 'the merge action checks the role first');
+}

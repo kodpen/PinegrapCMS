@@ -32,6 +32,19 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
+ * Whether this user may merge duplicate contacts: a role above the user role
+ * (3). The duplicates view is not offered to role 3 either; the merge action
+ * asks this itself, as it runs on whatever filter the request names.
+ *
+ * @param array $user the user row (role)
+ * @return bool
+ */
+function pg_contact_list_may_merge($user)
+{
+    return isset($user['role']) && ((int) $user['role'] < 3);
+}
+
+/**
  * The views the filter menu offers to a user of this role.
  *
  * @param int $role the viewer's role
