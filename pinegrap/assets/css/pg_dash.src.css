@@ -2658,6 +2658,58 @@
   .pg-dash-map-step[data-step="3"] { background: color-mix(in srgb, var(--pg-dash-cat) 70%, var(--pg-card-bg)); }
   .pg-dash-map-step[data-step="4"] { background: var(--pg-dash-cat); }
 
+  /* Operations Desk: three lanes beside each other, under each other on a
+     narrow card. */
+  .pg-dash-ops {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: .75rem;
+  }
+
+  .pg-dash-ops-lane {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: .625rem .75rem;
+    border: var(--pg-border-width) solid var(--pg-border-color);
+    border-radius: var(--pg-border-radius);
+  }
+
+  .pg-dash-ops-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .5rem;
+  }
+
+  .pg-dash-ops-label {
+    margin: 0;
+    font-size: .8125rem;
+    font-weight: 400;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-ops-count {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--pg-fg-emphasis);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pg-dash-ops-count[data-tone="warn"] { color: var(--pg-warning-fg-emphasis); }
+  .pg-dash-ops-count[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
+
+  .pg-dash-ops-sub,
+  .pg-dash-ops-empty {
+    margin: 0 0 .25rem;
+    font-size: .75rem;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-ops-empty {
+    margin-top: .5rem;
+  }
+
   @media (forced-colors: active) {
     .pg-dash-map path { fill: Canvas; stroke: CanvasText; }
     .pg-dash-map [data-step], .pg-dash-map-step { forced-color-adjust: none; }
