@@ -459,7 +459,9 @@ function erp_cheque_step_date_refusal($date, $doc_date)
     $date = (string) $date;
     $doc_date = (string) $doc_date;
 
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+    // The shape alone let 2026-02-30 through to the till movement: a day that
+    // is not on the calendar, which MySQL zeroes or refuses by its SQL mode.
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $parts) || !checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1])) {
         return lang('Please enter a valid date.');
     }
 
