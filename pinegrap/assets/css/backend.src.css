@@ -4658,6 +4658,14 @@ html[data-bs-theme="dark"] #notifications .pg-bell-glyph {
   border: 0;
 }
 
+/* An absolutely placed <select> takes the nearest positioned box as its
+   containing block; when that box is outside a scrolling table, its
+   overflow does not clip the select and the page grows sideways on a
+   narrow screen. */
+.table-responsive:has(.pg-combobox-native) {
+  position: relative;
+}
+
 /* Date and time fields on Bootstrap 6 (pg_fields.js): the posted input is
    hidden the same way; one typed box after it takes its place (its look is in
    pg_datetime.css). In a drawer the calendar is drawn open under the field. */

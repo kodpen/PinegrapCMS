@@ -145,6 +145,13 @@ if ($_POST) {
         go($self);
     }
 
+    if ($action === 'unmatch') {
+        if (erp_bank_line_unmatch($line_id)) {
+            log_activity(lang(array('string' => 'erp bank statement (#{var:1}): the match of line #{var:2} was undone', 'vars' => array($statement_id, $line_id))), $_SESSION['sessionusername']);
+        }
+        go($self . '&line=' . $line_id . '#line-' . $line_id);
+    }
+
     if (($action === 'ignore') || ($action === 'unignore')) {
         erp_bank_line_ignore($line_id, $action === 'ignore');
         go($self . '#line-' . $line_id);
@@ -333,6 +340,12 @@ if ((string) $statement['status'] === 'mapping') {
             $link = in_array((string) $line['cash_doc_type'], array('collection', 'payment'), true) ? 'erp_receipt.php?id=' . (int) $line['cash_id'] : 'erp_cash.php';
             $action = '<a class="small pg-link-body-emphasis" href="' . h($link) . '">' . h(trim((string) $line['cash_description'])) . '</a>'
                 . (((string) $line['account_title'] !== '') ? '<div class="small fg-secondary">' . h((string) $line['account_title']) . '</div>' : '');
+
+            // A wrong match (another movement of the same amount) is undone
+            // here, so the line can be recorded.
+            if (((string) $line['status'] === 'matched') && !$readonly) {
+                $action .= $post_form('<input type="hidden" name="line_id" value="' . (int) $line['id'] . '" /><input type="hidden" name="erp_action" value="unmatch" />', lang('Not this movement'), 'btn-link fg-secondary');
+            }
         }
 
         $output_rows .= '
