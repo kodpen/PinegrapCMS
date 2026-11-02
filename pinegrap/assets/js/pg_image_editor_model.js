@@ -2802,10 +2802,100 @@
         });
     }
 
+    // ---- tracks ----
+
+    var TRACK_MIN = 100;
+
+    // A phase after a track edge was dragged to time at (ms): "move" puts
+    // the bar's start there and keeps its length, "start" and "end" move one
+    // end and keep the other. In is its delay and length; out its length and
+    // its delay before the end; a loop's start sets its delay after the
+    // entrance. A copy: the layer is not changed.
+    function trackSet(l, phase, part, at, end) {
+        var a = (l && l.anim) || {}, cur = Object.assign({}, a[phase] || {}), sp = motionSpans(l, end);
+        var ms = motionMs(cur, phase === 'loop' ? 1500 : 800), s, e;
+
+        at = Math.round(Number(at) || 0);
+
+        if (phase === 'in') {
+            s = sp.inStart;
+            e = sp.inEnd;
+
+            if (part === 'move') {
+                cur.delay = clamp(at, 0, Math.max(0, end - ms));
+            } else if (part === 'start') {
+                s = clamp(at, 0, e - TRACK_MIN);
+                cur.delay = s;
+                cur.ms = e - s;
+            } else {
+                cur.ms = clamp(at, s + TRACK_MIN, Math.max(s + TRACK_MIN, end)) - s;
+            }
+        } else if (phase === 'out') {
+            s = sp.outStart;
+            e = sp.outEnd;
+
+            if (part === 'move') {
+                s = clamp(at, 0, Math.max(0, end - ms));
+                cur.delay = end - (s + ms);
+            } else if (part === 'start') {
+                s = clamp(at, 0, e - TRACK_MIN);
+                cur.ms = e - s;
+            } else {
+                e = clamp(at, s + TRACK_MIN, Math.max(s + TRACK_MIN, end));
+                cur.ms = e - s;
+                cur.delay = end - e;
+            }
+        } else if (phase === 'loop') {
+            cur.delay = Math.max(0, at - ((sp.inEnd === null) ? 0 : sp.inEnd));
+        }
+
+        return cur;
+    }
+
+    // A time pulled to the nearest target within tolerance, else to the step
+    // (0 or none: as it is).
+    function snapTime(at, targets, tolerance, step) {
+        var best = null;
+
+        (targets || []).forEach(function (t) {
+            if ((Math.abs(t - at) <= tolerance) && ((best === null) || (Math.abs(t - at) < Math.abs(best - at)))) {
+                best = t;
+            }
+        });
+
+        if (best !== null) {
+            return best;
+        }
+
+        return (step > 0) ? Math.round(at / step) * step : at;
+    }
+
+    // What a dragged edge snaps to: the timeline's ends and every phase end
+    // of the other layers, sorted, once each.
+    function trackTargets(layers, end, exceptId) {
+        var out = [0, end];
+
+        (layers || []).forEach(function (l) {
+            if ((exceptId !== null) && (exceptId !== undefined) && (l.id === exceptId)) {
+                return;
+            }
+
+            var sp = motionSpans(l, end);
+
+            Object.keys(sp).forEach(function (k) {
+                if (sp[k] !== null) {
+                    out.push(sp[k]);
+                }
+            });
+        });
+
+        return out.filter(function (t, i) { return out.indexOf(t) === i; }).sort(function (a, b) { return a - b; });
+    }
+
     var MOTION = {
         MOTION_IN: MOTION_IN, MOTION_LOOP: MOTION_LOOP, MOTION_DIRS: MOTION_DIRS, MOTION_EASES: MOTION_EASES, MOTION_BASES: MOTION_BASES,
         MOTION_MIN: MOTION_MIN, MOTION_MAX: MOTION_MAX, easeAt: easeAt, newMotion: newMotion, motionSpans: motionSpans, motionAt: motionAt,
-        docMotion: docMotion, baseAt: baseAt, hasMotion: hasMotion
+        docMotion: docMotion, baseAt: baseAt, hasMotion: hasMotion, trackSet: trackSet, snapTime: snapTime, trackTargets: trackTargets
     };
 
     // -- access (pg_image_editor_access.js) --
