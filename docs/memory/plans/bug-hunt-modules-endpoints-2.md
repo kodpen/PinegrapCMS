@@ -20,7 +20,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 
 - Endpoints `product`, part 2 (attributes, groups): add_product_attribute, edit_product_attribute, product_attribute_action, view_product_attributes, add_product_group, edit_product_group, duplicate_product_group, update_product_group_status, view_product_groups: open
 
-- Endpoints `product`, part 3 (import, export, builder, marketplace): import_products, import_products_f, export_products, export_products_f, product_builder, marketplace_products: open
+- Endpoints `product`, part 3 (import, export, builder, marketplace): import_products: #5371 (columns after a sfc_/sfu_ heading were read one cell to the left); import_products_f, export_products, export_products_f, product_builder, marketplace_products clean
 
 - Endpoints `recurring` (3): open
 
