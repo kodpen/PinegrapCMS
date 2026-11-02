@@ -24,11 +24,14 @@ Visitor statistics, page and article views, search engine index flags.
 
 - action-links-rel-nofollow.md: Every action link (login, register, reset, subscribe, remove from cart) must carry rel="nofollow"; crawl-budget reason and server-stamped rel.
 - ai-crawlers-llms-txt.md: AI section of robots.txt (Content-Signal, Disallow groups in step with the WAF switches) and llms.txt: settings, where each line goes, which pages llms.txt lists (2026.11.0, 11.0.21, #739).
+- ai-fetch-counter.md: AI fetch counter: ai_fetch_daily (day|bot|page_id), written at request end by waf.php for AI user fetchers and search indexers the firewall let through; unverified claims as a count only.
+- ai-visibility-figures.md: AI visibility figures and GET /reports/ai-visibility: fetches per bot, top pages per bot, unfetched sitemap pages, robots/llms state, AI assistant referrals, 400-day sweep.
 - article-view-daily-bucket.md: Why per-view submitted_form_views INSERTs became a daily bucket table: schema, backfill cursor, cutover, retention, old table rename (2026.4.1).
 - high-volume-counter-rules.md: Rules for a new high-volume counter, log or report: write-time buckets, sha1 keys, no query string in a key, MAX(id) caps, totals in SQL, ONLY_FULL_GROUP_BY, DST-safe day steps, derived data rebuilt.
 - page-canonical-robots-directives.md: A page's own canonical address and noarchive / max-snippet (page.canonical_url, noarchive, max_snippet; 11.0.22, #802): storage, where it applies, languages, editors, PHP/JS twin.
 - page-noindex-switch.md: What the per-page noindex/nofollow switch does in three places, which four screens write it, the sitemap query rule and the PHP/JS lockstep rule (2026.4.3).
 - page-view-beacon.md: How a visit answered from the page file cache is still counted (PR #1402): the signed beacon in the stored copy, page_view.php, what it counts and what it cannot
+- page-vitals-beacon.md: Real-user LCP/INP/CLS beacon into page_vitals_hourly (11.0.149, #5040): which pages carry it, day-signed page id, rate limit, validation, buckets, upsert, 400-day sweep
 - panel-preview-not-a-visit.md: The File Manager's page previews (preview pane, Quick look) load the page with pg_preview=1; get_page.php opens no visitor record and counts no page view for them
 - robots-large-image-preview.md: The site switch that adds max-image-preview:large to every indexed page's robots meta (config.max_image_preview_large, 11.0.51, #2175): default, new installs, where it is written
 - robots-txt-disallow-rules.md: How noindex pages are written into robots.txt: anchored lines, which User-agent group, private folders, and the no-noindex byte-identical guarantee.

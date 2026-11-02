@@ -79,6 +79,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - country-names-in-addresses.md: The order view's address blocks and the address book name the stored country code in the site language; the country tokens keep the code
 - currency-names-display.md: Stored currency names shown through pg_currency_label() in the panel language; the currency list's rate with the panel's separators (#4430)
 - edit-product-undrawn-columns-kept.md: Edit Product's save leaves out the shipping, customs, zone, gift card and unlabelled custom-field columns the screen does not draw.
+- eu-vat-check.md: EU VAT ids checked against VIES: the clean function and patterns per member state, the REST request, answer mapping, a day's cache, the reverse-charge decision; what SF6b still wires
 - exchange-rates-update.md: Update Exchange Rates (button and scheduled job) writes one Site Log line with the count, and a success notice only when a rate was written
 - express-order-field-labels.md: Express order widget's accessible names: labels follow the walker's shipping_<rid>_ renames, fallback aria-labels for the quantity, offer code and custom arrival date boxes (#4799)
 - express-order-notes-address-book.md: Express order (EO) widget bindings for order note (eo_field notes) and address book section, plus the narrow-screen table classes and the three places to update.
@@ -87,6 +88,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - express-order-tax-address.md: Which address the express order widget takes its tax on: prefill at render, eo_tax_totals on each address edit; no ship_tos write (#3326, PRs #3530, #3920)
 - express-order-tick-boxes.md: When the express order widget fills its billing tick boxes (opt_in, opt_in_sms, tax_exempt, update_contact), and the refused-submit fault it fixed.
 - express-order-widget-totals.md: Express order widget totals (designer pages) as submit_order() charges them: today's lines, order discount and its tax, gift cards, surcharge, shipping a kurus lower (pg_express_order_charged_totals)
+- featured-and-new-items-screen.md: How Edit Featured & New Items checks the featured order, what it shows after a save, and its layout
 - form-fields-zero-id-query-trap.md: Product-form reads must pin form_type = 'product' (template rows have page_id and product_id 0); the deleted-product receipt bug and the empty-id rule.
 - gift-card-balance-edit.md: The gift card screen (edit_gift_card.php) writes the balance only when it was changed there, and only over the balance it opened with; why, and what a stale save sees
 - gift-card-email-variables.md: The product screen's Email Gift Card variable buttons (^^code^^, ^^amount^^ …): where the list lives, how it stays in step with the sender (#4449), what ^^amount^^ prints, the starter dumps' texts
@@ -196,6 +198,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - print-order-header-facts.md: The printed order (print_order.php) carries the order screen's tax number, on-account, unpaid and cancelled state, order codes, installments and gift cards
 - print-order-id.md: print_order.php reads every order query with the one id it checked ($id from $_REQUEST, whole number), never $_GET['id'] again
 - print-order-shipping-card.md: The printed order (print_order.php) prints one shipping card per real recipient above its items, empty rows hidden, every parcel with its carrier
+- product-attribute-options-save.md: How the product attribute create/edit screens clean, check and save options, and what removing one resets
 - product-builder-parent-group.md: The Product Builder's parent group list for a new variant group (PR #4309): no empty choice, opens on the top group; what a posted 0 still does
 - product-bulk-duplicate-code.md: The product code of a bulk copy (duplicate_products.php): last letter swapped for the typed text, cut by characters, then made unique; why the old "[1]" cut wrote duplicate codes
 - product-bulk-price-edit.md: Bulk price change (edit_products.php, pg_bulk_price_change(), and the Catalog Manager's): a value above zero, a decrease never ends at or below zero, an increase never lowers; no negative price
@@ -209,9 +212,11 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - product-feed-serving.md: How product feeds are kept, built, served and watched (PR #571): config.product_feeds (11.0.4), tokens, product_feed_job.php, feed.php, WAF exemption, status tile
 - product-feed-streaming.md: How the daily product feed build streams a large catalog to data/feeds/ chunk by chunk (writer open/add/close, CSV/TSV work file), why, and the out-of-memory symptom it fixed (PR #1056)
 - product-feeds.md: Product feed builder (includes/fn/product_feeds.php, PR #561): which products go into the OpenAI JSONL/CSV and Google TSV feeds, field rules, skip reasons, variant families, writers
-- product-group-copy.md: Product group copies (duplicate_product_group.php, pg_catalog_copy_group()): product copy links, Recycle Bin, duplicate notice, default options
+- product-group-copy.md: Product group copies (duplicate_product_group.php, pg_catalog_copy_group()): product copy links, Recycle Bin, duplicate notice, default options, variant set form and price rules
+- product-group-edit-checks.md: Edit Product Group, Duplicate Product Group and Featured and New Items (PR #5551): the Recycle Bin left out of status changes and lists, the parent checked on the server, the duplicate form cleared
 - product-import-prices.md: Product import price cells (price, extra shipping, compare-at): one reader for spreadsheet numbers and typed figures; a row that is not an amount is named (#749, PR #1262)
 - product-import-row-refusals.md: Product import rows left out and why each list says so (too large, not whole, not a number, in the Recycle Bin); an update finds its product by id (PR #4917)
+- product-preorder.md: Product pre-order (11.0.151, PR #5550): columns, back order path, when it runs, tokens and notes, arrival date bound, hourly end, API field
 - product-price-bound-and-export.md: Catalog Manager and Edit Selected refuse a price past PG_PRODUCT_PRICE_MAX instead of MySQL's silent cut; the Catalog Manager export leaves the Recycle Bin out (#4441, #4443, PR #4515)
 - product-price-box-top.md: The product screen's unit price, compare-at price and extra shipping cost boxes hold 13 characters (21.474.836,47) and the save refuses a larger amount (#4444)
 - product-price-history-api.md: GET /products/{id}/price-history (2026.11.0): a product's price history rows (offer rows included) through the external API and the MCP tools, paging, since and channel filters, what is not in them

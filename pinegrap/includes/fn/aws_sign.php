@@ -246,7 +246,10 @@ function pg_aws_url_parts($url)
  * @param string $body
  * @param string $amz_date 20150830T123600Z, now when null
  * @param array  $options  sign_body (default true: X-Amz-Content-Sha256 is
- *                         sent and signed), normalize (default true)
+ *                         sent and signed), normalize (default true),
+ *                         payload_hash (the body's hex SHA-256 when $body
+ *                         is not passed: a file streamed from disk, or
+ *                         UNSIGNED-PAYLOAD; default the hash of $body)
  * @return array the header lines to add ("Name: value"): X-Amz-Date,
  *               X-Amz-Content-Sha256, X-Amz-Security-Token, Authorization
  */
@@ -254,7 +257,7 @@ function pg_aws_authorization($key, $region, $service, $method, $url, $headers, 
 {
     $amz_date = ($amz_date !== null) ? (string) $amz_date : gmdate('Ymd\THis\Z');
     $url_parts = pg_aws_url_parts($url);
-    $payload_hash = hash('sha256', (string) $body);
+    $payload_hash = isset($options['payload_hash']) ? (string) $options['payload_hash'] : hash('sha256', (string) $body);
     $added = array(array('X-Amz-Date', $amz_date));
 
     if (!isset($options['sign_body']) || $options['sign_body']) {

@@ -163,9 +163,9 @@ if (!$_POST) {
                 $outputs .= '
                     <div class="col-12 lg:col-6">
                         <div class="card my-7">
-                            <div class="card-header no-popover " title="' . h($row['page_name']) . '">
-                                <span class="bi bi-window-fullscreen me-3"></span>
-                                <span class="text-truncate">' . h($row['page_name']) . '</span>
+                            <div class="card-header no-popover" style="display: flex; align-items: center; min-width: 0;" title="' . h($row['page_name']) . '">
+                                <span class="bi bi-window-fullscreen me-3 flex-shrink-0" aria-hidden="true"></span>
+                                <span class="text-truncate" style="min-width: 0;">' . h($row['page_name']) . '</span>
                             </div>
                             <div class="card-body"> 
                                 <div class="row g-7">';
@@ -507,7 +507,11 @@ if (!$_POST) {
                         pg_audit_record('update', 'page', $row['page_id'], $audit_before);
                     }
                 }
-                if (empty($count_by_field)) {
+                // Text that was found but whose change was skipped is not
+                // "not found": the skip notices below say why.
+                if (empty($count_by_field) && (($fr_name_skipped + $fr_invalid_skipped + $fr_long_skipped) > 0)) {
+                    $liveform->add_notice(lang('No change was applied.'));
+                } elseif (empty($count_by_field)) {
                     $liveform->add_notice(lang('No matching text found.'));
                 } else {
                     $parts = array();
@@ -551,6 +555,9 @@ if (!$_POST) {
     $count_page_search_changes = 0;
     $page_name_conflicts = array();
     $page_name_refused = array();
+    // Pages a value was not saved for because it is longer than its column:
+    // the session is not strict, so the column would cut it without a word.
+    $page_too_long = array();
 
     // get current page data
     $query = "SELECT * FROM page" . $live_pages_where;
@@ -577,6 +584,20 @@ if (!$_POST) {
         // marks it stale (as Edit Page does) for the scheduled SEO job.
         $audit_before = null;
 
+        // A posted title or description over its 255 characters is not
+        // saved; the page is named once in the notice.
+        $too_long_for_column = function ($prefix) use ($row, &$page_too_long) {
+            $value = $_POST[$prefix . $row['page_id']] ?? '';
+
+            if (!is_scalar($value) || !pg_name_too_long((string) $value, 255)) {
+                return false;
+            }
+
+            $page_too_long[$row['page_id']] = h($row['page_name']);
+
+            return true;
+        };
+
         
         
 
@@ -589,6 +610,8 @@ if (!$_POST) {
             $new_page_name = pg_page_form_bulk_name($_POST['page_name_' . $page_id], $row['page_type']);
             if ($new_page_name === null) {
                 $page_name_refused[] = h($current_page_name);
+            } elseif (pg_name_too_long($new_page_name)) {
+                $page_too_long[$page_id] = h($current_page_name);
             } elseif ($new_page_name !== $current_page_name) {
                 // A 301/302 short link of the page's own does not hold
                 // its name: the rename deletes it below.
@@ -613,7 +636,8 @@ if (!$_POST) {
         //if page_title posted and posted page_title not equal to current one, update it.
         if(
             isset($_POST['page_title_' . $row['page_id']])
-            && $_POST['page_title_' . $row['page_id']] !== (string) $current_page_title)
+            && $_POST['page_title_' . $row['page_id']] !== (string) $current_page_title
+            && !$too_long_for_column('page_title_'))
         {
             //count how many updated.
             $count_change++;
@@ -628,7 +652,8 @@ if (!$_POST) {
         //if page_meta_description posted and posted page_meta_description not equal to current one, update it.
         if( 
             isset($_POST['meta_description_' . $row['page_id']])
-            && $_POST['meta_description_' . $row['page_id']] !== (string) $current_page_meta_description)
+            && $_POST['meta_description_' . $row['page_id']] !== (string) $current_page_meta_description
+            && !$too_long_for_column('meta_description_'))
         {
             //count how many updated.
             $count_change++;
@@ -700,6 +725,10 @@ if (!$_POST) {
     }
     if (!empty($page_name_conflicts)) {
         $liveform->add_notice(lang('Some page names could not be updated because the name is already in use') . ': ' . implode(', ', $page_name_conflicts));
+    }
+
+    if (!empty($page_too_long)) {
+        $liveform->add_notice(lang('Some values were not saved because they are longer than the field allows') . ': ' . implode(', ', $page_too_long));
     }
 
     //if page title changed, notice it.

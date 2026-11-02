@@ -1748,6 +1748,20 @@ function pg_output_email_off_close()
     return '<!--/email_off-->';
 }
 
+// The screen's name in front of the <title>, ending in " - "; '' for none.
+// Escaped: a title can carry text from outside, such as the name an OAuth
+// client registered for itself on the consent screen, and a "</title>" in
+// it would end the element and open markup. Entities already written in a
+// translated title (&amp;) are kept as they are.
+function pg_output_page_title($title)
+{
+    if (!is_string($title) || ($title === '')) {
+        return '';
+    }
+
+    return htmlspecialchars($title, ENT_QUOTES, 'UTF-8', false) . ' - ';
+}
+
 function output_header_secure($properties = false)
 {
     // Messages printed from here on are panel markup (liveform::panel_output()).
@@ -1755,10 +1769,7 @@ function output_header_secure($properties = false)
         define('PG_PANEL_OUTPUT', true);
     }
 
-    $software_page_title = '';
-    if (isset($properties['title'])) {
-        $software_page_title = $properties['title'] . ' - ';
-    }
+    $software_page_title = pg_output_page_title(is_array($properties) && isset($properties['title']) ? $properties['title'] : '');
 
     $software_title = '';
     if (!defined('PRIVATE_LABEL') or !PRIVATE_LABEL) {
@@ -1862,10 +1873,7 @@ function output_header($properties = false)
         $output_body_class = $properties['extra classes'];
     }
 
-    $software_page_title = '';
-    if (isset($properties['title'])) {
-        $software_page_title = $properties['title'] . ' - ';
-    }
+    $software_page_title = pg_output_page_title(is_array($properties) && isset($properties['title']) ? $properties['title'] : '');
 
     if (defined('ADVANCED_VISUAL_EFFECTS') && ADVANCED_VISUAL_EFFECTS == 1) {
         $output_body_class .= ' advanced-visuals';
@@ -3418,6 +3426,12 @@ function output_menu($properties = false)
             $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-bar-chart bi-me-2\'>' . lang('Shipping Report') . '</a>';
         }
 
+        // VISITORS > Site Search (visitor_search.php), once the table is there.
+        if (pg_site_search_stats_ready()) {
+            $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-12\' />';
+            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitor_search.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-search bi-me-2\'>' . lang('Site Search') . '</a>';
+        }
+
         // VISITORS > Google Search Console
         $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
         $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/search_console.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-google bi-me-2\'>' . lang('Google Search Console') . '</a>';
@@ -4052,6 +4066,7 @@ function output_menu($properties = false)
         case 'view_visitor_report.php':
         case 'view_visitor.php':
         case 'search_console.php':
+        case 'visitor_search.php':
             $active_menu = 6;
             break;
         case 'view_contacts.php':
@@ -5728,19 +5743,11 @@ function pg_page_facts($page_id, $style_id, $user, $send_to = null)
         }
 
         if ($next_page_id !== NULL) {
-            $next_page_name = get_page_name($next_page_id);
-
-            if ($next_page_name == '') {
-                $facts[] = array('label' => lang('Next Page'), 'text' => '[' . lang('Not Set') . ']');
-            } else {
-                $facts[] = array('label' => lang('Next Page'), 'text' => $next_page_name, 'url' => OUTPUT_PATH . $next_page_name);
-            }
+            $facts[] = pg_page_fact_page(lang('Next Page'), get_page_name($next_page_id), OUTPUT_PATH);
         }
 
         if (isset($page_type_properties['skip_button_next_page_id']) && ($page_type_properties['skip_button_next_page_id'] != 0)) {
-            $skip_page_name = get_page_name($page_type_properties['skip_button_next_page_id']);
-
-            $facts[] = array('label' => lang('Skip Page'), 'text' => $skip_page_name, 'url' => OUTPUT_PATH . $skip_page_name);
+            $facts[] = pg_page_fact_page(lang('Skip Page'), get_page_name($page_type_properties['skip_button_next_page_id']), OUTPUT_PATH);
         }
     }
 
@@ -5862,6 +5869,28 @@ function pg_page_facts($page_id, $style_id, $user, $send_to = null)
     }
 
     return $facts;
+}
+
+/**
+ * A page panel fact naming another page: its name, linked to the page. The
+ * name is encoded for the path, since a page name may hold "#", "?" or "%".
+ * A page that is not set or no longer exists reads "[Not Set]" with no link.
+ * Pure.
+ *
+ * @param string      $label
+ * @param string|null $page_name get_page_name() of the page, '' when none
+ * @param string      $path      site path the page names sit under
+ * @return array label / text / url
+ */
+function pg_page_fact_page($label, $page_name, $path)
+{
+    $page_name = (string) $page_name;
+
+    if ($page_name === '') {
+        return array('label' => $label, 'text' => '[' . lang('Not Set') . ']');
+    }
+
+    return array('label' => $label, 'text' => $page_name, 'url' => $path . encode_url_path($page_name));
 }
 
 /**
@@ -6892,6 +6921,11 @@ function pg_js_bundles()
         // The graph canvas core (window.PGGraphCanvas), printed before the
         // scripts that draw on it: the flow canvas first.
         'assets/js/pg_graph_canvas.min.js'         => array('assets/js/pg_graph_canvas.js'),
+        // The link resolver's browser twin (window.PGLinkResolve,
+        // includes/fn/link_resolve.php).
+        'assets/js/pg_link_resolve.min.js'         => array('assets/js/pg_link_resolve.js'),
+        // The Prototype view's hotspot collector (window.PGProtoHotspots).
+        'assets/js/pg_proto_hotspots.min.js'       => array('assets/js/pg_proto_hotspots.js'),
         'assets/js/workspace_flow.min.js'          => array('assets/js/workspace_flow.js'),
         'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_guest.js'),
         // The Workspace list of the main menu, on every panel page of the
@@ -6910,6 +6944,8 @@ function pg_js_bundles()
             'assets/js/pg_image_editor_motion.js', 'assets/js/pg_image_editor_access.js', 'assets/js/pg_image_editor_fonts.js',
             'assets/js/pg_image_editor_glyph.js'),
         'assets/js/pg_fx.min.js'                   => array('assets/js/pg_fx.src.js'),
+        // The real-user speed beacon of public pages (includes/fn/page_vitals.php).
+        'assets/js/pg_vitals.min.js'               => array('assets/js/pg_vitals.src.js'),
         // "Convert to text" under a voice message, loaded before
         // workspace.min.js and beside the chat window's script.
         'assets/js/pg_voice_text.min.js'           => array('assets/js/pg_voice_text.js'),

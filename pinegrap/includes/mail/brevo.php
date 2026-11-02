@@ -106,3 +106,35 @@ function pg_mail_brevo_send($message, $settings)
 {
     return pg_mail_transport_call('brevo', pg_mail_brevo_request($message, $settings));
 }
+
+/**
+ * A Brevo transactional webhook message: one event a message. "spam" is
+ * the recipient's complaint; "blocked", "deferred" and the rest are read as
+ * '' (Brevo's own block list, a delay, an open). Pure.
+ *
+ * https://developers.brevo.com/docs/transactional-webhooks
+ *
+ * @param string $raw
+ * @param array  $headers lower-case name => value
+ * @return array|false list of id, kind, address, message_id
+ */
+function pg_mail_brevo_webhook($raw, $headers)
+{
+    $data = json_decode((string) $raw, true);
+
+    if (!is_array($data) || !isset($data['event']) || !is_string($data['event'])) {
+        return false;
+    }
+
+    $kinds = array('hard_bounce' => 'hard', 'invalid_email' => 'hard', 'soft_bounce' => 'soft', 'spam' => 'complaint', 'complaint' => 'complaint', 'delivered' => 'delivered');
+    $address = isset($data['email']) ? (string) $data['email'] : '';
+    $message_id = isset($data['message-id']) ? (string) $data['message-id'] : '';
+    $at = isset($data['ts_event']) ? (string) $data['ts_event'] : (isset($data['date']) ? (string) $data['date'] : '');
+
+    return array(array(
+        'id'         => 'brevo:' . $data['event'] . ':' . $message_id . ':' . $address . ':' . $at,
+        'kind'       => isset($kinds[$data['event']]) ? $kinds[$data['event']] : '',
+        'address'    => $address,
+        'message_id' => $message_id,
+    ));
+}

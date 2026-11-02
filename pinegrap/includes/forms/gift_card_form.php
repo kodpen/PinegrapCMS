@@ -76,6 +76,19 @@ function pg_gift_card_form_card($liveform, $mode, $options)
         $output_help = '<div class="form-text">' . lang(array('string'=>'Original Amount: {var:1}','vars'=>array($options['original_amount'] ?? ''))) . '</div>';
     }
 
+    // The edit screen names the card it changes: its code in the list's
+    // colour, with the word the list prints under a card that no longer works.
+    $output_code = '';
+
+    if (!$add && (($options['code'] ?? '') !== '')) {
+        $output_code = '
+                                    <div class="mb-5">
+                                        <span class="fg-secondary">' . lang('Code') . ':</span>
+                                        <span class="fs-xl fw-bold ' . h($options['status_class'] ?? '') . '" id="gift_card_code">' . h($options['code']) . '</span>
+                                        ' . ($options['status_word'] ?? '') . '
+                                    </div>';
+    }
+
     $output_quantity = '';
 
     if ($add) {
@@ -92,8 +105,11 @@ function pg_gift_card_form_card($liveform, $mode, $options)
                                                     'min' => '1',
                                                     'max' => (string) ($options['quantity_max'] ?? ''),
                                                     'class' => 'form-control text-center border-start-0 border-end-0',
+                                                    'maxlength' => '4',
                                                     'inputmode'=>'numeric',
-                                                    'data-inputmask-alias'=>'decimal',
+                                                    'data-inputmask-alias'=>'integer',
+                                                    'data-inputmask-allowminus'=>'false',
+                                                    'data-inputmask-rightalign'=>'false',
                                                     'data-inputmask-placeholder'=>'0')) . '
                                                 <button class="btn material-icons plus border border-start-0" type="button" aria-label="' . h(lang('Increase')) . '">add</button>
                                             </div>
@@ -106,7 +122,7 @@ function pg_gift_card_form_card($liveform, $mode, $options)
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Gift Card Options') . '
                                 </h2>
-                                <div class="card-body">
+                                <div class="card-body">' . $output_code . '
                                     <div class="row">
                                         <div class="col-12 md:col-6 xl:col-4 my-3">
                                             <label for="' . $field . '" class="form-label">' . $output_label . '</label>
@@ -136,6 +152,7 @@ function pg_gift_card_form_card($liveform, $mode, $options)
                                                 'type' => 'textarea',
                                                 'name' => 'notes',
                                                 'id' => 'notes',
+                                                'rows' => '5',
                                                 'class' => 'form-control')) . '
                                         </div>
                                     </div>
@@ -175,12 +192,10 @@ function pg_gift_card_form_check($liveform, $mode)
     // Above the column's ceiling MySQL keeps the ceiling (or refuses the
     // write in strict mode) while the screen says the card was saved.
     if (($liveform->check_field_error($field) == false) && !pg_gift_card_form_amount_fits($amount)) {
-        $liveform->mark_error($field, lang(array('string' => 'The highest amount a gift card holds is {var:1}.', 'vars' => pg_format_input_amount(PG_GIFT_CARD_AMOUNT_MAX / 100))));
+        $liveform->mark_error($field, lang(array('string' => 'The highest amount a gift card holds is {var:1}.', 'vars' => html_entity_decode(pg_format_money(PG_GIFT_CARD_AMOUNT_MAX / 100, BASE_CURRENCY_SYMBOL), ENT_QUOTES, 'UTF-8'))));
     }
 
-    $expiration_date = $liveform->get_field_value('expiration_date');
-
-    if (($expiration_date != '') && (validate_date($expiration_date) == false)) {
+    if (pg_gift_card_form_expiration($liveform->get_field_value('expiration_date')) === '') {
         $liveform->mark_error('expiration_date', lang('Please enter a valid expiration date.'));
     }
 
@@ -188,10 +203,30 @@ function pg_gift_card_form_check($liveform, $mode)
 }
 
 /**
+ * The expiration date typed on the create or edit screen as the value the
+ * expiration_date column stores: '0000-00-00' (no expiration) when blank,
+ * the ISO date when the whole value is a real date (pg_date_input_iso():
+ * the site's day and month order with '/', '-', ',' or '.', or ISO), else
+ * ''. validate_date() found a date anywhere in the value, so '5/5/20271'
+ * passed and was stored as 0000-00-00, a card that never expires.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function pg_gift_card_form_expiration($value)
+{
+    if (is_scalar($value) && (trim((string) $value) === '')) {
+        return '0000-00-00';
+    }
+
+    return pg_date_input_iso($value);
+}
+
+/**
  * The quantity typed on the create screen as a whole number of cards above
- * 0, or false. Commas (thousands) and spaces around are dropped; a fraction,
- * an exponent or a sign is refused, since the create loop would make only
- * the whole part.
+ * 0, or false. Spaces around are dropped; a separator, a fraction, an
+ * exponent or a sign is refused, since the create loop would make only the
+ * whole part and a Turkish '1,5' read as fifteen.
  *
  * @param mixed $value
  * @return int|false
@@ -202,7 +237,7 @@ function pg_gift_card_form_quantity($value)
         return false;
     }
 
-    $quantity = trim(str_replace(',', '', (string) $value));
+    $quantity = trim((string) $value);
 
     if ((preg_match('/^[0-9]{1,9}$/', $quantity) !== 1) || ((int) $quantity < 1)) {
         return false;

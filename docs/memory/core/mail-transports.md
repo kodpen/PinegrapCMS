@@ -5,10 +5,10 @@ module: mail_transport
 ---
 
 ## What is a mail transport?
-- A provider's HTTP API that takes a message instead of the SMTP server: a driver `includes/mail/<key>.php` listed in `pg_mail_transports()` (`includes/fn/mail_transport.php`), functions `pg_mail_<key>_fields()`, `_capabilities()`, `_request($message, $settings)` and `_answer($status, $body)` (both pure), `_send()`; `_webhook()` comes with the webhooks step. Contract comment: `includes/mail/driver.php`.
+- A provider's HTTP API that takes a message instead of the SMTP server: a driver `includes/mail/<key>.php` listed in `pg_mail_transports()` (`includes/fn/mail_transport.php`), functions `pg_mail_<key>_fields()`, `_capabilities()`, `_request($message, $settings)` and `_answer($status, $body)` (both pure), `_send()`; `_webhook()` and `_webhook_verify()` read the provider's reports (`mail-transport-webhooks.md`). Contract comment: `includes/mail/driver.php`.
 - Drivers: Postmark (JSON, server token header, `MessageStream`, a separate campaign stream if named), Mailgun (multipart form built by hand: a file part from memory needs `CURLStringFile`, PHP 8.1; Basic `api:<key>`, US or EU host), Brevo (JSON, `api-key`, one Reply-To), Resend (JSON, Bearer), Amazon SES (SES v2 SendEmail, signed with SigV4 by `includes/fn/aws_sign.php`, `platform/aws-sigv4-signing.md`; a region that is not an AWS region name is refused before any call).
 - A driver that declares `raw` (SES) gets the finished MIME in `$message['mime']` (built by PHPMailer's `preSend()`, without Bcc; the recipients, Bcc included, go in `Destination`), so headers and attachments travel as over SMTP.
-- Every call goes through `pg_mail_transport_call()` → `pg_curl_run()` (60 s), refuses a body over the driver's `max_bytes` and one `json_encode()` could not build (not UTF-8).
+- No outside library (decided with the drivers): plain JSON over HTTPS, SES with the site's own SigV4. Every call goes through `pg_mail_transport_call()` → `pg_curl_run()` (60 s), refuses a body over the driver's `max_bytes` and one `json_encode()` could not build (not UTF-8).
 
 ## When does email() use one?
 - Order: the message's own `smtp`, its own `connection`, the connected account SMTP Settings chose for its kind, then the transport switched on (`pg_mail_transport()`), then the SMTP server or `mail()` as before. Nothing switched on: legacy behaviour unchanged.
@@ -24,4 +24,4 @@ module: mail_transport
 - Every save of the screen runs `pg_mail_transport_settings_save()` first; its pure `pg_mail_transport_settings_decide()` marks a required field left empty (nothing is saved then), writes only a changed or newly chosen account, keeps a stored secret when the box is empty, refuses a write without an encryption key. The audit line records the choice and the options, never the secret.
 
 ## How was it verified?
-- `tests/mail_transports_test.php`: each driver's request from a fixed message, its answers, the message read from PHPMailer, the permanent statuses, the card's decisions. No provider was called; the card was not run in a browser.
+- `tests/mail_transports_test.php` (requests, answers, message read-back, statuses, card decisions). No provider called, no browser run.

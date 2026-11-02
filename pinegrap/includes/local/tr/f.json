@@ -688,6 +688,7 @@
     "Form action": "Form eylemi",
     "Form answers": "Form yanıtları",
     "Form answers holding the address": "Adresi içeren form yanıtları",
+    "Form attachment": "Form eki",
     "Form controls are read by their name; bind the words and links around them.": "Form kontrolleri adlarıyla okunur; çevresindeki metinleri ve bağlantıları bağlayın.",
     "Form entries": "Form gönderimleri",
     "Form field without a label": "Etiketsiz form alanı",
@@ -754,6 +755,7 @@
     "Found {var:1} result(s) for: {var:2}": "{var:2} için {var:1} sonuç bulundu",
     "Found {var:1} results for: {var:2}": "{var:2} için {var:1} sonuç bulundu",
     "Found {var:1} result{suffix:1} for: {var:2}": "{var:1} sonuç bulundu: {var:2}",
+    "Found:": "Bulunan:",
     "Founder": "Kurucu",
     "Founder & CEO": "Kurucu & CEO",
     "Founder & Colourist": "Kurucu ve Renk Uzmanı",
@@ -1050,5 +1052,6 @@
     "from the saved page": "kaydedilmiş sayfadan",
     "from the variants": "varyantlardan",
     "from {var:1}": "{var:1} itibarıyla",
+    "full price": "tam fiyat",
     "furniture, woodworking, craft": "mobilya, ahşap işçiliği, el sanatı"
 }

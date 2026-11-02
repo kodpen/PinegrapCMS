@@ -116,6 +116,10 @@ function pg_curl_tls($ch)
  *   sink             an open file the body is written to instead of the
  *                    answer's 'body' (a package download); the caller opens,
  *                    closes and deletes it
+ *   upload           array('handle' => open file, 'size' => bytes): the
+ *                    request body streamed from the file (PUT of an object
+ *                    to a storage service) instead of 'body'; the caller
+ *                    opens and closes it
  *
  * $env: 'user_agent', 'proxy' (PROXY_ADDRESS or ''), 'resolve' (the
  * "host:port:ip" pin of a checked address, or '').
@@ -160,6 +164,15 @@ function pg_curl_run_options($method, $url, $options, $env)
 
     if (isset($options['body']) && $method !== 'GET' && $method !== 'HEAD') {
         $out['CURLOPT_POSTFIELDS'] = $options['body'];
+    }
+
+    // A file read by libcurl as it sends, so a large body is never held in
+    // memory. CURLOPT_UPLOAD alone would make the request a PUT; a method
+    // set above as CURLOPT_CUSTOMREQUEST still names it.
+    if (isset($options['upload']['handle'], $options['upload']['size']) && !isset($options['body'])) {
+        $out['CURLOPT_UPLOAD'] = true;
+        $out['CURLOPT_INFILE'] = $options['upload']['handle'];
+        $out['CURLOPT_INFILESIZE'] = (int) $options['upload']['size'];
     }
 
     if (!empty($options['headers'])) {
@@ -325,6 +338,11 @@ function pg_curl_run($method, $url, $options = array())
 
     if (isset($options['sink']) && !is_resource($options['sink'])) {
         $result['error'] = 'The file to write the answer to is not open.';
+        return $result;
+    }
+
+    if (isset($options['upload']) && (!isset($options['upload']['handle']) || !is_resource($options['upload']['handle']))) {
+        $result['error'] = 'The file to send is not open.';
         return $result;
     }
 

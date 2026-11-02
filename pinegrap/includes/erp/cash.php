@@ -208,6 +208,46 @@ function erp_till_outflow_refusal($cash_account_id, $amount)
 }
 
 /**
+ * Why a till cannot take a new receipt, payment or transfer, or ''.
+ *
+ * The screens list only active tills, but a form left open while its till
+ * was taken off, or a hand-made request, sent any id: the movement went to a
+ * till that no total counts, or to none at all, and the money left no trace.
+ * The wording is the external API's (erp_api_cash_till()).
+ *
+ * @param array|null $till            erp_cash_accounts row: is_active
+ * @param bool       $allow_inactive  for movements of money already held in
+ *                                    the till (a cheque's later steps)
+ * @return string
+ */
+function erp_cash_till_row_refusal($till, $allow_inactive = false)
+{
+    if (!is_array($till)) {
+        return lang('That till or bank account could not be found.');
+    }
+
+    if (!$allow_inactive && ((int) ($till['is_active'] ?? 0) !== 1)) {
+        return lang('That till or bank account is not active.');
+    }
+
+    return '';
+}
+
+/**
+ * erp_cash_till_row_refusal() for a till by its id.
+ *
+ * @param int  $cash_account_id
+ * @param bool $allow_inactive
+ * @return string
+ */
+function erp_cash_till_refusal($cash_account_id, $allow_inactive = false)
+{
+    $till = db_item("SELECT id, is_active FROM erp_cash_accounts WHERE id = '" . (int) $cash_account_id . "' LIMIT 1");
+
+    return erp_cash_till_row_refusal($till, $allow_inactive);
+}
+
+/**
  * Take money in against a customer, or pay money out to a supplier.
  *
  * The one door for both, because they are the same two rows with the arrows
@@ -230,8 +270,9 @@ function erp_till_outflow_refusal($cash_account_id, $amount)
  *                     payment_method, description, created_by, and optionally
  *                     invoice_id to close that invoice with this money (never
  *                     more than it is short of); allow_below_zero lets a
- *                     payment take a cash till below zero, for the cheque
- *                     module's own postings only
+ *                     payment take a cash till below zero, and
+ *                     allow_inactive_till lets it use a till taken off, for
+ *                     the cheque module's own postings only
  * @return array ['success' => bool, 'cash_id' => int, 'account_id' => int,
  *                'settled' => int, 'error' => string]
  */
@@ -258,6 +299,9 @@ function erp_post_receipt_check($data)
     }
     if ($cash_account_id <= 0) {
         return lang('Choose a till or bank account.');
+    }
+    if (($refusal = erp_cash_till_refusal($cash_account_id, !empty($data['allow_inactive_till']))) !== '') {
+        return $refusal;
     }
 
     if (($refusal = erp_lock_refusal((string) ($data['doc_date'] ?? date('Y-m-d')))) !== '') {
@@ -537,7 +581,8 @@ function erp_post_receipt($data)
  *
  * @param array $data  from_id, to_id, amount (kurus), doc_date, description,
  *                     created_by; allow_below_zero lets the transfer take a
- *                     cash till below zero, for the cheque module only
+ *                     cash till below zero and allow_inactive_till lets it
+ *                     use a till taken off, for the cheque module only
  * @return array ['success' => bool, 'out_id' => int, 'in_id' => int, 'error' => string]
  */
 function erp_post_transfer($data)
@@ -561,6 +606,11 @@ function erp_post_transfer($data)
     }
     if ($from_id === $to_id) {
         return $fail(lang('Choose two different accounts.'));
+    }
+    foreach (array($from_id, $to_id) as $till_id) {
+        if (($refusal = erp_cash_till_refusal($till_id, !empty($data['allow_inactive_till']))) !== '') {
+            return $fail($refusal);
+        }
     }
 
     // Money moves between two tills in one currency: a transfer that changed

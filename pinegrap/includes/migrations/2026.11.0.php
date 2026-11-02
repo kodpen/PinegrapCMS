@@ -137,6 +137,9 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_mail_bounces();            // 11.0.146
 	upgrade_2026_11_0_site_search_daily();      // 11.0.147
 	upgrade_2026_11_0_product_questions();       // 11.0.148
+	upgrade_2026_11_0_page_vitals_hourly();      // 11.0.149
+	upgrade_2026_11_0_ai_fetch_daily();          // 11.0.150
+	upgrade_2026_11_0_product_preorder();        // 11.0.151
 
 }
 
@@ -4397,6 +4400,44 @@ function upgrade_2026_11_0_site_search_daily() {
 
 }
 
+// The real-user page speed rollup (2026.11.0, 11.0.149; includes/fn/page_vitals.php).
+// One row per hour, page and width class (desktop, mobile, tablet), aggregated
+// at write time: id is the SHA-1 of "day|hour|page_id|device", raised by one
+// INSERT ... ON DUPLICATE KEY UPDATE per beacon. views counts the beacons; for
+// each of LCP, INP (milliseconds) and CLS (× 1000) the sum of the measured
+// values and how many fell into the good, needs-work and poor buckets. A
+// figure a beacon did not measure adds to none of its columns. idx_day_page
+// serves the reports of a period and of a page. Nothing about a visitor is
+// kept; the general job removes days older than 400.
+function upgrade_2026_11_0_page_vitals_hourly() {
+
+	install_create_table('page_vitals_hourly', "CREATE TABLE page_vitals_hourly (
+		id          CHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		day         DATE NOT NULL,
+		hour        TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		page_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		device      ENUM('desktop','mobile','tablet') NOT NULL DEFAULT 'desktop',
+		views       INT UNSIGNED NOT NULL DEFAULT 0,
+		lcp_sum     BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		inp_sum     BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		cls_sum     BIGINT UNSIGNED NOT NULL DEFAULT 0,
+		lcp_good    INT UNSIGNED NOT NULL DEFAULT 0,
+		lcp_needs   INT UNSIGNED NOT NULL DEFAULT 0,
+		lcp_poor    INT UNSIGNED NOT NULL DEFAULT 0,
+		inp_good    INT UNSIGNED NOT NULL DEFAULT 0,
+		inp_needs   INT UNSIGNED NOT NULL DEFAULT 0,
+		inp_poor    INT UNSIGNED NOT NULL DEFAULT 0,
+		cls_good    INT UNSIGNED NOT NULL DEFAULT 0,
+		cls_needs   INT UNSIGNED NOT NULL DEFAULT 0,
+		cls_poor    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_day_page (day, page_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Page speed: visitors\' browsers now report how fast each page loads, reacts and stays steady (LCP, INP, CLS), counted per page and hour with nothing about the visitor kept.');
+
+}
+
 // Product questions (2026.11.0, 11.0.148; includes/fn/product_questions.php).
 // A question about a product is a comment of kind 'question' on the product's
 // thread, the staff answer a comment of kind 'answer' whose answer_of names
@@ -4441,5 +4482,44 @@ function upgrade_2026_11_0_product_questions() {
 	install_add_index('comments', 'idx_answer_of', "INDEX idx_answer_of (answer_of)");
 
 	install_note('Comments: visitors can ask a question about a product and staff can answer it; every comment written before this version stays a comment.');
+
+}
+
+// The AI fetch counter (2026.11.0, 11.0.150; waf_ai_fetch_flush() in
+// waf.php). One row per day, bot and page, aggregated at write time: id is
+// the SHA-1 of "day|bot|page_id", raised by one INSERT ... ON DUPLICATE KEY
+// UPDATE per request the firewall let through from an AI user fetcher or
+// search indexer. bot is the catalogue name (ChatGPT-User) for a fetcher the
+// published ranges proved, 'unverified' for a claim they did not, always on
+// page 0; page_id is 0 for anything that is not a page. idx_day_bot serves the
+// fetches per bot and day. Derived data: a wrong bucket is truncated and the
+// next days fill again.
+function upgrade_2026_11_0_ai_fetch_daily() {
+
+	install_create_table('ai_fetch_daily', "CREATE TABLE ai_fetch_daily (
+		id       CHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		day      DATE NOT NULL,
+		bot      VARCHAR(40) NOT NULL DEFAULT '',
+		page_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		fetches  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_day_bot (day, bot)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('AI crawlers: each day\'s fetches by AI assistants and AI search indexers are now counted per page.');
+
+}
+
+// Pre-order of a product (2026.11.0, 11.0.151; includes/fn/preorder.php).
+//
+// preorder marks a product sold before its stock arrives, preorder_date the
+// day it ships from. 0 and NULL mean no pre-order, so the two columns change
+// nothing on existing rows.
+function upgrade_2026_11_0_product_preorder() {
+
+	install_add_column('products', 'preorder', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('products', 'preorder_date', "DATE NULL DEFAULT NULL");
+
+	install_note('Products: a product can be sold on pre-order until the date its stock is expected; the catalog, the cart and the order mails show the date it ships from.');
 
 }

@@ -441,3 +441,27 @@ function pg_search_tuning_apply($query, array $found, $collect, $groups, $promot
 
     return $found;
 }
+
+/**
+ * The promoted box with a line started for a term ("term => "), for the
+ * site search report's "promote" button: nothing added for an empty term or
+ * one a line already promotes. Pure.
+ *
+ * @param string $text the box as drawn
+ * @param mixed  $term
+ * @return string
+ */
+function pg_search_promoted_add_line($text, $term)
+{
+    $text = (string) $text;
+    $term = pg_site_search_term($term);
+
+    if (($term === '') || pg_search_promoted_for($term, pg_search_promoted_parse($text))) {
+        return $text;
+    }
+
+    // A comma or "=>" in the term would split it into other terms.
+    $term = trim(str_replace(array(',', '=>', '|'), ' ', $term));
+
+    return (($text === '') ? '' : rtrim($text, "\n") . "\n") . $term . ' => ';
+}

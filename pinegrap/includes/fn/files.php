@@ -83,10 +83,10 @@ function get_unique_name($properties)
     // so prepare new name differently based on the item type.
     switch ($type) {
         default:
-            // A page name is cut to fit page_name (100 characters) before its
+            // A name is cut to fit its column (100 characters) before its
             // suffix: a longer one would be cut by the column after the
             // suffix and come out as the name it was meant to differ from.
-            $new_name = pg_bracket_suffix_name($name, ($type === 'page') ? pg_name_max_length() : 0);
+            $new_name = pg_bracket_suffix_name($name, pg_unique_name_limit($type));
             break;
         case 'file':
             $position_of_last_period = mb_strrpos($name, '.');
@@ -1725,6 +1725,18 @@ function pg_public_image_stored_option($value)
 function pg_name_max_length()
 {
     return 100;
+}
+
+/**
+ * The width of the column get_unique_name() writes a name of this type to,
+ * or 0 when the copy's name is not cut. Pure.
+ *
+ * @param string $type
+ * @return int
+ */
+function pg_unique_name_limit($type)
+{
+    return in_array($type, array('page', 'folder', 'product', 'product_group', 'common_region', 'designer_region'), true) ? pg_name_max_length() : 0;
 }
 
 /**

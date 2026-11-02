@@ -20,13 +20,13 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `contacts`: done #4624
 
-- `content`: open, partly hunted (#5343 #5364: product and group address names; #5387: e-mail charset; checked: address name, transliteration, byte sizes, thumbnails, charset, month names, URL ids, form-data variables; next: `update_image_in_content()` replaces the tag with a regex replacement that eats `$n` in its attributes, then the rest)
+- `content`: open, partly hunted (#5343 #5364: product and group address names; #5387: e-mail charset; #5443: image tag rewrite after an image save; #5515: `escape_regex()` and the edit-mode image button; checked: address name, transliteration, byte sizes, thumbnails, charset, month names, URL ids, form-data variables, image tags, links disabled in content, layout render; next worker starts at `get_form_info()`, the submitted-form content functions, catalog search and `get_catalog_item_from_url()`)
 
 - `core`: open
 
-- `cron`: open
+- `cron`: open, partly read (run stamps, clock and tick budget, due-again: nothing found; next: `pg_cron_jobs()` on, the dispatcher and lanes)
 
-- `currency_rates`: open
+- `currency_rates`: open, read once with nothing found (log line, fetch, store, rate on a date); a second look or `clean`
 
 - `custom_form`: open
 

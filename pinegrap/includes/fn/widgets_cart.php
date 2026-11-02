@@ -542,6 +542,7 @@ function _apply_shopping_cart_bindings(&$node, $context)
 //   ^^__item_has_low_stock^^, ^^__item_stock_warning^^,
 //   ^^__item_inventory_quantity^^, ^^__item_out_of_stock^^,
 //   ^^__item_out_of_stock_message^^ (product's own WYSIWYG message, inlined)
+//   ^^__item_preorder_label^^ ("Pre-order, ships from <date>" or empty)
 //
 // Architecture notes:
 //   • A single empty <form id="pg-cart-form-wN"> is rendered up front; every
@@ -1151,7 +1152,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                     p.form_quantity_type,
                     p.selection_type,
                     p.inventory, p.inventory_quantity, p.backorder,
-                    p.out_of_stock_message,
+                    p.out_of_stock_message" . pg_preorder_select_sql('p', pg_product_preorder_ready()) . ",
                     p.gift_card AS product_is_gift_card,
                     oi.ship_to_id, st.ship_to_name,
                     oi.calendar_event_id, oi.recurrence_number,
@@ -1436,6 +1437,8 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                     'inventory_quantity'       => (int)($r['inventory_quantity'] ?? 0),
                     'backorder'                => (int)($r['backorder'] ?? 0),
                     'out_of_stock_message'     => (string)($r['out_of_stock_message'] ?? ''),
+                    'preorder'                 => (int)($r['preorder'] ?? 0),
+                    'preorder_date'            => (string)($r['preorder_date'] ?? ''),
                     // Recipient grouping. The query now orders by ship_to_id
                     // first (matching legacy, which loops ship_tos in id order
                     // and items within each), so rows for one recipient are
@@ -1744,6 +1747,10 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
             $row_values['__item_out_of_stock_message'] = ($_item_oos && !empty($item['out_of_stock_message']))
                 ? _pg_rich_text_to_inline((string)$item['out_of_stock_message'])
                 : '';
+
+            // "Pre-order, ships from <date>" while the product's pre-order
+            // runs (includes/fn/preorder.php); empty otherwise.
+            $row_values['__item_preorder_label'] = h(pg_preorder_label($item, pg_preorder_today()));
 
             // ── Recipient grouping ─────────────────────────────────────
             // Legacy prints a "Ship to <name>" band above each recipient's

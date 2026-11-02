@@ -74,6 +74,7 @@ function pg_user_list_filters($role, $modules = null)
     }
 
     $filters = array(
+        'default' => lang('Roles and Permissions'),
         'all_my_users' => lang('All My Users'),
         'my_registered_users' => lang('My Registered Users'),
         'my_private_users' => lang('My Private Users'),
@@ -148,7 +149,7 @@ function pg_user_list_filter_rule($filter)
     };
 
     $rules = array(
-        'my_registered_users' => array('(user.user_contact IS NOT NULL)', lang('My Registered Users'), lang('All my users created through website registration.')),
+        'my_registered_users' => array('(user.user_contact > 0)', lang('My Registered Users'), lang('All my users created through website registration.')),
         'my_private_users' => array($folder_right('1'), lang('My Private Users'), lang('All my users that have access to view one or more private folders.')),
         'my_member_users' => array("(contacts.member_id != '')", lang('My Member Users'), lang('All my users that are associated with a contact that contains a member id.')),
         'my_content_managers' => array($folder_right('2'), lang('My Content Managers'), lang('All my users that have edit access to at least one folder.')),
@@ -315,8 +316,8 @@ function pg_user_list_view($user, $filter)
     $select_id = 'user.user_id';
     $from = 'user';
     $conditions = array();
-    $heading = lang('All My Users');
-    $subheading = lang('All users that I have access too.');
+    $heading = $is_default ? lang('Roles and Permissions') : lang('All My Users');
+    $subheading = $is_default ? lang('All users that I have access to, with their roles and permissions.') : lang('All users that I have access to.');
 
     $rule = pg_user_list_filter_rule($filter);
 

@@ -2434,6 +2434,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $notify_targets = $notify_ready ? pg_notify_targets(true) : array();
     $notify_job_on = function_exists('pg_cron_job_is_enabled') && pg_cron_job_is_enabled('api_webhook_job');
 
+    // Storage card: the S3-compatible object store, one sealed connect_apps
+    // entry (includes/fn/object_storage.php). The secret is never drawn back.
+    $object_storage_ready = function_exists('pg_os_settings') && pg_connect_schema_ready() && pg_connect_can_seal();
+    $object_storage = $object_storage_ready ? pg_os_settings() : array();
+
     // Maintenance mode card (2026.11.0, 11.0.7). The end time goes into a
     // datetime-local box, which takes the site's own time zone.
     $maintenance_ready = array_key_exists('maintenance_mode', $row);

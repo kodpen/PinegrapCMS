@@ -4,19 +4,19 @@ description: Plan (owner 2026-11-02): an S3-compatible object store (S3, R2, B2,
 ---
 
 ## What is wrong now?
-- Backups copy to Google Drive, OneDrive and Dropbox only (`includes/fn/backup_cloud.php`, `pg_backup_cloud_types()`, chunked uploads through a connected account). A site on its own server or in the Docker image has no S3-compatible target, which is what hosting providers and operators give a server: a bucket with a key pair, no OAuth.
+- Backups copy to FTP, an S3-compatible bucket (remote type `s3`: one signed PUT of the whole archive with its own SigV4 copy in `includes/fn/backup.php`, no multipart, no remote prune, no restore from it) or Google Drive, OneDrive and Dropbox (`includes/fn/backup_cloud.php`, chunked uploads through a connected account).
 - Every uploaded file lives under `data/` on the web server's disk (`files` rows, served by `get_file.php` after its access checks, derivatives in `data/cache/img/`, `platform/image-derivatives.md`). A container is replaced with its disk, a second web node sees no files, and a media-heavy site fills the server. Nothing in the product can keep the bytes elsewhere.
 - Outbound calls have one wrapper (`pg_curl_run()`) and secrets one sealed pattern; missing are the S3 request signing and the two uses.
 
 ## What is proposed?
 - One client, no library: `includes/fn/aws_sign.php` (SigV4 canonical request, signing key, presigned URLs; pure, tested against the published AWS vectors) and `includes/fn/object_storage.php` (`pg_os_put()`, `pg_os_get()`, `pg_os_head()`, `pg_os_delete()`, `pg_os_list()`, multipart upload above 64 MB) over `pg_curl_run()`. Settings › Storage card: endpoint, region, bucket, key id, secret (sealed), path-style switch, key prefix, "Test" (put, read, delete one probe object). Any S3-compatible service works by endpoint; nothing names a vendor in code.
-- Backups: a fourth cloud type `s3` beside the three accounts: the copy after each backup, the remote retention sweep, the restore screen listing remote archives and bringing one into `data/temp` under the upload rules (`platform/backup-upload-extraction.md`).
+- Backups: the existing `s3` type moves onto the shared client: the copy after each backup, the remote retention sweep, the restore screen listing remote archives and bringing one into `data/temp` under the upload rules (`platform/backup-upload-extraction.md`).
 - Files: an upload is written locally as today and moved to the store by the general job (an upload never waits on the network); a `files` row says where its bytes are; readers that need a path (the image engine, PDF and office code, the editor) get a local cache copy on demand; `get_file.php` keeps every access check and then redirects to a short-lived presigned URL for a file in the store, or streams it when the request must stay on the site (a download with a changed name, a range request from the panel). Derivatives stay a local cache made from the copy. A migration tool moves existing files in batches with a cursor; Disk Usage and System Status count both places.
 
 ## Which decisions bind it?
-- Legacy unchanged: a site that configures nothing keeps every file local; the `s3` backup type is one more entry, the three accounts stay. A file never changes its address (the same-address rule of `webp-same-address.md`).
+- Legacy unchanged: a site that configures nothing keeps every file local; the `s3` backup type keeps its settings, the three accounts stay. A file never changes its address (the same-address rule of `platform/image-same-address-why.md`).
 - Access checks stay in `get_file.php`: a presigned URL is minted only after them, lives minutes, and is never written into a page or a mail (mails and feeds keep the site address, as `platform/image-same-address.md` asks).
-- The SigV4 code is shared with `mail-deliverability.md` MD3 (Amazon SES): the first to land writes `aws_sign.php`, the other reuses it.
+- The SigV4 code already exists: `includes/fn/aws_sign.php` (written for Amazon SES mail, `platform/aws-sigv4-signing.md`); reuse it.
 
 ## Which questions are decided? (#5037)
 1. `files.storage` ENUM(local, s3) and `files.storage_key`; Workspace channel files join in OS5.

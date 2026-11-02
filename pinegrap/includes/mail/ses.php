@@ -119,3 +119,76 @@ function pg_mail_ses_send($message, $settings)
 
     return pg_mail_transport_call('ses', pg_mail_ses_request($message, $settings));
 }
+
+/**
+ * An Amazon SNS message carrying an SES notification (a topic set as the
+ * identity's feedback destination, or a configuration set's event
+ * destination). A SubscriptionConfirmation gives one event of kind
+ * 'confirm' with the address to visit, when that address is an SNS host
+ * over HTTPS. A notification's Bounce (Permanent is hard, Transient and
+ * Undetermined soft), Complaint and Delivery give one event per address.
+ * Pure.
+ *
+ * https://docs.aws.amazon.com/ses/latest/dg/notification-contents.html
+ *
+ * @param string $raw
+ * @param array  $headers lower-case name => value
+ * @return array|false list of id, kind, address, message_id (and url)
+ */
+function pg_mail_ses_webhook($raw, $headers)
+{
+    $envelope = json_decode((string) $raw, true);
+
+    if (!is_array($envelope) || !isset($envelope['Type']) || !is_string($envelope['Type'])) {
+        return false;
+    }
+
+    $sns_id = isset($envelope['MessageId']) ? (string) $envelope['MessageId'] : '';
+
+    if ($envelope['Type'] === 'SubscriptionConfirmation') {
+        $url = isset($envelope['SubscribeURL']) ? (string) $envelope['SubscribeURL'] : '';
+        $host = (string) parse_url($url, PHP_URL_HOST);
+        $sns = (strncmp($url, 'https://', 8) === 0) && preg_match('/^sns\.[a-z0-9-]+\.amazonaws\.com(\.cn)?$/', $host);
+
+        return $sns ? array(array('id' => 'ses:' . $sns_id, 'kind' => 'confirm', 'address' => '', 'message_id' => '', 'url' => $url)) : array();
+    }
+
+    $message = isset($envelope['Message']) ? json_decode((string) $envelope['Message'], true) : null;
+
+    if (($envelope['Type'] !== 'Notification') || !is_array($message)) {
+        return ($envelope['Type'] === 'Notification') ? false : array();
+    }
+
+    // Identity notifications name it notificationType, event publishing eventType.
+    $type = isset($message['notificationType']) ? (string) $message['notificationType'] : (isset($message['eventType']) ? (string) $message['eventType'] : '');
+    $message_id = isset($message['mail']['messageId']) ? (string) $message['mail']['messageId'] : '';
+    $kind = '';
+    $recipients = array();
+
+    if (($type === 'Bounce') && isset($message['bounce']) && is_array($message['bounce'])) {
+        $kind = (isset($message['bounce']['bounceType']) && ($message['bounce']['bounceType'] === 'Permanent')) ? 'hard' : 'soft';
+
+        foreach ((isset($message['bounce']['bouncedRecipients']) ? (array) $message['bounce']['bouncedRecipients'] : array()) as $recipient) {
+            $recipients[] = isset($recipient['emailAddress']) ? $recipient['emailAddress'] : '';
+        }
+    } elseif (($type === 'Complaint') && isset($message['complaint']) && is_array($message['complaint'])) {
+        $kind = 'complaint';
+
+        foreach ((isset($message['complaint']['complainedRecipients']) ? (array) $message['complaint']['complainedRecipients'] : array()) as $recipient) {
+            $recipients[] = isset($recipient['emailAddress']) ? $recipient['emailAddress'] : '';
+        }
+    } elseif (($type === 'Delivery') && isset($message['delivery']['recipients'])) {
+        $kind = 'delivered';
+        $recipients = (array) $message['delivery']['recipients'];
+    }
+
+    $events = array();
+
+    foreach ($recipients as $address) {
+        if (is_string($address) && ($address !== '')) {
+            $events[] = array('id' => 'ses:' . $sns_id . ':' . $address, 'kind' => $kind, 'address' => $address, 'message_id' => $message_id);
+        }
+    }
+
+    return $events;
+}

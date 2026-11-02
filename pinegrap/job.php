@@ -160,6 +160,16 @@ pg_wishlist_trim_daily();
 
 pg_stock_notify_trim_daily();
 
+// Pre-orders whose date has come or whose stock is in end (includes/fn/
+// preorder.php): the flag is cleared, the back order stays. Once an hour.
+$preorders_ended = pg_preorder_end_hourly();
+
+if ($preorders_ended > 0) {
+
+    log_activity(lang(array('string' => 'general job ended the pre-order of {var:1} product(s)', 'vars' => array(pg_format_number($preorders_ended, 0)))), 'UNKNOWN');
+
+}
+
 // Shipping label documents whose time is up (includes/fn/shipment_labels.php):
 // 30 days after delivery or cancellation, 90 days after creation at the
 // latest. Once a day; the rows stay with their orders.
@@ -659,6 +669,34 @@ if (function_exists('pg_site_search_sweep_due') && pg_site_search_sweep_due()) {
         log_activity(lang(array(
             'string' => 'general job removed {var:1} row(s) from the site search statistics',
             'vars'   => array(pg_format_number($site_search_removed, 0)),
+        )), 'UNKNOWN');
+    }
+}
+
+// The page speed rollup (includes/fn/page_vitals.php): once a day the days
+// older than the retention period go.
+if (function_exists('pg_vitals_sweep_due') && pg_vitals_sweep_due()) {
+
+    $page_vitals_removed = pg_vitals_sweep();
+
+    if ($page_vitals_removed > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} row(s) from the page speed statistics',
+            'vars'   => array(pg_format_number($page_vitals_removed, 0)),
+        )), 'UNKNOWN');
+    }
+}
+
+// The AI fetch rollup (includes/fn/ai_visibility.php): once a day the days
+// older than the retention period go.
+if (function_exists('pg_ai_fetch_sweep_due') && pg_ai_fetch_sweep_due()) {
+
+    $ai_fetch_removed = pg_ai_fetch_sweep();
+
+    if ($ai_fetch_removed > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} row(s) from the AI fetch statistics',
+            'vars'   => array(pg_format_number($ai_fetch_removed, 0)),
         )), 'UNKNOWN');
     }
 }

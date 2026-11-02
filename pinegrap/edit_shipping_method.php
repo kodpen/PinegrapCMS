@@ -82,41 +82,17 @@ if (!$_POST) {
 
     validate_token_field();
 
-    // The zones and excluded dates go in both cases: a delete drops them, a
-    // save writes them again.
-    db_q("DELETE FROM shipping_methods_zones_xref WHERE shipping_method_id = ?", array($id)) or output_error('Query failed.');
-    db_q("DELETE FROM excluded_transit_dates WHERE shipping_method_id = ?", array($id)) or output_error('Query failed.');
-
     // if shipping method was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
-        db_q("DELETE FROM shipping_methods WHERE id = ?", array($id)) or output_error('Query failed.');
-        db_q("DELETE FROM offer_actions_shipping_methods_xref WHERE shipping_method_id = ?", array($id)) or output_error('Query failed.');
-        db_q("DELETE FROM shipping_cutoffs WHERE shipping_method_id = ?", array($id)) or output_error('Query failed.');
-        db_q("DELETE FROM ship_date_adjustments WHERE shipping_method_id = ?", array($id)) or output_error('Query failed.');
+        pg_shipping_method_delete($id, (string) ($_POST['name'] ?? '')) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'shipping method ({var:1}) was deleted','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
-        
+
     // else shipping method was not selected for delete
     } else {
         $columns = pg_shipping_method_form_columns($_POST);
-        $columns['user'] = (string) $user['id'];
 
-        $assignments = array();
-
-        foreach (array_keys($columns) as $column) {
-            $assignments[] = $column . ' = ?';
-        }
-
-        $parameters = array_values($columns);
-        $parameters[] = $id;
-
-        // update shipping method
-        db_q(
-            "UPDATE shipping_methods SET " . implode(', ', $assignments) . ", timestamp = UNIX_TIMESTAMP()
-            WHERE id = ?",
-            $parameters) or output_error('Query failed.');
-
-        pg_shipping_method_save_links($id, $_POST);
+        pg_shipping_method_save($id, $columns, (array) ($_POST['allowed_zones'] ?? array()), pg_shipping_method_excluded_dates($_POST['excluded_transit_dates'] ?? ''), (int) $user['id']) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'shipping method ({var:1}) was modified','vars'=>$columns['name'])), $_SESSION['sessionusername']);
     }

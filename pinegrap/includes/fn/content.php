@@ -3062,6 +3062,39 @@ function pg_catalog_address_excluded_ids($item_id, $item_type = '')
 }
 
 /**
+ * The path segment a catalog name becomes, before it is made unique: the
+ * letters spelled in ASCII, anything else an underscore, no runs or ends of
+ * them, 'item' when nothing is left. Pure.
+ *
+ * @param string $address_name
+ * @return string
+ */
+function pg_catalog_address_slug($address_name)
+{
+    $address_name = trim($address_name);
+    $address_name = pg_transliterate_to_ascii($address_name);
+
+    // Everything that is not allowed becomes an underscore rather than
+    // disappearing, so two different names cannot collapse into one.
+    $address_name = preg_replace('/[^A-Za-z0-9\[\]_-]/', '_', $address_name);
+
+    // A run of separators reads as one, and neither end should start or finish
+    // on one.
+    $address_name = preg_replace('/_{2,}/', '_', $address_name);
+    $address_name = trim($address_name, '_');
+
+    // An address written entirely in a script this cannot transliterate -
+    // Arabic, Greek, Chinese - reduces to nothing. An empty path segment is
+    // not an address, so fall back to a placeholder and let the duplicate
+    // numbering make each one unique.
+    if ($address_name === '') {
+        $address_name = 'item';
+    }
+
+    return $address_name;
+}
+
+/**
  * @param string     $address_name
  * @param int|string $item_id   the item being saved, '' for a new one
  * @param string     $item_type 'product' or 'product_group' when $item_id is
@@ -3088,25 +3121,7 @@ function prepare_catalog_item_address_name($address_name, $item_id = '', $item_t
     // appends "[1]" to make a duplicate unique, and this function runs again
     // over an address that already carries one. Hyphen and underscore stay
     // because they are the ordinary word separators in an address.
-    $address_name = trim($address_name);
-    $address_name = pg_transliterate_to_ascii($address_name);
-
-    // Everything that is not allowed becomes an underscore rather than
-    // disappearing, so two different names cannot collapse into one.
-    $address_name = preg_replace('/[^A-Za-z0-9\[\]_-]/', '_', $address_name);
-
-    // A run of separators reads as one, and neither end should start or finish
-    // on one.
-    $address_name = preg_replace('/_{2,}/', '_', $address_name);
-    $address_name = trim($address_name, '_');
-
-    // An address written entirely in a script this cannot transliterate -
-    // Arabic, Greek, Chinese - reduces to nothing. An empty path segment is
-    // not an address, so fall back to a placeholder and let the duplicate
-    // numbering below make each one unique.
-    if ($address_name === '') {
-        $address_name = 'item';
-    }
+    $address_name = pg_catalog_address_slug($address_name);
     // assume that the address name does not already exist until we find out otherwise
     $address_name_exists = false;
     // check products table to see if there is already a product with an address name that matches the one we want to use
@@ -3500,7 +3515,7 @@ function add_edit_button_for_images($object_type = '', $object_id = 0, $content 
             // (pg_image_editor_includes()); a copy is put in this content.
             $image_content .= '<a id="software_edit_button_for_' . h($image_id) . '" href="#" data-pg-image-edit="' . h($image_name) . '" data-pg-image-object="' . h($object_type) . '" data-pg-image-object-id="' . h($object_id) . '" data-pg-image-column="' . h($column_to_update) . '" style="background: #7a7a7a63;cursor:pointer;border: 1px dashed #fff;height:auto;position: absolute; left: 0px; top: 0px; display: none; padding: .5em; margin: 0; text-decoration: none; z-index: 9;border-bottom-right-radius: 5px !important;" title="' . lang(array('string' => 'Edit Image ({var:1}) with Software Image Editor', 'vars' => h($image_name))) . '" onmouseover="software_show_or_hide_image_edit_button(\'' . h(escape_javascript($image_id)) . '\', event);" onmouseout="software_show_or_hide_image_edit_button(\'' . h(escape_javascript($image_id)) . '\', event);"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_image_editor.png" width="50" height="auto" alt="' . lang('Software Image Editor') . '"></a>';
             // output the image we created above with a link around it
-            $content = preg_replace('/' . escape_regex($match[0]) . '/i', $image_content, $content, 1);
+            $content = preg_replace('/' . escape_regex($match[0]) . '/i', pg_regex_replacement($image_content), $content, 1);
         }
     }
     return $content;
@@ -3529,6 +3544,30 @@ function get_unique_image_id($image_name, $number = 0)
 }
 function update_image_in_content($content, $original_image_name, $new_image_name)
 {
+    return pg_update_image_in_content($content, $original_image_name, $new_image_name, function ($name) {
+        $size = @getimagesize(FILE_DIRECTORY_PATH . '/' . $name);
+
+        return is_array($size) ? array((int) $size[0], (int) $size[1]) : null;
+    });
+}
+
+/**
+ * update_image_in_content() with the image size read through $image_size
+ * (file name => array(width, height), or null when it cannot be read), so
+ * the tag rewrite itself has no file system. Pure apart from that callable.
+ *
+ * Every tag of the image is replaced as written: the rest of the content and
+ * the tag's other attributes ("$5 off" in an alt text) are never read as
+ * back references.
+ *
+ * @param string   $content
+ * @param string   $original_image_name
+ * @param string   $new_image_name
+ * @param callable $image_size
+ * @return string
+ */
+function pg_update_image_in_content($content, $original_image_name, $new_image_name, $image_size)
+{
     // if there are image tags in the content that are in the files directory, then find the image that needs to be updated and update it's attributes
     if (preg_match_all('/<img.*?src="(.*?)".*?>/i', $content, $matches) != 0) {
         // split image tags and names into their own arrays
@@ -3555,14 +3594,19 @@ function update_image_in_content($content, $original_image_name, $new_image_name
                 // If the orignal file name is different than the current file name,
                 // then update the src, title and alt attributes in the image tag.
                 if ($original_image_name != $new_image_name) {
-                    $image_content = preg_replace('/src=".*?"/i', 'src="{path}' . h($new_image_name) . '"', $image_content);
-                    $image_content = preg_replace('/alt=".*?"/i', 'alt="' . h($new_image_name) . '"', $image_content);
-                    $image_content = preg_replace('/title=".*?"/i', 'title="' . h($new_image_name) . '"', $image_content);
+                    $image_content = preg_replace('/src=".*?"/i', pg_regex_replacement('src="{path}' . h($new_image_name) . '"'), $image_content);
+                    $image_content = preg_replace('/alt=".*?"/i', pg_regex_replacement('alt="' . h($new_image_name) . '"'), $image_content);
+                    $image_content = preg_replace('/title=".*?"/i', pg_regex_replacement('title="' . h($new_image_name) . '"'), $image_content);
                 }
-                // Get the dimensions of the new image
-                $image_size = getimagesize(FILE_DIRECTORY_PATH . '/' . $new_image_name);
-                $image_width = $image_size[0];
-                $image_height = $image_size[1];
+                // Get the dimensions of the new image; a file whose size
+                // cannot be read keeps the tag's own dimensions.
+                $dimensions = call_user_func($image_size, $new_image_name);
+                if (!is_array($dimensions)) {
+                    $content = str_replace($image_tags[$key], $image_content, $content);
+                    continue;
+                }
+                $image_width = (int) $dimensions[0];
+                $image_height = (int) $dimensions[1];
                 // Update the width and height attributes in the image tag.
                 // The standard image plugin for CKEditor uses style="width: 100px; height: 100px;"
                 // instead of width="100" height="100", so we have added support for that
@@ -3574,7 +3618,7 @@ function update_image_in_content($content, $original_image_name, $new_image_name
                 $image_content = preg_replace('/height=".*?"/i', 'height="' . $image_height . '"', $image_content);
                 $image_content = preg_replace('/height:.*?px/i', 'height: ' . $image_height . 'px', $image_content);
                 // return the updated image tag
-                $content = preg_replace('/' . escape_regex($image_tags[$key]) . '/i', $image_content, $content);
+                $content = str_replace($image_tags[$key], $image_content, $content);
             }
         }
     }

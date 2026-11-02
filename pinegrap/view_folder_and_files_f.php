@@ -559,6 +559,45 @@ function pg_explorer_compare_shared_groups($a, $b)
     return pg_geo_label_compare($a['path'], $b['path']);
 }
 
+// The exact date and time of a change, beside the relative one the rows
+// carry; '' for a row with no time.
+function pg_explorer_exact_time($timestamp)
+{
+    if ((int) $timestamp <= 0) {
+        return '';
+    }
+
+    return get_absolute_time(array('timestamp' => (int) $timestamp, 'format' => 'plain_text', 'size' => 'short', 'year' => true));
+}
+
+// The name a change is shown with: the editor's contact name, else the
+// username (pg_user_display_name()). One query for every user of the
+// request, as a listing names the same few people on every row.
+function pg_explorer_editor_name($username)
+{
+    static $names = null;
+
+    $username = (string) $username;
+
+    if ($username === '') {
+        return '';
+    }
+
+    if ($names === null) {
+        $names = array();
+        $rows = db_items(
+            "SELECT user.user_username, contacts.first_name, contacts.last_name
+            FROM user
+            LEFT JOIN contacts ON contacts.id = user.user_contact");
+
+        foreach (($rows ? $rows : array()) as $row) {
+            $names[(string) $row['user_username']] = pg_user_display_name($row['first_name'], $row['last_name'], $row['user_username']);
+        }
+    }
+
+    return isset($names[$username]) ? $names[$username] : $username;
+}
+
 function pg_explorer_page_payload($page, $user)
 {
     $access_control_type = get_access_control_type($page['page_folder']);
@@ -598,7 +637,9 @@ function pg_explorer_page_payload($page, $user)
         'archived' => ($page['folder_archived'] == '1'),
         'timestamp' => (int) $page['page_timestamp'],
         'modified' => get_relative_time(array('timestamp' => $page['page_timestamp'])),
+        'modified_exact' => pg_explorer_exact_time($page['page_timestamp']),
         'username' => (string) $page['user_username'],
+        'editor' => pg_explorer_editor_name($page['user_username']),
         'url' => $url,
         'edit_url' => PATH . SOFTWARE_DIRECTORY . '/' . pg_page_edit_url($page));
 }
@@ -695,6 +736,7 @@ function pg_explorer_file_row($file_id)
             files.size,
             files.design,
             files.optimized,
+            files.attachment,
             files.image_width,
             files.image_height,
             files.timestamp,
@@ -780,6 +822,9 @@ function pg_explorer_file_payload($file, $user)
         'size_label' => convert_bytes_to_string($file['size'], 'auto'),
         'design' => ($file['design'] == '1'),
         'optimized' => ($file['optimized'] == '1'),
+        // A submitted form's upload: get_file.php refuses it to visitors
+        // even in a public folder unless a view shows its record.
+        'attachment' => (isset($file['attachment']) && ($file['attachment'] == '1')),
         'image_width' => (int) $file['image_width'],
         'image_height' => (int) $file['image_height'],
         'description' => (string) $file['description'],
@@ -788,7 +833,9 @@ function pg_explorer_file_payload($file, $user)
         'archived' => ($file['folder_archived'] == '1'),
         'timestamp' => (int) $file['timestamp'],
         'modified' => get_relative_time(array('timestamp' => $file['timestamp'])),
+        'modified_exact' => pg_explorer_exact_time($file['timestamp']),
         'username' => (string) $file['user_username'],
+        'editor' => pg_explorer_editor_name($file['user_username']),
         'url' => PATH . $file['name'],
         'can_edit' => $can_edit,
         'edit_url' => PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . (int) $file['id']);
@@ -821,7 +868,9 @@ function pg_explorer_folder_payload($folder, $counts, $user, $folders_that_user_
         'empty' => (($count['folders'] + $count['pages'] + $count['files']) == 0),
         'timestamp' => (int) $folder['folder_timestamp'],
         'modified' => ($folder['folder_timestamp'] > 0) ? get_relative_time(array('timestamp' => $folder['folder_timestamp'])) : '',
+        'modified_exact' => pg_explorer_exact_time($folder['folder_timestamp']),
         'username' => (string) $folder['user_username'],
+        'editor' => pg_explorer_editor_name($folder['user_username']),
         'can_edit' => check_edit_access($folder_id));
 }
 

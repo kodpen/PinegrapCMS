@@ -1947,6 +1947,23 @@ $(document).ready(function () {
             collectionLayout: "fixed two-column",
             columns: ":not(.noVis)",
             columnText: function (dt, idx, title) {
+                // The heading's own words: an icon or a button inside it
+                // (the Pages list's device toggle) is not part of the name.
+                var header = dt.column(idx).header();
+
+                if (header) {
+                    var copy = header.cloneNode(true);
+
+                    $(copy).find('.material-icons, .bi, [aria-hidden="true"], a, button').remove();
+
+                    var words = $.trim($(copy).text());
+
+                    // A heading that is all link keeps the text it had.
+                    if (words !== '') {
+                        title = words;
+                    }
+                }
+
                 title = title.replace("unfold_more", "");
                 title = title.replace("keyboard_arrow_down", "");
                 title = title.replace("keyboard_arrow_up", "");
@@ -5732,6 +5749,16 @@ function check_if_page_type_supports_layout(page_type) {
     }
 }
 
+// The body page of a campaign profile is required only with the HTML
+// format; with plain text its picker is hidden.
+$(document).on('change', 'input[name="format"]', function () {
+    var page = document.getElementById('page_id');
+
+    if (page && document.getElementById('schedule_base') && this.checked) {
+        page.required = (this.value === 'html');
+    }
+});
+
 function change_email_campaign_profile_action() {
     // Hide all items until we determine which need to be shown.
     $('#calendar_event_id_row').removeClass('show');
@@ -5743,9 +5770,23 @@ function change_email_campaign_profile_action() {
     $('#standard_schedule_period_and_base').removeClass('show');
     $('#subscription_fields_row').removeClass('show');
 
-    schedule_period
+    var action = document.getElementById('action').options[document.getElementById('action').selectedIndex].value;
+
+    // Only the item picker of the chosen action is required: a required
+    // picker in a hidden row would stop the browser from sending the form.
+    var item_fields = {
+        calendar_event_reserved: 'calendar_event_id',
+        custom_form_submitted: 'custom_form_page_id',
+        email_campaign_sent: 'email_campaign_profile_id',
+        product_ordered: 'product_id'
+    };
+
+    $.each(item_fields, function (item_action, field_id) {
+        $('#' + field_id).prop('required', item_action === action);
+    });
+
     // Show certain rows based on which destination type was selected.
-    switch (document.getElementById('action').options[document.getElementById('action').selectedIndex].value) {
+    switch (action) {
         case 'calendar_event_reserved':
             $('#calendar_event_id_row').addClass('show');
             $('#schedule_period').addClass('show');

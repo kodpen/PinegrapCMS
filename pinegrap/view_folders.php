@@ -225,6 +225,7 @@ if ($initial_mode == 'short_links') {
 // Strings the client-side renderer needs. Keys stay English (tr.json rule).
 $explorer_lang = array(
     'loading' => lang('Loading'),
+    'more' => lang('More'),
     'request_failed' => lang('The request failed. Please try again.'),
     'session_expired' => lang('Your session has expired. Please sign in again.'),
     // Shown in the content area when a folder listing cannot be fetched --
@@ -376,6 +377,13 @@ $explorer_lang = array(
     'type_name_to_confirm' => lang('Type the folder name to confirm.'),
     'name_does_not_match' => lang('The name does not match.'),
     'deleting' => lang('Deleting'),
+    'moving_to_bin' => lang('Moving to the Recycle Bin'),
+    'count_folders' => lang('{var:1} folder(s)'),
+    'count_pages' => lang('{var:1} page(s)'),
+    'count_files' => lang('{var:1} file(s)'),
+    'count_product_groups' => lang('{var:1} product group(s)'),
+    'count_products' => lang('{var:1} product(s)'),
+    'count_short_links' => lang('{var:1} short link(s)'),
     'delete_folder_done' => lang('The folder and its contents were deleted.'),
     'delete_folder_partial' => lang('Some items could not be deleted.'),
     'cancel' => lang('Cancel'),
@@ -439,6 +447,12 @@ $explorer_lang = array(
     'desktop_style_short' => lang('Desktop Style'),
     'mobile_style_short' => lang('Mobile Style'),
     'impact' => lang('Impact'),
+    'impact_hint' => lang('How much fixing this page would gain: (100 − SEO score) × log10(1 + views). The higher, the sooner.'),
+    'views_in_window' => lang('{var:1} views in the last {var:2} days'),
+    'impact_window_days' => (string) (function_exists('pg_seo_impact_window_days') ? pg_seo_impact_window_days() : 30),
+    'form_attachment' => lang('Form attachment'),
+    'form_attachment_hint' => lang('Sent with a submitted form: visitors cannot open it, even in a public folder, unless a view shows its record.'),
+    'inherited_style' => lang('Inherited from parent folder'),
     'views_label' => lang('{var:1} views'),
     'features' => lang('Features'),
     'sitemap_label' => lang('Site Map'),
@@ -1487,7 +1501,28 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 @media (max-width: 1023.98px) {
     #explorer_main > #explorer_tree_pane, #explorer_preview_pane { display: none !important; }
     #explorer_app { height: calc(100vh - 120px); }
+
+    /* Below the width that has room for the preview panel, "Details" (item
+       menu, Quick look) opens the same panel as a sheet over the right-hand
+       side, so size, access, folder, SEO and "Where is it used?" can be read
+       on a tablet or phone too. */
+    #explorer_app.details-sheet-open #explorer_preview_pane { display: block !important; position: fixed; top: 0; right: 0; bottom: 0; width: min(100%, 420px); min-width: 0; z-index: 1085; padding-top: 3.25rem; background: var(--pg-bg-body); box-shadow: 0 0 2rem color-mix(in srgb, var(--pg-fg-body) 25%, transparent); }
+    #explorer_app.details-sheet-open #explorer_details_backdrop { display: block; position: fixed; inset: 0; z-index: 1084; background: color-mix(in srgb, var(--pg-fg-body) 30%, transparent); }
+    #explorer_app.details-sheet-open #explorer_details_close { display: inline-flex; position: fixed; top: .6rem; right: .6rem; z-index: 1086; }
 }
+#explorer_details_close, #explorer_details_backdrop { display: none; }
+
+/* A touch screen has no Space bar or arrow keys to be told about. */
+@media (hover: none) and (pointer: coarse) {
+    #explorer_quicklook .ql-hint { display: none; }
+}
+
+/* The Files view adds the scope menu to the bar; the search box and the
+   breadcrumb give up the room for it instead of pushing the view switches,
+   the bin and the more menu onto a second row. */
+#explorer_toolbar:has(#file_scope_wrap:not(.d-none)) #explorer_search_wrap { width: auto; flex: 0 1 200px; min-width: 7rem; }
+#explorer_toolbar:has(#file_scope_wrap:not(.d-none)) #explorer_breadcrumb { min-width: 7rem; }
+#file_scope_label { display: inline-block; max-width: 9rem; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
 }</style>
 
 <div id="explorer_app" class="my-3" data-area="<?php echo $explorer_area; ?>">
@@ -1718,6 +1753,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             <div id="explorer_upload_overlay"><div class="text-center fw-bold fg-primary"><span class="bi bi-cloud-arrow-up fs-4xl d-block"></span><?php echo lang('Drop files here to upload them into this folder'); ?></div></div>
         </div>
         <div id="explorer_preview_pane" class="d-none lg:d-block"></div>
+        <div id="explorer_details_backdrop" aria-hidden="true"></div>
+        <button type="button" class="btn btn-sm btn-solid theme-secondary rounded-pill no-popover" id="explorer_details_close" aria-label="<?php echo h(lang('Close')); ?>" title="<?php echo h(lang('Close')); ?>"><i class="bi bi-x-lg"></i></button>
     </div>
     <div id="explorer_statusbar"></div>
 </div>
@@ -2155,6 +2192,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         <span class="ql-name" id="quicklook_name"></span>
         <span class="ql-meta" id="quicklook_meta"></span>
         <span class="ms-auto d-flex align-items-center gap-1" id="quicklook_tools"></span>
+        <button type="button" class="btn btn-sm btn-text theme-secondary no-popover lg:d-none" id="quicklook_details" aria-label="<?php echo h(lang('Details')); ?>" title="<?php echo h(lang('Details')); ?>"><i class="bi bi-info-circle"></i></button>
         <button type="button" class="btn btn-sm btn-text theme-secondary no-popover" id="quicklook_close" aria-label="<?php echo h(lang('Close')); ?>" title="<?php echo lang('Close'); ?>"><i class="bi bi-x-lg"></i></button>
     </div>
     <div class="ql-stage" id="quicklook_stage">
@@ -3213,7 +3251,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         row(L.erp_source, erpSourceHtml(item), true);
 
         if (item.modified) {
-            row(L.last_modified, item.modified + (item.username ? ' ' + fmt(L.modified_by, [esc(item.username)]) : ''), true);
+            row(L.last_modified, item.modified + modifiedByHtml(item), true);
         }
 
         pane.innerHTML =
@@ -4264,6 +4302,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         document.getElementById('upload_file_item').classList.toggle('d-none', catalogArea);
         document.getElementById('create_file_item').classList.toggle('d-none', catalogArea || backupArea);
+        document.getElementById('new_image_item').classList.toggle('d-none', catalogArea);
 
         // Taking a backup is offered only where backups live.
         document.getElementById('create_backup_item').classList.toggle('d-none', !backupArea);
@@ -4343,7 +4382,86 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // every draw ends scrolled to the last crumb.
     function renderBreadcrumb() {
         drawBreadcrumb();
+        fitBreadcrumb();
         showBreadcrumbEnd();
+    }
+
+    // When the crumbs do not fit, the leading ones go under a "..." menu one
+    // by one, from the left, until the rest fits; the open folder always
+    // stays. Scrolled alone, the bar showed a crumb cut in the middle of a
+    // word ("erim / ...") behind its fade. The hidden crumbs stay in the
+    // markup and the menu entries click them, so each keeps its own action
+    // (folder, catalog group, backup path, ERP folder).
+    var breadcrumbFitWidth = -1;
+
+    function refitBreadcrumb() {
+        if (document.getElementById('explorer_breadcrumb').clientWidth !== breadcrumbFitWidth) {
+            fitBreadcrumb();
+        }
+        showBreadcrumbEnd();
+    }
+
+    function fitBreadcrumb() {
+        var bar = document.getElementById('explorer_breadcrumb');
+        var list = bar.querySelector('.breadcrumb');
+
+        breadcrumbFitWidth = bar.clientWidth;
+
+        if (!list) { return; }
+
+        list.querySelectorAll('.crumb-overflow-entry').forEach(function (entry) { entry.remove(); });
+        list.querySelectorAll('.crumb-overflow').forEach(function (entry) { entry.remove(); });
+        list.querySelectorAll('.breadcrumb-item.crumb-folded').forEach(function (crumb) { crumb.classList.remove('crumb-folded', 'd-none'); });
+
+        if (list.scrollWidth <= list.clientWidth + 1) { return; }
+
+        var crumbs = Array.prototype.slice.call(list.children);
+        var last = crumbs[crumbs.length - 1];
+        var existing = list.querySelector('.breadcrumb-item.pg-menu-wrap');
+        var foldable = crumbs.filter(function (crumb) {
+            return (crumb !== last) && (crumb !== existing) && crumb.classList.contains('breadcrumb-item');
+        });
+
+        if (!foldable.length) { return; }
+
+        // The deep-path "..." menu, when there is one, takes the folded
+        // crumbs too, so the bar never shows two of them.
+        var holder = existing;
+
+        if (!holder) {
+            holder = document.createElement('li');
+            holder.className = 'breadcrumb-item pg-menu-wrap crumb-overflow';
+            holder.innerHTML = '<a href="#" draggable="false" class="pg-link-secondary" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false" role="button" aria-label="' + esc(L.more) + '">&hellip;</a><ul class="menu shadow" style="border-radius:.75rem;"></ul>';
+            list.insertBefore(holder, foldable[0]);
+        }
+
+        var menu = holder.querySelector('ul');
+        var before = menu.firstChild;
+
+        foldable.some(function (crumb) {
+            if (list.scrollWidth <= list.clientWidth + 1) { return true; }
+
+            var target = crumb.querySelector('a, button');
+            var entry = document.createElement('li');
+            var label = (crumb.textContent || '').trim();
+
+            entry.className = 'crumb-overflow-entry';
+            entry.innerHTML = '<a href="#" draggable="false" class="menu-item"><span class="bi bi-folder me-3"></span>' + esc(label) + '</a>';
+            entry.firstChild.addEventListener('click', function (event) {
+                event.preventDefault();
+                if (target) { target.click(); }
+            });
+
+            // Crumbs left of the existing menu come before its entries, the
+            // ones right of it after, so the menu keeps the path's order.
+            var leftOfMenu = !!(existing && (crumb.compareDocumentPosition(existing) & Node.DOCUMENT_POSITION_FOLLOWING));
+
+            if (leftOfMenu) { menu.insertBefore(entry, before); } else { menu.appendChild(entry); }
+
+            crumb.classList.add('crumb-folded', 'd-none');
+
+            return false;
+        });
     }
 
     // Scrolls the bar to its end and fades its left edge while crumbs are
@@ -5421,6 +5539,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var catalogColumns = insideCatalog();
         var siteColumns = !insideBackups() && !insideCatalog() && !insideShortLinks() && !insideErp();
         var shortLinkColumns = insideShortLinks();
+        // The Pages view lists nothing but pages: no size to show, a type
+        // worth naming only when it is not a standard page, and the folder
+        // and the last change are what the rows are told apart by.
+        var pagesColumns = (state.mode === 'all') && (state.allFilter === 'pages');
         var columns = [];
 
         columns.push({ id: 'icon', w: 46, cls: 'text-center', cell: function (item) { return itemIconHtml(item, false); } });
@@ -5440,13 +5562,16 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // and a mark nobody can line up with the mark on the row above is not
         // doing its job either.
         columns.push({
-            id: 'flags', key: 'seo', label: L.flags, at: 'md', w: 92, cls: 'text-center text-nowrap',
+            id: 'flags', key: 'seo', label: L.flags, at: 'md', w: (pagesColumns ? 150 : 92), cls: 'text-center text-nowrap',
             cell: function (item) { return seoChipHtml(item, 20) + ' <span class="item-flags">' + itemFlagsHtml(item) + '</span>'; }
         });
 
         columns.push({
             id: 'type', key: 'type', label: L.type, at: 'md', w: 120,
-            cell: function (item) { return '<span class="list-badge">' + esc(itemTypeLabel(item)) + '</span>'; }
+            cell: function (item) {
+                if (pagesColumns && (item.kind === 'page') && !item.type_name) { return ''; }
+                return '<span class="list-badge">' + esc(itemTypeLabel(item)) + '</span>';
+            }
         });
 
         // What an operator reads a list of documents by: who, when, how much,
@@ -5471,7 +5596,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 cell: function (item) { return erpStatusBadge(item); } });
         }
 
-        columns.push({
+        if (!pagesColumns) columns.push({
             id: 'size', key: 'size', label: (catalogColumns ? L.contents : (shortLinkColumns ? L.destination : L.size)), at: 'md', w: 140,
             cell: function (item) {
 
@@ -5553,8 +5678,18 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         columns.push({
             id: 'modified', key: 'timestamp', label: L.last_modified, at: 'lg', w: 170, cls: 'text-nowrap',
-            cell: function (item) { return (item.modified || '') + (item.username ? ' ' + fmt(L.modified_by, [esc(item.username)]) : ''); }
+            cell: function (item) { return (item.modified || '') + modifiedByHtml(item); }
         });
+
+        // In the Pages view the folder and the last change follow the marks,
+        // so they are on screen without scrolling the table sideways.
+        if (pagesColumns) {
+            var leading = columns.filter(function (column) { return (column.id === 'folder') || (column.id === 'modified'); });
+            var rest = columns.filter(function (column) { return (column.id !== 'folder') && (column.id !== 'modified'); });
+            var at = rest.map(function (column) { return column.id; }).indexOf('flags') + 1;
+
+            columns = rest.slice(0, at).concat(leading, rest.slice(at));
+        }
 
         var saved = defaults ? {} : listColumnWidths();
 
@@ -6934,6 +7069,40 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
     }
 
+    // ── Details sheet (narrow screens) ──────────────────────────────────
+    //
+    // Below 1024 px the preview panel has no room beside the grid. The same
+    // panel, filled by renderPreview(), then opens over the right-hand side
+    // on request and closes with its button, the backdrop or Escape.
+    var detailsSheetReturnFocus = null;
+
+    function detailsSheetWidth() {
+        return !!(window.matchMedia && window.matchMedia('(max-width: 1023.98px)').matches);
+    }
+
+    function detailsSheetIsOpen() {
+        return document.getElementById('explorer_app').classList.contains('details-sheet-open');
+    }
+
+    function openDetailsSheet(item) {
+        if (!item) { return; }
+
+        if (quickLookIsOpen()) { closeQuickLook(); }
+
+        detailsSheetReturnFocus = document.activeElement;
+        setSelection([item], item);
+        document.getElementById('explorer_app').classList.add('details-sheet-open');
+        document.getElementById('explorer_details_close').focus({ preventScroll: true });
+    }
+
+    function closeDetailsSheet() {
+        if (!detailsSheetIsOpen()) { return; }
+
+        document.getElementById('explorer_app').classList.remove('details-sheet-open');
+        restoreFocus(detailsSheetReturnFocus);
+        detailsSheetReturnFocus = null;
+    }
+
     function quickLookIsOpen() {
         return !document.getElementById('explorer_quicklook').classList.contains('d-none');
     }
@@ -7046,7 +7215,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 (item.tracking_code ? ('<tr><th>' + esc(L.tracking_code) + '</th><td><code>' + esc(item.tracking_code) + '</code></td></tr>') : '') +
                 (item.link_note ? ('<tr><th>' + esc(L.link_state) + '</th><td>' + esc(item.link_note) + '</td></tr>') : '') +
                 ((item.link_mode && item.link_mode !== 'permanent') ? ('<tr><th>' + esc(L.link_uses) + '</th><td>' + esc(String(item.use_count || 0)) + '</td></tr>') : '') +
-                (item.modified ? ('<tr><th>' + esc(L.last_modified) + '</th><td>' + item.modified + (item.username ? ' ' + fmt(L.modified_by, [esc(item.username)]) : '') + '</td></tr>') : '');
+                (item.modified ? ('<tr><th>' + esc(L.last_modified) + '</th><td>' + item.modified + modifiedByHtml(item) + '</td></tr>') : '');
 
             pane.innerHTML =
                 '<div class="text-center my-5">' + shortLinkIconHtml(item, true) + '</div>' +
@@ -7118,8 +7287,34 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             rows += '<tr><th>' + esc(L.permissions) + '</th><td><code>' + esc(item.permissions || '') + '</code></td></tr>';
         }
 
-        if (item.kind === 'file' && item.folder_name) {
-            rows += '<tr><th>' + esc(L.folder) + '</th><td>' + esc(item.folder_name) + '</td></tr>';
+        if (item.kind === 'file') {
+            if (item.design) {
+                rows += '<tr><th>' + esc(L.design_file) + '</th><td>' + esc(L.yes) + '</td></tr>';
+            }
+            if (item.is_image) {
+                rows += '<tr><th>' + esc(L.optimized) + '</th><td>' + (item.optimized
+                    ? '<span class="bi bi-check2-circle fg-success me-1"></span>' + esc(L.yes)
+                    : esc(L.no)) + '</td></tr>';
+            }
+            if (item.attachment) {
+                rows += '<tr><th>' + esc(L.form_attachment) + '</th><td>' + esc(L.yes) +
+                    '<div class="form-text mt-0">' + esc(L.form_attachment_hint) + '</div></td></tr>';
+            }
+        }
+
+        // The folder a page or file lives in, one click away: the flat views
+        // (Pages, Files) list them without their folders.
+        if (((item.kind === 'file') || (item.kind === 'page')) && item.folder_name && !item.short_link) {
+            rows += '<tr><th>' + esc(L.folder) + '</th><td><a href="#" draggable="false" class="pg-link-secondary" data-role="open-folder">' +
+                '<span class="bi bi-folder me-1 ' + esc(item.access_control_type || '') + '"></span>' + esc(item.folder_name) + '</a></td></tr>';
+        }
+
+        if ((item.kind === 'page') && item.home && !item.backup) {
+            rows += '<tr><th>' + esc(L.home_page) + '</th><td><span class="bi bi-house-door me-1"></span>' + esc(L.yes) + '</td></tr>';
+        }
+
+        if (((item.kind === 'file') || (item.kind === 'page')) && item.url && !item.backup && !item.short_link) {
+            rows += '<tr><th>' + esc(L.address) + '</th><td><code class="text-break user-select-all small">' + esc(fullAddress(item.url)) + '</code></td></tr>';
         }
 
         if (!item.backup) {
@@ -7142,14 +7337,18 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             rows += '<tr><th>' + esc(L.status) + '</th><td>' + (item.draft
                 ? '<span class="badge rounded-pill theme-warning" title="' + esc(L.draft_hint) + '"><span class="bi bi-eye-slash me-1"></span>' + esc(L.draft_status) + '</span>'
                 : esc(L.live_on_site)) + '</td></tr>';
-            rows += '<tr><th>' + esc(L.impact) + '</th><td>' + impactCellHtml(item) + '</td></tr>';
+            // Without an SEO section the figure stays here; with one it is
+            // written there, beside the score it is made of.
+            if (!item.seo) {
+                rows += '<tr><th>' + esc(L.impact) + '</th><td>' + impactCellHtml(item) + '</td></tr>';
+            }
             rows += '<tr><th>' + esc(L.sitemap_label) + '</th><td>' + esc(item.sitemap ? L.yes : L.no) + '</td></tr>';
             rows += '<tr><th>' + esc(L.searchable_label) + '</th><td>' + esc(item.searchable ? L.yes : L.no) + '</td></tr>';
             rows += '<tr><th>' + esc(L.comments_label) + '</th><td>' + esc(item.comments ? L.yes : L.no) + '</td></tr>';
         }
 
         if (item.modified) {
-            rows += '<tr><th>' + esc(L.last_modified) + '</th><td>' + (item.modified || '') + (item.username ? ' ' + fmt(L.modified_by, [esc(item.username)]) : '') + '</td></tr>';
+            rows += '<tr><th>' + esc(L.last_modified) + '</th><td>' + (item.modified_exact ? esc(item.modified_exact) + ' · ' : '') + (item.modified || '') + modifiedByHtml(item) + '</td></tr>';
         }
 
         var seoSection = '';
@@ -7165,6 +7364,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 (item.seo.scored ? '<span class="small fg-secondary">' + esc(L.seo_score_label) + ': ' + item.seo.score + '/100</span>'
                     : '<span class="small fg-secondary">' + esc(L.seo_not_ready) + '</span>') +
                 '</div>' + flagNotes +
+                '<div class="small mb-3"><span class="fg-secondary">' + esc(L.impact) + ':</span> ' + impactCellHtml(item, true) +
+                '<div class="form-text mt-0">' + esc(L.impact_hint) + '</div></div>' +
                 '<div id="preview_seo_detail"><div class="text-center my-3"><span class="spinner-border spinner-border-sm fg-secondary"></span></div></div>';
         }
 
@@ -7225,6 +7426,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             copyAddressButton.addEventListener('click', function () { copyAddresses([item], 'full'); });
         }
 
+        var folderLink = pane.querySelector('[data-role="open-folder"]');
+
+        if (folderLink) {
+            folderLink.addEventListener('click', function (event) {
+                event.preventDefault();
+                exitAllFiles(item.folder_id);
+            });
+        }
+
         var usageButton = pane.querySelector('[data-role="where-used"]');
 
         if (usageButton) {
@@ -7241,22 +7451,43 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         var name = info.name || L.default;
 
-        return esc(name) + (info.inherited ? ' <span class="fg-secondary">(' + esc(L.inherit) + ')</span>' : '');
+        return esc(name) + (info.inherited ? ' <span class="fg-secondary">(' + esc(L.inherited_style) + ')</span>' : '');
+    }
+
+    // " by <name>" beside a change: the editor's contact name, else the
+    // username.
+    function modifiedByHtml(item) {
+        var who = item.editor || item.username || '';
+
+        return who ? (' ' + fmt(L.modified_by, [esc(who)])) : '';
+    }
+
+    // The full address of a page or file, as text to read and copy; the
+    // query a system page carries for the panel is left out.
+    function fullAddress(url) {
+        return window.location.origin + String(url || '').split('?')[0];
     }
 
     // The Impact figure the Pages screen shows: how much fixing this page
     // would matter, weighed by its last month of traffic. Null means "cannot
     // say" (never scored, or nobody visited) — printed as a dash, exactly
     // like pg_seo_render_impact().
-    function impactCellHtml(item) {
+    // inline: the views on the same line (list rows keep one height, the
+    // panel says over which days they were counted).
+    function impactCellHtml(item, inline) {
         if (item.kind !== 'page') { return ''; }
 
         if (item.impact === null || item.impact === undefined) {
             return '<span class="fg-secondary">–</span>';
         }
 
+        if (inline) {
+            return '<span class="fw-semibold">' + item.impact + '</span>' +
+                ' <span class="small fg-secondary">· ' + esc(fmt(L.views_in_window, [item.views, L.impact_window_days])) + '</span>';
+        }
+
         return '<span class="fw-semibold">' + item.impact + '</span>' +
-            '<div class="small fg-secondary">' + esc(fmt(L.views_label, [item.views])) + '</div>';
+            ' <span class="small fg-secondary text-nowrap">· ' + esc(fmt(L.views_label, [item.views])) + '</span>';
     }
 
     // Sitemap / search / comments as three small marks, colored when on.
@@ -7974,6 +8205,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             html += menuItem('bi-box-arrow-up-right', item.kind === 'folder' ? L.open_folder : L.open_in_new_tab, 'open', multi);
             html += menuItem('bi-eye', L.quick_look + ' (Space)', 'quick_look', multi || !quickLookable(item));
 
+            // The preview panel is not on screen below its width; this opens
+            // it as a sheet.
+            if (detailsSheetWidth()) {
+                html += menuItem('bi-info-circle', L.details, 'details', multi);
+            }
+
             if (item.kind === 'file') {
                 html += menuItem('bi-pencil', L.edit, 'edit', multi || !item.can_edit);
                 if (state.mode === 'all') {
@@ -8354,6 +8591,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             case 'empty_bin': emptyRecycleBin(); break;
             case 'open': openItem(item); break;
             case 'quick_look': if (item) { openQuickLook(item); } break;
+            case 'details': if (item) { openDetailsSheet(item); } break;
             // Answered in the panel, which is opened first if it is not on
             // screen: the report is about the file that is being looked at.
             case 'pin_toggle': if (item) { togglePin(item.id, item.name); } break;
@@ -10941,7 +11179,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function startInlineRename(element, original, selectBaseOnly, commit) {
         // The list truncates this span; while it holds an input it must not.
         element.classList.add('is-renaming');
-        element.innerHTML = '<input type="text" class="form-control form-control-sm rename-input" aria-label="' + esc(L.rename) + '" value="' + esc(original) + '" />';
+        // Product and group names are varchar(100); the box stops there, so
+        // a name typed for a new group is never refused and left behind as
+        // the placeholder.
+        element.innerHTML = '<input type="text" class="form-control form-control-sm rename-input" aria-label="' + esc(L.rename) + '" value="' + esc(original) + '"' + (insideCatalog() ? ' maxlength="100"' : '') + ' />';
         var input = element.querySelector('input');
         input.focus();
 
@@ -11275,9 +11516,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 html += '<p class="empty-note">' + esc(L.delete_folder_empty) + '</p>';
             } else {
                 html += '<div class="d-flex gap-5 mb-5">' +
-                    '<span class="badge theme-secondary"><span class="bi bi-folder me-1"></span>' + counts.folders + ' ' + esc(L.folders) + '</span>' +
-                    '<span class="badge theme-secondary"><span class="bi bi-window me-1"></span>' + counts.pages + ' ' + esc(L.pages) + '</span>' +
-                    '<span class="badge theme-secondary"><span class="bi bi-file-earmark me-1"></span>' + counts.files + ' ' + esc(L.files) + '</span>' +
+                    '<span class="badge theme-secondary"><span class="bi bi-folder me-1"></span>' + esc(fmt(L.count_folders, [String(counts.folders)])) + '</span>' +
+                    '<span class="badge theme-secondary"><span class="bi bi-window me-1"></span>' + esc(fmt(L.count_pages, [String(counts.pages)])) + '</span>' +
+                    '<span class="badge theme-secondary"><span class="bi bi-file-earmark me-1"></span>' + esc(fmt(L.count_files, [String(counts.files)])) + '</span>' +
                     '</div>';
             }
 
@@ -11301,7 +11542,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 confirmButton.disabled = true;
             }
 
-            html += '<div id="folder_delete_progress" class="d-none mt-5"><div class="progress" style="height:6px;"><div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" style="width:100%"></div></div><p class="mt-3 mb-0 empty-note">' + esc(L.deleting) + '...</p></div>';
+            html += '<div id="folder_delete_progress" class="d-none mt-5"><div class="progress" style="height:6px;"><div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" style="width:100%"></div></div><p class="mt-3 mb-0 empty-note">' + esc((mode === 'bin') ? L.moving_to_bin : L.deleting) + '...</p></div>';
 
             body.innerHTML = html;
 
@@ -11339,12 +11580,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // A short link arrives dressed as a file, so it has to be counted
         // before files are, or the badge would call it one.
         var kinds = [
-            { icon: 'bi-link-45deg', label: L.short_links, match: function (item) { return !!item.short_link; } },
-            { icon: 'bi-folder', label: L.folders_word, match: function (item) { return item.kind === 'folder'; } },
-            { icon: 'bi-window', label: L.pages, match: function (item) { return item.kind === 'page'; } },
-            { icon: 'bi-file-earmark', label: L.files, match: function (item) { return (item.kind === 'file') && (!item.short_link); } },
-            { icon: 'bi-boxes', label: L.product_groups_word, match: function (item) { return item.kind === 'group'; } },
-            { icon: 'bi-box2-heart', label: L.products_word, match: function (item) { return item.kind === 'product'; } }
+            { icon: 'bi-link-45deg', label: L.count_short_links, match: function (item) { return !!item.short_link; } },
+            { icon: 'bi-folder', label: L.count_folders, match: function (item) { return item.kind === 'folder'; } },
+            { icon: 'bi-window', label: L.count_pages, match: function (item) { return item.kind === 'page'; } },
+            { icon: 'bi-file-earmark', label: L.count_files, match: function (item) { return (item.kind === 'file') && (!item.short_link); } },
+            { icon: 'bi-boxes', label: L.count_product_groups, match: function (item) { return item.kind === 'group'; } },
+            { icon: 'bi-box2-heart', label: L.count_products, match: function (item) { return item.kind === 'product'; } }
         ];
 
         var folderCount = selected.filter(function (item) { return item.kind === 'folder'; }).length;
@@ -11366,7 +11607,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var count = selected.filter(entry.match).length;
 
             if (count > 0) {
-                html += '<span class="badge theme-secondary"><span class="bi ' + entry.icon + ' me-1"></span>' + count + ' ' + esc(entry.label) + '</span>';
+                // The count is written into the sentence, so a language that
+                // keeps the noun singular after a number reads right.
+                html += '<span class="badge theme-secondary"><span class="bi ' + entry.icon + ' me-1"></span>' + esc(fmt(entry.label, [String(count)])) + '</span>';
             }
         });
 
@@ -11390,7 +11633,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 '<div class="form-text fg-danger d-none" id="folder_delete_name_error">' + esc(L.word_does_not_match) + '</div>';
         }
 
-        html += '<div id="folder_delete_progress" class="d-none mt-5"><div class="progress" style="height:6px;"><div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" style="width:100%"></div></div><p class="mt-3 mb-0 empty-note">' + esc(L.deleting) + '...</p></div>';
+        html += '<div id="folder_delete_progress" class="d-none mt-5"><div class="progress" style="height:6px;"><div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" style="width:100%"></div></div><p class="mt-3 mb-0 empty-note">' + esc((mode === 'bin') ? L.moving_to_bin : L.deleting) + '...</p></div>';
 
         body.innerHTML = html;
         confirmButton.disabled = (mode !== 'purge');
@@ -14452,7 +14695,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         if (file.modified) {
-            facts.push('<span>' + file.modified + (file.username ? ' ' + fmt(L.modified_by, [esc(file.username)]) : '') + '</span>');
+            facts.push('<span>' + file.modified + modifiedByHtml(file) + '</span>');
         }
 
         document.getElementById('file_edit_facts').innerHTML = facts.join('');
@@ -15370,10 +15613,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     // A wider or narrower bar keeps the open folder in view. Scroll does not
     // bubble and the list is redrawn, so the bar listens in the capture phase.
+    // A width change folds the crumbs again; folding itself leaves the width
+    // alone, so the observer does not call itself back.
     if (window.ResizeObserver) {
-        new ResizeObserver(showBreadcrumbEnd).observe(document.getElementById('explorer_breadcrumb'));
+        new ResizeObserver(refitBreadcrumb).observe(document.getElementById('explorer_breadcrumb'));
     } else {
-        window.addEventListener('resize', showBreadcrumbEnd);
+        window.addEventListener('resize', refitBreadcrumb);
     }
 
     document.getElementById('explorer_breadcrumb').addEventListener('scroll', function (event) {
@@ -15545,6 +15790,19 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     });
 
     document.getElementById('quicklook_close').addEventListener('click', closeQuickLook);
+    document.getElementById('quicklook_details').addEventListener('click', function () { if (quickLookItem) { openDetailsSheet(quickLookItem); } });
+    document.getElementById('explorer_details_close').addEventListener('click', closeDetailsSheet);
+    document.getElementById('explorer_details_backdrop').addEventListener('click', closeDetailsSheet);
+
+    // Escape closes the sheet before any of the screen's own Escape handling
+    // (clearing the selection) sees the key.
+    document.addEventListener('keydown', function (event) {
+        if ((event.key === 'Escape') && detailsSheetIsOpen()) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            closeDetailsSheet();
+        }
+    }, true);
 
     // Escape closes Quick Look in one press, taken on the window before the
     // tooltip of the focused Close button, whose own capture handler on the

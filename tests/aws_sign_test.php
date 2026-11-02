@@ -150,6 +150,29 @@ function test_aws_sign_authorization_headers()
 	pg_assert_same(array('X-Amz-Date: 20150830T123600Z', 'Authorization: ' . trim($expected[1])), $lines);
 }
 
+// A body not passed (a file streamed from disk) is signed by its given hash:
+// the PUT object example of the S3 documentation, whose body is
+// "Welcome to Amazon S3.".
+function test_aws_sign_authorization_with_a_given_payload_hash()
+{
+	$lines = pg_aws_authorization(
+		array('id' => 'AKIAIOSFODNN7EXAMPLE', 'secret' => 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'),
+		'us-east-1', 's3', 'PUT', 'https://examplebucket.s3.amazonaws.com/test$file.text',
+		array(array('Date', 'Fri, 24 May 2013 00:00:00 GMT'), array('x-amz-storage-class', 'REDUCED_REDUNDANCY')),
+		'', '20130524T000000Z',
+		array('payload_hash' => hash('sha256', 'Welcome to Amazon S3.'), 'normalize' => false));
+
+	pg_assert_same('X-Amz-Content-Sha256: 44ce7dd67c959e0d3524ffac1771dfbba87d2b6b4b4e99e42034a8b803f8b072', $lines[1]);
+	pg_assert_true(strpos(end($lines), 'SignedHeaders=date;host;x-amz-content-sha256;x-amz-date;x-amz-storage-class, Signature=98ad721746da40c64f1a55b78f14c238d841ea1380cd77a1b5971af0ece108bd') !== false, 'S3 PUT example signature');
+
+	// The same request with the body passed signs the same.
+	pg_assert_same($lines, pg_aws_authorization(
+		array('id' => 'AKIAIOSFODNN7EXAMPLE', 'secret' => 'wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY'),
+		'us-east-1', 's3', 'PUT', 'https://examplebucket.s3.amazonaws.com/test$file.text',
+		array(array('Date', 'Fri, 24 May 2013 00:00:00 GMT'), array('x-amz-storage-class', 'REDUCED_REDUNDANCY')),
+		'Welcome to Amazon S3.', '20130524T000000Z', array('normalize' => false)));
+}
+
 // The worked example of the AWS documentation (IAM, signing key).
 function test_aws_sign_signing_key_example()
 {

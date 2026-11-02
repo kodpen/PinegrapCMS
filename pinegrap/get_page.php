@@ -282,6 +282,10 @@ else
 // submissions for the page it sits on, and only this function can tell it
 // which page that is. First registration wins, so the later call is a no-op.
 pg_rendered_page($page_id);
+// The page an AI fetcher's request drew, for its counter (waf.php).
+if (function_exists('waf_ai_fetch_page')) {
+	waf_ai_fetch_page($page_id);
+}
 // Determine if user has edit access to page.
 // We will use this in several places below.
 if (check_edit_access($folder_id) == true)
@@ -3337,6 +3341,19 @@ if (function_exists('pg_tr_finalize')) {
 
 if (function_exists('pg_version_assets')) {
 	$content = pg_version_assets($content);
+}
+
+// The real-user speed beacon (includes/fn/page_vitals.php): only on the page a
+// visitor sees, never to staff, the panel's preview or a background render.
+// Before the page cache, so the stored copy measures its visits too.
+if (function_exists('pg_vitals_beacon_inject')) {
+	$content = pg_vitals_beacon_inject($content, $page_id, array(
+		'rendered_html_page' => $rendered_html_page,
+		'toolbar' => $toolbar,
+		'panel_preview' => $pg_panel_preview,
+		'background' => pg_seo_rendering(),
+		'staff' => isset($user) && is_array($user) && ((int) $user['role'] < 3),
+	));
 }
 
 // While the page cache is on: a page drawn the same for every anonymous

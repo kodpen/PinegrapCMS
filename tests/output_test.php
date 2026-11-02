@@ -251,3 +251,27 @@ function test_output_license_check_v1_branch_behind_the_switch()
 	pg_assert_contains('if (pg_license_key_valid($license_key)) {', $source, 'a key outside the alphabet is not sent');
 	pg_assert_contains("'https://www.kodpen.com/api2?", $source, 'the old server while the switch is off');
 }
+
+function test_output_page_fact_page_encodes_the_name_and_names_a_missing_page()
+{
+	pg_assert_same(
+		array('label' => 'Next Page', 'text' => 'Sizes_#2?_100%', 'url' => '/site/Sizes_%232%3F_100%25'),
+		pg_page_fact_page('Next Page', 'Sizes_#2?_100%', '/site/'),
+		'a name with # ? % links to that page');
+	pg_assert_same('/blog/2026/post', pg_page_fact_page('Next Page', 'blog/2026/post', '/')['url'], 'slashes stay');
+	pg_assert_same(
+		array('label' => 'Skip Page', 'text' => '[' . lang('Not Set') . ']'),
+		pg_page_fact_page('Skip Page', '', '/'),
+		'a deleted page is not set, with no link to the home page');
+	pg_assert_same('[' . lang('Not Set') . ']', pg_page_fact_page('Skip Page', null, '/')['text'], 'null name');
+}
+
+function test_output_page_title_escapes_markup_and_keeps_entities()
+{
+	pg_assert_same('Connect &lt;/title&gt;&lt;script&gt;x()&lt;/script&gt; - ', pg_output_page_title('Connect </title><script>x()</script>'), 'a registered client name cannot end the title');
+	pg_assert_same('Orders &amp; Carts - ', pg_output_page_title('Orders &amp; Carts'), 'an entity is not escaped twice');
+	pg_assert_same('Orders &amp; Carts - ', pg_output_page_title('Orders & Carts'), 'a bare ampersand is escaped');
+	pg_assert_same('Login - ', pg_output_page_title('Login'), 'plain title');
+	pg_assert_same('', pg_output_page_title(''), 'no title');
+	pg_assert_same('', pg_output_page_title(null), 'missing title');
+}

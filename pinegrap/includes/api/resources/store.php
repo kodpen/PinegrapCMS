@@ -180,7 +180,7 @@ function api_store_shipping_method_days($row, $prefix) {
 
 }
 
-function api_store_shipping_method_present($row, $zone_ids = array()) {
+function api_store_shipping_method_present($row, $zone_ids = array(), $excluded_dates = array()) {
 
 	return array(
 		'id'                => (int)$row['id'],
@@ -217,6 +217,8 @@ function api_store_shipping_method_present($row, $zone_ids = array()) {
 		'carrier_title'     => isset($row['carrier_title']) ? (string)$row['carrier_title'] : '',
 		'carrier_tax_number' => isset($row['carrier_vkn']) ? (string)$row['carrier_vkn'] : '',
 		'zone_ids'          => $zone_ids,
+		// Days nothing is in transit (holidays), Y-m-d.
+		'excluded_transit_dates' => $excluded_dates,
 		'updated_at'        => api_time($row['timestamp'])
 	);
 
@@ -258,6 +260,7 @@ function api_store_shipping_method_schema() {
 		'carrier_title'     => 'string',
 		'carrier_tax_number' => 'string',
 		'zone_ids'          => 'integer[]',
+		'excluded_transit_dates' => 'string[]',
 		'updated_at'        => 'string?'
 	);
 
@@ -287,6 +290,30 @@ function api_store_shipping_method_zone_ids($ids) {
 
 }
 
+function api_store_shipping_method_excluded_dates($ids) {
+
+	$dates = array();
+
+	$ids = array_values(array_unique(array_map('intval', $ids)));
+
+	if (empty($ids)) {
+
+		return $dates;
+
+	}
+
+	foreach (api_rows("SELECT shipping_method_id, date FROM excluded_transit_dates
+		WHERE shipping_method_id IN (" . implode(',', $ids) . ")
+		ORDER BY shipping_method_id ASC, date ASC") as $row) {
+
+		$dates[(int)$row['shipping_method_id']][] = (string)$row['date'];
+
+	}
+
+	return $dates;
+
+}
+
 function api_store_shipping_methods_list($params) {
 
 	$where = '';
@@ -299,13 +326,19 @@ function api_store_shipping_methods_list($params) {
 
 	$rows = api_rows("SELECT * FROM shipping_methods" . $where . " ORDER BY name ASC, id ASC");
 
-	$zones = api_store_shipping_method_zone_ids(array_map(function ($row) { return $row['id']; }, $rows));
+	$ids = array_map(function ($row) { return $row['id']; }, $rows);
+
+	$zones = api_store_shipping_method_zone_ids($ids);
+
+	$dates = api_store_shipping_method_excluded_dates($ids);
 
 	$out = array();
 
 	foreach ($rows as $row) {
 
-		$out[] = api_store_shipping_method_present($row, isset($zones[(int)$row['id']]) ? $zones[(int)$row['id']] : array());
+		$id = (int)$row['id'];
+
+		$out[] = api_store_shipping_method_present($row, isset($zones[$id]) ? $zones[$id] : array(), isset($dates[$id]) ? $dates[$id] : array());
 
 	}
 
@@ -315,9 +348,13 @@ function api_store_shipping_methods_list($params) {
 
 function api_store_shipping_methods_get($params) {
 
-	$id = (int)$params['id'];
+	api_store_shipping_method_answer((int)$params['id']);
 
-	$row = api_row("SELECT * FROM shipping_methods WHERE id = '" . $id . "' LIMIT 1");
+}
+
+function api_store_shipping_method_load_or_fail($id) {
+
+	$row = api_row("SELECT * FROM shipping_methods WHERE id = '" . (int)$id . "' LIMIT 1");
 
 	if ($row === null) {
 
@@ -325,9 +362,21 @@ function api_store_shipping_methods_get($params) {
 
 	}
 
+	return $row;
+
+}
+
+function api_store_shipping_method_answer($id, $status_code = 200) {
+
+	$row = api_store_shipping_method_load_or_fail($id);
+
+	$id = (int)$row['id'];
+
 	$zones = api_store_shipping_method_zone_ids(array($id));
 
-	api_ok(api_store_shipping_method_present($row, isset($zones[$id]) ? $zones[$id] : array()));
+	$dates = api_store_shipping_method_excluded_dates(array($id));
+
+	api_ok(api_store_shipping_method_present($row, isset($zones[$id]) ? $zones[$id] : array(), isset($dates[$id]) ? $dates[$id] : array()), $status_code);
 
 }
 
@@ -985,5 +1034,486 @@ function api_store_tax_zones_delete($params) {
 	api_dry_run_stop('deleted', 'tax_zone', array('id' => (int)$row['id'], 'name' => (string)$row['name']));
 
 	api_store_zone_remove_commit('tax_zone', $row);
+
+}
+
+/* ----- Shipping method writes ---------------------------------------------- */
+
+// The stored row a new shipping method starts from: enabled, street
+// addresses and PO boxes allowed, handled and in transit on weekdays,
+// offered every day all day, with no time window.
+function api_store_shipping_method_new_row() {
+
+	$row = array(
+		'name' => '', 'description' => '', 'code' => '', 'carrier_title' => '', 'carrier_vkn' => '',
+		'status' => 'enabled', 'start_time' => '1000-01-01 00:00:00', 'end_time' => '9999-12-31 23:59:59',
+		'service' => '', 'realtime_rate' => 0, 'base_rate' => 0, 'variable_base_rate' => 0,
+		'primary_weight_rate' => 0, 'primary_weight_rate_first_item_excluded' => 0,
+		'secondary_weight_rate' => 0, 'secondary_weight_rate_first_item_excluded' => 0,
+		'item_rate' => 0, 'item_rate_first_item_excluded' => 0,
+		'base_transit_days' => 0, 'adjust_transit' => 0, 'street_address' => 1, 'po_box' => 1, 'handle_days' => 0,
+		'end_of_day' => '00:00:00', 'transit_on_sunday' => 0, 'transit_on_saturday' => 0, 'protected' => 0
+	);
+
+	foreach (array(2, 3, 4) as $tier) {
+
+		$row['base_rate_' . $tier] = 0;
+		$row['base_rate_' . $tier . '_subtotal'] = 0;
+
+	}
+
+	foreach (api_store_days() as $short => $long) {
+
+		$weekday = !in_array($short, array('sat', 'sun'), true);
+
+		$row['handle_' . $short] = $weekday ? 1 : 0;
+		$row['ship_' . $short] = $weekday ? 1 : 0;
+		$row['available_on_' . $long] = 1;
+		$row['available_on_' . $long . '_cutoff_time'] = '00:00:00';
+
+	}
+
+	return $row;
+
+}
+
+// "HH:MM" as a TIME column, '' for null (all day), or null when it is not a
+// time of day.
+function api_store_time_of_day($value) {
+
+	if (($value === null) || ($value === '')) {
+
+		return '00:00:00';
+
+	}
+
+	if (!is_string($value) || !preg_match('/^([01]\d|2[0-3]):([0-5]\d)$/', $value)) {
+
+		return null;
+
+	}
+
+	return $value . ':00';
+
+}
+
+// Weekday short names (mon … sun) as a set, or null when one is not.
+function api_store_day_set($days) {
+
+	$set = array();
+
+	foreach ((array)$days as $day) {
+
+		if (!is_string($day) || !isset(api_store_days()[$day])) {
+
+			return null;
+
+		}
+
+		$set[$day] = true;
+
+	}
+
+	return $set;
+
+}
+
+// The columns a shipping method is saved with: the stored row with the API
+// fields sent laid over it. array($columns, null), or array(null,
+// array($field, $message)) for the first field that cannot be saved.
+// $params holds only the fields sent; times arrive as unix seconds.
+function api_store_shipping_method_columns($row, $params) {
+
+	$fail = function ($field, $message) { return array(null, array($field, $message)); };
+
+	$columns = array();
+
+	foreach (array('name', 'description', 'code', 'carrier_title', 'carrier_vkn', 'status', 'start_time', 'end_time', 'service', 'realtime_rate', 'base_rate', 'variable_base_rate', 'primary_weight_rate', 'primary_weight_rate_first_item_excluded', 'secondary_weight_rate', 'secondary_weight_rate_first_item_excluded', 'item_rate', 'item_rate_first_item_excluded', 'base_transit_days', 'adjust_transit', 'street_address', 'po_box', 'handle_days', 'end_of_day', 'transit_on_sunday', 'transit_on_saturday', 'protected') as $column) {
+
+		$columns[$column] = isset($row[$column]) ? (string)$row[$column] : '';
+
+	}
+
+	foreach (array(2, 3, 4) as $tier) {
+
+		$columns['base_rate_' . $tier] = (string)$row['base_rate_' . $tier];
+		$columns['base_rate_' . $tier . '_subtotal'] = (string)$row['base_rate_' . $tier . '_subtotal'];
+
+	}
+
+	foreach (api_store_days() as $short => $long) {
+
+		foreach (array('handle_' . $short, 'ship_' . $short, 'available_on_' . $long, 'available_on_' . $long . '_cutoff_time') as $column) {
+
+			$columns[$column] = (string)$row[$column];
+
+		}
+
+	}
+
+	$text = array('name' => 'name', 'description' => 'description', 'code' => 'code', 'carrier_title' => 'carrier_title');
+
+	foreach ($text as $field => $column) {
+
+		if (array_key_exists($field, $params)) {
+
+			$columns[$column] = trim((string)$params[$field]);
+
+		}
+
+	}
+
+	if ($columns['name'] === '') {
+
+		return $fail('name', lang('Enter a name.'));
+
+	}
+
+	if (array_key_exists('carrier_tax_number', $params)) {
+
+		$number = trim((string)$params['carrier_tax_number']);
+
+		$columns['carrier_vkn'] = ($number === '') ? '' : (string)pg_carrier_number_clean($number);
+
+	}
+
+	$flags = array('enabled' => 'status', 'protected' => 'protected', 'street_address' => 'street_address', 'po_box' => 'po_box', 'transit_on_saturday' => 'transit_on_saturday', 'transit_on_sunday' => 'transit_on_sunday', 'adjust_transit_for_country' => 'adjust_transit', 'realtime_rate' => 'realtime_rate');
+
+	foreach ($flags as $field => $column) {
+
+		if (array_key_exists($field, $params)) {
+
+			$on = !empty($params[$field]);
+
+			$columns[$column] = ($column === 'status') ? ($on ? 'enabled' : 'disabled') : ($on ? '1' : '0');
+
+		}
+
+	}
+
+	foreach (array('available_from' => array('start_time', '1000-01-01 00:00:00'), 'available_until' => array('end_time', '9999-12-31 23:59:59')) as $field => $target) {
+
+		if (array_key_exists($field, $params)) {
+
+			$columns[$target[0]] = (($params[$field] === '') || ($params[$field] === null)) ? $target[1] : date('Y-m-d H:i:s', (int)$params[$field]);
+
+		}
+
+	}
+
+	if (strcmp($columns['start_time'], $columns['end_time']) > 0) {
+
+		return $fail('available_until', lang('available_until must not be before available_from.'));
+
+	}
+
+	foreach (array('primary_weight_rate', 'secondary_weight_rate', 'item_rate') as $field) {
+
+		if (array_key_exists($field, $params)) {
+
+			$columns[$field] = (string)(int)$params[$field];
+
+		}
+
+	}
+
+	if (array_key_exists('first_item_excluded', $params)) {
+
+		foreach (array('primary_weight' => 'primary_weight_rate_first_item_excluded', 'secondary_weight' => 'secondary_weight_rate_first_item_excluded', 'item' => 'item_rate_first_item_excluded') as $key => $column) {
+
+			if (array_key_exists($key, (array)$params['first_item_excluded'])) {
+
+				$columns[$column] = !empty($params['first_item_excluded'][$key]) ? '1' : '0';
+
+			}
+
+		}
+
+	}
+
+	if (array_key_exists('base_rates', $params)) {
+
+		$tiers = array();
+
+		foreach ((array)$params['base_rates'] as $tier) {
+
+			if (!is_array($tier) || !isset($tier['from_subtotal'], $tier['rate']) || !is_int($tier['from_subtotal']) || !is_int($tier['rate']) || ($tier['from_subtotal'] < 0) || ($tier['rate'] < 0)) {
+
+				return $fail('base_rates', lang('base_rates must be a list of objects with from_subtotal and rate, whole minor units of 0 or more.'));
+
+			}
+
+			$tiers[$tier['from_subtotal']] = $tier['rate'];
+
+		}
+
+		ksort($tiers);
+
+		if (!isset($tiers[0]) || (count($tiers) > 4)) {
+
+			return $fail('base_rates', lang('base_rates must start with a tier from_subtotal 0 and hold at most 4 tiers.'));
+
+		}
+
+		$columns['base_rate'] = (string)$tiers[0];
+
+		unset($tiers[0]);
+
+		$columns['variable_base_rate'] = empty($tiers) ? '0' : '1';
+
+		$tier = 2;
+
+		foreach (array(2, 3, 4) as $number) {
+
+			$columns['base_rate_' . $number] = '0';
+			$columns['base_rate_' . $number . '_subtotal'] = '0';
+
+		}
+
+		foreach ($tiers as $subtotal => $rate) {
+
+			$columns['base_rate_' . $tier] = (string)$rate;
+			$columns['base_rate_' . $tier . '_subtotal'] = (string)$subtotal;
+
+			$tier++;
+
+		}
+
+	}
+
+	if (array_key_exists('realtime_service', $params)) {
+
+		$columns['service'] = (string)$params['realtime_service'];
+
+	}
+
+	// As on the screen: real-time rates need a service that has them.
+	if (($columns['service'] === '') || (substr($columns['service'], 0, 5) === 'fedex')) {
+
+		$columns['realtime_rate'] = '0';
+
+	}
+
+	foreach (array('handling_days' => 'handle_days', 'transit_days' => 'base_transit_days') as $field => $column) {
+
+		if (array_key_exists($field, $params)) {
+
+			$columns[$column] = (string)(int)$params[$field];
+
+		}
+
+	}
+
+	foreach (array('handling_on' => 'handle_', 'transit_on' => 'ship_') as $field => $prefix) {
+
+		if (array_key_exists($field, $params)) {
+
+			$set = api_store_day_set($params[$field]);
+
+			if ($set === null) {
+
+				return $fail($field, lang(array('string' => '{var:1} must be a list of weekdays: mon, tue, wed, thu, fri, sat, sun.', 'vars' => $field)));
+
+			}
+
+			foreach (array_keys(api_store_days()) as $short) {
+
+				$columns[$prefix . $short] = isset($set[$short]) ? '1' : '0';
+
+			}
+
+		}
+
+	}
+
+	if (array_key_exists('end_of_day', $params)) {
+
+		$time = api_store_time_of_day($params['end_of_day']);
+
+		if ($time === null) {
+
+			return $fail('end_of_day', lang(array('string' => '{var:1} must be a time of day as HH:MM.', 'vars' => 'end_of_day')));
+
+		}
+
+		$columns['end_of_day'] = $time;
+
+	}
+
+	if (array_key_exists('offered_on', $params)) {
+
+		$offered = array();
+
+		foreach ((array)$params['offered_on'] as $entry) {
+
+			$day = (is_array($entry) && isset($entry['day']) && is_string($entry['day'])) ? $entry['day'] : '';
+
+			$until = api_store_time_of_day(is_array($entry) && array_key_exists('until', $entry) ? $entry['until'] : null);
+
+			if (!isset(api_store_days()[$day]) || ($until === null)) {
+
+				return $fail('offered_on', lang('offered_on must be a list of objects with day (mon … sun) and until (HH:MM or null).'));
+
+			}
+
+			$offered[$day] = $until;
+
+		}
+
+		foreach (api_store_days() as $short => $long) {
+
+			$columns['available_on_' . $long] = isset($offered[$short]) ? '1' : '0';
+			$columns['available_on_' . $long . '_cutoff_time'] = isset($offered[$short]) ? $offered[$short] : '00:00:00';
+
+		}
+
+	}
+
+	return array($columns, null);
+
+}
+
+// Zone ids that all name a zone, or 422.
+function api_store_shipping_method_zone_ids_in($ids) {
+
+	$clean = array();
+
+	foreach ((array)$ids as $id) {
+
+		if (!is_int($id) || ($id < 1)) {
+
+			api_fail_validation(lang(array('string' => '{var:1} must be a list of zone ids.', 'vars' => 'zone_ids')), 'zone_ids');
+
+		}
+
+		$clean[$id] = $id;
+
+	}
+
+	if (!empty($clean) && ((int)api_value("SELECT COUNT(*) FROM zones WHERE id IN (" . implode(',', $clean) . ")") !== count($clean))) {
+
+		api_fail_validation(lang('zone_ids names a zone that does not exist (GET /store/zones).'), 'zone_ids');
+
+	}
+
+	return array_values($clean);
+
+}
+
+// Y-m-d dates, distinct and sorted, or 422.
+function api_store_shipping_method_dates_in($dates) {
+
+	$clean = array();
+
+	foreach ((array)$dates as $date) {
+
+		$parts = is_string($date) ? explode('-', $date) : array();
+
+		if ((count($parts) !== 3) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) || !checkdate((int)$parts[1], (int)$parts[2], (int)$parts[0])) {
+
+			api_fail_validation(lang(array('string' => '{var:1} must be a list of dates as YYYY-MM-DD.', 'vars' => 'excluded_transit_dates')), 'excluded_transit_dates');
+
+		}
+
+		$clean[$date] = $date;
+
+	}
+
+	ksort($clean);
+
+	return array_values($clean);
+
+}
+
+// A create, or an update of $row, checked before anything is written.
+function api_store_shipping_method_write_prepare($params, $row = null) {
+
+	list($columns, $error) = api_store_shipping_method_columns(($row === null) ? api_store_shipping_method_new_row() : $row, $params);
+
+	if ($error !== null) {
+
+		api_fail_validation($error[1], $error[0]);
+
+	}
+
+	$id = ($row === null) ? 0 : (int)$row['id'];
+
+	$zones = ($row === null) ? array() : api_store_shipping_method_zone_ids(array($id));
+
+	$dates = ($row === null) ? array() : api_store_shipping_method_excluded_dates(array($id));
+
+	return array(
+		'id'       => $id,
+		'columns'  => $columns,
+		'zone_ids' => array_key_exists('zone_ids', $params) ? api_store_shipping_method_zone_ids_in($params['zone_ids']) : (isset($zones[$id]) ? $zones[$id] : array()),
+		'dates'    => array_key_exists('excluded_transit_dates', $params) ? api_store_shipping_method_dates_in($params['excluded_transit_dates']) : (isset($dates[$id]) ? $dates[$id] : array())
+	);
+
+}
+
+function api_store_shipping_method_write_commit($prepared) {
+
+	$app = api_current_app();
+
+	$saved = pg_shipping_method_save($prepared['id'], $prepared['columns'], $prepared['zone_ids'], $prepared['dates'], (int)$app['owner']['id']);
+
+	if ($saved <= 0) {
+
+		api_fail_server();
+
+	}
+
+	$text = ($prepared['id'] <= 0)
+		? 'Shipping method ({var:1}) was created through the API by the application {var:2} (key {var:3}).'
+		: 'Shipping method ({var:1}) was changed through the API by the application {var:2} (key {var:3}).';
+
+	log_activity(lang(array('string' => $text, 'vars' => array($prepared['columns']['name'], $app['name'], $app['api_key']))), $app['owner']['username']);
+
+	return $saved;
+
+}
+
+function api_store_shipping_methods_create($params) {
+
+	$prepared = api_store_shipping_method_write_prepare($params);
+
+	api_dry_run_stop('created', 'shipping_method', array('name' => $prepared['columns']['name']));
+
+	api_store_shipping_method_answer(api_store_shipping_method_write_commit($prepared), 201);
+
+}
+
+function api_store_shipping_methods_update($params) {
+
+	$prepared = api_store_shipping_method_write_prepare($params, api_store_shipping_method_load_or_fail($params['id']));
+
+	api_dry_run_stop('updated', 'shipping_method', array('id' => $prepared['id'], 'name' => $prepared['columns']['name']));
+
+	api_store_shipping_method_answer(api_store_shipping_method_write_commit($prepared));
+
+}
+
+function api_store_shipping_methods_delete($params) {
+
+	$app = api_current_app();
+
+	$row = api_store_shipping_method_load_or_fail($params['id']);
+
+	$id = (int)$row['id'];
+
+	api_dry_run_stop('deleted', 'shipping_method', array('id' => $id, 'name' => (string)$row['name']));
+
+	if (!pg_shipping_method_delete($id, (string)$row['name'])) {
+
+		api_fail_server();
+
+	}
+
+	log_activity(lang(array(
+		'string' => 'Shipping method ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).',
+		'vars'   => array((string)$row['name'], $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+	api_ok(array('id' => $id, 'deleted' => true));
 
 }

@@ -32,7 +32,7 @@ $sort_columns = array(
     'name'               => lang('Name'),
     'code'               => lang('Code'),
     'zip_code_required'  => lang('Zip Code Required'),
-    'transit_adjustment' => lang('Transit Adjustment'),
+    'transit_adjustment' => lang('Extra Delivery Days'),
     'default'            => lang('Default'),
     'last_modified'      => lang('Last Modified'),
 );
@@ -150,7 +150,7 @@ echo
                                     <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
                                     <th>' . get_column_heading(lang('Code'), $sort_levels, '', '', 'code') . '</th>
                                     <th style="text-align: center">' . get_column_heading(lang('Zip Code Required'), $sort_levels, '', '', 'zip_code_required') . '</th>
-                                    <th style="text-align: right;">' . get_column_heading(lang('Transit Adjustment'), $sort_levels, '', '', 'transit_adjustment') . '</th>
+                                    <th style="text-align: right;">' . get_column_heading(lang('Extra Delivery Days'), $sort_levels, '', '', 'transit_adjustment') . '</th>
                                     <th style="text-align: center">' . get_column_heading(lang('Default'), $sort_levels, '', '', 'default') . '</th>
                                     <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                                 </tr>

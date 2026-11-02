@@ -62,15 +62,8 @@ if (!$_POST) {
     validate_token_field();
 
     $columns = pg_shipping_method_form_columns($_POST);
-    $columns['user'] = (int) $user['id'];
 
-    // create shipping method
-    db_q(
-        "INSERT INTO shipping_methods (" . implode(', ', array_keys($columns)) . ", timestamp)
-        VALUES (" . implode(', ', array_fill(0, count($columns), '?')) . ", UNIX_TIMESTAMP())",
-        array_values($columns)) or output_error('Query failed.');
-
-    pg_shipping_method_save_links(mysqli_insert_id(db::$con), $_POST);
+    pg_shipping_method_save(0, $columns, (array) ($_POST['allowed_zones'] ?? array()), pg_shipping_method_excluded_dates($_POST['excluded_transit_dates'] ?? ''), (int) $user['id']) or output_error('Query failed.');
 
     log_activity(lang(array('string'=>'shipping method ({var:1}) was created','vars'=>$columns['name'])), $_SESSION['sessionusername']);
 

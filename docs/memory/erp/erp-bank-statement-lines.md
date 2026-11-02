@@ -1,6 +1,6 @@
 ---
 name: erp-bank-statement-lines
-description: ERP bank statement lines: each line once (line_hash), matching to till movements, recording a line; what a refused step keeps, the send-once forms.
+description: ERP bank statement lines: each line once (line_hash), recording a line; what a refused step keeps, the send-once forms.
 ---
 
 ## How is a line taken once? (`erp_bank_statement_build()`)
@@ -14,7 +14,7 @@ description: ERP bank statement lines: each line once (line_hash), matching to t
 - On PHP 7.3+ `mb_strtolower()` turns `İ` into `i` + U+0307 (full case mapping); on 7.1/7.2 it gives a plain `i`. So `EFT ÜCRETİ` and `Eft Ücreti` hash differently on 7.3+, and moving a site from 7.2 to 7.3+ changes the hash of stored lines containing `İ`. Kept so that stored hashes still match.
 
 ## How is a line matched?
-- `erp_bank_statement_match()`: a till movement on the same till, same direction and amount, within ±3 days and not yet used by another line (`NOT EXISTS`, so two identical lines pair with two movements); the nearest date wins.
+- See erp-bank-statement-matching: candidates, cancels, undoing a match.
 
 ## How is an unmatched line recorded?
 - Nothing is written until the operator says so. `erp_bank_line_record()`: a collection or payment through `erp_post_receipt()` (closing an invoice when one is named), or an expense paid from the bank through `erp_expense_save()` (VAT 0, not deductible). Or the line is set aside (`erp_bank_line_ignore()`). No bank API: statements come as files.

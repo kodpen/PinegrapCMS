@@ -75,6 +75,134 @@ function pg_user_form_reset_password_button()
 }
 
 /**
+ * The role a posted form asks for: a whole number from 0 to 3. A value that
+ * is not one (text, a decimal, an array) is no role, so it can never be read
+ * as 0 (administrator) the way a cast or a lenient server would read it.
+ * Pure.
+ *
+ * @param mixed $value  The posted value; null when the field was not sent
+ * @param int|null $missing  The role a missing field stands for
+ * @return int|null  0-3, or null for no valid role
+ */
+function pg_user_form_role($value, $missing = null)
+{
+    if ($value === null) {
+        return $missing;
+    }
+
+    if (is_int($value)) {
+        $value = (string) $value;
+    }
+
+    if (!is_string($value) || !ctype_digit($value)) {
+        return null;
+    }
+
+    $role = (int) $value;
+
+    return ($role <= 3) ? $role : null;
+}
+
+/**
+ * The SQL value of a new user's user_contact: the posted contact id, or NULL
+ * when there is none. An empty text would be stored as 0 by a lenient
+ * server, and the Registered Users view would count the user. Pure.
+ *
+ * @param mixed $contact_id
+ * @return string
+ */
+function pg_user_contact_sql($contact_id)
+{
+    if (is_int($contact_id)) {
+        $contact_id = (string) $contact_id;
+    }
+
+    if (!is_string($contact_id) || !ctype_digit($contact_id) || ((int) $contact_id === 0)) {
+        return 'NULL';
+    }
+
+    return "'" . (int) $contact_id . "'";
+}
+
+/**
+ * The private folders whose posted expiration date is a problem: 'invalid'
+ * (a checked folder whose date is not a date, which would save no access)
+ * and 'past' (a date already gone, so the access ends as it is given). Only
+ * folders given view rights are read. Pure.
+ *
+ * @param array $post  The posted form
+ * @param array $folders  folder id => folder name
+ * @param string $today  'Y-m-d'
+ * @return array  'invalid' => names, 'past' => names
+ */
+function pg_user_form_expiry_problems($post, $folders, $today)
+{
+    $problems = array('invalid' => array(), 'past' => array());
+
+    foreach ((array) $folders as $folder_id => $folder_name) {
+        if ((($post['view_' . $folder_id] ?? '') != 1) || (($post['edit_' . $folder_id] ?? '') == 1)) {
+            continue;
+        }
+
+        if (trim((string) ($post['view_' . $folder_id . '_expiration_date'] ?? '')) === '') {
+            continue;
+        }
+
+        $rights = pg_user_form_folder_rights($post, $folder_id);
+
+        if ($rights['rights'] != 1) {
+            $problems['invalid'][] = (string) $folder_name;
+        } elseif ($rights['expiration_date'] < $today) {
+            $problems['past'][] = (string) $folder_name;
+        }
+    }
+
+    return $problems;
+}
+
+/**
+ * Stops the save with an error when a checked private folder has an
+ * expiration date that is not a date: saving it would silently give no
+ * access. Called before anything is written.
+ *
+ * @param array $post  The posted form
+ * @return array  The names of the folders whose date is already gone, for a
+ *                warning after the save
+ */
+function pg_user_form_check_expiry_dates($post)
+{
+    $folders = array();
+
+    foreach (db_items("SELECT folder_id, folder_name FROM folder") as $folder) {
+        $folders[$folder['folder_id']] = $folder['folder_name'];
+    }
+
+    $problems = pg_user_form_expiry_problems($post, $folders, date('Y-m-d'));
+
+    if ($problems['invalid']) {
+        output_error(h(lang(array('string' => 'The expiration date of these private folders is not a valid date: {var:1}', 'vars' => array(implode(', ', $problems['invalid']))))) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+    }
+
+    return $problems['past'];
+}
+
+/**
+ * The warning that names the private folders whose expiration date has
+ * already passed, '' when there are none.
+ *
+ * @param array $folder_names
+ * @return string  Escaped HTML
+ */
+function pg_user_form_past_expiry_warning($folder_names)
+{
+    if (!$folder_names) {
+        return '';
+    }
+
+    return h(lang(array('string' => 'The access to these private folders has already expired: {var:1}', 'vars' => array(implode(', ', $folder_names)))));
+}
+
+/**
  * The rights a posted form gives on one folder: edit (2), view (1), or none
  * (0). View may carry an expiration date; an invalid date gives no access.
  *

@@ -23,7 +23,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - architect.md: Decision questions (2026-10-27): an architect issue; the architect analyses it, decides technical ones, asks the owner schema and product-behaviour ones as a selectable list (erdal), records it
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt or data/config.php change; warn above 1,000 product lines
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
-- coordinator-limits.md: Coordinator rules: model and effort of coordinators and workers, quota guard before a worker starts, 4 to 10 workers per coordinator by the 5-hour quota, a new worker for a decided draft PR
+- coordinator-limits.md: Coordinator rules: model and effort, the quota guard before a worker starts, 4 to 10 workers by the 5-hour quota, a new worker for a decided draft PR, hand-over by a desktop session at depth 6
 - coordinator-no-plans.md: What a coordinator gives its workers when no plan step is free: open issues first, then a module-by-module bug hunt, then a new design template
 - coordinator-quota.md: Coordinator worker count by the 5-hour quota (owner, 2026-11-02): 8 at a window's start, 4 to 10, retuned each hour against 20% a hour, read from the sessions' cost
 - coordinator-todo-list.md: Coordinator's to-do list (2026-10-27): one item per worker PR in the list shown in its own window, added when the draft is on GitHub, struck through once the PR is merged
@@ -45,8 +45,9 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-16.md: Decisions list, product part 16 (2026-11-01 on): design templates finished (comments, events, testimonials); Turkish address fields (İl and İlçe); image editor animation and video
 - decisions-made-product-17.md: Decisions list, product part 17 (2026-11-01 midday on): WebP at a picture's own address; the new dashboard's four questions and its gauge; the Turkish district list and country place packs
 - decisions-made-product-18.md: Decisions list, product part 18 (2026-11-01 afternoon on): search and audits; editor presentation and silent video; redacted Workspace replace; a thank-you page behind the registration gate
-- decisions-made-product-19.md: Decisions list, product part 19 (2026-11-02 on): the owner answers of the 2026-11 feature plans (booking, importers, forms, mail complaints, Fediverse, stock, EU VAT)
+- decisions-made-product-19.md: Decisions list, product part 19 (2026-11-02 on): the owner answers of the 2026-11 feature plans (booking, importers, forms, mail complaints, Fediverse, stock, EU VAT, TLS settings)
 - decisions-made-product-2.md: Decisions list, product part 2 (2026-10-29 on): guest account and receipt of a webhook-completed order; PayTR instalments; layout editor of a page not on a visual design; carrier drivers
+- decisions-made-product-20.md: Decisions list, product part 20 (2026-11-02 on): voice to assistants (who writes a recording out, when an answer is spoken) and the owner answers that follow
 - decisions-made-product-3.md: Decisions list, product part 3 (2026-10-29 on): SVG and ZPL labels, the first international label driver, get_catalog.php's dead top-item block, the PHP 5 remnants, converted common regions' rows
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14

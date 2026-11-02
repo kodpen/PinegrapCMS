@@ -71,6 +71,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - calendar-location-availability.md: How check_calendar_event_location_availability() finds a room already booked, including recurring, overnight and multi-day events
 - calendar-shared-form.md: The calendar create and edit screens share includes/forms/calendar_form.php: what it holds and what stays in the screens
 - calendar-view-date.md: The date a calendar view is asked for (?date=, kept in the session): format, check and why it is written with two-digit month and day
+- catalog-new-group-address.md: Catalog Manager New Product Group takes its address from its first name; delete badges carry the count in the sentence, the bin progress says so, New image hidden in the catalog
 - catalog-rename-live-row.md: Catalog Manager rename (grid, tree, Bulk Rename) refuses a product or group that is deleted or in the Recycle Bin
 - chart-destroy-before-markup-change.md: Destroy Chart.js charts (destroy_widget_charts in welcome.php) before .html()/.remove()/.append() replaces markup with canvases, or instances leak.
 - chart-text-equivalents.md: Text copies of canvas-only and tooltip-only figures: orders Top 5, Search Console by day, Daily Traffic, Sales Map table, seven-day bars; Sales Map role=img on the map layer
@@ -145,6 +146,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - edit-user-return-key.md: Return in an Edit User field saves through a hidden nameless first submit; the Create Contact button saves the form first, then creates and opens the contact
 - email-campaign-profile-follow-ring.md: A campaign profile may not follow itself or a profile that follows it, on the edit screen and in the import
 - email-campaign-profile-gone-trigger.md: A campaign profile whose trigger item is deleted is marked "(deleted)" in the list and CSV, noted on its edit screen; Delete names its followers
+- email-campaign-profile-row-rules.md: How campaign profile values are checked on the form and the CSV import, midnight, length, required pickers
 - email-campaign-profile-shared-form.md: The campaign profile create and edit screens share includes/forms/email_campaign_profile_form.php
 - email-campaign-send-window.md: The Send E-mail Campaign pop-up draws once and sends its batches over fetch (?format=json) instead of a meta refresh; its bar is named, the count and finish announced
 - email-campaign-shared-form.md: The e-mail campaign create and edit screens share includes/forms/email_campaign_form.php: its helpers, the read-only flag, what stays in the screens
@@ -156,12 +158,14 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - explorer-bulk-rename.md: File Manager Bulk Rename shows, compares and counts file names as prepare_file_name() stores them, via explorer_rename's write-nothing preview; Apply waits for it
 - explorer-context-menu-visible.md: The file manager's right-click menu is a Bootstrap 6 .menu shown by display, not .show, so the screen draws it and its flyouts visible itself; a right click seemed dead before
 - explorer-copy-page-right.md: File Manager folder copy and page paste skip pages a role-3 user without 'Create pages' may not copy, and stay JSON
+- explorer-details-rows.md: File Manager details panel rows for pages and files (folder link, address, home, design, optimized, form attachment, exact time and editor name, impact in the SEO section) and the Pages view columns
 - explorer-drawer-names.md: File and Catalog Manager drawer rows drawn by script name themselves: access selects per user, commerce switch groups, shipping-zone lists, bulk description, backup upload path, file window code field
 - explorer-grid-tiles.md: Explorer grid tiles (view_folders.php, catalog and files): the tile size scale, picture vs glyph, the missing-picture plate sized from --pg-tile-icon, the narrow pill it fixed (PR #2200)
 - explorer-keyboard.md: File manager (view_folders.php) from the keyboard: shortcuts leave focused controls alone, crumbs with href, Quick Look focus and Tab trap, the context menu from ContextMenu/Shift+F10 (#2783)
 - explorer-list-headings.md: File manager list view (view_folders.php): headings sort from a button and carry aria-sort; column edges resize by keyboard, any pointer, double-click fit and a menu reset
 - explorer-locale-order.md: File and Catalog Manager (view_folders.php) sort text keys with the panel language's Intl.Collator and match with foldText() (İ/I/ı/i alike); the Shared view's groups sort by pg_geo_label_compare()
 - explorer-menu-tree.md: The File Manager's and the Catalog Manager's tree in their main menu panels: moved in on the explorer's own screen, links elsewhere (explorer_side.js, the explorer_side action), gates, per-area keys
+- explorer-narrow-screens.md: File Manager below 1024 px and in a crowded toolbar: the details sheet, no keyboard hint on touch, breadcrumb folding under "...", the Files view's one-row toolbar
 - explorer-page-type-name.md: The File Manager writes a page's type in the panel language ("Page · Custom Form"), from the payload's type_name, and sorts the Type column by it
 - explorer-picker-state.md: File and Catalog Manager pickers and menu ticks expose their state (aria-pressed, aria-current); transfer and channel picks keep focus; empty lists announced
 - explorer-search-state.md: File manager (view_folders.php) search and filters: status bar count, the hidden status region and live notices, selection strip, preview pane; the hover bubble's check after a delete (#2053)
@@ -261,6 +265,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - notifications-one-inbox.md: The bell as the panel's one inbox (#3817): All, Site, Workspace filters, a flow's runs folded, the meeting call, pgBellOpen(), the Workspace list's Inbox opening it with the row's count
 - offer-code-key-codes.md: A saved offer's code change moves its key codes to the new code (unless another offer keeps the old one); the editor warns while the code changes; All Key Codes names an orphan
 - offer-editor.md: Offer editor (edit_offer.php, offer_editor.js) rules: single JSON save, auto names, copy shared rows, two-sided type registry, write order, currency entity.
+- offers-list-chips.md: Offers list (view_offers.php) Flow chips and status filter chips: gift only when free, both usage limits, optional chips drawn hidden and shown by recount(), the offer-only 'Shipping {var:1}' key
 - order-filter-names.md: Advanced Filters panel: printed after the toolbar on every list; on Orders, filter_ ids named by labels, Date Type name, no address autofill, phone and e-mail keyboards
 - order-report-totals.md: Order Report figures: gift card, card surcharge and installment charge columns so every row adds up to Total; carts read from their active lines in every summarize-by
 - order-screen-destinations.md: Where View Order's Save, Delete and back arrow go (send_to, else All Orders), and how its Paraşüt and label reloads keep send_to
@@ -274,6 +279,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - page-form-number-ranges.md: Page form System Options number boxes (quiz pass percentage, day counts, photo gallery thumbnail size) refused out of range by pg_page_form_number_errors() instead of cut by their columns
 - page-form-refused-save.md: Create Page and Edit Page come back with what was typed when a save is refused: the stored post, the redraw helpers in includes/forms/page_form.php, what is not redrawn
 - page-shared-form.md: The page create and edit screens share includes/forms/page_form.php: the type picker and System Options card, and the save checks; what differs and what stays in the screens
+- pages-list-bulk-edit-fixes.md: Pages list and Mass Edit fixes (#5288-#5293): a deleted page in Delete Selected, too long values, Find & Replace skips, stale SEO scores, column names and row labels
 - panel-accessible-names.md: Names screen readers get in the panel: translated aria-labels, labels that point at a field, the one required marker, chip and select2 inputs, the settings autofill decoy, user-coloured badges (#2063)
 - panel-avatar-sites.md: Where the panel draws people as the Bootstrap 6 Avatar (step B9j slices) and where the picture of letters (pg_initials_avatar_url()) stays
 - panel-avatar.md: The panel Avatar (pg_avatar_markup()): letters on eight theme tones, grey square for a nameless login, presence dot, no empty src; initials and tone on person briefs
@@ -413,6 +419,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - uppercase-heading-brand-names.md: English brand and product names inside text-uppercase titles carry lang="en", or the Turkish panel prints WİNDOWS, MAİLCHİMP, MİCROSOFT (#3613)
 - user-list-folder-filters.md: Users list filters My Private Users and My Content Managers: one row per user, managers listed without folder rights, the fault the PR fixed
 - user-permission-rows.md: Permission rows in add_user/edit_user/import_users (includes/user_permissions.php): value rules, gate_field/gate_scope, drawer panels, top layer, multiselect pitfalls.
+- user-screen-checks.md: The checks of the user create, edit, import and bulk delete screens: role, private folder dates, notify mail, registered filter, default view, repeated headings
 - user-screens-names-and-dates.md: User and session screens: session and password dates through get_absolute_time(), the users list checkbox, yes mark and name-menu names, badge label and folder expiry names
 - user-shared-form.md: The user create and edit screens share includes/forms/user_form.php (rights cards, folder rights, access save)
 - verified-shipping-address-shared-form.md: The verified shipping address create and edit screens share includes/forms/verified_shipping_address_form.php: what it holds, what stays in the screens

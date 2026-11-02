@@ -36,7 +36,7 @@ function pg_mail_mailgun_fields()
 
 function pg_mail_mailgun_capabilities()
 {
-    return array('max_bytes' => 26214400, 'webhook' => true);
+    return array('max_bytes' => 26214400, 'webhook' => true, 'webhook_signed' => true);
 }
 
 /**
@@ -131,4 +131,74 @@ function pg_mail_mailgun_answer($status, $body)
 function pg_mail_mailgun_send($message, $settings)
 {
     return pg_mail_transport_call('mailgun', pg_mail_mailgun_request($message, $settings));
+}
+
+/**
+ * Whether a Mailgun webhook message was signed with the domain's webhook
+ * signing key: HMAC-SHA256 of timestamp and token, in hex. Older than
+ * PG_MAIL_WEBHOOK_MAX_AGE is a replay. Pure.
+ *
+ * https://documentation.mailgun.com/docs/mailgun/user-manual/events/webhooks/#securing-webhooks
+ *
+ * @param string $raw
+ * @param array  $headers lower-case name => value
+ * @param string $signing the webhook signing key
+ * @param int    $now
+ * @return string ok, stale or bad
+ */
+function pg_mail_mailgun_webhook_verify($raw, $headers, $signing, $now)
+{
+    $data = json_decode((string) $raw, true);
+    $signature = (is_array($data) && isset($data['signature']) && is_array($data['signature'])) ? $data['signature'] : array();
+
+    foreach (array('timestamp', 'token', 'signature') as $name) {
+        if (!isset($signature[$name]) || !is_scalar($signature[$name])) {
+            return 'bad';
+        }
+    }
+
+    if (!hash_equals(hash_hmac('sha256', $signature['timestamp'] . $signature['token'], (string) $signing), strtolower((string) $signature['signature']))) {
+        return 'bad';
+    }
+
+    return (abs((int) $now - (int) $signature['timestamp']) > PG_MAIL_WEBHOOK_MAX_AGE) ? 'stale' : 'ok';
+}
+
+/**
+ * A Mailgun webhook message: one event a message. "failed" is a hard
+ * bounce when its severity is permanent, a soft one when temporary. Pure.
+ *
+ * @param string $raw
+ * @param array  $headers lower-case name => value
+ * @return array|false list of id, kind, address, message_id
+ */
+function pg_mail_mailgun_webhook($raw, $headers)
+{
+    $data = json_decode((string) $raw, true);
+    $event = (is_array($data) && isset($data['event-data']) && is_array($data['event-data'])) ? $data['event-data'] : null;
+
+    if (!$event || !isset($event['event']) || !is_string($event['event'])) {
+        return false;
+    }
+
+    $kind = '';
+
+    if ($event['event'] === 'failed') {
+        $severity = isset($event['severity']) ? (string) $event['severity'] : '';
+        $kind = ($severity === 'permanent') ? 'hard' : (($severity === 'temporary') ? 'soft' : '');
+    } elseif ($event['event'] === 'complained') {
+        $kind = 'complaint';
+    } elseif ($event['event'] === 'delivered') {
+        $kind = 'delivered';
+    }
+
+    $message_id = isset($event['message']['headers']['message-id']) ? (string) $event['message']['headers']['message-id'] : '';
+    $address = isset($event['recipient']) ? (string) $event['recipient'] : '';
+
+    return array(array(
+        'id'         => 'mailgun:' . (isset($event['id']) ? (string) $event['id'] : $event['event'] . ':' . $message_id . ':' . $address),
+        'kind'       => $kind,
+        'address'    => $address,
+        'message_id' => $message_id,
+    ));
 }

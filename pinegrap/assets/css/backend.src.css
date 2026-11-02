@@ -4658,6 +4658,14 @@ html[data-bs-theme="dark"] #notifications .pg-bell-glyph {
   border: 0;
 }
 
+/* An absolutely placed <select> takes the nearest positioned box as its
+   containing block; when that box is outside a scrolling table, its
+   overflow does not clip the select and the page grows sideways on a
+   narrow screen. */
+.table-responsive:has(.pg-combobox-native) {
+  position: relative;
+}
+
 /* Date and time fields on Bootstrap 6 (pg_fields.js): the posted input is
    hidden the same way; one typed box after it takes its place (its look is in
    pg_datetime.css). In a drawer the calendar is drawn open under the field. */
@@ -4685,6 +4693,18 @@ html[data-bs-theme="dark"] #notifications .pg-bell-glyph {
 .input-group > .pg-combobox {
   flex: 1 1 auto;
   width: 1%;
+}
+
+/* Every combobox menu stays within the screen: it grows to its longest
+   option (a long account title), which on a phone pushed it past the edge
+   and scrolled the page sideways; a long option wraps instead. */
+.pg-combobox-menu {
+  max-width: calc(100vw - 1rem);
+}
+
+.pg-combobox-menu .menu-item {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* A combobox searching the server (data-pg-source): its own search box,
@@ -17977,12 +17997,20 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: .1rem;
+  gap: 0;
   margin-left: auto;
 }
 #menu .pg-menu-panel-head:has(.ws-side-head-tools) .pg-menu-panel-title {
   padding-right: 0;
   text-align: start;
+}
+/* Three buttons beside the name leave it little room, and a long list gives
+   the menu body a classic scrollbar that takes 15px more ("Çalışma Al…" in a
+   250px menu). The buttons are a little narrower here than in the list, with
+   no gap between them, so the name keeps to one line with the scrollbar too;
+   still over the 24px target size. */
+#menu .pg-menu-panel-head .ws-side-head-tools .ws-side-tool {
+  width: 1.625rem;
 }
 /* The search keeps its row: its key where Ctrl+K opens it. */
 #ws-menu-side .ws-side-find-key {

@@ -46,9 +46,10 @@ if (!$_POST) {
         $liveform->assign_field_value('is_active', ((int) $till['is_active'] === 1) ? '1' : '0');
         $liveform->assign_field_value('bank_name', $till['bank_name']);
         $liveform->assign_field_value('iban', $till['iban']);
-        // The sign stays on: erp_kurus() reads a leading minus back, and an
+        // A plain figure: the box already names the currency beside it. The
+        // sign stays on: erp_kurus() reads a leading minus back, and an
         // opening balance shown without it would be saved as a positive figure.
-        $liveform->assign_field_value('opening_balance', erp_money_out_currency((int) $till['opening_balance'], (string) $till['currency']));
+        $liveform->assign_field_value('opening_balance', (((int) $till['opening_balance'] < 0) ? '-' : '') . erp_money_input((int) $till['opening_balance']));
         $liveform->assign_field_value('currency', strtoupper(trim((string) $till['currency'])));
     }
 
@@ -113,6 +114,10 @@ if (!$_POST) {
 
     $balance = (int) $till['balance'];
 
+    // The read-only accountant sees the till's details without a way to
+    // change or delete it.
+    $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
+
     echo
     pg_page_shell([
         'title' => lang('Edit Till'),
@@ -140,7 +145,7 @@ if (!$_POST) {
                 </div>
             </div>
 
-            <form name="form" action="edit_erp_till.php" method="post">
+            ' . ($readonly ? '<fieldset disabled>' . erp_till_form_cards($liveform, !empty($movements)) . '</fieldset>' : '<form name="form" action="edit_erp_till.php" method="post">
                 ' . get_token_field() . '
                 ' . $liveform->field(array('type' => 'hidden', 'name' => 'id')) . '
                 ' . erp_till_form_cards($liveform, !empty($movements)) . '
@@ -154,7 +159,7 @@ if (!$_POST) {
                         </div>
                     </div>
                 </nav>
-            </form>
+            </form>') . '
 
             <div class="card my-7">
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">

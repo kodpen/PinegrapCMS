@@ -59,7 +59,9 @@ if (!$_POST) {
         ORDER BY orders.order_date DESC
         LIMIT 500");
 
-    $order_options = array();
+    // An empty first choice: the list opened on the newest order, and one
+    // click on Create the Invoice numbered an invoice for it.
+    $order_options = array(lang('Choose an order') => '');
 
     foreach ($open_orders as $order) {
         // The billing name the customer typed; a counter sale has none, so
@@ -88,8 +90,8 @@ if (!$_POST) {
         $order_options[$label] = (string) (int) $order['id'];
     }
 
-    if (empty($order_options)) {
-        $order_options[lang('There are no orders waiting to be invoiced.')] = '';
+    if (empty($open_orders)) {
+        $order_options = array(lang('There are no orders waiting to be invoiced.') => '');
     }
 
     echo
@@ -98,7 +100,7 @@ if (!$_POST) {
         'extra classes' => 'erp erp_invoices',
         'icon' => 'erp',
         'heading' => lang('Invoice an Order'),
-        'heading_description' => lang('Raise a sales invoice from an order that has been paid for but not yet invoiced.'),
+        'heading_description' => lang('Raise a sales invoice from a completed order that has not been invoiced yet.'),
         'cancel' => array('enable' => 'true', 'url' => 'erp_invoices.php'),
         'breadcrumb' => array(
             array('label' => lang('Invoices'), 'url' => $list_url),
@@ -125,7 +127,7 @@ if (!$_POST) {
                                 ' . $liveform->output_field(array(
                                     'type' => 'select', 'id' => 'order_id', 'name' => 'order_id',
                                     'class' => 'form-control', 'options' => $order_options)) . '
-                                <div class="form-text">' . lang('Completed orders that are linked to a contact and have not been invoiced yet.') . '</div>
+                                <div class="form-text">' . lang('Completed orders that are linked to a contact or an account and have not been invoiced yet. Orders still awaiting payment are marked.') . '</div>
                             </div>
                         </div>
                         <div class="row">
