@@ -2294,7 +2294,7 @@ function select_contact_field($selected_contact_field = '')
     );
     $contact_fields[] = array(
         'value' => 'title',
-        'name' => lang('Title')
+        'name' => lang('Job Title')
     );
     $contact_fields[] = array(
         'value' => 'department',
