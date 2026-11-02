@@ -17,4 +17,4 @@ module: notify_channels
 - `notification-channels-delivery.md`: the sealed targets, the queue rows, the masking of secrets.
 
 ## Where is the screen?
-- Site Settings › Updates and maintenance › Chat notifications (`pgset-chat`): one block per target (name, alert codes, Workspace events, Delete, "Save and send a test"), then Add a target. Written by `maintenance.save.php` only when `notify_channels_card` was posted; an invalid new target refuses the save before anything is written. The test (`pg_notify_test()`) posts at once outside the queue and answers as a notice.
+- Site Settings › Updates and maintenance › Chat notifications (`pgset-chat-notify`): one block per target (name, alert codes, Workspace events, Delete, "Save and send a test"), then Add a target. Written by `maintenance.save.php` only when `notify_channels_card` was posted; an invalid new target refuses the save before anything is written. The test (`pg_notify_test()`) posts at once outside the queue and answers as a notice.

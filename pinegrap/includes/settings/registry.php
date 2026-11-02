@@ -366,7 +366,7 @@ function pg_settings_categories()
                 'pgset-cron'        => lang('Cron Jobs'),
                 'pgset-backup'      => lang('Backups'),
                 'pgset-alerts'      => lang('Alerts'),
-                'pgset-chat'        => lang('Chat notifications'),
+                'pgset-chat-notify' => lang('Chat notifications'),
                 'pgset-maintenance' => lang('Maintenance Mode'),
             ),
             'keywords' => array(
@@ -374,7 +374,7 @@ function pg_settings_categories()
                 'pgset-cron'        => pg_settings_keywords(lang('cron, scheduled, task, job, schedule, automatic')),
                 'pgset-backup'      => pg_settings_keywords(lang('backup, zip, ftp, s3, retention, remote, archive')),
                 'pgset-alerts'      => pg_settings_keywords(lang('alert, alerts, notification, e-mail, push, monitoring, backup failed, cron stopped, integrity, warning')),
-                'pgset-chat'        => pg_settings_keywords(lang('slack, teams, telegram, chat, notification, channel, webhook')),
+                'pgset-chat-notify' => pg_settings_keywords(lang('slack, teams, telegram, chat, notification, channel, webhook')),
                 'pgset-maintenance' => pg_settings_keywords(lang('maintenance, offline, closed, 503, coming soon, health, uptime, monitor')),
             ),
             'lists' => array(
@@ -618,7 +618,7 @@ function pg_settings_legacy_anchors()
         'pgset-channel'    => array('maintenance', 'pgset-channel'),
         'pgset-cron'       => array('maintenance', 'pgset-cron'),
         'pgset-alerts'     => array('maintenance', 'pgset-alerts'),
-        'pgset-chat'       => array('maintenance', 'pgset-chat'),
+        'pgset-chat-notify' => array('maintenance', 'pgset-chat-notify'),
         'pgset-maintenance' => array('maintenance', 'pgset-maintenance'),
         'pgset-backup'     => array('maintenance', 'pgset-backup'),
         'pgset-google-reviews' => array('api',    'pgset-google-reviews'),

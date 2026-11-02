@@ -749,7 +749,7 @@ if (!$notify_ready) {
 }
 
 $pg_settings_cards[] = '
-    <div id="pgset-chat" class="pg-set-card">
+    <div id="pgset-chat-notify" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                 ' . lang('Chat notifications') . '
