@@ -57,6 +57,6 @@ function test_checkout_hidden_arrival_date_box_is_not_posted()
 		'total'          => 2700,
 	));
 
-	pg_assert_true(strpos($js, "cd.querySelectorAll('input').forEach(function (inp) { inp.disabled = true; });") !== false, 'hidden boxes are disabled');
-	pg_assert_true(strpos($js, "custWrap.querySelectorAll('input').forEach(function (inp) { inp.disabled = false; });") !== false, 'the shown box is enabled');
+	pg_assert_true(strpos($js, "cd.querySelectorAll('input').forEach(function (inp) { inp.disabled = true; refreshField(inp); });") !== false, 'hidden boxes are disabled');
+	pg_assert_true(strpos($js, "custWrap.querySelectorAll('input').forEach(function (inp) { inp.disabled = false; refreshField(inp); });") !== false, 'the shown box is enabled, the date control told');
 }

@@ -1415,6 +1415,7 @@
     "Access given on a group above this one reaches here too.": "Üst gruplarda verilen yetki buraya da ulaşır.",
     "Access given: {var:1} new memberships.": "Yetki verildi: {var:1} yeni üyelik.",
     "Access here reaches {var:1} groups inside it and {var:2} channels, {var:3} of them private.": "Buradaki yetki {var:1} alt gruba ve {var:2} kanala ulaşır; bunların {var:3} tanesi özel.",
+    "Access key ID": "Erişim anahtarı kimliği",
     "Access needs or notes": "Erişim ihtiyaçları ya da notlar",
     "Access of the folder (public, private, guest, registration or membership)": "Klasörün erişimi (public, private, guest, registration veya membership)",
     "Access on the group": "Grup yetkisi",

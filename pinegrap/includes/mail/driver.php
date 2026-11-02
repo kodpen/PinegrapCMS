@@ -6,8 +6,8 @@
  *
  * By default a message leaves through the SMTP server of SMTP Settings (or
  * PHP mail() without one), and that stays the fallback. A transport is a
- * provider's HTTP API instead (Postmark, Mailgun, Brevo, Resend), a file
- * under includes/mail/<key>.php listed in pg_mail_transports()
+ * provider's HTTP API instead (Postmark, Mailgun, Brevo, Resend, Amazon
+ * SES), a file under includes/mail/<key>.php listed in pg_mail_transports()
  * (includes/fn/mail_transport.php), with functions of one prefix,
  * pg_mail_<key>_, the way the SMS and payment layers work:
  *
@@ -17,7 +17,9 @@
  *                                   required, default); exactly one 'secret'
  *   pg_mail_<key>_capabilities()    required: max_bytes (the largest request
  *                                   the API takes), webhook (whether the
- *                                   provider reports bounces to a webhook)
+ *                                   provider reports bounces to a webhook),
+ *                                   raw (it sends the finished message whole,
+ *                                   $message['mime'])
  *   pg_mail_<key>_request($message, $settings)
  *                                   required, pure: the HTTP request as
  *                                   array(url, headers, body, userpwd)
@@ -34,7 +36,8 @@
  * subject, text, html ('' when plain text only), headers (name => value,
  * threading and the site's own headers), attachments as array(name, type,
  * content, cid) with the bytes in content, and type ('system' or
- * 'campaign'). $settings is the account as the card stored it,
+ * 'campaign'), mime (the finished message, only for a driver that declares
+ * raw, else ''). $settings is the account as the card stored it,
  * pg_mail_transport_settings(): the field values by name, the secret
  * opened.
  *
