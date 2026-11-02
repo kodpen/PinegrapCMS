@@ -71,6 +71,22 @@ function test_ops_alerts_clean_detail()
 	pg_assert_same('', pg_ops_alert_clean_detail('   '));
 }
 
+// A webhook address in an alert keeps its scheme and host only: Slack, Discord
+// and Zapier carry the secret in the path, so path, query, fragment and any
+// user:password part never reach the bell, the mail or System Status.
+function test_ops_alerts_mask_webhook_url()
+{
+	pg_assert_same('https://hooks.slack.com/…', pg_ops_alert_mask_url('https://hooks.slack.com/services/T000/B000/XXXXSECRET'));
+	pg_assert_same('https://hooks.example.com/…', pg_ops_alert_mask_url('https://hooks.example.com/?token=abc'));
+	pg_assert_same('https://hooks.example.com/…', pg_ops_alert_mask_url('https://hooks.example.com#key'));
+	pg_assert_same('https://hooks.example.com', pg_ops_alert_mask_url('https://hooks.example.com'));
+	pg_assert_same('https://hooks.example.com', pg_ops_alert_mask_url('https://hooks.example.com/'));
+	pg_assert_same('http://example.com:8080/…', pg_ops_alert_mask_url(' HTTP://user:pass@Example.com:8080/hook '));
+	pg_assert_same('…', pg_ops_alert_mask_url('not a url'));
+	pg_assert_same('…', pg_ops_alert_mask_url('/relative/path?secret=1'));
+	pg_assert_same('…', pg_ops_alert_mask_url(''));
+}
+
 // Whatever the file held, the state has its keys, typed, and no foreign codes.
 function test_ops_alerts_state_normalize()
 {
