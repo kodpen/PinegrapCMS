@@ -46,6 +46,38 @@ define('PG_DI_MAX_HTML', 8 * 1024 * 1024);
 // ── Public entry points ─────────────────────────────────────────────────────
 
 /**
+ * The refusal of an import request, or null when it may run. The endpoint
+ * answers the designer's fetch() in JSON, so it asks this before
+ * validate_user() (a login redirect) and validate_token_field() (an HTML
+ * page); both stay behind it.
+ *
+ * @param bool  $logged_in     USER_LOGGED_IN
+ * @param int   $role          USER_ROLE (0 administrator, 1 designer, ...)
+ * @param mixed $session_token The token kept in the session
+ * @param mixed $posted_token  The posted token
+ * @return array|null  array(HTTP status, message)
+ */
+function pg_designer_import_refusal($logged_in, $role, $session_token, $posted_token)
+{
+    if (!$logged_in) {
+        return array(401, lang('Your session has expired. Reload the page and sign in again.'));
+    }
+
+    if ((int) $role > 1) {
+        return array(403, lang('Access denied.'));
+    }
+
+    $session_token = is_string($session_token) ? $session_token : '';
+    $posted_token = is_string($posted_token) ? $posted_token : '';
+
+    if (($session_token === '') || !hash_equals($session_token, $posted_token)) {
+        return array(403, lang('Your session expired. Reload the page and try again.'));
+    }
+
+    return null;
+}
+
+/**
  * Import a ZIP archive.
  *
  * @param string $zip_path     Path to the uploaded archive (tmp file is fine)
