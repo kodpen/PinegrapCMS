@@ -362,6 +362,8 @@
     //   saveHooks                 [fn(body, mode)]: add to a save request
     //   topItems, menuItems       [fn()]: an element for the top bar (before
     //                             Save) or the save menu, or null
+    //   footItems                 [fn()]: an element for the end of the
+    //                             footer, or null
     Editor.inits = [];
     Editor.panels = {};
     Editor.headers = {};
@@ -375,6 +377,7 @@
     Editor.saveHooks = [];
     Editor.topItems = [];
     Editor.menuItems = [];
+    Editor.footItems = [];
 
     Editor.prototype.build = function () {
         var self = this, mini = this.tools.mini;
@@ -461,7 +464,7 @@
             this.zoomLabel,
             button('pgie-ibtn sm', t('zoomIn'), 'plus', function () { self.zoomBy(ZOOM_STEP); }),
             button('pgie-ibtn sm', t('zoomFit'), 'fit', function () { self.fit(); })
-        ]);
+        ].concat(Editor.footItems.map(function (item) { return item.call(self); })));
 
         this.confirmBox = null;
         this.root = el('div', { class: 'pgie' + (theme === 'dark' ? ' pgie-dark' : '') + (mini ? ' pgie-ismini' : '') }, [this.fxSvg, top, body, foot]);
@@ -770,6 +773,19 @@
 
         var ids = Object.keys(this.pointers);
 
+        // A second finger while one layer moves turns it (startTwist()).
+        if ((ids.length === 2) && (e.pointerType === 'touch') && this.startTwist && this.startTwist(ids)) {
+            e.preventDefault();
+
+            try {
+                this.stage.setPointerCapture(e.pointerId);
+            } catch (err) {
+                // The pointer is already gone.
+            }
+
+            return;
+        }
+
         if ((e.button === 1) || this.space || (ids.length === 2)) {
             // A second finger ends a tool's drag where it is.
             if (this.drag && Editor.pointers[this.tool]) {
@@ -822,6 +838,11 @@
 
         this.pointers[e.pointerId] = { x: e.clientX, y: e.clientY };
 
+        if (this.drag && (this.drag.kind === 'twist')) {
+            this.moveTwist(e);
+            return;
+        }
+
         if (this.drag && Editor.pointers[this.tool]) {
             Editor.pointers[this.tool].move.call(this, e);
             return;
@@ -851,6 +872,12 @@
 
     Editor.prototype.onUp = function (e) {
         delete this.pointers[e.pointerId];
+
+        // Either finger ends a twist; the other one then does nothing.
+        if (this.drag && (this.drag.kind === 'twist')) {
+            this.endDrag();
+            return;
+        }
 
         if (this.drag && Editor.pointers[this.tool]) {
             Editor.pointers[this.tool].up.call(this, e);
@@ -1146,6 +1173,11 @@
         } : null, k);
 
         if (e.isComposing) {
+            return;
+        }
+
+        // Tab stays in the editor and in an open box (trapTab()).
+        if ((k === 'Tab') && !mod && this.trapTab && this.trapTab(e)) {
             return;
         }
 
