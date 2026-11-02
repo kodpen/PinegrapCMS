@@ -66,6 +66,7 @@ description: Generated from the module field of the memory files: each includes/
 - `mail`: [[mail-transport-failure]], [[single-email-address-boxes]]
 - `mail_parse`: [[mail-parse]]
 - `mail_queue`: [[fn-module-errors-mail-backup-consent]], [[mail-failure-reason]], [[mail-transport-failure]]
+- `mail_transport`: [[mail-transports]]
 - `merchant_center`: [[merchant-center]], [[merchant-center-issues]]
 - `merchant_center_push`: [[merchant-center-push]]
 - `mfa`: [[two-step-sign-in-expiry]]

@@ -30,7 +30,7 @@ $smtp_ready = (
     defined('SYSTEM_SMTP_HOSTNAME') && SYSTEM_SMTP_HOSTNAME !== '' &&
     defined('SYSTEM_SMTP_USERNAME') && SYSTEM_SMTP_USERNAME !== '' &&
     defined('SYSTEM_SMTP_PASSWORD') && SYSTEM_SMTP_PASSWORD !== ''
-) || (pg_mail_connection('system') !== null);
+) || (pg_mail_connection('system') !== null) || (pg_mail_transport() !== 'smtp');
 
 // The site's accounts connected for sending e-mail (Connected accounts), and
 // the providers one can be connected with from here.
@@ -92,6 +92,12 @@ function smtp_settings_connect_buttons($mail_providers, $mail_accounts) {
 // read or written. The constants of this request keep the values they were
 // loaded with; the saved ones apply from the next request.
 function smtp_settings_save($liveform_settings) {
+
+    // The sending service first: a field it marks leaves every setting as
+    // it was.
+    if (!pg_mail_transport_settings_save($_POST, USER_ID, $liveform_settings)) {
+        return false;
+    }
 
     $config_file_content = '';
     $fd = fopen(CONFIG_FILE_PATH, "r");
@@ -261,14 +267,20 @@ if (!$_POST) {
                 'notify_sender' => false
             ]);
 
-            if ($result) {
+            $test_transport = pg_mail_transport();
+            $test_transports = pg_mail_transports();
+
+            if ($result && ($test_transport !== 'smtp') && (pg_mail_connection('system') === null)) {
+                $liveform->add_notice(lang(['string'=>'Test email accepted by {var:1}. Please check mailbox: {var:2}', 'vars'=>[h($test_transports[$test_transport]['label']), h(EMAIL_ADDRESS)]]));
+                log_activity(lang(['string'=>'Test email accepted by {var:1}. Mailbox: {var:2}', 'vars'=>[$test_transports[$test_transport]['label'], EMAIL_ADDRESS]]), $_SESSION['sessionusername']);
+            } elseif ($result) {
                 $liveform->add_notice(lang(['string'=>'Test email accepted by SMTP server. Please check mailbox: {var:1}', 'vars'=>[h(EMAIL_ADDRESS)]]));
                 log_activity(lang(['string'=>'Test email accepted by SMTP server. Mailbox: {var:1}', 'vars'=>[EMAIL_ADDRESS]]), $_SESSION['sessionusername']);
             } else {
                 $liveform->add_warning(h(pg_mail_failure_sentence(lang('Test email could not be sent.'), true)));
             }
         } else {
-            $liveform->add_warning(h(lang('No test email was sent: the saved settings name no SMTP account or connected account.')));
+            $liveform->add_warning(h(lang('No test email was sent: the saved settings name no sending service, SMTP account or connected account.')));
         }
     }
 
@@ -400,6 +412,20 @@ if (!$_POST) {
                     <!-- Return in a box presses the first submit button: this one saves, not Send Test or Generate DKIM Key -->
                     <button type="submit" name="submit_save" value="Save" class="visually-hidden" tabindex="-1" aria-hidden="true"></button>
                     <div class="row">
+                        <!-- Sending service -->
+                        <div class="col-12">
+                            <div class="card my-7" id="mail_transport_card">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Sending service') . '</div>
+                                <div class="card-body">' . pg_mail_transport_settings_fields() . '
+                                    <div class="mt-5">
+                                        <button type="submit" name="send_system_email" value="Send System Test Email" class="btn my-1 btn-solid theme-warning">
+                                            <span class="material-icons me-3" aria-hidden="true">forward_to_inbox</span>
+                                            <span class="pg-btn-label">' . lang('Save and send a test') . '</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         <!-- System SMTP -->
                         <div class="col-12 md:col-6">
                             <div class="card my-7">
@@ -498,7 +524,7 @@ if (!$_POST) {
             </div>
         </div>
     
-</main>' . output_footer();
+</main>' . pg_mail_transport_settings_script() . output_footer();
 
     $liveform->remove_form();
     exit;
