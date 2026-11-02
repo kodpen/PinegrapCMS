@@ -2669,6 +2669,45 @@
 
     var ACCESS = { KEY_TOOLS: KEY_TOOLS, toolForKey: toolForKey, toolKey: toolKey, trapFocus: trapFocus, twistAngle: twistAngle, keyMap: keyMap };
 
+    // -- Google Fonts choice of the Text tool (pg_image_editor_fonts.js) --
+
+    // The catalogue's families (window.PgGoogleFonts) whose name holds the
+    // query, any letter case, in one category or all, in catalogue order:
+    // [{ family, category }].
+    function fontSearch(catalogue, query, category) {
+        var q = String(query || '').trim().toLowerCase(), out = [];
+
+        ((catalogue && catalogue.order) || []).forEach(function (key) {
+            if (category && (key !== category)) {
+                return;
+            }
+
+            (catalogue.categories[key] || []).forEach(function (family) {
+                if (!q || (family.toLowerCase().indexOf(q) >= 0)) {
+                    out.push({ family: family, category: key });
+                }
+            });
+        });
+
+        return out;
+    }
+
+    // The last five families used, newest first, each once; a name that is
+    // not a plain family leaves the list as it was.
+    function fontRecent(list, family) {
+        var name = textFamilyName(family), keep = Array.isArray(list) ? list.filter(function (f) {
+            return (typeof f === 'string') && (textFamilyName(f) === f) && (f !== '');
+        }) : [];
+
+        if (!name || (name !== family)) {
+            return keep.slice(0, 5);
+        }
+
+        return [name].concat(keep.filter(function (f) { return f !== name; })).slice(0, 5);
+    }
+
+    var GFONTS = { fontSearch: fontSearch, fontRecent: fontRecent };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -2685,7 +2724,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, ACCESS].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, ACCESS, GFONTS].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

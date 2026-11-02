@@ -89,9 +89,9 @@ function test_image_editor_bundles_run_the_model_first()
 
 	$editor = $scripts['assets/js/pg_image_editor.min.js'];
 
-	pg_assert_same(array('assets/js/pg_image_editor_model.js', 'assets/js/pg_image_editor.js'), array_slice($editor, 0, 2), 'the model, then the modal');
+	pg_assert_same(array('assets/js/pg_google_fonts.js', 'assets/js/pg_image_editor_model.js', 'assets/js/pg_image_editor.js'), array_slice($editor, 0, 3), 'the shared font catalogue, the model, then the modal');
 
-	foreach (array_slice($editor, 2) as $file) {
+	foreach (array_slice($editor, 3) as $file) {
 		pg_assert_true((bool) preg_match('#^assets/js/pg_image_editor_[a-z]+\.js$#', $file) && is_file(PG_FUNCTIONS_DIR . '/' . $file), $file . ' is a tool file');
 	}
 	pg_assert_same('assets/css/pg_image_editor.src.css', $styles['assets/css/pg_image_editor.min.css'], 'the stylesheet source');

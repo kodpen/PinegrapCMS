@@ -5051,72 +5051,10 @@ const StyleDesigner = (function () {
     }
 
     // ========================= GOOGLE FONTS =========================
-    // Comprehensive Google Fonts catalog — ~180 popular families covering
-    // sans-serif, serif, display, handwriting and monospace. The list is
-    // hardcoded (not fetched live) so the picker works offline / without an
-    // API key. Sorted within each category by typical popularity. Note:
-    // "Google Sans" / "Product Sans" are NOT in the public Google Fonts
-    // catalog — they're proprietary to Google's products. The closest
-    // public substitutes are Geist, Outfit, Inter, and DM Sans.
-    var GOOGLE_FONTS = [
-        'Default',
-        // ── Sans-serif (most popular) ──
-        'Inter', 'Roboto', 'Roboto Condensed', 'Roboto Flex', 'Open Sans',
-        'Open Sans Condensed', 'Lato', 'Montserrat', 'Poppins', 'Raleway',
-        'Nunito', 'Nunito Sans', 'Ubuntu', 'Ubuntu Condensed', 'Oswald',
-        'Source Sans 3', 'Source Sans Pro', 'Fira Sans', 'Fira Sans Condensed',
-        'Fira Sans Extra Condensed', 'PT Sans', 'PT Sans Caption',
-        'PT Sans Narrow', 'Noto Sans', 'Noto Sans Display',
-        'Josefin Sans', 'Quicksand', 'Exo', 'Exo 2', 'Mulish',
-        'Work Sans', 'Rubik', 'DM Sans', 'Space Grotesk', 'Plus Jakarta Sans',
-        'Sora', 'Outfit', 'Figtree', 'Lexend', 'Lexend Deca',
-        'Manrope', 'Karla', 'Heebo', 'Hind', 'Hind Madurai', 'Hind Siliguri',
-        'Cabin', 'Cabin Condensed', 'Asap', 'Asap Condensed',
-        'Barlow', 'Barlow Condensed', 'Barlow Semi Condensed',
-        'Catamaran', 'Comfortaa', 'Dosis', 'Kanit', 'Maven Pro', 'Mukta',
-        'Public Sans', 'Saira', 'Saira Condensed', 'Saira Extra Condensed',
-        'Saira Semi Condensed', 'Signika', 'Signika Negative',
-        'Titillium Web', 'Yantramanav', 'Inria Sans', 'Onest',
-        'Bricolage Grotesque', 'Geologica', 'Schibsted Grotesk',
-        'Geist', 'Geist Mono', 'IBM Plex Sans', 'IBM Plex Sans Condensed',
-        'IBM Plex Serif', 'Syne', 'Urbanist', 'Albert Sans', 'Be Vietnam Pro',
-        'Reddit Sans', 'Inria Sans', 'Wix Madefor Display', 'Wix Madefor Text',
-        // ── Serif ──
-        'Merriweather', 'Playfair Display', 'Playfair', 'PT Serif',
-        'PT Serif Caption', 'Source Serif 4', 'Source Serif Pro',
-        'Noto Serif', 'Noto Serif Display', 'Cardo', 'Crimson Pro',
-        'Crimson Text', 'Cormorant', 'Cormorant Garamond', 'Cormorant Infant',
-        'Cormorant SC', 'EB Garamond', 'Domine', 'Vollkorn', 'Vollkorn SC',
-        'Volkhov', 'Tinos', 'Faustina', 'Frank Ruhl Libre', 'Inria Serif',
-        'Marcellus', 'Marcellus SC', 'Old Standard TT', 'Sorts Mill Goudy',
-        'Tenor Sans', 'Yeseva One', 'Slabo 13px', 'Slabo 27px', 'Rufina',
-        'Libre Baskerville', 'Libre Caslon Text', 'Lora', 'Spectral',
-        'Bitter', 'Zilla Slab', 'Arvo', 'Roboto Slab',
-        'DM Serif Display', 'DM Serif Text', 'Fraunces',
-        // ── Display ──
-        'Bebas Neue', 'Anton', 'Abril Fatface', 'Alfa Slab One',
-        'Archivo Black', 'Big Shoulders Display', 'Cabin Sketch',
-        'Concert One', 'Fjalla One', 'Fugaz One', 'Limelight', 'Mr Dafoe',
-        'Permanent Marker', 'Righteous', 'Rozha One', 'Russo One',
-        'Shrikhand', 'Stalemate', 'Staatliches', 'Bowlby One', 'Bowlby One SC',
-        'Eczar', 'Krona One', 'Black Ops One', 'Fjalla One', 'Monoton',
-        'Press Start 2P',
-        // ── Handwriting / Script ──
-        'Pacifico', 'Lobster', 'Dancing Script', 'Caveat', 'Satisfy',
-        'Great Vibes', 'Sacramento', 'Parisienne', 'Allura', 'Amatic SC',
-        'Architects Daughter', 'Bad Script', 'Bilbo', 'Caveat Brush',
-        'Cookie', 'Courgette', 'Damion', 'Gloria Hallelujah', 'Homemade Apple',
-        'Indie Flower', 'Italianno', 'Just Another Hand', 'Kalam',
-        'Kaushan Script', 'La Belle Aurore', 'Mr De Haviland',
-        'Patrick Hand', 'Reenie Beanie', 'Rouge Script', 'Shadows Into Light',
-        'Tangerine', 'Yellowtail',
-        // ── Monospace ──
-        'JetBrains Mono', 'Fira Code', 'Source Code Pro', 'Space Mono',
-        'IBM Plex Mono', 'Cutive Mono', 'Inconsolata', 'Major Mono Display',
-        'Nova Mono', 'Overpass Mono', 'PT Mono', 'Roboto Mono',
-        'Share Tech Mono', 'Ubuntu Mono', 'VT323', 'Anonymous Pro',
-        'Courier Prime', 'DM Mono'
-    ];
+    // The catalogue the image editor's Text tool shares (pg_google_fonts.js,
+    // bundled before this file): popular families by category, shipped in
+    // the code so the picker works without an API key.
+    var GOOGLE_FONTS = ['Default'].concat(window.PgGoogleFonts ? window.PgGoogleFonts.all() : []);
 
     function googleFontUrl(name) {
         return 'https://fonts.googleapis.com/css2?family=' + encodeURIComponent(name).replace(/%20/g, '+') + ':wght@300;400;500;600;700&display=swap';

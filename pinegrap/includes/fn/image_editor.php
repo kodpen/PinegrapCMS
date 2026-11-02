@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'access');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'access', 'fonts');
 }
 
 /**
@@ -2918,6 +2918,30 @@ function pg_image_editor_strings_access()
         'touchPan'      => lang('Two fingers: move and zoom the view'),
         'touchFit'      => lang('Double tap: actual size or fit to screen'),
         'touchTwist'    => lang('Hold a layer and twist with a second finger: turn it'),
+    );
+}
+
+// -- Google Fonts (pg_image_editor_fonts.js) --
+
+/**
+ * The Google Fonts choice of the Text tool: labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_fonts()
+{
+    return array(
+        'googleFontsChoose' => lang('Choose from Google Fonts'),
+        'googleFonts'       => lang('Google Fonts'),
+        'fontSearch'        => lang('Search fonts'),
+        'fontCategory'      => lang('Font category'),
+        'fontAll'           => lang('All'),
+        'fontCat_sans'      => lang('Sans serif'),
+        'fontCat_serif'     => lang('Serif'),
+        'fontCat_display'   => lang('Display fonts'),
+        'fontCat_hand'      => lang('Handwriting'),
+        'fontCat_mono'      => lang('Monospace'),
+        'fontNone'          => lang('No font matches the search.'),
     );
 }
 
