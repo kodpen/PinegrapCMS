@@ -1,6 +1,6 @@
 ---
 name: panel-offline-and-install
-description: The panel's offline notice (sw.js answers offline.html when a page load fails), the worker registered on every panel page, "Install Pinegrap" in the account menu; the site manifest waits on #5065
+description: The panel's offline notice (sw.js answers offline.html when a page load fails), the worker registered on every panel page, "Install Pinegrap" in the account menu; the site manifest is Site Icon's
 ---
 
 ## What does the worker cache?
@@ -23,4 +23,4 @@ description: The panel's offline notice (sw.js answers offline.html when a page 
 - The panel's manifest (`manifest.php`) and its icons were already in place.
 
 ## What about the site's manifest?
-- Not built yet. The switch needs a `config` column, and that schema question is architect issue #5065.
+- No switch and no column (#5065): with Site Settings › SEO › Site Icon set, the site's head links `/site.webmanifest`, which `get_site_icon.php` serves (`platform/site-icon.md`); a template with its own manifest is skipped by `pg_site_icon_declared()`. No service worker on sites.
