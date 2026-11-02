@@ -754,6 +754,7 @@
     "Found {var:1} result(s) for: {var:2}": "{var:2} için {var:1} sonuç bulundu",
     "Found {var:1} results for: {var:2}": "{var:2} için {var:1} sonuç bulundu",
     "Found {var:1} result{suffix:1} for: {var:2}": "{var:1} sonuç bulundu: {var:2}",
+    "Found:": "Bulunan:",
     "Founder": "Kurucu",
     "Founder & CEO": "Kurucu & CEO",
     "Founder & Colourist": "Kurucu ve Renk Uzmanı",

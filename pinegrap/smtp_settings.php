@@ -22,6 +22,7 @@ $user = validate_user();
 validate_area_access($user, 'manager');
 
 include_once('liveform.class.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_domain_health.php');
 
 $liveform = new liveform('smtp_settings');
 
@@ -507,6 +508,8 @@ if (!$_POST) {
                         </div>
                         <!-- DKIM TXT Record Preview -->
                         ' . $dkim_txt_preview . '
+                        <!-- Sending domain: SPF, DKIM, DMARC and the bounce rates -->
+                        ' . pg_mail_domain_health_card(pg_mail_domain_health()) . '
                     </div>
 
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;">
@@ -524,7 +527,7 @@ if (!$_POST) {
             </div>
         </div>
     
-</main>' . pg_mail_transport_settings_script() . output_footer();
+</main>' . pg_mail_transport_settings_script() . pg_mail_domain_health_script() . output_footer();
 
     $liveform->remove_form();
     exit;
