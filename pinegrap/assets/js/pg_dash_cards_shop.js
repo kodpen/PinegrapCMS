@@ -2,9 +2,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The new dashboard's shop cards (assets/js/pg_dash.js draws the frames):
- * Ecommerce summary, Sales map, Orders, Offers and Exchange rates. The data
- * is what includes/dashboard/v2/cards/<id>.php returns; every text in it
- * comes from the server.
+ * Ecommerce summary, Sales map, Operations Desk, Orders, Offers and Exchange
+ * rates. The data is what includes/dashboard/v2/cards/<id>.php returns; every
+ * text in it comes from the server.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -184,6 +184,45 @@
             note: function (row) { return row.days; }
         }));
         more(body, data.url, config);
+    };
+
+    // Three lanes side by side: a label, the count, up to three rows and a
+    // link to the rest. A late row says how long it waited beside its tone.
+    pgDash.renderers.ops = function (body, data) {
+        var el = pgDash.el;
+        var box = el("div", "pg-dash-ops");
+        (data.lanes || []).forEach(function (lane) {
+            var item = el("section", "pg-dash-ops-lane");
+            item.setAttribute("data-lane", lane.id);
+            var head = el("header", "pg-dash-ops-head");
+            head.appendChild(el("h3", "pg-dash-ops-label", lane.label));
+            var count = el("span", "pg-dash-ops-count", lane.count_text);
+            if (lane.tone) {
+                count.setAttribute("data-tone", lane.tone);
+            }
+            head.appendChild(count);
+            item.appendChild(head);
+            if (lane.sub) {
+                item.appendChild(el("p", "pg-dash-ops-sub", lane.sub));
+            }
+            if (lane.empty) {
+                item.appendChild(el("p", "pg-dash-ops-empty", lane.empty));
+            } else {
+                item.appendChild(list(lane.rows, {
+                    name: function (row) { return row.text; },
+                    meta: function () { return ""; },
+                    value: function () { return ""; },
+                    note: function (row) { return row.note; }
+                }));
+            }
+            if (lane.more && lane.url) {
+                var more = el("a", "pg-dash-card-more", lane.more);
+                more.href = lane.url;
+                item.appendChild(more);
+            }
+            box.appendChild(item);
+        });
+        body.appendChild(box);
     };
 
     // A small line of the seven days; the change is written beside it.

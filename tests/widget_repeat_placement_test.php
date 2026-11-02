@@ -72,3 +72,25 @@ function test_repeat_placement_google_reviews_render()
 		pg_assert_contains('data-bs-target="#' . $id . '"', $second, 'the second copy\'s toggle opens its own row: ' . $id);
 	}
 }
+
+// A folder view drawn twice (no page in the test, so only its static part
+// draws): the copies share no id.
+function test_repeat_placement_folder_view_render()
+{
+	$tree = json_encode(array('type' => 'root', 'props' => array(), 'children' => array(
+		array('type' => 'semantic', 'props' => array('tag' => 'button', 'text' => 'Open',
+			'_attrs' => array(array('name' => 'data-bs-toggle', 'value' => 'collapse'), array('name' => 'data-bs-target', 'value' => '#fvbody'))), 'children' => array()),
+		array('type' => 'semantic', 'props' => array('tag' => 'div', 'id' => 'fvbody', 'cssClass' => 'collapse', 'text' => 'x'), 'children' => array()),
+	)));
+
+	$first  = _render_system_widget_folder_view($tree, 990104, array(), 'preview');
+	$second = _render_system_widget_folder_view($tree, 990104, array(), 'preview');
+	$a = _repeat_placement_ids($first);
+	$b = _repeat_placement_ids($second);
+	pg_assert_true(count($a) > 0, 'the copy has ids');
+	pg_assert_same(array(), array_values(array_intersect($a, $b)), 'no id shared between the copies');
+	foreach ($b as $id) {
+		if (strpos($id, 'fvbody') !== 0) continue;
+		pg_assert_contains('data-bs-target="#' . $id . '"', $second, 'the second copy\'s toggle opens its own body: ' . $id);
+	}
+}

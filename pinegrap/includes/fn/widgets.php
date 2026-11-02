@@ -90,6 +90,7 @@ function pg_sw_type_labels()
         'ad_region'           => lang('Ad Region'),
         'tag_cloud_region'    => lang('Tag Cloud'),
         'google_reviews'      => lang('Google Reviews'),
+        'accessibility_statement' => lang('Accessibility Statement'),
     );
 }
 

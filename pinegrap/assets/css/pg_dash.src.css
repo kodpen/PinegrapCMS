@@ -2752,6 +2752,58 @@
   .pg-dash-map-step[data-step="3"] { background: color-mix(in srgb, var(--pg-dash-cat) 70%, var(--pg-card-bg)); }
   .pg-dash-map-step[data-step="4"] { background: var(--pg-dash-cat); }
 
+  /* Operations Desk: three lanes beside each other, under each other on a
+     narrow card. */
+  .pg-dash-ops {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: .75rem;
+  }
+
+  .pg-dash-ops-lane {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: .625rem .75rem;
+    border: var(--pg-border-width) solid var(--pg-border-color);
+    border-radius: var(--pg-border-radius);
+  }
+
+  .pg-dash-ops-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: .5rem;
+  }
+
+  .pg-dash-ops-label {
+    margin: 0;
+    font-size: .8125rem;
+    font-weight: 400;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-ops-count {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--pg-fg-emphasis);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pg-dash-ops-count[data-tone="warn"] { color: var(--pg-warning-fg-emphasis); }
+  .pg-dash-ops-count[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
+
+  .pg-dash-ops-sub,
+  .pg-dash-ops-empty {
+    margin: 0 0 .25rem;
+    font-size: .75rem;
+    color: var(--pg-fg-2);
+  }
+
+  .pg-dash-ops-empty {
+    margin-top: .5rem;
+  }
+
   @media (forced-colors: active) {
     .pg-dash-map path { fill: Canvas; stroke: CanvasText; }
     .pg-dash-map [data-step], .pg-dash-map-step { forced-color-adjust: none; }
@@ -2859,5 +2911,53 @@
 
   @media (forced-colors: active) {
     .pg-dash-ai-chip { border-color: CanvasText; }
+  }
+
+  /* ── Figures on hover and keyboard focus (pgDash.chartTips) ──────────── */
+
+  .pg-dash-tip {
+    position: fixed;
+    z-index: 1080;
+    max-width: 16rem;
+    padding: .25rem .5rem;
+    border-radius: var(--pg-radius);
+    background: var(--pg-fg-emphasis);
+    box-shadow: var(--pg-shadow);
+    font-size: .75rem;
+    line-height: 1.3;
+    color: var(--pg-body-bg);
+    pointer-events: none;
+  }
+
+  .pg-dash-tips:focus {
+    outline: none;
+  }
+
+  .pg-dash-tips:focus-visible {
+    outline: 2px solid var(--pg-primary-ink);
+    outline-offset: 2px;
+  }
+
+  .pg-dash-line-rule {
+    stroke: var(--pg-fg-3);
+    stroke-width: 1;
+  }
+
+  .pg-dash-bars rect[data-active] {
+    fill: var(--pg-fg-emphasis);
+  }
+
+  .pg-dash-ring-svg .pg-dash-ring-part[data-active] {
+    stroke-width: 5;
+  }
+
+  .pg-dash-stack-part:hover {
+    filter: brightness(1.15);
+  }
+
+  @media (forced-colors: active) {
+    .pg-dash-tip { border: 1px solid CanvasText; background: Canvas; color: CanvasText; }
+    .pg-dash-bars rect[data-active] { fill: Highlight; }
+    .pg-dash-line-rule { stroke: CanvasText; }
   }
 }

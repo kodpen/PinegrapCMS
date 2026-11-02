@@ -156,6 +156,13 @@ function pg_dashboard_v2_card_firewall($user, $period, $compare)
          FROM waf_log WHERE log_timestamp >= " . (int) $from . " AND action IN (" . $actions . ")
          GROUP BY slot"), $count);
 
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/tips.php');
+    $tips = pg_dashboard_v2_tips(pg_dashboard_v2_slot_labels($from, $size, $count), $bars, function ($n) use ($mode) {
+        return ($mode === 'monitor')
+            ? lang(array('string' => '{var:1} would be blocked', 'vars' => pg_format_number($n, 0)))
+            : lang(array('string' => '{var:1} blocked', 'vars' => pg_format_number($n, 0)));
+    });
+
     $rows = array();
 
     foreach ((array) db_items(
@@ -183,6 +190,7 @@ function pg_dashboard_v2_card_firewall($user, $period, $compare)
         'bars'       => $bars,
         'hot'        => pg_dashboard_v2_hot_bars($bars),
         'bars_label' => $bars_label,
+        'tips'       => $tips,
         'rows_title' => lang('Most blocked'),
         'rows'       => $rows,
         'url'        => 'view_waf_log.php',

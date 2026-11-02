@@ -89,6 +89,7 @@
     "You are not logged in.": "Giriş yapmadın.",
     "You are not signed in, so {var:1} cannot be connected to an account. Please sign in, then connect {var:1} from your account page.": "Oturumunuz açık değil, bu yüzden {var:1} bir hesaba bağlanamaz. Lütfen giriş yapın, ardından {var:1} hesabınızı hesap sayfanızdan bağlayın.",
     "You are not signed in. Sign in and try again.": "Oturumunuz açık değil. Giriş yapıp yeniden deneyin.",
+    "You are offline": "Çevrimdışısınız",
     "You are on the latest version ({var:1}).": "En güncel sürümdesin ({var:1}).",
     "You are reading this channel without being a member.": "Bu kanalı üye olmadan okuyorsunuz.",
     "You are reading this private channel for inspection. The members were told; you cannot write in it.": "Bu özel kanalı denetim için okuyorsunuz. Üyelere bildirildi; kanala yazamazsınız.",

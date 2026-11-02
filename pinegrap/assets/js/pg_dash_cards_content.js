@@ -142,21 +142,42 @@
         picture.appendChild(svg("circle", {cx: 18, cy: 18, r: radius, "class": "pg-dash-ring-track"}));
 
         var offset = 0;
+        var arcs = [];
+        var tips = [];
         parts.forEach(function (part) {
             if (!total || !part.value) {
                 return;
             }
             var share = (part.value / total) * 100;
-            picture.appendChild(svg("circle", {
+            arcs.push(picture.appendChild(svg("circle", {
                 cx: 18, cy: 18, r: radius,
                 "class": "pg-dash-ring-part",
                 "data-part": part.key,
                 "stroke-dasharray": share.toFixed(2) + " " + (100 - share).toFixed(2),
                 "stroke-dashoffset": (25 - offset).toFixed(2)
-            }));
+            })));
+            tips.push(part.label + ": " + part.note);
             offset += share;
         });
         box.appendChild(picture);
+        // Each arc shows its part's size on hover; the keyboard walks them
+        // and the box sits over the ring's middle.
+        pgDash.chartTips(picture, tips, {
+            parts: arcs,
+            at: function () {
+                var r = picture.getBoundingClientRect();
+                return {x: r.left + r.width / 2, y: r.top};
+            },
+            mark: function (i) {
+                arcs.forEach(function (arc, n) {
+                    if (n === i) {
+                        arc.setAttribute("data-active", "1");
+                    } else {
+                        arc.removeAttribute("data-active");
+                    }
+                });
+            }
+        });
 
         var middle = pgDash.el("span", "pg-dash-ring-middle");
         middle.appendChild(pgDash.el("span", "pg-dash-ring-value", used));

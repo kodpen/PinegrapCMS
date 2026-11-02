@@ -3021,9 +3021,9 @@ function test_forum_css()
 		$families[] = $font['family'];
 	}
 	pg_assert_same(array('Figtree', 'JetBrains Mono'), $families, 'Figtree and JetBrains Mono');
-	$picker = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$picker = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_google_fonts.js');
 	foreach ($families as $family) {
-		pg_assert_contains("'" . $family . "'", $picker, $family . ' is in the font picker');
+		pg_assert_true(strpos($picker, "'" . $family . "'") !== false, $family . ' is in the font picker');
 	}
 	pg_assert_contains('code,kbd,pre,samp{font-family:var(--pf-mono)}', $own, 'code is set in the mono font');
 

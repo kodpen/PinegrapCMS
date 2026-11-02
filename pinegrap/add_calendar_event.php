@@ -81,25 +81,23 @@ if (!$_POST) {
 <main id="content" class="container-fluid">
     ' . get_date_time_picker_format() . '
     ' . get_wysiwyg_editor_code(array('full_description', 'notes', 'no_remaining_spots_message')) . '
-            <div class="row">
-            <div class="col-12">
-                ' . $liveform->output_errors() . '
-                ' . $liveform->output_notices() . '
-                
-                <form name="form" action="add_calendar_event.php" method="post">
-                    ' . get_token_field() . '
-                    ' . pg_calendar_event_form_cards($liveform, $user, $choices['calendars'], $choices['calendar_event_locations']) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
-                            </div>
+    ' . $liveform->output_errors() . '
+    ' . $liveform->output_notices() . '
+    <form name="form" action="add_calendar_event.php" method="post">
+        ' . get_token_field() . '
+        <div class="row">
+            ' . pg_calendar_event_form_cards($liveform, $user, $choices['calendars'], $choices['calendar_event_locations']) . '
+            <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                    <div class="container">
+                        <div class="btn-group flex-wrap justify-content-center">
+                            <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
                         </div>
-                    </nav>
-                </form>
+                    </div>
+                </nav>
             </div>
         </div>
-    
+    </form>
 </main>' .
     output_footer();
     

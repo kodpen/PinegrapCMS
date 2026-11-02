@@ -422,7 +422,11 @@ if (!$_POST) {
         $allowed_fr = array('page_name', 'page_title', 'page_meta_description');
         $fr_fields  = array_values(array_intersect($fr_fields, $allowed_fr));
 
-        if ($find === '') {
+        // Both are text: an array would reach preg_match(), preg_replace()
+        // or str_replace() and end the request with a TypeError.
+        if (!is_string($find) || !is_string($replace)) {
+            $liveform->mark_error('find_text', lang('Invalid request.'));
+        } elseif ($find === '') {
             $liveform->mark_error('find_text', lang('Find field cannot be empty.'));
         } elseif (empty($fr_fields)) {
             $liveform->mark_error('fr_fields', lang('Please select at least one field.'));

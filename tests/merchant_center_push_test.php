@@ -108,6 +108,10 @@ function test_merchant_account_credentials()
 	pg_assert_same(null, pg_merchant_account_credentials($state), 'no update source, nothing to push to');
 
 	pg_assert_same(null, pg_merchant_account_credentials(pg_merchant_state_parse(null)));
+
+	$moved = pg_merchant_state_parse(array('connection_id' => 4, 'account' => '123', 'country' => 'DE', 'feed_label' => 'TR',
+		'supplement' => 'accounts/123/dataSources/9'));
+	pg_assert_same('TR', pg_merchant_account_credentials($moved)['country'], 'pushes name the registered source\'s label, not a later country');
 }
 
 function test_merchant_map_diff()

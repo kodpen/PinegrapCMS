@@ -138,3 +138,18 @@ function test_calendar_event_form_create_link_carries_the_viewed_calendar()
 	$add = file_get_contents(PG_FUNCTIONS_DIR . '/add_calendar_event.php');
 	pg_assert_true(strpos($add, 'pg_calendar_event_form_start_calendars(') !== false, 'add_calendar_event.php does not tick the start calendar');
 }
+
+function test_calendar_event_form_uses_the_edit_screen_layout()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/calendar_event_form.php');
+
+	pg_assert_contains('<div class="col-12 lg:col-8 2xl:col-9 order-1">', $source, 'the field cards sit in the form column');
+	pg_assert_contains('<div class="col-12 lg:col-4 2xl:col-3 order-2">', $source, 'the calendars card sits in the status column');
+	pg_assert_contains('<div class="position-sticky" style="top:3.3rem;">', $source, 'the status column box sticks below the top bar');
+	pg_assert_true(strpos($source, '<div class="card my-7">') === false, 'no card is stacked full width');
+
+	foreach (array('add_calendar_event.php', 'edit_calendar_event.php') as $file) {
+		$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_contains('<div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">', $screen, $file . ' puts its save bar in its own sticky column');
+	}
+}

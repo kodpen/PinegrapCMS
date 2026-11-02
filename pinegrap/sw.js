@@ -6,9 +6,11 @@
  * Registered by backend.src.js from a page inside the software directory, so
  * its scope is that directory and every address it builds is relative to it.
  *
- * Nothing is cached. The panel is a signed-in application whose pages are
- * generated per request and per permission; a worker serving one from a cache
- * would show one operator another operator's screen.
+ * No panel page is cached. The panel is a signed-in application whose pages
+ * are generated per request and per permission; a worker serving one from a
+ * cache would show one operator another operator's screen. The one file kept
+ * is offline.html, a fixed notice answered when a page cannot be reached
+ * because the network is gone.
  *
  * The visible strings are handed over in the registration URL rather than
  * written here, so that they stay in lang() on the PHP side. The English source
@@ -26,15 +28,20 @@ var PG_TEXT = (function () {
 
     var text = {
         title: 'Notification',
-        body: 'There is something new in your panel.'
+        body: 'There is something new in your panel.',
+        lang: 'en',
+        offline_title: 'You are offline',
+        offline_body: 'The panel cannot be reached right now. Check the connection and try again.',
+        offline_retry: 'Retry'
     };
 
     try {
         var given = JSON.parse(new URL(self.location.href).searchParams.get('strings') || '{}');
 
         if (given && typeof given === 'object') {
-            if (typeof given.title === 'string' && given.title !== '') { text.title = given.title; }
-            if (typeof given.body === 'string' && given.body !== '') { text.body = given.body; }
+            Object.keys(text).forEach(function (key) {
+                if (typeof given[key] === 'string' && given[key] !== '') { text[key] = given[key]; }
+            });
         }
     } catch (error) {
         // A malformed query string leaves the English defaults in place.
@@ -43,15 +50,94 @@ var PG_TEXT = (function () {
     return text;
 }());
 
-self.addEventListener('install', function () {
-    // Take over as soon as the file changes; there is no cached state that an
-    // older worker could still be needed for.
-    self.skipWaiting();
+// One cache per worker version, holding offline.html alone. The version is
+// the registration address's v (sw.js's own modification time), so a changed
+// worker fetches the notice again and the activate step drops the old copy.
+var PG_OFFLINE_CACHE = 'pg-offline-' + (new URL(self.location.href).searchParams.get('v') || '0');
+var PG_OFFLINE_URL = 'offline.html';
+
+self.addEventListener('install', function (event) {
+    // Take over as soon as the file changes. A notice that could not be
+    // fetched does not stop the install: push must not depend on it, and a
+    // failed page then shows the browser's own error, as before.
+    event.waitUntil(caches.open(PG_OFFLINE_CACHE).then(function (cache) {
+        return cache.add(new Request(PG_OFFLINE_URL, {cache: 'reload'}));
+    }).catch(function () {
+        return null;
+    }).then(function () {
+        return self.skipWaiting();
+    }));
 });
 
 self.addEventListener('activate', function (event) {
-    event.waitUntil(self.clients.claim());
+    event.waitUntil(caches.keys().then(function (names) {
+        return Promise.all(names.filter(function (name) {
+            return (name.indexOf('pg-offline-') === 0) && (name !== PG_OFFLINE_CACHE);
+        }).map(function (name) {
+            return caches.delete(name);
+        }));
+    }).then(function () {
+        // Lets a page load start on the network while the worker wakes up.
+        if (self.registration.navigationPreload) {
+            return self.registration.navigationPreload.enable();
+        }
+        return null;
+    }).catch(function () {
+        return null;
+    }).then(function () {
+        return self.clients.claim();
+    }));
 });
+
+// Only a page load that reads (GET) is answered: everything else, form posts
+// included, goes to the network untouched. The page always comes from the
+// network; the notice only when that fails, which is a network error and
+// never an error status from the server.
+self.addEventListener('fetch', function (event) {
+    var request = event.request;
+
+    if ((request.mode !== 'navigate') || (request.method !== 'GET')) {
+        return;
+    }
+
+    event.respondWith(Promise.resolve(event.preloadResponse).then(function (preloaded) {
+        return preloaded || fetch(request);
+    }).catch(function () {
+        return offlineResponse();
+    }));
+});
+
+function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, function (character) {
+        return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[character];
+    });
+}
+
+function offlineResponse() {
+    return caches.open(PG_OFFLINE_CACHE).then(function (cache) {
+        return cache.match(PG_OFFLINE_URL);
+    }).then(function (cached) {
+        if (!cached) {
+            return Response.error();
+        }
+
+        return cached.text().then(function (html) {
+            var fill = {
+                lang: PG_TEXT.lang,
+                title: PG_TEXT.offline_title,
+                body: PG_TEXT.offline_body,
+                retry: PG_TEXT.offline_retry
+            };
+
+            return new Response(html.replace(/\{\{(lang|title|body|retry)\}\}/g, function (mark, key) {
+                return escapeHtml(fill[key]);
+            }), {
+                status: 503,
+                headers: {'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store'}
+            });
+        });
+    });
+}
 
 // Every push must end in a visible notification. Safari retires a subscription
 // that receives one and shows nothing, so each path below - payload, fetched,

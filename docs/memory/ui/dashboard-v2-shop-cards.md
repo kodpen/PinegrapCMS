@@ -1,6 +1,6 @@
 ---
 name: dashboard-v2-shop-cards
-description: The new dashboard's shop cards (shop, salesmap, orders, offers, fx): where each reads its data, the widget queries they share, money as plain text, the map drawing
+description: The new dashboard's shop cards (shop, salesmap, ops, orders, offers, fx): where each reads its data, the widget queries they share, money as plain text, the map drawing
 ---
 
 ## Where does each shop card read from? (#4881)
@@ -16,5 +16,7 @@ description: The new dashboard's shop cards (shop, salesmap, orders, offers, fx)
 ## How is the map drawn?
 - `pg_dash_cards_shop.js` fetches the map file once a page and copies only path ids and shapes into a fresh SVG (`role="img"`, labelled); a region with sales gets `data-step` 1-4, coloured from the card colour; the legend repeats the steps. Region figures are also in the rows, so the colours never carry them alone.
 
-## What is left?
-- `ops` (Operations desk) is step N9b: widget 9's lanes build HTML beside their queries; their counts are already helpers (`pg_dashboard_ops_*_summary()`, `pg_dashboard_ops_stock_counts()`, `ui/dashboard-v2-queue-card.md`), the row lists still need a data part.
+## How does the Operations Desk card read widget 9? (#5031)
+- `ops` draws three lanes, To ship, To refund, Out of stock, each its count, a line under it and at most three rows (`PG_DASHBOARD_V2_OPS_ROWS`), with a "more" link to the filtered list when the count is larger.
+- Counts are widget 9's helpers (`pg_dashboard_ops_shipping_summary()`, `pg_dashboard_ops_refund_summary()`, `pg_dashboard_ops_stock_counts()`), shared with the Next up card. Rows are the lane queries moved out of widget 9: `pg_dashboard_ops_shipments($limit)`, `pg_dashboard_ops_refund_list($limit)`, `pg_dashboard_ops_out_of_stock_list($limit)`; the widget calls them with 11, 10 and 8, its HTML unchanged.
+- The lanes follow the widget's gates: no ship lane without shipping, no refund lane before `orders.refund_status` exists. A row or a count waiting more than two days is `bad`, as the widget marks it red.

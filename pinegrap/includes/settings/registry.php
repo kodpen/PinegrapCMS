@@ -173,16 +173,18 @@ function pg_settings_categories()
             'label' => lang('Visitors and privacy'),
             'group' => 'site',
             'icon'  => 'bi-incognito',
-            'description' => lang('Visitor tracking, cookie consent and the checkout\'s legal documents.'),
+            'description' => lang('Visitor tracking, cookie consent, the checkout\'s legal documents and the accessibility statement.'),
             'sections' => array(
                 'pgset-analytics' => lang('Visitor Tracking'),
                 'pgset-cookies'   => lang('Cookie Consent'),
                 'pgset-legal'     => lang('Legal Documents'),
+                'pgset-a11y-statement' => lang('Accessibility Statement'),
             ),
             'keywords' => array(
                 'pgset-analytics' => pg_settings_keywords(lang('visitor, analytics, tracking code, tracking, statistics, google analytics')),
                 'pgset-cookies'   => pg_settings_keywords(lang('cookie, cookies, consent, gdpr, kvkk, privacy, cookie policy, banner, notice')),
                 'pgset-legal'     => pg_settings_keywords(lang('legal, contract, distance sales contract, pre-information form, terms, withdrawal, consumer')),
+                'pgset-a11y-statement' => pg_settings_keywords(lang('accessibility, statement, accessibility statement, wcag, en 301 549, european accessibility act, disability')),
             ),
         ),
 
