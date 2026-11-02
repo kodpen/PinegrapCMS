@@ -314,6 +314,8 @@ $explorer_lang = array(
     'membership' => lang('Membership'),
     'private' => lang('Private'),
     'inherit' => lang('inherit'),
+    'default_from_parent' => lang('Default (from the parent folder)'),
+    'space_key' => lang('Space'),
     'default' => lang('Default'),
     'confirm_delete_files' => lang('WARNING: Selected {var:1} will be permanently deleted.'),
     'files_word' => lang('files'),
@@ -341,6 +343,8 @@ $explorer_lang = array(
     'leave_during_job' => lang('A job is still running on this screen. If you leave now it stops where it is.'),
     'upload_too_large' => lang('The file is too large. The maximum allowed size is {var:1}.'),
     'upload_done' => lang('{var:1} file(s) were uploaded.'),
+    'uploaded_renamed' => lang('Uploaded under a new name: {var:1}. A file name is its address, so a taken name gets a number and letters an address cannot carry are replaced.'),
+    'renamed_as' => lang('Saved as {var:1}: a file name is its address, so letters an address cannot carry are replaced and a taken name gets a number.'),
     'drop_to_upload' => lang('Drop files here to upload them into this folder'),
     'drop_to_pick_folder' => lang('Drop files here to upload them. You will choose the folder next.'),
     'no_preview' => lang('No preview is available for this item.'),
@@ -360,7 +364,7 @@ $explorer_lang = array(
     'rights_column' => lang('Rights'),
     'rights_for_user' => lang('Rights for {var:1}'),
     'no_basic_users' => lang('There are no users with a basic user role.'),
-    'access_note' => lang('Access Control for all Pages and Files within this Folder'),
+    'access_note' => lang('Access control for all pages and files in this folder'),
     'rights_note' => lang('Edit rights also apply to all folders within this folder.'),
     'disk_usage' => lang('Disk Usage'),
     'up' => lang('Up'),
@@ -370,6 +374,8 @@ $explorer_lang = array(
     'renamed' => lang('The item was renamed successfully.'),
     'optimized' => lang('Optimized'),
     'counts_label' => lang('{var:1} folder(s), {var:2} page(s), {var:3} file(s)'),
+    'counts_styles' => lang('{var:1} page style(s)'),
+    'counts_short_links' => lang('{var:1} short link(s)'),
     'delete_folder_title' => lang('Delete Folder and Contents'),
     'delete_folder_summary' => lang('The folder {var:1} and everything inside it will be permanently deleted:'),
     'delete_folder_empty' => lang('The folder is empty.'),
@@ -391,6 +397,14 @@ $explorer_lang = array(
     'recycle_bin' => lang('Recycle Bin'),
     'empty_bin' => lang('Empty Recycle Bin'),
     'restore' => lang('Restore'),
+    'bin_deleted' => lang('Deleted on'),
+    'backup_kind' => lang('Backup type'),
+    'location' => lang('Location'),
+    'bin_deleted_by' => lang('by {var:1}'),
+    'bin_restores_to' => lang('Restores to'),
+    'bin_purged_in' => lang('Deleted for good in'),
+    'archived_status' => lang('Archived: closed to visitors (410)'),
+    'archived_no_effect' => lang('No effect while the folder is archived.'),
     'delete_permanently' => lang('Delete Permanently'),
     'page_style' => lang('Page Style'),
     'bin_banner' => lang('Items here are deleted permanently after {var:1} days.'),
@@ -436,12 +450,12 @@ $explorer_lang = array(
     'webp_copy_fact' => lang('WebP copy {var:1} ({var:2}% lighter)'),
     'folder_settings' => lang('Folder Settings'),
     'sorting' => lang('Sorting'),
-    'sorting_note' => lang('Display order of this Folder to other Folders'),
+    'sorting_note' => lang('The order of this folder among the folders beside it'),
     'archive' => lang('Archive'),
-    'archive_note' => lang('Archive Folder for Pages and Files that are no longer being used'),
+    'archive_note' => lang('For pages and files no longer in use. While on, the pages directly in this folder answer visitors with 410 (gone), and its pages and files leave the Pages, Files and Pictures views, the site search and the editor pickers. Its files stay reachable at their address.'),
     'desktop_style' => lang('Desktop Page Style'),
     'mobile_style' => lang('Mobile Page Style'),
-    'styles_note' => lang('Default Page Styles for Pages within this Folder'),
+    'styles_note' => lang('Default page styles for the pages in this folder'),
     'resize_optimize' => lang('Resize to {var:1} pixels and optimize'),
     'resize_optimize_all' => lang('Resize all to {var:1} pixels and optimize ({var:2})'),
     'desktop_style_short' => lang('Desktop Style'),
@@ -1921,7 +1935,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                         <div class="form-field">
                             <div class="switch"><input class="" type="checkbox" id="file_edit_design" /></div>
                             <label class="" for="file_edit_design"><?php echo lang('Design File'); ?></label>
-                            <div class="form-text"><?php echo lang('Check if File is a Design File that is Managed by Site Designers'); ?></div>
+                            <div class="form-text"><?php echo lang('Mark it as a design file managed by site designers'); ?></div>
                         </div>
                     </div>
                 </div>
@@ -1994,7 +2008,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     <div class="form-field<?php echo (($user['role'] <= 1) ? '' : ' d-none'); ?>">
                         <div class="switch"><input class="" type="checkbox" id="upload_design" /></div>
                         <label class="" for="upload_design"><?php echo lang('Design File'); ?></label>
-                        <div class="form-text"><?php echo lang('Check if File is a Design File that is Managed by Site Designers'); ?></div>
+                        <div class="form-text"><?php echo lang('Mark it as a design file managed by site designers'); ?></div>
                     </div>
                     <div class="form-field mt-3">
                         <div class="switch"><input class="" type="checkbox" id="upload_webp" /></div>
@@ -5177,7 +5191,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         var title = fmt(L.days_left, [entry.days_left]) + (entry.origin_name ? ' \u2014 ' + entry.origin_name : '');
 
-        return '<span class="badge theme-warning bin-badge" title="' + esc(title) + '"><span class="bi bi-hourglass-split"></span> ' + entry.days_left + '</span>';
+        return '<span class="badge theme-warning bin-badge" title="' + esc(title) + '"><span class="bi bi-hourglass-split" aria-hidden="true"></span> ' + entry.days_left +
+            '<span class="visually-hidden"> ' + esc(title) + '</span></span>';
     }
 
     function itemFlagsHtml(item) {
@@ -6347,6 +6362,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         var counts = fmt(L.counts_label, [state.items.folders.length, state.items.pages.length, state.items.files.length]);
+
+        // The bin lists page styles and short links among its files; each
+        // kind is counted under its own name.
+        if (insideBin()) {
+            var binStyles = state.items.files.filter(function (entry) { return entry.kind === 'style'; }).length;
+            var binLinks = state.items.files.filter(function (entry) { return !!entry.short_link; }).length;
+            counts = fmt(L.counts_label, [state.items.folders.length, state.items.pages.length, state.items.files.length - binStyles - binLinks]);
+            if (binStyles > 0) { counts += ', ' + fmt(L.counts_styles, [binStyles]); }
+            if (binLinks > 0) { counts += ', ' + fmt(L.counts_short_links, [binLinks]); }
+        }
+
         var listed = state.items.folders.length + state.items.pages.length + state.items.files.length;
 
         // A search or a filter shows part of the folder: say how much.
@@ -7217,6 +7243,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 ((item.link_mode && item.link_mode !== 'permanent') ? ('<tr><th>' + esc(L.link_uses) + '</th><td>' + esc(String(item.use_count || 0)) + '</td></tr>') : '') +
                 (item.modified ? ('<tr><th>' + esc(L.last_modified) + '</th><td>' + item.modified + modifiedByHtml(item) + '</td></tr>') : '');
 
+            // In the bin the link answers nobody and its record is closed to
+            // editing: the panel offers what the bin's menu offers.
+            if (insideBin()) {
+                pane.innerHTML =
+                    '<div class="text-center my-5">' + shortLinkIconHtml(item, true) + '</div>' +
+                    binActionsHtml() +
+                    '<table class="table table-sm"><tbody>' + binRowsHtml(item) + shortLinkRows + '</tbody></table>';
+                bindBinActions(pane);
+                return;
+            }
+
             pane.innerHTML =
                 '<div class="text-center my-5">' + shortLinkIconHtml(item, true) + '</div>' +
                 '<div class="text-center mb-5">' + (item.url ? ('<a class="btn btn-sm btn-outline theme-primary" href="' + esc(item.url) + '" target="_blank" rel="noopener">' +
@@ -7264,9 +7301,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         var rows = '';
+        // In the bin the rows that describe the item on the site (its
+        // address, the bin's access, live status, sitemap, search) mean
+        // nothing; what the bin keeps (when, who, where it goes back) is said.
+        var binned = insideBin() && !item.backup;
 
         rows += '<tr><th>' + esc(L.name) + '</th><td class="text-break">' + esc(item.name) + '</td></tr>';
         rows += '<tr><th>' + esc(L.type) + '</th><td>' + esc(itemTypeLabel(item)) + '</td></tr>';
+
+        if (binned) { rows += binRowsHtml(item); }
 
         if (item.kind === 'file') {
             rows += '<tr><th>' + esc(L.size) + '</th><td>' + esc(item.size_label || '') + '</td></tr>';
@@ -7283,7 +7326,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         if (item.backup) {
-            rows += '<tr><th>' + esc(L.folder) + '</th><td class="text-break">' + esc(item.path) + '</td></tr>';
+            // One location row, the folders down to the entry; its own name
+            // is the Name row. A folder gets the bytes its files take.
+            if ((item.kind === 'folder') && item.size_label) {
+                rows += '<tr><th>' + esc(L.size) + '</th><td>' + esc(item.size_label) + '</td></tr>';
+            }
+            if (item.backup_note) {
+                rows += '<tr><th>' + esc(L.backup_kind) + '</th><td>' + esc(item.backup_note) + '</td></tr>';
+            }
+            rows += '<tr><th>' + esc(L.location) + '</th><td class="text-break">' + esc(item.location || '') + '</td></tr>';
             rows += '<tr><th>' + esc(L.permissions) + '</th><td><code>' + esc(item.permissions || '') + '</code></td></tr>';
         }
 
@@ -7304,7 +7355,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         // The folder a page or file lives in, one click away: the flat views
         // (Pages, Files) list them without their folders.
-        if (((item.kind === 'file') || (item.kind === 'page')) && item.folder_name && !item.short_link) {
+        if (((item.kind === 'file') || (item.kind === 'page')) && item.folder_name && !item.short_link && !binned && !item.backup) {
             rows += '<tr><th>' + esc(L.folder) + '</th><td><a href="#" draggable="false" class="pg-link-secondary" data-role="open-folder">' +
                 '<span class="bi bi-folder me-1 ' + esc(item.access_control_type || '') + '"></span>' + esc(item.folder_name) + '</a></td></tr>';
         }
@@ -7313,11 +7364,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             rows += '<tr><th>' + esc(L.home_page) + '</th><td><span class="bi bi-house-door me-1"></span>' + esc(L.yes) + '</td></tr>';
         }
 
-        if (((item.kind === 'file') || (item.kind === 'page')) && item.url && !item.backup && !item.short_link) {
+        if (((item.kind === 'file') || (item.kind === 'page')) && item.url && !item.backup && !item.short_link && !binned) {
             rows += '<tr><th>' + esc(L.address) + '</th><td><code class="text-break user-select-all small">' + esc(fullAddress(item.url)) + '</code></td></tr>';
         }
 
-        if (!item.backup) {
+        if (!item.backup && !binned) {
             rows += '<tr><th>' + esc(L.access_control) + '</th><td><span class="' + item.access_control_type + '"><span class="bi ' + item.access_icon + ' me-1"></span>' + esc(accessLabel(item.access_control_type)) + '</span></td></tr>';
         }
 
@@ -7328,22 +7379,30 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 rows += '<tr><th>' + esc(L.sorting) + '</th><td>' + esc(String(item.order)) + '</td></tr>';
             }
 
-            rows += '<tr><th>' + esc(L.archive) + '</th><td>' + esc(item.archived ? L.yes : L.no) + '</td></tr>';
+            if (!binned) {
+                rows += '<tr><th>' + esc(L.archive) + '</th><td>' + esc(item.archived ? L.yes : L.no) + '</td></tr>';
+            }
             rows += '<tr><th>' + esc(L.desktop_style) + '</th><td>' + styleCellHtml(item.style_desktop) + '</td></tr>';
             rows += '<tr><th>' + esc(L.mobile_style) + '</th><td>' + styleCellHtml(item.style_mobile) + '</td></tr>';
         }
 
-        if ((item.kind === 'page') && !item.backup) {
-            rows += '<tr><th>' + esc(L.status) + '</th><td>' + (item.draft
-                ? '<span class="badge rounded-pill theme-warning" title="' + esc(L.draft_hint) + '"><span class="bi bi-eye-slash me-1"></span>' + esc(L.draft_status) + '</span>'
-                : esc(L.live_on_site)) + '</td></tr>';
+        if ((item.kind === 'page') && !item.backup && !binned) {
+            // A page in an archived folder answers visitors with 410 (gone),
+            // draft or not: get_page.php closes it before anything else.
+            rows += '<tr><th>' + esc(L.status) + '</th><td>' + (item.archived
+                ? '<span class="badge rounded-pill theme-secondary"><span class="bi bi-archive me-1"></span>' + esc(L.archived_status) + '</span>'
+                : (item.draft
+                    ? '<span class="badge rounded-pill theme-warning" title="' + esc(L.draft_hint) + '"><span class="bi bi-eye-slash me-1"></span>' + esc(L.draft_status) + '</span>'
+                    : esc(L.live_on_site))) + '</td></tr>';
             // Without an SEO section the figure stays here; with one it is
             // written there, beside the score it is made of.
             if (!item.seo) {
                 rows += '<tr><th>' + esc(L.impact) + '</th><td>' + impactCellHtml(item) + '</td></tr>';
             }
-            rows += '<tr><th>' + esc(L.sitemap_label) + '</th><td>' + esc(item.sitemap ? L.yes : L.no) + '</td></tr>';
-            rows += '<tr><th>' + esc(L.searchable_label) + '</th><td>' + esc(item.searchable ? L.yes : L.no) + '</td></tr>';
+            // Both settings are kept but do nothing while the folder is archived.
+            var archivedNote = item.archived ? ('<div class="form-text mt-0">' + esc(L.archived_no_effect) + '</div>') : '';
+            rows += '<tr><th>' + esc(L.sitemap_label) + '</th><td>' + esc(item.sitemap ? L.yes : L.no) + (item.sitemap ? archivedNote : '') + '</td></tr>';
+            rows += '<tr><th>' + esc(L.searchable_label) + '</th><td>' + esc(item.searchable ? L.yes : L.no) + (item.searchable ? archivedNote : '') + '</td></tr>';
             rows += '<tr><th>' + esc(L.comments_label) + '</th><td>' + esc(item.comments ? L.yes : L.no) + '</td></tr>';
         }
 
@@ -7372,7 +7431,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // The file window, from here as well as from the menu and the double
         // click -- the panel is where somebody is looking when they decide
         // the description is wrong.
-        var editButton = ((item.kind === 'file') && item.can_edit && !item.backup && !item.short_link)
+        var editButton = ((item.kind === 'file') && item.can_edit && !item.backup && !item.short_link && !binned)
             ? '<div class="d-grid mb-5"><button type="button" class="btn btn-sm btn-outline theme-secondary" data-role="file-edit">' +
                 '<span class="bi bi-pencil-square me-1"></span>' + esc(L.edit) + '</button></div>'
             : '';
@@ -7383,7 +7442,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // the tile.
         var quickTools = '';
 
-        if (((item.kind === 'file') || (item.kind === 'page')) && !item.backup && !item.short_link) {
+        if (binned) {
+            // The park address a binned item has stops working on restore.
+            quickTools = binActionsHtml();
+        } else if (((item.kind === 'file') || (item.kind === 'page')) && !item.backup && !item.short_link) {
 
             quickTools =
                 '<div class="btn-group btn-group-sm w-100 mb-5">' +
@@ -7413,6 +7475,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             '<h6 class="text-uppercase fg-secondary fw-bold" style="font-size:.72rem;letter-spacing:.05em;">' + esc(L.details) + '</h6>' +
             '<table class="table table-sm"><tbody>' + rows + '</tbody></table>' +
             seoSection;
+
+        bindBinActions(pane);
 
         var fileEditButton = pane.querySelector('[data-role="file-edit"]');
 
@@ -7444,6 +7508,44 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (item.kind === 'page' && item.seo) {
             queueSeoDetail(item.kind, item.id);
         }
+    }
+
+    // The bin's own rows for an item in it: when and by whom it was deleted,
+    // the folder a restore puts it back in and the days before the daily
+    // purge removes it for good.
+    function binRowsHtml(item) {
+
+        var entry = state.binEntries[itemKey(item)];
+
+        if (!entry) { return ''; }
+
+        var html = '<tr><th>' + esc(L.bin_deleted) + '</th><td>' + esc(entry.deleted_exact || '') +
+            (entry.deleted_by ? (' · ' + esc(fmt(L.bin_deleted_by, [entry.deleted_by]))) : '') + '</td></tr>';
+
+        if (entry.origin_name) {
+            html += '<tr><th>' + esc(L.bin_restores_to) + '</th><td class="text-break">' + esc(entry.origin_name) + '</td></tr>';
+        }
+
+        html += '<tr><th>' + esc(L.bin_purged_in) + '</th><td>' + esc(fmt(L.days_left, [entry.days_left])) + '</td></tr>';
+
+        return html;
+    }
+
+    // Restore and Delete Permanently, the two actions the bin's menu offers.
+    function binActionsHtml() {
+        return '<div class="btn-group btn-group-sm w-100 mb-5">' +
+            '<button type="button" class="btn btn-outline theme-secondary no-popover" data-role="bin-restore"><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' + esc(L.restore) + '</button>' +
+            '<button type="button" class="btn btn-outline theme-danger no-popover" data-role="bin-delete"><i class="bi bi-x-octagon me-1" aria-hidden="true"></i>' + esc(L.delete_permanently) + '</button>' +
+            '</div>';
+    }
+
+    // The panel shows the selected item, so both act on the selection.
+    function bindBinActions(pane) {
+        var restoreButton = pane.querySelector('[data-role="bin-restore"]');
+        var deleteButton = pane.querySelector('[data-role="bin-delete"]');
+
+        if (restoreButton) { restoreButton.addEventListener('click', function () { restoreSelection(); }); }
+        if (deleteButton) { deleteButton.addEventListener('click', function () { permanentDeleteSelection(); }); }
     }
 
     function styleCellHtml(info) {
@@ -7802,7 +7904,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     }
 
                     catalogMenu += menuItem('bi-pencil', L.edit, 'catalog_edit', catalogMulti);
-                    catalogMenu += menuItem('bi-eye', L.quick_look + ' (Space)', 'quick_look', catalogMulti || !quickLookable(item));
+                    catalogMenu += menuItem('bi-eye', L.quick_look + ' (' + L.space_key + ')', 'quick_look', catalogMulti || !quickLookable(item));
 
                     // The three figures a shop changes all day, without the
                     // product screen. Only on a product: a group has no price
@@ -8029,7 +8131,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             } else if (item) {
 
                 erpMenu += menuItem('bi-box-arrow-up-right', L.open_in_new_tab, 'erp_open', erpMulti || !item.url);
-                erpMenu += menuItem('bi-eye', L.quick_look + ' (Space)', 'quick_look', erpMulti || !quickLookable(item));
+                erpMenu += menuItem('bi-eye', L.quick_look + ' (' + L.space_key + ')', 'quick_look', erpMulti || !quickLookable(item));
                 erpMenu += menuItem('bi-download', L.download, 'erp_download', erpMulti || !item.download_url);
                 erpMenu += menuDivider();
 
@@ -8203,7 +8305,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var multi = selected.length > 1;
 
             html += menuItem('bi-box-arrow-up-right', item.kind === 'folder' ? L.open_folder : L.open_in_new_tab, 'open', multi);
-            html += menuItem('bi-eye', L.quick_look + ' (Space)', 'quick_look', multi || !quickLookable(item));
+            html += menuItem('bi-eye', L.quick_look + ' (' + L.space_key + ')', 'quick_look', multi || !quickLookable(item));
 
             // The preview panel is not on screen below its width; this opens
             // it as a sheet.
@@ -9746,7 +9848,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // the only answer that is right in both places.
         var target = (item.kind === 'folder') ? item.parent_id : (item.folder_id || state.folderId);
 
-        api({ type: 'explorer_paste', target_folder_id: target, items: [{ kind: item.kind, id: item.id }] }, function (response) {
+        api({ type: 'explorer_paste', target_folder_id: target, items: [{ kind: item.kind, id: item.id }], duplicate: true }, function (response) {
             toast(response.message || L.request_failed, response.status !== 'error');
 
             if ((response.status !== 'error') && response.created && response.created.length > 0 && state.recycle.available) {
@@ -10976,7 +11078,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                         undo: { type: renameOp, kind: item.kind, id: item.id, name: item.name },
                         redo: { type: renameOp, kind: item.kind, id: item.id, name: response.name || value }
                     });
-                    toast(L.renamed);
+                    // A file name that had to change (letters an address
+                    // cannot carry, a taken name) is said with the name it got.
+                    if ((item.kind === 'file') && response.name && (response.name !== value)) {
+                        toast(fmt(L.renamed_as, [response.name]), true, null, { tone: 'warning' });
+                    } else {
+                        toast(L.renamed);
+                    }
                     reload();
                 } else {
                     toast(response.message || L.request_failed, false);
@@ -12220,6 +12328,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var maxBytes = state.caps.upload_max_bytes || 0;
         var uploaded = 0;
         var uploadedIds = [];
+        var renamedUploads = [];
         var rootFolderIds = [];
         var folderIds = { '': intoFolderId };
         var queue = entries.slice();
@@ -12279,7 +12388,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                         pushUndo({ undo: { type: 'bin', items: undoItems }, redo: null });
                     }
 
-                    toast(fmt(L.upload_done, [uploaded]));
+                    // A file name is its address, so a name the server had
+                    // to change (taken, or letters an address cannot carry)
+                    // is said, and the toast stays until it is closed.
+                    if (renamedUploads.length > 0) {
+                        toast(fmt(L.upload_done, [uploaded]) + ' ' + fmt(L.uploaded_renamed, [renamedUploads.join(', ')]), true, null, { tone: 'warning', sticky: true });
+                    } else {
+                        toast(fmt(L.upload_done, [uploaded]));
+                    }
 
                     // Uploaded somewhere other than where you are standing:
                     // the screen goes there, because a file you cannot see is
@@ -12327,6 +12443,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                             // listed for undo on its own; the rest are inside a
                             // folder that is already on the list.
                             if ((directory === '') && response.file && response.file.id) { uploadedIds.push(response.file.id); }
+                            if (response.file && response.file.name && (response.file.name !== file.name)) { renamedUploads.push(file.name + ' → ' + response.file.name); }
                         } else {
                             toast(response.message || L.request_failed, false);
                         }
@@ -13632,7 +13749,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var types = ['', 'public', 'guest', 'registration', 'membership', 'private'];
 
             types.forEach(function (type) {
-                var label = type === '' ? (L.default + ' (' + L.inherit + ')') : accessLabel(type);
+                var label = type === '' ? L.default_from_parent : accessLabel(type);
                 options += '<option value="' + type + '" class="' + type + '"' + (folder.own_access_control_type === type ? ' selected' : '') + '>' + esc(label) + '</option>';
             });
 

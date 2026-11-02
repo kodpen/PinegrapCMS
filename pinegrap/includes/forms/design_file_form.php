@@ -50,7 +50,7 @@ function pg_design_file_form_access_card($folder_options, $options = array())
                                             <div class="switch"><input class="" type="checkbox" aria-describedby="design_hint" id="design" name="design" value="1"' . ($options['design_checked'] ? ' checked="checked"' : '') . '></div>
                                             <label class="" for="design">' . lang('Design File') . '</label>
                                         </div>
-                                        <div class="form-text" id="design_hint">' . lang('Check if File is a Design File that is Managed by Site Designers') . '</div>
+                                        <div class="form-text" id="design_hint">' . lang('Mark it as a design file managed by site designers') . '</div>
                                     </div>';
     }
 
