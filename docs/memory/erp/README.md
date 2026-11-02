@@ -43,7 +43,8 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-auto-invoice.md: An order's invoice issued on its own once it is paid or shipped (config.erp_auto_invoice_on): setting, two filters, triggers, decision, writer, invoicing lock, after-response run, refusal notice
 - erp-awaiting-transfer-orders.md: Awaiting-payment (bank transfer) orders: derived state predicate, pg_order_mark_paid, ERP settlement hook, auto-cancel sweep in job.php, cancel-reason display.
 - erp-back-targets.md: ERP detail screens go back to the filtered list they were opened from through send_to (row link, drawer Open in full, reloads, forms); which screens, which are left
-- erp-bank-statement-lines.md: ERP bank statement lines: each line once (line_hash), matching to till movements, recording a line; what a refused step keeps, the send-once forms.
+- erp-bank-statement-lines.md: ERP bank statement lines: each line once (line_hash), recording a line; what a refused step keeps, the send-once forms.
+- erp-bank-statement-matching.md: ERP bank statement matching: which till movements a line matches, cancels left out, undoing a match, which tills take a statement.
 - erp-bank-statement-suggestions.md: ERP bank statement suggestions worked out once per statement (erp_bank_statement_suggestions): one line per open invoice, the per-line buttons, the count and Record the N suggested lines.
 - erp-bank-statements.md: ERP bank statement import (4.102): readers, the PHPExcel libxml trap, title-block cut, CSV separator, amount sign and decimals; the lines are in erp-bank-statement-lines.md.
 - erp-bundle-lines.md: A product bundle on an ERP invoice (#2727): one line, the component snapshot in erp_invoice_item_components, one stock move per component on issue, return and cancel, the profit report.

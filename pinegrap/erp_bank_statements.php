@@ -81,7 +81,7 @@ if (!$ready) {
 
 $tills = '';
 $till_count = 0;
-foreach ((array) db_items("SELECT id, name, currency, kind FROM erp_cash_accounts WHERE is_active = 1 ORDER BY (kind = 'bank') DESC, sort_order ASC, id ASC") as $till) {
+foreach ((array) db_items("SELECT id, name, currency, kind FROM erp_cash_accounts WHERE is_active = 1 AND " . erp_bank_statement_kinds_sql() . " ORDER BY (kind = 'bank') DESC, sort_order ASC, id ASC") as $till) {
     $tills .= '<option value="' . (int) $till['id'] . '"' . (((string) $till['id'] === (string) $liveform->get_field_value('cash_account_id')) ? ' selected' : '') . '>' . h($till['name'] . ' (' . $till['currency'] . ')') . '</option>';
     $till_count++;
 }
