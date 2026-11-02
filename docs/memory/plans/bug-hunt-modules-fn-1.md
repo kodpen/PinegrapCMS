@@ -22,9 +22,9 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `backup`: done #4563
 
-- `backup_cloud`: open
+- `backup_cloud`: clean (folder names and default folder, chunks and Content-Range, resume offsets of Drive and Graph, Drive query quoting, Dropbox argument header, account check, prune guard, the three upload loops checked)
 
-- `backup_restore`: open
+- `backup_restore`: clean (archive entry filter, size-capped CRC-checked extraction, statement start and classification, renaming, partition fallback, line splitter against escaped dumps, session save and restore, recovery, lock and swap checked)
 
 - `bundles`: open
 
