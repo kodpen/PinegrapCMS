@@ -325,6 +325,9 @@ if ($mail_queue_tab === 'sms') {
         'sending' => array(lang('Sending'), 'theme-info'),
         'sent'    => array(lang('Sent'), 'theme-success'),
         'failed'  => array(lang('Failed'), 'theme-danger'),
+        // Stopped by the send gate (includes/fn/mail_bounces.php): the
+        // address bounced or complained. Not a failure, never retried.
+        'suppressed' => array(lang('Suppressed'), 'theme-warning'),
     );
 
     $mail_queue_type_labels = array(

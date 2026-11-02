@@ -252,6 +252,16 @@ function test_layout_form_convert_select_date_and_missing()
 	$date = _test_lfc_tag($res['tree'], 'input')[0];
 	pg_assert_same('date', _test_lfc_attr($date, 'type'));
 	pg_assert_same('2026-10-27', _test_lfc_attr($date, 'value'));
+
+	// A default in the site's format becomes the ISO the native input holds.
+	$iso_code = '<input type="text" name="126" id="126"><input type="text" name="127" id="127"><input type="text" name="128" id="128">';
+	$iso = pg_layout_form_convert($iso_code, array(
+		_test_lfc_field(126, 'day', 'Day', 'date', array('default_value' => '27/10/2026')),
+		_test_lfc_field(127, 'start', 'Start', 'date and time', array('default_value' => '27/10/2026 5:05 PM')),
+		_test_lfc_field(128, 'hour', 'Hour', 'time', array('default_value' => '5:05 PM')),
+	), array('page_id' => 5));
+	$inputs = _test_lfc_tag($iso['tree'], 'input');
+	pg_assert_same(array('2026-10-27', '2026-10-27T17:05', '17:05'), array_map(function ($n) { return _test_lfc_attr($n, 'value'); }, $inputs), 'defaults in ISO');
 	pg_assert_same(array(124, 125), $res['missing'], 'fields the layout does not draw');
 	$names = array_keys(_pg_cf_controls($res['tree'], 5));
 	pg_assert_same(array('salutation', 'game_date', 'winner'), $names, 'added after the drawn ones');

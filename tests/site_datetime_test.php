@@ -119,6 +119,17 @@ function test_site_datetime_express_order_posts_iso()
 	pg_assert_contains('inp.disabled = true; refreshField(inp);', $eo, 'and off');
 }
 
+function test_site_datetime_starter_time_hints_follow_the_clock()
+{
+	foreach (array('english_default', 'turkish_default') as $site) {
+		foreach (array(248, 256, 476, 497) as $id) {
+			$code = (string) file_get_contents(PG_FUNCTIONS_DIR . '/data/backups/' . $site . '/layouts/' . $id . '.php');
+			pg_assert_same(2, substr_count($code, "<?=h((pg_time_format_code() === 'H:i') ? lang('(Format: HH:mm)') : lang('(Format: h:mm AM/PM)'))?>"), $site . ' ' . $id . ': the time rows\' hint follows the clock');
+			pg_assert_false((bool) preg_match('/\((Format|Biçim): [hs]:(mm|dd) AM\/PM\)\s*</u', $code), $site . ' ' . $id . ': no fixed 12-hour hint');
+		}
+	}
+}
+
 function test_site_datetime_bind_marker()
 {
 	pg_assert_same('', pg_site_datetime_bind(array()), 'no ids, no marker');

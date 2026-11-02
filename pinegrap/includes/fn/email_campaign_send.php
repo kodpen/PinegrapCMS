@@ -116,6 +116,66 @@ function pg_email_campaign_record_failure($recipient_id, $email_address, $attemp
 }
 
 /**
+ * The columns that mark a campaign recipient the send gate stopped: done for
+ * the campaign and counted with the undelivered ones, with no attempt made.
+ * A given-up recipient always has at least one attempt, so attempts = 0
+ * tells a suppressed one apart. Pure.
+ *
+ * @return array column => value
+ */
+function pg_email_campaign_suppressed_set()
+{
+    return array('complete' => 1, 'failed' => 1, 'attempts' => 0);
+}
+
+/**
+ * Skip a recipient whose address bounced or complained
+ * (includes/fn/mail_bounces.php). With the retry columns the recipient is
+ * marked as pg_email_campaign_suppressed_set() says, so the campaign counts
+ * it; without them it is dropped, as an opted-out recipient is.
+ *
+ * @param int         $id           email_recipients.id
+ * @param string      $address      the recipient's address
+ * @param bool        $retry_ready  pg_email_retry_ready()
+ * @param string|null $claim_token  the job's claim, released with the mark
+ * @return bool  whether the recipient was skipped
+ */
+function pg_email_campaign_skip_suppressed($id, $address, $retry_ready, $claim_token = null)
+{
+    if (!function_exists('pg_mail_address_blocked') || !pg_mail_address_blocked($address)) {
+        return false;
+    }
+
+    $id = (int) $id;
+
+    if (!$retry_ready) {
+        db("DELETE FROM email_recipients WHERE id = '" . $id . "'");
+
+        return true;
+    }
+
+    $set = array();
+
+    foreach (pg_email_campaign_suppressed_set() as $column => $value) {
+        $set[] = $column . " = '" . (int) $value . "'";
+    }
+
+    $set[] = "last_error = '" . e(lang('Not sent: the address bounced or complained.')) . "'";
+
+    $where = "(id = '" . $id . "')";
+
+    if ($claim_token !== null) {
+        $set[] = "claimed_at = 0";
+        $set[] = "claim_token = ''";
+        $where .= " AND (claim_token = '" . e((string) $claim_token) . "')";
+    }
+
+    db("UPDATE email_recipients SET " . implode(', ', $set) . " WHERE " . $where);
+
+    return true;
+}
+
+/**
  * The finish of a Send now run, counted from the campaign's recipients.
  * Only accepted deliveries count as sent, so the percent reaches 100 only
  * when every recipient got the message. The campaign is complete once no
@@ -124,15 +184,19 @@ function pg_email_campaign_record_failure($recipient_id, $email_address, $attemp
  *
  * @param int $total      recipients of the campaign
  * @param int $delivered  complete and not failed
- * @param int $failed     given up after the last attempt
+ * @param int $failed     given up after the last attempt, suppressed ones
+ *                        included
  * @param int $waiting    not complete: waiting for another attempt
+ * @param int $suppressed of $failed, skipped by the send gate (the address
+ *                        bounced or complained)
  * @return array percent, all_sent, complete, heading, message
  */
-function pg_email_campaign_send_summary($total, $delivered, $failed, $waiting)
+function pg_email_campaign_send_summary($total, $delivered, $failed, $waiting, $suppressed = 0)
 {
     $total = (int) $total;
     $delivered = (int) $delivered;
-    $failed = (int) $failed;
+    $suppressed = max(0, min((int) $suppressed, (int) $failed));
+    $failed = (int) $failed - $suppressed;
     $waiting = (int) $waiting;
 
     $all_sent = ($total > 0) && ($delivered >= $total);
@@ -162,6 +226,13 @@ function pg_email_campaign_send_summary($total, $delivered, $failed, $waiting)
         $message .= ' ' . lang(array(
             'string' => '{var:1} e-mail(s) could not be delivered and will not be tried again.',
             'vars'   => array(pg_format_number($failed, 0)),
+        ));
+    }
+
+    if ($suppressed > 0) {
+        $message .= ' ' . lang(array(
+            'string' => '{var:1} address(es) were skipped because they bounced or complained.',
+            'vars'   => array(pg_format_number($suppressed, 0)),
         ));
     }
 

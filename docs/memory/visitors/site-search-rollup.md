@@ -22,5 +22,5 @@ module: site_search_stats
 ## How long are rows kept?
 - 400 days (`PG_SITE_SEARCH_DAYS`): `job.php` runs `pg_site_search_sweep()` once a day (`data/temp/site_search_sweep.json`), `DELETE … WHERE day < ? LIMIT 5000` within 5 seconds.
 
-## What is still to come?
-- Synonyms and promoted results (SF3b): the two settings go to `config_text` rows, not to `config` columns as #5047 wrote, because `config` takes no new column since 11.0.145 (`data/config-table-no-varchar.md`). The report section (SF3c). `plans/small-features-2026-11-steps.md`.
+## Where are synonyms and promoted results?
+- `designer/search-synonyms-promoted.md`; the report section is SF3c of `plans/small-features-2026-11-steps.md`.

@@ -448,10 +448,11 @@ function pg_mail_enqueue(array $properties)
 // message, and this must not hold the general job past its next tick.
 //
 // Returns array('sent' => n, 'failed' => n), failed counting attempts that
-// did not get through in this run, whether or not they will be retried.
+// did not get through in this run, whether or not they will be retried, and
+// 'suppressed' => n, the messages the send gate stopped.
 function pg_mail_queue_run($limit = 25, $seconds = 20)
 {
-    $result = array('sent' => 0, 'failed' => 0);
+    $result = array('sent' => 0, 'failed' => 0, 'suppressed' => 0);
 
     if (!pg_mail_queue_ready()) {
         return $result;
@@ -560,6 +561,35 @@ function pg_mail_queue_run($limit = 25, $seconds = 20)
 
         unset($properties['queue']);
 
+        // The send gate, before the send and never after: an address that
+        // bounced hard, complained or soft-bounced past the limit gets
+        // nothing more. Only those recipients are dropped; a message left
+        // with none is suppressed, a queue outcome rather than a failure:
+        // no attempt counted, no notice, no retry.
+        if (isset($properties['to']) && function_exists('pg_mail_bounce_blocked_among')) {
+            $blocked = pg_mail_bounce_blocked_among(pg_mail_bounce_lookup_addresses($properties['to']));
+
+            if ($blocked) {
+                $split = pg_mail_bounce_split($properties['to'], $blocked);
+
+                if (!$split['keep']) {
+                    db(
+                        "UPDATE mail_outbox
+                        SET
+                            status = 'suppressed',
+                            last_error = '" . e(pg_mail_clip(lang('Not sent: the address bounced or complained.'), 500)) . "',
+                            claimed_at = 0
+                        WHERE id = '" . $id . "'");
+
+                    $result['suppressed']++;
+
+                    continue;
+                }
+
+                $properties['to'] = is_array($properties['to']) ? $split['keep'] : $split['keep'][0];
+            }
+        }
+
         // The sender hears about a failure once, when the message is given
         // up on, rather than after every attempt. Before the last attempt
         // email() is asked to tell only a permanent failure, which ends the
@@ -633,7 +663,7 @@ function pg_mail_queue_run($limit = 25, $seconds = 20)
     // Sent rows are kept a week and failed ones a month, so the mail queue
     // screen can show what happened, then swept.
     db("DELETE FROM mail_outbox WHERE (status = 'sent') AND (sent_at < " . (time() - 604800) . ")");
-    db("DELETE FROM mail_outbox WHERE (status = 'failed') AND (created_at < " . (time() - 2592000) . ")");
+    db("DELETE FROM mail_outbox WHERE (status IN ('failed', 'suppressed')) AND (created_at < " . (time() - 2592000) . ")");
 
     return $result;
 }
