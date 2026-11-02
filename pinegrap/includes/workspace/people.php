@@ -428,7 +428,8 @@ function ws_capacity($user_id)
 }
 
 /**
- * A number of minutes as the planning screens say it: "1 h 30 min".
+ * A number of minutes as the planning screens say it: "1 h 30 min", its
+ * spaces no-break so it never wraps.
  *
  * @param int $minutes
  * @return string
@@ -440,12 +441,13 @@ function ws_minutes_label($minutes)
     $rest = $minutes % 60;
 
     if ($hours === 0) {
-        return lang(array('string' => '{var:1} min', 'vars' => $rest));
+        $label = lang(array('string' => '{var:1} min', 'vars' => $rest));
+    } elseif ($rest === 0) {
+        $label = lang(array('string' => '{var:1} h', 'vars' => $hours));
+    } else {
+        $label = lang(array('string' => '{var:1} h {var:2} min', 'vars' => array($hours, $rest)));
     }
 
-    if ($rest === 0) {
-        return lang(array('string' => '{var:1} h', 'vars' => $hours));
-    }
-
-    return lang(array('string' => '{var:1} h {var:2} min', 'vars' => array($hours, $rest)));
+    // No-break spaces: a narrow card never leaves the unit alone on a line.
+    return str_replace(' ', "\xC2\xA0", $label);
 }

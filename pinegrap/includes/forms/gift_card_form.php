@@ -49,8 +49,9 @@ function pg_gift_card_form_default_expiration($validity_days, $date_format, $now
 }
 
 /**
- * The Gift Card Options card, from the opening row to its closing tag; the
- * screens print the form tag, their hidden fields and the buttons around it.
+ * The Gift Card Options card alone; the screens put it in the form column
+ * of their row and print the form tag, their hidden fields and the save bar
+ * around it.
  *
  * @param liveform $liveform
  * @param string   $mode     'add' (amount and quantity) or 'edit' (balance)
@@ -72,14 +73,14 @@ function pg_gift_card_form_card($liveform, $mode, $options)
         $output_help = '<script>$("#amount").focus()</script>';
     } else {
         $output_label = lang('Balance');
-        $output_help = '<div class="form-text text-end">' . lang(array('string'=>'Original Amount: {var:1}','vars'=>array($options['original_amount'] ?? ''))) . '</div>';
+        $output_help = '<div class="form-text">' . lang(array('string'=>'Original Amount: {var:1}','vars'=>array($options['original_amount'] ?? ''))) . '</div>';
     }
 
     $output_quantity = '';
 
     if ($add) {
         $output_quantity = '
-                                        <div class="col-12 sm:col-4 xl:col-3 my-3">
+                                        <div class="col-12 md:col-6 xl:col-4 my-3">
                                             <label for="quantity" class="form-label">' . lang('Quantity') . '</label>
                                             <div class="input-group number-controls">
                                                 <button class="btn material-icons minus border border-end-0" type="button" aria-label="' . h(lang('Decrease')) . '">remove</button>
@@ -96,20 +97,18 @@ function pg_gift_card_form_card($liveform, $mode, $options)
                                                     'data-inputmask-placeholder'=>'0')) . '
                                                 <button class="btn material-icons plus border border-start-0" type="button" aria-label="' . h(lang('Increase')) . '">add</button>
                                             </div>
-                                            <div class="text-end form-text">' . lang('increase quantity to create multiple gift cards at once') . '</div>
+                                            <div class="form-text">' . lang('increase quantity to create multiple gift cards at once') . '</div>
                                         </div>';
     }
 
     return '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Gift Card Options') . '
                                 </h2>
                                 <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 sm:col-4 lg:col-3 xl:col-2 my-3">
+                                        <div class="col-12 md:col-6 xl:col-4 my-3">
                                             <label for="' . $field . '" class="form-label">' . $output_label . '</label>
                                             <label class="form-control form-adorn form-adorn-end">
                                                 <span class="form-adorn-text" aria-hidden="true">' . ($options['symbol'] ?? '') . '</span>
@@ -117,7 +116,7 @@ function pg_gift_card_form_card($liveform, $mode, $options)
                                             </label>
                                             ' . $output_help . '
                                         </div>
-                                        <div class="col-12 sm:col-4 xl:col-3 my-3">
+                                        <div class="col-12 md:col-6 xl:col-4 my-3">
                                             <label for="expiration_date" class="form-label">' . lang('Expiration Date') . '</label>
                                             ' . $liveform->output_field(array(
                                                 'type' => 'text',
@@ -129,9 +128,9 @@ function pg_gift_card_form_card($liveform, $mode, $options)
                                                 'autocomplete'=>'off',
                                                 'data-pg-date' => '')) . '
                                                 ' . ($options['scripts'] ?? '') . '
-                                            <div class="form-text text-end">' . lang('leave blank for no expiration') . '</div>
+                                            <div class="form-text">' . lang('leave blank for no expiration') . '</div>
                                         </div>' . $output_quantity . '
-                                        <div class="col-12 xl:col-8 my-3">
+                                        <div class="col-12 my-3">
                                             <label for="notes" class="form-label">' . lang('Notes') . '</label>
                                             ' . $liveform->output_field(array(
                                                 'type' => 'textarea',
@@ -141,9 +140,7 @@ function pg_gift_card_form_card($liveform, $mode, $options)
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>';
+                            </div>';
 }
 
 /**

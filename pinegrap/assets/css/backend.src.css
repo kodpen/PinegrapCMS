@@ -474,10 +474,11 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
 .pg-menu-caret:empty::after {
   margin-left: 0;
 }
-/* v5's dialog: its radius, an unblurred backdrop, under the top of the
-   screen; .pg-dialog-centered (v5's modal-dialog-centered) is centred. */
+/* v5's dialog: an unblurred backdrop, under the top of the screen, with
+   the panel's surface radius; .pg-dialog-centered (v5's
+   modal-dialog-centered) is centred. */
 .dialog {
-  --bs-dialog-border-radius: var(--pg-radius-lg);
+  --bs-dialog-border-radius: var(--pg-radius-surface);
   --bs-dialog-backdrop-blur: 0px;
   margin-top: var(--bs-dialog-margin);
 }
@@ -1041,6 +1042,9 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
   --pg-radius-xl: var(--bs-radius-9);
   --pg-radius-2xl: 2rem;
   --pg-radius-pill: var(--bs-radius-pill);
+  /* Cards, dialogs and menus: Bootstrap 6's own surface radius, one step
+     rounder than the controls (radius-5) they hold. */
+  --pg-radius-surface: var(--bs-radius-7);
   --pg-font-mono: var(--bs-font-mono);
   --pg-link-color: var(--bs-link-color);
   --pg-shadow: var(--bs-box-shadow);
@@ -1071,12 +1075,12 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
 }
 
 .card {
-  --bs-card-border-radius: var(--pg-radius-lg);
+  --bs-card-border-radius: var(--pg-radius-surface);
   --bs-card-border-width: 1px;
   --bs-card-cap-padding-y: 1rem;
   --bs-card-cap-padding-x: 1rem;
   --bs-card-inner-border-radius: calc(
-    var(--pg-radius-lg) - (var(--pg-border-width))
+    var(--bs-card-border-radius) - (var(--pg-border-width))
   );
   --bs-card-bg: var(--pg-card-bg);
 }
@@ -3668,7 +3672,7 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
   --bs-menu-padding-x: var(--pg-um-pad);
   --bs-menu-padding-y: var(--pg-um-pad);
   --bs-menu-font-size: 0.875rem;
-  --bs-menu-border-radius: 1rem;
+  --bs-menu-border-radius: var(--pg-radius-surface);
   --bs-menu-item-padding-x: 0.625rem;
   --bs-menu-item-padding-y: 0.375rem;
   --bs-menu-item-border-radius: var(--pg-radius-lg);
@@ -5120,16 +5124,8 @@ a.dt-button {
   padding: 0 4px;
 }
 
-.btn-group-sm > .btn,
-.btn-sm,
-.btn {
-  --bs-btn-border-radius: var(--pg-radius-lg);
-}
 .menu {
-  --bs-menu-border-radius: var(--pg-radius-lg);
-}
-.pagination {
-  --bs-pagination-border-radius: var(--pg-radius-lg);
+  --bs-menu-border-radius: var(--pg-radius-surface);
 }
 
 .software_notice,
@@ -5567,8 +5563,8 @@ div#software_image_picker_container {
 
 .card.widget {
   aspect-ratio: 1/1;
-  --bs-card-border-radius: var(--pg-radius-lg);
-  --bs-card-inner-border-radius: calc(var(--pg-radius-2xl) - (var(--pg-border-width)));
+  --bs-card-border-radius: var(--pg-radius-surface);
+  --bs-card-inner-border-radius: calc(var(--bs-card-border-radius) - (var(--pg-border-width)));
   --bs-card-cap-padding-y: 0.5rem;
   --bs-card-cap-padding-x: 0.5rem;
   --bs-bg-opacity: 1;
@@ -13904,7 +13900,9 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
 .ws-home-row-urgent .ws-home-hot-icon {
   color: var(--pg-danger);
 }
-.ws-home-priority {
+/* A task's priority badge (high or urgent) in the Today card and every
+   task list (homeDue(), taskRows() in workspace.js). */
+.ws-priority {
   display: inline-block;
   margin-left: .35rem;
   padding: 0 .4rem;
@@ -13915,7 +13913,7 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   background: color-mix(in srgb, var(--pg-warning) 20%, transparent);
   color: var(--pg-warning-fg-emphasis);
 }
-.ws-home-priority-urgent {
+.ws-priority-urgent {
   background: color-mix(in srgb, var(--pg-danger) 16%, transparent);
   color: var(--pg-danger-fg-emphasis);
 }
@@ -16891,9 +16889,7 @@ html[data-bs-theme="dark"] .ws-cal-today .ws-cal-num {
 }
 .ws-extreme b {
   display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .ws-extreme-icon {
   font-size: 1.1rem;
@@ -16904,10 +16900,10 @@ html[data-bs-theme="dark"] .ws-cal-today .ws-cal-num {
 .ws-extreme-least .ws-extreme-icon {
   color: var(--pg-success);
 }
-.ws-extreme-count {
+.ws-extreme .ws-extreme-count {
   font-size: .78rem;
   font-weight: 700;
-  white-space: nowrap;
+  color: var(--pg-fg-body);
 }
 .ws-person-row {
   display: flex;
@@ -18252,7 +18248,7 @@ html[data-bs-theme="dark"] .ws-home-count.ws-home-count-hot {
 .ws-home-task-head .ws-home-row-title {
   min-width: 0;
 }
-.ws-home-task-head .ws-home-priority {
+.ws-home-task-head .ws-priority {
   flex: none;
 }
 /* The due tasks the card has no room for. */
@@ -20259,7 +20255,10 @@ button.ws-ack-count:hover {
 .wsf-flow-name .wsf-list-level {
   display: block;
 }
-.wsf-flow-start {
+/* The start cell stays a table cell, as tall as its row, so its border
+   and the hover band line up with the other columns; its wrapper lays the
+   icon beside the sentence. */
+.wsf-flow-start-in {
   display: flex;
   align-items: flex-start;
   gap: var(--ws-space-2);
@@ -20269,7 +20268,7 @@ button.ws-ack-count:hover {
   color: var(--wsf-kind);
 }
 .wsf-flow-last .wsf-flag {
-  max-width: 22rem;
+  max-width: 16rem;
 }
 /* The scheduled actions the flow list ends with (drawScheduled()): the
    converted rows, then the cards of the rows not converted, whose state
@@ -21469,7 +21468,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   .wsf-flow-table th,
   .wsf-flow-table td { display: block; padding: .2rem 0; border: 0; }
   .wsf-flow-table td::before { content: attr(data-label); display: block; font-size: .72rem; color: var(--pg-fg-2); }
-  .wsf-flow-table .wsf-flow-start { display: block; }
+  .wsf-flow-table .wsf-flow-start-in { display: block; }
 }
 /* ── /Workspace ── */
 /* A scheduled action drawn read-only in the Scheduled actions section of
@@ -21654,10 +21653,6 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   --bs-btn-input-xs-min-height: 0;
   --bs-btn-input-sm-min-height: 0;
   --bs-btn-input-lg-min-height: 0;
-  --bs-btn-input-border-radius: var(--bs-radius-4);
-  --bs-btn-input-xs-border-radius: var(--bs-radius-3);
-  --bs-btn-input-sm-border-radius: var(--bs-radius-3);
-  --bs-btn-input-lg-border-radius: var(--bs-radius-5);
   --bs-btn-input-gap: 0.25em;
   --bs-btn-input-xs-gap: 0.25em;
   --bs-btn-input-sm-gap: 0.25em;

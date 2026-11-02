@@ -428,6 +428,9 @@ if (isset($_POST['arrival_date']) && is_string($_POST['arrival_date'])) {
     }
 }
 
+// A Turkish district is saved in its listed spelling.
+pg_place_liveform_fix($liveform, '');
+
 // save the values that were originally entered by the customer, because if the address is verified, then they will be converted to all uppercase
 // if billing is the same as shipping then we don't want to save all uppercase values for billing information
 $first_name_with_case_preserved = $liveform->get_field_value('first_name');

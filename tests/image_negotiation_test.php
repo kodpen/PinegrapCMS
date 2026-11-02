@@ -202,3 +202,18 @@ function test_pg_image_mail_original_urls()
 		'a style block stays');
 	pg_assert_same('<p>no pictures</p>', pg_image_mail_original_urls('<p>no pictures</p>', $host), 'nothing to do');
 }
+
+function test_pg_image_same_address_state()
+{
+	$off = array('on' => false, 'cdn' => false);
+	$on = array('on' => true, 'cdn' => false);
+	$confirmed = array('on' => true, 'cdn' => true);
+
+	pg_assert_same('off', pg_image_same_address_state($off, true, false), 'switched off');
+	pg_assert_same('off', pg_image_same_address_state(array('on' => false, 'cdn' => true), true, true), 'off, whatever the CDN');
+	pg_assert_same('off', pg_image_same_address_state(null, true, false), 'no settings');
+	pg_assert_same('no_webp', pg_image_same_address_state($on, false, false), 'the server writes no WebP');
+	pg_assert_same('cdn', pg_image_same_address_state($on, true, true), 'a CDN in front, not confirmed');
+	pg_assert_same('on', pg_image_same_address_state($confirmed, true, true), 'a CDN in front, confirmed');
+	pg_assert_same('on', pg_image_same_address_state($on, true, false), 'no CDN');
+}

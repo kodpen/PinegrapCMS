@@ -37,23 +37,21 @@ if (!$_POST) {
         ]) . '
 <main id="content" class="container-fluid">
     ' . get_date_picker_format() . get_date_time_picker_format() . get_time_picker_format() . pg_fields_script() . '
-            <div class="row">
-            <div class="col-12">
-                
-                <form name="form" action="add_shipping_method.php" method="post">
-                    ' . get_token_field() . '
-                    ' . pg_shipping_method_form_cards(pg_shipping_method_form_new_values(), pg_shipping_method_zone_options_for(0)) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
-                            </div>
+    <form name="form" action="add_shipping_method.php" method="post">
+        ' . get_token_field() . '
+        <div class="row">
+            ' . pg_shipping_method_form_cards(pg_shipping_method_form_new_values(), pg_shipping_method_zone_options_for(0)) . '
+            <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                    <div class="container">
+                        <div class="btn-group flex-wrap justify-content-center">
+                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
                         </div>
-                    </nav>
-                </form>
+                    </div>
+                </nav>
             </div>
         </div>
-    
+    </form>
 </main>' .
     output_footer();
 

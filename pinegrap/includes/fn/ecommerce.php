@@ -9610,6 +9610,45 @@ function pg_product_copy_extra_sql($row, $ai_fields)
 
     return array('columns' => $columns, 'values' => $values);
 }
+
+/**
+ * The product code a bulk copy (duplicate_products.php) asks for: the
+ * original's code with its last letter replaced by the typed letter or word.
+ * The letter is cut by characters, so a Turkish last letter (Ş, Ç) is not
+ * split into a broken byte. A code that would come out empty keeps the
+ * original. The caller still makes the result unique (get_unique_name()).
+ *
+ * @param string $name     the original's product code
+ * @param string $new_text the letter or word typed on the screen
+ * @return string
+ */
+function pg_duplicate_products_base_name($name, $new_text)
+{
+    $name = (string) $name;
+    $base = mb_substr($name, 0, max(0, mb_strlen($name, 'UTF-8') - 1), 'UTF-8') . (string) $new_text;
+
+    return ($base === '') ? $name : $base;
+}
+
+/**
+ * The short description a bulk copy (duplicate_products.php) writes: the
+ * original's text minus its last $count letters, plus the typed letter or
+ * word. Letters are counted as characters, so a Turkish text loses exactly
+ * the letters asked for and is never left with half of a two-byte letter.
+ *
+ * @param string $text     the original's short description
+ * @param int    $count    the letters to remove, at least 1
+ * @param string $new_text the letter or word typed on the screen
+ * @return string
+ */
+function pg_duplicate_products_description($text, $count, $new_text)
+{
+    $text = (string) $text;
+    $keep = max(0, mb_strlen($text, 'UTF-8') - max(1, (int) $count));
+
+    return mb_substr($text, 0, $keep, 'UTF-8') . (string) $new_text;
+}
+
 function duplicate_product($id)
 {
     // get original product's info
@@ -12442,12 +12481,12 @@ function pg_carrier_number_field($value)
     if (pg_erp_store_country() === 'TR') {
         return '<label for="carrier_vkn" class="form-label">' . lang('Carrier VKN') . '</label>
             <input value="' . $value . '" type="text" name="carrier_vkn" id="carrier_vkn" class="form-control" maxlength="11" inputmode="numeric" />
-            <div class="form-text text-end">' . lang('Tax number of the carrier (10 digits) or ID number (11 digits)') . '</div>';
+            <div class="form-text">' . lang('Tax number of the carrier (10 digits) or ID number (11 digits)') . '</div>';
     }
 
     return '<label for="carrier_vkn" class="form-label">' . lang('Carrier tax number') . '</label>
         <input value="' . $value . '" type="text" name="carrier_vkn" id="carrier_vkn" class="form-control" maxlength="' . pg_carrier_number_width() . '" />
-        <div class="form-text text-end">' . lang('The tax number of the carrier, as it prints it on its own invoices.') . '</div>';
+        <div class="form-text">' . lang('The tax number of the carrier, as it prints it on its own invoices.') . '</div>';
 }
 
 /**

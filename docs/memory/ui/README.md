@@ -44,6 +44,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - ai-write-tinymce.md: "Write with AI" and the AI marks with the "previous" rich text editor (TinyMCE 3): where the draft goes, how the mark follows the text, the lost-draft symptom it fixed
 - ai-write.md: "Write with AI" drafts for product, page and form record fields (ai_write panel action, includes/fn/ai_write.php): targets, context, model, quota guards, who may ask, reading the answer
 - api-console-try-fields.md: API documentation Try it fields (fieldsFor() in includes/api/console_view.php): each field gets an id from a page-wide counter and its caption is a <label for>
+- app-screen-messages.md: Application-like screens (File Manager, visual designer) show liveform messages as their own toasts; a send_to redirect leaves its notice on the screen it opens
 - arrival-date-shared-form.md: The arrival date create and edit screens share includes/forms/arrival_date_form.php: what it holds, what stays in the screens
 - ascii-names-in-urls-iis.md: IIS re-encodes non-ASCII URL paths to the ANSI code page so Turkish-named files 404 (pg_ascii_file_name); Windows drops a trailing dot, so no stored file name ends in one
 - audit-log-paging.md: The audit trail list (view_audit_log.php) paged, sorted and searched on the server; changes read when a line's fold opens; filters stay in the address
@@ -157,6 +158,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - explorer-list-headings.md: File manager list view (view_folders.php): headings sort from a button and carry aria-sort; column edges resize by keyboard, any pointer, double-click fit and a menu reset
 - explorer-locale-order.md: File and Catalog Manager (view_folders.php) sort text keys with the panel language's Intl.Collator and match with foldText() (İ/I/ı/i alike); the Shared view's groups sort by pg_geo_label_compare()
 - explorer-menu-tree.md: The File Manager's and the Catalog Manager's tree in their main menu panels: moved in on the explorer's own screen, links elsewhere (explorer_side.js, the explorer_side action), gates, per-area keys
+- explorer-page-type-name.md: The File Manager writes a page's type in the panel language ("Page · Custom Form"), from the payload's type_name, and sorts the Type column by it
 - explorer-picker-state.md: File and Catalog Manager pickers and menu ticks expose their state (aria-pressed, aria-current); transfer and channel picks keep focus; empty lists announced
 - explorer-search-state.md: File manager (view_folders.php) search and filters: status bar count, the hidden status region and live notices, selection strip, preview pane; the hover bubble's check after a delete (#2053)
 - explorer-tour-texts.md: File and Catalog Manager tour steps name the control they ring by its printed label; the toolbar More button is named; keys stay .4 on rewording
@@ -290,6 +292,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-offline-and-install.md: The panel's offline notice (sw.js answers offline.html when a page load fails), the worker registered on every panel page, "Install Pinegrap" in the account menu; the site manifest is Site Icon's
 - panel-picture-viewer-focus.md: Panel picture viewer (pg_lightbox.js): focus moves in, Tab wraps, focus returns to the opener, the closed overlay is inert and hidden, named dialog and thumbnails, closes only on a background tap
 - panel-picture-viewer-zoom.md: Panel picture viewer (pg_lightbox.js): zoom measured from the fitted size, a zoomed picture pans by drag and by the arrow keys, Left/Right change the picture only at the fit
+- panel-radius-tokens.md: B10 radius (#4867): fields and buttons on Bootstrap 6's control radii, cards, dialogs and menus on --pg-radius-surface (radius-7), inner card corners from the card radius
 - panel-save-shortcut-dialogs.md: Dialogs and editors that save on Ctrl+S themselves (Site Settings, code dialog, visual designer) and how the panel shortcut leaves their key alone
 - panel-save-shortcut.md: Panel Ctrl+S (backend.src.js) and Return in a text field: which form and button each submits, the button hint, disable_shortcut forms, buttons on their own form
 - panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page

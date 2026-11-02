@@ -282,6 +282,7 @@ if (!$_POST) {
     $billing_country = $row['billing_country'] ?? '';
     $billing_zip_code = $row['billing_zip_code'] ?? '';
     $billing_postcode_province = pg_shipping_postcode_province($billing_country, $billing_state, $billing_zip_code);
+    $billing_district_note = pg_place_district_note($billing_country, $billing_state, $billing_city);
     $billing_address_verified = $row['billing_address_verified'];
     $billing_phone_number = $row['billing_phone_number'] ?? '';
     $billing_fax_number = $row['billing_fax_number'] ?? '';
@@ -933,6 +934,13 @@ if (!$_POST) {
 
                 if ($postcode_province !== '') {
                     $output_postcode_province = '<span class="col-12 small fg-emphasis-warning bg-subtle-warning rounded-4 px-3 py-1 mt-1"><i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>' . h(pg_shipping_postcode_province_text($postcode_province)) . '</span>';
+                }
+
+                // A district the Turkish list does not hold is only noted.
+                $district_note = pg_place_district_note($ship_tos[$key]['country'], $ship_tos[$key]['state'], $ship_tos[$key]['city']);
+
+                if ($district_note !== '') {
+                    $output_postcode_province .= '<span class="col-12 small fg-emphasis-warning bg-subtle-warning rounded-4 px-3 py-1 mt-1"><i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>' . h($district_note) . '</span>';
                 }
 
                 $output_address_verified_check_mark = '';
@@ -2918,11 +2926,11 @@ if (!$_POST) {
                                     <hr/>
                                     <div class="row" >
                                         <span class="translateable col fg-secondary">' . lang('Special Offer Code') . ':</span>
-                                        <span class="col text-end">' . $special_offer_code . '</span>
+                                        <span class="col text-end">' . h($special_offer_code) . '</span>
                                     </div>
                                     <div class="row" >
                                         <span class="translateable col fg-secondary">' . lang('Reference Code') . ':</span>
-                                        <span class="col text-end">' . $reference_code . '</span>
+                                        <span class="col text-end">' . h($reference_code) . '</span>
                                     </div>
                                     ' . $output_currency_code_row . '
                                     ' . $output_parasut_status_rows . '
@@ -2976,6 +2984,9 @@ if (!$_POST) {
                                     </div>
                                     ' . (($billing_postcode_province !== '')
                                         ? '<span class="d-block small fg-emphasis-warning bg-subtle-warning rounded-4 px-3 py-1 mb-1"><i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>' . h(pg_shipping_postcode_province_text($billing_postcode_province)) . '</span>'
+                                        : '') . '
+                                    ' . (($billing_district_note !== '')
+                                        ? '<span class="d-block small fg-emphasis-warning bg-subtle-warning rounded-4 px-3 py-1 mb-1"><i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>' . h($billing_district_note) . '</span>'
                                         : '') . '
                                     <div class="row" >
                                         <span class="translateable col fg-secondary">' . lang('Address Verified') . ':</span>

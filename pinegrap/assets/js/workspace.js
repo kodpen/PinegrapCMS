@@ -7735,7 +7735,7 @@
                 head.appendChild(el('span', 'ws-home-row-title', task.title));
 
                 if (hot) {
-                    head.appendChild(el('span', 'ws-home-priority ws-home-priority-' + task.priority, (BOOT.priorities || {})[task.priority] || task.priority));
+                    head.appendChild(el('span', 'ws-priority ws-priority-' + task.priority, (BOOT.priorities || {})[task.priority] || task.priority));
                 }
 
                 text.appendChild(head);
@@ -8361,49 +8361,7 @@
                 head.setAttribute('data-ws-colored', '1');
             }
 
-            var title = el('div', 'ws-head-title ws-head-row');
-            var h = el('h2');
-            var tile = el('span', 'ws-head-icon');
-            tile.setAttribute('aria-hidden', 'true');
-            tile.appendChild(channelIcon(channel));
-            h.appendChild(tile);
-            h.appendChild(el('span', 'ws-head-name', channel.name));
-
-            if (channel.topic) {
-                h.title = channel.topic;
-            }
-
-            title.appendChild(h);
-
-            var tags = el('div', 'ws-head-tags');
-
-            // How the work stands, from the latest status update
-            // (workspace_status.js).
-            var statusPill = window.PGWsStatus ? window.PGWsStatus.pill(channel, self, featureHelpers()) : null;
-
-            if (statusPill) {
-                tags.appendChild(statusPill);
-            }
-
-            if (channel.department) {
-                var departmentBadge = tags.appendChild(el('span', 'badge ws-head-tag', channel.department.name));
-                departmentBadge.style.background = channel.department.color;
-                departmentBadge.style.color = readableInk(channel.department.color);
-            }
-
-            // The customer, and beside it the records tied to it.
-            var customer = self.customerNode(channel);
-
-            if (customer) {
-                customer.classList.add('ws-head-tag');
-                tags.appendChild(customer);
-            }
-
-            if (tags.firstChild) {
-                title.appendChild(tags);
-            }
-
-            head.appendChild(title);
+            head.appendChild(self.headTitle(channel));
 
             var actions = el('div', 'ws-head-actions');
             var faces = button('btn btn-sm btn-text theme-secondary ws-head-faces ws-head-wide', '', '', t('members'));
@@ -8698,7 +8656,7 @@
 
             if (channel.can_manage) {
                 item(t('edit_channel'), 'bi-pencil', function () {
-                    channelForm(channel, {}, function (id) { self.reloadChannels(id); });
+                    channelForm(channel, {}, function () { self.refreshInfo(); });
                 });
             }
 
@@ -9180,7 +9138,7 @@
                 var settings = button('btn btn-sm btn-outline theme-secondary rounded-pill w-100 ws-info-settings', t('edit_channel'), 'bi-gear');
 
                 settings.addEventListener('click', function () {
-                    channelForm(channel, {}, function (id) { self.reloadChannels(id); });
+                    channelForm(channel, {}, function () { self.refreshInfo(); });
                 });
                 body.appendChild(settings);
             }
@@ -9264,8 +9222,58 @@
             });
         },
 
-        // The header's people and menu, read from the channel as it is now
-        // (refreshInfo()); the rest of the header does not change there.
+        // The header's sign, name and tags (how the work stands, the
+        // department, the customer), drawn by drawCenter() and anew by
+        // refreshHead() after the channel's settings are saved.
+        headTitle: function (channel) {
+            var self = this;
+            var title = el('div', 'ws-head-title ws-head-row');
+            var h = el('h2');
+            var tile = el('span', 'ws-head-icon');
+            tile.setAttribute('aria-hidden', 'true');
+            tile.appendChild(channelIcon(channel));
+            h.appendChild(tile);
+            h.appendChild(el('span', 'ws-head-name', channel.name));
+
+            if (channel.topic) {
+                h.title = channel.topic;
+            }
+
+            title.appendChild(h);
+
+            var tags = el('div', 'ws-head-tags');
+
+            // How the work stands, from the latest status update
+            // (workspace_status.js).
+            var statusPill = window.PGWsStatus ? window.PGWsStatus.pill(channel, self, featureHelpers()) : null;
+
+            if (statusPill) {
+                tags.appendChild(statusPill);
+            }
+
+            if (channel.department) {
+                var departmentBadge = tags.appendChild(el('span', 'badge ws-head-tag', channel.department.name));
+                departmentBadge.style.background = channel.department.color;
+                departmentBadge.style.color = readableInk(channel.department.color);
+            }
+
+            // The customer, and beside it the records tied to it.
+            var customer = self.customerNode(channel);
+
+            if (customer) {
+                customer.classList.add('ws-head-tag');
+                tags.appendChild(customer);
+            }
+
+            if (tags.firstChild) {
+                title.appendChild(tags);
+            }
+
+            return title;
+        },
+
+        // The header read from the channel as it is now (refreshInfo()): its
+        // colour, title, people and menu.
         refreshHead: function () {
             var self = app;
             var channel = self.channel;
@@ -9273,6 +9281,21 @@
 
             if (!actions || !channel) {
                 return;
+            }
+
+            var head = actions.closest('.ws-head-channel');
+            var title = head.querySelector(':scope > .ws-head-title');
+
+            if (channel.hex) {
+                head.style.setProperty('--ws-ch', channel.hex);
+                head.setAttribute('data-ws-colored', '1');
+            } else {
+                head.style.removeProperty('--ws-ch');
+                head.removeAttribute('data-ws-colored');
+            }
+
+            if (title) {
+                head.replaceChild(self.headTitle(channel), title);
             }
 
             var faces = actions.querySelector('.ws-head-faces');
@@ -13253,8 +13276,11 @@
 
             // Formatting, tags as chips and tables, lists and code as cards
             // (assets/js/workspace_editor.js); a plain box without it.
+            // A discussion's box does not name its title as a channel.
+            var placeholder = self.isThread ? t('thread_composer_placeholder') : t('composer_placeholder', self.channel.name);
+
             self.rich = window.PGWsEditor ? window.PGWsEditor.create({
-                placeholder: t('composer_placeholder', self.channel.name),
+                placeholder: placeholder,
                 onKeydown: keys,
                 onEnter: function () { self.send(); }
             }) : null;
@@ -13263,7 +13289,7 @@
 
             if (!self.rich) {
                 input.rows = 1;
-                input.placeholder = t('composer_placeholder', self.channel.name);
+                input.placeholder = placeholder;
                 input.setAttribute('aria-label', input.placeholder);
             }
 
@@ -18166,7 +18192,9 @@
             }
 
             if (task.priority === 'urgent' || task.priority === 'high') {
-                row.appendChild(el('span', 'badge theme-danger', BOOT.priorities[task.priority]));
+                // The same badge as the Today card: high in the warning
+                // colour, urgent in the danger colour.
+                row.appendChild(el('span', 'ws-priority ws-priority-' + task.priority, BOOT.priorities[task.priority]));
             }
 
             row.appendChild(avatarStack('', task.assignees, 4));
@@ -19413,8 +19441,10 @@
                     var text = el('div', 'ws-grow');
                     text.appendChild(el('small', '', item[1]));
                     text.appendChild(el('b', '', item[0].person.name));
+                    // The count under the name, so a narrow side column
+                    // leaves the whole name its width.
+                    text.appendChild(el('small', 'ws-extreme-count', t('task_count', item[0].total)));
                     row.appendChild(text);
-                    row.appendChild(el('span', 'ws-extreme-count', t('task_count', item[0].total)));
                     row.addEventListener('click', function () {
                         state.person_id = item[0].person.id;
                         load();

@@ -437,7 +437,7 @@ if (!$_POST) {
     $_parent_options_html = get_product_group_options($parent_id, 0, $_GET['id'], 0, array(), FALSE, 'text', false, true, false);
     if ($_parent_options_html !== '') {
         $output_parent_product_group_row =
-            '<div class="col-12 md:col-4 my-3">
+            '<div class="col-12 my-3">
                 <label for="parent_id" class="form-label">' . lang('Parent Product Group') . '</label>
                 <select style="width:100%" class="form-control" data-pg-combobox id="parent_id" name="parent_id" data-placeholder="' . lang('Select Parent Group') . '" data-allow-clear="true"><option value=""></option>' . $_parent_options_html . '</select>
             </div>';
@@ -503,15 +503,17 @@ if (!$_POST) {
                     <input type="hidden" name="listed_product_ids" value="' . h(implode(',', array_map('intval', $selected_products))) . '" />
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
 
-                    <div class="row edit_product_group_container">
-                        ' . pg_product_group_form_cards($liveform, $group_values, array(
-                            'parent_row' => $output_parent_product_group_row,
+                    <input type="hidden" id="submitted_button_field" name="submitted_button_field" value="submit" />
+                    ' . pg_product_group_form_layout(array(
+                        'row_class' => 'edit_product_group_container',
+                        'form' => pg_product_group_form_cards($liveform, $group_values, array(
                             'attributes' => $output_attributes,
                             'seo_badge' => '<span class="float-end">' . pg_seo_render_badge($seo_row) . '</span>',
                             'seo_checklist' => '<div class="col-12">
                                             ' . pg_seo_render_checklist($seo_row, 'product_group', (int) $_GET['id']) . '
-                                        </div>')) . '
-                        ' . pg_product_group_form_products_card(array(
+                                        </div>')),
+                        'status' => pg_product_group_form_status_card($group_values, $output_parent_product_group_row),
+                        'wide' => pg_product_group_form_products_card(array(
                             'table_id' => 'product_group_products_table',
                             'title' => lang('Products and Child Product Groups to Include'),
                             'card_class' => ' edit_products',
@@ -519,22 +521,16 @@ if (!$_POST) {
                             'rows' => $output_rows,
                             'total_unselected' => $total_unselected,
                             'loaded' => $initial_unselected_count,
-                            'product_group_id' => (int) $_GET['id'])) . '
-                    </div>
-                    <input type="hidden" id="submitted_button_field" name="submitted_button_field" value="submit" />          
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                ' . ($group_binned
-                                    ? '<a class="btn my-1 btn-solid theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin"><span class="bi bi-trash3 me-3"></span><span class="pg-btn-label">' . lang('Open the Recycle Bin') . '</span></a>'
-                                    : '<button type="submit" id="submit_button" name="submit_button" value="Save" data-pg-save-shortcut class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>') . '
-                                ' . $output_delete_button . '
-                            </div>
-                            <span class="enable-on-selected"> 
-                                <button type="button" value="Modify Selected" title="' . lang('Modify Selected Products') . '" aria-label="' . h(lang('Modify Selected Products')) . '" data-bs-content="' . lang('All selected products will be modified. However, the changes you made on this page will be removed. If you have made any changes, save first.') . '" class="btn btn-sm my-1 btn-solid theme-primary p-3 disabled" onclick="convert_product_group_to_product_form(\'edit_products.php\')"><span class="material-icons" aria-hidden="true">living</span></button>
-                            </span>
-                        </div>
-                    </nav>
+                            'product_group_id' => (int) $_GET['id'])),
+                        'buttons' => '
+                                        ' . ($group_binned
+                                            ? '<a class="btn my-1 btn-solid theme-secondary" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php?view=bin"><span class="bi bi-trash3 me-3"></span><span class="pg-btn-label">' . lang('Open the Recycle Bin') . '</span></a>'
+                                            : '<button type="submit" id="submit_button" name="submit_button" value="Save" data-pg-save-shortcut class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>') . '
+                                        ' . $output_delete_button,
+                        'bar_extra' => '
+                                    <span class="enable-on-selected">
+                                        <button type="button" value="Modify Selected" title="' . lang('Modify Selected Products') . '" aria-label="' . h(lang('Modify Selected Products')) . '" data-bs-content="' . lang('All selected products will be modified. However, the changes you made on this page will be removed. If you have made any changes, save first.') . '" class="btn btn-sm my-1 btn-solid theme-primary p-3 disabled" onclick="convert_product_group_to_product_form(\'edit_products.php\')"><span class="material-icons" aria-hidden="true">living</span></button>
+                                    </span>')) . '
                     <input type="hidden" name="max_input_vars_test" value="true">
                     
                     <input type="hidden" name="action" value="edit">

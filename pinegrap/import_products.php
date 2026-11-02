@@ -503,7 +503,7 @@ if (!$_POST) {
 
                             // if this column is address_name, then prepare address name
                             if ($column_name == 'address_name') {
-                                $column_value = prepare_catalog_item_address_name($column_value, $product_id);
+                                $column_value = prepare_catalog_item_address_name($column_value, $product_id, 'product');
                                 $new_address_name = $column_value;
                             }
 

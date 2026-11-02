@@ -78,6 +78,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-bulk-sources.md: A person's own bulk product drafts (bulk_sources.php): several lines under /create product, /create product answering or sent with a channel spreadsheet, the table reader, ws_bulk_create_card()
 - workspace-calc-numbers.md: Figures inside a workspace sum (ws_calc_tokens(), ws_calc_inline(), #3398): read the site's way, leading %, English comma separates arguments, "=" line errors
 - workspace-calendar-read.md: Reading a person's Google/Outlook calendar back (calendar_sync.php, #4490): syncToken and delta, what is a move, the drawer's check, refused moves written back, calendar_refused
+- workspace-calendar-side-cards.md: Work calendar side cards at laptop width (#5189): ws_minutes_label() uses no-break spaces, the "who carries the work" row puts the task count under the whole name
 - workspace-calendar-write.md: A person's Workspace tasks written to their own Google or Outlook calendar (calendar_sync.php, #4387, #4420): app-made calendar, derived ids, sealed state per person, the hourly job
 - workspace-cart-quote-tag.md: The cart quote's Workspace tag (cart_quote, #3256): prefixes, the ecommerce right, orders:read, what the chip shows, the search, view_cart_quotes.php?id= and its Workspace button
 - workspace-change-proposal-display.md: How an application's proposal is shown: its name on cards, bells, push, Site Log (every bulk slice) and decisions, the task drawer's "Proposed for" line, the agent GET /workspace/decisions gives
@@ -97,6 +98,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-channel-search-scope.md: A search narrowed to one channel (palette "Only in #channel", ws_message_search) reads the channel's discussions too: ws_channel_search_ids()/ws_channel_search_sql(), #4239
 - workspace-checklist-to-task.md: A checklist item of a Workspace message made into a task (ws_checklist_item_task(), step 9b): read as /task reads it, item tied by message + words, button, tag, edits, rights, API
 - workspace-claude-bootstrap.md: Claude's routine reads its instructions and each request's briefing (ws_ai_briefing()) from the site; the short versioned bootstrap pasted on claude.ai and the card's warning
+- workspace-claude-daily-summary.md: The daily summary Claude writes for the dashboard's Assistant card: its setting, how its request is queued and told apart, where the card finds the message, why config holds no message id
 - workspace-claude-key-reads.md: Workspace reads with Claude's application key keep to the channels Claude may be asked in (ws_claude_channel_allowed()): which reads, record refs narrowed, the leak it fixed
 - workspace-claude-routine.md: "@Claude" in Workspace channels through one site-wide claude.ai routine: how it runs, limits, setup on claude.ai, security rules, what was never tested live
 - workspace-colon-emoji.md: ":" and two letters in a Workspace writing box with the emoji button suggest matching emoji (colonEmojiAt(), colonEmojiList()): where it opens, order, keys, undo, which boxes
@@ -118,6 +120,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-density.md: The Workspace comfortable / compact switch: ws-density key per browser, .ws-compact on <html>, which tokens it narrows, where the switch sits, which screens follow (PR #3733)
 - workspace-discussion-follow-screen.md: Stop / Follow again for the assistant a discussion follows (PR #2997, answer 4a of #2419): header line, channel line, system line, API follow fields and endpoint
 - workspace-discussion-follow.md: The assistant a discussion follows (ws_threads.follow_agent, step 11.0.113, decision #2419, PR #2924): who is followed, which message asks it, the no-pile-up rule, scheduled sends
+- workspace-discussion-names.md: How a Workspace discussion (ws_channels kind thread) is named outside its panel: bell lines name its channel via ws_inbox_place(), its writing box says "Reply in the discussion" (#5187)
 - workspace-editor-autoformat.md: Autoformat while typing in a Workspace writing box: ==x== to a highlight, "- " "* " "1. " "> " at a line's start to a list or quote; one undo, IME and paste guards, the per-viewer off switch
 - workspace-editor-link-keys.md: The link tip's Text field (linkText()), the Ctrl+/ shortcut sheet (openKeys(), shortcutRows(), keyLabel()) of the Workspace writing boxes since #2101, and the selection bar acting on click
 - workspace-editor-lists.md: Lists and quotes in the Workspace writing box (#1897): twins of the server's rules, lines written back as stored, keys, the three tools, a pick inside a mark, select all and delete

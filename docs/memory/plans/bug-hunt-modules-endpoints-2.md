@@ -6,7 +6,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 ## Which root endpoint groups (optimize to zone) are hunted?
 - Endpoints `optimize` (2): clean (optimize, optimize_image)
 
-- Endpoints `order` (22): partly done #5115, #5125 (order_*.php: order_form, order_history_*, order_invoice_print, order_preview, order_return); print_order: #5170 (queries used $_GET id, the check $_REQUEST id); retrieve_order, delete_order, connect_user_to_order, view_orders_for_contact clean; cancel_order, edit_orders, view_order_reports clean (#5178); taken by order worker (Arzu v16): #5202 (classic order view, receipt, preview labels through lang()), #5210 (view_orders export DISTINCT under the filter joins); update_order, view_order_report, add_order, get_order_form clean; still open: view_order, submit_order, express_order, get_express_order
+- Endpoints `order` (22): partly done #5115, #5125 (order_*.php: order_form, order_history_*, order_invoice_print, order_preview, order_return); print_order: #5170 (queries used $_GET id, the check $_REQUEST id); retrieve_order, delete_order, connect_user_to_order, view_orders_for_contact clean; cancel_order, edit_orders, view_order_reports clean (#5178); taken by order worker (Arzu v16): #5202 (classic order view, receipt, preview labels through lang()), #5210 (view_orders export DISTINCT under the filter joins); #5215 (view_order offer code escaped); update_order, view_order_report, add_order, get_order_form, express_order clean; submit_order: PayPal Express return reads token and PayerID as strings #5270; still open: get_express_order
 
 - Endpoints `page` (10): done #5135 (get_page RSS no-feed description escaped; page_view, update_view_page_mode, duplicate_page, edit_page_layout, editor_select_page_or_file clean), #5151 (get_page theme designer preview: CSS no longer HTML-escaped, theme_id scalar only; add_page, edit_page, get_page_content clean)
 
@@ -16,7 +16,11 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 
 - Endpoints `privacy` (2): open
 
-- Endpoints `product` (22): open
+- Endpoints `product`, part 1 (products): add_product, edit_product, edit_products, view_products, duplicate_product, duplicate_products, check_for_products_in_cart, get_product_group_for_product, get_erp_products, product_feed_job: taken by OP: #5257 (duplicate_products copy code made unique), #5355 (duplicate_products description cut by letters)
+
+- Endpoints `product`, part 2 (attributes, groups): add_product_attribute, edit_product_attribute, product_attribute_action, view_product_attributes, add_product_group, edit_product_group, duplicate_product_group, update_product_group_status, view_product_groups: open
+
+- Endpoints `product`, part 3 (import, export, builder, marketplace): import_products, import_products_f, export_products, export_products_f, product_builder, marketplace_products: open
 
 - Endpoints `recurring` (3): open
 

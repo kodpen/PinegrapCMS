@@ -116,6 +116,28 @@ $liveform = new liveform('view_folder_and_files');
 $liveform_pages = new liveform('view_pages');
 $liveform_folders = new liveform('view_folders');
 
+// The explorer is a full-height application screen: an alert box above it
+// pushed the whole explorer down and its status bar off the window. The
+// pending messages are handed to the script and shown as its own toasts
+// (SERVER_MESSAGES), errors first, then warnings, then notices.
+$explorer_messages = array();
+
+foreach (array($liveform, $liveform_pages, $liveform_folders) as $explorer_liveform) {
+    $explorer_messages = array_merge($explorer_messages, pg_designer_screen_messages(
+        $explorer_liveform->get_errors(),
+        $explorer_liveform->get_warning_messages(),
+        $explorer_liveform->get_notices()
+    ));
+}
+
+$explorer_order = array('error' => 0, 'warning' => 1, 'success' => 2);
+usort($explorer_messages, function ($a, $b) use ($explorer_order) {
+    return $explorer_order[$a['type']] - $explorer_order[$b['type']];
+});
+
+// Two forms can carry the same sentence (a handler that wrote to both).
+$explorer_messages = array_values(array_intersect_key($explorer_messages, array_unique(array_map('serialize', $explorer_messages))));
+
 // Deep link support: view_folders.php?folder=123 opens that folder;
 // ?view=files opens the flat all-files view.
 $initial_folder_id = isset($_GET['folder']) ? (int) $_GET['folder'] : 0;
@@ -1468,10 +1490,6 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 }
 }</style>
 
-<?php echo $liveform->output_errors() . $liveform->get_warnings() . $liveform->output_notices(); ?>
-<?php echo $liveform_pages->output_errors() . $liveform_pages->output_notices(); ?>
-<?php echo $liveform_folders->output_errors() . $liveform_folders->output_notices(); ?>
-
 <div id="explorer_app" class="my-3" data-area="<?php echo $explorer_area; ?>">
     <div id="explorer_toolbar" class="pg-toolbar">
         <div class="pg-menu-wrap" id="new_menu_wrap">
@@ -2158,6 +2176,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     var L = <?php echo encode_json($explorer_lang); ?>;
 
+    // What another screen left for this one (a file saved, a folder
+    // duplicated, an upload's warnings), shown as toasts once the script runs.
+    var SERVER_MESSAGES = <?php echo encode_json($explorer_messages); ?>;
+
     // The panel language's decimal and thousands separators, so prices and
     // sizes drawn here read like the figures the server writes beside them.
     var NUM = <?php echo encode_json(pg_number_separators()); ?>;
@@ -2408,10 +2430,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // only place that offer appears, so it is given longer to be read: three
     // and a half seconds is enough to register "moved" and not enough to
     // decide it was the wrong folder.
-    function toast(message, ok, action) {
+    //
+    // The fourth argument is { html, tone, sticky }: html sets the message as
+    // markup (a server message, escaped by whoever wrote it), tone overrides
+    // the colour ('warning') and sticky keeps the toast until it is closed.
+    function toast(message, ok, action, options) {
+        options = options || {};
         var container = document.getElementById('explorer_toasts');
         var element = document.createElement('div');
-        var tone = ok === false ? 'danger' : 'success';
+        var tone = options.tone || (ok === false ? 'danger' : 'success');
         element.className = 'toast align-items-center border-0 bg-' + tone + ' fg-contrast-' + tone;
         // The container is a polite live region, so a notice added to it is
         // read; a failure is an alert, read at once.
@@ -2419,11 +2446,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         element.innerHTML = '<div class="d-flex"><div class="toast-body"></div>' +
             (action ? '<button type="button" class="btn btn-sm btn-subtle theme-secondary my-auto me-1 text-nowrap" data-role="toast-action"></button>' : '') +
             '<button type="button" class="btn-close me-3 m-auto" data-bs-dismiss="toast" aria-label="' + L.close + '"></button></div>';
-        element.querySelector('.toast-body').textContent = message;
+        if (options.html) {
+            element.querySelector('.toast-body').innerHTML = message;
+        } else {
+            element.querySelector('.toast-body').textContent = message;
+        }
         // An open dialog's backdrop would cover a body-level toast.
         pgUI.hostLayer(container);
         container.appendChild(element);
-        var instance = pgUI.toast.get(element, { delay: action ? 9000 : 3500 });
+        var instance = pgUI.toast.get(element, options.sticky ? { autohide: false } : { delay: (action || options.html) ? 9000 : 3500 });
 
         if (action) {
             var actionButton = element.querySelector('[data-role="toast-action"]');
@@ -4499,6 +4530,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         return sortCollator;
     }
 
+    // A page sorts by the type name it shows ("Page", "Page · Custom Form"),
+    // so the order matches the column; the rest by their stored type.
+    function typeSortValue(item) {
+        return (item.kind === 'page') ? itemTypeLabel(item) : (item.type || '');
+    }
+
     function sortItems(list) {
         var key = state.sort.key;
         var dir = state.sort.dir === 'desc' ? -1 : 1;
@@ -4508,7 +4545,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var va, vb;
             if (key === 'size') { va = a.size || 0; vb = b.size || 0; }
             else if (key === 'timestamp') { va = a.timestamp || 0; vb = b.timestamp || 0; }
-            else if (key === 'type') { va = (a.type || ''); vb = (b.type || ''); }
+            else if (key === 'type') { va = typeSortValue(a); vb = typeSortValue(b); }
             // Keys the table has and the menu does not: a heading can be
             // clicked for any column that holds something worth ordering by.
             else if (key === 'folder') { va = (a.folder_name || ''); vb = (b.folder_name || ''); }
@@ -5073,6 +5110,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             '<span class="bi ' + target + ' sl-target"></span></span>';
     }
 
+    // A page loaded by the preview pane or Quick look: the marker tells the
+    // site not to count the draw as a visit (pg_request_is_panel_preview()).
+    function pagePreviewUrl(url) {
+        url = String(url || '');
+        if (url === '') { return url; }
+        return url + ((url.indexOf('?') === -1) ? '?' : '&') + 'pg_preview=1';
+    }
+
     function itemTypeLabel(item) {
         if (item.short_link) { return shortLinkTypeLabel(item.destination_type); }
         if (item.erp) { return erpTypeLabel(item); }
@@ -5080,7 +5125,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (item.kind === 'group') { return isVariantSet(item) ? L.variant_set : L.category; }
         if (item.kind === 'product') { return L.product; }
         if (item.kind === 'folder') { return L.folder; }
-        if (item.kind === 'page') { return L.page + (item.type && item.type !== 'standard' ? ' (' + item.type + ')' : ''); }
+        if (item.kind === 'page') { return L.page + (item.type_name ? ' · ' + item.type_name : ''); }
         return (item.type || '').toUpperCase();
     }
 
@@ -6693,7 +6738,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 : ('<div class="text-center empty-note"><i class="bi ' + ((item.kind === 'group') ? 'bi-boxes' : 'bi-box2-heart') + ' pg-display-1 d-block mb-3"></i>' + esc(L.no_preview) + '</div>');
         }
 
-        if (item.kind === 'page') { return '<iframe loading="lazy" src="' + esc(item.url) + '" title="' + esc(item.name) + '" referrerpolicy="no-referrer"></iframe>'; }
+        if (item.kind === 'page') { return '<iframe loading="lazy" src="' + esc(pagePreviewUrl(item.url)) + '" title="' + esc(item.name) + '" referrerpolicy="no-referrer"></iframe>'; }
         // An ERP picture has no thumbnail sizes; the kept file is shown as is.
         if (item.erp && item.picture) { return '<img draggable="false" src="' + esc(item.url) + '" alt="" />'; }
         if (item.is_image) { return '<img draggable="false" src="' + esc(imageUrl(item)) + '" alt="" />'; }
@@ -6997,7 +7042,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     '<a class="btn btn-sm btn-outline theme-primary" href="' + esc(backupDownloadUrl(item.path)) + '"><span class="bi bi-download me-1"></span>' + esc(L.download) + '</a></div>');
 
         } else if (item.kind === 'page') {
-            media = '<iframe loading="lazy" src="' + esc(item.url) + '" title="' + esc(item.name) + '" referrerpolicy="no-referrer"></iframe>';
+            media = '<iframe loading="lazy" src="' + esc(pagePreviewUrl(item.url)) + '" title="' + esc(item.name) + '" referrerpolicy="no-referrer"></iframe>';
         } else if (item.kind === 'file' && item.is_image) {
             media = '<a href="' + esc(imageUrl(item)) + '" target="_blank" draggable="false" aria-label="' + esc(L.open_in_new_tab + ': ' + item.name) + '"><img class="preview-media" draggable="false" src="' + esc(imageUrl(item)) + '" alt="" /></a>';
         } else if (item.kind === 'file' && item.type === 'pdf') {
@@ -16089,6 +16134,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     } else if (state.erpAllowed && (storageGet('pg_explorer_erp_open') === '1')) {
         setErpTreeOpen(true);
     }
+
+    SERVER_MESSAGES.forEach(function (entry) {
+        toast(entry.message, entry.type === 'success', null, { html: true, tone: entry.type === 'warning' ? 'warning' : '', sticky: entry.type !== 'success' });
+    });
 
     // The tour opens itself only once the grid and the tree have arrived. A
     // tour that starts against a loading screen rings empty boxes and its

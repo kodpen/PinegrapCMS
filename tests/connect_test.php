@@ -458,3 +458,22 @@ function test_connect_public_app_is_ready_without_a_secret()
 	pg_assert_false(pg_connect_app_ready($app), 'turned off');
 	pg_assert_false(pg_connect_app_public(null), 'no application');
 }
+
+// Renewing a connection reads its account and purposes only when it is the
+// owner's own: the site's (user 0) for a site connection, the person's for a
+// personal one, and the same provider.
+function test_connect_renewal_only_of_the_owners_own_connection()
+{
+	$site = array('provider' => 'google', 'user_id' => 0, 'label' => 'shop@example.com');
+	$mine = array('provider' => 'google', 'user_id' => 7, 'label' => 'me@example.com');
+	$theirs = array('provider' => 'google', 'user_id' => 8, 'label' => 'them@example.com');
+
+	pg_assert_true(pg_connect_renewal_allowed($site, 'google', 'site', 7), 'the site\'s connection, as the site');
+	pg_assert_true(pg_connect_renewal_allowed($mine, 'google', 'person', 7), 'my own connection, as me');
+
+	pg_assert_false(pg_connect_renewal_allowed($site, 'google', 'person', 7), 'the site\'s connection, as a person');
+	pg_assert_false(pg_connect_renewal_allowed($theirs, 'google', 'person', 7), 'another person\'s connection');
+	pg_assert_false(pg_connect_renewal_allowed($mine, 'google', 'site', 7), 'a person\'s connection, as the site');
+	pg_assert_false(pg_connect_renewal_allowed($mine, 'microsoft', 'person', 7), 'another provider');
+	pg_assert_false(pg_connect_renewal_allowed(null, 'google', 'site', 7), 'no connection');
+}

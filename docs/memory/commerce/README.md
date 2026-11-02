@@ -160,6 +160,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-returns-staff-request.md: Staff record a return request on the panel (add_return.php, source panel, PR #1616): entry points, form, timing warnings, what follows (audit, log, opt-in mail, no bell), repeat, refusals
 - order-returns-stale-moves.md: A staff move posts the status its page showed (status_was) and is refused under the return lock if it moved (PR #1612): the refused-refund close, why the lock alone failed, who passes it
 - order-returns.md: Customer return model (includes/fn/returns.php; order_returns, order_return_items, step 11.0.11): statuses and moves, held quantities, withdrawal window, refund deadline, what callers check
+- order-screen-offer-code-escape.md: (PR #5215) The panel order screen (view_order.php) escapes the order's special offer code and reference code; an offer code is free text up to 50 characters set by any commerce user
 - order-screen-shipments.md: The panel order screen's shipping cards (view_order.php): one card per address, the parcel list with per-number carrier select, status badge and format warning and how Save writes them
 - order-status-moves.md: pg_order_status_move(), the one order status rule the API and the Workspace follow; cancel only through process_order_cancellation(), restore only through its helper; full refund cancels (PR #1500)
 - order-view-legal-documents.md: Order view links to the legal documents and KVKK copy kept with the order: __legal_*_url tokens, has_legal_* flags, starter card, cards added after older layouts, none in the e-mail
@@ -187,10 +188,13 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - payment-method-lists.md: One list of checkout payment methods (pg_payment_checkout_methods(), PR #1743): screens that read it, what a redirect driver still needs by hand, the Pay With Iyzico gaps kept
 - payment-refunds.md: Money back through payment drivers (PRs #873, #903): the order's driver for the order screen's refund and the cancellation's void, log_name, the outcome lines
 - payment-unclear-answers.md: The 'unclear' flag of a payment driver's answer, how the iyzico refund sets it, why a return's refund stays refunded on it and who honours it (#970, PR #1260)
+- paypal-express-return-query.md: How the classic PayPal Express Checkout return in submit_order.php reads token and PayerID: one string each, an array or a missing one empty (#5270)
+- place-packs.md: Country place packs (includes/geo/places/<CC>.json): the file format, how a pack is found and matched, which forms suggest from it, how to add a country
 - print-order-header-facts.md: The printed order (print_order.php) carries the order screen's tax number, on-account, unpaid and cancelled state, order codes, installments and gift cards
 - print-order-id.md: print_order.php reads every order query with the one id it checked ($id from $_REQUEST, whole number), never $_GET['id'] again
 - print-order-shipping-card.md: The printed order (print_order.php) prints one shipping card per real recipient above its items, empty rows hidden, every parcel with its carrier
 - product-builder-parent-group.md: The Product Builder's parent group list for a new variant group (PR #4309): no empty choice, opens on the top group; what a posted 0 still does
+- product-bulk-duplicate-code.md: The product code of a bulk copy (duplicate_products.php): last letter swapped for the typed text, cut by characters, then made unique; why the old "[1]" cut wrote duplicate codes
 - product-bulk-price-edit.md: Bulk price change (edit_products.php, pg_bulk_price_change(), and the Catalog Manager's): a value above zero, a decrease never ends at or below zero, an increase never lowers; no negative price
 - product-bundles-storefront.md: Bundles in the catalog widgets (#2902): __is_bundle, __bundle_saving_formatted, is_bundle / has_bundle_saving flags, the product.bundle_items list, designer twins
 - product-bundles.md: Product bundles (includes/fn/bundles.php): schema 11.0.54, contents, the cached stock and price and what refreshes them, the product screen card, the delete refusal
@@ -259,6 +263,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - tax-zone-commission-reward-boxes.md: Rate, commission and whole-number boxes read as their columns store them: tax zone rate, commission, reward points and goal, Site Settings whole numbers (pg_parse_whole_number())
 - tr-district-carriers.md: What sends and writes ship_tos.district (#3654): the four Turkish carrier drivers (district first, city fallback), the needs-district hook, the n11 and Trendyol imports
 - tr-district-plate-code.md: ship_tos.district and states.plate_code (step 11.0.134, decision #3569): the district as free text, the plate fill by province name, the readiness probe, what reads them so far
+- tr-place-list.md: The Turkish place list (includes/geo/places/TR.json, 81 provinces, 973 districts): lookup, the city box suggester, the spelling written at save, the order screen's note for an unlisted district
 - trendyol-api-facts.md: Trendyol seller API (V2) facts for the connector: hosts, Basic auth + mandatory User-Agent, stage IP whitelist (503), category tree, V2 attributes with separately paged values, limits, test call.
 - trendyol-common-label.md: Trendyol common label (#3123, PRs #3257, #3281, #3594): by cargo number, ZPL per box, card, order screen and bulk, kept as a label row, read again after the sweep; marketplace_carried
 - trendyol-invoice-link.md: Trendyol invoice link of an imported package: typed by the operator on the Imported orders card, the seller-invoice-links call, link checks, 409, invoice_sent, no removal

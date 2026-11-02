@@ -1,13 +1,13 @@
 ---
 name: decisions-made-schema-8
-description: Decisions list, schema part 8 (2026-11-02 on): tables and columns of the 2026-11 feature plans (#5032-#5042) and the Assistant card summary columns (#5014)
+description: Decisions list, schema part 8 (2026-11-02 on): tables and columns of the 2026-11 feature plans (#5032-#5042) and the Assistant card summary columns (#5014, #5227)
 ---
 
 ## Where are the rules and the earlier parts?
 - `decisions-made.md`; its Parts line lists the files. Entries name the issue, the date and the migration shape.
 
-## The Assistant card's daily summary (architect, 2026-11-02, #5014)
-- `config.ws_claude_summary_hour` TINYINT UNSIGNED DEFAULT 255 (off), `ws_claude_summary_channel_id` and `ws_claude_summary_message_id` INT UNSIGNED DEFAULT 0; the summary is Claude's message in the chosen channel, read by id. Off on every site until switched on.
+## The Assistant card's daily summary (architect, 2026-11-02, #5014, #5227)
+- `config.ws_claude_summary_hour` TINYINT UNSIGNED DEFAULT 255 (off) and `ws_claude_summary_channel_id` INT UNSIGNED DEFAULT 0 (11.0.145); the summary is Claude's message in the chosen channel, and the card reads the latest answered summary request's `ws_ai_requests.reply_message_id`. The third column #5014 planned (`ws_claude_summary_message_id`) broke the row room `tests/innodb_test.php` keeps, so it was dropped (#5227). Off on every site until switched on. The `config` row is full from here (`data/config-table-no-varchar.md`).
 
 ## The 2026-11 feature plans (architect, 2026-11-02; shapes in the issues)
 - Additive steps in the open version with the idempotent helpers; an ENUM is widened by appending through `install_column_info()` and `install_modify_column()`; no DROP, no narrowing MODIFY; each plan's first schema step takes the next free sub-step label when it lands.

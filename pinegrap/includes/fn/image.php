@@ -331,7 +331,7 @@ function pg_image_settings($recheck = false)
         'image_quality_avif'       => $settings['quality_avif'],
         'image_resize_quality'     => $settings['resize_quality']));
 
-    $settings['derivative_formats'] = ($delivery['formats']['webp'] ? 1 : 0) | ($delivery['formats']['avif'] ? 2 : 0);
+    $settings['derivative_formats'] = pg_image_delivery_bits($delivery);
     $settings['quality_webp']       = $delivery['quality']['webp'];
     $settings['quality_avif']       = $delivery['quality']['avif'];
     $settings['delivery']           = $delivery;
