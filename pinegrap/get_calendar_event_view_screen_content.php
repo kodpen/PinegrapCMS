@@ -72,38 +72,31 @@ function get_calendar_event_view_screen_content($properties)
             WHERE calendar_event_id = ?";
         $result = db_q($query, array((string) $calendar_event_id)) or output_error('Query failed.');
         
-        $event_calendars = array();
-        
-        // Step through each row and add it to the array
+        $calendar_ids = array();
+
         while ($row = mysqli_fetch_assoc($result)) {
-            $event_calendars[] = $row;
+            $calendar_ids[] = $row['calendar_id'];
         }
-        
-        $where_calendar_id = '';
-        
-        // Loop through each calendar so that we can check if we are allowed to output the event on this calendar view
-        foreach ($event_calendars as $event_calendar) {
-            // check if calendar event is allowed in this view
-            $where_calendar_id .= "(calendar_id = '" . escape($event_calendar['calendar_id']) . "') OR ";
+
+        // Is the event in a calendar this calendar event view page shows? An
+        // event in no calendar is allowed on no such page: there is no query
+        // then (an empty list would build "WHERE  AND", which fails).
+        $calendar_condition = pg_calendar_event_view_calendar_condition($calendar_ids);
+        $allowed_in_view = false;
+
+        if ($calendar_condition !== null) {
+            $query =
+                "SELECT calendar_id
+                FROM calendar_event_views_calendars_xref
+                WHERE
+                    " . $calendar_condition[0] . "
+                    AND (page_id = ?)";
+            $result = db_q($query, array_merge($calendar_condition[1], array((string) $current_page_id))) or output_error('Query failed.');
+            $allowed_in_view = (mysqli_num_rows($result) > 0);
         }
-        
-        // Remove the last OR from the where_calendar_id variable and enclose it
-        if (mb_strlen($where_calendar_id) > 0) {
-            $where_calendar_id = mb_substr($where_calendar_id, 0, -4);
-            $where_calendar_id = '(' . $where_calendar_id . ')';
-        }
-        
-        // Query the rules for this calendar event view page.
-        $query =
-            "SELECT calendar_id
-            FROM calendar_event_views_calendars_xref
-            WHERE
-                " . $where_calendar_id . "
-                AND (page_id = '" . escape($current_page_id) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        
+
         // if calendar event is not allowed in this view, then output error
-        if (mysqli_num_rows($result) == 0) {
+        if (!$allowed_in_view) {
             output_error(lang('The requested calendar event is not allowed in this calendar event view. <a href="javascript:history.go(-1)">Go back</a>.'));
         }
         
