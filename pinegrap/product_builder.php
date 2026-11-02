@@ -6768,20 +6768,6 @@ function pg_pb_validate_product_post($user, $product_id = 0)
         }
     }
 
-    // A pre-order needs a real date after today; refused rather than saved
-    // off, so the operator is not left thinking the product is on pre-order.
-    if (pg_product_preorder_ready()) {
-
-        $preorder_problem = pg_preorder_problem(
-            !empty($_POST['preorder']),
-            isset($_POST['preorder_date']) ? $_POST['preorder_date'] : '',
-            pg_preorder_today());
-
-        if ($preorder_problem !== '') {
-            output_error(lang($preorder_problem) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
-        }
-    }
-
     // A product code is one product's, as the external API holds it: two
     // products of one code cannot be told apart by an import, a marketplace
     // or a barcode scan. Refused rather than renamed to "CODE[1]", which the
@@ -6850,6 +6836,20 @@ function pg_pb_validate_product_post($user, $product_id = 0)
 
         if ($holder) {
             output_error(pg_product_name_taken_text($name, $holder, true) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+        }
+    }
+
+    // A pre-order needs a real date after today; refused rather than saved
+    // off, so the operator is not left thinking the product is on pre-order.
+    if (pg_product_preorder_ready()) {
+
+        $preorder_problem = pg_preorder_problem(
+            !empty($_POST['preorder']),
+            isset($_POST['preorder_date']) ? $_POST['preorder_date'] : '',
+            pg_preorder_today());
+
+        if ($preorder_problem !== '') {
+            output_error(lang($preorder_problem) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
     }
 }
