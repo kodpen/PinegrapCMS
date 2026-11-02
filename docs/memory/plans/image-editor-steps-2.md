@@ -24,7 +24,7 @@ description: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboa
 - E14 (M) Vector pen and nodes. Screen 09. Done in #4564 (`ui/image-editor-vector.md`).
   - Bezier pen (click for corners, drag for curves), node editing (move, handles, add, delete, corner or smooth), open and closed paths, "convert to path" for shapes.
 
-- E15 (M) SVG open and save. `free` after E7 and E14.
+- E15 (M) SVG open and save. `free` Done (#4728, `ui/image-editor-svg.md`).
   - Opening an SVG gives editable layers for path, rect, circle, ellipse, line, polyline, polygon, text, g, data-URI pictures and gradients; anything else becomes a locked group kept as written. Saving writes SVG through `pg_svg_sanitize()` (tests with hostile samples); fonts by name, pictures embedded.
 
 - E16 (M) Workspace canvas. `free` after E9 and E11. Done (#4762, `ui/image-editor-workspace.md`); a note's canvas opens again only through its file.

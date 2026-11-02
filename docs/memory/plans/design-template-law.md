@@ -26,4 +26,4 @@ description: Plan for the Law Firm template (pinegrap-law): practice areas, lawy
 
 ## Where to start?
 - `pinegrap-salon/` (same layout, same booking pattern), `pinegrap-courses/` (the latest one), [[design-templates-file-format]], [[design-template-threads]].
-- Done: step 1 (#4964), step 2 (#4978), step 3 (#4991). Next: step 4 (`standard.php`: it defines the widgets the home page already places, `google_reviews`, `home_posts`, `newsletter_band`; `email_reply` and its `email_comment` widget are already in `consultation.php`, so the standard part must not define them again). The next free step is the lowest one not marked done here.
+- Done: step 1 (#4964), step 2 (#4978), step 3 (#4991), step 4 (#5011: `standard.php`; the reply e-mail and privacy stay in `consultation.php`), step 5 (#5052: `account.php`; included after `consultation.php`, whose `$consultation_row` draws the staff area's `staff_consultations_new`; My Account has no order history). Next: step 6 (assembly). The next free step is the lowest one not marked done here.

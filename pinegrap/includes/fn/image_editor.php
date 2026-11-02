@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'access');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'access');
 }
 
 /**
@@ -643,6 +643,13 @@ function pg_image_editor_open($request, $user)
     // address, so it is unique.
     if (!$file_id && isset($request['file_name']) && is_string($request['file_name']) && ($request['file_name'] !== '')) {
         $file_id = (int) db_value("SELECT id FROM files WHERE name = '" . e($request['file_name']) . "' LIMIT 1");
+    }
+
+    // An SVG file opens as layers (the SVG part below).
+    $svg = pg_image_editor_svg_open($file_id, $user);
+
+    if ($svg !== null) {
+        return $svg;
     }
 
     $file = pg_image_editor_file($file_id, $user);
@@ -2975,6 +2982,239 @@ function pg_image_editor_strings_vector()
         'pathClosed'     => lang('Closed'),
         'finishPath'     => lang('Finish'),
         'convertToPath'  => lang('Convert to path'),
+    );
+}
+
+// -- SVG (pg_image_editor_svg.js) --
+
+/**
+ * The SVG part: labels.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_svg()
+{
+    return array(
+        'layer_svg'         => lang('SVG element'),
+        'svgOpenError'      => lang('This SVG file cannot be opened in the image editor.'),
+        'svgKeptNote'       => lang('This part of the SVG is kept as it was written. It can be moved, but not edited here.'),
+        'svgFill'           => lang('Fill'),
+        'svgStroke'         => lang('Outline'),
+        'svgText'           => lang('Text'),
+        'svgKind_path'      => lang('Path'),
+        'svgKind_rect'      => lang('Rectangle'),
+        'svgKind_circle'    => lang('Circle'),
+        'svgKind_ellipse'   => lang('Ellipse'),
+        'svgKind_line'      => lang('Line'),
+        'svgKind_polyline'  => lang('Polyline'),
+        'svgKind_polygon'   => lang('Polygon'),
+        'svgKind_text'      => lang('Text'),
+        'svgKind_g'         => lang('Group'),
+        'svgKind_image'     => lang('Picture'),
+        'svgKind_kept'      => lang('Kept element'),
+    );
+}
+
+/**
+ * The files row of an SVG the editor opens or saves, with the same gates as
+ * pg_image_editor_file() (Recycle Bin, ERP documents, folder access, design
+ * files); null when the row is not an SVG.
+ *
+ * @return array|null refusal or null; row, path, replace
+ */
+function pg_image_editor_svg_file($file_id, $user)
+{
+    $file_id = (int) $file_id;
+    $row = ($file_id > 0) ? db_item("SELECT id, name, folder, type, design FROM files WHERE id = '" . e($file_id) . "' LIMIT 1") : null;
+
+    if (!$row || (strtolower((string) $row['type']) !== 'svg')) {
+        return null;
+    }
+
+    if (pg_folder_binned((int) $row['folder'])) {
+        return array('refusal' => pg_image_editor_refusal(lang('Sorry, we could not find the file.')));
+    }
+
+    if (pg_files_include_erp_document(array($row['id']))) {
+        return array('refusal' => pg_image_editor_refusal(lang('ERP documents are read-only in the file manager.'), 403));
+    }
+
+    if (!check_edit_access((int) $row['folder'])) {
+        return array('refusal' => pg_image_editor_refusal(lang('Access denied'), 403));
+    }
+
+    return array(
+        'refusal' => null,
+        'row'     => $row,
+        'path'    => FILE_DIRECTORY_PATH . '/' . $row['name'],
+        // A design file is written over only by administrators and designers.
+        'replace' => !(((int) $row['design'] === 1) && ($user['role'] > 1)));
+}
+
+/**
+ * The open answer for an SVG file: its sanitized text instead of a picture
+ * address; null when the file is not an SVG (the picture path answers).
+ *
+ * @return array|null array(payload, HTTP status)
+ */
+function pg_image_editor_svg_open($file_id, $user)
+{
+    $file = pg_image_editor_svg_file($file_id, $user);
+
+    if ($file === null) {
+        return null;
+    }
+
+    if ($file['refusal']) {
+        return $file['refusal'];
+    }
+
+    $bytes = is_file($file['path']) ? (int) @filesize($file['path']) : 0;
+    $svg = (($bytes > 0) && ($bytes <= pg_svg_sanitize_max_bytes())) ? pg_svg_sanitize((string) @file_get_contents($file['path'])) : '';
+
+    if ($svg === '') {
+        return pg_image_editor_refusal(lang('This SVG file cannot be opened in the image editor.'));
+    }
+
+    return array(array(
+        'status'   => 'success',
+        'file'     => array(
+            'id'      => (int) $file['row']['id'],
+            'name'    => (string) $file['row']['name'],
+            'url'     => PATH . encode_url_path($file['row']['name']) . '?v=' . (int) @filemtime($file['path']),
+            'replace' => $file['replace'],
+            'notice'  => ''),
+        'svg'      => $svg,
+        'versions' => 0,
+        'doc'      => null,
+        'base'     => 0), 200);
+}
+
+/**
+ * Action svg_save: the browser's SVG of an opened SVG file, through
+ * pg_svg_sanitize(), over the file (replace) or beside it (copy).
+ *
+ * @return array array(payload, HTTP status)
+ */
+function pg_image_editor_action_svg_save($request, $user)
+{
+    $mode = isset($request['mode']) ? (string) $request['mode'] : '';
+
+    if (($mode !== 'replace') && ($mode !== 'copy')) {
+        return pg_image_editor_refusal(lang('Invalid request.'));
+    }
+
+    $file = pg_image_editor_svg_file(isset($request['file_id']) ? $request['file_id'] : 0, $user);
+
+    if ($file === null) {
+        return pg_image_editor_refusal(lang('This file cannot be opened in the image editor.'));
+    }
+
+    if ($file['refusal']) {
+        return $file['refusal'];
+    }
+
+    if (($mode === 'replace') && !$file['replace']) {
+        return pg_image_editor_refusal(lang('Access denied'), 403);
+    }
+
+    $svg = pg_svg_sanitize(isset($request['svg']) ? $request['svg'] : '');
+
+    if ($svg === '') {
+        return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
+    }
+
+    $name = (string) $file['row']['name'];
+
+    if ($mode === 'copy') {
+        $name = get_unique_name(array('name' => prepare_file_name($name), 'type' => 'file'));
+
+        if (pg_upload_name_blocked($name)) {
+            return pg_image_editor_refusal(pg_upload_blocked_message($name));
+        }
+    }
+
+    if (!pg_image_editor_put(FILE_DIRECTORY_PATH . '/' . $name, '<?xml version="1.0" encoding="UTF-8"?>' . "\n" . $svg . "\n")) {
+        return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
+    }
+
+    return pg_image_editor_record($mode, $name, (int) $file['row']['folder'], 'svg', $file['row'], $user);
+}
+
+// -- Motion (pg_image_editor_motion.js) --
+
+/**
+ * The Animate tool: labels. {from}, {to} and {n} are filled in by the script.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_motion()
+{
+    return array(
+        'tool_motion'          => lang('Animate'),
+        'hintMotion'           => lang('Select a layer and give it an entrance, a loop and an exit. K: play or pause'),
+        'motionPick'           => lang('Select a layer to give it motion.'),
+        'motionStill'          => lang('A redaction does not move: what it hides would show.'),
+        'motionLayers'         => lang('{n} layers'),
+        'motionIn'             => lang('Entrance'),
+        'motionLoop'           => lang('Loop'),
+        'motionOut'            => lang('Exit'),
+        'motion_inKinds'       => lang('Entrance kinds'),
+        'motion_loopKinds'     => lang('Loop kinds'),
+        'motion_outKinds'      => lang('Exit kinds'),
+        'motion_none'          => lang('None'),
+        'motion_fade'          => lang('Fade'),
+        'motion_slide'         => lang('Sliding'),
+        'motion_rise'          => lang('Rise'),
+        'motion_pop'           => lang('Pop'),
+        'motion_zoom'          => lang('Zooming'),
+        'motion_wipe'          => lang('Wipe'),
+        'motion_spin'          => lang('Spin'),
+        'motion_type'          => lang('Typewriter'),
+        'motion_draw'          => lang('Draw on'),
+        'motion_pulse'         => lang('Pulse'),
+        'motion_float'         => lang('Floating'),
+        'motion_blink'         => lang('Blink'),
+        'motion_wiggle'        => lang('Wiggle'),
+        'motion_swing'         => lang('Swing'),
+        'motionTextOnly'       => lang('Only for a text layer'),
+        'motionShapeOnly'      => lang('Only for a shape, a pen line or a path'),
+        'motionDirection'      => lang('Direction'),
+        'motionDir_left'       => lang('Left'),
+        'motionDir_up'         => lang('Up'),
+        'motionDir_right'      => lang('Right'),
+        'motionDir_down'       => lang('Down'),
+        'motionDelay'          => lang('Delay'),
+        'motionDuration'       => lang('Duration'),
+        'motionPeriod'         => lang('One cycle'),
+        'motionEase'           => lang('Easing'),
+        'motionEase_linear'    => lang('Linear'),
+        'motionEase_out'       => lang('Ease out'),
+        'motionEase_in'        => lang('Ease in'),
+        'motionEase_in-out'    => lang('Gentle'),
+        'motionEase_back'      => lang('Overshoot'),
+        'motionEase_bounce'    => lang('Bounce'),
+        'motionSaysIn'         => lang('Enters {from}–{to}'),
+        'motionSaysLoop'       => lang('loops {from}–{to}'),
+        'motionSaysOut'        => lang('leaves {from}–{to}'),
+        'motionSecondsUnit'    => lang('s'),
+        'motionRemove'         => lang('Remove'),
+        'motionWhole'          => lang('Whole animation'),
+        'motionLength'         => lang('Length'),
+        'motionRepeatCount'    => lang('Repeat'),
+        'motionForever'        => lang('Forever'),
+        'motionTimes'          => lang('{n} times'),
+        'motionBase'           => lang('Picture move'),
+        'motionBase_none'      => lang('None'),
+        'motionBase_zoomin'    => lang('Slow zoom in'),
+        'motionBase_zoomout'   => lang('Slow zoom out'),
+        'motionBase_panleft'   => lang('Pan left'),
+        'motionBase_panright'  => lang('Pan right'),
+        'motionBar'            => lang('Animation preview'),
+        'motionPlay'           => lang('Play (K)'),
+        'motionPause'          => lang('Pause (K)'),
+        'motionScrub'          => lang('Playhead'),
+        'motionRepeat'         => lang('Repeat the preview'),
     );
 }
 

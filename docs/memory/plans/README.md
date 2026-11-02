@@ -35,7 +35,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bootstrap-6-panel.md: Plan (owner decisions 2026-10-25; status in bootstrap-6-panel-steps.md): panel UI from Bootstrap 5.3.8 to 6.0.0-alpha.1 by pre-landing adapters on development, then one generated switch
 - bootstrap-6-redesign.md: Steps B10-B11 of plans/bootstrap-6-panel.md: token tuning and the redesign of legacy form screens and tables; both ready to start (owner, 2026-11-01)
 - bug-hunt-modules-endpoints-1.md: Module list of plans/bug-hunt.md, part 3: root endpoint groups account to offer by area word, one line each with its state
-- bug-hunt-modules-endpoints-2.md: Module list of plans/bug-hunt.md, part 4: root endpoint groups optimize to zone by area word and the single endpoints, one line each with its state
+- bug-hunt-modules-endpoints-2.md: Module list of plans/bug-hunt.md, part 4: root endpoint groups optimize to zone by area word; single endpoints in bug-hunt-modules-endpoints-2b.md, one line each with its state
+- bug-hunt-modules-endpoints-2b.md: Module list of plans/bug-hunt.md, part 5: the single root endpoints (one file per area word), six to a line, each line with its state
 - bug-hunt-modules-fn-1.md: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y to legal_documents, one line each with its state
 - bug-hunt-modules-fn-1b.md: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules link_resolve to pdf_merge, one line each with its state
 - bug-hunt-modules-fn-2.md: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules price_history to waf_rescue, one line each with its state
@@ -107,6 +108,9 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - security-findings-2026-10.md: 2026-10-19 security audit: fixed by that day's PRs and #713; items 2-8 decided by the owner 2026-10-28 (labels, CVV, escape_like, sign-in message, gateway secrets, ERP host, rich text)
 - shipping-carrier-labels.md: Plan (approved 2026-10-19; 1-4, 6-8 partly done): carrier APIs for labels and barcodes, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct, then abroad
 - shipping-management.md: Shipping plan (2026-10-08; phases 1-7 and the phase 8 postcode check done): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
+- small-features-2026-11-steps-2.md: Steps SF4-SF8 of plans/small-features-2026-11.md: product questions, pre-order, EU VAT checks, the panel offline page, Slack, Teams and Telegram channels; claim as [plan:small-features-2026-11] SF<n>
+- small-features-2026-11-steps.md: Steps SF1-SF3 of plans/small-features-2026-11.md: address autocomplete, the accessibility statement widget, site search rollup with synonyms; claim as [plan:small-features-2026-11] SF<n>
+- small-features-2026-11.md: Plan (owner 2026-11-02): eight small independent features: address autocomplete, accessibility statement, search tuning, product questions, pre-order, EU VAT, offline page, chat channels; SF1-SF8
 - stock-locations-steps-2.md: Steps SL4-SL7 of plans/stock-locations.md: transfers and stock history, pickup at a location, API and webhooks, close-out; claim as [plan:stock-locations] SL<n>
 - stock-locations-steps.md: Steps SL1-SL3 of plans/stock-locations.md: tables and the sum-keeping writer, product screens and import, order completion and scans by location; claim as [plan:stock-locations] SL<n>
 - stock-locations.md: Plan (owner 2026-11-02): stock kept per location (warehouse, shop, consignment) with the product's total unchanged for every reader; transfers, pickup at a location, API and webhooks; steps SL1-SL7
