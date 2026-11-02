@@ -368,6 +368,7 @@
     "New note": "Yeni not",
     "New note, a copy": "Yeni not, kopya",
     "New on Date": "Yeni Tarihi",
+    "New on Date of {var:1}": "{var:1} için Yeni Tarihi",
     "New on the map this month: {var:1}.": "Haritada bu ay yeni bir yer var: {var:1}.",
     "New option for {var:1}": "{var:1} için yeni seçenek",
     "New order to the channel": "Yeni sipariş kanala",
