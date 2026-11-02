@@ -1607,7 +1607,8 @@ if (!$_POST) {
 
         $lettertodelete = (int) $lettertodelete;
 
-        $short_description = substr($row['short_description'], 0, -$lettertodelete) . $newletter;
+        // Letters, not bytes: a Turkish description keeps whole letters.
+        $short_description = pg_duplicate_products_description($row['short_description'], $lettertodelete, $newletter);
         $row['address_name'] = '';
         // if the address name is NOT blank then use that value for the address name
         if ($row['address_name'] != '') {
