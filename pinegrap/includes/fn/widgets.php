@@ -3467,7 +3467,8 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
     $standard_skip   = array_merge(array('reference_code', 'address_name'), pg_sw_form_yields($template_tokens, $custom_form_page_id));
     $standard_sql    = pg_sw_standard_sql($template_tokens, _pg_sw_current_page_id(), $standard_skip);
 
-    $reference_code = isset($_GET['r']) ? trim((string)$_GET['r']) : '';
+    // ?r[]=x is no reference, not an "Array to string conversion" warning.
+    $reference_code = (isset($_GET['r']) && is_scalar($_GET['r'])) ? trim((string)$_GET['r']) : '';
     // An e-mail page (a form's confirmation or notification) is drawn for
     // the record just submitted: its id comes with the call, not the URL.
     $sw_ctx          = pg_sw_render_context();
@@ -7923,7 +7924,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // URL query flag set by cancel_order.php redirect — drives the
     // success/failure notice token. Values: '1' (success), 'already',
     // 'shipped'. Missing = nothing to show.
-    $_ov_cancel_flash = isset($_GET['cancelled']) ? (string)$_GET['cancelled'] : '';
+    $_ov_cancel_flash = (isset($_GET['cancelled']) && is_scalar($_GET['cancelled'])) ? (string)$_GET['cancelled'] : '';
 
     // ── Returns (includes/fn/returns.php) ──────────────────────────────
     // Only the signed-in owner reads or asks for returns; a guest who has

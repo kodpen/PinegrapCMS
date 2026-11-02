@@ -355,6 +355,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - token-dictionary.md: System widget token namespaces (bare vs __ prefix), shared cart vocabulary, where token names may appear, old names kept as aliases, raw-HTML key escaping, row id uniquify, check_bindings.php.
 - user-styles-card-edits.md: How the Styles panel's User Styles cards read and edit the User Styles text (assets/js/pg_user_styles.js): which rules are listed, edits in place, Create as one undo step
 - widget-accessible-names.md: Names and keyboard use in system widget output: CAPTCHA answer id and label, no empty liveform ids, product carousel link names, the login region's account toggle as a button.
+- widget-address-params.md: How the system widgets read a value from the address (?r=, ?cancelled=, ?query=): one value only, an array is no value; the warnings a later PR fixed
 - widget-attr-bindings.md: A widget record's values in an element's attributes ({{token}} in the Attributes panel or a title): placeholder and carrier, the pass stage, refused attributes and tokens, editor completion (W15)
 - widget-condition-canvas.md: The canvas state preview of value conditions (W19, #1904): band chips, states, which value a token reads, picking a hidden node, the _sdCondEval twin, list and main loop sample rows (#1914, #1928)
 - widget-condition-panel.md: The Bind Data row "Show only when a value…" (#1665): token, operator, compared text, the canvas chip, the twin lists, no condition on a required control, the compared text translated.
