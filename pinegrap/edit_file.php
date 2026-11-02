@@ -700,10 +700,15 @@ $liveform->remove_form('edit_file');
         log_activity(lang(array('string'=>'file ({var:1}) was deleted','vars'=>$name)), $_SESSION['sessionusername']);
 
         include_once('liveform.class.php');
-        // The File Manager prints the notices left for it (view_folders.php).
-        $liveform = new liveform('view_folders');
-        $liveform->add_notice(lang('The file was deleted successfully.'));
-        header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?view=files'));
+        $location = pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?view=files');
+        // The notice goes to the screen the redirect opens, so it is not kept
+        // for a File Manager opened later.
+        $notice_form = pg_redirect_notice_form($location);
+        if ($notice_form !== '') {
+            $liveform = new liveform($notice_form);
+            $liveform->add_notice(lang('The file was deleted successfully.'));
+        }
+        header('Location: ' . URL_SCHEME . HOSTNAME . $location);
         exit();
     }
 
@@ -1068,9 +1073,15 @@ $liveform->remove_form('edit_file');
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . urlencode($_POST['id']) . '&send_to=' . urlencode(pg_send_to_url('')));
             exit();
         } elseif (!empty($_POST['submit_save_and_return']) && ($_POST['submit_save_and_return'] ?? '') === 'Save & Return') {
-            $liveform = new liveform('view_folders');
-            $liveform->add_notice(lang('The file was edited successfully.'));
-            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?view=files'));
+            $location = pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?view=files');
+            // The notice goes to the screen the redirect opens (the File
+            // Manager, or the screen send_to names).
+            $notice_form = pg_redirect_notice_form($location);
+            if ($notice_form !== '') {
+                $liveform = new liveform($notice_form);
+                $liveform->add_notice(lang('The file was edited successfully.'));
+            }
+            header('Location: ' . URL_SCHEME . HOSTNAME . $location);
             exit();
         }
     }

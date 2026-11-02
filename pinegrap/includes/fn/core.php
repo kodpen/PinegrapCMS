@@ -1826,6 +1826,37 @@ function pg_send_to_url($fallback = '')
 
     return $send_to;
 }
+
+/**
+ * The liveform that carries a notice to the screen a redirect opens.
+ *
+ * A panel screen prints the form named after its own script
+ * (view_folders.php prints 'view_folders', welcome.php 'welcome'). A screen
+ * that follows send_to leaves its notice on the form of the screen it goes
+ * to, so the notice shows there and is not kept for a screen the user opens
+ * hours later. A target that is not a script (a site page) gets '': no panel
+ * notice is left.
+ *
+ * Pure: no query.
+ *
+ * @param  string $location redirect path or URL
+ * @return string form name, or '' when the target prints no panel form
+ */
+function pg_redirect_notice_form($location)
+{
+    $path = (string) parse_url((string) $location, PHP_URL_PATH);
+
+    if (preg_match('~/([a-z0-9_]+)\.php$~', $path, $match) !== 1) {
+        return '';
+    }
+
+    // A path that climbs out of its folder is no screen of the panel.
+    if (strpos($path, '/../') !== false) {
+        return '';
+    }
+
+    return $match[1];
+}
 /**
  * The list breadcrumb of a screen opened from that list: send_to when its
  * path is the same list (so the filter in its address stays), else the bare

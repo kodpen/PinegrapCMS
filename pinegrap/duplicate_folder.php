@@ -138,12 +138,17 @@ if (!$_POST) {
 
     $new_folder = $response['folder'];
 
-    // The File Manager prints its own notices (view_folders.php).
-    $liveform_view_folders = new liveform('view_folders');
-    $liveform_view_folders->add_notice(lang('The folder has been duplicated.'));
+    // Back where it was opened, else the duplicate itself.
+    $location = pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?folder=' . (int) $new_folder['id']);
+
+    // The notice goes to the screen the redirect opens.
+    $notice_form = pg_redirect_notice_form($location);
+    if ($notice_form !== '') {
+        $liveform_target = new liveform($notice_form);
+        $liveform_target->add_notice(lang('The folder has been duplicated.'));
+    }
 
     $form->remove();
 
-    // Back where it was opened, else the duplicate itself.
-    go(pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?folder=' . (int) $new_folder['id']));
+    go($location);
 }
