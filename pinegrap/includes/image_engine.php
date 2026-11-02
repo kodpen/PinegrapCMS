@@ -976,6 +976,35 @@ function pg_process_image_file($file_path, $options = array())
 
 
 /**
+ * The jpeg:size hint Imagick reads a JPEG with when it is to be shrunk:
+ * libjpeg then decodes at 1/2, 1/4 or 1/8 of the size, as long as the result
+ * stays at least this large, instead of the whole frame. A 24-megapixel photo
+ * made into a 320 px thumbnail decodes at an eighth of the memory and time.
+ *
+ * Twice the target's longest edge on both sides, so the resize that follows
+ * still has pixels to spare whichever way the EXIF orientation turns it.
+ *
+ * @param int  $type          IMAGETYPE_* of the source
+ * @param bool $resize        whether the picture is shrunk
+ * @param int  $target_width
+ * @param int  $target_height
+ * @return string '' when no hint applies, else WxH
+ */
+function pg_image_jpeg_size_hint($type, $resize, $target_width, $target_height)
+{
+    $longest = max((int) $target_width, (int) $target_height);
+
+    if (!$resize || ((int) $type !== IMAGETYPE_JPEG) || ($longest < 1)) {
+        return '';
+    }
+
+    $side = 2 * $longest;
+
+    return $side . 'x' . $side;
+}
+
+
+/**
  * The Imagick half of pg_process_image_file(). Returns the encoded bytes.
  *
  * @return string|false
@@ -990,6 +1019,15 @@ function pg_process_image_with_imagick($file_path, $type, $resize, $target_width
 
     try {
         $image = new Imagick();
+
+        // An edit works on the full frame; a plain shrink of a JPEG may be
+        // decoded smaller (pg_image_jpeg_size_hint()).
+        $size_hint = $edit ? '' : pg_image_jpeg_size_hint($type, $resize, $target_width, $target_height);
+
+        if ($size_hint !== '') {
+            $image->setOption('jpeg:size', $size_hint);
+        }
+
         $image->readImage(empty($edit['first_frame']) ? $file_path : ($file_path . '[0]'));
 
         // Rotate the pixels to match the EXIF orientation and then drop the
@@ -2471,7 +2509,67 @@ function pg_image_apply_gd_orientation($image, $file_path)
  */
 function pg_image_derivative_widths()
 {
-    return array(480, 960, 1440, 1920);
+    return array(320, 480, 960, 1440, 1920);
+}
+
+
+/**
+ * The widths the pages' srcset offers: every derivative width but the 320
+ * rung, which is there for panel lists (File Manager tiles, the product
+ * table, the image pickers: pg_image_panel_thumb_url()) and left the pages'
+ * markup as it was.
+ *
+ * @return array
+ */
+function pg_image_derivative_page_widths()
+{
+    return array_values(array_filter(pg_image_derivative_widths(), function ($width) {
+        return $width >= 480;
+    }));
+}
+
+
+/**
+ * The address a panel list draws a picture's thumbnail from: its 320 px
+ * derivative, as WebP for a JPEG or PNG, instead of the original a list used
+ * to load for every tile. A GIF (it may move), a vector or an address that
+ * already asks for a width or format stays as it is. The JavaScript twin is
+ * thumbUrl() in view_folders.php.
+ *
+ * @param string $url the picture's address, with or without a query
+ * @return string
+ */
+function pg_image_panel_thumb_url($url)
+{
+    $url = (string) $url;
+    $fragment = '';
+    $hash = strpos($url, '#');
+
+    if ($hash !== false) {
+        $fragment = substr($url, $hash);
+        $url = substr($url, 0, $hash);
+    }
+
+    $question = strpos($url, '?');
+    $path = ($question === false) ? $url : substr($url, 0, $question);
+    $query = ($question === false) ? '' : substr($url, $question + 1);
+
+    if (preg_match('/(^|&)(w|f)=/i', $query)) {
+        return $url . $fragment;
+    }
+
+    $dot = strrpos($path, '.');
+    $extension = ($dot === false) ? '' : strtolower(substr($path, $dot + 1));
+
+    if (in_array($extension, array('jpg', 'jpeg', 'jpe', 'png'), true)) {
+        $add = 'w=320&f=webp';
+    } elseif ($extension === 'webp') {
+        $add = 'w=320';
+    } else {
+        return $url . $fragment;
+    }
+
+    return $url . (($question === false) ? '?' : '&') . $add . $fragment;
 }
 
 
