@@ -5,7 +5,8 @@ description: The product group create and edit screens share includes/forms/prod
 
 ## Where is the product group form?
 - `includes/forms/product_group_form.php` (gate `PG_FUNCTIONS_DIR`). `add_product_group.php` and `edit_product_group.php` stay at the root as thin wrappers and `require_once` it.
-- `pg_product_group_form_cards($liveform, $values, $form)` prints the information, catalog display, image and SEO cards. `$values` is the raw stored row (`array()` on create, `code` = the config image code template) plus `images` (cover first); escaping is inside. `$form`: `is_new` (liveform name field with `required`, "New …" title), `parent_row`, `attributes`, `seo_badge`, `seo_checklist` (edit only).
+- `pg_product_group_form_cards($liveform, $values, $form)` prints the form column: information (name, short and full description), catalog display, image and SEO cards. `$values`: the raw row (`array()` on create, `code` = config template) plus `images` (cover first); escaping is inside. `$form`: `is_new`, `attributes`, `seo_badge`, `seo_checklist`.
+- `…_status_card($values, $parent_row)`: the Status card (Enabled, parent picker in a `col-12` cell). `…_layout($parts)` (`form`, `status`, `wide`, `buttons`, `bar_extra`, `row_class`): form column, sticky status box at `top:3.3rem`, products card full width (`order-3`: eight columns with pictures do not fit the form column), sticky save bar `order-4` (#5150, `tests/product_group_form_layout_test.php`). Edit keeps `row_class` `edit_product_group_container`: Modify Selected removes its cards but the products one.
 - `…_products_card($form)` prints the table, "Load More Products" and its script (`table_id`, `title`, `card_class`, `rows`, `total_unselected`, `loaded`, `product_group_id` 0 on create). `…_unselected_rows($products, $show_image)` draws the products not in the group yet.
 
 ## In what order are the offered products paged?
@@ -17,10 +18,10 @@ description: The product group create and edit screens share includes/forms/prod
 - `…_images($picked)`: `array(cover, rest)`; the cover goes to `image_name`, the rest to `product_groups_images_xref`.
 - `…_search_results_pages($id, $parent_id = null)`: `current` / `parent` pages whose tree holds the group, for the tag cloud clear and rebuild.
 - `…_link_products($id, $post, $kept)`: the `products_groups_xref` inserts, one per id from `…_link_ids($posted)` (positive ids, each once: the table has no unique key, so a doubled tick linked twice); edit passes the links of binned products it kept.
-- `…_member_rows($listed, $stored)` (`delete` / `keep`): Edit posts `listed_product_ids`, the members it listed when opened. The save deletes only the rows of those listed members (ticked or not, binned excepted), so a ticked one is inserted again with its edited sort order; every other row (a product linked meanwhile by Create/Edit Product, Catalog Manager or the API, or a binned one) stays and is passed as kept, so it is neither dropped nor doubled. Before, the save deleted every row of the group and silently unlinked products added while the screen was open. A post without the field deletes every row as before.
+- `…_member_rows($listed, $stored)` (`delete` / `keep`): Edit posts `listed_product_ids`, the members it listed when opened. The save deletes only the rows of those listed members (ticked or not, binned excepted), so a ticked one is inserted again with its edited sort order; every other row (a product linked meanwhile by Create/Edit Product, Catalog Manager or the API, or a binned one) stays and is passed as kept, so it is neither dropped nor doubled. Before, products linked while the screen was open were unlinked. A post without the field deletes every row.
 
 ## What stays in the screens?
 - Create: the parent picker (required once a group exists), the image code template prefill and its save to `config`, the INSERT.
 - Edit: not-found and bin guards, the record load, the group's own products and sub-groups with sort orders, attributes, toolbar (Duplicate, workspace), delete (bin or permanent), SEO checklist and stale flag, the UPDATE, child status update, send_to.
 - The image code textarea is escaped on both screens (create printed it raw before).
-- Tests: `tests/product_group_form_test.php`, `product_group_load_more_order_test.php`; `catalog_bin_test.php` and `db_q_order_screens_test.php` read the form file too.
+- Tests: `product_group_form_test.php`, `…_load_more_order_test.php`; `catalog_bin_test.php`, `db_q_order_screens_test.php` read the form too.
