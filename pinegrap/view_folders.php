@@ -440,6 +440,12 @@ $explorer_lang = array(
     'desktop_style_short' => lang('Desktop Style'),
     'mobile_style_short' => lang('Mobile Style'),
     'impact' => lang('Impact'),
+    'impact_hint' => lang('How much fixing this page would gain: (100 − SEO score) × log10(1 + views). The higher, the sooner.'),
+    'views_in_window' => lang('{var:1} views in the last {var:2} days'),
+    'impact_window_days' => (string) (function_exists('pg_seo_impact_window_days') ? pg_seo_impact_window_days() : 30),
+    'form_attachment' => lang('Form attachment'),
+    'form_attachment_hint' => lang('Sent with a submitted form: visitors cannot open it, even in a public folder, unless a view shows its record.'),
+    'inherited_style' => lang('Inherited from parent folder'),
     'views_label' => lang('{var:1} views'),
     'features' => lang('Features'),
     'sitemap_label' => lang('Site Map'),
@@ -3238,7 +3244,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         row(L.erp_source, erpSourceHtml(item), true);
 
         if (item.modified) {
-            row(L.last_modified, item.modified + (item.username ? ' ' + fmt(L.modified_by, [esc(item.username)]) : ''), true);
+            row(L.last_modified, item.modified + modifiedByHtml(item), true);
         }
 
         pane.innerHTML =
@@ -5525,6 +5531,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var catalogColumns = insideCatalog();
         var siteColumns = !insideBackups() && !insideCatalog() && !insideShortLinks() && !insideErp();
         var shortLinkColumns = insideShortLinks();
+        // The Pages view lists nothing but pages: no size to show, a type
+        // worth naming only when it is not a standard page, and the folder
+        // and the last change are what the rows are told apart by.
+        var pagesColumns = (state.mode === 'all') && (state.allFilter === 'pages');
         var columns = [];
 
         columns.push({ id: 'icon', w: 46, cls: 'text-center', cell: function (item) { return itemIconHtml(item, false); } });
@@ -5544,13 +5554,16 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // and a mark nobody can line up with the mark on the row above is not
         // doing its job either.
         columns.push({
-            id: 'flags', key: 'seo', label: L.flags, at: 'md', w: 92, cls: 'text-center text-nowrap',
+            id: 'flags', key: 'seo', label: L.flags, at: 'md', w: (pagesColumns ? 150 : 92), cls: 'text-center text-nowrap',
             cell: function (item) { return seoChipHtml(item, 20) + ' <span class="item-flags">' + itemFlagsHtml(item) + '</span>'; }
         });
 
         columns.push({
             id: 'type', key: 'type', label: L.type, at: 'md', w: 120,
-            cell: function (item) { return '<span class="list-badge">' + esc(itemTypeLabel(item)) + '</span>'; }
+            cell: function (item) {
+                if (pagesColumns && (item.kind === 'page') && !item.type_name) { return ''; }
+                return '<span class="list-badge">' + esc(itemTypeLabel(item)) + '</span>';
+            }
         });
 
         // What an operator reads a list of documents by: who, when, how much,
@@ -5575,7 +5588,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 cell: function (item) { return erpStatusBadge(item); } });
         }
 
-        columns.push({
+        if (!pagesColumns) columns.push({
             id: 'size', key: 'size', label: (catalogColumns ? L.contents : (shortLinkColumns ? L.destination : L.size)), at: 'md', w: 140,
             cell: function (item) {
 
@@ -5657,8 +5670,18 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         columns.push({
             id: 'modified', key: 'timestamp', label: L.last_modified, at: 'lg', w: 170, cls: 'text-nowrap',
-            cell: function (item) { return (item.modified || '') + (item.username ? ' ' + fmt(L.modified_by, [esc(item.username)]) : ''); }
+            cell: function (item) { return (item.modified || '') + modifiedByHtml(item); }
         });
+
+        // In the Pages view the folder and the last change follow the marks,
+        // so they are on screen without scrolling the table sideways.
+        if (pagesColumns) {
+            var leading = columns.filter(function (column) { return (column.id === 'folder') || (column.id === 'modified'); });
+            var rest = columns.filter(function (column) { return (column.id !== 'folder') && (column.id !== 'modified'); });
+            var at = rest.map(function (column) { return column.id; }).indexOf('flags') + 1;
+
+            columns = rest.slice(0, at).concat(leading, rest.slice(at));
+        }
 
         var saved = defaults ? {} : listColumnWidths();
 
@@ -7184,7 +7207,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 (item.tracking_code ? ('<tr><th>' + esc(L.tracking_code) + '</th><td><code>' + esc(item.tracking_code) + '</code></td></tr>') : '') +
                 (item.link_note ? ('<tr><th>' + esc(L.link_state) + '</th><td>' + esc(item.link_note) + '</td></tr>') : '') +
                 ((item.link_mode && item.link_mode !== 'permanent') ? ('<tr><th>' + esc(L.link_uses) + '</th><td>' + esc(String(item.use_count || 0)) + '</td></tr>') : '') +
-                (item.modified ? ('<tr><th>' + esc(L.last_modified) + '</th><td>' + item.modified + (item.username ? ' ' + fmt(L.modified_by, [esc(item.username)]) : '') + '</td></tr>') : '');
+                (item.modified ? ('<tr><th>' + esc(L.last_modified) + '</th><td>' + item.modified + modifiedByHtml(item) + '</td></tr>') : '');
 
             pane.innerHTML =
                 '<div class="text-center my-5">' + shortLinkIconHtml(item, true) + '</div>' +
@@ -7256,8 +7279,34 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             rows += '<tr><th>' + esc(L.permissions) + '</th><td><code>' + esc(item.permissions || '') + '</code></td></tr>';
         }
 
-        if (item.kind === 'file' && item.folder_name) {
-            rows += '<tr><th>' + esc(L.folder) + '</th><td>' + esc(item.folder_name) + '</td></tr>';
+        if (item.kind === 'file') {
+            if (item.design) {
+                rows += '<tr><th>' + esc(L.design_file) + '</th><td>' + esc(L.yes) + '</td></tr>';
+            }
+            if (item.is_image) {
+                rows += '<tr><th>' + esc(L.optimized) + '</th><td>' + (item.optimized
+                    ? '<span class="bi bi-check2-circle fg-success me-1"></span>' + esc(L.yes)
+                    : esc(L.no)) + '</td></tr>';
+            }
+            if (item.attachment) {
+                rows += '<tr><th>' + esc(L.form_attachment) + '</th><td>' + esc(L.yes) +
+                    '<div class="form-text mt-0">' + esc(L.form_attachment_hint) + '</div></td></tr>';
+            }
+        }
+
+        // The folder a page or file lives in, one click away: the flat views
+        // (Pages, Files) list them without their folders.
+        if (((item.kind === 'file') || (item.kind === 'page')) && item.folder_name && !item.short_link) {
+            rows += '<tr><th>' + esc(L.folder) + '</th><td><a href="#" draggable="false" class="pg-link-secondary" data-role="open-folder">' +
+                '<span class="bi bi-folder me-1 ' + esc(item.access_control_type || '') + '"></span>' + esc(item.folder_name) + '</a></td></tr>';
+        }
+
+        if ((item.kind === 'page') && item.home && !item.backup) {
+            rows += '<tr><th>' + esc(L.home_page) + '</th><td><span class="bi bi-house-door me-1"></span>' + esc(L.yes) + '</td></tr>';
+        }
+
+        if (((item.kind === 'file') || (item.kind === 'page')) && item.url && !item.backup && !item.short_link) {
+            rows += '<tr><th>' + esc(L.address) + '</th><td><code class="text-break user-select-all small">' + esc(fullAddress(item.url)) + '</code></td></tr>';
         }
 
         if (!item.backup) {
@@ -7280,14 +7329,18 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             rows += '<tr><th>' + esc(L.status) + '</th><td>' + (item.draft
                 ? '<span class="badge rounded-pill theme-warning" title="' + esc(L.draft_hint) + '"><span class="bi bi-eye-slash me-1"></span>' + esc(L.draft_status) + '</span>'
                 : esc(L.live_on_site)) + '</td></tr>';
-            rows += '<tr><th>' + esc(L.impact) + '</th><td>' + impactCellHtml(item) + '</td></tr>';
+            // Without an SEO section the figure stays here; with one it is
+            // written there, beside the score it is made of.
+            if (!item.seo) {
+                rows += '<tr><th>' + esc(L.impact) + '</th><td>' + impactCellHtml(item) + '</td></tr>';
+            }
             rows += '<tr><th>' + esc(L.sitemap_label) + '</th><td>' + esc(item.sitemap ? L.yes : L.no) + '</td></tr>';
             rows += '<tr><th>' + esc(L.searchable_label) + '</th><td>' + esc(item.searchable ? L.yes : L.no) + '</td></tr>';
             rows += '<tr><th>' + esc(L.comments_label) + '</th><td>' + esc(item.comments ? L.yes : L.no) + '</td></tr>';
         }
 
         if (item.modified) {
-            rows += '<tr><th>' + esc(L.last_modified) + '</th><td>' + (item.modified || '') + (item.username ? ' ' + fmt(L.modified_by, [esc(item.username)]) : '') + '</td></tr>';
+            rows += '<tr><th>' + esc(L.last_modified) + '</th><td>' + (item.modified_exact ? esc(item.modified_exact) + ' · ' : '') + (item.modified || '') + modifiedByHtml(item) + '</td></tr>';
         }
 
         var seoSection = '';
@@ -7303,6 +7356,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 (item.seo.scored ? '<span class="small fg-secondary">' + esc(L.seo_score_label) + ': ' + item.seo.score + '/100</span>'
                     : '<span class="small fg-secondary">' + esc(L.seo_not_ready) + '</span>') +
                 '</div>' + flagNotes +
+                '<div class="small mb-3"><span class="fg-secondary">' + esc(L.impact) + ':</span> ' + impactCellHtml(item, true) +
+                '<div class="form-text mt-0">' + esc(L.impact_hint) + '</div></div>' +
                 '<div id="preview_seo_detail"><div class="text-center my-3"><span class="spinner-border spinner-border-sm fg-secondary"></span></div></div>';
         }
 
@@ -7363,6 +7418,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             copyAddressButton.addEventListener('click', function () { copyAddresses([item], 'full'); });
         }
 
+        var folderLink = pane.querySelector('[data-role="open-folder"]');
+
+        if (folderLink) {
+            folderLink.addEventListener('click', function (event) {
+                event.preventDefault();
+                exitAllFiles(item.folder_id);
+            });
+        }
+
         var usageButton = pane.querySelector('[data-role="where-used"]');
 
         if (usageButton) {
@@ -7379,22 +7443,43 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         var name = info.name || L.default;
 
-        return esc(name) + (info.inherited ? ' <span class="fg-secondary">(' + esc(L.inherit) + ')</span>' : '');
+        return esc(name) + (info.inherited ? ' <span class="fg-secondary">(' + esc(L.inherited_style) + ')</span>' : '');
+    }
+
+    // " by <name>" beside a change: the editor's contact name, else the
+    // username.
+    function modifiedByHtml(item) {
+        var who = item.editor || item.username || '';
+
+        return who ? (' ' + fmt(L.modified_by, [esc(who)])) : '';
+    }
+
+    // The full address of a page or file, as text to read and copy; the
+    // query a system page carries for the panel is left out.
+    function fullAddress(url) {
+        return window.location.origin + String(url || '').split('?')[0];
     }
 
     // The Impact figure the Pages screen shows: how much fixing this page
     // would matter, weighed by its last month of traffic. Null means "cannot
     // say" (never scored, or nobody visited) — printed as a dash, exactly
     // like pg_seo_render_impact().
-    function impactCellHtml(item) {
+    // inline: the views on the same line (list rows keep one height, the
+    // panel says over which days they were counted).
+    function impactCellHtml(item, inline) {
         if (item.kind !== 'page') { return ''; }
 
         if (item.impact === null || item.impact === undefined) {
             return '<span class="fg-secondary">–</span>';
         }
 
+        if (inline) {
+            return '<span class="fw-semibold">' + item.impact + '</span>' +
+                ' <span class="small fg-secondary">· ' + esc(fmt(L.views_in_window, [item.views, L.impact_window_days])) + '</span>';
+        }
+
         return '<span class="fw-semibold">' + item.impact + '</span>' +
-            '<div class="small fg-secondary">' + esc(fmt(L.views_label, [item.views])) + '</div>';
+            ' <span class="small fg-secondary text-nowrap">· ' + esc(fmt(L.views_label, [item.views])) + '</span>';
     }
 
     // Sitemap / search / comments as three small marks, colored when on.
@@ -14597,7 +14682,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         if (file.modified) {
-            facts.push('<span>' + file.modified + (file.username ? ' ' + fmt(L.modified_by, [esc(file.username)]) : '') + '</span>');
+            facts.push('<span>' + file.modified + modifiedByHtml(file) + '</span>');
         }
 
         document.getElementById('file_edit_facts').innerHTML = facts.join('');

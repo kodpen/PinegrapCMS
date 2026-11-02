@@ -1508,6 +1508,7 @@
     "{var:1} versions are applied": "{var:1} ara sürüm uygulanacak",
     "{var:1} versions were applied": "{var:1} ara sürüm uygulandı",
     "{var:1} views": "{var:1} görüntüleme",
+    "{var:1} views in the last {var:2} days": "son {var:2} günde {var:1} görüntüleme",
     "{var:1} visitor record(s) older than {var:2} days removed, {var:3} day(s) added to the daily summary, in {var:4} s.": "{var:2} günden eski {var:1} ziyaretçi kaydı silindi, {var:3} gün günlük özete eklendi ({var:4} sn).",
     "{var:1} visitors are on the site right now.": "Şu anda sitede {var:1} ziyaretçi var.",
     "{var:1} visit{suffix:1}": "{var:1} ziyaret",
