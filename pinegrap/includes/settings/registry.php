@@ -134,6 +134,7 @@ function pg_settings_categories()
             'description' => lang('Which features are on, and how images are handled.'),
             'sections' => array(
                 'pgset-features' => lang('Feature Options'),
+                'pgset-search-tuning' => lang('Search Tuning'),
                 'pgset-images'   => lang('Image Optimization'),
                 'pgset-revisions' => lang('Page Revisions'),
                 'pgset-page-cache' => lang('Page Cache'),
@@ -141,6 +142,7 @@ function pg_settings_categories()
             ),
             'keywords' => array(
                 'pgset-features' => pg_settings_keywords(lang('feature, cart, comment, blog, calendar, form, ads, sharing, search, performance, mobile, prefetch, speculation rules, preload')),
+                'pgset-search-tuning' => pg_settings_keywords(lang('search, synonym, synonyms, promoted, recommended, pinned result')),
                 'pgset-images'   => pg_settings_keywords(lang('image, photo, optimization, webp, avif, responsive, quality, size, upload, watermark')),
                 'pgset-revisions' => pg_settings_keywords(lang('revision, revisions, history, version, versions, restore, retention, page, designer')),
                 'pgset-page-cache' => pg_settings_keywords(lang('cache, page cache, cdn, proxy, varnish, nginx, cloudflare, speed, performance, s-maxage, cache-control')),

@@ -6230,7 +6230,23 @@ function pg_search_highlight_inject($content)
 // a page row adds 'name' and 'section' - a page with a search section that
 // answers the query links to it (_pg_sw_search_attach_sections()).
 // $advanced: null follows the site setting; true / false picks the search.
+// The site's synonyms add the results of the other words of a group, and
+// its promoted results come first (includes/fn/site_search_tuning.php).
 function _pg_sw_search_collect($query, $cfg, $advanced = null)
+{
+    $found = _pg_sw_search_collect_one($query, $cfg, $advanced);
+    if (trim((string)$query) === '' || !function_exists('pg_search_tuning_apply')) return $found;
+    $groups   = pg_search_synonyms();
+    // A search of products only lists no pinned page.
+    $promoted = (is_array($cfg) && isset($cfg['search_scope']) && $cfg['search_scope'] === 'products') ? array() : pg_search_promoted();
+    if (!$groups && !$promoted) return $found;
+    return pg_search_tuning_apply($query, $found, function ($alt) use ($cfg, $advanced) {
+        return _pg_sw_search_collect_one($alt, $cfg, $advanced);
+    }, $groups, $promoted, 'pg_search_promoted_row');
+}
+
+// One search of _pg_sw_search_collect(), without synonyms or promoted results.
+function _pg_sw_search_collect_one($query, $cfg, $advanced = null)
 {
     $out = array('featured' => array(), 'catalog' => array(), 'pages' => array(), 'limited' => false);
     $query = trim((string)$query);
