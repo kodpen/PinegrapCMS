@@ -9,6 +9,7 @@ description: Generated from the module field of the memory files: each includes/
 - `a11y`: [[accessibility-report]], [[editor-a11y-measurements]]
 - `address_autocomplete`: [[address-autocomplete]]
 - `ai_prompts`: [[ai-prompt-version]]
+- `ai_visibility`: [[ai-visibility-figures]]
 - `audit`: [[audit-trail-diff]], [[audit-trail-file-content]], [[consent-log-and-audit-trail]]
 - `audit_list`: [[audit-log-paging]]
 - `audit_rules`: [[audit-rule-registry]]
