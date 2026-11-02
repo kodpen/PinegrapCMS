@@ -133,7 +133,8 @@ $output_new = (!$ready || $readonly) ? '' : '
             <form method="post" action="erp_cheques.php" class="card my-7" id="erp_cheque_new" autocomplete="off">
                 ' . get_token_field() . '
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('New cheque or note') . '</div>
-                <div class="card-body row g-3">
+                <div class="card-body">
+                    <div class="row g-3">
                     <div class="col-6 md:col-3">
                         <label class="form-label" for="direction">' . lang('Direction') . '</label>
                         ' . $liveform->output_field(array('type' => 'select', 'id' => 'direction', 'name' => 'direction', 'class' => 'form-control', 'options' => array(lang('Taken from a customer') => 'received', lang('Given to a supplier') => 'given'))) . '
@@ -188,6 +189,7 @@ $output_new = (!$ready || $readonly) ? '' : '
                     <div class="col-12">
                         <button type="submit" class="btn btn-solid theme-primary"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang(array('string' => 'Save')) . '</button>
                         <span class="form-text ms-3">' . lang('Taken from a customer, it is a collection: their debt comes down now. Given to a supplier, it is a payment.') . '</span>
+                    </div>
                     </div>
                 </div>
             </form>

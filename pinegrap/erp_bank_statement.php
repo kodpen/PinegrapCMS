@@ -246,7 +246,8 @@ if ((string) $statement['status'] === 'mapping') {
                 <input type="hidden" name="id" value="' . $statement_id . '" />
                 <input type="hidden" name="erp_action" value="map" />
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Which column is which') . '</div>
-                <div class="card-body row g-3 align-items-end">
+                <div class="card-body">
+                    <div class="row g-3 align-items-end">
                     ' . $select('col_date', 'date', lang('Date'), false) . '
                     ' . $select('col_description', 'description', lang('Description'), true) . '
                     ' . $select('col_amount', 'amount', lang('Amount (+/−)'), true) . '
@@ -256,6 +257,7 @@ if ((string) $statement['status'] === 'mapping') {
                     <div class="col-12"><div class="form-field"><input class="check" type="checkbox" id="header_row" name="header" value="1"' . (($posted ? !empty($liveform->get_field_value('header')) : !empty($mapping['header'])) ? ' checked' : '') . ' /><label class="" for="header_row">' . lang('The first line is the column names') . '</label></div></div>
                     <div class="col-12 form-text">' . lang('Either one amount column, with money out as a minus, or a money-out and a money-in column. Lines without a date or an amount (totals, balances, headings) are left out.') . '</div>
                     <div class="col-12 d-flex flex-wrap gap-3 align-items-center"><button type="submit" class="btn btn-solid theme-primary">' . lang('Take the lines in') . '</button><span class="small fg-secondary" role="status" aria-live="polite" data-erp-send-once-status></span></div>
+                    </div>
                 </div>
             </form>' : '');
 } else {

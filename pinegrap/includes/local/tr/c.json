@@ -271,6 +271,7 @@
     "Cancelled: the flow was deleted.": "İptal edildi: akış silindi.",
     "Cancelled; nothing to pay.": "İptal edildi; ödenecek bir şey yok.",
     "Cancelling": "İptal ediliyor",
+    "Cancelling a paid expense needs the right to the tills.": "Ödenmiş bir gideri iptal etmek kasa hakkı ister.",
     "Cancelling tries to refund the payment and e-mails the customer.": "İptal, ödemeyi iade etmeyi dener ve müşteriye e-posta gönderir.",
     "Cannot add more than available stock": "Mevcut stok miktarından fazla eklenemez",
     "Cannot be changed once there are movements.": "Hareket olduktan sonra değiştirilemez.",

@@ -104,8 +104,8 @@ foreach ($ready ? erp_expense_categories() : array() as $category) {
 
     $output_rows .= '
         <tr' . (((int) $category['is_active'] !== 1) ? ' class="opacity-75"' : '') . '>
-            <td style="width:6rem"><input type="number" class="form-control form-control-sm text-end" name="' . h($field) . '[sort_order]" value="' . (int) $category['sort_order'] . '" step="10" aria-label="' . h(lang('Sort Order')) . '" /></td>
-            <td><input type="text" class="form-control form-control-sm" name="' . h($field) . '[name]" value="' . h((string) $category['name']) . '" maxlength="100" required aria-label="' . h(lang('Name')) . '" /></td>
+            <td style="width:6rem"><input type="number" class="form-control form-control-sm text-end" name="' . h($field) . '[sort_order]" value="' . (int) $category['sort_order'] . '" step="1" min="-2147483648" max="2147483647" aria-label="' . h(lang('Sort Order')) . '" /></td>
+            <td style="min-width:12rem"><input type="text" class="form-control form-control-sm" name="' . h($field) . '[name]" value="' . h((string) $category['name']) . '" maxlength="100" required aria-label="' . h(lang('Name')) . '" /></td>
             <td style="width:10rem"><input type="text" class="form-control form-control-sm font-monospace" name="' . h($field) . '[code]" value="' . h((string) $category['code']) . '" maxlength="32" placeholder="770" aria-label="' . h(lang('Account code')) . '" /></td>
             <td class="text-end fg-secondary" style="width:6rem">' . (int) ($counts[$category_id] ?? 0) . '</td>
             ' . ($with_deductible ? '<td style="width:11rem">

@@ -56,7 +56,12 @@ $paid = is_array($existing) && ((string) $existing['status'] === 'paid');
 $fx_on = erp_fx_enabled();
 $base = erp_base_currency();
 $page_title = is_array($existing) ? lang('Change the expense') : lang('New expense');
-$back = PATH . SOFTWARE_DIRECTORY . '/add_erp_expense.php' . (($id > 0) ? ('?id=' . $id) : '');
+// The filtered list a change was opened from rides along, so the expense's
+// screen still leads back to it after the save.
+$send_to = ($id > 0) ? pg_send_to_url('') : '';
+$send_to_query = ($send_to !== '') ? '&send_to=' . urlencode($send_to) : '';
+$form_query = ($id > 0) ? ('?id=' . $id . $send_to_query) : '';
+$back = PATH . SOFTWARE_DIRECTORY . '/add_erp_expense.php' . $form_query;
 
 // A receipt photo over post_max_size makes PHP throw the whole request away:
 // nothing typed arrived, so the screen says so instead of drawing a blank
@@ -330,7 +335,7 @@ if (!$_POST) {
                                 <label for="repeat_end" class="form-label">' . lang('Until (optional)') . '</label>
                                 ' . $liveform->output_field(array('type' => 'text', 'id' => 'repeat_end', 'data-pg-date' => '', 'name' => 'repeat_end', 'class' => 'form-control', 'maxlength' => '10', 'autocomplete' => 'off')) . '
                             </div>
-                            ' . ($can_cash ? '<div class="col-12 lg:col-4 my-3 d-flex align-items-end">
+                            ' . ($can_cash ? '<div class="col-12 lg:col-4 my-3 d-flex align-items-end" id="erp_expense_repeat_pay">
                                 <div class="form-field mb-3">
                                     <div class="switch">' . $liveform->output_field(array('type' => 'checkbox', 'id' => 'repeat_pay', 'name' => 'repeat_pay', 'value' => '1', 'class' => 'no-bs')) . '</div>
                                     <label class="" for="repeat_pay">' . lang('Write the next ones as paid from the same till') . '</label>
@@ -364,9 +369,9 @@ if (!$_POST) {
         'icon' => 'erp',
         'heading' => $page_title,
         'heading_description' => lang('The receipt as it is: what it cost, the tax on it, and how it was paid.'),
-        'cancel' => array('enable' => 'true', 'url' => is_array($existing) ? ('edit_erp_expense.php?id=' . $id) : 'erp_expenses.php'),
+        'cancel' => array('enable' => 'true', 'url' => is_array($existing) ? ('edit_erp_expense.php?id=' . $id . $send_to_query) : 'erp_expenses.php'),
         'breadcrumb' => array(
-            array('label' => lang('Expenses'), 'url' => $list_url),
+            array('label' => lang('Expenses'), 'url' => pg_send_to_list_url($list_url)),
             array('label' => $page_title),
         ),
     ]) . '
@@ -377,7 +382,7 @@ if (!$_POST) {
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
-            <form name="form" action="add_erp_expense.php' . (($id > 0) ? ('?id=' . $id) : '') . '" method="post" enctype="multipart/form-data" id="erp_expense_form" data-decimal-comma="' . (erp_decimal_comma() ? '1' : '0') . '">
+            <form name="form" action="add_erp_expense.php' . h($form_query) . '" method="post" enctype="multipart/form-data" id="erp_expense_form" data-decimal-comma="' . (erp_decimal_comma() ? '1' : '0') . '">
                 ' . get_token_field() . '
                 ' . (($id > 0) ? '<input type="hidden" name="id" value="' . $id . '" />' : '') . '
                 <div class="card my-7">
@@ -446,23 +451,29 @@ if (!$_POST) {
     var locale = document.documentElement.lang || undefined;
 
     // The same reading of a typed amount as erp_kurus(): two digits behind
-    // the last separator make it the decimal point.
+    // the last separator make it the decimal point, a leading minus keeps its
+    // sign. What erp_expense_number_typed() refuses reads as NaN.
     function kurus(value) {
-        var raw = String(value || "").replace(/[^0-9.,]/g, "");
-        if (raw === "") { return null; }
+        var text = String(value || "").replace(/\u00a0/g, " ").trim();
+        if (text === "") { return null; }
+        if (!/^-?\s*[0-9][0-9., ]*$/.test(text)) { return NaN; }
+        var sign = text.charAt(0) === "-" ? -1 : 1;
+        var raw = text.replace(/[^0-9.,]/g, "");
         var position = Math.max(raw.lastIndexOf("."), raw.lastIndexOf(","));
         if (position >= 0 && (raw.length - position - 1) <= 2) {
             var whole = raw.slice(0, position).replace(/[^0-9]/g, "") || "0";
             var fraction = (raw.slice(position + 1) + "00").slice(0, 2);
-            return parseInt(whole, 10) * 100 + parseInt(fraction, 10);
+            return sign * (parseInt(whole, 10) * 100 + parseInt(fraction, 10));
         }
-        return parseInt(raw.replace(/[^0-9]/g, ""), 10) * 100;
+        return sign * parseInt(raw.replace(/[^0-9]/g, ""), 10) * 100;
     }
     function rate(value) {
-        var raw = String(value || "").replace(/\s/g, "");
+        var text = String(value || "").replace(/\u00a0/g, " ").trim();
+        if (text === "") { return 0; }
+        if (!/^%?\s*[0-9][0-9., ]*\s*%?$/.test(text)) { return NaN; }
+        var raw = text.replace(/[\s%]/g, "");
         raw = comma ? raw.replace(/\./g, "").replace(",", ".") : raw.replace(/,/g, "");
-        var number = parseFloat(raw);
-        return isNaN(number) ? 0 : number;
+        return parseFloat(raw);
     }
     function money(value) {
         return (value / 100).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -478,7 +489,7 @@ if (!$_POST) {
         var typed = kurus(form.tax_amount.value);
         var included = form.includes_tax.checked;
         var net, tax;
-        if (amount === null || amount <= 0) {
+        if (amount === null || !(amount > 0) || !(percent >= 0 && percent < 100) || (typed !== null && !(typed >= 0))) {
             form.querySelectorAll("#erp_expense_preview b").forEach(function (b) { b.textContent = "—"; });
             return;
         }
@@ -530,6 +541,13 @@ if (!$_POST) {
         box.hidden = !now.checked;
         later.hidden = now.checked;
         if (form.cash_account_id) { form.cash_account_id.required = now.checked; }
+        // The next ones are written as paid only from the till this one is
+        // paid from: with "pay later" there is none, so the switch goes.
+        var repeatPay = document.getElementById("erp_expense_repeat_pay");
+        if (repeatPay) {
+            repeatPay.hidden = !now.checked;
+            if (!now.checked && form.repeat_pay) { form.repeat_pay.checked = false; }
+        }
     }
     form.querySelectorAll("input[name=pay]").forEach(function (radio) { radio.addEventListener("change", payment); });
 
@@ -654,6 +672,15 @@ if (!$_POST) {
     }
 
     $typed_tax = trim((string) $liveform->get_field_value('tax_amount'));
+
+    // A value the readers below would cut down to its digits is refused,
+    // never saved as some other figure.
+    foreach (array('amount' => true, 'tax_rate' => false, 'tax_amount' => true) as $field => $signed) {
+        if (!erp_expense_number_typed($liveform->get_field_value($field), $signed)) {
+            $liveform->mark_error($field, ($field === 'tax_rate') ? lang('Enter the tax rate as a number between 0 and 100.') : lang('Enter the amount as a number.'));
+            go($back);
+        }
+    }
     $pay = $can_cash && ((string) $liveform->get_field_value('pay') === '1');
 
     $result = erp_expense_save(array(
@@ -740,5 +767,5 @@ if (!$_POST) {
         $liveform_view->add_warning(h(lang('The expense was saved, but it does not repeat:') . ' ' . $repeat_warning));
     }
 
-    go(PATH . SOFTWARE_DIRECTORY . '/edit_erp_expense.php?id=' . $saved_id);
+    go(PATH . SOFTWARE_DIRECTORY . '/edit_erp_expense.php?id=' . $saved_id . $send_to_query);
 }
