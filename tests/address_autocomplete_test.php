@@ -238,3 +238,38 @@ function test_address_autocomplete_settings_decide()
 	pg_assert_true(isset($d['marks']['addr_enabled']));
 	pg_assert_same('Moda Caddesi', $d['test']);
 }
+
+// Every address form prints pg_ship_to_district_script(), which carries the
+// suggestion list's script, so checkout, the address book and the panel's
+// verified form get it without a hook of their own.
+function test_address_autocomplete_form_hook_rides_the_district_script()
+{
+	$shipping = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/shipping.php');
+	$start = strpos($shipping, "\nfunction pg_ship_to_district_script(");
+	pg_assert_true($start !== false);
+	pg_assert_contains("pg_addr_suggest_script()", substr($shipping, $start, 3000));
+
+	foreach (array('includes/fn/widgets_shipping_address.php', 'includes/fn/widgets_account.php', 'includes/fn/widgets_express_order.php', 'includes/fn/widgets_billing_information.php', 'includes/forms/verified_shipping_address_form.php') as $file) {
+		pg_assert_contains('pg_ship_to_district_script()', (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file);
+	}
+}
+
+// The script: the form's own token, the boxes by the street box's prefix,
+// the panel's state_id pick list, the country before the state, and no new
+// request for the street box it fills itself.
+function test_address_autocomplete_form_hook_script()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/address_autocomplete.php');
+	$start = strpos($source, "\nfunction pg_addr_suggest_script(");
+	pg_assert_true($start !== false);
+	$script = substr($source, $start, 9000);
+
+	pg_assert_contains('f.elements.token', $script);
+	pg_assert_contains('/^(.*)address_1$/', $script);
+	pg_assert_contains('e[p+"state"]||e[p+"state_id"]', $script);
+	pg_assert_contains('if(!ev.isTrusted)return;', $script);
+	pg_assert_contains('put(e[p+"address_2"],b.address_2,true)', $script, 'the second line only while empty');
+	pg_assert_true(strpos($script, 'p+"country"') < strpos($script, 'e[p+"state"]'), 'country first');
+	pg_assert_contains('role","combobox"', $script);
+	pg_assert_contains('!pg_addr_ready()', $script, 'nothing while no provider is on');
+}
