@@ -320,6 +320,9 @@ if (!$_POST) {
             JOIN products ON products.id = products_groups_xref.product
             WHERE products_groups_xref.product_group = '" . $product_group['id'] . "'" . pg_catalog_bin_live_sql('products'));
 
+        // Original product id => its copy, for the variant set part below.
+        $product_map = array();
+
         // Loop through the products in order to add them to new group.
         foreach ($product_references as $product_reference) {
             // If the user selected to duplicate products, then deal with that.
@@ -343,6 +346,8 @@ if (!$_POST) {
 
                     $duplicated_products[$product_reference['id']] = $product_id;
                 }
+
+                $product_map[(int) $product_reference['id']] = (int) $product_id;
 
             // Otherwise the user did not select to duplicate products,
             // so just add existing product to new group we created.
@@ -391,6 +396,10 @@ if (!$_POST) {
                     '" . $attribute['sort_order'] . "',
                     '" . (int) $attribute['default_option_id'] . "')");
         }
+
+        // The form settings, price rules and form template of a variant set,
+        // which the column list above does not name.
+        pg_variant_set_copy($product_group['id'], $new_product_group['id'], $product_map);
 
         // Duplicate the extra images associated with this product group.
         $images = db_items(
