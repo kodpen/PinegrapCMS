@@ -885,10 +885,11 @@ function pg_page_cache_kept_headers(array $headers)
 }
 
 /**
- * A stored file: one line of JSON (layout, time made, headers), then the
- * page as it is sent.
+ * A stored file: one line of JSON (layout, time made, headers, the page),
+ * then the page as it is sent. A file stored before the page was kept reads
+ * back as page 0.
  *
- * @param array  $meta created, headers
+ * @param array  $meta created, headers, page_id
  * @param string $body
  * @return string '' when the headers cannot be written as JSON
  */
@@ -898,6 +899,7 @@ function pg_page_cache_pack(array $meta, $body)
         'v' => PG_PAGE_CACHE_FORMAT,
         'created' => (int) ($meta['created'] ?? 0),
         'headers' => array_values(pg_page_cache_kept_headers((array) ($meta['headers'] ?? array()))),
+        'page_id' => max(0, (int) ($meta['page_id'] ?? 0)),
     ), JSON_UNESCAPED_SLASHES);
 
     return is_string($line) ? $line . "\n" . (string) $body : '';
@@ -908,7 +910,7 @@ function pg_page_cache_pack(array $meta, $body)
  * empty or cut file, another layout).
  *
  * @param string $raw
- * @return array|null ['meta' => [created, headers], 'body' => string]
+ * @return array|null ['meta' => [created, headers, page_id], 'body' => string]
  */
 function pg_page_cache_unpack($raw)
 {
@@ -930,6 +932,7 @@ function pg_page_cache_unpack($raw)
         'meta' => array(
             'created' => (int) $meta['created'],
             'headers' => pg_page_cache_kept_headers($meta['headers']),
+            'page_id' => max(0, (int) ($meta['page_id'] ?? 0)),
         ),
         'body' => (string) substr($raw, $eol + 1),
     );
@@ -1121,6 +1124,11 @@ function pg_page_cache_lookup(array $config, array $server, array $cookies, $uri
  */
 function pg_page_cache_send(array $lookup, $method)
 {
+    // The page an AI fetcher's request drew, for its counter (waf.php).
+    if (function_exists('waf_ai_fetch_page')) {
+        waf_ai_fetch_page((int) ($lookup['entry']['meta']['page_id'] ?? 0));
+    }
+
     foreach ($lookup['entry']['meta']['headers'] as $line) {
         header($line);
     }
@@ -1186,7 +1194,7 @@ function pg_page_cache_store_page($content, $page_id, $page_name)
 
     pg_page_cache_write(
         pg_page_cache_file_path(pg_page_cache_directory(), defined('PG_PAGE_CACHE_GENERATION') ? PG_PAGE_CACHE_GENERATION : 0, $key),
-        pg_page_cache_pack(array('created' => time(), 'headers' => headers_list()), $body));
+        pg_page_cache_pack(array('created' => time(), 'headers' => headers_list(), 'page_id' => (int) $page_id), $body));
 
     pg_page_cache_unlock();
 }

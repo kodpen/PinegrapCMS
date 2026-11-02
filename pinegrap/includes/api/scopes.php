@@ -40,8 +40,8 @@ function api_scope_groups() {
 
 		'orders'    => array('label' => 'Orders',     'read' => 'orders:read',    'write' => 'orders:write'),
 
-		// The store's shipping zones and tax zones: what checkout charges for
-		// an address. Read under orders (GET /store/...); writing them changes
+		// The store's shipping methods, shipping zones and tax zones: what
+		// checkout charges for an address. Read under orders (GET /store/...); writing them changes
 		// every later checkout's shipping and tax, so it is its own right.
 		'store'     => array('label' => 'Store settings', 'read' => '',           'write' => 'store:write'),
 

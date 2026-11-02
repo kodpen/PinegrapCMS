@@ -1439,6 +1439,7 @@
     "offer action name": "teklif hareketi adı",
     "offer rule": "teklif kuralı",
     "offer, contract, deposit, negotiate": "teklif, sözleşme, kapora, pazarlık",
+    "offered_on must be a list of objects with day (mon … sun) and until (HH:MM or null).": "offered_on, day (mon … sun) ve until (HH:MM veya null) alanları olan nesnelerin listesi olmalıdır.",
     "office, shop, commercial, metro, investment": "ofis, dükkan, ticari, metro, yatırım",
     "offline": "çevrimdışı",
     "old town, market square, terrace, roastery, first café": "tarihi yarımada, çarşı meydanı, teras, kavurma atölyesi, ilk kafe",

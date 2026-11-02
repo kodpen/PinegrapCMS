@@ -3842,6 +3842,9 @@ function waf_deny($status, $reference, $always = false)
 
     waf_text_log('DENY', waf_client_ip(), array('status' => $status, 'rule' => waf_last_rule(), 'ref' => $reference));
 
+    // A refused request is no AI fetch.
+    waf_ai_fetch_state('cancel');
+
     if (!headers_sent()) {
         http_response_code($status);
         header('Content-Type: text/html; charset=utf-8');
@@ -4906,10 +4909,17 @@ function waf_handle_bot($ip, $blocking, $legacy_only = false)
         }
 
         if ($legacy_only || !waf_setting('waf_verify_bots', 1)) {
+            // Nothing proven: an AI name counts as unverified.
+            waf_ai_fetch_state('bot', waf_ai_fetch_bot($bot['class'], $bot['token'], ''));
+
             return;
         }
 
         $verdict = waf_verify_bot($ip, $bot['token']);
+
+        // Counted when the request ends; waf_deny() cancels it for a refused
+        // request, the forged claim below included.
+        waf_ai_fetch_state('bot', waf_ai_fetch_bot($bot['class'], $bot['token'], $verdict));
 
         // Only a proven crawler is let past the country restriction: an
         // unverifiable name is a claim anyone can type.
@@ -5027,6 +5037,145 @@ function waf_bot_verified($set = null)
 function waf_bot_rate_exempt($verified)
 {
     return $verified === true;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   AI FETCH COUNTER
+   ───────────────────────────────────────────────────────────────────────── */
+
+/**
+ * The bot name an AI fetch is counted under, or '' when the request is not
+ * counted. Only the user fetchers and search indexers of waf_ai_bots() are
+ * counted, never a training crawler or any other bot: their catalogue name
+ * when the published ranges proved the address ('verified'), otherwise
+ * 'unverified' (a forged or unprovable claim, or verification switched off).
+ *
+ * @param string $class   waf_classify_bot() class
+ * @param string $token   waf_classify_bot() token
+ * @param string $verdict waf_verify_bot() answer, '' when it was not asked
+ * @return string
+ */
+function waf_ai_fetch_bot($class, $token, $verdict)
+{
+    if ($class !== 'good') {
+        return '';
+    }
+
+    $ai = waf_ai_bots();
+
+    if (!isset($ai[(string) $token])) {
+        return '';
+    }
+
+    return ($verdict === 'verified') ? $ai[(string) $token]['name'] : 'unverified';
+}
+
+/**
+ * The page a counted fetch is filed under: the page the request drew, 0 for
+ * anything else (a file, a feed, robots.txt). An unverified claim is a count
+ * only and never names a page, so a forged user agent writes no page list.
+ *
+ * @param string $bot     waf_ai_fetch_bot() answer
+ * @param mixed  $page_id
+ * @return int
+ */
+function waf_ai_fetch_page_for($bot, $page_id)
+{
+    if (($bot === '') || ($bot === 'unverified')) {
+        return 0;
+    }
+
+    return max(0, (int) $page_id);
+}
+
+/**
+ * The bucket key of ai_fetch_daily: one row per day, bot and page.
+ *
+ * @param string $day Y-m-d
+ * @param string $bot
+ * @param int    $page_id
+ * @return string
+ */
+function waf_ai_fetch_key($day, $bot, $page_id)
+{
+    return sha1((string) $day . '|' . (string) $bot . '|' . (int) $page_id);
+}
+
+/**
+ * The request's AI fetch, kept until the request ends so the page it drew is
+ * known: 'bot' set by waf_handle_bot(), 'page' by get_page.php or the page
+ * cache, 'cancel' by waf_deny() (a refused request writes no row).
+ *
+ * @param string $action 'bot', 'page', 'cancel' or '' to read
+ * @param mixed  $value
+ * @return array bot, page
+ */
+function waf_ai_fetch_state($action = '', $value = null)
+{
+    static $state = array('bot' => '', 'page' => 0, 'registered' => false);
+
+    if ($action === 'bot') {
+        $state['bot'] = (string) $value;
+
+        if (($state['bot'] !== '') && !$state['registered']) {
+            $state['registered'] = true;
+            register_shutdown_function('waf_ai_fetch_flush');
+        }
+    } elseif ($action === 'page') {
+        if ((int) $state['page'] === 0) {
+            $state['page'] = max(0, (int) $value);
+        }
+    } elseif ($action === 'cancel') {
+        $state['bot'] = '';
+    }
+
+    return array('bot' => $state['bot'], 'page' => (int) $state['page']);
+}
+
+/**
+ * Names the page this request drew, for the AI fetch counter. The first page
+ * named wins, as pg_rendered_page() does.
+ *
+ * @param int $page_id
+ * @return void
+ */
+function waf_ai_fetch_page($page_id)
+{
+    waf_ai_fetch_state('page', $page_id);
+}
+
+/**
+ * At the end of the request: one upsert into ai_fetch_daily for a counted AI
+ * fetch. Before the upgrade step the table is missing and the failed query
+ * is ignored.
+ *
+ * @return void
+ */
+function waf_ai_fetch_flush()
+{
+    $state = waf_ai_fetch_state();
+
+    if (($state['bot'] === '') || !isset(db::$con) || !db::$con) {
+        return;
+    }
+
+    $page_id = waf_ai_fetch_page_for($state['bot'], $state['page']);
+    $day = date('Y-m-d');
+
+    try {
+        @mysqli_query(
+            db::$con,
+            "INSERT INTO ai_fetch_daily (id, day, bot, page_id, fetches)
+             VALUES ('" . waf_ai_fetch_key($day, $state['bot'], $page_id) . "',
+                     '" . $day . "',
+                     '" . waf_escape(substr($state['bot'], 0, 40)) . "',
+                     " . $page_id . ",
+                     1)
+             ON DUPLICATE KEY UPDATE fetches = fetches + 1"
+        );
+    } catch (Throwable $e) {
+        // A counter never breaks the request it counts.
+    }
 }
 
 /* ─────────────────────────────────────────────────────────────────────────

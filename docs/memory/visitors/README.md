@@ -24,6 +24,7 @@ Visitor statistics, page and article views, search engine index flags.
 
 - action-links-rel-nofollow.md: Every action link (login, register, reset, subscribe, remove from cart) must carry rel="nofollow"; crawl-budget reason and server-stamped rel.
 - ai-crawlers-llms-txt.md: AI section of robots.txt (Content-Signal, Disallow groups in step with the WAF switches) and llms.txt: settings, where each line goes, which pages llms.txt lists (2026.11.0, 11.0.21, #739).
+- ai-fetch-counter.md: AI fetch counter: ai_fetch_daily (day|bot|page_id), written at request end by waf.php for AI user fetchers and search indexers the firewall let through; unverified claims as a count only.
 - article-view-daily-bucket.md: Why per-view submitted_form_views INSERTs became a daily bucket table: schema, backfill cursor, cutover, retention, old table rename (2026.4.1).
 - high-volume-counter-rules.md: Rules for a new high-volume counter, log or report: write-time buckets, sha1 keys, no query string in a key, MAX(id) caps, totals in SQL, ONLY_FULL_GROUP_BY, DST-safe day steps, derived data rebuilt.
 - page-canonical-robots-directives.md: A page's own canonical address and noarchive / max-snippet (page.canonical_url, noarchive, max_snippet; 11.0.22, #802): storage, where it applies, languages, editors, PHP/JS twin.

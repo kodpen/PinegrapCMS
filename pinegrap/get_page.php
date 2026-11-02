@@ -282,6 +282,10 @@ else
 // submissions for the page it sits on, and only this function can tell it
 // which page that is. First registration wins, so the later call is a no-op.
 pg_rendered_page($page_id);
+// The page an AI fetcher's request drew, for its counter (waf.php).
+if (function_exists('waf_ai_fetch_page')) {
+	waf_ai_fetch_page($page_id);
+}
 // Determine if user has edit access to page.
 // We will use this in several places below.
 if (check_edit_access($folder_id) == true)

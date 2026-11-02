@@ -480,28 +480,6 @@ function pg_shipping_method_form_columns($post)
 }
 
 /**
- * Writes the allowed zones and the excluded dates of a post for a shipping
- * method that has none yet.
- *
- * @param int   $shipping_method_id
- * @param array $post  The posted form
- * @return void
- */
-function pg_shipping_method_save_links($shipping_method_id, $post)
-{
-    // No zone chosen posts no list at all.
-    foreach ((array) ($post['allowed_zones'] ?? array()) as $zone_id) {
-        if ($zone_id && is_scalar($zone_id)) {
-            db_q("INSERT INTO shipping_methods_zones_xref (shipping_method_id, zone_id) VALUES (?, ?)", array((int) $shipping_method_id, (string) $zone_id)) or output_error('Query failed.');
-        }
-    }
-
-    foreach (pg_shipping_method_excluded_dates($post['excluded_transit_dates'] ?? '') as $date) {
-        db_q("INSERT INTO excluded_transit_dates (shipping_method_id, date) VALUES (?, ?)", array((int) $shipping_method_id, (string) $date)) or output_error('Query failed.');
-    }
-}
-
-/**
  * The help text under a time field: the hour format the site's time format
  * setting names, HH:mm for twenty_four_hours and h:mm AM/PM otherwise
  * (pg_time_format_help()).

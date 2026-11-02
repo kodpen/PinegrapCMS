@@ -129,7 +129,7 @@ function db_q_shipping_import_test_calls($path)
 function db_q_shipping_import_test_files()
 {
 	return array(
-		'edit_shipping_method.php' => 9,
+		'edit_shipping_method.php' => 2,
 		'includes/forms/shipping_method_form.php' => 3,
 		'shipping_method.php' => 7,
 		'shipping.php' => 6,

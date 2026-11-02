@@ -6899,6 +6899,9 @@ function pg_js_bundles()
         // The graph canvas core (window.PGGraphCanvas), printed before the
         // scripts that draw on it: the flow canvas first.
         'assets/js/pg_graph_canvas.min.js'         => array('assets/js/pg_graph_canvas.js'),
+        // The link resolver's browser twin (window.PGLinkResolve,
+        // includes/fn/link_resolve.php).
+        'assets/js/pg_link_resolve.min.js'         => array('assets/js/pg_link_resolve.js'),
         'assets/js/workspace_flow.min.js'          => array('assets/js/workspace_flow.js'),
         'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_guest.js'),
         // The Workspace list of the main menu, on every panel page of the
