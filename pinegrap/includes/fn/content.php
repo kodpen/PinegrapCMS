@@ -3083,6 +3083,13 @@ function pg_catalog_address_slug($address_name)
     $address_name = preg_replace('/_{2,}/', '_', $address_name);
     $address_name = trim($address_name, '_');
 
+    // address_name is varchar(255). The name is cut here, before the
+    // uniqueness check, leaving room for a "[n]" suffix: cut later by the
+    // column, two long names and their suffixes would end up the same.
+    if (strlen($address_name) > 245) {
+        $address_name = trim(substr($address_name, 0, 245), '_');
+    }
+
     // An address written entirely in a script this cannot transliterate -
     // Arabic, Greek, Chinese - reduces to nothing. An empty path segment is
     // not an address, so fall back to a placeholder and let the duplicate

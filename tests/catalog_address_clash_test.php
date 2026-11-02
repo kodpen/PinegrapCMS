@@ -43,3 +43,15 @@ function test_catalog_address_clash_callers_name_their_item_type()
 		pg_assert_true(strpos($source, $call) !== false, $file . ' names its item type');
 	}
 }
+
+// A long name is cut before the uniqueness check, with room for "[n]".
+function test_catalog_address_slug_leaves_room_for_the_suffix()
+{
+	$long = pg_catalog_address_slug('pg-test-' . str_repeat('u', 252));
+
+	pg_assert_same(245, strlen($long), 'cut to 245 characters');
+	pg_assert_same('pg-test-', substr($long, 0, 8), 'the start is kept');
+	pg_assert_true(strlen($long . '[12345]') <= 255, 'a suffix still fits the column');
+	pg_assert_same('a_b', pg_catalog_address_slug(str_repeat('a', 1) . '_b'), 'a short name is untouched');
+	pg_assert_same(244, strlen(pg_catalog_address_slug(str_repeat('a', 244) . '_' . str_repeat('b', 20))), 'no separator left at the cut');
+}
