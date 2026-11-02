@@ -101,5 +101,5 @@ function test_a11y_statement_registered()
 	pg_assert_contains("{ type: 'accessibility_statement'", $js, 'in SW_TYPES');
 	pg_assert_contains("case 'accessibility_statement': {", $js, 'has a starter tree');
 	pg_assert_contains("accessibility_statement: SW_ACCESSIBILITY_STATEMENT_TOKEN_GROUPS", $js, 'has a token palette');
-	pg_assert_contains("accessibility_statement: 1, tag_cloud_region: 1", $js, 'draws no Messages block');
+	pg_assert_contains("{ accessibility_statement: 1, cart_link: 1,", $js, 'draws no Messages block');
 }

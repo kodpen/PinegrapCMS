@@ -3557,7 +3557,7 @@
     "accessibility check could not render {var:1} page{suffix:1}": "erişilebilirlik denetimi {var:1} sayfayı oluşturamadı",
     "accessibility, screen reader, keyboard": "erişilebilirlik, ekran okuyucu, klavye",
     "accessibility, screen reader, keyboard, print": "erişilebilirlik, ekran okuyucu, klavye, yazdırma",
-    "accessibility, statement, accessibility statement, wcag, en 301 549, european accessibility act, disability": "erişilebilirlik, beyan, erişilebilirlik beyanı, wcag, en 301 549, avrupa erişilebilirlik yasası, engelli",
+    "accessibility, statement, accessibility statement, wcag, en 301 549, european accessibility act, disability": "erişilebilirlik, beyan, erişilebilirlik beyanı, wcag, en 301 549, avrupa erişilebilirlik yasası, engelli, accessibility, statement, accessibility statement, european accessibility act, disability",
     "accessibility-statement": "erisilebilirlik-beyani",
     "accessibility@example.com": "erisilebilirlik@example.com",
     "accessible, wheelchair, step-free, quiet room": "erişilebilir, tekerlekli sandalye, basamaksız, sessiz oda",
