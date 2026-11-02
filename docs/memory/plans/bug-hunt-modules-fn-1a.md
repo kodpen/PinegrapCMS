@@ -20,7 +20,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `contacts`: done #4624
 
-- `content`: open, partly hunted (#5343 #5364: product and group address names; checked: address name, transliteration, byte sizes, thumbnails; next worker starts at the rest)
+- `content`: open, partly hunted (#5343 #5364: product and group address names; #5387: e-mail charset; checked: address name, transliteration, byte sizes, thumbnails, charset, month names, URL ids, form-data variables; next: `update_image_in_content()` replaces the tag with a regex replacement that eats `$n` in its attributes, then the rest)
 
 - `core`: open
 
