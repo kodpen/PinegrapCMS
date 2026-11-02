@@ -19,7 +19,7 @@ description: Steps N1-N14 and the visual pass V of plans/new-dashboard.md: size,
   - N10d (S) `visitmap` as question 2 decided. Held: a raw `visitors` count clashes with the `visitors/` key rules; architect issue #4896.
 
 - N11 Assistant and flows. Screens 01, 02, 15.
-  - N11c (S) `ai` daily summary as question 3 decided. Held: where its setting and the summary are kept, architect issue #5014.
+  - N11c (S) `ai` daily summary as question 3 decided; storage decided #5014 (`config.ws_claude_summary_*` columns; the summary is Claude's message in a chosen channel). `free`.
 
 - N12 (M) Goals, pins, notes, performance, subscriptions. Screens 01, 04, 18, 19. Cut in three.
   - N12c (S) `subs`, hidden until the vendor licence client answers (`plans/kodpen-vendor-api-client-steps.md`, P8).

@@ -19,9 +19,9 @@ description: Plan (owner 2026-11-02): the site as a Fediverse actor over Activit
 - A remote reply is a comment: the comment rules, moderation, notification mails and erasure apply as to any comment; nothing from the Fediverse writes anywhere else.
 - Counting and delivery obey the WAF: the inbox has its own rate bucket, a blocked domain is refused at the signature check.
 
-## Which questions are open? (architect, before AP1 and AP2)
-1. Tables `ap_followers` (actor id, inbox, shared inbox, name, avatar, followed at), `ap_outbox` (activity id, inbox, body, attempts, next at, state), `ap_blocks` (actor or domain), and `comments.remote_actor` / `comments.remote_id` for replies, in the open version's migration; recommended as written.
-2. Which content may be published: records of chosen forms and pages of chosen folders (recommended), or pages only.
+## Which questions are decided? (#5041)
+1. `ap_followers`, `ap_outbox`, `ap_blocks`, `comments.remote_actor` / `remote_id`, settings and sealed keys in `config.ap_*`; shape in the issue.
+2. Owner: records of chosen forms and pages of chosen folders; never drafts or private-folder pages.
 
 ## Where does it start?
 - AP1 alone, then AP2 and AP3 together. Read `core/README.md` and `designer/README.md` key rules, `designer/comment-thread-rules.md`, `designer/comments-widget-contract.md`, `designer/form-feed-item-guid-enclosure.md`, `core/mail-queue-permanent-errors.md`, `router.php` (the well-known branches). Steps: `activitypub-steps.md`, `-steps-2.md`.
