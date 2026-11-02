@@ -128,6 +128,25 @@ function test_pg_image_negotiated_format_behind_proxy()
 	pg_assert_same(array('format' => 'webp', 'vary' => true), pg_image_negotiated_format(array('image_derivative_formats' => '13'), 'jpg', array(), $cf), 'confirmed');
 }
 
+// Cloudflare Tools' edge check is negotiated through the CDN before bit 8 is
+// set, only with its own well-formed token and only while the switch is on.
+function test_pg_image_vary_check_asked()
+{
+	$cf = pg_image_negotiation_test_server('image/webp,*/*', array('HTTP_CF_RAY' => '1-IST'));
+	$check = array('pg_vary_check' => '0123456789abcdef');
+
+	pg_assert_true(pg_image_vary_check_asked($check), 'a token');
+	pg_assert_false(pg_image_vary_check_asked(array('pg_vary_check' => '0123456789ABCDEF')), 'upper case');
+	pg_assert_false(pg_image_vary_check_asked(array('pg_vary_check' => '0123')), 'too short');
+	pg_assert_false(pg_image_vary_check_asked(array('pg_vary_check' => array('0123456789abcdef'))), 'an array');
+	pg_assert_false(pg_image_vary_check_asked(array()), 'none');
+
+	pg_assert_same(array('format' => 'webp', 'vary' => true), pg_image_negotiated_format(array('image_derivative_formats' => '5'), 'jpg', $check, $cf), 'unconfirmed CDN, check');
+	pg_assert_same(array('format' => '', 'vary' => true), pg_image_negotiated_format(array('image_derivative_formats' => '5'), 'jpg', $check, pg_image_negotiation_test_server('*/*')), 'check without WebP');
+	pg_assert_same(array('format' => '', 'vary' => false), pg_image_negotiated_format(array('image_derivative_formats' => '1'), 'jpg', $check, $cf), 'switch off');
+	pg_assert_same(array('format' => '', 'vary' => true), pg_image_negotiated_format(array('image_derivative_formats' => '5'), 'jpg', array('pg_vary_check' => 'x'), $cf), 'a bad token keeps the guard');
+}
+
 function test_pg_image_original_asked()
 {
 	pg_assert_true(pg_image_original_asked(array('f' => 'original')), 'f=original');
