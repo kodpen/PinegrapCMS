@@ -7735,7 +7735,7 @@
                 head.appendChild(el('span', 'ws-home-row-title', task.title));
 
                 if (hot) {
-                    head.appendChild(el('span', 'ws-home-priority ws-home-priority-' + task.priority, (BOOT.priorities || {})[task.priority] || task.priority));
+                    head.appendChild(el('span', 'ws-priority ws-priority-' + task.priority, (BOOT.priorities || {})[task.priority] || task.priority));
                 }
 
                 text.appendChild(head);
@@ -18169,7 +18169,9 @@
             }
 
             if (task.priority === 'urgent' || task.priority === 'high') {
-                row.appendChild(el('span', 'badge theme-danger', BOOT.priorities[task.priority]));
+                // The same badge as the Today card: high in the warning
+                // colour, urgent in the danger colour.
+                row.appendChild(el('span', 'ws-priority ws-priority-' + task.priority, BOOT.priorities[task.priority]));
             }
 
             row.appendChild(avatarStack('', task.assignees, 4));

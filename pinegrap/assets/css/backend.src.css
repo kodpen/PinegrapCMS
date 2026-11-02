@@ -13904,7 +13904,9 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
 .ws-home-row-urgent .ws-home-hot-icon {
   color: var(--pg-danger);
 }
-.ws-home-priority {
+/* A task's priority badge (high or urgent) in the Today card and every
+   task list (homeDue(), taskRows() in workspace.js). */
+.ws-priority {
   display: inline-block;
   margin-left: .35rem;
   padding: 0 .4rem;
@@ -13915,7 +13917,7 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   background: color-mix(in srgb, var(--pg-warning) 20%, transparent);
   color: var(--pg-warning-fg-emphasis);
 }
-.ws-home-priority-urgent {
+.ws-priority-urgent {
   background: color-mix(in srgb, var(--pg-danger) 16%, transparent);
   color: var(--pg-danger-fg-emphasis);
 }
@@ -18252,7 +18254,7 @@ html[data-bs-theme="dark"] .ws-home-count.ws-home-count-hot {
 .ws-home-task-head .ws-home-row-title {
   min-width: 0;
 }
-.ws-home-task-head .ws-home-priority {
+.ws-home-task-head .ws-priority {
   flex: none;
 }
 /* The due tasks the card has no room for. */
