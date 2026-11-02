@@ -5,7 +5,7 @@ module: visitor_insights
 ---
 
 ## Where is it?
-- `pg_visitor_ai_section($window, $user)` in `includes/fn/visitor_insights.php`; `visitor_ai.php` (Visitors flyout "AI Visibility", panel search, gate `validate_visitors_access()`) prints it with the period filter (`7d`/`30d`/`90d`) and a link to Page Speed. The overview's `ai` section calls the same function when `visitors.php` lands (WV5, #PR).
+- `pg_visitor_ai_section($window, $user)` in `includes/fn/visitor_insights.php`; `visitor_ai.php` (Visitors flyout "AI Visibility", panel search, gate `validate_visitors_access()`) prints it with the period filter (`7d`/`30d`/`90d`) and a link to Page Speed. The overview's `ai` section calls the same function when `visitors.php` lands (WV5, #5827).
 - Shown in the flyout once `pg_ai_visibility_ready()`; the figures are `visitors/ai-visibility-figures.md`.
 
 ## What does it show?

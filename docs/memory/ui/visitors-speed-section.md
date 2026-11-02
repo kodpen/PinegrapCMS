@@ -5,7 +5,7 @@ module: visitor_insights
 ---
 
 ## Where is it?
-- `pg_visitor_speed_section($window, $device, $order)` in `includes/fn/visitor_insights.php` draws it; `visitor_vitals.php` (Visitors flyout "Page Speed", panel search, gate `validate_visitors_access()`) prints it under its toolbar. When `visitors.php` (plans/visitors-overview.md V1) lands, its `speed` section calls the same function and the root screen goes (WV5, #PR).
+- `pg_visitor_speed_section($window, $device, $order)` in `includes/fn/visitor_insights.php` draws it; `visitor_vitals.php` (Visitors flyout "Page Speed", panel search, gate `validate_visitors_access()`) prints it under its toolbar. When `visitors.php` (plans/visitors-overview.md V1) lands, its `speed` section calls the same function and the root screen goes (WV5, #5827).
 - The flyout and the panel search show it only once `pg_vitals_ready()`; before that the screen says the upgrade must run.
 
 ## What does the toolbar hold?
