@@ -35,6 +35,24 @@ function _pg_cart_default_labels($keys)
 }
 
 /**
+ * The price a shopping cart row strikes through: the product's price, which
+ * an offer or a member price may have lowered the row below. A donation's
+ * amount is what the visitor chose to give, so a donation below the product's
+ * suggested amount is no discount and its row strikes nothing through (the
+ * classic cart shows a discount only for a row an offer lowered).
+ *
+ * @param int             $unit_cents     the row's price
+ * @param int|string|null $product_cents  the product's price, null when the product is gone
+ * @param string          $selection_type the product's selection type
+ * @return int
+ */
+function _pg_cart_row_reference_cents($unit_cents, $product_cents, $selection_type)
+{
+    if ($selection_type === 'donation' || $product_cents === null) return (int)$unit_cents;
+    return (int)$product_cents;
+}
+
+/**
  * The page id the shopping cart and express order widgets record as the
  * visitor's cart page (shopping_cart_page_id, express_order_page_id): the
  * page the address names, else the page being rendered. The home page at the
@@ -1199,7 +1217,8 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
             foreach ($rows as $r) {
                 $qty        = (int)$r['quantity'];
                 $unit_cents = (int)$r['price'];                  // effective (post-offer)
-                $orig_cents = (int)($r['product_orig_price'] ?? $unit_cents);  // sticker
+                // The sticker price to strike through; a donation has none.
+                $orig_cents = _pg_cart_row_reference_cents($unit_cents, $r['product_orig_price'] ?? null, (string)($r['selection_type'] ?? ''));
                 $line_cents = $unit_cents * $qty;
                 $orig_line_cents = $orig_cents * $qty;
                 $has_d      = ($unit_cents < $orig_cents) ? 1 : 0;
