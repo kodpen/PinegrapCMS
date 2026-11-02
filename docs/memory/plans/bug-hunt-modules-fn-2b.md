@@ -1,0 +1,48 @@
+---
+name: bug-hunt-modules-fn-2b
+description: Module list of plans/bug-hunt.md, part 2b: includes/fn/ modules widgets to wishlist, one line each with its state
+---
+
+## Which includes/fn/ modules (widgets to wishlist) are hunted?
+- `widgets`: open
+- `widgets_account`: open
+- `widgets_ad_region`: done (#4999: a region placed twice shared its rows' ids)
+- `widgets_affiliate_sign_up`: open
+- `widgets_attrs`: open
+- `widgets_billing_information`: open
+- `widgets_cart`: open
+- `widgets_catalog`: open
+- `widgets_comments`: open
+- `widgets_comments_recent`: open
+- `widgets_conditions`: open
+- `widgets_entity_fields`: open
+- `widgets_error`: open
+- `widgets_express_order`: open
+- `widgets_fill`: open
+- `widgets_finish`: open
+- `widgets_folder_view`: open
+- `widgets_gallery`: open
+- `widgets_google_reviews`: done (#4999: placed twice, shared row ids; rest clean)
+- `widgets_language`: done (#4999: placed twice, shared row ids; rows, address and query clean)
+- `widgets_lists`: clean (spec, span and carriers, form record values and files, order and limit, expand pass)
+- `widgets_lists_calendar`: clean (weeks, ISO week of a Sunday-first week, outside days, events)
+- `widgets_lists_cart`: clean (rows, form, schedule and gift card rows, raw markup keys, cart read)
+- `widgets_lists_checkout`: clean (applied offers, gift card redemption as submit_order(), recipients, cart items)
+- `widgets_lists_menu`: clean (access, current and holding items, addresses and window as the classic menu)
+- `widgets_lists_order`: clean (form answers, gift cards, return rows escaping)
+- `widgets_lists_paging`: clean (window and clamped page key)
+- `widgets_lists_product`: clean (images, attributes, bundle rows, crumbs, filter chips)
+- `widgets_menu`: done (#4999: placed twice, shared row ids; rest clean: classic menu and sequence regions, access, edit chip)
+- `widgets_order_form`: clean
+- `widgets_order_preview`: clean (flags, method rows and On Account, page row changes, recipients and gift card markup escaping, tokens, form wrapper checked)
+- `widgets_parts`: clean (`commerce/cart-product-form-file-field.md`)
+- `widgets_parts_anywhere`: clean (marker encode and decode, read-only refusals, injection into the main loop, span take and place counting checked)
+- `widgets_parts_forms`: clean (cancel and return forms against cancel_order.php and order_return.php fields and limits, restored controls, label pairing, cart product form attributes checked)
+- `widgets_photo_gallery`: done (#4754)
+- `widgets_placement`: done (#4736)
+- `widgets_shipping_address`: clean (#4727)
+- `widgets_shipping_method`: clean (refusals, methods, amounts, remove link)
+- `widgets_starters`: clean (#4628)
+- `widgets_tag_cloud`: done (#4999: placed twice, shared row ids; rest clean: classic and Search Results widget keyword reads against the classic sync, merge and case folding, size and weight scale, token escaping and search links checked)
+- `widgets_wishlist`: clean (owner-only read, escaping, row actions, stock and discount rules checked)
+- `wishlist`: clean (wishlist.php token, method and throttle checks, cookie hashing and merge, owner SQL, trim batches, page script and its injection checked)

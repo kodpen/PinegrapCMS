@@ -1,9 +1,9 @@
 ---
 name: bug-hunt-modules-fn-2
-description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules price_history to wishlist, one line each with its state
+description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules price_history to waf_rescue, one line each with its state
 ---
 
-## Which includes/fn/ modules (price_history to wishlist) are hunted?
+## Which includes/fn/ modules (price_history to waf_rescue) are hunted?
 - `price_history`: clean
 - `privacy`: clean
 - `privacy_export`: taken by LA, #4589
@@ -58,45 +58,3 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 - `waf_log_list`: open
 - `waf_notice`: open
 - `waf_rescue`: open
-- `widgets`: open
-- `widgets_account`: open
-- `widgets_ad_region`: open
-- `widgets_affiliate_sign_up`: open
-- `widgets_attrs`: open
-- `widgets_billing_information`: open
-- `widgets_cart`: open
-- `widgets_catalog`: open
-- `widgets_comments`: open
-- `widgets_comments_recent`: open
-- `widgets_conditions`: open
-- `widgets_entity_fields`: open
-- `widgets_error`: open
-- `widgets_express_order`: open
-- `widgets_fill`: open
-- `widgets_finish`: open
-- `widgets_folder_view`: open
-- `widgets_gallery`: open
-- `widgets_google_reviews`: open
-- `widgets_language`: open
-- `widgets_lists`: open
-- `widgets_lists_calendar`: open
-- `widgets_lists_cart`: open
-- `widgets_lists_checkout`: open
-- `widgets_lists_menu`: open
-- `widgets_lists_order`: clean (form answers, gift cards, return rows escaping)
-- `widgets_lists_paging`: clean (window and clamped page key)
-- `widgets_lists_product`: clean (images, attributes, bundle rows, crumbs, filter chips)
-- `widgets_menu`: clean (classic menu and sequence regions, access, edit chip)
-- `widgets_order_form`: clean
-- `widgets_order_preview`: clean (flags, method rows and On Account, page row changes, recipients and gift card markup escaping, tokens, form wrapper checked)
-- `widgets_parts`: clean (`commerce/cart-product-form-file-field.md`)
-- `widgets_parts_anywhere`: clean (marker encode and decode, read-only refusals, injection into the main loop, span take and place counting checked)
-- `widgets_parts_forms`: clean (cancel and return forms against cancel_order.php and order_return.php fields and limits, restored controls, label pairing, cart product form attributes checked)
-- `widgets_photo_gallery`: done (#4754)
-- `widgets_placement`: done (#4736)
-- `widgets_shipping_address`: clean (#4727)
-- `widgets_shipping_method`: clean (refusals, methods, amounts, remove link)
-- `widgets_starters`: clean (#4628)
-- `widgets_tag_cloud`: clean (classic and Search Results widget keyword reads against the classic sync, merge and case folding, size and weight scale, token escaping and search links checked)
-- `widgets_wishlist`: clean (owner-only read, escaping, row actions, stock and discount rules checked)
-- `wishlist`: clean (wishlist.php token, method and throttle checks, cookie hashing and merge, owner SQL, trim batches, page script and its injection checked)

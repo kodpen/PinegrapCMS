@@ -402,6 +402,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-parts-anywhere.md: W17 parts anywhere (#3074, #3085, #3111): a read-only part of the page's record placed outside its detail widget, drawn by that widget's renderer in the same request
 - widget-parts-palette.md: W20a parts palette: a Components group following the selection with a widget's parts and values, row items kept in their loop, the detail widget's placed outside it as parts
 - widget-placement-settings.md: W21 per-placement content of a system widget (#2326 #2345): what a placement may narrow, props.placement, the pg-placement marker, narrowing rules, the panel section, records filter.
+- widget-repeat-placement-ids.md: A system widget drawn twice on one page (header and offcanvas): the per-placement id suffix of its static part and of its main loop's rows, which renderers use it, the fault it fixed.
 - widget-starters-detail.md: W20b-2 whole-layout starters of the detail widgets (#3234): the starterKeep markers that put the Default tree's parts in place, what each kind keeps, one main loop
 - widget-starters.md: W20b layout starters (#3179): style-neutral layouts per widget kind shipped as files, the gallery's fourth source, how the editor builds one, the kinds, the binding test
 - wishlist-widget.md: Favourites system widget (kind wishlist, widgets_wishlist.php): whose list it shows, tokens, flags, the two row actions and their hidden forms, page cache, My Account link, shop templates
