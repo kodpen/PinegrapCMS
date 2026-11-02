@@ -2450,7 +2450,7 @@ function api_schema() {
 			'handler' => 'api_comments_list',
 			'returns' => array('list' => 'Comment'),
 			'summary' => 'Comments',
-			'description' => 'What visitors wrote, newest first. status: published, pending (held for a person to publish) or scheduled (published at publish_at; cancel_if_newer drops it when a newer comment comes first). item_type and item_id say what a comment is about when it is not the page itself: a form record (submitted_form), a calendar event, a product group or a product. parent_id is the comment a reply answers: null for a comment that answers none, and for a reply whose comment was removed. verified: a product review written by a customer who bought the product (only such reviews count in a product\'s rating); store_reply and store_reply_at: the store\'s answer under it, null without one. Cursor paged.',
+			'description' => 'What visitors wrote, newest first. status: published, pending (held for a person to publish) or scheduled (published at publish_at; cancel_if_newer drops it when a newer comment comes first). item_type and item_id say what a comment is about when it is not the page itself: a form record (submitted_form), a calendar event, a product group or a product. parent_id is the comment a reply answers: null for a comment that answers none, and for a reply whose comment was removed. verified: a product review written by a customer who bought the product (only such reviews count in a product\'s rating); store_reply and store_reply_at: the store\'s answer under it, null without one. kind: comment, question (a visitor\'s question about a product) or answer (the store\'s answer to the question named in answer_of; null for any other kind). Cursor paged.',
 			'params'  => array(
 				array('name' => 'page_id',       'in' => 'query', 'type' => 'int', 'min' => 1),
 				array('name' => 'item_type',     'in' => 'query', 'type' => 'enum', 'values' => array('page', 'submitted_form', 'calendar_event', 'product_group', 'product'), 'description' => 'page: comments about the page itself.'),
@@ -2459,6 +2459,7 @@ function api_schema() {
 				array('name' => 'status',        'in' => 'query', 'type' => 'enum', 'values' => array('all', 'published', 'pending', 'scheduled'), 'default' => 'all'),
 				array('name' => 'featured',      'in' => 'query', 'type' => 'bool'),
 				array('name' => 'verified',      'in' => 'query', 'type' => 'bool', 'description' => 'true: reviews from verified purchases only; false: every other comment.'),
+				array('name' => 'kind',          'in' => 'query', 'type' => 'enum', 'values' => array('comment', 'question', 'answer'), 'description' => 'question: product questions; answer: the store\'s answers to them.'),
 				array('name' => 'q',             'in' => 'query', 'type' => 'string', 'max_length' => 190, 'description' => 'Matches the name or the message.'),
 				array('name' => 'created_since', 'in' => 'query', 'type' => 'datetime'),
 				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
