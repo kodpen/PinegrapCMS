@@ -591,7 +591,10 @@ class liveform {
                     $output_maxlength = ' maxlength="' . h($maxlength) . '"';
                 }
                 
-                return "<textarea name=\"" . h($field) . "\"" . $output_id_attribute . " rows=\"$rows\" cols=\"$cols\" class=\"$class\" style=\"$style\"$output_onclick$output_onfocus$output_readonly" . $output_placeholder . $output_required . $output_aria_label . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . h($value) . "</textarea>" . $output_inline_feedback;
+                // An empty rows or cols is no size at all; the browser's two rows stay.
+                $output_rows_cols = ((string) $rows !== '' ? ' rows="' . h($rows) . '"' : '') . ((string) $cols !== '' ? ' cols="' . h($cols) . '"' : '');
+
+                return "<textarea name=\"" . h($field) . "\"" . $output_id_attribute . $output_rows_cols . " class=\"$class\" style=\"$style\"$output_onclick$output_onfocus$output_readonly" . $output_placeholder . $output_required . $output_aria_label . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . h($value) . "</textarea>" . $output_inline_feedback;
                 break;
 
             case 'password':

@@ -177,7 +177,8 @@ pg_page_shell([
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $count_id . '" />
                 <input type="hidden" name="erp_action" value="scan" />
-                <div class="card-body row g-3 align-items-end">
+                <div class="card-body">
+                    <div class="row g-3 align-items-end">
                     <div class="col-12 md:col-6">
                         <label class="form-label" for="code">' . lang('Barcode or product code') . '</label>
                         <label class="form-control form-control-lg form-adorn">
@@ -195,6 +196,7 @@ pg_page_shell([
                             <label class="" for="set">' . lang('Set the count to this quantity') . '</label>
                         </div>
                         <button type="submit" class="btn btn-solid theme-primary w-100">' . lang('Add to the count') . '</button>
+                    </div>
                     </div>
                 </div>
             </form>' : '') . '

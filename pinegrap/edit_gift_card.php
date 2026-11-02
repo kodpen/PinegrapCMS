@@ -89,11 +89,18 @@ if (!$_POST) {
         )
     ) {
         $output_status_class = 'status_enabled fg-success';
-    
-    // Otherwise this gift card has expired, so use class that shows red color.
+        $output_state = '';
+
+    // Otherwise this gift card has expired or is used up, so use class that
+    // shows red color and say which, as the list does.
     } else {
         $output_status_class = 'status_disabled fg-danger';
+        $output_state = (($gift_card['expiration_date'] != '0000-00-00') && ($gift_card['expiration_date'] < date('Y-m-d')))
+            ? pg_list_status_word(lang('Expired'))
+            : pg_list_status_word(lang('No balance'));
     }
+
+    $output_code = output_gift_card_code($gift_card['code']);
 
     $output_order_info_rows = '';
 
@@ -232,7 +239,6 @@ if (!$_POST) {
                     <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                         ' . lang('Redemption History') . '
                     </h2>
-                    <div class="card-header chart-buttons justify-content-end d-flex flex-wrap"></div>
                     <div class="card-body">
                         <div class="row">
                             <table class="chart table-hover table " style="width:100%;display:none">
@@ -242,7 +248,7 @@ if (!$_POST) {
                                         <th>' . lang('Order') . '</th>
                                         <th class="text-end">' . lang('Amount') . '</th>
                                         <th class="text-end">' . lang('Remaining Balance') . '</th>
-                                        <th>' . lang('Redeemed') . '</th>
+                                        <th>' . lang('Redeemed On') . '</th>
                                         <th class="noVis"></th>
                                     </tr>
                                 </thead>
@@ -270,14 +276,14 @@ if (!$_POST) {
     // in a sticky status column, the save bar in its own sticky row.
     echo
     pg_page_shell([
-        'title'=> lang('Edit Gift Card'),
+        'title'=> lang('Edit Gift Card') . ' ' . $output_code,
         'extra classes'=>'products',
         'icon'=>'store',
         'heading'=>lang('Edit Gift Card'),
         'heading_description' => lang('Update the properties for this gift card and view the details.'),
         'cancel'=>array('enable'=>'true','url'=>'view_gift_cards.php')
     ,
-            'breadcrumb' => array(array('label' => lang('All Gift Cards'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_gift_cards.php'), array('label' => lang('Edit Gift Card'))),
+            'breadcrumb' => array(array('label' => lang('All Gift Cards'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_gift_cards.php'), array('label' => $output_code)),
         ]) . '
 <main id="content" class="container-fluid">
     ' . $liveform->output_errors() . '
@@ -292,7 +298,10 @@ if (!$_POST) {
                 ' . pg_gift_card_form_card($liveform, 'edit', array(
                     'symbol' => BASE_CURRENCY_SYMBOL,
                     'scripts' => get_date_picker_format() . pg_fields_script(),
-                    'original_amount' => pg_format_money($gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL))) . '
+                    'original_amount' => pg_format_money($gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL),
+                    'code' => $output_code,
+                    'status_class' => $output_status_class,
+                    'status_word' => $output_state)) . '
                 ' . $output_redemption_history . '
             </div>
             <div class="col-12 lg:col-4 2xl:col-3 order-2">
@@ -381,7 +390,7 @@ if (!$_POST) {
             "UPDATE gift_cards
             SET
                 " . $balance_set . "
-                expiration_date = '" . e(prepare_form_data_for_input($expiration_date, 'date')) . "',
+                expiration_date = '" . e(pg_gift_card_form_expiration($expiration_date)) . "',
                 notes = '" . e($notes) . "',
                 last_modified_user_id = '" . USER_ID . "',
                 last_modified_timestamp = UNIX_TIMESTAMP()

@@ -52,9 +52,13 @@ function test_erp_field_names_cheque_steps()
 {
 	$source = erp_field_names_source('erp_cheque.php');
 
-	// The bank field repeats across the step forms, so it is named, not tied by id.
-	pg_assert_contains("name=\"bank_till_id\" aria-label=\"' . h(lang('Bank account')) . '\"", $source);
-	pg_assert_contains("name=\"reason\" maxlength=\"150\" aria-label=\"' . h(lang('Reason')) . '\"", $source);
+	// The fields repeat across the step forms, so each id carries the step and its label points at it.
+	pg_assert_contains('for="erp_\' . $step . \'_bank_till_id">', $source);
+	pg_assert_contains('id="erp_\' . $step . \'_bank_till_id" name="bank_till_id"', $source);
+	pg_assert_contains('for="erp_bounce_reason">', $source);
+	pg_assert_contains('id="erp_bounce_reason" name="reason" maxlength="150"', $source);
+	// The date box pg_fields.js draws is named only by the input's aria-label.
+	pg_assert_contains('id="erp_\' . $step . \'_date" name="date" aria-label="\' . h(lang(\'Date\')) . \'"', $source);
 }
 
 function test_erp_field_names_fixed_boxes()

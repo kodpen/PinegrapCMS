@@ -136,6 +136,7 @@ function api_schema() {
 				array('name' => 'height',            'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
 				array('name' => 'hs_code',           'in' => 'body', 'type' => 'string', 'nullable' => true, 'max_length' => 16, 'description' => 'The Harmonized System code or a national tariff number declared on labels of parcels sent abroad: digits in groups split by single dots, such as 6109.10, up to 16 characters. null or an empty value means none, so the label service\'s shop default is used.'),
 				array('name' => 'origin_country',    'in' => 'body', 'type' => 'string', 'nullable' => true, 'max_length' => 2, 'description' => 'The ISO 3166-1 alpha-2 code of the country the goods were made in, any country rather than only those the shop ships to. null or an empty value means none, so the label service\'s shop default is used.'),
+				array('name' => 'preorder_date',     'in' => 'body', 'type' => 'string', 'nullable' => true, 'description' => 'The day the stock is expected and a pre-order ships from, YYYY-MM-DD and after today: the product is sold on pre-order until then, with the back order turned on. null or an empty value ends the pre-order; the back order stays as it is.'),
 				array('name' => 'notes',             'in' => 'body', 'type' => 'string', 'max_length' => 2000),
 				array('name' => 'details',           'in' => 'body', 'type' => 'string', 'max_length' => 20000, 'description' => 'The long detail text the product page shows under the description.'),
 				array('name' => 'google_product_category', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The Google product category, for a marketplace or shopping feed that asks for one.'),
@@ -184,6 +185,7 @@ function api_schema() {
 				array('name' => 'height',            'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
 				array('name' => 'hs_code',           'in' => 'body', 'type' => 'string', 'nullable' => true, 'max_length' => 16, 'description' => 'The Harmonized System code or a national tariff number declared on labels of parcels sent abroad: digits in groups split by single dots, such as 6109.10, up to 16 characters. null or an empty value means none, so the label service\'s shop default is used.'),
 				array('name' => 'origin_country',    'in' => 'body', 'type' => 'string', 'nullable' => true, 'max_length' => 2, 'description' => 'The ISO 3166-1 alpha-2 code of the country the goods were made in, any country rather than only those the shop ships to. null or an empty value means none, so the label service\'s shop default is used.'),
+				array('name' => 'preorder_date',     'in' => 'body', 'type' => 'string', 'nullable' => true, 'description' => 'The day the stock is expected and a pre-order ships from, YYYY-MM-DD and after today: the product is sold on pre-order until then, with the back order turned on. null or an empty value ends the pre-order; the back order stays as it is.'),
 				array('name' => 'notes',             'in' => 'body', 'type' => 'string', 'max_length' => 2000),
 				array('name' => 'details',           'in' => 'body', 'type' => 'string', 'max_length' => 20000, 'description' => 'The long detail text the product page shows under the description.'),
 				array('name' => 'google_product_category', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The Google product category, for a marketplace or shopping feed that asks for one.'),
@@ -2241,6 +2243,22 @@ function api_schema() {
 				array('name' => 'from',  'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
 				array('name' => 'to',    'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
 				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50)
+			)
+		),
+
+		array(
+			'id'      => 'reports.ai_visibility',
+			'method'  => 'GET',
+			'path'    => '/reports/ai-visibility',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_ai_visibility',
+			'returns' => 'AiVisibilityReport',
+			'summary' => 'AI assistants and AI search: fetches, pages and the visits they sent',
+			'description' => 'How AI assistants see the site, from the daily counter the firewall keeps. bots lists every AI user fetcher and AI search indexer the firewall knows (kind agent or search) with its fetches in the window and whether the firewall lets it in, plus unverified: requests that claimed one of those names from an address its operator does not publish, a count only. days gives the fetches per day and bot, days without fetches left out. top_pages are the pages each verified bot fetched most, at most limit per bot. unfetched_pages are the public pages the sitemap lists that no verified bot fetched in the window: total counts them all, pages lists the first fifty by name. robots_ai_rules and llms_txt say whether robots.txt carries the AI section and whether llms.txt is served. referrals are the visits whose referrer was an AI assistant (chatgpt.com, perplexity.ai, gemini.google.com, claude.ai and others) by assistant, with their page views, forms submitted, orders completed and the completed order total in minor units; days older than the visitor retention period come from the daily summary and summary_to names the last of them (null when none). Only requests the firewall let through are counted, and nothing while the firewall is off. Defaults to the last thirty days; a window is at most 400 days. 503 service_unavailable until the database update has created the counter.',
+			'params'  => array(
+				array('name' => 'from',  'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',    'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 50, 'default' => 10, 'description' => 'Top pages per bot.')
 			)
 		),
 

@@ -87,13 +87,15 @@ pg_page_shell([
 
             ' . (($ready && !$readonly) ? '<form method="post" action="erp_stock_counts.php" class="card my-7">
                 ' . get_token_field() . '
-                <div class="card-body row g-3 align-items-end">
+                <div class="card-body">
+                    <div class="row g-3 align-items-end">
                     <div class="col-12 md:col-8">
                         <label class="form-label" for="title">' . lang('New count') . '</label>
                         <input type="text" class="form-control" id="title" name="title" maxlength="100" placeholder="' . h(lang(array('string' => 'Count of {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d'), 'date', false)))) . '" />
                     </div>
                     <div class="col-12 md:col-4">
                         <button type="submit" class="btn btn-solid theme-primary w-100"><i class="bi bi-upc-scan me-3" aria-hidden="true"></i>' . lang('Start counting') . '</button>
+                    </div>
                     </div>
                 </div>
             </form>' : '') . '

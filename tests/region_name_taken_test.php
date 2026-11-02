@@ -82,37 +82,65 @@ function test_region_name_taken_cards_mark_the_name()
 	foreach (array('common_region_form.php', 'designer_region_form.php', 'dynamic_region_form.php') as $file) {
 		$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/' . $file);
 
-		pg_assert_contains('pg_region_form_name_error_attributes($name_taken)', $form, $file . ' marks the name input');
-		pg_assert_contains('pg_region_form_name_error($name_taken)', $form, $file . ' prints the message under the name');
+		pg_assert_contains('pg_region_form_name_error_attributes($name_error)', $form, $file . ' marks the name input');
+		pg_assert_contains('pg_region_form_name_error($name_error)', $form, $file . ' prints the message under the name');
 	}
 
-	pg_assert_same('', pg_region_form_name_error_attributes(false), 'no attributes without an error');
-	pg_assert_same('', pg_region_form_name_error(false), 'no message without an error');
-	pg_assert_same(' is-invalid" aria-invalid="true" aria-describedby="name_error', pg_region_form_name_error_attributes(true), 'invalid input described by the message');
-	pg_assert_contains('id="name_error" class="invalid-feedback d-block"', pg_region_form_name_error(true), 'message box');
+	pg_assert_same('', pg_region_form_name_error_attributes(''), 'no attributes without an error');
+	pg_assert_same('', pg_region_form_name_error(''), 'no message without an error');
+	pg_assert_same(' is-invalid" aria-invalid="true" aria-describedby="name_error', pg_region_form_name_error_attributes($message), 'invalid input described by the message');
+	pg_assert_contains('id="name_error" class="invalid-feedback d-block"', pg_region_form_name_error($message), 'message box');
+	pg_assert_contains('Name is &lt;required&gt;', pg_region_form_name_error('Name is <required>'), 'the message is escaped');
 	pg_assert_contains('lang(\'' . $message . '\')', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/common_region_form.php'), 'the existing translated message');
 }
 
 function test_region_name_taken_screens_refuse_and_redraw()
 {
-	$message = "\$liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));";
+	$message = "\$liveform->mark_error('name', \$name_error);";
 	$screens = array(
-		'add_common_region.php' => array('pg_cregion_name_taken($name)', 'pg_common_region_form_card($name, $content, \'\', true, $name_taken)'),
+		'add_common_region.php' => array('pg_cregion_name_taken($name)', 'pg_common_region_form_card($name, $content, \'\', true, $name_error)'),
 		'edit_common_region.php' => array('pg_cregion_name_taken($name, $id)', 'pg_common_region_form_card($form_name, $form_content, '),
-		'add_designer_region.php' => array('pg_cregion_name_taken($name)', 'pg_designer_region_form_card($name, $content, \'\', $name_taken)'),
+		'add_designer_region.php' => array('pg_cregion_name_taken($name)', 'pg_designer_region_form_card($name, $content, \'\', $name_error)'),
 		'edit_designer_region.php' => array('pg_cregion_name_taken($name, $id)', 'pg_designer_region_form_card($form_name, $form_content, '),
-		'add_dynamic_region.php' => array('pg_dregion_name_taken($name)', 'pg_dynamic_region_form_card($name, $code, $name_taken)'),
-		'edit_dynamic_region.php' => array('pg_dregion_name_taken($name, $id)', 'pg_dynamic_region_form_card($form_name, $form_code, $name_taken)'),
+		'add_dynamic_region.php' => array('pg_dregion_name_taken($name)', 'pg_dynamic_region_form_card($name, $code, $name_error)'),
+		'edit_dynamic_region.php' => array('pg_dregion_name_taken($name, $id)', 'pg_dynamic_region_form_card($form_name, $form_code, $name_error)'),
 	);
 
 	foreach ($screens as $file => $expected) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 
-		pg_assert_contains($expected[0], $source, $file . ' checks the name');
+		pg_assert_contains('$name_error = pg_region_form_name_refusal($name, ' . $expected[0] . ');', $source, $file . ' checks the name');
+		pg_assert_contains('$name_error = pg_region_form_name_error_text($liveform);', $source, $file . ' reads the refusal back');
 		pg_assert_contains($message, $source, $file . ' refuses with the existing message');
 		pg_assert_contains("add_fields_to_session(array('trim' => false))", $source, $file . ' keeps the posted content as typed');
 		pg_assert_contains($expected[1], $source, $file . ' draws the posted values again');
 		pg_assert_contains('$liveform->output_errors()', $source, $file . ' shows the error');
 		pg_assert_contains('$liveform->remove_form()', $source, $file . ' clears it once drawn');
 	}
+}
+
+function test_region_name_refusal()
+{
+	pg_assert_same('Name is required.', pg_region_form_name_refusal('', false), 'a blank name is refused');
+	pg_assert_same('', pg_region_form_name_refusal('footer', false), 'a free name');
+	pg_assert_same('The name that you entered is already in use, so please enter a different name.', pg_region_form_name_refusal('footer', true), 'a used name');
+	pg_assert_same('', pg_region_form_name_refusal(str_repeat('ş', 100), false), '100 characters fit the column');
+	pg_assert_same('The name can be at most 100 characters long.', pg_region_form_name_refusal(str_repeat('ş', 101), false), 'a longer name would be cut by the column');
+	pg_assert_same('The name can be at most 100 characters long.', pg_region_form_name_refusal(str_repeat('ş', 101), true), 'too long is said before used');
+
+	foreach (array('common_region_form.php', 'designer_region_form.php', 'dynamic_region_form.php') as $file) {
+		pg_assert_contains('maxlength="100" required="required"', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/' . $file), $file . ' marks the name required');
+	}
+}
+
+function test_region_duplicate_name_fits_the_column()
+{
+	pg_assert_same(100, pg_unique_name_limit('common_region'), 'cregion.cregion_name is varchar(100)');
+	pg_assert_same(100, pg_unique_name_limit('designer_region'), 'designer regions share the cregion table');
+
+	$long = 'pg-test uzun ' . str_repeat('ş', 87);
+	$copy = pg_bracket_suffix_name($long, pg_unique_name_limit('common_region'));
+	pg_assert_same(100, mb_strlen($copy, 'UTF-8'), 'the copy fits the column');
+	pg_assert_same('[1]', mb_substr($copy, -3, null, 'UTF-8'), 'the copy keeps its suffix');
+	pg_assert_true($copy !== $long, 'the copy differs from its source');
 }

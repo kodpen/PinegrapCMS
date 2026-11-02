@@ -21,8 +21,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/forms/zone_form.php');
 $user = validate_user();
 validate_ecommerce_access($user);
 
-// A post with a blank name draws the form again with what was typed and
-// the message under the name; nothing is written.
+// A post with a blank name or a rate that is no amount of 0 or more draws
+// the form again with what was typed and the message under the field;
+// nothing is written.
 $values = array('name' => '', 'base_rate' => '0', 'primary_weight_rate' => '0', 'secondary_weight_rate' => '0', 'item_rate' => '0');
 $selected = null;
 $errors = array();
@@ -37,6 +38,8 @@ if ($_POST) {
     if ($name_error !== '') {
         $errors['name'] = $name_error;
     }
+
+    $errors += pg_zone_form_rate_errors($values);
 }
 
 if (!$_POST || $errors) {

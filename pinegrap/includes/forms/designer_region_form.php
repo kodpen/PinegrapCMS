@@ -29,10 +29,10 @@ require_once(PG_FUNCTIONS_DIR . '/includes/forms/common_region_form.php');
  * @param string $name     The region name ('' on create)
  * @param string $content  The shared content ('' on create)
  * @param string $beside   Markup of a column printed after the name (edit: the region type)
- * @param bool   $name_taken  True marks the name as used by another region
+ * @param string $name_error  Why the posted name was refused, '' for none
  * @return string
  */
-function pg_designer_region_form_card($name = '', $content = '', $beside = '', $name_taken = false)
+function pg_designer_region_form_card($name = '', $content = '', $beside = '', $name_error = '')
 {
     return '
                     <div class="row">
@@ -47,9 +47,9 @@ function pg_designer_region_form_card($name = '', $content = '', $beside = '', $
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Designer Region'))) . '</label>
                                             <div class="input-group">
                                                 <div class="input-group-text">' . h('<cregion>') . '</div>
-                                                <input value="' . h($name) . '" name="name" id="name" type="text" class="form-control' . pg_region_form_name_error_attributes($name_taken) . '" maxlength="100" />
+                                                <input value="' . h($name) . '" name="name" id="name" type="text" class="form-control' . pg_region_form_name_error_attributes($name_error) . '" maxlength="100" required="required" />
                                                 <div class="input-group-text">' . h('</cregion>') . '</div>
-                                            </div>' . pg_region_form_name_error($name_taken) . '
+                                            </div>' . pg_region_form_name_error($name_error) . '
                                         </div>' . $beside . '
                                         <h3 class="h5 mt-12">' . lang('Shared Content to appear on associated Pages') . '</h3>
                                         <div class="col-12 my-3">

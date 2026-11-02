@@ -4658,6 +4658,14 @@ html[data-bs-theme="dark"] #notifications .pg-bell-glyph {
   border: 0;
 }
 
+/* An absolutely placed <select> takes the nearest positioned box as its
+   containing block; when that box is outside a scrolling table, its
+   overflow does not clip the select and the page grows sideways on a
+   narrow screen. */
+.table-responsive:has(.pg-combobox-native) {
+  position: relative;
+}
+
 /* Date and time fields on Bootstrap 6 (pg_fields.js): the posted input is
    hidden the same way; one typed box after it takes its place (its look is in
    pg_datetime.css). In a drawer the calendar is drawn open under the field. */
@@ -4685,6 +4693,18 @@ html[data-bs-theme="dark"] #notifications .pg-bell-glyph {
 .input-group > .pg-combobox {
   flex: 1 1 auto;
   width: 1%;
+}
+
+/* Every combobox menu stays within the screen: it grows to its longest
+   option (a long account title), which on a phone pushed it past the edge
+   and scrolled the page sideways; a long option wraps instead. */
+.pg-combobox-menu {
+  max-width: calc(100vw - 1rem);
+}
+
+.pg-combobox-menu .menu-item {
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* A combobox searching the server (data-pg-source): its own search box,

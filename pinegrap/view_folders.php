@@ -377,6 +377,13 @@ $explorer_lang = array(
     'type_name_to_confirm' => lang('Type the folder name to confirm.'),
     'name_does_not_match' => lang('The name does not match.'),
     'deleting' => lang('Deleting'),
+    'moving_to_bin' => lang('Moving to the Recycle Bin'),
+    'count_folders' => lang('{var:1} folder(s)'),
+    'count_pages' => lang('{var:1} page(s)'),
+    'count_files' => lang('{var:1} file(s)'),
+    'count_product_groups' => lang('{var:1} product group(s)'),
+    'count_products' => lang('{var:1} product(s)'),
+    'count_short_links' => lang('{var:1} short link(s)'),
     'delete_folder_done' => lang('The folder and its contents were deleted.'),
     'delete_folder_partial' => lang('Some items could not be deleted.'),
     'cancel' => lang('Cancel'),
@@ -4295,6 +4302,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         document.getElementById('upload_file_item').classList.toggle('d-none', catalogArea);
         document.getElementById('create_file_item').classList.toggle('d-none', catalogArea || backupArea);
+        document.getElementById('new_image_item').classList.toggle('d-none', catalogArea);
 
         // Taking a backup is offered only where backups live.
         document.getElementById('create_backup_item').classList.toggle('d-none', !backupArea);
@@ -11171,7 +11179,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function startInlineRename(element, original, selectBaseOnly, commit) {
         // The list truncates this span; while it holds an input it must not.
         element.classList.add('is-renaming');
-        element.innerHTML = '<input type="text" class="form-control form-control-sm rename-input" aria-label="' + esc(L.rename) + '" value="' + esc(original) + '" />';
+        // Product and group names are varchar(100); the box stops there, so
+        // a name typed for a new group is never refused and left behind as
+        // the placeholder.
+        element.innerHTML = '<input type="text" class="form-control form-control-sm rename-input" aria-label="' + esc(L.rename) + '" value="' + esc(original) + '"' + (insideCatalog() ? ' maxlength="100"' : '') + ' />';
         var input = element.querySelector('input');
         input.focus();
 
@@ -11505,9 +11516,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 html += '<p class="empty-note">' + esc(L.delete_folder_empty) + '</p>';
             } else {
                 html += '<div class="d-flex gap-5 mb-5">' +
-                    '<span class="badge theme-secondary"><span class="bi bi-folder me-1"></span>' + counts.folders + ' ' + esc(L.folders) + '</span>' +
-                    '<span class="badge theme-secondary"><span class="bi bi-window me-1"></span>' + counts.pages + ' ' + esc(L.pages) + '</span>' +
-                    '<span class="badge theme-secondary"><span class="bi bi-file-earmark me-1"></span>' + counts.files + ' ' + esc(L.files) + '</span>' +
+                    '<span class="badge theme-secondary"><span class="bi bi-folder me-1"></span>' + esc(fmt(L.count_folders, [String(counts.folders)])) + '</span>' +
+                    '<span class="badge theme-secondary"><span class="bi bi-window me-1"></span>' + esc(fmt(L.count_pages, [String(counts.pages)])) + '</span>' +
+                    '<span class="badge theme-secondary"><span class="bi bi-file-earmark me-1"></span>' + esc(fmt(L.count_files, [String(counts.files)])) + '</span>' +
                     '</div>';
             }
 
@@ -11531,7 +11542,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 confirmButton.disabled = true;
             }
 
-            html += '<div id="folder_delete_progress" class="d-none mt-5"><div class="progress" style="height:6px;"><div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" style="width:100%"></div></div><p class="mt-3 mb-0 empty-note">' + esc(L.deleting) + '...</p></div>';
+            html += '<div id="folder_delete_progress" class="d-none mt-5"><div class="progress" style="height:6px;"><div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" style="width:100%"></div></div><p class="mt-3 mb-0 empty-note">' + esc((mode === 'bin') ? L.moving_to_bin : L.deleting) + '...</p></div>';
 
             body.innerHTML = html;
 
@@ -11569,12 +11580,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // A short link arrives dressed as a file, so it has to be counted
         // before files are, or the badge would call it one.
         var kinds = [
-            { icon: 'bi-link-45deg', label: L.short_links, match: function (item) { return !!item.short_link; } },
-            { icon: 'bi-folder', label: L.folders_word, match: function (item) { return item.kind === 'folder'; } },
-            { icon: 'bi-window', label: L.pages, match: function (item) { return item.kind === 'page'; } },
-            { icon: 'bi-file-earmark', label: L.files, match: function (item) { return (item.kind === 'file') && (!item.short_link); } },
-            { icon: 'bi-boxes', label: L.product_groups_word, match: function (item) { return item.kind === 'group'; } },
-            { icon: 'bi-box2-heart', label: L.products_word, match: function (item) { return item.kind === 'product'; } }
+            { icon: 'bi-link-45deg', label: L.count_short_links, match: function (item) { return !!item.short_link; } },
+            { icon: 'bi-folder', label: L.count_folders, match: function (item) { return item.kind === 'folder'; } },
+            { icon: 'bi-window', label: L.count_pages, match: function (item) { return item.kind === 'page'; } },
+            { icon: 'bi-file-earmark', label: L.count_files, match: function (item) { return (item.kind === 'file') && (!item.short_link); } },
+            { icon: 'bi-boxes', label: L.count_product_groups, match: function (item) { return item.kind === 'group'; } },
+            { icon: 'bi-box2-heart', label: L.count_products, match: function (item) { return item.kind === 'product'; } }
         ];
 
         var folderCount = selected.filter(function (item) { return item.kind === 'folder'; }).length;
@@ -11596,7 +11607,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var count = selected.filter(entry.match).length;
 
             if (count > 0) {
-                html += '<span class="badge theme-secondary"><span class="bi ' + entry.icon + ' me-1"></span>' + count + ' ' + esc(entry.label) + '</span>';
+                // The count is written into the sentence, so a language that
+                // keeps the noun singular after a number reads right.
+                html += '<span class="badge theme-secondary"><span class="bi ' + entry.icon + ' me-1"></span>' + esc(fmt(entry.label, [String(count)])) + '</span>';
             }
         });
 
@@ -11620,7 +11633,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 '<div class="form-text fg-danger d-none" id="folder_delete_name_error">' + esc(L.word_does_not_match) + '</div>';
         }
 
-        html += '<div id="folder_delete_progress" class="d-none mt-5"><div class="progress" style="height:6px;"><div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" style="width:100%"></div></div><p class="mt-3 mb-0 empty-note">' + esc(L.deleting) + '...</p></div>';
+        html += '<div id="folder_delete_progress" class="d-none mt-5"><div class="progress" style="height:6px;"><div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" style="width:100%"></div></div><p class="mt-3 mb-0 empty-note">' + esc((mode === 'bin') ? L.moving_to_bin : L.deleting) + '...</p></div>';
 
         body.innerHTML = html;
         confirmButton.disabled = (mode !== 'purge');

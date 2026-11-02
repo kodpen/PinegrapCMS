@@ -343,7 +343,7 @@ if (!$_POST) {
             }
         }</style>
 
-        <label id="comment_rating_label" class="form-label">' . lang('Rating') . ':</label>
+        <label id="comment_rating_label" class="form-label">' . lang('Rating') . '</label>
         <div class="rating btn-group" role="radiogroup" aria-labelledby="comment_rating_label">
             ' . $liveform->output_field(array('type'=>'radio', 'name'=>'rating', 'id'=>'comment_rating_1', 'value'=>'1', 'class'=>'btn-check radio', 'aria-label'=>lang(array('string'=>'Rated {var:1} out of 5', 'vars'=>array('1'))))) . '
             <label for="comment_rating_1" style="cursor:pointer;min-width: 16px;min-height: 16px;"></label>
@@ -407,7 +407,7 @@ if (!$_POST) {
                                         </div>
                                         <div class="col-12 my-3">
                                             <label for="message" class="form-label">' . lang('Comment') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'message', 'id'=>'message', 'class'=>'form-control', 'required'=>'required')) . '
+                                            ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'message', 'id'=>'message', 'rows'=>'10', 'class'=>'form-control', 'required'=>'required')) . '
                                         </div>
                                         ' . $output_seller_reply_field . '
                                         ' . $output_rating_field . '
@@ -609,9 +609,10 @@ if (!$_POST) {
 
         // The stars are drawn only while the page has its rating on; with it
         // off the stored rating stays, since the missing radios would write 0.
+        // The value is one to five, or none (0), as the comment form stores it.
         $sql_rating = '';
         if ($comments_rating != false) {
-            $sql_rating = "rating = '" . escape($liveform->get_field_value('rating')) . "',";
+            $sql_rating = "rating = '" . pg_comment_rating_value($liveform->get_field_value('rating')) . "',";
         }
 
         // update comment
@@ -691,6 +692,10 @@ if (!$_POST) {
         
     // else there is not a send to, so forward user to the view comments screen
     } else {
+        // The list says what happened; a return to the site needs no notice.
+        $liveform_view_comments = new liveform('view_comments');
+        $liveform_view_comments->add_notice(($liveform->get_field_value('submit_delete') == 'Delete') ? lang('The comment has been deleted.') : lang('The comment has been saved.'));
+
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_comments.php');
     }
     

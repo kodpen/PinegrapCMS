@@ -36,6 +36,34 @@ function test_country_form_values()
 		'the name and the code are trimmed');
 }
 
+function test_country_form_transit_days_take_whole_numbers_only()
+{
+	$message = lang('Enter a whole number of days, 0 or more.');
+
+	foreach (array('', '0', '3', ' 12 ', '007', '999999999') as $value) {
+		pg_assert_same('', pg_country_form_transit_days_error($value), var_export($value, true) . ' passes');
+	}
+
+	foreach (array('-5', '12,50', '12.5', 'abc', '1e3', '+2', '1000000000') as $value) {
+		pg_assert_same($message, pg_country_form_transit_days_error($value), var_export($value, true) . ' is refused');
+	}
+
+	pg_assert_same(0, pg_country_form_transit_days(''), 'an empty box stores 0');
+	pg_assert_same(12, pg_country_form_transit_days(' 12 '), 'a whole number is stored as is');
+
+	$errors = pg_country_form_required_errors(array('name' => 'Germany', 'code' => 'DE', 'transit_adjustment_days' => '-5'));
+	pg_assert_same(array('transit_adjustment_days' => $message), $errors, 'the form refuses negative days');
+
+	$card = pg_country_form_card(pg_country_form_values(array('transit_adjustment_days' => '-5')), $errors);
+	pg_assert_contains('value="-5" type="text" name="transit_adjustment_days"', $card, 'the typed value is kept');
+	pg_assert_contains('<div id="transit_adjustment_days-error" class="invalid-feedback d-block">' . h($message) . '</div>', $card, 'the message under the field');
+	pg_assert_contains('data-inputmask-alias="integer"', $card, 'the box takes whole numbers');
+
+	foreach (array('add_country.php', 'edit_country.php') as $file) {
+		pg_assert_contains("pg_country_form_transit_days(\$values['transit_adjustment_days'])", file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file . ' stores the days as an integer');
+	}
+}
+
 function test_country_form_card_prints_stored_values()
 {
 	$card = pg_country_form_card(array('name' => 'A "B"', 'code' => 'AB', 'zip_code_required' => '1', 'transit_adjustment_days' => '3', 'default_selected' => '0'));

@@ -96,6 +96,13 @@ if ($_POST) {
     }
 
     if ($action === 'cancel') {
+        // A paid expense's cancel writes money back into the till, as the
+        // API's cancel does only with the right to the tills.
+        if (((string) $expense['status'] === 'paid') && !$can_cash) {
+            $liveform->mark_error('_error', lang('Cancelling a paid expense needs the right to the tills.'));
+            go($self);
+        }
+
         $result = erp_expense_cancel($id, (string) ($_POST['reason'] ?? ''), (int) $user['id']);
 
         if (!$result['success']) {
@@ -131,7 +138,7 @@ if ($_POST) {
         if (!$repeat['success']) {
             // Keep the period, due days and the paid switch for the next try.
             $liveform->add_fields_to_session();
-            $liveform->mark_error('_error', h($repeat['error']));
+            $liveform->mark_error(((string) ($repeat['field'] ?? '') !== '') ? (string) $repeat['field'] : '_error', h($repeat['error']));
             go($self);
         }
 
@@ -548,7 +555,10 @@ if (erp_expense_recurring_ready()) {
 
 $output_cancel = '';
 
-if ($can_change) {
+if ($can_change && ($status === 'paid') && !$can_cash) {
+    $output_cancel = '
+        <p class="small fg-secondary my-7">' . lang('Cancelling a paid expense needs the right to the tills.') . '</p>';
+} elseif ($can_change) {
     $output_cancel = '
         <div class="card my-7 border-subtle-danger">
             <div class="card-header bg-reset border-0 text-uppercase h6 fg-danger fw-bold">' . lang('Cancel the expense') . '</div>
@@ -600,7 +610,7 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                ' . ($can_change ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_expense.php?id=' . $id . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang('Change') . '</a>' : '') . '
+                ' . ($can_change ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_expense.php?id=' . $id . h($send_to_query) . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang('Change') . '</a>' : '') . '
                 ' . (!$readonly ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_expense.php"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang('New expense') . '</a>' : '') . '
                 <span class="ms-3">' . $output_badge . '</span>
             </nav>

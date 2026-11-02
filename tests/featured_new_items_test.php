@@ -47,3 +47,30 @@ function test_featured_new_items_disabled_in_words()
 
 	pg_assert_contains('<span class="visually-hidden">\' . h(lang(\'Disabled\')) . \'</span>', $source);
 }
+
+function test_featured_new_items_sort_order_value()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/ecommerce.php');
+
+	pg_assert_same('', pg_featured_sort_order_value(''), 'an empty box means not featured');
+	pg_assert_same('', pg_featured_sort_order_value('  '), 'spaces mean not featured');
+	pg_assert_same(0, pg_featured_sort_order_value('0'), 'zero is an order');
+	pg_assert_same(7, pg_featured_sort_order_value(' 7 '), 'spaces around a number are dropped');
+	pg_assert_same(65535, pg_featured_sort_order_value('65535'), 'the column maximum is accepted');
+
+	foreach (array('65536', 'abc', '-5', '12,50', '12.5', '1e3', '0x1') as $invalid) {
+		pg_assert_same(false, pg_featured_sort_order_value($invalid), $invalid . ' is refused');
+	}
+}
+
+function test_featured_new_items_form_checks_and_layout()
+{
+	$source = featured_new_items_source();
+
+	pg_assert_contains('pg_featured_sort_order_value(', $source, 'the save checks the order');
+	pg_assert_contains("'data-inputmask-alias'=>'integer'", $source, 'the order box takes whole numbers');
+	pg_assert_contains("'New on Date of {var:1}'", $source, 'the date box is named');
+	pg_assert_contains('<div class="table-responsive">', $source, 'the table scrolls in its own box');
+	pg_assert_contains('text-break', $source, 'long names break');
+	pg_assert_contains('$prefill = !$liveform->check_form_errors()', $source, 'after a save the stored values are shown');
+}

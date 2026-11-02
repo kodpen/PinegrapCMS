@@ -974,6 +974,46 @@ function pg_comment_display_name($name)
 }
 
 /**
+ * A comment's name as the Comments list prints it: cut to 40 characters with
+ * the whole name in the title, so one long name (a visitor's field of up to
+ * 100 characters, in a cell that does not wrap) cannot widen the column for
+ * every row. HTML, escaped.
+ *
+ * @param mixed $name comments.name
+ * @return string
+ */
+function pg_comment_list_name($name)
+{
+    $name = pg_comment_display_name($name);
+
+    if (mb_strlen($name, 'UTF-8') <= 40) {
+        return h($name);
+    }
+
+    return '<span title="' . h($name) . '">' . h(rtrim(mb_substr($name, 0, 40, 'UTF-8')) . '…') . '</span>';
+}
+
+/**
+ * A posted star rating as comments.rating stores it: one to five, or 0 for
+ * none. Anything else (out of range, not a number, an array) is none, so a
+ * forged value never lands in the column, where pg_review_rating_sql() would
+ * silently leave the review out of the product's rating. Pure.
+ *
+ * @param mixed $value the posted rating
+ * @return int 0-5
+ */
+function pg_comment_rating_value($value)
+{
+    if (!is_scalar($value) || !preg_match('/^\s*[0-9]+\s*$/', (string) $value)) {
+        return 0;
+    }
+
+    $rating = (int) $value;
+
+    return (($rating >= 1) && ($rating <= 5)) ? $rating : 0;
+}
+
+/**
  * The names the comment form's name select offers a signed-in member, as
  * value => stored name, in the order of the select. Pure; free of HTML (the
  * caller escapes the labels).

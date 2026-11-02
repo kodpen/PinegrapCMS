@@ -96,7 +96,7 @@ if (!$_POST || $errors) {
         $values['name'],
         $values['code'],
         $values['zip_code_required'],
-        $values['transit_adjustment_days'],
+        pg_country_form_transit_days($values['transit_adjustment_days']),
         $values['default_selected'],
         (string) $user['id'])) or output_error('Query failed.');
 

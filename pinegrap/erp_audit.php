@@ -170,7 +170,8 @@ pg_page_shell([
             </nav>
 
             <form method="get" action="erp_audit.php" class="card my-7" role="search">
-                <div class="card-body row g-3 align-items-end">
+                <div class="card-body">
+                    <div class="row g-3 align-items-end">
                     <div class="col-6 md:col-2">
                         <label class="form-label small" for="audit_from">' . lang('Start date') . '</label>
                         <input type="date" data-pg-date class="form-control form-control-sm" id="audit_from" name="from" value="' . h($filters['from']) . '" />
@@ -194,6 +195,7 @@ pg_page_shell([
                             <input type="search" class="form-control" id="audit_search" name="search" value="' . h($filters['search']) . '" placeholder="' . h(lang('Number, name, user or IP')) . '" />
                             <button type="submit" class="btn btn-outline theme-secondary"><i class="bi bi-search" aria-hidden="true"></i><span class="visually-hidden">' . lang('Search') . '</span></button>
                         </div>
+                    </div>
                     </div>
                 </div>
             </form>
