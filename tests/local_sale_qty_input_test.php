@@ -68,7 +68,7 @@ function test_local_sale_add_item_reads_the_quantity_strictly()
 	pg_assert_contains('local_sale_cash_short($pay_method_in, (int) ($input[\'received\'] ?? 0), (int) local_sale_totals($lines)[\'gross\'])', $source, 'complete refuses a short cash payment');
 
 	$page = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/add_order.php');
-	pg_assert_contains("local_sale_add_item((string) (\$_POST['barcode'] ?? ''), (int) (\$_POST['product_id'] ?? 0), (string) (\$_POST['quantity'] ?? '1'))", $page, 'raw quantity');
+	pg_assert_contains("local_sale_add_item((string) (\$_POST['barcode'] ?? ''), (int) (\$_POST['product_id'] ?? 0), \$_POST['quantity'] ?? '1')", $page, 'raw quantity');
 
 	$script = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/assets/js/add_order.js');
 	pg_assert_contains('function cashShort()', $script, 'the screen checks before sending');

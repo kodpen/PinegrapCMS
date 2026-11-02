@@ -205,7 +205,7 @@ if ($action !== '') {
     switch ($action) {
         case 'add_item':
         case 'add_to_cart':
-            $res = local_sale_add_item((string) ($_POST['barcode'] ?? ''), (int) ($_POST['product_id'] ?? 0), (int) ($_POST['quantity'] ?? 1));
+            $res = local_sale_add_item((string) ($_POST['barcode'] ?? ''), (int) ($_POST['product_id'] ?? 0), $_POST['quantity'] ?? '1');
             break;
 
         case 'set_qty':
@@ -332,6 +332,7 @@ $config = array(
         'cancel' => lang('Cancel'),
         'change' => lang('Change due'),
         'short' => lang('Short'),
+        'cashShort' => lang('The amount received is {var:1} short of the total. Correct it or split the payment.'),
         'exact' => lang('Exact'),
         'complete' => lang('Complete the sale'),
         'completing' => lang('Completing…'),

@@ -18,11 +18,6 @@
 
 include('init.php');
 
-// If kiosk mode is enabled, then do a special kiosk logout.
-if (($_SESSION['software']['kiosk']['enabled'] ?? '') == true) {
-    go(PATH . SOFTWARE_DIRECTORY . '/kiosk.php?action=logout');
-}
-
 // A signed-in user is logged out at once only when the request carries the
 // session token; the panel menu, the member widget and the logout page type
 // all append one. A bare GET, such as a link planted on a page elsewhere,
@@ -56,6 +51,12 @@ if ((($session_token === '') || (!hash_equals($session_token, $request_token))) 
             </div>
         </div>' . output_footer_secure();
     exit();
+}
+
+// Kiosk mode restarts the kiosk instead, once the token check above passed;
+// kiosk.php checks the token again.
+if (($_SESSION['software']['kiosk']['enabled'] ?? '') == true) {
+    go(PATH . SOFTWARE_DIRECTORY . '/kiosk.php?action=logout&token=' . urlencode($session_token));
 }
 
 logout();
