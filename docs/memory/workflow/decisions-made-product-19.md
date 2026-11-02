@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-19
-description: Decisions list, product part 19 (2026-11-02 on): the owner answers of the 2026-11 feature plans (booking, importers, forms, mail complaints, Fediverse, stock, EU VAT)
+description: Decisions list, product part 19 (2026-11-02 on): the owner answers of the 2026-11 feature plans (booking, importers, forms, mail complaints, Fediverse, stock, EU VAT, TLS settings)
 ---
 
 ## Where are the rules and the earlier parts?
@@ -30,3 +30,6 @@ description: Decisions list, product part 19 (2026-11-02 on): the owner answers 
 
 ## Memberships: a lifetime member stays lifetime (2026-11-02, #5058)
 - Owner: when a lifetime member (empty end date) reaches a reward goal or buys a membership renewal product, the order completes, no period is added and the membership is not turned into a timed one (`pg_order_extended_until()`, `includes/fn/order_completion.php`). Reason: a renewal or a reward never shortens what the member had. Members already downgraded on running sites stay as they are.
+
+## TLS settings: never a hand edit of data/config.php (2026-11-02, #5375)
+- Owner: an operator never edits `data/config.php` to make HTTPS or outgoing TLS work. A choice that needs a setting gets one in the panel. A mechanical choice is made by the site itself: whether a proxy's https claim counts (Trusted Proxies, with a one-click offer on Secure Mode) and which CA store verifies. Constants already in a site's file keep working as overrides, and the file-only last resorts stay (`decisions-made-access.md`). Plan: `plans/tls-settings-in-panel.md`. Reason: Pinegrap is set up by operators worldwide, many without file access, and a hand-edited file is where configuration breaks.
