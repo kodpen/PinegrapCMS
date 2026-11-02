@@ -15,7 +15,7 @@ description: Module list of plans/bug-hunt.md, part 2b: includes/fn/ modules wid
 - `widgets_comments`: open
 - `widgets_comments_recent`: clean (source decisions, access and scope SQL, record gate, rows read again under the scope, titles)
 - `widgets_conditions`: clean (specs and joins, denied tokens, required controls, amounts and figure grouping, every operator)
-- `widgets_entity_fields`: clean (allow-lists, gates, money and dates, order and account reads)
+- `widgets_entity_fields`: clean (allow-lists, gates, money and dates, order and account reads; order money tokens in the visitor's currency, as the classic receipt and the order view totals)
 - `widgets_error`: clean (error page pick, flags, back address, requested address)
 - `widgets_express_order`: open
 - `widgets_fill`: clean (filter parse, case with Turkish i, number, truncate, escaping, typed fills)
