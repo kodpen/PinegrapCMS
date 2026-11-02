@@ -20,4 +20,7 @@ module: order_completion
 ## What changed?
 - The folder access read and the queries are `db_q()` with placeholders; a failed query ends the request (`output_error`), as the other completion queries do. Before, a failed access read counted as no row.
 
+## Why are end dates counted in calendar days? (#4962)
+- `pg_order_extended_until()` (memberships, folder access, the reward membership) and `pg_order_recurring_commission_start()` add `+N day` with `strtotime()`. They added N × 86400 s: over the autumn clock change (a 25-hour day, Europe and the US) an end came out one day early, a one-day access bought the day before ended that same day. Turkey has no clock change, so Turkish sites never saw it.
+
 Related: commerce/order-completion.md, commerce/order-completion-lines.md

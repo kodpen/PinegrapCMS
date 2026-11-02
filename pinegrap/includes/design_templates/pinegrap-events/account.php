@@ -115,7 +115,7 @@ $account_pages[] = array(
                     $col(array(
                         $span(lang('Staff only'), 'badge rounded-pill text-bg-primary mb-3', lang('Badge')),
                         $heading('h1', lang('Welcome to the staff area'), 'display-6 fw-semibold mb-3'),
-                        $para(lang('The registrations, the conversations with attendees and the news are kept here. To confirm, waitlist or cancel a registration, open it and press Change Status.'), 'lead text-body-secondary mb-4'),
+                        $para(lang('The registrations, the conversations with attendees and the news are kept here. To confirm, waitlist or cancel a registration, open it and press Change Status; what you write under it reaches the attendee by e-mail.'), 'lead text-body-secondary mb-4'),
                         $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
                             $link(lang('Open the control panel'), $panel_url, 'btn btn-primary rounded-pill px-4'),
                             $link(lang('All Registrations'), '{{page:my_registrations}}', 'btn btn-outline-primary rounded-pill px-4'),

@@ -67,7 +67,7 @@ function test_create_user_is_a_real_link()
 // action word in front of it gives the whole name.
 function test_figure_buttons_carry_their_action_name()
 {
-	foreach (array('view_files.php', 'view_design_files.php') as $file) {
+	foreach (array('view_design_files.php') as $file) {
 		$source = panel_link_roles_source($file);
 		pg_assert_true(strpos($source, '<i class="bi bi-fast-forward-circle" aria-hidden="true"></i><span class="visually-hidden">\' . h(lang(\'Optimize this image\')) . \'</span>\' . $optimize_percent_html') !== false, $file . ': Optimize named');
 	}

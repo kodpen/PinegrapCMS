@@ -4,7 +4,7 @@
  *
  * Tests for the text and colour classes of the hello-pinegrap and
  * pinegrap-playground design templates: no faded text (opacity-*, also
- * checked in pinegrap-events), no primary-coloured text or outline button on a light grey section, and one
+ * checked in pinegrap-events and pinegrap-courses), no primary-coloured text or outline button on a light grey section, and one
  * name for the playground's site owner (the avatar carries its initials).
  *
  * @author      Erdal Güral (Kodpen)
@@ -59,7 +59,7 @@ function _test_tpl_text_class($node)
 
 function test_design_template_text_never_faded()
 {
-	foreach (array('hello-pinegrap', 'pinegrap-playground', 'pinegrap-events') as $id) {
+	foreach (array('hello-pinegrap', 'pinegrap-playground', 'pinegrap-events', 'pinegrap-courses') as $id) {
 		$strings = array();
 		_test_tpl_text_strings(_test_tpl_text_template($id), $strings);
 		$faded = array_values(array_filter($strings, function ($s) {

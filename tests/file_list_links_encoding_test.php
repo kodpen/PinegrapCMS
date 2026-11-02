@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for the Edit File and Image Editor links of All Files, Design Files,
+ * Tests for the Edit File and Image Editor links of Design Files,
  * Edit File and Edit Design File: send_to and file_name are URL-encoded, so a
  * list address with '&' (a view change gives ?filter=default&filter=my_photos)
  * or a legacy file name with '&', '+' or '#' reaches the target whole.
@@ -25,10 +25,6 @@ function file_list_links_encoding_source($file)
 function test_file_lists_encode_send_to_and_file_name()
 {
 	$cases = array(
-		'view_files.php' => array(
-			"data-pg-image-edit=\"' . h(\$file['name']) . '\"",
-			"/edit_file.php?id=' . \$file['id'] . '&send_to=' . h(escape_javascript(urlencode(REQUEST_URL))) . '",
-		),
 		'view_design_files.php' => array(
 			"data-pg-image-edit=\"' . h(\$file['name']) . '\"",
 			"/edit_design_file.php?id=' . \$file['id'] . '&send_to=' . h(escape_javascript(urlencode(REQUEST_URL))) . '",

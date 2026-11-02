@@ -218,3 +218,23 @@ function test_gsc_figures_helpers()
 	pg_assert_same('/', pg_gsc_page_label('https://example.com', 'https://example.com/'), 'the home page');
 	pg_assert_same('shop.example.com/a', pg_gsc_page_label('https://shop.example.com/a', 'https://example.com/'), 'another host of the domain');
 }
+
+// The page cache is made old only when the request ends
+// (pg_page_cache_mark_dirty()), but Google reads the home page for the meta
+// tag inside the same request: a cached home page without the new code would
+// fail the first verification, so the link raises the cache generation itself
+// between writing the code and asking Google to look.
+function test_gsc_link_makes_cached_pages_old_before_google_reads_the_tag()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/search_console.php');
+	$start = strpos($source, 'function pg_gsc_link(');
+	$body = substr($source, $start, strpos($source, "\nfunction ", $start + 1) - $start);
+
+	$write = strpos($body, 'UPDATE config SET google_site_verification');
+	$bump = strpos($body, 'pg_page_cache_bump()');
+	$verify = strpos($body, 'siteVerification/v1/webResource');
+
+	pg_assert_true($write !== false, 'the code is written');
+	pg_assert_true($bump !== false, 'the page cache is made old');
+	pg_assert_true(($bump > $write) && ($bump < $verify), 'after the code is written, before Google is asked to verify');
+}

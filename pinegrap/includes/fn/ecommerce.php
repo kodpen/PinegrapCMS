@@ -3255,6 +3255,26 @@ function pg_product_price_too_large($minor)
 }
 
 /**
+ * The largest stock count products.inventory_quantity holds: an INT UNSIGNED.
+ * The session is not strict, so MySQL would store this top for anything
+ * larger without a word; every stock writer refuses a larger count first.
+ */
+define('PG_INVENTORY_QUANTITY_MAX', 4294967295);
+
+/**
+ * True when a stock count is more than products.inventory_quantity holds,
+ * compared as a float, so a count past the integer range of a 32-bit build
+ * is not wrapped before the check.
+ *
+ * @param int|float|string $quantity
+ * @return bool
+ */
+function pg_inventory_quantity_too_large($quantity)
+{
+    return ((float) $quantity > PG_INVENTORY_QUANTITY_MAX);
+}
+
+/**
  * The price a bulk product edit (edit_products.php) gives a product.
  *
  * Methods: '1' decrease by an amount, '2' increase by an amount, '3' decrease
@@ -13025,51 +13045,74 @@ function pg_product_more_images($product_ids)
 // Needs product_builder.php for the typed reader.
 function pg_products_import_price_cents($value)
 {
+    return pg_products_import_price_read($value)['cents'];
+}
+
+/**
+ * A price cell of an import file read as pg_products_import_price_cents()
+ * reads it, with the reason a refused cell is refused, so the import names
+ * the real one. 'too_large' is an amount the price columns cannot hold:
+ * above PG_PRODUCT_PRICE_MAX minor units (21.474.836,47), or more than
+ * fifteen digits, as on the product screen (pg_pb_price_above_column_top()).
+ * A cell that is not an amount at all is refused with 'too_large' false.
+ *
+ * @param mixed $value
+ * @return array  'cents' (int, or null when refused), 'too_large' (bool)
+ */
+function pg_products_import_price_read($value)
+{
+    $refused = array('cents' => null, 'too_large' => false);
+    $too_large = array('cents' => null, 'too_large' => true);
     $value = trim((string) $value);
 
     if (preg_match('/^\d+(\.\d+)?([eE][+-]?\d+)?$/', $value)) {
 
         $amount = round(((float) $value) * 100);
 
-        if (!is_finite($amount) || ($amount > 2147483647)) {
-            return null;
+        if (!is_finite($amount) || pg_product_price_too_large($amount)) {
+            return $too_large;
         }
 
-        return (int) $amount;
+        return array('cents' => (int) $amount, 'too_large' => false);
     }
 
     // A symbol or a code before or after the figure, and spaces or
     // apostrophes that group its digits, are left out; whatever else is
     // there makes it not an amount.
     if (!preg_match('/^[\p{Sc}\p{L}\s\x{00A0}\x{202F}]*([0-9.,][0-9.,\s\x{00A0}\x{202F}\'\x{2019}]*)[\p{Sc}\p{L}\s\x{00A0}\x{202F}]*$/u', $value, $matches)) {
-        return null;
+        return $refused;
     }
 
     $figure = (string) preg_replace('/[^0-9.,]/', '', $matches[1]);
     $digits = strlen((string) preg_replace('/[^0-9]/', '', $figure));
 
-    if (($digits === 0) || ($digits > 15)) {
-        return null;
+    if ($digits === 0) {
+        return $refused;
+    }
+
+    if ($digits > 15) {
+        return $too_large;
     }
 
     // Bounded as a float, before the int cast: on a 32-bit build the cast
     // would wrap an amount above the top into a wrong or negative price.
     $amount = round(((float) pg_pb_price_figure($figure)) * 100);
 
-    if (!is_finite($amount) || ($amount > 2147483647)) {
-        return null;
+    if (!is_finite($amount) || pg_product_price_too_large($amount)) {
+        return $too_large;
     }
 
-    return (int) $amount;
+    return array('cents' => (int) $amount, 'too_large' => false);
 }
 
 // The money cells of one import row, read before the database is touched.
 // $money_positions maps each money column the header has (price,
 // extra_shipping_cost, compare_at_price) to its position. Returns
-// array('prices' => array(column => minor units), 'refused' => bool): an
-// empty cell (or spaces alone) is left out, as is a compare_at_price that
-// starts with a minus sign, which leaves the stored one alone; a cell that is
-// not an amount refuses the whole row.
+// array('prices' => array(column => minor units), 'refused' => bool,
+// 'too_large' => bool): an empty cell (or spaces alone) is left out, as is a
+// compare_at_price that starts with a minus sign, which leaves the stored one
+// alone; a cell that is not an amount, or is one the price columns cannot
+// hold ('too_large'), refuses the whole row.
 //
 // A function of its own because the importer keeps each header column's
 // position in a script variable named <column>_key: a loop there with a
@@ -13085,16 +13128,16 @@ function pg_products_import_row_prices($row, $money_positions)
             continue;
         }
 
-        $cents = pg_products_import_price_cents($cell);
+        $read = pg_products_import_price_read($cell);
 
-        if ($cents === null) {
-            return array('prices' => array(), 'refused' => true);
+        if ($read['cents'] === null) {
+            return array('prices' => array(), 'refused' => true, 'too_large' => $read['too_large']);
         }
 
-        $prices[$money_column] = $cents;
+        $prices[$money_column] = $read['cents'];
     }
 
-    return array('prices' => $prices, 'refused' => false);
+    return array('prices' => $prices, 'refused' => false, 'too_large' => false);
 }
 
 // The column name an import file's heading stands for: trimmed, lower-cased
@@ -13153,22 +13196,22 @@ function pg_products_import_decimal_cell($column_name, $value)
 }
 
 /**
- * Whether a product import row is left out because one of its weight,
- * length, width, height or commission_rate_limit cells is not a number.
+ * Why a product import row is left out for one of its weight, length,
+ * width, height or commission_rate_limit cells, or '' when none refuses it.
  * $decimal_positions maps those columns to their position in the row. A
  * number is digits with "." or "," as decimal point or grouping (spaces
  * group too: "1 234,5"), or a spreadsheet's exponent form; an empty cell
  * leaves the column as it is. Words, a unit ("1,5 kg") or a minus sign
- * (the columns are unsigned) refuse the row, as do weight and dimensions
- * above decimal(12,4)'s top: the non-strict session would store 0 or the
- * top without a word. A commission rate above 999.99 is held to it, as on
- * the product screen.
+ * (the columns are unsigned) are 'not_number'; weight and dimensions above
+ * decimal(12,4)'s top are 'too_large': the non-strict session would store 0
+ * or the top without a word. A commission rate above 999.99 is held to it,
+ * as on the product screen. The first refused cell gives the reason.
  *
  * @param array $row
  * @param array $decimal_positions column => position
- * @return bool
+ * @return string  '', 'not_number' or 'too_large'
  */
-function pg_products_import_row_decimals_refused($row, $decimal_positions)
+function pg_products_import_row_decimals_problem($row, $decimal_positions)
 {
     foreach ($decimal_positions as $decimal_column => $decimal_position) {
         $cell = str_replace(' ', '', trim(pg_products_import_row_value($row, $decimal_position)));
@@ -13179,16 +13222,31 @@ function pg_products_import_row_decimals_refused($row, $decimal_positions)
 
         if (!preg_match('/^\d+(\.\d+)?[eE][+-]?\d+$/', $cell)
             && !preg_match('/^[0-9.,]*[0-9][0-9.,]*$/', $cell)) {
-            return true;
+            return 'not_number';
         }
 
         if (($decimal_column !== 'commission_rate_limit')
             && ((float) pg_products_import_decimal_cell($decimal_column, $cell) > 99999999.9999)) {
-            return true;
+            return 'too_large';
         }
     }
 
-    return false;
+    return '';
+}
+
+/**
+ * Why a product import's stock quantity cell that is not a whole count of
+ * zero or more (pg_products_mass_quantity_value() gave null) is refused:
+ * 'not_whole' for a number with a fraction or a minus sign ("1,5", "-3"),
+ * read with the separators pg_normalize_amount() reads, 'not_number' for
+ * anything else ("ten", "5 pcs").
+ *
+ * @param mixed $cell
+ * @return string  'not_whole' or 'not_number'
+ */
+function pg_products_import_quantity_refusal($cell)
+{
+    return is_numeric(pg_normalize_amount(trim((string) $cell))) ? 'not_whole' : 'not_number';
 }
 
 /**

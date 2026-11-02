@@ -4623,6 +4623,28 @@ const StyleDesigner = (function () {
     setTimeout(function () { _sdPreloaderDone(); }, 12000);
     function _sdPreloaderDone() {
         if (typeof window.pgPreloaderDone === 'function') window.pgPreloaderDone();
+        _sdShowServerMessages();
+    }
+
+    /**
+     * What the request left for the screen (sdDesign.messages, built by
+     * pg_designer_screen_messages()): errors, warnings and notices, shown as
+     * the editor's own toasts once the curtain is down, so a notice's timer
+     * does not run out unseen. The panel's alert boxes are not printed here:
+     * above the full-height editor they pushed the whole layout down.
+     * Errors and warnings stay until closed. Each message is markup the
+     * server already escaped.
+     */
+    var _sdServerMessages = [];
+    function _sdShowServerMessages() {
+        var list = _sdServerMessages;
+        _sdServerMessages = [];
+        for (var i = 0; i < list.length; i++) {
+            var m = list[i];
+            if (!m || typeof m.message !== 'string' || m.message === '') continue;
+            var type = (m.type === 'error' || m.type === 'warning') ? m.type : 'success';
+            sdToast(m.message, type, type === 'success' ? 9000 : 0);
+        }
     }
 
     /**
@@ -5628,7 +5650,9 @@ const StyleDesigner = (function () {
             },
             render: function (doc, p) {
                 var d = doc.createElement('div');
-                d.className = 'border border-secondary border-dashed rounded p-3 text-center';
+                // sd-editor-ph: editor chrome, left out of the canvas audit
+                // (the site prints the marker, then the product gallery).
+                d.className = 'border border-secondary border-dashed rounded p-3 text-center sd-editor-ph';
                 d.style.minHeight = '180px';
                 d.style.opacity = '0.75';
                 var pos = p.thumbsPosition || 'bottom';
@@ -5706,7 +5730,8 @@ const StyleDesigner = (function () {
             defaultProps: { cssClass: '' },
             render: function (doc, p) {
                 var d = doc.createElement('nav');
-                d.className = 'pg-canvas-placeholder ' + (p.cssClass || '');
+                // sd-editor-ph: editor chrome, left out of the canvas audit.
+                d.className = 'pg-canvas-placeholder sd-editor-ph ' + (p.cssClass || '');
                 d.style.cssText = 'border:1px dashed #6366f1;border-radius:4px;padding:8px 12px;'
                                 + 'background:rgba(99,102,241,.06);color:#6366f1;font-size:.8rem;line-height:1.4';
                 d.innerHTML = '<i class="bi bi-signpost-split me-1"></i>'
@@ -5756,7 +5781,8 @@ const StyleDesigner = (function () {
             },
             render: function (doc, p) {
                 var d = doc.createElement('div');
-                d.className = 'border border-primary border-dashed rounded p-2 ' + (p.cssClass || '');
+                // sd-editor-ph: editor chrome, left out of the canvas audit.
+                d.className = 'border border-primary border-dashed rounded p-2 sd-editor-ph ' + (p.cssClass || '');
                 d.style.opacity = '0.85';
                 var styleLabels = {
                     select:       _sdT('Select dropdown'),
@@ -5795,7 +5821,8 @@ const StyleDesigner = (function () {
             defaultProps: { cssClass: '' },
             render: function (doc, p) {
                 var d = doc.createElement('div');
-                d.className = 'alert alert-success py-2 mb-2';
+                // sd-editor-ph: editor chrome, left out of the canvas audit.
+                d.className = 'alert alert-success py-2 mb-2 sd-editor-ph';
                 d.style.borderStyle = 'dashed';
                 d.style.opacity = '0.75';
                 d.innerHTML = '<span class="bi bi-tag-fill me-1"></span>'
@@ -19942,7 +19969,7 @@ const StyleDesigner = (function () {
                         return _bkSection('py-5', _sdT('Services (Price List)'), [
                             _bkIntro(_sdT('Fees'), _sdT('Clear prices before you book. Your insurance may change what you pay.')),
                             _bkRow(_sdT('Price Row'), [
-                                _splList(_sdT('Visits'), [
+                                _splList(_sdT('Doctor visits'), [
                                     _splItem(_sdT('First visit'),         _sdT('30 min · history and exam'), _sdT('$80')),
                                     _splItem(_sdT('Follow-up visit'),     _sdT('20 min'),                     _sdT('$45')),
                                     _splItem(_sdT('Online consultation'), _sdT('15 min · video call'),        _sdT('$35')),
@@ -44542,14 +44569,17 @@ const StyleDesigner = (function () {
                 html += note(_sdT('This page is deleted or in the Recycle Bin, so the link opens nothing. Choose another page.'), true);
             }
             var rowTokens = _sdPageLinkRowTokens(n);
-            var tokenOptions = function (curToken) {
+            // ':text' is no token (a token has no colon): the row sends
+            // the fixed text typed under it.
+            var tokenOptions = function (curToken, fixed) {
                 var lc = String(curToken || '').toLowerCase(), known = (lc === '');
                 var opt = function (token, label) {
                     var on = (lc !== '' && String(token).toLowerCase() === lc);
                     if (on) known = true;
                     return '<option value="' + esc(token) + '"' + (on ? ' selected' : '') + '>' + esc(label) + '</option>';
                 };
-                var out = '<option value=""' + (lc === '' ? ' selected' : '') + '>' + esc(_sdT('— Choose a field —')) + '</option>';
+                var out = '<option value=""' + (lc === '' && !fixed ? ' selected' : '') + '>' + esc(_sdT('— Choose a field —')) + '</option>' +
+                    '<option value=":text"' + (lc === '' && fixed ? ' selected' : '') + '>' + esc(_sdT('Fixed text')) + '</option>';
                 if (rowTokens.length) {
                     out += '<optgroup label="' + esc(_sdT('Row of the list')) + '">';
                     rowTokens.forEach(function (r) { out += opt(r[0], r[1]); });
@@ -44575,9 +44605,12 @@ const StyleDesigner = (function () {
                 html +=
                     '<div class="d-flex gap-1 mt-1 align-items-center">' +
                         '<input type="text" class="form-control form-control-sm sd-sw-plink-name" data-plink-i="' + i + '" value="' + esc(p.name) + '" maxlength="32" placeholder="board" style="width:96px;flex:none" aria-label="' + esc(_sdT('Parameter name')) + '">' +
-                        '<select class="form-control form-control-sm sd-sw-plink-token" data-plink-i="' + i + '" aria-label="' + esc(_sdT('Value')) + '">' + tokenOptions(p.token) + '</select>' +
+                        '<select class="form-control form-control-sm sd-sw-plink-token" data-plink-i="' + i + '" aria-label="' + esc(_sdT('Value')) + '">' + tokenOptions(p.token, typeof p.text === 'string') + '</select>' +
                         '<button type="button" class="btn btn-sm btn-outline theme-danger sd-sw-plink-remove" data-plink-i="' + i + '" title="' + esc(_sdT('Remove')) + '" aria-label="' + esc(_sdT('Remove')) + '"><span class="bi bi-x-lg"></span></button>' +
                     '</div>' +
+                    (typeof p.text === 'string'
+                        ? '<input type="text" class="form-control form-control-sm mt-1 sd-sw-plink-text" data-plink-i="' + i + '" value="' + esc(p.text) + '" maxlength="100" placeholder="' + esc(_sdT('Text to send')) + '" aria-label="' + esc(_sdT('Text to send')) + '">'
+                        : '') +
                     '<div class="sd-sw-plink-warn" data-plink-i="' + i + '">' + _swPageLinkNameWarn(spec.params, i) + '</div>';
             });
             html +=
@@ -44847,7 +44880,29 @@ const StyleDesigner = (function () {
             sel.addEventListener('change', function () {
                 var i = parseInt(this.dataset.plinkI, 10);
                 var v = this.value;
-                _sdPageLinkEdit(function (spec) { if (spec.params[i]) spec.params[i].token = v; }, undefined, true);
+                _sdPageLinkEdit(function (spec) {
+                    var row = spec.params[i];
+                    if (!row) return;
+                    if (v === ':text') {
+                        row.token = '';
+                        if (typeof row.text !== 'string') row.text = '';
+                    } else {
+                        row.token = v;
+                        delete row.text;
+                    }
+                }, undefined, true);
+            });
+        });
+        document.querySelectorAll('.sd-sw-plink-text').forEach(function (inp) {
+            inp.addEventListener('input', function () {
+                var i = parseInt(this.dataset.plinkI, 10);
+                var v = this.value;
+                _sdPageLinkEdit(function (spec) { if (spec.params[i]) spec.params[i].text = v; }, _sdEditRun('plink:text:' + i), false);
+                // A later row's warning follows whether this one is sent.
+                var params = _swPageLinkSpec(selectedNode && selectedNode.props._bindParams && selectedNode.props._bindParams.href).params;
+                document.querySelectorAll('.sd-sw-plink-warn').forEach(function (w) {
+                    w.innerHTML = _swPageLinkNameWarn(params, parseInt(w.dataset.plinkI, 10));
+                });
             });
         });
         document.querySelectorAll('.sd-sw-plink-remove').forEach(function (btn) {
@@ -57847,7 +57902,9 @@ const StyleDesigner = (function () {
     // stays a positive id, a 'tab:<key>' of an unsaved tab, or 0; a name is
     // kept trimmed and lowercased even when it cannot be used, so its
     // warning stays under it; a row with no name or no field yet is kept to
-    // be filled in. The server leaves out what it cannot use.
+    // be filled in. The server leaves out what it cannot use. A row with no
+    // field keeps its fixed text (`text`, a string even while empty: the row
+    // sends text, not a field).
     function _swPageLinkSpec(spec) {
         spec = (spec && typeof spec === 'object') ? spec : {};
         var pid = spec.page_id, page = 0;
@@ -57856,12 +57913,21 @@ const StyleDesigner = (function () {
         var params = [];
         (Array.isArray(spec.params) ? spec.params : []).forEach(function (p) {
             if (params.length >= _SW_PAGE_LINK_MAX || !p || typeof p !== 'object') return;
-            params.push({
+            var row = {
                 name:  String(p.name == null ? '' : p.name).trim().toLowerCase(),
                 token: String(p.token == null ? '' : p.token).replace(/[^a-z0-9_-]/gi, '')
-            });
+            };
+            if (row.token === '' && typeof p.text === 'string') row.text = p.text;
+            params.push(row);
         });
         return { page_id: page, params: params };
+    }
+    // Whether value row `p` is sent: a field, or fixed text that is not
+    // blank (pg_sw_page_link_spec()).
+    function _swPageLinkRowSends(p) {
+        if (!p) return false;
+        if (String(p.token == null ? '' : p.token).replace(/[^a-z0-9_-]/gi, '') !== '') return true;
+        return typeof p.text === 'string' && p.text.trim() !== '';
     }
     // Whether the Bind Data panel offers the link for `node`: only inside a
     // widget whose renderer expands it. _getSystemWidgetRegionType() reads
@@ -57885,7 +57951,7 @@ const StyleDesigner = (function () {
         } else if (name !== '') {
             for (var j = 0; j < i; j++) {
                 var p = params[j];
-                if (p && String(p.token == null ? '' : p.token).replace(/[^a-z0-9_-]/gi, '') !== '' && _swUrlParamName(p.name) === usable) { text = _sdT('An earlier value already uses this name, so this one is not sent.'); break; }
+                if (_swPageLinkRowSends(p) && _swUrlParamName(p.name) === usable) { text = _sdT('An earlier value already uses this name, so this one is not sent.'); break; }
             }
         }
         return text ? '<div style="font-size:.66rem;color:#b45309;line-height:1.4"><span class="bi bi-exclamation-triangle me-1"></span>' + esc(text) + '</div>' : '';
@@ -61445,7 +61511,7 @@ const StyleDesigner = (function () {
                                     createNode('semantic', { tag: 'table', cssClass: 'table table-striped align-middle mb-0', customName: _sdT('Payment Table') }, [
                                         createNode('semantic', { tag: 'thead', cssClass: '', customName: _sdT('Table Head') }, [
                                             createNode('semantic', { tag: 'tr', cssClass: '', customName: _sdT('Header Row') }, [
-                                                _ciTh(_sdT('Method')),
+                                                _ciTh(_sdT('Payment method')),
                                                 _ciTh(_sdT('Description')),
                                                 _ciTh(_sdT('Fee'), 'text-end')
                                             ])
@@ -64764,7 +64830,7 @@ const StyleDesigner = (function () {
                             createNode('semantic', { tag: 'div', cssClass: 'alert alert-secondary d-flex flex-wrap gap-2', customName: _sdT('Sign in'),
                                 _bindings: { eo_visible_if: 'must_sign_in' } }, [
                                 createNode('semantic', { tag: 'span', text: _sdT('Sign in to add your comment.') }),
-                                createNode('content', { contentType: 'link', text: _sdT('Sign in'), href: '#', cssClass: 'fw-semibold', rel: 'nofollow',
+                                createNode('content', { contentType: 'link', text: _sdT('Sign in'), href: '#', cssClass: 'alert-link', rel: 'nofollow',
                                     _bindings: { href: '__login_url' } })
                             ]),
                             createNode('semantic', { tag: 'form', cssClass: 'card card-body', customName: _sdT('Comment Form'),
@@ -64774,7 +64840,7 @@ const StyleDesigner = (function () {
                                     _bindings: { eo_visible_if: 'is_replying' } }, [
                                     createNode('semantic', { tag: 'span', text: _sdT('Replying to') }),
                                     createNode('semantic', { tag: 'strong', _bindings: { text: '__reply_to_name' } }),
-                                    createNode('content', { contentType: 'link', text: _sdT('Cancel'), href: '#', cssClass: 'ms-auto',
+                                    createNode('content', { contentType: 'link', text: _sdT('Cancel'), href: '#', cssClass: 'ms-auto alert-link',
                                         _bindings: { action: 'comment_reply_cancel' } })
                                 ]),
                                 createNode('semantic', { tag: 'div', cssClass: 'mb-3' }, [
@@ -67070,7 +67136,7 @@ const StyleDesigner = (function () {
     // A new row here needs its server step too.
     var _SD_PAGE_SCRIPTS = [
         { test: /data-pg-theme-switcher/, file: 'assets/js/pg_theme_switcher.js' },
-        { test: /data-bs-toggle\s*=\s*["']?(?:tooltip|popover)\b/i, file: 'assets/js/pg_bs_tips.js' },
+        { test: /data-bs-toggle\s*=\s*["']?(?:tooltip|popover|tab|pill|list)\b/i, file: 'assets/js/pg_bs_tips.js' },
         { test: /\sdata-pg-scroller(?=[\s=>\/])/i, file: 'assets/js/pg_scroller.js' },
         { test: /\sdata-pg-fx(?=[\s=>\/])/i, file: 'assets/js/pg_fx.min.js' }
     ];
@@ -68559,6 +68625,42 @@ const StyleDesigner = (function () {
         });
     }
 
+    // A save's warnings (a page saved under another name, a form notice not
+    // sent) stay until closed: they say what changed without the user's
+    // doing. Its notes (a renamed page's old address sent on) fade.
+    function _sdShowSaveMessages(warnings, notes) {
+        if (warnings && warnings.length) sdToast(warnings.map(esc).join('<br>'), 'warning', 0);
+        if (notes && notes.length) sdToast(notes.map(esc).join('<br>'), 'info', 7000);
+    }
+
+    var SD_CARRIED_SAVE_KEY = 'pg_sd_save_messages';
+
+    // The messages of a save that is followed by a redirect, kept in this
+    // tab for the editor the redirect opens (_sdShowCarriedSaveMessages()).
+    function _sdCarrySaveMessages(warnings, notes) {
+        if (!(warnings && warnings.length) && !(notes && notes.length)) return;
+        try {
+            window.sessionStorage.setItem(SD_CARRIED_SAVE_KEY, JSON.stringify({ warnings: warnings || [], notes: notes || [] }));
+        } catch (e) {
+            // No storage: show them here, and they last until the redirect.
+            _sdShowSaveMessages(warnings, notes);
+        }
+    }
+
+    function _sdShowCarriedSaveMessages() {
+        var raw = null;
+        try {
+            raw = window.sessionStorage.getItem(SD_CARRIED_SAVE_KEY);
+            if (raw !== null) window.sessionStorage.removeItem(SD_CARRIED_SAVE_KEY);
+        } catch (e) { return; }
+        if (!raw) return;
+        var data = null;
+        try { data = JSON.parse(raw); } catch (e) { return; }
+        if (!data || typeof data !== 'object') return;
+        var list = function (v) { return Array.isArray(v) ? v.filter(function (x) { return typeof x === 'string'; }) : []; };
+        _sdShowSaveMessages(list(data.warnings), list(data.notes));
+    }
+
     function _saveAjaxImpl(opts, form) {
         // prepareFormData() runs the same validation + serialisation pipeline
         // as the legacy submit handler. A `false` return means a hard error
@@ -68572,7 +68674,9 @@ const StyleDesigner = (function () {
         _sdSharedCatchEdits();
         var _asDraft  = _pgActiveIsDraft();
         var _asKey    = _activeKey;
-        var _liveToo  = _asDraft && (_pages.some(function (p) {
+        // A design never saved has nothing on the site yet: its template's
+        // widgets and style count as changed but go live nowhere.
+        var _liveToo  = _asDraft && !!(_design && _design.styleId) && (_pages.some(function (p) {
                             return !p.page_draft && p.access !== 'locked' && _pgPageDirty(p);
                         }) || (_styleBaseline !== null && _pgStyleJSON() !== _styleBaseline)
                            || Object.keys(_sharedDirty).length > 0);
@@ -68635,17 +68739,16 @@ const StyleDesigner = (function () {
                 // New tabs learn their page ids, every baseline resets, the
                 // dirty dots clear.
                 _pgTabsAfterSave(res.data);
-                if (Array.isArray(res.data.warnings) && res.data.warnings.length) {
-                    sdToast(res.data.warnings.map(esc).join('<br>'), 'warning', 7000);
-                }
-                // A renamed page's old address, sent on to the new one.
-                if (Array.isArray(res.data.notes) && res.data.notes.length) {
-                    sdToast(res.data.notes.map(esc).join('<br>'), 'info', 7000);
-                }
-                if (typeof opts.onSuccess === 'function') opts.onSuccess(res.data);
+                var _warnings = Array.isArray(res.data.warnings) ? res.data.warnings : [];
+                var _notes = Array.isArray(res.data.notes) ? res.data.notes : [];
                 // Server may request a redirect (used by add_system_style after creating
-                // a new record so the user lands on the edit page). Skip the unload-warn
-                // dialog — everything was just saved.
+                // a new record so the user lands on the edit page). The warnings and
+                // notes are shown there, since a toast here lives only until the
+                // page goes (a page saved under another address than its tab's).
+                if (res.data.redirect_url) _sdCarrySaveMessages(_warnings, _notes);
+                else _sdShowSaveMessages(_warnings, _notes);
+                if (typeof opts.onSuccess === 'function') opts.onSuccess(res.data);
+                // Skip the unload-warn dialog — everything was just saved.
                 if (res.data.redirect_url) {
                     _suppressUnloadWarn = true;
                     setTimeout(function () { window.location.href = res.data.redirect_url; }, 400);
@@ -73163,6 +73266,8 @@ const StyleDesigner = (function () {
             a.treeLoadWarning = false;
             setTimeout(function () { sdToast(_sdT('This page\'s saved design could not be read — an empty canvas was opened.'), 'warning', 6000); }, 600);
         }
+        // The warnings of the first save, which redirected here.
+        setTimeout(_sdShowCarriedSaveMessages, 600);
     }
 
     // ── Protect the main form against accidental native submission ──────────
@@ -76940,6 +77045,7 @@ const StyleDesigner = (function () {
             regionData = cfg.regionData || {};
             var hadExistingTree = false;
             if (cfg.design) {
+                if (Array.isArray(cfg.design.messages)) _sdServerMessages = cfg.design.messages.slice();
                 // Multi-page design: every tab's tree arrives up front; the
                 // active one becomes the live `tree`. _pgTabsInit also
                 // installs the beforeunload guard and the tab strip.

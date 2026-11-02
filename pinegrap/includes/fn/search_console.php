@@ -662,6 +662,14 @@ function pg_gsc_link($account, $budget = 40)
 
         db("UPDATE config SET google_site_verification = '" . e($content) . "'");
 
+        // Google reads the tag from the home page during the call below. The
+        // POST makes cached pages old only when the request ends, so a cached
+        // home page without the new code would fail the first verification:
+        // make them old now.
+        if (function_exists('pg_page_cache_bump')) {
+            pg_page_cache_bump();
+        }
+
         $verify = pg_gsc_call(
             $account['id'],
             'POST',

@@ -79,6 +79,14 @@ function test_widget_parts_breadcrumb_rows()
 		pg_sw_list_crumb_row('Winter', '', 'active'),
 	), pg_sw_list_crumb_rows_item(_parts_bc_groups(), '', true, 'ignored'), 'detail without a catalog page, on a group');
 	pg_assert_same(array(pg_sw_list_crumb_row($main, '', 'text')), pg_sw_list_crumb_rows_item(array(), '', false, null), 'no product, no group');
+	pg_assert_same(array(
+		pg_sw_list_crumb_row('Tickets', '/tickets', 'link'),
+		pg_sw_list_crumb_row('Day Pass', '', 'active'),
+	), pg_sw_list_crumb_rows_item(array(), '/tickets', false, 'Day Pass', 'Tickets'), 'detail: a set root label names the catalog page');
+	pg_assert_same(array(
+		pg_sw_list_crumb_row($main, '/tickets', 'link'),
+		pg_sw_list_crumb_row('Day Pass', '', 'active'),
+	), pg_sw_list_crumb_rows_item(array(), '/tickets', false, 'Day Pass', '  '), 'detail: a blank root label is Main Catalog');
 
 	$d = pg_sw_list_sources();
 	$tokens = array();

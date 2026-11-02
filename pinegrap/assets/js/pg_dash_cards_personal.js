@@ -1,0 +1,298 @@
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * The new dashboard's personal cards (assets/js/pg_dash.js draws the
+ * frames): My goals and My notes. The data is what
+ * includes/dashboard/v2/cards/<id>.php returns; every text comes from it.
+ * Each card saves its own part through api.php's dashboard_personal_save
+ * action.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+(function () {
+    "use strict";
+
+    var pgDash = window.pgDash = window.pgDash || {};
+    var SVG = "http://www.w3.org/2000/svg";
+
+    pgDash.renderers = pgDash.renderers || {};
+
+    function fill(text, value) {
+        return String(text || "").replace("{var:1}", value);
+    }
+
+    function button(className, text, label) {
+        var node = pgDash.el("button", className, text);
+        node.type = "button";
+        if (label) {
+            node.setAttribute("aria-label", label);
+        }
+        return node;
+    }
+
+    function icon(name) {
+        var node = pgDash.el("i", "bi " + name);
+        node.setAttribute("aria-hidden", "true");
+        return node;
+    }
+
+    // A status line read out when it changes.
+    function status(className) {
+        var node = pgDash.el("p", "pg-dash-personal-status " + (className || ""));
+        node.setAttribute("role", "status");
+        return node;
+    }
+
+    // Save one personal part. done(value) runs on success, failed(message)
+    // on any other answer.
+    function save(part, value, done, failed) {
+        $.ajax({
+            contentType: "application/json",
+            url: "api.php",
+            data: JSON.stringify({
+                action: "dashboard_personal_save",
+                token: (typeof software_token !== "undefined") ? software_token : "",
+                part: part,
+                value: value
+            }),
+            type: "POST",
+            dataType: "json"
+        }).done(function (answer) {
+            if (answer && answer.status === "success") {
+                done(answer.value);
+                return;
+            }
+            failed(answer && answer.message);
+        }).fail(function () {
+            failed("");
+        });
+    }
+
+    // One arc from the top, as long as its share; the figure in the middle.
+    // The label says what the ring shows, and the figure is also text.
+    function ring(share, label, value, tone) {
+        var box = pgDash.el("span", "pg-dash-goal-ring");
+        var picture = document.createElementNS(SVG, "svg");
+        picture.setAttribute("viewBox", "0 0 36 36");
+        picture.setAttribute("role", "img");
+        picture.setAttribute("class", "pg-dash-goal-ring-svg");
+        var title = document.createElementNS(SVG, "title");
+        title.textContent = label;
+        picture.appendChild(title);
+
+        var radius = "15.915";
+        var track = document.createElementNS(SVG, "circle");
+        track.setAttribute("cx", "18");
+        track.setAttribute("cy", "18");
+        track.setAttribute("r", radius);
+        track.setAttribute("class", "pg-dash-goal-ring-track");
+        picture.appendChild(track);
+
+        var part = Math.max(0, Math.min(1, share || 0)) * 100;
+        if (part > 0) {
+            var arc = document.createElementNS(SVG, "circle");
+            arc.setAttribute("cx", "18");
+            arc.setAttribute("cy", "18");
+            arc.setAttribute("r", radius);
+            arc.setAttribute("class", "pg-dash-goal-ring-arc");
+            arc.setAttribute("stroke-dasharray", part.toFixed(2) + " " + (100 - part).toFixed(2));
+            arc.setAttribute("stroke-dashoffset", "25");
+            picture.appendChild(arc);
+        }
+
+        box.setAttribute("data-tone", tone || "");
+        box.appendChild(picture);
+        box.appendChild(pgDash.el("span", "pg-dash-goal-ring-value", value));
+        return box;
+    }
+
+    // ── My goals ───────────────────────────────────────────────────────────
+
+    function goalForm(body, data, entry, list) {
+        var el = pgDash.el;
+        var L = data.labels;
+        var form = el("form", "pg-dash-goal-form");
+        var note = status();
+
+        function field(name, label, control) {
+            var row = el("div", "pg-dash-goal-field");
+            var id = "pg_dash_goal_" + name;
+            var text = el("label", "form-label", label);
+            text.setAttribute("for", id);
+            control.id = id;
+            row.appendChild(text);
+            row.appendChild(control);
+            form.appendChild(row);
+            return control;
+        }
+
+        function select(choices) {
+            var node = el("select", "form-control form-control-sm");
+            Object.keys(choices).forEach(function (key) {
+                var option = el("option", "", choices[key]);
+                option.value = key;
+                node.appendChild(option);
+            });
+            return node;
+        }
+
+        var name = field("name", L.name, el("input", "form-control form-control-sm"));
+        name.type = "text";
+        name.maxLength = 60;
+        name.required = true;
+        var metric = field("metric", L.metric, select(data.metrics));
+        var target = field("target", L.target, el("input", "form-control form-control-sm"));
+        target.type = "number";
+        target.min = "1";
+        target.step = "1";
+        target.required = true;
+        var span = field("span", L.span, select({month: L.month, week: L.week}));
+
+        var actions = el("div", "pg-dash-goal-actions");
+        var keep = el("button", "btn theme-primary btn-sm", L.save);
+        keep.type = "submit";
+        var stop = button("btn btn-outline theme-secondary btn-sm", L.cancel);
+        actions.appendChild(keep);
+        actions.appendChild(stop);
+        form.appendChild(actions);
+        form.appendChild(note);
+
+        stop.addEventListener("click", function () {
+            pgDash.reload(entry);
+        });
+
+        form.addEventListener("submit", function (event) {
+            event.preventDefault();
+            var goals = list.concat([{
+                name: name.value,
+                metric: metric.value,
+                target: parseInt(target.value, 10) || 0,
+                span: span.value
+            }]);
+            keep.disabled = true;
+            save("goals", goals, function () {
+                pgDash.reload(entry);
+            }, function (message) {
+                keep.disabled = false;
+                note.textContent = message || L.failed;
+            });
+        });
+
+        body.appendChild(form);
+        name.focus();
+    }
+
+    pgDash.renderers.goals = function (body, data, entry) {
+        var el = pgDash.el;
+        var L = data.labels || {};
+        var stored = data.stored || [];
+        var note = status();
+
+        if (!(data.goals || []).length) {
+            body.appendChild(el("p", "pg-dash-item-none", L.none));
+        }
+
+        var list = el("ul", "pg-dash-goals");
+        (data.goals || []).forEach(function (goal) {
+            var item = el("li", "pg-dash-goal");
+            item.appendChild(ring(goal.ring, goal.label, goal.pct, goal.tone));
+
+            var main = el("div", "pg-dash-goal-main");
+            main.appendChild(el("span", "pg-dash-goal-name", goal.name));
+            main.appendChild(el("span", "pg-dash-goal-figure", goal.value + " " + goal.of));
+            var state = el("span", "pg-dash-item-note", goal.note);
+            state.setAttribute("data-tone", goal.tone);
+            main.appendChild(state);
+            item.appendChild(main);
+
+            if (!data.locked) {
+                var remove = button("btn btn-icon btn-sm pg-dash-goal-remove", "", fill(L.remove, goal.name));
+                remove.appendChild(icon("bi-x-lg"));
+                remove.addEventListener("click", function () {
+                    remove.disabled = true;
+                    save("goals", stored.filter(function (_goal, i) {
+                        return i !== goal.index;
+                    }), function () {
+                        pgDash.reload(entry);
+                    }, function (message) {
+                        remove.disabled = false;
+                        note.textContent = message || L.failed;
+                    });
+                });
+                item.appendChild(remove);
+            }
+            list.appendChild(item);
+        });
+        body.appendChild(list);
+
+        if (!data.locked && (stored.length < (data.most || 3)) && Object.keys(data.metrics || {}).length) {
+            var add = button("btn btn-outline theme-secondary btn-sm pg-dash-personal-add", " " + L.add);
+            add.insertBefore(icon("bi-plus-lg"), add.firstChild);
+            add.addEventListener("click", function () {
+                add.remove();
+                goalForm(body, data, entry, stored);
+            });
+            body.appendChild(add);
+        }
+        body.appendChild(note);
+    };
+
+    // ── My notes ───────────────────────────────────────────────────────────
+
+    pgDash.renderers.notes = function (body, data, entry) {
+        var el = pgDash.el;
+        var L = data.labels || {};
+        var most = data.most || 2000;
+        var box = el("textarea", "form-control pg-dash-notes");
+        var id = "pg_dash_notes_" + entry.id;
+        var hint = el("p", "pg-dash-personal-hint", L.hint);
+        var note = status("pg-dash-notes-status");
+        var timer = null;
+        var sent = data.text || "";
+
+        box.id = id;
+        box.value = sent;
+        box.maxLength = most;
+        box.rows = 6;
+        box.setAttribute("aria-label", L.label);
+        hint.id = id + "_hint";
+        box.setAttribute("aria-describedby", hint.id);
+        box.readOnly = !!data.locked;
+
+        function left() {
+            return fill(L.left, String(Math.max(0, most - box.value.length)));
+        }
+
+        // Saved after a pause in typing, and when the box is left.
+        function send() {
+            window.clearTimeout(timer);
+            var text = box.value;
+            if (text === sent) {
+                return;
+            }
+            note.textContent = L.saving;
+            save("notes", text, function (value) {
+                sent = (typeof value === "string") ? value : text;
+                note.textContent = L.saved + " · " + left();
+            }, function (message) {
+                note.textContent = message || L.failed;
+            });
+        }
+
+        if (!data.locked) {
+            box.addEventListener("input", function () {
+                window.clearTimeout(timer);
+                timer = window.setTimeout(send, 800);
+            });
+            box.addEventListener("blur", send);
+        }
+
+        body.appendChild(box);
+        body.appendChild(hint);
+        body.appendChild(note);
+    };
+})();

@@ -65,6 +65,42 @@ function test_menu_row_with_a_control_opens_a_panel()
 	pg_assert_true(pg_menu_row_opens_panel('<a href=\'/pinegrap/welcome.php\'>Dashboard</a><select id=\'widget_theme\'></select>', 'welcome.php'), 'a select');
 }
 
+// A row opens its own panel, another row's once that one is drawn (the pinned
+// My Notes row opens the Workspace list), or none.
+function test_menu_row_panel_id_own_shared_or_none()
+{
+	$entries = '<a href=\'/pinegrap/view_pages.php\'>Pages</a><a href=\'/pinegrap/add_page.php\'>Create Page</a>';
+
+	pg_assert_same('menu_panel_2', pg_menu_row_panel_id(array('id' => 2, 'href' => 'view_pages.php'), $entries, array()), 'its own panel');
+	pg_assert_same('', pg_menu_row_panel_id(array('id' => 0, 'href' => 'welcome.php'), '', array()), 'a plain link');
+	pg_assert_same('menu_panel_23', pg_menu_row_panel_id(array('id' => 24, 'href' => 'workspace_notes.php', 'panel_of' => 23), '', array(23 => true)), 'the drawn panel of the row it names');
+	pg_assert_same('', pg_menu_row_panel_id(array('id' => 24, 'href' => 'workspace_notes.php', 'panel_of' => 23), '', array()), 'nothing while that panel is not drawn');
+	pg_assert_same('', pg_menu_row_panel_id(array('id' => 24, 'href' => 'workspace_notes.php', 'panel_of' => 23), $entries, array()), 'its own entries do not make it one');
+	pg_assert_same('menu_panel_1', pg_menu_row_panel_id(array('id' => 1, 'href' => 'view_folders.php', 'panel' => true), '<div id="explorer-side-files" data-pg-menu-auto></div>', array()), 'a row asking for its panel with a box and no link');
+}
+
+// The pinned My Notes row has no panel of its own: the server's row and the
+// one workspace.js draws when it is pinned both open the Workspace list.
+function test_menu_notes_row_opens_the_workspace_list()
+{
+	$output = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/output.php');
+	$start = strpos($output, "\$menu_items[24]['id'] = 24;");
+	$row = substr($output, $start, strpos($output, '}', $start) - $start);
+
+	pg_assert_contains("\$menu_items[24]['panel_of'] = 23;", $row, 'the row opens the Workspace list');
+	pg_assert_false(strpos($row, 'data-bs-content') !== false, 'no entries of its own');
+	pg_assert_false(strpos($output, 'menu_panels_unattached') !== false, 'no panel drawn without its row');
+	pg_assert_contains("if (\$menu_panel_id === 'menu_panel_' . (int) \$options['id']) {", $output, 'a row opening another row\'s panel draws none');
+
+	$workspace = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	pg_assert_false(strpos($workspace, 'menu_panel_24') !== false, 'the pinned row hooks no panel of its own');
+	pg_assert_contains("var panel = document.getElementById('menu_panel_23');", $workspace, 'a row pinned on the notes screen opens the Workspace list');
+
+	$backend = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
+	pg_assert_contains('openMenuPanel(panel, { animate: true, focus: true, opener: row });', $backend, 'the click names the row it came from');
+	pg_assert_contains("var row = document.getElementById(open.getAttribute('data-pg-menu-opener') || open.getAttribute('data-pg-menu-row'));", $backend, 'the way back returns the focus to that row');
+}
+
 function test_menu_panel_carries_its_entries_as_they_are()
 {
 	$entries = '<a href=\'/pinegrap/view_pages.php\' class=\'btn btn-link bi bi-window bi-me-2\'>Pages</a><hr class=\'divider my-2\' />';

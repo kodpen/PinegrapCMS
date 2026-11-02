@@ -73,10 +73,12 @@ if (isset($_SERVER['HTTP_HOST']) == true) {
 // One run at a time, whoever starts it: the panel button and a crontab entry
 // take the job's lock in cron_runs as the general job's dispatcher does (it
 // has taken it already for a dispatched run, and releases it itself). Two
-// runs side by side wrote the same rows twice and fought in the sweep.
+// runs side by side wrote the same rows twice and fought in the sweep. A
+// panel window request takes the job's few minutes; a command-line run, the
+// whole pass, takes hours (pg_search_index_claim_seconds()).
 if (!defined('PG_CRON_DISPATCH')) {
 
-    if (!pg_cron_claim('update_search_index')) {
+    if (!pg_cron_claim('update_search_index', pg_search_index_claim_seconds(isset($_SERVER['HTTP_HOST'])))) {
 
         if (isset($_SERVER['HTTP_HOST'])) {
             output_error(lang('The search index is already being updated. Try again when that run has finished.'));
@@ -1402,6 +1404,9 @@ foreach ((($search_index_state['stage'] === 'designer') && !$search_index_stoppe
 
                 $designer_record_urls[$url] = $folder_id;
             } catch (Throwable $throwable) {
+                // Its last indexed text stays until a run reads it again,
+                // as for a page, an event or a classic record.
+                pg_search_index_keep_item($url, $timestamp);
                 pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note($detail_page['page_name'], $record['reference_code'], $throwable->getMessage(), 200, lang('Record')));
 
                 continue;

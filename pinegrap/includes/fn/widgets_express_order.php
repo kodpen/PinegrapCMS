@@ -719,9 +719,15 @@ function _eo_default_country()
 // fields with the row id embedded in the name. Pass 0 when there\'s no
 // active ship_to row (e.g. cart has no shippable items — the visibility
 // binding would have dropped the whole card anyway).
-function _eo_apply_field_bindings(&$tree, $lf, $ship_rid = 0)
+// The call on the whole tree then points the labels at the renamed fields
+// and names the controls no label points at (_eo_point_labels_at(),
+// _eo_name_unlabelled_controls()); $renamed only carries the renames
+// through the recursion.
+function _eo_apply_field_bindings(&$tree, $lf, $ship_rid = 0, &$renamed = null)
 {
     if (!is_array($tree)) return;
+    $top = ($renamed === null);
+    if ($top) $renamed = array();
     $field = isset($tree['props']['_bindings']['eo_field'])
         ? (string)$tree['props']['_bindings']['eo_field'] : '';
 
@@ -732,7 +738,8 @@ function _eo_apply_field_bindings(&$tree, $lf, $ship_rid = 0)
     if ($field !== '' && $ship_rid > 0 && strpos($field, 'shipping_') === 0
         && strpos($field, 'shipping_' . $ship_rid . '_') !== 0) {
         $suffix = substr($field, strlen('shipping_'));
-        $field = 'shipping_' . $ship_rid . '_' . $suffix;
+        $renamed[$field] = 'shipping_' . $ship_rid . '_' . $suffix;
+        $field = $renamed[$field];
     }
 
     if ($field !== '' && isset($tree['type']) && $tree['type'] === 'semantic'
@@ -840,7 +847,109 @@ function _eo_apply_field_bindings(&$tree, $lf, $ship_rid = 0)
     }
     if (!empty($tree['children']) && is_array($tree['children'])) {
         foreach ($tree['children'] as $i => $_child) {
-            _eo_apply_field_bindings($tree['children'][$i], $lf, $ship_rid);
+            _eo_apply_field_bindings($tree['children'][$i], $lf, $ship_rid, $renamed);
+        }
+    }
+    if ($top) {
+        if ($renamed) _eo_point_labels_at($tree, $renamed);
+        _eo_name_unlabelled_controls($tree);
+    }
+}
+
+// A label's `for` comes from the binding's rid-less name (the designer's
+// field picker and the default tree both write for="shipping_first_name"),
+// while the walker renames the control it points at to
+// shipping_<rid>_first_name: no label was tied to its field, so a screen
+// reader read the shipping fields without names and a click on a label
+// selected nothing. $renamed maps each old name to the new one; only
+// labels of renamed fields move, the rest point where they did.
+function _eo_point_labels_at(&$tree, array $renamed)
+{
+    if (!is_array($tree)) return;
+    if (isset($tree['type'], $tree['props']['tag']) && $tree['type'] === 'semantic'
+        && strtolower((string)$tree['props']['tag']) === 'label'
+        && !empty($tree['props']['_attrs']) && is_array($tree['props']['_attrs'])) {
+        foreach ($tree['props']['_attrs'] as $i => $a) {
+            if (is_array($a) && ($a['name'] ?? '') === 'for' && isset($renamed[(string)($a['value'] ?? '')])) {
+                $tree['props']['_attrs'][$i]['value'] = $renamed[(string)$a['value']];
+            }
+        }
+    }
+    if (!empty($tree['children']) && is_array($tree['children'])) {
+        foreach ($tree['children'] as $i => $_child) {
+            _eo_point_labels_at($tree['children'][$i], $renamed);
+        }
+    }
+}
+
+// The name a control without a visible label is read by: the cart line's
+// quantity box and the offer code box carry only a placeholder or nothing
+// in the default tree and in trees saved from it. Keyed by the control's
+// name; '' when it has none of these.
+function _eo_control_fallback_name($name)
+{
+    $name = (string)$name;
+    if (strpos($name, 'quantity[') === 0) return lang('Quantity');
+    if ($name === 'special_offer_code') return lang('Special Offer Code');
+    return '';
+}
+
+// Gives the controls listed in _eo_control_fallback_name() an aria-label
+// when they have no name yet: no aria-label or aria-labelledby of their own
+// and no label in the tree pointing at their id.
+function _eo_name_unlabelled_controls(&$tree)
+{
+    $fors = array();
+    _eo_collect_label_targets($tree, $fors);
+    _eo_name_unlabelled_walk($tree, $fors);
+}
+
+function _eo_collect_label_targets($tree, array &$fors)
+{
+    if (!is_array($tree)) return;
+    if (isset($tree['type'], $tree['props']['tag']) && $tree['type'] === 'semantic'
+        && strtolower((string)$tree['props']['tag']) === 'label'
+        && !empty($tree['props']['_attrs']) && is_array($tree['props']['_attrs'])) {
+        foreach ($tree['props']['_attrs'] as $a) {
+            if (is_array($a) && ($a['name'] ?? '') === 'for' && (string)($a['value'] ?? '') !== '') {
+                $fors[(string)$a['value']] = true;
+            }
+        }
+    }
+    if (!empty($tree['children']) && is_array($tree['children'])) {
+        foreach ($tree['children'] as $_child) {
+            _eo_collect_label_targets($_child, $fors);
+        }
+    }
+}
+
+function _eo_name_unlabelled_walk(&$tree, array $fors)
+{
+    if (!is_array($tree)) return;
+    if (isset($tree['type'], $tree['props']['tag']) && $tree['type'] === 'semantic'
+        && in_array(strtolower((string)$tree['props']['tag']), array('input', 'select', 'textarea'), true)) {
+        $attrs = (isset($tree['props']['_attrs']) && is_array($tree['props']['_attrs'])) ? $tree['props']['_attrs'] : array();
+        $name = '';
+        $named = false;
+        foreach ($attrs as $a) {
+            if (!is_array($a)) continue;
+            $an = (string)($a['name'] ?? '');
+            if ($an === 'name') $name = (string)($a['value'] ?? '');
+            if (($an === 'aria-label' || $an === 'aria-labelledby') && trim((string)($a['value'] ?? '')) !== '') $named = true;
+        }
+        $id = isset($tree['props']['id']) ? (string)$tree['props']['id'] : '';
+        if ($id !== '' && isset($fors[$id])) $named = true;
+        $fallback = $named ? '' : _eo_control_fallback_name($name);
+        if ($fallback !== '') {
+            $tree['props']['_attrs'] = array_values(array_filter($attrs, function ($a) {
+                return !(is_array($a) && ($a['name'] ?? '') === 'aria-label');
+            }));
+            $tree['props']['_attrs'][] = array('name' => 'aria-label', 'value' => $fallback);
+        }
+    }
+    if (!empty($tree['children']) && is_array($tree['children'])) {
+        foreach ($tree['children'] as $i => $_child) {
+            _eo_name_unlabelled_walk($tree['children'][$i], $fors);
         }
     }
 }
@@ -1916,7 +2025,7 @@ function _eo_render_cart_summary($items, $widget_id, $form_id, $fmt, $lf = null,
           .       '<button type="button" class="btn btn-outline-secondary" data-pg-qty-action="dec"'
           .              ' aria-label="' . h(lang('Decrease')) . '" tabindex="-1">&minus;</button>'
           .       '<input type="number" min="0" step="1" class="form-control form-control-sm text-center"'
-          .             ' name="quantity[' . $iid . ']" value="' . $qty . '" form="' . h($form_id) . '">'
+          .             ' name="quantity[' . $iid . ']" value="' . $qty . '" form="' . h($form_id) . '" aria-label="' . h(lang('Quantity')) . '">'
           .       '<button type="button" class="btn btn-outline-secondary" data-pg-qty-action="inc"'
           .              ' aria-label="' . h(lang('Increase')) . '" tabindex="-1">+</button>'
           .     '</div>'
@@ -3644,6 +3753,32 @@ function _eo_custom_arrival_value($posted, array $r, $aid)
     return _eo_real_date($r['arrival_date'] ?? '');
 }
 
+// The custom arrival date box's min and max attributes: no day before $today
+// (Y-m-d) can be picked, and none after the choice's latest allowed date
+// ($max) when it has a real one.
+function _eo_custom_arrival_bounds($max, $today)
+{
+    $today = _eo_real_date($today);
+    $max   = _eo_real_date($max);
+    return ($today !== '' ? ' min="' . h($today) . '"' : '')
+         . ($max !== '' ? ' max="' . h($max) . '"' : '');
+}
+
+// The custom arrival date box of one arrival choice. It has no label of its
+// own (the choice's radio label sits above it), so it is read by the
+// choice's name. A hidden box (another choice is picked) is disabled: its
+// date is not posted, and a day outside its bounds cannot block the order's
+// submit.
+function _eo_custom_arrival_input($name, $value, $max, $today, $is_sel, $choice_name)
+{
+    $choice_name = trim((string)$choice_name);
+    if ($choice_name === '') $choice_name = lang('Requested Arrival Date');
+    return '<input type="date" class="form-control form-control-sm" name="' . h($name) . '" value="' . h($value) . '"'
+         . _eo_custom_arrival_bounds($max, $today)
+         . ($is_sel ? '' : ' disabled')
+         . ' aria-label="' . h($choice_name) . '">';
+}
+
 // $include_address_fields: when TRUE (default), renders the full address
 // form (first_name, last_name, ..., country/state/zip/phone, address_type)
 // followed by arrival-date + shipping-method picker — legacy behaviour for
@@ -3876,11 +4011,10 @@ function _eo_render_shipping_section($recipients, $lf, $form_id, $widget_id, $in
                 if ($is_custom) {
                     $cd_name = 'shipping_' . $rid . '_custom_arrival_date_' . $aid;
                     $cd_val  = _eo_custom_arrival_value($get('custom_arrival_date_' . $aid), $r, $aid);
-                    $cd_max  = _eo_real_date(isset($ad['custom_maximum_arrival_date']) ? $ad['custom_maximum_arrival_date'] : '');
+                    $cd_max  = isset($ad['custom_maximum_arrival_date']) ? $ad['custom_maximum_arrival_date'] : '';
                     $out .= '<div class="ms-4 mt-1 mb-2 pg-eo-custom-arrival" data-pg-eo-arrival-id="' . $aid . '"'
                           .   ($is_sel ? '' : ' style="display:none"') . '>'
-                          . '<input type="date" class="form-control form-control-sm" name="' . h($cd_name) . '" value="' . h($cd_val) . '"'
-                          .   ($cd_max !== '' ? ' max="' . h($cd_max) . '"' : '') . '>'
+                          . _eo_custom_arrival_input($cd_name, $cd_val, $cd_max, date('Y-m-d'), $is_sel, (string)$ad['name'])
                           . '</div>';
                 }
             }
@@ -4617,12 +4751,18 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
         // Arrival date radios — refetch + show/hide custom date input
         form.querySelectorAll('input.pg-eo-arrival-radio[data-pg-eo-rid="' + rid + '"]').forEach(function (r) {
             r.addEventListener('change', function () {
-                // Toggle custom date input visibility
+                // Toggle custom date input visibility; a hidden date is not
+                // posted, and a date out of its bounds there would block the
+                // submit with no visible message.
                 form.querySelectorAll('.pg-eo-custom-arrival').forEach(function (cd) {
                     cd.style.display = 'none';
+                    cd.querySelectorAll('input').forEach(function (inp) { inp.disabled = true; });
                 });
                 var custWrap = form.querySelector('.pg-eo-custom-arrival[data-pg-eo-arrival-id="' + r.value + '"]');
-                if (custWrap) custWrap.style.display = '';
+                if (custWrap) {
+                    custWrap.style.display = '';
+                    custWrap.querySelectorAll('input').forEach(function (inp) { inp.disabled = false; });
+                }
                 fetchMethods(rid);
             });
         });

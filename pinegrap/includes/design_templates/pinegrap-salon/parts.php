@@ -168,20 +168,20 @@ $services = array(
 );
 
 // The team, in the order the pages list them, with the categories they work
-// in and the days they are in the salon.
+// in and the days they are in the salon: never a Monday, when it is closed.
 $team = array(
     'selin' => array('name' => lang('Selin Aydın'), 'role' => lang('Founder & Colourist'), 'categories' => array('hair'),
         'bio'  => lang('Twelve years behind the chair; balayage and natural blondes are her signature.'),
         'days' => lang('Tuesday to Saturday')),
     'deniz' => array('name' => lang('Deniz Kaya'), 'role' => lang('Senior Stylist'), 'categories' => array('hair'),
         'bio'  => lang('Precision cuts, short styles and curly hair, cut dry when it suits the curl.'),
-        'days' => lang('Monday to Friday')),
+        'days' => lang('Tuesday to Saturday')),
     'mira'  => array('name' => lang('Mira Demir'), 'role' => lang('Nail Artist'), 'categories' => array('nails'),
         'bio'  => lang('Clean gel work and fine nail art, from a nude finish to hand-painted details.'),
         'days' => lang('Wednesday to Sunday')),
     'leyla' => array('name' => lang('Leyla Şahin'), 'role' => lang('Skin Therapist & Make-up Artist'), 'categories' => array('skin', 'makeup'),
         'bio'  => lang('Facials, brows and lashes during the week; brides and events at weekends.'),
-        'days' => lang('Thursday to Monday')),
+        'days' => lang('Thursday to Sunday')),
 );
 
 // The packages: the middle one is the one most clients choose.
@@ -203,11 +203,20 @@ $service_titles = array();
 foreach ($services as $s) $service_titles[] = $s['title'];
 $team_choices = array(lang('No preference'));
 foreach ($team as $t) $team_choices[] = $t['name'] . ' · ' . $t['role'];
+// The query string of a link that opens the booking form with a choice
+// made: the form's Service (?service=), Stylist (?stylist=) and notes
+// (?notes=) fields start with these values (_cf.url_param). A stylist is
+// named as the Stylist list names them.
+$appointment_query = function ($params) {
+    return http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+};
+// The times of day, inside the opening hours ($hours): the salon opens at
+// 10:00 on weekdays and closes at 20:00 only from Tuesday to Friday.
 $time_windows = array(
-    lang('Morning (09:00–12:00)'),
+    lang('Morning (10:00–12:00)'),
     lang('Midday (12:00–15:00)'),
     lang('Afternoon (15:00–18:00)'),
-    lang('Evening (18:00–20:00)'),
+    lang('Evening (18:00–20:00, Tuesday–Friday)'),
 );
 
 // ── The parts every page repeats ────────────────────────────────────────
@@ -507,10 +516,12 @@ $input = function ($id, $type, $name, $autocomplete = '', $required = true, $cf 
     if ($cf) $props['_cf'] = $cf;
     return $el('input', 'form-control', lang('Field'), array(), $props);
 };
-$textarea = function ($id, $name, $rows, $required = true) use ($el, $attr) {
+$textarea = function ($id, $name, $rows, $required = true, $cf = array()) use ($el, $attr) {
     $attrs = array($attr('name', $name), $attr('rows', (string)$rows));
     if ($required) $attrs[] = $attr('required', '');
-    return $el('textarea', 'form-control', lang('Field'), array(), array('id' => $id, '_attrs' => $attrs));
+    $props = array('id' => $id, '_attrs' => $attrs);
+    if ($cf) $props['_cf'] = $cf;
+    return $el('textarea', 'form-control', lang('Field'), array(), $props);
 };
 // A pick list: the first, empty option is the prompt, not an answer.
 // $selected is the answer chosen to begin with (no prompt then).
@@ -579,17 +590,173 @@ $edit_button = function ($text = '') use ($link) {
 };
 
 // The comments of a record page (a booking's messages, a conversation's
-// replies, a post's comments), in the reading column.
-$comments_section = function ($name) use ($el, $container, $row, $col) {
+// replies, a post's comments), in the reading column: the page's Comments
+// widget, which reads the record the page's view above it shows.
+$comments_section = function ($name, $widget_key) use ($el, $container, $row, $col, $widget) {
     return $el('section', 'pb-5', $name, array(
         $container(array(
             $row(array(
-                $col(array(
-                    array('type' => 'region', 'props' => array('regionType' => 'comments_block', 'regionName' => ''), 'children' => array()),
-                ), '', '8'),
+                $col(array($widget($widget_key)), '', '8'),
             ), '', 'center'),
         )),
     ));
+};
+
+// A Messages node: the notices and errors of the form it sits in.
+$messages = function ($class = '') {
+    return array('type' => 'content', 'props' => array('contentType' => 'messages', 'cssClass' => $class), 'children' => array());
+};
+
+// A thread of the Comments widget: the comments in the widget's order, each
+// a card with its writer, badges, date, the comment it answers where the
+// thread stops going deeper, its words, its file and its links; the page
+// links; the form (its notices first, the comment being answered, the
+// stars while the page asks for them, the words, the name for whoever types
+// one, the file, the staff's publish options, the box to follow the thread,
+// the CAPTCHA); the box to follow or stop following; the staff's Stop and
+// Allow buttons. A part under a flag shows only while it holds for the
+// visitor. $w: the words (title, empty, heading, label, sign_in, submit,
+// watch_box, follow, unfollow, close, reopen), reply (each comment can be
+// answered and shared), watch (the boxes to follow the thread).
+$comment_thread = function ($w) use ($el, $heading, $para, $link, $span, $attr, $bind, $show_when, $loop, $widget_root, $messages) {
+    $actions = array();
+    if ($w['reply']) {
+        $actions[] = $link(lang('Reply'), '#', 'link-primary', array(), array('_bindings' => array('action' => 'comment_reply')));
+        $actions[] = $link(lang('Share'), '#', 'link-secondary', array(), array('_bindings' => array('action' => 'comment_share')));
+    }
+    // Bound to the comment's edit screen, so the list adds no pencil of its own.
+    $actions[] = $link(lang('Edit'), '#', 'link-secondary', array(), array('_bindings' => array('href' => '__comment_edit_url', 'eo_visible_if' => 'comment_can_edit')));
+
+    $badges = array(
+        $span(lang('Jane Cooper'), 'fw-semibold', lang('Name'), $bind('__comment_name')),
+        $span('jane', 'small text-body-secondary', lang('User Name'), array('_bindings' => array('text' => '__comment_staff_name', 'eo_visible_if' => 'is_staff'))),
+        $span(lang('Badge'), 'badge rounded-pill text-bg-secondary', lang('Badge'), array('_bindings' => array('text' => '__comment_badge', 'eo_visible_if' => 'comment_has_badge'))),
+    );
+    if ($w['reply']) {
+        $badges[] = $span(lang('Featured'), 'badge rounded-pill text-bg-primary', lang('Featured'), $show_when('comment_is_featured'));
+    }
+    $card = $el('div', 'card border-0 bg-body-tertiary rounded-4 flex-grow-1', lang('Comment Card'), array(
+        $el('div', 'card-body p-4', lang('Card Body'), array(
+            $el('p', 'small fw-semibold text-danger-emphasis mb-2 pg-hide-if-empty', lang('Comment Status'), array(),
+                array('text' => lang('Awaiting approval'), '_bindings' => array('text' => '__comment_status', 'eo_visible_if' => 'comment_is_pending'))),
+            $el('div', 'text-warning mb-1', lang('Stars'), pg_sw_part_comment_stars(), $show_when('comment_has_rating')),
+            $el('div', 'd-flex flex-wrap align-items-center gap-2', lang('Name Line'), $badges),
+            $span(lang('2 days ago'), 'd-block small text-body-secondary pg-hide-if-empty', lang('Time'), $bind('__comment_date')),
+            $el('blockquote', 'border-start border-3 ps-3 my-2 small text-body-secondary', lang('Quote'), array(
+                $el('p', 'mb-1', lang('In reply to'), array(
+                    $span(lang('In reply to'), 'me-1', lang('Label')),
+                    $link(lang('Jane Cooper'), '#', 'fw-semibold link-body-emphasis', array(), array('_bindings' => array('href' => '__comment_parent_url', 'text' => '__comment_parent_name'))),
+                )),
+                $el('p', 'mb-0 pg-hide-if-empty', lang('Quoted text'), array(), array('text' => lang('Quoted text'), '_bindings' => array('text' => '__comment_quote'))),
+            ), $show_when('comment_has_quote')),
+            $el('div', 'mt-2', lang('Message'), array(), array('text' => lang('Comment text'), '_bindings' => array('text' => '__comment_message_html'))),
+            $el('p', 'small mt-3 mb-0', lang('Attachment'), array(
+                $link('file.pdf', '#', 'me-2', array(), array('target' => '_blank', 'rel' => 'noopener', '_bindings' => array('href' => '__comment_file_url', 'text' => '__comment_file_name'))),
+                $span('12 KB', 'text-body-secondary', lang('Value'), $bind('__comment_file_size')),
+            ), $show_when('comment_has_file')),
+            $el('div', 'd-flex flex-wrap gap-3 mt-3 small', lang('Comment Actions'), $actions),
+        )),
+    ));
+
+    $label = function ($for, $text, $class = 'form-label') use ($el, $attr) {
+        return $el('label', $class, lang('Label'), array(), array('text' => $text, '_attrs' => array($attr('for', $for))));
+    };
+    $control = function ($tag, $class, $id, $value, $attrs = array()) use ($el) {
+        return $el($tag, $class, lang('Field'), array(), array('id' => $id, '_attrs' => $attrs, '_bindings' => array('value' => $value)));
+    };
+    $fields = array($messages());
+    if ($w['reply']) {
+        // The comment being answered. Reply shows the box by its hidden
+        // attribute, so it takes no display utility (d-flex would keep it
+        // on screen, empty).
+        $fields[] = $el('div', 'alert alert-secondary py-2 small', lang('Replying To'), array(
+            $span(lang('Replying to'), 'me-1', lang('Text')),
+            $el('strong', '', lang('Name'), array(), array('text' => lang('Jane Cooper'), '_bindings' => array('text' => '__reply_to_name'))),
+            $link(lang('Cancel'), '#', 'ms-3 alert-link', array(), array('_bindings' => array('action' => 'comment_reply_cancel'))),
+        ), $show_when('is_replying'));
+    }
+    $fields[] = $el('div', 'mb-3', lang('Rating'), array(
+        $el('div', 'form-label', lang('Label'), array(), array('text' => lang('Rating'))),
+        $el('div', '', lang('Stars'), array(), array('_bindings' => array('section' => 'comment_rating_input'))),
+    ), $show_when('rating_on'));
+    $fields[] = $el('div', 'mb-3', lang('Message'), array(
+        $label('comment_message', $w['label']),
+        $control('textarea', 'form-control', 'comment_message', 'comment_message', array($attr('rows', '5'))),
+    ));
+    $fields[] = $el('div', 'mb-3', lang('Your Name'), array(
+        $label('comment_name', lang('Your Name')),
+        $control('input', 'form-control', 'comment_name', 'comment_name', array($attr('type', 'text'))),
+    ), $show_when('name_is_typed'));
+    $fields[] = $el('div', 'mb-3', lang('Your Name'), array(
+        $label('comment_name_type', lang('Your Name')),
+        $control('select', 'form-select', 'comment_name_type', 'comment_name_type'),
+    ), $show_when('name_is_chosen'));
+    $fields[] = $el('p', 'mb-3 small', lang('Posting as'), array(
+        $span(lang('Posting as'), 'me-1', lang('Label')),
+        $el('strong', '', lang('Name'), array(), array('text' => lang('Jane Cooper'), '_bindings' => array('text' => '__comment_author_name'))),
+    ), $show_when('name_is_fixed'));
+    $fields[] = $el('div', 'mb-3', lang('Attach a File'), array(
+        $label('comment_file', lang('Attach a File')),
+        $control('input', 'form-control', 'comment_file', 'comment_file', array($attr('type', 'file'))),
+    ), $show_when('files_on'));
+    $fields[] = $el('div', 'mb-3 small', lang('Publish'), array(), array('_bindings' => array('section' => 'comment_publish')));
+    if ($w['watch']) {
+        $fields[] = $el('div', 'form-check mb-3', lang('Watch'), array(
+            $control('input', 'form-check-input', 'comment_watcher', 'comment_watcher', array($attr('type', 'checkbox'))),
+            $label('comment_watcher', $w['watch_box'], 'form-check-label'),
+        ), $show_when('watching_on'));
+    }
+    $fields[] = $el('div', 'mb-3', lang('CAPTCHA'), array(), array('_bindings' => array('section' => 'comment_captcha')));
+    $fields[] = $el('div', '', lang('Send Button'), array(
+        $el('button', 'btn btn-primary rounded-pill px-4', lang('Send Button'), array(), array('text' => $w['submit'], '_attrs' => array($attr('type', 'submit')), '_bindings' => array('action' => 'comment_submit'))),
+    ));
+
+    $small_button = function ($text, $action) use ($el, $attr) {
+        return $el('button', 'btn btn-sm btn-outline-secondary rounded-pill', lang('Send Button'), array(), array('text' => $text, '_attrs' => array($attr('type', 'submit')), '_bindings' => array('action' => $action)));
+    };
+
+    $children = array(
+        $heading('h2', $w['title'], 'h4 fw-bold mb-3', array('_bindings' => array('text' => '__comments_title', 'eo_visible_if' => 'has_comments'))),
+        $el('div', 'pg-hide-if-empty', lang('Comment List'), array(
+            $loop(array($el('div', 'd-flex mb-3', lang('Comment'), array(
+                $el('div', 'flex-shrink-0 border-start border-2 ms-2 me-3', lang('Reply Indent'), array(), $show_when('comment_is_reply')),
+                $card,
+            )))),
+            $el('div', 'mt-3', lang('Pagination'), array(), array('_bindings' => array('section' => 'comment_pagination'))),
+        )),
+        $para($w['empty'], 'text-body-secondary', $show_when('no_comments')),
+        $el('div', 'mt-4', lang('Add a comment'), array(
+            $heading('h3', $w['heading'], 'h5 fw-bold mb-2', $show_when('comments_open')),
+            $el('p', 'small text-body-secondary mb-3 pg-hide-if-empty', lang('Text'), array(), array('_bindings' => array('text' => '__comments_intro', 'eo_visible_if' => 'comments_open'))),
+            $el('div', 'alert alert-secondary', lang('Closed'), array(), array('_bindings' => array('text' => '__comments_closed_message', 'eo_visible_if' => 'comments_closed'))),
+            $el('div', 'alert alert-secondary d-flex flex-wrap align-items-center gap-2', lang('Sign in'), array(
+                $span($w['sign_in'], '', lang('Text')),
+                $link(lang('Sign in'), '#', 'alert-link', array(), array('rel' => 'nofollow', '_bindings' => array('href' => '__login_url'))),
+            ), $show_when('must_sign_in')),
+            $el('form', 'card card-body border-0 bg-body-tertiary rounded-4 p-4', lang('Comment Form'), $fields, array('_bindings' => array('action' => 'comment_form', 'eo_visible_if' => 'can_comment'))),
+        )),
+    );
+    if ($w['watch']) {
+        // Following the thread: how many follow it, the visitor's own
+        // button, and the staff's list of who follows.
+        $children[] = $el('div', 'small border-top pt-3 mt-4 d-flex flex-column gap-2 pg-hide-if-empty', lang('Watch'), array(
+            $el('p', 'mb-0 pg-hide-if-empty', lang('Text'), array(), $bind('__watcher_count_text')),
+            $el('form', 'd-flex flex-wrap align-items-center gap-2', lang('Watch Form'), array(
+                $messages('w-100'),
+                $small_button($w['follow'], 'comment_watch'),
+                $small_button($w['unfollow'], 'comment_unwatch'),
+            ), array('_bindings' => array('action' => 'comment_watch_form'))),
+            $el('div', '', lang('Watchers'), array(), array('_bindings' => array('section' => 'comment_watchers'))),
+        ), $show_when('watching_on'));
+    }
+    $children[] = $el('div', 'd-flex justify-content-end mt-3', lang('Staff Controls'), array(
+        $el('form', 'd-flex gap-2', lang('Open or Close'), array(
+            $small_button($w['close'], 'comment_close'),
+            $small_button($w['reopen'], 'comment_reopen'),
+        ), array('_bindings' => array('action' => 'comment_allow_new_form'))),
+    ), $show_when('is_staff'));
+
+    return $widget_root($children);
 };
 
 // ── Staff, newsletter and blog parts ────────────────────────────────────

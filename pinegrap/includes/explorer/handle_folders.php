@@ -24,6 +24,20 @@ function pg_explorer_folder_archived_value($request)
     return ((isset($request['archived']) ? (string) $request['archived'] : '') == '1') ? '1' : '';
 }
 
+// The order and archive values a settings save writes: the request's, or
+// for the root folder (folder_parent 0) the stored ones. The root has
+// neither field in the drawer: it is the only folder at its level, and
+// archiving it would take the pages at the top of the site out of the
+// page pickers.
+function pg_explorer_folder_settings_order_archive($folder, $request)
+{
+    if ((int) $folder['folder_parent'] == 0) {
+        return array((int) $folder['folder_order'], ($folder['folder_archived'] == '1') ? '1' : '');
+    }
+
+    return array((int) (isset($request['order']) ? $request['order'] : 0), pg_explorer_folder_archived_value($request));
+}
+
 // Asked for when the upload window opens rather than baked into the
 // page. The page is loaded once and then lived in: a folder made five
 // minutes ago was not in a list rendered at load, so the window fell
@@ -76,15 +90,15 @@ function pg_explorer_handle_folder_options($type, $request, $user, $folders_that
         'folders' => $folder_choices));
 }
 
-// The everyday subset of edit_folder.php, with its rules: order and
-// archive for anyone who can edit the folder, the two style fields
-// only for managers and above — exactly the roles that screen gives
-// the dropdowns to.
+// A folder's settings: order and archive for anyone who can edit the
+// folder, the two page style fields only for managers and above. The
+// root folder has only the styles, which are the site's default page
+// styles; its order and archive are left as they are.
 function pg_explorer_handle_folder_settings_get($type, $request, $user)
 {
     $folder_id = (int) (isset($request['item_folder_id']) ? $request['item_folder_id'] : 0);
 
-    $folder = db_item("SELECT folder_id, folder_name, folder_order, folder_style, mobile_style_id, folder_archived FROM folder WHERE folder_id = '" . e($folder_id) . "'");
+    $folder = db_item("SELECT folder_id, folder_name, folder_parent, folder_order, folder_style, mobile_style_id, folder_archived FROM folder WHERE folder_id = '" . e($folder_id) . "'");
 
     if (!$folder) {
         respond(array('status' => 'error', 'message' => lang('Sorry, the folder could not be found.')));
@@ -108,6 +122,7 @@ function pg_explorer_handle_folder_settings_get($type, $request, $user)
         'folder' => array(
             'id' => (int) $folder['folder_id'],
             'name' => $folder['folder_name'],
+            'is_root' => ((int) $folder['folder_parent'] == 0),
             'order' => (int) $folder['folder_order'],
             'archived' => ($folder['folder_archived'] == '1'),
             'access_control_type' => get_access_control_type($folder_id)),
@@ -120,7 +135,7 @@ function pg_explorer_handle_folder_settings_set($type, $request, $user)
 {
     $folder_id = (int) (isset($request['item_folder_id']) ? $request['item_folder_id'] : 0);
 
-    $folder = db_item("SELECT folder_id, folder_name FROM folder WHERE folder_id = '" . e($folder_id) . "'");
+    $folder = db_item("SELECT folder_id, folder_name, folder_parent, folder_order, folder_archived FROM folder WHERE folder_id = '" . e($folder_id) . "'");
 
     if (!$folder) {
         respond(array('status' => 'error', 'message' => lang('Sorry, the folder could not be found.')));
@@ -130,8 +145,7 @@ function pg_explorer_handle_folder_settings_set($type, $request, $user)
         respond(array('status' => 'error', 'message' => lang('Access denied')));
     }
 
-    $order = (int) (isset($request['order']) ? $request['order'] : 0);
-    $archived = pg_explorer_folder_archived_value($request);
+    list($order, $archived) = pg_explorer_folder_settings_order_archive($folder, $request);
 
     $sql_style_fields = '';
 

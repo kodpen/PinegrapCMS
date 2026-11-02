@@ -1,7 +1,8 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Bootstrap tooltips and popovers for the pages of the visual editor.
+ * Bootstrap tooltips and popovers for the pages of the visual editor, and
+ * the tab that holds the address's anchor.
  *
  * Bootstrap ships no automatic start for these two: an element marked
  * data-bs-toggle="tooltip" (the Tooltip option of the editor's panel) or
@@ -19,6 +20,14 @@
  * instance the design's own script made at load is kept, never doubled.
  * Without Bootstrap's script (a design with another framework) nothing
  * happens and a tooltip's title stays the browser's own.
+ *
+ * A link to an element inside a tab that is not shown (page#session-x, a
+ * session on the second day of a programme) would open the page on its
+ * first tab with nothing in view: Bootstrap opens no tab from the address.
+ * When the page loads, and when its anchor changes, the tab whose pane
+ * holds the anchor's element is shown through Bootstrap's own Tab (so its
+ * buttons and ARIA state follow) and the element is scrolled to. The
+ * markers data-bs-toggle="tab", "pill" and "list" bring the file too.
  *
  * Plain ES5 and no jQuery: it has to work whatever the design loads.
  *
@@ -64,6 +73,78 @@
             new Kind(el);
         } catch (e) {}
     }
+
+    // The toggle of a tab pane: the button or link naming it by
+    // data-bs-target or href.
+    function paneToggle(pane) {
+        var id = pane.id;
+        if (!id) {
+            return null;
+        }
+        var toggles = document.querySelectorAll('[data-bs-toggle="tab"], [data-bs-toggle="pill"], [data-bs-toggle="list"]');
+        for (var i = 0; i < toggles.length; i++) {
+            var named = toggles[i].getAttribute('data-bs-target') || toggles[i].getAttribute('href') || '';
+            if (named === '#' + id) {
+                return toggles[i];
+            }
+        }
+        return null;
+    }
+
+    // Show every closed tab pane around the element the address's anchor
+    // names, outermost first, then bring the element into view.
+    function showAnchorTab() {
+        var bs = window.bootstrap;
+        var id = '';
+
+        if (!bs || !bs.Tab || !window.location.hash) {
+            return;
+        }
+        try {
+            id = decodeURIComponent(window.location.hash.slice(1));
+        } catch (e) {
+            return;
+        }
+
+        var target = id ? document.getElementById(id) : null;
+        if (!target) {
+            return;
+        }
+
+        var panes = [];
+        for (var p = target; p && p !== document.body; p = p.parentNode) {
+            if (p.nodeType === 1 && p.classList.contains('tab-pane') && !p.classList.contains('active')) {
+                panes.unshift(p);
+            }
+        }
+        if (!panes.length) {
+            return;
+        }
+
+        for (var i = 0; i < panes.length; i++) {
+            var toggle = paneToggle(panes[i]);
+            if (!toggle) {
+                return;
+            }
+            try {
+                bs.Tab.getOrCreateInstance(toggle).show();
+            } catch (e) {
+                return;
+            }
+        }
+        // The pane is laid out as soon as it is active; the fade only
+        // changes its opacity.
+        if (target.scrollIntoView) {
+            target.scrollIntoView({ block: 'start' });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', showAnchorTab);
+    } else {
+        showAnchorTab();
+    }
+    window.addEventListener('hashchange', showAnchorTab);
 
     document.addEventListener('mouseover', start, true);
     document.addEventListener('focusin', start, true);

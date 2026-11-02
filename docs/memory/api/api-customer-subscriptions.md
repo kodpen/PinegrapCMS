@@ -22,4 +22,4 @@ description: GET /customers/{id}/subscriptions, the pause/resume/cancel moves wi
 ## Tested?
 - `tests/api_customer_subscriptions_test.php` (SQL, presenter, detail, routes and the stop order, event names, payload); `tests/api_customers_test.php` counts 12 customers routes. Not run against a database or a live service.
 
-Related: commerce/subscriptions-account.md, api/api-webhook-events.md, api/api-dry-run.md, plans/subscriptions-iyzico-stripe.md
+Related: commerce/subscriptions-account.md, api/api-webhook-events.md, api/api-dry-run.md, commerce/subscriptions-decisions.md

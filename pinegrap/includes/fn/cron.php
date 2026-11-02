@@ -410,12 +410,16 @@ function pg_cron_jobs()
             'stale_after' => 172800,
             'dispatch'    => true,
             'lane'        => 'heavy',
-            // One page render per record of the visual editor's lists can
-            // keep a large site's run past the default hour. The panel button
-            // and a crontab run take the same lock (pg_cron_claim()); an
-            // expired one lets a second run start, whose rows the first one's
-            // sweep now spares (pg_search_index_sweep_sql()).
-            'lock'        => 14400,
+            // A dispatched tick and a panel window request work within a
+            // budget (pg_cron_time_left(), SEO_ANALYZE_BUTTON_BUDGET), so the
+            // lock is minutes: a run killed outright, which releases nothing,
+            // keeps the heavy lane that long, not hours. A command-line run
+            // does the whole pass in one process and claims a longer lock of
+            // its own (pg_search_index_claim_seconds()). Every start takes
+            // the same lock (pg_cron_claim()); an expired one lets a second
+            // run start, whose rows the first one's sweep spares
+            // (pg_search_index_sweep_sql()).
+            'lock'        => 600,
         ),
         'seo_score_job' => array(
             'label'       => lang('SEO scores'),
@@ -1332,21 +1336,27 @@ function pg_cron_lock_seconds($jobs, $name, $default)
  * an unexpired lock. True without taking anything before the 2026.4.8
  * upgrade (no locked_until column) or without the table: nothing to lock in.
  *
- * The lock expires on its own after pg_cron_lock_seconds(). Release it with
- * pg_cron_release() from a shutdown handler, which runs after a normal end,
- * an exit() and a fatal error; a process killed outright runs none, and a
- * lock nothing can clear would keep the job, and its lane, out for good.
+ * The lock expires on its own after pg_cron_lock_seconds(), or after
+ * $seconds when the caller knows its run is longer than the job's ticks.
+ * Release it with pg_cron_release() from a shutdown handler, which runs after
+ * a normal end, an exit() and a fatal error; a process killed outright runs
+ * none, and a lock nothing can clear would keep the job, and its lane, out
+ * for good.
  *
  * @param string $name Catalogue name.
+ * @param int|null $seconds Lock length of this claim, at least a minute;
+ *                          null for the catalogue's.
  * @return bool
  */
-function pg_cron_claim($name)
+function pg_cron_claim($name, $seconds = null)
 {
     if (!pg_cron_lock_ready()) {
         return true;
     }
 
-    $seconds = pg_cron_lock_seconds(pg_cron_jobs(), $name, defined('JOB_DISPATCH_LOCK_SECONDS') ? JOB_DISPATCH_LOCK_SECONDS : null);
+    $seconds = ($seconds !== null)
+        ? max(60, (int) $seconds)
+        : pg_cron_lock_seconds(pg_cron_jobs(), $name, defined('JOB_DISPATCH_LOCK_SECONDS') ? JOB_DISPATCH_LOCK_SECONDS : null);
 
     // Claimed in one statement, because a job that never ran has no row yet
     // and a read followed by a write would let two starts both take it. The

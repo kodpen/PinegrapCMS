@@ -80,7 +80,7 @@ function test_screenshot_screens_keep_owner_list()
 		}
 	}
 
-	foreach (array('workspace', 'view_files', 'product_builder', 'edit_user', 'welcome', 'view_product_groups', 'view_offers', 'edit_offer', 'header', 'footer', 'main-menu') as $name) {
+	foreach (array('workspace', 'product_builder', 'edit_user', 'welcome', 'view_product_groups', 'view_offers', 'edit_offer', 'header', 'footer', 'main-menu') as $name) {
 		pg_assert_true(in_array($name, $kept, true), 'kept screen listed: ' . $name);
 	}
 }

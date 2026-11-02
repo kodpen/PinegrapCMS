@@ -304,6 +304,36 @@ function test_designer_messages_background_render_leaves_session()
 	}
 }
 
+// A message-only state (an order that cannot be found, a signed-out account
+// page) drawn by a background render prints its alert in place and writes
+// nothing to the session: before, every Preview and publish left one more
+// "Order not found" for the next order page (#4815).
+function test_designer_messages_message_only_background_render_writes_no_session()
+{
+	$saved = isset($_SESSION) ? $_SESSION : null;
+	$saved_seo = pg_seo_rendering();
+	$_SESSION = array();
+
+	pg_seo_rendering(true);
+	$html = _pg_sw_render_message_only(_test_msg_tree('order_view'), 'order_view', 'Order not found. <a href="/my-account">My Account</a>', 'warning');
+	pg_seo_rendering($saved_seo);
+
+	pg_assert_contains('Order not found.', $html, 'the alert is drawn in the preview');
+	pg_assert_contains('alert-warning', $html, 'as a warning');
+	pg_assert_true(empty($_SESSION['software']['liveforms']), 'nothing is left in the session');
+
+	$saved_ctx = pg_sw_render_context(array('email' => true));
+	_pg_sw_render_message_only(_test_msg_tree('my_account'), 'my_account', 'Please sign in.', 'notice');
+	pg_sw_render_context($saved_ctx);
+	pg_assert_true(empty($_SESSION['software']['liveforms']), 'an e-mail render leaves none either');
+
+	if ($saved === null) {
+		unset($_SESSION);
+	} else {
+		$_SESSION = $saved;
+	}
+}
+
 // A custom form whose fields are drawn on the page is named by the drawn
 // page: the request's page when a visitor opens it, the render context's
 // page_id in the editor's Preview, where no page is registered.

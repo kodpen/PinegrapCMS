@@ -715,9 +715,10 @@ if (!$_POST) {
 
 
 
-    if ($comments_label == '') {
-        $comments_label = 'Comment';
-    }
+    // An empty label is shown in the site's language (get_comment_label());
+    // the field stays empty, with that word as its placeholder, so a save
+    // does not store the English default.
+    $comments_label = pg_comment_label_stored($comments_label);
 
     // if allow new comments is on or if comments are disabled, then check the checkbox
     if (($comments_allow_new_comments == '1') || ($comments == '0')) {
@@ -966,7 +967,7 @@ if (!$_POST) {
                                                             <div class="row">
                                                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                                                     <label for="comments_label" class="form-label">' . lang('Comment Label') . '</label>
-                                                                    <input value="' . h($comments_label) . '" type="text" name="comments_label" id="comments_label" class="form-control" maxlength="100"/>
+                                                                    <input value="' . h($comments_label) . '" type="text" name="comments_label" id="comments_label" class="form-control" maxlength="100" placeholder="' . h(lang('Comment')) . '"/>
                                                                 </div>
                                                                 <div class="col-12 md:col-6 lg:col-8 my-3">
                                                                     <label for="comments_message" class="form-label">' . lang('Add Comment Message') . '</label>

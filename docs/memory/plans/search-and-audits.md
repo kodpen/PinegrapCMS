@@ -1,6 +1,6 @@
 ---
 name: search-and-audits
-description: Plan (owner request 2026-11-01): search index and page audits as resumable passes that survive a bad page or a killed job; one rule set for panel and editor; one screen; SA1-SA13
+description: Plan (owner request 2026-11-01): search index and page audits as resumable passes that survive a bad page or a killed job; one rule set for panel and editor; one screen; SA1-SA14
 ---
 
 ## What is wrong now?
@@ -18,7 +18,7 @@ description: Plan (owner request 2026-11-01): search index and page audits as re
 - One screen for the four engines: state, failures, switches, Run now.
 
 ## Which files hold the rest?
-- `search-and-audits-steps.md`: SA1-SA5. `search-and-audits-steps-2.md`: SA6-SA13.
+- `search-and-audits-steps.md`: SA1-SA5. `search-and-audits-steps-2.md`: SA6-SA14.
 - `search-and-audits-causes.md`: why runs fail and passes stall, by file and line.
 - `search-and-audits-rules.md`: the three rule sets side by side.
 

@@ -7,7 +7,9 @@
  * date text, and pg_products_import_to_csv() over a small .ods written here,
  * which goes through PHPExcel's OpenDocument reader. Also the price and row
  * cell readers of an import file in includes/fn/ecommerce.php
- * (pg_products_import_price_cents() needs product_builder.php).
+ * (pg_products_import_price_cents() needs product_builder.php), the reason a
+ * refused price or stock cell is given, and the import loop's handling of a
+ * product in the Recycle Bin.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -169,32 +171,42 @@ function test_products_import_row_prices()
 	$keys = array('price' => 1, 'extra_shipping_cost' => 2, 'compare_at_price' => 3);
 
 	pg_assert_same(
-		array('prices' => array('price' => 1250, 'extra_shipping_cost' => 0), 'refused' => false),
+		array('prices' => array('price' => 1250, 'extra_shipping_cost' => 0), 'refused' => false, 'too_large' => false),
 		pg_products_import_row_prices(array('Kalem', '12,50', '0.00', ''), $keys),
 		'an empty compare-at cell leaves the price read'
 	);
 	pg_assert_same(
-		array('prices' => array(), 'refused' => true),
+		array('prices' => array(), 'refused' => true, 'too_large' => false),
 		pg_products_import_row_prices(array('Kalem', 'abc', '0.00', ''), $keys),
 		'a price that is not an amount refuses the row'
 	);
 	pg_assert_same(
-		array('prices' => array('price' => 1250, 'extra_shipping_cost' => 0), 'refused' => false),
+		array('prices' => array(), 'refused' => true, 'too_large' => true),
+		pg_products_import_row_prices(array('Kalem', '30.000.000,00', '0.00', ''), $keys),
+		'a price above the column top refuses the row as too large'
+	);
+	pg_assert_same(
+		array('prices' => array(), 'refused' => true, 'too_large' => true),
+		pg_products_import_row_prices(array('Kalem', '10,00', '', '25.000.000,00'), $keys),
+		'so does a compare-at price above the top'
+	);
+	pg_assert_same(
+		array('prices' => array('price' => 1250, 'extra_shipping_cost' => 0), 'refused' => false, 'too_large' => false),
 		pg_products_import_row_prices(array('Kalem', '12,50', '0.00', '-5'), $keys),
 		'a compare-at price starting with a minus sign is left out without refusing the row'
 	);
 	pg_assert_same(
-		array('prices' => array('price' => 1250, 'compare_at_price' => 1500), 'refused' => false),
+		array('prices' => array('price' => 1250, 'compare_at_price' => 1500), 'refused' => false, 'too_large' => false),
 		pg_products_import_row_prices(array('Kalem', '12,50', ' ', '15'), $keys),
 		'a cell of spaces alone is none'
 	);
 	pg_assert_same(
-		array('prices' => array('price' => 1250), 'refused' => false),
+		array('prices' => array('price' => 1250), 'refused' => false, 'too_large' => false),
 		pg_products_import_row_prices(array('Kalem', '12,50'), $keys),
 		'a row shorter than the header'
 	);
 	pg_assert_same(
-		array('prices' => array(), 'refused' => false),
+		array('prices' => array(), 'refused' => false, 'too_large' => false),
 		pg_products_import_row_prices(array('Kalem'), array()),
 		'a file without money columns'
 	);
@@ -217,4 +229,67 @@ function test_products_import_cell_readers_live_in_the_ecommerce_module()
 		$function = new ReflectionFunction($name);
 		pg_assert_same(realpath(PG_FUNCTIONS_DIR . '/includes/fn/ecommerce.php'), realpath((string) $function->getFileName()), $name);
 	}
+}
+
+// A refused price cell says why: not an amount, or an amount the price
+// columns cannot hold (more than 21.474.836,47, or more than fifteen digits,
+// as on the product screen).
+function test_products_import_price_read()
+{
+	pg_assert_same(array('cents' => 1250, 'too_large' => false), pg_products_import_price_read('12,50'), 'an amount');
+	pg_assert_same(array('cents' => 2147483647, 'too_large' => false), pg_products_import_price_read('21.474.836,47'), 'the top, typed');
+	pg_assert_same(array('cents' => null, 'too_large' => true), pg_products_import_price_read('30.000.000,00'), 'above the top, typed');
+	pg_assert_same(array('cents' => null, 'too_large' => true), pg_products_import_price_read('30000000'), 'above the top, a spreadsheet number');
+	pg_assert_same(array('cents' => null, 'too_large' => true), pg_products_import_price_read('1E+30'), 'above the top, an exponent');
+	pg_assert_same(array('cents' => null, 'too_large' => true), pg_products_import_price_read('1234567890123456789,00'), 'more than fifteen digits');
+	pg_assert_same(array('cents' => null, 'too_large' => false), pg_products_import_price_read('abc'), 'words are not an amount');
+	pg_assert_same(array('cents' => null, 'too_large' => false), pg_products_import_price_read('-5'), 'a minus sign is not an amount');
+	pg_assert_same(array('cents' => null, 'too_large' => false), pg_products_import_price_read('12/50'), 'other characters are not an amount');
+	pg_assert_same(pg_products_import_price_read('1.234,56')['cents'], pg_products_import_price_cents('1.234,56'), 'the cents reader reads the same');
+}
+
+// A stock cell that is not a whole count of zero or more says why: a number
+// with a fraction or a minus sign is not whole; anything else is not a number.
+function test_products_import_quantity_refusal()
+{
+	pg_assert_same('not_whole', pg_products_import_quantity_refusal('1,5'), 'a fraction');
+	pg_assert_same('not_whole', pg_products_import_quantity_refusal('-3'), 'a minus sign');
+	pg_assert_same('not_whole', pg_products_import_quantity_refusal(' 2.25 '), 'a fraction with a dot');
+	pg_assert_same('not_number', pg_products_import_quantity_refusal('ten'), 'words');
+	pg_assert_same('not_number', pg_products_import_quantity_refusal('5 pcs'), 'a unit');
+}
+
+// Each refusal has its own list and message, so the operator reads the real
+// reason: too large, not whole, or not a number / amount.
+function test_products_import_names_the_reason_a_row_is_left_out()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/import_products.php');
+
+	pg_assert_contains("if (\$row_read['too_large']) {\n                    \$rows_price_too_large[] = ", $source, 'a price above the top has its own list');
+	pg_assert_contains('is too large (at most {var:1}): {var:2}.', $source, 'and says the top');
+	pg_assert_contains('pg_money_text(PG_PRODUCT_PRICE_MAX / 100', $source, 'the top in the base currency');
+	pg_assert_contains("\$decimals_problem = pg_products_import_row_decimals_problem(\$row, \$decimal_positions);", $source, 'the decimal cells say why');
+	pg_assert_contains("if (\$decimals_problem === 'too_large') {", $source, 'a weight or size above the top has its own list');
+	pg_assert_contains('a weight, length, width or height in them is too large: {var:1}.', $source, 'and its own message');
+	pg_assert_contains("if (pg_products_import_quantity_refusal(\$quantity_cell) === 'not_whole') {", $source, 'a stock cell says why');
+	pg_assert_contains('their stock quantity is not a whole number of zero or more: {var:1}.', $source, 'a fraction or minus sign has its own message');
+}
+
+// A row naming a product in the Recycle Bin is not written, whether Update
+// Existing Products is on or off, and is listed; an update finds its product
+// by id, not by name.
+function test_products_import_leaves_a_binned_product_alone()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/import_products.php');
+
+	pg_assert_contains("\$bin_ready = pg_catalog_bin_ready();", $source, 'the bin column is read only where it exists');
+	pg_assert_contains("(\$bin_ready ? ', recycled' : '')", $source, 'the product lookup reads it');
+
+	$binned = strpos($source, '$rows_binned[] = ');
+	$update = strpos($source, "if (\$update_existing_products == '1') {");
+	pg_assert_true(($binned !== false) && ($update !== false) && ($binned < $update), 'checked before Update Existing Products');
+	pg_assert_contains('because their product is in the Recycle Bin: {var:1}.', $source, 'the rows are named');
+
+	pg_assert_contains("WHERE id = '\" . (int) \$product_id . \"'\";", $source, 'the update finds the product by id');
+	pg_assert_same(0, substr_count($source, "WHERE name = '\" . escape(\$row[\$name_key]) . \"'"), 'not by name');
 }

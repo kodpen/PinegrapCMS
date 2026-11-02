@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Source pins for field help that was only a hover popover: the folder,
+ * Source pins for field help that was only a hover popover: the
  * design file, menu item, page and catalog address, migration, Paraşüt id,
  * Custom layout and barcode stock hints are printed under their field as
  * form-text the field points at with aria-describedby, with no title,
@@ -28,10 +28,6 @@ function field_hint_visible_source($path)
 function field_hint_visible_cases()
 {
 	return array(
-		'includes/forms/folder_form.php' => array(
-			'hints' => array('order_hint', 'folder_archived_hint', 'access_control_type_hint'),
-			'gone' => array("data-bs-content=\"' . lang('Display order", "data-bs-content=\"' . lang('Archive Folder", "data-bs-content=\"' . lang('Access Control for all"),
-		),
 		'includes/forms/design_file_form.php' => array(
 			'hints' => array('design_hint', 'theme_hint'),
 			'gone' => array('data-bs-original-title', 'data-bs-content'),
@@ -98,7 +94,6 @@ function test_field_hint_visible_hints_are_printed()
 function test_field_hint_visible_fields_point_at_their_hint()
 {
 	$pins = array(
-		'includes/forms/folder_form.php' => array('id="order" aria-describedby="order_hint"', 'id="folder_archived" aria-describedby="folder_archived_hint"', 'id="access_control_type" aria-describedby="access_control_type_hint"', '<div class="form-text" id="order_hint">'),
 		'includes/forms/design_file_form.php' => array('aria-describedby="design_hint" id="design"', 'aria-describedby="theme_hint" id="theme"'),
 		'includes/forms/menu_item_form.php' => array("'aria-describedby'=>'security_hint'", 'id="security_hint"'),
 		'includes/forms/product_group_form.php' => array('id="address_name" aria-describedby="address_name_hint"', '<div class="form-text" id="address_name_hint">'),

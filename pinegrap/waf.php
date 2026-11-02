@@ -1078,7 +1078,7 @@ function waf_table_has_column($table, $column)
 
     $cache[$key] = false;
 
-    if (!isset(db::$con) || !db::$con) {
+    if (!class_exists('db', false) || !isset(db::$con) || !db::$con) {
         return false;
     }
 
