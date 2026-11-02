@@ -11130,7 +11130,9 @@ function pg_gift_card_list_cells($gift_card)
     $username = (string) ($gift_card['last_modified_username'] ?? '');
 
     return array(
-        'notes'         => array('html' => nl2br(h((string) $gift_card['notes'])), 'class' => 'align-middle'),
+        // Wrapped in a box of its own width: the list's cells do not wrap,
+        // so a long note pushed the other columns off the screen.
+        'notes'         => array('html' => '<div class="text-wrap text-break" style="max-width:20rem;">' . nl2br(h((string) $gift_card['notes'])) . '</div>', 'class' => 'align-middle text-wrap'),
         'last_modified' => array(
             'html'  => get_relative_time(array('timestamp' => $gift_card['last_modified_timestamp']))
                 . (($username !== '') ? ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($username)))) : ''),

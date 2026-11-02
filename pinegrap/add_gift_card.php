@@ -161,7 +161,7 @@ if (!$_POST) {
                 '" . e($amount) . "',
                 '" . e($amount) . "',
                 '" . e($notes) . "',
-                '" . e(prepare_form_data_for_input($expiration_date, 'date')) . "',
+                '" . e(pg_gift_card_form_expiration($expiration_date)) . "',
                 '" . USER_ID . "',
                 UNIX_TIMESTAMP(),
                 '" . USER_ID . "',
