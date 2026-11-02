@@ -3341,6 +3341,7 @@
     "The purchase order is open again.": "Satın alma siparişi yeniden açık.",
     "The purchase order was cancelled.": "Satın alma siparişi iptal edildi.",
     "The purchase order was e-mailed to the supplier.": "Satın alma siparişi tedarikçiye e-postayla gönderildi.",
+    "The quantity must be a whole number from 1 to 9999.": "Adet 1 ile 9999 arasında tam sayı olmalı.",
     "The question of the topic has an answer. When a reply solves your question, say so in a reply, and a moderator marks the topic as solved.": "Konudaki sorunun bir yanıtı var demektir. Bir yanıt sorunuzu çözdüğünde bunu bir yanıtla belirtin; bir moderatör konuyu çözüldü olarak işaretler.",
     "The question of the topic has an answer. When a reply solves your question, say so in a reply: a moderator marks the topic as solved and shows that reply first, as the best answer.": "Konudaki sorunun bir yanıtı var demektir. Bir yanıt sorunuzu çözdüğünde bunu bir yanıtla belirtin: bir moderatör konuyu çözüldü olarak işaretler ve o yanıtı en iyi yanıt olarak en başta gösterir.",
     "The question was open for more than 10 minutes. Please answer the new one.": "Soru 10 dakikadan uzun süre açık kaldı. Lütfen yeni soruyu yanıtlayın.",

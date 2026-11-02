@@ -209,7 +209,7 @@ if ($action !== '') {
             break;
 
         case 'set_qty':
-            $res = local_sale_set_qty($item_id, (int) ($_POST['quantity'] ?? 0));
+            $res = local_sale_set_qty($item_id, (string) ($_POST['quantity'] ?? ''));
             break;
 
         // The screen before this one sent +1 / -1; turned into the absolute
@@ -217,11 +217,11 @@ if ($action !== '') {
         case 'increase_qty':
         case 'decrease_qty':
             $current = (int) db_value("SELECT quantity FROM order_items WHERE id = '" . $item_id . "' AND order_id = '" . local_sale_order_id() . "' LIMIT 1");
-            $res = local_sale_set_qty($item_id, $current + (($action === 'increase_qty') ? 1 : -1));
+            $res = local_sale_set_qty($item_id, (string) max(0, $current + (($action === 'increase_qty') ? 1 : -1)));
             break;
 
         case 'remove_item':
-            $res = local_sale_set_qty($item_id, 0);
+            $res = local_sale_set_qty($item_id, '0');
             break;
 
         case 'clear_cart':
@@ -323,6 +323,7 @@ $config = array(
         'noProductsEnter' => lang('No product found. Enter reads the text as a barcode.'),
         'inStock' => lang('In stock: {var:1}'),
         'outOfStock' => lang('Out of stock'),
+        'qtyInvalid' => lang('The quantity must be a whole number from 1 to 9999.'),
         'vatIncluded' => local_sale_till_price_label(),
         'noCustomers' => lang('No customers found.'),
         'customerPlaceholder' => $erp_on ? lang('Name, company, e-mail or account') : lang('Name, company or e-mail'),
