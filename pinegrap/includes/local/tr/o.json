@@ -607,6 +607,7 @@
     "Only the first {var:1} rows were read. Please upload the rest in another file.": "Yalnızca ilk {var:1} satır okundu. Lütfen kalanını başka bir dosyayla yükleyin.",
     "Only the first {var:1} ticked documents are handled per click; {var:2} were left for the next one.": "Bir tıklamada ilk {var:1} işaretli belge işlenir; {var:2} belge sonrakine kaldı.",
     "Only the first {var:1} ticked rows are handled per click; {var:2} were left for the next one.": "Bir tıklamada ilk {var:1} işaretli satır işlenir; {var:2} satır sonrakine kaldı.",
+    "Only the generic invoice CSV writes purchase invoices.": "Alış faturalarını yalnız genel fatura CSV'si yazar.",
     "Only the last four characters are kept for display. A new secret is shown once; the previous one keeps working for 24 hours.": "Gösterim için yalnız son dört hane saklanır. Yeni gizli anahtar bir kez gösterilir; öncekisi 24 saat daha çalışmaya devam eder.",
     "Only the latest {var:1} of the {var:2} matching invoices are shown; pick a due-date or e-document view to narrow the list.": "Eşleşen {var:2} faturanın yalnızca en yeni {var:1} tanesi gösteriliyor; listeyi daraltmak için bir vade veya e-belge görünümü seçin.",
     "Only the moderators. Your report never appears on the site, and the member who wrote the post is never told who reported it.": "Yalnızca moderatörler. Şikâyetiniz sitede hiçbir zaman görünmez ve gönderiyi yazan üyeye kimin şikâyet ettiği asla söylenmez.",
