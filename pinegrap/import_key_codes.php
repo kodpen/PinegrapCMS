@@ -54,6 +54,8 @@ if (!$_POST) {
                                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
                                             <input type="file" id="file" name="file" class="form-control w-auto" required />
                                             ' . pg_upload_limit_hint() . '
+                                            <div class="form-text">' . lang('The first line names the columns: key_code, offer_code, enabled, expiration_date, notes, single_use, report (the headings of the export). Only key_code is required; a new code needs an offer_code. Separate cells with a comma, semicolon or tab.') . '</div>
+                                            <div class="form-text">' . lang('enabled and single_use: 1/0, yes/no, true/false. expiration_date: YYYY-MM-DD, day.month.year or the site\'s date format; empty never expires. report: key_code or offer_code.') . '</div>
                                         </div>
                                     </div>
                                 </div>       
@@ -63,7 +65,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_import" name="submit_import" value="Import" class="btn my-1  btn-solid theme-success " ><span class="material-icons me-3">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import Key Codes') ) . '</span></button>
+                                <button type="submit" id="submit_import" name="submit_import" value="Import" class="btn my-1  btn-solid theme-success " ><span class="material-icons me-3" aria-hidden="true">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import Key Codes') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -157,6 +159,13 @@ if (!$_POST) {
             if (!$offer_found[$values['offer_code']]) {
                 $problem = lang('Sorry, we cannot find an offer for the offer code that you entered.') . ' (' . $values['offer_code'] . ')';
             }
+        }
+
+        // A key code that is an offer's own code would never be read:
+        // checkout finds the offer by its code first (the rule of the key
+        // code form and the API).
+        if (($problem === '') && (db_value("SELECT COUNT(*) FROM offers WHERE code = '" . e($values['code']) . "'") > 0)) {
+            $problem = lang('This is an offer\'s own code. Checkout would apply that offer and never read the key code.');
         }
 
         // The rows already there with this code (the column is not unique).

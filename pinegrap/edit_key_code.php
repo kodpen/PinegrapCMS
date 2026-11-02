@@ -90,7 +90,7 @@ if (!$_POST) {
 
         db("DELETE FROM key_codes WHERE id = '" . e($liveform->get_field_value('id')) . "'");
         
-        log_activity(lang(array('string'=>'key code ({var:1}) was deleted','vars'=>$key_code['code'])), $_SESSION['sessionusername']);
+        log_activity(lang(array('string'=>'Key code ({var:1}) was deleted.','vars'=>$key_code['code'])), $_SESSION['sessionusername']);
         $liveform->remove_form();
         $liveform_view_key_codes = new liveform('view_key_codes');
         $liveform_view_key_codes->add_notice(lang('The key code has been deleted.'));
@@ -121,7 +121,7 @@ if (!$_POST) {
             WHERE id = ?",
             array_merge(pg_key_code_form_values($liveform, $liveform->get_field_value('code'), $key_code['enabled']), array((string) USER_ID, (string) $id))) or output_error('Query failed.');
 
-        log_activity(lang(array('string'=>'key code ({var:1}) was modified','vars'=>$liveform->get_field_value('code'))), $_SESSION['sessionusername']);
+        log_activity(lang(array('string'=>'Key code ({var:1}) was modified.','vars'=>$liveform->get_field_value('code'))), $_SESSION['sessionusername']);
         $liveform->remove_form();
         $liveform_view_key_codes = new liveform('view_key_codes');
         $liveform_view_key_codes->add_notice(lang('The key code has been saved.'));
