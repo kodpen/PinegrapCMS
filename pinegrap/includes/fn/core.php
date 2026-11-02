@@ -787,6 +787,19 @@ function h($content)
     return htmlspecialchars($content, ENT_QUOTES | ENT_HTML401, 'UTF-8');
 }
 
+// CSS printed inside a <style> element. Its content is raw text: entities
+// are not decoded there, so h() would turn quoted font names and child
+// selectors into broken CSS. Only a closing </style is defused, the one
+// sequence that would end the element early.
+function pg_style_tag_css($css)
+{
+    if ($css === null) {
+        return '';
+    }
+
+    return str_ireplace('</style', '<\\/style', (string) $css);
+}
+
 // Defuse PHP open tags in markup that is printed raw into a page.
 //
 // get_page_content.php evaluates the assembled page as a PHP template when

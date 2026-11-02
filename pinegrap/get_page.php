@@ -3287,7 +3287,10 @@ else
 	{
 		// disable all links in the content
 		$content = disable_links_in_content($content);
-		$code = $_SESSION['software']['theme_designer'][$_GET['theme_id']]['code'];
+		// theme_id is a key of the theme designer session; anything that is
+		// not a plain value (an array from theme_id[]=) cannot be one.
+		$theme_id = (isset($_GET['theme_id']) && is_scalar($_GET['theme_id'])) ? (string) $_GET['theme_id'] : '';
+		$code = (string) ($_SESSION['software']['theme_designer'][$theme_id]['code'] ?? '');
 		// if the device type is mobile then output mobile border constraint
 		if ($device_type == 'mobile')
 		{
@@ -3310,7 +3313,7 @@ else
 		// Replace software directory placeholders.
 		$code = preg_replace('/{software_directory}/i', pg_regex_replacement(SOFTWARE_DIRECTORY), $code);
 		// put the code that is in the session into the document's head tag
-		$content = preg_replace('/(<\/head>)/i', pg_regex_replacement('<style type="text/css">' . h($code) . '</style>') . '$1', $content);
+		$content = preg_replace('/(<\/head>)/i', pg_regex_replacement('<style type="text/css">' . pg_style_tag_css($code) . '</style>') . '$1', $content);
 	}
 }
 // Stamp local assets with their last-modified time on the way out.
