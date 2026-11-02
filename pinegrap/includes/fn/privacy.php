@@ -172,6 +172,7 @@ function pg_consent_log_sources()
         'api',          // an application through the external API
         'iys',          // pulled back from İYS
         'form',         // a custom form: a double opt-in group or a field bound to the e-mail opt-in
+        'complaint',    // a spam complaint reported back for a message (includes/fn/mail_bounces.php)
     );
 }
 
@@ -505,10 +506,38 @@ function pg_consent_log_answers(array $person, array $answers, $source)
     foreach ($changes as $change) {
         if (pg_consent_log_record($change + array('source' => (string) $source) + $stored) > 0) {
             $written++;
+
+            // The person's own yes to e-mail marketing is an explicit
+            // resubscribe: a bounce or complaint block on the address lifts.
+            if (pg_consent_log_resubscribes($change) && function_exists('pg_mail_bounce_clear') && isset($stored['email'])) {
+                pg_mail_bounce_clear($stored['email']);
+            }
         }
     }
 
+    // A changed address is a new address: an old block on it no longer
+    // stands for the person who now gives it.
+    if (
+        isset($person['previous_email'], $stored['email'])
+        && (strtolower(trim((string) $person['previous_email'])) !== strtolower(trim((string) $stored['email'])))
+        && function_exists('pg_mail_bounce_clear')
+    ) {
+        pg_mail_bounce_clear($stored['email']);
+    }
+
     return $written;
+}
+
+/**
+ * Whether a recorded change is a yes to e-mail marketing (the global opt-in
+ * or a list), which clears a bounce block on the address. Pure.
+ *
+ * @param array $change  channel, purpose, status
+ * @return bool
+ */
+function pg_consent_log_resubscribes(array $change)
+{
+    return (isset($change['channel'], $change['status']) && ($change['channel'] === 'email') && ($change['status'] === 'granted'));
 }
 
 /**

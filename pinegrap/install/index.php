@@ -8952,6 +8952,7 @@ function get_tables() {
 		'key_codes',
 		'log',
 		'login_regions',
+		'mail_bounces',
 		'mail_outbox',
 		'marketplace_accounts',
 		'marketplace_categories',
