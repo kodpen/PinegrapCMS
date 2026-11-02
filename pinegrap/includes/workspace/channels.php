@@ -155,6 +155,9 @@ function ws_channel_detail($viewer, $channel)
     // Whether its voice messages are transcribed, for the menu's switch
     // (voice.php); null where it cannot be switched.
     $brief['voice'] = function_exists('ws_voice_channel_state') ? ws_voice_channel_state($channel) : null;
+    // Why the assistants would not hear a recording made here ('' when they
+    // will): the recorder's hint (voice.php, ws_voice_channel_unheard()).
+    $brief['voice_unheard'] = function_exists('ws_voice_channel_unheard') ? ws_voice_channel_unheard($channel) : '';
 
     // The outside applications a mention here reaches, for the @ picker
     // (app_handles.php).

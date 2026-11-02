@@ -10,7 +10,7 @@ description: A voice message that asks Claude, Pinegrap AI or an MCP server (V4c
 - The watchdog now runs before the transcripts switch in `ws_voice_kick()`, so a recording queued before transcripts were switched off still fails after a day and asks.
 
 ## What does the assistant read?
-- `ws_ai_heard_text()` through `ws_voice_heard()`: the words, then `[voice message, machine transcript: …]`, or `[voice message, not transcribed]` for a recording without one, so the answer says it did not hear it rather than guessing. Claude reads `message.transcript` (workspace-voice-assistants.md).
+- `ws_ai_heard_text()` through `ws_voice_heard()`: the words, then `[voice message, machine transcript: …]`, or `[voice message, not transcribed: <why>]` for a recording without one, with a line after the request saying why and where the setting is (workspace-voice-unheard.md), so the answer says it did not hear it rather than guessing. Claude reads `message.transcript` (workspace-voice-assistants.md).
 
 ## What does the screen do?
 - The mic stays in place of Send while the box holds only tags (`voiceTags()`: tokens and `@ai`, nothing else); Stop sends them as the recording's body (`voiceSend()`), and they leave the box (`clearSent()`). Words in the box still stay there and do not go with it.

@@ -3097,6 +3097,7 @@
     "Switch the Google Merchant Center feed on and save, so it has an address Google can fetch.": "Google'ın alabileceği bir adresi olması için Google Merchant Center akışını açıp kaydedin.",
     "Switch the account on and let it bring orders in before registering a webhook. Deliveries are refused until then.": "Webhook kaydetmeden önce hesabı açın ve siparişleri içeri almasını sağlayın. O zamana kadar gönderimler reddedilir.",
     "Switch the theme": "Tema değiştir",
+    "Switch them on: Workspace Settings › Voice message transcripts": "Açmak için: Çalışma Alanı Ayarları › Sesli mesaj dökümleri",
     "Switched on but hidden until their settings are complete: {var:1}": "Açık ama ayarları tamamlanana kadar gizli: {var:1}",
     "Switched on the pre-information form and the distance sales contract at checkout": "Ödeme adımında ön bilgilendirme formu ve mesafeli satış sözleşmesi onayı açıldı",
     "Symbol": "Sembol",
