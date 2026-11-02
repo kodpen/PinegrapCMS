@@ -18,13 +18,13 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 
 - `product_list`: open
 
-- `prototype`: open
+- `prototype`: #4990
 
-- `prototype_links`: open
+- `prototype_links`: clean
 
-- `qr`: open
+- `qr`: clean
 
-- `record_revisions`: open
+- `record_revisions`: clean
 
 - `returns`: clean (#4619)
 
