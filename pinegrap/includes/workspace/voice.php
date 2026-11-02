@@ -456,6 +456,11 @@ function ws_voice_settings_post($viewer, $liveform)
     $url = ws_voice_url_clean($_POST['voice_url'] ?? '');
     $model = trim((string) ($_POST['voice_model'] ?? ''));
     $key = trim((string) ($_POST['voice_key'] ?? ''));
+    $speech_enabled = !empty($_POST['voice_speech_enabled']);
+    $speech_url = ws_voice_speech_url_clean($_POST['voice_speech_url'] ?? '');
+    $speech_model = trim((string) ($_POST['voice_speech_model'] ?? ''));
+    $speech_voice = trim((string) ($_POST['voice_speech_voice'] ?? ''));
+    $speech_key = trim((string) ($_POST['voice_speech_key'] ?? ''));
 
     if (($url !== '') && !ws_voice_url_valid($url)) {
         $liveform->add_error(lang('The service\'s address starts with https:// and ends before /audio/transcriptions, for example https://api.openai.com/v1'));
@@ -467,23 +472,26 @@ function ws_voice_settings_post($viewer, $liveform)
         return;
     }
 
-    $sealed = null;
+    if (($speech_url !== '') && !ws_voice_url_valid($speech_url)) {
+        $liveform->add_error(lang('The speech service\'s address starts with https:// and ends before /audio/speech, for example https://api.openai.com/v1'));
+        return;
+    }
 
-    if ($key !== '') {
-        if (!ws_voice_key_shape_ok($key)) {
-            $liveform->add_error(lang('The key is 8 to 512 characters without spaces.'));
-            return;
-        }
+    if (($speech_model !== '') && !ws_voice_model_valid($speech_model)) {
+        $liveform->add_error(lang('The model name may hold letters, digits and . _ : / - only.'));
+        return;
+    }
 
-        if (!function_exists('encrypt_string_with_iv') || !defined('ENCRYPTION_KEY') || (ENCRYPTION_KEY === '')) {
-            $liveform->add_error(lang('The key cannot be stored: encryption is not available on this site.'));
-            return;
-        }
+    if (($speech_voice !== '') && !ws_voice_speech_voice_valid($speech_voice)) {
+        $liveform->add_error(lang('The voice name may hold letters, digits and . _ : / - only.'));
+        return;
+    }
 
-        list($cipher, $iv) = encrypt_string_with_iv($key);
-        $sealed = $cipher . ':' . $iv;
-    } elseif (!empty($_POST['voice_key_clear'])) {
-        $sealed = '';
+    $sealed = ws_voice_settings_seal($key, !empty($_POST['voice_key_clear']), $liveform);
+    $speech_sealed = ws_voice_settings_seal($speech_key, !empty($_POST['voice_speech_key_clear']), $liveform);
+
+    if (($sealed === false) || ($speech_sealed === false)) {
+        return;
     }
 
     $before = ws_voice_settings_audit_side();
@@ -491,7 +499,13 @@ function ws_voice_settings_post($viewer, $liveform)
     $saved = pg_config_text_save('ws_voice_url', $url)
         && pg_config_text_save('ws_voice_model', $model)
         && pg_config_text_save('ws_voice_error', '')
-        && (($sealed === null) || pg_config_text_save('ws_voice_key', $sealed));
+        && (($sealed === null) || pg_config_text_save('ws_voice_key', $sealed))
+        && pg_config_text_save('ws_voice_speech_enabled', $speech_enabled ? '1' : '')
+        && pg_config_text_save('ws_voice_speech_url', $speech_url)
+        && pg_config_text_save('ws_voice_speech_model', $speech_model)
+        && pg_config_text_save('ws_voice_speech_voice', $speech_voice)
+        && pg_config_text_save('ws_voice_speech_error', '')
+        && (($speech_sealed === null) || pg_config_text_save('ws_voice_speech_key', $speech_sealed));
 
     if (!$saved) {
         $liveform->add_error(lang('The transcription settings could not be saved.'));
@@ -501,10 +515,15 @@ function ws_voice_settings_post($viewer, $liveform)
     db("UPDATE config SET ws_voice_enabled = '" . ($enabled ? 1 : 0) . "', ws_voice_hold_until = 0");
 
     $after = array(
-        'enabled' => $enabled ? 1 : 0,
-        'url'     => $url,
-        'model'   => $model,
-        'api_key' => ($sealed === null) ? $before['api_key'] : $sealed,
+        'enabled'        => $enabled ? 1 : 0,
+        'url'            => $url,
+        'model'          => $model,
+        'api_key'        => ($sealed === null) ? $before['api_key'] : $sealed,
+        'speech_enabled' => $speech_enabled ? 1 : 0,
+        'speech_url'     => $speech_url,
+        'speech_model'   => $speech_model,
+        'speech_voice'   => $speech_voice,
+        'speech_api_key' => ($speech_sealed === null) ? $before['speech_api_key'] : $speech_sealed,
     );
 
     if (function_exists('pg_audit')) {
@@ -516,18 +535,55 @@ function ws_voice_settings_post($viewer, $liveform)
 }
 
 /**
- * The card's settings as the audit trail compares them; the key as it is
- * stored, which the trail masks (pg_audit_secret_key()).
+ * A key as the card posts it, made what config_text keeps: sealed
+ * (<ciphertext>:<iv> of encrypt_string_with_iv()) when one was typed, ''
+ * when the box to remove it was ticked, null to keep what is stored.
  *
- * @return array enabled, url, model, api_key
+ * @param string   $key      as typed, trimmed
+ * @param bool     $clear    the remove box
+ * @param liveform $liveform given the error
+ * @return string|null|false false when the key cannot be taken (the error is added)
+ */
+function ws_voice_settings_seal($key, $clear, $liveform)
+{
+    if ($key === '') {
+        return $clear ? '' : null;
+    }
+
+    if (!ws_voice_key_shape_ok($key)) {
+        $liveform->add_error(lang('The key is 8 to 512 characters without spaces.'));
+        return false;
+    }
+
+    if (!function_exists('encrypt_string_with_iv') || !defined('ENCRYPTION_KEY') || (ENCRYPTION_KEY === '')) {
+        $liveform->add_error(lang('The key cannot be stored: encryption is not available on this site.'));
+        return false;
+    }
+
+    list($cipher, $iv) = encrypt_string_with_iv($key);
+
+    return $cipher . ':' . $iv;
+}
+
+/**
+ * The card's settings as the audit trail compares them; the keys as they
+ * are stored, which the trail masks (pg_audit_secret_key()).
+ *
+ * @return array enabled, url, model, api_key, speech_enabled, speech_url,
+ *               speech_model, speech_voice, speech_api_key
  */
 function ws_voice_settings_audit_side()
 {
     return array(
-        'enabled' => (int) db_value("SELECT ws_voice_enabled FROM config LIMIT 1"),
-        'url'     => pg_config_text('ws_voice_url'),
-        'model'   => pg_config_text('ws_voice_model'),
-        'api_key' => pg_config_text('ws_voice_key'),
+        'enabled'        => (int) db_value("SELECT ws_voice_enabled FROM config LIMIT 1"),
+        'url'            => pg_config_text('ws_voice_url'),
+        'model'          => pg_config_text('ws_voice_model'),
+        'api_key'        => pg_config_text('ws_voice_key'),
+        'speech_enabled' => (pg_config_text('ws_voice_speech_enabled') === '1') ? 1 : 0,
+        'speech_url'     => pg_config_text('ws_voice_speech_url'),
+        'speech_model'   => pg_config_text('ws_voice_speech_model'),
+        'speech_voice'   => pg_config_text('ws_voice_speech_voice'),
+        'speech_api_key' => pg_config_text('ws_voice_speech_key'),
     );
 }
 
@@ -611,6 +667,7 @@ function ws_voice_settings_card($self_url, $viewer)
                                 <input class="form-control form-control-sm font-monospace" type="text" name="voice_model" id="ws_voice_model" value="' . h($config['model']) . '" placeholder="' . h(ws_voice_default_model()) . '" maxlength="100" autocomplete="off"' . $disabled . '>
                             </div>
                             ' . $key_field . '
+                            ' . ws_voice_speech_settings_part($admin) . '
                             ' . ($admin ? '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-check2 me-1" aria-hidden="true"></i>' . h(lang('Save')) . '</button>' : '<div class="form-text">' . h(lang('Only an administrator can connect a transcription service.')) . '</div>') . '
                         </form>
                     </div>
@@ -621,11 +678,608 @@ function ws_voice_settings_card($self_url, $viewer)
                             ' . (!empty($missing) ? '<div class="small fw-semibold mb-1">' . h(lang('Still missing')) . '</div><ul class="small mb-5">' . $status_list . '</ul>' : '') . '
                             ' . (($config['error'] !== '') ? '<div class="alert theme-danger small py-3">' . h($config['error']) . '</div>' : '') . '
                             ' . (($config['hold_until'] > time()) ? '<div class="alert theme-warning small py-3">' . h(lang(array('string' => 'Recordings wait until {var:1}.', 'vars' => date('d.m.Y H:i', $config['hold_until'])))) . '</div>' : '') . '
+                            ' . ws_voice_speech_settings_status() . '
                         </div>
                     </div>
                 </div>
             </div>
         </div>';
+}
+
+/**
+ * The card's speech part, inside the transcripts form: the switch, the
+ * address and key (empty = the transcripts' own), the model and the voice
+ * from a list or typed. The consent line names the provider the text goes
+ * to.
+ *
+ * @param bool $admin role 0; others see it disabled without the key
+ * @return string
+ */
+function ws_voice_speech_settings_part($admin)
+{
+    $config = ws_voice_speech_config(true);
+    $disabled = $admin ? '' : ' disabled';
+    $models = '';
+    $voices = '';
+
+    foreach (ws_voice_speech_models() as $name) {
+        $models .= '<option value="' . h($name) . '"></option>';
+    }
+
+    foreach (ws_voice_speech_voices() as $name) {
+        $voices .= '<option value="' . h($name) . '"></option>';
+    }
+
+    $key_field = '';
+
+    if ($admin) {
+        $key_field = '
+                            <div class="mb-5">
+                                <label class="form-label" for="ws_voice_speech_key">' . h(lang('The speech service\'s key')) . '</label>
+                                <input class="form-control form-control-sm font-monospace" type="password" name="voice_speech_key" id="ws_voice_speech_key" value="" autocomplete="new-password" placeholder="' . h($config['own_key'] ? lang('Stored. Type a new one to replace it.') : lang('Left empty, the transcripts\' key is used.')) . '">
+                                ' . ($config['own_key'] ? '
+                                <div class="form-field mt-1">
+                                    <input class="check" type="checkbox" name="voice_speech_key_clear" value="1" id="ws_voice_speech_key_clear">
+                                    <label class="small" for="ws_voice_speech_key_clear">' . h(lang('Remove the stored speech key')) . '</label>
+                                </div>' : '') . '
+                            </div>';
+    }
+
+    return '
+                            <h3 class="h6 mt-7 mb-3"><i class="bi bi-volume-up me-1" aria-hidden="true"></i>' . h(lang('Spoken answers')) . '</h3>
+                            <div class="form-field mb-5">
+                                <div class="switch"><input class="" type="checkbox" name="voice_speech_enabled" value="1" id="ws_voice_speech_enabled"' . ($config['enabled'] ? ' checked' : '') . $disabled . '></div>
+                                <label class="" for="ws_voice_speech_enabled">' . h(lang('Assistants answer a voice message by voice')) . '</label>
+                                <div class="form-text">' . h(lang(array(
+                                    'string' => 'The text of an assistant\'s answer to a voice message is sent to {var:1} with the key below, and the sound made from it is kept beside the answer as a voice message. Answers longer than {var:2} characters are spoken up to the sentence that fits.',
+                                    'vars'   => array($config['provider'], WS_VOICE_SPEECH_MAX_CHARS),
+                                ))) . '</div>
+                            </div>
+                            <div class="mb-5">
+                                <label class="form-label" for="ws_voice_speech_url">' . h(lang('The speech service\'s address')) . '</label>
+                                <input class="form-control form-control-sm font-monospace" type="url" name="voice_speech_url" id="ws_voice_speech_url" value="' . h($config['url']) . '" placeholder="' . h($config['base']) . '" autocomplete="off"' . $disabled . '>
+                                <div class="form-text">' . h(lang('Any service that answers like OpenAI\'s /audio/speech. Left empty, the transcripts\' address is used.')) . '</div>
+                            </div>
+                            ' . $key_field . '
+                            <div class="row g-5 mb-5">
+                                <div class="sm:col-6">
+                                    <label class="form-label" for="ws_voice_speech_model">' . h(lang('Model')) . '</label>
+                                    <input class="form-control form-control-sm font-monospace" type="text" name="voice_speech_model" id="ws_voice_speech_model" list="ws_voice_speech_models" value="' . h($config['model']) . '" placeholder="' . h(ws_voice_speech_default_model()) . '" maxlength="100" autocomplete="off"' . $disabled . '>
+                                    <datalist id="ws_voice_speech_models">' . $models . '</datalist>
+                                </div>
+                                <div class="sm:col-6">
+                                    <label class="form-label" for="ws_voice_speech_voice">' . h(lang('Voice')) . '</label>
+                                    <input class="form-control form-control-sm font-monospace" type="text" name="voice_speech_voice" id="ws_voice_speech_voice" list="ws_voice_speech_voices" value="' . h($config['voice']) . '" placeholder="' . h(ws_voice_speech_default_voice()) . '" maxlength="100" autocomplete="off"' . $disabled . '>
+                                    <datalist id="ws_voice_speech_voices">' . $voices . '</datalist>
+                                </div>
+                            </div>';
+}
+
+/**
+ * How spoken answers stand, on the card's right: where the text goes, what
+ * is still missing, the service's last refusal.
+ *
+ * @return string
+ */
+function ws_voice_speech_settings_status()
+{
+    $config = ws_voice_speech_config();
+    $missing = ws_voice_speech_missing();
+    $list = '';
+
+    foreach ($missing as $sentence) {
+        $list .= '<li>' . h($sentence) . '</li>';
+    }
+
+    return '
+                            <div class="small fw-semibold mb-1">' . h(lang('Spoken answers are made by')) . '</div>
+                            <div class="small mb-5">' . h($config['provider']) . ' · <code>' . h(($config['model'] !== '') ? $config['model'] : ws_voice_speech_default_model()) . '</code> · <code>' . h(($config['voice'] !== '') ? $config['voice'] : ws_voice_speech_default_voice()) . '</code></div>
+                            ' . (!empty($missing) ? '<div class="small fw-semibold mb-1">' . h(lang('Still missing')) . '</div><ul class="small mb-5">' . $list . '</ul>' : '') . '
+                            ' . (($config['error'] !== '') ? '<div class="alert theme-danger small py-3">' . h($config['error']) . '</div>' : '');
+}
+
+/* ---------------------------------------------------------------------------
+   Spoken answers: the speech service
+   --------------------------------------------------------------------------- */
+
+/**
+ * The most characters of an answer that are spoken; a longer answer is cut
+ * at the last sentence end that fits (ws_voice_speech_cut()).
+ */
+define('WS_VOICE_SPEECH_MAX_CHARS', 1500);
+
+/**
+ * The model asked for when none is chosen, and the models the card offers:
+ * OpenAI's; any other name that passes ws_voice_model_valid() may be typed
+ * for another service.
+ *
+ * @return string
+ */
+function ws_voice_speech_default_model()
+{
+    return 'gpt-4o-mini-tts';
+}
+
+/**
+ * @return string[]
+ */
+function ws_voice_speech_models()
+{
+    return array('gpt-4o-mini-tts', 'tts-1', 'tts-1-hd');
+}
+
+/**
+ * The voice spoken with when none is chosen, and the voices the card offers.
+ *
+ * @return string
+ */
+function ws_voice_speech_default_voice()
+{
+    return 'alloy';
+}
+
+/**
+ * @return string[]
+ */
+function ws_voice_speech_voices()
+{
+    return array('alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'nova', 'onyx', 'sage', 'shimmer', 'verse');
+}
+
+/**
+ * Could this be a voice's name? The model shape: letters, digits and
+ * . _ : / - only, so another service's names (Fritz-PlayAI) fit too.
+ *
+ * @param string $voice
+ * @return bool
+ */
+function ws_voice_speech_voice_valid($voice)
+{
+    return ws_voice_model_valid($voice);
+}
+
+/**
+ * The speech address as it is entered, made the base the call is joined
+ * to: as ws_voice_url_clean(), with /audio/speech cut off when the whole
+ * endpoint was pasted.
+ *
+ * @param string $url
+ * @return string
+ */
+function ws_voice_speech_url_clean($url)
+{
+    $url = rtrim(trim((string) $url), '/');
+
+    if (preg_match('#/audio/speech$#i', $url)) {
+        $url = rtrim(substr($url, 0, -strlen('/audio/speech')), '/');
+    }
+
+    return $url;
+}
+
+/**
+ * The speech service: config_text rows beside the transcripts' (the config
+ * row has no room for more columns). An address or key left empty means the
+ * transcripts' own, so one OpenAI key serves both ways.
+ *
+ * @param bool $fresh read again
+ * @return array enabled, url (the entered one, may be ''), base (the address
+ *               called), own_key (one of its own is stored), key_set (one is
+ *               there, own or the transcripts'), model, voice (entered, may
+ *               be ''), error, provider
+ */
+function ws_voice_speech_config($fresh = false)
+{
+    static $config = null;
+
+    if (!ws_voice_schema_ready()) {
+        return array(
+            'enabled' => false, 'url' => '', 'base' => ws_voice_default_url(), 'own_key' => false, 'key_set' => false,
+            'model' => '', 'voice' => '', 'error' => '', 'provider' => ws_voice_provider_name(''),
+        );
+    }
+
+    if (($config === null) || $fresh) {
+        $transcripts = ws_voice_config($fresh);
+        $url = pg_config_text('ws_voice_speech_url');
+        $base = ($url !== '') ? $url : (($transcripts['url'] !== '') ? $transcripts['url'] : ws_voice_default_url());
+        $own_key = (strpos(pg_config_text('ws_voice_speech_key'), ':') !== false);
+
+        $config = array(
+            'enabled'  => (pg_config_text('ws_voice_speech_enabled') === '1'),
+            'url'      => $url,
+            'base'     => $base,
+            'own_key'  => $own_key,
+            'key_set'  => $own_key || $transcripts['key_set'],
+            'model'    => pg_config_text('ws_voice_speech_model'),
+            'voice'    => pg_config_text('ws_voice_speech_voice'),
+            'error'    => pg_config_text('ws_voice_speech_error'),
+            'provider' => ws_voice_provider_name($base),
+        );
+    }
+
+    return $config;
+}
+
+/**
+ * The key the speech service is called with: the service's own when one is
+ * stored, else the transcripts' (ws_voice_key()). Empty when neither can be
+ * read.
+ *
+ * @return string
+ */
+function ws_voice_speech_key()
+{
+    $sealed = ws_voice_schema_ready() ? pg_config_text('ws_voice_speech_key') : '';
+
+    if (($sealed === '') || (strpos($sealed, ':') === false)) {
+        return ws_voice_key();
+    }
+
+    if (!function_exists('decode_ssl_keys') || !defined('ENCRYPTION_KEY')) {
+        return '';
+    }
+
+    list($cipher, $iv) = explode(':', $sealed, 2);
+
+    return (string) decode_ssl_keys($cipher, $iv);
+}
+
+/**
+ * What still stands between an answer and its sound, in sentences.
+ *
+ * @return string[] empty when spoken answers are ready
+ */
+function ws_voice_speech_missing()
+{
+    if (!ws_voice_schema_ready()) {
+        return array(lang('The database has not been upgraded yet.'));
+    }
+
+    $config = ws_voice_speech_config();
+    $missing = array();
+
+    if (!$config['enabled']) {
+        $missing[] = lang('Spoken answers are switched off.');
+    }
+
+    if (!$config['key_set']) {
+        $missing[] = lang('No key is entered for the speech service.');
+    } elseif (ws_voice_speech_key() === '') {
+        $missing[] = lang('The stored speech key cannot be read any more: enter it again.');
+    }
+
+    if (!function_exists('curl_init')) {
+        $missing[] = lang('This server cannot make outgoing HTTPS requests (cURL is missing).');
+    }
+
+    return $missing;
+}
+
+/**
+ * Can an answer be spoken now? The switch, a key and cURL. A caller without
+ * it (the panel's spoken answer, the voice message route) falls back or
+ * answers voice_unavailable.
+ *
+ * @return bool
+ */
+function ws_voice_speech_ready()
+{
+    return count(ws_voice_speech_missing()) === 0;
+}
+
+/**
+ * The two-letter language code of a locale (tr_TR, en-US), '' when it has
+ * none; what the row's language column keeps for a spoken answer.
+ *
+ * @param string $locale
+ * @return string
+ */
+function ws_voice_speech_language_code($locale)
+{
+    return preg_match('/^([A-Za-z]{2})(?![A-Za-z])/', (string) $locale, $found) ? strtolower($found[1]) : '';
+}
+
+/**
+ * The name of a locale's language in English, as a model's instructions
+ * take it; '' for one without a name here (nothing is asked then).
+ *
+ * @param string $locale
+ * @return string
+ */
+function ws_voice_speech_language_name($locale)
+{
+    $names = array(
+        'tr' => 'Turkish', 'en' => 'English', 'de' => 'German', 'fr' => 'French', 'es' => 'Spanish', 'it' => 'Italian',
+        'nl' => 'Dutch', 'pt' => 'Portuguese', 'ru' => 'Russian', 'ar' => 'Arabic', 'az' => 'Azerbaijani', 'pl' => 'Polish',
+        'uk' => 'Ukrainian', 'el' => 'Greek', 'ja' => 'Japanese', 'ko' => 'Korean', 'zh' => 'Chinese',
+    );
+
+    return $names[ws_voice_speech_language_code($locale)] ?? '';
+}
+
+/**
+ * The text an answer is spoken from: white space round it gone, and over
+ * the limit cut at the last sentence end (. ! ? … followed by white space,
+ * or a line end) that fits, else at a word end, else at the limit itself.
+ * The transcript kept beside the sound is this text, so what is heard and
+ * what is read are the same.
+ *
+ * @param string $text
+ * @param int    $limit characters
+ * @return string
+ */
+function ws_voice_speech_cut($text, $limit = WS_VOICE_SPEECH_MAX_CHARS)
+{
+    $text = trim(str_replace("\r\n", "\n", (string) $text));
+    $limit = max(1, (int) $limit);
+
+    if (mb_strlen($text) <= $limit) {
+        return $text;
+    }
+
+    $head = mb_substr($text, 0, $limit);
+    // One character more, so a sentence that ends exactly at the limit is
+    // seen with the white space after it.
+    $probe = $head . mb_substr($text, $limit, 1);
+    $cut = 0;
+
+    if (preg_match_all('/[.!?\x{2026}](?=\s)|(?=\n)/u', $probe, $found, PREG_OFFSET_CAPTURE)) {
+        foreach ($found[0] as $match) {
+            $end = $match[1] + strlen($match[0]);
+
+            if (($end > 0) && ($end <= strlen($head))) {
+                $cut = $end;
+            }
+        }
+    }
+
+    if ($cut === 0) {
+        $space = mb_strrpos($head, ' ');
+        $cut = ($space !== false) && ($space > 0) ? strlen(mb_substr($head, 0, $space)) : strlen($head);
+    }
+
+    return rtrim(substr($head, 0, $cut));
+}
+
+/**
+ * The request a speech service gets, without the key: POST /audio/speech
+ * under the base with a JSON body in OpenAI's shape (model, input, voice,
+ * response_format mp3). A model that takes instructions (not tts-1 or
+ * tts-1-hd, which refuse them) is asked to speak in the request's language.
+ *
+ * @param string $text   as ws_voice_speech_cut() answers it
+ * @param string $locale the language to speak in
+ * @param string $base   the service's base address
+ * @param string $model
+ * @param string $voice
+ * @return array url, body (JSON), headers (without Authorization), format, timeout
+ */
+function ws_voice_speech_request($text, $locale, $base, $model, $voice)
+{
+    $body = array(
+        'model'           => (string) $model,
+        'input'           => (string) $text,
+        'voice'           => (string) $voice,
+        'response_format' => 'mp3',
+    );
+    $language = ws_voice_speech_language_name($locale);
+
+    if (($language !== '') && !preg_match('/^tts-1/i', (string) $model)) {
+        $body['instructions'] = 'Speak in ' . $language . '.';
+    }
+
+    return array(
+        'url'     => rtrim((string) $base, '/') . '/audio/speech',
+        'body'    => (string) json_encode($body, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        'headers' => array('Content-Type: application/json', 'Accept: audio/mpeg'),
+        'format'  => 'mp3',
+        'timeout' => WS_VOICE_CALL_TIMEOUT,
+    );
+}
+
+/**
+ * What a speech service's answer means: a sound (200 with bytes that are
+ * not JSON), or a refusal in its own words. The key or the account refusing
+ * (401, 402, 403) is marked, so the card can say so.
+ *
+ * @param int    $status HTTP status, 0 when no answer came
+ * @param string $body
+ * @param string $type   the answer's Content-Type
+ * @param string $error  the client's own error when no answer came
+ * @return array ok, error, refused
+ */
+function ws_voice_speech_answer($status, $body, $type, $error = '')
+{
+    $body = (string) $body;
+    $json = json_decode($body, true);
+    $message = (is_array($json) && isset($json['error']['message']) && is_string($json['error']['message'])) ? trim($json['error']['message']) : '';
+    $out = array('ok' => false, 'error' => '', 'refused' => false);
+
+    if ((int) $status === 200) {
+        if (($body !== '') && !is_array($json) && (stripos((string) $type, 'json') === false)) {
+            $out['ok'] = true;
+
+            return $out;
+        }
+
+        $out['error'] = ($message !== '')
+            ? lang(array('string' => 'The speech service said: {var:1}', 'vars' => mb_substr($message, 0, 200)))
+            : lang('The speech service gave no sound.');
+
+        return $out;
+    }
+
+    $said = ($message !== '') ? $message : (((int) $status > 0) ? 'HTTP ' . (int) $status : (string) $error);
+    $out['refused'] = in_array((int) $status, array(401, 402, 403), true);
+    $out['error'] = lang(array('string' => 'The speech service said: {var:1}', 'vars' => mb_substr($said, 0, 200)));
+
+    return $out;
+}
+
+/**
+ * The name a spoken answer is kept under: the recorder's shape
+ * (voice-YYYYMMDD-HHMMSS.<ext>), so ws_voice_is_recording() takes it and
+ * the player, search, quotes and the delete treat it as a voice message.
+ *
+ * @param string $extension
+ * @param int    $time
+ * @return string
+ */
+function ws_voice_speech_file_name($extension, $time)
+{
+    return 'voice-' . gmdate('Ymd-His', (int) $time) . '.' . strtolower(preg_replace('/[^A-Za-z0-9]/', '', (string) $extension));
+}
+
+/**
+ * Speaks a text with the speech service: the request built by
+ * ws_voice_speech_request(), sent with the key through api_http_request()
+ * (pinned address, no internal hosts). Answers the sound and the name it is
+ * to be kept under; ws_voice_speak_keep() makes it a message's voice
+ * message. The service's last refusal is kept in config_text
+ * ws_voice_speech_error for the card, and cleared by the next sound.
+ *
+ * @param string $text   the answer; over WS_VOICE_SPEECH_MAX_CHARS it is cut at a sentence end
+ * @param string $locale the language to speak in (tr, en-US, ...)
+ * @return array ok, error, bytes, name, mime, text (what was spoken),
+ *               language (code), model, voice, provider
+ */
+function ws_voice_speak($text, $locale)
+{
+    $out = array(
+        'ok' => false, 'error' => '', 'bytes' => '', 'name' => '', 'mime' => '', 'text' => '', 'language' => '',
+        'model' => '', 'voice' => '', 'provider' => '',
+    );
+    $missing = ws_voice_speech_missing();
+
+    if (!empty($missing)) {
+        $out['error'] = (string) reset($missing);
+
+        return $out;
+    }
+
+    $spoken = ws_voice_speech_cut($text);
+
+    if ($spoken === '') {
+        $out['error'] = lang('There is nothing to say.');
+
+        return $out;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/http.php');
+
+    $config = ws_voice_speech_config();
+    $model = ($config['model'] !== '') ? $config['model'] : ws_voice_speech_default_model();
+    $voice = ($config['voice'] !== '') ? $config['voice'] : ws_voice_speech_default_voice();
+    $request = ws_voice_speech_request($spoken, $locale, $config['base'], $model, $voice);
+
+    $answer = api_http_request('POST', $request['url'], array(
+        'body'             => $request['body'],
+        'headers'          => array_merge(array('Authorization: Bearer ' . ws_voice_speech_key()), $request['headers']),
+        'timeout'          => $request['timeout'],
+        'max_body'         => 0,
+        'agent'            => 'workspace-voice',
+        'response_headers' => true,
+    ));
+
+    $outcome = ws_voice_speech_answer((int) $answer['status'], (string) $answer['body'], (string) ($answer['headers']['content-type'] ?? ''), (string) $answer['error']);
+
+    if (!$outcome['ok']) {
+        pg_config_text_save('ws_voice_speech_error', mb_substr($outcome['error'], 0, 250));
+        $out['error'] = $outcome['error'];
+
+        return $out;
+    }
+
+    if ($config['error'] !== '') {
+        pg_config_text_save('ws_voice_speech_error', '');
+    }
+
+    $out['ok'] = true;
+    $out['bytes'] = (string) $answer['body'];
+    $out['name'] = ws_voice_speech_file_name($request['format'], time());
+    $out['mime'] = ws_file_type($out['name'])['mime'];
+    $out['text'] = $spoken;
+    $out['language'] = ws_voice_speech_language_code($locale);
+    $out['model'] = $model;
+    $out['voice'] = $voice;
+    $out['provider'] = $config['provider'];
+
+    return $out;
+}
+
+/**
+ * Keeps a sound ws_voice_speak() answered as the voice message of a message
+ * already written and carrying no file: the file in the channel's folder
+ * (ws_store_file_bytes()), the message's file, and a done ws_voice row whose
+ * transcript is the spoken text, so the player, search, recaps, bells and
+ * the delete for everyone treat it as any recording. Nothing is queued: the
+ * text is known.
+ *
+ * @param array $channel
+ * @param array $message the ws_messages row, as ws_message() reads it
+ * @param array $spoken  ws_voice_speak()'s answer, ok
+ * @param int   $user_id the owner of the file manager row (the person spoken to)
+ * @return array ok, error, file_id, name
+ */
+function ws_voice_speak_keep($channel, $message, $spoken, $user_id)
+{
+    $out = array('ok' => false, 'error' => '', 'file_id' => 0, 'name' => '');
+
+    if (!ws_voice_schema_ready() || empty($spoken['ok']) || ((string) ($spoken['bytes'] ?? '') === '')) {
+        $out['error'] = lang('The speech service gave no sound.');
+
+        return $out;
+    }
+
+    if ((int) ($message['file_id'] ?? 0) > 0) {
+        $out['error'] = lang('The message already carries a file.');
+
+        return $out;
+    }
+
+    $checked = ws_upload_inspect((string) $spoken['name'], (string) $spoken['bytes']);
+
+    if (!$checked['ok']) {
+        $out['error'] = $checked['error'];
+
+        return $out;
+    }
+
+    $stored = ws_store_file_bytes($channel, $checked['name'], $checked['extension'], (string) $spoken['bytes'], (int) $user_id);
+
+    if (!$stored['ok']) {
+        $out['error'] = $stored['error'];
+
+        return $out;
+    }
+
+    db("UPDATE ws_messages SET file_id = '" . (int) $stored['file_id'] . "', file_name = '" . e($stored['name']) . "'
+        WHERE id = '" . (int) $message['id'] . "' AND file_id = 0");
+
+    if (mysqli_affected_rows(db::$con) !== 1) {
+        ws_upload_discard((int) $stored['file_id']);
+        $out['error'] = lang('The spoken answer could not be saved.');
+
+        return $out;
+    }
+
+    $now = time();
+
+    db("INSERT INTO ws_voice (file_id, message_id, channel_id, duration_ms, peaks, status, transcript, language, provider, model, created_at, updated_at, transcribed_at)
+        VALUES ('" . (int) $stored['file_id'] . "', '" . (int) $message['id'] . "', '" . (int) $channel['id'] . "', 0, '', 'done',
+            '" . e((string) $spoken['text']) . "', '" . e(mb_substr((string) $spoken['language'], 0, 16)) . "',
+            '" . e(mb_substr((string) $spoken['provider'], 0, 100)) . "', '" . e(mb_substr((string) $spoken['model'], 0, 100)) . "',
+            '" . $now . "', '" . $now . "', '" . $now . "')");
+
+    // Screens and apps holding the message read it again, with its sound.
+    ws_message_touch((int) $message['id']);
+
+    $out['ok'] = true;
+    $out['file_id'] = (int) $stored['file_id'];
+    $out['name'] = (string) $stored['name'];
+
+    return $out;
 }
 
 /* ---------------------------------------------------------------------------

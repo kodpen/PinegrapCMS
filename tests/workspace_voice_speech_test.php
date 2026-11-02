@@ -44,7 +44,7 @@ function test_ws_voice_speech_cut()
 	pg_assert_same('', ws_voice_speech_cut("  \n "), 'nothing to say');
 
 	$sentence = 'Bu bir cümledir. ';
-	$long = str_repeat($sentence, 80);
+	$long = str_repeat($sentence, 100);
 	$cut = ws_voice_speech_cut($long);
 
 	pg_assert_true(mb_strlen($cut) <= WS_VOICE_SPEECH_MAX_CHARS, 'within the limit');
@@ -131,7 +131,7 @@ function test_ws_voice_speech_file_name()
 	$name = ws_voice_speech_file_name('mp3', 1793000000);
 
 	pg_assert_true(ws_voice_is_recording($name), 'a recording by name: ' . $name);
-	pg_assert_same('voice-20261026-065320.mp3', $name, 'the time in the name');
+	pg_assert_same('voice-20261026-073320.mp3', $name, 'the time in the name');
 	pg_assert_same('audio/mpeg', ws_file_type($name)['mime'], 'served as a sound');
 }
 
