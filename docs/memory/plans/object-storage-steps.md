@@ -16,7 +16,7 @@ description: Steps OS1-OS7 of plans/object-storage.md: SigV4 client, backup targ
 
 - OS3 (L, three PRs) File rows, the move job, readers. After OS1 and question 1.
   - 3a: done (#5623). Schema 11.0.152, `pg_file_storage()`, the move job in `job.php`, `pg_file_local_copy()` and the cache sweep, behind the switch config_text `object_storage_files` that no screen sets yet (`platform/file-object-storage.md`).
-  - 3b: done (#PR). `get_file.php` redirects to `pg_os_presign()` after the access checks, a local file or cached copy is sent as before, settings that cannot sign answer 503; replaced files go back to local (`pg_file_storage_reconcile_run()`), deleted files' objects go in a daily orphan sweep instead of one change per delete door; `.css`/`.js` never move.
+  - 3b: done (#5803). `get_file.php` redirects to `pg_os_presign()` after the access checks, a local file or cached copy is sent as before, settings that cannot sign answer 503; replaced files go back to local (`pg_file_storage_reconcile_run()`), deleted files' objects go in a daily orphan sweep instead of one change per delete door; `.css`/`.js` never move.
   - 3c (split from 3a: about 285 `FILE_DIRECTORY_PATH` uses): readers that need a path call `pg_file_local_copy()`: image engine and derivatives, PDF, office, the image editor's open and save (a save writes local and sets the row back to 'local'). After 3c the switch may be offered (OS4).
 
 - OS4 (S) Migration tool and Disk Usage. After OS3.
