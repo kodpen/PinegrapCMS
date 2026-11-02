@@ -16065,6 +16065,11 @@ a.ws-chip:hover {
   min-width: 0;
   max-width: 55%;
 }
+.ws-file-row .ws-file-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .ws-file-row audio {
   height: 2rem;
   max-width: 16rem;
