@@ -2871,8 +2871,8 @@ function ws_ai_text($viewer, $body, $refs = null, $limit = 0)
 /**
  * A message as the model reads it (ws_ai_text()), with its recording's
  * transcript once written out (ws_voice_with_transcript()); a recording
- * with none says so (ws_voice_heard()), so the answer does not guess
- * at what was said.
+ * with none says so and why (ws_voice_heard(), ws_voice_unheard_reason()),
+ * so the answer does not guess at what was said.
  *
  * @param array $viewer
  * @param array $row   ws_messages row
@@ -2883,11 +2883,15 @@ function ws_ai_heard_text($viewer, $row, $limit = 0)
 {
     $text = ws_ai_text($viewer, (string) $row['body'], null, $limit);
 
-    if (!function_exists('ws_voice_transcript_of')) {
+    if (!function_exists('ws_voice_state_of') || !ws_voice_is_recording((string) ($row['file_name'] ?? ''))) {
         return $text;
     }
 
-    return ws_voice_heard($text, ws_voice_transcript_of($row), (string) ($row['file_name'] ?? ''), $limit);
+    $state = ws_voice_state_of($row);
+    $transcript = ($state && ($state['status'] === 'done')) ? $state['transcript'] : '';
+    $reason = ws_voice_unheard_reason(ws_channel((int) $row['channel_id']), $row, $state);
+
+    return ws_voice_heard($text, $transcript, (string) ($row['file_name'] ?? ''), $limit, $reason);
 }
 
 /**
@@ -3652,9 +3656,16 @@ function ws_ai_briefing($row, $asker, $agent = 'ai')
         }
 
         $request_text = ws_ai_heard_text($asker, $message, 4000);
+        // A recording nobody heard: the reason and where the setting is,
+        // as the site's own line after the request (voice.php).
+        $unheard = function_exists('ws_voice_unheard_reason') ? ws_voice_unheard_reason($channel, $message) : '';
 
         $parts[] = 'The request (message ' . (int) $message['id'] . '):';
         $parts[] = pg_ai_data_block('request', $request_text);
+
+        if ($unheard !== '') {
+            $parts[] = ws_voice_unheard_line($unheard);
+        }
     }
 
     $text = array_merge(ws_ai_briefing_head($asker, $agent), array(''), $parts);

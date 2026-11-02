@@ -56,6 +56,12 @@ function ws_voice_js_strings()
         'voice_speak'       => lang('Read assistant answers to me aloud'),
         'voice_speak_on'    => lang('Assistant answers to your messages will be read aloud in this browser.'),
         'voice_speak_off'   => lang('Assistant answers are no longer read aloud.'),
+        // The recorder's hint while the assistants will not hear the
+        // recording (ws_voice_channel_unheard()).
+        'voice_unheard_off' => lang('Assistants will not hear this recording: voice message transcripts are switched off.'),
+        'voice_unheard_skipped' => lang('Assistants will not hear this recording: voice messages are not transcribed in this channel.'),
+        'voice_unheard_settings' => lang('Switch them on: Workspace Settings › Voice message transcripts'),
+        'voice_unheard_menu' => lang('A manager switches it on in the channel menu: Voice messages are transcribed here.'),
     ) + pg_voice_text_strings();
 }
 
@@ -1448,21 +1454,196 @@ function ws_voice_found_in_transcript($text, $transcript, $query)
 /**
  * A message as an assistant reads it: its words with the recording's
  * transcript (ws_voice_with_transcript()), or a note when it carries a
- * recording that was not written out. The assistant is then asked without
- * what was said (transcripts off, the channel closed to them, the service
- * failed) and must say it could not hear it rather than guess.
+ * recording that was not written out, with the reason when it is known
+ * (ws_voice_unheard_reason()). The assistant is then asked without what was
+ * said (transcripts off, the channel closed to them, the service failed) and
+ * must say it could not hear it rather than guess.
  *
  * @param string $text       the message's words as the assistant reads them
  * @param string $transcript ws_voice.transcript, '' for none
  * @param string $name       the name its file was posted with, '' for none
  * @param int    $limit      characters of the transcript, 0 for all
+ * @param string $reason     off | skipped | failed | pending, '' for none
  * @return string
  */
-function ws_voice_heard($text, $transcript, $name, $limit = 0)
+function ws_voice_heard($text, $transcript, $name, $limit = 0, $reason = '')
 {
     if ((ws_voice_transcript_clean($transcript) !== '') || !ws_voice_is_recording((string) $name)) {
         return ws_voice_with_transcript($text, $transcript, $limit);
     }
 
-    return trim($text . ' [voice message, not transcribed]');
+    $words = ws_voice_unheard_words($reason);
+
+    return trim($text . ' [voice message, not transcribed' . (($words !== '') ? ': ' . $words : '') . ']');
+}
+
+/* ---------------------------------------------------------------------------
+   Why nobody heard a recording
+   --------------------------------------------------------------------------- */
+
+/**
+ * Why an assistant does not hear a recording, by its row's status and the
+ * site's and the channel's state now: '' once written out; off while
+ * transcripts are switched off on the site (first, whatever the row says:
+ * the switch is where it is put right); failed when the service could not
+ * write it out; pending while it still waits; skipped where the channel
+ * keeps its recordings, the run left it out, or it was posted before
+ * transcripts were allowed.
+ *
+ * @param string $status  ws_voice.status ('' for no row)
+ * @param bool   $enabled transcripts switched on
+ * @param bool   $allowed the channel sends its recordings
+ * @return string '' | off | failed | pending | skipped
+ */
+function ws_voice_unheard_rule($status, $enabled, $allowed)
+{
+    $status = (string) $status;
+
+    if ($status === 'done') {
+        return '';
+    }
+
+    if (!$enabled) {
+        return 'off';
+    }
+
+    if ($status === 'failed') {
+        return 'failed';
+    }
+
+    if (($status === 'queued') || ($status === 'running')) {
+        return 'pending';
+    }
+
+    return 'skipped';
+}
+
+/**
+ * The recorder's reason before anything is recorded: off while transcripts
+ * are switched off, skipped where the channel keeps its recordings, ''
+ * where a recording made now is written out.
+ *
+ * @param bool $enabled
+ * @param bool $allowed
+ * @return string
+ */
+function ws_voice_channel_unheard_rule($enabled, $allowed)
+{
+    return ($enabled && $allowed) ? '' : ws_voice_unheard_rule('', $enabled, $allowed);
+}
+
+/**
+ * ws_voice_channel_unheard_rule() for a channel, for the channel screen
+ * (channel.voice_unheard): the recorder tells the person that the assistants
+ * will not hear what they record.
+ *
+ * @param array $channel
+ * @return string
+ */
+function ws_voice_channel_unheard($channel)
+{
+    return ws_voice_channel_unheard_rule(ws_voice_schema_ready() && ws_voice_config()['enabled'], ws_voice_channel_allowed($channel));
+}
+
+/**
+ * The state of one message's recording: status, transcript and error of its
+ * ws_voice row, null for a message without one.
+ *
+ * @param array|null $row ws_messages row
+ * @return array|null
+ */
+function ws_voice_state_of($row)
+{
+    if (!is_array($row) || ((int) ($row['file_id'] ?? 0) <= 0) || !ws_voice_schema_ready()) {
+        return null;
+    }
+
+    $state = db_item("SELECT status, transcript, error FROM ws_voice WHERE file_id = '" . (int) $row['file_id'] . "'");
+
+    return $state ? array('status' => (string) $state['status'], 'transcript' => (string) $state['transcript'], 'error' => (string) $state['error']) : null;
+}
+
+/**
+ * Why an assistant does not hear this message's recording
+ * (ws_voice_unheard_rule()), '' for a message that is no recording or one
+ * written out.
+ *
+ * @param array|null $channel the message's channel
+ * @param array|null $row     ws_messages row
+ * @param array|null $state   ws_voice_state_of($row), read here when null
+ * @return string
+ */
+function ws_voice_unheard_reason($channel, $row, $state = null)
+{
+    if (!is_array($row) || !ws_voice_is_recording((string) ($row['file_name'] ?? ''))) {
+        return '';
+    }
+
+    $state = ($state === null) ? ws_voice_state_of($row) : $state;
+
+    if ($state && ($state['status'] === 'done') && (ws_voice_transcript_clean($state['transcript']) !== '')) {
+        return '';
+    }
+
+    return ws_voice_unheard_rule(
+        $state ? $state['status'] : '',
+        ws_voice_schema_ready() && ws_voice_config()['enabled'],
+        is_array($channel) && ws_voice_channel_allowed($channel)
+    );
+}
+
+/**
+ * The reason in the words the model reads inside the message's note
+ * (ws_voice_heard()): English, like the prompt, '' for none.
+ *
+ * @param string $reason
+ * @return string
+ */
+function ws_voice_unheard_words($reason)
+{
+    switch ((string) $reason) {
+        case 'off':
+            return 'voice message transcripts are switched off on this site';
+        case 'skipped':
+            return 'this channel does not send its recordings to be transcribed';
+        case 'failed':
+            return 'the transcription service could not write it out';
+        case 'pending':
+            return 'it is still being written out';
+    }
+
+    return '';
+}
+
+/**
+ * The line a briefing puts after the request when the request was a
+ * recording nobody heard: what to answer and where the setting is. Outside
+ * the data blocks, as the site's own instruction; '' for none.
+ *
+ * @param string $reason
+ * @return string
+ */
+function ws_voice_unheard_line($reason)
+{
+    $words = ws_voice_unheard_words($reason);
+
+    if ($words === '') {
+        return '';
+    }
+
+    switch ((string) $reason) {
+        case 'off':
+            $place = 'an administrator switches them on under Workspace Settings › Voice message transcripts';
+            break;
+        case 'skipped':
+            $place = 'a manager of the channel allows them in the channel menu, "Voice messages are transcribed here"';
+            break;
+        case 'failed':
+            $place = 'the person can record it again or write it; an administrator sees the service under Workspace Settings › Voice message transcripts';
+            break;
+        default:
+            $place = 'it will be heard once it is written out';
+    }
+
+    return 'The request is a voice message that was not written out: ' . $words . '. Answer that you could not hear it and why, and that ' . $place . '. Do not guess at what was said.';
 }

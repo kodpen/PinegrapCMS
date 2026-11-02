@@ -148,10 +148,38 @@
 
     // ── Recording ──
 
+    // The line under the recording row that says the assistants will not
+    // hear the recording: unheard.text, then unheard.link ({url, text},
+    // opened in a new tab so the recording goes on) or unheard.note. Null
+    // without a reason. Also the hint a browser without a model gets.
+    function unheardHint(unheard, h) {
+        if (!unheard || !unheard.text) {
+            return null;
+        }
+
+        var hint = h.el('div', 'ws-voice-rec-hint');
+
+        hint.appendChild(h.el('span', '', unheard.text));
+
+        if (unheard.link && unheard.link.url) {
+            var link = h.el('a', 'ms-1', unheard.link.text || unheard.link.url);
+
+            link.setAttribute('href', unheard.link.url);
+            link.setAttribute('target', '_blank');
+            link.setAttribute('rel', 'noopener');
+            hint.appendChild(link);
+        } else if (unheard.note) {
+            hint.appendChild(h.el('span', 'ms-1', unheard.note));
+        }
+
+        return hint;
+    }
+
     // Starts recording into the writing box. Called from the microphone's
     // click itself: a browser asks for the microphone only on a gesture.
-    // options: box (the .ws-composer the recording row stands in), send(file)
-    // and done() when the row has gone, sent or not.
+    // options: box (the .ws-composer the recording row stands in), send(file),
+    // done() when the row has gone, sent or not, and unheard (unheardHint())
+    // while the assistants will not hear the recording.
     function start(options, h) {
         var t = h.t;
 
@@ -338,6 +366,14 @@
         row.appendChild(el('span', 'ws-grow'));
         row.appendChild(discard);
         row.appendChild(stop);
+
+        // Said while it records, under the time: the person can still
+        // discard it and write instead.
+        var hint = unheardHint(options.unheard, h);
+
+        if (hint) {
+            row.appendChild(hint);
+        }
 
         function finish() {
             if (timer) {
@@ -975,6 +1011,7 @@
         supported: supported,
         busy: busy,
         start: start,
+        unheardHint: unheardHint,
         player: player,
         isVoice: isVoice,
         speakSupported: speakSupported,
