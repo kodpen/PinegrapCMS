@@ -28,9 +28,9 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 
 - Endpoints `change` (2): done #5098 (change_password, get_change_password)
 
-- Endpoints `check` (2): taken by NR
+- Endpoints `check` (2): clean #5108 (check_for_products_in_cart, check_if_file_exists)
 
-- Endpoints `comment` (3): taken by NR
+- Endpoints `comment` (3): done #5108 (add_comment; edit_comment, view_comments clean)
 
 - Endpoints `commission` (2): open
 
