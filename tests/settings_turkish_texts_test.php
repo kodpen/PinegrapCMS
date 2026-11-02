@@ -77,3 +77,18 @@ function test_settings_add_language_names_translated()
 		pg_assert_true(isset($tr[$info[0]]) && ($tr[$info[0]] !== ''), $info[0] . ' (' . $code . ') has a Turkish key');
 	}
 }
+
+// Switching category with unsaved changes asks about leaving the section,
+// not about closing the window, which stays open.
+function test_settings_section_change_question()
+{
+	$tr = pg_test_language_map('tr');
+	$modal = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/modal.php');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
+
+	pg_assert_contains("data-pgswitch=\"' . h(lang('The changes on this screen have not been saved. Leave this section anyway?'))", $modal, 'the modal carries the section question');
+	pg_assert_contains("data-pgswitchdiscard=\"' . h(lang('Switch Without Saving'))", $modal, 'and its button');
+	pg_assert_contains("say(switching ? 'switch' : 'leave')", $js, 'ask() picks the section question');
+	pg_assert_contains("ask(true).then(function (agreed) {\n            if (agreed) {\n                drawer(false);\n                load(key);", $js, 'choose() asks the section question');
+	pg_assert_same('Kaydetmeden Geç', isset($tr['Switch Without Saving']) ? $tr['Switch Without Saving'] : null);
+}

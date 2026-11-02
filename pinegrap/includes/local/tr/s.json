@@ -3020,6 +3020,7 @@
     "Swing": "Sallanma",
     "Switch": "Anahtar",
     "Switch AM/PM": "ÖÖ/ÖS değiştir",
+    "Switch Without Saving": "Kaydetmeden Geç",
     "Switch the Google Merchant Center feed on and save, so it has an address Google can fetch.": "Google'ın alabileceği bir adresi olması için Google Merchant Center akışını açıp kaydedin.",
     "Switch the account on and let it bring orders in before registering a webhook. Deliveries are refused until then.": "Webhook kaydetmeden önce hesabı açın ve siparişleri içeri almasını sağlayın. O zamana kadar gönderimler reddedilir.",
     "Switch the theme": "Tema değiştir",
