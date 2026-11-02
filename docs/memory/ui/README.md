@@ -82,6 +82,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - client-list-turkish-search.md: Turkish search of DataTables lists searched in the browser (orders, pages, styles, menus): which lists, the rule, why a matcher, how the list state keeps the typed text
 - code-editor-escape-in-dialogs.md: Escape inside a code editor that sits in a dialog: an Escape the editor used (completion list, search panel, full window) stops at the editor; only a free one closes the dialog
 - code-field-keyboard-exit.md: Leaving a code field from the keyboard: Tab indents, Ctrl+M (Mac Shift+Alt+M) switches Tab to moving focus, the hint line under an editable field and its aria-describedby
+- combobox-native-size.md: Why the posted select behind a pg_fields.js combobox is pinned to 1px with !important, and the inline width:100% it overrides (#5558)
 - command-palette-chips.md: Which Ctrl+K search chips a viewer gets: the same role, right and module rule as the main-menu entry that opens the same screen
 - command-palette-ranking.md: Panel search box (Ctrl+K) results: the relevance score, Turkish I folding, a fixed per-type cap read best first and the full tie-break that keep Load More pages disjoint
 - command-palette.md: Panel search box (Ctrl+K): where the chips come from, how text is matched, why every key must be a string (the "503" crash), chips that open a dialog
