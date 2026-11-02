@@ -11233,6 +11233,14 @@ function get_product_groups($properties)
         $level = 0;
     }
     $status = $properties['status'] ?? '';
+    // 'live' leaves the groups in the Recycle Bin (and so everything under
+    // them) out of the subtree.
+    $live = !empty($properties['live']);
+    // The groups above this one on the walk. A parent_id ring, which a
+    // hand-edited database or an old save could leave behind, would otherwise
+    // recurse until the request dies.
+    $seen = $properties['seen'] ?? array();
+    $seen[(int) $id] = true;
     // Get info for this product group.
     $product_group = db_item("SELECT
 
@@ -11270,13 +11278,20 @@ function get_product_groups($properties)
 
             $sql_display_type
 
+            " . ($live ? pg_catalog_bin_live_sql('product_groups') : '') . "
+
         ORDER BY sort_order, name");
-    foreach ($child_product_groups as $product_group) {
+    foreach ((array) $child_product_groups as $product_group) {
+        if (isset($seen[(int) $product_group['id']])) {
+            continue;
+        }
         $product_groups = array_merge($product_groups, get_product_groups(array(
             'id' => $product_group['id'],
             'level' => $level + 1,
             'display_type' => $display_type,
-            'status' => $status
+            'status' => $status,
+            'live' => $live,
+            'seen' => $seen
         )));
     }
     return $product_groups;

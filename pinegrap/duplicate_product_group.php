@@ -37,13 +37,17 @@ $product_group = db_item(
         id,
         name
     FROM product_groups
-    WHERE id = '" . escape($_REQUEST['id']) . "'");
+    WHERE id = '" . $id . "'");
 
 // If the product group could not be found, then output error.
 if ($product_group['id'] == '') {
     output_error(lang('Sorry, that product group could not be found.'));
 }
-if($product_group['id'] != $_GET['id']){
+
+// The form posts back to its own address, so the posted id must be the
+// address's: the hidden field is written from the address, never from a
+// form an earlier visit left in the session.
+if ($product_group['id'] != ($_GET['id'] ?? '')) {
     output_error(lang('Sorry, something went wrong, try again.'));
 }
 
@@ -56,9 +60,10 @@ if (!$_POST) {
         'icon'=>'store',
         'heading'=>lang('Duplicate Product Group'),
         'heading_description' => lang('Please select any additional items that you want to duplicate.'),
+        'cancel' => array('enable' => 'true', 'url' => 'edit_product_group.php?id=' . $id),
         'breadcrumb' => array(
             array('label' => lang('Product Groups'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php'),
-            array('label' => lang('Edit Product Group'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_product_group.php?id=' . h(escape_javascript($_GET['id']))),
+            array('label' => lang('Edit Product Group'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_product_group.php?id=' . $id),
             array('label' => lang('Duplicate Product Group')),
         ),
     ]) . '
@@ -71,7 +76,7 @@ if (!$_POST) {
                 
                 <form method="post">
                     ' . get_token_field() . '
-                    ' . $liveform->output_field(array('type' => 'hidden', 'name' => 'id', 'value' => $_GET['id'])) . '
+                    <input type="hidden" name="id" value="' . $id . '">
                     <div class="row">
                         <div class="col-12">
                             <div class="card my-7">
@@ -147,7 +152,7 @@ if (!$_POST) {
         global $duplicated_products;
 
         $product_group_id = $properties['product_group_id'];
-        $parent_product_group_id = $properties['parent_product_group_id'];
+        $parent_product_group_id = $properties['parent_product_group_id'] ?? '';
         $duplicate_product_groups = $properties['duplicate_product_groups'];
         $duplicate_products = $properties['duplicate_products'];
 
@@ -466,6 +471,10 @@ if (!$_POST) {
     $liveform_edit_product_group = new liveform('edit_product_group');
     $liveform_edit_product_group->remove_form();
     $liveform_edit_product_group->add_notice(lang('The product group has been duplicated, and you are now editing the duplicate.'));
+
+    // The choices of this duplicate are done with; left in the session they
+    // would come back ticked on the next group's Duplicate screen.
+    $liveform->remove_form();
 
     go(PATH . SOFTWARE_DIRECTORY . '/edit_product_group.php?id=' . $new_product_group_id);
 }

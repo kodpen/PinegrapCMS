@@ -310,7 +310,7 @@ function get_items_that_can_be_featured_and_new($parent_product_group_id = 0, $l
             featured_sort_order,
             new_date
         FROM product_groups
-        WHERE parent_id = ?";
+        WHERE parent_id = ?" . pg_catalog_bin_live_sql('product_groups');
     $result = db_q($query, array((string) $parent_product_group_id)) or output_error('Query failed.');
     
     while ($row = mysqli_fetch_assoc($result)) {
@@ -345,7 +345,7 @@ function get_items_that_can_be_featured_and_new($parent_product_group_id = 0, $l
             products_groups_xref.new_date
         FROM products_groups_xref
         LEFT JOIN products ON products_groups_xref.product = products.id
-        WHERE products_groups_xref.product_group = ?
+        WHERE products_groups_xref.product_group = ?" . pg_catalog_bin_live_sql('products') . "
         ORDER BY name";
     $result = db_q($query, array((string) $parent_product_group_id)) or output_error('Query failed.');
     
