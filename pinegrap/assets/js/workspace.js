@@ -7202,6 +7202,21 @@
             showOffcanvas(node);
         },
 
+        // After the channel form saved a channel: the open one is read again
+        // and its header, info and the sidebar drawn anew in place, so an
+        // open discussion and its address (&thread=) stay; another one (a
+        // channel edited from elsewhere) is opened as before.
+        channelSaved: function (id) {
+            var self = app;
+
+            if (self.channel && String(self.channel.id) === String(id)) {
+                self.refreshInfo();
+                return;
+            }
+
+            self.reloadChannels(id);
+        },
+
         reloadChannels: function (openId) {
             var self = this;
 
@@ -8341,24 +8356,20 @@
             });
         },
 
-        drawCenter: function () {
+        // The header's title: the channel's sign and name (its purpose on
+        // the name's tooltip), how its work stands, its department and its
+        // customer. Its colour goes on the header (head) for the icon tile
+        // and the stripe. Drawn by drawCenter() and again by refreshHead().
+        headTitle: function (channel, head) {
             var self = this;
-            var channel = self.channel;
-            var center = clear(self.center);
-
-            // Header, one line: the channel's sign and name, how its work
-            // stands, its department and its customer; then its people,
-            // search, its info, a new task and its menu. The purpose is in
-            // the info (showMembers()) and on the name's tooltip. On a phone
-            // the line keeps the way back, the name and the menu, which then
-            // holds the rest.
-            var head = el('div', 'ws-head ws-head-channel');
-            head.appendChild(channelsToggle());
 
             // The channel's colour on its icon tile and a thin stripe.
             if (channel.hex) {
                 head.style.setProperty('--ws-ch', channel.hex);
                 head.setAttribute('data-ws-colored', '1');
+            } else {
+                head.style.removeProperty('--ws-ch');
+                head.removeAttribute('data-ws-colored');
             }
 
             var title = el('div', 'ws-head-title ws-head-row');
@@ -8403,7 +8414,24 @@
                 title.appendChild(tags);
             }
 
-            head.appendChild(title);
+            return title;
+        },
+
+        drawCenter: function () {
+            var self = this;
+            var channel = self.channel;
+            var center = clear(self.center);
+
+            // Header, one line: the channel's sign and name, how its work
+            // stands, its department and its customer; then its people,
+            // search, its info, a new task and its menu. The purpose is in
+            // the info (showMembers()) and on the name's tooltip. On a phone
+            // the line keeps the way back, the name and the menu, which then
+            // holds the rest.
+            var head = el('div', 'ws-head ws-head-channel');
+            head.appendChild(channelsToggle());
+
+            head.appendChild(self.headTitle(channel, head));
 
             var actions = el('div', 'ws-head-actions');
             var faces = button('btn btn-sm btn-text theme-secondary ws-head-faces ws-head-wide', '', '', t('members'));
@@ -8698,7 +8726,7 @@
 
             if (channel.can_manage) {
                 item(t('edit_channel'), 'bi-pencil', function () {
-                    channelForm(channel, {}, function (id) { self.reloadChannels(id); });
+                    channelForm(channel, {}, function (id) { self.channelSaved(id); });
                 });
             }
 
@@ -9180,7 +9208,7 @@
                 var settings = button('btn btn-sm btn-outline theme-secondary rounded-pill w-100 ws-info-settings', t('edit_channel'), 'bi-gear');
 
                 settings.addEventListener('click', function () {
-                    channelForm(channel, {}, function (id) { self.reloadChannels(id); });
+                    channelForm(channel, {}, function (id) { self.channelSaved(id); });
                 });
                 body.appendChild(settings);
             }
@@ -9273,6 +9301,13 @@
 
             if (!actions || !channel) {
                 return;
+            }
+
+            var head = actions.parentNode;
+            var oldTitle = head.querySelector(':scope > .ws-head-title');
+
+            if (oldTitle) {
+                head.replaceChild(self.headTitle(channel, head), oldTitle);
             }
 
             var faces = actions.querySelector('.ws-head-faces');
