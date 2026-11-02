@@ -8,7 +8,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 
 - Endpoints `order` (22): partly done #5115, #5125 (order_*.php: order_form, order_history_*, order_invoice_print, order_preview, order_return); still open: the other order-area files (add_order, edit_orders, view_order(s), print_order, retrieve_order, submit_order, update_order, …)
 
-- Endpoints `page` (10): partly done #5135 (get_page RSS no-feed description escaped; page_view, update_view_page_mode, duplicate_page, edit_page_layout, editor_select_page_or_file clean); still open: add_page, edit_page, get_page (rest), get_page_content; lead: get_page.php edit_theme reads $_GET['theme_id'] unchecked (array key)
+- Endpoints `page` (10): done #5135 (get_page RSS no-feed description escaped; page_view, update_view_page_mode, duplicate_page, edit_page_layout, editor_select_page_or_file clean), #5151 (get_page theme designer preview: CSS no longer HTML-escaped, theme_id scalar only; add_page, edit_page, get_page_content clean)
 
 - Endpoints `parasut` (2): open
 
