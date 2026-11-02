@@ -21251,8 +21251,8 @@
 
         var bar = el('nav', 'pg-toolbar navigation mb-5');
         var layout = el('div', 'row g-7 ws-nb');
-        var listCol = el('div', 'lg:col-4 xl:col-3 ws-nb-list-col');
-        var paneCol = el('div', 'lg:col-8 xl:col-9 ws-nb-pane-col');
+        var listCol = el('div', 'lg:col-5 xl:col-4 ws-nb-list-col');
+        var paneCol = el('div', 'lg:col-7 xl:col-8 ws-nb-pane-col');
         var list = el('div', 'ws-nb-list');
         var pane = el('div', 'ws-nb-pane');
 
@@ -21465,7 +21465,6 @@
                     top.appendChild(pinMark);
                 }
 
-                top.appendChild(el('span', 'ws-nb-item-time', note.updated));
 
                 var more = menuButton(button('ws-nb-item-more', '', 'bi-three-dots', t('more')));
                 more.addEventListener('click', function (event) {
@@ -21481,7 +21480,10 @@
                     item.appendChild(el('div', 'ws-nb-item-excerpt', note.excerpt));
                 }
 
+                // The time sits on the line under the title, so a narrow list
+                // column leaves the whole head row to the note's name.
                 var meta = el('div', 'ws-nb-item-meta');
+                meta.appendChild(el('span', 'ws-nb-item-time', note.updated));
 
                 if ((note['with'] || []).length || (note['in'] || []).length || note.access !== 'owner') {
                     meta.appendChild(noteFaces(note, 4));
@@ -21502,9 +21504,7 @@
                     meta.appendChild(claudeTag);
                 }
 
-                if (meta.childNodes.length) {
-                    item.appendChild(meta);
-                }
+                item.appendChild(meta);
 
                 function openThis() {
                     if (!current || current.id !== note.id) {
@@ -21909,6 +21909,10 @@
             var box = el('div', 'ws-nb-placeholder');
             box.appendChild(icon('bi-journal-richtext'));
             box.appendChild(el('div', '', t('notes_pick')));
+
+            var start = button('btn btn-sm btn-outline theme-primary rounded-pill px-5', t('notes_new'), 'bi-plus-lg');
+            start.addEventListener('click', function () { startNew(); });
+            box.appendChild(start);
             pane.appendChild(box);
             root.classList.remove('ws-nb-open');
         }
