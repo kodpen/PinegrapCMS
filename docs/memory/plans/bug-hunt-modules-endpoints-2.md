@@ -16,9 +16,9 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 
 - Endpoints `privacy` (2): open
 
-- Endpoints `product`, part 1 (products): add_product, edit_product, edit_products, view_products, duplicate_product, duplicate_products, check_for_products_in_cart, get_product_group_for_product, get_erp_products, product_feed_job: taken by OP: #5257 (duplicate_products copy code made unique), #5355 (duplicate_products description cut by letters)
+- Endpoints `product`, part 1 (products): done #5257 (duplicate_products: the copy's product code made unique), #5355 (duplicate_products: short description cut by letters, not bytes); add_product, edit_product, edit_products, view_products, duplicate_product, check_for_products_in_cart, get_product_group_for_product, get_erp_products, product_feed_job clean. Not covered here: barcode generation (edit_products assign_barcodes, the panel and API assigners) checks only product_barcodes, not other products' codes; the writers behind add/edit_product live in product_builder (part 3)
 
-- Endpoints `product`, part 2 (attributes, groups): add_product_attribute, edit_product_attribute, product_attribute_action, view_product_attributes, add_product_group, edit_product_group, duplicate_product_group, update_product_group_status, view_product_groups: open
+- Endpoints `product`, part 2 (attributes, groups): add_product_attribute, edit_product_attribute, product_attribute_action, view_product_attributes, add_product_group, edit_product_group, duplicate_product_group, update_product_group_status, view_product_groups: open, the next hunt starts here (add_product_group and edit_product_group wait while #5150 is open; the attribute files were read once and looked clean: option labels are not checked for repeats on the screens, only in product_attribute_action)
 
 - Endpoints `product`, part 3 (import, export, builder, marketplace): import_products: #5371 (columns after a sfc_/sfu_ heading were read one cell to the left); import_products_f, export_products, export_products_f, product_builder, marketplace_products clean
 
