@@ -11,7 +11,7 @@ description: Module list of plans/bug-hunt.md, part 2b: includes/fn/ modules wid
 - `widgets_attrs`: clean (denied names and tokens, placeholders and carriers, empty switches dropped)
 - `widgets_billing_information`: clean (start values, liveform restore, flags and dropped controls, page row changes as the classic page)
 - `widgets_cart`: open (checked, clean: cart link subtotal and placement ids, express order charged totals)
-- `widgets_catalog`: open
+- `widgets_catalog`: taken by fix/bug-hunt-widgets-catalog
 - `widgets_comments`: open (checked, clean: options, order, paginate, page param and URLs, quote excerpt, link values, mask email, watcher label, row root id and anchor links)
 - `widgets_comments_recent`: clean (source decisions, access and scope SQL, record gate, rows read again under the scope, titles)
 - `widgets_conditions`: clean (specs and joins, denied tokens, required controls, amounts and figure grouping, every operator)
