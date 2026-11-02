@@ -2392,8 +2392,10 @@ function send_user_to_login_home()
 // get the charset from HTML content
 function get_charset($content)
 {
-    // look for the charset in a meta tag
-    preg_match("/<meta[^>]*http-equiv[^>]*charset=(.*)[\"|']/i", $content, $matches);
+    // Look for the charset in a meta tag. The name is a token (RFC 2978), so
+    // the match stops at the closing quote: the rest of the line, further
+    // tags included, would otherwise land in the message's CharSet header.
+    preg_match('/<meta[^>]*http-equiv[^>]*charset=\s*["\']?\s*([A-Za-z0-9!#$%&+\-^_`{}~.:]+)/i', $content, $matches);
     // if the charset was found, then return the charset
     if (isset($matches[1]) == true) {
         return mb_strtolower(trim($matches[1]));
