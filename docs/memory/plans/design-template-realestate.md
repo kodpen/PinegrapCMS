@@ -17,7 +17,7 @@ description: Plan for the Real Estate Agency template (pinegrap-realestate): lis
 - As Law and Salon: steps 1-6 write `includes/design_templates/pinegrap-realestate/` (not globbed); step 7's `pinegrap-realestate.php` includes them in one scope. Classes `pre-`, field ids `re-`.
 
 ## Which steps are there?
-- 1 Data and shared parts: `parts.php` (builders, neighbourhoods, property types, agents, figures, services, sample listings, the forms' pick lists, account bar, notice, header, footer, valuation band, listing card, agent card, staff bar, page shells, form fields, comment thread, newsletter line, post card, AI summary); test `design_template_realestate_test.php`.
+- 1 Done (#5092). Data and shared parts: `parts.php` (builders, neighbourhoods, property types, agents, figures, services, sample listings, the forms' pick lists, account bar, notice, header, footer, valuation band, listing card, agent card, staff bar, page shells, form fields, comment thread, newsletter line, post card, AI summary); test `design_template_realestate_test.php`.
 
 - 2 Public pages: `pages_public.php` (home with search and featured listings, neighbourhoods, five `area_<key>`, agents, services, about, FAQ, buyer's guide).
 
