@@ -4,7 +4,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 ---
 
 ## Which includes/fn/ modules (a11y to legal_documents) are hunted?
-- `a11y`: open
+- `a11y`: taken by Arzu-w, draft PR
 
 - `ai_crawlers`: open
 
