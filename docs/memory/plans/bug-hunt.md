@@ -5,7 +5,7 @@ description: Plan: module-by-module bug hunt when no plan step is free; how a mo
 
 ## What is this plan?
 - A coordinator gives a free worker one module to hunt for real faults (`workflow/coordinator-no-plans.md`). One worker per module, never two on the same files.
-- A module is an `includes/fn/` module (`bug-hunt-modules-fn-1.md`, `-fn-1b.md`, `-fn-2.md`, `-fn-2b.md`) or a group of root endpoints (`bug-hunt-modules-endpoints-1.md`, `-endpoints-2.md`).
+- A module is an `includes/fn/` module (`bug-hunt-modules-fn-1.md`, `-fn-1b.md`, `-fn-2.md`, `-fn-2b.md`) or a group of root endpoints (`bug-hunt-modules-endpoints-1.md`, `-endpoints-2.md`, `-endpoints-2b.md`).
 
 ## How are root endpoints grouped?
 - By area word: the file name without `.php`, without a leading `add_`, `edit_`, `delete_`, `view_`, `update_`, `import_`, `export_`, `duplicate_`, `get_`, `set_`, `save_`, `print_`, `manage_` or `bulk_`, cut at the next `_`, a final `s` dropped (not in `sms`). `edit_user.php` and `view_users.php` are both `user`.

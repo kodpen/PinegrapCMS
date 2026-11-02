@@ -157,11 +157,12 @@ if ($management == TRUE) {
                                 AND (form_fields.contact_field = 'email_address')";
                         $result = db_q($query, array((string) $item_id)) or output_error('Query failed.');
                         $row = mysqli_fetch_assoc($result);
-                        $submitter_email_address = $row['data'];
+                        $submitter_email_address = is_array($row) ? $row['data'] : '';
 
                         // If this user has the same e-mail address as the connect-to-contact e-mail address
                         // field value for this submitted form, then the user has access to manage watchers.
-                        if (mb_strtolower(USER_EMAIL_ADDRESS) == mb_strtolower($submitter_email_address)) {
+                        // A submission without that field gives no row: no address, no match.
+                        if (pg_email_address_matches(USER_EMAIL_ADDRESS, $submitter_email_address)) {
                             $watcher_management_access = TRUE;
                         }
                     }
@@ -428,7 +429,7 @@ if ($management == TRUE) {
 
                         // If this user has the same e-mail address as the connect-to-contact e-mail address
                         // field value for this submitted form, then the user has view access.
-                        if (mb_strtolower(USER_EMAIL_ADDRESS) == mb_strtolower($submitter_email_address)) {
+                        if (pg_email_address_matches(USER_EMAIL_ADDRESS, $submitter_email_address)) {
                             $view_access = true;
 
                         // Otherwise this user is not the submitter, but if they are a watcher,
