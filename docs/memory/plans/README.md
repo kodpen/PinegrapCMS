@@ -15,6 +15,9 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 
 ## Files
 
+- activitypub-steps-2.md: Steps AP5-AP8 of plans/activitypub.md: moderation and blocks, the Fediverse settings screen, API and personal data, close-out; claim as [plan:activitypub] AP<n>
+- activitypub-steps.md: Steps AP1-AP4 of plans/activitypub.md: actor, WebFinger and signatures, inbox and followers, publishing through the outbox queue, replies as comments; claim as [plan:activitypub] AP<n>
+- activitypub.md: Plan (owner 2026-11-02): the site as a Fediverse actor over ActivityPub: WebFinger and actor, followers, posts delivered to inboxes, replies as comments, moderation, a settings screen; steps AP1-AP8
 - addon-hook-system.md: Plan (approved 2026-10-19, watch list, not before 2026.11.0 ships): add-on packages under includes/addons/ with manifest and hooks so payment, carrier, marketplace and SMS drivers add without forking
 - address-fields-by-country-places.md: Every place an address's city, state or district is asked, shown or read, checked on 2026-11-01 for plans/address-fields-by-country.md, with what each needs
 - address-fields-by-country-steps.md: Steps A1-A8 of plans/address-fields-by-country.md: site labels and district rule, editor starters, account state list, panel and ERP, place lists; claim as [plan:address-fields-by-country] A<n>
@@ -104,6 +107,9 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - security-findings-2026-10.md: 2026-10-19 security audit: fixed by that day's PRs and #713; items 2-8 decided by the owner 2026-10-28 (labels, CVV, escape_like, sign-in message, gateway secrets, ERP host, rich text)
 - shipping-carrier-labels.md: Plan (approved 2026-10-19; 1-4, 6-8 partly done): carrier APIs for labels and barcodes, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct, then abroad
 - shipping-management.md: Shipping plan (2026-10-08; phases 1-7 and the phase 8 postcode check done): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
+- stock-locations-steps-2.md: Steps SL4-SL7 of plans/stock-locations.md: transfers and stock history, pickup at a location, API and webhooks, close-out; claim as [plan:stock-locations] SL<n>
+- stock-locations-steps.md: Steps SL1-SL3 of plans/stock-locations.md: tables and the sum-keeping writer, product screens and import, order completion and scans by location; claim as [plan:stock-locations] SL<n>
+- stock-locations.md: Plan (owner 2026-11-02): stock kept per location (warehouse, shop, consignment) with the product's total unchanged for every reader; transfers, pickup at a location, API and webhooks; steps SL1-SL7
 - store-credit-steps-2.md: Steps SC5-SC7 of plans/store-credit.md: the staff and account screens with mails and expiry, API and webhooks, close-out; claim as [plan:store-credit] SC<n>
 - store-credit-steps.md: Steps SC1-SC4 of plans/store-credit.md: the customer-bound card model, credit at checkout through applied_gift_cards, points to credit, refunds to credit; claim as [plan:store-credit] SC<n>
 - store-credit.md: Plan (owner 2026-11-02): store credit as customer-bound gift cards: points to credit, refunds to credit, staff-issued credit, the balance applied at checkout; steps SC1-SC7
