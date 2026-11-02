@@ -67,7 +67,7 @@ function pg_dashboard_v2_cards()
 {
     // The cards whose function exists.
     $built = array('visitors', 'engagement', 'gsearch', 'ga', 'content', 'comments', 'files', 'activity', 'firewall', 'team', 'mytasks', 'waiting', 'week', 'calendars', 'queue', 'pipeline', 'goals', 'notes', 'flows');
-    $built = array_merge($built, array('shop', 'salesmap', 'orders', 'offers', 'fx'));
+    $built = array_merge($built, array('shop', 'salesmap', 'orders', 'offers', 'fx', 'ops'));
     $built[] = 'ai';
     $built = array_merge($built, array('pins', 'perf'));
 
