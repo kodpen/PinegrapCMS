@@ -2090,12 +2090,13 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
     $search_where = '';
     if ($search_active) {
         $sf_in   = implode(',', $search_field_ids);
-        $q_esc   = e(escape_like($search_query));
+        // A typed backslash, % or _ is a plain character, not a LIKE escape.
+        $q_like  = e(pg_list_like_pattern($search_query));
         $search_where =
             " AND EXISTS (SELECT 1 FROM form_data fd_q
                           WHERE fd_q.form_id = forms.id
                             AND fd_q.form_field_id IN ($sf_in)
-                            AND fd_q.data LIKE '%$q_esc%')";
+                            AND fd_q.data LIKE '$q_like')";
     }
 
     // ── Build search box HTML (rendered above the loop output) ────────────
@@ -6385,7 +6386,7 @@ function _pg_sw_search_collect($query, $cfg, $advanced = null)
 
     // ── Simple: featured, then pages ranked by matches ───────────────────
     $needle   = mb_strtolower($query);
-    $like     = "'%" . e(escape_like($query)) . "%'";
+    $like     = "'" . e(pg_list_like_pattern($query)) . "'";
     $promoted = get_page_id_list_for_sql(get_page_ids_promoted_on_keyword($query));
     $featured = db_items(
         "SELECT page.page_id AS id, page.page_name AS name, page.page_folder AS folder_id,
