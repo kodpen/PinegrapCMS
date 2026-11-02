@@ -4,19 +4,30 @@ description: External API (integration.php): find what the panel can do that the
 ---
 
 ## What did the owner ask?
-- Many things the panel manages have no endpoint in `integration.php`; they are to be added. Not the storefront API (visitor carts and checkout: `storefront-api-*.md`) nor the vendor client (`kodpen-vendor-api-client*.md`).
+- Endpoints for what the panel manages and `integration.php` lacks. Not the storefront API nor the vendor client.
 
 ## Which steps are there?
-- X0 (S, docs only) Gap list. Ready to start.
-  - Compare the panel's areas (menu slots, `pg_panel_actions()`, list and edit screens of every module) with the endpoints of `api_schema()`, `includes/api/resources/*.php` and the modules' `includes/<module>/api.php`. Today's resources: account, audit_log, calendars, campaigns, cart_quotes, comments, commissions, contact_groups, customers, design, discovery, files, folders, forms, gift_cards, inventory, key_codes, menus, meta, offers, orders, pages, product_attributes, product_groups, products, reports, seo, short_links, site_log, store, system, visitors, webhooks.
-  - Write the gaps into this file as steps X1… of about 1,000 product lines each, most useful first (what an outside system needs to sync: shipping, taxes, returns, subscriptions, users and roles, redirects first), each naming its resource, verbs, scopes and webhook events.
-  - A gap that needs a schema change or decides product behaviour is listed with a decision question (Working mode 10), not as a step.
-- X1… are added by X0; each is `free` once written.
+- X0 gap list: done (PR #PRNUM). X1–X12 are `free`, most useful first. A write step first moves the screen's inline SQL into one `includes/fn/` function both call. New `store:read`/`store:write` scopes (manager ceiling); store reads under `orders:read` keep it too.
+- X1 Shipping writes: create, update, `/delete` for `/store/shipping-methods`, `/store/zones`, `/store/tax-zones`. `store:write`. Events `shipping_method.created|updated|deleted`, `zone.changed`, `tax_zone.changed`.
+- X2 Returns: `GET /returns` (status, order_id, modified_since), `GET /returns/{id}`, `POST /returns/{id}` (approve, receive, refund, reject as `view_return.php`). `orders:*`. Events: existing `order.return.*`.
+- X3 `GET /subscriptions`, `/subscriptions/{id}` (`customers:read`); `POST /commissions/{id}` status, `POST /affiliates/{id}/approve`, `GET /commissions/recurring-profiles`; new `commissions:write`. Events `commission.status_changed`, `affiliate.approved`.
+- X4 Users read: `GET /users`, `/users/{id}` (role, permission columns, last sign-in, MFA; no secrets). New `users:read`, designer ceiling. Writes: #5237.
+- X5 Countries, states, currencies: create, update, delete; `POST /store/currencies/rates` (`update_exchange_rates.php`). `store:write`. Event `currency.updated`.
+- X6 `POST /orders` as `add_order.php`, Idempotency-Key, dry run. `orders:write`. Event `order.created`.
+- X7 `POST /offers`, `POST /offers/{id}/duplicate` (`edit_offer_f.php` rules). `offers:write`. New events `offer.created|updated|deleted`.
+- X8 CRUD `/store/arrival-dates`, `/store/ship-date-adjustments`, `/store/verified-addresses`, `/store/referral-sources`. `store:*`. No events.
+- X9 `POST /campaigns` (draft), `POST /campaigns/{id}/schedule`, campaign profiles CRUD, `GET /campaigns/sms`. `campaigns:*`. Event `campaign.sent`.
+- X10 Calendars create/update/delete, `/calendars/locations` CRUD, `GET /calendars/events/{id}/reservations`. `calendars:*` with the role-3 row rule. Event `calendar_event.reserved`.
+- X11 `POST /forms/{id}/submissions`, its `/delete`, `GET /forms/{id}/fields`. `forms:*`. Event `form.submission.deleted`; `form.submitted` exists.
+- X12 CRUD for ads, ad regions, auto dialogs, common regions under `/design/`. `design:*`. No events.
+
+## What is not a step?
+- Redirects: short links with `redirect_code` and `*` patterns, covered. Saved reports and the back-in-stock list wait for a client. Settings, firewall, sessions, backups, updates: #5238.
+- Issues #3411, #3412, #3413 (PR #3842), #3414 are done per `api/` memory and can be closed; #5085 (bell `group`, `fold`) is free work outside the steps.
 
 ## What is settled?
-- Every endpoint follows the API key rules (`api/README.md`): one row in the schema (router, validator, OpenAPI, MCP and scope screen read it), a scope in `api_scope_groups()` and its owner ceiling, the user role's row rule, `api_request_input()`, `api_dry_run_stop()` before the first write, POST twins for PATCH and DELETE, `max_length` within the column, webhook events through `pg_announce()`.
-- An endpoint reuses the panel's own write path (the same function the screen calls), so the rules of the screen hold for the API.
-- Tests: the schema test families already cover a new row (`php tools/check_api_schema.php`); each step adds tests for its handlers.
+- Each endpoint follows `api/README.md`: one schema row, a scope with its owner ceiling, the role-3 row rule, `api_request_input()`, `api_dry_run_stop()` above the first write, POST twins, `max_length` within the column, events through `pg_announce()`.
+- It reuses the screen's write function, so the screen's rules hold. Each step tests its handlers; `php tools/check_api_schema.php` covers the row.
 
 ## Where to start?
-- `docs/memory/api/README.md` and `api-endpoint-rules.md`; `pinegrap/includes/api/schema.php`, `includes/api/resources/`.
+- `api/README.md`, `api-endpoint-rules.md`, `includes/api/schema.php`, `includes/api/resources/`.
