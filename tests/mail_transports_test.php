@@ -329,3 +329,67 @@ function test_mail_transports_settings_decide_stored_secret_kept()
 	pg_assert_same(null, $decision['write']);
 	pg_assert_true($decision['error'] !== '');
 }
+
+function test_mail_transports_ses_request()
+{
+	$message = mail_transports_test_message();
+	$message['mime'] = "Subject: Order 1001\r\n\r\nThank you.\r\n";
+	$settings = mail_transports_test_settings(array('key_id' => 'AKIDEXAMPLE', 'region' => 'EU-Central-1', 'configuration_set' => 'pg'), 'wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY');
+
+	$request = pg_mail_ses_request($message, $settings, '20261102T120000Z');
+	$body = json_decode($request['body'], true);
+
+	pg_assert_same('https://email.eu-central-1.amazonaws.com/v2/email/outbound-emails', $request['url']);
+	pg_assert_same('"Example \"Shop\"" <shop@example.com>', $body['FromEmailAddress']);
+	pg_assert_same(array('ToAddresses' => array('"Ana" <ana@example.org>', 'bo@example.org'), 'BccAddresses' => array('audit@example.com')), $body['Destination']);
+	pg_assert_same(base64_encode($message['mime']), $body['Content']['Raw']['Data']);
+	pg_assert_same('pg', $body['ConfigurationSetName']);
+	pg_assert_true(in_array('X-Amz-Date: 20261102T120000Z', $request['headers'], true));
+	pg_assert_true(in_array('X-Amz-Content-Sha256: ' . hash('sha256', $request['body']), $request['headers'], true));
+
+	// The signature, worked out step by step from the request as sent.
+	$canonical = "POST\n/v2/email/outbound-emails\n\ncontent-type:application/json\nhost:email.eu-central-1.amazonaws.com\n"
+		. 'x-amz-content-sha256:' . hash('sha256', $request['body']) . "\nx-amz-date:20261102T120000Z\n\n"
+		. "content-type;host;x-amz-content-sha256;x-amz-date\n" . hash('sha256', $request['body']);
+	$scope = '20261102/eu-central-1/ses/aws4_request';
+	$signature = hash_hmac('sha256', "AWS4-HMAC-SHA256\n20261102T120000Z\n" . $scope . "\n" . hash('sha256', $canonical),
+		pg_aws_signing_key('wJalrXUtnFEMI/K7MDENG+bPxRfiCYEXAMPLEKEY', '20261102', 'eu-central-1', 'ses'));
+
+	pg_assert_same('Authorization: AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/' . $scope . ', SignedHeaders=content-type;host;x-amz-content-sha256;x-amz-date, Signature=' . $signature, end($request['headers']));
+
+	$settings['values']['configuration_set'] = '';
+	pg_assert_false(isset(json_decode(pg_mail_ses_request($message, $settings)['body'], true)['ConfigurationSetName']));
+}
+
+function test_mail_transports_ses_region_and_answer()
+{
+	pg_assert_same('us-east-1', pg_mail_ses_region(' US-East-1 '));
+	pg_assert_same('us-gov-west-1', pg_mail_ses_region('us-gov-west-1'));
+	pg_assert_same('', pg_mail_ses_region('evil.example.com/x'));
+	pg_assert_same('', pg_mail_ses_region(''));
+
+	pg_assert_same(array('ok' => true, 'id' => '0100018f-abc', 'error' => ''), pg_mail_ses_answer(200, '{"MessageId":"0100018f-abc"}'));
+	pg_assert_same(array('ok' => false, 'id' => '', 'error' => 'Email address is not verified. The following identities failed the check in region EU-CENTRAL-1: shop@example.com'),
+		pg_mail_ses_answer(400, '{"message":"Email address is not verified. The following identities failed the check in region EU-CENTRAL-1: shop@example.com"}'));
+	pg_assert_same(array('ok' => false, 'id' => '', 'error' => 'The security token included in the request is invalid.'), pg_mail_ses_answer(403, '{"Message":"The security token included in the request is invalid."}'));
+}
+
+function test_mail_transports_raw_message_leaves_bcc_out()
+{
+	$mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+	$mail->isSMTP();
+	$mail->setFrom('shop@example.com');
+	$mail->addAddress('ana@example.org');
+	$mail->addBCC('audit@example.com');
+	$mail->Subject = 'Order';
+	$mail->Body = 'Plain';
+
+	$message = pg_mail_transport_message($mail, 'system', true);
+
+	pg_assert_contains('Subject: Order', $message['mime']);
+	pg_assert_false(strpos($message['mime'], 'audit@example.com'));
+	pg_assert_same(array(array('audit@example.com', '')), $message['bcc']);
+	pg_assert_same('', pg_mail_transport_message($mail, 'system')['mime']);
+	pg_assert_true(pg_mail_transport_raw('ses'));
+	pg_assert_false(pg_mail_transport_raw('postmark'));
+}

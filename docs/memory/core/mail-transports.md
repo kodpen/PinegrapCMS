@@ -1,12 +1,13 @@
 ---
 name: mail-transports
-description: API mail transports beside SMTP (Postmark, Mailgun, Brevo, Resend; SES follows): the driver contract, where the account is kept, when email() uses one, the SMTP Settings card
+description: API mail transports beside SMTP (Postmark, Mailgun, Brevo, Resend, Amazon SES): the driver contract, where the account is kept, when email() uses one, the SMTP Settings card
 module: mail_transport
 ---
 
 ## What is a mail transport?
 - A provider's HTTP API that takes a message instead of the SMTP server: a driver `includes/mail/<key>.php` listed in `pg_mail_transports()` (`includes/fn/mail_transport.php`), functions `pg_mail_<key>_fields()`, `_capabilities()`, `_request($message, $settings)` and `_answer($status, $body)` (both pure), `_send()`; `_webhook()` comes with the webhooks step. Contract comment: `includes/mail/driver.php`.
-- Drivers: Postmark (JSON, server token header, `MessageStream`, a separate campaign stream if named), Mailgun (multipart form built by hand, Basic `api:<key>`, US or EU host; the body is not left to cURL because a file part from memory needs `CURLStringFile`, PHP 8.1), Brevo (JSON, `api-key`, one Reply-To), Resend (JSON, Bearer). Amazon SES is MD3b, with `includes/fn/aws_sign.php`.
+- Drivers: Postmark (JSON, server token header, `MessageStream`, a separate campaign stream if named), Mailgun (multipart form built by hand: a file part from memory needs `CURLStringFile`, PHP 8.1; Basic `api:<key>`, US or EU host), Brevo (JSON, `api-key`, one Reply-To), Resend (JSON, Bearer), Amazon SES (SES v2 SendEmail, signed with SigV4 by `includes/fn/aws_sign.php`, `platform/aws-sigv4-signing.md`; a region that is not an AWS region name is refused before any call).
+- A driver that declares `raw` (SES) gets the finished MIME in `$message['mime']` (built by PHPMailer's `preSend()`, without Bcc; the recipients, Bcc included, go in `Destination`), so headers and attachments travel as over SMTP.
 - Every call goes through `pg_mail_transport_call()` → `pg_curl_run()` (60 s), refuses a body over the driver's `max_bytes` and one `json_encode()` could not build (not UTF-8).
 
 ## When does email() use one?

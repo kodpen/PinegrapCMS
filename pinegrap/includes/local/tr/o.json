@@ -1013,6 +1013,7 @@
     "Optional. Links can be added here, for example to a draft or a design.": "İsteğe bağlı. Buraya bağlantı da eklenebilir; örneğin bir taslağa ya da tasarıma.",
     "Optional. Nobody gets an e-mail with nothing in it.": "İsteğe bağlı. İçinde hiçbir şey olmayan e-posta kimseye gitmez.",
     "Optional. Shown on the expenses list when it has passed.": "İsteğe bağlı. Geçtiğinde gider listesinde gösterilir.",
+    "Optional. The configuration set whose event destinations receive bounces and complaints.": "İsteğe bağlı. Olay hedefleri geri dönen iletileri ve şikâyetleri alan yapılandırma seti.",
     "Optional. The invoice has to belong to the account chosen above. Anything over what it is short of stays on the open account.": "İsteğe bağlı. Fatura, yukarıda seçilen cariye ait olmalı. Faturanın açığını aşan kısım açık hesapta kalır.",
     "Optional. The link never shows whom the quote was made for.": "İsteğe bağlı. Bağlantı, teklifin kimin için hazırlandığını hiçbir zaman göstermez.",
     "Optional: it stops repeating after this day.": "İsteğe bağlı: bu günden sonra tekrarlanmaz.",
