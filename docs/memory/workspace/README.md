@@ -234,6 +234,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-notes-import-upload.md: The notes import's upload: picked list, checks, unreadable files, XHR progress, cancel, reading step, focus, request_max cap, per-file sentences, session closed before staging
 - workspace-notes-import-zip-names.md: How the notes import reads zip entry names (UTF-8 flag, CP857 from Windows/7-Zip on a Turkish system, libzip's CP437 guess) and why "Toplantì notlarì" happened
 - workspace-notes-import.md: Notes brought in from other apps (workspace_notes_import.php, notes_import.php): Markdown/text or a zip staged, previewed, written in batches; how an export of ours updates its own note
+- workspace-notes-list-layout.md: My Notes screen layout: list column widths, the note time on the line under the title, the New note button in the empty pane (#5194)
 - workspace-notes-revision.md: A note's revision (ws_notes.revision, schema 11.0.84, PR #1663): which writes move it, the API's revision field and 409, the panel's revision, why code checks for the column, base kept
 - workspace-notes-slash-inserts.md: "/" in a note's writing box lists the box's own inserts (lists, quote, checklist, table, calculation, code block, highlight); where it opens, keys, undo, what it never does
 - workspace-notes-sources.md: Where an imported note came from (ws_note_sources, schema 11.0.86, PR #1812): the id per provider, how the import plan turns a known file into "same" or "update", when rows are written and dropped
