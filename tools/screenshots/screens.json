@@ -18,6 +18,7 @@
 		{"name": "add_gift_card", "path": "add_gift_card.php"},
 		{"name": "add_shipping_method", "path": "add_shipping_method.php"},
 		{"name": "add_email_campaign_profile", "path": "add_email_campaign_profile.php"},
+		{"name": "add_zone", "path": "add_zone.php"},
 		{"name": "view_pages", "path": "view_pages.php"},
 		{"name": "signin", "path": "index.php", "signed_out": true},
 		{"name": "forgot_password", "path": "forgot_password.php", "signed_out": true},

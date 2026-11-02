@@ -60,7 +60,7 @@ function test_form_card_titles_are_h2_with_the_same_look()
 		'page_form.php' => 2,
 		'product_group_form.php' => 5,
 		'shipping_method_form.php' => 4,
-		'zone_form.php' => 4,
+		'zone_form.php' => 5,
 	);
 	foreach ($files as $file => $count) {
 		$src = form_card_headings_source($file);
