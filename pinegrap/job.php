@@ -494,6 +494,25 @@ if (pg_image_derivative_sweep_due(pg_image_derivative_directory())) {
     }
 }
 
+// Uploaded files to the object store (includes/fn/file_storage.php): while
+// the switch is on, the newest local files first, twenty files or twenty
+// seconds a tick, each checked by its size in the store before its bytes
+// leave the disk. A file that fails three passes stays local and is named in
+// the Site Log. With the switch off this is one settings read.
+$file_move = pg_file_move_run(20, 20);
+
+if ($file_move['moved'] > 0) {
+    log_activity(lang(array(
+        'string' => 'general job moved {var:1} file(s) to the object store ({var:2})',
+        'vars'   => array(pg_format_number($file_move['moved'], 0), convert_bytes_to_string($file_move['bytes'], 1)),
+    )), 'UNKNOWN');
+}
+
+// Copies of stored files fetched for readers that need a path
+// (pg_file_local_copy()): once an hour, those unused for a week and then the
+// least recently used above 1 GB go.
+pg_file_cache_sweep();
+
 // Workspace previews used to be drawn into data/temp/workspace_previews;
 // they come from the image derivative cache now (ws_file_preview()). What an
 // earlier version left there goes, a few hundred files a tick.

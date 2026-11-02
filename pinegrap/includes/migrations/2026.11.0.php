@@ -139,6 +139,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_product_questions();       // 11.0.148
 	upgrade_2026_11_0_page_vitals_hourly();      // 11.0.149
 	upgrade_2026_11_0_ai_fetch_daily();          // 11.0.150
+	upgrade_2026_11_0_file_storage();            // 11.0.152
 
 }
 
@@ -4506,5 +4507,41 @@ function upgrade_2026_11_0_ai_fetch_daily() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('AI crawlers: each day\'s fetches by AI assistants and AI search indexers are now counted per page.');
+
+}
+
+// Where a file's bytes are (2026.11.0, 11.0.152; includes/fn/file_storage.php).
+// storage 'local' is data/files on the web server, 's3' the object store of
+// Site Settings, Storage, under the key in storage_key. Every row is local
+// after this step; the general job moves files only once the switch is on.
+// No index: the move job walks the primary key, and a count by storage is a
+// settings screen's read.
+//
+// As 11.0.148: in place where the server can; on a copying server a column
+// is not started once this pass's budget is spent.
+function upgrade_2026_11_0_file_storage() {
+
+	$columns = array(
+		'storage'     => "ENUM('local','s3') NOT NULL DEFAULT 'local'",
+		'storage_key' => "VARCHAR(255) NOT NULL DEFAULT ''",
+	);
+
+	if (!install_add_columns_instant('files', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			if (install_pass_spent()) {
+
+				install_pause(lang(array('string' => 'files: the storage place of files is being added; {var:1} follows in the next pass', 'vars' => $column)));
+
+			}
+
+			install_add_column('files', $column, $definition);
+
+		}
+
+	}
+
+	install_note('Files: each file records whether its bytes are on the web server or in the object store; every existing file stays on the web server.');
 
 }

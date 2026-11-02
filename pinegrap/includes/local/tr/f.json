@@ -1008,6 +1008,7 @@
     "file, {var:1}, was uploaded": "{var:1} dosyası yüklendi",
     "files": "dosyalar",
     "files are selected": "dosya seçildi",
+    "files: the storage place of files is being added; {var:1} follows in the next pass": "files: dosyaların saklandığı yer ekleniyor; {var:1} sonraki geçişte gelecek",
     "file{suffix:1}": "dosya",
     "finds this site among the account's Search Console properties, or verifies it with a meta tag on its pages and adds it;": "siteyi hesabın Search Console mülkleri arasında bulur ya da sayfalarına konan bir meta etiketle doğrulayıp ekler;",
     "finished projects": "tamamlanan proje",

@@ -4,7 +4,7 @@ description: Steps OS1-OS7 of plans/object-storage.md: SigV4 client, backup targ
 ---
 
 ## Which run side by side?
-- Wave 1: OS1 alone. Wave 2: OS2 and OS3 at once (different files). Wave 3: OS4, OS5, OS6 at once after OS3. Wave 4: OS7. Question 1 before OS3, question 2 before OS2 is reviewed.
+- Wave 1: OS1 alone. Wave 2: OS2 and OS3 at once (different files). Wave 3: OS4, OS5, OS6 at once after OS3 (3a, 3b, 3c). Wave 4: OS7. Question 1 before OS3, question 2 before OS2 is reviewed.
 - S under 400 product lines, M about 1,000. Tests in `tests/object_storage_<topic>_test.php`, memory under `platform/`, texts through `tr_add.php`.
 
 ## Which steps are there?
@@ -14,8 +14,10 @@ description: Steps OS1-OS7 of plans/object-storage.md: SigV4 client, backup targ
 - OS2 (M) Backup target. After OS1.
   - The existing backup type `s3` (`pg_backup_s3_put()`) sends through `pg_os_put()` and its SigV4 copy in `backup.php` goes; whether its fields give way to the Storage card is OS2's choice; remote prune by `pg_backup_prune_list()` over `pg_os_list()`; the restore screen (`backup_restore.php`) lists remote archives and downloads one to `data/temp` with the checksum and size caps of `platform/backup-upload-extraction.md`; ops alert `backup_copy_failed` reuses the existing failed-backup code. Tests: the key names and prune choice from fixed lists. Memory: `platform/backup-object-storage.md`.
 
-- OS3 (L, two PRs) File rows, the move job, readers. After OS1 and question 1.
-  - 3a: the schema sub-step (`install_add_column()` twice, rerun twice on a dev DB); `pg_file_storage($row)`; the move job in `job.php` (newest first, a cursor in config, N files a tick, verify by `HEAD` and size before the local byte is deleted, failures retried then named in the Site Log); `pg_file_local_copy($file_id)` fetches into `data/cache/objects/<id>` for readers that need a path (image engine, derivatives, PDF, office, editor save) with an LRU sweep in the general job. 3b: `get_file.php`: after the access checks, a stored file answers with a 302 to `pg_os_presign()` (5 minutes, `Content-Disposition` and `Content-Type` as query overrides) or streams through PHP for a range request, a changed download name or when the store is unreachable (falls back to the local copy). Delete, rename and replace doors update the store. Memory: `platform/file-object-storage.md`.
+- OS3 (L, three PRs) File rows, the move job, readers. After OS1 and question 1.
+  - 3a: done (#PR). Schema 11.0.152, `pg_file_storage()`, the move job in `job.php`, `pg_file_local_copy()` and the cache sweep, behind the switch config_text `object_storage_files` that no screen sets yet (`platform/file-object-storage.md`).
+  - 3b: `get_file.php`: after the access checks, a stored file answers with a 302 to `pg_os_presign()` (5 minutes, `Content-Disposition` and `Content-Type` as query overrides) or streams through PHP for a range request, a changed download name or when the store is unreachable (falls back to the local copy). Delete, rename and replace doors update the store.
+  - 3c (split from 3a: about 285 `FILE_DIRECTORY_PATH` uses): readers that need a path call `pg_file_local_copy()`: image engine and derivatives, PDF, office, the image editor's open and save (a save writes local and sets the row back to 'local'). After 3c the switch may be offered (OS4).
 
 - OS4 (S) Migration tool and Disk Usage. After OS3.
   - Settings › Storage: "Move existing files" starts the job over all local rows with progress (count, bytes, failures), pause and resume; "Bring back" moves them home; Disk Usage and System Status count local and stored bytes and name the store. Memory: `platform/file-object-storage.md` grows.
