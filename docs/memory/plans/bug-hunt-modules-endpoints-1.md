@@ -19,9 +19,9 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 - Endpoints `check` (2): clean #5108 (check_for_products_in_cart, check_if_file_exists)
 - Endpoints `comment` (3): done #5108 (add_comment; edit_comment, view_comments clean)
 - Endpoints `commission` (2): done #5113 (edit_commission, view_commissions)
-- Endpoints `common` (3): clean (add_common_region, duplicate_common_region, edit_common_region; an empty name is not checked on purpose, ui/common-region-shared-form.md)
+- Endpoints `common` (3): clean (an empty name is unchecked on purpose: ui/common-region-shared-form.md)
 - Endpoints `connect` (3): clean (connect, connect_client, connect_user_to_order)
-- Endpoints `contact` (8): open
+- Endpoints `contact` (8): #5124 (view_contacts); the rest clean but add_contact, edit_contact: open (held by #5095)
 - Endpoints `container` (3): open
 - Endpoints `country` (2): open
 - Endpoints `currency` (3): open

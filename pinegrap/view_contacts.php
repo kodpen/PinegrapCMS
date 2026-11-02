@@ -406,6 +406,13 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
     // Mass merge is triggered by a GET form, so require the token to block forged links.
     validate_token_field();
 
+    // The merge runs on the filter the request names, so the role is checked
+    // here and not only on the duplicates view.
+    if (!pg_contact_list_may_merge($user)) {
+        log_activity(lang('access denied to merge contacts'), $_SESSION['sessionusername']);
+        output_error(lang('Access denied') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
     $contacts_to_merge = array();
     
     // get contacts to be merged information
