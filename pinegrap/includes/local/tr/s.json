@@ -1341,7 +1341,7 @@
     "Ship date": "Sevk tarihi",
     "Ship date (shipped or planned)": "Kargo tarihi (verilen ya da planlanan)",
     "Ship to": "Alıcı",
-    "Ship to Name": "İsmine Postalama",
+    "Ship to Name": "Alıcı Adı",
     "Ship to {var:1}": "{var:1} hedefine gönderi",
     "Ship-to name": "Teslimat adı",
     "Shipment Date": "Gönderim Tarihi",

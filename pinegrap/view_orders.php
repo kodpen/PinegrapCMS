@@ -355,7 +355,7 @@ if (($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] ?? ''
     if (($_SESSION['software']['ecommerce']['view_orders']['billing_city'] ?? '')) {$where .= " AND (orders.billing_city LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_city'] ?? ''))) . "')";}
     if (($_SESSION['software']['ecommerce']['view_orders']['billing_state'] ?? '')) {$where .= " AND ((orders.billing_state LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_state'] ?? ''))) . "') OR (billing_states.name LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_state'] ?? ''))) . "'))";}
     if (($_SESSION['software']['ecommerce']['view_orders']['billing_zip_code'] ?? '')) {$where .= " AND (orders.billing_zip_code LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_zip_code'] ?? ''))) . "')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['billing_country'] ?? '')) {$where .= " AND ((orders.billing_country LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_country'] ?? ''))) . "') OR (billing_countries.name LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_country'] ?? ''))) . "'))";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_country'] ?? '')) {$where .= " AND ((orders.billing_country LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_country'] ?? ''))) . "') OR (billing_countries.name LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_country'] ?? ''))) . "')" . pg_order_country_filter_sql('orders.billing_country', $_SESSION['software']['ecommerce']['view_orders']['billing_country']) . ")";}
     if (($_SESSION['software']['ecommerce']['view_orders']['billing_phone_number'] ?? '')) {$where .= " AND (orders.billing_phone_number LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_phone_number'] ?? ''))) . "')";}
     if (($_SESSION['software']['ecommerce']['view_orders']['billing_fax_number'] ?? '')) {$where .= " AND (orders.billing_fax_number LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_fax_number'] ?? ''))) . "')";}
     if (($_SESSION['software']['ecommerce']['view_orders']['billing_email_address'] ?? '')) {$where .= " AND (orders.billing_email_address LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_email_address'] ?? ''))) . "')";}
@@ -384,7 +384,7 @@ if (($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] ?? ''
     if (($_SESSION['software']['ecommerce']['view_orders']['shipping_city'] ?? '')) {$where .= " AND (ship_tos.city LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['shipping_city'] ?? ''))) . "')"; $shipping = true;}
     if (($_SESSION['software']['ecommerce']['view_orders']['shipping_state'] ?? '')) {$where .= " AND ((ship_tos.state LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['shipping_state'] ?? ''))) . "') OR (shipping_states.name LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['shipping_state'] ?? ''))) . "'))"; $shipping = true;}
     if (($_SESSION['software']['ecommerce']['view_orders']['shipping_zip_code'] ?? '')) {$where .= " AND (ship_tos.zip_code LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['shipping_zip_code'] ?? ''))) . "')"; $shipping = true;}
-    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_country'] ?? '')) {$where .= " AND ((ship_tos.country LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['shipping_country'] ?? ''))) . "') OR (shipping_countries.name LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['shipping_country'] ?? ''))) . "'))"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_country'] ?? '')) {$where .= " AND ((ship_tos.country LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['shipping_country'] ?? ''))) . "') OR (shipping_countries.name LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['shipping_country'] ?? ''))) . "')" . pg_order_country_filter_sql('ship_tos.country', $_SESSION['software']['ecommerce']['view_orders']['shipping_country']) . ")"; $shipping = true;}
     
     // If address type has not been set yet, then set it to any by default.
     if (isset($_SESSION['software']['ecommerce']['view_orders']['address_type']) == false) {
@@ -479,9 +479,9 @@ if (pg_shipment_labels_ready() && (pg_shipment_label_drivers() || pg_shipment_la
         ? lang('A shipment is opened and its label bought at the carrier label service for every address of the selected orders that has no label yet, 20 at a time. Continue?')
         : lang('A Trendyol common label is fetched for every qualifying package of the selected orders that has no label yet, 20 at a time. Continue?');
     $output_shipment_label_buttons =
-        '<button type="submit" formaction="shipment_label.php" name="label_request" value="bulk_create" class="btn mb-1 mt-1 btn-solid theme-secondary disabled" data-confirm-content="' . h($shipment_label_confirm) . '"><i class="bi bi-upc-scan me-3" aria-hidden="true"></i>' . lang('Create Labels') . '</button>
-        <button type="submit" formaction="shipment_label.php" formtarget="_blank" name="label_request" value="bulk_print" class="btn mb-1 mt-1 btn-solid theme-secondary disabled"><i class="bi bi-printer me-3" aria-hidden="true"></i>' . lang('Print Labels') . '</button>
-        <button type="submit" formaction="shipment_label.php" name="label_request" value="bulk_zpl" class="btn mb-1 mt-1 btn-solid theme-secondary disabled"><i class="bi bi-download me-3" aria-hidden="true"></i>' . lang('Download ZPL Labels') . '</button>';
+        '<button type="submit" formaction="shipment_label.php" name="label_request" value="bulk_create" title="' . h(lang('Create Labels')) . '" class="btn mb-1 mt-1 btn-solid theme-secondary disabled" data-confirm-content="' . h($shipment_label_confirm) . '"><i class="bi bi-upc-scan me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Create Labels') . '</span></button>
+        <button type="submit" formaction="shipment_label.php" formtarget="_blank" name="label_request" value="bulk_print" title="' . h(lang('Print Labels')) . '" class="btn mb-1 mt-1 btn-solid theme-secondary disabled"><i class="bi bi-printer me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Print Labels') . '</span></button>
+        <button type="submit" formaction="shipment_label.php" name="label_request" value="bulk_zpl" title="' . h(lang('Download ZPL Labels')) . '" class="btn mb-1 mt-1 btn-solid theme-secondary disabled"><i class="bi bi-download me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Download ZPL Labels') . '</span></button>';
 }
 
 // A carrier pickup for the active labels of the selected orders: a dialog
@@ -490,7 +490,7 @@ $output_shipment_pickup_dialog = '';
 
 if ($output_shipment_label_buttons !== '' && pg_shipment_label_pickup_drivers()) {
     $output_shipment_label_buttons .= '
-        <button type="button" class="no-submit btn mb-1 mt-1 btn-solid theme-secondary disabled" data-bs-toggle="dialog" data-bs-target="#shipment_pickup_dialog"><i class="bi bi-truck me-3" aria-hidden="true"></i>' . lang('Request Pickup') . '</button>';
+        <button type="button" class="no-submit btn mb-1 mt-1 btn-solid theme-secondary disabled" data-bs-toggle="dialog" data-bs-target="#shipment_pickup_dialog" title="' . h(lang('Request Pickup')) . '"><i class="bi bi-truck me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Request Pickup') . '</span></button>';
     $output_shipment_pickup_dialog = pg_shipment_label_pickup_dialog('shipment_pickup_dialog', '', 'bulk_pickup');
 }
 $output_xlsl_setup_modal = '';
@@ -514,19 +514,19 @@ if(defined('ENABLE_PARASUT') && ENABLE_PARASUT != 0){
                         <div class="col-12 my-1">
                             <label class="form-label" for="tax_rate_for_parasut">' . lang('Products Tax Rate') . '</label>
                             <label class="form-control form-adorn form-adorn-end w-auto">
-                                <span class="form-adorn-text" aria-hidden="true">%</span><input type="number" id="tax_rate_for_parasut" name="tax_rate_for_parasut" class="form-ghost text-end" value="20" placeholder="18" />
+                                <span class="form-adorn-text" aria-hidden="true">%</span><input type="number" id="tax_rate_for_parasut" name="tax_rate_for_parasut" class="form-ghost text-end" value="20" placeholder="20" min="0" max="100" step="0.01" />
                             </label>
                             <div class="form-text text-end">' . lang('Each product is processed at its tax-deducted price and tax rates are processed in a separate column.') . '</div>
                         </div>
                     </div>
                 </div>
                 <div class="dialog-footer">
-                <p>' . lang('Do you approve to create 2 excel files suitable for using the selected orders in Paraşut application?') . '</p>
+                <p>' . lang('Do you approve to create 2 excel files suitable for using the selected orders in Paraşüt application?') . '</p>
                     <button type="button" class="no-submit btn btn-solid theme-secondary" data-bs-dismiss="dialog">' . lang('Close') . '</button>
-                    <button type="button" name="submit_data" value="Export Orders For Parasut" class="btn btn-solid theme-success" data-wait-text="' . h(lang('Preparing the export file. Please wait.')) . '" data-error-text="' . h(lang('The export file could not be created. Please try again.')) . '"><span class="material-icons me-3">done</span>' . lang(array('string'=>'Confirm') ) . '</button>
+                    <button type="button" name="submit_data" value="Export Orders For Parasut" class="btn btn-solid theme-success" data-wait-text="' . h(lang('Preparing the export file. Please wait.')) . '" data-error-text="' . h(lang('The export file could not be created. Please try again.')) . '"><i class="bi bi-check-lg me-3" aria-hidden="true"></i>' . lang(array('string'=>'Confirm') ) . '</button>
                 </div>
     </dialog>';
-    $output_generate_xlsl_button = '<button type="button" class="no-submit btn mb-1 mt-1 btn-solid theme-success disabled" data-bs-toggle="dialog" data-bs-target="#xlsl_setup_modal"><span class="material-icons me-3">file_present</span>' . lang(array('string'=>'Export for Parasut Selected') ) . '</button>';
+    $output_generate_xlsl_button = '<button type="button" class="no-submit btn mb-1 mt-1 btn-solid theme-success disabled" data-bs-toggle="dialog" data-bs-target="#xlsl_setup_modal" title="' . h(lang('Export for Parasut Selected')) . '"><i class="bi bi-file-earmark-spreadsheet me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Export for Parasut Selected') ) . '</span></button>';
 }
 
 // The product and shipping filters join order_items and ship_tos, one row
@@ -789,7 +789,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . $order['payment_method'] . '",' .
             '"' . $order['card_type'] . '",' .
             '"' . pg_csv_formula_guard($order['cardholder']) . '",' .
-            '"#' . $card_number . '",' .
+            '"' . pg_order_export_card_cell($card_number) . '",' .
             '"' . $order['expiration_month'] . '",' .
             '"' . $order['expiration_year'] . '",' .
             '"' . $card_verification_number . '",' .
@@ -992,9 +992,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . $row['country'] . '",' .
             '"' . $row['address_type'] . '",' .
             '"' . $row['arrival_date_code'] . '",' .
-            '"' . prepare_form_data_for_output($row['arrival_date'], 'date') . '",' .
-            '"' . prepare_form_data_for_output($row['ship_date'], 'date') . '",' .
-            '"' . prepare_form_data_for_output($row['delivery_date'], 'date') . '",' .
+            '"' . pg_order_export_date_cell($row['arrival_date']) . '",' .
+            '"' . pg_order_export_date_cell($row['ship_date']) . '",' .
+            '"' . pg_order_export_date_cell($row['delivery_date']) . '",' .
             '"' . $row['shipping_method_code'] . '",' .
             '"' . sprintf("%01.2lf", $row['shipping_cost'] / 100) . '"';
         
@@ -1781,7 +1781,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . $order['payment_method'] . '",' .
             '"' . $order['card_type'] . '",' .
             '"' . pg_csv_formula_guard($order['cardholder']) . '",' .
-            '"#' . $card_number . '",' .
+            '"' . pg_order_export_card_cell($card_number) . '",' .
             '"' . $order['expiration_month'] . '",' .
             '"' . $order['expiration_year'] . '",' .
             '"' . $card_verification_number . '",' .
@@ -2045,9 +2045,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 '"' . $ship_to['country'] . '",' .
                 '"' . $ship_to['address_type'] . '",' .
                 '"' . $ship_to['arrival_date_code'] . '",' .
-                '"' . prepare_form_data_for_output($ship_to['arrival_date'], 'date') . '",' .
-                '"' . prepare_form_data_for_output($ship_to['ship_date'], 'date') . '",' .
-                '"' . prepare_form_data_for_output($ship_to['delivery_date'], 'date') . '",' .
+                '"' . pg_order_export_date_cell($ship_to['arrival_date']) . '",' .
+                '"' . pg_order_export_date_cell($ship_to['ship_date']) . '",' .
+                '"' . pg_order_export_date_cell($ship_to['delivery_date']) . '",' .
                 '"' . $ship_to['shipping_method_code'] . '",' .
                 '"' . $shipping_tracking_number_list . '",' .
                 '"' . sprintf("%01.2lf", $ship_to['shipping_cost'] / 100) . '"';
@@ -3308,15 +3308,15 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                     ' . $output_rows . '
                                 </tbody>
                             </table>
-                            <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+                            <nav class="buttons navigation pg-bar-icons text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                                 <div class="container">
                                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
                                         ' . $output_generate_xlsl_button . '
-                                        <button type="button" value="Remove Card Data for Selected" class="btn mb-1 mt-1 btn-solid theme-primary disabled" data-confirm-content="' . lang(array('string'=>'WARNING: {var:1} will be permanently removed from the selected order(s).','vars'=>array(lang('Card Data')))) . '"><span class="material-icons me-3">credit_card_off</span>' . lang(array('string'=>'Remove Card Data for Selected') ) . '</button>
-                                        <button type="button" value="Mark Shipped Selected" class="btn mb-1 mt-1 btn-solid theme-success disabled" data-confirm-content="' . h(lang('The selected order(s) will be marked shipped today and their customers sent the shipping e-mail. Orders that already have a tracking number are skipped.')) . '"><i class="bi bi-truck me-3" aria-hidden="true"></i>' . lang('Mark Shipped Selected') . '</button>
+                                        <button type="button" value="Remove Card Data for Selected" class="btn mb-1 mt-1 btn-solid theme-primary disabled" title="' . h(lang('Remove Card Data for Selected')) . '" data-confirm-content="' . lang(array('string'=>'WARNING: {var:1} will be permanently removed from the selected order(s).','vars'=>array(lang('Card Data')))) . '"><i class="bi bi-credit-card-2-front me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Remove Card Data for Selected') ) . '</span></button>
+                                        <button type="button" value="Mark Shipped Selected" class="btn mb-1 mt-1 btn-solid theme-success disabled" title="' . h(lang('Mark Shipped Selected')) . '" data-confirm-content="' . h(lang('The selected order(s) will be marked shipped today and their customers sent the shipping e-mail. Orders that already have a tracking number are skipped.')) . '"><i class="bi bi-truck me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Mark Shipped Selected') . '</span></button>
                                         ' . $output_shipment_label_buttons . '
-                                        <button type="button" value="Cancel Selected" class="btn mb-1 mt-1 btn-solid theme-warning disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected order(s) will be cancelled. This cannot be undone.')) . '"><i class="bi bi-x-octagon me-3"></i>' . lang('Cancel Selected') . '</button>
-                                        <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('orders')))) . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
+                                        <button type="button" value="Cancel Selected" class="btn mb-1 mt-1 btn-solid theme-warning disabled" title="' . h(lang('Cancel Selected')) . '" data-confirm-content="' . h(lang('WARNING: The selected order(s) will be cancelled; orders never completed are skipped. Customers may be sent a cancellation e-mail and payments cancelled or refunded, which cannot be undone. A cancelled order can be restored from its order screen.')) . '"><i class="bi bi-x-octagon me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Cancel Selected') . '</span></button>
+                                        <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-solid theme-danger disabled" title="' . h(lang('Delete Selected')) . '" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('orders')))) . '"><i class="bi bi-trash me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string'=>'Delete Selected') ) . '</span></button>
                                     </div>
                                 </div>
                             </nav>
@@ -3365,7 +3365,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 if (!form || !orderId) return;
 
                 var label = btn.getAttribute("data-order-number") || orderId;
-                var question = ' . json_encode(lang('Are you sure you want to cancel this order? This cannot be undone.')) . ' + " (#" + label + ")";
+                var question = ' . json_encode(lang('Are you sure you want to cancel this order?')) . ' + " (#" + label + ") " + ' . json_encode(lang('The customer may be sent a cancellation e-mail and the payment cancelled or refunded, which cannot be undone. The order can be restored from its order screen.')) . ';
 
                 function submitCancel() {
                     form.elements["order_id"].value = orderId;
@@ -3380,7 +3380,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     title: ' . json_encode(lang('Cancel Order')) . ',
                     message: question,
                     confirmText: ' . json_encode(lang('Cancel Order')) . ',
-                    cancelText: ' . json_encode(lang('Cancel')) . ',
+                    cancelText: ' . json_encode(lang('Do Not Cancel')) . ',
                     variant: "danger"
                 }).then(function (ok) {
                     if (ok) submitCancel();

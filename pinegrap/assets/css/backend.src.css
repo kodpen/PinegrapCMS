@@ -4908,6 +4908,26 @@ nav.buttons.navigation .btn-solid.theme-secondary {
     padding-bottom: 0.5rem !important;
   }
 
+  /* A bar with many actions (the orders list) shows icons only: half a row
+     each still made it four rows and a fifth of the screen. The label stays
+     the accessible name and the button's title names it on hover. */
+  nav.buttons.navigation.pg-bar-icons .btn {
+    flex: 0 0 auto;
+    min-width: 2.75rem;
+  }
+
+  nav.buttons.navigation.pg-bar-icons .pg-btn-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
   /* A full-width bar leaves no side gutter to keep clear, so it sits above the
      bubble instead of beside it. The inline bottom:.5rem on 140 pages is what
      the !important is for. */

@@ -1183,6 +1183,7 @@
     "{var:1} order(s) were exported.": "{var:1} sipariş dışa aktarıldı.",
     "{var:1} order(s) were marked shipped": "{var:1} sipariş kargoya verildi olarak işaretlendi",
     "{var:1} order(s) were never completed and skipped": "{var:1} sipariş hiç tamamlanmadığı için atlandı",
+    "{var:1} order(s) were not completed or were cancelled and skipped": "{var:1} sipariş tamamlanmadığı ya da iptal edildiği için atlandı",
     "{var:1} order(s), by the order date": "{var:1} sipariş, sipariş tarihine göre",
     "{var:1} ordered for the first time this month, and that order is worth a look.": "{var:1} bu ay ilk kez sipariş verdi; o siparişe bakmaya değer.",
     "{var:1} ordered for the first time this month.": "{var:1} bu ay ilk kez sipariş verdi.",
