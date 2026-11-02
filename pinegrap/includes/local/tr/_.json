@@ -32,7 +32,7 @@
     " ['No Thanks' Option]": " ['Hayır Teşekkürler' Seçeneği]",
     " and ALL SUBMITTED FORM DATA for the selected field(s)": " ve seçilen alanlar için GÖNDERİLEN TÜM FORM VERİLERİ",
     " and ALL SUBMITTED FORM DATA for this field": " ve bu alan için TÜM GÖNDERİLEN FORM VERİLERİ",
-    " by the event, {var:1}": " olaya göre, {var:1}",
+    " by the event, {var:1}": " \"{var:1}\" etkinliği tarafından",
     " had inventory quantity changed": " stok miktarı değiştirildi",
     " had price changed": " fiyatı değişti",
     " had shipping zones allowed/disallowed": " nakliye bölgesi izni verildi/kaldırıldı",
