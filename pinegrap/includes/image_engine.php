@@ -623,8 +623,10 @@ function pg_image_engine_no_gain($bytes_after, $bytes_before, $format_conversion
  *                         gamma; Imagick only, reason no_color under GD),
  *                         sharpen, vignette, redact (areas burned in:
  *                         mode pixel, blur or solid, block, sigma, the box
- *                         x, y, w, h and its mask PNG's path), overlay (a
- *                         PNG's path),
+ *                         x, y, w, h and its mask PNG's path), extend (the
+ *                         canvas: w, h, the picture's x, y on it, fill
+ *                         array(r, g, b) or null for transparent), overlay
+ *                         (a PNG's path, the canvas's size),
  *                         first_frame (an animated picture gives its first
  *                         frame instead of being refused), type (the
  *                         IMAGETYPE_* to write, the read one by default).
@@ -1482,9 +1484,12 @@ function pg_image_edit_work_size($width, $height, $edit)
     $bw = $plan['scale'] * ($plan['rw'] * cos($a) + $plan['rh'] * sin($a));
     $bh = $plan['scale'] * ($plan['rw'] * sin($a) + $plan['rh'] * cos($a));
 
+    $ew = !empty($edit['extend']) ? (int) $edit['extend']['w'] : 0;
+    $eh = !empty($edit['extend']) ? (int) $edit['extend']['h'] : 0;
+
     return array(
-        (int) ceil(max($plan['rw'], $bw, $plan['out_w'])),
-        (int) ceil(max($plan['rh'], $bh, $plan['out_h'])));
+        (int) ceil(max($plan['rw'], $bw, $plan['out_w'], $ew)),
+        (int) ceil(max($plan['rh'], $bh, $plan['out_h'], $eh)));
 }
 
 /**
@@ -1611,6 +1616,18 @@ function pg_image_edit_imagick($image, $edit, $alpha)
         pg_image_edit_redact_imagick($image, $edit['redact']);
     }
 
+    if (!empty($edit['extend'])) {
+        $e = $edit['extend'];
+        $fill = $e['fill'] ? $e['fill'] : ($alpha ? null : array(255, 255, 255));
+
+        // The picture placed at x, y on a w x h canvas: what lies outside it
+        // takes the fill, what lies off the canvas is trimmed.
+        $image->setImageAlphaChannel(Imagick::ALPHACHANNEL_SET);
+        $image->setImageBackgroundColor($fill ? new ImagickPixel(sprintf('rgb(%d,%d,%d)', $fill[0], $fill[1], $fill[2])) : $none);
+        $image->extentImage($e['w'], $e['h'], -$e['x'], -$e['y']);
+        $image->setImagePage(0, 0, 0, 0);
+    }
+
     if (!empty($edit['overlay'])) {
         $overlay = new Imagick($edit['overlay']);
         $image->compositeImage($overlay, Imagick::COMPOSITE_OVER, 0, 0);
@@ -1625,9 +1642,9 @@ function pg_image_edit_imagick($image, $edit, $alpha)
     }
 
     // Drawing coordinates name pixel centres, so the edges of a w x h
-    // picture lie at -0.5 and w - 0.5.
-    $w = $plan['out_w'];
-    $h = $plan['out_h'];
+    // picture lie at -0.5 and w - 0.5. The shape cuts the whole canvas.
+    $w = $image->getImageWidth();
+    $h = $image->getImageHeight();
     $mask = new Imagick();
     $mask->newImage($w, $h, new ImagickPixel('transparent'), 'png');
     $draw = new ImagickDraw();
@@ -1773,6 +1790,14 @@ function pg_image_edit_gd($image, $edit, $alpha)
         return false;
     }
 
+    if (!empty($edit['extend'])) {
+        $out = pg_image_edit_gd_extend($out, $edit['extend'], $alpha);
+
+        if (!$out) {
+            return false;
+        }
+    }
+
     if (!empty($edit['overlay'])) {
         $overlay = @imagecreatefrompng($edit['overlay']);
 
@@ -1782,7 +1807,7 @@ function pg_image_edit_gd($image, $edit, $alpha)
         }
 
         imagealphablending($out, true);
-        imagecopyresampled($out, $overlay, 0, 0, 0, 0, $plan['out_w'], $plan['out_h'], imagesx($overlay), imagesy($overlay));
+        imagecopyresampled($out, $overlay, 0, 0, 0, 0, imagesx($out), imagesy($out), imagesx($overlay), imagesy($overlay));
         imagealphablending($out, false);
         pg_image_destroy($overlay);
     }
@@ -1794,6 +1819,64 @@ function pg_image_edit_gd($image, $edit, $alpha)
     }
 
     return $out;
+}
+
+/**
+ * The canvas step under GD: the picture placed at x, y on a w x h canvas of
+ * the fill (transparent when null; white for a format without alpha), the
+ * part off the canvas trimmed. The picture given is destroyed.
+ *
+ * @param resource|GdImage $image
+ * @param array            $extend w, h, x, y, fill (array(r, g, b) or null)
+ * @param bool             $alpha  the written format keeps transparency
+ * @return resource|GdImage|false
+ */
+function pg_image_edit_gd_extend($image, $extend, $alpha)
+{
+    $canvas = pg_image_edit_gd_canvas($extend['w'], $extend['h']);
+
+    if (!$canvas) {
+        pg_image_destroy($image);
+        return false;
+    }
+
+    $fill = $extend['fill'] ? $extend['fill'] : ($alpha ? null : array(255, 255, 255));
+
+    if ($fill) {
+        imagefilledrectangle($canvas, 0, 0, imagesx($canvas) - 1, imagesy($canvas) - 1, imagecolorallocatealpha($canvas, $fill[0], $fill[1], $fill[2], 0));
+        imagealphablending($canvas, true);
+    }
+
+    // Clipped by hand: the part of the picture that lands on the canvas.
+    list($dx, $dy, $sx, $sy, $w, $h) = pg_image_edit_extend_box($extend, imagesx($image), imagesy($image));
+
+    if (($w > 0) && ($h > 0)) {
+        imagecopy($canvas, $image, $dx, $dy, $sx, $sy, $w, $h);
+    }
+
+    imagealphablending($canvas, false);
+    pg_image_destroy($image);
+
+    return $canvas;
+}
+
+/**
+ * Where a picture of $width x $height lands on the canvas of $extend: the
+ * canvas point, the picture point and the size of the part on it (0 when
+ * none is). Pure.
+ *
+ * @return array dx, dy, sx, sy, w, h
+ */
+function pg_image_edit_extend_box($extend, $width, $height)
+{
+    $dx = max(0, (int) $extend['x']);
+    $dy = max(0, (int) $extend['y']);
+    $sx = $dx - (int) $extend['x'];
+    $sy = $dy - (int) $extend['y'];
+
+    return array($dx, $dy, $sx, $sy,
+        max(0, min($width - $sx, (int) $extend['w'] - $dx)),
+        max(0, min($height - $sy, (int) $extend['h'] - $dy)));
 }
 
 /**

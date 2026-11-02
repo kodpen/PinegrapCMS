@@ -14,7 +14,7 @@ module: image_editor
 
 ## What does a save write?
 - Replace: `pg_file_versions_before_save()` before the pixels are made: with `base` (the version the browser loaded) the pixels come from that row; a file changed outside since the newest version is kept first as a base row. Without `base` the file itself is the base, kept as a row unless the newest version is a base row holding it (version 1 at the first save). Then the file is written, then `pg_file_versions_after_save()` adds the save row (none when `doc_hash` equals the newest's) and prunes.
-- Copy renders from `base` too and writes no versions; new (an artboard) writes none (E12 decides the canvas's); a Workspace canvas keeps one (`image-editor-workspace.md`).
+- Copy renders from `base` too and writes no versions; a canvas keeps its document (`image-editor-canvas-save.md`, `image-editor-workspace.md`).
 - A document over 1 MB or holding a data: picture (a pasted image) is not kept: the row becomes a base row, the layers flattened into its pixels.
 
 ## What do restore and delete do?

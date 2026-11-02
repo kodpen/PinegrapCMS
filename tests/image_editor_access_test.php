@@ -136,7 +136,7 @@ function test_image_editor_access_key_map()
 	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
 	pg_assert_same(array('keysTools', 'keysEdit', 'keysLayers', 'keysView', 'keysTouch'), $r['photo'], 'photo groups');
 	pg_assert_same(array('keysTools', 'keysEdit', 'keysView', 'keysTouch'), $r['opt'], 'no layer keys for export only');
-	pg_assert_same(array('tool_select', 'tool_crop', 'tool_adjust', 'tool_draw', 'tool_text', 'tool_redact', 'tool_sticker', 'tool_frame', 'tool_vector'), $r['photoTools'], 'every photo tool has a letter');
+	pg_assert_same(array('tool_select', 'tool_crop', 'tool_artboard', 'tool_adjust', 'tool_draw', 'tool_text', 'tool_redact', 'tool_sticker', 'tool_frame', 'tool_vector'), $r['photoTools'], 'every photo tool has a letter, the photo canvas included');
 	pg_assert_same(array('tool_arrow', 'tool_rect', 'tool_text', 'tool_pen', 'tool_redact'), $r['annTools'], 'every annotate tool has a letter');
 	pg_assert_same(array('touchPan', 'touchFit'), $r['optTouch'], 'no twist without layers');
 	pg_assert_same(array('touchPan', 'touchFit', 'touchTwist'), $r['photoTouch'], 'twist with layers');
