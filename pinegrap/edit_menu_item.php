@@ -112,7 +112,9 @@ if (!$_POST) {
         $liveform->assign_field_value('sort_order', $row['id'] ?? '');
     }
     
-    $parent_id_options = get_menu_item_options($menu_id, $_GET['id'], 0, 1, $parent_id);
+    // After a refused save the form shows the parent that was posted.
+    $selected_parent_id = $liveform->field_in_session('parent_id') ? (int) $liveform->get_field_value('parent_id') : (int) $parent_id;
+    $parent_id_options = get_menu_item_options($menu_id, $_GET['id'], 0, 1, $selected_parent_id);
     
     // get sort order options
     $sort_order_options = array();
@@ -141,11 +143,11 @@ if (!$_POST) {
         'extra classes'=>'design',
         'icon'=>'design',
         'heading'=>lang('Edit Menu Item'),
-        'heading_description' => lang('Define the label to display for this menu item and where it links too.'),
+        'heading_description' => lang('Define the label to display for this menu item and where it links to.'),
         'cancel'=>array('enable'=>'true','url'=>'view_menu_items.php?id=' . (int)$menu_id . '&from=' . urlencode((string)($_GET['from'] ?? '')) . '&send_to=' . urlencode((string)($_GET['send_to'] ?? ''))),
         'breadcrumb' => array(
             array('label' => lang('All Menus'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menus.php'),
-            array('label' => lang('Edit Menu'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menu_items.php?id=' . $menu_id),
+            array('label' => lang('Edit Menu'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menu_items.php?id=' . (int) $menu_id . '&from=' . urlencode((string) ($_GET['from'] ?? '')) . '&send_to=' . urlencode((string) ($_GET['send_to'] ?? ''))),
             array('label' => lang('Edit Menu Item')),
         ),
     ]) . '
@@ -167,13 +169,27 @@ if (!$_POST) {
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
                     <input type="hidden" id="menu_id" name="menu_id" value="' . h($menu_id) . '" />
-                    <input type="hidden" id="parent_id_status" name="parent_id_status" value="" />
                     ' . pg_menu_item_form_card($liveform, $parent_id_options, '
                                         <div class="col-12"></div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="sort_order" class="form-label">' . lang('Position') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'select', 'id'=>'sort_order', 'name'=>'sort_order', 'class'=>'form-control', 'options'=>$sort_order_options)) . '
-                                        </div>', $stored_link_page_id) . '
+                                            ' . $liveform->output_field(array('type'=>'select', 'id'=>'sort_order', 'name'=>'sort_order', 'class'=>'form-control', 'options'=>$sort_order_options, 'aria-describedby'=>'sort_order_hint')) . '
+                                            <div class="form-text d-none" id="sort_order_hint">' . lang('On a new parent the item goes last on its level.') . '</div>
+                                        </div>
+                                        <script>
+                                            // The positions are those of the stored level, so they are
+                                            // set aside while another parent is chosen.
+                                            (function () {
+                                                var storedParent = ' . encode_json((string) (int) $parent_id) . ';
+                                                function syncPosition() {
+                                                    var moved = $("#parent_id").val() !== storedParent;
+                                                    $("#sort_order").prop("disabled", moved);
+                                                    $("#sort_order_hint").toggleClass("d-none", !moved);
+                                                }
+                                                $("#parent_id").on("change", syncPosition);
+                                                syncPosition();
+                                            })();
+                                        </script>', $stored_link_page_id) . '
                     
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
@@ -264,12 +280,10 @@ if (!$_POST) {
         $link_page_id = $link['link_page_id'];
         $link_url = $link['link_url'];
         
-        // If the parent ID was changed, add this menu items sort order to the end of the line
-        if ($_POST['parent_id_status'] == 'changed') {
-            $sort_order = pg_menu_item_form_last_sort_order($menu_id, $_POST['parent_id'] ?? '');
-        } else {
-            $sort_order = $_POST['sort_order'];
-        }
+        // The position list belongs to the stored level: on a new parent the
+        // item goes last on its new level.
+        $new_parent_id = (int) ($_POST['parent_id'] ?? 0);
+        $parent_changed = ($new_parent_id !== (int) $parent_id);
         
         // update menu item
         $query =
@@ -277,7 +291,6 @@ if (!$_POST) {
             SET
                 name = ?,
                 parent_id = ?,
-                sort_order = ?,
                 link_page_id = ?,
                 link_url = ?,
                 link_target = ?,
@@ -286,17 +299,12 @@ if (!$_POST) {
                 last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
             WHERE id = ?";
-        $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) ($_POST['parent_id'] ?? ''), (string) $sort_order, (string) $link_page_id, (string) $link_url, (string) ($_POST['link_target'] ?? ''), (string) ($_POST['security'] ?? ''), (string) ($_POST['class'] ?? ''), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) $new_parent_id, (string) $link_page_id, (string) $link_url, (string) ($_POST['link_target'] ?? ''), (string) ($_POST['security'] ?? ''), (string) ($_POST['class'] ?? ''), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         pg_menu_item_form_touch_menu($menu_id, $user['id']);
         
         /* begin: update sort orders for menu items */
-        $menu_items = array();
-        
-        // If sort_order is set to top, add it to the array first thing.
-        if ($_POST['sort_order'] == 'top') {
-            $menu_items[] = $_POST['id'];
-        }
+        $sibling_ids = array();
         
         // get all menu items other than the menu item that is currently being edited
         $query =
@@ -307,17 +315,13 @@ if (!$_POST) {
                 AND (parent_id = ?)
                 AND (id != ?)
             ORDER BY sort_order";
-        $result = db_q($query, array((string) $menu_id, (string) ($_POST['parent_id'] ?? ''), (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        $result = db_q($query, array((string) $menu_id, (string) $new_parent_id, (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         
         while ($row = mysqli_fetch_assoc($result)) {
-            // add this menu item to array
-            $menu_items[] = $row['id'];
-            
-            // if this menu item is the position value, then we need to add the menu item that is being edited to the array
-            if ($row['id'] == $_POST['sort_order']) {
-                $menu_items[] = $_POST['id'];
-            }
+            $sibling_ids[] = $row['id'];
         }
+        
+        $menu_items = pg_menu_item_form_level_order($sibling_ids, $id, (string) ($_POST['sort_order'] ?? ''), $parent_changed);
         
         $count = 1;
         

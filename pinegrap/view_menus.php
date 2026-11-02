@@ -97,12 +97,9 @@ if ($menus) {
 
         $output_link_url = 'view_menu_items.php?id=' . $menu['id'] . '&from=design&send_to=' . h(escape_javascript(urlencode(REQUEST_URL)));
         
-        $output_effect = h($menu['effect']);
-        
-        // if the effect is set to none, then update value to be "None"
-        if ($output_effect == '') {
-            $output_effect = lang('None');
-        }
+        // The effect as the form names it, so the list can be searched by it.
+        $effect_labels = array('' => lang('None'), 'Pop-up' => lang('Pop-up'), 'Accordion' => lang('Accordion'));
+        $output_effect = $effect_labels[(string) $menu['effect']] ?? h($menu['effect']);
         
         $output_rows .=
             '<tr>

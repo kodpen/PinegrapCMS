@@ -75,7 +75,8 @@ if (!$_POST) {
         'icon'=>'design',
         'heading'=>lang('Edit Menu Properties'),
         'heading_description' => lang('Edit shared menu that can be added to any page style and managed by any site manager.'),
-        'cancel'=>array('enable'=>'true','url'=>'view_menus.php')
+        // Cancel returns where Save does: the menu's items screen.
+        'cancel'=>array('enable'=>'true','url'=>'view_menu_items.php?id=' . $id . '&from=' . urlencode((string) ($_GET['from'] ?? '')) . '&send_to=' . urlencode((string) ($_GET['send_to'] ?? '')))
     ,
             'breadcrumb' => array(array('label' => lang('All Menus'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menus.php'), array('label' => lang('Edit Menu Properties'))),
         ]) . '
@@ -96,7 +97,7 @@ if (!$_POST) {
                     <input type="hidden" name="from" value="' . h(($_GET['from'] ?? '')) . '" />
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
-                    ' . pg_menu_form_card($liveform) . '
+                    ' . pg_menu_form_card($liveform, (string) $menu_name) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
