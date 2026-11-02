@@ -204,6 +204,7 @@
     "Each person their own tasks": "Herkese kendi görevleri",
     "Each product is processed at its tax-deducted price and tax rates are processed in a separate column.": "Her ürün, vergisi düşülmüş fiyatı üzerinden işlenir ve vergi oranları ayrı bir sütuna işlenir.",
     "Each proposed task is an object with a title.": "Önerilen her görev, başlığı olan bir nesnedir.",
+    "Each request has its own page with its status and the lawyer's messages; the client follows it from their account and sends documents there.": "Her talebin durumu ve avukatın mesajlarıyla kendi sayfası vardır; müvekkil onu hesabından izler ve belgeleri oradan gönderir.",
     "Each result is an object with a hash and a text.": "Her sonuç hash ve text alanları olan bir nesnedir.",
     "Each row written starts a run, as the flow's owner, while the flow is live and they may read the table. Rows a file import adds start nothing.": "Akış yayındayken ve sahibi tabloyu okuyabildiği sürece yazılan her satır, akışın sahibi olarak bir çalıştırma başlatır. Dosyadan içe aktarılan satırlar hiçbir şey başlatmaz.",
     "Each rule contributes a score. Sensitivity sets how much evidence is needed before a request counts as an attack.": "Her kural bir puan ekler. Hassasiyet, bir isteğin saldırı sayılması için ne kadar kanıt gerektiğini belirler.",
