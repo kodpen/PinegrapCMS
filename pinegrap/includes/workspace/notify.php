@@ -284,6 +284,28 @@ function ws_inbox_unread_count($user_id)
 }
 
 /**
+ * The place an inbox line names: a channel as itself; a discussion (a
+ * channel row of kind thread) by the channel it is in, flagged, so its title
+ * is never written as a channel's name.
+ *
+ * @param array|null $channel the row's channel
+ * @param array|null $parent  the channel a discussion is in, null otherwise
+ * @return array thread (bool), name ('#name' or '')
+ */
+function ws_inbox_place($channel, $parent)
+{
+    if (!is_array($channel)) {
+        return array('thread' => false, 'name' => '');
+    }
+
+    if ((string) ($channel['kind'] ?? '') === 'thread') {
+        return array('thread' => true, 'name' => is_array($parent) ? '#' . $parent['name'] : '');
+    }
+
+    return array('thread' => false, 'name' => '#' . $channel['name']);
+}
+
+/**
  * One inbox row as a sentence, a place to go and a picture.
  *
  * @param array $viewer
@@ -296,7 +318,8 @@ function ws_inbox_describe($viewer, $row)
     $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
     $channel = ((int) $row['channel_id'] > 0) ? ws_channel($row['channel_id']) : null;
     $task = ((int) $row['task_id'] > 0) ? ws_task($row['task_id']) : null;
-    $channel_name = $channel ? '#' . $channel['name'] : '';
+    $place = ws_inbox_place($channel, ($channel && function_exists('ws_thread_parent_channel')) ? ws_thread_parent_channel($channel) : null);
+    $channel_name = $place['name'];
     $task_title = $task ? ws_task_number($task['id']) . ' · ' . $task['title'] : '';
 
     switch ($row['kind']) {
@@ -323,7 +346,9 @@ function ws_inbox_describe($viewer, $row)
             }
 
             return array(
-                'title' => lang(array('string' => '{var:1} mentioned you in {var:2}', 'vars' => array($actor, $channel_name))),
+                'title' => $place['thread']
+                    ? lang(array('string' => '{var:1} mentioned you in a discussion in {var:2}', 'vars' => array($actor, $channel_name)))
+                    : lang(array('string' => '{var:1} mentioned you in {var:2}', 'vars' => array($actor, $channel_name))),
                 'body'  => $message ? ws_voice_excerpt($viewer, $message, 140) : '',
                 'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'],
                 'icon'  => 'bi-at',
@@ -540,7 +565,9 @@ function ws_inbox_describe($viewer, $row)
             $message = ((int) $row['message_id'] > 0) ? ws_message($row['message_id']) : null;
 
             return array(
-                'title' => lang(array('string' => '{var:1} asked you to say you read a message in {var:2}', 'vars' => array($actor, $channel_name))),
+                'title' => $place['thread']
+                    ? lang(array('string' => '{var:1} asked you to say you read a message in a discussion in {var:2}', 'vars' => array($actor, $channel_name)))
+                    : lang(array('string' => '{var:1} asked you to say you read a message in {var:2}', 'vars' => array($actor, $channel_name))),
                 'body'  => $message ? ws_voice_excerpt($viewer, $message, 140) : '',
                 'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'],
                 'icon'  => 'bi-eye',

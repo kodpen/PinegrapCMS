@@ -13253,8 +13253,11 @@
 
             // Formatting, tags as chips and tables, lists and code as cards
             // (assets/js/workspace_editor.js); a plain box without it.
+            // A discussion's box does not name its title as a channel.
+            var placeholder = self.isThread ? t('thread_composer_placeholder') : t('composer_placeholder', self.channel.name);
+
             self.rich = window.PGWsEditor ? window.PGWsEditor.create({
-                placeholder: t('composer_placeholder', self.channel.name),
+                placeholder: placeholder,
                 onKeydown: keys,
                 onEnter: function () { self.send(); }
             }) : null;
@@ -13263,7 +13266,7 @@
 
             if (!self.rich) {
                 input.rows = 1;
-                input.placeholder = t('composer_placeholder', self.channel.name);
+                input.placeholder = placeholder;
                 input.setAttribute('aria-label', input.placeholder);
             }
 

@@ -89,6 +89,7 @@ function ws_js_strings()
         'completed_on'           => ws_js_template('Finished {var:1}', 1),
         'composer_tools'         => lang('Tools'),
         'composer_placeholder'   => ws_js_template('Write to #{var:1}', 1),
+        'thread_composer_placeholder' => lang('Reply in the discussion'),
         'conflicts'              => lang('Clashes'),
         'conflicts_help'         => lang('People over their day, and work falling on somebody\'s leave, in the next two weeks.'),
         'conversations'          => lang('Conversations'),
