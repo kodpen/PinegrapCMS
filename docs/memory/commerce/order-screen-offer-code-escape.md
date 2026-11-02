@@ -1,6 +1,6 @@
 ---
 name: order-screen-offer-code-escape
-description: The panel order screen (view_order.php) escapes the order's special offer code and reference code; an offer code is free text up to 50 characters set by any commerce user
+description: (PR #5215) The panel order screen (view_order.php) escapes the order's special offer code and reference code; an offer code is free text up to 50 characters set by any commerce user
 ---
 
 ## Why must the offer code be escaped on the order screen?
