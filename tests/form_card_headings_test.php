@@ -55,12 +55,12 @@ function test_form_card_titles_are_h2_with_the_same_look()
 		'ad_form.php' => 2,
 		'arrival_date_form.php' => 3,
 		'calendar_event_form.php' => 5,
-		'contact_form.php' => 7,
+		'contact_form.php' => 8,
 		'email_campaign_profile_form.php' => 6,
 		'page_form.php' => 2,
-		'product_group_form.php' => 5,
+		'product_group_form.php' => 6,
 		'shipping_method_form.php' => 5,
-		'zone_form.php' => 4,
+		'zone_form.php' => 5,
 	);
 	foreach ($files as $file => $count) {
 		$src = form_card_headings_source($file);
