@@ -8,12 +8,12 @@ description: Module list of plans/bug-hunt.md, part 2b: includes/fn/ modules wid
 - `widgets_account`: open
 - `widgets_ad_region`: done (#4999: a region placed twice shared its rows' ids)
 - `widgets_affiliate_sign_up`: open
-- `widgets_attrs`: open
+- `widgets_attrs`: clean (denied names and tokens, placeholders and carriers, empty switches dropped)
 - `widgets_billing_information`: open
 - `widgets_cart`: open
 - `widgets_catalog`: open
 - `widgets_comments`: open
-- `widgets_comments_recent`: open
+- `widgets_comments_recent`: clean (source decisions, access and scope SQL, record gate, rows read again under the scope, titles)
 - `widgets_conditions`: clean (specs and joins, denied tokens, required controls, amounts and figure grouping, every operator)
 - `widgets_entity_fields`: clean (allow-lists, gates, money and dates, order and account reads)
 - `widgets_error`: clean (error page pick, flags, back address, requested address)
