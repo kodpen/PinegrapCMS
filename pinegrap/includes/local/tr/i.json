@@ -369,6 +369,8 @@
     "In total": "Toplam",
     "In transit": "Yolda",
     "In use": "Kullanımda",
+    "In use: PHP has no certificate store of its own on this server.": "Kullanımda: bu sunucuda PHP'nin kendine ait bir sertifika deposu yok.",
+    "In use: the server's own certificate store failed the last probe.": "Kullanımda: sunucunun kendi sertifika deposu son yoklamada başarısız oldu.",
     "In work": "Üzerinde çalışılan",
     "In your account: your appointments and your messages each have a page, and every answer appears there and comes by e-mail.": "Hesabınızda: randevularınızın ve mesajlarınızın her birinin bir sayfası var; her yanıt orada görünür ve e-postayla da gelir.",
     "In your calendar app, add a calendar by its address and paste the feed address.": "Takvim uygulamanızda adresiyle bir takvim ekleyin ve besleme adresini yapıştırın.",

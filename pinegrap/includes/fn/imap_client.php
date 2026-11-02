@@ -105,8 +105,12 @@ function pg_imap_connect($host, $port, $options = array())
         'peer_name'         => $host,
     );
 
-    if (defined('CURL_CA_BUNDLE') && (CURL_CA_BUNDLE !== '') && is_file(CURL_CA_BUNDLE)) {
-        $ssl['cafile'] = CURL_CA_BUNDLE;
+    // The store the site chose for every outbound connection
+    // (pg_ca_bundle_effective()); '' leaves OpenSSL's own.
+    $ca_file = pg_ca_bundle_effective();
+
+    if ($ca_file !== '') {
+        $ssl['cafile'] = $ca_file;
     }
 
     $address = filter_var($check['ip'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV6) ? '[' . $check['ip'] . ']' : $check['ip'];

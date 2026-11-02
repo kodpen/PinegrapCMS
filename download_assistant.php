@@ -62,12 +62,50 @@ function da_user_agent()
  * Returns true on success.
  */
 /**
+ * Whether PHP has a certificate store of its own: curl.cainfo, or one of the
+ * files and directories OpenSSL looks in. The offline half of the software's
+ * pg_ca_bundle_php_store_present(): there is no probe here.
+ */
+function da_php_ca_store()
+{
+    $cainfo = trim((string) ini_get('curl.cainfo'));
+
+    if ($cainfo !== '' && is_file($cainfo)) {
+        return true;
+    }
+
+    if (!function_exists('openssl_get_cert_locations')) {
+        return true;
+    }
+
+    $locations = openssl_get_cert_locations();
+
+    foreach (array('ini_cafile', 'default_cert_file') as $key) {
+        if (!empty($locations[$key]) && is_file($locations[$key])) {
+            return true;
+        }
+    }
+
+    foreach (array('ini_capath', 'default_cert_dir') as $key) {
+        if (!empty($locations[$key]) && is_dir($locations[$key])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
  * Apply TLS verification to a cURL handle.
  *
  * Standalone twin of pg_curl_tls() in functions.php, because this file has to
  * work before the software exists. Same reasoning: this is the channel that
  * carries executable code, so an unverified certificate here means anyone able
  * to intercept the connection can choose what gets written into the web root.
+ *
+ * The store is chosen the way the software chooses it, without the probe:
+ * the CURL_CA_BUNDLE override, else the shipped pinegrap/data/cacert.pem of
+ * an earlier download when PHP has no store of its own, else cURL's default.
  *
  * Never falls back to unverified on failure — a silent downgrade only has to
  * be provoked once to be defeated. Opting out is an explicit setting.
@@ -77,8 +115,12 @@ function da_curl_tls($ch)
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 1);
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 2);
 
+    $shipped = dirname(__FILE__) . '/pinegrap/data/cacert.pem';
+
     if (defined('CURL_CA_BUNDLE') && CURL_CA_BUNDLE !== '' && is_file(CURL_CA_BUNDLE)) {
         curl_setopt($ch, CURLOPT_CAINFO, CURL_CA_BUNDLE);
+    } elseif (!da_php_ca_store() && is_file($shipped)) {
+        curl_setopt($ch, CURLOPT_CAINFO, $shipped);
     }
 
     if (defined('ALLOW_INSECURE_UPDATE_TLS') && ALLOW_INSECURE_UPDATE_TLS === true) {
@@ -273,8 +315,8 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
                 'Could not download ' . $software_file . ' from the software server. '
                 . 'Check that this server can reach kodpen.com, that a firewall in '
                 . 'front of it is not rejecting the request, and that the certificate '
-                . 'verifies — if this server has no up-to-date CA bundle, point '
-                . 'CURL_CA_BUNDLE at a cacert.pem in pinegrap/data/config.php.';
+                . 'verifies — a server without an up-to-date certificate store '
+                . 'needs one before the software can be downloaded.';
 
             header('Location: ' . $_SERVER['REQUEST_URI']);
             exit;

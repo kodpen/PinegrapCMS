@@ -814,7 +814,7 @@ function ws_claude_fire($test = false, $queue = 'workspace')
         // cURL's own words go along: "self-signed certificate in certificate
         // chain" with an up-to-date list usually means an antivirus or a proxy
         // on the machine opens HTTPS connections and signs them itself.
-        $out['error'] = lang(array('string' => 'The secure connection to claude.ai failed ({var:1}). Either this server does not trust the certificate, and CURL_CA_BUNDLE in data/config.php has to point at a root certificate list (data/cacert.pem), or an antivirus or a proxy on the machine scans HTTPS connections: leave the web server\'s PHP out of that scanning.', 'vars' => mb_substr($errno . ': ' . (string) $network, 0, 150)));
+        $out['error'] = lang(array('string' => 'The secure connection to claude.ai failed ({var:1}). Either this server does not trust the certificate - the CA store row of System Status on the dashboard says which certificate store is in use - or an antivirus or a proxy on the machine scans HTTPS connections: leave the web server\'s PHP out of that scanning.', 'vars' => mb_substr($errno . ': ' . (string) $network, 0, 150)));
     } else {
         $out['error'] = lang(array('string' => 'claude.ai could not be reached: {var:1}', 'vars' => mb_substr((string) $network, 0, 150)));
     }

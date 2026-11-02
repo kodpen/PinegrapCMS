@@ -6245,11 +6245,12 @@ else {
 		}, generate_encryption_key());
 
 		// A host whose own certificate store cannot verify HTTPS gets the
-		// bundled root list (data/cacert.pem), so updates, Pinegrap AI and
-		// payment calls work from the first request. One HEAD request with a
-		// five-second limit; a probe that reaches nothing at all says nothing
-		// about the store and leaves the setting out. The System Status
-		// widget checks the same thing later and offers the same line.
+		// bundled root list (data/cacert.pem) as the CURL_CA_BUNDLE override,
+		// so updates, Pinegrap AI and payment calls work from the first
+		// request, before the site's own probe (pg_ca_bundle_probe_run())
+		// has run. One HEAD request with a five-second limit; a probe that
+		// reaches nothing at all says nothing about the store and leaves
+		// the setting out: the site then chooses on its own.
 		if (function_exists('curl_init') && is_file(dirname(CONFIG_FILE_PATH) . '/cacert.pem')) {
 			$ca_probe = curl_init('https://curl.se/ca/cacert.pem');
 			curl_setopt_array($ca_probe, array(
