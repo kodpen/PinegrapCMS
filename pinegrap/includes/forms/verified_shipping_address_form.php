@@ -97,7 +97,7 @@ function pg_verified_shipping_address_form_card($liveform)
                                             </div>
                                             <div class="col-12 lg:col-6 my-3">
                                                 <label for="city" class="form-label"' . $city_label['attrs'] . '>' . $city_label['text'] . '</label>
-                                                <input type="text" name="city" id="city" maxlength="50" required value="' . h($liveform->get_field_value('city')) . '" class="form-control' . ($liveform->check_field_error('city') ? ' is-invalid' : '') . '" />
+                                                <input type="text" name="city" id="city" maxlength="50" required value="' . h($liveform->get_field_value('city')) . '" class="form-control' . ($liveform->check_field_error('city') ? ' is-invalid' : '') . '"' . pg_places_input_attrs('TR', 'state_id') . ' />
                                             </div>
                                             <div class="col-12 lg:col-4 my-3">
                                                 <label for="state_id" class="form-label"' . $state_label['attrs'] . '>' . $state_label['text'] . '</label>

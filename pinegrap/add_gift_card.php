@@ -54,6 +54,10 @@ if (!$_POST) {
         $quantity_max = '1000';
     }
 
+    // The card sits in the form column of the edit screen layout
+    // (product_builder.php). A new gift card has nothing to read yet, so
+    // there is no status column; the form column keeps its width so the
+    // fields do not spread over a wide screen.
     echo
     pg_page_shell([
         'title'=> lang('Create Gift Card'),
@@ -66,32 +70,32 @@ if (!$_POST) {
             'breadcrumb' => array(array('label' => lang('All Gift Cards'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_gift_cards.php'), array('label' => lang('Create Gift Card'))),
         ]) . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
-                ' . $liveform->output_errors() . '
-                ' . $liveform->get_warnings() . '
-                ' . $liveform->output_notices() . '
-                
-                <form name="form" action="add_gift_card.php" method="post" >
-                    ' . get_token_field() . '
-                    ' . $liveform->field(array(
-                        'type' => 'hidden',
-                        'name' => 'limit')) . '
-                    ' . pg_gift_card_form_card($liveform, 'add', array(
-                        'symbol' => BASE_CURRENCY_SYMBOL,
-                        'scripts' => get_date_picker_format() . pg_fields_script(),
-                        'quantity_max' => $quantity_max)) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
-                            </div>
+    ' . $liveform->output_errors() . '
+    ' . $liveform->get_warnings() . '
+    ' . $liveform->output_notices() . '
+    <form name="form" action="add_gift_card.php" method="post">
+        ' . get_token_field() . '
+        ' . $liveform->field(array(
+            'type' => 'hidden',
+            'name' => 'limit')) . '
+        <div class="row">
+            <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                ' . pg_gift_card_form_card($liveform, 'add', array(
+                    'symbol' => BASE_CURRENCY_SYMBOL,
+                    'scripts' => get_date_picker_format() . pg_fields_script(),
+                    'quantity_max' => $quantity_max)) . '
+            </div>
+            <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                    <div class="container">
+                        <div class="btn-group flex-wrap justify-content-center">
+                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
                         </div>
-                    </nav>
-                </form>
+                    </div>
+                </nav>
             </div>
         </div>
-    
+    </form>
 </main>' .
     output_footer();
     

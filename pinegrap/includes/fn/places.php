@@ -21,13 +21,54 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * The countries that have a place list.
+ * The countries that have a place list: each includes/geo/places/<CC>.json
+ * (a country pack, format in docs/memory/commerce/place-packs.md).
  *
- * @return array two-letter codes
+ * @return array two-letter codes, sorted
  */
 function pg_places_countries()
 {
-    return array('TR');
+    static $codes = null;
+
+    if ($codes === null) {
+        $codes = array();
+
+        foreach ((array) glob(PG_FUNCTIONS_DIR . '/includes/geo/places/*.json') as $file) {
+            $code = basename((string) $file, '.json');
+
+            if (preg_match('/^[A-Z]{2}$/', $code)) {
+                $codes[] = $code;
+            }
+        }
+
+        sort($codes);
+    }
+
+    return $codes;
+}
+
+/**
+ * The pack country of an address's country, read the way the sales map reads
+ * a countries row (code, else name), or '' when that country has no pack.
+ *
+ * @param  string $country countries.code or countries.name
+ * @param  string $name    countries.name when $country is the code
+ * @return string two-letter code or ''
+ */
+function pg_places_country($country, $name = '')
+{
+    $country = is_scalar($country) ? trim((string) $country) : '';
+    $name = is_scalar($name) ? trim((string) $name) : '';
+
+    if (($country === '') && ($name === '')) {
+        return '';
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/sales_map.php');
+
+    $code = (string) pg_sales_map_canonical_country($country, ($name !== '') ? $name : $country);
+
+    return in_array($code, pg_places_countries(), true) ? $code : '';
 }
 
 /**
@@ -129,6 +170,42 @@ function pg_place_tr_province($state, $plate = '')
 }
 
 /**
+ * The province code of a state box in a country's pack: Turkey through
+ * pg_place_tr_province(); any other country by the province's name or the
+ * part of its code after "<CC>-" ("CA" for "US-CA"). Pure.
+ *
+ * @param  string $country two-letter code of the pack
+ * @param  array  $pack    pg_places_parse()
+ * @param  string $state   the state box (name or code)
+ * @param  string $plate   states.plate_code (Turkey only), '' when unknown
+ * @return string a code of the pack or ''
+ */
+function pg_place_province($country, $pack, $state, $plate = '')
+{
+    $country = strtoupper((string) $country);
+
+    if ($country === 'TR') {
+        $code = pg_place_tr_province($state, $plate);
+
+        return isset($pack[$code]) ? $code : '';
+    }
+
+    $key = pg_place_key($state);
+
+    if ($key === '') {
+        return '';
+    }
+
+    foreach ((array) $pack as $code => $place) {
+        if ((pg_place_key($place['name']) === $key) || (pg_place_key(substr((string) $code, strlen($country) + 1)) === $key)) {
+            return (string) $code;
+        }
+    }
+
+    return '';
+}
+
+/**
  * A typed district looked up in a place list. Inside a known province only
  * its districts count; the province's own name counts as its central
  * district where the list has a "Merkez". With no province any province's
@@ -218,27 +295,33 @@ function pg_place_state_plate($state)
 }
 
 /**
- * A Turkish address's district checked against the list: null when the
- * address is not Turkish, its city box is empty or the list is missing.
+ * An address's city box checked against its country's pack: null when the
+ * city box is empty or the country has no pack.
  *
  * @param  string $country countries.code or countries.name
- * @param  string $state   the state box (İl)
- * @param  string $city    the city box (İlçe)
- * @return array|null pg_place_district()
+ * @param  string $state   the state box (İl for Turkey)
+ * @param  string $city    the city box (İlçe for Turkey)
+ * @return array|null pg_place_district() plus 'country' => the pack's code
  */
-function pg_place_tr_check($country, $state, $city)
+function pg_place_check($country, $state, $city)
 {
-    if ((trim((string) $city) === '') || !pg_ship_to_district_country_is_tr($country)) {
+    $code = pg_places_country($country);
+
+    if ((trim((string) $city) === '') || ($code === '')) {
         return null;
     }
 
-    $pack = pg_places_pack('TR');
+    $pack = pg_places_pack($code);
 
     if (!$pack) {
         return null;
     }
 
-    return pg_place_district($pack, pg_place_tr_province($state, pg_place_state_plate($state)), $city);
+    $plate = ($code === 'TR') ? pg_place_state_plate($state) : '';
+    $check = pg_place_district($pack, pg_place_province($code, $pack, $state, $plate), $city);
+    $check['country'] = $code;
+
+    return $check;
 }
 
 /**
@@ -252,7 +335,7 @@ function pg_place_tr_check($country, $state, $city)
  */
 function pg_place_city_fix($country, $state, $city)
 {
-    $check = pg_place_tr_check($country, $state, $city);
+    $check = pg_place_check($country, $state, $city);
 
     return ($check && ($check['name'] !== '')) ? $check['name'] : (string) $city;
 }
@@ -285,29 +368,33 @@ function pg_place_liveform_fix($liveform, $prefix = '')
  */
 function pg_place_district_note($country, $state, $city)
 {
-    $check = pg_place_tr_check($country, $state, $city);
+    $check = pg_place_check($country, $state, $city);
 
     if (!$check || $check['known']) {
         return '';
     }
 
-    $pack = pg_places_pack('TR');
+    $pack = pg_places_pack($check['country']);
+
     return (($check['province'] !== '') && isset($pack[$check['province']]))
         ? lang(array('string' => 'This district is not in the district list of {var:1}. Check the address before shipping.', 'vars' => array($pack[$check['province']]['name'])))
         : lang('This district is not in the district list. Check the address before shipping.');
 }
 
 /**
- * The list as the browser takes it: per plate number the province's name,
- * the shop's states row for it (code and name, to pick the İl option) and
- * its districts joined by "|". Pure.
+ * The list as the browser takes it: per province (its code after "<CC>-",
+ * the plate number for Turkey) the province's name, the shop's states row
+ * for it (code and name, to pick the state option) and its districts joined
+ * by "|". Pure.
  *
- * @param  array $pack pg_places_parse()
- * @param  array $rows the shop's Turkish states rows: code, name, plate_code
- * @return array '34' => array('n' => 'İstanbul', 'c' => code, 's' => name, 'd' => 'Adalar|…')
+ * @param  array  $pack    pg_places_parse()
+ * @param  array  $rows    the shop's states rows of that country: code, name, plate_code
+ * @param  string $country two-letter code of the pack
+ * @return array  '34' => array('n' => 'İstanbul', 'c' => code, 's' => name, 'd' => 'Adalar|…')
  */
-function pg_places_client_list($pack, $rows)
+function pg_places_client_list($pack, $rows, $country = 'TR')
 {
+    $country = strtoupper((string) $country);
     $states = array();
 
     foreach ((array) $rows as $row) {
@@ -315,7 +402,12 @@ function pg_places_client_list($pack, $rows)
             continue;
         }
 
-        $code = pg_place_tr_province(isset($row['name']) ? $row['name'] : '', isset($row['plate_code']) ? $row['plate_code'] : '');
+        $plate = isset($row['plate_code']) ? $row['plate_code'] : '';
+        $code = pg_place_province($country, $pack, isset($row['name']) ? $row['name'] : '', $plate);
+
+        if ($code === '') {
+            $code = pg_place_province($country, $pack, isset($row['code']) ? $row['code'] : '', $plate);
+        }
 
         if (($code !== '') && !isset($states[$code])) {
             $states[$code] = array('c' => (string) ($row['code'] ?? ''), 's' => (string) ($row['name'] ?? ''));
@@ -325,7 +417,7 @@ function pg_places_client_list($pack, $rows)
     $list = array();
 
     foreach ((array) $pack as $code => $place) {
-        $list[substr((string) $code, 3)] = array(
+        $list[substr((string) $code, strlen($country) + 1)] = array(
             'n' => $place['name'],
             'c' => isset($states[$code]) ? $states[$code]['c'] : '',
             's' => isset($states[$code]) ? $states[$code]['s'] : '',
@@ -336,11 +428,19 @@ function pg_places_client_list($pack, $rows)
 }
 
 /**
- * The script that suggests Turkish districts in the city box of an address
- * form while its country is Turkey: "Kadıköy / İstanbul"; a pick writes the
- * district and selects the İl, so the order of the two boxes does not
- * matter. Once per page, '' when the shop has no Turkish country row.
- * Printed by pg_ship_to_district_script().
+ * The script that suggests a pack's districts while an address's country has
+ * one: "Kadıköy / İstanbul"; a pick writes the district and sets the
+ * province, so the order of the two boxes does not matter. Once per page, ''
+ * without a connection or a pack. Printed by pg_ship_to_district_script() and
+ * by the forms that mark their box (pg_places_input_attrs()).
+ *
+ * It hooks every <prefix>city text box with a <prefix>country control
+ * (<prefix>state or <prefix>state_id the province), unless its form marks a
+ * box with data-pg-place-country (on the box or an element around it): then
+ * only marked boxes, whose
+ * data-pg-place-country names the country control or is a pack's code (on
+ * only while the province box names one of its provinces), and whose
+ * data-pg-place-state names the province box.
  *
  * @return string
  */
@@ -354,58 +454,73 @@ function pg_places_suggest_script()
 
     $done = true;
 
-    // No connection (a test, an install screen): no list to read the İl from.
+    // No connection (a test, an install screen): no states to read.
     if (!function_exists('pg_schema_has') || !pg_schema_has('states')) {
         return '';
     }
 
-    $tr_codes = pg_ship_to_district_tr_codes();
-    $pack = pg_places_pack('TR');
+    $packs = array();
 
-    if (!$tr_codes || !$pack) {
-        return '';
-    }
-
-    $rows = array();
-    $plate = pg_schema_has('states', 'plate_code') ? 's.plate_code' : "''";
-
-    foreach ((array) db_items("SELECT s.code, s.name, $plate AS plate_code, c.code AS country_code, c.name AS country_name FROM states s JOIN countries c ON c.id = s.country_id") as $row) {
-        if (pg_ship_to_district_country_is_tr((string) $row['country_code'], (string) $row['country_name'])) {
-            $rows[] = $row;
+    foreach (pg_places_countries() as $code) {
+        if (pg_places_pack($code)) {
+            $packs[$code] = array('codes' => array($code), 'rows' => array());
         }
     }
 
-    $config = str_replace('</', '<\/', encode_json(array(
-        'codes' => $tr_codes,
-        'label' => lang('District suggestions'),
-        'list'  => pg_places_client_list($pack, $rows),
-    )));
+    if (!$packs) {
+        return '';
+    }
+
+    foreach ((array) db_items("SELECT code, name FROM countries") as $row) {
+        $code = pg_places_country((string) $row['code'], (string) $row['name']);
+
+        if (isset($packs[$code]) && ((string) $row['code'] !== '') && !in_array((string) $row['code'], $packs[$code]['codes'], true)) {
+            $packs[$code]['codes'][] = (string) $row['code'];
+        }
+    }
+
+    $plate = pg_schema_has('states', 'plate_code') ? 's.plate_code' : "''";
+
+    foreach ((array) db_items("SELECT s.code, s.name, $plate AS plate_code, c.code AS country_code, c.name AS country_name FROM states s JOIN countries c ON c.id = s.country_id") as $row) {
+        $code = pg_places_country((string) $row['country_code'], (string) $row['country_name']);
+
+        if (isset($packs[$code])) {
+            $packs[$code]['rows'][] = $row;
+        }
+    }
+
+    foreach ($packs as $code => $pack) {
+        $packs[$code] = array('codes' => $pack['codes'], 'list' => pg_places_client_list(pg_places_pack($code), $pack['rows'], $code));
+    }
+
+    $config = str_replace('</', '<\/', encode_json(array('label' => lang('District suggestions'), 'packs' => $packs)));
 
     return '<script>(function(){var C=' . $config . ';' . <<<'JS'
-var all=[],n=0;Object.keys(C.list).forEach(function(k){var p=C.list[k];p.d.split("|").forEach(function(d){all.push({d:d,k:k,f:fold(d)});});});
+var idx={},n=0;
 function fold(s){return String(s||"").replace(/[İIı]/g,"i").normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().replace(/[^a-z0-9]+/g,"");}
 function fire(el,t){el.dispatchEvent(new Event(t,{bubbles:true}));}
-function state(f,p){var s=f.elements[p+"state"]||f.elements[p+"state_id"];if(s&&!s.tagName&&s.length){s=Array.prototype.filter.call(s,function(x){return !x.hidden&&!x.disabled;})[0];}return s||null;}
-function plate(s){if(!s||!s.value)return "";var v=fold(s.tagName==="SELECT"&&s.selectedIndex>=0?s.options[s.selectedIndex].text:s.value),k;
-for(k in C.list){var p=C.list[k];if(fold(p.n)===v||(p.s&&fold(p.s)===v)||(p.c&&fold(p.c)===fold(s.value)))return k;}return "";}
-function setState(s,k){var p=C.list[k],i,o;if(!s||!p)return;
+function items(cc){if(!idx[cc]){var a=[],L=C.packs[cc].list;Object.keys(L).forEach(function(k){L[k].d.split("|").forEach(function(d){a.push({d:d,k:k,f:fold(d)});});});idx[cc]=a;}return idx[cc];}
+function packOf(v){for(var cc in C.packs){if(C.packs[cc].codes.indexOf(v)!==-1)return cc;}return "";}
+function field(f,name){var s=name?f.elements[name]:null;if(s&&!s.tagName&&s.length){s=Array.prototype.filter.call(s,function(x){return !x.hidden&&!x.disabled;})[0];}return s||null;}
+function prov(L,s){if(!s||!s.value)return "";var v=fold(s.tagName==="SELECT"&&s.selectedIndex>=0?s.options[s.selectedIndex].text:s.value),w=fold(s.value),k;
+for(k in L){var p=L[k];if(fold(p.n)===v||(p.s&&fold(p.s)===v)||(p.c&&fold(p.c)===w)||fold(k)===w)return k;}return "";}
+function setState(s,p){var i,o;if(!s||!p)return;
 if(s.tagName==="SELECT"){for(i=0;i<s.options.length;i++){o=s.options[i];if(o.value!==""&&((p.c&&o.value===p.c)||fold(o.text)===fold(p.s||p.n)||fold(o.text)===fold(p.n))){if(s.value!==o.value){s.value=o.value;fire(s,"change");}return;}}}
-else if(fold(s.value)!==fold(p.n)){s.value=p.s||p.n;fire(s,"input");fire(s,"change");}}
-function hook(inp){var f=inp.form,m=/^(.*)city$/.exec(inp.name||"");if(!f||!m||inp.getAttribute("data-pg-place-hooked"))return;var p=m[1],c=f.elements[p+"country"];if(!c||!c.tagName)return;
-inp.setAttribute("data-pg-place-hooked","1");var id="pg-place-list-"+(++n),list=document.createElement("ul"),items=[],act=-1;
+else if(fold(s.value)!==fold(p.n)&&(!p.s||fold(s.value)!==fold(p.s))){s.value=p.n;fire(s,"input");fire(s,"change");}}
+function hook(inp,state,cc){if(inp.getAttribute("data-pg-place-hooked"))return;
+inp.setAttribute("data-pg-place-hooked","1");var id="pg-place-list-"+(++n),list=document.createElement("ul"),shown=[],act=-1,pk="";
 list.id=id;list.setAttribute("role","listbox");list.setAttribute("aria-label",C.label);list.hidden=true;
 list.style.cssText="position:absolute;z-index:1050;left:0;right:0;margin:2px 0 0;padding:4px 0;list-style:none;max-height:16rem;overflow:auto;background:var(--bs-body-bg,#fff);color:var(--bs-body-color,inherit);border:1px solid var(--bs-border-color,#ccc);border-radius:.375rem;box-shadow:0 .5rem 1rem rgba(0,0,0,.15)";
 var wrap=inp.parentNode;if(getComputedStyle(wrap).position==="static")wrap.style.position="relative";inp.insertAdjacentElement("afterend",list);
-function on(){return C.codes.indexOf(c.value)!==-1;}
 function close(){list.hidden=true;act=-1;inp.setAttribute("aria-expanded","false");inp.removeAttribute("aria-activedescendant");}
 function mark(i){act=i;Array.prototype.forEach.call(list.children,function(li,k){li.setAttribute("aria-selected",k===i?"true":"false");li.style.background=k===i?"var(--bs-tertiary-bg,#eee)":"";});
 if(i>=0){inp.setAttribute("aria-activedescendant",list.children[i].id);list.children[i].scrollIntoView({block:"nearest"});}else inp.removeAttribute("aria-activedescendant");}
-function choose(k){var it=items[k];close();if(!it)return;inp.value=it.d;fire(inp,"input");fire(inp,"change");setState(state(f,p),it.k);}
-function show(){var q=fold(inp.value);if(!on()||q.length<2){close();return;}var own=plate(state(f,p)),a=[],b=[];
-all.forEach(function(it){var at=it.f.indexOf(q);if(at===-1||it.d==="Merkez"&&it.k!==own)return;(at===0?a:b).push(it);});
-var rank=function(x,y){return (x.k===own?0:1)-(y.k===own?0:1)||x.d.localeCompare(y.d,"tr");};items=a.sort(rank).concat(b.sort(rank)).slice(0,8);
-list.innerHTML="";if(!items.length){close();return;}
-items.forEach(function(it,k){var li=document.createElement("li");li.id=id+"-"+k;li.setAttribute("role","option");li.textContent=it.d+" / "+C.list[it.k].n;li.style.cssText="padding:.375rem .75rem;cursor:pointer";
+function choose(k){var it=shown[k];close();if(!it)return;inp.value=it.d;fire(inp,"input");fire(inp,"change");setState(state(),C.packs[pk].list[it.k]);}
+function show(){var q=fold(inp.value);pk=cc();if(!pk||q.length<2){close();return;}var L=C.packs[pk].list,own=prov(L,state()),a=[],b=[];
+items(pk).forEach(function(it){var at=it.f.indexOf(q);if(at===-1||it.d==="Merkez"&&it.k!==own)return;(at===0?a:b).push(it);});
+var rank=function(x,y){return (x.k===own?0:1)-(y.k===own?0:1)||x.d.localeCompare(y.d,document.documentElement.lang||undefined);};shown=a.sort(rank).concat(b.sort(rank)).slice(0,8);
+list.innerHTML="";if(!shown.length){close();return;}
+shown.forEach(function(it,k){var li=document.createElement("li");li.id=id+"-"+k;li.setAttribute("role","option");li.textContent=it.d+" / "+L[it.k].n;li.style.cssText="padding:.375rem .75rem;cursor:pointer";
 li.addEventListener("mousedown",function(ev){ev.preventDefault();choose(k);});list.appendChild(li);});
 inp.setAttribute("role","combobox");inp.setAttribute("aria-autocomplete","list");inp.setAttribute("aria-controls",id);
 list.hidden=false;inp.setAttribute("aria-expanded","true");mark(-1);}
@@ -414,8 +529,33 @@ inp.addEventListener("keydown",function(ev){if(list.hidden)return;var len=list.c
 if(ev.key==="ArrowDown"){ev.preventDefault();mark((act+1)%len);}else if(ev.key==="ArrowUp"){ev.preventDefault();mark(act<=0?len-1:act-1);}
 else if(ev.key==="Enter"&&act>=0){ev.preventDefault();choose(act);}else if(ev.key==="Escape"){close();}});
 inp.addEventListener("blur",function(){setTimeout(close,150);});}
-function run(){document.querySelectorAll("form input[name$=city]").forEach(function(i){if(i.type==="text"||i.type==="search"||!i.type)hook(i);});}
+function text(i){return i.type==="text"||i.type==="search"||!i.type;}
+function run(){
+document.querySelectorAll("form [data-pg-place-country]").forEach(function(el){var i=el.tagName==="INPUT"?el:el.querySelector("input");if(!i||!i.form||!text(i))return;
+var f=i.form,a=el.getAttribute("data-pg-place-country"),c=f.elements[a],sn=el.getAttribute("data-pg-place-state");
+var state=function(){return field(f,sn);};
+if(c&&c.tagName)hook(i,state,function(){return packOf(c.value);});
+else if(C.packs[a])hook(i,state,function(){return prov(C.packs[a].list,state())?a:"";});});
+document.querySelectorAll("form input[name$=city]").forEach(function(i){var f=i.form,m=/^(.*)city$/.exec(i.name||""),c;
+if(!f||!text(i)||!m||f.querySelector("[data-pg-place-country]"))return;c=f.elements[m[1]+"country"];if(!c||!c.tagName)return;
+hook(i,function(){return field(f,m[1]+"state")||field(f,m[1]+"state_id");},function(){return packOf(c.value);});});}
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",run);else run();
 JS
         . '})();</script>';
+}
+
+/**
+ * The attributes that mark a form's district box for the suggester, written
+ * on the box or an element around it, when the form's own names do not
+ * follow <prefix>city / <prefix>country: the ERP account card and delivery
+ * note (district box, İl in the city box) and the panel's verified address
+ * (no country control). Pure.
+ *
+ * @param  string $country the country control's name, or a pack's code
+ * @param  string $state   the province box's name
+ * @return string HTML attributes with a leading space
+ */
+function pg_places_input_attrs($country, $state)
+{
+    return ' data-pg-place-country="' . h((string) $country) . '" data-pg-place-state="' . h((string) $state) . '"';
 }
