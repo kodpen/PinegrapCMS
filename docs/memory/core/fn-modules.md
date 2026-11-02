@@ -130,6 +130,7 @@ description: Generated from the module field of the memory files: each includes/
 - `translate`: [[error-screen-language-and-status]]
 - `user_list`: [[server-paged-lists]], [[user-list-folder-filters]], [[user-screens-names-and-dates]]
 - `variant_set_copy`: [[product-group-copy]]
+- `vat_check`: [[eu-vat-check]]
 - `vendor_api`: [[vendor-api-client]]
 - `voice_text`: [[voice-browser-to-text]]
 - `waf_log_list`: [[waf-log-paging]]

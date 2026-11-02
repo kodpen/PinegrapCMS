@@ -221,3 +221,4 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/graph_canvas.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/health_gauge.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/store_zones.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipping_methods.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/vat_check.php');
