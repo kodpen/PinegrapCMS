@@ -48,7 +48,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 - `tour`: clean (OF)
 - `translate`: taken by MM — #4753, #4776
 - `update`: open
-- `user_list`: taken by OF, #PR
+- `user_list`: taken by OF, #5169
 - `vendor_api`: clean
 - `visitor_ip`: clean
 - `visitor_partitions`: open

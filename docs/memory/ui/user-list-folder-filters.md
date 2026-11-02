@@ -9,4 +9,4 @@ module: user_list
 - My Private Users and My Content Managers ask `(user.user_role < '3') OR EXISTS (SELECT 1 FROM aclfolder WHERE aclfolder_user = user.user_id AND aclfolder_rights = '1'|'2')`: an administrator, designer or manager (every folder, "All" in the row) is listed whether or not they have folder rows.
 
 ## What was wrong before?
-- Those two filters listed `FROM aclfolder LEFT JOIN user` with `DISTINCT`: a manager with no aclfolder row of their own was missing from both lists, and one with an unrelated folder row (a private right) appeared in My Content Managers only by chance. Fixed in #PR; `tests/user_list_filter_rule_test.php`.
+- Those two filters listed `FROM aclfolder LEFT JOIN user` with `DISTINCT`: a manager with no aclfolder row of their own was missing from both lists, and one with an unrelated folder row (a private right) appeared in My Content Managers only by chance. Fixed in #5169; `tests/user_list_filter_rule_test.php`.
