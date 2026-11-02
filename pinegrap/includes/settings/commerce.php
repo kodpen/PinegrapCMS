@@ -233,11 +233,11 @@ $pg_settings_cards[] = '
                                                                         ' . pg_label_settings_rows() . '
                                                                         <div class="col-12 ">
                                                                             <label for="ecommerce_product_restriction_message" class="form-label">' . lang('Product Restriction Message') . '</label>
-                                                                            <input type="text" name="ecommerce_product_restriction_message" id="ecommerce_product_restriction_message" class="form-control" value="' . h($ecommerce_product_restriction_message) . '" maxlength="255"/>
+                                                                            <textarea name="ecommerce_product_restriction_message" id="ecommerce_product_restriction_message" class="form-control" rows="2" maxlength="255">' . h($ecommerce_product_restriction_message) . '</textarea>
                                                                         </div>
                                                                         <div class="col-12 ">
                                                                             <label for="ecommerce_no_shipping_methods_message" class="form-label">' . lang('No Shipping Methods Message') . '</label>
-                                                                            <input type="text" name="ecommerce_no_shipping_methods_message" id="ecommerce_no_shipping_methods_message" class="form-control" value="' . h($ecommerce_no_shipping_methods_message) . '" maxlength="255"/>
+                                                                            <textarea name="ecommerce_no_shipping_methods_message" id="ecommerce_no_shipping_methods_message" class="form-control" rows="2" maxlength="255">' . h($ecommerce_no_shipping_methods_message) . '</textarea>
                                                                         </div>
                                                                         ' . get_time_picker_format() . '
                                                                         <div class="pg-f-xs">
@@ -278,7 +278,7 @@ $pg_settings_cards[] = '
                                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
                                                                                 <input type="text" name="ecommerce_gift_card_validity_days" id="ecommerce_gift_card_validity_days" class="form-ghost" value="' . $ecommerce_gift_card_validity_days . '" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
                                                                             </label>
-                                                                            <div class="text-end form-text">' . lang('leave blank for no expiration') . '</div>
+                                                                            <div class="form-text">' . lang('leave blank for no expiration') . '</div>
                                                                         </div>
                                                                         <div class="col-12 ">
                                                                             <div class="form-field">

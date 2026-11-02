@@ -14,3 +14,9 @@ description: Settings dialog visual details: acrylic glass mode (advanced-visual
 - On info alerts without a close button `py-3` (v5's `py-2`, same 0.5rem) is fine.
 
 Related: docs/memory/ui/settings-card-row-layout.md
+
+## How wide is the box a switch opens inside a card?
+- `.pg-set-card .collapse.popover` is `width: calc(100% - .3rem)` (its max-width); elsewhere it stays `max-content`. Sized to content, the Tax box of E-Commerce › Store ended at 513 px and the Shipping box at 676 px, and switches inside them did not line up (#5028).
+
+## Why do long category names wrap in the section list?
+- `.pg-sm-link span` wraps (`overflow-wrap: anywhere`) instead of an ellipsis: at tablet width the list is 12rem and names were cut ("Güncellemeler ve Bak…") with the full name shown nowhere; its tooltip holds the description (#5028).

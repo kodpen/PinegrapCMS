@@ -270,20 +270,26 @@ $pg_settings_cards[] = '
                             </div>';
             }
 
+            // The % sign goes on the side the panel language writes it
+            // (Turkish: %80), as on the resize quality slider above.
+            $image_quality_sign_first = (strpos(lang('{var:1}%'), '%') === 0);
+            $image_quality_adorn = $image_quality_sign_first ? 'form-adorn' : 'form-adorn form-adorn-end';
+            $image_quality_align = $image_quality_sign_first ? '' : ' text-end';
+
             $output_image_delivery_fields .= '
                             <div class="pg-f-xs">
                                 <label for="image_quality_webp" class="form-label">' . lang('WebP Quality') . '</label>
-                                <label class="form-control form-adorn form-adorn-end">
+                                <label class="form-control ' . $image_quality_adorn . '">
                                     <span class="form-adorn-text" aria-hidden="true">%</span>
-                                    <input type="text" name="image_quality_webp" id="image_quality_webp" maxlength="3" inputmode="numeric" class="form-ghost text-end" value="' . h($image_settings['quality_webp']) . '" />
+                                    <input type="text" name="image_quality_webp" id="image_quality_webp" maxlength="3" inputmode="numeric" class="form-ghost' . $image_quality_align . '" value="' . h($image_settings['quality_webp']) . '" />
                                 </label>
                                 <div class="form-text">' . lang('A changed quality makes the pictures again as they are next asked for. Resized JPEG and PNG pictures use the quality when resizing above.') . '</div>
                             </div>
                             <div class="pg-f-xs">
                                 <label for="image_quality_avif" class="form-label">' . lang('AVIF Quality') . '</label>
-                                <label class="form-control form-adorn form-adorn-end">
+                                <label class="form-control ' . $image_quality_adorn . '">
                                     <span class="form-adorn-text" aria-hidden="true">%</span>
-                                    <input type="text" name="image_quality_avif" id="image_quality_avif" maxlength="3" inputmode="numeric" class="form-ghost text-end" value="' . h($image_settings['quality_avif']) . '" />
+                                    <input type="text" name="image_quality_avif" id="image_quality_avif" maxlength="3" inputmode="numeric" class="form-ghost' . $image_quality_align . '" value="' . h($image_settings['quality_avif']) . '" />
                                 </label>
                                 <div class="form-text">' . lang('AVIF holds up at a lower number than WebP, so its quality is set apart.') . '</div>
                             </div>';

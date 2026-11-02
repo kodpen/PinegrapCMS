@@ -12,11 +12,15 @@ description: How a settings card lays out one setting per row via stylesheet onl
 
 ## Where are dividers drawn?
 - BETWEEN rows, not under them (`border-top` on `* + <predicate>`). "Do not draw under the last one" asks a question a stylesheet cannot answer: the last VISIBLE row. A switch that opens a block keeps itself on the page while the block is closed, so the last row on screen is almost never `:last-child` (Giriş with Google card hung a line under its only setting).
+- A group heading cell (a cell that starts with an `<h6>`) carries the line ABOVE it with extra room; the row right after it drops its line (that rule repeats the divider predicate). Before, the line fell between the heading and its first setting and the heading read as part of the setting above (#5028).
 - Cards never draw their own dividers: eight `<div class="col-12"><hr/></div>` cells were removed; a hand-placed `<hr>` adds a second line and puts a gutter + its own margin in between, breaking the rhythm. Group heading (`<h6>`) stays (a name, not a divider). Never put `<hr>` in a new card.
 
 ## How are name, control and description placed?
 - Name and control share one row; the description drops below both. Grid: `"pgname pgctrl" / "pgnote pgnote"`.
 - The control once spanned both rows ("centre it between name and description"), and that is what made the card look crooked: an item exceeding one row distributes its height over the tracks it covers, so even an empty description row takes a share of the control's height and lifts the name off centre (measured in eight panes: plain fields 7px, input groups 19px, icon picker 28px, varying with the control). Sharing one row makes the row as tall as the taller of the two and both centre inside it.
+
+## What if a setting has two descriptions?
+- Only the first `.form-text` takes the `pgnote` area; every later one (`.form-text ~ .form-text`) is `grid-area: auto / 1 / auto / -1`, a full row under the grid (after the control on a phone). One named area held them all and they were painted over each other: SEO share image warning, visitor daily summary link (#5025).
 
 ## What gives a card its vertical rhythm?
 - One rhythm: `--bs-gutter-y: 0` + the same `padding-bottom` on every cell, taken back from the row's bottom with `margin-bottom`.

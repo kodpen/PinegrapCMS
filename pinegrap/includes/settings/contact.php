@@ -35,7 +35,7 @@ $pg_settings_cards[] = '
                                             <label for="opt_in_label" class="form-label">' . lang('Opt-In Label') . '</label>
                                             <input type="text" name="opt_in_label" id="opt_in_label" class="form-control" value="' . h($opt_in_label) . '" maxlength="255"/>
                                         </div>
-                                        <div class="pg-f-md">
+                                        <div class="col-12">
                                             <label for="plain_text_email_campaign_footer" class="form-label">' . lang('Plain Text Footer') . '</label>
                                             <textarea name="plain_text_email_campaign_footer" id="plain_text_email_campaign_footer" class="form-control">' . h($plain_text_email_campaign_footer) . '</textarea>
                                         </div>
@@ -163,7 +163,7 @@ $pg_settings_cards[] = '
                                         <div class="col-12">
                                             <div class="form-field">
                                                 <div class="switch"><input type="checkbox" name="mailchimp" id="mailchimp" value="1"' . $mailchimp_checked . ' class="collapse-switcher" data-bs-target="#mailchimp_row"/></div>
-                                                <label class="" for="mailchimp">' . lang('MailChimp Sync') . '<br/><span class="form-text">' . lang('Auto-export customers, orders, & products to MailChimp regularly. Requires cron job (job.php).') . '</span></label>
+                                                <label class="" for="mailchimp">' . lang('MailChimp Sync') . '</label><div class="form-text">' . lang('Auto-export customers, orders, & products to MailChimp regularly. Requires cron job (job.php).') . '</div>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0" id="mailchimp_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
@@ -197,7 +197,7 @@ $pg_settings_cards[] = '
                                                         <div class="col-12">
                                                             <div class="form-field">
                                                                 <div class="switch"><input type="checkbox" name="mailchimp_automation" id="mailchimp_automation" value="1"' . $mailchimp_automation_checked . ' class=""/></div>
-                                                                <label class="" for="mailchimp_automation">' . lang('Automation') . '<br/><span class="form-text fg-danger">' . lang('only enable after all historical orders have been synced, to start sending MailChimp automation campaigns') . '</span></label>
+                                                                <label class="" for="mailchimp_automation">' . lang('Automation') . '</label><div class="form-text fg-danger">' . lang('only enable after all historical orders have been synced, to start sending MailChimp automation campaigns') . '</div>
                                                             </div>
                                                         </div>
                                                     </div>

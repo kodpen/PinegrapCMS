@@ -26,3 +26,12 @@ The class says it; the cell keeps the row rhythm and the control takes as much o
 - `commerce.php` had 21 class strings with a missing space (`col-xxl-6col-lg-3`): the browser sees one unknown token and those cells stayed full width at every width. This directly caused the inconsistent widths in the E-Commerce pane.
 
 Related: docs/memory/ui/settings-card-row-layout.md
+
+## Where does a switch's description go?
+- After the `<label>`, as `<div class="form-text">` inside `.form-field`, never `<label>Name<br/><span class="form-text">…</span></label>`: inside the label it took the label's weight (500) and the narrow name column (Operations alerts: ten bold lines; carrier list split "PTT / Kargo"). Thirteen such rows were moved out (#5028).
+
+## What else keeps cards alike (#5028)?
+- A 255-character sentence (shipping messages) is a two-row `textarea` in `col-12`, not a one-line field capped at the control column; the meta description and plain text footer textareas are `col-12` too.
+- Descriptions start at the left: no `text-end` on `.form-text`.
+- A card's intro `p.fg-secondary` reads at description size (.75rem) and a `legend.form-label` at name size inside `.pg-settings-body`; no `fs-md` on them.
+- A `%` adornment sits on the side `lang('{var:1}%')` puts it (Turkish `%80`), as the range bubble does (features.php image qualities).
