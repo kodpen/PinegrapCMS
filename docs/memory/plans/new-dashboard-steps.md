@@ -11,7 +11,7 @@ description: Steps N1-N14 and the visual pass V of plans/new-dashboard.md: size,
 - Until V, a step keeps its look plain: features first, the look is matched in V.
 
 ## Which steps?
-- Done: N1 switch and shell (#4692), N2 greeting (#4766), N3 System Status (#4756), N4 card frame (#4768), N5 edit mode (#4856), N6 gallery and side panel (#4888), N7 visitor and content cards (#4861), N8 security and team cards (#4865), N9 shop cards (#4881), N10a pipeline (#4973), N10b queue (#4895), N10c queue shop sources (#5017), N11a flows (#4994), N11b assistant (#5013), N12a goals and notes (#4981), N13 share (#4975).
+- Done: N1 switch and shell (#4692), N2 greeting (#4766), N3 System Status (#4756), N4 card frame (#4768), N5 edit mode (#4856), N6 gallery and side panel (#4888), N7 visitor and content cards (#4861), N8 security and team cards (#4865), N9 shop cards (#4881), N10a pipeline (#4973), N10b queue (#4895), N10c queue shop sources (#5017), N11a flows (#4994), N11b assistant (#5013), N12a goals and notes (#4981), N12b pins and perf (#5001), N13 share (#4975).
 
 - N9b (S) `ops` card. Screen 17. `free` after N9.
 
@@ -22,7 +22,6 @@ description: Steps N1-N14 and the visual pass V of plans/new-dashboard.md: size,
   - N11c (S) `ai` daily summary as question 3 decided. Held: where its setting and the summary are kept, architect issue #5014.
 
 - N12 (M) Goals, pins, notes, performance, subscriptions. Screens 01, 04, 18, 19. Cut in three.
-  - N12b (M) `pins` (tiles, "+ Pin" through `backend_search`) and `perf` (widget 23's queries and grade moved into helpers both call). `free` after N12a.
   - N12c (S) `subs`, hidden until the vendor licence client answers (`plans/kodpen-vendor-api-client-steps.md`, P8).
 
 - N14 (M) Phone, keyboard and close-out. Screen 20. After N2-N13.

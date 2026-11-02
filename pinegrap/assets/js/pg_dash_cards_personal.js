@@ -1,11 +1,11 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The new dashboard's personal cards (assets/js/pg_dash.js draws the
- * frames): My goals and My notes. The data is what
- * includes/dashboard/v2/cards/<id>.php returns; every text comes from it.
- * Each card saves its own part through api.php's dashboard_personal_save
- * action.
+ * The new dashboard's personal cards and the Performance card
+ * (assets/js/pg_dash.js draws the frames): My goals, Pinned, My notes and
+ * Performance. The data is what includes/dashboard/v2/cards/<id>.php
+ * returns; every text comes from it. Goals, pins and notes are saved one
+ * part at a time through api.php's dashboard_personal_save action.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -38,6 +38,15 @@
         var node = pgDash.el("i", "bi " + name);
         node.setAttribute("aria-hidden", "true");
         return node;
+    }
+
+    function link(body, url, text) {
+        if (!url || !text) {
+            return;
+        }
+        var more = pgDash.el("a", "pg-dash-card-more", text);
+        more.href = url;
+        body.appendChild(more);
     }
 
     // A status line read out when it changes.
@@ -241,6 +250,171 @@
         body.appendChild(note);
     };
 
+    // ── Pinned ─────────────────────────────────────────────────────────────
+
+    // What the panel's search found, as pins: its screen shortcuts and the
+    // records of a type a pin may open.
+    function pinChoices(answer, types) {
+        var out = [];
+        ((answer && answer.actions) || []).forEach(function (action) {
+            var url = String(action.url || "").split("/").pop();
+            if (url) {
+                out.push({pin: {t: "screen", u: url, l: action.label, i: action.icon}, text: action.label, icon: action.icon || "bi-window"});
+            }
+        });
+        ((answer && answer.results) || []).forEach(function (result) {
+            if (types.indexOf(result.type) !== -1) {
+                out.push({pin: {t: result.type, id: result.id, l: result.name}, text: result.name, note: result.sub || "", icon: ""});
+            }
+        });
+        return out;
+    }
+
+    function pinSearch(body, data, entry) {
+        var el = pgDash.el;
+        var L = data.labels;
+        var box = el("div", "pg-dash-pin-search");
+        var label = el("label", "visually-hidden", L.search);
+        label.setAttribute("for", "pg_dash_pin_search");
+        var input = el("input", "form-control form-control-sm");
+        input.type = "search";
+        input.id = "pg_dash_pin_search";
+        input.placeholder = L.search;
+        input.autocomplete = "off";
+        var found = el("ul", "pg-dash-pin-found");
+        var note = status();
+        var stop = button("btn btn-outline theme-secondary btn-sm", L.cancel);
+        var timer = null;
+        var asked = 0;
+
+        stop.addEventListener("click", function () {
+            pgDash.reload(entry);
+        });
+
+        function show(choices) {
+            found.textContent = "";
+            if (!choices.length) {
+                note.textContent = L.nothing;
+                return;
+            }
+            note.textContent = "";
+            choices.slice(0, 8).forEach(function (choice) {
+                var item = el("li");
+                var pick = button("pg-dash-pin-choice", "");
+                if (choice.icon) {
+                    pick.appendChild(icon(choice.icon));
+                }
+                pick.appendChild(el("span", "pg-dash-pin-choice-text", choice.text));
+                if (choice.note) {
+                    pick.appendChild(el("span", "pg-dash-pin-choice-note", choice.note));
+                }
+                pick.addEventListener("click", function () {
+                    pick.disabled = true;
+                    save("pins", (data.stored || []).concat([choice.pin]), function () {
+                        pgDash.reload(entry);
+                    }, function (message) {
+                        pick.disabled = false;
+                        note.textContent = message || L.failed;
+                    });
+                });
+                item.appendChild(pick);
+                found.appendChild(item);
+            });
+        }
+
+        input.addEventListener("input", function () {
+            window.clearTimeout(timer);
+            var query = input.value.trim();
+            if (query.length < 2) {
+                found.textContent = "";
+                note.textContent = "";
+                return;
+            }
+            timer = window.setTimeout(function () {
+                var mine = ++asked;
+                $.ajax({
+                    contentType: "application/json",
+                    url: "api.php",
+                    data: JSON.stringify({action: "backend_search", search: query, offset: 0}),
+                    type: "POST",
+                    dataType: "json"
+                }).done(function (answer) {
+                    if (mine === asked) {
+                        show(pinChoices(answer, data.types || []));
+                    }
+                }).fail(function () {
+                    if (mine === asked) {
+                        note.textContent = L.failed;
+                    }
+                });
+            }, 250);
+        });
+
+        box.appendChild(label);
+        box.appendChild(input);
+        box.appendChild(found);
+        box.appendChild(note);
+        box.appendChild(stop);
+        body.appendChild(box);
+        input.focus();
+    }
+
+    pgDash.renderers.pins = function (body, data, entry) {
+        var el = pgDash.el;
+        var L = data.labels || {};
+        var stored = data.stored || [];
+        var note = status();
+
+        if (!(data.pins || []).length) {
+            body.appendChild(el("p", "pg-dash-item-none", L.none));
+        }
+
+        var list = el("ul", "pg-dash-pins");
+        (data.pins || []).forEach(function (pin, index) {
+            var item = el("li", "pg-dash-pin");
+            var open = el("a", "pg-dash-pin-link");
+            open.href = pin.url;
+            open.appendChild(icon(pin.icon));
+            open.appendChild(el("span", "pg-dash-pin-text", pin.text));
+            open.title = pin.text;
+            item.appendChild(open);
+
+            if (!data.locked) {
+                var remove = button("btn btn-icon btn-sm pg-dash-pin-remove", "", fill(L.remove, pin.text));
+                remove.appendChild(icon("bi-x-lg"));
+                remove.addEventListener("click", function () {
+                    remove.disabled = true;
+                    save("pins", stored.filter(function (_pin, i) {
+                        return i !== index;
+                    }), function () {
+                        pgDash.reload(entry);
+                    }, function (message) {
+                        remove.disabled = false;
+                        note.textContent = message || L.failed;
+                    });
+                });
+                item.appendChild(remove);
+            }
+            list.appendChild(item);
+        });
+        body.appendChild(list);
+
+        if (!data.locked) {
+            if (stored.length < (data.most || 8)) {
+                var add = button("btn btn-outline theme-secondary btn-sm pg-dash-personal-add", " " + L.add);
+                add.insertBefore(icon("bi-plus-lg"), add.firstChild);
+                add.addEventListener("click", function () {
+                    add.remove();
+                    pinSearch(body, data, entry);
+                });
+                body.appendChild(add);
+            } else {
+                body.appendChild(el("p", "pg-dash-personal-hint", L.full));
+            }
+        }
+        body.appendChild(note);
+    };
+
     // ── My notes ───────────────────────────────────────────────────────────
 
     pgDash.renderers.notes = function (body, data, entry) {
@@ -294,5 +468,26 @@
         body.appendChild(box);
         body.appendChild(hint);
         body.appendChild(note);
+    };
+
+    // ── Performance ────────────────────────────────────────────────────────
+
+    pgDash.renderers.perf = function (body, data) {
+        var el = pgDash.el;
+        var top = el("div", "pg-dash-perf");
+        top.appendChild(ring(data.ring, data.ring_label, data.ring_text, data.grade_tone));
+
+        var main = el("div", "pg-dash-perf-main");
+        var grade = el("span", "pg-dash-perf-grade", data.grade);
+        grade.setAttribute("data-tone", data.grade_tone || "");
+        main.appendChild(grade);
+        main.appendChild(el("span", "pg-dash-perf-note", data.grade_note));
+        main.appendChild(el("span", "pg-dash-perf-note", data.ring_label));
+        top.appendChild(main);
+        body.appendChild(top);
+
+        body.appendChild(pgDash.tiles(data.tiles));
+        body.appendChild(pgDash.rows(data.rows_title, data.rows));
+        link(body, data.url, data.link);
     };
 })();

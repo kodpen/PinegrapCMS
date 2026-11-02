@@ -69,6 +69,7 @@ function pg_dashboard_v2_cards()
     $built = array('visitors', 'engagement', 'gsearch', 'ga', 'content', 'comments', 'files', 'activity', 'firewall', 'team', 'mytasks', 'waiting', 'week', 'calendars', 'queue', 'pipeline', 'goals', 'notes', 'flows');
     $built = array_merge($built, array('shop', 'salesmap', 'orders', 'offers', 'fx'));
     $built[] = 'ai';
+    $built = array_merge($built, array('pins', 'perf'));
 
     $card = function ($title, $icon, $category, $width, $period, $gate) {
         return array(

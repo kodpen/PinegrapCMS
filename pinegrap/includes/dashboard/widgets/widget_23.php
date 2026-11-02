@@ -73,17 +73,8 @@ function pg_dashboard_widget_23($request, $user)
         // Averages are computed from the sums. Averaging the
         // per-bucket averages would weight a quiet hour the same
         // as a busy one and quietly give the wrong number.
-        $pf_totals = mysqli_fetch_assoc(db_q(
-            "SELECT
-                COALESCE(SUM(hits), 0)      AS hits,
-                COALESCE(SUM(slow_hits), 0) AS slow_hits,
-                COALESCE(SUM(total_ms), 0)  AS total_ms,
-                COALESCE(MAX(max_ms), 0)    AS max_ms,
-                COALESCE(SUM(total_kb), 0)  AS total_kb
-             FROM perf_stats
-             WHERE hour_start >= ?
-               AND area = 'frontend'", array((int) $pf_day_ago)
-        ));
+        $pf_summary = pg_dashboard_perf_summary($pf_day_ago);
+        $pf_totals = $pf_summary['totals'];
 
         $pf_hits = (int) $pf_totals['hits'];
         $pf_slow = (int) $pf_totals['slow_hits'];
@@ -142,33 +133,7 @@ function pg_dashboard_widget_23($request, $user)
         // of the site: graded, it named "[410]" the slowest page and
         // took the verdict with it. The pattern takes exactly the
         // three-digit buckets; "[home]" is the home page and stays.
-        $pf_worst = mysqli_fetch_assoc(db_q(
-            "SELECT label, SUM(hits) AS hits, MIN(min_ms) AS floor_ms,
-                    SUM(total_ms) / GREATEST(SUM(hits), 1) AS avg_ms
-             FROM perf_stats
-             WHERE hour_start >= ?
-               AND area = 'frontend'
-               AND label NOT LIKE '[___]'
-             GROUP BY label
-             HAVING SUM(hits) >= 3
-             ORDER BY floor_ms DESC, label ASC
-             LIMIT 1", array((int) $pf_day_ago)
-        ));
-
-        // Quiet site: nothing opened three times yet.
-        if (!$pf_worst) {
-            $pf_worst = mysqli_fetch_assoc(db_q(
-                "SELECT label, SUM(hits) AS hits, MIN(min_ms) AS floor_ms,
-                        SUM(total_ms) / GREATEST(SUM(hits), 1) AS avg_ms
-                 FROM perf_stats
-                 WHERE hour_start >= ?
-                   AND area = 'frontend'
-                   AND label NOT LIKE '[___]'
-                 GROUP BY label
-                 ORDER BY floor_ms DESC, label ASC
-                 LIMIT 1", array((int) $pf_day_ago)
-            ));
-        }
+        $pf_worst = $pf_summary['worst'];
 
         $pf_worst_ms = $pf_worst ? (int) round($pf_worst['floor_ms']) : 0;
         $pf_worst_label = $pf_worst ? $pf_worst['label'] : '';
@@ -177,24 +142,10 @@ function pg_dashboard_widget_23($request, $user)
         // and a confident verdict from four requests is worse than
         // admitting the sample is too small.
         // Traffic made only of error responses has no page to grade.
-        $pf_enough = ($pf_hits >= 10) && ($pf_worst_label !== '');
-
-        if (!$pf_enough) {
-            $pf_grade = lang('Not enough data');
-            $pf_grade_class = 'secondary';
-        } elseif ($pf_worst_ms < 300) {
-            $pf_grade = lang('Very good');
-            $pf_grade_class = 'success';
-        } elseif ($pf_worst_ms < 800) {
-            $pf_grade = lang('Good');
-            $pf_grade_class = 'success';
-        } elseif ($pf_worst_ms < 2000) {
-            $pf_grade = lang('Weak');
-            $pf_grade_class = 'warning';
-        } else {
-            $pf_grade = lang('Poor');
-            $pf_grade_class = 'danger';
-        }
+        $pf_verdict = pg_dashboard_perf_grade($pf_hits, $pf_worst_label, $pf_worst_ms);
+        $pf_enough = $pf_verdict['enough'];
+        $pf_grade = $pf_verdict['grade'];
+        $pf_grade_class = $pf_verdict['class'];
 
         // Needle position. Duration has no upper bound, so a linear
         // scale would leave every healthy site pinned at zero and
@@ -298,22 +249,7 @@ function pg_dashboard_widget_23($request, $user)
         // count is in the bar's tooltip for context.
         $pf_rows = '';
 
-        $pf_result = db_q(
-            "SELECT
-                label,
-                area,
-                SUM(hits)                              AS hits,
-                SUM(total_ms) / GREATEST(SUM(hits), 1) AS avg_ms,
-                MAX(max_ms)                            AS max_ms
-             FROM perf_stats
-             WHERE hour_start >= ?
-               AND area = 'frontend'
-             GROUP BY label, area
-             ORDER BY avg_ms DESC, label ASC, area ASC
-             LIMIT 5", array((int) $pf_day_ago)
-        );
-
-        $pf_pages = $pf_result ? mysqli_fetch_items($pf_result) : array();
+        $pf_pages = $pf_summary['pages'];
 
         // Scale the bars against the slowest entry on the list, not
         // against some absolute ceiling: with one page at 40 seconds
@@ -422,4 +358,114 @@ function pg_dashboard_widget_23($request, $user)
         );
         return $response;
     }
+}
+
+/**
+ * The front end's timing over the last day from the hourly summary, read
+ * once for widget 23 and the new dashboard's Performance card: the totals,
+ * the page that grades the site (see the widget's Health note) and the five
+ * slowest pages by average.
+ *
+ * @param int $since unix time
+ * @return array totals (hits, slow_hits, total_ms, max_ms, total_kb), worst
+ *               (label, hits, floor_ms, avg_ms) or null, pages (label, area,
+ *               hits, avg_ms, max_ms)
+ */
+function pg_dashboard_perf_summary($since)
+{
+    $pf_day_ago = (int) $since;
+
+    $pf_totals = mysqli_fetch_assoc(db_q(
+        "SELECT
+            COALESCE(SUM(hits), 0)      AS hits,
+            COALESCE(SUM(slow_hits), 0) AS slow_hits,
+            COALESCE(SUM(total_ms), 0)  AS total_ms,
+            COALESCE(MAX(max_ms), 0)    AS max_ms,
+            COALESCE(SUM(total_kb), 0)  AS total_kb
+         FROM perf_stats
+         WHERE hour_start >= ?
+           AND area = 'frontend'", array((int) $pf_day_ago)
+    ));
+
+    $pf_worst = mysqli_fetch_assoc(db_q(
+        "SELECT label, SUM(hits) AS hits, MIN(min_ms) AS floor_ms,
+                SUM(total_ms) / GREATEST(SUM(hits), 1) AS avg_ms
+         FROM perf_stats
+         WHERE hour_start >= ?
+           AND area = 'frontend'
+           AND label NOT LIKE '[___]'
+         GROUP BY label
+         HAVING SUM(hits) >= 3
+         ORDER BY floor_ms DESC, label ASC
+         LIMIT 1", array((int) $pf_day_ago)
+    ));
+
+    // Quiet site: nothing opened three times yet.
+    if (!$pf_worst) {
+        $pf_worst = mysqli_fetch_assoc(db_q(
+            "SELECT label, SUM(hits) AS hits, MIN(min_ms) AS floor_ms,
+                    SUM(total_ms) / GREATEST(SUM(hits), 1) AS avg_ms
+             FROM perf_stats
+             WHERE hour_start >= ?
+               AND area = 'frontend'
+               AND label NOT LIKE '[___]'
+             GROUP BY label
+             ORDER BY floor_ms DESC, label ASC
+             LIMIT 1", array((int) $pf_day_ago)
+        ));
+    }
+
+    $pf_result = db_q(
+        "SELECT
+            label,
+            area,
+            SUM(hits)                              AS hits,
+            SUM(total_ms) / GREATEST(SUM(hits), 1) AS avg_ms,
+            MAX(max_ms)                            AS max_ms
+         FROM perf_stats
+         WHERE hour_start >= ?
+           AND area = 'frontend'
+         GROUP BY label, area
+         ORDER BY avg_ms DESC, label ASC, area ASC
+         LIMIT 5", array((int) $pf_day_ago)
+    );
+
+    $pf_pages = $pf_result ? mysqli_fetch_items($pf_result) : array();
+
+    return array('totals' => $pf_totals, 'worst' => $pf_worst ?: null, 'pages' => $pf_pages);
+}
+
+/**
+ * The site's grade from the page that grades it (see the widget's Health
+ * note): under 300 ms at its fastest very good, under 800 good, under 2,000
+ * weak, else poor; fewer than ten requests, or no page among them, is not
+ * enough to judge. Pure.
+ *
+ * @param int    $hits        front-end requests in the day
+ * @param string $worst_label the grading page, '' when none
+ * @param int    $worst_ms    its fastest run
+ * @return array enough (bool), key (none, very_good, good, weak, poor),
+ *               grade (its words), class (secondary, success, warning, danger)
+ */
+function pg_dashboard_perf_grade($hits, $worst_label, $worst_ms)
+{
+    $enough = ((int) $hits >= 10) && ((string) $worst_label !== '');
+
+    if (!$enough) {
+        return array('enough' => false, 'key' => 'none', 'grade' => lang('Not enough data'), 'class' => 'secondary');
+    }
+
+    if ($worst_ms < 300) {
+        return array('enough' => true, 'key' => 'very_good', 'grade' => lang('Very good'), 'class' => 'success');
+    }
+
+    if ($worst_ms < 800) {
+        return array('enough' => true, 'key' => 'good', 'grade' => lang('Good'), 'class' => 'success');
+    }
+
+    if ($worst_ms < 2000) {
+        return array('enough' => true, 'key' => 'weak', 'grade' => lang('Weak'), 'class' => 'warning');
+    }
+
+    return array('enough' => true, 'key' => 'poor', 'grade' => lang('Poor'), 'class' => 'danger');
 }
