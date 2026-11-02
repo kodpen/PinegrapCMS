@@ -494,6 +494,22 @@ if (pg_image_derivative_sweep_due(pg_image_derivative_directory())) {
     }
 }
 
+// Workspace previews used to be drawn into data/temp/workspace_previews;
+// they come from the image derivative cache now (ws_file_preview()). What an
+// earlier version left there goes, a few hundred files a tick.
+$ws_old_previews = PG_FUNCTIONS_DIR . '/data/temp/workspace_previews';
+
+if (is_dir($ws_old_previews)) {
+
+    foreach (array_slice((array) @glob($ws_old_previews . '/*'), 0, 500) as $ws_old_preview) {
+        if (is_file($ws_old_preview)) {
+            @unlink($ws_old_preview);
+        }
+    }
+
+    @rmdir($ws_old_previews);
+}
+
 // The 320 px WebP copies panel lists draw their thumbnails from
 // (pg_image_panel_thumb_url()), newest files first, five seconds a tick,
 // while the server writes WebP and it is offered; once through, a new pass

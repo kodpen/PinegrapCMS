@@ -20,13 +20,13 @@ description: Steps W1-W10 of plans/webp-same-address.md: negotiation, switches, 
 - W4 (S) Convert doors, downloads, mails. Done (#4742).
   - "Prepare WebP" (copies, no rename), Edit File keeps only "Create a .webp copy"; the file window shows the copy's size and saving; downloads and mails ask for `f=original` (`platform/image-same-address.md`).
 
-- W5 (S) Cloudflare rule. After W2.
+- W5 (S) Cloudflare rule. Next, free (no W6).
   - Cloudflare Tools writes the Cache Rule (phase `http_request_cache_settings`; jpg, jpeg, png; Vary `accept` normalize, media type `image/webp`) when the token may, else shows the steps; a check fetches one picture through the edge with two `Accept` values and sets the confirmation only when each gets its own type.
 
 - W7 (S) Panel thumbnails. Done (#5376).
   - 320 appended to `pg_image_derivative_widths()` (a copy's name carries its width: nothing stored is invalidated); File Manager tiles and list, the product table and the image pickers ask for `?w=320&f=webp`; W3's warm-up makes the 320 copies of the newest files first (Imagick reads a JPEG at a reduced scale, `jpeg:size`).
 
-- W8 (S) Workspace previews. After W7.
+- W8 (S) Workspace previews. Done (#5402).
   - `ws_file_preview()` (`includes/workspace/files.php`) answers from the derivative cache and widths through `pg_image_derivative()` with the file's `files` id (edges 160 and 320 → 320, 640 → 960, 1280 → 1440); `data/temp/workspace_previews` and its sweep go; Workspace access checks stay in front.
 
 - W9 (S) Upload size cap. Done (#4700).
