@@ -8,7 +8,7 @@ description: External API (integration.php): find what the panel can do that the
 
 ## Which steps are there?
 - X0 gap list: done (PR #5239). X1–X12 are `free`, most useful first. A write step first moves the screen's inline SQL into one `includes/fn/` function both call. Store writes take `store:write` (commerce ceiling); store reads stay under `orders:read`.
-- X1a Zone and tax zone writes (create, update, `/delete`, GET one), `store:write`, events `zone.*`, `tax_zone.*`: PR #X1PR (`api/api-store-zone-writes.md`).
+- X1a Zone and tax zone writes (create, update, `/delete`, GET one), `store:write`, events `zone.*`, `tax_zone.*`: PR #5377 (`api/api-store-zone-writes.md`).
 - X1b Shipping method writes: create, update, `/delete` for `/store/shipping-methods` through a write function shared with `add_/edit_shipping_method.php` (`pg_shipping_method_form_columns()` reads the panel's formatted text; the API needs its own typed input). `store:write`. Events `shipping_method.created|updated|deleted`. Free.
 - X2 Returns: `GET /returns` (status, order_id, modified_since), `GET /returns/{id}`, `POST /returns/{id}` (approve, receive, refund, reject as `view_return.php`). `orders:*`. Events: existing `order.return.*`.
 - X3 `GET /subscriptions`, `/subscriptions/{id}` (`customers:read`); `POST /commissions/{id}` status, `POST /affiliates/{id}/approve`, `GET /commissions/recurring-profiles`; new `commissions:write`. Events `commission.status_changed`, `affiliate.approved`.
