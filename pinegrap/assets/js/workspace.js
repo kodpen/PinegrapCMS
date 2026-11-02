@@ -13832,7 +13832,7 @@
         // The microphone in place of Send while the box is empty or holds
         // only tags (voiceTags()). Not while a message is changed; beside a
         // reply bar it answers that message (voiceSend()), but not several
-        // at once, nor an MCP agent (voiceAnswers()).
+        // at once (voiceAnswers()).
         voiceSwap: function () {
             var mic = this.voiceMic;
 
@@ -13863,10 +13863,11 @@
             return (rest.replace(/[\s\u00a0\u200b]/g, '') === '') ? text.trim() : '';
         },
 
-        // Whether a recording may answer this message. An answer to Claude
-        // or Pinegrap AI asks it once the recording is written out
-        // (includes/workspace/voice.php, ws_voice_ask()); an MCP agent reads
-        // only the words, so a recording does not stand in for them.
+        // Whether a recording may answer this message: any one message. An
+        // answer to Claude, Pinegrap AI or an MCP agent asks it once the
+        // recording is written out (includes/workspace/voice.php,
+        // ws_voice_ask()); the agent reads the transcript as the others do
+        // (ws_mcp_agent_heard()).
         // An assistant's answer to the viewer's own message, come in while the
         // conversation is open and in sight, read aloud for a person who
         // switched it on in this browser (the channel menu). Code blocks,
@@ -13897,9 +13898,7 @@
         },
 
         voiceAnswers: function (message) {
-            var sender = (message && message.sender) || {};
-
-            return !sender.mcp;
+            return !!message;
         },
 
         // Whether a sound in the conversation gets the microphone that

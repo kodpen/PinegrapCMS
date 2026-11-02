@@ -147,5 +147,5 @@ function test_ws_voice_asks_are_wired()
 	$js = $read('assets/js/workspace.js');
 	pg_assert_contains('(this.inputEmpty() || (this.voiceTags() !== \'\'))', $js, 'the microphone beside tags alone');
 	pg_assert_contains('body: tags,', $js, 'the tags go with the recording');
-	pg_assert_contains("voiceAnswers: function (message) {\n            var sender = (message && message.sender) || {};\n\n            return !sender.mcp;", $js, 'a recording answers an assistant');
+	pg_assert_contains("voiceAnswers: function (message) {\n            return !!message;", $js, 'a recording answers an assistant, an MCP agent too');
 }
