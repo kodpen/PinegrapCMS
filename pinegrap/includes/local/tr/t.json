@@ -2296,6 +2296,7 @@
     "The home page stays on the site.": "Ana sayfa yayında kalır.",
     "The home page was among them: the site has no home page until another page is marked as home.": "Ana sayfa da bunların arasındaydı: başka bir sayfa ana sayfa olarak işaretlenene kadar sitenin ana sayfası yok.",
     "The hourly check reads the MyISAM tables; \"Check all tables\" reads every table, InnoDB included.": "Saatlik denetim MyISAM tablolarını okur; \"Tüm tabloları denetle\" InnoDB dahil her tabloyu okur.",
+    "The icons could not be loaded.": "Simgeler yüklenemedi.",
     "The id for the email address is not valid.": "E-posta adresi kimliği geçerli değil.",
     "The id of a sender address in the Sendcloud panel. Empty takes the first one.": "Sendcloud panelindeki bir gönderici adresinin kimliği. Boş bırakılırsa ilki kullanılır.",
     "The identity token could not be read.": "Kimlik belirteci okunamadı.",
