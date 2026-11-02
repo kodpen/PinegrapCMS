@@ -176,3 +176,43 @@ function test_email_campaign_suppressed_recipient_row()
 	pg_assert_same(1, $set['failed']);
 	pg_assert_same(0, $set['attempts']);
 }
+
+// Only a write that proves the address is the person's own lifts a block:
+// their signed-in account or staff in the panel. A public form, a checkout,
+// a sign-up, an import, the API, İYS and the banner never do.
+function test_mail_bounce_proving_sources()
+{
+	$proving = pg_consent_log_proving_sources();
+
+	foreach (array('account', 'panel') as $source) {
+		pg_assert_true(in_array($source, $proving, true), $source);
+	}
+
+	foreach (array('form', 'checkout', 'signup', 'unsubscribe', 'import', 'api', 'iys', 'banner', 'complaint') as $source) {
+		pg_assert_false(in_array($source, $proving, true), $source);
+	}
+
+	// Every proving source is one the consent log accepts.
+	foreach ($proving as $source) {
+		pg_assert_true(in_array($source, pg_consent_log_sources(), true), $source . ' is a consent source');
+	}
+}
+
+// The clear is gated in pg_consent_log_answers() on both branches, and the
+// double opt-in confirmation clears after its granted row.
+function test_mail_bounce_clear_call_sites()
+{
+	$privacy = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/privacy.php');
+	$start = strpos($privacy, 'function pg_consent_log_answers(');
+	$body = substr($privacy, $start, strpos($privacy, "\n}\n", $start) - $start);
+
+	pg_assert_same(2, substr_count($body, 'pg_mail_bounce_clear('), 'resubscribe and address change');
+	pg_assert_same(3, substr_count($body, '$proves'), 'set once, both branches gated');
+	pg_assert_contains('pg_consent_log_proving_sources()', $body);
+
+	$fs = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/form_subscription.php');
+	$start = strpos($fs, 'function pg_fs_confirm(');
+	$body = substr($fs, $start, strpos($fs, "\n}\n", $start) - $start);
+
+	pg_assert_true(strpos($body, 'pg_mail_bounce_clear($email)') > strpos($body, "'status'     => 'granted'"), 'cleared after the granted row');
+}

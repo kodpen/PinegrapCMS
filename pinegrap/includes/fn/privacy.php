@@ -503,13 +503,18 @@ function pg_consent_log_answers(array $person, array $answers, $source)
     $changes = pg_consent_log_changes(pg_consent_log_current(pg_consent_log_rows($person)), $answers);
     $written = 0;
 
+    // Only a write that proves the address is the person's own lifts a
+    // bounce or complaint block: anyone can type any address into a public
+    // form or a checkout.
+    $proves = in_array((string) $source, pg_consent_log_proving_sources(), true) && function_exists('pg_mail_bounce_clear');
+
     foreach ($changes as $change) {
         if (pg_consent_log_record($change + array('source' => (string) $source) + $stored) > 0) {
             $written++;
 
             // The person's own yes to e-mail marketing is an explicit
             // resubscribe: a bounce or complaint block on the address lifts.
-            if (pg_consent_log_resubscribes($change) && function_exists('pg_mail_bounce_clear') && isset($stored['email'])) {
+            if ($proves && pg_consent_log_resubscribes($change) && isset($stored['email'])) {
                 pg_mail_bounce_clear($stored['email']);
             }
         }
@@ -518,14 +523,28 @@ function pg_consent_log_answers(array $person, array $answers, $source)
     // A changed address is a new address: an old block on it no longer
     // stands for the person who now gives it.
     if (
-        isset($person['previous_email'], $stored['email'])
+        $proves
+        && isset($person['previous_email'], $stored['email'])
         && (strtolower(trim((string) $person['previous_email'])) !== strtolower(trim((string) $stored['email'])))
-        && function_exists('pg_mail_bounce_clear')
     ) {
         pg_mail_bounce_clear($stored['email']);
     }
 
     return $written;
+}
+
+/**
+ * The consent sources whose writes prove the address belongs to the person:
+ * a signed-in person's own account, or staff in the panel. Only these (and
+ * the double opt-in confirmation, pg_fs_confirm()) lift a bounce or
+ * complaint block. A public form, a checkout, a sign-up, an import, the API,
+ * İYS and the cookie banner record consent but never clear. Pure.
+ *
+ * @return string[]
+ */
+function pg_consent_log_proving_sources()
+{
+    return array('account', 'panel');
 }
 
 /**
