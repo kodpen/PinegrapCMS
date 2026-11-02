@@ -400,6 +400,8 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - step-rail.md: Numbered steps on panel screens: Bootstrap 6 .stepper (edit_offer cards, installer, ERP import), why every edit_offer item is .active, theme-reset on the cards
 - stored-choice-kept.md: Selects that drop the stored choice add it back selected and marked (product private folder, Workspace template, select_page(), calendar Next Page, disabled offers)
 - stored-times-site-order.md: Subscriptions, Firewall log rows, short link state lines and the Paraşüt connection line print stored times through get_absolute_time(), not date()
+- submitted-form-add-delete.md: Add Submitted Form reads the pressed button from the request, its e-mail box, Delete Selected skipping missing forms, and the field filter labels of the Forms screen
+- submitted-form-import-export.md: How Import Submitted Forms reads an exported file (fixed record columns, status, one column per field), converts date cells and checks the chosen custom form
 - submitted-form-shared-form.md: The submitted form create and edit screens share includes/forms/submitted_form_form.php
 - suggestion-lists.md: Search-as-you-type lists the screens build themselves (ERP account contact, product bundle, Create Order, ERP lines): keyboard, focus after a pick, how an empty or failed answer is said
 - system-status-gauge-layers.md: System Status gauge (widget 2) as five stacked SVGs: paint order, which layer animates, will-change, the off-screen pause and its redraw guard, reduced motion

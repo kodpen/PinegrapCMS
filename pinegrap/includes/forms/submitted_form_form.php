@@ -88,6 +88,25 @@ function pg_submitted_form_keep_stored_options($options, $stored, $field_id)
 }
 
 /**
+ * The attributes an e-mail address field's box takes on the add and edit
+ * screens: the browser checks the format and a phone opens its e-mail
+ * keyboard without spelling fixes or a capital first letter. The server
+ * still checks the address (pg_submitted_form_check_field()). Other field
+ * types take none.
+ *
+ * @param string $type the form field's type
+ * @return array attribute => value
+ */
+function pg_submitted_form_email_attrs($type)
+{
+    if ($type !== 'email address') {
+        return array();
+    }
+
+    return array('type' => 'email', 'inputmode' => 'email', 'autocomplete' => 'email', 'spellcheck' => 'false', 'autocapitalize' => 'off');
+}
+
+/**
  * The value a field starts with on a new submitted form: the folder name when
  * the field is set to use it and the name is known, else its default value,
  * as the site's form does (pg_cf_field_initial_value()).
@@ -278,7 +297,7 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
                 $output_fields .=
                     '<div class="col-12 md:col-6 lg:col-4 my-3 ' . $row_class . '">
                         ' . pg_ai_write_label_row('<label class="form-label" for="' . h($field['id']) . '">' . h($field['label']) . '</label>', pg_ai_write_form_button($user, $page_id, $field['id'])) . '
-                        ' . $liveform->output_field(array_merge(array('type'=>'text', 'name'=>$field['id'], 'id'=>$field['id'], 'value'=>$start_value, 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>$field['maxlength']), pg_coll_input_attrs($coll_kind['kind'], $field['type']))) . '
+                        ' . $liveform->output_field(array_merge(array('type'=>'text', 'name'=>$field['id'], 'id'=>$field['id'], 'value'=>$start_value, 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>$field['maxlength']), pg_submitted_form_email_attrs($field['type']), pg_coll_input_attrs($coll_kind['kind'], $field['type']))) . '
                         ' . $field_required . '
                     </div>';
                 break;
