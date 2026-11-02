@@ -41,6 +41,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - cloud-file-picker-onedrive.md: OneDrive in Upload File's cloud picker (#3261): the v8 picker with OneDrive/SharePoint tokens per resource, the Graph download through its pre-authenticated address, the Entra setup
 - cloud-file-picker.md: Upload File's cloud picker (#3238, #3261): Google, OneDrive and Dropbox pickers hand back only an id or link; the server downloads within the upload limit and stores through pg_file_store_upload()
 - cloudflare-dns-dialog.md: Cloudflare Tools Add/Edit DNS Record dialogs (#3628): hidden type groups are disabled so only the visible priority box is posted, MX priority is carried into Edit, Content is required where shown
+- cloudflare-image-vary-rule.md: Cloudflare Tools card for WebP at the own address: the Cache Rule it writes (Vary Accept normalised to image/webp), the steps, the edge check that sets or takes back bit 8 (#5536)
 - cloudflare-tools-failed-reads.md: Cloudflare Tools says why a Cloudflare read or action failed: unread zone switches disabled, firewall and analytics reasons, Cloudflare's text on every failed action
 - cookie-consent-catalogue.md: Which cookies the cookie notice lists (pg_consent_catalogue()), the conditional rows, and what a new cookie needs
 - cookie-consent-new-cookies.md: Adding a front-end cookie or third-party tag under the cookie notice: necessary or not, pg_consent_setcookie() plus a session copy, pg_consent_catalogue(), revoke names, pg_consent_hold_scripts().

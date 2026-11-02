@@ -20,7 +20,7 @@ description: Steps W1-W10 of plans/webp-same-address.md: negotiation, switches, 
 - W4 (S) Convert doors, downloads, mails. Done (#4742).
   - "Prepare WebP" (copies, no rename), Edit File keeps only "Create a .webp copy"; the file window shows the copy's size and saving; downloads and mails ask for `f=original` (`platform/image-same-address.md`).
 
-- W5 (S) Cloudflare rule. Next, free (no W6).
+- W5 (S) Cloudflare rule. Done (#5536).
   - Cloudflare Tools writes the Cache Rule (phase `http_request_cache_settings`; jpg, jpeg, png; Vary `accept` normalize, media type `image/webp`) when the token may, else shows the steps; a check fetches one picture through the edge with two `Accept` values and sets the confirmation only when each gets its own type.
 
 - W7 (S) Panel thumbnails. Done (#5376).

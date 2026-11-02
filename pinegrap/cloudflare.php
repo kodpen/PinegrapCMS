@@ -281,6 +281,84 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
+    // WebP at a picture's own address: the Cache Rule that keeps a copy per
+    // format. It is added beside the zone's other cache rules, or put right
+    // when it was changed by hand; a token that may not read or write cache
+    // rules gets Cloudflare's reason and the steps on the card.
+    if ($action === 'image_vary_rule') {
+        $cache_rules_path = "zones/{$CF_ZONE_ID}/rulesets/phases/http_request_cache_settings/entrypoint";
+        $resp_rules = cf_request('GET', $cache_rules_path, null, $CF_API_BASE, $CF_API_TOKEN);
+        $vary_plan = pg_cloudflare_image_vary_plan($resp_rules);
+        $vary_rule = pg_cloudflare_image_vary_rule();
+        $resp = null;
+
+        if ($vary_plan['do'] === 'create') {
+            $resp = cf_request('PUT', $cache_rules_path, ['rules' => [$vary_rule]], $CF_API_BASE, $CF_API_TOKEN);
+        } elseif ($vary_plan['do'] === 'add') {
+            $resp = cf_request('POST', "zones/{$CF_ZONE_ID}/rulesets/" . $vary_plan['ruleset_id'] . '/rules', $vary_rule, $CF_API_BASE, $CF_API_TOKEN);
+        } elseif ($vary_plan['do'] === 'update') {
+            $resp = cf_request('PATCH', "zones/{$CF_ZONE_ID}/rulesets/" . $vary_plan['ruleset_id'] . '/rules/' . $vary_plan['rule_id'], $vary_rule, $CF_API_BASE, $CF_API_TOKEN);
+        }
+
+        if ($vary_plan['do'] === 'none') {
+            $liveform->add_notice(lang('The cache rule is already in place.'));
+        } elseif ($vary_plan['do'] === 'failed') {
+            $liveform->mark_error('error', lang('The cache rules could not be read') . ': ' . h(pg_cloudflare_answer_reason($resp_rules)));
+        } elseif (pg_cloudflare_answer_failed($resp)) {
+            $liveform->mark_error('error', lang('The cache rule could not be written') . ': ' . h(pg_cloudflare_answer_reason($resp)));
+        } else {
+            $liveform->add_notice(lang('The cache rule was written. Check it through Cloudflare in a minute.'));
+            log_activity(lang('Cloudflare cache rule for WebP at the picture\'s own address written.'), $_SESSION['sessionusername']);
+        }
+    }
+
+    // The edge check: sets the confirmation (bit 8 of
+    // config.image_derivative_formats) only when each browser got its own
+    // copy, and takes it back when the edge gave one copy to both.
+    if (($action === 'image_vary_check') && pg_image_delivery_ready()) {
+        $same_address = pg_image_delivery()['same_address'];
+
+        if (empty($same_address['on'])) {
+            $liveform->mark_error('error', lang('Switch on "Send WebP at the picture\'s own address" in Site Settings › Features › Image Optimization first.'));
+        } else {
+            $vary_check = pg_cloudflare_image_vary_check();
+            $vary_file = h($vary_check['file']);
+
+            switch ($vary_check['verdict']) {
+                case 'ok':
+                    db("UPDATE config SET image_derivative_formats = image_derivative_formats | 8");
+                    @unlink(PG_FUNCTIONS_DIR . '/data/temp/system_status_cache.json');
+                    $liveform->add_notice(lang(array('string' => 'Cloudflare kept a copy of {var:1} per format. The confirmation is set: browsers that read WebP now get it through Cloudflare.', 'vars' => $vary_file)));
+                    log_activity(lang('Cloudflare check passed: the edge keeps a copy of each picture per format.'), $_SESSION['sessionusername']);
+                    break;
+
+                case 'shared':
+                    if (!empty($same_address['cdn'])) {
+                        db("UPDATE config SET image_derivative_formats = image_derivative_formats & ~8");
+                        @unlink(PG_FUNCTIONS_DIR . '/data/temp/system_status_cache.json');
+                        log_activity(lang('Cloudflare check failed: the confirmation that the CDN keeps a copy per format was taken back.'), $_SESSION['sessionusername']);
+                    }
+                    $liveform->mark_error('error', lang(array('string' => 'Cloudflare gave the same copy of {var:1} to a browser that reads WebP and to one that does not: the cache rule is missing or not in effect yet. Visitors get the original through Cloudflare until a check passes.', 'vars' => $vary_file)));
+                    break;
+
+                case 'no_webp':
+                    $liveform->mark_error('error', lang(array('string' => '{var:1} came back without WebP through the site\'s address. Check that this server writes WebP and that the address reaches this site.', 'vars' => $vary_file)));
+                    break;
+
+                case 'not_proxied':
+                    $liveform->add_notice(lang('The picture did not come through Cloudflare: the site\'s address is not proxied, so nothing in between keeps a copy and no confirmation is needed.'));
+                    break;
+
+                case 'unreachable':
+                    $liveform->mark_error('error', lang(array('string' => '{var:1} could not be fetched through the site\'s address: {var:2}', 'vars' => array($vary_file, h($vary_check['reason'])))));
+                    break;
+
+                default:
+                    $liveform->mark_error('error', lang('No public JPEG or PNG with a lighter WebP copy was found to check with.'));
+            }
+        }
+    }
+
     // PRG pattern: redirect after POST so a refresh does not repeat the action.
     // A toggled switch gets focus back on the new page, and a custom period
     // keeps its dates.
@@ -681,6 +759,68 @@ $switch_unread_note = function ($id) use ($unread_switches) {
 };
 
 
+// WebP at a picture's own address: whether the Cache Rule that keeps a copy
+// per format is in place, and the confirmation the edge check sets. Shown
+// once the image delivery columns exist (2026.11.0).
+$image_vary_card = '';
+if (pg_image_delivery_ready()) {
+    $resp_cache_rules = cf_request('GET', "zones/{$CF_ZONE_ID}/rulesets/phases/http_request_cache_settings/entrypoint", null, $CF_API_BASE, $CF_API_TOKEN);
+    $image_vary_plan = pg_cloudflare_image_vary_plan($resp_cache_rules);
+    $image_same_address = pg_image_delivery()['same_address'];
+
+    if ($image_vary_plan['do'] === 'none') {
+        $image_vary_state = '<span class="badge theme-success">' . lang('In place') . '</span>';
+    } elseif ($image_vary_plan['do'] === 'update') {
+        $image_vary_state = '<span class="badge theme-warning">' . lang('Changed on Cloudflare') . '</span>';
+    } elseif ($image_vary_plan['do'] === 'failed') {
+        $image_vary_state = '<span class="badge theme-secondary">' . lang('Could not be read') . '</span> <span class="small fg-danger">' . h(pg_cloudflare_answer_reason($resp_cache_rules)) . '</span>';
+    } else {
+        $image_vary_state = '<span class="badge theme-warning">' . lang('Not written') . '</span>';
+    }
+
+    $image_vary_steps_open = ($image_vary_plan['do'] === 'failed') ? ' open' : '';
+    $image_vary_rule = pg_cloudflare_image_vary_rule();
+
+    $image_vary_card = '
+    <!-- WebP at the picture\'s own address -->
+    <div class="card my-7">
+      <div class="card-header bg-transparent border-0 fw-bold">
+        <i class="bi bi-images"></i> ' . lang('WebP at the picture\'s own address') . '
+      </div>
+      <div class="card-body">
+        <p class="small">' . lang('A browser that reads WebP and one that does not are sent different files at the same address. Cloudflare keeps one copy per address unless a cache rule tells it to keep a copy per format; until a check here passes, visitors get the original through Cloudflare.') . '</p>
+        <dl class="row small">
+          <dt class="md:col-4">' . lang('Cache rule') . '</dt>
+          <dd class="md:col-8">' . $image_vary_state . '</dd>
+          <dt class="md:col-4">' . lang('Send WebP at the picture\'s own address') . '</dt>
+          <dd class="md:col-8">' . (!empty($image_same_address['on']) ? '<span class="badge theme-success">' . lang('On') . '</span>' : '<span class="badge theme-secondary">' . lang('Off') . '</span>') . '</dd>
+          <dt class="md:col-4">' . lang('The CDN keeps a copy per format') . '</dt>
+          <dd class="md:col-8">' . (!empty($image_same_address['cdn']) ? '<span class="badge theme-success">' . lang('Confirmed') . '</span>' : '<span class="badge theme-secondary">' . lang('Not confirmed') . '</span>') . '</dd>
+        </dl>
+        <div class="d-flex flex-wrap gap-3">
+          ' . (($image_vary_plan['do'] !== 'none') ? '<form method="post" class="disable_shortcut">' . get_token_field() . $period_fields . '
+            <input type="hidden" name="action" value="image_vary_rule">
+            <button type="submit" class="btn btn-solid theme-primary"><i class="bi bi-cloud-upload"></i> ' . lang('Write the cache rule') . '</button>
+          </form>' : '') . '
+          <form method="post" class="disable_shortcut">' . get_token_field() . $period_fields . '
+            <input type="hidden" name="action" value="image_vary_check">
+            <button type="submit" class="btn btn-outline theme-primary"' . (empty($image_same_address['on']) ? ' disabled aria-describedby="image_vary_check_off"' : '') . '><i class="bi bi-check2-circle"></i> ' . lang('Check through Cloudflare') . '</button>
+          </form>
+        </div>
+        ' . (empty($image_same_address['on']) ? '<div id="image_vary_check_off" class="form-text">' . lang('Switch on "Send WebP at the picture\'s own address" in Site Settings › Features › Image Optimization first.') . '</div>' : '') . '
+        <details class="mt-5"' . $image_vary_steps_open . '>
+          <summary>' . lang('Add the rule by hand') . '</summary>
+          <ol class="small mt-3">
+            <li>' . lang('Writing the rule from here needs the API token permission Zone › Cache Rules › Edit. Without it, open your domain in the Cloudflare dashboard, then Caching › Cache Rules › Create rule.') . '</li>
+            <li>' . lang('Name it, choose Edit expression and enter:') . ' <code>' . h($image_vary_rule['expression']) . '</code></li>
+            <li>' . lang('Cache eligibility: Eligible for cache. Vary: for Accept choose Normalize with the media type image/webp; for other headers, Pass through.') . '</li>
+            <li>' . lang('Deploy the rule, wait a minute, then press Check through Cloudflare here.') . '</li>
+          </ol>
+        </details>
+      </div>
+    </div>';
+}
+
 $analytics = cf_read_analytics($CF_API_TOKEN, $CF_ZONE_ID, $days, $start_date, $end_date);
 $analytics_reasons = array_unique(array_filter(array($analytics['error'], $analytics['uniques_error'])));
 $analytics_note = $analytics_reasons
@@ -893,6 +1033,8 @@ print pg_page_shell([
         </form>
       </div>
     </div>
+
+    '.$image_vary_card.'
 
     <!-- DNS Records -->
     <div class="card my-7">

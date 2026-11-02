@@ -406,6 +406,7 @@
     "Departments, working hours and capacity.": "Departmanlar, çalışma saatleri ve kapasite.",
     "Dependencies": "Bağımlılıklar",
     "Depending on the page's access control, these pages can be found using the built-in site search feature.": "Sayfanın erişim kontrolüne bağlı olarak, bu sayfalar yerleşik site arama özelliği kullanılarak bulunabilir.",
+    "Deploy the rule, wait a minute, then press Check through Cloudflare here.": "Kuralı yayınlayın, bir dakika bekleyin, sonra burada Cloudflare üzerinden denetle düğmesine basın.",
     "Deposit held and returned by the rules": "Depozito kurallara göre tutulur ve iade edilir",
     "Depth in the thread (0 for a top-level comment)": "Dizideki derinlik (üst düzey yorum için 0)",
     "Derived value": "Türetilmiş değer",

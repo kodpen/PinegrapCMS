@@ -19,7 +19,7 @@ description: JPEG/PNG answered with its WebP derivative at its own address (get_
 - On every answer while the switch is on for a negotiable file, the original and 304 included, appended (`header(..., false)`) so another layer's `Vary` stays.
 
 ## Why the original through a CDN?
-- A cache that ignores `Vary` gives its first copy to everyone; Cloudflare does unless a Cache Rule varies on `Accept`. A request carrying `CF-Ray`, `CDN-Loop`, `Via` or `X-Amz-Cf-Id` gets the original (still with `Vary`) until bit 8 is set (`page-cache-proxy-rules.md`).
+- A cache that ignores `Vary` gives its first copy to everyone; Cloudflare does unless a Cache Rule varies on `Accept`. A request carrying `CF-Ray`, `CDN-Loop`, `Via` or `X-Amz-Cf-Id` gets the original (still with `Vary`) until bit 8 is set (`page-cache-proxy-rules.md`). Cloudflare Tools writes the Cache Rule and its edge check sets bit 8 (`cloudflare-image-vary-rule.md`); the check's own `?pg_vary_check=` address is negotiated before that.
 
 ## Which doors make WebP, and does any rename a picture?
 - None renames (owner, question 2 of the plan). File Manager "Prepare WebP" (`pg_explorer_handle_webp()`, JPEG/PNG only, `pg_explorer_webp_source_types()`) makes the cached copy with `pg_image_derivative()` (width 0, webp): no row added, renamed or removed; `busy` says it is made on the first visit. Edit File keeps only "Create a .webp copy", a new `.webp` row beside the picture.

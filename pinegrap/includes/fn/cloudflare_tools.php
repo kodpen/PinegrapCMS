@@ -6,6 +6,8 @@
  * GraphQL answer failed, the reason to show for it, and the analytics cards
  * built from the GraphQL reads. A GraphQL error arrives as HTTP 200 with an
  * "errors" list and data null, so a 200 alone does not mean the read worked.
+ * Also the Cache Rule that keeps a copy of a picture per format (WebP at a
+ * picture's own address) and the edge check that confirms it.
  * Loaded by cloudflare.php only.
  *
  * @author      Erdal Güral (Kodpen)
@@ -442,4 +444,95 @@ function pg_cloudflare_image_vary_verdict($answers)
     }
 
     return 'ok';
+}
+
+/**
+ * The edge check behind the "CDN keeps a copy per format" confirmation: one
+ * public JPEG or PNG with a lighter WebP copy (made here first, so the check
+ * does not wait for an encode slot) is fetched three times through the
+ * site's own address at a fresh ?pg_vary_check= address, Accept naming WebP,
+ * then not, then naming it again (pg_cloudflare_image_vary_verdict()).
+ *
+ * The check address is negotiated by get_file.php before the confirmation is
+ * set (pg_image_vary_check_asked()); its own query keeps it out of the cache
+ * entries visitors read.
+ *
+ * @return array verdict (an answer of pg_cloudflare_image_vary_verdict(), or
+ *               no_sample when no picture fits), file (its name), reason
+ *               (why a fetch failed, not escaped)
+ */
+function pg_cloudflare_image_vary_check()
+{
+    $result = array('verdict' => 'no_sample', 'file' => '', 'reason' => '');
+
+    $settings = pg_image_delivery();
+    $directory = pg_image_derivative_directory();
+
+    // The newest public pictures first: a folder that is not public would
+    // answer a login page.
+    $rows = db_items(
+        "SELECT id, name, folder
+        FROM files
+        WHERE type IN ('jpg', 'jpeg', 'jpe', 'png') AND attachment = '0' AND folder > 0
+        ORDER BY id DESC
+        LIMIT 30");
+
+    $sample = null;
+
+    foreach ((array) $rows as $row) {
+
+        $path = FILE_DIRECTORY_PATH . '/' . $row['name'];
+
+        if (pg_file_withheld($row['name']) || (get_access_control_type($row['folder']) !== 'public') || !is_file($path)) {
+            continue;
+        }
+
+        $derivative = pg_image_derivative((int) $row['id'], $path, array('width' => 0, 'format' => 'webp'), $directory, $settings);
+
+        if ($derivative['status'] === 'derivative') {
+            $sample = $row;
+            break;
+        }
+    }
+
+    if ($sample === null) {
+        return $result;
+    }
+
+    $result['file'] = $sample['name'];
+
+    // Through the edge: the site's public address, https as Cloudflare
+    // serves it.
+    $url = 'https://' . HOSTNAME_SETTING . PATH . encode_url_path($sample['name'])
+        . '?pg_vary_check=' . bin2hex(random_bytes(8));
+
+    $answers = array();
+
+    foreach (array('image/webp,image/*,*/*;q=0.8', 'image/*,*/*;q=0.8', 'image/webp,image/*,*/*;q=0.8') as $accept) {
+
+        $answer = pg_curl_run('GET', $url, array(
+            'headers'          => array('Accept: ' . $accept),
+            'response_headers' => true,
+            'timeout'          => 20,
+            'max_size'         => 52428800));
+
+        if (!$answer['ok'] && ($result['reason'] === '')) {
+            $result['reason'] = ($answer['status'] > 0)
+                ? lang(array('string' => 'Cloudflare answered with HTTP {var:1}.', 'vars' => $answer['status']))
+                : (string) $answer['error'];
+        }
+
+        $answers[] = array(
+            'status'     => (int) $answer['status'],
+            'type'       => (string) $answer['content_type'],
+            'cloudflare' => (pg_cloudflare_header_value($answer['headers'] ?? '', 'cf-ray') !== ''));
+    }
+
+    $result['verdict'] = pg_cloudflare_image_vary_verdict($answers);
+
+    if (($result['verdict'] === 'unreachable') && ($result['reason'] === '')) {
+        $result['reason'] = lang('The address did not answer with the picture.');
+    }
+
+    return $result;
 }

@@ -3073,6 +3073,7 @@
     "Switch AM/PM": "ÖÖ/ÖS değiştir",
     "Switch Without Saving": "Kaydetmeden Geç",
     "Switch address autocomplete on to test it.": "Denemek için adres otomatik tamamlamayı açın.",
+    "Switch on \"Send WebP at the picture's own address\" in Site Settings › Features › Image Optimization first.": "Önce Site Ayarları › Özellikler › Resim Optimizasyonu'nda \"Resmin kendi adresinde WebP gönder\" seçeneğini açın.",
     "Switch the Google Merchant Center feed on and save, so it has an address Google can fetch.": "Google'ın alabileceği bir adresi olması için Google Merchant Center akışını açıp kaydedin.",
     "Switch the account on and let it bring orders in before registering a webhook. Deliveries are refused until then.": "Webhook kaydetmeden önce hesabı açın ve siparişleri içeri almasını sağlayın. O zamana kadar gönderimler reddedilir.",
     "Switch the theme": "Tema değiştir",
