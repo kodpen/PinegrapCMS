@@ -6,7 +6,7 @@ description: The dynamic region create and edit screens share includes/forms/dyn
 ## Where is the dynamic region form?
 - `includes/forms/dynamic_region_form.php` (gate `PG_FUNCTIONS_DIR`). `add_dynamic_region.php` and `edit_dynamic_region.php` stay at the root as thin wrappers and `require_once` it right after `validate_area_access($user, 'administrator')`: the PHP code field is administrator-only, the same right as the designer's code tab (`tests/designer_dynamic_region_test.php` looks for that line in the edit screen).
 - `pg_dynamic_region_form_card($name = '', $code = '')` prints the Options card: the name between `<dregion>` tags, the heading and the PHP Code Snippet textarea (`id="code"`, `pg_code_editor_attach()` with `code_type` `php`).
-- Raw inputs, not liveform fields; a taken name is the one error path: `$name_taken` (last argument) marks the name field, and the posted values come back from the screen's liveform session.
+- Raw inputs, not liveform fields; a refused name (blank, over 100 characters or taken, `pg_region_form_name_refusal()`) is the one error path: `$name_error` (last argument) marks the required name field, and the posted values come back from the screen's liveform session.
 - `pg_dregion_name_taken($name, $id = null, $lookup = null)`: `<dregion>` evals only the first row of a name, so another region's name is refused; same rules as `pg_cregion_name_taken()` (`common-region-shared-form.md`, whose file this form `require_once`s for the error markup and the lookup).
 
 ## What does a save share?
