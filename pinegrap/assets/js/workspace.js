@@ -2931,6 +2931,12 @@
         return face;
     }
 
+    // A task's priority as a small pill, the same in every task list: high
+    // in the warning colour, urgent in the danger colour.
+    function priorityBadge(priority) {
+        return el('span', 'ws-priority-badge ws-priority-badge-' + priority, (BOOT.priorities || {})[priority] || priority);
+    }
+
     // Overlapping faces in an .avatar-stack. The stack is row-reverse (the
     // last child sits leftmost and on top), so the faces go in backwards
     // and the first person still reads first.
@@ -7735,7 +7741,7 @@
                 head.appendChild(el('span', 'ws-home-row-title', task.title));
 
                 if (hot) {
-                    head.appendChild(el('span', 'ws-home-priority ws-home-priority-' + task.priority, (BOOT.priorities || {})[task.priority] || task.priority));
+                    head.appendChild(priorityBadge(task.priority));
                 }
 
                 text.appendChild(head);
@@ -18169,7 +18175,7 @@
             }
 
             if (task.priority === 'urgent' || task.priority === 'high') {
-                row.appendChild(el('span', 'badge theme-danger', BOOT.priorities[task.priority]));
+                row.appendChild(priorityBadge(task.priority));
             }
 
             row.appendChild(avatarStack('', task.assignees, 4));

@@ -65,7 +65,7 @@ function test_workspace_today_card_tells_the_rest_and_keeps_the_badge_apart()
 
 	pg_assert_true(preg_match('/\n        homeDue: function \([^)]*\) \{\n(.*?)\n        \},\n/s', $source, $match) === 1, 'homeDue found');
 	pg_assert_contains("t('home_tasks_more'", $match[1], 'a row for the tasks not shown');
-	pg_assert_false(strpos($match[1], 'titleLine.appendChild(el(\'span\', \'ws-home-priority') !== false, 'badge not inside the shortened title');
+	pg_assert_false(strpos($match[1], 'titleLine.appendChild(priorityBadge(') !== false, 'badge not inside the shortened title');
 	pg_assert_contains('ws-home-task-head', $match[1], 'title and badge share a line');
 }
 

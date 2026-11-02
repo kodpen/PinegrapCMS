@@ -241,6 +241,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-personal-ical.md: A person's own secret iCal address as a read-only layer on their Work Calendar: ws_holiday_feeds.user_id, the sealed payload, the sync path, who sees it (#3254, decided in #3180)
 - workspace-plan-day-state.md: How a plan grid day reads (ws_plan_day_state(): away, holiday, off, over, full, ok), why load 999 is an internal marker, and where a day off with work is named instead of "%999" (PR #4326, #4233)
 - workspace-polls-api.md: A poll over the Workspace API: closed_at, can_vote false past closes_at and in an earlier version (ws_poll_vote_state()), and the field a vote, change or close refusal names
+- workspace-priority-badge.md: The task priority pill of the Workspace screen: one priorityBadge() for Today, My tasks, a channel's Tasks tab and the record window; high in warning, urgent in danger (#5188)
 - workspace-quick-create.md: A product or group made by a person in the Workspace (ws_quick_create_*): drawer new mode, palette line, /create, off sale unless ticked, applied ws_ai_changes row, decision
 - workspace-quick-edit-drawer.md: The "Fields" section of the record drawer (openRecord, quickEditSection in workspace.js): glance line, short list, inputs from saValueInput(), what a save sends, stale line, decision tick
 - workspace-quick-edit.md: A record's fields edited by a person from the record drawer with no assistant (quick_edit.php): kinds offered, the two actions, checks reused from changes.php, stale check, history row, log, decision
