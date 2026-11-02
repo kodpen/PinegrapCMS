@@ -276,9 +276,11 @@ function pg_file_move_one(array $config, array $row)
         return pg_os_fail('changed', lang(array('string' => 'The file {var:1} changed while it was sent.', 'vars' => array($name))));
     }
 
+    // The size just verified is written too: pg_file_local_copy() reuses a
+    // cached copy only while its size matches the row's.
     $marked = db_q(
-        "UPDATE files SET storage = 's3', storage_key = ? WHERE id = ? AND name = ? AND storage = 'local'",
-        array($key, $id, $name)
+        "UPDATE files SET storage = 's3', storage_key = ?, size = ? WHERE id = ? AND name = ? AND storage = 'local'",
+        array($key, (int) $size, $id, $name)
     );
 
     if (!$marked || ((int) mysqli_affected_rows(db::$con) !== 1)) {
