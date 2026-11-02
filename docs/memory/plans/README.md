@@ -74,7 +74,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - new-dashboard-steps.md: Steps N1-N14 of plans/new-dashboard.md: size, screens, order, which run side by side, the files each owns; claim as [plan:new-dashboard] N<n>
 - new-dashboard-top.md: New dashboard plan: the switch row on both dashboards, the greeting card (sign-in chips, shortcuts, four tiles) and the System Status gauge card; what each shows and where it comes from
 - new-dashboard-visuals.md: The new dashboard design the owner asked for on 2026-11-01: its 22 screens and prototype source in plans/new-dashboard/, what each shows and which step of new-dashboard-steps.md builds it
-- new-dashboard.md: Plan (owner 2026-11-01): a new dashboard from the owner's design, turned on per person by a switch at the top of the current one, which stays as it is; steps N1-N14
+- new-dashboard.md: Plan (owner 2026-11-01): a new dashboard from the owner's design, turned on per person by a switch at the top of the current one, which stays as it is; steps N1-N15
 - prototype-sharing-code.md: What the code holds for plans/prototype-sharing.md: drafts and their revisions, how a draft opens today, what Preview draws, token links, the password throttle, MCP routes, flow and note rights
 - prototype-sharing.md: Plan (2026-10-24; slices 1-4 done: #1867, #1579, #1595, #1578; 5 later): drafts play as a clickable prototype shared by a view-only link; flows with the team
 - refactor-candidates.md: Refactor and infrastructure items from the 2026-10-08 code audit that were still open on 2026-10-16 (designer JS twin, add/edit pairs, big lists, db_q, schema probes, fragment cache, _f gates)
