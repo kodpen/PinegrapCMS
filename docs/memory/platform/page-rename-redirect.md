@@ -13,7 +13,7 @@ description: A renamed page's old address as a 301 short link to the page (2026.
 ## When is no link added?
 - `pg_short_link_rename_problem()`: `unchanged` when the router finds the new name for the old one (`About` -> `about`, `a b` -> `a_b`: same `pg_short_link_key()` or stored form), since the link would answer at the page's own address and loop; `name` when no short link can have the name or a `*` would make it a pattern.
 - `draft`: the page was in the Drafts folder, its old address never on the site. `taken`: a page, file or link has the old name by now. `off`: the box was off. `schema`: before 11.0.12.
-- The designer says what happened (`notes` in the save reply, an info toast) and warns for `name` and `taken` (`pg_short_link_page_renamed_messages()`); the classic screen goes to the page as before, the activity log has "short link (x) was created".
+- Both screens say what happened through `pg_short_link_page_renamed_messages()` (notes for a link added or removed, warnings for `name` and `taken`). The designer shows them as toasts. The classic screen files them with `pg_page_rename_notice()` (`includes/forms/page_form.php`, pure): under the form of the panel screen the save opens (form designer), or, since a site page shows no panel notice, it comes back to Edit Page with `send_to` kept and shows them there. Before, it dropped the answer and a skipped redirect went unnoticed (#5253).
 
 ## Why may a page take back a name its own redirect holds?
 - The router reads short links before pages: a link `old` -> page left in place once the page is named `old` again would send every visitor round in a loop. So a 301/302 link to the same page does not hold its name (`pg_short_link_not_redirect_to_page_sql()`, used by `check_name_availability()`'s `ignore_redirects_to_page` and `pg_designer_page_name_taken_elsewhere($name, $page_id)`), and the rename deletes it (the new name as it came and in the stored form).
@@ -22,4 +22,4 @@ description: A renamed page's old address as a 301 short link to the page (2026.
 ## What does it not cover?
 - Addresses below the page (`/old-catalog/<product>`, `/old-blog/<record>`): only the page's own address is kept. A `old/*` pattern to `new/$1` can be added by hand; a URL destination keeps no language prefix.
 
-Tests: `tests/short_link_redirects_test.php` (`renamed_page_*`), `tests/short_link_requests_test.php` (the screens' wiring). PRs: #1403, #4099 (File Manager and Mass Edit).
+Tests: `tests/short_link_redirects_test.php` (`renamed_page_*`), `tests/short_link_requests_test.php` (the screens' wiring). PRs: #1403, #4099 (File Manager and Mass Edit). `tests/page_form_save_test.php` (`page_rename_notice`).
