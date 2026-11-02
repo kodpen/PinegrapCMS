@@ -128,7 +128,18 @@ if (!$_POST) {
 // else the form has been submitted
 } else {
     validate_token_field();
-    
+
+    // Only a stored status is saved (an enum column under a non-strict
+    // sql_mode would take anything else as '').
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/commission_list.php');
+    $status = pg_commission_posted_status($_POST['status'] ?? null);
+
+    if ($status === '') {
+        $liveform->mark_error('status', lang('Please select a status.'));
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_commission.php?id=' . $id);
+        exit();
+    }
+
     // A hand edit is the operator's choice: it clears the mark the order's
     // cancellation left, so restoring the order does not undo it.
     $cancel_marker_sql = pg_schema_has('commissions', 'status_before_cancel') ? "status_before_cancel = ''," : '';

@@ -32,11 +32,11 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 
 - Endpoints `comment` (3): open
 
-- Endpoints `commission` (2): open
+- Endpoints `commission` (2): done #5113 (edit_commission, view_commissions)
 
-- Endpoints `common` (3): open
+- Endpoints `common` (3): clean (add_common_region, duplicate_common_region, edit_common_region; an empty name is not checked on purpose, ui/common-region-shared-form.md)
 
-- Endpoints `connect` (3): open
+- Endpoints `connect` (3): clean (connect, connect_client, connect_user_to_order)
 
 - Endpoints `contact` (8): open
 
