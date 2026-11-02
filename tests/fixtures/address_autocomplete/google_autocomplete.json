@@ -1,0 +1,19 @@
+{
+  "suggestions": [
+    {
+      "placePrediction": {
+        "place": "places/ChIJ7cv00DwsDogRAMDACa2m4K8",
+        "placeId": "ChIJ7cv00DwsDogRAMDACa2m4K8",
+        "text": {"text": "Moda Caddesi 12, Kadıköy/İstanbul, Türkiye", "matches": [{"endOffset": 4}]},
+        "structuredFormat": {"mainText": {"text": "Moda Caddesi 12"}, "secondaryText": {"text": "Kadıköy/İstanbul, Türkiye"}},
+        "types": ["street_address", "geocode"]
+      }
+    },
+    {
+      "queryPrediction": {"text": {"text": "moda caddesi"}}
+    },
+    {
+      "placePrediction": {"placeId": "bad id!", "text": {"text": "Broken"}}
+    }
+  ]
+}

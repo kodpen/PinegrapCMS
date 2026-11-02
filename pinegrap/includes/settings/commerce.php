@@ -254,6 +254,24 @@ $pg_settings_cards[] = '
         </div>
     </div>';
 
+// ── Address Autocomplete ──
+// The provider account is kept with the connected accounts' applications,
+// the key sealed (includes/fn/address_autocomplete.php).
+$pg_settings_cards[] = '
+    <div id="pgset-address-autocomplete" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                ' . lang('Address Autocomplete') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">' . pg_addr_settings_fields() . '
+                </div>
+            </div>
+        </div>
+    </div>';
+
+$pg_settings_scripts[] = pg_addr_settings_script();
+
 // ── Gift Cards & Rewards ──
 $pg_settings_cards[] = '
     <div id="pgset-giftcards" class="pg-set-card">
