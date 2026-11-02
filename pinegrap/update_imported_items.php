@@ -124,14 +124,14 @@ function update_imported_items($imported_items)
                     $old_url = unhtmlspecialchars(trim($match[1]));
                     $item_url = resolve_url_for_update($base_url, $old_url);
                     $item_url_without_bookmark = strtok($item_url, '#');
-                    $item_name = $imported_items[$item_url_without_bookmark]['name'];
+                    $item_name = $imported_items[$item_url_without_bookmark]['name'] ?? '';
 
                     // If an imported item was not found for the item URL,
                     // then let's remove the query string also and see if we can find
                     // an imported item for this url without the query string.
                     if ($item_name == '') {
                         $item_url_without_query = strtok($item_url_without_bookmark, '?');
-                        $item_name = $imported_items[$item_url_without_query]['name'];
+                        $item_name = $imported_items[$item_url_without_query]['name'] ?? '';
                     }
 
                     // If an item name was found, or the old URL starts with "http://"
@@ -163,14 +163,14 @@ function update_imported_items($imported_items)
                     $old_url = unhtmlspecialchars(trim($match[1]));
                     $item_url = resolve_url_for_update($base_url, $old_url);
                     $item_url_without_bookmark = strtok($item_url, '#');
-                    $item_name = $imported_items[$item_url_without_bookmark]['name'];
+                    $item_name = $imported_items[$item_url_without_bookmark]['name'] ?? '';
 
                     // If an imported item was not found for the item URL,
                     // then let's remove the query string also and see if we can find
                     // an imported item for this url without the query string.
                     if ($item_name == '') {
                         $item_url_without_query = strtok($item_url_without_bookmark, '?');
-                        $item_name = $imported_items[$item_url_without_query]['name'];
+                        $item_name = $imported_items[$item_url_without_query]['name'] ?? '';
                     }
                     
                     // If an item name was found, or the old URL starts with "http://"
@@ -202,14 +202,14 @@ function update_imported_items($imported_items)
                     $old_url = unhtmlspecialchars(trim($match[1]));
                     $item_url = resolve_url_for_update($base_url, $old_url);
                     $item_url_without_bookmark = strtok($item_url, '#');
-                    $item_name = $imported_items[$item_url_without_bookmark]['name'];
+                    $item_name = $imported_items[$item_url_without_bookmark]['name'] ?? '';
 
                     // If an imported item was not found for the item URL,
                     // then let's remove the query string also and see if we can find
                     // an imported item for this url without the query string.
                     if ($item_name == '') {
                         $item_url_without_query = strtok($item_url_without_bookmark, '?');
-                        $item_name = $imported_items[$item_url_without_query]['name'];
+                        $item_name = $imported_items[$item_url_without_query]['name'] ?? '';
                     }
 
                     // If an item name was found, or the old URL starts with "http://"
@@ -241,14 +241,14 @@ function update_imported_items($imported_items)
                     $old_url = unhtmlspecialchars(trim($match[1]));
                     $item_url = resolve_url_for_update($base_url, $old_url);
                     $item_url_without_bookmark = strtok($item_url, '#');
-                    $item_name = $imported_items[$item_url_without_bookmark]['name'];
+                    $item_name = $imported_items[$item_url_without_bookmark]['name'] ?? '';
 
                     // If an imported item was not found for the item URL,
                     // then let's remove the query string also and see if we can find
                     // an imported item for this url without the query string.
                     if ($item_name == '') {
                         $item_url_without_query = strtok($item_url_without_bookmark, '?');
-                        $item_name = $imported_items[$item_url_without_query]['name'];
+                        $item_name = $imported_items[$item_url_without_query]['name'] ?? '';
                     }
 
                     // If an item name was found, or the old URL starts with "http://"
@@ -280,14 +280,14 @@ function update_imported_items($imported_items)
                     $old_url = unhtmlspecialchars(trim($match[1]));
                     $item_url = resolve_url_for_update($base_url, $old_url);
                     $item_url_without_bookmark = strtok($item_url, '#');
-                    $item_name = $imported_items[$item_url_without_bookmark]['name'];
+                    $item_name = $imported_items[$item_url_without_bookmark]['name'] ?? '';
 
                     // If an imported item was not found for the item URL,
                     // then let's remove the query string also and see if we can find
                     // an imported item for this url without the query string.
                     if ($item_name == '') {
                         $item_url_without_query = strtok($item_url_without_bookmark, '?');
-                        $item_name = $imported_items[$item_url_without_query]['name'];
+                        $item_name = $imported_items[$item_url_without_query]['name'] ?? '';
                     }
 
                     // If an item name was found, or the old URL starts with "http://"
@@ -319,14 +319,14 @@ function update_imported_items($imported_items)
                     $old_url = unhtmlspecialchars(trim($match[1]));
                     $item_url = resolve_url_for_update($base_url, $old_url);
                     $item_url_without_bookmark = strtok($item_url, '#');
-                    $item_name = $imported_items[$item_url_without_bookmark]['name'];
+                    $item_name = $imported_items[$item_url_without_bookmark]['name'] ?? '';
 
                     // If an imported item was not found for the item URL,
                     // then let's remove the query string also and see if we can find
                     // an imported item for this url without the query string.
                     if ($item_name == '') {
                         $item_url_without_query = strtok($item_url_without_bookmark, '?');
-                        $item_name = $imported_items[$item_url_without_query]['name'];
+                        $item_name = $imported_items[$item_url_without_query]['name'] ?? '';
                     }
                     
                     // If an item name was found, or the old URL starts with "http://"
@@ -365,14 +365,14 @@ function update_imported_items($imported_items)
 
                     $item_url = resolve_url_for_update($base_url, $item_url);
                     $item_url_without_bookmark = strtok($item_url, '#');
-                    $item_name = $imported_items[$item_url_without_bookmark]['name'];
+                    $item_name = $imported_items[$item_url_without_bookmark]['name'] ?? '';
 
                     // If an imported item was not found for the item URL,
                     // then let's remove the query string also and see if we can find
                     // an imported item for this url without the query string.
                     if ($item_name == '') {
                         $item_url_without_query = strtok($item_url_without_bookmark, '?');
-                        $item_name = $imported_items[$item_url_without_query]['name'];
+                        $item_name = $imported_items[$item_url_without_query]['name'] ?? '';
                     }
 
                     // If an item name was found, then update the URL.
@@ -404,14 +404,14 @@ function update_imported_items($imported_items)
                     $old_url = $match[1];
                     $item_url = resolve_url_for_update($base_url, trim($old_url));
                     $item_url_without_bookmark = strtok($item_url, '#');
-                    $item_name = $imported_items[$item_url_without_bookmark]['name'];
+                    $item_name = $imported_items[$item_url_without_bookmark]['name'] ?? '';
 
                     // If an imported item was not found for the item URL,
                     // then let's remove the query string also and see if we can find
                     // an imported item for this url without the query string.
                     if ($item_name == '') {
                         $item_url_without_query = strtok($item_url_without_bookmark, '?');
-                        $item_name = $imported_items[$item_url_without_query]['name'];
+                        $item_name = $imported_items[$item_url_without_query]['name'] ?? '';
                     }
                     
                     // If an item name was found, or the old URL starts with "http://"
@@ -453,14 +453,14 @@ function update_imported_items($imported_items)
                     $old_url = $match[1];
                     $item_url = resolve_url_for_update($base_url, trim($old_url));
                     $item_url_without_bookmark = strtok($item_url, '#');
-                    $item_name = $imported_items[$item_url_without_bookmark]['name'];
+                    $item_name = $imported_items[$item_url_without_bookmark]['name'] ?? '';
 
                     // If an imported item was not found for the item URL,
                     // then let's remove the query string also and see if we can find
                     // an imported item for this url without the query string.
                     if ($item_name == '') {
                         $item_url_without_query = strtok($item_url_without_bookmark, '?');
-                        $item_name = $imported_items[$item_url_without_query]['name'];
+                        $item_name = $imported_items[$item_url_without_query]['name'] ?? '';
                     }
                     
                     // If an item name was found, or the old URL starts with "http://"
@@ -504,7 +504,7 @@ function update_imported_items($imported_items)
                     // We just want to deal with files in js content.
                     if (mb_strpos($old_url, '{path}') === false) {
                         $item_url = resolve_url_for_update($base_url, $old_url);
-                        $item_name = $imported_items[$item_url]['name'];
+                        $item_name = $imported_items[$item_url]['name'] ?? '';
                         
                         // If an item name was found, or the old URL starts with "http://"
                         // then change the URL in the content.

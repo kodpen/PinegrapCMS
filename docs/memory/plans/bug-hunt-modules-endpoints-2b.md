@@ -8,13 +8,13 @@ description: Module list of plans/bug-hunt.md, part 5: the single root endpoints
 
 - Endpoints browse_catalog_menu, cancel_order, carrier_webhook, chat, clean_up, clear_theme_designer_session: open
 
-- Endpoints cloudflare, confirm_subscription, connected_apps, connections, consent_answer, view_countries: open
+- Endpoints cloudflare, confirm_subscription, connected_apps, connections, consent_answer, view_countries: done #5144 (cloudflare: DNS table printed record names and contents raw; confirm_subscription, connected_apps, connections, consent_answer, view_countries clean; leads: cloudflare analytics day reads ask `limit: days` for days+1 dates, so a preset period drops one day at random; `log_start`/`start_date` arrays reach trim()/htmlspecialchars() (TypeError); init.php ?secure_mode=false question #5146)
 
 - Endpoints create_file, get_cross_sell_items, csp_report, view_currencies, database_engine, developer_lock: open
 
 - Endpoints do, excel_reader2, update_exchange_rates, edit_featured_and_new_items, feed, functions: open
 
-- Endpoints health, get_help_url, update_imported_items, index, init, integration: done #5121 (update_imported_items: data-src rewritten with the src address; health, get_help_url, index, integration clean; leads: update_imported_items reads a missing $imported_items key per reference (PHP 8 warning); init.php ?secure_mode=false skips the forced https redirect and 301s an https request to http, a product question; also #5100 get_form_item_view/get_file submitter e-mail match, #5110 kiosk array text)
+- Endpoints health, get_help_url, update_imported_items, index, init, integration: done #5121 (update_imported_items: data-src rewritten with the src address; health, get_help_url, index, integration clean; leads: init.php ?secure_mode=false skips the forced https redirect and 301s an https request to http, a product question (#5146); also #5100 get_form_item_view/get_file submitter e-mail match, #5110 kiosk array text)
 
 - Endpoints iys_job, edit_javascript, job, kiosk, legal_document, liveform.class: done #5074 (job: page revisions sweep twice per tick; rest clean; lead: kiosk keeps an array dialog_message or button label, shown as "Array")
 
