@@ -25,7 +25,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 - Endpoints `container` (3): #5133; view_containers clean
 - Endpoints `country` (2): clean (view_countries: #5144)
 - Endpoints `currency` (3): #5147 (exchange rate 0)
-- Endpoints `custom` (6): open
+- Endpoints `custom` (6): #5164 (array query value); the rest clean
 - Endpoints `design` (5): done #4663, #4684
 - Endpoints `designer` (4): open
 - Endpoints `device` (3): open
