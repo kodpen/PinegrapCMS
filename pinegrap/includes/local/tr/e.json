@@ -871,6 +871,7 @@
     "Every address the site writes starts with https:// and a plain http request is redirected. This is the switch the HSTS option below depends on.": "Sitenin yazdığı her adres https:// ile başlar ve düz http istekleri yönlendirilir. Aşağıdaki HSTS seçeneği bu anahtara bağlıdır.",
     "Every address this site is telling, whoever registered it.": "Bu sitenin haber verdiği bütün adresler, kaydeden kim olursa olsun.",
     "Every administrator, designer and manager is in the team, unless taken out of it on this screen.": "Bu ekranda ekipten çıkarılmadıkça her yönetici, tasarımcı ve müdür ekiptedir.",
+    "Every application from the careers page, with its CV. Answer below each one.": "Kariyer sayfasından gelen her başvuru, özgeçmişiyle birlikte. Her birinin altında yanıtlayın.",
     "Every application has its own key and secret. The secret is shown only when it is made.": "Her uygulamanın kendi anahtarı ve gizli anahtarı vardır. Gizli anahtar yalnızca üretildiği anda gösterilir.",
     "Every application listed here will be disconnected.": "Burada listelenen her uygulamanın bağlantısı kesilecek.",
     "Every application, newest first, with its position and status.": "Tüm başvurular, en yenisi önce; pozisyonu ve durumuyla.",

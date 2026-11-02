@@ -181,6 +181,7 @@
     "Before an update or a repair replaces the software files, the files it replaces and the database are written to data/backups/pre-update-….zip; the three newest are kept. Repair Software rolls the files back from it, and the installation screen restores its database. Switch it off only for a site too large to back up within one request.": "Bir güncelleme ya da onarım yazılım dosyalarını değiştirmeden önce, değiştirdiği dosyalar ve veritabanı data/backups/pre-update-….zip dosyasına yazılır; en yeni üçü saklanır. Yazılımı Onar dosyaları buradan geri alır, kurulum ekranı da veritabanını geri yükler. Yalnız tek istekte yedeklenemeyecek kadar büyük bir sitede kapatın.",
     "Before it is published: {var:1}": "Yayımlanmadan önce: {var:1}",
     "Before you ask": "Sormadan önce",
+    "Before you buy a property: four checks": "Bir mülk almadan önce: dört kontrol",
     "Before you come": "Gelmeden önce",
     "Before you join": "Katılmadan önce",
     "Before you post": "Yazmadan önce",

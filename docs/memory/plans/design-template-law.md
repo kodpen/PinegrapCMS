@@ -26,4 +26,4 @@ description: Plan for the Law Firm template (pinegrap-law): practice areas, lawy
 
 ## Where to start?
 - `pinegrap-salon/` (same layout, same booking pattern), `pinegrap-courses/` (the latest one), [[design-templates-file-format]], [[design-template-threads]].
-- Done: step 1 (#4964), step 2 (#4978), step 3 (#4991), step 4 (#5011: `standard.php`; the reply e-mail and privacy stay in `consultation.php`). Next: step 5 (`account.php`). The next free step is the lowest one not marked done here.
+- Done: step 1 (#4964), step 2 (#4978), step 3 (#4991), step 4 (#5011: `standard.php`; the reply e-mail and privacy stay in `consultation.php`), step 5 (#5052: `account.php`; included after `consultation.php`, whose `$consultation_row` draws the staff area's `staff_consultations_new`; My Account has no order history). Next: step 6 (assembly). The next free step is the lowest one not marked done here.
