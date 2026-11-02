@@ -13,6 +13,7 @@ description: ERP invoice closing by settlement (erp_settlements): why it posts n
 - A settlement exceeds neither the invoice's open amount nor the collected amount; the excess stays on the account.
 - No automatic matching. Closing the oldest open invoice would silently break reconciliation; settlement is always somebody's decision (FIFO is only a suggestion, `erp_settlement_suggest()`). A caller that names the invoice (counter sale, bank statement line, cheque) settles it explicitly.
 - `erp_post_receipt()`'s `invoice_id` writes the settlement inside the caller's transaction. A rejected settlement rolls back the whole receipt; no half-written receipt remains.
+- A screen removes an allocation only through `erp_settlement_remove($id, $by, $owner)`, naming its record (`invoice_id` on the invoice screen, `account_txn_id` on the receipt screen). An allocation of another record is refused before anything is written. Before PR #NNNN it was removed and then reported as not found, with no log line. Test: `tests/erp_settlement_remove_owner_test.php`.
 - `erp_tx_begin/commit/rollback` keep nesting depth in one counter (`$GLOBALS['_erp_tx_depth']`, `erp_tx_depth()`); a second posting in the same request really opens a new transaction.
 
 ## How is a stored status shown?

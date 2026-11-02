@@ -69,7 +69,7 @@ if ($_POST) {
     }
 
     if ($action === 'unsettle') {
-        $result = erp_settlement_remove((int) ($_POST['settlement_id'] ?? 0), (int) $user['id']);
+        $result = erp_settlement_remove((int) ($_POST['settlement_id'] ?? 0), (int) $user['id'], array('account_txn_id' => $ledger_id));
 
         if ($result['success']) {
             log_activity(lang(array('string' => $is_collection ? 'erp allocation was removed from receipt (#{var:1})' : 'erp allocation was removed from payment (#{var:1})', 'vars' => $cash_id)), $_SESSION['sessionusername']);
