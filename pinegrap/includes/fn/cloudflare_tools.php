@@ -194,7 +194,7 @@ function pg_cloudflare_analytics_card($totals, $area)
                 ? pg_format_number(($totals['cached_bytes'] / $totals['bandwidth']) * 100, 2) . ' %'
                 : '0 %';
         case 'cached_bytes':
-            return pg_format_number($totals['cached_bytes'] / 1024 / 1024, 2) . ' MB';
+            return pg_format_number($totals['cached_bytes'] / 1000 / 1000, 2) . ' MB';
         default:
             return '';
     }

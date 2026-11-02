@@ -40,11 +40,11 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `cart_quotes`: clean (line cleaning, plan against stock/minimum/maximum/bin, create and open checks, apply and its repeat guard, completion, link page escaping checked)
 
-- `classic_style_design`: open
+- `classic_style_design`: clean
 
-- `cloud_file_picker`: open
+- `cloud_file_picker`: clean
 
-- `cloudflare_tools`: open
+- `cloudflare_tools`: taken by worker OG
 
 - `collections`: taken by LQ, #4650
 
@@ -52,7 +52,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `commission_list`: open
 
-- `config_text`: open
+- `config_text`: clean
 
 - `connect`: open
 
