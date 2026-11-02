@@ -36,13 +36,14 @@
 .btn-text:is(:disabled, .disabled) {
   border-color: transparent;
 }
-/* v5's card: block body and header, v5 paddings and cap tint, children
-   keep their own margins (v6 zeroes them and spaces them with a gap). */
+/* Card: block body and header, v5's cap tint, children keep their own
+   margins (v6 zeroes them and spaces them with a gap). Bootstrap 6's
+   padding; the header text starts where the body text does. */
 .card {
-  --bs-card-spacer-y: 1rem;
-  --bs-card-spacer-x: 1rem;
-  --bs-card-cap-padding-y: 0.5rem;
-  --bs-card-cap-padding-x: 1rem;
+  --bs-card-spacer-y: var(--bs-spacer-6);
+  --bs-card-spacer-x: var(--bs-spacer-6);
+  --bs-card-cap-padding-y: var(--bs-spacer-4);
+  --bs-card-cap-padding-x: var(--bs-card-spacer-x);
   --bs-card-cap-bg: color-mix(in srgb, var(--pg-fg-body) 3%, transparent);
   --bs-card-border-color: var(--pg-border-color-translucent);
 }
@@ -208,18 +209,20 @@ input.btn-check:disabled + .btn {
 :where(h6, .h6):not(.menu-header, .popover-header) {
   font-size: 1rem;
 }
-/* v5's dropdown menu: 1rem text, full-width items with no gap or radius,
-   v5 paddings (a heading in a menu keeps the header's own size). */
+/* Dropdown menu: 1rem text, rows inset from the menu's edge on Bootstrap 6's
+   spacers, rounded to the menu's radius minus that inset so the corners
+   nest (a heading in a menu keeps the header's own size). */
 .menu {
   --bs-menu-font-size: 1rem;
-  --bs-menu-padding-x: 0;
-  --bs-menu-padding-y: 0.5rem;
+  --bs-menu-padding-x: var(--bs-spacer-1);
+  --bs-menu-padding-y: var(--bs-spacer-1);
   --bs-menu-gap: 0;
   --bs-menu-item-gap: 0;
-  --bs-menu-item-padding-x: 1rem;
-  --bs-menu-item-border-radius: 0;
-  --bs-menu-header-padding-x: 1rem;
-  --bs-menu-header-padding-y: 0.5rem;
+  --bs-menu-item-padding-x: var(--bs-spacer-4);
+  --bs-menu-item-padding-y: var(--bs-spacer-2);
+  --bs-menu-item-border-radius: var(--pg-radius-lg);
+  --bs-menu-header-padding-x: var(--bs-spacer-4);
+  --bs-menu-header-padding-y: var(--bs-spacer-3);
   --bs-menu-divider-margin-x: 0;
   --bs-menu-divider-margin-y: 0.5rem;
 }
@@ -1077,8 +1080,6 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
 .card {
   --bs-card-border-radius: var(--pg-radius-surface);
   --bs-card-border-width: 1px;
-  --bs-card-cap-padding-y: 1rem;
-  --bs-card-cap-padding-x: 1rem;
   --bs-card-inner-border-radius: calc(
     var(--bs-card-border-radius) - (var(--pg-border-width))
   );
@@ -3225,9 +3226,19 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
   display: none;
 }
 
-#button_bar .btn-group,
-#button_bar .btn-group-vertical {
+#button_bar .btn-group:not([role="group"]),
+#button_bar .btn-group-vertical:not([role="group"]) {
   display: contents;
+}
+
+/* A group with role="group" is one control (a view switch, a type filter):
+   its buttons are choices of the same thing, so they stay together and wrap
+   to the next row as one box. Its buttons still take the bar's pill shape
+   below, so they sit side by side with a small gap instead of welded. */
+#button_bar .btn-group[role="group"] {
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  gap: 0.25rem;
 }
 
 /* Shape and spacing for everything on the bar; the colour is decided by the
@@ -16055,6 +16066,11 @@ a.ws-chip:hover {
   min-width: 0;
   max-width: 55%;
 }
+.ws-file-row .ws-file-meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .ws-file-row audio {
   height: 2rem;
   max-width: 16rem;
@@ -17961,12 +17977,20 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: .1rem;
+  gap: 0;
   margin-left: auto;
 }
 #menu .pg-menu-panel-head:has(.ws-side-head-tools) .pg-menu-panel-title {
   padding-right: 0;
   text-align: start;
+}
+/* Three buttons beside the name leave it little room, and a long list gives
+   the menu body a classic scrollbar that takes 15px more ("Çalışma Al…" in a
+   250px menu). The buttons are a little narrower here than in the list, with
+   no gap between them, so the name keeps to one line with the scrollbar too;
+   still over the 24px target size. */
+#menu .pg-menu-panel-head .ws-side-head-tools .ws-side-tool {
+  width: 1.625rem;
 }
 /* The search keeps its row: its key where Ctrl+K opens it. */
 #ws-menu-side .ws-side-find-key {
@@ -20476,6 +20500,24 @@ button.ws-ack-count:hover {
 }
 .pgc-port-out:hover {
   transform: scale(1.2);
+}
+/* A named port (a row's, data-port) sits at the middle of its row's edge:
+   the user makes the row the dot's positioned parent, as wide as the box. */
+.pgc-node [data-port] {
+  z-index: 1;
+}
+/* A box's picture holder (thumb()), filled once the box is in sight. */
+.pgc-thumb {
+  display: block;
+  overflow: hidden;
+  pointer-events: none;
+  background: var(--pg-bg-2);
+  border-radius: var(--pgc-radius-sm, var(--pg-radius-sm));
+}
+.pgc-thumb > img {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 /* The Flows canvas on the core: its arrowhead markers, a box's border and
    ports in its group's colour (kindClasses() in workspace_flow.js), its

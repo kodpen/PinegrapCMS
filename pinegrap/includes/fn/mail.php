@@ -2032,6 +2032,14 @@ function email($properties)
 
         $mail->setFrom($header_from, $from_name);
         $mail->Sender = pg_mail_envelope_sender($mail, $header_from);
+
+        // VERP: a queued or campaign message to one recipient carries a
+        // signed token in its return path, so the bounce mailbox can tell
+        // whose delivery failed (includes/fn/mail_bounces.php). Not through
+        // a connected account, whose provider sets its own return path.
+        if (!$connection && !empty($properties['bounce_ref']) && function_exists('pg_mail_bounce_return_path_for')) {
+            $mail->Sender = pg_mail_bounce_envelope($mail->Sender, pg_mail_bounce_return_path_for((string) $properties['bounce_ref'], $to));
+        }
         if (!empty($header_reply_to)) {
             $mail->addReplyTo($header_reply_to);
         }

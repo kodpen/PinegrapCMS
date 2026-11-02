@@ -34,7 +34,7 @@ function _search_results_catalog_link_fn($name)
 // so the count, the heading and the empty state read what can be opened.
 function test_search_collect_catalog_needs_detail_page()
 {
-	$body = _search_results_catalog_link_fn('_pg_sw_search_collect');
+	$body = _search_results_catalog_link_fn('_pg_sw_search_collect_one');
 	$lookup = strpos($body, '$detail_name = ');
 	$guard = strpos($body, "if (\$want_catalog && \$detail_name !== '') {");
 	$search = strpos($body, 'get_catalog_search_results(');

@@ -142,7 +142,12 @@
 
     // "2500", "2.500", "2500,5" and "1,666.20" all read as people meant them:
     // the last separator followed by one or two digits is the decimal one.
+    // A minus is not an amount received: the box reads as nothing taken
+    // rather than the figure without its sign.
     function parseAmount(value) {
+        if (String(value || '').indexOf('-') > -1) {
+            return 0;
+        }
         var text = String(value || '').replace(/[^\d.,]/g, '');
         if (text === '') {
             return 0;
@@ -982,15 +987,24 @@
         if (button.hasAttribute('data-sale-inc')) {
             send('set_qty', { item_id: button.getAttribute('data-sale-inc'), quantity: current + 1 });
         } else if (button.hasAttribute('data-sale-dec')) {
-            send('set_qty', { item_id: button.getAttribute('data-sale-dec'), quantity: current - 1 });
+            send('set_qty', { item_id: button.getAttribute('data-sale-dec'), quantity: Math.max(0, current - 1) });
         } else if (button.hasAttribute('data-sale-rm')) {
             send('set_qty', { item_id: button.getAttribute('data-sale-rm'), quantity: 0 }, { toast: true });
         }
     });
 
+    // A whole number from 0 (remove the line) to 9999. Anything else (empty,
+    // a letter, a minus, 12,50, 99999) puts the box back to its quantity with
+    // a warning, never removes the line or cuts the figure.
     function sendQty(input) {
-        var value = parseInt(input.value, 10);
-        send('set_qty', { item_id: input.getAttribute('data-sale-qty'), quantity: isNaN(value) ? 0 : value });
+        var value = String(input.value).trim();
+        if (!/^\d{1,4}$/.test(value)) {
+            input.value = input.defaultValue;
+            input.removeAttribute('data-sale-sent');
+            toast(t.qtyInvalid, 'warning');
+            return;
+        }
+        send('set_qty', { item_id: input.getAttribute('data-sale-qty'), quantity: value });
     }
 
     el.rows.addEventListener('change', function (event) {
@@ -1017,7 +1031,7 @@
             }
         } else if ((event.key === 'ArrowUp') || (event.key === 'ArrowDown')) {
             event.preventDefault();
-            var value = (parseInt(input.value, 10) || 0) + ((event.key === 'ArrowUp') ? 1 : -1);
+            var value = Math.max(0, (parseInt(input.value, 10) || 0) + ((event.key === 'ArrowUp') ? 1 : -1));
             send('set_qty', { item_id: input.getAttribute('data-sale-qty'), quantity: value });
         }
     });

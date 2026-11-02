@@ -723,6 +723,12 @@ $result = db_q($query, array((string) $page_id, (string) $item_id, (string) $ite
 // get new comment's id
 $comment_id = mysqli_insert_id(db::$con);
 
+// Staff answering a question from the page: the asker hears of it once it
+// is published (includes/fn/product_questions.php).
+if (($comment_kind === 'answer') && ($published == '1') && ($comment_id > 0)) {
+    pg_product_question_answer_mail($parent_id);
+}
+
 // A published review of a product changes its rating at once.
 if ($published == '1') {
     pg_review_comment_changed($item_type, $item_id);

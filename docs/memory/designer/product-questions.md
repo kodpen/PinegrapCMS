@@ -1,6 +1,6 @@
 ---
 name: product-questions
-description: Product questions on the comments system: kind question/answer and answer_of, the widget Shows choice and its own claim, the answer box, the unanswered filter, what SF4b adds
+description: Product questions on the comments system: kind question/answer and answer_of, the widget Shows choice and its own claim, the answer box, the unanswered filter
 module: product_questions
 ---
 
@@ -22,8 +22,11 @@ module: product_questions
 - `view_comments.php`: filter "Product questions" / "Unanswered questions (n)" (`pg_product_question_filter_sql()`, count `pg_product_questions_unanswered_count()` over the reader's folders), a badge per row (`pg_product_question_badge()`).
 - The bell's `new_comment` row of a question reads "A product question is waiting for an answer." and opens the comment's screen.
 
-## What is left for SF4b?
-- The asker mailed when answered (`comments-watcher-mail.md`), `Question`/`Answer` in the product's structured data, `kind` on the API `comments` resource, the product page templates' Questions section beside Reviews, the comments e-mail and recent list in questions mode (they read every kind today).
+## What is said outside the page?
+- The asker's mail, the API fields, the JSON-LD and the template widget: [[product-questions-output]].
+
+## What is left?
+- The comment e-mail page and the recent comments list draw every kind, questions included.
 
 ## Where is it tested?
-- `tests/product_questions_test.php`: the kind decision, the filters, the thread split by kind (`pg_product_question_split()`), the badge, the claim, the hidden field, the wiring. No running instance: unit and source tests only.
+- `tests/product_questions_test.php`: the kind decision, the filters, the thread split by kind (`pg_product_question_split()`), the badge, the claim, the hidden field, the mail text and rule, the JSON-LD items, the census kind, the API kind, the wiring; `design_template_shop_comments_test.php` the template widget. No running instance: unit and source tests only.

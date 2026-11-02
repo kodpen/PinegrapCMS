@@ -20,7 +20,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `contacts`: done #4624
 
-- `content`: open, partly hunted (#5343 #5364: product and group address names; checked: address name, transliteration, byte sizes, thumbnails; next worker starts at the rest)
+- `content`: open, partly hunted (#5343 #5364: product and group address names; #5387: e-mail charset; #5443: image tag rewrite after an image save; checked: address name, transliteration, byte sizes, thumbnails, charset, month names, URL ids, form-data variables, image tags; next: `escape_regex()` in core.php leaves `$` and `\` unescaped for its other callers (`disable_links_in_content()` here), then the rest)
 
 - `core`: open
 

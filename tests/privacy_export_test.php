@@ -27,7 +27,7 @@ function test_privacy_export_sections_are_pinned()
 			'contact', 'contact_groups', 'address_book',
 			'orders', 'order_items', 'ship_tos', 'order_documents', 'returns', 'refunds', 'gift_cards', 'cart_quotes',
 			'form_submissions', 'signatures', 'comments', 'watchers', 'wishlist', 'stock_notify', 'campaigns', 'consents',
-			'mail', 'sms', 'chats', 'erp_accounts', 'erp_documents', 'workspace',
+			'mail', 'mail_bounces', 'sms', 'chats', 'erp_accounts', 'erp_documents', 'workspace',
 		),
 		array_keys(pg_privacy_export_sections()),
 		'section keys'

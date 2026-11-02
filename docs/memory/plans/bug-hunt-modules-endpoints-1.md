@@ -34,8 +34,8 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 - Endpoints `email` (16): clean (access, CSRF and role-3 creator checks on the panel screens; email_a_friend, email_preferences one-click unsubscribe; email_campaign_job is web-callable by design)
 - Endpoints `erp` (77): open
 - Endpoints `expres` (2): #5265 (a posted recurring payment period was stored unchecked); express_order.php read, the rest clean; open: get_express_order.php (only the output escaping spot-checked: calendar range, custom form content, offer code label and message)
-- Endpoints `field` (4): open
-- Endpoints `file` (6): open
+- Endpoints `field` (4): clean (OV; add_field, edit_field, delete_fields, view_fields)
+- Endpoints `file` (6): done #5407 (OV; edit_files ERP rows; add_file, edit_file, get_file ERP and key gates, get_files_for_picker clean)
 - Endpoints `find` (2): open
 - Endpoints `folder` (8): open
 - Endpoints `forgot` (2): open

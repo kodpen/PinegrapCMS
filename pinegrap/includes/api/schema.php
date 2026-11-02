@@ -950,6 +950,178 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'store.zones.get',
+			'method'  => 'GET',
+			'path'    => '/store/zones/{id}',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_zones_get',
+			'returns' => 'StoreZone',
+			'summary' => 'One shipping zone',
+			'description' => 'The shipping zone as the list gives it.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+			)
+		),
+
+		array(
+			'id'      => 'store.zones.create',
+			'method'  => 'POST',
+			'path'    => '/store/zones',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_zones_create',
+			'dry_run' => true,
+			'returns' => 'StoreZone',
+			'status'  => 201,
+			'summary' => 'Create a shipping zone',
+			'description' => 'Creates a shipping zone, as the zone screen does: a name, the rates it adds to what a shipping method charges for an address in it, and the countries and states it covers. A shipping method ships to it once its zone_ids name it (the shipping method screen). Announces zone.created.',
+			'params'  => array(
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'At most 50 characters.'),
+				array('name' => 'base_rate',             'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units added to the shipping method\'s base rate for an address in the zone.'),
+				array('name' => 'primary_weight_rate',   'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units added per unit of primary weight.'),
+				array('name' => 'secondary_weight_rate', 'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units added per unit of secondary weight.'),
+				array('name' => 'item_rate',             'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units added per item.'),
+				array('name' => 'country_codes', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 300, 'description' => 'ISO codes of the countries the zone covers, as GET /store/countries lists them. Replaces the list; [] covers none. An unknown code is refused with 422.'),
+				array('name' => 'states',        'in' => 'body', 'type' => 'list', 'of' => array('country_code' => 'string', 'code' => 'string'), 'max_items' => 1000, 'description' => 'Objects of {country_code, code} naming the states the zone covers, as GET /store/countries lists them. Replaces the list; [] covers none. An unknown state is refused with 422.'),
+			)
+		),
+
+		array(
+			'id'      => 'store.zones.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/store/zones/{id}',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_zones_update',
+			'dry_run' => true,
+			'returns' => 'StoreZone',
+			'summary' => 'Change a shipping zone',
+			'description' => 'Only what is sent is changed; a sent country_codes or states list replaces the stored one. Announces zone.updated. PATCH is accepted as well; on an IIS server send POST.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'At most 50 characters.'),
+				array('name' => 'base_rate',             'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units added to the shipping method\'s base rate for an address in the zone.'),
+				array('name' => 'primary_weight_rate',   'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units added per unit of primary weight.'),
+				array('name' => 'secondary_weight_rate', 'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units added per unit of secondary weight.'),
+				array('name' => 'item_rate',             'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units added per item.'),
+				array('name' => 'country_codes', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 300, 'description' => 'ISO codes of the countries the zone covers, as GET /store/countries lists them. Replaces the list; [] covers none. An unknown code is refused with 422.'),
+				array('name' => 'states',        'in' => 'body', 'type' => 'list', 'of' => array('country_code' => 'string', 'code' => 'string'), 'max_items' => 1000, 'description' => 'Objects of {country_code, code} naming the states the zone covers, as GET /store/countries lists them. Replaces the list; [] covers none. An unknown state is refused with 422.'),
+			)
+		),
+
+		array(
+			'id'      => 'store.zones.delete',
+			'method'  => 'DELETE',
+			'path'    => '/store/zones/{id}',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_zones_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a shipping zone',
+			'description' => 'Deletes the zone outright, as the zone screen does: it is taken off the shipping methods and products that named it, and a method or product left with no zone ships nowhere until it gets one. Cannot be undone. Announces zone.deleted.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+			)
+		),
+
+		array(
+			'id'      => 'store.zones.delete_post',
+			'method'  => 'POST',
+			'path'    => '/store/zones/{id}/delete',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_zones_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a shipping zone, addressed as a POST',
+			'description' => 'The same delete as DELETE /store/zones/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+			)
+		),
+
+		array(
+			'id'      => 'store.tax_zones.get',
+			'method'  => 'GET',
+			'path'    => '/store/tax-zones/{id}',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_tax_zones_get',
+			'returns' => 'StoreTaxZone',
+			'summary' => 'One tax zone',
+			'description' => 'The tax zone as the list gives it.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+			)
+		),
+
+		array(
+			'id'      => 'store.tax_zones.create',
+			'method'  => 'POST',
+			'path'    => '/store/tax-zones',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_tax_zones_create',
+			'dry_run' => true,
+			'returns' => 'StoreTaxZone',
+			'status'  => 201,
+			'summary' => 'Create a tax zone',
+			'description' => 'Creates a tax zone, as the tax zone screen does: a name, its rate and the countries and states it covers. Products and offers tax an address in it once they name the zone. Announces tax_zone.created.',
+			'params'  => array(
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'At most 50 characters.'),
+				array('name' => 'rate', 'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 100, 'description' => 'A percentage with up to three decimals: 18 is 18%. Required on create.'),
+				array('name' => 'country_codes', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 300, 'description' => 'ISO codes of the countries the zone covers, as GET /store/countries lists them. Replaces the list; [] covers none. An unknown code is refused with 422.'),
+				array('name' => 'states',        'in' => 'body', 'type' => 'list', 'of' => array('country_code' => 'string', 'code' => 'string'), 'max_items' => 1000, 'description' => 'Objects of {country_code, code} naming the states the zone covers, as GET /store/countries lists them. Replaces the list; [] covers none. An unknown state is refused with 422.'),
+			)
+		),
+
+		array(
+			'id'      => 'store.tax_zones.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/store/tax-zones/{id}',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_tax_zones_update',
+			'dry_run' => true,
+			'returns' => 'StoreTaxZone',
+			'summary' => 'Change a tax zone',
+			'description' => 'Only what is sent is changed; a sent country_codes or states list replaces the stored one. Announces tax_zone.updated. PATCH is accepted as well; on an IIS server send POST.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'At most 50 characters.'),
+				array('name' => 'rate', 'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 100, 'description' => 'A percentage with up to three decimals: 18 is 18%. Required on create.'),
+				array('name' => 'country_codes', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 300, 'description' => 'ISO codes of the countries the zone covers, as GET /store/countries lists them. Replaces the list; [] covers none. An unknown code is refused with 422.'),
+				array('name' => 'states',        'in' => 'body', 'type' => 'list', 'of' => array('country_code' => 'string', 'code' => 'string'), 'max_items' => 1000, 'description' => 'Objects of {country_code, code} naming the states the zone covers, as GET /store/countries lists them. Replaces the list; [] covers none. An unknown state is refused with 422.'),
+			)
+		),
+
+		array(
+			'id'      => 'store.tax_zones.delete',
+			'method'  => 'DELETE',
+			'path'    => '/store/tax-zones/{id}',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_tax_zones_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a tax zone',
+			'description' => 'Deletes the tax zone outright with its countries and states, as the tax zone screen does; an address it covered is taxed by no zone. Cannot be undone. Announces tax_zone.deleted.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+			)
+		),
+
+		array(
+			'id'      => 'store.tax_zones.delete_post',
+			'method'  => 'POST',
+			'path'    => '/store/tax-zones/{id}/delete',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_tax_zones_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a tax zone, addressed as a POST',
+			'description' => 'The same delete as DELETE /store/tax-zones/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+			)
+		),
+
+		array(
 			'id'      => 'store.countries',
 			'method'  => 'GET',
 			'path'    => '/store/countries',
@@ -2450,7 +2622,7 @@ function api_schema() {
 			'handler' => 'api_comments_list',
 			'returns' => array('list' => 'Comment'),
 			'summary' => 'Comments',
-			'description' => 'What visitors wrote, newest first. status: published, pending (held for a person to publish) or scheduled (published at publish_at; cancel_if_newer drops it when a newer comment comes first). item_type and item_id say what a comment is about when it is not the page itself: a form record (submitted_form), a calendar event, a product group or a product. parent_id is the comment a reply answers: null for a comment that answers none, and for a reply whose comment was removed. verified: a product review written by a customer who bought the product (only such reviews count in a product\'s rating); store_reply and store_reply_at: the store\'s answer under it, null without one. Cursor paged.',
+			'description' => 'What visitors wrote, newest first. status: published, pending (held for a person to publish) or scheduled (published at publish_at; cancel_if_newer drops it when a newer comment comes first). item_type and item_id say what a comment is about when it is not the page itself: a form record (submitted_form), a calendar event, a product group or a product. parent_id is the comment a reply answers: null for a comment that answers none, and for a reply whose comment was removed. verified: a product review written by a customer who bought the product (only such reviews count in a product\'s rating); store_reply and store_reply_at: the store\'s answer under it, null without one. kind: comment, question (a visitor\'s question about a product) or answer (the store\'s answer to the question named in answer_of; null for any other kind). Cursor paged.',
 			'params'  => array(
 				array('name' => 'page_id',       'in' => 'query', 'type' => 'int', 'min' => 1),
 				array('name' => 'item_type',     'in' => 'query', 'type' => 'enum', 'values' => array('page', 'submitted_form', 'calendar_event', 'product_group', 'product'), 'description' => 'page: comments about the page itself.'),
@@ -2459,6 +2631,7 @@ function api_schema() {
 				array('name' => 'status',        'in' => 'query', 'type' => 'enum', 'values' => array('all', 'published', 'pending', 'scheduled'), 'default' => 'all'),
 				array('name' => 'featured',      'in' => 'query', 'type' => 'bool'),
 				array('name' => 'verified',      'in' => 'query', 'type' => 'bool', 'description' => 'true: reviews from verified purchases only; false: every other comment.'),
+				array('name' => 'kind',          'in' => 'query', 'type' => 'enum', 'values' => array('comment', 'question', 'answer'), 'description' => 'question: product questions; answer: the store\'s answers to them.'),
 				array('name' => 'q',             'in' => 'query', 'type' => 'string', 'max_length' => 190, 'description' => 'Matches the name or the message.'),
 				array('name' => 'created_since', 'in' => 'query', 'type' => 'datetime'),
 				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),

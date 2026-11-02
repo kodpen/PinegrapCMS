@@ -494,6 +494,45 @@ if (pg_image_derivative_sweep_due(pg_image_derivative_directory())) {
     }
 }
 
+// Workspace previews used to be drawn into data/temp/workspace_previews;
+// they come from the image derivative cache now (ws_file_preview()). What an
+// earlier version left there goes, a few hundred files a tick.
+$ws_old_previews = PG_FUNCTIONS_DIR . '/data/temp/workspace_previews';
+
+if (is_dir($ws_old_previews)) {
+
+    foreach (array_slice((array) @glob($ws_old_previews . '/*'), 0, 500) as $ws_old_preview) {
+        if (is_file($ws_old_preview)) {
+            @unlink($ws_old_preview);
+        }
+    }
+
+    @rmdir($ws_old_previews);
+}
+
+// The 320 px WebP copies panel lists draw their thumbnails from
+// (pg_image_panel_thumb_url()), newest files first, five seconds a tick,
+// while the server writes WebP and it is offered; once through, a new pass
+// after a day.
+$image_thumbs_directory = pg_image_derivative_directory();
+
+if (($image_thumbs_directory !== '') && pg_image_warmup_due(pg_image_warmup_state($image_thumbs_directory, 'thumbs'), time())) {
+
+    $image_thumbs_formats = pg_image_delivery_formats();
+
+    if (!empty($image_thumbs_formats['webp'])) {
+
+        $image_thumbs = pg_image_warmup_run($image_thumbs_directory, 5, null, null, null, 'thumbs');
+
+        if ($image_thumbs['made'] > 0) {
+            log_activity(lang(array(
+                'string' => 'general job made {var:1} panel thumbnails ahead of the File Manager',
+                'vars'   => array(pg_format_number($image_thumbs['made'], 0)),
+            )), 'UNKNOWN');
+        }
+    }
+}
+
 // WebP copies of JPEG and PNG files served at their own address, made ahead
 // of the first visitor (pg_image_warmup_run()): largest first, ten seconds a
 // tick, while the setting is on and the server writes WebP; once through, a

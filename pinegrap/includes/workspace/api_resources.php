@@ -1498,7 +1498,7 @@ function ws_api_files_get($params)
             api_fail_validation(lang('Only a picture has a smaller copy.'), 'size');
         }
 
-        $preview = ws_file_preview($path, (int) $params['size']);
+        $preview = ws_file_preview($path, (int) $params['size'], (int) $message['file_id']);
 
         if ($preview !== null) {
             api_send_file($preview['path'], $preview['mime'], (string) $message['file_name'], true);

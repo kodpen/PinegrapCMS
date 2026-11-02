@@ -387,6 +387,7 @@
     "Delivery note {var:1} sent as an e-Delivery Note.": "{var:1} numaralı irsaliye e-İrsaliye olarak gönderildi.",
     "Delivery notes and the invoices they turn into.": "İrsaliyeler ve dönüştükleri faturalar.",
     "Delivery problem": "Teslimat sorunu",
+    "Delivery report": "Teslim raporu",
     "Delivery time depends on the carrier you choose and on your address. Your tracking number is emailed to you once the order is confirmed.": "Kargo süresi seçilen kargo firmasına ve adresinize göre değişir. Sipariş onayı sonrasında e-posta ile takip numaranız iletilir.",
     "Delivery {var:1}": "{var:1}. teslimat",
     "Demo": "Demo",

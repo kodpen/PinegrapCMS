@@ -77,6 +77,13 @@ function api_webhook_events() {
 		// retry_count follow, never the card. Announced once per written
 		// event, whoever made the move: the renewal job, a payment service's
 		// message, the customer in My Account, staff on the panel or the API.
+		// A bounce or a spam complaint recorded for an address
+		// (includes/fn/mail_bounces.php, pg_mail_bounce_record()). address,
+		// kind (hard, soft, complaint), source, suppressed (whether mail to
+		// the address is now stopped), message_id and campaign_id. A manual
+		// block from the panel is not announced.
+		'mail.bounced'     => 'A message to an address bounced; suppressed says whether mail to it is now stopped',
+		'mail.complained'  => 'A recipient marked a message as spam: mail to the address is stopped and its e-mail marketing consent withdrawn',
 		'subscription.renewed'   => 'A subscription was charged for its next period; order_id names the renewal order',
 		'subscription.failed'    => 'A subscription\'s renewal was refused or waits for the customer to confirm the payment; status ended when the last retry failed (the end itself is not announced again)',
 		'subscription.cancelled' => 'A subscription was cancelled; it runs until next_charge_at and is not charged again (its end that day is not announced)',
@@ -135,6 +142,15 @@ function api_webhook_events() {
 		'product_group.created' => 'A product group was created through the API or the Workspace',
 		'product_group.updated' => 'A product group was changed',
 		'product_group.deleted' => 'A product group was deleted or moved to the Recycle Bin through the API',
+		// Shipping zones and tax zones (includes/fn/store_zones.php): announced
+		// from the shared write functions, so the zone screens and the API
+		// alike. id and name follow.
+		'zone.created'         => 'A shipping zone was created',
+		'zone.updated'         => 'A shipping zone was changed: its name, rates, countries or states',
+		'zone.deleted'         => 'A shipping zone was deleted',
+		'tax_zone.created'     => 'A tax zone was created',
+		'tax_zone.updated'     => 'A tax zone was changed: its name, rate, countries or states',
+		'tax_zone.deleted'     => 'A tax zone was deleted',
 		// Uploads from the panel's file screen and writes through the API alike.
 		// A design or theme import brings its own files in bulk and stays quiet,
 		// for the same reason the contact import does.

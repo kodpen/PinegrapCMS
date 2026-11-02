@@ -2080,7 +2080,7 @@ function api_products_price_history($params) {
 }
 
 // A product's reviews: its published comments, newest first, as GET /comments
-// lists them. Only the product's own (item_type product), as its rating
+// lists them, without its questions. Only the product's own (item_type product), as its rating
 // counts them; a group of options keeps its own under its id.
 function api_products_reviews($params) {
 
@@ -2096,6 +2096,9 @@ function api_products_reviews($params) {
 		'item_type' => 'product',
 		'item_id'   => $id,
 		'status'    => 'published',
+		// Its questions and their answers are no reviews
+		// (includes/fn/product_questions.php).
+		'kind'      => 'comment',
 		'limit'     => isset($params['limit']) ? (int)$params['limit'] : 50
 	);
 

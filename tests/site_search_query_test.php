@@ -139,7 +139,7 @@ function test_site_search_query_item_type()
 // MATCH; no visitor text is concatenated into AGAINST().
 function test_site_search_query_call_sites()
 {
-	$widget = _site_search_query_fn('includes/fn/widgets.php', '_pg_sw_search_collect');
+	$widget = _site_search_query_fn('includes/fn/widgets.php', '_pg_sw_search_collect_one');
 	$legacy = _site_search_query_fn('get_search_results.php', 'get_search_results');
 	foreach (array('widget' => $widget, 'legacy' => $legacy) as $where => $body) {
 		pg_assert_contains('pg_search_boolean_terms($query)', $body, $where);

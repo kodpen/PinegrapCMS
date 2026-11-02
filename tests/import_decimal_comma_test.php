@@ -48,7 +48,8 @@ function test_contact_and_user_imports_read_the_commission_rate()
 	pg_assert_same('0.00', pg_parse_commission_rate(''), 'empty');
 
 	$contacts = file_get_contents(PG_FUNCTIONS_DIR . '/import_contacts.php');
-	pg_assert_same(2, substr_count($contacts, 'pg_import_contact_cell('), 'both contact import modes read the cell');
+	pg_assert_same(2, substr_count($contacts, '$contact_values($row, $line)'), 'both contact import modes read the cells');
+	pg_assert_true(strpos($contacts, 'pg_import_contact_value(') !== false, 'through the contact cell reader');
 
 	$users = file_get_contents(PG_FUNCTIONS_DIR . '/import_users.php');
 	pg_assert_true(strpos($users, 'pg_import_contact_cell(') !== false, 'user import reads the contact cell');

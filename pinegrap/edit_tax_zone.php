@@ -107,32 +107,13 @@ if (!$_POST || $errors) {
         }
     }
 
-    // delete all existing country/state associations first (for both save and delete)
-    $query = "DELETE FROM tax_zones_countries_xref WHERE tax_zone_id = ?";
-    db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-
-    $query = "DELETE FROM tax_zones_states_xref WHERE tax_zone_id = ?";
-    db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-
-    // if delete was requested
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
-
-        $query = "DELETE FROM tax_zones WHERE id = ?";
-        db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        pg_store_tax_zone_delete($id, (string) ($_POST['name'] ?? '')) or output_error('Query failed.');
 
         log_activity(lang(array('string' => 'tax zone ({var:1}) was deleted', 'vars' => (string) ($_POST['name'] ?? ''))), $_SESSION['sessionusername']);
 
     } else {
-
-        $query = "UPDATE tax_zones SET
-                    name = ?,
-                    tax_rate = ?,
-                    user = ?,
-                    timestamp = UNIX_TIMESTAMP()
-                WHERE id = ?";
-        db_q($query, array($values['name'], $tax_rate, (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-
-        pg_tax_zone_form_save_links($id, $_POST);
+        pg_store_tax_zone_save($id, $values['name'], $tax_rate, $values['allowed_countries'], $values['allowed_states'], (int) $user['id']) or output_error('Query failed.');
 
         log_activity(lang(array('string' => 'tax zone ({var:1}) was modified', 'vars' => $values['name'])), $_SESSION['sessionusername']);
     }

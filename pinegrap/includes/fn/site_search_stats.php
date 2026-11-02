@@ -438,3 +438,91 @@ function pg_site_search_sweep($seconds = 5)
 
     return $removed;
 }
+
+/**
+ * The periods the report offers, in days.
+ *
+ * @return array
+ */
+function pg_site_search_periods()
+{
+    return array(7, 30, 90, 365);
+}
+
+/**
+ * The report's period from the request: one of pg_site_search_periods(),
+ * else 30. Pure.
+ *
+ * @param mixed $raw
+ * @return int
+ */
+function pg_site_search_period($raw)
+{
+    $days = is_scalar($raw) ? (int) $raw : 0;
+
+    return in_array($days, pg_site_search_periods(), true) ? $days : 30;
+}
+
+/**
+ * The first day (Y-m-d) of a period of $days days that ends today. Pure.
+ *
+ * @param int $days
+ * @param int $now
+ * @return string
+ */
+function pg_site_search_period_start($days, $now = 0)
+{
+    $now = ((int) $now > 0) ? (int) $now : time();
+    $days = max(1, (int) $days);
+
+    return date('Y-m-d', strtotime('-' . ($days - 1) . ' days', $now));
+}
+
+/**
+ * The totals of a period: searches, zero_results, clicks and the number of
+ * terms. Rows are summed, never counted as searches. Pure; the day is bound.
+ *
+ * @return string
+ */
+function pg_site_search_summary_sql()
+{
+    return "SELECT COALESCE(SUM(searches), 0) AS searches, COALESCE(SUM(zero_results), 0) AS zero_results,"
+        . " COALESCE(SUM(clicks), 0) AS clicks, COUNT(DISTINCT term) AS terms"
+        . " FROM site_search_daily WHERE day >= ?";
+}
+
+/**
+ * The terms of a period, summed: 'top' by searches, 'zero' only those that
+ * found nothing at least once, by those searches. Pure; the day is bound.
+ *
+ * @param string $kind 'top' or 'zero'
+ * @param int    $limit
+ * @return string
+ */
+function pg_site_search_terms_sql($kind, $limit = 100)
+{
+    $order = ($kind === 'zero') ? 'zero_results' : 'searches';
+
+    return "SELECT term, SUM(searches) AS searches, SUM(zero_results) AS zero_results, SUM(clicks) AS clicks"
+        . " FROM site_search_daily WHERE day >= ?"
+        . " GROUP BY term"
+        . (($kind === 'zero') ? " HAVING SUM(zero_results) > 0" : "")
+        . " ORDER BY " . $order . " DESC, term ASC"
+        . " LIMIT " . max(1, min(1000, (int) $limit));
+}
+
+/**
+ * Clicks per search as a percentage with one decimal, or null when nothing
+ * was searched. Several results of one search can be clicked, so it can pass
+ * 100. Pure.
+ *
+ * @param int $clicks
+ * @param int $searches
+ * @return float|null
+ */
+function pg_site_search_click_rate($clicks, $searches)
+{
+    $searches = (int) $searches;
+
+    return ($searches > 0) ? round(100 * max(0, (int) $clicks) / $searches, 1) : null;
+}

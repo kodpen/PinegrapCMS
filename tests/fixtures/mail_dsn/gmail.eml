@@ -1,0 +1,67 @@
+Return-Path: <>
+Delivered-To: bounces+{TOKEN}@example.com
+Received: by mail-sor-f69.google.com with SMTP id a1sor123456qkb.1
+        for <bounces+{TOKEN}@example.com>; Mon, 02 Nov 2026 10:12:03 -0800 (PST)
+From: Mail Delivery Subsystem <mailer-daemon@googlemail.com>
+To: bounces+{TOKEN}@example.com
+Auto-Submitted: auto-replied
+Subject: Delivery Status Notification (Failure)
+References: <a1b2c3@example.com>
+In-Reply-To: <a1b2c3@example.com>
+X-Failed-Recipients: missing.person@gmail.com
+Message-ID: <5f9e1c3a.1c69fb81.abc.def@mx.google.com>
+Date: Mon, 02 Nov 2026 10:12:03 -0800 (PST)
+MIME-Version: 1.0
+Content-Type: multipart/report; boundary="000000000000aa11bb22cc33"; report-type=delivery-status
+
+--000000000000aa11bb22cc33
+Content-Type: multipart/related; boundary="000000000000aa11bb22cc44"
+
+--000000000000aa11bb22cc44
+Content-Type: text/plain; charset="UTF-8"
+
+
+** Address not found **
+
+Your message wasn't delivered to missing.person@gmail.com because the address couldn't be found, or is unable to receive mail.
+
+Learn more here: https://support.google.com/mail/?p=NoSuchUser
+
+The response was:
+
+The email account that you tried to reach does not exist. Please try double-checking the recipient's email address for typos or unnecessary spaces. Learn more at https://support.google.com/mail/?p=NoSuchUser a1si123456qkb.150 - gsmtp
+
+--000000000000aa11bb22cc44--
+
+--000000000000aa11bb22cc33
+Content-Type: message/delivery-status
+
+Reporting-MTA: dns; googlemail.com
+Received-From-MTA: dns; mail.example.com
+Arrival-Date: Mon, 02 Nov 2026 10:12:02 -0800 (PST)
+X-Original-Message-ID: <a1b2c3@example.com>
+
+Final-Recipient: rfc822; missing.person@gmail.com
+Action: failed
+Status: 5.1.1
+Remote-MTA: dns; gmail-smtp-in.l.google.com. (142.250.27.26, the server for
+ the domain gmail.com.)
+Diagnostic-Code: smtp; 550-5.1.1 The email account that you tried to reach does
+ not exist. a1si123456qkb.150 - gsmtp
+Last-Attempt-Date: Mon, 02 Nov 2026 10:12:03 -0800 (PST)
+
+--000000000000aa11bb22cc33
+Content-Type: message/rfc822
+
+Return-Path: <bounces+{TOKEN}@example.com>
+From: Example Shop <shop@example.com>
+To: missing.person@gmail.com
+Subject: Your order
+Message-ID: <a1b2c3@example.com>
+Date: Mon, 02 Nov 2026 18:12:00 +0000
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Thank you for your order.
+
+--000000000000aa11bb22cc33--

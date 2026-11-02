@@ -1196,9 +1196,16 @@ function pg_comments_component_census($ids)
             $cfg = json_decode((string) $row['system_region_config'], true);
             $census = pg_comments_tree_census(json_decode((string) $row['tree_json'], true));
             // The kind, so a list of recent comments ('comments_recent') is
-            // not counted as a second thread.
+            // not counted as a second thread, nor a widget that shows a
+            // product's questions ('comments_questions'), which claims apart.
+            $kind = pg_sw_widget_kind($cfg);
+
+            if (($kind === 'comments') && (pg_product_question_widget_shows($cfg) === 'questions')) {
+                $kind = 'comments_questions';
+            }
+
             $out[$id] = array(
-                'type' => pg_sw_widget_kind($cfg),
+                'type' => $kind,
                 'census' => $census,
             );
 

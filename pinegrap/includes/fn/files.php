@@ -1769,3 +1769,24 @@ function pg_name_too_long($name, $limit = null)
 
     return mb_strlen((string) $name, 'UTF-8') > (int) $limit;
 }
+
+// "600 × 600 px", the way the File Manager writes an image's size; '' when
+// either side is unknown or not a positive number.
+function pg_image_dimensions_label($width, $height)
+{
+    if (!is_numeric($width) || !is_numeric($height) || ($width <= 0) || ($height <= 0)) {
+        return '';
+    }
+
+    return round($width) . ' × ' . round($height) . ' px';
+}
+
+// The name a panel user is shown by beside a change: the first and last name
+// of the user's contact (user.user_contact), else the username, as the
+// Workspace writes a person.
+function pg_user_display_name($first_name, $last_name, $username)
+{
+    $name = trim(trim((string) $first_name) . ' ' . trim((string) $last_name));
+
+    return ($name !== '') ? $name : (string) $username;
+}

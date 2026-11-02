@@ -536,6 +536,8 @@
     "Your published guides and what each status means": "Yayındaki rehberleriniz ve her durumun anlamı",
     "Your published site, a shared document or a design file.": "Yayınladığınız site, paylaşılan bir belge ya da bir tasarım dosyası.",
     "Your question": "Sorunuz",
+    "Your question about {var:1} was answered": "{var:1} hakkındaki sorunuz yanıtlandı",
+    "Your question was answered": "Sorunuz yanıtlandı",
     "Your reader account is ready. Comment on articles, follow your conversations and manage the newsletter from your account.": "Okur hesabınız hazır. Hesabınızdan haberlere yorum yapabilir, yazışmalarınızı takip edebilir ve bülteninizi yönetebilirsiniz.",
     "Your reader account is ready. Write letters under our stories, follow your conversations and manage The Weekend Read from your account.": "Okur hesabınız hazır. Yazılarımızın altına mektup yazın, yazışmalarınızı izleyin ve Hafta Sonu Okuması'nı hesabınızdan yönetin.",
     "Your refund for order #{var:1}": "#{var:1} numaralı siparişinizin ücret iadesi",

@@ -329,6 +329,7 @@
     "Vivid": "Canlı",
     "Voice message": "Sesli mesaj",
     "Voice message transcripts": "Sesli mesaj dökümleri",
+    "Voice messages and audio": "Sesli mesajlar ve ses dosyaları",
     "Voice messages are transcribed here": "Sesli mesajlar burada yazıya dökülür",
     "Voice messages in this private channel will be sent to {var:1} to be transcribed. Allow it?": "Bu özel kanaldaki sesli mesajlar yazıya dökülmek üzere {var:1} hizmetine gönderilecek. İzin verilsin mi?",
     "Voice recording is not supported in this browser.": "Bu tarayıcı ses kaydını desteklemiyor.",

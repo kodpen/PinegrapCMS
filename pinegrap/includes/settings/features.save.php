@@ -21,6 +21,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
 
 
+    // Site search tuning: synonyms and promoted results, each a config_text
+    // row (includes/fn/site_search_tuning.php); an empty box removes its row.
+    if (array_key_exists('search_tuning_card', $_POST) && pg_schema_has('config_text')) {
+        pg_search_tuning_save(post_value('search_synonyms'), post_value('search_promoted'));
+    }
+
     // ── Performance monitoring ───────────────────────────────────────────
     //
     // Switching it off discards what was collected. Keeping the rows would

@@ -516,6 +516,12 @@ function pg_page_type_pane_request($user, $page_id)
         $pretty_urls_before = check_if_pretty_urls_are_enabled($page_id);
     }
 
+    $refused = pg_page_form_number_errors($page_type, $_POST);
+
+    if ($refused) {
+        $reply(422, array('ok' => false, 'message' => implode(' ', $refused), 'fields' => $refused));
+    }
+
     $audit_before = pg_audit_fetch('page', $page_id);
 
     $checked = pg_page_type_properties_for_save($page_type, $page_id, $user);

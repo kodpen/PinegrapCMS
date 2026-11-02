@@ -475,6 +475,7 @@ function ws_js_strings()
         'unpinned_done'          => lang('Unpinned.'),
         'uploading_count'        => ws_js_template('Uploading {var:1} of {var:2}…', 2),
         'videos'                 => lang('Videos'),
+        'voice_and_audio'        => lang('Voice messages and audio'),
         'view_image'             => lang('View the picture'),
         'who_carries'            => lang('Who carries the work'),
         'work_calendar'          => lang('Work Calendar'),

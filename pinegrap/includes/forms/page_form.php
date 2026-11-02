@@ -1385,7 +1385,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             <div class="col-12 sm:col-6 my-3" id="express_order_custom_field_1_label_row" style="' . $express_order_custom_field_1_label_row_style . '">
                 <div class="border-1 border p-3 my-3 rounded-4">
                     <label for="express_order_custom_field_1_label" class="form-label">' . lang('Custom Field #1 Label') . '</label>
-                    <input value="' . h($express_order_properties['custom_field_1_label'] ?? '') . '" type="text" name="express_order_custom_field_1_label" id="express_order_custom_field_1_label" maxlength="50" class="form-control" />
+                    <input value="' . h($express_order_properties['custom_field_1_label'] ?? '') . '" type="text" name="express_order_custom_field_1_label" id="express_order_custom_field_1_label" maxlength="255" class="form-control" />
                     <div class="form-field ms-1 mt-3">
                         <div class="switch"><input class="" type="checkbox" name="express_order_custom_field_1_required" id="express_order_custom_field_1_required" value="1"' . $express_order_custom_field_1_required_checked . ' /></div>
                         <label class="" for="express_order_custom_field_1_required">' . lang('Required') . '</label>
@@ -1823,7 +1823,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 <select class="form-control" name="order_preview_terms_page_id" id="order_preview_terms_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($order_preview_properties['terms_page_id'] ?? '')) . '</select>
             </div>
             <div class="col-12 sm:col-6 lg:col-4 my-3" id="order_preview_submit_button_label_row" style="' . $order_preview_submit_button_label_row_style . '">
-                <label class="form-label" for="order_preview_submit_button_label">'. lang('Update Button Label') . '</label>
+                <label class="form-label" for="order_preview_submit_button_label">'. lang('Purchase Now Button Label') . '</label>
                 <input value="' . h($order_preview_properties['submit_button_label'] ?? '') . '" type="text" id="order_preview_submit_button_label" name="order_preview_submit_button_label" class="form-control" maxlength="50" >
             </div>';
 
@@ -4051,4 +4051,56 @@ function pg_page_rename_notice($said, $location, $edit_url)
     }
 
     return array('location' => $location, 'form' => $form, 'notes' => $notes, 'warnings' => $warnings);
+}
+
+/**
+ * The number boxes of the System Options a save refuses, as field id =>
+ * message: a quiz pass percentage outside 0-100, a day count that is not a
+ * whole number of 0 or more (trial, private access and offer length, read
+ * only while their switch is on) and a photo gallery thumbnail size below
+ * 1. An empty box is left to the stored default. The session is not strict,
+ * so these values would otherwise be cut by their columns without a word
+ * (TINYINT keeps 127 of a percentage of 150, UNSIGNED keeps 0 of -5). Pure.
+ *
+ * @param string $page_type
+ * @param array  $source The submitted fields
+ * @return array
+ */
+function pg_page_form_number_errors($page_type, $source)
+{
+    $errors = array();
+    $value = function ($name) use ($source) {
+        $value = $source[$name] ?? '';
+
+        return is_scalar($value) ? trim((string) $value) : 'x';
+    };
+    $whole = function ($typed) {
+        return preg_match('/^\d{1,9}$/', $typed) === 1;
+    };
+
+    if ($page_type == 'custom form') {
+        $percentage = $value('custom_form_quiz_pass_percentage');
+
+        if (($value('custom_form_quiz') === '1') && ($percentage !== '') && (!$whole($percentage) || ((int) $percentage > 100))) {
+            $errors['custom_form_quiz_pass_percentage'] = lang('The quiz pass percentage must be a whole number from 0 to 100.');
+        }
+
+        foreach (array('membership', 'private', 'offer') as $switch) {
+            $days = $value('custom_form_' . $switch . '_days');
+
+            if (($value('custom_form_' . $switch) === '1') && ($days !== '') && !$whole($days)) {
+                $errors['custom_form_' . $switch . '_days'] = lang('The number of days must be a whole number of 0 or more.');
+            }
+        }
+    }
+
+    if ($page_type == 'photo gallery') {
+        $size = $value('photo_gallery_thumbnail_max_size');
+
+        if (($size !== '') && (!$whole($size) || ((int) $size < 1))) {
+            $errors['photo_gallery_thumbnail_max_size'] = lang('The thumbnail size must be a whole number of 1 or more.');
+        }
+    }
+
+    return $errors;
 }

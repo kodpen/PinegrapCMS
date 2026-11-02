@@ -1947,6 +1947,23 @@ $(document).ready(function () {
             collectionLayout: "fixed two-column",
             columns: ":not(.noVis)",
             columnText: function (dt, idx, title) {
+                // The heading's own words: an icon or a button inside it
+                // (the Pages list's device toggle) is not part of the name.
+                var header = dt.column(idx).header();
+
+                if (header) {
+                    var copy = header.cloneNode(true);
+
+                    $(copy).find('.material-icons, .bi, [aria-hidden="true"], a, button').remove();
+
+                    var words = $.trim($(copy).text());
+
+                    // A heading that is all link keeps the text it had.
+                    if (words !== '') {
+                        title = words;
+                    }
+                }
+
                 title = title.replace("unfold_more", "");
                 title = title.replace("keyboard_arrow_down", "");
                 title = title.replace("keyboard_arrow_up", "");

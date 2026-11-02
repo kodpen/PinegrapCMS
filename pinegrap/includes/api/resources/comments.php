@@ -55,6 +55,7 @@ function api_comment_select() {
 			comments.publish_cancel, comments.featured, comments.file_id, comments.created_user_id,
 			comments.created_timestamp, comments.last_modified_timestamp,
 			" . ($replies ? 'COALESCE(parent_comment.id, 0) AS parent_id,' : '0 AS parent_id,') . "
+			" . (pg_product_questions_ready() ? 'comments.kind, comments.answer_of,' : "'comment' AS kind, 0 AS answer_of,") . "
 			page.page_name, page.page_type, page.comments_submitter_email_page_id,
 			page.comments_watcher_email_page_id,
 			files.name AS file_name
@@ -139,6 +140,17 @@ function api_comment_review_values($row) {
 
 }
 
+// What a comment is (includes/fn/product_questions.php): 'comment', a
+// product 'question' or the staff 'answer' to one. Anything else, and every
+// comment before 11.0.148, reads as 'comment'.
+function api_comment_kind($row) {
+
+	$kind = (isset($row['kind']) && is_string($row['kind'])) ? $row['kind'] : '';
+
+	return in_array($kind, array('question', 'answer'), true) ? $kind : 'comment';
+
+}
+
 function api_comment_present($row) {
 
 	$scheduled = api_comment_scheduled_at($row);
@@ -156,6 +168,8 @@ function api_comment_present($row) {
 		'item_type'       => ((string)$row['item_type'] !== '') ? (string)$row['item_type'] : null,
 		'item_id'         => ((int)$row['item_id'] > 0) ? (int)$row['item_id'] : null,
 		'parent_id'       => api_comment_parent_value($row),
+		'kind'            => api_comment_kind($row),
+		'answer_of'       => ((api_comment_kind($row) === 'answer') && ((int)($row['answer_of'] ?? 0) > 0)) ? (int)$row['answer_of'] : null,
 		'name'            => (string)$row['name'],
 		'message'         => (string)$row['message'],
 		'rating'          => ((int)$row['rating'] > 0) ? (int)$row['rating'] : null,
@@ -185,6 +199,8 @@ function api_comment_schema() {
 		'item_type'       => 'string?',
 		'item_id'         => 'integer?',
 		'parent_id'       => 'integer?',
+		'kind'            => 'string',
+		'answer_of'       => 'integer?',
 		'name'            => 'string',
 		'message'         => 'string',
 		'rating'          => 'integer?',
@@ -279,6 +295,15 @@ function api_comments_list($params) {
 	if (isset($params['featured'])) {
 
 		$where[] = "comments.featured = '" . ($params['featured'] ? '1' : '0') . "'";
+
+	}
+
+	// Before 11.0.148 every comment is kind comment.
+	if (isset($params['kind'])) {
+
+		$where[] = pg_product_questions_ready()
+			? "comments.kind = '" . escape($params['kind']) . "'"
+			: (($params['kind'] === 'comment') ? '1' : '0');
 
 	}
 

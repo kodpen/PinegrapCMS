@@ -47,9 +47,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - content-importers-steps-2.md: Steps IM4-IM7 of plans/content-importers.md: the WooCommerce and Shopify readers, redirects and undo, close-out; claim as [plan:content-importers] IM<n>
 - content-importers-steps.md: Steps IM1-IM3 of plans/content-importers.md: the import framework and screen, the WordPress WXR reader, pages and media fetches; claim as [plan:content-importers] IM<n>
 - content-importers.md: Plan (owner 2026-11-02): importers for WordPress (WXR), WooCommerce and Shopify (CSV): records, pages, media, comments, customers, products, old addresses as redirects; steps IM1-IM7
-- datetime-picker-site-steps.md: Site steps S1-S4 of plans/datetime-picker.md (after the panel stop): on-demand loader, classic renderers, checkout, designer widgets and palette; claim as [plan:datetime-picker] S<n>
-- datetime-picker-steps.md: Panel steps P1-P11 of plans/datetime-picker.md: what each changes, its files, tests and size, its dependencies; claim as [plan:datetime-picker] P<n>
-- datetime-picker.md: Plan (decided in #2693, 2026-10-28): one date-and-time control for the whole software, the time in the same popup, on vanilla-calendar-pro; panel P1-P11, sites S1-S4, steps in datetime-picker-steps.md
 - designer-form-logic-steps-2.md: Steps FL5-FL8 of plans/designer-form-logic.md: the payment step on the site, the staff side and API, template fees, close-out; claim as [plan:designer-form-logic] FL<n>
 - designer-form-logic-steps.md: Steps FL1-FL4 of plans/designer-form-logic.md: Shown when rules, form steps with progress, the browser draft, the fee setting and order writer; claim as [plan:designer-form-logic] FL<n>
 - designer-form-logic.md: Plan (owner 2026-11-02): designed forms get Shown-when rules, steps with progress, and a payment step that places a one-line order through the payment drivers; steps FL1-FL8
@@ -59,10 +56,11 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it
 - erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), small fixes; where to start
+- external-api-coverage-2.md: External API plan, part 2: the users write step X13 (#5237) and why settings, firewall, sessions, backups and updates get no endpoint (#5238); claim as [plan:external-api-coverage] X13
 - external-api-coverage.md: External API (integration.php): find what the panel can do that the API cannot, then add the missing endpoints in steps (owner, 2026-11-01); claim as [plan:external-api-coverage] X<n>
 - feature-plans-2026-11.md: The eleven feature plans approved 2026-11-02: index and order, how one coordinator and its five workers hold a plan, the shared rules
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, one task per session; index of the plan files
-- graph-canvas-core.md: Plan (2026-10-24, answers #2445; 1-3 done, 4 ready): a box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
+- graph-canvas-core.md: Plan (2026-10-24, answers #2445; 1-4 done): a box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
 - image-editor-animation-design.md: Design of plans/image-editor-animation.md: the motion fields of the document and a layer, the presets, M.motionAt(), the preview on the stage, the frame renderer and the still base the server draws
 - image-editor-animation-output.md: Outputs of plans/image-editor-animation.md: the encoder worker, GIF, APNG, WebP, MP4, WebM, PDF and SVG with their limits, the save into Files, re-editing an animation, scenes and the Present mode
 - image-editor-animation-steps.md: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion, tracks, GIF, saving, APNG, WebP, video, scenes, Present, PDF, keyframes, SVG; claim as [plan:image-editor-animation] AN<n>
@@ -124,8 +122,12 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - storefront-api-routes-cart.md: Storefront API design note: the cart routes (create, read, add/update/remove line, coupon, shipping choice), their scopes and the cart code each one calls instead of copying it
 - storefront-api-routes-checkout.md: Storefront API design note: checkout routes (create from cart, totals, payment intent through the payment driver layer, confirm), the totals functions they call, guest checkout
 - storefront-api-routes-customer.md: Storefront API design note: customer routes (sign-in, sign-up, refresh, sign-out, password reset, profile, orders, addresses, returns) with scopes, limits and the website code each one calls
+- tls-settings-in-panel-steps.md: Steps TP1-TP4 of plans/tls-settings-in-panel.md: scheme helper, Secure Mode offer, CA store chosen by the site, Workspace Claude address check; claim as [plan:tls-settings-in-panel] TP<n>
+- tls-settings-in-panel.md: Plan (owner 2026-11-02, #5375): HTTPS behind any proxy trusted through Trusted Proxies with a Secure Mode offer, the CA store chosen by the site; no TLS edit of data/config.php; steps TP1-TP4
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
+- voice-to-assistants-steps.md: Steps VA1-VA6 of plans/voice-to-assistants.md: deaf hint, keyless hearing, speech service, spoken answers, voice message route, MCP agents; claim as [plan:voice-to-assistants] VA<n>
+- voice-to-assistants.md: Plan (owner 2026-11-02): recordings reach every assistant in channels and discussions, assistants answer by voice, any caller can post a voice message; steps VA1-VA6
 - web-vitals-ai-visibility-steps-2.md: Steps WV4-WV6 of plans/web-vitals-ai-visibility.md: AI visibility figures and referrals, the Speed and AI sections with the card, close-out; claim as [plan:web-vitals-ai-visibility] WV<n>
 - web-vitals-ai-visibility-steps.md: Steps WV1-WV3 of plans/web-vitals-ai-visibility.md: the vitals beacon and rollup, the figures and API route, the AI fetch counter; claim as [plan:web-vitals-ai-visibility] WV<n>
 - web-vitals-ai-visibility.md: Plan (owner 2026-11-02): real-user web vitals per page from a beacon into an hourly rollup, and an AI visibility view (AI crawler fetches, AI referrals); steps WV1-WV6

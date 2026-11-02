@@ -544,7 +544,7 @@
 
 						                            <p class="help-block">
 
-						                                (Biçim: s:dd AM/PM)
+						                                <?=h((pg_time_format_code() === 'H:i') ? lang('(Format: HH:mm)') : lang('(Format: h:mm AM/PM)'))?>
 
 						                            </p>
 
@@ -1734,7 +1734,7 @@
 
 						                            <p class="help-block">
 
-						                                (Biçim: s:dd AM/PM)
+						                                <?=h((pg_time_format_code() === 'H:i') ? lang('(Format: HH:mm)') : lang('(Format: h:mm AM/PM)'))?>
 
 						                            </p>
 

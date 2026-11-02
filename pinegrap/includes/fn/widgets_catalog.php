@@ -6888,7 +6888,10 @@ function _pg_build_catalog_item_rss_parts($page_id, $page_name, $widget)
 // page's comments widget shows this product's reviews with their stars
 // ($rating_shown, pg_comment_product_view_rating_shown()): markup may
 // describe only reviews a visitor can read on the page.
-function _pg_build_product_jsonld($product, $canonical_url, $rating_shown = false)
+//
+// $questions: the product's answered questions the page shows
+// (pg_product_question_jsonld()), carried as the Product's subjectOf.
+function _pg_build_product_jsonld($product, $canonical_url, $rating_shown = false, $questions = array())
 {
     $currency_code = defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '';
     $image_url = '';
@@ -6935,6 +6938,10 @@ function _pg_build_product_jsonld($product, $canonical_url, $rating_shown = fals
 
     if ($rating_shown && (($aggregate_rating = pg_review_product_aggregate_jsonld(isset($product['id']) ? $product['id'] : 0)) !== null)) {
         $data['aggregateRating'] = $aggregate_rating;
+    }
+
+    if (is_array($questions) && $questions) {
+        $data['subjectOf'] = array_values($questions);
     }
     return $data;
 }

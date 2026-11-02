@@ -1493,6 +1493,12 @@ if (!$_POST) {
             pg_page_form_refuse($liveform, pg_page_type_custom_form_errors((int) $_POST['id'], $may_save_page_type), $form_url);
         }
 
+        // A number box out of its range would be cut by its column without a
+        // word; read only when this save writes the type's fields.
+        if ($may_save_page_type) {
+            pg_page_form_refuse($liveform, pg_page_form_number_errors($_POST['type'], $_POST), $form_url);
+        }
+
         // The comments moderator is one address, checked while comments are
         // on (the box is hidden otherwise).
         if (($_POST['comments'] ?? '') == '1') {

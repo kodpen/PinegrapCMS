@@ -134,3 +134,22 @@ function test_bracket_suffix_name()
 	pg_assert_same(mb_substr($hundred, 0, 96, 'UTF-8') . '[10]', pg_bracket_suffix_name(mb_substr($hundred, 0, 97, 'UTF-8') . '[9]', 100));
 	pg_assert_same($hundred . '[1]', pg_bracket_suffix_name($hundred), 'no limit for other types');
 }
+
+function test_page_form_number_errors()
+{
+	$cf = function ($fields) {
+		return array_keys(pg_page_form_number_errors('custom form', $fields));
+	};
+	pg_assert_same(array(), $cf(array('custom_form_quiz' => '1', 'custom_form_quiz_pass_percentage' => '100')));
+	pg_assert_same(array(), $cf(array('custom_form_quiz' => '1', 'custom_form_quiz_pass_percentage' => '')), 'an empty box keeps the default');
+	pg_assert_same(array('custom_form_quiz_pass_percentage'), $cf(array('custom_form_quiz' => '1', 'custom_form_quiz_pass_percentage' => '150')), 'over 100 is refused, not cut to 127');
+	pg_assert_same(array(), $cf(array('custom_form_quiz_pass_percentage' => '150')), 'read only while the quiz is on');
+	pg_assert_same(array('custom_form_membership_days'), $cf(array('custom_form_membership' => '1', 'custom_form_membership_days' => '-5')), 'negative days are refused');
+	pg_assert_same(array('custom_form_private_days', 'custom_form_offer_days'), $cf(array('custom_form_private' => '1', 'custom_form_private_days' => '1.5', 'custom_form_offer' => '1', 'custom_form_offer_days' => 'x')));
+	pg_assert_same(array(), $cf(array('custom_form_membership' => '1', 'custom_form_membership_days' => '0')), 'zero days are allowed');
+
+	pg_assert_same(array('photo_gallery_thumbnail_max_size'), array_keys(pg_page_form_number_errors('photo gallery', array('photo_gallery_thumbnail_max_size' => '0'))));
+	pg_assert_same(array('photo_gallery_thumbnail_max_size'), array_keys(pg_page_form_number_errors('photo gallery', array('photo_gallery_thumbnail_max_size' => '-50'))));
+	pg_assert_same(array(), pg_page_form_number_errors('photo gallery', array('photo_gallery_thumbnail_max_size' => '100')));
+	pg_assert_same(array(), pg_page_form_number_errors('standard', array('photo_gallery_thumbnail_max_size' => '0')), 'other types are not read');
+}

@@ -696,7 +696,7 @@ function pg_img_responsive_sets($src, $source_width, $source_extension, $formats
     $source_width = (int) $source_width;
     $widths = array();
 
-    foreach (pg_image_derivative_widths() as $width) {
+    foreach (pg_image_derivative_page_widths() as $width) {
         if ($width < $source_width) {
             $widths[] = $width;
         }
@@ -1760,6 +1760,11 @@ function pg_image_derivative_sweep_run($directory, $seconds = 10)
  * slots, locks, skip markers and the cache are shared. Where it got to is kept
  * in warmup.json beside sweep.json; a pass that is through starts again after
  * a day, finding most copies made and stepping over them.
+ *
+ * A second pass, 'thumbs', makes the 320 px WebP copies panel lists ask for
+ * (pg_image_panel_thumb_url()), newest files first, since those are the ones
+ * a File Manager opens on; its cursor is warmup-thumbs.json. It runs while
+ * WebP is offered, whatever the own-address switch says.
  * ------------------------------------------------------------------------- */
 
 /**
@@ -1794,15 +1799,28 @@ function pg_image_derivative_formats_bits()
 
 
 /**
+ * The file a warm-up pass keeps its cursor in, beside sweep.json.
+ *
+ * @param string $pass own (the WebP copy at the picture's own width) or
+ *                     thumbs (the 320 px copy of panel lists)
+ * @return string
+ */
+function pg_image_warmup_file($pass)
+{
+    return ($pass === 'thumbs') ? 'warmup-thumbs.json' : 'warmup.json';
+}
+
+
+/**
  * Where the warm-up stands: size and id of the last file it went through (id
  * 0 between passes), and done_at, when the last pass finished.
  *
  * @param string $directory pg_image_derivative_directory()
  * @return array size, id, done_at
  */
-function pg_image_warmup_state($directory)
+function pg_image_warmup_state($directory, $pass = 'own')
 {
-    $state = @json_decode((string) @file_get_contents(rtrim((string) $directory, '/\\') . '/warmup.json'), true);
+    $state = @json_decode((string) @file_get_contents(rtrim((string) $directory, '/\\') . '/' . pg_image_warmup_file($pass)), true);
 
     $read = function ($key) use ($state) {
         return (is_array($state) && isset($state[$key]) && is_numeric($state[$key])) ? max(0, (int) $state[$key]) : 0;
@@ -1817,11 +1835,12 @@ function pg_image_warmup_state($directory)
  *
  * @param string $directory
  * @param array  $state pg_image_warmup_state()
+ * @param string $pass  own or thumbs (pg_image_warmup_file())
  * @return void
  */
-function pg_image_warmup_save($directory, $state)
+function pg_image_warmup_save($directory, $state, $pass = 'own')
 {
-    pg_image_derivative_put(rtrim((string) $directory, '/\\') . '/warmup.json', json_encode(array(
+    pg_image_derivative_put(rtrim((string) $directory, '/\\') . '/' . pg_image_warmup_file($pass), json_encode(array(
         'size'    => (int) $state['size'],
         'id'      => (int) $state['id'],
         'done_at' => (int) $state['done_at'])));
@@ -1844,18 +1863,23 @@ function pg_image_warmup_due($state, $now)
 
 /**
  * The SQL condition for the files after the cursor, in the pass's order
- * (largest first, then the newest of the same size): '' at the start of a
- * pass.
+ * (own: largest first, then the newest of the same size; thumbs: newest
+ * first): '' at the start of a pass.
  *
- * @param array $state pg_image_warmup_state()
+ * @param array  $state pg_image_warmup_state()
+ * @param string $pass  own or thumbs
  * @return string
  */
-function pg_image_warmup_after_sql($state)
+function pg_image_warmup_after_sql($state, $pass = 'own')
 {
     $id = (int) $state['id'];
 
     if ($id < 1) {
         return '';
+    }
+
+    if ($pass === 'thumbs') {
+        return "(files.id < " . $id . ")";
     }
 
     $size = (int) $state['size'];
@@ -1869,11 +1893,12 @@ function pg_image_warmup_after_sql($state)
  * not form or comment attachments, ERP documents or workspace files (none of
  * those gets a derivative, docs/memory/platform/image-derivatives.md).
  *
- * @param array $state pg_image_warmup_state()
- * @param int   $limit
+ * @param array  $state pg_image_warmup_state()
+ * @param int    $limit
+ * @param string $pass  own or thumbs, which sets the order
  * @return array rows of id, name, size
  */
-function pg_image_warmup_fetch($state, $limit)
+function pg_image_warmup_fetch($state, $limit, $pass = 'own')
 {
     $where = array(
         "LOWER(files.type) IN ('jpg', 'jpeg', 'jpe', 'png')",
@@ -1881,7 +1906,7 @@ function pg_image_warmup_fetch($state, $limit)
         "files.name NOT LIKE 'erp-%'",
         "files.name NOT LIKE 'ws-%'");
 
-    $after = pg_image_warmup_after_sql($state);
+    $after = pg_image_warmup_after_sql($state, $pass);
 
     if ($after !== '') {
         $where[] = $after;
@@ -1909,7 +1934,7 @@ function pg_image_warmup_fetch($state, $limit)
         "SELECT files.id, files.name, IFNULL(files.size, 0) AS size
         FROM files
         WHERE " . implode(' AND ', $where) . "
-        ORDER BY size DESC, files.id DESC
+        ORDER BY " . (($pass === 'thumbs') ? "files.id DESC" : "size DESC, files.id DESC") . "
         LIMIT " . max(1, (int) $limit));
 }
 
@@ -1925,12 +1950,14 @@ function pg_image_warmup_fetch($state, $limit)
  * @param string        $directory      pg_image_derivative_directory()
  * @param int           $seconds
  * @param array|null    $settings       pg_image_delivery_settings(); pg_image_delivery() when null
- * @param callable|null $fetch          function ($state, $limit): rows of id,
- *                                      name, size; pg_image_warmup_fetch() when null
+ * @param callable|null $fetch          function ($state, $limit, $pass): rows of
+ *                                      id, name, size; pg_image_warmup_fetch() when null
  * @param string|null   $file_directory where the files are; FILE_DIRECTORY_PATH when null
+ * @param string        $pass           own (WebP at the picture's own width) or
+ *                                      thumbs (320 px WebP, newest first)
  * @return array state ('done', 'more' or 'busy'), files (gone through), made
  */
-function pg_image_warmup_run($directory, $seconds = 10, $settings = null, $fetch = null, $file_directory = null)
+function pg_image_warmup_run($directory, $seconds = 10, $settings = null, $fetch = null, $file_directory = null, $pass = 'own')
 {
     $directory = rtrim((string) $directory, '/\\');
     $result = array('state' => 'done', 'files' => 0, 'made' => 0);
@@ -1956,12 +1983,13 @@ function pg_image_warmup_run($directory, $seconds = 10, $settings = null, $fetch
     }
 
     $deadline = microtime(true) + max(0, (int) $seconds);
-    $state = pg_image_warmup_state($directory);
-    $request = array('width' => 0, 'format' => 'webp');
+    $pass = ($pass === 'thumbs') ? 'thumbs' : 'own';
+    $state = pg_image_warmup_state($directory, $pass);
+    $request = array('width' => ($pass === 'thumbs') ? 320 : 0, 'format' => 'webp');
 
     while (true) {
 
-        $rows = call_user_func($fetch, $state, 20);
+        $rows = call_user_func($fetch, $state, 20, $pass);
 
         if (!is_array($rows) || !$rows) {
             break;
@@ -1971,7 +1999,7 @@ function pg_image_warmup_run($directory, $seconds = 10, $settings = null, $fetch
 
             if (($result['files'] > 0) && (microtime(true) > $deadline)) {
                 $result['state'] = 'more';
-                pg_image_warmup_save($directory, $state);
+                pg_image_warmup_save($directory, $state, $pass);
                 return $result;
             }
 
@@ -1985,7 +2013,7 @@ function pg_image_warmup_run($directory, $seconds = 10, $settings = null, $fetch
 
                 if ($answer['status'] === 'busy') {
                     $result['state'] = 'busy';
-                    pg_image_warmup_save($directory, $state);
+                    pg_image_warmup_save($directory, $state, $pass);
                     return $result;
                 }
 
@@ -2000,7 +2028,7 @@ function pg_image_warmup_run($directory, $seconds = 10, $settings = null, $fetch
         }
     }
 
-    pg_image_warmup_save($directory, array('size' => 0, 'id' => 0, 'done_at' => time()));
+    pg_image_warmup_save($directory, array('size' => 0, 'id' => 0, 'done_at' => time()), $pass);
 
     return $result;
 }

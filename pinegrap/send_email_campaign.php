@@ -178,6 +178,12 @@ if (mysqli_num_rows($result) > 0) {
             continue;
         }
 
+        // An address that bounced or complained gets nothing, whatever the
+        // purpose (includes/fn/mail_bounces.php); the finish counts it.
+        if (pg_email_campaign_skip_suppressed($email_recipient['id'], $email_recipient['email_address'], $retry_ready)) {
+            continue;
+        }
+
         // prepare email body content
         $subject = $subject_template;
         $body = $body_template;
@@ -407,7 +413,7 @@ if (mysqli_num_rows($result) > 0) {
 
         }
         
-        $properties = pg_email_campaign_mail_properties($email_campaign, $email_recipient['email_address'], $mail_merge_dynamic_data, $subject, $body);
+        $properties = pg_email_campaign_mail_properties(array('id' => $id) + $email_campaign, $email_recipient['email_address'], $mail_merge_dynamic_data, $subject, $body);
 
         if ($retry_ready) {
 
@@ -621,12 +627,13 @@ if (mysqli_num_rows($result) > 0) {
 
     $number_of_delivered_email_recipients = send_email_campaign_delivered_count($id, $retry_ready);
     $number_of_failed_email_recipients = $retry_ready ? (int) db_value("SELECT COUNT(*) FROM email_recipients WHERE (email_campaign_id = '" . $id . "') AND (failed = '1')") : 0;
+    $number_of_suppressed_email_recipients = $retry_ready ? (int) db_value("SELECT COUNT(*) FROM email_recipients WHERE (email_campaign_id = '" . $id . "') AND (failed = '1') AND (attempts = 0)") : 0;
     $query = "SELECT COUNT(*) FROM email_recipients WHERE (email_campaign_id = ?) AND (complete = '0')";
     $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_row($result);
     $number_of_waiting_email_recipients = (int) $row[0];
 
-    $summary = pg_email_campaign_send_summary($number_of_email_recipients, $number_of_delivered_email_recipients, $number_of_failed_email_recipients, $number_of_waiting_email_recipients);
+    $summary = pg_email_campaign_send_summary($number_of_email_recipients, $number_of_delivered_email_recipients, $number_of_failed_email_recipients, $number_of_waiting_email_recipients, $number_of_suppressed_email_recipients);
 
     // Recipients waiting for another attempt keep the campaign open: the
     // job, or the next Send now, tries them again.
