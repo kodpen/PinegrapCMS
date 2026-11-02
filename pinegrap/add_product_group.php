@@ -64,7 +64,7 @@ if (!$_POST) {
     $default_parent_id = $any_product_groups ? (int)db_value("SELECT id FROM product_groups WHERE parent_id = 0 ORDER BY sort_order, name LIMIT 1") : 0;
     if ($any_product_groups) {
         $output_parent_group_select_block =
-            '<div class="col-12 md:col-4 my-3">' .
+            '<div class="col-12 my-3">' .
             '<label for="parent_id" class="form-label">' . lang('Parent Product Group') . '</label>' .
             '<select required style="width:100%" class="form-control" data-pg-combobox id="parent_id" name="parent_id" data-placeholder="' . lang('Select Parent Group') . '">' .
             get_product_group_options($default_parent_id, 0, 0, 0, array(), FALSE, 'text', false, true, false) .
@@ -94,11 +94,11 @@ if (!$_POST) {
                 
                 <form name="form" action="add_product_group.php" method="post">
                     ' . get_token_field() . '
-                    <div class="row">
-                        ' . pg_product_group_form_cards($liveform, array('code' => $code), array(
-                            'is_new' => true,
-                            'parent_row' => $output_parent_group_select_block)) . '
-                        ' . pg_product_group_form_products_card(array(
+                    <input type="hidden" id="submitted_button_field" name="submitted_button_field" value="submit" />
+                    ' . pg_product_group_form_layout(array(
+                        'form' => pg_product_group_form_cards($liveform, array('code' => $code), array('is_new' => true)),
+                        'status' => pg_product_group_form_status_card(array(), $output_parent_group_select_block),
+                        'wide' => pg_product_group_form_products_card(array(
                             'table_id' => 'add_product_group_products_table',
                             'title' => lang('Products to Include'),
                             'card_class' => '',
@@ -106,16 +106,9 @@ if (!$_POST) {
                             'rows' => $output_rows,
                             'total_unselected' => $total_unselected,
                             'loaded' => $initial_count,
-                            'product_group_id' => 0)) . '
-                    </div>
-                    <input type="hidden" id="submitted_button_field" name="submitted_button_field" value="submit" />          
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_button" value="Create" data-pg-save-shortcut class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                            'product_group_id' => 0)),
+                        'buttons' => '
+                                        <button type="submit" id="create_button" name="submit_button" value="Create" data-pg-save-shortcut class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>')) . '
                     <input type="hidden" name="max_input_vars_test" value="true">
                 </form>
             </div>
