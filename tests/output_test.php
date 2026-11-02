@@ -99,6 +99,11 @@ function test_output_period_nav_steps_by_the_unit()
 	pg_assert_same(1, substr_count($html, 'menu-item pg-link-body-emphasis active'), 'one unit marked');
 	pg_assert_contains('Oct 10 &amp; on', $html, 'range text as given');
 	pg_assert_contains('class="d-inline-block d-none"', $html, 'extra class');
+
+	// The contacts list reads its view only from the address: every link keeps it.
+	$html = pg_period_nav('view_contacts.php', $day('2026-10-10'), $periods, 'x', '', array('filter' => 'my_subscribers'));
+	pg_assert_contains('href="view_contacts.php?filter=my_subscribers&amp;start_month=10&amp;start_day=09&amp;start_year=2026', $html, 'previous day keeps the view');
+	pg_assert_same(6, substr_count($html, 'filter=my_subscribers'), 'arrows and the four menu items keep the view');
 }
 
 // A cancel address read from the request stays a string inside the button's

@@ -1741,6 +1741,46 @@ function validate_date($date)
         return false;
     }
 }
+/**
+ * A date typed into a panel field as an ISO date (YYYY-MM-DD), '' when it
+ * is no real date. Reads ISO itself and the site's day and month order
+ * (DATE_FORMAT) with any of the separators people type: '/', '-', ',' and
+ * '.', so the Turkish "31.12.2026" is read too. The year has four digits:
+ * "31/12/27" stood for the year 0027. prepare_form_data_for_input() turned
+ * a dotted or impossible date into text MySQL stored as 0000-00-00 or
+ * refused in a comparison.
+ *
+ * @param mixed $text the typed value
+ * @return string
+ */
+function pg_date_input_iso($text)
+{
+    if (!is_scalar($text)) {
+        return '';
+    }
+
+    $text = trim((string) $text);
+
+    if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})$/', $text, $parts)) {
+        list(, $year, $month, $day) = $parts;
+    } elseif (preg_match('/^(\d{1,2})\s*[-,\/.]\s*(\d{1,2})\s*[-,\/.]\s*(\d{4})$/', $text, $parts)) {
+        $year = $parts[3];
+
+        if (defined('DATE_FORMAT') && (DATE_FORMAT == 'month_day')) {
+            list(, $month, $day) = $parts;
+        } else {
+            list(, $day, $month) = $parts;
+        }
+    } else {
+        return '';
+    }
+
+    if (((int) $year < 1) || !checkdate((int) $month, (int) $day, (int) $year)) {
+        return '';
+    }
+
+    return sprintf('%04d-%02d-%02d', $year, $month, $day);
+}
 function validate_date_and_time($date_and_time)
 {
     $date_and_time_parts = explode(' ', $date_and_time, 2);
