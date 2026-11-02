@@ -8,7 +8,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `ai_crawlers`: done #5109 (llms.txt title backslash; rest reviewed: robots groups and catch-all merge, Content-Signal, operator text precedence, settings row, llms page query, ranking, escaping)
 
-- `ai_prompts`: open
+- `ai_prompts`: taken by Arzu-w, draft PR
 
 - `ai_write`: open
 
