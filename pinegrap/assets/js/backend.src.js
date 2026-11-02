@@ -8436,6 +8436,9 @@ function bindPageIndexingSwitches(ids) {
     var nofollow = document.getElementById(ids.nofollow || 'nofollow');
     var sitemap = document.getElementById(ids.sitemap || 'sitemap');
     var hint = ids.hint ? document.getElementById(ids.hint) : null;
+    // The site map switch as it was before noindex locked it, put back when
+    // noindex is switched off again.
+    var sitemapKept = sitemap ? sitemap.checked : false;
 
     function applyPageIndexingState() {
         if (nofollow) {
@@ -8447,11 +8450,17 @@ function bindPageIndexingSwitches(ids) {
         }
 
         if (sitemap) {
-            sitemap.disabled = noindex.checked;
-
             if (noindex.checked) {
+                if (!sitemap.disabled) {
+                    sitemapKept = sitemap.checked;
+                }
+
                 sitemap.checked = false;
+            } else if (sitemap.disabled) {
+                sitemap.checked = sitemapKept;
             }
+
+            sitemap.disabled = noindex.checked;
         }
 
         if (hint) {

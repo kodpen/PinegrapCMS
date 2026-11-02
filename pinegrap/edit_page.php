@@ -248,7 +248,7 @@ if (!$_POST) {
                 $output_subnav_next_page = ' | ' . lang('Next Page') . ': ' . lang('None');
             // else output name
             } else {
-                $output_subnav_next_page = ' | ' . lang('Next Page') . ': <a href="' . OUTPUT_PATH . $next_page_name . '">' . $next_page_name . '</a>';
+                $output_subnav_next_page = ' | ' . lang('Next Page') . ': ' . pg_page_subnav_link($next_page_name);
             }
         } else if((isset($page_type_properties['add_button_next_page_id']) && (($page_type_properties['add_button_next_page_id'] ?? '') != 0))) {
             // Get the next page name and output the next page. 
@@ -258,7 +258,7 @@ if (!$_POST) {
                 $output_subnav_next_page = ' | ' . lang('Next Page') . ': ' . lang('None');
             // else output name
             } else {
-                $output_subnav_next_page = ' | ' . lang('Next Page') . ': <a href="' . OUTPUT_PATH . $next_page_name . '">' . $next_page_name . '</a>';
+                $output_subnav_next_page = ' | ' . lang('Next Page') . ': ' . pg_page_subnav_link($next_page_name);
             }
         } else {
             // If no next page set the variable to blank.
@@ -268,7 +268,7 @@ if (!$_POST) {
         if((isset($page_type_properties['skip_button_next_page_id']) && (($page_type_properties['skip_button_next_page_id'] ?? '') != 0))) {
             // Get the next page name and output the next page.
             $skip_page_name = get_page_name(($page_type_properties['skip_button_next_page_id'] ?? ''));
-            $output_subnav_skip_page = ' | ' . lang('Skip Page') . ': <a href="' . OUTPUT_PATH . $skip_page_name . '">' . $skip_page_name . '</a>';
+            $output_subnav_skip_page = ' | ' . lang('Skip Page') . ': ' . pg_page_subnav_link($skip_page_name);
         } else {
             // If no next page set the variable to blank.
             $output_subnav_skip_page = '';
@@ -829,6 +829,7 @@ if (!$_POST) {
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
+                ' . $liveform->get_warnings() . '
                 ' . $output_button_bar . '
                 <form name="form" action="edit_page.php" method="post">
                     ' . get_token_field() . '
@@ -888,8 +889,8 @@ if (!$_POST) {
                                     </div>
                                 </div>
                                 ' . $output_page_type_properties . '
-                                <div class="col-12 xl:col-6 mb-12">
-                                    <div class="card my-7 h-100">
+                                <div class="col-12">
+                                    <div class="card my-7">
                                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                             ' . lang('Search Engine Optimization') . '<span class="float-end">' . pg_seo_render_badge($seo_row) . '</span>
                                         </div>
@@ -921,8 +922,8 @@ if (!$_POST) {
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-12 xl:col-6 mb-12">
-                                    <div class="card my-7 h-100">
+                                <div class="col-12">
+                                    <div class="card my-7">
                                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                             ' . lang('Site Search') . '
                                         </div>
@@ -1761,9 +1762,13 @@ if (!$_POST) {
         // A new name is a new address: a redirect of the page's own that held
         // the name goes, and the old name sends visitors here when a manager
         // left the box under the name on.
+        // What became of the old address is said on the next screen
+        // (pg_page_rename_notice()).
+        $renamed_said = array('notes' => array(), 'warnings' => array());
+
         if ((string) $name !== (string) $current_page_name) {
-            pg_short_link_page_renamed($page_id, $current_page_name, $name,
-                ($user['role'] < 3) && (($_POST['name_redirect'] ?? '') == 1), $user['id'], $current_page_folder);
+            $renamed_said = pg_short_link_page_renamed_messages(pg_short_link_page_renamed($page_id, $current_page_name, $name,
+                ($user['role'] < 3) && (($_POST['name_redirect'] ?? '') == 1), $user['id'], $current_page_folder), PATH);
         }
 
         // If this page is a custom form, and pretty URLs were disabled before this update,
@@ -1829,11 +1834,31 @@ if (!$_POST) {
         ));
 
         if ($form_type !== false) {
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $_POST['id'] . $form_type . '&send_to=' . urlencode($send_to));
-            
+            $location = URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $_POST['id'] . $form_type . '&send_to=' . urlencode($send_to);
+
         // else we don't need to forward the user to the form designer so forward the user to the page
         } else {
-            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($send_to));
+            $location = URL_SCHEME . HOSTNAME . pg_safe_redirect_path($send_to);
         }
+
+        // A site page shows no panel notice, so a save with something to
+        // say about the old address comes back to this screen; its back
+        // arrow still leads where the save was going.
+        $rename_notice = pg_page_rename_notice($renamed_said, $location,
+            URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . (int) $_POST['id'] . '&send_to=' . urlencode($send_to));
+
+        if ($rename_notice['form'] !== '') {
+            $liveform_next = new liveform($rename_notice['form']);
+
+            foreach ($rename_notice['notes'] as $note) {
+                $liveform_next->add_notice($note);
+            }
+
+            foreach ($rename_notice['warnings'] as $warning) {
+                $liveform_next->add_warning($warning);
+            }
+        }
+
+        header('Location: ' . $rename_notice['location']);
     }
 }
