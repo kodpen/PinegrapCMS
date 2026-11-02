@@ -1016,6 +1016,7 @@
     "Please enter a valid value for {var:1}": "{var:1} için geçerli bir değer girin",
     "Please enter a valid {var:1}.": "Lütfen geçerli bir {var:1} girin.",
     "Please enter a value.": "Lütfen bir değer girin.",
+    "Please enter a whole number from 0 to 65535 as the featured order of {var:1}.": "Lütfen {var:1} için öne çıkan sıra olarak 0 ile 65535 arasında bir tam sayı girin.",
     "Please enter a whole-number percentage.": "Lütfen tam sayı bir yüzde girin.",
     "Please enter an amount.": "Bir tutar girin.",
     "Please enter an end date & time that is after the start date & time.": "Lütfen başlangıç tarihi ve saatinden sonraki bir bitiş tarihi ve saati girin.",
