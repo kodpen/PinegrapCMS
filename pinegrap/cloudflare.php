@@ -378,7 +378,7 @@ if (!empty($CF_ACCOUNT_ID)) {
     $audit_since  = date('Y-m-d', strtotime('-7 days'));
     $audit_before = date('Y-m-d');
 
-    if (isset($_REQUEST['log_start']) && isset($_REQUEST['log_end'])) {
+    if (isset($_REQUEST['log_start'], $_REQUEST['log_end']) && is_string($_REQUEST['log_start']) && is_string($_REQUEST['log_end'])) {
         $log_start = trim($_REQUEST['log_start']);
         $log_end   = trim($_REQUEST['log_end']);
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $log_start) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $log_end)) {
@@ -404,7 +404,7 @@ if (!empty($CF_ACCOUNT_ID)) {
 $fw_start = date('Y-m-d', strtotime('-7 days'));
 $fw_end   = date('Y-m-d');
 
-if (isset($_REQUEST['log_start']) && isset($_REQUEST['log_end'])) {
+if (isset($_REQUEST['log_start'], $_REQUEST['log_end']) && is_string($_REQUEST['log_start']) && is_string($_REQUEST['log_end'])) {
     $log_start = trim($_REQUEST['log_start']);
     $log_end   = trim($_REQUEST['log_end']);
     if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $log_start) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $log_end)) {
@@ -546,8 +546,8 @@ if (!empty($firewall_events)) {
 
 
 // Log date range values for form
-$log_start_val = isset($_REQUEST['log_start']) ? htmlspecialchars($_REQUEST['log_start'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) : date('Y-m-d', strtotime('-7 days'));
-$log_end_val   = isset($_REQUEST['log_end'])   ? htmlspecialchars($_REQUEST['log_end'], ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401)   : date('Y-m-d');
+$log_start_val = (isset($_REQUEST['log_start']) && is_string($_REQUEST['log_start'])) ? h($_REQUEST['log_start']) : date('Y-m-d', strtotime('-7 days'));
+$log_end_val   = (isset($_REQUEST['log_end']) && is_string($_REQUEST['log_end']))     ? h($_REQUEST['log_end'])   : date('Y-m-d');
 
 
 // -------------------- ANALYTICS --------------------
@@ -556,20 +556,19 @@ $log_end_val   = isset($_REQUEST['log_end'])   ? htmlspecialchars($_REQUEST['log
 // reason of a failed read.
 function cf_read_analytics($CF_API_TOKEN, $CF_ZONE_ID, $days, $start_date = null, $end_date = null) {
 
-    if ($start_date && $end_date) {
-        $start = $start_date;
-        $end   = $end_date;
-    } else {
-        $start = date('Y-m-d', strtotime('-'.$days.' days'));
-        $end   = date('Y-m-d');
-    }
+    // Every date of the range is asked for: "-N days" … today is N + 1
+    // dates, and a limit of N left one out.
+    $range = pg_cloudflare_analytics_range($days, $start_date, $end_date, time());
+    $start = $range['start'];
+    $end   = $range['end'];
+    $limit = $range['limit'];
 
     // ---- Requests, Bandwidth, Cached ----
     $graphql_query = [
       'query' => 'query {
         viewer {
           zones(filter: { zoneTag: "'.$CF_ZONE_ID.'" }) {
-            httpRequests1dGroups(limit: '.$days.', filter: {
+            httpRequests1dGroups(limit: '.$limit.', filter: {
               date_geq: "'.$start.'",
               date_leq: "'.$end.'"
             }) {
@@ -614,7 +613,7 @@ function cf_read_analytics($CF_API_TOKEN, $CF_ZONE_ID, $days, $start_date = null
                 viewer {
                   zones(filter: { zoneTag: "'.$CF_ZONE_ID.'" }) {
                     httpRequests1dGroups(
-                      limit: '.$days.',
+                      limit: '.$limit.',
                       filter: { date_geq: "'.$start.'", date_leq: "'.$end.'" }
                     ) {
                       uniq { uniques }
@@ -635,7 +634,7 @@ if (!isset($_SESSION['software']['cloudflare']['analytics']['period'])) {
     $_SESSION['software']['cloudflare']['analytics']['period'] = '30d';
 }
 if (isset($_REQUEST['period'])) {
-    $_SESSION['software']['cloudflare']['analytics']['period'] = $_REQUEST['period'];
+    $_SESSION['software']['cloudflare']['analytics']['period'] = is_string($_REQUEST['period']) ? $_REQUEST['period'] : '30d';
 }
 $period = ($_SESSION['software']['cloudflare']['analytics']['period'] ?? '');
 
@@ -649,6 +648,7 @@ switch ($period) {
     case 'all':   $days = 500; break;
     case 'custom':
         if (isset($_REQUEST['start_date'], $_REQUEST['end_date']) &&
+            is_string($_REQUEST['start_date']) && is_string($_REQUEST['end_date']) &&
             preg_match('/^\d{4}-\d{2}-\d{2}$/', $_REQUEST['start_date']) &&
             preg_match('/^\d{4}-\d{2}-\d{2}$/', $_REQUEST['end_date'])) {
             $start_date = $_REQUEST['start_date'];
@@ -793,10 +793,10 @@ print pg_page_shell([
       <input type="hidden" name="period" value="custom">
       <div class="row g-3">
         <div class="md:col-4">
-          <input type="date" data-pg-date name="start_date" value="' . htmlspecialchars((string)isset($_REQUEST['start_date']) ? $_REQUEST['start_date'] : '', ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '" class="form-control" required>
+          <input type="date" data-pg-date name="start_date" value="' . h((isset($_REQUEST['start_date']) && is_string($_REQUEST['start_date'])) ? $_REQUEST['start_date'] : '') . '" class="form-control" required>
         </div>
         <div class="md:col-4">
-          <input type="date" data-pg-date name="end_date" value="' . htmlspecialchars((string)isset($_REQUEST['end_date']) ? $_REQUEST['end_date'] : '', ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '" class="form-control" required>
+          <input type="date" data-pg-date name="end_date" value="' . h((isset($_REQUEST['end_date']) && is_string($_REQUEST['end_date'])) ? $_REQUEST['end_date'] : '') . '" class="form-control" required>
         </div>
         <div class="md:col-4">
           <button type="submit" class="btn btn-solid theme-primary">' . lang('Apply') . '</button>

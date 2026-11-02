@@ -199,3 +199,34 @@ function pg_cloudflare_analytics_card($totals, $area)
             return '';
     }
 }
+
+/**
+ * The dates and group limit of an analytics day read. A preset period runs
+ * from N days ago to today, which is N + 1 dates; the limit counts them all,
+ * so Cloudflare does not leave one date out (it returns the groups in no set
+ * order). A custom range keeps its own dates.
+ *
+ * @param int         $days       the preset period's length
+ * @param string|null $start_date Y-m-d of a custom range, or null
+ * @param string|null $end_date   Y-m-d of a custom range, or null
+ * @param int         $now        the current time
+ * @return array start, end (Y-m-d) and limit (the number of dates, at least 1)
+ */
+function pg_cloudflare_analytics_range($days, $start_date, $end_date, $now)
+{
+    if (is_string($start_date) && is_string($end_date) && ($start_date !== '') && ($end_date !== '')) {
+        $start = $start_date;
+        $end   = $end_date;
+    } else {
+        $start = date('Y-m-d', strtotime('-' . (int) $days . ' days', (int) $now));
+        $end   = date('Y-m-d', (int) $now);
+    }
+
+    // Counted on UTC midnights, so a clock change in the range does not
+    // leave a 23- or 25-hour day.
+    $from = strtotime($start . ' 00:00:00 UTC');
+    $to   = strtotime($end . ' 00:00:00 UTC');
+    $limit = (($from !== false) && ($to !== false)) ? (int) round(($to - $from) / 86400) + 1 : 1;
+
+    return array('start' => $start, 'end' => $end, 'limit' => max(1, $limit));
+}

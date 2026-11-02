@@ -8,7 +8,7 @@ description: Module list of plans/bug-hunt.md, part 5: the single root endpoints
 
 - Endpoints browse_catalog_menu, cancel_order, carrier_webhook, chat, clean_up, clear_theme_designer_session: done #5142 (clean_up: names in the delete list printed raw; rest clean; leads: clear_theme_designer_session array file_id fatal, browse_catalog_menu previous_url_id not urlencoded)
 
-- Endpoints cloudflare, confirm_subscription, connected_apps, connections, consent_answer, view_countries: done #5144 (cloudflare: DNS table printed record names and contents raw; confirm_subscription, connected_apps, connections, consent_answer, view_countries clean; leads: cloudflare analytics day reads ask `limit: days` for days+1 dates, so a preset period drops one day at random; `log_start`/`start_date` arrays reach trim()/htmlspecialchars() (TypeError); init.php ?secure_mode=false question #5146)
+- Endpoints cloudflare, confirm_subscription, connected_apps, connections, consent_answer, view_countries: done #5144, #5161 (cloudflare: DNS table printed record names and contents raw; analytics day reads dropped one date, array dates a TypeError; confirm_subscription, connected_apps, connections, consent_answer, view_countries clean; init.php ?secure_mode=false question #5146)
 
 - Endpoints create_file, get_cross_sell_items, csp_report, view_currencies, database_engine, developer_lock: done #5166 (developer_lock: the PIN could be guessed without a limit; rest clean)
 
