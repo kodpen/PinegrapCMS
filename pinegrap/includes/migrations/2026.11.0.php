@@ -4303,7 +4303,7 @@ function upgrade_2026_11_0_dashboard_layout() {
 // chosen hour the hourly job queues one summary request; the routine answers
 // it as a message in the chosen channel, and the card reads the latest
 // answered summary request's reply_message_id, so no column holds the
-// message: config's row has no room to spare (tests/innodb_row_size_test.php).
+// message: config's row has no room to spare (tests/innodb_test.php).
 // 255 = off, the default, so an upgrade spends no run until someone turns it
 // on.
 function upgrade_2026_11_0_claude_daily_summary() {
