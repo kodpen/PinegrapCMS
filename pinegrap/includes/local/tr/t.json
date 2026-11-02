@@ -3618,6 +3618,7 @@
     "The room {var:1} is booked by another event at that time.": "{var:1} salonu o saatte başka bir etkinlik için ayrılmış.",
     "The root folder cannot be moved.": "Kök klasör taşınamaz.",
     "The rota two weeks ahead, and swaps agreed within the team.": "Vardiya çizelgesi iki hafta önceden; değişiklikler ekip içinde anlaşarak.",
+    "The routine calls this site at {var:1}, but the site's address is now {var:2}. Copy the prompt below into the routine on claude.ai again.": "Rutin bu siteyi {var:1} adresinden çağırıyor, ancak sitenin adresi artık {var:2}. Aşağıdaki istemi claude.ai'deki rutine yeniden kopyalayın.",
     "The routine cannot sign in until the new secret is on claude.ai; anything else using this key stops too.": "Yeni gizli anahtar claude.ai'ye girilene kadar rutin oturum açamaz; bu anahtarı kullanan başka her şey de durur.",
     "The routine it asks for is made on claude.ai:": "Kartın istediği rutin claude.ai'da oluşturulur:",
     "The routine still runs the long prompt pasted before; it now reads its instructions from this site. Copy the new prompt below into the routine on claude.ai.": "Rutin hâlâ önceden yapıştırılan uzun istemle çalışıyor; artık yönergelerini bu siteden okuyor. Aşağıdaki yeni istemi claude.ai'daki rutine kopyalayın.",
