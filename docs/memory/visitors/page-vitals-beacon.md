@@ -28,8 +28,8 @@ module: page_vitals
 ## How long are rows kept?
 - 400 days (`PG_VITALS_DAYS`): `job.php` runs `pg_vitals_sweep()` once a day (`data/temp/page_vitals_sweep.json`), `DELETE … WHERE day < ? LIMIT 5000` within 5 seconds, as `site-search-rollup.md`.
 
-## What comes later?
-- WV2: figures (p75 from buckets and sums) and `reports/vitals`. `plans/web-vitals-ai-visibility-steps.md`.
+## Where is it read?
+- Reading the rollup (p75, pages, trend, `reports/vitals`): `page-vitals-figures.md`.
 
 ## Tests?
 - `tests/vitals_beacon_test.php`.

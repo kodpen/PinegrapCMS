@@ -2244,6 +2244,24 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'reports.vitals',
+			'method'  => 'GET',
+			'path'    => '/reports/vitals',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_vitals',
+			'returns' => 'VitalsReport',
+			'summary' => 'Page speed measured in visitors\' browsers',
+			'description' => 'Largest Contentful Paint and Interaction to Next Paint in milliseconds and Cumulative Layout Shift times 1000, as visitors\' browsers measured them on the site\'s pages, from the hourly rollup: the site over the window, each day of it that has measurements, and the slowest pages. Each figure gives its samples, an estimated 75th percentile (from the good / needs-work / poor counts and the sum; the rating Google gives a page follows it), the mean, and the share of samples in each rating (good up to 2500 ms, 200 ms and 100; poor above 4000 ms, 500 ms and 250). views counts the measurements sent; INP has fewer samples when visitors did not interact. Nothing about a visitor is kept. Defaults to the last thirty days; a window is at most 400 days. 503 service_unavailable until the database update that adds the rollup has run.',
+			'params'  => array(
+				array('name' => 'from',   'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',     'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'device', 'in' => 'query', 'type' => 'enum', 'values' => array('desktop', 'mobile', 'tablet'), 'description' => 'One width class instead of all: mobile under 768 px, tablet under 1024 px.'),
+				array('name' => 'order',  'in' => 'query', 'type' => 'enum', 'values' => array('lcp', 'inp', 'cls', 'views'), 'default' => 'lcp', 'description' => 'How pages are ranked: the highest 75th percentile of that figure first, or the most measurements.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 10, 'description' => 'How many pages.')
+			)
+		),
+
 		/* ----- SEO ---------------------------------------------------------- */
 
 		array(
