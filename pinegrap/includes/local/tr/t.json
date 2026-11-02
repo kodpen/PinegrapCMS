@@ -2924,6 +2924,7 @@
     "The operation {var:1} does not fit the field {var:2}.": "{var:1} işlemi {var:2} alanına uymuyor.",
     "The operations alert check {var:1} failed: {var:2}": "{var:1} operasyon uyarısı denetimi başarısız oldu: {var:2}",
     "The opt-in box is offered (the contact has not opted in)": "İzin kutusu sunuluyor (kişi henüz izin vermemiş)",
+    "The option {var:1} is entered more than once.": "{var:1} seçeneği birden fazla kez girilmiş.",
     "The option {var:1} is given more than once.": "{var:1} seçeneği birden fazla kez verilmiş.",
     "The options shown in the dropdown on the front end.": "Frontend dropdown'da gösterilecek seçenekler.",
     "The order beside the billing and payment": "Sipariş, fatura ve ödemenin yanında",
