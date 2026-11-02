@@ -284,6 +284,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - page-form-number-ranges.md: Page form System Options number boxes (quiz pass percentage, day counts, photo gallery thumbnail size) refused out of range by pg_page_form_number_errors() instead of cut by their columns
 - page-form-refused-save.md: Create Page and Edit Page come back with what was typed when a save is refused: the stored post, the redraw helpers in includes/forms/page_form.php, what is not redrawn
 - page-shared-form.md: The page create and edit screens share includes/forms/page_form.php: the type picker and System Options card, and the save checks; what differs and what stays in the screens
+- page-style-screen-guards.md: Page style screens: which styles the custom edit screen opens, where View Source returns, how bulk delete reads its selection
 - pages-list-bulk-edit-fixes.md: Pages list and Mass Edit fixes (#5288-#5293): a deleted page in Delete Selected, too long values, Find & Replace skips, stale SEO scores, column names and row labels
 - panel-accessible-names.md: Names screen readers get in the panel: translated aria-labels, labels that point at a field, the one required marker, chip and select2 inputs, the settings autofill decoy, user-coloured badges (#2063)
 - panel-avatar-sites.md: Where the panel draws people as the Bootstrap 6 Avatar (step B9j slices) and where the picture of letters (pg_initials_avatar_url()) stays
