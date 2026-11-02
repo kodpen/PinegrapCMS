@@ -24,9 +24,9 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 
 - Endpoints `cart` (4): done #4561 (add_cart_quote, cart_action, cart_quote, view_cart_quotes)
 
-- Endpoints `catalog` (4): open
+- Endpoints `catalog` (4): clean #5098 (browse_catalog_menu, catalog_detail, get_catalog, get_catalog_detail, get_catalog_item)
 
-- Endpoints `change` (2): open
+- Endpoints `change` (2): done #5098 (change_password, get_change_password)
 
 - Endpoints `check` (2): open
 
