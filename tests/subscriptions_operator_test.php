@@ -239,6 +239,12 @@ function test_subscription_operator_where()
 	pg_assert_true(strpos($where, "LIKE '%o\\'Neil\\\\_5\\\\%%'") !== false, 'quoted and LIKE-escaped: ' . $where);
 	pg_assert_true(strpos($where, 'o.billing_email_address LIKE') !== false);
 	pg_assert_true(strpos($where, 'u.user_username LIKE') !== false);
+
+	// A backslash is LIKE's escape character: typed into the search it is a
+	// plain character, never an escape of the next one ("C:\temp" is not
+	// "C:temp"). In the SQL literal it reads as four backslashes.
+	$where = pg_subscription_operator_where(pg_subscription_operator_filter(array('q' => 'C:\\temp')));
+	pg_assert_true(strpos($where, "LIKE '%C:\\\\\\\\temp%'") !== false, 'the backslash escaped for LIKE: ' . $where);
 }
 
 function test_subscription_operator_order_puts_running_rows_first()
