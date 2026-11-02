@@ -38,7 +38,7 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 - `sms_messages`: clean (NY)
 - `speculation`: clean (NY)
 - `stock_notify`: #4668
-- `submitted_form_list`: open
+- `submitted_form_list`: #5143 (NY)
 - `subscription_renewal`: fault fixed by LN, #4622 (renewals stop at the line's number of payments, decided in #4623)
 - `subscriptions`: clean (#4621)
 - `subscriptions_account`: open
