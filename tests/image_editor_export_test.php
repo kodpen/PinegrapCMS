@@ -64,6 +64,8 @@ function test_image_editor_export_model()
 		. ' low: M.exportRequest({ format: "keep", quality: 3, edge: 0, colors: false }, "jpeg"),'
 		. ' flat: M.exportRequest({ format: "jpeg", quality: 92, edge: 0, colors: false, progressive: false }, "png"),'
 		. ' flatPng: M.exportRequest({ format: "keep", quality: 92, edge: 0, colors: false, progressive: false }, "png"),'
+		. ' camera: [M.exportRequest({ format: "keep", quality: 92, edge: 0, camera: true }, "jpeg"), M.exportRequest({ format: "keep", quality: 92, edge: 0, camera: true }, "png"), M.exportRequest({ format: "webp", quality: 92, edge: 0, camera: true }, "jpeg")],'
+		. ' srgb: M.exportRequest({ format: "keep", quality: 92, edge: 0, srgb: true }, "png"),'
 		. ' change: [M.exportChange(1000, 250), M.exportChange(1000, 1200), M.exportChange(1000, 10), M.exportChange(0, 10)],'
 		. ' bytes: [M.exportBytes(900), M.exportBytes(250880), M.exportBytes(1468006, ","), M.exportBytes(-3)] }));'
 	);
@@ -83,6 +85,8 @@ function test_image_editor_export_model()
 	pg_assert_same(array('quality' => 40), $r['low'], 'quality within 40-100');
 	pg_assert_same(array('format' => 'jpeg', 'progressive' => false), $r['flat'], 'a baseline JPEG asked for');
 	pg_assert_same(null, $r['flatPng'], 'progressive is for JPEG only');
+	pg_assert_same(array(array('camera' => true), null, array('format' => 'webp')), $r['camera'], 'camera details from a JPEG into a JPEG only');
+	pg_assert_same(array('srgb' => true), $r['srgb'], 'sRGB asked for');
 	pg_assert_same(array(array('percent' => -75, 'bar' => 25), array('percent' => 20, 'bar' => 100), array('percent' => -99, 'bar' => 3), null), $r['change'], 'the result card\'s change and bar');
 	pg_assert_same(array('900 B', '245 KB', '1,4 MB', '0 B'), $r['bytes'], 'sizes in B, KB and MB with the panel\'s separator');
 }
