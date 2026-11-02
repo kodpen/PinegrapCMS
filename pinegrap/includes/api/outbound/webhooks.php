@@ -434,6 +434,15 @@ function api_webhook_max_attempts() {
 // up on - and false when it is waiting for another attempt.
 function api_webhook_deliver($row) {
 
+	// A chat notification (Slack, Teams, Telegram): its target is a sealed
+	// entry, not a subscription, and its body is sent as built, without the
+	// envelope or a signature (includes/fn/notify_channels.php).
+	if ((int)$row['webhook_id'] === 0) {
+
+		return function_exists('pg_notify_deliver') ? pg_notify_deliver($row) : true;
+
+	}
+
 	$hook = db_item("SELECT api_webhooks.id, api_webhooks.app_id, api_webhooks.url,
 			api_webhooks.secret, api_webhooks.status, api_apps.status AS app_status
 		FROM api_webhooks

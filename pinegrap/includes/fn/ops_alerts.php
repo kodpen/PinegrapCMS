@@ -543,6 +543,16 @@ function pg_ops_alert($code, $detail = '')
         }
     }
 
+    // Slack, Teams and Telegram targets that carry this code, through the
+    // outbound queue.
+    if (function_exists('pg_notify_ops_alert')) {
+        try {
+            pg_notify_ops_alert($code, $detail);
+        } catch (\Throwable $e) {
+            // A chat target must not stop the alert's own record.
+        }
+    }
+
     log_activity(lang(array(
         'string' => 'Operations alert: {var:1}. {var:2}',
         'vars'   => array($label, $detail),

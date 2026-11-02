@@ -18,5 +18,5 @@ description: Steps SF4-SF8 of plans/small-features-2026-11.md: product questions
 - SF7 (S) Panel offline page and install hint. Panel parts done (#5064); the site manifest waits on #5065 (a `config` column).
   - Left: the site gets an optional manifest (name, icons, theme colour) printed by `output.php` when Site Settings › Appearance turns it on; no service worker on sites. Memory: `ui/panel-offline-and-install.md`.
 
-- SF8 (M) Chat notification channels. `free`.
+- SF8 (M) Chat notification channels. Done in #5075 (decided in #5076: targets in a sealed entry, queue rows with `webhook_id = 0`, written by `pg_notify_enqueue()`).
   - Settings › Notifications: targets (kind Slack incoming webhook, Teams incoming webhook, Telegram bot token and chat id; the URL or token sealed), each with the operations alert codes (`pg_ops_alert_codes()`) and the Workspace kinds it carries (a mention of the site's app, a flow run failed, an approval requested); `includes/fn/notify_channels.php`: one builder per kind (`pg_notify_slack_body()`, `_teams_body()` as an Adaptive Card, `_telegram_body()`), pure and tested on each alert code; delivery through the outbound webhook queue (`api_webhook_enqueue()` with a target row), retries as webhooks have; a Test button per target. Memory: `platform/notification-channels.md`.

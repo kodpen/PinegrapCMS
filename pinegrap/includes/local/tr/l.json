@@ -115,6 +115,7 @@
     "Last error": "Son hata",
     "Last event:": "Son olay:",
     "Last failure": "Son hata",
+    "Last failure {var:1}: {var:2}": "Son hata {var:1}: {var:2}",
     "Last first": "Sondan başa",
     "Last flow run": "Son çalıştırma",
     "Last full check: {var:1}.": "Son tam denetim: {var:1}.",

@@ -521,6 +521,7 @@
     "Messages about an article you sent to the desk are written under the article itself, in My Articles.": "Masaya gönderdiğiniz bir haberle ilgili mesajlar, Yazılarım sayfasında haberin kendi altına yazılır.",
     "Messages are read in opening hours. For anything urgent, call us; in an emergency, call 112.": "Mesajlar çalışma saatlerinde okunur. Acil bir konu için bizi arayın; acil durumda 112'yi arayın.",
     "Messages are read in opening hours. Running late for a booking today? Call us instead.": "Mesajlar çalışma saatlerinde okunur. Bugünkü randevunuza geç mi kalıyorsunuz? Bizi arayın.",
+    "Messages are sent by the Webhook delivery job, which has to be selected under Cron Jobs. The test button sends at once.": "Mesajları Webhook gönderimi görevi gönderir; bu görev Cron işleri altında seçili olmalıdır. Test düğmesi hemen gönderir.",
     "Messages cannot be forwarded into a room with a guest.": "Misafirin bulunduğu odaya mesaj iletilemez.",
     "Messages sent from the contact page are collected in the panel, ready to answer.": "İletişim sayfasından gönderilen mesajlar panelde toplanır, yanıtlamaya hazır bekler.",
     "Messages wait in a queue that the scheduled general job sends; they are listed on the SMS tab of the {var:1}.": "Mesajlar kuyrukta bekler ve zamanlanmış genel iş onları gönderir; {var:1} ekranının SMS sekmesinde listelenirler.",
