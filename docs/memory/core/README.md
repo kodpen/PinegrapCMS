@@ -50,6 +50,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - consent-log-writer-gaps.md: What the e-mail consent log writers leave unrecorded or record unasked (custom layouts without the box), what was run against them, open questions for the owner (PR #1581)
 - consent-log-writers.md: Who writes consent_log rows: own e-mail and SMS marketing answers (sign-up, preferences, one-click, checkout, custom form; PR #1581, #3660), accepted checkout documents as contract rows (PR #2000)
 - contact-holders.md: pg_contact_holders(): the one list of every place a contact id is kept, shared by merge_contacts() and the erasure; what the merge does with each, the ERP refusal, the drift test
+- contact-import-cells.md: Contact importer (import_contacts.php): cells read by pg_import_contact_value() (yes/no, dates, lengths, export guard undone), repeated headings left out, Turkish headings, the screen's hint
 - contact-lead-source.md: contacts.lead_source picked from referral_sources on the add/edit contact screens (#3427, decided #3416 3(a)); old free text kept; the same check on the external API (#4043); writers left as they were
 - contact-merge-role.md: Who may merge duplicate contacts: a role above user (3) on both merge paths; view_contacts.php checks it itself (#5124)
 - content-translation-html-pieces.md: Translating stored HTML (custom HTML block, product description, form message): how a block is cut into texts so images, form controls, buttons and data-* attributes stay on the translated page
