@@ -23,7 +23,7 @@ description: Steps TP1-TP4 of plans/tls-settings-in-panel.md: scheme helper, Sec
     - public: never added with Secure Mode on. The screen says a CDN or load balancer needs all its published ranges listed first.
   - Texts that name `TRUST_PROXY_SSL_HEADERS` or the config file as the fix (`init.php`, `get_file.php`, `firewall.php`, `firewall.save.php`) point at Trusted Proxies instead. `test_secure_mode.php` still opens no database (`decisions-made-access.md`); it names the peer, its kind and the entries to add.
 
-- TP3 (M) The site chooses the CA store. `free`
+- TP3 (M) The site chooses the CA store. Done, #5711.
   - `pg_ca_bundle_effective()` (`includes/fn/update.php`) answers in this order:
     1. `CURL_CA_BUNDLE`, when set.
     2. The shipped `data/cacert.pem`, when PHP has no store (`curl.cainfo` unset and `openssl_get_cert_locations()` paths missing) or when the last probe found the server's store failing (`pg_ca_bundle_config_state()` `needed`, kept in `data/temp/ca_store.json`; the probe runs from System Status and once a day from the general job).

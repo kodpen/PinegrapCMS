@@ -24,6 +24,8 @@
     "PHP error log (php.ini)": "PHP hata günlüğü (php.ini)",
     "PHP errors in an hour": "Bir saatteki PHP hatası",
     "PHP fixes": "PHP düzeltmeleri",
+    "PHP has no certificate store of its own on this server and the bundled data/cacert.pem is missing: outbound HTTPS calls - updates, Pinegrap AI, payments, webhooks - fail. Update the CA certificate bundle.": "Bu sunucuda PHP'nin kendine ait bir sertifika deposu yok ve paketle gelen data/cacert.pem eksik: giden HTTPS çağrıları - güncellemeler, Pinegrap AI, ödemeler, webhook'lar - başarısız oluyor. CA sertifika paketini güncelleyin.",
+    "PHP has no certificate store of its own on this server; outbound HTTPS is verified against the bundled data/cacert.pem.": "Bu sunucuda PHP'nin kendine ait bir sertifika deposu yok; giden HTTPS bağlantıları paketle gelen data/cacert.pem ile doğrulanıyor.",
     "PHP information": "PHP bilgileri",
     "PHP version": "PHP sürümü",
     "PHP {var:1} does not have the fixes for the PHP2Shell flaws (CVE-2026-109618, CVE-2026-109619): anyone who can reach the site can run code on the server. Update PHP to {var:2} or later.": "PHP {var:1}, PHP2Shell açıklarının (CVE-2026-109618, CVE-2026-109619) düzeltmelerini içermiyor: siteye ulaşabilen herkes sunucuda kod çalıştırabilir. PHP'yi {var:2} ya da daha yeni bir sürüme güncelleyin.",

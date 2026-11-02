@@ -5219,14 +5219,15 @@ function license_check($properties = false)
                     $curl_error = $answer['error'];
                 } else {
                     // Fallback: file_get_contents with stream context if allow_url_fopen is enabled
-                    // The certificate is verified here as well, against the same CA bundle
-                    // pg_curl_tls() uses when one is configured.
+                    // The certificate is verified here as well, against the store
+                    // pg_curl_tls() uses (pg_ca_bundle_effective()).
                     $ssl_options = array(
                         'verify_peer' => true,
                         'verify_peer_name' => true
                     );
-                    if (defined('CURL_CA_BUNDLE') && CURL_CA_BUNDLE !== '' && is_file(CURL_CA_BUNDLE)) {
-                        $ssl_options['cafile'] = CURL_CA_BUNDLE;
+                    $ca_file = pg_ca_bundle_effective();
+                    if ($ca_file !== '') {
+                        $ssl_options['cafile'] = $ca_file;
                     }
                     $context = stream_context_create(array(
                         'http' => array(
