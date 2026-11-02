@@ -202,7 +202,7 @@
     "Real Estate Staff Bar": "Emlak Ofisi Personel Çubuğu",
     "Real Estate Valuation Band": "Emlak Ofisi Değerleme Bandı",
     "Real records": "Gerçek kayıtlar",
-    "Real-Time Rate": "Gerçek-Zamanlı Oran",
+    "Real-Time Rate": "Gerçek Zamanlı Ücret",
     "Real-time dashboards and alerts": "Gerçek zamanlı panolar ve uyarılar",
     "Real-time shipping rate calculation: total rate {var:1}, order ID {var:2}, ship to ID {var:3}, service {var:4}, state {var:5}, zip code {var:6}, error {var:7}. Packages: {var:8}": "Anlık kargo ücreti hesaplaması: toplam ücret {var:1}, sipariş kimliği {var:2}, teslimat adresi kimliği {var:3}, hizmet {var:4}, il {var:5}, posta kodu {var:6}, hata {var:7}. Paketler: {var:8}",
     "Real-time team collaboration": "Gerçek zamanlı ekip iş birliği",

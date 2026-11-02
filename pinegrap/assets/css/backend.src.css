@@ -4645,11 +4645,12 @@ html[data-bs-theme="dark"] #notifications .pg-bell-glyph {
 
 /* Combobox fields (pg_fields.js): the posted <select> stays in the form, out
    of sight but still checked by `required`; the toggle after it is what
-   people use. */
+   people use. The size is !important: a select written with an inline
+   width:100% kept that width out of sight and pushed a narrow page sideways. */
 .pg-combobox-native {
   position: absolute;
-  width: 1px;
-  height: 1px;
+  width: 1px !important;
+  height: 1px !important;
   padding: 0;
   margin: -1px;
   overflow: hidden;
