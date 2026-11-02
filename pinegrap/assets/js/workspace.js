@@ -19418,8 +19418,10 @@
                     var text = el('div', 'ws-grow');
                     text.appendChild(el('small', '', item[1]));
                     text.appendChild(el('b', '', item[0].person.name));
+                    // The count under the name, so a narrow side column
+                    // leaves the whole name its width.
+                    text.appendChild(el('small', 'ws-extreme-count', t('task_count', item[0].total)));
                     row.appendChild(text);
-                    row.appendChild(el('span', 'ws-extreme-count', t('task_count', item[0].total)));
                     row.addEventListener('click', function () {
                         state.person_id = item[0].person.id;
                         load();
