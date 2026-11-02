@@ -43,7 +43,7 @@ function test_cloudflare_page_reads_dates_as_text_only()
 {
 	$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/cloudflare.php');
 
-	pg_assert_true(strpos($source, "trim(\$_REQUEST['log_start'])") === false, 'log_start not trimmed unchecked');
+	pg_assert_same(2, substr_count($source, "is_string(\$_REQUEST['log_start']) && is_string(\$_REQUEST['log_end'])) {"), 'log_start checked before both trims');
 	pg_assert_true(strpos($source, "htmlspecialchars(\$_REQUEST['log_start']") === false, 'log_start not printed unchecked');
 	pg_assert_true(strpos($source, "(string)isset(\$_REQUEST['start_date'])") === false, 'start_date not printed unchecked');
 	pg_assert_contains('pg_cloudflare_analytics_range(', $source, 'the page uses the range helper');
