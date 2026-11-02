@@ -2392,6 +2392,23 @@ function pg_express_order_charged_totals($lines, $order_discount, $shipping, $gi
     );
 }
 
+/**
+ * The express order widget for an empty cart: the form's messages (an error,
+ * the notice of a sold-out line the inventory check removed), then the
+ * empty-cart box, for the page container the renderer draws around it.
+ *
+ * @param string $messages_html the form's errors and notices, as HTML
+ * @return string
+ */
+function pg_express_order_empty_html($messages_html)
+{
+    return (string)$messages_html
+        . '<div class="pg-eo-empty alert alert-secondary text-center py-4 my-4">'
+        .   '<h3 class="mb-2">' . h(lang('Your cart is empty')) . '</h3>'
+        .   '<p class="mb-0 text-muted">' . h(lang('Browse the catalog to add products to your cart.')) . '</p>'
+        . '</div>';
+}
+
 // ========================== EXPRESS ORDER (Phase 1) ==========================
 // Single-page checkout: cart + billing + (shipping when needed) + payment.
 // Submits to the legacy `express_order.php` action handler so all order /
@@ -2745,13 +2762,17 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
     $form_id = 'pg-eo-form-w' . $widget_id;
 
     // ── Empty cart short-circuit ─────────────────────────────────────────────
+    // The inventory check above removes a sold-out line with a notice; when
+    // that was the last line, the notice is the reason the cart is empty.
+    // It is shown here and taken from the session, as the full form does.
     if ($cart_count === 0) {
+        $_eo_empty_messages = $_eo_lf ? (string)$_eo_lf->output_errors() . (string)$_eo_lf->output_notices() : '';
+        if ($_eo_lf) {
+            $_eo_lf->unmark_errors();
+            $_eo_lf->clear_notices();
+        }
         return _pg_widget_layout_css_once()
-            . '<div class="container py-4">'
-            . '<div class="pg-eo-empty alert alert-secondary text-center py-4 my-4">'
-            .   '<h3 class="mb-2">' . h(lang('Your cart is empty')) . '</h3>'
-            .   '<p class="mb-0 text-muted">' . h(lang('Browse the catalog to add products to your cart.')) . '</p>'
-            . '</div></div>';
+            . '<div class="container py-4">' . pg_express_order_empty_html($_eo_empty_messages) . '</div>';
     }
 
     // ── Per-recipient grouping for shipping/cart sections ────────────────────
