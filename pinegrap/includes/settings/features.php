@@ -423,6 +423,11 @@ if ($output_image_settings_card !== '') {
 if (pg_schema_has('config_text')) {
     $search_synonyms_text = pg_search_synonyms_format(pg_search_synonyms());
     $search_promoted_text = pg_search_promoted_format(pg_search_promoted());
+    // Opened from the site search report's "promote" button: a line for the
+    // term, the address left for the operator to write.
+    if (isset($_GET['search_promote']) && is_string($_GET['search_promote'])) {
+        $search_promoted_text = pg_search_promoted_add_line($search_promoted_text, $_GET['search_promote']);
+    }
 
     $pg_settings_cards[] = '
                         <div id="pgset-search-tuning" class="pg-set-card">

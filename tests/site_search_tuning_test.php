@@ -141,3 +141,14 @@ function test_search_tuning_is_applied_and_edited()
 	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/features.save.php');
 	pg_assert_contains("array_key_exists('search_tuning_card', \$_POST)", $save, 'a screen without the card keeps the rows');
 }
+
+function test_search_promoted_add_line_starts_a_line_for_the_term()
+{
+	pg_assert_same('kargo süresi => ', pg_search_promoted_add_line('', ' Kargo  Süresi '));
+	pg_assert_same("iade => iade\nkargo => ", pg_search_promoted_add_line("iade => iade\n", 'kargo'));
+	pg_assert_same('iade => iade', pg_search_promoted_add_line('iade => iade', 'İADE'), 'a term already promoted adds nothing');
+	pg_assert_same('x => y', pg_search_promoted_add_line('x => y', '  '));
+	pg_assert_same('a b => ', pg_search_promoted_add_line('', 'a,b'), 'a comma would split the term');
+	pg_assert_contains('pg_search_promoted_add_line($search_promoted_text, $_GET[\'search_promote\'])',
+		(string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/features.php'));
+}

@@ -609,6 +609,7 @@
     "Searches": "Aramalar",
     "Searches Cloudflare's developer documentation.": "Cloudflare'in geliştirici belgelerinde arar.",
     "Searches Google keeps anonymous for privacy are in the totals but not in the list of searches, so the list adds up to less.": "Google'ın gizlilik için anonim tuttuğu aramalar toplamlarda vardır ama arama listesinde yoktur; bu yüzden liste toplamdan az tutar.",
+    "Searches Without Results": "Sonuç Bulamayan Aramalar",
     "Searches and edits the pages and databases of a Notion workspace.": "Bir Notion çalışma alanının sayfalarında ve veritabanlarında arar, onları düzenler.",
     "Searches and reads Microsoft's documentation and code samples.": "Microsoft'un belgelerinde ve kod örneklerinde arar, onları okur.",
     "Searches models, datasets, Spaces and papers on Hugging Face.": "Hugging Face'te model, veri kümesi, Space ve makale arar.",
