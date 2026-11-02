@@ -6,19 +6,19 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 ## Which includes/fn/ modules (link_resolve to pdf_merge) are hunted?
 - `link_resolve`: done (#4976: names in other letter case were broken links)
 
-- `list_paging`: open
+- `list_paging`: clean (page window, limit, search terms and Turkish folding, label order, row output checked)
 
 - `list_period`: clean
 
-- `mail`: open
+- `mail`: taken (convert_html_to_text next)
 
-- `mail_parse`: open
+- `mail_parse`: done (#4992: a quoted-printable part ending on a soft break kept its `=`)
 
 - `mail_queue`: done #4654 (rest checked: retry ladder, give-up and notices, property encoding and attachments, job-alive check, claim race, sweeps, List-Unsubscribe headers)
 
 - `maintenance_mode`: clean
 
-- `merchant_center`: open
+- `merchant_center`: clean; lead: a country change keeps the registered data source's feed label, so pushes name another label
 
 - `meta_tags`: done (#4952: a page `og:image` kept the design's `og:image:alt` and size)
 
@@ -32,7 +32,7 @@ description: Module list of plans/bug-hunt.md, part 1b: includes/fn/ modules lin
 
 - `ops_alerts`: clean; lead: webhook_failing mails raw webhook URLs
 
-- `order_completion`: done (#4884, #4962: DST end dates); line forms, from_payment not read
+- `order_completion`: done (#4884, #4962: DST end dates); line forms, from_payment clean; lead: two payment callbacks at once can both lower `ship_tos.shipping_cost`
 
 - `order_list`: clean
 

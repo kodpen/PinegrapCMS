@@ -510,6 +510,10 @@ function pg_mail_decode_quoted_printable($body)
     $body = preg_replace('~[ \t]+(?=\r?\n)~', '', (string) $body);
     $body = preg_replace('~=\r?\n~', '', $body);
 
+    // A part that does not end with a line break ends on a soft break: the
+    // line break after its "=" belongs to the next boundary line.
+    $body = preg_replace('~=[ \t]*$~', '', $body);
+
     return preg_replace_callback('~=([0-9A-Fa-f]{2})~', function ($matches) {
         return chr(hexdec($matches[1]));
     }, $body);
