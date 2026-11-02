@@ -302,7 +302,8 @@ pg_page_shell([
             </nav>
 
             <form method="get" action="erp_expenses.php" class="card my-7">
-                <div class="card-body row g-3 align-items-end">
+                <div class="card-body">
+                    <div class="row g-3 align-items-end">
                     <div class="col-12 md:col-3">
                         <label class="form-label small fg-secondary mb-1" for="period">' . lang('Period') . '</label>
                         <select class="form-control form-control-sm" id="period" name="period">' . $output_periods . '</select>
@@ -329,6 +330,7 @@ pg_page_shell([
                             <input type="search" class="form-control" id="q" name="q" value="' . h($filters['query']) . '" placeholder="' . h(lang('Supplier, receipt number, words')) . '" />
                             <button type="submit" class="btn btn-outline theme-primary"><i class="bi bi-funnel" aria-hidden="true"></i><span class="visually-hidden">' . lang('Filter') . '</span></button>
                         </div>
+                    </div>
                     </div>
                 </div>
             </form>

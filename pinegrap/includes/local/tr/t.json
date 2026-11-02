@@ -1940,6 +1940,7 @@
     "The encryption key could not be reset, because the OpenSSL PHP extension is not enabled": "OpenSSL PHP uzantısı etkinleştirilmediğinden şifreleme anahtarı sıfırlanamadı",
     "The encryption key could not be reset, because the config.php file ({var:1}) is not writable. Please configure the config.php file so it can be written to and then try again. For Unix, set the permissions for the file to 777. For Windows, give the anonymous web user rights to write to and delete the file.": "config.php dosyası ({var:1}) yazılabilir olmadığı için şifreleme anahtarı sıfırlanamadı. Lütfen config.php dosyasını, yazılabilmesi için yapılandırın ve ardından yeniden deneyin. Unix için, dosyanın izinlerini 777 olarak ayarlayın. Windows için, anonim web kullanıcısına dosyaya yazma ve dosyayı silme haklarını verin.",
     "The end date is invalid.": "Bitiş tarihi geçersiz.",
+    "The end date must be on or after {var:1}, the date of the first repeat.": "Bitiş tarihi, ilk tekrarın tarihi olan {var:1} ya da sonrası olmalı.",
     "The end date must come after the first date.": "Bitiş tarihi ilk tarihten sonra olmalı.",
     "The end date must not be before the start date.": "Bitiş tarihi başlangıç tarihinden önce olamaz.",
     "The end has to come after the start.": "Bitiş, başlangıçtan sonra olmalı.",
