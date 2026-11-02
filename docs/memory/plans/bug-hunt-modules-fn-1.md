@@ -50,7 +50,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `comments`: taken by LB — #4599
 
-- `commission_list`: open
+- `commission_list`: clean
 
 - `config_text`: clean
 
@@ -58,7 +58,7 @@ description: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y
 
 - `consent`: done #4577, #4587
 
-- `contact_list`: open
+- `contact_list`: clean
 
 - `contacts`: done #4624
 
