@@ -343,6 +343,7 @@ $explorer_lang = array(
     'leave_during_job' => lang('A job is still running on this screen. If you leave now it stops where it is.'),
     'upload_too_large' => lang('The file is too large. The maximum allowed size is {var:1}.'),
     'upload_done' => lang('{var:1} file(s) were uploaded.'),
+    'extracted_renamed' => lang('Extracted under a new name: {var:1}. A file name is its address, so a taken name gets a number and letters an address cannot carry are replaced.'),
     'uploaded_renamed' => lang('Uploaded under a new name: {var:1}. A file name is its address, so a taken name gets a number and letters an address cannot carry are replaced.'),
     'renamed_as' => lang('Saved as {var:1}: a file name is its address, so letters an address cannot carry are replaced and a taken name gets a number.'),
     'drop_to_upload' => lang('Drop files here to upload them into this folder'),
@@ -8938,7 +8939,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     toast(L.extracting + '...');
 
                     api({ type: 'explorer_zip_extract', item_id: item.id }, function (response) {
-                        toast(response.message || L.request_failed, response.status !== 'error');
+                        // Names the server had to change are listed, as an
+                        // upload lists them, in a toast that stays.
+                        if ((response.status !== 'error') && response.renamed && response.renamed.length > 0) {
+                            toast(response.message + ' ' + fmt(L.extracted_renamed, [response.renamed.join(', ')]), true, null, { tone: 'warning', sticky: true });
+                        } else {
+                            toast(response.message || L.request_failed, response.status !== 'error');
+                        }
 
                         if ((response.status !== 'error') && response.created && response.created.length > 0 && state.recycle.available) {
                             pushUndo({ undo: { type: 'bin', items: response.created }, redo: null });
@@ -15297,7 +15304,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // Closed without the unsaved question: what was typed is saved.
             if (fileEdit) { fileEdit.baseline = fileEditSnapshot(); }
 
-            toast(response.message || fmt(L.saved_named, [payload.name]), true);
+            // A file name is its address, so a name the server had to change
+            // (letters an address cannot carry) is said, as a rename says it.
+            if (response.file && response.file.name && (response.file.name !== payload.name.trim())) {
+                toast(fmt(L.renamed_as, [response.file.name]), true, null, { tone: 'warning' });
+            } else {
+                toast(response.message || fmt(L.saved_named, [payload.name]), true);
+            }
             hideModal(fileEditModal, 'file_edit_modal');
             reload();
         }, function () {
