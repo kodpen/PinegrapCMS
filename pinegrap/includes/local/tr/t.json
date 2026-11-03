@@ -5026,6 +5026,7 @@
     "This browser has no Translator API. Use desktop Chrome 138 or Edge 148 and newer, or choose another engine.": "Bu tarayıcıda Translator API yok. Masaüstü Chrome 138 ya da Edge 148 ve üstünü kullanın ya da başka bir motor seçin.",
     "This browser has no built-in AI model (Prompt API). Use a recent desktop Chrome, or choose another engine.": "Bu tarayıcıda yerleşik yapay zekâ modeli (Prompt API) yok. Güncel bir masaüstü Chrome kullanın ya da başka bir motor seçin.",
     "This browser has no live sign-in, so it can only be told that something happened - never what.": "Bu tarayıcıda açık oturum yok; bu yüzden ona yalnızca \"bir şey oldu\" bilgisi gidebilir, ne olduğu gitmez.",
+    "This browser writes the recording out on this device; the text goes with it for the assistants.": "Bu tarayıcı kaydı bu cihazda yazıya döker; metin asistanlar için kayıtla birlikte gider.",
     "This bucket name cannot be part of a host name. Switch on path-style addresses.": "Bu kova adı bir sunucu adının parçası olamaz. Yol biçimli adresleri açın.",
     "This campaign has been sent, so it can no longer be changed.": "Bu kampanya gönderildi, artık değiştirilemez.",
     "This campaign will be cancelled. A cancelled campaign cannot be scheduled again.": "Bu kampanya iptal edilecek. İptal edilen bir kampanya yeniden zamanlanamaz.",

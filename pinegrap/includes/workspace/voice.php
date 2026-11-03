@@ -62,6 +62,9 @@ function ws_voice_js_strings()
         'voice_unheard_skipped' => lang('Assistants will not hear this recording: voice messages are not transcribed in this channel.'),
         'voice_unheard_settings' => lang('Switch them on: Workspace Settings › Voice message transcripts'),
         'voice_unheard_menu' => lang('A manager switches it on in the channel menu: Voice messages are transcribed here.'),
+        'voice_browser_hint' => lang('This browser writes the recording out on this device; the text goes with it for the assistants.'),
+        'voice_browser_working' => lang('Writing the recording out…'),
+        'voice_machine_browser' => lang('Machine transcript by the sender\'s browser'),
     ) + pg_voice_text_strings();
 }
 
@@ -1703,14 +1706,18 @@ function ws_voice_measure_clean($duration_ms, $peaks)
 
 /**
  * Notes a recording just posted: queued to be written out when transcripts
- * are on and its channel allows them, otherwise kept as never asked. Called
- * by both uploads (ws_message_send_file_bytes(), the API's files.create).
+ * are on and its channel allows them; written out already when the sender's
+ * browser did so where no service does (ws_voice_browser_rule(), kept as
+ * the machine transcript with provider 'browser'); otherwise kept as never
+ * asked. Called by both uploads (ws_message_send_file_bytes(), the API's
+ * files.create).
  *
  * @param array  $channel
  * @param int    $message_id
  * @param int    $file_id
  * @param string $name    the name it was posted with
- * @param array  $measure duration_ms and peaks the recorder sent, if any
+ * @param array  $measure duration_ms and peaks the recorder sent, if any;
+ *                        transcript, the text the sender's browser wrote
  * @return bool it waits to be written out
  */
 function ws_voice_queue($channel, $message_id, $file_id, $name, $measure = array())
@@ -1719,9 +1726,23 @@ function ws_voice_queue($channel, $message_id, $file_id, $name, $measure = array
         return false;
     }
 
-    $queued = ws_voice_config()['enabled'] && ws_voice_channel_allowed($channel);
+    $enabled = ws_voice_config()['enabled'];
+    $allowed = ws_voice_channel_allowed($channel);
+    $queued = $enabled && $allowed;
     $measured = ws_voice_measure_clean($measure['duration_ms'] ?? 0, $measure['peaks'] ?? '');
     $now = time();
+
+    // The sender's browser wrote it out where no service would: kept done,
+    // so the assistants its words ask hear it at once.
+    $heard = ws_voice_browser_rule(true, $enabled, $allowed) ? ws_voice_browser_transcript($measure['transcript'] ?? '', $name) : '';
+
+    if ($heard !== '') {
+        db("INSERT IGNORE INTO ws_voice (file_id, message_id, channel_id, duration_ms, peaks, status, transcript, provider, created_at, updated_at, transcribed_at)
+            VALUES ('" . (int) $file_id . "', '" . (int) $message_id . "', '" . (int) $channel['id'] . "', '" . (int) $measured['duration_ms'] . "', '" . e($measured['peaks']) . "',
+                'done', '" . e($heard) . "', 'browser', '" . $now . "', '" . $now . "', '" . $now . "')");
+
+        return false;
+    }
 
     db("INSERT IGNORE INTO ws_voice (file_id, message_id, channel_id, duration_ms, peaks, status, created_at, updated_at)
         VALUES ('" . (int) $file_id . "', '" . (int) $message_id . "', '" . (int) $channel['id'] . "', '" . (int) $measured['duration_ms'] . "', '" . e($measured['peaks']) . "',

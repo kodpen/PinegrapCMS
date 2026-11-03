@@ -2182,10 +2182,16 @@ function ws_handle_action($action, $request)
             // A message that could not be written (too many too fast, too
             // long) keeps no file, as the external API does.
             // A recording also carries the length and waveform its recorder
-            // measured, cleaned before they are kept (ws_voice_queue()).
+            // measured, and where no service writes it out the text the
+            // sender's browser wrote, cleaned before they are kept
+            // (ws_voice_queue()).
             $result = ws_message_send_file_bytes($viewer, $channel, $body, $file['name'], $file['binary'], array(
                 'parent_id' => $parent_id,
-                'voice'     => array('duration_ms' => $request['voice_duration_ms'] ?? 0, 'peaks' => $request['voice_peaks'] ?? ''),
+                'voice'     => array(
+                    'duration_ms' => $request['voice_duration_ms'] ?? 0,
+                    'peaks'       => $request['voice_peaks'] ?? '',
+                    'transcript'  => $request['voice_transcript'] ?? '',
+                ),
             ));
 
             if (!$result['ok']) {
