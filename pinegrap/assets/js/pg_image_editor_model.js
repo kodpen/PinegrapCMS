@@ -150,15 +150,15 @@
     // ---- tools ----
 
     var PROFILES = {
-        photo: ['select', 'crop', 'artboard', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'motion'],
-        canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'image', 'vector', 'frame', 'motion'],
+        photo: ['select', 'crop', 'artboard', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'scissors', 'motion'],
+        canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'image', 'vector', 'scissors', 'frame', 'motion'],
         annotate: ['arrow', 'rect', 'text', 'pen', 'redact'],
         optimise: ['export']
     };
 
     // Tools a caller may name: the rail's and the marking tools of the mini
     // bar (one draw kind each).
-    var TOOLS = ['select', 'crop', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'artboard', 'image', 'export', 'motion',
+    var TOOLS = ['select', 'crop', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'scissors', 'artboard', 'image', 'export', 'motion',
         'arrow', 'line', 'rect', 'ellipse', 'pen'];
 
     // The tools of one call: the caller's list (known names, first mention
@@ -2476,10 +2476,192 @@
         return { closed: true, knots: pts.map(function (p) { return knot(p[0], p[1]); }) };
     }
 
+    // -- scissors --
+
+    // A cut this close to a knot (in t) falls on the knot.
+    var CUT_EPS = 1e-4;
+
+    // The nearest point of the curve to p as nearestOnPath(), its t refined
+    // between the sampled steps around it: the place a click cuts.
+    function nearestCut(knots, closed, p) {
+        var best = nearestOnPath(knots, closed, p), segs = segments(knots, closed), s = segs[best.seg];
+
+        if (!s) {
+            return best;
+        }
+
+        var dist = function (t) { var q = cubicAt(s[0], s[1], t); return Math.hypot(q[0] - p[0], q[1] - p[1]); };
+        var lo = Math.max(0, best.t - 1 / 32), hi = Math.min(1, best.t + 1 / 32);
+
+        for (var i = 0; i < 48; i++) {
+            var a = lo + (hi - lo) / 3, b = hi - (hi - lo) / 3;
+
+            if (dist(a) < dist(b)) {
+                hi = b;
+            } else {
+                lo = a;
+            }
+        }
+
+        var t = (lo + hi) / 2, d = dist(t);
+
+        return (d <= best.d) ? { seg: best.seg, t: t, d: d } : best;
+    }
+
+    // Where the line from a to b crosses the curve: [{ seg, t }] in the
+    // curve's order, a crossing on a knot counted once.
+    function lineCuts(knots, closed, a, b) {
+        var dx = b[0] - a[0], dy = b[1] - a[1], N = 64, out = [], n = knots.length;
+        var side = function (q) { return dx * (q[1] - a[1]) - dy * (q[0] - a[0]); };
+
+        if (Math.hypot(dx, dy) < 1e-9) {
+            return out;
+        }
+
+        segments(knots, closed).forEach(function (s, seg) {
+            var at = function (t) { return cubicAt(s[0], s[1], t); }, p = at(0);
+
+            for (var i = 0; i < N; i++) {
+                var q = at((i + 1) / N), fp = side(p), fq = side(q);
+
+                // A sign change (or a sample on the line) between the two
+                // samples, half-open so a shared sample counts once.
+                if (((fp <= 0) && (fq > 0)) || ((fp >= 0) && (fq < 0))) {
+                    var lo = i / N, hi = (i + 1) / N, flo = fp, t = (fp === 0) ? lo : -1;
+
+                    for (var j = 0; (t < 0) && (j < 40); j++) {
+                        var mid = (lo + hi) / 2, fm = side(at(mid));
+
+                        if (fm === 0) {
+                            t = mid;
+                        } else if ((fm < 0) === (flo < 0)) {
+                            lo = mid;
+                            flo = fm;
+                        } else {
+                            hi = mid;
+                        }
+                    }
+
+                    t = (t < 0) ? (lo + hi) / 2 : t;
+
+                    var c = at(t);
+                    var u = ((c[0] - a[0]) * dx + (c[1] - a[1]) * dy) / (dx * dx + dy * dy);
+
+                    if ((u >= -1e-9) && (u <= 1 + 1e-9)) {
+                        if (t > 1 - CUT_EPS) {
+                            // On the next knot: as the next segment's start.
+                            out.push((seg + 1 < n) || !closed ? { seg: seg + 1, t: 0 } : { seg: 0, t: 0 });
+                        } else {
+                            out.push({ seg: seg, t: (t < CUT_EPS) ? 0 : t });
+                        }
+                    }
+                }
+
+                p = q;
+            }
+        });
+
+        out.sort(function (x, y) { return (x.seg - y.seg) || (x.t - y.t); });
+
+        return out.filter(function (c, i) {
+            var o = out[i - 1];
+
+            return !o || (o.seg !== c.seg) || (c.t - o.t > CUT_EPS);
+        });
+    }
+
+    // The knots cut at cuts ([{ seg, t }]): open pieces [{ knots, closed }]
+    // in the curve's order, each cut end a corner without the handle past
+    // it. A closed path opens at its first cut; a cut on an end of an open
+    // path does nothing. Null when nothing is cut.
+    function cutKnots(knots, closed, cuts) {
+        var n = knots.length, ks = knots.slice(), marks = knots.map(function () { return false; }), bySeg = {};
+
+        if (n < 2) {
+            return null;
+        }
+
+        (cuts || []).forEach(function (c) {
+            var seg = Number(c.seg), t = Number(c.t);
+
+            if (!(seg >= 0) || (seg >= (closed ? n : n - 1)) || !(t >= 0) || !(t <= 1)) {
+                return;
+            }
+
+            if (t < CUT_EPS) {
+                marks[seg] = true;
+            } else if (t > 1 - CUT_EPS) {
+                marks[(seg + 1) % n] = true;
+            } else {
+                (bySeg[seg] = bySeg[seg] || []).push(t);
+            }
+        });
+
+        // Later segments first, the larger t first in a segment: the knots
+        // before stay where they are, and the rest of a split segment runs
+        // from 0 to the last split's t.
+        Object.keys(bySeg).map(Number).sort(function (x, y) { return y - x; }).forEach(function (seg) {
+            var ts = bySeg[seg].sort(function (x, y) { return y - x; }), span = 1;
+
+            ts.forEach(function (t) {
+                if (span - t < CUT_EPS * span) {
+                    return;
+                }
+
+                ks = splitAt(ks, closed, seg, t / span);
+                marks.splice(seg + 1, 0, true);
+                span = t;
+            });
+        });
+
+        var at = [];
+
+        marks.forEach(function (m, i) {
+            if (m && (closed || ((i > 0) && (i < ks.length - 1)))) {
+                at.push(i);
+            }
+        });
+
+        if (!at.length) {
+            return null;
+        }
+
+        var seq = ks, bounds;
+
+        if (closed) {
+            var first = at[0];
+
+            seq = ks.slice(first).concat(ks.slice(0, first), [ks[first]]);
+            bounds = at.map(function (i) { return i - first; }).concat([seq.length - 1]);
+        } else {
+            bounds = [0].concat(at, [ks.length - 1]);
+        }
+
+        var pieces = [];
+
+        for (var i = 0; i < bounds.length - 1; i++) {
+            var part = seq.slice(bounds[i], bounds[i + 1] + 1).map(function (q) {
+                return { x: q.x, y: q.y, ix: q.ix, iy: q.iy, ox: q.ox, oy: q.oy, s: !!q.s };
+            });
+            var a = part[0], b = part[part.length - 1];
+
+            a.ix = a.x;
+            a.iy = a.y;
+            a.s = false;
+            b.ox = b.x;
+            b.oy = b.y;
+            b.s = false;
+            pieces.push({ knots: part, closed: false });
+        }
+
+        return pieces;
+    }
+
     var VECTOR = {
         segments: segments, cubicAt: cubicAt, knotsD: knotsD, curvePoints: curvePoints, knotBounds: knotBounds, pathLayer: pathLayer,
         pathKnots: pathKnots, refitPath: refitPath, pathShape: pathShape, smoothKnot: smoothKnot, cornerKnot: cornerKnot,
-        moveKnot: moveKnot, moveHandle: moveHandle, nearestOnPath: nearestOnPath, splitAt: splitAt, shapeKnots: shapeKnots
+        moveKnot: moveKnot, moveHandle: moveHandle, nearestOnPath: nearestOnPath, splitAt: splitAt, shapeKnots: shapeKnots,
+        nearestCut: nearestCut, lineCuts: lineCuts, cutKnots: cutKnots
     };
 
     // -- SVG open and save (pg_image_editor_svg.js) --
@@ -3648,46 +3830,74 @@
     }
 
     // A placed sticker or glyph with another one in its place: pick is a
-    // built-in sticker { type: 'sticker', kind, label, fill, ink } or a glyph
-    // { type: 'glyph', set: 'bi'|'emoji', code }. Box, turn, opacity, colour,
-    // motion and every other field stay; only the drawn thing changes, and
-    // the old type's own fields go (a sticker's kind, label and ink, a
-    // glyph's set and code). The colour is kept on an emoji too, so an emoji
-    // turned back into an icon or sticker gets it again. null when the layer
-    // or the pick is not one of these.
-    function swapGlyph(l, pick) {
+    // built-in sticker { type: 'sticker', kind, label, fill, ink, w, h } (its
+    // label already translated) or a glyph { type: 'glyph', set: 'bi'|'emoji',
+    // code }; oldText is the old sticker kind's own label text (translated).
+    // Turn, opacity, motion and every other field stay. What the person
+    // changed on the old one stays too: a label other than its kind's text, a
+    // colour or ink other than its kind's (an icon's other than #212529);
+    // else the pick brings its own. The pick keeps its own proportions,
+    // fitted inside the old box about its centre; a swap between the same
+    // proportions keeps the box. The old type's own fields go (a sticker's
+    // kind, label and ink, a glyph's set and code); the colour stays on an
+    // emoji, so an emoji turned back into an icon gets it again. null when
+    // the layer or the pick is not one of these.
+    function swapGlyph(l, pick, oldText) {
         if (!l || ((l.type !== 'sticker') && (l.type !== 'glyph')) || !pick) {
             return null;
         }
 
-        var next = clone(l), was = l.type;
+        var toSticker = (pick.type === 'sticker');
 
-        ['kind', 'label', 'ink', 'set', 'code'].forEach(function (k) { delete next[k]; });
-
-        if (pick.type === 'sticker') {
-            if (!pick.kind) {
-                return null;
-            }
-
-            next.type = 'sticker';
-            next.kind = pick.kind;
-            next.label = ((was === 'sticker') && l.label) ? l.label : String(pick.label || '');
-            next.color = l.color || pick.fill || '#000000';
-            next.ink = ((was === 'sticker') && l.ink) ? l.ink : (pick.ink || '#ffffff');
-
-            return next;
-        }
-
-        if ((pick.type !== 'glyph') || !glyphText({ set: pick.set, code: pick.code })) {
+        if (toSticker ? !pick.kind : ((pick.type !== 'glyph') || !glyphText({ set: pick.set, code: pick.code }))) {
             return null;
         }
 
-        next.type = 'glyph';
-        next.set = pick.set;
-        next.code = pick.code;
+        var next = clone(l), was = l.type, def = null, i;
 
-        if ((pick.set === 'bi') && !next.color) {
-            next.color = '#212529';
+        for (i = 0; (was === 'sticker') && (i < STICKER.STICKERS.length); i++) {
+            if (STICKER.STICKERS[i].kind === l.kind) {
+                def = STICKER.STICKERS[i];
+            }
+        }
+
+        // The old colour when the person chose it, else null.
+        var own = function (value, given) {
+            return (value && (String(value).toLowerCase() !== String(given || '').toLowerCase())) ? value : null;
+        };
+        var color = (was === 'sticker') ? own(l.color, def && def.fill) : ((l.set === 'bi') ? own(l.color, '#212529') : null);
+
+        ['kind', 'label', 'ink', 'set', 'code'].forEach(function (k) { delete next[k]; });
+
+        if (toSticker) {
+            next.type = 'sticker';
+            next.kind = pick.kind;
+            next.label = ((was === 'sticker') && (String(l.label || '') !== String(oldText || ''))) ? String(l.label || '') : String(pick.label || '');
+            next.color = color || pick.fill || '#000000';
+            next.ink = ((was === 'sticker') && own(l.ink, def && def.ink)) || pick.ink || '#ffffff';
+        } else {
+            next.type = 'glyph';
+            next.set = pick.set;
+            next.code = pick.code;
+
+            if (was === 'sticker') {
+                next.color = color || '#212529';
+            } else if ((pick.set === 'bi') && !next.color) {
+                next.color = '#212529';
+            }
+        }
+
+        // The pick's own proportions inside the old box, same centre.
+        var ratio = (toSticker && (pick.w > 0) && (pick.h > 0)) ? pick.w / pick.h : 1;
+        var w = Number(l.w) || 0, h = Number(l.h) || 0;
+
+        if ((w > 0) && (h > 0) && (Math.abs(w / h - ratio) > 1e-6)) {
+            var nw = (w / h > ratio) ? h * ratio : w, nh = nw / ratio;
+
+            next.x = l.x + (w - nw) / 2;
+            next.y = l.y + (h - nh) / 2;
+            next.w = nw;
+            next.h = nh;
         }
 
         return next;

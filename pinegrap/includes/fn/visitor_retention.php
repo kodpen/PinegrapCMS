@@ -342,8 +342,7 @@ function pg_visitor_summary_through()
 }
 
 /**
- * Where the raw rows take over from the summary: midnight of the day after
- * the last summarized day, or 0 when nothing is summarized.
+ * Where the raw rows take over from the summary: pg_visitor_rows_from().
  *
  * A report adds the summary for the days before this moment to the rows from
  * this moment on, and must leave out any raw row before it: the summary
@@ -354,13 +353,181 @@ function pg_visitor_summary_through()
  */
 function pg_visitor_summary_raw_from()
 {
-    $through = pg_visitor_summary_through();
+    return pg_visitor_rows_from();
+}
 
-    if ($through === '') {
+/**
+ * The first moment from which the raw visitor rows are complete: the
+ * retention boundary, or midnight of an earlier day while the summary has
+ * not yet reached the days before the boundary (those rows are still there,
+ * since only summarized days are removed). 0 with records kept without a
+ * limit.
+ *
+ * The summary is written for every day, so it also covers days after this
+ * moment; a screen that filters or lists single visits reads it only before.
+ *
+ * @return int
+ */
+function pg_visitor_rows_from()
+{
+    $settings = pg_visitor_retention_settings();
+
+    if (($settings === false) || ($settings['days'] <= 0)) {
         return 0;
     }
 
-    return (int) strtotime('+1 day', strtotime($through . ' 00:00:00'));
+    $cutoff = pg_visitor_retention_cutoff($settings['days'], time());
+
+    if (!$settings['summary']) {
+        return $cutoff;
+    }
+
+    $cutoff_day = date('Y-m-d', $cutoff);
+    $oldest_day = pg_visitor_oldest_day();
+
+    $summarized = ($oldest_day !== '') ? pg_visitor_summarized_days($oldest_day, $cutoff_day) : array();
+
+    return min($cutoff, (int) strtotime(pg_visitor_summary_covered_until($summarized, $oldest_day, $cutoff_day) . ' 00:00:00'));
+}
+
+/**
+ * The day of the oldest visitor row, Y-m-d by the site's clock, '' when the
+ * table is empty.
+ *
+ * @return string
+ */
+function pg_visitor_oldest_day()
+{
+    $oldest = db_value("SELECT MIN(start_timestamp) FROM visitors");
+
+    return (($oldest === null) || ($oldest === '') || ((int) $oldest <= 0)) ? '' : date('Y-m-d', (int) $oldest);
+}
+
+/**
+ * The days from $from to $to (both Y-m-d, both included) whose summary is
+ * complete, that is whose totals row is there.
+ *
+ * @param string $from
+ * @param string $to
+ * @return array Y-m-d strings
+ */
+function pg_visitor_summarized_days($from, $to)
+{
+    $days = db_values(
+        "SELECT stat_date FROM visitor_stats_daily
+        WHERE (dimension = '') AND (stat_date >= '" . e($from) . "') AND (stat_date <= '" . e($to) . "')");
+
+    return array_map('strval', (array) $days);
+}
+
+/**
+ * A calendar day $offset days from $day, both Y-m-d. Counted on UTC noon so
+ * that a daylight saving change in the site's zone never skips or repeats a
+ * day.
+ *
+ * @param string $day
+ * @param int    $offset
+ * @return string
+ */
+function pg_visitor_day_add($day, $offset)
+{
+    return gmdate('Y-m-d', (int) strtotime($day . ' 12:00:00 UTC') + ((int) $offset * 86400));
+}
+
+/**
+ * The days a run of the summary writes, in the order it writes them.
+ *
+ * Yesterday and the day before come first: written again when $rewrite_recent
+ * (an order completed after midnight on a visit begun before it changes
+ * them), otherwise only if missing. Then the days the removal waits for,
+ * oldest first: the days before the retention boundary not summarized yet.
+ * Then every other day not summarized, backwards from yesterday to the
+ * oldest visit. Days before the oldest visit have no rows to count.
+ *
+ * @param array  $summarized     Y-m-d of the days already summarized
+ * @param string $oldest_day     Day of the oldest visitor row, '' for none
+ * @param string $yesterday      Y-m-d
+ * @param string $cutoff_day     Day of the retention boundary, '' for none
+ * @param bool   $rewrite_recent Whether the last two days are written again
+ * @return array Y-m-d strings
+ */
+function pg_visitor_summary_days_due($summarized, $oldest_day, $yesterday, $cutoff_day, $rewrite_recent)
+{
+    $out = array();
+
+    if (($oldest_day === '') || ($oldest_day > $yesterday)) {
+        return $out;
+    }
+
+    $done = array_flip(array_map('strval', (array) $summarized));
+
+    foreach (array($yesterday, pg_visitor_day_add($yesterday, -1)) as $day) {
+        if (($day >= $oldest_day) && ($rewrite_recent || !isset($done[$day]))) {
+            $out[] = $day;
+        }
+    }
+
+    $recent_end = pg_visitor_day_add($yesterday, -2);
+
+    if ($cutoff_day !== '') {
+        for ($day = $oldest_day; ($day < $cutoff_day) && ($day <= $recent_end); $day = pg_visitor_day_add($day, 1)) {
+            if (!isset($done[$day])) {
+                $out[] = $day;
+            }
+        }
+    }
+
+    $floor = (($cutoff_day !== '') && ($cutoff_day > $oldest_day)) ? $cutoff_day : $oldest_day;
+
+    for ($day = $recent_end; $day >= $floor; $day = pg_visitor_day_add($day, -1)) {
+        if (!isset($done[$day])) {
+            $out[] = $day;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The first day from the oldest visit on that is not summarized, at most the
+ * day of the retention boundary: every row before its midnight is counted in
+ * the summary, so the removal may go up to there.
+ *
+ * @param array  $summarized Y-m-d of the days summarized
+ * @param string $oldest_day Day of the oldest visitor row, '' for none
+ * @param string $cutoff_day Day of the retention boundary
+ * @return string Y-m-d
+ */
+function pg_visitor_summary_covered_until($summarized, $oldest_day, $cutoff_day)
+{
+    if (($oldest_day === '') || ($oldest_day >= $cutoff_day)) {
+        return $cutoff_day;
+    }
+
+    $done = array_flip(array_map('strval', (array) $summarized));
+
+    for ($day = $oldest_day; $day < $cutoff_day; $day = pg_visitor_day_add($day, 1)) {
+        if (!isset($done[$day])) {
+            return $day;
+        }
+    }
+
+    return $cutoff_day;
+}
+
+/**
+ * Whether a run writes yesterday and the day before again: on the first run
+ * of a day, then at most once an hour.
+ *
+ * @param array  $last      pg_visitor_cleanup_last()
+ * @param string $yesterday Y-m-d
+ * @param int    $now
+ * @return bool
+ */
+function pg_visitor_summary_recent_due($last, $yesterday, $now)
+{
+    return !isset($last['recent_day']) || ((string) $last['recent_day'] !== $yesterday)
+        || !isset($last['recent_at']) || ((int) $last['recent_at'] <= ((int) $now - 3600));
 }
 
 /**
@@ -381,11 +548,13 @@ function pg_visitor_summary_raw_from()
  */
 function pg_visitor_summary_report_rows($from, $to, $groupings)
 {
-    $through = pg_visitor_summary_through();
+    $rows_from = pg_visitor_rows_from();
 
-    if ($through === '') {
+    if ($rows_from <= 0) {
         return array();
     }
+
+    $through = date('Y-m-d', $rows_from - 1);
 
     $dates = array('year' => '%Y', 'month' => '%m', 'day' => '%d');
     $dimensions = pg_visitor_summary_dimensions();
@@ -486,7 +655,18 @@ function pg_visitor_summarize_day($date)
     // import) is read through the index instead.
     $span = db_item("SELECT COUNT(*) AS n, MIN(id) AS lo, MAX(id) AS hi FROM visitors WHERE " . $range);
 
-    if (!is_array($span) || ((int) $span['n'] === 0)) {
+    $figures = pg_visitor_summary_figures();
+
+    $insert = "INSERT INTO visitor_stats_daily (stat_date, dimension, dim_value, is_rest, " . implode(', ', $figures) . ") VALUES ";
+
+    if (!is_array($span)) {
+        return 0;
+    }
+
+    // A day without visits still gets its totals row, all zeros, so that it
+    // counts as summarized and is not looked at again.
+    if ((int) $span['n'] === 0) {
+        db($insert . "('" . e($date) . "', '', '', 0" . str_repeat(', 0', count($figures)) . ")");
         return 0;
     }
 
@@ -502,10 +682,6 @@ function pg_visitor_summarize_day($date)
     if (!is_array($total) || ((int) $total['visits'] === 0)) {
         return 0;
     }
-
-    $figures = pg_visitor_summary_figures();
-
-    $insert = "INSERT INTO visitor_stats_daily (stat_date, dimension, dim_value, is_rest, " . implode(', ', $figures) . ") VALUES ";
 
     $values = function ($dimension, $line) use ($date, $figures) {
         $sql = "('" . e($date) . "', '" . e($dimension) . "', '" . e(mb_substr((string) $line['value'], 0, 255)) . "', " . (int) $line['rest'];
@@ -578,7 +754,8 @@ function pg_visitor_cleanup_marker()
  * What the last run left behind, from the marker file.
  *
  * @return array('checked_at' => int, 'backlog' => bool, 'deleted' => int,
- *               'summarized' => int, 'seconds' => float)
+ *               'summarized' => int, 'seconds' => float,
+ *               'recent_day' => string, 'recent_at' => int)
  */
 function pg_visitor_cleanup_last()
 {
@@ -594,6 +771,8 @@ function pg_visitor_cleanup_last()
         'deleted' => isset($last['deleted']) ? (int) $last['deleted'] : 0,
         'summarized' => isset($last['summarized']) ? (int) $last['summarized'] : 0,
         'seconds' => isset($last['seconds']) ? (float) $last['seconds'] : 0.0,
+        'recent_day' => isset($last['recent_day']) ? (string) $last['recent_day'] : '',
+        'recent_at' => isset($last['recent_at']) ? (int) $last['recent_at'] : 0,
     );
 }
 
@@ -616,7 +795,8 @@ function pg_visitor_cleanup_reset()
  * Every tick while rows are waiting (a run ran out of time with work left),
  * otherwise once an hour: once the table is down to its period, all an hour
  * adds is the rows that crossed the boundary since. Also with records kept
- * without a limit, as long as their IP addresses go after a period.
+ * without a limit, as long as the daily summary is on or their IP addresses
+ * go after a period.
  *
  * @return bool
  */
@@ -624,7 +804,7 @@ function pg_visitor_cleanup_due()
 {
     $settings = pg_visitor_retention_settings();
 
-    if (($settings === false) || (($settings['days'] <= 0) && ($settings['ip_days'] <= 0))) {
+    if (($settings === false) || (($settings['days'] <= 0) && ($settings['ip_days'] <= 0) && !$settings['summary'])) {
         return false;
     }
 
@@ -634,13 +814,16 @@ function pg_visitor_cleanup_due()
 }
 
 /**
- * Remove the visitor rows older than the retention period, summarizing each
- * day first when the summary is on.
+ * Write the daily summary of every day through yesterday when it is on, and
+ * remove the visitor rows older than the retention period.
  *
  * Written to be stopped at any point and picked up again:
  *
  * - The summary goes a day at a time and a day is marked done only by its
- *   last row, so a run cut off in the middle writes that day again.
+ *   last row, so a run cut off in the middle writes that day again. Its
+ *   order is pg_visitor_summary_days_due(): yesterday and the day before
+ *   (written again on the first run of a day and then hourly), the days the
+ *   removal waits for, then backwards to the oldest visit.
  * - Rows are removed in chunks of $chunk by primary key, each chunk its own
  *   short statement and its own transaction. A visit being written meanwhile
  *   is a row at the far end of the key and is never waited on; nothing locks
@@ -695,7 +878,7 @@ function pg_visitor_cleanup_run($budget_seconds = 15, $chunk = 5000)
     $result['summary'] = $settings['summary'];
     $result['ip_days'] = $settings['ip_days'];
 
-    if (($settings['days'] <= 0) && ($settings['ip_days'] <= 0)) {
+    if (($settings['days'] <= 0) && ($settings['ip_days'] <= 0) && !$settings['summary']) {
         $result['state'] = 'off';
         return $result;
     }
@@ -758,40 +941,48 @@ function pg_visitor_cleanup_run($budget_seconds = 15, $chunk = 5000)
     // -- The summary ---------------------------------------------------------
     $delete_before = $cutoff;
     $summary_complete = true;
+    $last = pg_visitor_cleanup_last();
+    $recent_day = $last['recent_day'];
+    $recent_at = $last['recent_at'];
 
-    if ($settings['summary'] && ($cutoff > 0)) {
+    if ($settings['summary']) {
 
-        $through = pg_visitor_summary_through();
-        $summary_complete = false;
+        $today = date('Y-m-d');
+        $yesterday = pg_visitor_day_add($today, -1);
+        $cutoff_day = ($cutoff > 0) ? date('Y-m-d', $cutoff) : '';
+        $oldest_day = pg_visitor_oldest_day();
 
-        while (microtime(true) < $summary_deadline) {
+        $summarized = ($oldest_day !== '') ? pg_visitor_summarized_days($oldest_day, $yesterday) : array();
+        $rewrite_recent = pg_visitor_summary_recent_due($last, $yesterday, time());
 
-            $from = ($through !== '') ? (int) strtotime('+1 day', strtotime($through . ' 00:00:00')) : 1;
+        $due = pg_visitor_summary_days_due($summarized, $oldest_day, $yesterday, $cutoff_day, $rewrite_recent);
+        $written = 0;
+        $recent_count = count(array_intersect(array_slice($due, 0, 2), array($yesterday, pg_visitor_day_add($yesterday, -1))));
 
-            // The next day that has rows, so a gap of empty days costs one
-            // read and not one per day.
-            $next = db_value(
-                "SELECT MIN(start_timestamp)
-                FROM visitors
-                WHERE (start_timestamp >= " . (int) $from . ") AND (start_timestamp < " . (int) $cutoff . ")");
+        foreach ($due as $day) {
 
-            if (($next === null) || ($next === '') || ((int) $next <= 0)) {
-                $summary_complete = true;
+            if (microtime(true) >= $summary_deadline) {
                 break;
             }
 
-            $day = date('Y-m-d', (int) $next);
-
             pg_visitor_summarize_day($day);
 
-            $through = $day;
+            $summarized[] = $day;
+            $written++;
             $result['summarized']++;
+
+            // Both recent days written: the next rewrite is an hour away.
+            if ($rewrite_recent && ($written === $recent_count)) {
+                $recent_day = $yesterday;
+                $recent_at = time();
+            }
         }
 
-        // Only what the summary already holds goes. When it has caught up to
-        // the boundary, that is everything before it.
-        if (!$summary_complete) {
-            $delete_before = ($through !== '') ? min($cutoff, (int) strtotime('+1 day', strtotime($through . ' 00:00:00'))) : 0;
+        $summary_complete = ($written === count($due));
+
+        // Only what the summary already holds goes.
+        if ($cutoff > 0) {
+            $delete_before = min($cutoff, (int) strtotime(pg_visitor_summary_covered_until($summarized, $oldest_day, $cutoff_day) . ' 00:00:00'));
         }
     }
 
@@ -897,6 +1088,8 @@ function pg_visitor_cleanup_run($budget_seconds = 15, $chunk = 5000)
         'months' => $result['months'],
         'ip_cleared' => $result['ip_cleared'],
         'seconds' => $result['seconds'],
+        'recent_day' => $recent_day,
+        'recent_at' => $recent_at,
     )));
 
     return $result;

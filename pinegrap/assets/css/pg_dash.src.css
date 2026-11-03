@@ -340,7 +340,7 @@
     margin-top: 1rem;
   }
 
-  @media (min-width: 640px) {
+  @container pgdash (min-width: 38rem) {
     .pg-dash-tiles {
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }
@@ -399,10 +399,11 @@
   /* ── System Status card ───────────────────────────────────────────────
      Widget 2's gauge (.pg-health* in backend.src.css, kept as it is) and its
      checks as the drawings' chips, in a card about 340 px wide beside the
-     greeting from 1000 px, under it below that. The checks that are fine
-     fold behind one chip. A greeting alone keeps the whole row. */
+     greeting on a dashboard 58rem wide (a 1000 px window), under it below
+     that. The checks that are fine fold behind one chip. A greeting alone
+     keeps the whole row. */
 
-  @media (min-width: 1000px) {
+  @container pgdash (min-width: 58rem) {
     .pg-dash-top:has(> .pg-dash-status) {
       grid-template-columns: minmax(0, 1fr) minmax(0, 21.25rem);
     }
@@ -688,7 +689,23 @@
     }
   }
 
-  /* ── Grid ─────────────────────────────────────────────────────────────── */
+  /* ── Width and grid ───────────────────────────────────────────────────
+     The columns follow the dashboard's own width, not the window's: the
+     rail may be open, and edit mode keeps the page's columns while its
+     panel takes a side. The dashboard's parts stop at 118rem, centred, so
+     a wide screen shows four cards of about 450 px, the drawings' size,
+     instead of cards and rows stretched across it; the panel backdrop
+     still fills #content. With a 60 px rail: 2 columns from a 640 px
+     window, 3 from 1000 px, 4 from 1600 px, centred from 1980 px. */
+
+  .pg-dash {
+    container: pgdash / inline-size;
+  }
+
+  .pg-dash > * {
+    max-width: 118rem;
+    margin-inline: auto;
+  }
 
   .pg-dash-grid {
     display: grid;
@@ -698,49 +715,56 @@
     margin-bottom: 3rem;
   }
 
-  @media (min-width: 640px) {
+  @container pgdash (min-width: 38rem) {
     .pg-dash-grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
+    .pg-dash-grid > [data-width="M"] {
+      grid-column: span 2;
+    }
   }
 
-  @media (min-width: 1000px) {
+  @container pgdash (min-width: 58rem) {
     .pg-dash-grid {
       grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
 
-  /* Wide screens take more columns, so a narrow card stays about the
-     drawings' 380 to 480 px instead of a third of the screen. */
-  @media (min-width: 1600px) {
+  @container pgdash (min-width: 94rem) {
     .pg-dash-grid {
       grid-template-columns: repeat(4, minmax(0, 1fr));
     }
-  }
-
-  @media (min-width: 2200px) {
-    .pg-dash-grid {
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-    }
-  }
-
-  @media (min-width: 2800px) {
-    .pg-dash-grid {
-      grid-template-columns: repeat(6, minmax(0, 1fr));
-    }
-  }
-
-  .pg-dash-grid > [data-width="M"] {
-    grid-column: span 2;
   }
 
   .pg-dash-grid > [data-width="L"] {
     grid-column: 1 / -1;
   }
 
-  @media (max-width: 639.98px) {
-    .pg-dash-grid > [data-width="M"] {
-      grid-column: auto;
+  /* Without container queries the window decides, as before. */
+  @supports not (container-type: inline-size) {
+    @media (min-width: 640px) {
+      .pg-dash-tiles {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .pg-dash-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .pg-dash-grid > [data-width="M"] {
+        grid-column: span 2;
+      }
+    }
+
+    @media (min-width: 1000px) {
+      .pg-dash-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .pg-dash-top:has(> .pg-dash-status) {
+        grid-template-columns: minmax(0, 1fr) minmax(0, 21.25rem);
+      }
     }
   }
 

@@ -9,12 +9,11 @@ description: How the visitors table is kept small: retention days, daily summary
 
 ## What are the rules and defaults?
 - `config.visitor_retention_days`: default 90, 0 = keep forever, allowed 7–3650 (invalid input is refused with a field error). The column was added with `DEFAULT 90`, so upgraded sites get 90; 0 only where someone chose it, and no step overwrites that choice.
-- `config.visitor_summary` (default on): before deleting, each day is summarised into `visitor_stats_daily` with the report's grouping keys; top 100 values per dimension plus one rest row (`is_rest`); the total row (`dimension = ''`) is written last and marks the day done. Only summarised days are deleted.
-- Reports and `GET /reports/visitors` read the summary before the first raw day and raw rows after it (year/month/day + at most one grouping, no filters), answer `summary_to`, and say which days a report cannot cover.
+- `config.visitor_summary` (default on): every day through yesterday is summarised into `visitor_stats_daily`, whatever the retention; only summarised days are deleted. Day order, `pg_visitor_rows_from()` and how reports read it: `visitor-daily-summary.md`.
 - Warning when the table passes 2,000,000 rows or a 512 MB file (`pg_visitor_health_thresholds()`), on the card and in System status (no score effect). Figure sources: `visitor-table-size-figures`.
 
 ## How does deletion run?
-- In `job.php` (`pg_visitor_cleanup_run()`): every tick while there is a backlog, else hourly; 15 s per run, the summary takes at most ~60 %.
+- In `job.php` (`pg_visitor_cleanup_run()`): every tick while there is a backlog, else hourly, also with retention off while the summary is on; 15 s per run, the summary takes at most ~60 %.
 - Primary-key windows (`id > a AND id <= b AND start_timestamp < cutoff`): InnoDB 5,000 rows with 20 ms pauses, MyISAM 1,000 rows with a pause as long as the chunk took. `ORDER BY id LIMIT` was tried first and was slow (the server picked the timestamp index). `GET_LOCK` keeps runs apart.
 - "Clean visitor records now" on the card runs 20 s steps while the page is open. "Optimize" is separate and warned (free disk = table size).
 - Upgrades never delete rows.
