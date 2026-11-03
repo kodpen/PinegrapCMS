@@ -182,8 +182,7 @@ if (pg_seo_schema_ready()) {
     $stale_page_ids = array();
     $stale_result = db_q(
         'SELECT DISTINCT page.page_id, page.page_timestamp ' . pg_page_list_from($view)
-        . ' WHERE ' . $view['where'] . ' AND (page.seo_analysis_current = 0) ORDER BY page.page_timestamp DESC LIMIT 200',
-        array());
+        . ' WHERE ' . $view['where'] . ' AND (page.seo_analysis_current = 0) ORDER BY page.page_timestamp DESC LIMIT 200');
 
     while ($stale_result && ($stale_row = mysqli_fetch_assoc($stale_result))) {
         $stale_page_ids[] = $stale_row['page_id'];

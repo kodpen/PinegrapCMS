@@ -669,7 +669,6 @@ function pg_page_list_rows($view, $pages)
         // (custom style, folder default) in the page screen.
         $edit_url = pg_page_edit_url($page);
         $seo_url = 'get_seo_analysis.php?type=page&amp;id=' . $id . get_token_query_string_field();
-        $seo_name = h(pg_seo_link_name($page));
         $home = ($page['page_home'] == 'yes') ? '<span class="material-icons" role="img" aria-label="' . h(lang('Home Page')) . '">home</span>' : '';
 
         $cells = array(
@@ -678,7 +677,7 @@ function pg_page_list_rows($view, $pages)
                 '<button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . h(escape_javascript($edit_url)) . '\'"><i class="bi bi-pencil"></i></button>'
                 . '<button type="button" class="m-1 btn-data-control btn btn-outline theme-secondary border-2" title="' . lang('Preview') . '" onclick="window.location.href=\'' . h(escape_javascript($link_url)) . '\'"><i class="bi bi-link"></i></button>',
                 'align-middle text-start action-buttons'),
-            pg_list_cell($home . h($page['page_name']) . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" data-pg-seo-bar="page:' . $id . '" aria-label="' . $seo_name . '" title="' . lang('SEO Detail') . '" data-seo-url="' . $seo_url . '">' . pg_seo_render_bar($page) . '</a>', 'align-middle chart_label position-relative'),
+            pg_list_cell($home . h($page['page_name']) . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" data-pg-seo-bar="page:' . (int) $page['page_id'] . '" aria-label="' . h(pg_seo_link_name($page)) . '" title="' . lang('SEO Detail') . '" data-seo-url="' . $seo_url . '">' . pg_seo_render_bar($page) . '</a>', 'align-middle chart_label position-relative'),
         );
 
         if ($view['custom_form']) {
@@ -692,7 +691,7 @@ function pg_page_list_rows($view, $pages)
         $cells[] = pg_list_cell(($page['page_search'] == 1) ? $check : '', 'align-middle text-center');
         $cells[] = pg_list_cell(($page['comments'] == '1') ? $check : '', 'align-middle text-center');
         $cells[] = pg_list_cell(($page['sitemap'] == '1') ? $check : '', 'align-middle text-center');
-        $cells[] = pg_list_cell('<a href="javascript:void(0)" class="pg-seo-open text-decoration-none" data-pg-seo-badge="page:' . $id . '" aria-label="' . $seo_name . '" title="' . lang('SEO Detail') . '" data-seo-url="' . $seo_url . '">' . pg_seo_render_badge($page) . '</a>', 'align-middle text-center');
+        $cells[] = pg_list_cell('<a href="javascript:void(0)" class="pg-seo-open text-decoration-none" data-pg-seo-badge="page:' . (int) $page['page_id'] . '" aria-label="' . h(pg_seo_link_name($page)) . '" title="' . lang('SEO Detail') . '" data-seo-url="' . $seo_url . '">' . pg_seo_render_badge($page) . '</a>', 'align-middle text-center');
         $cells[] = pg_list_cell(pg_seo_render_impact($page), 'align-middle text-center');
         $cells[] = pg_list_cell(pg_list_when($page['page_timestamp'], $page['user_username'] ?? ''));
 
