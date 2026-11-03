@@ -2178,6 +2178,7 @@
     "The first answer's time is a whole number of hours, at most {var:1}.": "İlk yanıt süresi tam sayı olarak saat cinsinden yazılır, en çok {var:1}.",
     "The first café on the market square": "Çarşı meydanındaki ilk kafe",
     "The first customer arrives at a quarter to five, before the sign is switched on, and takes the stool nearest the coffee. Nobody asks what he wants. The cook has already cracked two eggs onto the griddle.": "İlk müşteri, tabela daha yanmadan, beşe çeyrek kala geliyor ve kahveye en yakın tabureye oturuyor. Kimse ne istediğini sormuyor. Aşçı iki yumurtayı çoktan ızgaraya kırmış bile.",
+    "The first date of a new recurrence cannot be in the past.": "Yeni bir tekrarın ilk tarihi geçmişte olamaz.",
     "The first day cannot be after the last.": "İlk gün son günden sonra olamaz.",
     "The first day is about building what matters: the opening keynote, then a talk in each track and the workshops in the afternoon.": "İlk gün önemli olanı inşa etmek üzerine: açılış konuşması, ardından her oturum dizisinde bir konuşma ve öğleden sonra atölyeler.",
     "The first days were uncomfortable. Without the small rewards of new messages, the work felt slow and heavy. Then, somewhere in the second week, the heaviness turned into something closer to calm.": "İlk günler rahatsız ediciydi. Yeni mesajların küçük ödülleri olmadan iş yavaş ve ağır geliyordu. Sonra, ikinci haftanın bir yerinde, o ağırlık huzura daha yakın bir şeye dönüştü.",

@@ -46,3 +46,21 @@ function test_erp_invoice_recurring_day_follows_a_chosen_day()
 	pg_assert_same(31, erp_invoice_recurring_day('2026-01-31', '2026-03-31'), 'a month that has the day');
 	pg_assert_same(31, erp_invoice_recurring_day('2026-03-31', '2026-06-30'), 'every three months from the 31st');
 }
+
+// A new recurrence never proposes a first date in the past: an old invoice
+// starts tomorrow, a recent one a period after its date.
+function test_erp_invoice_recurring_first_default_never_in_the_past()
+{
+	pg_assert_same('2026-11-04', erp_invoice_recurring_first_default('2026-10-01', '2026-11-03'), 'an invoice a month old starts tomorrow');
+	pg_assert_same('2026-11-04', erp_invoice_recurring_first_default('2026-10-03', '2026-11-03'), 'one period after is today: tomorrow');
+	pg_assert_same('2026-12-01', erp_invoice_recurring_first_default('2026-11-01', '2026-11-03'), 'a recent invoice keeps its period');
+	pg_assert_same('2027-01-01', erp_invoice_recurring_first_default('2026-11-30', '2026-12-31'), 'tomorrow across the year end');
+}
+
+// A first date before today is refused; today and later are accepted.
+function test_erp_invoice_recurring_first_in_past()
+{
+	pg_assert_same(true, erp_invoice_recurring_first_in_past('2026-11-02', '2026-11-03'), 'yesterday');
+	pg_assert_same(false, erp_invoice_recurring_first_in_past('2026-11-03', '2026-11-03'), 'today');
+	pg_assert_same(false, erp_invoice_recurring_first_in_past('2026-11-04', '2026-11-03'), 'tomorrow');
+}

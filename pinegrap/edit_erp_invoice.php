@@ -1412,11 +1412,11 @@ if (function_exists('erp_invoice_recurring_ready') && erp_invoice_recurring_read
                         </div>
                         <div class="col-6 md:col-3">
                             <label class="form-label" for="recur_first">' . lang('Next invoice on') . '</label>
-                            <input type="date" data-pg-date class="form-control form-control-sm" id="recur_first" name="recur_first" value="' . h(erp_expense_recurring_step((string) $invoice['issue_date'], 1, (int) substr((string) $invoice['issue_date'], 8, 2))) . '" required />
+                            <input type="date" data-pg-date class="form-control form-control-sm" id="recur_first" name="recur_first" value="' . h(erp_invoice_recurring_first_default((string) $invoice['issue_date'], date('Y-m-d'))) . '" min="' . h(date('Y-m-d', strtotime('+1 day'))) . '" required />
                         </div>
                         <div class="col-6 md:col-3">
                             <label class="form-label" for="recur_end">' . lang('Until (optional)') . '</label>
-                            <input type="date" data-pg-date class="form-control form-control-sm" id="recur_end" name="recur_end" />
+                            <input type="date" data-pg-date class="form-control form-control-sm" id="recur_end" name="recur_end" min="' . h(date('Y-m-d', strtotime('+1 day'))) . '" />
                         </div>
                         <div class="col-6 md:col-3">
                             <label class="form-label" for="recur_mode">' . lang('Each invoice is') . '</label>
