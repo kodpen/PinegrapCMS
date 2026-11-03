@@ -370,3 +370,16 @@ function test_erp_line_amount_fits_caps_the_product()
 	pg_assert_same(false, erp_line_amount_fits(0, 1e13));
 	pg_assert_same(true, erp_line_amount_fits(0, 0));
 }
+
+// A document's unit price keeps its own decimals in the panel's number format.
+function test_erp_decimal_text_formats_a_document_price()
+{
+	$s = erp_number_separators();
+	pg_assert_same('1' . $s['thousands'] . '250' . $s['decimal'] . '5', erp_decimal_text('1250.50'));
+	pg_assert_same('0' . $s['decimal'] . '123456', erp_decimal_text('0.123456'));
+	pg_assert_same('1' . $s['thousands'] . '000' . $s['thousands'] . '000', erp_decimal_text('1000000.00'));
+	pg_assert_same('12', erp_decimal_text('012'));
+	pg_assert_same('-3' . $s['decimal'] . '25', erp_decimal_text('-3.250'));
+	pg_assert_same('0', erp_decimal_text('-0.00'));
+	pg_assert_same('abc', erp_decimal_text('abc'));
+}

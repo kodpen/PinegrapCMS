@@ -214,6 +214,34 @@ function erp_quantity_text($quantity)
 }
 
 /**
+ * A decimal written as a document wrote it (a UBL unit price such as
+ * "1250.50" or "0.123456") for the screen, in the panel's number format,
+ * with as many decimals as the value carries and trailing zeros dropped:
+ * 1.250,5 in Turkish, 1,250.5 in English. A value that is not a plain
+ * decimal is returned as it is.
+ *
+ * @param string|int|float $value
+ * @return string
+ */
+function erp_decimal_text($value)
+{
+    $value = trim((string) $value);
+
+    if (!preg_match('/^(-?)(\d+)(?:\.(\d*))?$/', $value, $match)) {
+        return $value;
+    }
+
+    $separators = erp_number_separators();
+    $whole = ltrim($match[2], '0');
+    $whole = ($whole === '') ? '0' : $whole;
+    $whole = ltrim(strrev(implode($separators['thousands'], str_split(strrev($whole), 3))), $separators['thousands']);
+    $fraction = rtrim($match[3] ?? '', '0');
+    $text = $whole . (($fraction !== '') ? ($separators['decimal'] . $fraction) : '');
+
+    return (($match[1] === '-') && ($text !== '0')) ? ('-' . $text) : $text;
+}
+
+/**
  * A decimal as a whole number of its smallest unit at the given places
  * (1.15 at four places is 11500), half away from zero.
  *
