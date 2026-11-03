@@ -62,6 +62,7 @@ description: Generated from the module field of the memory files: each includes/
 - `innodb`: [[innodb-conversion-marker]], [[panel-script-number-format]]
 - `lang`: [[lang-loader]], [[lang-placeholders]]
 - `lang_files`: [[lang-file-writes]], [[lang-files]]
+- `language_redirect`: [[language-redirect-matching]]
 - `layout_convert`: [[layout-form-converter]]
 - `layouts`: [[layout-code-tab]], [[layout-editor-classic]]
 - `legal_documents`: [[order-documents-address]]
