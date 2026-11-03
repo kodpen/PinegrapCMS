@@ -37,3 +37,5 @@ description: Module list of plans/bug-hunt.md, part 5: the single root endpoints
 - Endpoints track_shipment, get_update_address_book, url_to_absolute, variant_set_action, welcome, wishlist: done (#4604: get_update_address_book array id and missing row; track_shipment token and throttle, url_to_absolute RFC 3986 cases, variant_set_action set check, welcome role ladder and output, wishlist token and redirect checked)
 
 - Endpoints import_zip: done (#4640: page title over several lines or with attributes; upload refusal, archive ceilings, blocked names, entry paths, escaping of skipped names, CSRF and area gate checked)
+
+- Leads clear_theme_designer_session, browse_catalog_menu, get_shopping_cart upsell label: done #6157 (array file_id was a PHP 8 fatal in unset(); previous_url_id passed to the catalog address URL-encoded; the custom layout's default upsell button label through lang(), as #6153 for get_express_order)
