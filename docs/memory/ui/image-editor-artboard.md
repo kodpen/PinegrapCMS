@@ -16,11 +16,11 @@ module: image_editor
 - Select with nothing selected on a canvas shows the canvas size and background above the layers, titled Canvas (one line in `renderPanel()` of the core).
 
 ## What does the Image tool do?
-- "Choose an image from this computer" (a file input, several at once) and "Picture from Files" (the sticker part's `stickerFilesSection()`; its refresh also runs for the Image tool), each through `addPicture()` / `addFilePicture()` of the layers and sticker parts. Pictures dropped on the stage become layers with any tool (`bindDrop()`); a paste already did (`onPaste()`).
+- "Choose an image from this computer" (a file input, several at once) and "Picture from Files" (the sticker part's `stickerFilesSection()`, refreshed for the Image tool too), each through `addPicture()` / `addFilePicture()` of the layers and sticker parts. Pictures dropped on the stage become layers with any tool (`bindDrop()`); a paste already did (`onPaste()`).
 
 ## What does the Canvas tool do on a photo? (#4741)
 - The photo profile has it after Crop. `doc.canvas` = `{ l, t, r, b, background }`: how far the canvas reaches past each side of the crop box in the rotated space (below 0 trims), `null` when it is the crop box with white (`M.applyCanvas()`). Same handles, sizes, anchor and presets; Fit to content takes the crop box and the visible layers. The layers stay put; the view follows the shown box (`followBoard()`).
-- The stage shows `M.saveBox()` (the core's `viewRect()` outside cropping); the fill is an SVG mat under the layers over the canvas less the crop box (`renderMat()`, a checker for transparent). A crop shape rounds the whole canvas, as the save does, the vignette only the crop box (`placeVignette()`).
+- The stage shows `M.saveBox()` (the core's `viewRect()` outside cropping); the fill is an SVG mat under the layers over the canvas less the crop box (`renderMat()`, a checker for transparent). Its hole is the crop shape (`M.cropShapePath()`), cutting the picture only, as the save does; the vignette covers the crop box (`placeVignette()`).
 
 ## How does a frame grow the canvas?
 - `frame.outside` (line, thick, polaroid; `M.FRAME_OUT`): the save box grows by `M.framePads()`, worked out so the inward ring `frameShape()` draws on the grown box has the canvas as its hole. Polaroid on a photo starts outside (screen 08); a checkbox in the Frame panel toggles it. On an artboard frames stay inward.

@@ -2090,6 +2090,29 @@
         };
     }
 
+    // The crop shape over box as an SVG path: the box, the box with rounded
+    // corners (12 % of the shorter side, as the save cuts them) or the
+    // ellipse in it. On a canvas that reaches past the picture the shape
+    // cuts the picture only: the stage's mat leaves this hole.
+    function cropShapePath(box, shape) {
+        var x = box.x, y = box.y, w = box.w, h = box.h, rx = w / 2, ry = h / 2, r;
+
+        if (shape === 'circle') {
+            return 'M' + x + ' ' + (y + ry) + 'a' + rx + ' ' + ry + ' 0 1 0 ' + w + ' 0a' + rx + ' ' + ry + ' 0 1 0 ' + (-w) + ' 0Z';
+        }
+
+        if (shape === 'rounded') {
+            r = Math.min(w, h) * 0.12;
+
+            return 'M' + (x + r) + ' ' + y + 'H' + (x + w - r) + 'A' + r + ' ' + r + ' 0 0 1 ' + (x + w) + ' ' + (y + r)
+                + 'V' + (y + h - r) + 'A' + r + ' ' + r + ' 0 0 1 ' + (x + w - r) + ' ' + (y + h)
+                + 'H' + (x + r) + 'A' + r + ' ' + r + ' 0 0 1 ' + x + ' ' + (y + h - r)
+                + 'V' + (y + r) + 'A' + r + ' ' + r + ' 0 0 1 ' + (x + r) + ' ' + y + 'Z';
+        }
+
+        return 'M' + x + ' ' + y + 'H' + (x + w) + 'V' + (y + h) + 'H' + x + 'Z';
+    }
+
     // The size a save writes.
     function saveSize(doc) {
         var l = saveLayout(doc);
@@ -2117,7 +2140,7 @@
         BOARD_PRESETS: BOARD_PRESETS, BOARD_BACKGROUNDS: BOARD_BACKGROUNDS, boardSide: boardSide, boardPreset: boardPreset,
         boardDrag: boardDrag, boardAnchored: boardAnchored, boardAround: boardAround, applyBoard: applyBoard,
         canvasBox: canvasBox, FRAME_OUT: FRAME_OUT, frameOutward: frameOutward, framePads: framePads, saveBox: saveBox,
-        saveLayout: saveLayout, saveSize: saveSize, applyCanvas: applyCanvas
+        saveLayout: saveLayout, cropShapePath: cropShapePath, saveSize: saveSize, applyCanvas: applyCanvas
     };
 
     // -- export (pg_image_editor_export.js) --

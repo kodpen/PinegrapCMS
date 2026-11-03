@@ -739,7 +739,10 @@
         this.frame.style.transform = 'translate(' + v.x + 'px, ' + v.y + 'px)';
         this.frame.style.width = (vr.w * k) + 'px';
         this.frame.style.height = (vr.h * k) + 'px';
-        this.frame.style.borderRadius = this.cropping() ? '' : shapeRadius(this.doc.geometry.cropShape, vr, k);
+        // The crop shape is the picture's: the whole frame only while the
+        // canvas is the picture's own; a canvas that reaches past it keeps
+        // its corners and the mat cuts the picture (the artboard part).
+        this.frame.style.borderRadius = (this.cropping() || M.saveLayout(this.doc)) ? '' : shapeRadius(this.doc.geometry.cropShape, vr, k);
         this.layersSvg.setAttribute('viewBox', [vr.x, vr.y, vr.w, vr.h].join(' '));
 
         if (this.img) {
