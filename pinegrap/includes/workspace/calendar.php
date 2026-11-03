@@ -270,8 +270,10 @@ function ws_calendar($viewer, $month, $person_id = 0, $department_id = 0)
 
     // ── Plan items ──
 
+    $person_departments = ($person_id > 0) ? ws_user_department_ids($person_id) : array();
+
     foreach (ws_events_between($from, $to) as $event) {
-        if (($person_id > 0) && ($event['scope'] === 'people') && !in_array($person_id, $event['people'], true)) {
+        if (!ws_event_in_view($event, $person_id, $person_departments, (int) $department_id, $department_people)) {
             continue;
         }
 
