@@ -72,7 +72,9 @@ function test_booking_step()
 		pg_assert_contains("install_create_table('" . $table . "', \"CREATE TABLE " . $table . ' (', $step);
 	}
 
-	pg_assert_contains('UNIQUE KEY idx_staff_start (staff_id, start_at)', $step);
+	pg_assert_contains('UNIQUE KEY idx_staff_slot (staff_id, slot_at)', $step);
+	pg_assert_contains('slot_at       INT UNSIGNED NULL DEFAULT NULL,', $step);
+	pg_assert_false(strpos($step, 'idx_staff_start') !== false, 'the key is on slot_at, not start_at');
 	pg_assert_contains('UNIQUE KEY idx_user (user_id)', $step);
 	pg_assert_contains("status        ENUM('held','requested','confirmed','cancelled','no_show','done') NOT NULL DEFAULT 'held'", $step);
 	pg_assert_contains('install_note(', $step);
@@ -264,6 +266,7 @@ function test_booking_insert_answer_duplicate()
 
 	$hold = booking_slots_test_body((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/bookings.php'), 'pg_booking_insert');
 	pg_assert_contains('INSERT INTO bookings', $hold);
+	pg_assert_contains('start_at, end_at, slot_at,', $hold, 'a live row carries its slot');
 	pg_assert_false(stripos($hold, 'ON DUPLICATE KEY') !== false, 'a duplicate is never written over');
 	pg_assert_false(stripos($hold, 'INSERT IGNORE') !== false);
 }

@@ -14,7 +14,10 @@
  * the hours.
  *
  * A row in bookings takes its slot through the unique key (staff_id,
- * start_at): a visitor's hold is a 'held' row that lives until hold_until,
+ * slot_at); slot_at is a copy of start_at on every row but a cancelled one,
+ * where it is NULL, so a cancelled booking gives its slot back and keeps its
+ * real time (a cancel or a reschedule writes slot_at with the status or the
+ * times in one UPDATE). A visitor's hold is a 'held' row that lives until hold_until,
  * confirming turns it into 'requested' or 'confirmed', and a second row for
  * the same staff member and start is refused by the key, which is the "just
  * taken" answer. A slot of another length that only overlaps is refused
@@ -446,7 +449,7 @@ function pg_booking_slot_holder($row, $now)
 
 /**
  * The answer of an INSERT into bookings: 'ok', 'taken' when the unique key
- * (staff_id, start_at) refused it, else 'error'.
+ * (staff_id, slot_at) refused it, else 'error'.
  *
  * @param mixed $result what db_q() returned
  * @param int   $errno  mysqli_errno() after it
@@ -557,7 +560,7 @@ function pg_booking_customer($booking)
  * Writes one booking row under the staff member's lock: an expired hold on
  * the same start is removed first, a live booking that overlaps the slot with
  * the service's buffers refuses it, and the INSERT itself is refused by the
- * unique key when another row sits on the start.
+ * unique key (staff_id, slot_at) when another live row sits on the start.
  *
  * @param array  $booking service (array, as in pg_booking_slots()), service_id,
  *                        staff_id, start_at and the customer columns
@@ -607,10 +610,10 @@ function pg_booking_insert($booking, $status, $hold_until, $source, $now)
 
     $result = db_q(
         "INSERT INTO bookings
-            (service_id, staff_id, user_id, name, email, phone, start_at, end_at, status, source, manage_token, hold_until, notes, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?)",
+            (service_id, staff_id, user_id, name, email, phone, start_at, end_at, slot_at, status, source, manage_token, hold_until, notes, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?)",
         array((int) $booking['service_id'], $staff_id, $customer['user_id'], $customer['name'], $customer['email'], $customer['phone'],
-            $start, $end, (string) $status, substr((string) $source, 0, 20), (int) $hold_until, $customer['notes'], (int) $now, (int) $now));
+            $start, $end, $start, (string) $status, substr((string) $source, 0, 20), (int) $hold_until, $customer['notes'], (int) $now, (int) $now));
 
     $answer = pg_booking_insert_answer($result, mysqli_errno(db::$con));
     $id = ($answer === 'ok') ? (int) mysqli_insert_id(db::$con) : 0;

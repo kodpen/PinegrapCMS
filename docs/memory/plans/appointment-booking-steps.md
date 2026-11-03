@@ -8,7 +8,7 @@ description: Steps BK1-BK5 of plans/appointment-booking.md: schema and slot engi
 - S under 400 product lines, M about 1,000, L cut into PRs. Tests in `tests/booking_<topic>_test.php` (pure functions, red first), memory under `commerce/` for the model and `designer/` for the widget, texts through `tr_add.php`, `php tools/build_js.php` after a bundled script.
 
 ## Which steps are there?
-- BK1 (M) Schema, model and the slot engine. Done in #6137 (cancelled row on the unique key: #6135).
+- BK1 (M) Schema, model and the slot engine. Done in #6137 (unique key on `slot_at`, NULL when cancelled: #6135).
   - Migration sub-step with `install_create_table()` for the three tables (in `get_tables()`, rerun twice on a dev DB). New `includes/fn/bookings.php`: statuses and the allowed transitions, `pg_booking_hours_clean()` (weekly hours JSON, exceptions), `pg_booking_slots($service, $staff, $day, $busy, $now, $policy)` (pure: length, buffers, hours, holidays, busy ranges, lead time, horizon, DST days, the site zone), `pg_booking_hold()` and `pg_booking_confirm()` (one INSERT on the unique key; a duplicate is the "just taken" answer, never a second row), `pg_booking_manage_token()` (HMAC, `ENCRYPTION_KEY`, expires with the booking). Tests: slots on a DST change day, buffers, a hold that expired, the duplicate. Memory: `commerce/bookings-model.md`.
 
 - BK2 (M) Settings. After BK1.

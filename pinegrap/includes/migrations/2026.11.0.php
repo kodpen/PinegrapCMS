@@ -4566,9 +4566,12 @@ function upgrade_2026_11_0_file_storage() {
 // booking_services are what can be booked (length and buffers in minutes,
 // price in minor units), booking_staff the panel users who take bookings with
 // their weekly hours and dated exceptions as JSON, bookings the appointments
-// with their times in UTC. The unique key on (staff_id, start_at) refuses a
-// second row for one slot: a visitor's hold is a 'held' row until hold_until,
-// and a second visitor's INSERT on the same slot is the "just taken" answer.
+// with their times in UTC. slot_at is a copy of start_at on every row but a
+// cancelled one, where it is NULL; the unique key on (staff_id, slot_at)
+// refuses a second live row for one slot (NULLs never collide, so a cancelled
+// booking gives its slot back and keeps its real time in start_at). A
+// visitor's hold is a 'held' row until hold_until, and a second visitor's
+// INSERT on the same slot is the "just taken" answer.
 // manage_token is the sha256 of the manage link's token, never the token.
 // New tables only; nothing reads them until a service is created.
 function upgrade_2026_11_0_bookings() {
@@ -4612,6 +4615,7 @@ function upgrade_2026_11_0_bookings() {
 		phone         VARCHAR(40) NOT NULL DEFAULT '',
 		start_at      INT UNSIGNED NOT NULL DEFAULT 0,
 		end_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		slot_at       INT UNSIGNED NULL DEFAULT NULL,
 		status        ENUM('held','requested','confirmed','cancelled','no_show','done') NOT NULL DEFAULT 'held',
 		source        VARCHAR(20) NOT NULL DEFAULT 'site',
 		manage_token  CHAR(64) NOT NULL DEFAULT '',
@@ -4620,7 +4624,7 @@ function upgrade_2026_11_0_bookings() {
 		created_at    INT UNSIGNED NOT NULL DEFAULT 0,
 		updated_at    INT UNSIGNED NOT NULL DEFAULT 0,
 		PRIMARY KEY (id),
-		UNIQUE KEY idx_staff_start (staff_id, start_at),
+		UNIQUE KEY idx_staff_slot (staff_id, slot_at),
 		KEY idx_start (start_at),
 		KEY idx_user (user_id),
 		KEY idx_email (email)
