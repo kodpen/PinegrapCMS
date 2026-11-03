@@ -19,7 +19,7 @@ description: Plan for the Mobile App Developer template (pinegrap-appstudio): ow
 ## Which steps are there?
 - 1 Done (#6160). Data and shared parts: `parts.php` (data, samples, pick lists, header, footer, cards, store buttons, form fields, comment thread, staff bar); test `design_template_appstudio_test.php`.
 
-- 2 Public pages: `pages_public.php` (home, services with packages, process, about, FAQ, press kit).
+- 2 Done (#6196). `pages_public.php`; home widgets `home_apps`, `home_releases`, `home_posts`; `hire?type=`.
 
 - 3 Apps: `apps.php` (`app_new` with the Apps collection and samples, `apps` with filters, `app` record page, the home's list widgets).
 
