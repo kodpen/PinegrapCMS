@@ -139,6 +139,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dashboard-v2-share.md: New dashboard role defaults and lock (#4975): the Share with the team section, dashboard_role_default, which layout and look a person sees, why the lock never binds administrators and designers
 - dashboard-v2-shop-cards.md: The new dashboard's shop cards (shop, salesmap, ops, orders, offers, fx): where each reads its data, the widget queries they share, money as plain text, the map drawing
 - dashboard-v2-side-panel.md: New dashboard side panel (#4888): gallery.php data, pg_dash_panel.js (work area, gallery, Add card tile, top section, look) and its hooks with the edit script
+- dashboard-v2-width.md: How wide the new dashboard gets and how many columns its grid takes: the 118rem cap, columns by the dashboard's own width (container queries), edit mode, the fallback
 - dashboard-visitor-head-wrap.md: Visitor Summaries card head on a narrow card: the legend wraps below the figures, the figure lines keep to one line
 - dashboard-welcome-card.md: The dashboard top card (welcome.php, .pg-clockbar): greeting on the left, time and date on the right in one full-width card; phone stacking, themes, ids the scripts read
 - dashboard-widget-files.md: Adding a dashboard widget: includes/dashboard/widgets/widget_<id>.php and its function contract, the welcome.php registry entry, retired ids never reused, the refresh and solo lists, charts.
