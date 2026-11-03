@@ -64,6 +64,7 @@ if ($login_as_user_id == USER_ID) {
 // as different user.
 session_unset();
 session_destroy();
+pg_session_end_clear_cache();
 
 // Remove tracking code and affiliate code cookies so that
 // they don't show up under different user session.

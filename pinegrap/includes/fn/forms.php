@@ -2557,12 +2557,8 @@ function logout()
     session_unset();
     session_destroy();
     // Panel pages may sit in the browser's back/forward cache (private,
-    // no-cache, pg_panel_cache_headers()); the sign-out answer drops them and
-    // the rest of this origin's HTTP cache, so Back after signing out on a
-    // shared computer does not show them again.
-    if (!headers_sent()) {
-        header('Clear-Site-Data: "cache"');
-    }
+    // no-cache, pg_panel_cache_headers()); the sign-out answer drops them.
+    pg_session_end_clear_cache();
     // If the user was not logged in as a different user, then also clear the
     // remember me cookie. We don't clear it when logged in as a different user,
     // so the user can automatically log back in under their own account now.

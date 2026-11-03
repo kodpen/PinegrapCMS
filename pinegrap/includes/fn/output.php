@@ -558,7 +558,9 @@ PGPRELOADER;
 /**
  * Panel screens that show a secret and so never enter the browser's caches,
  * the back/forward cache included: API keys and secrets, connected-account
- * tokens, an account's sign-in factors and recovery, key codes. Screens
+ * tokens, an account's sign-in factors and recovery, key codes, and bearer
+ * links (calendar feed, accountant access, one-time file and short links,
+ * cart quote and quote guest links, the MCP value shown once). Screens
  * outside output_header() (sign-in, password reset and set, two-factor
  * setup, passkeys, account security) keep PHP's session default, which is
  * no-store already.
@@ -576,7 +578,28 @@ function pg_panel_no_store_screens()
         'add_key_code.php',
         'edit_key_code.php',
         'import_key_codes.php',
+        'workspace_calendar_feed.php',
+        'workspace_mcp.php',
+        'erp_accountant.php',
+        'edit_erp_quote.php',
+        'view_short_links.php',
+        'view_folders.php',
+        'view_cart_quotes.php',
     );
+}
+
+/**
+ * Sends Clear-Site-Data: "cache" on an answer that ends a session, so the
+ * browser drops this origin's HTTP cache and back/forward cache entries and
+ * Back on a shared computer does not show a panel screen again. Browsers
+ * honour it over HTTPS only; elsewhere the pageshow session check
+ * (pg_preloader_markup()) is what remains.
+ */
+function pg_session_end_clear_cache()
+{
+    if (!headers_sent()) {
+        header('Clear-Site-Data: "cache"');
+    }
 }
 
 /**
@@ -1639,7 +1662,7 @@ function pg_list_edit_reply($data, $status = 200)
 {
     http_response_code($status);
     header('Content-Type: application/json; charset=utf-8');
-    header('Cache-Control: private, no-cache');
+    header('Cache-Control: private, no-store');
     header('X-Robots-Tag: noindex');
     echo json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
     exit();

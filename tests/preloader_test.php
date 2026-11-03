@@ -67,7 +67,9 @@ function test_panel_html_may_enter_the_back_forward_cache()
 
 function test_secret_screens_keep_no_store()
 {
-	foreach (array('api_settings.php', 'connections.php', 'connected_apps.php', 'edit_user.php', 'view_key_codes.php', 'edit_key_code.php') as $script) {
+	foreach (array('api_settings.php', 'connections.php', 'connected_apps.php', 'edit_user.php', 'view_key_codes.php', 'edit_key_code.php',
+		'workspace_calendar_feed.php', 'workspace_mcp.php', 'erp_accountant.php', 'edit_erp_quote.php',
+		'view_short_links.php', 'view_folders.php', 'view_cart_quotes.php') as $script) {
 		pg_assert_same('private, no-store', pg_panel_cache_control('/pinegrap/' . $script), $script);
 	}
 	pg_assert_same('private, no-store', pg_panel_cache_control('API_Settings.php'), 'any case');
@@ -88,4 +90,16 @@ function test_a_screen_s_own_cache_control_is_kept()
 	pg_assert_true(pg_panel_cache_is_session_default(array('Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0')), 'older PHP');
 	pg_assert_false(pg_panel_cache_is_session_default(array('Cache-Control: no-store, max-age=0')), 'device pairing');
 	pg_assert_false(pg_panel_cache_is_session_default(array('cache-control: private, no-store')), 'any case');
+}
+
+function test_every_session_end_clears_the_browser_cache()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+	foreach (array('includes/fn/forms.php', 'includes/fn/auth.php', 'account_security.php', 'kiosk.php', 'login_as_user.php') as $file) {
+		$source = (string) file_get_contents($root . $file);
+		$ends = preg_match_all('/session_destroy\(\);/', $source);
+		$cleared = preg_match_all('/session_destroy\(\);(?:\s*\/\/[^\n]*)*\s*pg_session_end_clear_cache\(\);/', $source);
+		pg_assert_true($ends > 0, $file . ' ends a session');
+		pg_assert_same($ends, $cleared, $file . ': every session_destroy() clears the cache');
+	}
 }

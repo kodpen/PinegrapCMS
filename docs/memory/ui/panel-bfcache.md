@@ -11,11 +11,11 @@ description: Panel HTML in the browser's back/forward cache (#6081): private, no
 - It replaces the session's `Cache-Control` with `private, no-cache` (every ordinary visit still revalidates) and removes `Pragma` and `Expires`. A screen that sent its own `Cache-Control` before `output_header()` keeps it (`pg_panel_cache_is_session_default()`; `device_pairing.php` sends `no-store`).
 
 ## Which screens keep no-store?
-- `pg_panel_no_store_screens()`, the one list: `api_settings.php` (secret shown once), `connections.php`, `connected_apps.php` (connected-account tokens), `edit_user.php` (sign-in factors, recovery), the key code screens. Sign-in, password reset and set, two-factor setup, passkeys and account security do not use `output_header()` and keep the session's `no-store`. A new screen that shows a secret joins the list.
+- `pg_panel_no_store_screens()`, the one list: `api_settings.php` (secret shown once), `connections.php`, `connected_apps.php` (connected-account tokens), `edit_user.php` (sign-in factors, recovery), the key code screens, and the screens that print a bearer link (#6143 review): `workspace_calendar_feed.php` (iCal feed token, every visit), `erp_accountant.php` (accountant link and QR), `view_short_links.php`, `view_folders.php` (one-time links), `view_cart_quotes.php`, `edit_erp_quote.php` (links shown once), `workspace_mcp.php` (value shown once). Sign-in, password reset and set, two-factor setup, passkeys and account security do not use `output_header()` and keep the session's `no-store`. A new screen that shows a secret joins the list.
 
 ## What protects a shared computer?
-- `logout()` (`includes/fn/forms.php`) sends `Clear-Site-Data: "cache"` (HTTPS only), which also drops back/forward cache entries.
+- Every path that ends a session calls `pg_session_end_clear_cache()` right after `session_destroy()`, which sends `Clear-Site-Data: "cache"` (HTTPS only) and so also drops back/forward cache entries: `logout()`, `account_security.php` (all devices, this device), the kiosk's anonymous branch, `initialize_user()` and the device-bind kick in `includes/fn/auth.php`, `login_as_user.php`. `tests/preloader_test.php` checks every `session_destroy()` in those files is followed by it.
 - A page restored on `pageshow` (`persisted`) asks `session_state.php` (`{"signed_in": bool}`, `pg_session_signed_in()`) and reloads when the session is gone, so the server sends it to sign-in (`pg_preloader_markup()`).
 
 ## In-page JSON replies?
-- The decision drops `no-store` from them too (`private, no-cache`); `pg_list_edit_reply()` does. The endpoints that send their own `no-store` are changed one by one; `api.php` belongs to its own work.
+- They keep `no-store`: JSON fetched by a script never enters the back/forward cache, so dropping it gains nothing (`pg_list_edit_reply()` stays `private, no-store`, #6143 review).

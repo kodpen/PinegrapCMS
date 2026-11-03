@@ -2378,6 +2378,7 @@ function validate_user()
         $logged_in_as_different_user = $_SESSION['software']['logged_in_as_different_user'] ?? false;
         session_unset();
         session_destroy();
+        pg_session_end_clear_cache();
         if ($logged_in_as_different_user == false) {
             setcookie('software[auth]', '', time() - 1000, '/');
         }
@@ -4319,6 +4320,7 @@ function initialize_user()
 
             session_unset();
             session_destroy();
+            pg_session_end_clear_cache();
             setcookie('software[auth]', '', time() - 1000, '/');
             unset($_COOKIE['software']['auth']);
 
