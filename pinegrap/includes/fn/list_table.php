@@ -1039,7 +1039,7 @@ function pg_list_table_selected_ids(array $source, array $selection, $limit = 10
  */
 function pg_list_table_printed_lists()
 {
-    return array('view_menus', 'view_short_links');
+    return array('view_menus', 'view_short_links', 'view_orders', 'view_gift_cards', 'view_key_codes', 'view_shipping_methods');
 }
 
 /**

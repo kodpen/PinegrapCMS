@@ -103,7 +103,7 @@ function test_list_row_names_submitted_form_row()
 function test_list_row_names_order_row()
 {
 	$source = list_row_names_source('view_orders.php');
-	pg_assert_contains('name="orders[]" value="\' . $id . \'" aria-label="\' . h(lang(array(\'string\' => \'Select {var:1}\', \'vars\' => array($output_row_name)))) . \'"', $source);
+	pg_assert_contains("urlencode(PATH . SOFTWARE_DIRECTORY . '/view_orders.php'), h(\$output_row_name))", $source, 'the row is named by its link');
 	pg_assert_contains("\$output_row_name = (trim((string) \$order_number) !== '') ? \$order_number : trim(\$billing_first_name . ' ' . \$billing_last_name);", $source);
 	pg_assert_contains("\$output_row_name = '#' . \$id;", $source);
 }
