@@ -1,5 +1,6 @@
 {
     "KVKK Notice Page": "KVKK Aydınlatma Metni Sayfası",
+    "KVKK consent": "KVKK onayı",
     "Kargonomi could not make the carrier's order for this shipment.": "Kargonomi bu gönderi için kargo firmasının siparişini oluşturamadı.",
     "Kargonomi does not know the district {var:1} of {var:2}.": "Kargonomi {var:2} ilinin {var:1} ilçesini tanımıyor.",
     "Kargonomi does not know the province {var:1}.": "Kargonomi {var:1} ilini tanımıyor.",

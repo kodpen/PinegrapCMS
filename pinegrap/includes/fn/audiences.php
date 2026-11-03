@@ -1,0 +1,794 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Contact groups filled by rules (2026.11.0, 11.0.155): a group of kind
+ * 'dynamic' keeps its rules in contact_groups.rules (JSON) and its members
+ * are the contacts the rules select. This module holds the rule model: the
+ * catalogue of conditions, the one shape a stored rule set is cleaned to,
+ * and the pure builder that turns a rule set into one SELECT of contact ids.
+ *
+ * A rule set is {match: 'all'|'any', conditions: [...]}; a condition is
+ * {key, op, value[, field][, days]} or, one level deep only, a nested
+ * {match, conditions}. Every condition compiles to one predicate on
+ * contacts.id (a column test or an IN / NOT IN sub-query on the table its
+ * family reads); every value is a ? placeholder bound by db_q(), never text
+ * written into the SQL. A rule set with no condition selects nobody.
+ *
+ * Visit conditions reach a contact only through the order a visit made
+ * (visitors.order_id) and always within a window of days on the indexed
+ * start_timestamp, so no per-contact scan of the raw visitor rows is made.
+ *
+ * Every reader asks pg_audience_ready() first: files land before the
+ * upgrade adds the columns.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_FUNCTIONS_DIR')) {
+    exit;
+}
+
+// Bounds of a cleaned rule set.
+define('PG_AUDIENCE_MAX_CONDITIONS', 20);
+define('PG_AUDIENCE_MAX_TEXT', 100);
+define('PG_AUDIENCE_MAX_DAYS', 3650);
+define('PG_AUDIENCE_MAX_NUMBER', 2000000000);
+
+/**
+ * Whether the upgrade has added the rule columns.
+ *
+ * @return bool
+ */
+function pg_audience_ready()
+{
+    return function_exists('pg_schema_has')
+        && pg_schema_has('contact_groups', 'kind')
+        && pg_schema_has('contact_groups', 'rules')
+        && pg_schema_has('contacts_contact_groups_xref', 'source');
+}
+
+/**
+ * The contact columns the "Contact field" condition may read.
+ *
+ * @return array column => label
+ */
+function pg_audience_contact_fields()
+{
+    return array(
+        'company' => lang('Company'),
+        'title' => lang('Title'),
+        'department' => lang('Department'),
+        'business_state' => lang('Business State'),
+        'home_state' => lang('Home State'),
+        'business_zip_code' => lang('Business Zip Code'),
+        'home_zip_code' => lang('Home Zip Code'),
+        'salutation' => lang('Salutation'),
+        'website' => lang('Website'),
+        'member_id' => lang('Member ID'),
+    );
+}
+
+/**
+ * The consent answers a "Consent" condition may ask about, as
+ * channel:purpose of consent_log (the cookie channel is a visitor's, not a
+ * contact's, and stays out).
+ *
+ * @return array channel:purpose => label
+ */
+function pg_audience_consents()
+{
+    return array(
+        'email:marketing' => lang('E-mail marketing'),
+        'sms:marketing' => lang('SMS marketing'),
+        'call:marketing' => lang('Call marketing'),
+        'contract:kvkk' => lang('KVKK consent'),
+        'contract:preinfo' => lang('Pre-information form'),
+        'contract:contract' => lang('Distance sales contract'),
+    );
+}
+
+/**
+ * The operators, by name.
+ *
+ * @return array op => label
+ */
+function pg_audience_operators()
+{
+    return array(
+        'eq' => lang('is'),
+        'neq' => lang('is not'),
+        'contains' => lang('contains'),
+        'empty' => lang('is empty'),
+        'not_empty' => lang('is not empty'),
+        'gte' => lang('at least'),
+        'lte' => lang('at most'),
+        'within' => lang('in the last (days)'),
+        'not_within' => lang('not in the last (days)'),
+        'yes' => lang('yes'),
+        'no' => lang('no'),
+        'granted' => lang('given'),
+        'not_granted' => lang('not given'),
+        'member' => lang('is a member'),
+        'active' => lang('is an active member'),
+        'expired' => lang('membership expired'),
+        'expiring' => lang('membership ends within (days)'),
+        'not_member' => lang('is not a member'),
+        'in' => lang('is in'),
+        'not_in' => lang('is not in'),
+    );
+}
+
+/**
+ * The catalogue of conditions: per key its label, family, the operators it
+ * takes, the kind of value ('text', 'number', 'money', 'days', 'none',
+ * 'product', 'product_group', 'contact_group', 'form', 'form_field',
+ * 'consent', 'status') and the table it reads. 'window' marks a condition
+ * that also takes days (a visit window, required).
+ *
+ * @return array
+ */
+function pg_audience_conditions()
+{
+    return array(
+        'country' => array('label' => lang('Country'), 'family' => 'contact', 'ops' => array('eq', 'neq'), 'value' => 'text', 'table' => 'contacts'),
+        'city' => array('label' => lang('City'), 'family' => 'contact', 'ops' => array('eq', 'neq'), 'value' => 'text', 'table' => 'contacts'),
+        'lead_source' => array('label' => lang('Lead Source'), 'family' => 'contact', 'ops' => array('eq', 'neq', 'contains', 'empty', 'not_empty'), 'value' => 'text', 'table' => 'contacts'),
+        'field' => array('label' => lang('Contact field'), 'family' => 'contact', 'ops' => array('eq', 'neq', 'contains', 'empty', 'not_empty'), 'value' => 'text', 'table' => 'contacts'),
+
+        'email_opt_in' => array('label' => lang('Accepts e-mail'), 'family' => 'consent', 'ops' => array('yes', 'no'), 'value' => 'none', 'table' => 'contacts'),
+        'consent' => array('label' => lang('Consent'), 'family' => 'consent', 'ops' => array('granted', 'not_granted'), 'value' => 'consent', 'table' => 'consent_log'),
+
+        'membership' => array('label' => lang('Membership'), 'family' => 'membership', 'ops' => array('member', 'active', 'expired', 'expiring', 'not_member'), 'value' => 'none', 'table' => 'contacts'),
+
+        'customer' => array('label' => lang('Has bought'), 'family' => 'orders', 'ops' => array('yes', 'no'), 'value' => 'none', 'table' => 'orders'),
+        'order_count' => array('label' => lang('Number of orders'), 'family' => 'orders', 'ops' => array('gte', 'lte', 'eq'), 'value' => 'number', 'table' => 'orders'),
+        'order_total' => array('label' => lang('Total spent'), 'family' => 'orders', 'ops' => array('gte', 'lte'), 'value' => 'money', 'table' => 'orders'),
+        'last_order' => array('label' => lang('Last order'), 'family' => 'orders', 'ops' => array('within', 'not_within'), 'value' => 'days', 'table' => 'orders'),
+        'bought_product' => array('label' => lang('Bought a product'), 'family' => 'orders', 'ops' => array('yes', 'no'), 'value' => 'product', 'table' => 'order_items'),
+        'bought_product_group' => array('label' => lang('Bought from a product group'), 'family' => 'orders', 'ops' => array('yes', 'no'), 'value' => 'product_group', 'table' => 'products_groups_xref'),
+        'left_cart' => array('label' => lang('Left a cart'), 'family' => 'orders', 'ops' => array('within'), 'value' => 'days', 'table' => 'orders'),
+        'returned' => array('label' => lang('Asked for a return'), 'family' => 'returns', 'ops' => array('within', 'not_within'), 'value' => 'days', 'table' => 'order_returns'),
+
+        'subscription' => array('label' => lang('Subscription'), 'family' => 'subscriptions', 'ops' => array('eq', 'neq'), 'value' => 'status', 'table' => 'subscriptions'),
+
+        'submitted_form' => array('label' => lang('Sent a form'), 'family' => 'forms', 'ops' => array('yes', 'no'), 'value' => 'form', 'table' => 'forms'),
+        'form_field' => array('label' => lang('A form answer'), 'family' => 'forms', 'ops' => array('eq', 'contains'), 'value' => 'form_field', 'table' => 'form_data'),
+
+        'visited' => array('label' => lang('Visited the site'), 'family' => 'visits', 'ops' => array('within', 'not_within'), 'value' => 'days', 'table' => 'visitors'),
+        'landing_page' => array('label' => lang('Landing page'), 'family' => 'visits', 'ops' => array('eq'), 'value' => 'text', 'window' => true, 'table' => 'visitors'),
+        'utm_source' => array('label' => lang('UTM source'), 'family' => 'visits', 'ops' => array('eq'), 'value' => 'text', 'window' => true, 'table' => 'visitors'),
+        'utm_campaign' => array('label' => lang('UTM campaign'), 'family' => 'visits', 'ops' => array('eq'), 'value' => 'text', 'window' => true, 'table' => 'visitors'),
+
+        'group' => array('label' => lang('Contact group'), 'family' => 'groups', 'ops' => array('in', 'not_in'), 'value' => 'contact_group', 'table' => 'contacts_contact_groups_xref'),
+    );
+}
+
+/**
+ * The subscription states a "Subscription" condition may name.
+ *
+ * @return string[]
+ */
+function pg_audience_subscription_statuses()
+{
+    return function_exists('pg_subscription_statuses')
+        ? pg_subscription_statuses()
+        : array('active', 'past_due', 'paused', 'cancelled', 'ended');
+}
+
+/**
+ * A rule set brought to its one shape: {match, conditions}; unknown keys,
+ * operators and fields dropped, values cut to their kind and bounds, a
+ * nested set kept one level deep only and dropped when it is left empty, at
+ * most PG_AUDIENCE_MAX_CONDITIONS per level. Takes the decoded JSON or the
+ * JSON text.
+ *
+ * @param mixed $rules
+ * @return array
+ */
+function pg_audience_rules_clean($rules)
+{
+    if (is_string($rules)) {
+        $rules = json_decode($rules, true);
+    }
+
+    return pg_audience_rules_clean_level(is_array($rules) ? $rules : array(), 0);
+}
+
+/**
+ * One level of pg_audience_rules_clean().
+ *
+ * @param array $rules
+ * @param int   $depth 0 for the top, 1 for a nested set
+ * @return array
+ */
+function pg_audience_rules_clean_level(array $rules, $depth)
+{
+    $clean = array(
+        'match' => (isset($rules['match']) && ($rules['match'] === 'any')) ? 'any' : 'all',
+        'conditions' => array(),
+    );
+
+    $conditions = (isset($rules['conditions']) && is_array($rules['conditions'])) ? $rules['conditions'] : array();
+
+    foreach ($conditions as $condition) {
+        if (count($clean['conditions']) >= PG_AUDIENCE_MAX_CONDITIONS) {
+            break;
+        }
+
+        if (!is_array($condition)) {
+            continue;
+        }
+
+        if (isset($condition['conditions'])) {
+            if ($depth > 0) {
+                continue;
+            }
+
+            $nested = pg_audience_rules_clean_level($condition, 1);
+
+            if ($nested['conditions']) {
+                $clean['conditions'][] = $nested;
+            }
+
+            continue;
+        }
+
+        $condition = pg_audience_condition_clean($condition);
+
+        if ($condition !== null) {
+            $clean['conditions'][] = $condition;
+        }
+    }
+
+    return $clean;
+}
+
+/**
+ * One condition in its shape, or null when it cannot be one.
+ *
+ * @param array $condition
+ * @return array|null
+ */
+function pg_audience_condition_clean(array $condition)
+{
+    $catalogue = pg_audience_conditions();
+    $key = isset($condition['key']) && is_string($condition['key']) ? $condition['key'] : '';
+
+    if (!isset($catalogue[$key])) {
+        return null;
+    }
+
+    $entry = $catalogue[$key];
+    $op = isset($condition['op']) && is_string($condition['op']) ? $condition['op'] : '';
+
+    if (!in_array($op, $entry['ops'], true)) {
+        return null;
+    }
+
+    $clean = array('key' => $key, 'op' => $op);
+    $value = isset($condition['value']) ? $condition['value'] : null;
+
+    if ($key === 'field') {
+        $field = isset($condition['field']) && is_string($condition['field']) ? $condition['field'] : '';
+
+        if (!array_key_exists($field, pg_audience_contact_fields())) {
+            return null;
+        }
+
+        $clean['field'] = $field;
+    }
+
+    if ($key === 'membership') {
+        if ($op !== 'expiring') {
+            return $clean;
+        }
+
+        $days = pg_audience_int($value, 1, PG_AUDIENCE_MAX_DAYS);
+
+        if ($days === null) {
+            return null;
+        }
+
+        $clean['value'] = $days;
+
+        return $clean;
+    }
+
+    switch ($entry['value']) {
+        case 'none':
+            return $clean;
+
+        case 'text':
+            if (($op === 'empty') || ($op === 'not_empty')) {
+                return $clean;
+            }
+
+            $text = pg_audience_text($value);
+
+            if ($text === '') {
+                return null;
+            }
+
+            $clean['value'] = $text;
+            break;
+
+        case 'number':
+            $number = pg_audience_int($value, 0, PG_AUDIENCE_MAX_NUMBER);
+
+            if ($number === null) {
+                return null;
+            }
+
+            $clean['value'] = $number;
+            break;
+
+        case 'money':
+            // Integer minor units, as orders.total.
+            $number = pg_audience_int($value, 0, PG_AUDIENCE_MAX_NUMBER);
+
+            if ($number === null) {
+                return null;
+            }
+
+            $clean['value'] = $number;
+            break;
+
+        case 'days':
+            $days = pg_audience_int($value, 1, PG_AUDIENCE_MAX_DAYS);
+
+            if ($days === null) {
+                return null;
+            }
+
+            $clean['value'] = $days;
+            break;
+
+        case 'product':
+        case 'product_group':
+        case 'contact_group':
+        case 'form':
+            $id = pg_audience_int($value, 1, 4294967295);
+
+            if ($id === null) {
+                return null;
+            }
+
+            $clean['value'] = $id;
+            break;
+
+        case 'form_field':
+            $field_id = pg_audience_int(isset($condition['field']) ? $condition['field'] : null, 1, 4294967295);
+            $text = pg_audience_text($value);
+
+            if (($field_id === null) || ($text === '')) {
+                return null;
+            }
+
+            $clean['field'] = $field_id;
+            $clean['value'] = $text;
+            break;
+
+        case 'consent':
+            if (!is_string($value) || !array_key_exists($value, pg_audience_consents())) {
+                return null;
+            }
+
+            $clean['value'] = $value;
+            break;
+
+        case 'status':
+            if (!is_string($value) || !in_array($value, pg_audience_subscription_statuses(), true)) {
+                return null;
+            }
+
+            $clean['value'] = $value;
+            break;
+
+        default:
+            return null;
+    }
+
+    if (!empty($entry['window'])) {
+        $days = pg_audience_int(isset($condition['days']) ? $condition['days'] : null, 1, PG_AUDIENCE_MAX_DAYS);
+
+        if ($days === null) {
+            return null;
+        }
+
+        $clean['days'] = $days;
+    }
+
+    return $clean;
+}
+
+/**
+ * A whole number within bounds, or null (a numeric string counts; a
+ * fraction, a negative below the floor or anything else does not).
+ *
+ * @param mixed $value
+ * @param int   $min
+ * @param int   $max
+ * @return int|null
+ */
+function pg_audience_int($value, $min, $max)
+{
+    if (is_int($value)) {
+        $number = $value;
+    } elseif (is_string($value) && (preg_match('/^\s*[0-9]{1,10}\s*$/', $value) === 1)) {
+        $number = (int) trim($value);
+    } elseif (is_float($value) && is_finite($value) && (floor($value) === $value) && (abs($value) < 1e10)) {
+        $number = (int) $value;
+    } else {
+        return null;
+    }
+
+    if (($number < $min) || ($number > $max)) {
+        return null;
+    }
+
+    return $number;
+}
+
+/**
+ * A text value trimmed and cut to PG_AUDIENCE_MAX_TEXT characters, '' when
+ * it is not text.
+ *
+ * @param mixed $value
+ * @return string
+ */
+function pg_audience_text($value)
+{
+    if (!is_string($value) && !is_int($value)) {
+        return '';
+    }
+
+    $text = trim(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', (string) $value));
+
+    if (function_exists('mb_substr')) {
+        return mb_substr($text, 0, PG_AUDIENCE_MAX_TEXT, 'UTF-8');
+    }
+
+    return substr($text, 0, PG_AUDIENCE_MAX_TEXT);
+}
+
+/**
+ * The SELECT of the ids of the contacts a rule set selects, with its values
+ * as ? placeholders: array('sql' => ..., 'params' => array(...)), for
+ * db_q($sql, $params). Pure: no query is run. A rule set with no condition
+ * selects nobody.
+ *
+ * @param mixed    $rules a rule set (cleaned here)
+ * @param int|null $now   the time the day windows count back from
+ * @return array
+ */
+function pg_audience_sql($rules, $now = null)
+{
+    $rules = pg_audience_rules_clean($rules);
+    $now = ($now === null) ? time() : (int) $now;
+    $params = array();
+
+    $where = pg_audience_sql_level($rules, $now, $params);
+
+    if ($where === '') {
+        return array('sql' => 'SELECT contacts.id FROM contacts WHERE 1 = 0', 'params' => array());
+    }
+
+    return array('sql' => 'SELECT contacts.id FROM contacts WHERE ' . $where, 'params' => $params);
+}
+
+/**
+ * The predicate of one level, '' when it has no condition.
+ *
+ * @param array $rules  a cleaned level
+ * @param int   $now
+ * @param array $params the placeholders' values, added to in order
+ * @return string
+ */
+function pg_audience_sql_level(array $rules, $now, array &$params)
+{
+    $parts = array();
+
+    foreach ($rules['conditions'] as $condition) {
+        if (isset($condition['conditions'])) {
+            $part = pg_audience_sql_level($condition, $now, $params);
+        } else {
+            $part = pg_audience_sql_condition($condition, $now, $params);
+        }
+
+        if ($part !== '') {
+            $parts[] = $part;
+        }
+    }
+
+    if (!$parts) {
+        return '';
+    }
+
+    return '(' . implode(($rules['match'] === 'any') ? ' OR ' : ' AND ', $parts) . ')';
+}
+
+/**
+ * The predicate of one cleaned condition on contacts.id.
+ *
+ * @param array $c
+ * @param int   $now
+ * @param array $params
+ * @return string
+ */
+function pg_audience_sql_condition(array $c, $now, array &$params)
+{
+    $op = $c['op'];
+    $value = isset($c['value']) ? $c['value'] : null;
+    $since = isset($c['value']) && is_int($c['value']) ? $now - ($c['value'] * 86400) : 0;
+    $complete = "orders.status <> 'incomplete' AND orders.contact_id <> 0";
+
+    switch ($c['key']) {
+        case 'country':
+        case 'city':
+            $column = $c['key'];
+            $params[] = $value;
+            $params[] = $value;
+            $match = "(COALESCE(contacts.business_" . $column . ", '') = ? OR COALESCE(contacts.home_" . $column . ", '') = ?)";
+
+            return ($op === 'eq') ? $match : '(NOT ' . $match . ')';
+
+        case 'lead_source':
+        case 'field':
+            $column = 'contacts.' . (($c['key'] === 'field') ? $c['field'] : 'lead_source');
+
+            return pg_audience_sql_text("COALESCE(" . $column . ", '')", $op, $value, $params);
+
+        case 'email_opt_in':
+            $match = "(contacts.opt_in = 1 AND COALESCE(contacts.email_address, '') <> '')";
+
+            return ($op === 'yes') ? $match : '(NOT ' . $match . ')';
+
+        case 'consent':
+            list($channel, $purpose) = explode(':', $value, 2);
+            $params[] = $channel;
+            $params[] = $purpose;
+            // The latest answered row of the channel and purpose decides;
+            // a pending row is no answer.
+            $sub = "SELECT consent_log.contact_id FROM consent_log"
+                . " WHERE consent_log.contact_id <> 0 AND consent_log.channel = ? AND consent_log.purpose = ?"
+                . " AND consent_log.status = 'granted'"
+                . " AND consent_log.id = (SELECT MAX(later.id) FROM consent_log AS later"
+                . " WHERE later.contact_id = consent_log.contact_id AND later.channel = consent_log.channel"
+                . " AND later.purpose = consent_log.purpose AND later.status <> 'pending')";
+
+            return pg_audience_sql_in($sub, $op === 'granted');
+
+        case 'membership':
+            $member = "COALESCE(contacts.member_id, '') <> ''";
+            $today = gmdate('Y-m-d', $now);
+
+            if ($op === 'member') {
+                return '(' . $member . ')';
+            }
+
+            if ($op === 'not_member') {
+                return '(NOT (' . $member . '))';
+            }
+
+            if ($op === 'active') {
+                $params[] = $today;
+
+                return "(" . $member . " AND (contacts.expiration_date >= ? OR contacts.expiration_date = '0000-00-00'))";
+            }
+
+            if ($op === 'expired') {
+                $params[] = $today;
+
+                return "(" . $member . " AND contacts.expiration_date < ? AND contacts.expiration_date <> '0000-00-00')";
+            }
+
+            $params[] = $today;
+            $params[] = gmdate('Y-m-d', $now + ($value * 86400));
+
+            return "(" . $member . " AND contacts.expiration_date >= ? AND contacts.expiration_date <= ?)";
+
+        case 'customer':
+            return pg_audience_sql_in("SELECT orders.contact_id FROM orders WHERE " . $complete, $op === 'yes');
+
+        case 'order_count':
+        case 'order_total':
+            $measure = ($c['key'] === 'order_count') ? 'COUNT(*)' : 'SUM(orders.total)';
+            $grouped = "SELECT orders.contact_id FROM orders WHERE " . $complete . " GROUP BY orders.contact_id HAVING " . $measure;
+
+            if ($op === 'gte') {
+                if ($value === 0) {
+                    return '(1 = 1)';
+                }
+
+                $params[] = $value;
+
+                return pg_audience_sql_in($grouped . ' >= ?', true);
+            }
+
+            if (($op === 'eq') && ($value > 0)) {
+                $params[] = $value;
+
+                return pg_audience_sql_in($grouped . ' = ?', true);
+            }
+
+            // At most n (or exactly none): every contact but those above n,
+            // so a contact with no order counts as 0.
+            $params[] = $value;
+
+            return pg_audience_sql_in($grouped . ' > ?', false);
+
+        case 'last_order':
+            $params[] = $since;
+
+            return pg_audience_sql_in("SELECT orders.contact_id FROM orders WHERE " . $complete . " AND orders.order_date >= ?", $op === 'within');
+
+        case 'bought_product':
+            $params[] = $value;
+
+            return pg_audience_sql_in("SELECT orders.contact_id FROM orders"
+                . " INNER JOIN order_items ON order_items.order_id = orders.id"
+                . " WHERE " . $complete . " AND order_items.product_id = ?", $op === 'yes');
+
+        case 'bought_product_group':
+            $params[] = $value;
+
+            return pg_audience_sql_in("SELECT orders.contact_id FROM orders"
+                . " INNER JOIN order_items ON order_items.order_id = orders.id"
+                . " INNER JOIN products_groups_xref ON products_groups_xref.product = order_items.product_id"
+                . " WHERE " . $complete . " AND products_groups_xref.product_group = ?", $op === 'yes');
+
+        case 'left_cart':
+            $params[] = $since;
+
+            return pg_audience_sql_in("SELECT orders.contact_id FROM orders"
+                . " INNER JOIN order_items ON order_items.order_id = orders.id"
+                . " WHERE orders.status = 'incomplete' AND orders.contact_id <> 0 AND orders.last_modified_timestamp >= ?", true);
+
+        case 'returned':
+            $params[] = $since;
+
+            return pg_audience_sql_in("SELECT orders.contact_id FROM order_returns"
+                . " INNER JOIN orders ON orders.id = order_returns.order_id"
+                . " WHERE orders.contact_id <> 0 AND order_returns.requested_at >= ?", $op === 'within');
+
+        case 'subscription':
+            $params[] = $value;
+
+            return pg_audience_sql_in("SELECT user.user_contact FROM subscriptions"
+                . " INNER JOIN user ON user.user_id = subscriptions.user_id"
+                . " WHERE user.user_contact IS NOT NULL AND subscriptions.status = ?", $op === 'eq');
+
+        case 'submitted_form':
+            $params[] = $value;
+
+            return pg_audience_sql_in("SELECT forms.contact_id FROM forms"
+                . " WHERE forms.contact_id <> 0 AND forms.complete = 1 AND forms.page_id = ?", $op === 'yes');
+
+        case 'form_field':
+            $params[] = $c['field'];
+            $sub = "SELECT forms.contact_id FROM form_data"
+                . " INNER JOIN forms ON forms.id = form_data.form_id"
+                . " WHERE forms.contact_id <> 0 AND forms.complete = 1 AND form_data.form_field_id = ? AND ";
+
+            if ($op === 'eq') {
+                $params[] = $value;
+
+                return pg_audience_sql_in($sub . 'form_data.data = ?', true);
+            }
+
+            $params[] = pg_list_like_pattern($value);
+
+            return pg_audience_sql_in($sub . 'form_data.data LIKE ?', true);
+
+        case 'visited':
+            $params[] = $since;
+
+            return pg_audience_sql_in(pg_audience_sql_visits(''), $op === 'within');
+
+        case 'landing_page':
+        case 'utm_source':
+        case 'utm_campaign':
+            $column = ($c['key'] === 'landing_page') ? 'landing_page_name' : $c['key'];
+            $params[] = $now - ($c['days'] * 86400);
+            $params[] = $value;
+
+            return pg_audience_sql_in(pg_audience_sql_visits(' AND visitors.' . $column . ' = ?'), true);
+
+        case 'group':
+            $params[] = $value;
+
+            return pg_audience_sql_in("SELECT contacts_contact_groups_xref.contact_id FROM contacts_contact_groups_xref"
+                . " WHERE contacts_contact_groups_xref.contact_group_id = ?", $op === 'in');
+    }
+
+    return '';
+}
+
+/**
+ * The contacts whose orders came from a visit since a time (the first
+ * placeholder), with an extra test on the visit.
+ *
+ * @param string $extra ' AND ...' or ''
+ * @return string
+ */
+function pg_audience_sql_visits($extra)
+{
+    return "SELECT orders.contact_id FROM visitors"
+        . " INNER JOIN orders ON orders.id = visitors.order_id"
+        . " WHERE visitors.start_timestamp >= ? AND visitors.order_id <> 0 AND orders.contact_id <> 0" . $extra;
+}
+
+/**
+ * contacts.id IN / NOT IN a sub-query.
+ *
+ * @param string $sub
+ * @param bool   $in
+ * @return string
+ */
+function pg_audience_sql_in($sub, $in)
+{
+    return '(contacts.id ' . ($in ? 'IN' : 'NOT IN') . ' (' . $sub . '))';
+}
+
+/**
+ * A text test on a column expression.
+ *
+ * @param string $column
+ * @param string $op
+ * @param mixed  $value
+ * @param array  $params
+ * @return string
+ */
+function pg_audience_sql_text($column, $op, $value, array &$params)
+{
+    switch ($op) {
+        case 'empty':
+            return '(' . $column . " = '')";
+
+        case 'not_empty':
+            return '(' . $column . " <> '')";
+
+        case 'contains':
+            $params[] = pg_list_like_pattern($value);
+
+            return '(' . $column . ' LIKE ?)';
+
+        case 'neq':
+            $params[] = $value;
+
+            return '(' . $column . ' <> ?)';
+    }
+
+    $params[] = $value;
+
+    return '(' . $column . ' = ?)';
+}
+
+/**
+ * How many contacts a rule set selects now, null when it cannot be counted
+ * (before the upgrade, or a failed query).
+ *
+ * @param mixed $rules
+ * @return int|null
+ */
+function pg_audience_count($rules)
+{
+    if (!pg_audience_ready()) {
+        return null;
+    }
+
+    $query = pg_audience_sql($rules);
+    $result = db_q('SELECT COUNT(*) FROM (' . $query['sql'] . ') AS audience', $query['params']);
+
+    if (!$result) {
+        return null;
+    }
+
+    $row = mysqli_fetch_row($result);
+
+    return $row ? (int) $row[0] : 0;
+}
