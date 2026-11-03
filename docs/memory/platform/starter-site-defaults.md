@@ -1,6 +1,6 @@
 ---
 name: starter-site-defaults
-description: Starter dump defaults corrected by #3330 (PR #3581): empty AddThis sharing code plus the 11.0.133 data step, Turkish title 'Web Sitem', AT-ONCE named 'En kısa sürede'.
+description: Starter dump defaults (empty AddThis code, Turkish title and arrival name) and the scheduled jobs a new install switches on (search index, structure, accessibility).
 ---
 
 ## What sharing code do the starter sites ship?
@@ -14,3 +14,8 @@ description: Starter dump defaults corrected by #3330 (PR #3581): empty AddThis 
 ## Which Turkish defaults changed?
 - `config.title` is `'Web Sitem'` (was `'My Website'`), and arrival date 1 (`AT-ONCE`) is named `'En kısa sürede'` (was `'Bir defada'`). Its description stays. The English dump keeps its title `'liveSite'`.
 - `tests/starter_defaults_test.php` checks the dumps and the step. The fixture `'Bir defada'` in `tests/order_view_rows_test.php` is test data, not the dump.
+
+## Which scheduled jobs does a new site run?
+- The search index (`update_search_index`), the HTML structure check (`seo_analyze_job`) and the accessibility check (`seo_a11y_job`) through the general job: `install/index.php` sets `job_dispatch_enabled = 1` and adds the three to `job_dispatch` (`pg_search_audits_new_site_list()`: stored names kept, catalogue order, nothing doubled). The SEO score job stays off. Install step names Site Settings › Updates and maintenance › Cron Jobs.
+- Only a starter-site install (`get_starter_site_language() !== ''`), both columns checked with `install_column_exists()`. No upgrade step: a running site and a restored backup keep their switch.
+- Why: the dumps predate the columns and the upgrade adds them off and empty, so a new site ran none of the three until the operator found the switch (owner decision 2, `workflow/decisions-made-product-18.md`). Tests: `tests/search_audits_test.php`, `tests/starter_defaults_test.php`.
