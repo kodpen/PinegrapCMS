@@ -21,7 +21,7 @@ description: Plan (2026-10-24; ready to start, owner 2026-11-01): a Figma/XD-lik
 1. Done (#5401, #5492, #5603, #5619, #5635): the read-only map, designer/prototype-view.md.
 2. Done #6171, #6201 (designer/prototype-view.md): draw and re-point arrows by drag or from a row's target menu (keyboard) within today's rights, undo, the shared and Publish warnings, Save.
 3. Done #1867 in the Preview (designer/designer-preview-play.md): a page link plays the open tab of that name, unsaved tabs too; the Prototype view's hotspots reuse `_sdPreviewPlay()`.
-4. Shared frame positions done #6232 (designer/prototype-view.md). Thumbnails done (#6258, designer/prototype-thumbnails.md). Page-id links (#6233): site #6313 (designer/page-link-by-id.md). Editor (4e): map read, arrow, panel note (PR pending). Left (4f): Bind Data outside widgets.
+4. Shared frame positions done #6232 (designer/prototype-view.md). Thumbnails done (#6258, designer/prototype-thumbnails.md). Page-id links (#6233): site #6313 (designer/page-link-by-id.md). Editor (4e) #6331: map read, arrow, panel note. Left (4f): Bind Data outside widgets.
 - Schema: none for slices 1-3; a new table or column is asked first.
 
 ## Which questions are answered? (1 a owner 2026-10-24; 2-5 #2446)
