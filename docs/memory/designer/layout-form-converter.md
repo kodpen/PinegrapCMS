@@ -17,7 +17,7 @@ module: layout_convert
 | `h($submit_button_label)` | `opts.submit_label`, else `lang('Submit')` |
 | `if ($captcha_question)` block | the palette CAPTCHA element (`_bindings.section = captcha`) inside the block's single wrappers |
 | `if ($office_use_only)` | kept; the rows' `office_use_only` goes to `_cf`, the renderer hides them |
-| `if (isset($field['<id>']))` (the generator's SMS question guard) | kept in place; the widget hides the question itself (`pg_cf_drop_sms_question()`); before #PRNUM it was dropped and the row moved to the end |
+| `if (isset($field['<id>']))` (the generator's SMS question guard) | kept in place; the widget hides the question itself (`pg_cf_drop_sms_question()`); before #6083 it was dropped and the row moved to the end |
 | `if ($watcher_option)`, `if ($save)` | dropped (a designed form has neither), reported |
 | any other `if`, `else` branch, code, echo | dropped with what it holds, reported (`condition`, `php`) |
 | `eval(... generate_form_layout_content(...))` | `opts.generated` walked the same way (the caller passes the generated text) |
