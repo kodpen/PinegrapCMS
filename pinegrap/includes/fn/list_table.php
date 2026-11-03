@@ -47,6 +47,7 @@ function pg_list_table_definitions()
     return array(
         'view_pages' => array('file' => 'includes/fn/page_list.php', 'source' => 'pg_page_list_source'),
         'view_users' => array('file' => 'includes/fn/user_list.php', 'source' => 'pg_user_list_source'),
+        'view_contacts' => array('file' => 'includes/fn/contact_list.php', 'source' => 'pg_contact_list_source'),
     );
 }
 
@@ -248,7 +249,10 @@ function pg_list_table_sort_columns(array $columns)
  *                    pg_list_cell())), 'all' (true for a small list printed
  *                    whole: the browser sorts and searches it itself),
  *                    'params_out' (the list parameters the browser sends
- *                    back with every rows request)
+ *                    back with every rows request), 'edit' (quick edit:
+ *                    array('url' => the screen pg_list_edit_request()
+ *                    answers on, 'columns' => its field => definition);
+ *                    left out for a viewer who may not change the list)
  * @return array
  */
 function pg_list_table_source(array $spec)
@@ -274,7 +278,34 @@ function pg_list_table_source(array $spec)
         'rows' => $spec['rows'] ?? null,
         'all' => !empty($spec['all']),
         'params_out' => isset($spec['params_out']) && is_array($spec['params_out']) ? $spec['params_out'] : array(),
+        'edit' => pg_list_table_edit_spec($spec['edit'] ?? null, $columns),
     );
+}
+
+/**
+ * A source's quick edit, checked: the address and the definitions of the
+ * fields a cell may change (pg_list_edit_table()), kept only while some
+ * column of the list is editable. Null when nothing can change: the list
+ * gets no quick edit button then.
+ *
+ * @param mixed $edit    array('url' => string, 'columns' => field => definition)
+ * @param array $columns pg_list_table_columns()
+ * @return array|null
+ */
+function pg_list_table_edit_spec($edit, array $columns)
+{
+    if (!is_array($edit) || !isset($edit['url']) || !is_string($edit['url']) || ($edit['url'] === '')
+        || empty($edit['columns']) || !is_array($edit['columns'])) {
+        return null;
+    }
+
+    foreach ($columns as $column) {
+        if ($column['editable'] !== '') {
+            return array('url' => $edit['url'], 'columns' => $edit['columns']);
+        }
+    }
+
+    return null;
 }
 
 /**
@@ -746,6 +777,16 @@ function pg_list_table_texts()
         'down' => lang('Move down'),
         'reset' => lang('Reset'),
         'pick' => lang('Select a row to see its details.'),
+        'quick' => lang('Quick edit'),
+        'quickOn' => lang('Quick edit is on: a changed cell is saved as soon as you leave it.'),
+        'quickOff' => lang('Quick edit is off.'),
+        'saved' => lang('Saved'),
+        'saveFailed' => lang('The change could not be saved. Check the connection and try again.'),
+        'undoChange' => lang('Undo the last change'),
+        'undone' => lang('The last change was undone.'),
+        'apply' => lang(array('string' => 'Apply to {var:1} selected rows', 'vars' => array('%n'))),
+        'applied' => lang(array('string' => '{var:1} rows changed', 'vars' => array('%n'))),
+        'applyFailed' => lang(array('string' => '{var:1} rows could not be changed', 'vars' => array('%n'))),
     );
 }
 
@@ -775,7 +816,8 @@ function pg_list_table_html(array $source, array $page, $label, $actions = '')
         . ' data-pg-list-next="' . h((string) $page['next']) . '"'
         . ' data-pg-list-total="' . (int) $page['total'] . '"'
         . ' data-pg-list-user="' . (defined('USER_ID') ? (int) USER_ID : 0) . '"'
-        . ' data-pg-list-texts="' . h((string) json_encode(pg_list_table_texts(), $json)) . '">';
+        . ' data-pg-list-texts="' . h((string) json_encode(pg_list_table_texts(), $json)) . '"'
+        . ($source['edit'] ? pg_list_edit_table($source['edit']['url'], $source['edit']['columns']) : '') . '>';
 
     // The bar stays above the rows: the selection's count and bulk actions
     // while rows are selected, the columns menu and the details switch
@@ -784,6 +826,8 @@ function pg_list_table_html(array $source, array $page, $label, $actions = '')
     $output .= '<div class="pg-list-table-bar is-empty"><span class="pg-list-table-count" aria-live="polite"></span>'
         . '<span class="pg-list-table-actions">' . $actions . '</span>'
         . '<span class="pg-list-table-tools">'
+        . ($source['edit'] ? '<button type="button" class="btn btn-sm btn-text theme-secondary pg-list-table-quick" aria-pressed="false" aria-keyshortcuts="F2" title="F2">'
+            . '<i class="bi bi-pencil-square me-1" aria-hidden="true"></i>' . h(lang('Quick edit')) . '</button>' : '')
         . '<span class="pg-menu-wrap"><button type="button" class="btn btn-sm btn-text theme-secondary pg-list-table-columns" data-bs-toggle="menu" data-bs-auto-close="outside" aria-expanded="false">'
         . '<i class="bi bi-layout-three-columns me-1" aria-hidden="true"></i>' . h(lang('Columns')) . '</button>'
         . '<div class="menu pg-menu-end pg-list-table-columns-menu"></div></span>'

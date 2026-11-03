@@ -3708,7 +3708,53 @@
         return Math.max(1, Math.min(Number(l.w) || 0, Number(l.h) || 0));
     }
 
-    var GLYPH = { EMOJI: EMOJI, iconSearch: iconSearch, emojiRecent: emojiRecent, glyphText: glyphText, glyphSize: glyphSize };
+    // A placed sticker or glyph with another one in its place: pick is a
+    // built-in sticker { type: 'sticker', kind, label, fill, ink } or a glyph
+    // { type: 'glyph', set: 'bi'|'emoji', code }. Box, turn, opacity, colour,
+    // motion and every other field stay; only the drawn thing changes, and
+    // the old type's own fields go (a sticker's kind, label and ink, a
+    // glyph's set and code). The colour is kept on an emoji too, so an emoji
+    // turned back into an icon or sticker gets it again. null when the layer
+    // or the pick is not one of these.
+    function swapGlyph(l, pick) {
+        if (!l || ((l.type !== 'sticker') && (l.type !== 'glyph')) || !pick) {
+            return null;
+        }
+
+        var next = clone(l), was = l.type;
+
+        ['kind', 'label', 'ink', 'set', 'code'].forEach(function (k) { delete next[k]; });
+
+        if (pick.type === 'sticker') {
+            if (!pick.kind) {
+                return null;
+            }
+
+            next.type = 'sticker';
+            next.kind = pick.kind;
+            next.label = ((was === 'sticker') && l.label) ? l.label : String(pick.label || '');
+            next.color = l.color || pick.fill || '#000000';
+            next.ink = ((was === 'sticker') && l.ink) ? l.ink : (pick.ink || '#ffffff');
+
+            return next;
+        }
+
+        if ((pick.type !== 'glyph') || !glyphText({ set: pick.set, code: pick.code })) {
+            return null;
+        }
+
+        next.type = 'glyph';
+        next.set = pick.set;
+        next.code = pick.code;
+
+        if ((pick.set === 'bi') && !next.color) {
+            next.color = '#212529';
+        }
+
+        return next;
+    }
+
+    var GLYPH = { EMOJI: EMOJI, iconSearch: iconSearch, emojiRecent: emojiRecent, glyphText: glyphText, glyphSize: glyphSize, swapGlyph: swapGlyph };
 
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,

@@ -649,6 +649,7 @@ function api_openapi_objects()
         'StoreCountry' => 'api_store_country_schema',
         'StoreCountryState' => 'api_store_country_state_schema',
         'StoreCurrency' => 'api_store_currency_schema',
+        'StoreArrivalDate' => 'api_store_arrival_date_schema',
         'StoreShipDateAdjustment' => 'api_store_ship_date_adjustment_schema',
         'StoreVerifiedAddress' => 'api_store_verified_address_schema',
         'StoreReferralSource' => 'api_store_referral_source_schema',

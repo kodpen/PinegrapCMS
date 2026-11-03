@@ -12,13 +12,14 @@ description: Steps of the table driver plan: the driver core, its parts, the ser
 3. TD3 (M) done (#6321). Columns menu (show, hide, order, reset), the details panel and its side sheet below 1024 px, both in localStorage; phone cards below 768 px; the thumbnail queue.
 
 4. TD4 (M) After TD2. Users, contacts and submitted forms move with their bulk actions (export, merge, delete all) through the resolver.
-   Cut in three, one screen each: TD4a done (#6325): the users list (Delete Selected); TD4b the contacts list (export, merge, delete all); TD4c the submitted forms list (export, delete all).
+   Cut in three, one screen each: TD4a done (#6325): the users list (Delete Selected); TD4b done (#6347): the contacts list (its selected-row actions: organize, opt in/out, merge, delete; Export, Merge and Delete All already act on the whole filter); TD4c the submitted forms list (export, delete all).
 
 5. TD5 (M) After TD2. Commissions, recurring commission profiles and the mail queue move.
 
 6. TD6 (M) After TD2. Site Log (its type filter as a driver filter, today `view_log.php` calls `column(1).search()`), the audit log and the firewall log move.
 
 7. TD7 (L) After TD3. Quick edit mode ("Hızlı düzenleme", F2, per-cell save, undo, apply to the selected rows) over `pg_list_edit_request()`; the products list moves.
+   Cut in two: TD7a done (#6337) the quick edit mode in the driver (`pg_list_table_edit.js`, `ui/list-table-quick-edit.md`), no screen on it yet; TD7b next: the products list (`view_products.php`, `product_list.php`) moves with its bulk actions and its quick edit columns (source `edit`, cells with `pg_list_edit_cell_attributes()`, column keys matching the edit fields).
 
 8. TD8 (M) After TD7. Orders, gift cards, key codes and shipping methods move; then the ERP lists with editable cells: account prices, stock minimums, price lists, stock levels.
 
