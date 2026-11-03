@@ -4340,7 +4340,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         document.getElementById('upload_file_item').classList.toggle('d-none', catalogArea);
         document.getElementById('create_file_item').classList.toggle('d-none', catalogArea || backupArea);
-        document.getElementById('new_image_item').classList.toggle('d-none', catalogArea);
+        // A new image is a file in a folder: neither the backups nor the short
+        // links have one to put it in.
+        document.getElementById('new_image_item').classList.toggle('d-none', catalogArea || backupArea || insideShortLinks());
 
         // Taking a backup is offered only where backups live.
         document.getElementById('create_backup_item').classList.toggle('d-none', !backupArea);
