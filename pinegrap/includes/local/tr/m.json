@@ -523,6 +523,7 @@
     "Message from the sender": "Gönderenin mesajı",
     "Message is empty.": "Mesaj boş.",
     "Message is too long.": "Mesaj çok uzun.",
+    "Message is too long. The limit is {var:1} characters.": "Mesaj çok uzun. Sınır {var:1} karakter.",
     "Message seen": "Görüldü",
     "Message stream": "Mesaj akışı",
     "Message to the customer": "Müşteriye mesaj",

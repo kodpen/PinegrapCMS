@@ -1807,6 +1807,7 @@
     "Signing in from devices is switched on": "Cihazdan oturum açma açıldı",
     "Signing in is locked after repeated failed attempts. Clears in {var:1} minutes.": "Tekrarlanan başarısız denemeler sonrası giriş kilitlendi. {var:1} dakika içinde kendiliğinden açılır.",
     "Signing in with a passkey alone is not available on this site.": "Bu sitede yalnızca geçiş anahtarıyla oturum açılamıyor.",
+    "Signs": "İşaretler",
     "Signs in with a password only": "Yalnız parolayla giriyor",
     "Signup Anchor": "Kayıt Çapası",
     "Signup Link": "Kayıt Bağlantısı",

@@ -5067,6 +5067,7 @@
     "This conversation is closed.": "Bu konuşma kapatıldı.",
     "This conversation is not open to you any more. If you still need it, ask for a new link.": "Bu görüşme artık size açık değil. Hâlâ gerekiyorsa yeni bir bağlantı isteyin.",
     "This conversation was shared with you to read only.": "Bu konuşma sizinle yalnız okumanız için paylaşıldı.",
+    "This conversation will be closed and cannot be reopened. Continue?": "Bu konuşma kapatılacak ve yeniden açılamayacak. Devam edilsin mi?",
     "This conversation will be permanently deleted. Continue?": "Bu konuşma kalıcı olarak silinecek. Devam edilsin mi?",
     "This copy is overdue. The next copies wait for it: none is handed out while it is open, so a date that comes before it is done is passed over.": "Bu kopya gecikti. Sıradaki kopyalar onu bekler: o açıkken yeni kopya açılmaz, o bitmeden gelen tarih atlanır.",
     "This copy stands for {var:1} in the repeat and was moved by hand; the copies after it keep their days.": "Bu kopya tekrarın {var:1} günü için açıldı ve elle kaydırıldı; sonraki kopyalar kendi günlerinde gelir.",
