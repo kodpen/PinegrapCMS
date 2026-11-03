@@ -257,6 +257,8 @@
     "Default order": "Varsayılan sıra",
     "Default page styles for the pages in this folder": "Bu klasördeki sayfaların varsayılan sayfa stilleri",
     "Default payment term (days)": "Varsayılan vade (gün)",
+    "Default removed for everyone": "Herkes için varsayılan kaldırıldı",
+    "Default removed for the {var:1} role": "{var:1} rolünün varsayılanı kaldırıldı",
     "Default type for rows without one": "Türü belirtilmemiş satırlar için varsayılan tür",
     "Default view": "Varsayılan görünüm",
     "Default/Self": "Varsayılan/Aynı Pencere",

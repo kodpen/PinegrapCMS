@@ -495,6 +495,85 @@ function pg_dashboard_v2_role_default_write($role, $layout, $look, $locked, $use
 }
 
 /**
+ * Remove a role's default, and with it its lock. Removing a row that is not
+ * there succeeds too, so the action can be repeated.
+ *
+ * @param int $role 0-3, or 9 for everyone
+ * @return bool
+ */
+function pg_dashboard_v2_role_default_remove($role)
+{
+    if (!pg_dashboard_v2_share_role_valid($role)) {
+        return false;
+    }
+
+    return (bool) @mysqli_query(db::$con,
+        "DELETE FROM dashboard_layout WHERE user_id = 0 AND role = '" . (int) $role . "'");
+}
+
+/**
+ * The role default rows (role, locked), or an empty list when the read
+ * fails.
+ *
+ * @return array
+ */
+function pg_dashboard_v2_share_rows()
+{
+    $result = @mysqli_query(db::$con, "SELECT role, locked FROM dashboard_layout WHERE user_id = 0");
+
+    if (!$result) {
+        return array();
+    }
+
+    $rows = array();
+    while ($row = mysqli_fetch_assoc($result)) {
+        $rows[] = $row;
+    }
+
+    return $rows;
+}
+
+/**
+ * Whether each role has a default and whether it is locked, keyed by role in
+ * the order of pg_dashboard_v2_share_roles(); rows for other roles are
+ * ignored.
+ *
+ * @param array|null $rows from pg_dashboard_v2_share_rows()
+ * @return array
+ */
+function pg_dashboard_v2_share_states($rows)
+{
+    $states = array();
+    foreach (array_keys(pg_dashboard_v2_share_roles()) as $role) {
+        $states[$role] = array('has_default' => false, 'locked' => false);
+    }
+
+    foreach ((array) $rows as $row) {
+        $role = isset($row['role']) ? (int) $row['role'] : -1;
+        if (isset($states[$role])) {
+            $states[$role] = array('has_default' => true, 'locked' => !empty($row['locked']));
+        }
+    }
+
+    return $states;
+}
+
+/**
+ * The confirmation shown once a default is removed.
+ *
+ * @param int $role
+ * @return string
+ */
+function pg_dashboard_v2_share_removed($role)
+{
+    $roles = pg_dashboard_v2_share_roles();
+
+    return ((int) $role === 9)
+        ? lang('Default removed for everyone')
+        : lang(array('string' => 'Default removed for the {var:1} role', 'vars' => $roles[(int) $role] ?? ''));
+}
+
+/**
  * The confirmation shown once a default is made.
  *
  * @param int  $role
@@ -516,10 +595,11 @@ function pg_dashboard_v2_share_done($role, $locked)
  * person who may not share. Roles are a list of pairs so their order holds
  * in the script.
  *
- * @param array $user the row validate_user() returned
+ * @param array      $user the row validate_user() returned
+ * @param array|null $rows the role default rows; null reads them
  * @return array|null
  */
-function pg_dashboard_v2_share_config($user)
+function pg_dashboard_v2_share_config($user, $rows = null)
 {
     if (!pg_dashboard_v2_can_share((int) $user['role'])) {
         return null;
@@ -537,5 +617,11 @@ function pg_dashboard_v2_share_config($user)
         'label'   => lang('Make this layout the default for'),
         'lock'    => lang('Lock: people in this role cannot change the layout'),
         'button'  => lang('Make default'),
+        'remove'  => lang('Remove default'),
+        'marks'   => array(
+            'default' => lang('(default)'),
+            'locked'  => lang('(locked default)'),
+        ),
+        'defaults' => pg_dashboard_v2_share_states(($rows === null) ? pg_dashboard_v2_share_rows() : $rows),
     );
 }

@@ -13,7 +13,8 @@
  *                at once and saved with the layout;
  *   Share        (administrators and designers) the layout and look on
  *                screen as a role's default, locked or not, sent at once
- *                to api.php's dashboard_role_default.
+ *                to api.php's dashboard_role_default, or a role's default
+ *                removed through dashboard_role_default_remove.
  *
  * It also draws the Add card tile that ends the grid, which opens edit mode
  * on the gallery. pg_dash_edit.js owns the state and calls the hooks on
@@ -443,6 +444,12 @@
         });
         section.appendChild(select);
 
+        var defaults = share.defaults || {};
+        var marks = share.marks || {};
+        var state = function (role) {
+            return defaults[role] || {has_default: false, locked: false};
+        };
+
         var field = el("div", "form-field");
         var lock = el("input", "check");
         lock.type = "checkbox";
@@ -455,38 +462,53 @@
 
         var row = el("div", "pg-dash-share-row");
         var make = button("btn btn-outline theme-secondary btn-sm", share.button);
+        var remove = button("btn btn-outline theme-secondary btn-sm", share.remove);
         var done = el("span", "pg-dash-saved");
         done.setAttribute("role", "status");
         done.hidden = true;
         row.appendChild(make);
+        row.appendChild(remove);
         row.appendChild(done);
         section.appendChild(row);
 
-        // A new choice hides the last confirmation, which named another one.
-        [select, lock].forEach(function (input) {
-            input.addEventListener("change", function () {
-                done.hidden = true;
+        // Each role's label says whether it has a default and whether that
+        // is locked; the lock box shows the chosen role's lock.
+        function refresh() {
+            share.roles.forEach(function (pair, index) {
+                var known = state(pair[0]);
+                var mark = known.has_default ? (known.locked ? marks.locked : marks["default"]) : "";
+                select.options[index].textContent = mark ? pair[1] + " " + mark : pair[1];
             });
+            lock.checked = state(select.value).locked;
+        }
+        refresh();
+
+        // A new choice hides the last confirmation, which named another one.
+        select.addEventListener("change", function () {
+            done.hidden = true;
+            lock.checked = state(select.value).locked;
+        });
+        lock.addEventListener("change", function () {
+            done.hidden = true;
         });
 
-        make.addEventListener("click", function () {
-            make.disabled = true;
+        function send(control, body) {
+            control.disabled = true;
             done.hidden = true;
+            body.token = software_token;
+            body.role = parseInt(select.value, 10);
             $.ajax({
                 contentType: "application/json",
                 url: "api.php",
-                data: JSON.stringify({
-                    action: "dashboard_role_default",
-                    token: software_token,
-                    role: parseInt(select.value, 10),
-                    locked: lock.checked ? 1 : 0,
-                    layout: pgDash.edit.layout(),
-                    look: look
-                }),
+                data: JSON.stringify(body),
                 type: "POST",
                 dataType: "json"
             }).done(function (answer) {
                 if (answer && answer.status === "success") {
+                    if (answer.defaults) {
+                        defaults = answer.defaults;
+                        refresh();
+                    }
                     done.textContent = answer.message;
                     done.hidden = false;
                 } else if (typeof window.pgToast === "function") {
@@ -497,8 +519,21 @@
                     window.pgToast({variant: "danger", message: S.failed});
                 }
             }).always(function () {
-                make.disabled = false;
+                control.disabled = false;
             });
+        }
+
+        make.addEventListener("click", function () {
+            send(make, {
+                action: "dashboard_role_default",
+                locked: lock.checked ? 1 : 0,
+                layout: pgDash.edit.layout(),
+                look: look
+            });
+        });
+
+        remove.addEventListener("click", function () {
+            send(remove, {action: "dashboard_role_default_remove"});
         });
 
         return section;
