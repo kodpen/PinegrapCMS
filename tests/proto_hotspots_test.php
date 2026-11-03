@@ -746,3 +746,14 @@ function test_proto_hotspots_page_linkable()
 
 	pg_assert_same(array(true, true, true, false, true, true, false, false, false, false), $out);
 }
+
+// Bind Data outside a widget offers a page for a link that may hold one,
+// with the page select under it, and starts no value rows there.
+function test_proto_hotspots_bind_data_offers_a_page_outside_widgets()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+
+	pg_assert_contains("var linkable = !!(window.PGProtoHotspots && window.PGProtoHotspots.pageLinkable(node));", $source, 'the panel asks the collector which links may be kept by id');
+	pg_assert_contains("var extra = (withPage && current === SW_PAGE_LINK_TOKEN) ? _sdPageLinkPageRow(node) : '';", $source, 'the page select sits under the chosen option');
+	pg_assert_contains("params: inWidget ? [{ name: '', token: '' }] : []", $source, 'outside a widget no value row is started');
+}
