@@ -69,10 +69,42 @@ function pg_proto_map_strings($value, $max, $length)
 }
 
 /**
+ * A list of page ids from the request: whole numbers above 0 (an int or
+ * digits), each kept once, at most $max.
+ *
+ * @param mixed $value
+ * @param int   $max
+ * @return int[]
+ */
+function pg_proto_map_ids($value, $max)
+{
+    $out = array();
+
+    foreach ((is_array($value) ? $value : array()) as $item) {
+        if (is_string($item) && preg_match('/^[1-9][0-9]{0,9}$/', $item)) {
+            $item = (int) $item;
+        }
+
+        if (!is_int($item) || ($item <= 0) || isset($out[$item])) {
+            continue;
+        }
+
+        $out[$item] = true;
+
+        if (count($out) >= $max) {
+            break;
+        }
+    }
+
+    return array_keys($out);
+}
+
+/**
  * What a request asks about.
  *
- * @param array $request hrefs, menus, regions (lists of strings)
- * @return array hrefs, menus, regions
+ * @param array $request hrefs, menus, regions (lists of strings), page_ids
+ *                       (the pages links kept by page id open)
+ * @return array hrefs, menus, regions, page_ids
  */
 function pg_proto_map_request($request)
 {
@@ -83,7 +115,32 @@ function pg_proto_map_request($request)
         'hrefs' => pg_proto_map_strings(isset($request['hrefs']) ? $request['hrefs'] : null, $limits['hrefs'], $limits['length']),
         'menus' => pg_proto_map_strings(isset($request['menus']) ? $request['menus'] : null, $limits['menus'], $limits['length']),
         'regions' => pg_proto_map_strings(isset($request['regions']) ? $request['regions'] : null, $limits['regions'], $limits['length']),
+        'page_ids' => pg_proto_map_ids(isset($request['page_ids']) ? $request['page_ids'] : null, $limits['hrefs']),
     );
+}
+
+/**
+ * The ids asked for whose page is left out of the visible maps: the
+ * operator may not know about it. Ids of no page are not listed (broken).
+ *
+ * @param int[] $ids   page ids asked for
+ * @param array $names page id => page name, of the pages that exist
+ * @param array $maps  pg_proto_map_visible() maps
+ * @return int[]
+ */
+function pg_proto_map_hidden_ids($ids, $names, $maps)
+{
+    $out = array();
+
+    foreach ((array) $ids as $id) {
+        $id = (int) $id;
+
+        if (isset($names[$id]) && !isset($maps['pages'][(string) $names[$id]])) {
+            $out[] = $id;
+        }
+    }
+
+    return $out;
 }
 
 /**
@@ -235,9 +292,9 @@ function pg_proto_map_region_links($regions)
 /**
  * The answer of the read for one operator.
  *
- * @param array $request hrefs, menus, regions
+ * @param array $request hrefs, menus, regions, page_ids
  * @param array $user    validate_user()
- * @return array status, env, maps, hidden, draft_folder, bin_folders,
+ * @return array status, env, maps, hidden, hidden_ids, draft_folder, bin_folders,
  *               menus (name => links), regions (name => kind, hrefs)
  */
 function pg_proto_map($request, $user)
@@ -280,7 +337,19 @@ function pg_proto_map($request, $user)
     }
 
     $items = pg_proto_map_items($hrefs, $env);
-    $maps = pg_link_maps_for_items($items);
+
+    // The pages links kept by page id open are read by their current name,
+    // through the same maps; a hidden one is answered by its id alone (its
+    // name is not one the editor sent, so it stays out of `hidden`).
+    $names = array();
+
+    if ($asked['page_ids']) {
+        foreach (db_items("SELECT page_id, page_name FROM page WHERE page_id IN (" . implode(',', array_map('intval', $asked['page_ids'])) . ")") as $row) {
+            $names[(int) $row['page_id']] = (string) $row['page_name'];
+        }
+    }
+
+    $maps = pg_link_maps_for_items(array_values(array_unique(array_merge($items, array_values($names)))));
     $forms = isset($maps['form_names']) ? $maps['form_names'] : array();
     unset($maps['form_names']);
     $visible = pg_proto_map_visible($maps, $items, $hidden);
@@ -291,6 +360,7 @@ function pg_proto_map($request, $user)
         'maps' => $visible['maps'],
         'form_names' => (object) $forms,
         'hidden' => $visible['hidden'],
+        'hidden_ids' => pg_proto_map_hidden_ids($asked['page_ids'], $names, $visible['maps']),
         'draft_folder' => (int) pg_page_draft_folder_id(),
         'bin_folders' => array_values(array_map('intval', pg_recycle_bin_folder_ids())),
         'menus' => (object) $menus,
