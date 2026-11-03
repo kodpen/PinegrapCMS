@@ -1,6 +1,6 @@
 ---
 name: dashboard-v2-brief
-description: The old dashboard's brief on the new dashboard: sentence, workspace strip and next meeting in the greeting card, its own wording and hour, the phone box, the Top section switch, pg_dash_brief.js
+description: The old dashboard's brief on the new dashboard (#6431): placement in the greeting card, v2 wording and hour, the phone box, the Top section switch, pg_dash_brief.js
 ---
 
 ## Where does the new dashboard draw the brief?
