@@ -121,26 +121,43 @@ function pg_product_attribute_form_duplicate_label($options)
 }
 
 /**
- * The Main Informations card (name, label) and the Options card with the
- * option list script.
+ * The form column (Main Informations card with name and label, Options card
+ * with the option list script) and the status column: a sticky Summary of
+ * the option count and, on the edit screen, how many products and product
+ * groups use the attribute.
  *
  * @param liveform $liveform
+ * @param array|null $usage  list of (products, product groups) on edit, null on create
  * @return string
  */
-function pg_product_attribute_form_cards($liveform)
+function pg_product_attribute_form_cards($liveform, $usage = null)
 {
     $output_options = pg_product_attribute_form_output_options($liveform->get_field_value('options'));
+    $option_count = count(pg_product_attribute_form_clean_options(json_decode((string) $liveform->get_field_value('options'), true)));
+
+    $output_usage = '';
+
+    if (is_array($usage)) {
+        $output_usage = '
+                                            <div class="d-flex justify-content-between py-2 border-top">
+                                                <dt class="fw-normal">' . lang('Products') . '</dt>
+                                                <dd class="mb-0 fw-bold">' . (int) $usage[0] . '</dd>
+                                            </div>
+                                            <div class="d-flex justify-content-between py-2 border-top">
+                                                <dt class="fw-normal">' . lang('Product Groups') . '</dt>
+                                                <dd class="mb-0 fw-bold">' . (int) $usage[1] . '</dd>
+                                            </div>';
+    }
 
     return '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Main Informations') . '
                                 </h2>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 sm:col-4 my-3">
+                                <div class="card-body pt-0">
+                                    <div class="row g-5">
+                                        <div class="col-12 md:col-5">
                                             <label for="name" class="form-label">' . lang('Name') . '</label>
                                             ' . $liveform->output_field(array(
                                                 'type' => 'text',
@@ -151,7 +168,7 @@ function pg_product_attribute_form_cards($liveform)
                                                 'maxlength' => '100',
                                                 'required' => 'required')) . '
                                         </div>
-                                        <div class="col-12 sm:col-8 my-3">
+                                        <div class="col-12 md:col-7">
                                             <label for="label" class="form-label">' . lang('Label') . '</label>
                                             ' . $liveform->output_field(array(
                                                 'type' => 'text',
@@ -164,36 +181,69 @@ function pg_product_attribute_form_cards($liveform)
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="card my-7">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Options') . '
+                                    ' . lang('Attribute Options') . '
                                 </h2>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 mt-1 mb-3">
-                                            <label class="form-label" >' . lang('Attribute Options') . '</label>
-                                            <div class="options">
-                                                <div class="option_list row" ></div>
-                                                <button type="button" class="add_option btn btn-solid theme-primary mt-3"><span class="bi bi-plus-circle me-3"></span>' . lang('Add Option') . '</button>
-                                            </div>
-                                            <script>
-                                                init_product_attribute_options({
-                                                    options: ' . $output_options . ',
-                                                    labels:{
-                                                        "\'No Thanks\' Option":"' . lang('\'No Thanks\' Option') . '",
-                                                        "Option":"' . lang('Option') . '",
-                                                        "Move Up":"' . lang('Move Up') . '",
-                                                        "Move Down":"' . lang('Move Down') . '",
-                                                        "Remove":"' . lang('Remove') . '"
-                                                    }
-                                                });
-                                            </script>
-                                        </div>
+                                <div class="card-body pt-0">
+                                    <div class="options">
+                                        <div class="option_list d-flex flex-column gap-3" role="list" aria-label="' . h(lang('Attribute Options')) . '"></div>
+                                        <button type="button" class="add_option btn btn-outline theme-primary mt-5"><span class="bi bi-plus-circle me-3" aria-hidden="true"></span>' . lang('Add Option') . '</button>
+                                    </div>
+                                    <script>
+                                        init_product_attribute_options({
+                                            options: ' . $output_options . ',
+                                            labels:{
+                                                "\'No Thanks\' Option":"' . lang('\'No Thanks\' Option') . '",
+                                                "Option":"' . lang('Option') . '",
+                                                "Move Up":"' . lang('Move Up') . '",
+                                                "Move Down":"' . lang('Move Down') . '",
+                                                "Remove":"' . lang('Remove') . '"
+                                            }
+                                        });
+                                    </script>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                            <div class="position-sticky" style="top:3.3rem;">
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Summary') . '
+                                    </h2>
+                                    <div class="card-body pt-0">
+                                        <dl class="mb-0">
+                                            <div class="d-flex justify-content-between py-2">
+                                                <dt class="fw-normal">' . lang('Options') . '</dt>
+                                                <dd class="mb-0 fw-bold" id="product_attribute_summary_options">' . $option_count . '</dd>
+                                            </div>' . $output_usage . '
+                                        </dl>
                                     </div>
                                 </div>
                             </div>
+                        </div>';
+}
+
+/**
+ * The screen row: the columns (pg_product_attribute_form_cards()) and the
+ * sticky save bar with the given buttons.
+ *
+ * @param string $cards   pg_product_attribute_form_cards()
+ * @param string $buttons The buttons inside the bar's group
+ * @return string
+ */
+function pg_product_attribute_form_layout($cards, $buttons)
+{
+    return '
+                    <div class="row">' . $cards . '
+                        <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                            <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                                <div class="container">
+                                    <div class="btn-group flex-wrap justify-content-center">' . $buttons . '
+                                    </div>
+                                </div>
+                            </nav>
                         </div>
                     </div>';
 }
