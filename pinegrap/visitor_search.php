@@ -68,7 +68,7 @@ $zero = $read(pg_site_search_terms_sql('zero', 100));
 $rate_text = function ($clicks, $searches) {
     $rate = pg_site_search_click_rate($clicks, $searches);
 
-    return ($rate === null) ? '<span class="fg-secondary">-</span>' : h(pg_format_number($rate, 1)) . '%';
+    return ($rate === null) ? '<span class="fg-secondary">-</span>' : h(lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number($rate, 1)))));
 };
 
 $promote_url = function ($term) {
@@ -121,7 +121,7 @@ $tiles = '';
 
 foreach (array(
     array(lang('Searches'), pg_format_number($searches_total, 0)),
-    array(lang('Terms'), pg_format_number((int) $summary['terms'], 0)),
+    array(lang('Search terms'), pg_format_number((int) $summary['terms'], 0)),
     array(lang('No results'), pg_format_number((int) $summary['zero_results'], 0)),
     array(lang('Result clicks'), pg_format_number((int) $summary['clicks'], 0)),
     array(lang('Clicks per search'), strip_tags($rate_text($summary['clicks'], $searches_total))),
