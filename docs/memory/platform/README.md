@@ -171,7 +171,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - sms-twilio-driver.md: Twilio SMS driver (includes/sms/twilio.php, PR #3647): Basic auth, Messages.json form POST, IncomingPhoneNumbers check, Messaging Service SID, sender rule, error codes, retry and uncertain rules
 - speculation-prefetch-left-out.md: What the Speculation Rules block leaves out: link paths, page types, and designer pages whose system widget signs in or out, runs cart or checkout or shows an account
 - speculation-prefetch.md: Speculation Rules prefetch of menu links (2026.11.0, 11.0.127, #3184): what the block lists, what is left out, who gets none, the Features switch, counting and the page cache
-- starter-site-defaults.md: Starter dump defaults corrected by #3330 (PR #3581): empty AddThis sharing code plus the 11.0.133 data step, Turkish title 'Web Sitem', AT-ONCE named 'En kısa sürede'.
+- starter-site-defaults.md: Starter dump defaults (empty AddThis code, Turkish title and arrival name) and the scheduled jobs a new install switches on (search index, structure, accessibility).
 - stored-file-name-upload-rule.md: prepare_file_name() applies the upload rule (pg_upload_neutralize_name()) after the 100-character cut, so a cut never leaves a refused extension such as .php
 - structured-data-open-graph.md: Rules for JSON-LD and Open Graph (2026.4.4): no invented data, json_encode only, custom JSON-LD, merchant parts, OG image resolvers, SEO card key.
 - system-status-ca-bundle.md: The "CA Store" and "CA Certificate Bundle" system status checks - which store outbound TLS verifies against and why, the probe from System Status, the bundle age, thresholds, weights and cache.

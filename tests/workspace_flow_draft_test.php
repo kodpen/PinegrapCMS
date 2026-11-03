@@ -36,11 +36,12 @@ function workspace_flow_draft_change($data, $extra = array())
 	return $extra + array('type' => 'flow', 'action' => 'draft', 'data' => $data, 'reason' => "Weekly  report\nfor the team");
 }
 
-// Boxes as sent become the graph; the reason is one line of notes; the home
-// is the channel_id sent, 0 when left out.
+// Boxes with places of their own become the graph as sent (boxes sent with
+// none are laid out: tests/workspace_claude_flow_drafts_test.php); the reason
+// is one line of notes; the home is the channel_id sent, 0 when left out.
 function test_ws_flow_draft_input_boxes()
 {
-	$nodes = array(array('id' => 'start', 'kind' => 'manual'), array('id' => 'done', 'kind' => 'end', 'label' => 'Done'));
+	$nodes = array(array('id' => 'start', 'kind' => 'manual', 'x' => 96, 'y' => 96), array('id' => 'done', 'kind' => 'end', 'label' => 'Done', 'x' => 384, 'y' => 96));
 	$edges = array(array('from' => 'start', 'to' => 'done', 'on' => 'next'));
 	$input = ws_flow_draft_proposal_input(workspace_flow_draft_change(array('name' => 'Report', 'nodes' => $nodes, 'edges' => $edges, 'channel_id' => 7)));
 
