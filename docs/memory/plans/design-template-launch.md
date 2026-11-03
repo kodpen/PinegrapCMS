@@ -18,7 +18,7 @@ description: Plan for the Phone Launch Site template (pinegrap-launch): three mo
 - As Events and Real Estate: steps 1-6 write `includes/design_templates/pinegrap-launch/` (not globbed); step 7's `pinegrap-launch.php` includes them in one scope, each return kept as `$…_part`. Classes `plx-`, field ids `lx-`. Trap: `parts.php` keeps the phone in `$models`; no part may return into that name.
 
 ## Which steps are there?
-- 1 Data and shared parts: `parts.php` (builders, the phone's data, prices, accessories, press quotes; account bar, header, footer, launch band, page shells, model card, spec table, swatches, form fields, comment thread, staff bar); test `design_template_launch_test.php`.
+- 1 Done (#6163). Data and shared parts: `parts.php` (builders, the phone's data, prices, accessories, press quotes; account bar, header, footer, launch band, page shells, model card, spec table, swatches, form fields, comment thread, staff bar); test `design_template_launch_test.php`.
 
 - 2 Public pages: `pages_public.php` (home, features, camera, specs, compare, about, FAQ).
 
