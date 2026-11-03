@@ -41,10 +41,9 @@ function test_contact_photo_store_refuses_a_picture_too_large_to_decode()
 	}
 
 	$limit = ini_get('memory_limit');
-	// 128 MB, or 64 MB above what a long test run already holds: a limit
-	// below the current usage cannot be set. Either is far below the
-	// several GB a 900 megapixel picture needs.
-	ini_set('memory_limit', (string) max(134217728, memory_get_usage(true) + 67108864));
+	// 128 MB above what the test run already holds: a fixed 128M fails to
+	// set once the whole suite has grown past it.
+	ini_set('memory_limit', (string) (memory_get_usage() + 128 * 1024 * 1024));
 
 	try {
 		$data = 'data:image/png;base64,' . base64_encode(contact_photo_store_png(30000, 30000));

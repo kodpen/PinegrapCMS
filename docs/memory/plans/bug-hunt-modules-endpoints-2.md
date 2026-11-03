@@ -21,8 +21,8 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 - Endpoints `seo` (8): done #6091 (self link hid an orphan page); the rest clean
 - Endpoints `setting` (14): clean
 - Endpoints `shipping` (9): done #6086
-- Endpoints `shopping` (2): open
-- Endpoints `short` (5): open
+- Endpoints `shopping` (2): #6113
+- Endpoints `short` (5): clean
 - Endpoints `software` (3): open
 - Endpoints `style` (4): clean; lead: view_styles counts stored, not inherited, mobile ids
 - Endpoints `submitted` (5): done #6098 (edit_submitted_form: one checked id); the rest clean

@@ -13,7 +13,8 @@ description: A paged panel list (table.chart) comes back on its page, length and
 - A fresh visit from the menu has no `history.state` and opens on page 1.
 
 ## What traps does it rely on?
-- `fnInitComplete` calls `datatable.draw(false)`: DataTables 2.3.7's `draw()` with no argument sets `_iDisplayStart = 0` (`_fnReDraw`) and threw the restored page away.
+- The first draw opens on the kept page through `displayStart`; `fnInitComplete` draws no second time. A bare `draw()` would set `_iDisplayStart = 0` (`_fnReDraw`, DataTables 2.3.7) and throw the restored page away.
+- `fnInitComplete` shows the hidden table first, then calls `columns.adjust()` once (#6072): the earlier adjust on the hidden table, a second adjust and a `draw(false)` froze the Pages list ~440 ms more on open. No `$(window).on('resize')` adjust either (#6074, ~330 ms per event): with `scrollX` DataTables watches its wrapper width with a throttled `ResizeObserver`. Pinned by `tests/list_init_measure_test.php`.
 - The `?query=` handler keeps `history.state` in its `replaceState()`; `null` wiped the kept state. `view_folders.php` still replaces it with `null` on its own lists.
 - Never switch on DataTables `stateSave`: it also keeps ColReorder order and column visibility, which the Reset button expects to start fresh.
 

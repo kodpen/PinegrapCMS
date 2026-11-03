@@ -27,7 +27,7 @@ description: Main menu rows that open their entries in a panel inside the menu: 
 - `MENU_PANEL_KEY` is assigned above the init calls; below them it was undefined at load.
 
 ## What else had to change with it?
-- The loading curtain skips `[data-pg-menu-panel]` clicks (`pg_preloader_markup()`); the drawer's close-on-link handler ignores them.
+- Their handler cancels the click, so the leaving bar never starts; the drawer's close-on-link handler ignores them.
 - Rows carry `no-popover`, so `pgBindTitlePopovers()` leaves them the browser's title hint.
 - The panel CSS outweighs `#menu .menu-body .bi { font-size: 1.3rem }` (entries carry `bi`). The head is a tinted bar with a smaller title, so long names keep to one line.
 
