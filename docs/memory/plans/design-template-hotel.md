@@ -29,7 +29,7 @@ description: Plan for the Hotel template (pinegrap-hotel): rooms as a collection
 
 - 6 Shop: `shop.php` (Gift Vouchers group, `vouchers`, product, cart, checkout, order, `email_order`).
 
-- 7 Standard: `standard.php` (contact, inbox, conversation, newsletter, blog "Hotel Journal", blog post, search, error); test `…_standard_test.php`.
+- 7 Done (#6294). Standard: `standard.php` (contact, inbox, conversation, newsletter, blog "Hotel Journal", blog post, search, error); test `…_standard_test.php`.
 
 - 8 Account and staff: `account.php` (sign-in, My Account, staff area, `blog_new` with samples, account e-mails); test `…_account_test.php`.
 
