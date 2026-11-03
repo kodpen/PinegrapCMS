@@ -82,19 +82,7 @@ if (!$_POST || $errors) {
 
 } else {
     // create state
-    $query = "INSERT INTO states (
-                name,
-                code,
-                country_id,
-                user,
-                timestamp)
-            VALUES (
-                ?,
-                ?,
-                ?,
-                ?,
-                UNIX_TIMESTAMP())";
-    $result = db_q($query, array($values['name'], $values['code'], $values['country_id'], (int) $user['id'])) or output_error('Query failed.');
+    pg_store_state_save(0, $values, (int) $user['id']) or output_error('Query failed.');
     log_activity(lang(array('string'=>'{var:1} ({var:2}) was created','vars'=>array(lang('state'),$_POST['name']))), $_SESSION['sessionusername']);
 
     // forward user to view states page

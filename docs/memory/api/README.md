@@ -59,6 +59,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-reviews-and-wishlist.md: Reviews and favourites in the external API: verified and store_reply on Comment, GET /products/{id}/reviews, rating on Product, GET /customers/{id}/wishlist, product.review.created
 - api-sales-report-periods.md: GET /reports/sales: periods are site days and months by site.timezone's rules across clock changes; only periods with orders come back, at most 400; more is refused with 422 instead of being cut
 - api-seo-not-found.md: GET /seo/not-found (seo.not_found, scope seo:read): the 404 log over the external API and MCP, its sorts and keyset cursor, the fields, and how a client turns a row into a redirect
+- api-store-country-state-writes.md: Country and state writes (store:write): the write path shared with the four screens (includes/fn/store_regions.php), the screens' checks, partial updates, code_taken, what a delete takes
 - api-store-shipping-method-writes.md: Shipping method writes (store:write): write path shared with the screens, typed fields to columns, base rate tiers, days and times, zones, excluded dates, events
 - api-store-zone-writes.md: Shipping zone and tax zone writes (store:write): shared write functions the zone screens call too, partial updates, country and state input, zone.* and tax_zone.* events
 - api-subscriptions-list.md: GET /subscriptions and /subscriptions/{id} (customers:read): every store-run subscription with its customer, the filters, updated_since on subscriptions.updated_at, the user-role row rule

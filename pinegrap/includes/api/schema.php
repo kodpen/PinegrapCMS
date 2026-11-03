@@ -1314,6 +1314,175 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'store.countries.get',
+			'method'  => 'GET',
+			'path'    => '/store/countries/{id}',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_countries_get',
+			'returns' => 'StoreCountry',
+			'summary' => 'One country and its states',
+			'description' => 'One country as GET /store/countries lists it.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'store.countries.create',
+			'method'  => 'POST',
+			'path'    => '/store/countries',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_countries_create',
+			'dry_run' => true,
+			'returns' => 'StoreCountry',
+			'status'  => 201,
+			'summary' => 'Create a country',
+			'description' => 'Adds a country an address can name, as the country screen does; it can then be put into shipping and tax zones. A blank name or code is 422; a code another country has is 409 code_taken.',
+			'params'  => array(
+				array('name' => 'name',                    'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'The name the address forms show.'),
+				array('name' => 'code',                    'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'The code orders and checkout match, usually the ISO 3166 code (TR, US). No other country may have it: 409 code_taken.'),
+				array('name' => 'zip_code_required',       'in' => 'body', 'type' => 'bool', 'description' => 'Whether an address in the country needs a postal code.'),
+				array('name' => 'transit_adjustment_days', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999999999, 'description' => 'Days added to the delivery estimate of a shipment to the country.'),
+				array('name' => 'default',                 'in' => 'body', 'type' => 'bool', 'description' => 'true makes it the country the address forms select first and takes the switch off every other country.')
+			)
+		),
+
+		array(
+			'id'      => 'store.countries.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/store/countries/{id}',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_countries_update',
+			'dry_run' => true,
+			'returns' => 'StoreCountry',
+			'summary' => 'Change a country',
+			'description' => 'Only the fields sent change. A new code another country has is 409 code_taken; keeping the stored code is never refused. PATCH is accepted as well; on an IIS server send POST.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',                    'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The name the address forms show.'),
+				array('name' => 'code',                    'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The code orders and checkout match, usually the ISO 3166 code (TR, US). No other country may have it: 409 code_taken.'),
+				array('name' => 'zip_code_required',       'in' => 'body', 'type' => 'bool', 'description' => 'Whether an address in the country needs a postal code.'),
+				array('name' => 'transit_adjustment_days', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999999999, 'description' => 'Days added to the delivery estimate of a shipment to the country.'),
+				array('name' => 'default',                 'in' => 'body', 'type' => 'bool', 'description' => 'true makes it the country the address forms select first and takes the switch off every other country.')
+			)
+		),
+
+		array(
+			'id'      => 'store.countries.delete',
+			'method'  => 'DELETE',
+			'path'    => '/store/countries/{id}',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_countries_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a country',
+			'description' => 'Deletes the country outright with its states, as the country screen does: they leave every shipping and tax zone (a zone left with no country or state covers nothing), and the verified shipping addresses of its states are deleted. Orders keep the code they were written with. Cannot be undone.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'store.countries.delete_post',
+			'method'  => 'POST',
+			'path'    => '/store/countries/{id}/delete',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_countries_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a country, addressed as a POST',
+			'description' => 'The same delete as DELETE /store/countries/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'store.states.get',
+			'method'  => 'GET',
+			'path'    => '/store/states/{id}',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_states_get',
+			'returns' => 'StoreCountryState',
+			'summary' => 'One state',
+			'description' => 'One state with its country. country_code is null when the country is gone.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'store.states.create',
+			'method'  => 'POST',
+			'path'    => '/store/states',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_states_create',
+			'dry_run' => true,
+			'returns' => 'StoreCountryState',
+			'status'  => 201,
+			'summary' => 'Create a state',
+			'description' => 'Adds a state or province to a country, as the state screen does. A blank name or code, or no country, is 422; a code another state of the country has is 409 code_taken.',
+			'params'  => array(
+				array('name' => 'name',         'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'The name the address forms show.'),
+				array('name' => 'code',         'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'The code orders and checkout match. No other state of the same country may have it: 409 code_taken.'),
+				array('name' => 'country_id',   'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The country it belongs to (GET /store/countries). Required on create unless country_code is sent.'),
+				array('name' => 'country_code', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The country by its code, instead of country_id.')
+			)
+		),
+
+		array(
+			'id'      => 'store.states.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/store/states/{id}',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_states_update',
+			'dry_run' => true,
+			'returns' => 'StoreCountryState',
+			'summary' => 'Change a state',
+			'description' => 'Only the fields sent change; country_id or country_code moves it to another country. A new code (or country) whose code another state of that country has is 409 code_taken. PATCH is accepted as well; on an IIS server send POST.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',         'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The name the address forms show.'),
+				array('name' => 'code',         'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The code orders and checkout match. No other state of the same country may have it: 409 code_taken.'),
+				array('name' => 'country_id',   'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The country it belongs to (GET /store/countries). Required on create unless country_code is sent.'),
+				array('name' => 'country_code', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The country by its code, instead of country_id.')
+			)
+		),
+
+		array(
+			'id'      => 'store.states.delete',
+			'method'  => 'DELETE',
+			'path'    => '/store/states/{id}',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_states_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a state',
+			'description' => 'Deletes the state outright, as the state screen does: it leaves every shipping and tax zone and its verified shipping addresses are deleted. Cannot be undone.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'store.states.delete_post',
+			'method'  => 'POST',
+			'path'    => '/store/states/{id}/delete',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_states_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a state, addressed as a POST',
+			'description' => 'The same delete as DELETE /store/states/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+
+		array(
 			'id'      => 'store.currencies',
 			'method'  => 'GET',
 			'path'    => '/store/currencies',
