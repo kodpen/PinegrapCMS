@@ -213,6 +213,14 @@ function test_api_store_lookups_screens_share_the_write_path()
 		pg_assert_same($count, preg_match_all('/\$referral_source_options\[h\(\$\w+\[\'name\'\]\)\] = h\(\$\w+\[\'code\'\]\);/', api_store_lookups_test_source($file)), $file . ' escapes the referral sources');
 	}
 
+	// The shipping page hands verified addresses to an inline script: every
+	// text the API can write goes through escape_javascript().
+	$shipping = api_store_lookups_test_source('get_shipping_address_and_arrival.php');
+
+	foreach (array('company', 'address_1', 'address_2', 'city', 'state_code', 'zip_code', 'country_code') as $column) {
+		pg_assert_contains('"' . $column . '": "\' . escape_javascript($verified_shipping_address[\'' . $column . '\']) . \'"', $shipping, 'the shipping page escapes ' . $column);
+	}
+
 	$edit = api_store_lookups_test_source('edit_arrival_date.php');
 	pg_assert_contains('pg_store_arrival_date_save($id, ', $edit, 'the arrival date edit saves through the shared write');
 	pg_assert_contains('pg_store_arrival_date_cutoffs_save(', api_store_lookups_test_body('includes/forms/arrival_date_form.php', 'pg_arrival_date_form_save_cutoffs'), 'the screen\'s cut-offs go through the shared write');
