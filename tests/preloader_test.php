@@ -57,3 +57,35 @@ function test_download_marker_only_for_attachments()
 	pg_assert_false(pg_download_marker_needed(array('X-Note: Content-Disposition: attachment')), 'only the header itself');
 	pg_assert_false(pg_download_marker_needed(array()), 'no headers');
 }
+
+function test_panel_html_may_enter_the_back_forward_cache()
+{
+	pg_assert_same('private, no-cache', pg_panel_cache_control('/pinegrap/view_orders.php'), 'an ordinary screen');
+	pg_assert_same('private, no-cache', pg_panel_cache_control('welcome.php'), 'file name alone');
+	pg_assert_false(strpos(pg_panel_cache_control('view_pages.php'), 'no-store') !== false, 'no no-store');
+}
+
+function test_secret_screens_keep_no_store()
+{
+	foreach (array('api_settings.php', 'connections.php', 'connected_apps.php', 'edit_user.php', 'view_key_codes.php', 'edit_key_code.php') as $script) {
+		pg_assert_same('private, no-store', pg_panel_cache_control('/pinegrap/' . $script), $script);
+	}
+	pg_assert_same('private, no-store', pg_panel_cache_control('API_Settings.php'), 'any case');
+}
+
+function test_restored_page_asks_for_the_session()
+{
+	$html = pg_preloader_markup();
+	pg_assert_contains('/session_state.php"', $html, 'session address on the curtain');
+	pg_assert_contains("host.getAttribute('data-pg-session')", $html, 'read on pageshow');
+	pg_assert_contains('d.signed_in === false) location.reload()', $html, 'a gone session loads the page again');
+}
+
+function test_a_screen_s_own_cache_control_is_kept()
+{
+	pg_assert_true(pg_panel_cache_is_session_default(array('Content-Type: text/html')), 'none set');
+	pg_assert_true(pg_panel_cache_is_session_default(array('Expires: Thu, 19 Nov 1981 08:52:00 GMT', 'Cache-Control: no-store, no-cache, must-revalidate', 'Pragma: no-cache')), 'the session default');
+	pg_assert_true(pg_panel_cache_is_session_default(array('Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0')), 'older PHP');
+	pg_assert_false(pg_panel_cache_is_session_default(array('Cache-Control: no-store, max-age=0')), 'device pairing');
+	pg_assert_false(pg_panel_cache_is_session_default(array('cache-control: private, no-store')), 'any case');
+}

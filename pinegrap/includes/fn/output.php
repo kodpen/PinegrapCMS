@@ -404,7 +404,10 @@ function pg_preloader_markup()
         $mark = '<span class="pg-preloader-logo">' . pg_logo_svg('-pl') . '</span>';
     }
 
-    $markup = '<div id="pg-preloader" class="pg-preloader" aria-hidden="true">'
+    $session_url = (defined('OUTPUT_PATH') && defined('OUTPUT_SOFTWARE_DIRECTORY'))
+        ? OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/session_state.php' : '';
+
+    $markup = '<div id="pg-preloader" class="pg-preloader" aria-hidden="true" data-pg-session="' . h($session_url) . '">'
             . '<div class="pg-preloader-bar"><i></i></div>'
             . '<div class="pg-preloader-mark">' . $mark
             . '<div class="pg-preloader-dots"><i></i><i></i><i></i></div>'
@@ -497,9 +500,19 @@ function pg_preloader_markup()
         });
 
         // Coming back through the browser's back button hands us the page
-        // exactly as it was, bar and all.
+        // exactly as it was, bar and all. The session may have ended since
+        // (signed out in another tab, timed out): then the page is loaded
+        // again, and the server sends it to sign-in.
         window.addEventListener('pageshow', function (e) {
-            if (e.persisted) { settle(); hide(); }
+            if (!e.persisted) return;
+            settle();
+            hide();
+            var at = host.getAttribute('data-pg-session');
+            if (!at || !window.fetch) return;
+            fetch(at, { credentials: 'same-origin', cache: 'no-store', headers: { 'Accept': 'application/json' } })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (d) { if (d && d.signed_in === false) location.reload(); })
+                .catch(function () {});
         });
 
         if (hasNav) {
@@ -540,6 +553,82 @@ function pg_preloader_markup()
     })();
     </script>
 PGPRELOADER;
+}
+
+/**
+ * Panel screens that show a secret and so never enter the browser's caches,
+ * the back/forward cache included: API keys and secrets, connected-account
+ * tokens, an account's sign-in factors and recovery, key codes. Screens
+ * outside output_header() (sign-in, password reset and set, two-factor
+ * setup, passkeys, account security) keep PHP's session default, which is
+ * no-store already.
+ *
+ * @return string[] script file names
+ */
+function pg_panel_no_store_screens()
+{
+    return array(
+        'api_settings.php',
+        'connections.php',
+        'connected_apps.php',
+        'edit_user.php',
+        'view_key_codes.php',
+        'add_key_code.php',
+        'edit_key_code.php',
+        'import_key_codes.php',
+    );
+}
+
+/**
+ * The Cache-Control a panel screen's HTML is sent with: private, no-cache
+ * (revalidated on every ordinary visit, but allowed into the back/forward
+ * cache), or private, no-store for a screen in pg_panel_no_store_screens().
+ *
+ * @param string $script the screen's path or file name
+ * @return string
+ */
+function pg_panel_cache_control($script)
+{
+    $script = strtolower(basename((string) $script));
+    if (in_array($script, pg_panel_no_store_screens(), true)) {
+        return 'private, no-store';
+    }
+    return 'private, no-cache';
+}
+
+/**
+ * Whether the Cache-Control about to be sent is still the session's own
+ * (PHP's nocache limiter) or missing; a screen that chose its own
+ * (device_pairing.php sends no-store) keeps it.
+ *
+ * @param array $headers header lines (headers_list())
+ * @return bool
+ */
+function pg_panel_cache_is_session_default(array $headers)
+{
+    foreach ($headers as $line) {
+        if (preg_match('/^\s*cache-control\s*:\s*(.*)$/i', (string) $line, $m)) {
+            // Older PHP versions add ", post-check=0, pre-check=0".
+            return strpos(strtolower(trim($m[1])), 'no-store, no-cache, must-revalidate') === 0;
+        }
+    }
+    return true;
+}
+
+/**
+ * output_header(): replaces the session's no-store headers (PHP's
+ * session.cache_limiter = nocache) for panel HTML, so Back and Forward
+ * restore a panel screen at once. A restored page asks session_state.php
+ * whether the session is still there (pg_preloader_markup()).
+ */
+function pg_panel_cache_headers()
+{
+    if (headers_sent() || !pg_panel_cache_is_session_default(headers_list())) {
+        return;
+    }
+    header('Cache-Control: ' . pg_panel_cache_control(isset($_SERVER['SCRIPT_NAME']) ? $_SERVER['SCRIPT_NAME'] : ''));
+    header_remove('Pragma');
+    header_remove('Expires');
 }
 
 /**
@@ -1550,7 +1639,7 @@ function pg_list_edit_reply($data, $status = 200)
 {
     http_response_code($status);
     header('Content-Type: application/json; charset=utf-8');
-    header('Cache-Control: private, no-store');
+    header('Cache-Control: private, no-cache');
     header('X-Robots-Tag: noindex');
     echo json_encode($data, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE);
     exit();
@@ -1915,6 +2004,8 @@ function output_header($properties = false)
     if (!defined('PG_PANEL_OUTPUT')) {
         define('PG_PANEL_OUTPUT', true);
     }
+
+    pg_panel_cache_headers();
 
     //output
     $output = '';
