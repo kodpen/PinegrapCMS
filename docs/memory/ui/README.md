@@ -67,6 +67,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - bootstrap-6.md: The panel on Bootstrap 6 (switch #1866, tag bs6-switch): docs and skills, the dist copy, what is v6 and what stays 5.3.8, layers and breakpoints, own class names, a branch older than the switch
 - browser-prepared-submit.md: A form that prepares data in the browser before posting it (Image Editor, Edit File's SVG to raster conversion) sends once, through requestSubmit(), and only when the data is ready.
 - button-busy-state.md: Buttons never change their label or lock for a fixed time while a request runs; the window-level guard against double submits and double clicks (3 s); how an Ajax button disables itself.
+- calendar-event-duplicate.md: A duplicated calendar event starts unpublished, named "… (copy)", with its calendars, cancelled repeats and locations copied; the location check asks on its first save
 - calendar-event-edit-screen.md: Edit calendar event screen (edit_calendar_event.php): which recurring instance it edits (recurrence_number) and how a missing or array value is read
 - calendar-event-exception-endpoint.md: update_calendar_event_exception.php (Remove / Unremove a repeating event's instance): parameter check, instance range, no second row
 - calendar-event-form-checks.md: Calendar event form: whole-number fields and their server check, the location check's time window, the all day label suffix ids, the reservations switch re-running the repeat toggle
