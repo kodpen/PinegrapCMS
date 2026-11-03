@@ -200,7 +200,10 @@ function pg_lang_shard_problems($name, $text)
 
 // Writes a language file through a temporary file and rename(): lang() reads
 // the file on every request, and a half-written one does not decode, so every
-// text of that page would fall back to English. Returns true on success.
+// text of that page would fall back to English. Windows does not rename over
+// a file that exists (above all one another request is reading), so the old
+// file is then deleted and the rename tried again; a reader in between finds
+// no file and decodes the sources. Returns true on success.
 function pg_lang_write_file($path, $text)
 {
     $temporary = $path . '.tmp-' . getmypid();
@@ -210,12 +213,17 @@ function pg_lang_write_file($path, $text)
         return false;
     }
 
-    if (!@rename($temporary, $path)) {
-        @unlink($temporary);
-        return false;
+    if (@rename($temporary, $path)) {
+        return true;
     }
 
-    return true;
+    if (is_file($path) && @unlink($path) && @rename($temporary, $path)) {
+        return true;
+    }
+
+    @unlink($temporary);
+
+    return false;
 }
 
 // Where the compiled cache of language $code is kept: $temp (by default

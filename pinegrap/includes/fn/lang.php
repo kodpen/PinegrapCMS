@@ -183,13 +183,13 @@ function pg_lang_cache_read($path, $signature)
 // Writes the compiled cache of $map to $path through a temporary file and
 // rename(), so a request never includes a half-written file, and drops the
 // old copy from opcache (which may not check file times at all). false when
-// the folder is missing or not writable: lang() then decodes the JSON each
-// request, as it did before the cache.
+// the folder is missing or does not take the file: lang() then decodes the
+// JSON each request, as it did before the cache. The write answers, not
+// is_writable(): PHP on Windows calls a folder with the read-only attribute
+// (set by OneDrive and Explorer, enforced by nothing) closed.
 function pg_lang_cache_write($path, $signature, array $map)
 {
-    $dir = dirname($path);
-
-    if (!is_dir($dir) || !is_writable($dir)) {
+    if (!is_dir(dirname($path))) {
         return false;
     }
 
