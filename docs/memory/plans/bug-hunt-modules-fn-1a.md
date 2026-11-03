@@ -56,7 +56,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `errors`: open
 
-- `events`: open
+- `events`: clean
 
 - `explorer_side`: open
 
