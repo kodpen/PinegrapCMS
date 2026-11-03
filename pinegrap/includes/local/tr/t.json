@@ -6482,6 +6482,7 @@
     "Too many failed attempts. Please try again in {var:1} minutes.": "Çok fazla hatalı deneme yapıldı. Lütfen {var:1} dakika sonra tekrar deneyin.",
     "Too many failed sign-in attempts. Please wait {var:1} minutes and try again.": "Çok fazla başarısız giriş denemesi. Lütfen {var:1} dakika bekleyip tekrar deneyin.",
     "Too many failed sign-in attempts. Please wait {var:1} minutes, or sign in on the website once, and try again.": "Çok fazla başarısız giriş denemesi. {var:1} dakika bekleyin ya da bir kez web sitesinden giriş yapın, sonra yeniden deneyin.",
+    "Too many forms are selected. Select fewer forms and try again.": "Çok fazla form seçildi. Daha az form seçip yeniden deneyin.",
     "Too many items for one return.": "Tek bir iade için çok fazla ürün var.",
     "Too many keywords": "Anahtar kelime sayısı fazla",
     "Too many pages are selected. Select fewer pages and try again.": "Çok fazla sayfa seçildi. Daha az sayfa seçip yeniden deneyin.",

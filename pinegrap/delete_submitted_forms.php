@@ -25,16 +25,27 @@ validate_token_field();
 include_once('liveform.class.php');
 $liveform = new liveform('view_submitted_forms');
 
-// if at least one form was selected (a list of ids; anything else selects none)
-if (isset($_POST['forms']) && is_array($_POST['forms']) && $_POST['forms']) {
+// The submitted forms list sends its selection as the list table driver
+// keeps it: the forms picked, or the whole list by its filters less the
+// exceptions. It is read back with the list's own query and the user's
+// rights (pg_submitted_form_list_selected_ids()).
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list.php');
+$form_ids = pg_submitted_form_list_selected_ids($user, $_POST['selection'] ?? '');
+
+if ($form_ids === false) {
+    output_error(lang('Query failed.'));
+}
+
+if ($form_ids === null) {
+    output_error(lang('Too many forms are selected. Select fewer forms and try again.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+}
+
+// if at least one form was selected
+if ($form_ids) {
     $number_of_forms = 0;
 
     // loop through all forms that were selected for deletion
-    foreach ($_POST['forms'] as $form_id) {
-        if (!is_scalar($form_id)) {
-            continue;
-        }
-
+    foreach ($form_ids as $form_id) {
         // get folder id so we can validate access to this form
         $query = "SELECT page.page_folder as folder_id
                  FROM forms
