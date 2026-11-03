@@ -168,7 +168,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - erp-link-rights.md: ERP order, receipt, contact and user links and the Record a Receipt/Payment buttons show only when the target screen admits the clerk; plain text otherwise
 - experiments-screen.md: The Experiments results screen (experiments.php, PX5 #6255): list, per-variant figures, lift, the z-test as a sentence, the daily-rate SVG, buttons posted to the sheet
 - explorer-access-drawers.md: File Manager access drawers (folder and commerce) list only rights holders, add users by search, save changed rows, None deletes the row; end date layout, inherit note
-- explorer-bin-records-and-names.md: File Manager bin count skips records of gone items, classic page deletes clear the record, bin status bar kinds; paste, Duplicate, rename and upload toasts name the name a copy or file took
+- explorer-bin-records-and-names.md: File Manager bin count skips gone items, page deletes clear the record, Edit File deletes to the bin, status bar kinds; paste, Duplicate, rename, upload and save toasts name the name a file took
 - explorer-bin-toast.md: File and Catalog Manager Delete toasts count what the server moved to the bin and show its refusal reasons
 - explorer-breadcrumb-narrow.md: Why the File and Catalog Manager's location bar scrolls to its end after every draw and on resize, and fades on its left edge.
 - explorer-bulk-rename.md: File Manager Bulk Rename shows, compares and counts file names as prepare_file_name() stores them, via explorer_rename's write-nothing preview; Apply waits for it
