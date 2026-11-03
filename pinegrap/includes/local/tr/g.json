@@ -345,7 +345,7 @@
     "Google sign-in is on": "Google ile giriş açık",
     "Google tags you add yourself (Tag Manager, Google Ads) are told the answer through Google Consent Mode v2: they set no cookies until the visitor allows statistics or marketing. Such a tag can stay as it is; for the notice to ask about its category, add an empty held tag such as {var:1}.": "Kendi eklediğiniz Google etiketleri (Etiket Yöneticisi, Google Ads) yanıtı Google İzin Modu v2 ile öğrenir: ziyaretçi istatistiğe ya da pazarlamaya izin verene kadar çerez yazmazlar. Böyle bir etiket olduğu gibi kalabilir; bildirimin onun kategorisini sorması için {var:1} gibi boş bir bekletilen etiket ekleyin.",
     "Google verified that the site is yours.": "Google sitenin size ait olduğunu doğruladı.",
-    "Googlebot, Bingbot and the other search engines, once their address proves the name (Verify Search Engine Crawlers has to be on). Without this a site open to one country drops out of search results.": "Googlebot, Bingbot ve diğer arama motorları, adresleri adlarını doğruladığında (Arama Motoru Tarayıcılarını Doğrula açık olmalı). Bu kapalıyken tek ülkeye açık bir site arama sonuçlarından düşer.",
+    "Googlebot, Bingbot and the other search engines, once their address proves the name (Verify Search Engine Crawlers has to be on). Without this a site open to one country drops out of search results.": "Googlebot, Bingbot ve diğer arama motorları, adresleri adlarını doğruladığında (Arama Motoru Botlarını Doğrula açık olmalı). Bu kapalıyken tek ülkeye açık bir site arama sonuçlarından düşer.",
     "Got an idea? Let's make something fun.": "Bir fikriniz mi var? Hadi eğlenceli bir şey yapalım.",
     "Got another idea?": "Aklında başka bir fikir mi var?",
     "Gothenburg": "Göteborg",
