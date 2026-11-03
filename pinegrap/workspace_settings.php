@@ -445,6 +445,12 @@ if ($_POST) {
             break;
     }
 
+    // A refused card form gets what was typed back, and the page shows the
+    // error inside that form (ws_settings_refused_script()).
+    if ($liveform->check_form_errors()) {
+        $_SESSION['software']['ws_settings_refused'] = ws_settings_refused_fields($_POST);
+    }
+
     go($self_url . $anchor);
 }
 
@@ -461,6 +467,150 @@ unset($_SESSION['software']['ws_assistant_credentials']);
 
 if ($assistant_credentials !== null) {
     header('Cache-Control: no-store');
+}
+
+// What a refused card form posted, read once.
+$refused_fields = $_SESSION['software']['ws_settings_refused'] ?? null;
+unset($_SESSION['software']['ws_settings_refused']);
+
+/**
+ * The page's own script: a refused card form is filled again with what was
+ * typed (ws_settings_refused_fields()), opened if it sits in a closed part,
+ * and the error moves from the top of the page into that form, or into the
+ * card the page was sent back to; and a department row's Team lead or Own
+ * department tick ticks In the department too, as the save counts them.
+ *
+ * @param array|null $fields
+ * @return string HTML
+ */
+function ws_settings_refused_script($fields)
+{
+    $json = is_array($fields) ? json_encode($fields, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) : 'null';
+
+    $script = <<<'JS'
+(function () {
+    var holder = document.getElementById('ws-settings-refused');
+    var fields = null;
+    var form = null;
+
+    try {
+        fields = holder ? JSON.parse(holder.textContent) : null;
+    } catch (error) {
+        fields = null;
+    }
+
+    // The form the refused save came from: the same action and, for a
+    // department, mailbox or calendar, the same record. A one-button row
+    // form has nothing to fill.
+    if (fields && fields.ws_action) {
+        document.querySelectorAll('#content form').forEach(function (candidate) {
+            var action = candidate.querySelector('input[type="hidden"][name="ws_action"]');
+
+            if (form || !action || (action.value !== fields.ws_action) || candidate.classList.contains('d-inline')) {
+                return;
+            }
+
+            var same = ['box_id', 'department_id', 'feed_id'].every(function (key) {
+                var input = candidate.querySelector('input[type="hidden"][name="' + key + '"]');
+
+                return !input || !(key in fields) || (input.value === fields[key]);
+            });
+
+            if (same) {
+                form = candidate;
+            }
+        });
+    }
+
+    if (form) {
+        var seen = {};
+
+        Array.prototype.forEach.call(form.elements, function (field) {
+            var name = field.name;
+            var list = /\[\]$/.test(name || '');
+            var value = fields[name];
+
+            if (!name || field.disabled || /^(hidden|file|password|submit|button|reset)$/.test(field.type)) {
+                return;
+            }
+
+            // An unticked box is not posted at all.
+            if ((field.type === 'checkbox') || (field.type === 'radio')) {
+                field.checked = list ? (Array.isArray(value) && (value.indexOf(field.value) !== -1)) : (value === field.value);
+                return;
+            }
+
+            if (list) {
+                seen[name] = seen[name] || 0;
+                value = Array.isArray(value) ? value[seen[name]] : undefined;
+                seen[name]++;
+            }
+
+            if (typeof value === 'string') {
+                field.value = value;
+            }
+        });
+
+        var collapse = form.closest('.collapse');
+
+        if (collapse) {
+            collapse.classList.add('show');
+
+            document.querySelectorAll('[data-bs-target="#' + collapse.id + '"]').forEach(function (toggle) {
+                toggle.setAttribute('aria-expanded', 'true');
+            });
+        }
+    }
+
+    // The error, printed at the top of the page, goes where the save was
+    // made: the browser comes back scrolled to that card.
+    var alert = document.querySelector('#content .software_error');
+    var place = form;
+
+    if (!place && (location.hash.length > 1)) {
+        place = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+    }
+
+    if (alert && place) {
+        var body = place.classList.contains('card') ? place.querySelector('.card-body') : null;
+
+        if (body) {
+            body.insertBefore(alert, body.firstChild);
+        } else if (place === form) {
+            form.insertBefore(alert, form.firstChild);
+        } else {
+            place.parentNode.insertBefore(alert, place);
+        }
+
+        window.addEventListener('load', function () {
+            alert.scrollIntoView({block: 'center'});
+        });
+    }
+
+    document.addEventListener('change', function (event) {
+        var box = event.target;
+        var row = (box.matches && box.matches('.ws-dept-form input[type="checkbox"]')) ? box.closest('tr') : null;
+        var member = row ? row.querySelector('input[name="members[]"]') : null;
+
+        if (!member) {
+            return;
+        }
+
+        if (box !== member) {
+            member.checked = member.checked || box.checked;
+            return;
+        }
+
+        if (!member.checked) {
+            row.querySelectorAll('input[name="leads[]"], input[name="primary[]"]').forEach(function (other) {
+                other.checked = false;
+            });
+        }
+    });
+})();
+JS;
+
+    return '<script type="application/json" id="ws-settings-refused">' . $json . '</script>' . "\n<script>\n" . $script . "\n</script>";
 }
 
 // ── Output ────────────────────────────────────────────────────────────
@@ -747,6 +897,7 @@ pg_page_shell([
 </div>
 </div>
 </main>' .
+ws_settings_refused_script($refused_fields) .
 output_footer();
 
 $liveform->remove_form();
