@@ -1063,6 +1063,55 @@ function _pg_catalog_variant_flags_keep($html, $flags, $switched = array('has_ra
     }, $html);
 }
 
+/**
+ * The query string of the listing's "clear filters" address: the visitor's
+ * parameters without the filters (pmin, pmax, stock, sort, attr and the
+ * attribute filters' pg_attr_<id>), the page number and any array value,
+ * keys and values encoded. The search text and a homepage catalog's group
+ * (cat) stay: they are not filters. The caller passes
+ * _pg_sw_query_params(), so the router's page name on a pretty address is
+ * not repeated (/shop/shoes?page=shop%2Fshoes&query=x).
+ *
+ * @param array  $params     the query parameters
+ * @param string $page_param the listing's page number parameter
+ * @return string            without the leading '?', '' when nothing is left
+ */
+function _pg_catalog_clear_filters_query($params, $page_param)
+{
+    $drop  = array('pmin', 'pmax', 'stock', 'sort', 'attr', (string)$page_param);
+    $pairs = array();
+    foreach (is_array($params) ? $params : array() as $k => $v) {
+        if (in_array((string)$k, $drop, true) || strncmp((string)$k, 'pg_attr_', 8) === 0 || is_array($v)) continue;
+        $pairs[] = urlencode((string)$k) . '=' . urlencode((string)$v);
+    }
+    return implode('&', $pairs);
+}
+
+// $url without its cart_added parameters (the notice of an add to cart that
+// came back to the page), the other parameters kept as they were written.
+// The address a catalog add form returns to when catalog_detail.php refuses
+// the add.
+function _pg_catalog_return_url($url)
+{
+    $url = (string)$url;
+    $hash = '';
+    $hash_pos = strpos($url, '#');
+    if ($hash_pos !== false) {
+        $hash = substr($url, $hash_pos);
+        $url  = substr($url, 0, $hash_pos);
+    }
+    $q_pos = strpos($url, '?');
+    if ($q_pos === false) return $url . $hash;
+    $kept = array();
+    foreach (explode('&', substr($url, $q_pos + 1)) as $pair) {
+        if ($pair === '') continue;
+        $eq = strpos($pair, '=');
+        if (urldecode($eq === false ? $pair : substr($pair, 0, $eq)) === 'cart_added') continue;
+        $kept[] = $pair;
+    }
+    return substr($url, 0, $q_pos) . ($kept ? '?' . implode('&', $kept) : '') . $hash;
+}
+
 function _render_system_widget_catalog_listing($product_group_id, $tree_json, $widget_id, $cfg = array())
 {
     $product_group_id = (int)$product_group_id;  // 0 = all groups
@@ -1155,8 +1204,11 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     $offset_records = pg_sw_list_offset($cfg);
     $query_param    = 'query';
     $current_page   = isset($_GET[$page_param]) ? max(1, (int)$_GET[$page_param]) : 1;
-    $search_query = ($search_enabled && isset($_GET[$query_param])) ? trim((string)$_GET[$query_param]) : '';
-    if (strlen($search_query) > 100) $search_query = substr($search_query, 0, 100);
+    // One value only (?query[]=x is no search), cut at 100 characters, not
+    // bytes: a cut inside a multi-byte letter left invalid UTF-8, which h()
+    // prints as nothing, so the search box came back empty.
+    $search_query = ($search_enabled && isset($_GET[$query_param]) && is_scalar($_GET[$query_param])) ? trim((string)$_GET[$query_param]) : '';
+    if (mb_strlen($search_query) > 100) $search_query = mb_substr($search_query, 0, 100);
 
     // ── Active group resolution (path-based) ──────────────────────────────
     // Drill-down state lives in the URL path: /{liste_page}/{group_address_name}.
@@ -1233,6 +1285,9 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         if ($next_slash !== false) $segment = mb_substr($segment, 0, $next_slash, 'UTF-8');
         $segment = urldecode(trim($segment));
     }
+    // A group segment in the page's path is this widget's to answer: a
+    // drill-down or its own 404 below.
+    if (!$is_homepage_catalog && $segment !== '') pg_sw_segment_read(true);
     if ($segment !== '' && strlen($segment) <= 200) {
         $found_id = (int)db_value(
             "SELECT id FROM product_groups
@@ -1443,23 +1498,24 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         // ("yeşil" should find products with Renk=Yeşil attribute). Result
         // was inconsistent search ("kısmen çalışıyor"). Wider field set
         // makes search match visitor expectations across the board.
-        $q_esc = e($search_query);
+        // A % or _ the visitor types is a plain character, not a wildcard.
+        $q_like = e(pg_list_like_pattern($search_query));
         $extra_conditions .= " AND (
-              products.name              LIKE '%$q_esc%'
-           OR products.short_description LIKE '%$q_esc%'
-           OR products.full_description  LIKE '%$q_esc%'
-           OR products.details           LIKE '%$q_esc%'
-           OR products.keywords          LIKE '%$q_esc%'
-           OR products.meta_keywords     LIKE '%$q_esc%'
-           OR products.meta_description  LIKE '%$q_esc%'
-           OR products.address_name      LIKE '%$q_esc%'
+              products.name              LIKE '$q_like'
+           OR products.short_description LIKE '$q_like'
+           OR products.full_description  LIKE '$q_like'
+           OR products.details           LIKE '$q_like'
+           OR products.keywords          LIKE '$q_like'
+           OR products.meta_keywords     LIKE '$q_like'
+           OR products.meta_description  LIKE '$q_like'
+           OR products.address_name      LIKE '$q_like'
            OR EXISTS (
                 SELECT 1
                 FROM products_attributes_xref _pas
                 INNER JOIN product_attribute_options _pao
                   ON _pao.id = _pas.option_id
                 WHERE _pas.product_id = products.id
-                  AND _pao.label LIKE '%$q_esc%'
+                  AND _pao.label LIKE '$q_like'
               )
         ) ";
     }
@@ -1650,6 +1706,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                              xref.new_date  AS xref_new_date";
         }
         $rating_cols = _pg_catalog_rating_columns(pg_reviews_ready());
+        $preorder_cols = pg_preorder_select_sql('products', pg_product_preorder_ready());
+        $preorder_today = pg_preorder_today();
         $products = db_items(
             "SELECT
                  products.id, products.name, products.address_name,
@@ -1660,7 +1718,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                  products.out_of_stock_message,
                  products.mpn, products.gtin, products.brand, products.weight,
                  products.shippable, products.taxable, products.reward_points,
-                 products.seo_score, $rating_cols,
+                 products.seo_score, $rating_cols$preorder_cols,
                  products.custom_field_1, products.custom_field_2,
                  products.custom_field_3, products.custom_field_4
                  " . pg_sw_entity_select('product', 'products') . "
@@ -1766,7 +1824,9 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     $atc_back        = $atc_stay || $atc_next_pid <= 0;
     $atc_software_dir = defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software';
     $atc_action_url   = $base_path . $atc_software_dir . '/catalog_detail.php';
-    $atc_request_uri  = function_exists('get_request_uri') ? get_request_uri() : (isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/');
+    // Where a refused add comes back to: without the ?cart_added= of an
+    // earlier add, which would show "added to cart" beside the refusal.
+    $atc_request_uri  = _pg_catalog_return_url(function_exists('get_request_uri') ? get_request_uri() : (isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/'));
     // Read once per request: every listing of the page asks for the same id.
     static $atc_page_ids = array();
     $atc_page_key = isset($_GET['page']) ? (string)$_GET['page'] : '';
@@ -1956,6 +2016,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             // shelf. See the catalog_item_view twin.
             '__out_of_stock_message'=> ($oos_notice && !empty($p['out_of_stock_message']))
                                            ? _pg_rich_text_to_inline($p['out_of_stock_message']) : '',
+            // __preorder, __preorder_date, __preorder_label (includes/fn/preorder.php).
+        ) + pg_preorder_tokens($p, $preorder_today) + array(
 
             // Identity
             '__sku'                 => isset($p['mpn']) ? (string)$p['mpn'] : '',  // alias — Pinegrap uses MPN
@@ -2464,7 +2526,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         // behind a click and quoted the whole group's price range, not the
         // matching items' — it read as a result that did not match.
         if ($search_active) {
-            $_q = e($search_query);
+            $_q = e(pg_list_like_pattern($search_query));
             $children = db_items(
                 "SELECT product_groups.id, product_groups.name, product_groups.address_name,
                        product_groups.image_name, product_groups.short_description,
@@ -2475,9 +2537,9 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
                 WHERE product_groups.parent_id = '" . $_pg_parent_filter . "'
                   AND product_groups.enabled = 1
                   AND (
-                       product_groups.name              LIKE '%$_q%'
-                    OR product_groups.short_description LIKE '%$_q%'
-                    OR product_groups.address_name      LIKE '%$_q%'
+                       product_groups.name              LIKE '$_q'
+                    OR product_groups.short_description LIKE '$_q'
+                    OR product_groups.address_name      LIKE '$_q'
                   )
                 ORDER BY product_groups.sort_order ASC, product_groups.name ASC"
             );
@@ -2800,21 +2862,10 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     $_pg_off_id = 'pgFilters' . (int)$widget_id;
     $_pg_any_filter_ui = ($price_filter_enabled || $stock_filter_enabled || $attr_filter_enabled);
 
-    $clear_query_keys = array('pmin','pmax','stock','sort','attr');
-    $clear_query_pairs = array();
-    $clear_query_raw   = array();
-    if (!empty($_GET) && is_array($_GET)) {
-        foreach ($_GET as $k => $v) {
-            if (in_array($k, $clear_query_keys, true) || $k === $page_param) continue;
-            if (is_array($v)) continue;
-            $clear_query_pairs[] = h($k) . '=' . urlencode((string)$v);
-            $clear_query_raw[]   = $k . '=' . urlencode((string)$v);
-        }
-    }
-    $clear_url = '?' . implode('&', $clear_query_pairs);
     // The same address unescaped, for the clear button of the filter chip
     // parts (^^__clear_filters_url^^), which the token fill escapes once.
-    $clear_url_raw = '?' . implode('&', $clear_query_raw);
+    $clear_url_raw = '?' . _pg_catalog_clear_filters_query(_pg_sw_query_params(), $page_param);
+    $clear_url     = h($clear_url_raw);
     // `$stock_filter_active` reflects the CURRENT state — including the
     // configured default ("show only in-stock"). Treating that default as
     // "an active filter" makes the chip strip + clear button render on
@@ -3288,9 +3339,10 @@ function _civ_resolve_catalog_listing_root_group_id($page_id)
  * @param string $select_group_name Friendly name when select-group active.
  * @param int    $catalog_page_id   Optional listing page id for crumb URLs.
  * @param int    $root_group_id     Optional scope root (excludes ancestors above this).
+ * @param string $root_label        Optional first crumb's words (blank: "Main Catalog").
  * @return array                  the catalog.crumbs rows (pg_sw_list_crumb_rows_item())
  */
-function _civ_breadcrumb_rows($p, $select_group_id, $select_group_name, $catalog_page_id, $root_group_id)
+function _civ_breadcrumb_rows($p, $select_group_id, $select_group_name, $catalog_page_id, $root_group_id, $root_label = '')
 {
     $base_path = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
     $catalog_root_url = '';
@@ -3352,7 +3404,7 @@ function _civ_breadcrumb_rows($p, $select_group_id, $select_group_name, $catalog
     if ($select_group_id <= 0 && is_array($p) && !empty($p['id'])) {
         $product_name = !empty($p['short_description']) ? (string)$p['short_description'] : (string)$p['name'];
     }
-    return pg_sw_list_crumb_rows_item($crumbs, $catalog_root_url, (int)$select_group_id > 0, $product_name);
+    return pg_sw_list_crumb_rows_item($crumbs, $catalog_root_url, (int)$select_group_id > 0, $product_name, $root_label);
 }
 
 /**
@@ -4963,6 +5015,9 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             $segment = urldecode(trim($segment));
             if ($segment !== '' && strlen($segment) <= 200) {
                 $product_address_name = $segment;
+                // The product named here answers for the segment (a 404 of
+                // its own when it is not there).
+                pg_sw_segment_read(true);
             }
         }
     }
@@ -4995,6 +5050,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     // The AI marks of the product's texts (^^__ai_generated^^), read only
     // where the upgrade added the column.
     $_civ_ai_col = pg_ai_fields_ready('product') ? ', products.ai_fields' : '';
+    $_civ_preorder_cols = pg_preorder_select_sql('products', pg_product_preorder_ready());
 
     $p = null;
     if ($product_address_name !== '') {
@@ -5008,7 +5064,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                  products.out_of_stock_message,
                  products.mpn, products.gtin, products.brand, products.weight,
                  products.shippable, products.taxable, products.reward_points,
-                 products.seo_score, $_civ_rating_cols$_civ_ai_col,
+                 products.seo_score, $_civ_rating_cols$_civ_ai_col$_civ_preorder_cols,
                  products.custom_field_1, products.custom_field_2,
                  products.custom_field_3, products.custom_field_4
                  " . pg_sw_entity_select('product', 'products') . "
@@ -5077,7 +5133,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                          products.out_of_stock_message,
                          products.mpn, products.gtin, products.brand, products.weight,
                          products.shippable, products.taxable, products.reward_points,
-                         products.seo_score, $_civ_rating_cols$_civ_ai_col,
+                         products.seo_score, $_civ_rating_cols$_civ_ai_col$_civ_preorder_cols,
                          products.custom_field_1, products.custom_field_2,
                          products.custom_field_3, products.custom_field_4
                          " . pg_sw_entity_select('product', 'products') . "
@@ -5101,7 +5157,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                  products.out_of_stock_message,
                  products.mpn, products.gtin, products.brand, products.weight,
                  products.shippable, products.taxable, products.reward_points,
-                 products.seo_score, $_civ_rating_cols$_civ_ai_col,
+                 products.seo_score, $_civ_rating_cols$_civ_ai_col$_civ_preorder_cols,
                  products.custom_field_1, products.custom_field_2,
                  products.custom_field_3, products.custom_field_4
                  " . pg_sw_entity_select('product', 'products') . "
@@ -5531,6 +5587,9 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             '__out_of_stock'         => '0',
             '__out_of_stock_label'   => '',
             '__out_of_stock_message' => '',
+            '__preorder'             => '0',
+            '__preorder_date'        => '',
+            '__preorder_label'       => '',
             '__sku'                  => '',
             '__mpn'                  => '',
             '__gtin'                 => '',
@@ -5608,7 +5667,10 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                 : 0;
         }
         if (pg_sw_list_wanted('crumbs')) {
-            pg_sw_list_publish('crumbs', array('catalog.crumbs' => array(1 => _civ_breadcrumb_rows($p, (int)$select_group_id, (string)$select_group_name, $_civ_cat_pid, $_civ_cat_root))));
+            // cfg['catalog_root_label'] (set by a design template, no editor
+            // field) names the first crumb instead of "Main Catalog".
+            $_civ_root_label = isset($cfg['catalog_root_label']) && is_string($cfg['catalog_root_label']) ? $cfg['catalog_root_label'] : '';
+            pg_sw_list_publish('crumbs', array('catalog.crumbs' => array(1 => _civ_breadcrumb_rows($p, (int)$select_group_id, (string)$select_group_name, $_civ_cat_pid, $_civ_cat_root, $_civ_root_label))));
         }
 
         // Gallery images from products_images_xref (up to 5 named tokens + total count).
@@ -5836,6 +5898,8 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             // bound element via the standard token cleanup.
             '__out_of_stock_message' => ($oos_notice && !empty($p['out_of_stock_message']))
                                             ? _pg_rich_text_to_inline($p['out_of_stock_message']) : '',
+            // __preorder, __preorder_date, __preorder_label (includes/fn/preorder.php).
+        ) + pg_preorder_tokens($p, pg_preorder_today()) + array(
 
             // Identity
             '__sku'                  => isset($p['mpn']) ? (string)$p['mpn'] : '',  // alias
@@ -6112,9 +6176,11 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     // and strand them away from the product.
     //
     // SUCCESS path uses next_page_id below, NOT current_url.
-    $_civ_current_url = (isset($_SERVER['REQUEST_URI']) && $_SERVER['REQUEST_URI'] !== '')
+    // Without the ?cart_added= of an earlier add: a refusal coming back
+    // here would otherwise also show the "added to cart" notice.
+    $_civ_current_url = _pg_catalog_return_url((isset($_SERVER['REQUEST_URI']) && $_SERVER['REQUEST_URI'] !== '')
                             ? (string)$_SERVER['REQUEST_URI']
-                            : ($_civ_out_path . $_civ_page_full);
+                            : ($_civ_out_path . $_civ_page_full));
 
     $_civ_pid_for_form = ($p && isset($p['id'])) ? (int)$p['id'] : 0;
     $_civ_hidden = get_token_field()
@@ -6153,7 +6219,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         $_civ_v_base = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/')
                      . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : 'software')
                      . '/assets/js/';
-        $_civ_v_v   = '9';  // bump on pg_civ_variants.js source changes
+        $_civ_v_v   = '10';  // bump on pg_civ_variants.js source changes
         $_civ_variant_script = '<script>window.pgCivVariants = window.pgCivVariants || [];'
             . 'window.pgCivVariants.push(' . json_encode($variant_data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . ');'
             . '</script>'
@@ -6832,7 +6898,10 @@ function _pg_build_catalog_item_rss_parts($page_id, $page_name, $widget)
 // page's comments widget shows this product's reviews with their stars
 // ($rating_shown, pg_comment_product_view_rating_shown()): markup may
 // describe only reviews a visitor can read on the page.
-function _pg_build_product_jsonld($product, $canonical_url, $rating_shown = false)
+//
+// $questions: the product's answered questions the page shows
+// (pg_product_question_jsonld()), carried as the Product's subjectOf.
+function _pg_build_product_jsonld($product, $canonical_url, $rating_shown = false, $questions = array())
 {
     $currency_code = defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '';
     $image_url = '';
@@ -6879,6 +6948,10 @@ function _pg_build_product_jsonld($product, $canonical_url, $rating_shown = fals
 
     if ($rating_shown && (($aggregate_rating = pg_review_product_aggregate_jsonld(isset($product['id']) ? $product['id'] : 0)) !== null)) {
         $data['aggregateRating'] = $aggregate_rating;
+    }
+
+    if (is_array($questions) && $questions) {
+        $data['subjectOf'] = array_values($questions);
     }
     return $data;
 }

@@ -1593,7 +1593,7 @@ function pg_sms_settings_fields()
                                         <div class="col-12">
                                             <div class="form-field">
                                                 <div class="switch"><input type="checkbox" name="sms_enabled" id="sms_enabled" value="1"' . ($enabled ? ' checked="checked"' : '') . ' class="collapse-switcher" data-bs-target="#sms_row"/></div>
-                                                <label class="" for="sms_enabled">' . lang('Send SMS') . '<br/><span class="form-text">' . lang('Text messages through an SMS provider account of the site. Transactional messages carry no promotion; a marketing message goes only to a number whose owner consented to it, with the sender identity and type label set on the SMS Messages card.') . '</span></label>
+                                                <label class="" for="sms_enabled">' . lang('Send SMS') . '</label><div class="form-text">' . lang('Text messages through an SMS provider account of the site. Transactional messages carry no promotion; a marketing message goes only to a number whose owner consented to it, with the sender identity and type label set on the SMS Messages card.') . '</div>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0" id="sms_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>

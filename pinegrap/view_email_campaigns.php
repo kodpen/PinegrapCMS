@@ -138,6 +138,10 @@ $output_rows = '';
 // if there is at least one result to display
 if ($email_campaigns) {
 
+    // Delivered, suppressed, bounced and complained per campaign, one read
+    // for the whole list.
+    $delivery_counts = pg_mail_bounce_campaign_counts(array_column($email_campaigns, 'id'));
+
     foreach ($email_campaigns as $email_campaign) {
 
         // Only filled in when the e-mail campaign job is enabled, but always printed in the row.
@@ -217,11 +221,12 @@ if ($email_campaigns) {
                 </td>
                 <td class="align-middle">' . $output_to . '</td>
                 <td class="align-middle">' . h($email_campaign['email_campaign_profile_name']) . '</td>
-                <td class="align-middle">' . h($email_campaign['subject']) . '</td>
+                <td class="align-middle text-break">' . h($email_campaign['subject']) . '</td>
                 <td class="align-middle">' . h($email_campaign['page_name']) . '</td>
                 ' . $output_start_time_cell . '
                 <td class="align-middle">' . get_email_campaign_status_name($email_campaign['status']) . '</td>
                 <td class="align-middle">' . lang(array('string'=>'{var:1}%','vars'=>array($progress_percentage))) . ' (' . lang(array('string'=>'{var:1} of {var:2}','vars'=>array(pg_format_number($number_of_completed_email_recipients, 0),pg_format_number($number_of_email_recipients, 0)))) . ')</td>
+                <td class="align-middle">' . pg_mail_bounce_campaign_cell($delivery_counts[(int) $email_campaign['id']] ?? array()) . '</td>
                 <td class="align-middle">' . lang(h(ucwords($email_campaign['purpose']))) . '</td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' => $email_campaign['created_timestamp'])) . ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($created_username) ) ) ) . '</td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' => $email_campaign['last_modified_timestamp'])) . ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($last_modified_username) ) ) ) . '</td>
@@ -276,6 +281,7 @@ pg_page_shell(
                                     ' . $output_start_time_heading . '
                                     <th>' . get_column_heading(lang('Status'), $sort_levels, '', '', 'status') . '</th>
                                     <th>' . lang('Progress (Subscribers)') . '</th>
+                                    <th>' . lang('Delivery report') . '</th>
                                     <th>' . get_column_heading(lang('Purpose'), $sort_levels, '', '', 'purpose') . '</th>
                                     <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>
                                     <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>

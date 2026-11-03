@@ -41,6 +41,8 @@ function panel_single_value_params_screens()
 		'import_design'              => array('submit_button'),
 		'preview_form'               => array('product_id'),
 		'print_packing_slip'         => array('ship_to_id'),
+		'registration_entrance'      => array('send_to', 'allow_guest'),
+		'remove_item_from_cart'      => array('order_item_id', 'screen', 'send_to'),
 		'view_fields'                => array('page_id', 'product_id', 'product_group_id'),
 	);
 }

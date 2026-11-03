@@ -130,3 +130,57 @@ function pg_order_report_charge_columns($grand)
 
     return $columns;
 }
+
+/**
+ * Whether a row opens a new group: always the first row ($previous null),
+ * whatever its name, so an empty first value still gets its group; after
+ * that a name that differs from the previous one, without case. Pure.
+ *
+ * @param string      $name     the row's group value
+ * @param string|null $previous the previous row's value, null on the first row
+ * @return bool
+ */
+function pg_order_report_new_group($name, $previous)
+{
+    if ($previous === null) {
+        return true;
+    }
+
+    return mb_strtolower((string) $name) !== mb_strtolower((string) $previous);
+}
+
+/**
+ * The filters a new report starts with: carts and cancelled orders left
+ * out, so the report sums only placed sales. Pure.
+ *
+ * @return array field, operator and value of each filter
+ */
+function pg_order_report_default_filters()
+{
+    return array(
+        array('field' => 'order_status', 'operator' => 'is not equal to', 'value' => 'incomplete'),
+        array('field' => 'order_status', 'operator' => 'is not equal to', 'value' => 'cancelled'),
+    );
+}
+
+/**
+ * Whether a "day(s) ago" count can be stored: a whole number from 0 up to
+ * what the INT UNSIGNED column holds; empty means today. Pure.
+ *
+ * @param mixed $text the submitted count
+ * @return bool
+ */
+function pg_order_report_days_ago_valid($text)
+{
+    if (!is_scalar($text)) {
+        return false;
+    }
+
+    $text = trim((string) $text);
+
+    if ($text === '') {
+        return true;
+    }
+
+    return ctype_digit($text) && (strlen($text) <= 10) && ((float) $text <= 4294967295);
+}

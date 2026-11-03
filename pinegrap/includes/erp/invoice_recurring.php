@@ -156,7 +156,7 @@ function erp_invoice_recurrences($active_only = true)
     }
 
     return (array) db_items("SELECT r.*, a.title AS account_title,
-            s.full_number AS source_number, l.full_number AS last_number, l.status AS last_status
+            s.full_number AS source_number, l.id AS last_id, l.full_number AS last_number, l.status AS last_status
         FROM erp_invoice_recurrences r
         LEFT JOIN erp_accounts a ON a.id = r.account_id
         LEFT JOIN erp_invoices s ON s.id = r.source_invoice_id
@@ -164,6 +164,38 @@ function erp_invoice_recurrences($active_only = true)
         " . ($active_only ? "WHERE r.status = 'active'" : "") . "
         ORDER BY (r.status = 'active') DESC, r.next_date ASC, r.id DESC
         LIMIT 500");
+}
+
+/**
+ * The first date proposed for a new recurrence: one period after the invoice,
+ * but never earlier than tomorrow. A first date in the past would make the
+ * next visit to the invoices list write every missed date at once, back-dated
+ * and, in the "issue" mode, numbered.
+ *
+ * @param string $issue_date  Y-m-d
+ * @param string $today       Y-m-d
+ * @return string  Y-m-d
+ */
+function erp_invoice_recurring_first_default($issue_date, $today)
+{
+    $step = erp_expense_recurring_step((string) $issue_date, 1, (int) substr((string) $issue_date, 8, 2));
+    $tomorrow = date('Y-m-d', strtotime((string) $today . ' +1 day'));
+
+    return ($step > $tomorrow) ? $step : $tomorrow;
+}
+
+/**
+ * Whether a new recurrence's first date lies before today. Only a new
+ * recurrence is held to it: a running one keeps catching up dates its job
+ * missed.
+ *
+ * @param string $first_date  Y-m-d
+ * @param string $today       Y-m-d
+ * @return bool
+ */
+function erp_invoice_recurring_first_in_past($first_date, $today)
+{
+    return ((string) $first_date < (string) $today);
 }
 
 /**
@@ -210,6 +242,10 @@ function erp_invoice_recurrence_create($invoice_id, $options, $user_id)
 
     if ($first <= (string) $invoice['issue_date']) {
         return $fail(lang('The next invoice has to be dated after this one.'), 'recur_first');
+    }
+
+    if (erp_invoice_recurring_first_in_past($first, date('Y-m-d'))) {
+        return $fail(lang('The first date of a new recurrence cannot be in the past.'), 'recur_first');
     }
 
     $end = (string) ($options['end_date'] ?? '');
@@ -276,14 +312,20 @@ function erp_invoice_recurrence_create($invoice_id, $options, $user_id)
 /**
  * Stop a recurrence. The invoices it wrote stay.
  *
+ * A screen names the invoice the recurrence must repeat: without it a
+ * recurrence id posted from another invoice's screen stopped that other
+ * invoice's recurrence and logged it under this one.
+ *
  * @param int $id
  * @param int $user_id
+ * @param int $source_invoice_id  0 to stop whatever invoice it repeats
  * @return bool
  */
-function erp_invoice_recurrence_stop($id, $user_id)
+function erp_invoice_recurrence_stop($id, $user_id, $source_invoice_id = 0)
 {
     db("UPDATE erp_invoice_recurrences SET status = 'stopped', stopped_at = UNIX_TIMESTAMP(), stopped_by = '" . (int) $user_id . "', updated_at = UNIX_TIMESTAMP()
-        WHERE id = '" . (int) $id . "' AND status = 'active'");
+        WHERE id = '" . (int) $id . "' AND status = 'active'"
+        . (((int) $source_invoice_id > 0) ? " AND source_invoice_id = '" . (int) $source_invoice_id . "'" : ''));
 
     return (mysqli_affected_rows(db::$con) === 1);
 }

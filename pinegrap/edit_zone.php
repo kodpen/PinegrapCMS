@@ -29,8 +29,9 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM zones WHERE id = '" . $id
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
-// A save with a blank name draws the form again with what was typed and
-// the message under the name; nothing is written. Delete is never held
+// A save with a blank name or a rate that is no amount of 0 or more draws
+// the form again with what was typed and the message under the field;
+// nothing is written. Delete is never held
 // back by it.
 $selected = null;
 $errors = array();
@@ -44,6 +45,11 @@ if ($_POST) {
 
         if ($name_error !== '') {
             $errors['name'] = $name_error;
+        }
+
+        $errors += pg_zone_form_rate_errors($values);
+
+        if ($errors) {
             $selected = $values;
         }
     }
@@ -66,6 +72,9 @@ if (!$_POST || $errors) {
     }
 
     $choices = pg_zone_form_choices($id, $selected);
+    // Products, methods, and those left with no other zone: the summary
+    // column and the Delete confirmation read them.
+    $usage = pg_zone_form_delete_counts($id);
 
     $output =
     pg_page_shell([
@@ -79,100 +88,38 @@ if (!$_POST || $errors) {
             'breadcrumb' => array(array('label' => lang('All Shipping Zones'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_zones.php'), array('label' => lang('Edit Shipping Zone'))),
         ]) . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
-                
-                <form name="form" action="edit_zone.php" method="post">
-                    ' . get_token_field() . '
-                    ' . pg_zone_form_cards($values, $choices['countries'], $choices['states'], $errors) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . h(implode(' ', array_map('lang', pg_zone_form_delete_confirm(...pg_zone_form_delete_counts($id))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
-                    <input type="hidden" name="id" value="' . h($id) . '">
-                </form>
-            </div>
-        </div>
-    
+    <form name="form" action="edit_zone.php" method="post">
+        ' . get_token_field() . '
+        ' . pg_zone_form_layout(
+            pg_zone_form_cards($values, $choices['countries'], $choices['states'], $errors, array('countries' => $choices['country_count'], 'states' => $choices['state_count'], 'products' => $usage[0], 'methods' => $usage[1])),
+            '
+                                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                        <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(implode(' ', array_map('lang', pg_zone_form_delete_confirm(...$usage)))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>'
+        ) . '
+        <input type="hidden" name="id" value="' . h($id) . '">
+    </form>
 </main>' .
     output_footer();
 
     print $output;
 
 } else {
-    // delete zone references in zones_countries_xref (we do this reguardless of whether we are deleting the zone or updating the zone)
-    $query = "DELETE FROM zones_countries_xref ".
-             "WHERE zone_id = ?";
-    $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-
-    // delete zone references in zones_states_xref (we do this reguardless of whether we are deleting the zone or updating the zone)
-    $query = "DELETE FROM zones_states_xref ".
-             "WHERE zone_id = ?";
-    $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+    $zone_id = $id;
 
     // if zone was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
-        // delete zone
-        $query = "DELETE FROM zones WHERE id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-
-        // delete zone references in shipping_methods_zones_xref
-        $query = "DELETE FROM shipping_methods_zones_xref WHERE zone_id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-        
-        // delete zone references in products_zones_xref
-        $query = "DELETE FROM products_zones_xref WHERE zone_id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        pg_store_zone_delete($zone_id, (string) ($_POST['name'] ?? '')) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'shipping zone ({var:1}) was deleted','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
     // else zone was not selected for delete
     } else {
-
         // Rates are stored in minor units.
-        $base_rate = pg_zone_form_rate($_POST['base_rate'] ?? '');
-        $primary_weight_rate = pg_zone_form_rate($_POST['primary_weight_rate'] ?? '');
-        $secondary_weight_rate = pg_zone_form_rate($_POST['secondary_weight_rate'] ?? '');
-        $item_rate = pg_zone_form_rate($_POST['item_rate'] ?? '');
-
-        // update zone
-        $query = "UPDATE zones SET
-                    name = ?,
-                    base_rate = ?,
-                    primary_weight_rate = ?,
-                    secondary_weight_rate = ?,
-                    item_rate = ?,
-                    user = ?,
-                    timestamp = UNIX_TIMESTAMP()
-                WHERE id = ?";
-        $result = db_q($query, array($values['name'], (string) $base_rate, (string) $primary_weight_rate, (string) $secondary_weight_rate, (string) $item_rate, (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-
-        // load all allowed countries in array by exploding string that has allowed country ids separated by commas
-        $allowed_countries = (isset($_POST['allowed_countries']) && is_array($_POST['allowed_countries'])) ? $_POST['allowed_countries'] : array();
-
-        // foreach allowed country insert row in zones_countries_xref table
-        foreach ($allowed_countries as $country_id) {
-            // if country id is not blank, insert row
-            if ($country_id) {
-                $query = "INSERT INTO zones_countries_xref (zone_id, country_id) VALUES (?, ?)";
-                $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $country_id)) or output_error('Query failed.');
-            }
+        $rates = array();
+        foreach (pg_store_zone_rate_columns() as $column) {
+            $rates[$column] = pg_zone_form_rate($_POST[$column] ?? '');
         }
 
-        // load all allowed states in array by exploding string that has allowed state ids separated by commas
-        $allowed_states = (isset($_POST['allowed_states']) && is_array($_POST['allowed_states'])) ? $_POST['allowed_states'] : array();
-
-        // foreach allowed state insert row in zones_states_xref table
-        foreach ($allowed_states as $state_id) {
-            // if state id is not blank, insert row
-            if ($state_id) {
-                $query = "INSERT INTO zones_states_xref (zone_id, state_id) VALUES (?, ?)";
-                $result = db_q($query, array((string) ($_POST['id'] ?? ''), (string) $state_id)) or output_error('Query failed.');
-            }
-        }
+        pg_store_zone_save($zone_id, array('name' => $values['name']) + $rates, $values['allowed_countries'], $values['allowed_states'], (int) $user['id']) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'shipping zone ({var:1}) was modified','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
     }

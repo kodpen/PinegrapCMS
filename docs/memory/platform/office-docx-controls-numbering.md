@@ -1,6 +1,6 @@
 ---
 name: office-docx-controls-numbering
-description: Word preview: table rows and cells inside content controls and custom XML, and numId 0 taking a paragraph's (or its style's) numbering off (PR #1119)
+description: Word preview: table rows and cells inside content controls and custom XML, and numId 0 taking a paragraph's (or its style's) numbering off (PR #1119), run properties turned off by w:val
 ---
 
 ## Which rows and cells does the Word preview find?
@@ -13,5 +13,8 @@ description: Word preview: table rows and cells inside content controls and cust
 - The style's own numbering is still followed when the paragraph has none (List Bullet, a numbered heading), and a numbered paragraph still becomes a list item rather than a heading.
 - Not followed: numbering a style inherits through `basedOn`, `lvlOverride`/`startOverride`, and numbering in a table style.
 
+## Which values turn a run's formatting off?
+- `pg_office_docx_run()` reads bold, italic, underline and strike as off for `w:val` `0`, `false`, `off` (ST_OnOff) and `none` (underline); any other value or none at all is on, as in `office_edit.php`'s on/off check. Before, `off` was missing, so `<w:b w:val="off"/>` showed bold.
+
 ## Tests
-- `tests/office_docx_reader_test.php`: rows in a repeating section, a row and cells in custom XML and a cell control; numId 0 on a heading, on a plain paragraph and on a style.
+- `tests/office_docx_reader_test.php`: rows in a repeating section, a row and cells in custom XML and a cell control; numId 0 on a heading, on a plain paragraph and on a style; run properties turned off with each off word.

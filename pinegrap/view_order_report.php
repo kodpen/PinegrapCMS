@@ -78,27 +78,47 @@ if (!$_POST) {
     $output_edit_button = '';
     $output_edit_form_style = '';
     
+    // A save that came back with an error (the name already in use) shows
+    // the form open again with what was entered.
+    $returned_with_error = ($liveform->check_form_errors() == true);
+
     // if the order report is being viewed
     if (isset($_GET['id']) == true) {
         // nav#button_bar: Edit hides it by id, Cancel Edit shows it again.
         $output_edit_button = pg_screen_toolbar(array(
             'primary' => '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" id="edit_button" onclick="var edit_form = document.getElementById(\'edit_form\'); edit_form.style.display = \'block\'; document.getElementById(\'button_bar\').style.display = \'none\'; var first_field = edit_form.querySelector(\'input:not([type=hidden]), select, textarea\'); if (first_field) {first_field.focus();}"><i class="bi bi-pencil me-2" aria-hidden="true"></i>' . lang('Edit') . '</button>',
         ));
-        $output_edit_form_style = 'display: none';
+        if (!$returned_with_error) {
+            $output_edit_form_style = 'display: none';
+        }
+
+        // The heading names the report as stored, not a name typed into
+        // the form that may have failed to save.
+        $output_order_report_name = (string) db_value("SELECT name FROM order_reports WHERE id = '" . (int) $_GET['id'] . "'");
     }
     
+    // The hidden last_filter_number is posted with every save, so it is in
+    // the session only when the form came back from a save.
+    $form_submitted = $liveform->field_in_session('last_filter_number');
+
     // if an order report is being created and this screen has not already been submitted, then set default values for form fields
-    if ((isset($_GET['id']) == false) && ($liveform->field_in_session('submit') == false)) {
+    if ((isset($_GET['id']) == false) && !$form_submitted) {
         // set default values for summarize by fields
         $liveform->assign_field_value('summarize_by_1', 'year');
         $liveform->assign_field_value('summarize_by_2', 'month');
         $liveform->assign_field_value('summarize_by_3', 'day');
         
-        // add default filter in order to only show data for complete and exported orders
-        $liveform->assign_field_value('filter_1_field', 'order_status');
-        $liveform->assign_field_value('filter_1_operator', 'is not equal to');
-        $liveform->assign_field_value('filter_1_value', 'incomplete');
-        $liveform->assign_field_value('last_filter_number', '1');
+        // A new report sums placed sales only: carts and cancelled orders left out.
+        $default_filter_number = 0;
+
+        foreach (pg_order_report_default_filters() as $default_filter) {
+            $default_filter_number++;
+            $liveform->assign_field_value('filter_' . $default_filter_number . '_field', $default_filter['field']);
+            $liveform->assign_field_value('filter_' . $default_filter_number . '_operator', $default_filter['operator']);
+            $liveform->assign_field_value('filter_' . $default_filter_number . '_value', $default_filter['value']);
+        }
+
+        $liveform->assign_field_value('last_filter_number', (string) $default_filter_number);
     
     // else if an order report is being edited and this screen has not been submitted already, pre-populate fields with data
     } elseif ((isset($_GET['id']) == true) && ($liveform->field_in_session('id') == false)) {
@@ -118,7 +138,6 @@ if (!$_POST) {
         $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
-        $output_order_report_name = $row['name'];
         $liveform->assign_field_value('name', $row['name']);
         $liveform->assign_field_value('detail', $row['detail']);
         $liveform->assign_field_value('summarize_by_1', $row['summarize_by_1']);
@@ -135,7 +154,7 @@ if (!$_POST) {
         
     // else an order report is being viewed, so prepare screen name
     } else {
-        $output_screen_name = lang('View Order Report') . ': ' . $liveform->get_field_value('name');
+        $output_screen_name = lang('View Order Report') . ': ' . $output_order_report_name;
     }
     
     $output_hidden_id_field = '';
@@ -165,7 +184,7 @@ if (!$_POST) {
     }
     
     $summarize_by_options[lang('Customer\'s IP Address')] = 'ip_address';
-    $summarize_by_options[''] = '</optgroup>';
+    $summarize_by_options['#optgroup-end-1'] = '</optgroup>';
 
     $summarize_by_options[lang('UTM')] = '<optgroup>';
     $summarize_by_options[lang('Source')] = 'utm_source';
@@ -173,14 +192,14 @@ if (!$_POST) {
     $summarize_by_options[lang('Campaign')] = 'utm_campaign';
     $summarize_by_options[lang('Term')] = 'utm_term';
     $summarize_by_options[lang('Content')] = 'utm_content';
-    $summarize_by_options[''] = '</optgroup>';
+    $summarize_by_options['#optgroup-end-2'] = '</optgroup>';
 
     $summarize_by_options[lang('Payment')] = '<optgroup>';
     $summarize_by_options[lang('Payment Method')] = 'payment_method';
     $summarize_by_options[lang('Card Type')] = 'card_type';
     $summarize_by_options[lang('Cardholder')] = 'cardholder';
     $summarize_by_options[lang('Card Number')] = 'card_number';
-    $summarize_by_options[''] = '</optgroup>';
+    $summarize_by_options['#optgroup-end-3'] = '</optgroup>';
     $summarize_by_options[lang('Billing')] = '<optgroup>';
     $summarize_by_options[lang('Custom Field #1')] = 'custom_field_1';
     $summarize_by_options[lang('Custom Field #2')] = 'custom_field_2';
@@ -200,19 +219,19 @@ if (!$_POST) {
     $summarize_by_options[lang('Opt-In Status')] = 'opt_in_status';
     $summarize_by_options[lang('PO Number')] = 'po_number';
     $summarize_by_options[lang('Tax Status')] = 'tax_status';
-    $summarize_by_options[''] = '</optgroup>';
+    $summarize_by_options['#optgroup-end-4'] = '</optgroup>';
     
     $order_by_options = array(
-        lang('alphabet') => 'alphabet',
-        lang('number of orders') => 'number of orders',
-        lang('total') => 'total'
+        lang('Alphabetical') => 'alphabet',
+        lang('Number of orders') => 'number of orders',
+        lang('Total') => 'total'
     );
     
     // get filters
     $filters = array();
     
     // if an order report is being created or a form has been submitted, then get filters from liveform
-    if ((isset($_GET['id']) == false) || ($liveform->field_in_session('submit') == true)) {
+    if ((isset($_GET['id']) == false) || $form_submitted) {
         // loop through all filters in order to add them to array
         for ($i = 1; $i <= $liveform->get_field_value('last_filter_number'); $i++) {
             // if filter exists and an operator was selected for this filter, then add filter to array
@@ -287,8 +306,9 @@ if (!$_POST) {
             $order_date_filter_exists = true;
         }
         
-        // if dynamic value attribute is equal to 0, then set to empty string
-        if ($filter['dynamic_value_attribute'] == 0) {
+        // the day count belongs to "days ago" only, where 0 (today) is a
+        // value of its own; other filters store 0 for none
+        if ($filter['dynamic_value'] != 'days ago') {
             $filter['dynamic_value_attribute'] = '';
         }
         
@@ -307,7 +327,7 @@ if (!$_POST) {
     $field_options = array();
     $field_options[] = array('name' => lang('General'), 'value' => '<optgroup>');
     $field_options[] = array('name' => lang('Order Date'), 'value' => 'order_date', 'type' => 'date');
-    $field_options[] = array('name' => lang('Order Status'), 'value' => 'order_status', 'value_options' => array(array('name' => lang('Incomplete'), 'value' => 'incomplete'), array('name' => lang('Complete'), 'value' => 'complete'), array('name' => lang('Exported'), 'value' => 'exported')));
+    $field_options[] = array('name' => lang('Order Status'), 'value' => 'order_status', 'value_options' => array(array('name' => lang('Incomplete'), 'value' => 'incomplete'), array('name' => lang('Complete'), 'value' => 'complete'), array('name' => lang('Exported'), 'value' => 'exported'), array('name' => lang('Cancelled'), 'value' => 'cancelled')));
     $field_options[] = array('name' => lang('Order Number'), 'value' => 'order_number');
     $field_options[] = array('name' => lang('Transaction ID'), 'value' => 'transaction_id');
     $field_options[] = array('name' => lang('Authorization Code'), 'value' => 'authorization_code');
@@ -699,7 +719,17 @@ if (!$_POST) {
         
         // if a basic value was entered, use that value
         if ($filter['value'] != '') {
-            $operand_2 = prepare_form_data_for_input($filter['value'], $field_type);
+            // A date is read in the panel's own forms (21.10.2026 included);
+            // a stored value that does not read as one keeps the old path.
+            $operand_2 = '';
+
+            if ($field_type == 'date') {
+                $operand_2 = pg_date_input_iso($filter['value']);
+            }
+
+            if ($operand_2 === '') {
+                $operand_2 = prepare_form_data_for_input($filter['value'], $field_type);
+            }
             
         // else a dynamic value was entered, so use dynamic value
         } else {
@@ -774,20 +804,27 @@ if (!$_POST) {
     // A cart's figures come from its active lines (a line saved for later
     // counts in no total), as the orders list shows its cart total: the
     // orders.* figures are written only when the order is placed. The report's
-    // own filters decide whether any cart is left.
+    // own filters only pick the carts: a picked cart is summed from all its
+    // active lines, so a product name filter does not drop its other lines
+    // and a cart with several recipients does not count a line once per
+    // recipient.
     $incomplete_orders = array();
 
     $query =
         "SELECT
-            orders.id,
-            SUM(order_items.price * CAST(order_items.quantity AS signed)) as subtotal,
-            SUM(order_items.tax_total) as tax,
-            SUM(order_items.shipping * order_items.quantity) as shipping
-        FROM order_items
-        LEFT JOIN orders on order_items.order_id = orders.id
-        $join_ship_tos
-        " . (($where === '') ? 'WHERE ' : $where . ' AND ') . "(orders.status = 'incomplete')" . pg_order_item_active_sql('order_items') . "
-        GROUP BY orders.id";
+            cart_items.order_id AS id,
+            SUM(cart_items.price * CAST(cart_items.quantity AS signed)) as subtotal,
+            SUM(cart_items.tax_total) as tax,
+            SUM(cart_items.shipping * cart_items.quantity) as shipping
+        FROM order_items AS cart_items
+        WHERE
+            cart_items.order_id IN (
+                SELECT orders.id
+                FROM orders
+                $join_order_items
+                $join_ship_tos
+                " . (($where === '') ? 'WHERE ' : $where . ' AND ') . "(orders.status = 'incomplete'))" . pg_order_item_active_sql('cart_items') . "
+        GROUP BY cart_items.order_id";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
     while ($row = mysqli_fetch_assoc($result)) {
@@ -828,13 +865,14 @@ if (!$_POST) {
     $results = array();
 
     // Group keys and the previous-name trackers the cases below compare against.
-    // The first row of every report reads them before anything has written one.
+    // null until the first row: that row always opens its groups, an empty
+    // value (no billing state, no payment method) included.
     $summarize_by_1_key = 0;
     $summarize_by_2_key = 0;
     $summarize_by_3_key = 0;
-    $previous_summarize_by_1_name = '';
-    $previous_summarize_by_2_name = '';
-    $previous_summarize_by_3_name = '';
+    $previous_summarize_by_1_name = null;
+    $previous_summarize_by_2_name = null;
+    $previous_summarize_by_3_name = null;
 
     // Every order is counted into its groups and the grand total with the
     // same figures (includes/fn/order_report.php), whatever the summarize-by.
@@ -854,10 +892,10 @@ if (!$_POST) {
         case 1:
             while ($row = mysqli_fetch_array($result)) {
 
-                $summarize_by_1_name = trim($row[0]);
+                $summarize_by_1_name = trim((string) $row[0]);
                 
                 // if we have a new summarize by in summarize by 1, increment key and store name
-                if (mb_strtolower($summarize_by_1_name) !== mb_strtolower($previous_summarize_by_1_name)) {
+                if (pg_order_report_new_group($summarize_by_1_name, $previous_summarize_by_1_name)) {
                     $summarize_by_1_key++;
                     $results[$summarize_by_1_key] = pg_order_report_bucket($summarize_by_1_name);
                 }
@@ -875,11 +913,11 @@ if (!$_POST) {
         case 2:
             while ($row = mysqli_fetch_array($result)) {
 
-                $summarize_by_1_name = trim($row[0]);
-                $summarize_by_2_name = trim($row[1]);
+                $summarize_by_1_name = trim((string) $row[0]);
+                $summarize_by_2_name = trim((string) $row[1]);
                 
                 // if we have a new summarize by in summarize by 1, increment key and store name, and reset key and store name for summarize by 2
-                if (mb_strtolower($summarize_by_1_name) !== mb_strtolower($previous_summarize_by_1_name)) {
+                if (pg_order_report_new_group($summarize_by_1_name, $previous_summarize_by_1_name)) {
                     $summarize_by_1_key++;
                     $results[$summarize_by_1_key] = pg_order_report_bucket($summarize_by_1_name);
                     
@@ -887,7 +925,7 @@ if (!$_POST) {
                     $results[$summarize_by_1_key]['results'][$summarize_by_2_key] = pg_order_report_bucket($summarize_by_2_name);
                     
                 // else if we have a new summarize by in summarize by 2, increment key and store name
-                } elseif (mb_strtolower($summarize_by_2_name) !== mb_strtolower($previous_summarize_by_2_name)) {
+                } elseif (pg_order_report_new_group($summarize_by_2_name, $previous_summarize_by_2_name)) {
                     $summarize_by_2_key++;
                     $results[$summarize_by_1_key]['results'][$summarize_by_2_key] = pg_order_report_bucket($summarize_by_2_name);
                 }
@@ -907,12 +945,12 @@ if (!$_POST) {
         case 3:
             while ($row = mysqli_fetch_array($result)) {
                 
-                $summarize_by_1_name = trim($row[0]);
-                $summarize_by_2_name = trim($row[1]);
-                $summarize_by_3_name = trim($row[2]);
+                $summarize_by_1_name = trim((string) $row[0]);
+                $summarize_by_2_name = trim((string) $row[1]);
+                $summarize_by_3_name = trim((string) $row[2]);
                 
                 // if we have a new summarize by in summarize by 1, increment key and store name, and reset key and store name for summarize by 2 and summarize by 3
-                if (mb_strtolower($summarize_by_1_name) !== mb_strtolower($previous_summarize_by_1_name)) {
+                if (pg_order_report_new_group($summarize_by_1_name, $previous_summarize_by_1_name)) {
                     $summarize_by_1_key++;
                     $results[$summarize_by_1_key] = pg_order_report_bucket($summarize_by_1_name);
                     
@@ -923,7 +961,7 @@ if (!$_POST) {
                     $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key] = pg_order_report_bucket($summarize_by_3_name);
                     
                 // else if we have a new summarize by in summarize by 2, increment key and store name and reset key and store name for summarize by 3
-                } elseif (mb_strtolower($summarize_by_2_name) !== mb_strtolower($previous_summarize_by_2_name)) {
+                } elseif (pg_order_report_new_group($summarize_by_2_name, $previous_summarize_by_2_name)) {
                     $summarize_by_2_key++;
                     $results[$summarize_by_1_key]['results'][$summarize_by_2_key] = pg_order_report_bucket($summarize_by_2_name);
                     
@@ -931,7 +969,7 @@ if (!$_POST) {
                     $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key] = pg_order_report_bucket($summarize_by_3_name);
                     
                 // else if we have a new summarize by in summarize by 3, increment key and store name
-                } elseif (mb_strtolower($summarize_by_3_name) !== mb_strtolower($previous_summarize_by_3_name)) {
+                } elseif (pg_order_report_new_group($summarize_by_3_name, $previous_summarize_by_3_name)) {
                     $summarize_by_3_key++;
                     $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key] = pg_order_report_bucket($summarize_by_3_name);
                 }
@@ -1071,19 +1109,19 @@ if (!$_POST) {
                                             <div class="row g-2 align-items-center my-3">
                                                 <label for="summarize_by_1" class="col-12 md:col form-label mb-0">' . lang('Summarize by') . '</label>
                                                 <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_1', 'id'=>'summarize_by_1', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '</div>
-                                                <label for="order_by_1" class="col-12 md:col form-label mb-0">' . lang('order by') . '</label>
+                                                <label for="order_by_1" class="col-12 md:col form-label mb-0">' . lang('Order by') . '</label>
                                                 <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_1', 'id'=>'order_by_1', 'class'=>'form-control', 'options'=>$order_by_options)) . '</div>
                                             </div>
                                             <div class="row g-2 align-items-center my-3">
                                                 <label for="summarize_by_2" class="col-12 md:col form-label mb-0">' . lang('and then by') . '</label>
                                                 <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_2', 'id'=>'summarize_by_2', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '</div>
-                                                <label for="order_by_2" class="col-12 md:col form-label mb-0">' . lang('order by') . '</label>
+                                                <label for="order_by_2" class="col-12 md:col form-label mb-0">' . lang('Order by') . '</label>
                                                 <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_2', 'id'=>'order_by_2', 'class'=>'form-control', 'options'=>$order_by_options)) . '</div>
                                             </div>
                                             <div class="row g-2 align-items-center my-3">
                                                 <label for="summarize_by_3" class="col-12 md:col form-label mb-0">' . lang('and finally by') . '</label>
                                                 <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'summarize_by_3', 'id'=>'summarize_by_3', 'class'=>'form-control', 'options'=>$summarize_by_options)) . '</div>
-                                                <label for="order_by_3" class="col-12 md:col form-label mb-0">' . lang('order by') . '</label>
+                                                <label for="order_by_3" class="col-12 md:col form-label mb-0">' . lang('Order by') . '</label>
                                                 <div class="col-12 md:col">' . $liveform->output_field(array('type'=>'select', 'name'=>'order_by_3', 'id'=>'order_by_3', 'class'=>'form-control', 'options'=>$order_by_options)) . '</div>
                                             </div>
                                         </div>
@@ -1115,7 +1153,7 @@ if (!$_POST) {
                                             window.onload = initialize_filters;
                                         </script>
                                         <div>
-                                            <button type="button" onclick="create_filter()" class="button btn btn-solid theme-primary">' . lang('Add Filter') . '</button>
+                                            <button type="button" onclick="create_filter()" class="button btn btn-solid theme-primary">' . lang('Add Filter') . '</button>' . get_date_picker_format() . pg_fields_script() . '
                                         </div>
                                         <div class="table-responsive">
                                             <table id="filter_table" class="chart_no_hover table">
@@ -1134,7 +1172,7 @@ if (!$_POST) {
                                         <div class="col-12 my-3">
                                             <div class="form-field">
                                                 <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'detail', 'id'=>'detail', 'value'=>'1', 'class'=>'no-bs')) . '</div>
-                                                <label class="" for="detail">' . lang('Show Detail (Include Order Session Information)') . '</label>
+                                                <label class="" for="detail">' . lang('Show order details (number and date)') . '</label>
                                             </div>
                                         </div>
                                     </div>
@@ -1533,6 +1571,32 @@ if (!$_POST) {
             exit();
         }
         
+        // An order date that does not read as a date, or a day count that is
+        // not a whole number, would be stored as a filter that passes every
+        // order (or counts from today), so the form goes back with the error.
+        for ($i = 1; $i <= $liveform->get_field_value('last_filter_number'); $i++) {
+            if (($liveform->get_field_value('filter_' . $i . '_operator') == '')
+                || ($liveform->get_field_value('filter_' . $i . '_field') != 'order_date')) {
+                continue;
+            }
+
+            $filter_value = $liveform->get_field_value('filter_' . $i . '_value');
+
+            if ($filter_value != '') {
+                if (pg_date_input_iso($filter_value) === '') {
+                    $liveform->mark_error('filter_' . $i . '_value', lang('Please enter a valid date.'));
+                }
+            } elseif (($liveform->get_field_value('filter_' . $i . '_dynamic_value') == 'days ago')
+                && !pg_order_report_days_ago_valid($liveform->get_field_value('filter_' . $i . '_dynamic_value_attribute'))) {
+                $liveform->mark_error('filter_' . $i . '_dynamic_value_attribute', lang('Day(s) ago must be a whole number of 0 or more.'));
+            }
+        }
+
+        if ($liveform->check_form_errors() == true) {
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_order_report.php' . $query_string_id);
+            exit();
+        }
+
         // if the user is creating a new order report, then create order report record
         if ($liveform->field_in_session('id') == false) {
             $query =
@@ -1620,6 +1684,15 @@ if (!$_POST) {
                     }
                 }
                 
+                $filter_value = $liveform->get_field_value('filter_' . $i . '_value');
+
+                // A date is stored as YYYY-MM-DD, whichever form it was typed in.
+                if ($field_type == 'date') {
+                    $filter_value = pg_date_input_iso($filter_value);
+                } else {
+                    $filter_value = prepare_form_data_for_input($filter_value, $field_type);
+                }
+
                 // insert filter
                 $query =
                     "INSERT INTO order_report_filters (
@@ -1636,7 +1709,7 @@ if (!$_POST) {
                         ?,
                         ?,
                         ?)";
-                $result = db_q($query, array((string) $id, (string) $liveform->get_field_value('filter_' . $i . '_field'), (string) $liveform->get_field_value('filter_' . $i . '_operator'), (string) prepare_form_data_for_input($liveform->get_field_value('filter_' . $i . '_value'), $field_type), (string) $dynamic_value, (string) $dynamic_value_attribute)) or output_error('Query failed.');
+                $result = db_q($query, array((string) $id, (string) $liveform->get_field_value('filter_' . $i . '_field'), (string) $liveform->get_field_value('filter_' . $i . '_operator'), (string) $filter_value, (string) $dynamic_value, (string) (int) $dynamic_value_attribute)) or output_error('Query failed.');
             }
         }
         
@@ -1721,7 +1794,7 @@ function update_summarize_by_name($summarize_by_name, $summarize_by) {
             break;
             
         case 'order_status':
-            $summarize_by_name = ucwords($summarize_by_name);
+            $summarize_by_name = pg_order_log_status($summarize_by_name);
             break;
             
         case 'ip_address':
@@ -1762,6 +1835,8 @@ function update_summarize_by_name($summarize_by_name, $summarize_by) {
             // if there is no payment method, then set to None
             if ($summarize_by_name == '') {
                 $summarize_by_name = lang('None');
+            } else {
+                $summarize_by_name = pg_payment_method_label($summarize_by_name);
             }
             
             break;

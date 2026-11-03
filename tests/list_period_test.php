@@ -241,12 +241,12 @@ function test_list_period_screens_order_their_range()
 {
 	$root = dirname(__DIR__) . '/pinegrap/';
 
-	foreach (array('includes/fn/contact_list.php', 'view_log.php') as $file) {
+	foreach (array('view_log.php') as $file) {
 		pg_assert_contains('pg_list_period_ordered(', file_get_contents($root . $file), $file . ' orders its range');
 	}
 
 	// pg_list_period_state() puts the range the right way round as well.
-	foreach (array('view_orders.php', 'includes/fn/commission_list.php', 'includes/fn/submitted_form_list.php') as $file) {
+	foreach (array('view_orders.php', 'includes/fn/commission_list.php', 'includes/fn/submitted_form_list.php', 'includes/fn/contact_list.php') as $file) {
 		pg_assert_contains('pg_list_period_state(', file_get_contents($root . $file), $file . ' works out its range');
 	}
 
@@ -300,6 +300,29 @@ function test_list_period_state_moves_a_stored_default_to_today()
 	pg_assert_true(empty($state['range_picked']), 'a default is not marked as picked');
 }
 
+// The contacts list starts its default range with the oldest contact; the
+// stop day still moves to today, and its Advanced Filters sending that whole
+// default back is no pick.
+function test_list_period_state_with_its_own_start_day()
+{
+	$oldest = strtotime('2020-03-16 10:00:00');
+	$now = strtotime('2026-11-02 09:00:00');
+	$stored = list_period_test_range('2020-03-16', '2026-10-31');
+
+	$state = pg_list_period_state($stored, array(), $now, $oldest);
+	foreach (list_period_test_range('2020-03-16', '2026-11-02') as $key => $value) {
+		pg_assert_same($value, $state[$key], 'oldest contact to today: ' . $key);
+	}
+
+	$state = pg_list_period_state(array(), list_period_test_range('2020-03-16', '2026-11-01'), $now, $oldest);
+	pg_assert_true(empty($state['range_picked']), 'yesterday\'s default from a form drawn before midnight is no pick');
+	pg_assert_same('02', $state['stop_day']);
+
+	$state = pg_list_period_state(array(), list_period_test_range('2026-10-01', '2026-10-31'), $now, $oldest);
+	pg_assert_true(!empty($state['range_picked']), 'another range is a pick');
+	pg_assert_same('31', $state['stop_day']);
+}
+
 function test_list_period_state_keeps_a_picked_range()
 {
 	$picked = list_period_test_range('2026-10-01', '2026-10-15');
@@ -328,4 +351,65 @@ function test_list_period_state_puts_the_range_the_right_way_round()
 
 	pg_assert_same('01', $state['start_day'], 'start and stop swapped');
 	pg_assert_same('20', $state['stop_day'], 'start and stop swapped');
+}
+
+function list_period_test_default_range($now)
+{
+	return list_period_test_range(date('Y-m-d', $now - 2678400), date('Y-m-d', $now));
+}
+
+function test_list_period_state_a_default_range_from_the_request_is_not_picked()
+{
+	// The Advanced Filters form sends its date pickers with every filter,
+	// filled with the default: a filter by order number alone on 31 October.
+	$evening = strtotime('2026-10-31 23:00:00');
+	$request = list_period_test_default_range($evening) + array('order_number' => '1001', 'shipping_status' => 'any');
+	$state = pg_list_period_state(array(), $request, $evening);
+
+	pg_assert_true(empty($state['range_picked']), 'the default range sent by the filter form is not a pick');
+
+	// The list is opened again after midnight: the range ends today.
+	$night = strtotime('2026-11-01 03:28:00');
+	$state = pg_list_period_state($state, array(), $night);
+	foreach (list_period_test_default_range($night) as $key => $value) {
+		pg_assert_same($value, $state[$key], 'the range follows today: ' . $key);
+	}
+}
+
+function test_list_period_state_a_filter_sent_after_midnight_from_an_evening_form_is_not_picked()
+{
+	// The form was drawn at 23:50 and sent at 00:10 with yesterday's default.
+	$request = list_period_test_default_range(strtotime('2026-10-31 23:50:00'));
+	$night = strtotime('2026-11-01 00:10:00');
+	$state = pg_list_period_state(array(), $request, $night);
+
+	pg_assert_true(empty($state['range_picked']), 'yesterday\'s default is not a pick either');
+	pg_assert_same('01', $state['stop_day'], 'the range ends today');
+	pg_assert_same('11', $state['stop_month'], 'the range ends today');
+}
+
+function test_list_period_state_the_default_sent_again_ends_a_pick()
+{
+	$now = strtotime('2026-11-01 12:00:00');
+	$state = pg_list_period_state(array(), list_period_test_range('2026-10-01', '2026-10-15'), $now);
+	pg_assert_true(!empty($state['range_picked']), 'another range is a pick');
+
+	// The pickers set back to the default range: the range follows today again.
+	$state = pg_list_period_state($state, list_period_test_default_range($now), $now);
+	pg_assert_true(empty($state['range_picked']), 'the default range is not a pick');
+
+	$later = strtotime('2026-11-03 09:00:00');
+	$state = pg_list_period_state($state, array(), $later);
+	pg_assert_same('03', $state['stop_day'], 'the range ends on the new today');
+}
+
+function test_list_period_state_a_range_one_day_off_the_default_is_picked()
+{
+	$now = strtotime('2026-11-01 12:00:00');
+	$request = list_period_test_default_range($now);
+	$request['start_day'] = '02';
+	$state = pg_list_period_state(array(), $request, $now);
+
+	pg_assert_true(!empty($state['range_picked']), 'a range other than the default is a pick');
+	pg_assert_same('02', $state['start_day'], 'the picked start is kept');
 }

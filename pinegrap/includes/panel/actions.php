@@ -99,7 +99,21 @@ function pg_panel_actions()
         // Turning the new dashboard on or off is the caller's own choice,
         // open to every backend role; the handler checks the session and
         // the token for itself.
+        // The new dashboard's card data, read like get_widgets_data: every
+        // backend role, the session checked by the handler, each card's
+        // own gate by its function.
+        'dashboard_cards' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_dashboard_cards', 'exempt' => true, 'token' => false, 'write' => false),
         'dashboard_switch' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_dashboard_switch', 'exempt' => true, 'token' => true, 'write' => true),
+        // The caller's own layout of the new dashboard, every backend role;
+        // the handler checks the session, the token and the role's lock.
+        'dashboard_layout_save' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_dashboard_layout_save', 'exempt' => true, 'token' => true, 'write' => true),
+        // A role's default layout and its lock: administrators and
+        // designers, so it keeps the general gate; the handler checks too.
+        'dashboard_role_default' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_dashboard_role_default', 'exempt' => false, 'token' => true, 'write' => true),
+        // The caller's own goals, pins or notes on the new dashboard, every
+        // backend role; the handler checks the session, the token and the
+        // role's lock.
+        'dashboard_personal_save' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_dashboard_personal_save', 'exempt' => true, 'token' => true, 'write' => true),
         // Site-wide, so it keeps the general gate.
         'update_dashboard_appearance' => array('file' => 'dashboard.php', 'handler' => 'pg_panel_update_dashboard_appearance', 'exempt' => false, 'token' => true, 'write' => true),
         // Noting that someone has watched a guided tour is theirs to do
@@ -185,6 +199,8 @@ function pg_panel_actions()
         'audit_log_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_audit_log_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'audit_log_changes' => array('file' => 'lists.php', 'handler' => 'pg_panel_audit_log_changes', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'waf_log_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_waf_log_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
+        'mail_queue_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_mail_queue_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
+        'sms_queue_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_sms_queue_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'get_pages' => array('file' => 'content.php', 'handler' => 'pg_panel_get_pages', 'exempt' => false, 'token' => false, 'write' => false),
         'test' => array('file' => 'content.php', 'handler' => 'pg_panel_test', 'exempt' => false, 'token' => false, 'write' => false),
         // A basic user sorts the menus they may edit.
@@ -245,7 +261,6 @@ function pg_panel_actions()
         // administrator-only and keep the general gate.
         'database_deep_check' => array('file' => 'system.php', 'handler' => 'pg_panel_database_deep_check', 'exempt' => true, 'token' => true, 'write' => true),
         'server_config_repair' => array('file' => 'system.php', 'handler' => 'pg_panel_server_config_repair', 'exempt' => true, 'token' => true, 'write' => true),
-        'ca_bundle_config_repair' => array('file' => 'system.php', 'handler' => 'pg_panel_ca_bundle_config_repair', 'exempt' => false, 'token' => true, 'write' => true),
         'write_permissions_repair' => array('file' => 'system.php', 'handler' => 'pg_panel_write_permissions_repair', 'exempt' => true, 'token' => true, 'write' => true),
         'purge_cache' => array('file' => 'system.php', 'handler' => 'pg_panel_purge_cache', 'exempt' => true, 'token' => true, 'write' => true),
         'ca_bundle_update' => array('file' => 'system.php', 'handler' => 'pg_panel_ca_bundle_update', 'exempt' => false, 'token' => true, 'write' => true),

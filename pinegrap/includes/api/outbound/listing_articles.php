@@ -423,10 +423,17 @@ function mp_articles_save_attributes($account, $group_id, $values) {
 // Queue some articles to be listed. Each is checked first as the job will
 // check it (mp_listing_items()), so a refusal is told now rather than
 // written on the article hours later. Answers array('queued', 'refused'), the
-// refusals keyed by article.
+// refusals keyed by article. An account that is not active queues nothing:
+// the job would close its waiting rows as failed unsent.
 function mp_articles_list_now($account, $group_ids) {
 
 	$done = array('queued' => 0, 'refused' => array());
+
+	if ($account['status'] !== 'active') {
+
+		return $done;
+
+	}
 
 	foreach (mp_matches_ids($group_ids) as $group_id) {
 

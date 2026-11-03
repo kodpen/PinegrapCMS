@@ -19,6 +19,115 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+// The name refusal texts and the error under the name input are shared with
+// the region forms.
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/common_region_form.php');
+
+/**
+ * The values each pick list of the form accepts; the first one is the
+ * default a missing or unknown value falls back to. Pure.
+ *
+ * @return array  column => list of values
+ */
+function pg_custom_style_form_choices()
+{
+    return array(
+        'collection' => array('a', 'b'),
+        'layout_type' => array('', 'system', 'custom'),
+        'social_networking_position' => array('bottom_left', 'top_left', 'top_right', 'bottom_right', 'disabled'),
+    );
+}
+
+/**
+ * The posted value when the list accepts it, else the list's default. Pure.
+ *
+ * @param string $column  A key of pg_custom_style_form_choices()
+ * @param mixed  $value
+ * @return string
+ */
+function pg_custom_style_form_choice($column, $value)
+{
+    $choices = pg_custom_style_form_choices();
+    $value = is_scalar($value) ? (string) $value : '';
+
+    return in_array($value, $choices[$column], true) ? $value : $choices[$column][0];
+}
+
+/**
+ * The Layout Type column text of the style list: the translated layout
+ * override, '' for none. Pure.
+ *
+ * @param string $layout_type
+ * @return string
+ */
+function pg_style_layout_type_label($layout_type)
+{
+    switch ((string) $layout_type) {
+        case 'system':
+            return lang('System');
+        case 'custom':
+            return lang('Custom');
+    }
+
+    return '';
+}
+
+/**
+ * Which edit screen a style row belongs to: 'custom' for a custom style,
+ * 'system' for a system style and for a visual design (whatever its type),
+ * '' for a row that is neither. Pure.
+ *
+ * @param string $style_type
+ * @param string $style_layout
+ * @return string
+ */
+function pg_style_edit_screen($style_type, $style_layout)
+{
+    if ((string) $style_layout === 'visual_designer') {
+        return 'system';
+    }
+
+    return in_array((string) $style_type, array('custom', 'system'), true) ? (string) $style_type : '';
+}
+
+/**
+ * Whether another style (custom, system or visual design) already has this
+ * name: the visual designer refuses to save a design whose name another
+ * style holds. The comparison is SQL '=' under the column collation. An
+ * empty name is not checked. On edit ($id given) the check runs only when
+ * the name differs from the stored one, so a style that already shares its
+ * name with another still saves its code.
+ *
+ * @param string        $name    The trimmed posted name
+ * @param int|null      $id      The style being edited, null on create
+ * @param callable|null $lookup  function ($sql, $values): first column of the first row
+ * @return bool
+ */
+function pg_style_name_taken($name, $id = null, $lookup = null)
+{
+    $name = (string) $name;
+
+    if ($name === '') {
+        return false;
+    }
+
+    if ($lookup === null) {
+        $lookup = 'pg_region_form_lookup';
+    }
+
+    if ($id !== null) {
+        $stored = $lookup('SELECT style_name FROM style WHERE style_id = ?', array((string) (int) $id));
+
+        if (($stored !== null) && ((string) $stored === $name)) {
+            return false;
+        }
+
+        return (int) $lookup('SELECT COUNT(*) FROM style WHERE style_name = ? AND style_id <> ?', array($name, (string) (int) $id)) > 0;
+    }
+
+    return (int) $lookup('SELECT COUNT(*) FROM style WHERE style_name = ?', array($name)) > 0;
+}
+
 /**
  * The values a new style starts with: an empty name, a page skeleton with
  * the system region, collection A, no layout override, social networking
@@ -100,11 +209,14 @@ function pg_custom_style_form_social_networking_position($current)
  *
  * @param array $style  style_name, style_code, collection, layout_type, social_networking_position
  * @param bool $social_networking
+ * @param string $name_error  The refusal text under the name input, '' for none
  * @return string
  */
-function pg_custom_style_form_cards($style, $social_networking)
+function pg_custom_style_form_cards($style, $social_networking, $name_error = '')
 {
-    $collection_a = $style['collection'] == 'a';
+    // Collection B only when stored as B: an empty value left by an old
+    // save is shown, and saved again, as the default A.
+    $collection_a = (string) $style['collection'] !== 'b';
     $layout_type = (string) $style['layout_type'];
 
     return '
@@ -118,7 +230,7 @@ function pg_custom_style_form_cards($style, $social_networking)
                                     <div class="row">
                                         <div class="col-12 md:col-8 lg:col-6 my-3">
                                             <label for="name" class="form-label">' . lang('Name') . '</label>
-                                            <input value="' . h($style['style_name']) . '" name="name" id="name" type="text" placeholder="' . lang('new page style') . '" class="form-control" maxlength="100" required />
+                                            <input value="' . h($style['style_name']) . '" name="name" id="name" type="text" placeholder="' . lang('new page style') . '" class="form-control' . pg_region_form_name_error_attributes($name_error) . '" maxlength="' . pg_name_max_length() . '" required />' . pg_region_form_name_error($name_error) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 my-3">
@@ -156,7 +268,7 @@ function pg_custom_style_form_cards($style, $social_networking)
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="layout_type" class="form-label">' . lang('Override Layout Type') . '</label>
                                             <select id="layout_type" name="layout_type" class="form-control">
-                                                <option value=""></option>
+                                                <option value=""' . ($layout_type === '' ? ' selected="selected"' : '') . '>' . lang('No override (the page type layout)') . '</option>
                                                 <option value="system"' . ($layout_type == 'system' ? ' selected="selected"' : '') . '>' . lang('System') . '</option>
                                                 <option value="custom"' . ($layout_type == 'custom' ? ' selected="selected"' : '') . '>' . lang('Custom') . '</option>
                                             </select>
@@ -171,7 +283,9 @@ function pg_custom_style_form_cards($style, $social_networking)
 
 /**
  * The posted style as column => value, in INSERT/UPDATE order; the social
- * networking position only while social networking is on.
+ * networking position only while social networking is on. A pick list value
+ * outside its list falls back to the list's default: the session is not
+ * strict, so MySQL would store it as an empty enum.
  *
  * @param array $post
  * @param bool $social_networking
@@ -180,16 +294,16 @@ function pg_custom_style_form_cards($style, $social_networking)
 function pg_custom_style_form_values($post, $social_networking)
 {
     $values = array(
-        'style_name' => trim((string) ($post['name'] ?? '')),
-        'style_code' => (string) ($post['code'] ?? ''),
+        'style_name' => trim(is_scalar($post['name'] ?? '') ? (string) ($post['name'] ?? '') : ''),
+        'style_code' => is_scalar($post['code'] ?? '') ? (string) ($post['code'] ?? '') : '',
     );
 
     if ($social_networking) {
-        $values['social_networking_position'] = (string) ($post['social_networking_position'] ?? '');
+        $values['social_networking_position'] = pg_custom_style_form_choice('social_networking_position', $post['social_networking_position'] ?? '');
     }
 
-    $values['collection'] = (string) ($post['collection'] ?? '');
-    $values['layout_type'] = (string) ($post['layout_type'] ?? '');
+    $values['collection'] = pg_custom_style_form_choice('collection', $post['collection'] ?? '');
+    $values['layout_type'] = pg_custom_style_form_choice('layout_type', $post['layout_type'] ?? '');
 
     return $values;
 }

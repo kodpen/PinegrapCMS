@@ -219,9 +219,13 @@ function erp_import_step_upload($liveform, $kind_options)
  * @param array  $kind_options
  * @param array  $fields    From erp_import_fields()
  * @param int    $total_rows
+ * @param array  $clashes   column index => ['field', 'with'] for a column
+ *                          mapped to a field an earlier column already feeds;
+ *                          its select keeps the choice and says why it is
+ *                          left out
  * @return string
  */
-function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kind_options, $fields, $total_rows)
+function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kind_options, $fields, $total_rows, $clashes = array())
 {
     $delimiter_names = array(';' => lang('semicolon'), ',' => lang('comma'), "\t" => lang('tab'));
     $delimiter_name = isset($delimiter_names[$staged['delimiter']]) ? $delimiter_names[$staged['delimiter']] : $staged['delimiter'];
@@ -231,6 +235,10 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
     $output_mapping = '';
     foreach ($read['header'] as $index => $name) {
         $chosen = isset($mapping[$index]) ? $mapping[$index] : '';
+        $clash = isset($clashes[$index]) ? $clashes[$index] : null;
+        if ($clash !== null) {
+            $chosen = $clash['field'];
+        }
         $options = '<option value=""' . (($chosen === '') ? ' selected="selected"' : '') . '>' . h(lang('Skip this column')) . '</option>';
         foreach ($fields as $field => $definition) {
             $options .= '<option value="' . h($field) . '"' . (($chosen === $field) ? ' selected="selected"' : '') . '>' . h($definition['label']) . (($field === 'title') ? ' *' : '') . '</option>';
@@ -238,7 +246,8 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
         $output_mapping .= '
                                 <div class="col-12 sm:col-6 lg:col-4 xl:col-3 my-3">
                                     <label for="map_' . (int) $index . '" class="form-label text-truncate d-block" title="' . h($name) . '">' . h(($name !== '') ? $name : lang(array('string' => 'Column {var:1}', 'vars' => $index + 1))) . '</label>
-                                    <select name="map[' . (int) $index . ']" id="map_' . (int) $index . '" class="form-control form-control-sm">' . $options . '</select>
+                                    <select name="map[' . (int) $index . ']" id="map_' . (int) $index . '" class="form-control form-control-sm' . (($clash !== null) ? ' is-invalid' : '') . '"' . (($clash !== null) ? ' aria-describedby="map_' . (int) $index . '_clash"' : '') . '>' . $options . '</select>
+                                    ' . (($clash !== null) ? '<div id="map_' . (int) $index . '_clash" class="invalid-feedback d-block">' . h(lang(array('string' => 'This field is already mapped to the column “{var:1}”.', 'vars' => array($clash['with'])))) . '</div>' : '') . '
                                 </div>';
     }
 
@@ -631,15 +640,25 @@ if ($step === 'upload') {
     $mapping = array();
     $posted = isset($_POST['map']) && is_array($_POST['map']) ? $_POST['map'] : array();
     $taken = array();
+    $clashes = array();
     foreach ($read['header'] as $index => $unused) {
         // A column's field is one name; one posted as an array (map[0][]=x)
         // leaves the column unmapped.
         $field = (isset($posted[$index]) && is_scalar($posted[$index])) ? (string) $posted[$index] : '';
-        if (($field === '') || !isset($fields[$field]) || isset($taken[$field])) {
+        if (($field === '') || !isset($fields[$field])) {
+            $field = '';
+        } elseif (isset($taken[$field])) {
+            // A second column on one field is left out of the rows, but the
+            // screen keeps the choice and names the column that holds it.
+            $with = (string) $read['header'][$taken[$field]];
+            $clashes[$index] = array(
+                'field' => $field,
+                'with' => ($with !== '') ? $with : lang(array('string' => 'Column {var:1}', 'vars' => $taken[$field] + 1)),
+            );
             $field = '';
         }
         if ($field !== '') {
-            $taken[$field] = true;
+            $taken[$field] = $index;
         }
         $mapping[$index] = $field;
     }
@@ -651,6 +670,9 @@ if ($step === 'upload') {
     // back to the address would discard the staged file and every choice.
     if (isset($_POST['submit_run']) && !in_array('title', $mapping, true)) {
         $liveform->mark_error('map', lang('Map a column to Name to continue.'));
+    } elseif (!empty($clashes)) {
+        // Never run with a column quietly dropped.
+        $liveform->mark_error('map', lang('Two columns are mapped to one field. Choose another field for one of them, or skip it.'));
     } elseif (isset($_POST['submit_run'])) {
 
         $plan = erp_import_plan($read['rows'], $mapping, $defaults);
@@ -681,5 +703,5 @@ if (is_array($all)) {
 
 $plan = erp_import_plan(array_slice($read['rows'], 0, $preview_rows), $mapping, $defaults);
 
-echo erp_import_page($liveform, erp_import_step_map($staged, $read, $mapping, $plan, $mode, $defaults['kind'], $kind_options, $fields, $total_rows), $list_url);
+echo erp_import_page($liveform, erp_import_step_map($staged, $read, $mapping, $plan, $mode, $defaults['kind'], $kind_options, $fields, $total_rows, $clashes), $list_url);
 $liveform->remove_form();

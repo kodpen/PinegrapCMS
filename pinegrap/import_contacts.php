@@ -93,7 +93,8 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 my-3">
                                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
-                                            <input name="file" id="file" type="file" size="60" class="form-control w-auto" required />
+                                            <input name="file" id="file" type="file" size="60" class="form-control w-auto" accept=".csv,.txt,text/csv" aria-describedby="file_help" required />
+                                            <div id="file_help" class="form-text">' . h(lang('The first row of the file names the columns. A file exported from the contacts list can be imported as it is.')) . ' ' . h(lang('Recognised headings include First Name, Last Name, Email, Company, Job Title, Mobile Phone, Business Phone, Address, City, Zip Code, Country, Description and the column names of the export.')) . '</div>
                                             ' . pg_upload_limit_hint() . '
                                         </div>
                                         <div class="col-12 my-5" role="radiogroup" aria-labelledby="import_mode_label">
@@ -174,19 +175,52 @@ if (!$_POST) {
     // Headings the import does not know, named in the result.
     $unknown_headings = array();
 
-    // foreach column field name
     foreach ($column_names as $key => $value) {
-        // if the column is invalid, remove from column list
         if ($value === FALSE) {
-            unset($column_names[$key]);
             $unknown_headings[] = $columns[$key];
         }
+    }
 
+    // One file column per contacts column: a later heading for the same
+    // field is left out and named in the result.
+    $unique_columns = pg_import_unique_columns($column_names);
+    $column_names = $unique_columns['columns'];
+    $repeated_headings = array();
+
+    foreach ($unique_columns['repeated'] as $key) {
+        $repeated_headings[] = $columns[$key];
+    }
+
+    foreach ($column_names as $key => $value) {
         // if column is email_address, then store key location for email_address
         if ($value == 'email_address') {
             $email_address_key = $key;
         }
     }
+
+    // The text columns' lengths, so a longer value is cut with a word in the
+    // result instead of silently by the non-strict session.
+    $column_lengths = pg_import_column_lengths(db_items("SHOW COLUMNS FROM contacts"));
+
+    // Rows changed or skipped, as array(line, reason).
+    $problems = array();
+
+    // The insert's values for one row, its problems added to $problems.
+    $contact_values = function ($row, $line) use ($column_names, $columns, $column_lengths, &$problems) {
+        $data_list = '';
+
+        foreach ($column_names as $key => $column) {
+            $read = pg_import_contact_value($column, $row[$key] ?? '', $column_lengths[$column] ?? 0, trim((string) $columns[$key]));
+
+            if ($read['problem'] !== '') {
+                $problems[] = array($line, $read['problem']);
+            }
+
+            $data_list .= "'" . escape($read['value']) . "', ";
+        }
+
+        return $data_list;
+    };
 
     // Without one known column every row would become an empty contact.
     if (!$column_names) {
@@ -225,8 +259,6 @@ if (!$_POST) {
     // a large file neither reads every new row at once nor one at a time.
     $audit_created = array();
 
-    // Rows changed or skipped, as array(line, reason).
-    $problems = array();
     $next_line = 2;
 
     // loops through all rows of data in CSV file
@@ -265,16 +297,7 @@ if (!$_POST) {
                         $row[$email_address_key] = '';
                     }
                     
-                    $data_list = '';
-                    
-                    // foreach field
-                    foreach ($column_names as $key => $value) {
-                        // create value list
-                        $value = escape(pg_import_contact_cell($value, $row[$key] ?? ''));
-                        $data_list .= "'$value', ";
-                    }
-
-                    $data_list .= "'$user[id]', UNIX_TIMESTAMP()";
+                    $data_list = $contact_values($row, $line) . "'$user[id]', UNIX_TIMESTAMP()";
                     
                     // insert row of data into database
                     $query = "INSERT INTO contacts ($column_list) VALUES ($data_list)";
@@ -338,16 +361,7 @@ if (!$_POST) {
 
                     // if contact is unique
                     if ($unique == true) {
-                        $data_list = '';
-                        
-                        // foreach field
-                        foreach ($column_names as $key => $value) {
-                            // create value list
-                            $value = escape(pg_import_contact_cell($value, $row[$key] ?? ''));
-                            $data_list .= "'$value', ";
-                        }
-
-                        $data_list .= "'$user[id]', UNIX_TIMESTAMP()";
+                        $data_list = $contact_values($row, $line) . "'$user[id]', UNIX_TIMESTAMP()";
                         
                         // insert row of data into database
                         $query = "INSERT INTO contacts ($column_list) VALUES ($data_list)";
@@ -398,6 +412,10 @@ if (!$_POST) {
         $liveform_view_contacts->add_warning(h(lang(array('string' => 'These columns were not recognised and were left out: {var:1}', 'vars' => array(pg_csv_headings_text($unknown_headings))))));
     }
 
+    if (pg_csv_headings_text($repeated_headings) !== '') {
+        $liveform_view_contacts->add_warning(h(lang(array('string' => 'These columns fill the same field as an earlier column and were left out: {var:1}', 'vars' => array(pg_csv_headings_text($repeated_headings))))));
+    }
+
     // The first rows changed or skipped, each with its line and reason.
     if ($problems) {
         $liveform_view_contacts->add_warning(implode('<br>', array_map('h', pg_csv_problem_list($problems))));
@@ -415,14 +433,52 @@ if (!$_POST) {
 
 function convert_column_name($column_name)
 {
-    // convert column name to lowercase
-    $column_name = mb_strtolower($column_name);
+    // lowercase, with the Turkish I letters as one (İl, IL and ıl are "il"),
+    // so a heading typed in Turkish is matched as written below
+    $column_name = pg_list_search_fold(trim((string) $column_name));
     // remove spaces from column name
     $column_name = str_replace(' ', '', $column_name);
     // remove underscores from column name
     $column_name = str_replace('_', '', $column_name);
     // remove dashes from column name
     $column_name = str_replace('-', '', $column_name);
+
+    // Turkish headings (folded as above: ı is i, spaces, dashes and
+    // underscores gone), the panel's own labels among them.
+    $turkish = array(
+        'hitap' => 'salutation', 'selamlama' => 'salutation',
+        'ad' => 'first_name', 'adi' => 'first_name', 'isim' => 'first_name',
+        'soyad' => 'last_name', 'soyadi' => 'last_name', 'soyisim' => 'last_name',
+        'sonek' => 'suffix',
+        'takmaad' => 'nickname', 'lakap' => 'nickname',
+        'şirket' => 'company', 'şirketadi' => 'company', 'firma' => 'company', 'firmaadi' => 'company', 'kurum' => 'company',
+        'unvan' => 'title', 'ünvan' => 'title', 'görev' => 'title', 'pozisyon' => 'title',
+        'departman' => 'department', 'bölüm' => 'department',
+        'ofis' => 'office_location', 'ofiskonumu' => 'office_location',
+        'adres' => 'business_address_1', 'adres1' => 'business_address_1', 'işadresi' => 'business_address_1', 'işletmeadresi1' => 'business_address_1',
+        'adres2' => 'business_address_2', 'işadresi2' => 'business_address_2', 'işletmeadresi2' => 'business_address_2',
+        'şehir' => 'business_city', 'ilçe' => 'business_city', 'işşehir' => 'business_city',
+        'il' => 'business_state', 'eyalet/il' => 'business_state',
+        'ülke' => 'business_country',
+        'postakodu' => 'business_zip_code', 'pk' => 'business_zip_code',
+        'telefon' => 'business_phone', 'tel' => 'business_phone', 'iştelefonu' => 'business_phone', 'işletmetelefonu' => 'business_phone',
+        'faks' => 'business_fax', 'fax' => 'business_fax', 'işfaksi' => 'business_fax', 'işletmefaksi' => 'business_fax',
+        'evadresi' => 'home_address_1', 'evadresi1' => 'home_address_1', 'evadresi2' => 'home_address_2',
+        'evşehir' => 'home_city', 'evşehri' => 'home_city', 'evil' => 'home_state', 'evülke' => 'home_country', 'evpostakodu' => 'home_zip_code',
+        'evtelefonu' => 'home_phone', 'evfaksi' => 'home_fax',
+        'cep' => 'mobile_phone', 'ceptelefonu' => 'mobile_phone', 'gsm' => 'mobile_phone', 'mobiltelefon' => 'mobile_phone',
+        'eposta' => 'email_address', 'epostaadresi' => 'email_address', 'mail' => 'email_address', 'mailadresi' => 'email_address',
+        'internetsitesi' => 'website', 'websitesi' => 'website', 'site' => 'website',
+        'kaynak' => 'lead_source', 'potansiyelmüşterikaynaği' => 'lead_source',
+        'iletiizni' => 'opt_in', 'izin' => 'opt_in',
+        'açiklama' => 'description', 'not' => 'description', 'notlar' => 'description',
+        'üyeno' => 'member_id', 'üyenumarasi' => 'member_id', 'üyekimliği' => 'member_id',
+        'bitiştarihi' => 'expiration_date', 'sonkullanmatarihi' => 'expiration_date', 'üyelikbitiştarihi' => 'expiration_date',
+    );
+
+    if (isset($turkish[$column_name])) {
+        return $turkish[$column_name];
+    }
 
     switch ($column_name) {
         case 'salutation':

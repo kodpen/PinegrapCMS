@@ -99,13 +99,13 @@ textarea:focus-visible,
 button.no-popover:focus-visible', 'var(--pg-primary-ink)', 'no-popover links');
 	bs6_focus_ring_test_assert_ring($css, '.pg-skip-link:focus,
 .pg-skip-link:focus-visible', 'var(--pg-primary-ink)', 'skip link');
-	bs6_focus_ring_test_assert_ring($css, '.btn-check:focus-visible + .pg-role-card', 'var(--pg-focus-ring-color)', 'role card');
+	bs6_focus_ring_test_assert_ring($css, '.btn-check:focus-visible + .pg-role-card', 'var(--pg-primary-ink)', 'role card');
 
 	pg_assert_same(0, preg_match_all('/box-shadow:\s*0 0 0 0?\.2(5)?rem var\(--pg-focus-ring-color\)/', $css), 'no rem-sized halo left');
 
 	$home = bs6_focus_ring_test_code('designer_home.css');
 	foreach (array('.sdh-start:focus-visible', '.sdh-page:focus-visible') as $selector) {
-		bs6_focus_ring_test_assert_ring($home, $selector, 'var(--pg-focus-ring-color)', $selector);
+		bs6_focus_ring_test_assert_ring($home, $selector, 'var(--pg-primary-ink)', $selector);
 	}
 	// A card has tabindex="0": the global [tabindex] ring outranks any
 	// .sdh-card:focus-visible rule, so none is written.

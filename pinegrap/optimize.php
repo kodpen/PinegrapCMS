@@ -70,7 +70,7 @@ if ($response['status'] == 'error') {
 
 // The File Management widget sends the operator here from the dashboard, not
 // from a file list, so put them back on the dashboard instead of leaving them
-// in view_files.php with no memory of where they started.
+// in the File Manager with no memory of where they started.
 //
 // "welcome" is a fixed keyword, not a URL, and it is turned into a hard-coded
 // address below — nothing arriving in the query string can steer the redirect.
@@ -85,7 +85,8 @@ if (($_GET['send_to'] ?? '') == 'welcome') {
     go(($_GET['send_to'] ?? ''));
 
 } else {
-    $form = new liveform('view_files');
+    // The File Manager prints the notices left for it (view_folders.php).
+    $form = new liveform('view_folders');
     $form->add_notice(h($response['message']));
-    go(PATH . SOFTWARE_DIRECTORY . '/view_files.php');
+    go(PATH . SOFTWARE_DIRECTORY . '/view_folders.php?view=files');
 }

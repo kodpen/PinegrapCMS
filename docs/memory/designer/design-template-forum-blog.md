@@ -23,4 +23,7 @@ description: Forum template 1.3.0: the standard blog pages in the forum's look (
 - Not in `$search_sections`: that map holds in-page anchors, not list pages.
 
 ## How is it checked?
-- `test_forum_blog_pages`, `test_forum_blog_form`, `test_forum_blog_widgets`; `post_comments` sits in `_test_forum_threads()`, so the generic thread tests and draws cover it; `test_forum_preview_html` (15 pages). No browser run: five masthead links at lg with a long site name may wrap.
+- `test_forum_blog_pages`, `test_forum_blog_form`, `test_forum_blog_widgets`; `post_comments` sits in `_test_forum_threads()`, so the generic thread tests and draws cover it; `test_forum_preview_html` (15 pages).
+
+## Why are the masthead's links shown only from xl?
+- With the blog, five links beside the theme, language, sign-in and Start a topic wrapped to a second row at 992–1199 px and cut a long site name (#4874). Since 1.3.4 the bar's links and the brand's `me-xl-3` start at xl and the menu button (`d-xl-none`) opens the drawer below it; `test_forum_one_vocabulary` keeps `-lg-` out of the masthead.

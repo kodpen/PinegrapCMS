@@ -11,6 +11,7 @@ description: Why Pinegrap has accessibility and consent tools (Circular 2025/10,
 - Designer audit (PR #628, PR #642): text contrast against the resolved background with `assets/js/pg_contrast.js`, the browser twin of `_pg_theme_contrast()`; target size; redundant entry. Measured on the canvas, not as tree rules (docs/memory/designer/designer-audit-contrast.md, designer-audit-targets-entry.md).
 - Site report (PR #1748, PR #1760): the nightly `seo_a11y_job.php`, findings in `seo_issue` with `a11y_` codes, `view_accessibility.php` with its PDF for the Ministry's monitoring forms, `GET /seo/issues?category=a11y` (accessibility-report.md). The report has its own screen rather than an SEO tab: there is no separate SEO screen to hold one.
 - Accessibility statement (PR #688): palette Blocks › Legal › "Legal: Accessibility Statement" (`legal-accessibility-statement`), six sections: scope, standard, known issues, contact, date.
+- Accessibility statement from the report: the `accessibility_statement` system widget and `view_accessibility.php?statement=1`, texts from a settings card, conformance and known limitations from the nightly report (accessibility-statement.md).
 - Cookie notice (PR #619): cookie-consent-notice.md. Its wording is the translation system's (`pg_consent_ui_keys()`), with no settings of its own.
 - Classic pages: the nightly report reads them; nothing in their markup is changed automatically.
 

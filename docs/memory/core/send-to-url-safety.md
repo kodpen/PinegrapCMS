@@ -15,4 +15,4 @@ module: core
 - A link with `send_to=/\evil.example/` (or `/<TAB>/evil.example`) sent the panel user to another site when they pressed the back arrow or Save.
 
 ## Which test pins it?
-- `tests/send_to_url_safety_test.php`: the off-site forms give the fallback; `/pinegrap/view_files.php?filter=x` and `/` come back unchanged.
+- `tests/send_to_url_safety_test.php`: the off-site forms give the fallback; `/pinegrap/view_folders.php?view=files&scope=documents` and `/` come back unchanged.

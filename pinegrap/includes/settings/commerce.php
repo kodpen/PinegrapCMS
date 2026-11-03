@@ -47,7 +47,7 @@ $pg_settings_cards[] = '
                                                         </div>
                                                         <div class="pg-f-lg">
                                                             <label for="product_upload_folder_id" class="form-label">' . lang('Folder for product images') . '</label>
-                                                            <select name="product_upload_folder_id" id="product_upload_folder_id" class="form-control">' . select_folder($product_upload_folder_id, 0) . '</select>
+                                                            <select name="product_upload_folder_id" id="product_upload_folder_id" class="form-control">' . pg_settings_select_folder($product_upload_folder_id) . '</select>
                                                             <div class="form-text">' . lang('The product and product group screens open on this folder when an image is uploaded. It can still be changed while uploading.') . '</div>
                                                         </div>
                                                         <div class="col-12 ">
@@ -233,11 +233,11 @@ $pg_settings_cards[] = '
                                                                         ' . pg_label_settings_rows() . '
                                                                         <div class="col-12 ">
                                                                             <label for="ecommerce_product_restriction_message" class="form-label">' . lang('Product Restriction Message') . '</label>
-                                                                            <input type="text" name="ecommerce_product_restriction_message" id="ecommerce_product_restriction_message" class="form-control" value="' . h($ecommerce_product_restriction_message) . '" maxlength="255"/>
+                                                                            <textarea name="ecommerce_product_restriction_message" id="ecommerce_product_restriction_message" class="form-control" rows="2" maxlength="255">' . h($ecommerce_product_restriction_message) . '</textarea>
                                                                         </div>
                                                                         <div class="col-12 ">
                                                                             <label for="ecommerce_no_shipping_methods_message" class="form-label">' . lang('No Shipping Methods Message') . '</label>
-                                                                            <input type="text" name="ecommerce_no_shipping_methods_message" id="ecommerce_no_shipping_methods_message" class="form-control" value="' . h($ecommerce_no_shipping_methods_message) . '" maxlength="255"/>
+                                                                            <textarea name="ecommerce_no_shipping_methods_message" id="ecommerce_no_shipping_methods_message" class="form-control" rows="2" maxlength="255">' . h($ecommerce_no_shipping_methods_message) . '</textarea>
                                                                         </div>
                                                                         ' . get_time_picker_format() . '
                                                                         <div class="pg-f-xs">
@@ -253,6 +253,24 @@ $pg_settings_cards[] = '
             </div>
         </div>
     </div>';
+
+// ── Address Autocomplete ──
+// The provider account is kept with the connected accounts' applications,
+// the key sealed (includes/fn/address_autocomplete.php).
+$pg_settings_cards[] = '
+    <div id="pgset-address-autocomplete" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                ' . lang('Address Autocomplete') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">' . pg_addr_settings_fields() . '
+                </div>
+            </div>
+        </div>
+    </div>';
+
+$pg_settings_scripts[] = pg_addr_settings_script();
 
 // ── Gift Cards & Rewards ──
 $pg_settings_cards[] = '
@@ -278,7 +296,7 @@ $pg_settings_cards[] = '
                                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
                                                                                 <input type="text" name="ecommerce_gift_card_validity_days" id="ecommerce_gift_card_validity_days" class="form-ghost" value="' . $ecommerce_gift_card_validity_days . '" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
                                                                             </label>
-                                                                            <div class="text-end form-text">' . lang('leave blank for no expiration') . '</div>
+                                                                            <div class="form-text">' . lang('leave blank for no expiration') . '</div>
                                                                         </div>
                                                                         <div class="col-12 ">
                                                                             <div class="form-field">
@@ -618,7 +636,7 @@ $pg_settings_cards[] = '
                                                                                                 <div class="popover-body">
                                                                                                    <div class="row gy-5">
                                                                                                         <div class="pg-f-md">
-                                                                                                            <label class="form-label" for="iyzipay_protected_currency_code">' . lang('Currency to be converted in submiting order for currency protection') . '</label>
+                                                                                                            ' . (($output_iyzipay_protected_currency_select !== '') ? '<label class="form-label" for="iyzipay_protected_currency_code">' . lang('Currency to be converted in submiting order for currency protection') . '</label>' : '') . '
                                                                                                             ' . $output_iyzipay_protected_currency_select . '
                                                                                                         </div>
                                                                                                     </div>
@@ -711,7 +729,7 @@ $pg_settings_cards[] = '
                                                             <label class="form-label" for="ecommerce_private_folder_id">'. lang('Grant Private Access') . '</label>
                                                             <select class="form-control" id="ecommerce_private_folder_id" name="ecommerce_private_folder_id">
                                                                 <option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Folder')) )) . '-</option>
-                                                                ' . select_folder($ecommerce_private_folder_id, 0, 0, 0, array(), array(), 'private') . '
+                                                                ' . pg_settings_select_folder($ecommerce_private_folder_id, 'private') . '
                                                             </select>
                                                         </div>
                                                         <div class="pg-f-lg">

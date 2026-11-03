@@ -81,6 +81,21 @@ function test_not_found_log_name_leaves_out_the_software_directory()
 	pg_assert_same('pinegrap/x', pg_not_found_log_name('pinegrap/x', ''), 'no software directory given');
 }
 
+function test_not_found_log_name_skips_a_language_directory()
+{
+	// A short link cannot take a name under a language directory
+	// (check_name_availability()), and the router only knows a prefix in lower
+	// case, so /EN/menu came here as a 404 nobody could redirect.
+	pg_assert_same('', pg_not_found_log_name('EN/menumuz', '', array('en', 'pt-br')), 'a prefix in capitals');
+	pg_assert_same('', pg_not_found_log_name('En/x', '', array('en')), 'in mixed case');
+	pg_assert_same('', pg_not_found_log_name('PT-BR', '', array('en', 'pt-br')), 'the prefix alone');
+	pg_assert_same('english/x', pg_not_found_log_name('english/x', '', array('en')), 'a name that only starts like it');
+	pg_assert_same('en.png', pg_not_found_log_name('en.png', '', array('en')), 'a file name');
+	pg_assert_same('EN/x', pg_not_found_log_name('EN/x', '', array()), 'no language');
+	pg_assert_true(pg_not_found_log_reserved('EN/menumuz', array('en')), 'reserved');
+	pg_assert_true(!pg_not_found_log_reserved('menumuz/en', array('en')), 'only the first part counts');
+}
+
 function test_not_found_log_referrer_keeps_scheme_host_and_path()
 {
 	pg_assert_same('https://www.google.com/search', pg_not_found_log_referrer('https://WWW.Google.com/search?q=gizli#x'), 'query and fragment go, host in lower case');
@@ -159,10 +174,19 @@ function test_not_found_log_where()
 	pg_assert_same("last_seen >= '1000' AND hit_count > crawler_hits", pg_not_found_log_where(array('since' => 1000, 'who' => 'visitors')), 'visitors');
 	pg_assert_same("last_seen >= '1000' AND crawler_hits > 0", pg_not_found_log_where(array('since' => 1000, 'who' => 'crawlers')), 'crawlers');
 	pg_assert_same("last_seen >= '0'", pg_not_found_log_where(array('who' => "x' OR 1=1")), 'an unknown filter is no filter');
-	pg_assert_same("last_seen >= '0' AND path LIKE '%100\\\\%\\\\_x%'", pg_not_found_log_where(array('search' => ' 100%_x ')), 'a search for % and _ as text');
-	pg_assert_same("last_seen >= '0' AND path LIKE '%a\\'b%'", pg_not_found_log_where(array('search' => "a'b")), 'a quote is escaped');
+	pg_assert_same("last_seen >= '0' AND (path LIKE '%100\\\\%\\\\_x%')", pg_not_found_log_where(array('search' => ' 100%_x ')), 'a search for % and _ as text');
+	pg_assert_same("last_seen >= '0' AND (path LIKE '%a\\'b%')", pg_not_found_log_where(array('search' => "a'b")), 'a quote is escaped');
 	pg_assert_same("last_seen >= '0'", pg_not_found_log_where(array('search' => array('x'))), 'a list is no search');
-	pg_assert_same(191 + strlen("last_seen >= '0' AND path LIKE '%%'"), strlen(pg_not_found_log_where(array('search' => str_repeat('a', 300)))), 'a search no longer than the column');
+	pg_assert_same(191 + strlen("last_seen >= '0' AND (path LIKE '%%')"), strlen(pg_not_found_log_where(array('search' => str_repeat('a', 300)))), 'a search no longer than the column');
+	pg_assert_same("last_seen >= '0' AND (path LIKE '%ığdır%')", pg_not_found_log_where(array('search' => '/ığdır', 'turkish' => '')), 'the address as the list shows it, with its leading /');
+	pg_assert_same("last_seen >= '0' AND (path LIKE '%ığdır%')", pg_not_found_log_where(array('search' => 'https://example.com/ığdır/?utm=x', 'turkish' => '')), 'a full address pasted from the browser');
+	pg_assert_same("last_seen >= '0' AND (path LIKE '%blog/eski\\\\_yazi%')", pg_not_found_log_where(array('search' => '/blog/eski yazi/')), 'in the stored form');
+	pg_assert_same("last_seen >= '0'", pg_not_found_log_where(array('search' => '/')), 'only a slash is no search');
+	$turkish = pg_not_found_log_where(array('search' => 'KISA', 'turkish' => 'utf8mb4'));
+	pg_assert_true(strpos($turkish, "CONVERT(path USING utf8mb4) COLLATE utf8mb4_turkish_ci LIKE '%KISA%'") !== false, 'KISA finds kısa under the Turkish rule');
+	pg_assert_true(strpos($turkish, "LIKE '%kisa%'") !== false, 'and the folded spelling');
+	pg_assert_true(strpos(pg_not_found_log_where(array('search' => 'IĞDIR', 'turkish' => 'utf8mb4')), 'utf8mb4_turkish_ci') !== false, 'IĞDIR finds ığdır');
+	pg_assert_same("last_seen >= '0' AND (path LIKE '%a?b%')", pg_not_found_log_where(array('search' => 'a%3Fb')), 'a ? in the value is no placeholder');
 	pg_assert_same(1000 - (90 * 86400), pg_not_found_log_since(1000), 'ninety days');
 }
 

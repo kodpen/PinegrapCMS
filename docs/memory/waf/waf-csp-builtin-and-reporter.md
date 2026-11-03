@@ -15,3 +15,6 @@ description: Built-in CSP policy (learning mode), waf_csp_policy() allowlist rul
 - It is NOT written to `waf_log`: a per-visitor row cap would push real events out.
 
 Related: docs/memory/waf/waf-security-headers-hsts.md
+
+## In what order are the reports kept and listed?
+- `waf_csp_report_compare()`: most reported first, the most recently seen (`l`) first among equal counts, so the 500-group cap and the screen's first 100 cut the oldest groups, not the newest violations; the screen notes "Showing 100 of N groups" when it cuts (#5856).

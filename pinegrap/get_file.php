@@ -57,6 +57,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/lang_files.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/lang.php');
+// The forwarded-scheme parser and the peer trust check, which the local
+// check_if_request_is_secure() below decides with.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/request_scheme.php');
 pg_software_language_define(isset($router_config_row['software_language']) ? $router_config_row['software_language'] : '');
 
 // If this request was made over the web instead of a cron job,
@@ -79,7 +82,6 @@ if (!empty($_SERVER['HTTP_HOST'])) {
             (defined('REQUIRE_SECURE_MODE') === false)
             || (REQUIRE_SECURE_MODE !== false)
         )
-        && ($secure_mode !== 'false')
     ) {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             output_error(
@@ -88,9 +90,9 @@ if (!empty($_SERVER['HTTP_HOST'])) {
             );
 
         // Redirect loop guard - see the matching block in init.php.
-        } elseif (check_proxy_ssl_headers() === TRUE) {
+        } elseif (pg_forwarded_https($_SERVER) === TRUE) {
             output_error(
-                'Secure Mode is enabled and your connection appears to be secure, but this server cannot verify it because SSL is terminated by a proxy or CDN (for example Cloudflare Flexible SSL). Enable TRUST_PROXY_SSL_HEADERS in the config file, or turn off Secure Mode.',
+                'Secure Mode is enabled and your connection appears to be secure, but this server cannot verify it, because SSL is terminated by a proxy or CDN (for example Cloudflare Flexible SSL) that is not listed under Trusted Proxies in the Firewall settings. List the proxy there, or turn off Secure Mode.',
                 500
             );
         } else {
@@ -101,13 +103,16 @@ if (!empty($_SERVER['HTTP_HOST'])) {
             exit();
         }
 
-    // Otherwise if the request is secure, and the secure_mode query string value is set to false,
-    // then redirect visitor to non-secure URL.
+    // Otherwise, on a site without Secure Mode, a secure request asking for
+    // secure_mode=false is sent to the plain address. A Secure Mode site never
+    // sends a visitor to http (the parameter is ignored there), and the switch
+    // is temporary: a 301 would stay cached in the visitor's browser.
     } elseif (
-        ($secure_request === true)
+        (URL_SCHEME !== 'https://')
+        && ($secure_request === true)
         && ($secure_mode === 'false')
     ) {
-        header('Location: http://' . HOSTNAME_SETTING . get_request_uri(), true, 301);
+        header('Location: http://' . HOSTNAME_SETTING . get_request_uri(), true, 302);
         exit();
     }
 
@@ -134,15 +139,34 @@ $file['name'] = $_GET['name'];
 // when we check if the file exists on the file system, that check will be successful
 // on case-sensitive operating systems (e.g. Unix).  This is necessary,
 // because the visitor might not request the file with the correct case.
+// Where the bytes are (files.storage, 2026.11.0): until the upgrade has run
+// the columns are missing and the query fails (false, mysqli reporting is
+// off), so the file is read as local with the older query.
 $query =
     "SELECT
         id,
         name,
         folder AS folder_id,
-        attachment
+        attachment,
+        type,
+        size,
+        storage,
+        storage_key
     FROM files
     WHERE name = '" . escape($file['name']) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = @mysqli_query(db::$con, $query);
+
+if ($result === false) {
+    $query =
+        "SELECT
+            id,
+            name,
+            folder AS folder_id,
+            attachment
+        FROM files
+        WHERE name = '" . escape($file['name']) . "'";
+    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+}
 
 // if the file does not exist, then output error
 if (mysqli_num_rows($result) == 0) {
@@ -155,6 +179,10 @@ $file['id'] = $row['id'];
 $file['name'] = $row['name'];
 $file['folder_id'] = $row['folder_id'];
 $file['attachment'] = $row['attachment'];
+$file['type'] = isset($row['type']) ? (string) $row['type'] : '';
+$file['size'] = isset($row['size']) ? (int) $row['size'] : 0;
+$file['stored'] = isset($row['storage']) && ($row['storage'] === 's3') && !empty($row['storage_key']);
+$file['storage_key'] = $file['stored'] ? (string) $row['storage_key'] : '';
 
 // The DKIM signing key lives in the file directory so the mailer can read it,
 // and older installations registered it in a public folder. It must never
@@ -302,8 +330,11 @@ if (defined('FILE_DIRECTORY_PATH') == false) {
     define('FILE_DIRECTORY_PATH', dirname(__FILE__) . '/data/files');
 }
 
-// if the file does not exist on the file system, then output error
-if (file_exists(FILE_DIRECTORY_PATH . '/' . $file['name']) == FALSE) {
+// if the file does not exist on the file system, then output error. A file
+// in the object store has no bytes here; it is answered further below.
+$file['local'] = file_exists(FILE_DIRECTORY_PATH . '/' . $file['name']);
+
+if (!$file['local'] && !$file['stored']) {
     output_error(get_file_text('Sorry, a record of the file exists in the database, but the actual file does not exist on the file system.  The administrator should restore the file on the file system or delete the file in the control panel and re-upload the file.'), 404);
 }
 
@@ -526,7 +557,7 @@ if ($file['attachment'] == 1) {
 
                                         // If this user has the same e-mail address as the connect-to-contact e-mail address
                                         // field value for this submitted form, then the user has view access.
-                                        if (mb_strtolower(USER_EMAIL_ADDRESS) == mb_strtolower($submitter_email_address)) {
+                                        if (pg_email_address_matches(USER_EMAIL_ADDRESS, $submitter_email_address)) {
                                             $attachment_access = true;
                                             break;
 
@@ -539,7 +570,7 @@ if ($file['attachment'] == 1) {
                                                 WHERE
                                                     (
                                                         (user_id = '" . USER_ID . "')
-                                                        OR (email_address = '" . escape(USER_EMAIL_ADDRESS) . "')
+                                                        OR ((email_address = '" . escape(USER_EMAIL_ADDRESS) . "') AND (email_address != ''))
                                                     )
                                                     AND (page_id = '" . $comment['page_id'] . "')
                                                     AND (item_id = '" . $submitted_form['id'] . "')
@@ -671,7 +702,7 @@ if ($file['attachment'] == 1) {
 
                                     // If this user has the same e-mail address as the connect-to-contact e-mail address
                                     // field value for this submitted form, then the user has view access.
-                                    if (mb_strtolower(USER_EMAIL_ADDRESS) == mb_strtolower($submitter_email_address)) {
+                                    if (pg_email_address_matches(USER_EMAIL_ADDRESS, $submitter_email_address)) {
                                         $attachment_access = true;
                                         break;
                                     }
@@ -686,7 +717,7 @@ if ($file['attachment'] == 1) {
                                             WHERE
                                                 (
                                                     (user_id = '" . USER_ID . "')
-                                                    OR (email_address = '" . escape(USER_EMAIL_ADDRESS) . "')
+                                                    OR ((email_address = '" . escape(USER_EMAIL_ADDRESS) . "') AND (email_address != ''))
                                                 )
                                                 AND (page_id = '" . $form_list_view['form_item_view_page_id'] . "')
                                                 AND (item_id = '" . $submitted_form['id'] . "')
@@ -761,7 +792,7 @@ if ($file['attachment'] == 1) {
 
                                         // If this user has the same e-mail address as the connect-to-contact e-mail address
                                         // field value for this submitted form, then the user has view access.
-                                        if (mb_strtolower(USER_EMAIL_ADDRESS) == mb_strtolower($submitter_email_address)) {
+                                        if (pg_email_address_matches(USER_EMAIL_ADDRESS, $submitter_email_address)) {
                                             $attachment_access = true;
                                             break;
 
@@ -774,7 +805,7 @@ if ($file['attachment'] == 1) {
                                                 WHERE
                                                     (
                                                         (user_id = '" . USER_ID . "')
-                                                        OR (email_address = '" . escape(USER_EMAIL_ADDRESS) . "')
+                                                        OR ((email_address = '" . escape(USER_EMAIL_ADDRESS) . "') AND (email_address != ''))
                                                     )
                                                     AND (page_id = '" . $form_item_view['page_id'] . "')
                                                     AND (item_id = '" . $submitted_form['id'] . "')
@@ -1097,12 +1128,53 @@ if ((isset($_GET['w']) || isset($_GET['f']) || ($image_negotiation['format'] !==
     }
 }
 
+// A file in the object store, past every access check above
+// (includes/file_store_serve.php): a local file or a cached copy is sent as
+// any file is; otherwise the browser goes to a presigned address that lives
+// five minutes, asked to answer with this file's type and name. The
+// settings are read before the connection closes.
+$file_store_answer = '';
+$file_store_url = '';
+$file_store_copy = '';
+
+if ($file['stored'] && !$file['local']) {
+    require_once(dirname(__FILE__) . '/includes/file_store_serve.php');
+
+    $file_store_copy = pg_file_serve_cached_copy($file['id'], $file['type'], $file['size']);
+
+    if ($file_store_copy === '') {
+        $file_store_type = isset($mimetype[$extension]) ? $mimetype[$extension] : 'application/octet-stream';
+
+        $file_store_url = pg_os_presign(
+            pg_file_serve_store_config(db::$con),
+            $file['storage_key'],
+            300,
+            array(
+                'content_type' => $file_store_type,
+                'disposition'  => pg_file_serve_disposition($file['name'], $file_store_type !== 'application/octet-stream'),
+            ));
+    }
+
+    $file_store_answer = pg_file_serve_plan(false, $file_store_copy, $file_store_url);
+}
+
 if (isset(db::$con) && db::$con) {
     @mysqli_close(db::$con);
     db::$con = null;
 }
 
-$file['path'] = FILE_DIRECTORY_PATH . '/' . $file['name'];
+if ($file_store_answer === 'unavailable') {
+    output_error(get_file_text('Sorry, the file that you requested cannot be reached right now. Please try again later.'), 503);
+}
+
+if ($file_store_answer === 'redirect') {
+    // Short enough that a kept answer never outlives the address it names.
+    header('Cache-Control: private, max-age=240');
+    header('Location: ' . $file_store_url, true, 302);
+    exit();
+}
+
+$file['path'] = ($file_store_answer === 'copy') ? $file_store_copy : FILE_DIRECTORY_PATH . '/' . $file['name'];
 $file['download_name'] = $file['name'];
 
 // A responsive derivative: the picture at one of a few fixed widths, or as
@@ -1300,7 +1372,7 @@ if ($if_modified_since == $last_modified) {
 // We can't use x-sendfile for CSS files because they might contain paths that need to be replaced.
 // A derivative is sent by PHP as well: it is small, and it sits in
 // data/cache/img, which mod_xsendfile's XSendFilePath may not allow.
-} else if (defined('XSENDFILE') and XSENDFILE and ($derivative_status !== 'derivative')) {
+} else if (defined('XSENDFILE') and XSENDFILE and ($derivative_status !== 'derivative') and ($file_store_answer !== 'copy')) {
     // we have to use an absolute path because x-sendfile assumes relative paths
     // are relative to the virtual files directory
     header('X-Sendfile: ' . FILE_DIRECTORY_PATH . '/' . $file['name']);
@@ -1694,11 +1766,12 @@ function get_request_uri()
     }
 }
 
-// Local copy of the helper in functions.php. This script is required directly by
-// router.php without loading functions.php, so it has to stand on its own.
-// KEEP IN SYNC with check_if_request_is_secure() / check_proxy_ssl_headers()
-// in functions.php - a mismatch means downloads and pages disagree about
-// whether the visitor is on HTTPS.
+// Local copy of the helper in includes/fn/core.php. This script is required
+// directly by router.php without loading functions.php, so it has to stand on
+// its own. KEEP IN SYNC with check_if_request_is_secure() in core.php - a
+// mismatch means downloads and pages disagree about whether the visitor is on
+// HTTPS. The parsing and the peer trust are includes/fn/request_scheme.php's,
+// loaded above, so only the direct check and the two calls are repeated here.
 function check_if_request_is_secure()
 {
     // Direct TLS on the origin. Always trusted - set by the web server, not the client.
@@ -1709,53 +1782,17 @@ function check_if_request_is_secure()
         return TRUE;
     }
 
-    // Forwarded headers are client-supplied, so require an explicit opt-in.
-    // See the long explanation above check_if_request_is_secure() in functions.php.
-    if (!defined('TRUST_PROXY_SSL_HEADERS') || TRUST_PROXY_SSL_HEADERS !== TRUE) {
+    // Forwarded headers are client-supplied: believed only from a trusted
+    // peer (Trusted Proxies, a Cloudflare edge, or the config constant).
+    if (!pg_forwarded_https($_SERVER)) {
         return FALSE;
     }
 
-    return check_proxy_ssl_headers();
-}
+    $remote = isset($_SERVER['REMOTE_ADDR']) ? (string) $_SERVER['REMOTE_ADDR'] : '';
 
-// Local copy - KEEP IN SYNC with check_proxy_ssl_headers() in functions.php.
-function check_proxy_ssl_headers()
-{
-    // Standard de-facto header, also sent by Cloudflare. May contain a comma
-    // separated chain when several proxies are involved ("https, http").
-    if (!empty($_SERVER['HTTP_X_FORWARDED_PROTO'])) {
-        $forwarded_proto = explode(',', $_SERVER['HTTP_X_FORWARDED_PROTO']);
-        if (strtolower(trim($forwarded_proto[0])) === 'https') {
-            return TRUE;
-        }
-    }
+    $trusted = function_exists('waf_setting') ? (string) waf_setting('waf_trusted_proxies', '') : '';
 
-    // Cloudflare specific, e.g. {"scheme":"https"}
-    if (!empty($_SERVER['HTTP_CF_VISITOR']) && stripos($_SERVER['HTTP_CF_VISITOR'], '"scheme":"https"') !== FALSE) {
-        return TRUE;
-    }
-
-    // RFC 7239 Forwarded header, e.g. for=1.2.3.4;proto=https
-    if (!empty($_SERVER['HTTP_FORWARDED']) && preg_match('/proto\s*=\s*"?https"?/i', $_SERVER['HTTP_FORWARDED'])) {
-        return TRUE;
-    }
-
-    // Older nginx / AWS ELB style header.
-    if (!empty($_SERVER['HTTP_X_FORWARDED_SSL']) && strtolower($_SERVER['HTTP_X_FORWARDED_SSL']) === 'on') {
-        return TRUE;
-    }
-
-    // Microsoft ISA/TMG and IIS ARR.
-    if (!empty($_SERVER['HTTP_FRONT_END_HTTPS']) && strtolower($_SERVER['HTTP_FRONT_END_HTTPS']) === 'on') {
-        return TRUE;
-    }
-
-    // Some proxies rewrite the port instead of the scheme.
-    if (!empty($_SERVER['HTTP_X_FORWARDED_PORT']) && $_SERVER['HTTP_X_FORWARDED_PORT'] == '443') {
-        return TRUE;
-    }
-
-    return FALSE;
+    return pg_https_peer_trusted($remote, $trusted);
 }
 
 // Create a function that we can use to set the timezone before we need to use date functions

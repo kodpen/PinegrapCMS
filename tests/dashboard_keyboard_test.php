@@ -37,7 +37,7 @@ function test_dashboard_keyboard_engagement_has_no_click_only_rows()
 // can be read without a mouse.
 function test_dashboard_keyboard_status_chips_take_focus()
 {
-	$source = dashboard_keyboard_source('includes/dashboard/widgets/widget_2.php');
+	$source = dashboard_keyboard_source('includes/fn/health_gauge.php');
 
 	pg_assert_false(strpos($source, ": '<div';") !== false, 'href-less chip printed as a div');
 	pg_assert_contains(": '<button type=\"button\"';", $source);
@@ -58,7 +58,7 @@ function test_dashboard_keyboard_status_popover_opens_on_focus()
 // attribute; no-popover keeps the title popover off it.
 function test_dashboard_keyboard_status_chip_link_is_followed()
 {
-	$source = dashboard_keyboard_source('includes/dashboard/widgets/widget_2.php');
+	$source = dashboard_keyboard_source('includes/fn/health_gauge.php');
 
 	pg_assert_false(strpos($source, 'data-bs-toggle="popover"') !== false, 'chip carries data-bs-toggle="popover"');
 	pg_assert_false(strpos($source, 'data-bs-trigger="hover focus"') !== false, 'chip carries an ignored data-bs-trigger');

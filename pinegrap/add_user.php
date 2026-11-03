@@ -248,16 +248,13 @@ if (!$_POST) {
     $_POST['username'] = trim($_POST['username'] ?? '');
     $_POST['email'] = trim($_POST['email'] ?? '');
 
-    // The role arrives as text. Cast it before the ceiling check so a
-    // non-numeric value cannot slip past the comparison and reach the SQL,
-    // where a lenient server would store it as 0 (administrator).
-    if (isset($_POST['role'])) {
-        $_POST['role'] = (int) $_POST['role'];
+    // Only a whole number from 0 to 3 is a role: text such as 'abc' would
+    // cast to 0 (administrator). A form that sends no role creates a user.
+    $_POST['role'] = pg_user_form_role($_POST['role'] ?? null, 3);
 
-        if (in_array($_POST['role'], array(0, 1, 2, 3), true) == false) {
-            log_activity(lang('access denied because user does not have access to create a user with the requested role'), $_SESSION['sessionusername']);
-            output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-        }
+    if ($_POST['role'] === null) {
+        log_activity(lang('access denied because user does not have access to create a user with the requested role'), $_SESSION['sessionusername']);
+        output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
     // if editor is not an administrator and the editor's role is less than or equal to the role that the editor is trying to set, then output error
@@ -288,6 +285,10 @@ if (!$_POST) {
     {
         output_error(lang('The email address that you entered is already in use') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
     }
+
+    // A checked private folder whose date is not one stops here, before
+    // anything is written; a date already gone is named after the save.
+    $past_expiry_folders = pg_user_form_check_expiry_dates($_POST);
 
     $random_password = get_random_string(array(
         'type' => 'lowercase_letters',
@@ -431,7 +432,7 @@ if (!$_POST) {
             '" . escape($_POST['set_page_type_photo_gallery'] ?? '') . "',
             $sql_set_page_type_values
             'default',
-            '" . escape($_POST['contact_id'] ?? '') . "',
+            " . pg_user_contact_sql($_POST['contact_id'] ?? '') . ",
             UNIX_TIMESTAMP(),
             '$user[id]')";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -498,7 +499,7 @@ if (!$_POST) {
         // delivery-failed notice.
         $set_password_url = pg_set_password_link_issue($user_id) ? pg_set_password_link($user_id) : '';
 
-        email(array(
+        $sent = (bool) email(array(
             'to' => $_POST['email'],
             'from_name' => ORGANIZATION_NAME,
             'from_email_address' => EMAIL_ADDRESS,
@@ -512,20 +513,13 @@ if (!$_POST) {
 
     pg_audit_record('create', 'user', (int) $user_id);
 
-    // If the user was notified, then prepare password message related to that.
-    if (($_POST['notify_user'] ?? '') == 1) {
-        $password_message = ($set_password_url !== '')
-            ? lang('A link to set a password has been emailed to the user.')
-            : lang('The user has been emailed and can set a password with "Forgot password" on the sign-in page.');
-
-    // Otherwise the user was not notified, so prepare different password message for that.
-    } else {
-        $password_message = lang(array('string'=>'The password is \'{var:1}\'. The user has not been notified.','vars'=>h($random_password)));
-    }
-    
     // Output Confirmation
     $liveform_view_users = new liveform('view_users');
-    $liveform_view_users->add_notice(lang('The user has been created. ') . $password_message);
+    $liveform_view_users->add_notice(h(pg_new_user_notice((($_POST['notify_user'] ?? '') == 1), $sent ?? false, $set_password_url ?? '', $random_password)));
+
+    if ($past_expiry_folders) {
+        $liveform_view_users->add_warning(pg_user_form_past_expiry_warning($past_expiry_folders));
+    }
     
     // If there is a send to value then send user back to that screen
     if ((isset($_REQUEST['send_to']) == TRUE) && ($_REQUEST['send_to'] != '')) {

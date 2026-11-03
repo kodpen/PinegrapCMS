@@ -144,6 +144,35 @@ function pg_explorer_breadcrumb($folder_id, $folders_that_user_has_access_to)
 
 // True when $candidate_id equals $folder_id or lives anywhere below it.
 // Used to refuse moving a folder into itself or into its own subtree.
+// The answer of a paste or a Duplicate: how many items were copied and, for
+// each copy that took another name than its original (the name was taken in
+// the target, or a file name had to lose letters an address cannot carry),
+// the name it now has, since that name is its address on the site. Plain
+// text: the File Manager writes it with textContent.
+function pg_explorer_paste_message($copied, $renamed, $duplicate)
+{
+    $copied = (int) $copied;
+    $renamed = is_array($renamed) ? $renamed : array();
+
+    if ($duplicate && ($copied === 1) && (count($renamed) === 1)) {
+        return lang(array('string' => 'Duplicated as {var:1}.', 'vars' => array((string) $renamed[0][1])));
+    }
+
+    $message = $duplicate
+        ? lang(array('string' => '{var:1} item(s) were duplicated.', 'vars' => $copied))
+        : lang(array('string' => '{var:1} item(s) were pasted.', 'vars' => $copied));
+
+    if (count($renamed) > 0) {
+        $pairs = array();
+        foreach ($renamed as $pair) {
+            $pairs[] = (string) $pair[0] . ' → ' . (string) $pair[1];
+        }
+        $message .= ' ' . lang(array('string' => 'Copied under a new name: {var:1}.', 'vars' => array(implode(', ', $pairs))));
+    }
+
+    return $message;
+}
+
 function pg_explorer_is_self_or_descendant($folder_id, $candidate_id)
 {
     $map = pg_explorer_folder_map();
@@ -165,8 +194,6 @@ function pg_explorer_is_self_or_descendant($folder_id, $candidate_id)
 }
 
 // Recompute folder_level for every folder below $parent_id after a move.
-// Same walk edit_folder.php does; kept local so the endpoint has no
-// dependency on that screen being loaded.
 function pg_explorer_change_level($parent_id, $parent_level)
 {
     $rows = db_items("SELECT folder_id FROM folder WHERE folder_parent = '" . e($parent_id) . "'");
@@ -442,7 +469,7 @@ function pg_explorer_copy_folder($source_id, $target_parent_id, $user, &$errors,
 
     // Files.
     $files = db_items(
-        "SELECT id, name, description, type, design, optimized, image_width, image_height, optimization_percent
+        "SELECT id, name, description, type, design, attachment, optimized, image_width, image_height, optimization_percent
         FROM files
         WHERE folder = '" . e($source_id) . "'");
 
@@ -464,6 +491,9 @@ function pg_explorer_copy_folder($source_id, $target_parent_id, $user, &$errors,
                 continue;
             }
 
+            // A submitted form's upload stays one in the copy (attachment):
+            // get_file.php keeps refusing it to visitors without edit
+            // access, where a plain row would serve it to everyone.
             $new_file_name = get_unique_name(array('name' => prepare_file_name($file['name']), 'type' => 'file'));
             $new_path = FILE_DIRECTORY_PATH . '/' . $new_file_name;
 
@@ -480,6 +510,7 @@ function pg_explorer_copy_folder($source_id, $target_parent_id, $user, &$errors,
                     type,
                     size,
                     design,
+                    attachment,
                     optimized,
                     image_width,
                     image_height,
@@ -493,6 +524,7 @@ function pg_explorer_copy_folder($source_id, $target_parent_id, $user, &$errors,
                     '" . e(mb_strtolower(pathinfo($new_file_name, PATHINFO_EXTENSION))) . "',
                     '" . e(filesize($new_path)) . "',
                     '" . e($file['design']) . "',
+                    '" . (int) $file['attachment'] . "',
                     '" . e($file['optimized']) . "',
                     " . (($file['image_width'] !== null && $file['image_width'] !== '') ? "'" . e($file['image_width']) . "'" : "NULL") . ",
                     " . (($file['image_height'] !== null && $file['image_height'] !== '') ? "'" . e($file['image_height']) . "'" : "NULL") . ",
@@ -561,6 +593,45 @@ function pg_explorer_compare_shared_groups($a, $b)
     return pg_geo_label_compare($a['path'], $b['path']);
 }
 
+// The exact date and time of a change, beside the relative one the rows
+// carry; '' for a row with no time.
+function pg_explorer_exact_time($timestamp)
+{
+    if ((int) $timestamp <= 0) {
+        return '';
+    }
+
+    return get_absolute_time(array('timestamp' => (int) $timestamp, 'format' => 'plain_text', 'size' => 'short', 'year' => true));
+}
+
+// The name a change is shown with: the editor's contact name, else the
+// username (pg_user_display_name()). One query for every user of the
+// request, as a listing names the same few people on every row.
+function pg_explorer_editor_name($username)
+{
+    static $names = null;
+
+    $username = (string) $username;
+
+    if ($username === '') {
+        return '';
+    }
+
+    if ($names === null) {
+        $names = array();
+        $rows = db_items(
+            "SELECT user.user_username, contacts.first_name, contacts.last_name
+            FROM user
+            LEFT JOIN contacts ON contacts.id = user.user_contact");
+
+        foreach (($rows ? $rows : array()) as $row) {
+            $names[(string) $row['user_username']] = pg_user_display_name($row['first_name'], $row['last_name'], $row['user_username']);
+        }
+    }
+
+    return isset($names[$username]) ? $names[$username] : $username;
+}
+
 function pg_explorer_page_payload($page, $user)
 {
     $access_control_type = get_access_control_type($page['page_folder']);
@@ -582,6 +653,7 @@ function pg_explorer_page_payload($page, $user)
         'folder_id' => $page_folder_id,
         'folder_name' => isset($map[$page_folder_id]) ? $map[$page_folder_id]['folder_name'] : '',
         'type' => $page['page_type'],
+        'type_name' => pg_explorer_page_type_name($page['page_type']),
         'home' => ($page['page_home'] == 'yes'),
         // Kept off the site in the private drafts folder (2026.4.7).
         'draft' => function_exists('pg_page_is_draft') && pg_page_is_draft($page['page_folder']),
@@ -599,7 +671,9 @@ function pg_explorer_page_payload($page, $user)
         'archived' => ($page['folder_archived'] == '1'),
         'timestamp' => (int) $page['page_timestamp'],
         'modified' => get_relative_time(array('timestamp' => $page['page_timestamp'])),
+        'modified_exact' => pg_explorer_exact_time($page['page_timestamp']),
         'username' => (string) $page['user_username'],
+        'editor' => pg_explorer_editor_name($page['user_username']),
         'url' => $url,
         'edit_url' => PATH . SOFTWARE_DIRECTORY . '/' . pg_page_edit_url($page));
 }
@@ -607,9 +681,8 @@ function pg_explorer_page_payload($page, $user)
 // One file row for the client.
 // The narrowings of the Files view.
 //
-// view_files.php offered these from a select; the file manager offers them
-// from a button on the same view. Pictures is not among them because it is a
-// view of its own, one entry up. Documents is what is left once pictures and
+// The file manager offers them from a button on the Files view. Pictures is
+// not among them because it is a view of its own, one entry up. Documents is what is left once pictures and
 // media are taken out, so the two lists below are the whole of the rule.
 function pg_explorer_file_scopes()
 {
@@ -697,6 +770,7 @@ function pg_explorer_file_row($file_id)
             files.size,
             files.design,
             files.optimized,
+            files.attachment,
             files.image_width,
             files.image_height,
             files.timestamp,
@@ -782,6 +856,9 @@ function pg_explorer_file_payload($file, $user)
         'size_label' => convert_bytes_to_string($file['size'], 'auto'),
         'design' => ($file['design'] == '1'),
         'optimized' => ($file['optimized'] == '1'),
+        // A submitted form's upload: get_file.php refuses it to visitors
+        // even in a public folder unless a view shows its record.
+        'attachment' => (isset($file['attachment']) && ($file['attachment'] == '1')),
         'image_width' => (int) $file['image_width'],
         'image_height' => (int) $file['image_height'],
         'description' => (string) $file['description'],
@@ -790,7 +867,9 @@ function pg_explorer_file_payload($file, $user)
         'archived' => ($file['folder_archived'] == '1'),
         'timestamp' => (int) $file['timestamp'],
         'modified' => get_relative_time(array('timestamp' => $file['timestamp'])),
+        'modified_exact' => pg_explorer_exact_time($file['timestamp']),
         'username' => (string) $file['user_username'],
+        'editor' => pg_explorer_editor_name($file['user_username']),
         'url' => PATH . $file['name'],
         'can_edit' => $can_edit,
         'edit_url' => PATH . SOFTWARE_DIRECTORY . '/edit_file.php?id=' . (int) $file['id']);
@@ -804,6 +883,12 @@ function pg_explorer_folder_payload($folder, $counts, $user, $folders_that_user_
     $access_control_type = get_access_control_type($folder_id);
 
     $count = isset($counts[$folder_id]) ? $counts[$folder_id] : array('folders' => 0, 'pages' => 0, 'files' => 0);
+
+    // Rights holders and the totals of the whole subtree are for designers
+    // and managers; a basic user may not see every sub-folder or right.
+    if ((int) $user['role'] > 2) {
+        unset($count['rights_users'], $count['total']);
+    }
 
     return array(
         'kind' => 'folder',
@@ -820,10 +905,13 @@ function pg_explorer_folder_payload($folder, $counts, $user, $folders_that_user_
         'style_desktop' => pg_explorer_style_info($folder['folder_style'], (int) $folder['folder_parent'], 'desktop'),
         'style_mobile' => pg_explorer_style_info(isset($folder['mobile_style_id']) ? $folder['mobile_style_id'] : 0, (int) $folder['folder_parent'], 'mobile'),
         'counts' => $count,
+        'size_label' => isset($count['total']) ? convert_bytes_to_string($count['total']['bytes'], 'auto') : '',
         'empty' => (($count['folders'] + $count['pages'] + $count['files']) == 0),
         'timestamp' => (int) $folder['folder_timestamp'],
         'modified' => ($folder['folder_timestamp'] > 0) ? get_relative_time(array('timestamp' => $folder['folder_timestamp'])) : '',
+        'modified_exact' => pg_explorer_exact_time($folder['folder_timestamp']),
         'username' => (string) $folder['user_username'],
+        'editor' => pg_explorer_editor_name($folder['user_username']),
         'can_edit' => check_edit_access($folder_id));
 }
 
@@ -847,18 +935,93 @@ function pg_explorer_folder_counts()
         }
     }
 
-    $rows = db_items("SELECT folder AS id, COUNT(*) AS total FROM files GROUP BY folder");
+    $rows = db_items("SELECT folder AS id, COUNT(*) AS total, SUM(size) AS bytes FROM files GROUP BY folder");
     if ($rows) {
         foreach ($rows as $row) {
             $counts[(int) $row['id']]['files'] = (int) $row['total'];
+            $counts[(int) $row['id']]['bytes'] = (int) $row['bytes'];
         }
     }
 
+    // Users holding a right on the folder itself, for the details panel.
+    $rows = db_items("SELECT aclfolder_folder AS id, COUNT(DISTINCT aclfolder_user) AS total FROM aclfolder WHERE aclfolder_rights > 0 GROUP BY aclfolder_folder");
+    if ($rows) {
+        foreach ($rows as $row) {
+            $counts[(int) $row['id']]['rights_users'] = (int) $row['total'];
+        }
+    }
+
+    $parents = array();
+    foreach (pg_explorer_folder_map() as $id => $folder) {
+        $parents[(int) $id] = (int) $folder['folder_parent'];
+    }
+
+    $totals = pg_explorer_folder_totals($counts, $parents, function_exists('pg_recycle_folder_id') ? (int) pg_recycle_folder_id(false) : 0);
+
+    foreach ($parents as $id => $parent) {
+        $count = isset($counts[$id]) ? $counts[$id] : array();
+        $counts[$id] = array_merge(array('folders' => 0, 'pages' => 0, 'files' => 0, 'bytes' => 0, 'rights_users' => 0), $count);
+        $counts[$id]['total'] = $totals[$id];
+    }
+
     foreach ($counts as $id => $count) {
-        $counts[$id] = array_merge(array('folders' => 0, 'pages' => 0, 'files' => 0), $count);
+        $counts[$id] = array_merge(array('folders' => 0, 'pages' => 0, 'files' => 0, 'bytes' => 0, 'rights_users' => 0), $count);
     }
 
     return $counts;
+}
+
+// Everything under each folder, sub-folders at any depth included: folders,
+// pages, files and the bytes of the files. $counts is the direct content per
+// folder id (folders, pages, files, bytes), $parents maps each folder id to
+// its parent. A folder inside the recycle bin ($bin_id) adds nothing to the
+// folders above the bin, and a broken parent chain stops after 100 steps.
+function pg_explorer_folder_totals($counts, $parents, $bin_id = 0)
+{
+    $totals = array();
+
+    foreach ($parents as $id => $parent) {
+        $totals[(int) $id] = array('folders' => 0, 'pages' => 0, 'files' => 0, 'bytes' => 0);
+    }
+
+    foreach ($parents as $id => $parent) {
+
+        $id = (int) $id;
+        $own = isset($counts[$id]) ? $counts[$id] : array();
+
+        // The ancestors this folder's content counts for, itself first.
+        $chain = array($id);
+        $walk = (int) $parent;
+        $binned = ($bin_id > 0) && ($id === $bin_id);
+
+        for ($step = 0; ($walk > 0) && isset($parents[$walk]) && ($step < 100); $step++) {
+            if ($walk === $bin_id) {
+                $binned = true;
+            }
+            $chain[] = $walk;
+            $walk = (int) $parents[$walk];
+        }
+
+        // Content in the bin counts up to the bin itself, not above it.
+        $last = $binned ? (int) array_search($bin_id, $chain, true) : (count($chain) - 1);
+
+        foreach ($chain as $position => $ancestor) {
+
+            if ($position > $last) {
+                break;
+            }
+
+            $totals[$ancestor]['pages'] += isset($own['pages']) ? (int) $own['pages'] : 0;
+            $totals[$ancestor]['files'] += isset($own['files']) ? (int) $own['files'] : 0;
+            $totals[$ancestor]['bytes'] += isset($own['bytes']) ? (int) $own['bytes'] : 0;
+
+            if ($position > 0) {
+                $totals[$ancestor]['folders']++;
+            }
+        }
+    }
+
+    return $totals;
 }
 
 // The subfolders a listing should show for $folder_id. For the virtual root
@@ -1051,6 +1214,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/explorer/handle_upload.php');
 
 // The "Where used" sub-action of pg_explorer_handle().
 require_once(PG_FUNCTIONS_DIR . '/includes/explorer/handle_file_usage.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/explorer/handle_page_usage.php');
 
 // The tree, new folder, new file, rename and move sub-actions of
 // pg_explorer_handle().
@@ -1200,6 +1364,11 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
         // ── Where a file is used ────────────────────────────────────────
         case 'explorer_file_usage':
             pg_explorer_handle_file_usage($type, $request, $user, $folders_that_user_has_access_to);
+            break;
+
+        // ── Where a page is used ────────────────────────────────────────
+        case 'explorer_page_usage':
+            pg_explorer_handle_page_usage($type, $request, $user, $folders_that_user_has_access_to);
             break;
 
         // ── One field of one product ────────────────────────────────────
@@ -1421,6 +1590,11 @@ function pg_explorer_handle($request, $user, $folders_that_user_has_access_to)
         // ── Folder access panel: read ───────────────────────────────────
         case 'explorer_folder_access_get':
             pg_explorer_handle_folder_access_get($type, $request, $user);
+            break;
+
+        // ── Access panels: the Add a user box ───────────────────────────
+        case 'explorer_access_user_search':
+            pg_explorer_handle_access_user_search($type, $request, $user);
             break;
 
         // ── Folder access panel: write ──────────────────────────────────

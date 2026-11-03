@@ -510,6 +510,10 @@ function pg_mail_decode_quoted_printable($body)
     $body = preg_replace('~[ \t]+(?=\r?\n)~', '', (string) $body);
     $body = preg_replace('~=\r?\n~', '', $body);
 
+    // A part that does not end with a line break ends on a soft break: the
+    // line break after its "=" belongs to the next boundary line.
+    $body = preg_replace('~=[ \t]*$~', '', $body);
+
     return preg_replace_callback('~=([0-9A-Fa-f]{2})~', function ($matches) {
         return chr(hexdec($matches[1]));
     }, $body);
@@ -1117,4 +1121,283 @@ function pg_mail_safe_filename($name)
     }
 
     return $name;
+}
+
+/**
+ * Reads a delivery failure or a spam complaint about a message the site
+ * sent. Pure. Three shapes:
+ * - multipart/report; report-type=delivery-status (RFC 3464, Gmail, Outlook,
+ *   Yahoo, Postfix, Exim): the first recipient block with Action: failed.
+ *   A delayed or delivered report is not a bounce.
+ * - multipart/report; report-type=feedback-report (ARF, RFC 5965): a
+ *   complaint, unless Feedback-Type says not-spam.
+ * - a plain-text failure notice (qmail, older Exim and Sendmail) from
+ *   MAILER-DAEMON or postmaster, or with a failure subject.
+ *
+ * kind: 5.x.x is hard, 4.x.x soft; a failure without a status code is
+ * hard, unless its words say the failure is temporary.
+ *
+ * The VERP tokens (pg_mail_bounce_token()) are taken from anywhere in the
+ * raw mail: the report's own To or Delivered-To and the returned message's
+ * Return-Path. candidates are every address the report names, the reported
+ * recipient first; pg_mail_bounce_dsn_match() keeps the one a token signs.
+ *
+ * @param string $raw
+ * @return array|null kind, recipient, candidates, tokens, status,
+ *                    diagnostic, original_id; null when it is no bounce
+ */
+function pg_mail_parse_dsn($raw)
+{
+    $raw = (string) $raw;
+    $parsed = pg_mail_parse($raw, array('with_content' => true));
+    $type = pg_mail_header_params((string) ($parsed['headers']['content-type'][0] ?? ''));
+    $report = strtolower((string) ($type['params']['report-type'] ?? ''));
+
+    $result = null;
+    $original_id = '';
+    $original_to = array();
+
+    foreach ((array) $parsed['attachments'] as $part) {
+        if (($original_id === '') && in_array((string) $part['content_type'], array('message/rfc822', 'message/global', 'text/rfc822-headers', 'message/global-headers'), true)) {
+            $original = pg_mail_parse((string) ($part['content'] ?? ''));
+            $original_id = (string) $original['message_id'];
+
+            foreach ((array) $original['to'] as $address) {
+                $original_to[] = (string) $address['email'];
+            }
+        }
+    }
+
+    if ($type['value'] === 'multipart/report') {
+
+        if ($report === 'feedback-report') {
+            $fields = array();
+
+            foreach ((array) $parsed['attachments'] as $part) {
+                if ((string) $part['content_type'] === 'message/feedback-report') {
+                    $fields = pg_mail_dsn_fields((string) ($part['content'] ?? ''));
+                    break;
+                }
+            }
+
+            $feedback = strtolower((string) ($fields['feedback-type'] ?? 'abuse'));
+
+            if ($feedback === 'not-spam') {
+                return null;
+            }
+
+            $recipient = pg_mail_dsn_after_type((string) ($fields['original-rcpt-to'] ?? ''));
+
+            if (($recipient === '') && $original_to) {
+                $recipient = $original_to[0];
+            }
+
+            $result = array('kind' => 'complaint', 'recipient' => $recipient, 'status' => '', 'diagnostic' => $feedback);
+
+        } elseif (in_array($report, array('delivery-status', 'global-delivery-status'), true)) {
+            $status_text = '';
+
+            foreach ((array) $parsed['attachments'] as $part) {
+                if (in_array((string) $part['content_type'], array('message/delivery-status', 'message/global-delivery-status'), true)) {
+                    $status_text = (string) ($part['content'] ?? '');
+                    break;
+                }
+            }
+
+            $failed = pg_mail_dsn_failed_block($status_text);
+
+            if ($failed === null) {
+                return null;
+            }
+
+            $result = array(
+                'kind'       => pg_mail_dsn_kind($failed['status'], $failed['diagnostic'] . "\n" . $parsed['text']),
+                'recipient'  => $failed['recipient'],
+                'status'     => $failed['status'],
+                'diagnostic' => $failed['diagnostic'],
+            );
+
+        } else {
+            return null;
+        }
+
+    } else {
+        $from = is_array($parsed['from']) ? strtolower((string) $parsed['from']['email']) : '';
+        $local = (string) strstr($from, '@', true);
+        $subject = (string) $parsed['subject'];
+        $daemon = in_array($local, array('mailer-daemon', 'postmaster', 'mail-daemon'), true);
+        $failure_subject = (preg_match('/undeliver|returned mail|delivery (status notification \(failure\)|failure|failed|has failed)|mail delivery (failed|subsystem)|failure notice|could not be delivered|delivery problem/i', $subject) === 1);
+
+        if (!$daemon && !$failure_subject) {
+            return null;
+        }
+
+        $text = (string) $parsed['text'];
+
+        // A delay warning is not a failure.
+        if (preg_match('/(delayed|delay|not yet been delivered|will (continue|keep) (trying|to try))/i', $subject . "\n" . substr($text, 0, 600)) === 1
+            && preg_match('/(permanent|failed|could not be delivered|undeliverable)/i', $subject) !== 1) {
+            return null;
+        }
+
+        $status = '';
+
+        if (preg_match('/\b([45]\.\d{1,3}\.\d{1,3})\b/', $text, $match) === 1) {
+            $status = $match[1];
+        }
+
+        $result = array(
+            'kind'       => pg_mail_dsn_kind($status, $text),
+            'recipient'  => '',
+            'status'     => $status,
+            'diagnostic' => mb_substr(pg_mail_header_one_line(substr($text, 0, 1000)), 0, 1000),
+        );
+    }
+
+    $tokens = pg_mail_bounce_tokens_in($raw);
+
+    $candidates = array();
+
+    foreach (array_merge(array($result['recipient']), $original_to, pg_mail_dsn_addresses($parsed['text'] . "\n" . $raw)) as $address) {
+        $address = strtolower(trim((string) $address));
+
+        if (($address === '') || (strpos($address, '@') === false) || isset($candidates[$address])) {
+            continue;
+        }
+
+        $local = (string) strstr($address, '@', true);
+
+        // The site's own return path and the reporting servers' mailboxes.
+        if (pg_mail_bounce_tokens_in($address) || in_array($local, array('mailer-daemon', 'postmaster', 'mail-daemon', 'abuse'), true)) {
+            continue;
+        }
+
+        $candidates[$address] = true;
+
+        if (count($candidates) >= 50) {
+            break;
+        }
+    }
+
+    return array(
+        'kind'        => $result['kind'],
+        'recipient'   => strtolower(trim((string) $result['recipient'])),
+        'candidates'  => array_keys($candidates),
+        'tokens'      => $tokens,
+        'status'      => $result['status'],
+        'diagnostic'  => $result['diagnostic'],
+        'original_id' => $original_id,
+    );
+}
+
+/**
+ * The "Name: value" fields of one report block, names lower-cased, folded
+ * lines joined. Pure.
+ *
+ * @param string $text
+ * @return array
+ */
+function pg_mail_dsn_fields($text)
+{
+    $text = preg_replace("/\r?\n[ \t]+/", ' ', str_replace("\r\n", "\n", (string) $text));
+    $fields = array();
+
+    foreach (explode("\n", $text) as $line) {
+        $colon = strpos($line, ':');
+
+        if ($colon !== false) {
+            $name = strtolower(trim(substr($line, 0, $colon)));
+
+            if (!isset($fields[$name])) {
+                $fields[$name] = trim(substr($line, $colon + 1));
+            }
+        }
+    }
+
+    return $fields;
+}
+
+/**
+ * "rfc822; name@example.com": the value after its type. Pure.
+ *
+ * @param string $value
+ * @return string
+ */
+function pg_mail_dsn_after_type($value)
+{
+    $value = (string) $value;
+    $semicolon = strpos($value, ';');
+
+    return trim(pg_mail_header_one_line(($semicolon === false) ? $value : substr($value, $semicolon + 1)), " \t<>");
+}
+
+/**
+ * The first recipient block of a delivery-status part with Action: failed.
+ * Its blocks are separated by an empty line; the first is about the
+ * message, the rest one recipient each. Pure.
+ *
+ * @param string $text
+ * @return array|null recipient, status, diagnostic
+ */
+function pg_mail_dsn_failed_block($text)
+{
+    $text = preg_replace("/\r?\n[ \t]+/", ' ', str_replace("\r\n", "\n", (string) $text));
+
+    foreach (preg_split("/\n[ \t]*\n/", trim($text)) as $block) {
+        $fields = pg_mail_dsn_fields($block);
+
+        if (strtolower((string) ($fields['action'] ?? '')) !== 'failed') {
+            continue;
+        }
+
+        $status = (string) ($fields['status'] ?? '');
+
+        return array(
+            'recipient'  => mb_substr(pg_mail_dsn_after_type($fields['final-recipient'] ?? ($fields['original-recipient'] ?? '')), 0, 255),
+            'status'     => (preg_match('/^[245]\.\d{1,3}\.\d{1,3}$/', $status) === 1) ? $status : '',
+            'diagnostic' => mb_substr(pg_mail_dsn_after_type($fields['diagnostic-code'] ?? ''), 0, 1000),
+        );
+    }
+
+    return null;
+}
+
+/**
+ * hard or soft from a status code and the server's words. Pure.
+ *
+ * @param string $status  x.y.z or ''
+ * @param string $words   the diagnostic and the notice's text
+ * @return string
+ */
+function pg_mail_dsn_kind($status, $words)
+{
+    $status = (string) $status;
+
+    if ($status !== '') {
+        return ($status[0] === '4') ? 'soft' : 'hard';
+    }
+
+    // A basic SMTP reply code in the server's words: 4xx is temporary.
+    if (preg_match('/\b([45])[0-9]{2}[ -]/', (string) $words, $match) === 1) {
+        return ($match[1] === '4') ? 'soft' : 'hard';
+    }
+
+    if (preg_match('/(temporar|mailbox (is )?full|over quota|quota exceeded|try again later)/i', (string) $words) === 1) {
+        return 'soft';
+    }
+
+    return 'hard';
+}
+
+/**
+ * Every e-mail address written in a text, lower-cased, in order. Pure.
+ *
+ * @param string $text
+ * @return string[]
+ */
+function pg_mail_dsn_addresses($text)
+{
+    preg_match_all('/[a-z0-9.!#$%&\'*+\/=?^_`{|}~-]+@[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+/i', (string) $text, $matches);
+
+    return array_map('strtolower', $matches[0]);
 }

@@ -28,13 +28,9 @@ if (!$_POST) {
     // get items for table
     $items = get_items_that_can_be_featured_and_new();
 
-    // assume that we should not prefill fields, until we find out otherwise
-    $prefill = false;
-    
-    // if the form has not been submitted already, then prefill fields with data
-    if (isset($_SESSION['software']['liveforms']['edit_featured_and_new_items'][0]) == false) {
-        $prefill = true;
-    }
+    // Fill the boxes from the database unless the form came back with an
+    // error: after a save they show what was stored, not what was typed.
+    $prefill = !$liveform->check_form_errors();
     
     $output_item_rows = '';
     
@@ -81,15 +77,8 @@ if (!$_POST) {
 
         // if this is not the root product group and we should prefill the fields, then do that
         if (($item['parent_product_group_id'] != 0) && ($prefill == true)) {
-            // if the item is featured, then prefill featured sort order
-            if ($item['featured'] == 1) {
-                $liveform->assign_field_value($featured_sort_order_field_name, $item['featured_sort_order']);
-            }
-            
-            // if the item has a new date, then prefill new date
-            if ($item['new_date'] != '0000-00-00') {
-                $liveform->assign_field_value($new_date_field_name, prepare_form_data_for_output($item['new_date'], 'date'));
-            }
+            $liveform->assign_field_value($featured_sort_order_field_name, ($item['featured'] == 1) ? $item['featured_sort_order'] : '');
+            $liveform->assign_field_value($new_date_field_name, ($item['new_date'] != '0000-00-00') ? prepare_form_data_for_output($item['new_date'], 'date') : '');
         }
         
         // assume that we should not output the fields until we find out otherwise
@@ -98,14 +87,14 @@ if (!$_POST) {
         
         // if this item is not the root product group, then output fields
         if ($item['parent_product_group_id'] != 0) {
-            $output_featured_sort_order_field = $liveform->output_field(array('type'=>'text', 'class'=>'form-control text-end', 'name'=>$featured_sort_order_field_name, 'aria-label' => lang(array('string' => 'Featured Order of {var:1}', 'vars' => $item_label)), 'size'=>'5', 'style'=>'width:60px;', 'maxlength'=>'4', 'inputmode'=>'numeric','data-inputmask-alias'=>'decimal','data-inputmask-placeholder'=>'0', ));
+            $output_featured_sort_order_field = $liveform->output_field(array('type'=>'text', 'class'=>'form-control text-end', 'name'=>$featured_sort_order_field_name, 'aria-label' => lang(array('string' => 'Featured Order of {var:1}', 'vars' => $item_label)), 'size'=>'5', 'style'=>'width:70px;', 'maxlength'=>'5', 'inputmode'=>'numeric','data-inputmask-alias'=>'integer','data-inputmask-placeholder'=>'0', ));
             $output_new_date_field =
-                $liveform->output_field(array('type'=>'text', 'id' => $new_date_field_name, 'name'=>$new_date_field_name, 'size'=>'10', 'maxlength'=>'10','class'=>'form-control w-auto', 'data-pg-date' => '')) . pg_fields_script();
+                $liveform->output_field(array('type'=>'text', 'id' => $new_date_field_name, 'name'=>$new_date_field_name, 'aria-label' => lang(array('string' => 'New on Date of {var:1}', 'vars' => $item_label)), 'size'=>'10', 'maxlength'=>'10','class'=>'form-control w-auto', 'data-pg-date' => '')) . pg_fields_script();
         }
         
         $output_item_rows .=
             '<tr>
-                <td' . $output_padding . ' class="align-middle ' . $status_class . '">' . $output_name . $output_status . '</td>
+                <td' . $output_padding . ' class="align-middle text-break ' . $status_class . '">' . $output_name . $output_status . '</td>
                 <td class="align-middle">' . $output_featured_sort_order_field . '</td>
                 <td class="align-middle">' . $output_new_date_field . '</td>
             </tr>';
@@ -135,6 +124,7 @@ if (!$_POST) {
                             ' . get_token_field() . '
                             ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'from', 'value'=>($_GET['from'] ?? ''))) . '
                             ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'send_to', 'value'=>($_GET['send_to'] ?? ''))) . '
+                            <div class="table-responsive">
                             <table class="table table-hover">
                                 <thead>
                                     <tr>
@@ -145,6 +135,7 @@ if (!$_POST) {
                                 </thead>
                                 <tbody>' . $output_item_rows . '</tbody>
                             </table>
+                            </div>
                         </div>
                     </div>
                     <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
@@ -195,17 +186,24 @@ if (!$_POST) {
                 $new_date_field_name = 'new_date_product_group_' . $item['parent_product_group_id'] . '_product_' . $item['id'];
             }
             
+            // if this item is a product group, then prepare name for error message in a certain way
+            if ($item['type'] == 'product group') {
+                $output_name = h($item['name']);
+                $featured_sort_order_field_name = 'featured_sort_order_product_group_' . $item['id'];
+
+            // else this item is a product, so prepare name for error message in a different way
+            } else {
+                $output_name = h($item['name']) . ' - ' . h($item['short_description']);
+                $featured_sort_order_field_name = 'featured_sort_order_product_group_' . $item['parent_product_group_id'] . '_product_' . $item['id'];
+            }
+
+            // The order is a whole number from 0 to 65535 or nothing.
+            if (pg_featured_sort_order_value($liveform->get_field_value($featured_sort_order_field_name)) === false) {
+                $liveform->mark_error($featured_sort_order_field_name, lang(array('string' => 'Please enter a whole number from 0 to 65535 as the featured order of {var:1}.', 'vars' => $output_name)));
+            }
+
             // if a new date was entered for this item and the date is invalid, prepare error
             if (($liveform->get_field_value($new_date_field_name) != '') && (validate_date($liveform->get_field_value($new_date_field_name)) == false)) {
-                // if this item is a product group, then prepare name for error message in a certain way
-                if ($item['type'] == 'product group') {
-                    $output_name = h($item['name']);
-                    
-                // else this item is a product, so prepare name for error message in a different way
-                } else {
-                    $output_name = h($item['name']) . ' - ' . h($item['short_description']);
-                }
-                
                 $liveform->mark_error($new_date_field_name, lang(array('string'=>'Please enter a valid new date for {var:1}.','vars'=>$output_name)));
             }
         }
@@ -240,10 +238,12 @@ if (!$_POST) {
             // or if the item did have a new date and it does not have a new date now,
             // or if the item now has a new date and the new date is different,
             // then update the item
+            $posted_sort_order = pg_featured_sort_order_value($liveform->get_field_value($featured_sort_order_field_name));
+
             if (
-                (($item['featured'] == 0) && ($liveform->get_field_value($featured_sort_order_field_name) != ''))
-                || (($item['featured'] == 1) && ($liveform->get_field_value($featured_sort_order_field_name) == ''))
-                || (($liveform->get_field_value($featured_sort_order_field_name) != '') && ($item['featured_sort_order'] != $liveform->get_field_value($featured_sort_order_field_name)))
+                (($item['featured'] == 0) && ($posted_sort_order !== ''))
+                || (($item['featured'] == 1) && ($posted_sort_order === ''))
+                || (($posted_sort_order !== '') && ((int) $item['featured_sort_order'] !== $posted_sort_order))
                 || (($item['new_date'] == '0000-00-00') && ($liveform->get_field_value($new_date_field_name) != ''))
                 || (($item['new_date'] != '0000-00-00') && ($liveform->get_field_value($new_date_field_name) == ''))
                 || (($liveform->get_field_value($new_date_field_name) != '') && ($item['new_date'] != prepare_form_data_for_input($liveform->get_field_value($new_date_field_name), 'date')))
@@ -266,9 +266,9 @@ if (!$_POST) {
                 $featured_sort_order = '0';
                 
                 // if a featured sort order was entered for this item, then prepare to turn featured on
-                if ($liveform->get_field_value($featured_sort_order_field_name) != '') {
+                if ($posted_sort_order !== '') {
                     $featured = 1;
-                    $featured_sort_order = $liveform->get_field_value($featured_sort_order_field_name);
+                    $featured_sort_order = $posted_sort_order;
                 }
                 
                 // update featured and new data for item
@@ -310,7 +310,7 @@ function get_items_that_can_be_featured_and_new($parent_product_group_id = 0, $l
             featured_sort_order,
             new_date
         FROM product_groups
-        WHERE parent_id = ?";
+        WHERE parent_id = ?" . pg_catalog_bin_live_sql('product_groups');
     $result = db_q($query, array((string) $parent_product_group_id)) or output_error('Query failed.');
     
     while ($row = mysqli_fetch_assoc($result)) {
@@ -345,7 +345,7 @@ function get_items_that_can_be_featured_and_new($parent_product_group_id = 0, $l
             products_groups_xref.new_date
         FROM products_groups_xref
         LEFT JOIN products ON products_groups_xref.product = products.id
-        WHERE products_groups_xref.product_group = ?
+        WHERE products_groups_xref.product_group = ?" . pg_catalog_bin_live_sql('products') . "
         ORDER BY name";
     $result = db_q($query, array((string) $parent_product_group_id)) or output_error('Query failed.');
     

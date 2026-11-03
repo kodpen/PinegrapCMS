@@ -54,8 +54,8 @@ function test_send_to_url_refuses_addresses_that_leave_the_site()
 
 function test_send_to_url_keeps_paths_on_this_site()
 {
-	pg_assert_same('/pinegrap/view_files.php?filter=x', send_to_url_safety_with('/pinegrap/view_files.php?filter=x'), 'a panel list with its filter');
+	pg_assert_same('/pinegrap/view_folders.php?view=files&scope=documents', send_to_url_safety_with('/pinegrap/view_folders.php?view=files&scope=documents'), 'a panel view with its filter');
 	pg_assert_same('/', send_to_url_safety_with('/'), 'the site root');
-	pg_assert_same('/pinegrap/view_files.php', send_to_url_safety_with('  /pinegrap/view_files.php  '), 'surrounding spaces are trimmed');
+	pg_assert_same('/pinegrap/view_folders.php', send_to_url_safety_with('  /pinegrap/view_folders.php  '), 'surrounding spaces are trimmed');
 	pg_assert_same('fallback', send_to_url_safety_with(''), 'empty gives the fallback');
 }

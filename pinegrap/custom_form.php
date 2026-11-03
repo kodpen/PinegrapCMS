@@ -633,6 +633,9 @@ if ($liveform->check_form_errors() == false) {
     // Only set when this submission creates a user account; the notification
     // further below is written either way.
     $username = '';
+
+    // The signatures drawn on the form, stored after the loop.
+    $signature_pending = array();
     
     // loop through all fields
     foreach ($fields as $field_key => $field) {
@@ -753,12 +756,9 @@ if ($liveform->check_form_errors() == false) {
             // A signature is stored the way an uploaded file is - the drawing
             // becomes a file and form_data points at it - but through its own
             // path, because what makes it worth keeping is the record written
-            // beside it.
-            //
-            // The document it is bound to is read again here rather than taken
-            // from $fields: the query that built that list drops information
-            // fields, and an information field is exactly where a contract or an
-            // offer is written.
+            // beside it. Its row is written without a file here; the record is
+            // written once every answer is stored (pg_signature_store_pending()),
+            // because the document it is bound to is the answers as stored.
             } else if (($field['type'] == 'signature') && function_exists('pg_signature_ready') && pg_signature_ready()) {
                 $file_id = '';
                 $data = '';
@@ -766,36 +766,12 @@ if ($liveform->check_form_errors() == false) {
                 $signature_png = pg_signature_png_from_data_url($liveform->get_field_value($field['id']));
 
                 if ($signature_png !== false) {
-                    $signature_document = db_items(
-                        "SELECT id, name, label, type, required, information
-                        FROM form_fields
-                        WHERE page_id = '" . escape($_POST['page_id'] ?? '') . "'
-                        ORDER BY sort_order ASC");
-
-                    $signature_values = array();
-
-                    foreach ($fields as $signature_source) {
-                        if ($signature_source['type'] == 'signature') {
-                            continue;
-                        }
-
-                        $signature_values[$signature_source['id']] = $liveform->get_field_value($signature_source['id']);
-                    }
-
-                    $signature_file_id = pg_signature_store(
-                        $form_id,
-                        $field['id'],
-                        $signature_png,
-                        array(
-                            'page_id' => $_POST['page_id'] ?? 0,
-                            'document_hash' => pg_signature_document_hash($_POST['page_id'] ?? 0, $signature_document, $signature_values, $field['label']),
-                            'consent_text' => $field['label'],
-                            'strokes' => pg_signature_clean_strokes(isset($_POST[$field['id'] . '_strokes']) ? $_POST[$field['id'] . '_strokes'] : ''),
-                        ));
-
-                    if ($signature_file_id !== false) {
-                        $file_id = $signature_file_id;
-                    }
+                    $signature_pending[] = array(
+                        'field_id' => $field['id'],
+                        'label' => $field['label'],
+                        'png' => $signature_png,
+                        'strokes' => pg_signature_clean_strokes(isset($_POST[$field['id'] . '_strokes']) ? $_POST[$field['id'] . '_strokes'] : ''),
+                    );
                 }
 
             // else field does not have file upload type
@@ -945,6 +921,10 @@ if ($liveform->check_form_errors() == false) {
                 }
             }
         }
+    }
+
+    if ($signature_pending) {
+        pg_signature_store_pending($form_id, $_POST['page_id'] ?? 0, $signature_pending);
     }
 
     // If pretty URLs are enabled, then update address name.

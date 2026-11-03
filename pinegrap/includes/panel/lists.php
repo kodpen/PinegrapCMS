@@ -19,6 +19,9 @@
  *   audit_log_changes          the changed fields of one audit trail line
  *   waf_log_list_rows          a page of the firewall log's events
  *                              (view_waf_log.php)
+ *   mail_queue_list_rows       a page of the e-mail queue (mail_queue.php)
+ *   sms_queue_list_rows        a page of the text message queue
+ *                              (mail_queue.php?tab=sms)
  *
  * Each action answers DataTables' page request (includes/fn/list_paging.php)
  * behind the gate of the screen it pages.
@@ -372,6 +375,73 @@ function pg_panel_waf_log_list_rows($request, $action)
 
     $page = pg_schema_has('waf_log') ? pg_waf_log_list_page(
         pg_waf_log_list_filters($filters),
+        pg_list_search_terms($request['search'] ?? ''),
+        pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100),
+        time()) : false;
+
+    if ($page === false) {
+        http_response_code(500);
+        respond(array('status' => 'error', 'message' => lang('Query failed.')));
+    }
+
+    return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
+}
+
+function pg_panel_mail_queue_list_rows($request, $action)
+{
+    // Kept global: helpers read the session user through `global $user`;
+    // see includes/panel/actions.php.
+    global $user;
+
+    // The general gate has checked the session (any_role). The screen's own
+    // gate is validate_area_access($user, 'manager'), answered here in JSON.
+    $user = validate_user();
+
+    if ((int) $user['role'] > 2) {
+        http_response_code(403);
+        respond(array('status' => 'error', 'message' => lang('Access denied')));
+    }
+
+    validate_token();
+
+    return pg_panel_queue_list_page($request, 'mail');
+}
+
+function pg_panel_sms_queue_list_rows($request, $action)
+{
+    // Kept global: helpers read the session user through `global $user`;
+    // see includes/panel/actions.php.
+    global $user;
+
+    // The general gate has checked the session (any_role). The screen's own
+    // gate is validate_area_access($user, 'manager'), answered here in JSON.
+    $user = validate_user();
+
+    if ((int) $user['role'] > 2) {
+        http_response_code(403);
+        respond(array('status' => 'error', 'message' => lang('Access denied')));
+    }
+
+    validate_token();
+
+    return pg_panel_queue_list_page($request, 'sms');
+}
+
+/**
+ * A page of one of the mail queue screen's lists, past its action's gate.
+ *
+ * @param array  $request the action's JSON body
+ * @param string $queue   mail or sms
+ * @return array
+ */
+function pg_panel_queue_list_page($request, $queue)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_queue_list.php');
+
+    $ready = ($queue === 'sms') ? pg_sms_queue_ready() : pg_mail_queue_ready();
+
+    $page = $ready ? pg_mail_queue_list_page(
+        $queue,
         pg_list_search_terms($request['search'] ?? ''),
         pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100),
         time()) : false;

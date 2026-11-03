@@ -217,6 +217,12 @@ $cafes = array(
 );
 $cafe_names = array();
 foreach ($cafes as $c) $cafe_names[] = $c['name'];
+// The query string of a link that opens the reservation form with a café
+// chosen: the form's Café field (?cafe=) starts with that value
+// (_cf.url_param), the name as the field lists it.
+$reservation_query = function ($params) {
+    return http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+};
 
 // The menu's categories, in the order of the menu page's tabs: each tab
 // lists the dishes of its category (a list filtered by it).
@@ -1173,7 +1179,7 @@ $comment_thread = function ($w) use ($el, $heading, $para, $link, $span, $attr, 
         $fields[] = $el('div', 'alert alert-secondary py-2 small', lang('Replying To'), array(
             $span(lang('Replying to'), 'me-1', lang('Text')),
             $el('strong', '', lang('Name'), array(), array('text' => lang('Jane Cooper'), '_bindings' => array('text' => '__reply_to_name'))),
-            $link(lang('Cancel'), '#', 'ms-3 fw-semibold', array(), array('_bindings' => array('action' => 'comment_reply_cancel'))),
+            $link(lang('Cancel'), '#', 'ms-3 alert-link', array(), array('_bindings' => array('action' => 'comment_reply_cancel'))),
         ), $show_when('is_replying'));
     }
     $fields[] = $el('div', 'mb-3', lang('Rating'), array(
@@ -1232,7 +1238,7 @@ $comment_thread = function ($w) use ($el, $heading, $para, $link, $span, $attr, 
             $el('div', 'alert alert-secondary', lang('Closed'), array(), array('_bindings' => array('text' => '__comments_closed_message', 'eo_visible_if' => 'comments_closed'))),
             $el('div', 'alert alert-secondary d-flex flex-wrap align-items-center gap-2', lang('Sign in'), array(
                 $span($w['sign_in'], '', lang('Text')),
-                $link(lang('Sign in'), '#', 'fw-semibold', array(), array('rel' => 'nofollow', '_bindings' => array('href' => '__login_url'))),
+                $link(lang('Sign in'), '#', 'alert-link', array(), array('rel' => 'nofollow', '_bindings' => array('href' => '__login_url'))),
             ), $show_when('must_sign_in')),
             $el('form', 'card card-body border-0 bg-body-tertiary rounded-4 p-4', lang('Comment Form'), $fields, array('_bindings' => array('action' => 'comment_form', 'eo_visible_if' => 'can_comment'))),
         )),
@@ -1691,7 +1697,7 @@ foreach ($cafes as $key => $c) {
                     )),
                     $el('ul', 'list-unstyled d-flex flex-wrap column-gap-4 small mb-3', lang('Features'), $features),
                     $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
-                        $link(lang('Book a Table'), '{{page:reservation}}', 'btn btn-primary px-4'),
+                        $link(lang('Book a Table'), '{{page:reservation}}?' . $reservation_query(array('cafe' => $c['name'])), 'btn btn-primary px-4'),
                         $link(lang('Directions'), 'https://www.google.com/maps/search/?api=1&query=' . rawurlencode($c['address']), 'btn btn-outline-primary',
                             array($attr('rel', 'noopener')), array('target' => '_blank')),
                     )),
@@ -4610,7 +4616,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Café'),
-    'version'     => '1.1.0',
+    'version'     => '1.1.2',
     'framework'   => 'bootstrap5',
     'order'       => 60,
     'icon'        => 'bi-cup-hot',

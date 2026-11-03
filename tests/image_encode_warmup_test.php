@@ -325,3 +325,69 @@ function test_image_warmup_run_gives_way_when_slots_are_taken()
 		image_encode_warmup_test_remove($folder);
 	}
 }
+
+function test_image_warmup_thumbs_cursor_and_file()
+{
+	pg_assert_same('warmup.json', pg_image_warmup_file('own'), 'the own-address pass');
+	pg_assert_same('warmup-thumbs.json', pg_image_warmup_file('thumbs'), 'the thumbnail pass');
+	pg_assert_same('(files.id < 31)', pg_image_warmup_after_sql(array('size' => 52000, 'id' => 31, 'done_at' => 0), 'thumbs'), 'newest first: only the id');
+	pg_assert_same('', pg_image_warmup_after_sql(array('size' => 0, 'id' => 0, 'done_at' => 0), 'thumbs'), 'the start of a pass');
+}
+
+// The thumbnail pass: 320 px WebP copies, newest first, its own cursor.
+function test_image_warmup_thumbs_pass()
+{
+	if (!image_encode_warmup_test_webp()) {
+		pg_assert_true(true, 'GD is not available; skipped');
+		return;
+	}
+
+	$folder = image_encode_warmup_test_folder();
+	$cache = $folder . '/cache';
+
+	try {
+		image_encode_warmup_test_jpeg($folder . '/files/old.jpg', 900, 600, 7);
+		image_encode_warmup_test_jpeg($folder . '/files/new.jpg', 600, 400, 8);
+		image_encode_warmup_test_jpeg($folder . '/files/tiny.jpg', 200, 100, 9);
+
+		$rows = array(
+			array('id' => 41, 'name' => 'old.jpg', 'size' => 3),
+			array('id' => 42, 'name' => 'new.jpg', 'size' => 2),
+			array('id' => 43, 'name' => 'tiny.jpg', 'size' => 1),
+		);
+
+		$passes = array();
+
+		$fetch = function ($state, $limit, $pass = 'own') use ($rows, &$passes) {
+			$passes[] = $pass;
+			$after = array();
+
+			foreach (array_reverse($rows) as $row) {
+				if (($state['id'] < 1) || ($row['id'] < $state['id'])) {
+					$after[] = $row;
+				}
+			}
+
+			return array_slice($after, 0, $limit);
+		};
+
+		$tick = pg_image_warmup_run($cache, 0, pg_image_delivery_settings(null), $fetch, $folder . '/files', 'thumbs');
+
+		pg_assert_same('more', $tick['state'], 'stopped at the deadline');
+		pg_assert_same(43, pg_image_warmup_state($cache, 'thumbs')['id'], 'the newest first');
+		pg_assert_same(0, pg_image_warmup_state($cache)['id'], 'the own-address cursor is left alone');
+		pg_assert_same(array('thumbs'), $passes, 'the fetch is told the pass');
+
+		$tick = pg_image_warmup_run($cache, 10, pg_image_delivery_settings(null), $fetch, $folder . '/files', 'thumbs');
+
+		pg_assert_same('done', $tick['state'], 'through');
+		pg_assert_same(1, count(glob($cache . '/41/320-*.webp')), 'a 320 px copy of a wide picture');
+		pg_assert_same(1, count(glob($cache . '/42/320-*.webp')), 'and of the next one');
+		pg_assert_same(array(), glob($cache . '/41/900-*'), 'not the own-width copy');
+		pg_assert_true(pg_image_warmup_state($cache, 'thumbs')['done_at'] >= time() - 5, 'its pass is through');
+		pg_assert_false(is_file($cache . '/warmup.json'), 'the own-address pass file is not written');
+
+	} finally {
+		image_encode_warmup_test_remove($folder);
+	}
+}

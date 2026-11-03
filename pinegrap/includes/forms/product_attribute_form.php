@@ -21,18 +21,103 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 /**
  * The options the options card starts with: the posted or stored JSON
- * list, or two empty options when there is none.
+ * list, or two empty options when there is none. The list is decoded and
+ * encoded again with only id, label and no value, and with <, >, &, ' and
+ * " written as \u escapes, so a posted label that holds </script> cannot
+ * close the script it is printed in.
  *
  * @param string $options  JSON list of options
  * @return string  JavaScript array literal
  */
 function pg_product_attribute_form_output_options($options)
 {
-    if (($options != '') && ($options != '[]')) {
-        return $options;
+    $decoded = json_decode((string) $options, true);
+    $output = array();
+
+    if (is_array($decoded)) {
+        foreach ($decoded as $option) {
+            if (!is_array($option)) {
+                continue;
+            }
+
+            $output[] = array(
+                'id' => isset($option['id']) && is_scalar($option['id']) ? (string) $option['id'] : '',
+                'label' => isset($option['label']) && is_scalar($option['label']) ? (string) $option['label'] : '',
+                'no_value' => !empty($option['no_value']) ? '1' : '',
+            );
+        }
     }
 
-    return '[{label: ""},{label: ""}]';
+    if (!$output) {
+        return '[{label: ""},{label: ""}]';
+    }
+
+    return json_encode($output, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE);
+}
+
+/**
+ * The posted options ready to save: labels trimmed, rows without a label
+ * dropped (the form starts with two empty rows and filling only one is
+ * normal), the id an integer (0 for a new option), no value '1' or ''.
+ *
+ * @param mixed $options  Decoded options list
+ * @return array
+ */
+function pg_product_attribute_form_clean_options($options)
+{
+    $clean = array();
+
+    if (!is_array($options)) {
+        return $clean;
+    }
+
+    foreach ($options as $option) {
+        if (!is_array($option)) {
+            continue;
+        }
+
+        $label = isset($option['label']) && is_scalar($option['label']) ? trim((string) $option['label']) : '';
+
+        if ($label === '') {
+            continue;
+        }
+
+        $clean[] = array(
+            'id' => isset($option['id']) && is_scalar($option['id']) ? (int) $option['id'] : 0,
+            'label' => $label,
+            'no_value' => !empty($option['no_value']) ? '1' : '',
+        );
+    }
+
+    return $clean;
+}
+
+/**
+ * The first label given to a second option, compared without case: two
+ * options with one label cannot be told apart in the variant picker.
+ *
+ * @param array $options  Cleaned options
+ * @return string  The repeated label, '' when every label differs
+ */
+function pg_product_attribute_form_duplicate_label($options)
+{
+    $seen = array();
+
+    foreach ($options as $option) {
+        $label = (string) $option['label'];
+        // mb_strtolower() turns the Turkish dotted capital into i plus a
+        // combining dot, so it is mapped to a plain i first.
+        $key = str_replace('İ', 'i', $label);
+        $key = function_exists('mb_strtolower') ? mb_strtolower($key, 'UTF-8') : strtolower($key);
+
+        if (isset($seen[$key])) {
+            return $label;
+        }
+
+        $seen[$key] = true;
+    }
+
+    return '';
 }
 
 /**
@@ -114,13 +199,13 @@ function pg_product_attribute_form_cards($liveform)
 }
 
 /**
- * Checks the posted name is free and at least one option was added; errors
- * are marked on the form. The required check stays in the screens, which
+ * Checks the posted name is free, at least one option has a label and no
+ * label is given twice; errors are marked on the form. The required check stays in the screens, which
  * word it differently.
  *
  * @param liveform $liveform
  * @param string|null $id  Edited attribute's id, null on create
- * @return array  The posted options
+ * @return array  The posted options, cleaned (pg_product_attribute_form_clean_options())
  */
 function pg_product_attribute_form_check($liveform, $id)
 {
@@ -141,10 +226,16 @@ function pg_product_attribute_form_check($liveform, $id)
         }
     }
 
-    $options = decode_json($liveform->get_field_value('options'));
+    $options = pg_product_attribute_form_clean_options(json_decode((string) $liveform->get_field_value('options'), true));
 
     if (count($options) == 0) {
         $liveform->mark_error('', lang('Please add an option.'));
+    } else {
+        $duplicate = pg_product_attribute_form_duplicate_label($options);
+
+        if ($duplicate !== '') {
+            $liveform->mark_error('', lang(array('string' => 'The option {var:1} is entered more than once.', 'vars' => array(h($duplicate)))));
+        }
     }
 
     return $options;

@@ -21,7 +21,7 @@ description: The panel's focus ring on Bootstrap 6's tokens and shape (B9k colou
 
 ## What changed in B10 (#4465)?
 - Bootstrap 6's ring shape, one outline of `--pg-focus-ring-width` at `--pg-focus-ring-offset` with no shadow halo, on: the global WCAG rule (was 2px outline, 2px offset, 0.2rem halo), `input.btn-check:focus-visible + .btn`, `.no-popover` links and buttons, the skip link (3px, 2px), `.pg-role-card` (0.25rem shadow only) and the designer home's `.sdh-start` / `.sdh-page` (0.2rem shadow only).
-- Colours did not change: primary ink where the ring was ink (3:1 on the page; Bootstrap's pale ring colour is not), `--pg-focus-ring-color` where it was the pale shadow. The outer edge stays 4px out, the room the scrolling strips leave.
+- Colours: since #4836 every outline ring is `--pg-primary-ink` (3:1), role card and `.sdh-start` / `.sdh-page` included; `--pg-focus-ring-color` is only the fields' halo and Bootstrap's own rings. The outer edge stays 4px out, the room the scrolling strips leave.
 - `.sdh-card` is `tabindex="0"`: the global `[tabindex]` ring (0,3,0) always outranked its own `.sdh-card:focus-visible` rule, which went. In forced colours the role card keeps its outline and takes `Highlight`.
 - Fields keep their own 3px halo (`.form-control:focus` and the validation states); with the 1px offset it shows as a 1px pale line inside the ink ring. Checked in Chromium on the sandbox: 15 rings, light and dark, computed style and close-ups before and after.
 - Workspace rings use the Workspace accent (`--ws-accent`), not the panel ring (`workspace/workspace-ui-scale.md`).

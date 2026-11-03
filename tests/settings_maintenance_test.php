@@ -144,7 +144,7 @@ function test_settings_maintenance_has_a_page_menu_case_and_help()
 
 	pg_assert_contains("define('PG_SETTINGS_KEY', 'maintenance');", $page, 'the page path of the category');
 	pg_assert_contains("include('includes/settings/screen.php');", $page, 'drawn by the shared screen');
-	pg_assert_contains("case 'settings_maintenance.php':", settings_maintenance_test_source('includes/fn/output.php'), 'marks the Site Settings row');
+	pg_assert_same(false, strpos(settings_maintenance_test_source('includes/fn/output.php'), "case 'settings_maintenance.php':"), 'marks no menu row: the Site Settings row is retired');
 	pg_assert_same('https://pinegrap.com/site-settings#updates-and-maintenance', get_help_url(array('screen' => 'settings_maintenance')), 'its help topic');
 }
 

@@ -221,3 +221,20 @@ function test_link_resolve_seo_wrapper_delegates_to_the_pure_resolver()
 	pg_assert_false(strpos($source, 'function pg_seo_link_maps') !== false);
 	pg_assert_false(strpos($source, 'function pg_seo_form_address_names') !== false);
 }
+
+function test_link_resolve_names_match_without_letter_case()
+{
+	// The name columns compare without case, so the router opens /About,
+	// /LOGO.png and /Shop/Red-Shirt: none of them is a broken link.
+	pg_assert_same(array('page', 2), link_resolve_test_type_id('/About'), 'a page name in other case');
+	pg_assert_same(array('file', 10), link_resolve_test_type_id('/LOGO.png'), 'a file name in other case');
+	pg_assert_same(array('short_link', 0), link_resolve_test_type_id('/Promo'), 'a short link in other case');
+	pg_assert_same(array('product', 20), link_resolve_test_type_id('/Shop/Red-Shirt'), 'a product address in other case');
+	pg_assert_same(array('product_group', 30), link_resolve_test_type_id('/shop/SHIRTS'), 'a group address in other case');
+	pg_assert_same(array('page', 4), link_resolve_test_type_id('/Blog/Hello-World'), 'a record address in other case');
+	pg_assert_same(array('unknown', 0), link_resolve_test_type_id('/Abouts'), 'a name that is not there stays unknown');
+
+	$folded = pg_link_maps_fold(link_resolve_test_maps());
+	pg_assert_same(array('type' => 'page', 'id' => 7, 'class' => 'page'), pg_link_resolve_item('About Us', $folded), 'through the folded index');
+	pg_assert_same('unknown', pg_link_resolve_item('nothing', $folded)['type'], 'a miss through the folded index');
+}

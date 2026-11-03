@@ -447,7 +447,7 @@ pg_page_shell(array(
                         <label for="to" class="small fg-secondary text-nowrap mb-0">' . lang('End') . '</label>
                         <input type="date" data-pg-date id="to" name="to" class="form-control form-control-sm w-auto" value="' . h($options['to']) . '" max="' . h(date('Y-m-d')) . '" />
                     </span>
-                    <select id="till" name="till" class="form-control form-control-sm w-auto" aria-label="' . lang('Till') . '">' . $output_till_options . '</select>
+                    <select id="till" name="till" class="form-control form-control-sm w-auto text-truncate" style="max-width:min(100%, 20rem)" aria-label="' . lang('Till') . '">' . $output_till_options . '</select>
                     <button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . lang('Apply') . '"><i class="bi bi-arrow-right-circle"></i></button>
                 </form>
                 <div class="pg-toolbar-grow"></div>

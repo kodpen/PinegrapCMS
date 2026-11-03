@@ -1180,7 +1180,11 @@ function erp_accountant_build($from, $to, $options = array())
     }
 
     $created_by = (int) ($options['created_by'] ?? 0);
-    $collected = erp_accountant_collect($from, $to, array('cash' => !array_key_exists('cash', $options) || !empty($options['cash'])));
+    $with_cash = !array_key_exists('cash', $options) || !empty($options['cash']);
+    $collected = erp_accountant_collect($from, $to, array('cash' => $with_cash));
+    // Whether the till sheets went in: a user without the cash right may not
+    // download, link or send a pack that carries them.
+    $collected['summary']['with_cash'] = $with_cash;
     $label = erp_accountant_period_label($from, $to);
     $token = bin2hex(random_bytes(8));
     $workbook_path = $directory . '/book_' . $token . '.xlsx';
@@ -1329,6 +1333,42 @@ function erp_accountant_package($id)
     $row['exists'] = is_file($row['path']);
 
     return $row;
+}
+
+/**
+ * Whether a pack carries the till sheets. The build writes the flag into the
+ * summary; a row from before the flag counts as carrying them.
+ *
+ * @param array $package  an erp_accountant_packages row
+ * @return bool
+ */
+function erp_accountant_package_has_cash($package)
+{
+    $summary = json_decode((string) ($package['summary'] ?? ''), true);
+
+    if (!is_array($summary) || !array_key_exists('with_cash', $summary)) {
+        return true;
+    }
+
+    return !empty($summary['with_cash']);
+}
+
+/**
+ * A pack's size for people: kilobytes below one megabyte, so a small pack is
+ * not "0.0 MB".
+ *
+ * @param int $bytes
+ * @return string
+ */
+function erp_accountant_size_text($bytes)
+{
+    $bytes = max(0, (int) $bytes);
+
+    if ($bytes < 1048576) {
+        return (int) ceil($bytes / 1024) . ' KB';
+    }
+
+    return number_format($bytes / 1048576, 1, erp_number_separators()['decimal'], '') . ' MB';
 }
 
 /**
@@ -1488,14 +1528,14 @@ function erp_accountant_send($id, $to, $user_id = 0)
     $period = prepare_form_data_for_output((string) $package['period_from'], 'date', false) . ' – ' . prepare_form_data_for_output((string) $package['period_to'], 'date', false);
     $business = defined('ORGANIZATION_NAME') ? (string) ORGANIZATION_NAME : '';
     $expires = prepare_form_data_for_output(date('Y-m-d', time() + ERP_ACCOUNTANT_LINK_DAYS * 86400), 'date', false);
-    $size = number_format(((int) $package['file_size']) / 1048576, 1, erp_number_separators()['decimal'], '');
+    $size = erp_accountant_size_text((int) $package['file_size']);
 
     $body = '<!DOCTYPE html><html><body style="font-family: Arial, Helvetica, sans-serif; color: #222222; margin: 0; padding: 20px;">'
         . '<div style="max-width: 620px; margin: 0 auto;">'
         . '<p style="font-size: 15px; line-height: 1.5;">' . h(lang(array('string' => 'The accounting records of {var:1} for {var:2} are ready.', 'vars' => array($business, $period)))) . '</p>'
         . '<p style="font-size: 15px; line-height: 1.5;">' . h(lang('The pack holds a workbook (sales and purchase invoices, returns, VAT by rate, receipts and payments, tills, account balances, stock value) and the documents as they were issued.')) . '</p>'
         . '<p style="margin: 24px 0;"><a href="' . h($link) . '" style="background: #0d6efd; color: #ffffff; padding: 12px 20px; border-radius: 6px; text-decoration: none; font-weight: bold;">' . h(lang('Download the pack')) . '</a></p>'
-        . '<p style="font-size: 13px; color: #555555; line-height: 1.5;">' . h(lang(array('string' => 'ZIP, {var:1} MB. The link works until {var:2}; ask for a new one after that.', 'vars' => array($size, $expires)))) . '</p>'
+        . '<p style="font-size: 13px; color: #555555; line-height: 1.5;">' . h(lang(array('string' => 'ZIP, {var:1}. The link works until {var:2}; ask for a new one after that.', 'vars' => array($size, $expires)))) . '</p>'
         . '</div></body></html>';
 
     $sent = email(array(

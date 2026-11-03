@@ -850,6 +850,44 @@ function pg_cf_confirmation_shows_message($type, $page_id)
 }
 
 /**
+ * Whether the registration folder gate lets a visitor without a session
+ * through to a custom form's confirmation page: the request must carry the
+ * reference code (r=) of a form this session submitted. A form that opens an
+ * account on its first submission puts its own thank-you page behind sign-in
+ * otherwise. The record shown there keeps its own submitter_only rule.
+ * Codes compare as strings, strictly.
+ */
+function pg_cf_submitter_gate_pass($is_confirmation_page, $code, $session_codes)
+{
+    if (!$is_confirmation_page) return false;
+    if (!is_string($code) || $code === '') return false;
+    if (!is_array($session_codes)) return false;
+    foreach ($session_codes as $known) {
+        if (is_scalar($known) && (string)$known === $code) return true;
+    }
+    return false;
+}
+
+/**
+ * pg_cf_submitter_gate_pass() for the requested page: whether the page is a
+ * custom form's confirmation page (its main or its alternative one) is looked
+ * up only when the request and the session both carry a code.
+ */
+function pg_cf_registration_gate_lets_submitter($page_id)
+{
+    $code = isset($_GET['r']) ? $_GET['r'] : null;
+    $codes = isset($_SESSION['software']['submitted_form_reference_codes'])
+        ? $_SESSION['software']['submitted_form_reference_codes'] : null;
+    if (!pg_cf_submitter_gate_pass(true, $code, $codes)) return false;
+    $page_id = (int)$page_id;
+    if ($page_id <= 0) return false;
+    $is_confirmation = (bool)db_value(
+        "SELECT COUNT(*) FROM custom_form_pages
+         WHERE confirmation_page_id = '$page_id' OR confirmation_alternative_page_id = '$page_id'");
+    return pg_cf_submitter_gate_pass($is_confirmation, $code, $codes);
+}
+
+/**
  * The confirmation message as the visitor sees it: an empty one would leave
  * the page blank where the form was, so it says thank you instead.
  */
@@ -1823,6 +1861,30 @@ function pg_cf_option_values_ok($value, $option_values)
 }
 
 /**
+ * The error a pick list, radio button or check box value gets when it holds
+ * a value outside the field's option list, as HTML; null when it passes. A
+ * field of another type, or one with no option rows (a lone box posting
+ * "on"), is not held to a list.
+ *
+ * @param array $field         the field's row, with type and label
+ * @param mixed $value         the posted value, a string or a list
+ * @param array $option_values the field's form_field_options values
+ * @return string|null
+ */
+function pg_cf_option_value_error($field, $value, $option_values)
+{
+    if (!pg_cf_type_has_options(isset($field['type']) ? (string) $field['type'] : '')) return null;
+
+    $option_values = (array) $option_values;
+    if (($option_values === array()) || pg_cf_option_values_ok($value, $option_values)) return null;
+
+    $label = isset($field['label']) ? (string) $field['label'] : '';
+    if (function_exists('pg_tr_label')) $label = pg_tr_label($label);
+
+    return lang(array('string' => 'Please choose a valid option for {var:1}', 'vars' => h($label)));
+}
+
+/**
  * Give every label the control it names.
  *
  * A <label> without `for` only reaches its control by wrapping it, which the
@@ -2133,6 +2195,11 @@ function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0,
                 pg_cf_select_stored_option($tree, $stored);
             } elseif ($input_type !== 'file' && $input_type !== 'password') {
                 if (!is_array($stored) && $stored !== '') {
+                    // A date, date-and-time or time input holds ISO only: a
+                    // default in the site's format would be dropped.
+                    if (in_array($input_type, array('date', 'datetime-local', 'time'), true)) {
+                        $stored = pg_native_date_value($stored, $input_type);
+                    }
                     $set_attr($tree['props']['_attrs'], 'value', (string)$stored);
                 }
             }
@@ -2403,7 +2470,9 @@ function pg_cf_validation_script()
          . 'form.addEventListener("submit",function(e){'
          . 'if(e.submitter&&e.submitter.hasAttribute("formnovalidate"))return;'
          . 'if(!form.checkValidity()){e.preventDefault();e.stopPropagation();'
-         . 'var bad=form.querySelector(":invalid");if(bad&&bad.focus)bad.focus();}'
+         // Controls only: a <fieldset> holding an invalid control (a step,
+         // a box group) matches :invalid too and takes no focus.
+         . 'var bad=form.querySelector("input:invalid,select:invalid,textarea:invalid");if(bad&&bad.focus)bad.focus();}'
          . 'form.classList.add("was-validated");},false);'
          // An image field (data-pg-image-preview) shows the chosen picture
          // below itself before the form is sent.
@@ -4249,6 +4318,15 @@ function submit_custom_form($properties)
                     $form->mark_error($html_field_name, lang(array('string' => 'Please enter a valid time for {var:1}', 'vars' => h($field['label']))));
                 }
                 break;
+        }
+        // A pick list, radio button or check box group takes only values of
+        // its option list; the browser sends nothing else.
+        if (pg_cf_type_has_options($field['type']) && ($form->check_field_error($html_field_name) == false)) {
+            $option_error = pg_cf_option_value_error($field, $form->get_field_value($html_field_name),
+                db_values("SELECT value FROM form_field_options WHERE form_field_id = '" . (int) $field['id'] . "'"));
+            if ($option_error !== null) {
+                $form->mark_error($html_field_name, $option_error);
+            }
         }
         // If the field does not have an error, then store data for field.
         if ($form->check_field_error($html_field_name) == false) {

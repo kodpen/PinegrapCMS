@@ -19,6 +19,13 @@ module: email_campaign_send
 - The campaign becomes `complete` (and an automatic one triggers its follow-ups) only when no recipient waits for another attempt; given-up recipients let it finish, as in the job.
 - The JSON `done` answer carries `failed`, `all_sent`, `heading`, `message`; the script writes them into the finished block and turns it `theme-warning` when not all were sent. The activity line names delivered of total and how many failed.
 
+## Which statuses does the window send?
+- `pg_email_campaign_send_refusal($status)`: only `ready` sends; `paused`/`cancelled`/unknown refuse (a "send it now" link opened before a pause sent it before #5652); `complete` skips the send and shows the summary without finishing, logging or following up again.
+
+## How does it say why a delivery failed?
+- `pg_email_campaign_delivery_problem($id)` reads the most frequent `last_error` of waiting or given-up recipients and the earliest `next_attempt_at`; `pg_email_campaign_problem_line()` prints it under the finish message (JSON `problem`, `smtp_url`) and on the edit screen's Progress box, with an SMTP Settings link for role <= 2.
+- With the job off the summary no longer says "wait for another attempt" (nothing retries): it says to press Send Campaign again, from HH:MM.
+
 ## Why does saving a campaign with the job off not touch start_time?
 - `pg_email_campaign_schedule_card()` draws nothing while `email_campaign_job_enabled()` is false, so `start_time` is not posted (#4229). Create reads `$_POST['start_time'] ?? ''`; Edit writes `start_time` only when the field is posted, keeping a time saved earlier while the job was on.
 

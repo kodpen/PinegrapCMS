@@ -536,29 +536,27 @@ function pg_signature_document_matches($record)
         return null;
     }
 
-    $fields = db_items("SELECT id, name, label, type, required, information
-        FROM form_fields
-        WHERE page_id = '" . e((int) $record['page_id']) . "'
-        ORDER BY sort_order ASC");
+    return hash_equals(
+        (string) $record['document_hash'],
+        pg_signature_stored_document_hash($record['page_id'], $record['form_id'], $record['form_field_id'], $record['consent_text']));
+}
 
-    $rows = db_items("SELECT form_field_id, data
-        FROM form_data
-        WHERE form_id = '" . e((int) $record['form_id']) . "'
-        ORDER BY id ASC");
-
+// The answers of a submission as its form_data rows hold them, field id =>
+// value. A field with several rows is a check box group or a multiple pick
+// list and is the list of its rows in order; the signature's own row holds no
+// value and is left out. Pure.
+function pg_signature_document_values($rows, $own_field_id)
+{
     $values = array();
 
     foreach ((array) $rows as $row) {
         $field_id = (int) $row['form_field_id'];
 
-        // The signature's own row holds no value and was not part of the hash.
-        if ($field_id === (int) $record['form_field_id']) {
+        if ($field_id === (int) $own_field_id) {
             continue;
         }
 
-        // A field with several rows is a check box group or a multiple pick
-        // list, and was hashed as the array it was submitted as.
-        if (isset($values[$field_id])) {
+        if (array_key_exists($field_id, $values)) {
             if (!is_array($values[$field_id])) {
                 $values[$field_id] = array($values[$field_id]);
             }
@@ -570,9 +568,53 @@ function pg_signature_document_matches($record)
         }
     }
 
-    return hash_equals(
-        (string) $record['document_hash'],
-        pg_signature_document_hash($record['page_id'], $fields, $values, $record['consent_text']));
+    return $values;
+}
+
+// The document hash of a stored submission: the page's fields as they stand
+// and the answers as the form_data rows hold them. The hash taken when the
+// form is signed is this one too (pg_signature_store_pending()), so a check
+// later reads exactly what was hashed: a posted date, a ticked box or a rich
+// text answer is stored in another shape than it was posted in.
+function pg_signature_stored_document_hash($page_id, $form_id, $form_field_id, $consent_text)
+{
+    $fields = db_items("SELECT id, name, label, type, required, information
+        FROM form_fields
+        WHERE page_id = '" . e((int) $page_id) . "'
+        ORDER BY sort_order ASC");
+
+    $rows = db_items("SELECT form_field_id, data
+        FROM form_data
+        WHERE form_id = '" . e((int) $form_id) . "'
+        ORDER BY id ASC");
+
+    return pg_signature_document_hash($page_id, $fields, pg_signature_document_values($rows, $form_field_id), $consent_text);
+}
+
+// Stores the signatures of a submission once all of its form_data rows are
+// written, and points each signature's row at its drawing. Each pending item
+// is field_id, label (the consent text), png and strokes
+// (pg_signature_clean_strokes()). The form's endpoints write a signature's
+// row with no file and call this after their field loop: the document hash
+// has to cover the answers as stored, and the fields after the signature are
+// not stored before the loop ends.
+function pg_signature_store_pending($form_id, $page_id, $pending)
+{
+    foreach ((array) $pending as $item) {
+        $field_id = (int) $item['field_id'];
+
+        $file_id = pg_signature_store($form_id, $field_id, $item['png'], array(
+            'page_id' => (int) $page_id,
+            'document_hash' => pg_signature_stored_document_hash($page_id, $form_id, $field_id, (string) $item['label']),
+            'consent_text' => (string) $item['label'],
+            'strokes' => (string) $item['strokes'],
+        ));
+
+        if ($file_id !== false) {
+            db("UPDATE form_data SET file_id = '" . (int) $file_id . "'
+                WHERE (form_id = '" . (int) $form_id . "') AND (form_field_id = '" . $field_id . "')");
+        }
+    }
 }
 
 // Whether the drawing on disk is still the drawing that was signed.
@@ -1267,4 +1309,24 @@ function pg_signature_stamp_token($record)
     $token = base64_decode((string) $record['stamp_token'], true);
 
     return ($token === false) ? '' : $token;
+}
+
+/**
+ * The time stamp authority password a Site Settings save writes. The box is
+ * drawn empty and never carries the stored password back to the browser, so
+ * an empty box keeps what is stored; the "Remove the saved value" tick
+ * clears it. Pure.
+ *
+ * @param string $posted what the box sent
+ * @param string $stored the password saved before
+ * @param bool   $clear  the remove tick was set
+ * @return string
+ */
+function pg_signature_tsa_password_to_store($posted, $stored, $clear)
+{
+    if ($clear) {
+        return '';
+    }
+
+    return ((string) $posted !== '') ? (string) $posted : (string) $stored;
 }

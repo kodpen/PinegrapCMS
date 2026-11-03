@@ -43,19 +43,21 @@ if (!defined('REQUEST_URL')) {
 }
 
 // If this script is being run from a web browser (i.e. not a cron job),
-// then record login info from session for authentication later, and then unset session,
-// so that the rest of the script does not run as this user, so that content for pages and etc.
-// that will be stored in search index is generic and not specific to this user.
-// Also, verify that user has access to run this.
+// then record login info from session for authentication later, and then
+// save and close the session, so that the rest of the script does not run as
+// this user (content stored in the search index is generic, not specific to
+// this user) and so that the manager's other panel requests do not wait on the
+// session lock while pages are drawn. Closing writes the session as it was,
+// so the user stays signed in. Also, verify that user has access to run this.
+$search_index_token = '';
+
 if (isset($_SERVER['HTTP_HOST']) == true) {
     $username = $_SESSION['sessionusername'] ?? '';
     $userid = $_SESSION['sessionuserid'] ?? '';
+    $search_index_token = (string) ($_SESSION['software']['token'] ?? '');
 
-    // This command allows us to purely unset the session variables,
-    // without destroying the actual saved session data.  This is important,
-    // because when a user is done running this script, we don't want them
-    // to be logged out of the system.
-    unset($_SESSION);
+    session_write_close();
+    $_SESSION = array();
 
     // Try to find a user with the same login info and has a role of manager or above.
     // The session id is trusted; just confirm it is a manager-or-above account.
@@ -68,15 +70,25 @@ if (isset($_SERVER['HTTP_HOST']) == true) {
         log_activity(lang('access denied to update search index'), $username);
         output_error(lang('Access denied') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
+
+    // A run from the panel is a POST with the form token; a link opened from
+    // another site must not start a crawl. The general job, when a browser
+    // opens job.php, dispatches this script without either.
+    if (!defined('PG_CRON_DISPATCH')
+        && !pg_search_index_web_request_valid($_SERVER['REQUEST_METHOD'] ?? '', $_POST['token'] ?? '', $search_index_token)) {
+        output_error(lang('Your session expired. Reload the page and try again.'));
+    }
 }
 
 // One run at a time, whoever starts it: the panel button and a crontab entry
 // take the job's lock in cron_runs as the general job's dispatcher does (it
 // has taken it already for a dispatched run, and releases it itself). Two
-// runs side by side wrote the same rows twice and fought in the sweep.
+// runs side by side wrote the same rows twice and fought in the sweep. A
+// panel window request takes the job's few minutes; a command-line run, the
+// whole pass, takes hours (pg_search_index_claim_seconds()).
 if (!defined('PG_CRON_DISPATCH')) {
 
-    if (!pg_cron_claim('update_search_index')) {
+    if (!pg_cron_claim('update_search_index', pg_search_index_claim_seconds(isset($_SERVER['HTTP_HOST'])))) {
 
         if (isset($_SERVER['HTTP_HOST'])) {
             output_error(lang('The search index is already being updated. Try again when that run has finished.'));
@@ -141,7 +153,26 @@ output_header_secure(array(
 // process) is skipped and named the next time, so no item stops the pass
 // twice. The sweep comes after the last stage and removes the rows older
 // than the pass's start, which every row the pass wrote carries.
-$search_index_state = pg_search_index_next(pg_search_index_state_read(), time());
+//
+// Between full passes a dispatched run is a delta: the job comes every hour,
+// and while no pass is under way and the last one ended less than a day ago
+// it re-indexes only the pages and the visual editor's records changed since
+// their row (pg_search_index_delta_targets()), keeps no cursor, sweeps
+// nothing and leaves the completion marker as it is. The panel button and a
+// command-line run always do the full pass.
+$search_index_delta = null;
+$search_index_saved_state = pg_search_index_state_read();
+
+if (defined('PG_CRON_DISPATCH') && ($search_index_saved_state === null)) {
+    $search_index_runs = pg_cron_last_runs();
+
+    if (!pg_search_index_full_due(is_array($search_index_runs) ? (int) ($search_index_runs['update_search_index_done'] ?? 0) : 0, time())) {
+        $search_index_delta = pg_search_index_delta_targets();
+        $search_index_saved_state = null;
+    }
+}
+
+$search_index_state = pg_search_index_next($search_index_saved_state, time());
 $timestamp = $search_index_state['started'];
 
 // How long this run may work: a dispatched tick within job.php's time limit,
@@ -210,7 +241,12 @@ $search_index_open = '';
 
 // Keep the cursor, with what the stages hand on.
 $search_index_save = function () use (&$search_index_state, &$linked_item_names, &$calendar_event_view_urls,
-    &$form_item_view_urls, &$designer_hosts, &$designer_record_urls, &$index_failures, &$index_failure_notes) {
+    &$form_item_view_urls, &$designer_hosts, &$designer_record_urls, &$index_failures, &$index_failure_notes, $search_index_delta) {
+    // A delta run keeps no cursor: the full pass's place stays its own.
+    if ($search_index_delta !== null) {
+        return;
+    }
+
     $search_index_state['carry'] = array(
         'linked'               => array_values(array_unique($linked_item_names)),
         'event_urls'           => $calendar_event_view_urls,
@@ -295,7 +331,9 @@ $pages = db_items(
         (page.page_search = '1')
         AND (folder.folder_archived = '0')
         AND (page.page_type IN (" . implode(', ', $index_types) . "))
-        AND (page.page_id > '" . (int) $search_index_state['after'] . "')
+        AND " . (($search_index_delta !== null)
+            ? "(page.page_id IN ('" . implode("', '", array_merge(array(0), $search_index_delta['pages'])) . "'))"
+            : "(page.page_id > '" . (int) $search_index_state['after'] . "')") . "
     ORDER BY page.page_id ASC");
 
 // Another stage is under way: the pages are done.
@@ -1133,6 +1171,44 @@ if ($search_index_state['stage'] === 'pages') {
 $search_index_run['stage'] = 'records';
 $recycle_bin_folder_ids = pg_recycle_bin_folder_ids();
 
+// A delta run reaches a changed record through every page that lists it, not
+// only through the pages it re-indexed: the lists are collected from all the
+// visual editor's pages in site search, without drawing them.
+if (($search_index_delta !== null) && $search_index_delta['records']) {
+    $designer_hosts = array();
+
+    foreach (db_items(
+        "SELECT
+            page.page_id AS id,
+            page.page_name AS name,
+            page.page_folder AS folder_id,
+            page.page_title AS title,
+            page.page_meta_description AS meta_description,
+            page.page_search_keywords AS search_keywords,
+            page.page_type AS type
+        FROM page
+        LEFT JOIN folder ON page.page_folder = folder.folder_id
+        WHERE
+            (page.page_search = '1')
+            AND (folder.folder_archived = '0')
+            AND (page.page_type = 'standard')
+        ORDER BY page.page_id ASC") as $page) {
+        $designer_lists = array();
+
+        foreach (pg_sw_page_widgets($page['id']) as $widget) {
+            if (in_array(isset($widget['cfg']['regionType']) ? (string) $widget['cfg']['regionType'] : '', pg_sw_form_list_types(), true)) {
+                $designer_lists[] = $widget['cfg'];
+            }
+        }
+
+        if ($designer_lists) {
+            $designer_hosts[] = array('page' => $page, 'lists' => $designer_lists);
+        }
+    }
+} elseif ($search_index_delta !== null) {
+    $designer_hosts = array();
+}
+
 foreach ((($search_index_state['stage'] === 'designer') && !$search_index_stopped) ? $designer_hosts : array() as $designer_host_index => $designer_host) {
     // The hosts in the order the page loop found them, by position.
     if (($search_index_state['after'] !== '') && ($designer_host_index <= (int) $search_index_state['after'])) {
@@ -1238,6 +1314,11 @@ foreach ((($search_index_state['stage'] === 'designer') && !$search_index_stoppe
         $pretty = pg_sw_form_pretty_urls($form_page_id);
 
         foreach ((array) $records as $record) {
+            // A delta run draws only the records changed since their row.
+            if (($search_index_delta !== null) && !isset($search_index_delta['records'][(string) $record['reference_code']])) {
+                continue;
+            }
+
             $url = pg_sw_search_index_record_url($detail_page['page_name'], $record['reference_code'], $record['address_name'], $pretty);
 
             if ($url === '') {
@@ -1333,6 +1414,9 @@ foreach ((($search_index_state['stage'] === 'designer') && !$search_index_stoppe
 
                 $designer_record_urls[$url] = $folder_id;
             } catch (Throwable $throwable) {
+                // Its last indexed text stays until a run reads it again,
+                // as for a page, an event or a classic record.
+                pg_search_index_keep_item($url, $timestamp);
                 pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note($detail_page['page_name'], $record['reference_code'], $throwable->getMessage(), 200, lang('Record')));
 
                 continue;
@@ -1375,7 +1459,7 @@ if (($search_index_state['stage'] === 'designer') && !$search_index_stopped) {
 $search_index_run['stage'] = 'files';
 
 // Get files that should be included in search index.
-$files = (($search_index_state['stage'] !== 'files') || $search_index_stopped) ? array() : db_items(
+$files = (($search_index_state['stage'] !== 'files') || $search_index_stopped || ($search_index_delta !== null)) ? array() : db_items(
     "SELECT
         files.id,
         files.name,
@@ -1415,15 +1499,27 @@ foreach ($files as $file) {
 
         // A file the converter cannot read keeps its last indexed text.
         try {
+            // The bytes of a file in the object store are read from its
+            // cached copy; one that cannot be had keeps its last text.
+            $file_path = FILE_DIRECTORY_PATH . '/' . $file['name'];
+
+            if (in_array(mb_strtolower($file['type']), array('doc', 'docx', 'pdf', 'ppt', 'pptx', 'txt', 'xls', 'xlsx'), true)) {
+                $file_path = pg_file_reader_path($file['name']);
+
+                if ($file_path === '') {
+                    throw new RuntimeException(lang('The file could not be read.'));
+                }
+            }
+
             // Get the content in different ways depending on the type of file.
             // We only get content for certain file types.
             switch (mb_strtolower($file['type'])) {
                 case 'doc':
-                    $content = convert_doc_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    $content = convert_doc_to_text($file_path);
                     break;
 
                 case 'docx':
-                    $content = convert_docx_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    $content = convert_docx_to_text($file_path);
                     break;
 
                 case 'pdf':
@@ -1459,28 +1555,28 @@ foreach ($files as $file) {
 
                     // If a pdftotext path has been found, then convert PDF to text.
                     if (($pdftotext_path != '') && function_exists('shell_exec')) {
-                        $content = (string) shell_exec($pdftotext_path . ' ' . escapeshellarg(FILE_DIRECTORY_PATH . '/' . $file['name']) . ' -');
+                        $content = (string) shell_exec($pdftotext_path . ' ' . escapeshellarg($file_path) . ' -');
                     }
                     break;
 
                 case 'ppt':
-                    $content = convert_ppt_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    $content = convert_ppt_to_text($file_path);
                     break;
 
                 case 'pptx':
-                    $content = convert_pptx_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    $content = convert_pptx_to_text($file_path);
                     break;
 
                 case 'txt':
-                    $content = @file_get_contents(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    $content = @file_get_contents($file_path);
                     break;
 
                 case 'xls':
-                    $content = convert_xls_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    $content = convert_xls_to_text($file_path);
                     break;
 
                 case 'xlsx':
-                    $content = convert_xlsx_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    $content = convert_xlsx_to_text($file_path);
                     break;
             }
         } catch (Throwable $throwable) {
@@ -1571,7 +1667,18 @@ if (($search_index_state['stage'] === 'files') && !$search_index_stopped) {
 // The pass is done when its last stage is reached in this run.
 $search_index_done = (($search_index_state['stage'] === 'sweep') && !$search_index_stopped);
 
-if ($search_index_done) {
+if ($search_index_delta !== null) {
+    // A delta run ends here: no sweep, no completion marker, no cursor; what
+    // its time did not reach waits for the next hour or the full pass.
+    $search_index_done = true;
+
+    if ($index_failures > 0) {
+        log_activity(lang(array(
+            'string' => 'The search index could not read {var:1} item(s): {var:2}',
+            'vars' => array($index_failures, implode('; ', $index_failure_notes) . (($index_failures > count($index_failure_notes)) ? '; ...' : '')))),
+            '');
+    }
+} elseif ($search_index_done) {
     // Delete old items that no longer exist.
     $search_index_run['stage'] = 'sweep';
     $search_index_run['item'] = '';
@@ -1615,7 +1722,12 @@ if (!$search_index_done) {
         'vars' => array(pg_search_index_stage_label($search_index_state['stage']))));
 
     if (isset($_SERVER['HTTP_HOST']) && !defined('PG_CRON_DISPATCH')) {
-        $finish_continue = '<script>setTimeout(function () { window.location.replace(' . json_encode(PATH . SOFTWARE_DIRECTORY . '/update_search_index.php?continue=1') . '); }, 300);</script>';
+        // A POST with the form token, as the request that started it.
+        $finish_continue = '<form id="search_index_continue" method="post" action="' . h(PATH . SOFTWARE_DIRECTORY . '/update_search_index.php') . '">'
+            . '<input type="hidden" name="token" value="' . h($search_index_token) . '">'
+            . '<input type="hidden" name="continue" value="1">'
+            . '</form>'
+            . '<script>setTimeout(function () { document.getElementById("search_index_continue").submit(); }, 300);</script>';
     }
 } elseif ($index_failures > 0) {
     $finish_icon = 'bi-exclamation-triangle-fill fg-warning';

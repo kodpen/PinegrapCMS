@@ -112,7 +112,13 @@ $money = function ($kurus) use ($currency) {
     return h(erp_money_out_currency((int) $kurus, $currency));
 };
 
+// Every action here writes (link, import, set aside, bring back, read again),
+// so a read-only user is shown none of them; the reading links stay.
 $form = function ($action, $button, $extra = '') use ($id) {
+    if (defined('USER_ERP_READONLY') && USER_ERP_READONLY) {
+        return '';
+    }
+
     return '<form action="erp_inbox_document.php" method="post" class="d-inline">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $id . '" />
@@ -189,7 +195,7 @@ if (empty($proposal['success'])) {
         $vat_rate = '';
         foreach ((array) $line['taxes'] as $tax) {
             if (((string) $tax['code'] === ERP_UBL_VAT_CODE) || (mb_strtoupper((string) $tax['name'], 'UTF-8') === 'KDV')) {
-                $vat_rate = rtrim(rtrim(number_format((float) $tax['rate'], 2, '.', ''), '0'), '.');
+                $vat_rate = erp_percent_text($tax['rate']);
                 break;
             }
         }
@@ -207,13 +213,13 @@ if (empty($proposal['success'])) {
 
         $detail = array_filter(array($line['seller_code'], trim($line['brand'] . ' ' . $line['model']), $source['exemption'],
             ((string) $source['withholding_label'] !== '') ? lang(array('string' => 'VAT withholding {var:1}: {var:2}', 'vars' => array($source['withholding_label'], erp_money_out_currency((int) $source['withholding'], $currency)))) : ''), 'strlen');
-        $price = (strpos((string) $line['price'], '.') !== false) ? rtrim(rtrim((string) $line['price'], '0'), '.') : (string) $line['price'];
+        $price = erp_decimal_text($line['price']);
 
         $output_lines .= '<tr>
                 <td class="fg-secondary">' . h($line['no']) . '</td>
                 <td>' . h($source['text']) . $flag . (!empty($detail) ? '<div class="small fg-secondary">' . h(implode(' · ', $detail)) . '</div>' : '') . '</td>
                 <td class="text-end text-nowrap" data-sort="' . (float) $line['quantity'] . '">' . h(erp_quantity_text($line['quantity'])) . ' <span class="fg-secondary small">' . h($line['unit_code']) . '</span></td>
-                <td class="text-end text-nowrap">' . h($price) . '</td>
+                <td class="text-end text-nowrap" data-sort="' . (float) $line['price'] . '">' . h($price) . '</td>
                 <td class="text-end text-nowrap" data-sort="' . (int) $discount . '">' . (($discount > 0) ? $money($discount) : '<span class="fg-secondary">—</span>') . '</td>
                 <td class="text-end text-nowrap" data-sort="' . (int) $source['net'] . '">' . $money($source['net']) . '</td>
                 <td class="text-end text-nowrap">' . h($vat_rate) . '</td>

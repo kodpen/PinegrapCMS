@@ -18,6 +18,14 @@
 
 require('init.php');
 
+// The scheduler (CLI or the job.php dispatcher) has no session. A web request
+// must come from a signed-in user with e-commerce access: the run charges due
+// subscriptions, ends cancelled ones and expires memberships.
+if (!pg_cron_is_background_run()) {
+    $user = validate_user();
+    validate_ecommerce_access($user);
+}
+
 // A job also when a signed-in manager opens it: its contact lines name no one.
 pg_audit_as_job(true);
 

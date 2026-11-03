@@ -1469,6 +1469,84 @@ function ws_api_files_create($params)
 }
 
 /**
+ * Makes a voice message from a text and posts it into a channel or a
+ * discussion, the way "send a voice message" is asked of an assistant: the
+ * checks of ws_voice_message_check() first, so a dry run meets the same
+ * refusals without calling the speech service, then ws_voice_message_send()
+ * (voice.php). Who it is written as follows POST /workspace/channels/{id}/messages.
+ */
+function ws_api_messages_voice($params)
+{
+    $viewer = ws_api_viewer();
+    $channel_id = (int) ($params['channel_id'] ?? 0);
+    $thread_id = (int) ($params['thread_id'] ?? 0);
+    $target = ws_voice_message_target_rule($channel_id, $thread_id, '');
+
+    if ($target !== null) {
+        api_fail_validation($target['error'], $target['field']);
+    }
+
+    $channel = ws_api_channel_or_404($viewer, ($channel_id > 0) ? $channel_id : $thread_id);
+    $target = ws_voice_message_target_rule($channel_id, $thread_id, (string) $channel['kind']);
+
+    if ($target !== null) {
+        api_fail_validation($target['error'], $target['field']);
+    }
+
+    if (!ws_can_post_channel($viewer, $channel)) {
+        api_fail(403, 'forbidden', lang('You cannot post in that channel.'));
+    }
+
+    $app_id = ws_api_writer_app_id();
+    $options = array(
+        'app_id'    => $app_id,
+        'parent_id' => (int) ($params['reply_to'] ?? 0),
+        'voice'     => (string) ($params['voice'] ?? ''),
+    );
+    $checked = ws_voice_message_check($viewer, $channel, (string) $params['text'], $options);
+
+    if (!$checked['ok']) {
+        ws_api_voice_message_refuse($checked);
+    }
+
+    $speech = ws_voice_speech_config();
+
+    api_dry_run_stop('created', 'workspace_message', array(
+        'channel_id' => (int) $channel['id'],
+        'reply_to'   => ($options['parent_id'] > 0) ? $options['parent_id'] : null,
+        'characters' => mb_strlen($checked['text']),
+        'voice'      => ($checked['voice'] !== '') ? $checked['voice'] : (($speech['voice'] !== '') ? $speech['voice'] : ws_voice_speech_default_voice()),
+        'provider'   => $speech['provider'],
+    ));
+
+    $sent = ws_voice_message_send($viewer, $channel, (string) $params['text'], $options);
+
+    if (!$sent['ok']) {
+        ws_api_voice_message_refuse($sent);
+    }
+
+    $row = ws_message($sent['message_id']);
+
+    api_ok(ws_api_message_present($viewer, $row, ws_refs_resolve($viewer, ws_tokens($row['body']))), 201);
+}
+
+/**
+ * A refusal of ws_voice_message_check() or ws_voice_message_send() as the
+ * API answers it: its own code with its status (ws_voice_message_status()),
+ * or the field's validation error.
+ *
+ * @param array $refused ok false, error, code, field
+ */
+function ws_api_voice_message_refuse($refused)
+{
+    if ((string) $refused['code'] !== '') {
+        api_fail(ws_voice_message_status($refused['code']), (string) $refused['code'], (string) $refused['error']);
+    }
+
+    api_fail_validation((string) $refused['error'], ((string) $refused['field'] !== '') ? (string) $refused['field'] : 'text');
+}
+
+/**
  * Sends the file a message carries to whoever may read the message, as its
  * own bytes, a part of it (Range) or, for a picture, a smaller copy (size).
  */
@@ -1485,9 +1563,11 @@ function ws_api_files_get($params)
     ws_api_channel_or_404($viewer, $message['channel_id']);
 
     $stored = basename((string) db_value("SELECT name FROM files WHERE id = '" . (int) $message['file_id'] . "'"));
-    $path = FILE_DIRECTORY_PATH . '/' . $stored;
 
-    if (($stored === '') || !is_file($path)) {
+    // The local file, or a copy of one moved to the object store.
+    $path = pg_file_reader_path($stored);
+
+    if (($stored === '') || ($path === '')) {
         api_fail_not_found(lang('File'));
     }
 
@@ -1498,7 +1578,7 @@ function ws_api_files_get($params)
             api_fail_validation(lang('Only a picture has a smaller copy.'), 'size');
         }
 
-        $preview = ws_file_preview($path, (int) $params['size']);
+        $preview = ws_file_preview($path, (int) $params['size'], (int) $message['file_id']);
 
         if ($preview !== null) {
             api_send_file($preview['path'], $preview['mime'], (string) $message['file_name'], true);

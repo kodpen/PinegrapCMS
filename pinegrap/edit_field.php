@@ -480,6 +480,8 @@ if (!$_POST) {
         $name = trim($_POST['name']);
     
         pg_field_form_validate_name($liveform, $name, pg_field_form_names_in_use($form_type_filter, $id, $name), $field_name);
+        pg_field_form_validate_type($liveform, $_POST['type'] ?? '', $form_type);
+        $numbers = pg_field_form_validate_numbers($liveform, $_POST);
         
         // if there are errors in the liveform then send the user back to the edit field screen
         if ($liveform->check_form_errors() == true) {
@@ -543,11 +545,11 @@ if (!$_POST) {
                     information = '" . escape(prepare_rich_text_editor_content_for_input($_POST['information'])) . "',
                     default_value = '" . escape($_POST['default_value'] ?? '') . "',
                     use_folder_name_for_default_value = '" . escape($_POST['use_folder_name_for_default_value'] ?? '') . "',
-                    size = '" . escape($_POST['size'] ?? '') . "',
-                    maxlength = '" . escape($_POST['maxlength'] ?? '') . "',
+                    size = '" . $numbers['size'] . "',
+                    maxlength = '" . $numbers['maxlength'] . "',
                     wysiwyg = '" . escape($_POST['wysiwyg'] ?? '') . "',
-                    `rows` = '" . escape($_POST['rows'] ?? '') . "',  # Backticks for reserved word.
-                    cols = '" . escape($_POST['cols'] ?? '') . "',
+                    `rows` = '" . $numbers['rows'] . "',  # Backticks for reserved word.
+                    cols = '" . $numbers['cols'] . "',
                     multiple = '" . escape($_POST['multiple'] ?? '') . "',
                     spacing_above = '" . escape($_POST['spacing_above'] ?? '') . "',
                     spacing_below = '" . escape($_POST['spacing_below'] ?? '') . "',
@@ -561,15 +563,13 @@ if (!$_POST) {
                 WHERE id = '" . escape($_POST['id'] ?? '') . "'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
-        // if field has options, then replace them
-        if (($_POST['type'] == 'pick list') || ($_POST['type'] == 'radio button') || ($_POST['type'] == 'check box')) {
-            // delete existing options
-            $query = "DELETE FROM form_field_options WHERE form_field_id = ?";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        // The stored options are replaced by the posted ones. They are deleted
+        // for every type: a field turned into a type without options would
+        // keep its old options and their target options otherwise.
+        $query = "DELETE FROM form_field_options WHERE form_field_id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
-            // Delete target options for this field.
-            db_q("DELETE FROM target_options WHERE trigger_form_field_id = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-        }
+        db_q("DELETE FROM target_options WHERE trigger_form_field_id = ?", array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         list($invalid_email_address, $invalid_trigger) = pg_field_form_save_options(
             $_POST['id'] ?? '',

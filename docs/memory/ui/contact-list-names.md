@@ -8,7 +8,7 @@ module: contact_list
 - The advanced filter bar printed the Website box twice with the same `id`/`name`. The GET form sent `website=<typed>&website=`, PHP kept the last (empty) value in `$_SESSION['software']['view_contacts']`, so the typed text never filtered. One box now.
 
 ## Which labels point at which field?
-- Expiration Date: `<label for="expiration_date">` (it named Member ID, so `pg_fields.js` found no label for the date box). Only the label changed; the date input and its picker are untouched.
+- Membership Expiration Date: `<label for="expiration_date">` (it named Member ID, so `pg_fields.js` found no label for the date box). Only the label changed; the date input and its picker are untouched.
 - Opt-In Status in My Subscribers: a disabled box `id="opt_in_status" name="fake_opt_in_status"` holding Opt-In, like the membership status box of the membership views; before, the label pointed at plain text.
 
 ## How are counts and rows named?

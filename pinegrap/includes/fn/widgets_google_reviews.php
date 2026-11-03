@@ -95,6 +95,9 @@ function _render_system_widget_google_reviews($tree_json, $widget_id, $cfg = arr
     ));
     _pg_inject_messages_node($tree, 'google_reviews');
 
+    // A page may place the widget twice.
+    $placed = ++$placement;
+    $again  = pg_sw_widget_drawn_before($widget_id) ? $placed : 0;
     $split = _split_widget_tree($tree);
     $loop_rendered = '';
     if ($split['loop_children'] !== null) {
@@ -108,7 +111,7 @@ function _render_system_widget_google_reviews($tree_json, $widget_id, $cfg = arr
             $html = '';
             foreach ($t['children'] as $child) $html .= _render_tree_node($child, 0, 0);
             $html = pg_sw_sweep_tokens(_pg_sw_fill_tokens(trim($html), pg_sw_escape_token_values($row)));
-            $loop_rendered .= pg_sw_uniquify_row_ids($html, $widget_id, $i + 1);
+            $loop_rendered .= pg_sw_uniquify_loop_row_ids($html, $widget_id, $i + 1, $again);
         }
     }
 
@@ -116,7 +119,6 @@ function _render_system_widget_google_reviews($tree_json, $widget_id, $cfg = arr
     $tokens = pg_sw_escape_token_values(pg_grev_static_tokens($place) + array(
         '__review_total'       => (string)count($rows),
     ));
-    // A page may place the widget twice.
-    $static = pg_sw_uniquify_row_ids(pg_sw_sweep_tokens(_pg_sw_fill_tokens($static, $tokens)), $widget_id, 1000 + (++$placement));
+    $static = pg_sw_uniquify_row_ids(pg_sw_sweep_tokens(_pg_sw_fill_tokens($static, $tokens)), $widget_id, 1000 + $placed);
     return str_replace('<!--pg-loop-slot-->', $loop_rendered, $static);
 }

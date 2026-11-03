@@ -27,7 +27,21 @@ require_once(PG_FUNCTIONS_DIR . '/includes/forms/custom_style_form.php');
 // "not found" screen instead of PHP notices from the unchecked row below or
 // an error page.
 $id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
-if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM style WHERE style_id = '" . $id . "'") < 1)) {
+$style_kind = ($id > 0) ? db_item("SELECT style_type, style_layout FROM style WHERE style_id = '" . $id . "'") : null;
+if (!$style_kind) {
+    output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
+}
+
+// A system style or a visual design opened here (old bookmark, typed URL)
+// goes to its own screen: this form would write custom style values over
+// its code and layout, and Duplicate would copy all of a design's pages.
+// A post is refused outright.
+$edit_screen = pg_style_edit_screen($style_kind['style_type'], $style_kind['style_layout']);
+if ($edit_screen !== 'custom') {
+    if (!$_POST && ($edit_screen === 'system')) {
+        go(PATH . SOFTWARE_DIRECTORY . '/edit_system_style.php?id=' . $id);
+    }
+
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
@@ -64,6 +78,17 @@ if (!$_POST) {
     $style_name = $row['style_name'];
     $style_timestamp = $row['style_timestamp'];
     $style = $row;
+
+    // A refused rename comes back with everything that was typed.
+    $name_error = pg_region_form_name_error_text($liveform);
+
+    if ($name_error !== '') {
+        $style['style_name'] = (string) $liveform->get_field_value('name');
+        $style['style_code'] = (string) $liveform->get_field_value('code');
+        $style['collection'] = pg_custom_style_form_choice('collection', $liveform->get_field_value('collection'));
+        $style['layout_type'] = pg_custom_style_form_choice('layout_type', $liveform->get_field_value('layout_type'));
+        $style['social_networking_position'] = pg_custom_style_form_choice('social_networking_position', $liveform->get_field_value('social_networking_position'));
+    }
     
     // Faz 3c: same-host whitelisted cancel URL (avoids open-redirect via ?send_to=)
     $output_cancel_button_url = pg_safe_back_url(
@@ -139,7 +164,7 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="'. h($_REQUEST['id']) .'">
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
-                    ' . pg_custom_style_form_cards($style, SOCIAL_NETWORKING == TRUE) . '
+                    ' . pg_custom_style_form_cards($style, SOCIAL_NETWORKING == TRUE, $name_error) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -229,6 +254,17 @@ else
         // A name of only spaces passes the browser's required check and is trimmed to ''.
         if ($name === '') {
             output_error(lang('Name is required.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+
+        // A longer name would be cut by the column; a taken one keeps the
+        // visual designer from saving either style.
+        $name_error = pg_region_form_name_refusal($name, pg_style_name_taken($name, $id));
+
+        if ($name_error !== '') {
+            $liveform = new liveform('edit_custom_style');
+            $liveform->add_fields_to_session(array('trim' => false));
+            $liveform->mark_error('name', $name_error);
+            go(PATH . SOFTWARE_DIRECTORY . '/edit_custom_style.php?id=' . $id . ((($_POST['send_to'] ?? '') != '') ? '&send_to=' . urlencode((string) $_POST['send_to']) : ''));
         }
 
         // update style

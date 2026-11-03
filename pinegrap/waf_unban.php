@@ -33,10 +33,21 @@ include('init.php');
 $waf_unban_parsed = pg_waf_unban_parse_args(array_slice((array) ($_SERVER['argv'] ?? array()), 1));
 
 if ($waf_unban_parsed === null) {
-    echo lang('Lifts a firewall ban. Run from the software directory:') . "\n"
-        . '  ' . pg_waf_unban_command('<address>') . '   ' . lang('every block entry covering the address, automatic or manual') . "\n"
-        . '  ' . pg_waf_unban_command('<range>') . '     ' . lang('the block entry naming this range') . "\n"
-        . '  ' . pg_waf_unban_command('--all') . '       ' . lang('every automatic ban') . "\n";
+    $waf_unban_usage = array(
+        array(pg_waf_unban_command('<' . lang('address') . '>'), lang('every block entry covering the address, automatic or manual')),
+        array(pg_waf_unban_command('<' . lang('range') . '>'), lang('the block entry naming this range')),
+        array(pg_waf_unban_command('--all'), lang('every automatic ban in force')),
+    );
+    $waf_unban_width = max(array_map(function ($line) {
+        return mb_strlen($line[0], 'UTF-8');
+    }, $waf_unban_usage)) + 3;
+
+    echo lang('Lifts a firewall ban. Run from the software directory:') . "\n";
+
+    foreach ($waf_unban_usage as $waf_unban_line) {
+        echo '  ' . $waf_unban_line[0] . str_repeat(' ', $waf_unban_width - mb_strlen($waf_unban_line[0], 'UTF-8')) . $waf_unban_line[1] . "\n";
+    }
+
     exit(2);
 }
 

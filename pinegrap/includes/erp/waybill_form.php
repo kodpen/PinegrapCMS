@@ -306,7 +306,7 @@ function erp_waybill_form_cards($liveform, $options = array())
             </div>
         </div>
     </div>
-    ' . get_date_picker_format() . pg_fields_script() . '
+    ' . get_date_picker_format() . pg_fields_script() . pg_places_suggest_script() . '
     <div class="card my-7">
         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
             ' . lang('Delivered to') . '
@@ -328,7 +328,7 @@ function erp_waybill_form_cards($liveform, $options = array())
                 </div>
             </div>
             <div class="row">
-                <div class="col-12 sm:col-6 lg:col-3 my-3">
+                <div class="col-12 sm:col-6 lg:col-3 my-3"' . pg_places_input_attrs('ship_to_country', 'ship_to_city') . '>
                     <label for="ship_to_district" class="form-label">' . lang('District') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'ship_to_district', 'name' => 'ship_to_district',
@@ -425,7 +425,7 @@ function erp_waybill_form_cards($liveform, $options = array())
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-sm align-middle mb-0" data-erp-lines-table>
+                <table class="table table-sm align-middle mb-0" data-erp-lines-table style="min-width:55rem">
                     <thead>
                         <tr>
                             <th style="width:3rem">#</th>

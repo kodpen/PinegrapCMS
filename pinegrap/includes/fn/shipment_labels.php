@@ -1295,7 +1295,12 @@ function pg_shipment_label_svg_fonts($svg, $directory)
         return $match[1] . '"' . $font($match[3]) . '"';
     }, (string) $svg);
 
-    $svg = preg_replace_callback('/(font-family\s*:\s*)([^;"\'}]+)/i', function ($match) use ($font) {
+    // A CSS value is a list of families, each a bare name or a quoted one:
+    // a quote counts only at the start of an item, so the quote that closes
+    // a style attribute ends a bare name instead of opening a family.
+    $item = '\s*(?:"[^"<>]*"|\'[^\'<>]*\'|[^;"\'}<>,]+)';
+
+    $svg = preg_replace_callback('/(font-family\s*:\s*)(' . $item . '(?:\s*,' . $item . ')*)/i', function ($match) use ($font) {
         return $match[1] . $font($match[2]);
     }, $svg);
 

@@ -33,7 +33,7 @@ function test_message_values_erp_are_escaped()
 		array('add_erp_return.php', '$liveform->mark_error(\'_error\', h($result[\'error\']));', 1),
 		array('add_erp_return.php', '$liveform_document->add_notice(lang(array(\'string\' => \'Return {var:1} created.\', \'vars\' => h($result[\'full_number\']))));', 1),
 		array('add_erp_return.php', '$liveform_order->add_notice(lang(array(\'string\' => \'Return {var:1} created.\', \'vars\' => h($result[\'full_number\']))));', 1),
-		array('add_erp_waybill.php', '$liveform->mark_error(\'_error\', h($result[\'error\']));', 1),
+		array('add_erp_waybill.php', '$liveform->mark_error((string) ($result[\'field\'] ?? \'_error\'), h($result[\'error\']));', 1),
 		array('add_erp_waybill.php', '$liveform_document->add_notice(lang(array(\'string\' => \'Delivery note {var:1} created.\', \'vars\' => h($result[\'full_number\']))));', 1),
 		array('add_erp_waybill.php', '$liveform_document->add_notice(lang(array(\'string\' => \'Invoice {var:1} already has delivery note {var:2}.\', \'vars\' => array(h($invoice[\'full_number\']), h($existing_for_invoice[0][\'full_number\'])))));', 1),
 		array('add_erp_waybill.php', '$liveform_document->add_notice(lang(array(\'string\' => \'Order #{var:1} already has delivery note {var:2}.\', \'vars\' => array(($order_number !== \'\') ? $order_number : (string) $order_id, h($existing[0][\'full_number\'])))));', 1),

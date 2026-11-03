@@ -180,7 +180,7 @@ if (count($rerun_choices) == 0) {
 
     foreach (array_reverse($rerun_choices) as $rerun_choice) {
         $rerun_count = $rerun_position - array_search($rerun_choice, $rerun_versions, true);
-        $rerun_options[lang(array('string' => '{var:1} — runs {var:2} version(s) again', 'vars' => array($rerun_choice, $rerun_count)))] = $rerun_choice;
+        $rerun_options[lang(array('string' => '{var:1} — {var:2} version(s)', 'vars' => array($rerun_choice, $rerun_count)))] = $rerun_choice;
     }
 
     $rerun_body = ($rerun_install_folder ? '' : '
@@ -190,7 +190,7 @@ if (count($rerun_choices) == 0) {
                         <input type="hidden" name="action" value="rerun_upgrades">
                         <label for="version" class="form-label">' . h(lang('Run the steps again from')) . '</label>
                         <div class="d-flex flex-wrap gap-3 align-items-start">
-                            <div class="pg-f-md">' . $liveform->output_field(array('type' => 'select', 'name' => 'version', 'id' => 'version', 'class' => 'form-control', 'options' => $rerun_options)) . '</div>
+                            <div class="flex-grow-1" style="min-width: 0; max-width: 28rem;">' . $liveform->output_field(array('type' => 'select', 'name' => 'version', 'id' => 'version', 'class' => 'form-control', 'options' => $rerun_options)) . '</div>
                             <button type="submit" class="btn btn-outline theme-warning"' . ($rerun_install_folder ? '' : ' disabled') . '>
                                 <i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . h(lang('Run the steps again')) . '
                             </button>
@@ -252,7 +252,7 @@ echo '
             <div class="row g-5 mb-5">
                 <div class="col-12 xl:col-6">
                     <div class="card h-100">
-                        <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
                             <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Repair Software')) . '</span>
                             <a class="btn btn-sm btn-outline theme-secondary" href="backups.php"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Backup Manager')) . '</a>
                         </div>
@@ -271,7 +271,7 @@ echo '
                 </div>
                 <div class="col-12 xl:col-6">
                     <div class="card h-100" id="rerun" style="scroll-margin-top: 1.5rem;">
-                        <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
                             <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Run the database upgrade steps again')) . '</span>
                             <a class="btn btn-sm btn-outline theme-secondary" href="backups.php"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Backup Manager')) . '</a>
                         </div>
@@ -287,7 +287,7 @@ echo '
             <div class="row g-5 mb-5">
                 <div class="col-12">
                     <div class="card" id="rollback" style="scroll-margin-top: 1.5rem;">
-                        <div class="card-header d-flex justify-content-between align-items-center">
+                        <div class="card-header d-flex flex-wrap gap-3 justify-content-between align-items-center">
                             <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Roll back an update')) . '</span>
                             <a class="btn btn-sm btn-outline theme-secondary" href="backups.php"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Backup Manager')) . '</a>
                         </div>

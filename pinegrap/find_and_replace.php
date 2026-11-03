@@ -26,8 +26,10 @@ $liveform = new liveform('find_and_replace');
 
 // ── Table definitions ────────────────────────────────────────────────────────
 // edit_url  : {column_name} placeholders are filled from the item values
-// extra_join: Find sorgusuna eklenen JOIN ifadesi (opsiyonel)
-// url_raw   : true ise OUTPUT_SOFTWARE_DIRECTORY prefix eklenmez (tam URL)
+// extra_join: a JOIN added to the search query (optional)
+// url_raw   : true leaves out the OUTPUT_SOFTWARE_DIRECTORY prefix (site URL)
+// touch     : the last-modified time and user columns a replace updates
+// max_length: column => characters, for columns shorter than LONGTEXT
 $all_table_defs = [
 
     'style' => [
@@ -38,8 +40,10 @@ $all_table_defs = [
         'extra_select' => [],
         'extra_join'   => '',
         'columns'      => ['style_code'],
+        'column_labels' => ['style_code' => lang('Code')],
         'edit_url'     => 'edit_custom_style.php?id={style_id}',
         'url_raw'      => false,
+        'touch'        => ['style_timestamp', 'style_user'],
     ],
 
     'pregion' => [
@@ -47,18 +51,24 @@ $all_table_defs = [
         'table'        => 'pregion',
         'id_column'    => 'pregion_id',
         'name_column'  => 'pregion_name',
-        // JOIN with the page table → the frontend URL comes from page_name
+        // JOIN with the page table → the frontend URL and the row's name
+        // come from page_name. A row whose page is gone is not searched.
         'extra_select' => ['page.page_name AS pregion_page_name'],
-        'extra_join'   => 'LEFT JOIN page ON pregion.pregion_page = page.page_id',
+        'extra_join'   => 'INNER JOIN page ON pregion.pregion_page = page.page_id',
         // A page whose content moved into its designer tree no longer reads
-        // its rows.
-        'base_where'   => pg_page_region_read_sql(),
+        // its rows; a page in the Recycle Bin (or a folder carried into it)
+        // is neither listed nor changed, as in mass_edit.php.
+        'base_where'   => pg_page_region_read_sql() . pg_pages_bin_sql(pg_recycle_bin_folder_ids(), false),
         'columns'      => ['pregion_content'],
+        'column_labels' => ['pregion_content' => lang('Content')],
+        // The region's own name is an internal id; the page names the row.
+        'display_name_column' => 'pregion_page_name',
         // The page the region belongs to is marked for SEO rescoring.
         'seo_stale_page' => 'pregion_page',
+        'touch'        => ['pregion_timestamp', 'pregion_user'],
         // The page's frontend URL — edited from the page itself
         'edit_url'     => '{pregion_page_name}',
-        'url_raw'      => true,   // OUTPUT_PATH . page_name (software dir olmadan)
+        'url_raw'      => true,   // OUTPUT_PATH . page_name, without the software directory
     ],
 
     'cregion_common' => [
@@ -72,8 +82,10 @@ $all_table_defs = [
         // is no longer read.
         'base_where'   => "cregion_designer_type = 'no' AND " . pg_common_region_not_converted_sql(),
         'columns'      => ['cregion_content'],
+        'column_labels' => ['cregion_content' => lang('Content')],
         'edit_url'     => 'edit_common_region.php?id={cregion_id}',
         'url_raw'      => false,
+        'touch'        => ['cregion_timestamp', 'cregion_user'],
     ],
 
     'cregion_designer' => [
@@ -85,8 +97,10 @@ $all_table_defs = [
         'extra_join'   => '',
         'base_where'   => "cregion_designer_type = 'yes'",
         'columns'      => ['cregion_content'],
+        'column_labels' => ['cregion_content' => lang('Content')],
         'edit_url'     => 'edit_designer_region.php?id={cregion_id}',
         'url_raw'      => false,
+        'touch'        => ['cregion_timestamp', 'cregion_user'],
     ],
 
     'dregion' => [
@@ -97,8 +111,10 @@ $all_table_defs = [
         'extra_select' => [],
         'extra_join'   => '',
         'columns'      => ['dregion_code'],
+        'column_labels' => ['dregion_code' => lang('Code')],
         'edit_url'     => 'edit_dynamic_region.php?id={dregion_id}',
         'url_raw'      => false,
+        'touch'        => ['dregion_timestamp', 'dregion_user'],
     ],
 
 ];
@@ -119,9 +135,19 @@ if (defined('ECOMMERCE') && ECOMMERCE === true) {
         'name_column'  => 'name',
         'extra_select' => [],
         'extra_join'   => '',
+        // A row in the Recycle Bin opens read-only; it is not changed here.
+        'base_where'   => '1' . pg_catalog_bin_live_sql('products'),
         'columns'      => ['short_description', 'full_description', 'details'],
+        'column_labels' => [
+            'short_description' => lang('Short Description'),
+            'full_description'  => lang('Full Description'),
+            'details'           => lang('Details'),
+        ],
         'edit_url'     => 'edit_product.php?id={id}',
         'url_raw'      => false,
+        'touch'        => ['timestamp', 'user'],
+        // VARCHAR(100), as the edit form's maxlength.
+        'max_length'   => ['short_description' => 100],
         // The row carries its own SEO score, marked stale in the same UPDATE.
         'seo_stale'    => 'row',
     ];
@@ -133,9 +159,19 @@ if (defined('ECOMMERCE') && ECOMMERCE === true) {
         'name_column'  => 'name',
         'extra_select' => [],
         'extra_join'   => '',
+        // A row in the Recycle Bin opens read-only; it is not changed here.
+        'base_where'   => '1' . pg_catalog_bin_live_sql('product_groups'),
         'columns'      => ['short_description', 'full_description', 'details'],
+        'column_labels' => [
+            'short_description' => lang('Short Description'),
+            'full_description'  => lang('Full Description'),
+            'details'           => lang('Details'),
+        ],
         'edit_url'     => 'edit_product_group.php?id={id}',
         'url_raw'      => false,
+        'touch'        => ['timestamp', 'user'],
+        // VARCHAR(100), as the edit form's maxlength.
+        'max_length'   => ['short_description' => 100],
         // The row carries its own SEO score, marked stale in the same UPDATE.
         'seo_stale'    => 'row',
     ];
@@ -146,10 +182,14 @@ $all_table_defs['form_data'] = [
     'table'        => 'form_data',
     'id_column'    => 'id',
     'name_column'  => 'name',
-    // form_id → forms.id (edit_submitted_form.php bunu bekliyor)
+    // form_id → forms.id (what edit_submitted_form.php expects)
     'extra_select' => ['form_data.form_id'],
     'extra_join'   => '',
     'columns'      => ['data'],
+    // Each field is a row: the Field column shows the field's name, and the
+    // rows of one submission are one record named by its form.
+    'column_label_from' => 'name',
+    'record_key'   => 'form_id',
     'edit_url'     => 'edit_submitted_form.php?id={form_id}',
     'url_raw'      => false,
 ];
@@ -162,8 +202,10 @@ $all_table_defs['comments'] = [
     'extra_select' => [],
     'extra_join'   => '',
     'columns'      => ['message'],
+    'column_labels' => ['message' => lang('Message')],
     'edit_url'     => 'edit_comment.php?id={id}',
     'url_raw'      => false,
+    'touch'        => ['last_modified_timestamp', 'last_modified_user_id'],
 ];
 
 // Add when ads are enabled
@@ -176,16 +218,17 @@ if (defined('ADS') && ADS === true) {
         'extra_select' => [],
         'extra_join'   => '',
         'columns'      => ['content'],
+        'column_labels' => ['content' => lang('Content')],
         'edit_url'     => 'edit_ad.php?id={id}',
         'url_raw'      => false,
+        'touch'        => ['last_modified_timestamp', 'last_modified_user_id'],
     ];
 }
 
 // ── Match context (context snippet) ──────────────────────────────────────────
 function find_match_context($text, $find, $case_sensitive, $is_regex, $context_len = 80) {
     if ($is_regex) {
-        $flags = 'u' . ($case_sensitive ? '' : 'i');
-        if (!@preg_match('/' . $find . '/' . $flags, $text, $m)) return '';
+        if (!@preg_match(pg_find_replace_regex($find, $case_sensitive), $text, $m)) return '';
         $matched = $m[0];
         $pos     = $case_sensitive ? mb_strpos($text, $matched) : mb_stripos($text, $matched);
         if ($pos === false) return '';
@@ -208,7 +251,7 @@ function find_match_context($text, $find, $case_sensitive, $is_regex, $context_l
         . h(mb_substr($text, $start, $pos - $start))
         . '<mark class="px-0">' . h($matched) . '</mark>'
         . h(mb_substr($text, $pos + $match_len, $context_len))
-        . ($pos + $match_len < $text_len ? '<span class="fg-secondary">…</span>' : '');
+        . (pg_find_replace_snippet_cut($pos, $match_len, $context_len, $text_len) ? '<span class="fg-secondary">…</span>' : '');
 }
 
 // ── Edit URL builder ──────────────────────────────────────────────────────────
@@ -226,33 +269,135 @@ function build_find_edit_url($pattern, $item, $url_raw = false) {
 }
 
 // ── WHERE clause builder ──────────────────────────────────────────────────────
+// The filter only fetches candidate rows; the PHP count decides which rows
+// match. A regular expression is matched in the column's own (case-
+// insensitive) collation even when Case-sensitive is on: MySQL 8 refuses a
+// binary regular expression on utf8mb4 text, and the case-sensitive PCRE
+// count then drops the rows that differ in letter case.
 function build_find_where($columns, $find, $case_sensitive, $is_regex) {
-    $parts = [];
+    $parts  = [];
+    $params = [];
     foreach ($columns as $col) {
         if ($is_regex) {
-            $parts[] = $case_sensitive
-                ? "($col REGEXP BINARY '" . e($find) . "')"
-                : "($col REGEXP '"        . e($find) . "')";
+            $parts[]  = "($col REGEXP ?)";
+            $params[] = (string) $find;
         } elseif ($case_sensitive) {
-            $parts[] = "($col LIKE BINARY '%" . e(escape_like($find)) . "%')";
+            $parts[]  = "($col LIKE BINARY ?)";
+            $params[] = '%' . escape_like($find) . '%';
         } else {
-            $parts[] = "(LOWER($col) LIKE '%" . e(escape_like(pg_search_lower($find))) . "%')";
+            $parts[]  = "(LOWER($col) LIKE ?)";
+            $params[] = '%' . pg_search_like_term($find) . '%';
         }
     }
-    return implode(' OR ', $parts);
+    return [implode(' OR ', $parts), $params];
 }
+
+// The rows a search fetches, or false when the database refused the query
+// (a regular expression PCRE accepts and the database's engine does not,
+// such as "[[:<:]]" on MySQL 8).
+function find_replace_rows($def, $sql_select, $find, $case_sensitive, $is_regex) {
+    $sql_join       = !empty($def['extra_join']) ? ' ' . $def['extra_join'] : '';
+    $sql_base_where = !empty($def['base_where'] ?? '') ? '(' . $def['base_where'] . ') AND ' : '';
+    list($sql_where, $params) = build_find_where($def['columns'], $find, $case_sensitive, $is_regex);
+
+    $result = db_q("SELECT $sql_select FROM {$def['table']}$sql_join WHERE $sql_base_where($sql_where)", $params);
+    if ($result === false) {
+        if (!$is_regex) {
+            output_error(lang('Query failed.'));
+        }
+        return false;
+    }
+
+    $items = [];
+    while ($item = mysqli_fetch_assoc($result)) {
+        $items[] = $item;
+    }
+    return $items;
+}
+
+// How many times the search matches a text; -1 when a regular expression
+// matches empty text there ("\b", a lookahead), which a replace would fill.
+function find_replace_count($text, $find, $case_sensitive, $is_regex) {
+    if ($is_regex) {
+        $pattern = pg_find_replace_regex($find, $case_sensitive);
+        if (pg_find_replace_has_empty_match($pattern, $text)) return -1;
+        return (int) @preg_match_all($pattern, (string) $text);
+    }
+    if ($case_sensitive) {
+        return substr_count((string) $text, $find);
+    }
+    return pg_search_ci_count($text, $find);
+}
+
+// The hidden copy of the search a form posts again: textareas, so line
+// breaks reach the server as the typed ones did.
+function find_replace_hidden_fields($find, $replace, $case_sensitive, $use_regex, $scope) {
+    $html = '<textarea name="find" class="d-none" aria-hidden="true" tabindex="-1">' . "\n" . h($find) . '</textarea>'
+        . '<textarea name="replace" class="d-none" aria-hidden="true" tabindex="-1">' . "\n" . h($replace) . '</textarea>';
+    if ($case_sensitive) $html .= '<input type="hidden" name="case_sensitive" value="1">';
+    if ($use_regex) $html .= '<input type="hidden" name="use_regex" value="1">';
+    foreach ($scope as $key) {
+        $html .= '<input type="hidden" name="scope[]" value="' . h($key) . '">';
+    }
+    return $html;
+}
+
+// A submitted form record is named by its form and reference code, read in
+// one query for the submissions listed.
+function find_replace_name_submissions($records) {
+    $ids = [];
+    foreach ($records as $record) {
+        $ids[] = (int) $record['key'];
+    }
+    if (!$ids) return $records;
+
+    $names = [];
+    $rows  = db_items(
+        "SELECT forms.id, forms.reference_code, custom_form_pages.form_name
+        FROM forms
+        LEFT JOIN custom_form_pages ON forms.page_id = custom_form_pages.page_id
+        WHERE forms.id IN (" . implode(',', array_unique($ids)) . ")"
+    );
+    foreach ($rows as $row) {
+        $names[(int) $row['id']] = trim($row['form_name'] . ' ' . $row['reference_code']);
+    }
+
+    foreach ($records as $i => $record) {
+        if (($names[(int) $record['key']] ?? '') !== '') {
+            $records[$i]['name'] = $names[(int) $record['key']];
+        }
+    }
+    return $records;
+}
+
+// The replace cannot be undone; both of its buttons ask first.
+$replace_confirm = lang('Replace every match in the selected types of items? This cannot be undone.');
 
 // ── GET: show the form ───────────────────────────────────────────────────────
 if (!$_POST) {
 
+    // Every box is ticked on a first draw only; a refused search comes back
+    // with exactly the boxes the user ticked.
+    $scope_defaults = $liveform->prefill() ? ['checked' => 'checked'] : [];
     $scope_html = '';
     foreach ($all_table_defs as $key => $def) {
         $scope_html .= '
-        <div class="form-field d-inline-grid me-5 me-5 mb-3">
-            <input class="check" type="checkbox" id="scope_' . $key . '"
-                name="scope[]" value="' . $key . '" checked>
+        <div class="form-field d-inline-grid me-5 mb-3">
+            ' . $liveform->output_field($scope_defaults + [
+                'type'  => 'checkbox',
+                'id'    => 'scope_' . $key,
+                'name'  => 'scope[]',
+                'value' => $key,
+                'class' => 'check',
+            ]) . '
             <label class="" for="scope_' . $key . '">' . h($def['label']) . '</label>
         </div>';
+    }
+
+    // The warning names only the types of items this user's scope has.
+    $scope_labels = [];
+    foreach ($all_table_defs as $def) {
+        $scope_labels[] = $def['label'];
     }
 
     echo
@@ -274,7 +419,7 @@ if (!$_POST) {
                     <div class="alert theme-warning">
                         <h5>' . lang('Warning') . '</h5>
                         <p class="mb-0">' . lang('This feature can be dangerous. You can accidentally lose a large amount of content. Make sure to have someone create a backup of your database first. Use at your own risk.') . '</p>
-                        <p class="mb-0">' . lang('Updates Page Styles, Page Regions, Common Regions, Designer Regions, Dynamic Regions, Products, Product Groups, Submitted Forms, Comments, and Ads.') . '</p>
+                        <p class="mb-0">' . h(lang(['string' => 'This screen changes these types of items: {var:1}.', 'vars' => implode(', ', $scope_labels)])) . '</p>
                     </div>
                     <div class="row">
 
@@ -305,7 +450,7 @@ if (!$_POST) {
                                                     'value' => '1',
                                                     'class' => 'no-bs',
                                                 ]) . '</div>
-                                                <label class="" for="case_sensitive">' . lang('Case-sensitive') . '</label>
+                                                <label class="" for="case_sensitive">' . lang('Case sensitive') . '</label>
                                             </div>
                                             <div class="form-field">
                                                 <div class="switch">' . $liveform->output_field([
@@ -341,7 +486,7 @@ if (!$_POST) {
                                             ]) . '
                                         </div>
                                         <div class="col-12 my-3">
-                                            <div class="form-text fg-secondary small">' . lang('Leave empty to delete found text. Regex back-references ($1, $2) are supported when regex is enabled.') . '</div>
+                                            <div class="form-text fg-secondary small">' . lang('Leave empty to delete found text. Back-references ($1, $2) are supported when regular expressions are on.') . '</div>
                                         </div>
                                     </div>
                                 </div>
@@ -360,10 +505,10 @@ if (!$_POST) {
                                         <div class="mb-5">
                                             <button type="button"
                                                 onclick="document.querySelectorAll(\'#scope_checkboxes input\').forEach(c=>c.checked=true)"
-                                                class="btn btn-sm btn-outline theme-secondary me-1">' . lang('Select All') . '</button>
+                                                class="btn btn-sm btn-outline theme-secondary me-1">' . lang('Select all') . '</button>
                                             <button type="button"
                                                 onclick="document.querySelectorAll(\'#scope_checkboxes input\').forEach(c=>c.checked=false)"
-                                                class="btn btn-sm btn-outline theme-secondary">' . lang('Deselect All') . '</button>
+                                                class="btn btn-sm btn-outline theme-secondary">' . lang('Deselect all') . '</button>
                                         </div>
                                         <div id="scope_checkboxes">
                                             ' . $scope_html . '
@@ -384,7 +529,7 @@ if (!$_POST) {
                                     <span class="pg-btn-label">' . lang('Find') . '</span>
                                 </button>
                                 <button type="submit" name="submit_button" value="Find &amp; Replace"
-                                    class="btn my-1 btn-solid theme-success">
+                                    class="btn my-1 btn-solid theme-success" data-confirm-content="' . h($replace_confirm) . '">
                                     <span class="material-icons me-3" aria-hidden="true">find_replace</span>
                                     <span class="pg-btn-label">' . lang(array('string'=>'Find & Replace')) . '</span>
                                 </button>
@@ -414,13 +559,29 @@ if (!$_POST) {
     $case_sensitive = $liveform->get_field_value('case_sensitive');
     $use_regex      = $liveform->get_field_value('use_regex');
     $action         = isset($_POST['submit_button']) ? $_POST['submit_button'] : 'Find & Replace';
-    $selected_scope = isset($_POST['scope']) ? $_POST['scope'] : array_keys($all_table_defs);
+    // No box ticked is no table, never every table.
+    $selected_scope = pg_find_replace_scope($_POST['scope'] ?? null, $all_table_defs);
 
-    // Regex validity check
+    if (!is_string($find) || !is_string($replace)) {
+        $liveform->mark_error('find', lang('Invalid request.'));
+        go($_SERVER['PHP_SELF']);
+    }
+
+    if (!$selected_scope) {
+        $liveform->mark_error('scope', lang('Select at least one type of item in Scope.'));
+        go($_SERVER['PHP_SELF']);
+    }
+
+    // A pattern PCRE cannot compile, or one that matches empty text and so
+    // every row and every gap between two characters, is refused.
     if ($use_regex) {
-        $flags = 'u' . ($case_sensitive ? '' : 'i');
-        if (@preg_match('/' . $find . '/' . $flags, '') === false) {
+        $regex_error = pg_find_replace_regex_error($find, $case_sensitive);
+        if ($regex_error === 'invalid') {
             $liveform->mark_error('find', lang('Invalid regular expression.'));
+            go($_SERVER['PHP_SELF']);
+        }
+        if ($regex_error === 'empty') {
+            $liveform->mark_error('find', lang('A regular expression that matches empty text cannot be used.'));
             go($_SERVER['PHP_SELF']);
         }
     }
@@ -445,14 +606,13 @@ if (!$_POST) {
                 $def['extra_select'],
                 $def['columns']
             );
-            $sql_select    = implode(', ', array_unique($select_cols));
-            $sql_join      = !empty($def['extra_join']) ? ' ' . $def['extra_join'] : '';
-            $sql_base_where = !empty($def['base_where'] ?? '') ? '(' . $def['base_where'] . ') AND ' : '';
-            $sql_where     = build_find_where($def['columns'], $find, $case_sensitive, $use_regex);
+            $sql_select = implode(', ', array_unique($select_cols));
 
-            $items = db_items(
-                "SELECT $sql_select FROM {$def['table']}$sql_join WHERE $sql_base_where($sql_where)"
-            );
+            $items = find_replace_rows($def, $sql_select, $find, $case_sensitive, $use_regex);
+            if ($items === false) {
+                $liveform->mark_error('find', lang('Invalid regular expression.'));
+                go($_SERVER['PHP_SELF']);
+            }
 
             if (!$items) continue;
 
@@ -462,20 +622,18 @@ if (!$_POST) {
                 $col_matches = [];
 
                 foreach ($def['columns'] as $col) {
-                    // How many matches?
-                    if ($use_regex) {
-                        $flags = 'u' . ($case_sensitive ? '' : 'i');
-                        $cnt   = (int) @preg_match_all('/' . $find . '/' . $flags, $item[$col]);
-                    } elseif ($case_sensitive) {
-                        $cnt = substr_count($item[$col], $find);
-                    } else {
-                        $cnt = pg_search_ci_count($item[$col], $find);
+                    $cnt = find_replace_count($item[$col], $find, $case_sensitive, $use_regex);
+                    if ($cnt < 0) {
+                        $liveform->mark_error('find', lang('A regular expression that matches empty text cannot be used.'));
+                        go($_SERVER['PHP_SELF']);
                     }
 
                     if ($cnt > 0) {
                         $snippet = find_match_context($item[$col], $find, $case_sensitive, (bool)$use_regex);
                         $col_matches[] = [
-                            'col'     => $col,
+                            'field'   => !empty($def['column_label_from'])
+                                ? (string) $item[$def['column_label_from']]
+                                : ($def['column_labels'][$col] ?? $col),
                             'count'   => $cnt,
                             'snippet' => $snippet,
                         ];
@@ -484,15 +642,26 @@ if (!$_POST) {
                 }
 
                 if ($col_matches) {
+                    $name = $item[$def['name_column']];
+                    if (!empty($def['display_name_column']) && ((string) $item[$def['display_name_column']] !== '')) {
+                        $name = $item[$def['display_name_column']];
+                    }
                     $group_results[] = [
-                        'id'      => $item[$def['id_column']],
-                        'name'    => $item[$def['name_column']],
+                        'key'     => !empty($def['record_key']) ? $item[$def['record_key']] : $item[$def['id_column']],
+                        'name'    => $name,
                         'url'     => build_find_edit_url($def['edit_url'], $item, $def['url_raw'] ?? false),
                         'matches' => $col_matches,
                     ];
-                    $total_records++;
                 }
             }
+
+            if (!empty($def['record_key'])) {
+                $group_results = pg_find_replace_merge_records($group_results);
+                if ($def['table'] === 'form_data') {
+                    $group_results = find_replace_name_submissions($group_results);
+                }
+            }
+            $total_records += count($group_results);
 
             if ($group_results) {
                 $find_results[$key] = [
@@ -508,11 +677,14 @@ if (!$_POST) {
             go($_SERVER['PHP_SELF']);
         }
 
-        // Build the result HTML
+        // Build the result HTML. Each type lists its first records only: a
+        // one-letter search can match thousands of rows, and the page would
+        // be megabytes of HTML.
+        $find_results_limit = 200;
         $results_html = '';
         foreach ($find_results as $group) {
             $rows = '';
-            foreach ($group['results'] as $r) {
+            foreach (array_slice($group['results'], 0, $find_results_limit) as $r) {
                 $name_cell = $r['url']
                     ? '<a href="' . h($r['url']) . '" target="_blank" rel="noopener" class="fw-semibold text-decoration-none">'
                         . h($r['name'])
@@ -523,7 +695,7 @@ if (!$_POST) {
                     $rows .= '
                     <tr>
                         <td class="align-top text-break">' . $name_cell . '</td>
-                        <td class="align-top fg-secondary small font-monospace">' . h($m['col']) . '</td>
+                        <td class="align-top fg-secondary small">' . h($m['field']) . '</td>
                         <td class="align-top text-center"><span class="badge theme-secondary">' . $m['count'] . '</span></td>
                         <td class="align-top small font-monospace lh-lg text-break">' . $m['snippet'] . '</td>
                     </tr>';
@@ -540,7 +712,7 @@ if (!$_POST) {
                     ))) . '</span>
                 </div>
                 <div class="card-body p-0 table-responsive">
-                    <table class="table table-hover table-sm mb-0">
+                    <table class="table table-hover table-sm pg-find-results">
                         <thead class="pg-table-light">
                             <tr>
                                 <th>' . lang('Name') . '</th>
@@ -552,6 +724,12 @@ if (!$_POST) {
                         <tbody>' . $rows . '</tbody>
                     </table>
                 </div>
+                ' . (count($group['results']) > $find_results_limit
+                    ? '<div class="card-footer bg-reset fg-secondary small">' . h(lang(array(
+                        'string' => 'The first {var:1} records are listed; {var:2} more are not.',
+                        'vars'   => array(pg_format_number($find_results_limit, 0), pg_format_number(count($group['results']) - $find_results_limit, 0)),
+                    ))) . '</div>'
+                    : '') . '
             </div>';
         }
 
@@ -585,10 +763,20 @@ if (!$_POST) {
                     ' . $results_html . '
                 </div>
             </div>
+            <form method="post" class="text-center mb-7">
+                ' . get_token_field() . '
+                ' . find_replace_hidden_fields($find, $replace, $case_sensitive, $use_regex, $selected_scope) . '
+                <button type="submit" name="submit_button" value="Find &amp; Replace"
+                    class="btn btn-solid theme-success" data-confirm-content="' . h($replace_confirm) . '">
+                    <span class="material-icons me-3" aria-hidden="true">find_replace</span>
+                    <span class="pg-btn-label">' . lang('Find & Replace') . '</span>
+                </button>
+            </form>
         </main>' .
         output_footer();
 
-        $liveform->remove_form();
+        // The form stays in the session: the back arrow opens it filled in
+        // with the same search, and its own draw then clears it.
         exit;
 
     // ────────────────────────────────────────────────────────────────────────
@@ -598,10 +786,14 @@ if (!$_POST) {
 
         $number_of_items        = 0;
         $number_of_replacements = 0;
+        $too_long               = [];
+        $updates                = [];
 
+        // First every new value is worked out; nothing is written while a
+        // value could still refuse the whole replace.
         foreach ($tables as $def) {
 
-            $sql_select     = $def['id_column'];
+            $sql_select     = $def['id_column'] . ', ' . $def['name_column'];
             foreach ($def['columns'] as $col) {
                 $sql_select .= ', ' . $col;
             }
@@ -609,61 +801,90 @@ if (!$_POST) {
                 $sql_select .= ', ' . $def['seo_stale_page'];
             }
 
-            $sql_base_where = !empty($def['base_where'] ?? '') ? '(' . $def['base_where'] . ') AND ' : '';
-            $sql_where      = build_find_where($def['columns'], $find, $case_sensitive, $use_regex);
-
-            $items = db_items(
-                "SELECT $sql_select FROM {$def['table']} WHERE $sql_base_where($sql_where)"
-            );
+            $items = find_replace_rows($def, $sql_select, $find, $case_sensitive, $use_regex);
+            if ($items === false) {
+                $liveform->mark_error('find', lang('Invalid regular expression.'));
+                go($_SERVER['PHP_SELF']);
+            }
 
             foreach ($items as $item) {
-                $replacement = false;
+                $replacement = 0;
+                $skip        = false;
 
                 foreach ($def['columns'] as $col) {
                     if ($use_regex) {
-                        $flags   = 'u' . ($case_sensitive ? '' : 'i');
-                        $new_val = @preg_replace('/' . $find . '/' . $flags, $replace, $item[$col], -1, $count);
+                        $pattern = pg_find_replace_regex($find, $case_sensitive);
+                        if (pg_find_replace_has_empty_match($pattern, $item[$col])) {
+                            $liveform->mark_error('find', lang('A regular expression that matches empty text cannot be used.'));
+                            go($_SERVER['PHP_SELF']);
+                        }
+                        $count   = 0;
+                        $new_val = @preg_replace($pattern, $replace, (string) $item[$col], -1, $count);
                         if ($new_val === null) continue;
-                        $item[$col] = $new_val;
                     } elseif ($case_sensitive) {
-                        $item[$col] = str_replace($find, $replace, $item[$col], $count);
+                        $new_val = str_replace($find, $replace, (string) $item[$col], $count);
                     } else {
-                        $item[$col] = pg_search_ci_replace($find, $replace, $item[$col], $count);
+                        $new_val = pg_search_ci_replace($find, $replace, $item[$col], $count);
                     }
 
                     if ($count > 0) {
-                        $replacement             = true;
-                        $number_of_replacements += $count;
+                        // A value longer than its column would be cut without
+                        // an error (the session is not strict): the row is
+                        // left as it was and named in the notice.
+                        if (pg_find_replace_too_long($col, $new_val, $def['max_length'] ?? [])) {
+                            $skip = true;
+                        }
+                        $item[$col]   = $new_val;
+                        $replacement += $count;
                     }
                 }
 
-                if ($replacement == true) {
-                    $sql_set = '';
-                    foreach ($def['columns'] as $col) {
-                        if ($sql_set != '') $sql_set .= ', ';
-                        $sql_set .= "$col = '" . e($item[$col]) . "'";
-                    }
-                    // The SEO score reads these texts and the scheduled SEO
-                    // job scores only stale rows.
-                    if (($def['seo_stale'] ?? '') === 'row') {
-                        $sql_set .= ", seo_analysis_current = '0'";
-                    }
-                    // Products are traced in the audit trail; the other tables here are not.
-                    $audit_before = ($def['table'] === 'products') ? pg_audit_fetch('products', (int) $item[$def['id_column']]) : array();
-                    db("UPDATE {$def['table']} SET $sql_set WHERE {$def['id_column']} = '" . $item[$def['id_column']] . "'");
-                    if ($def['table'] === 'products') {
-                        pg_audit_record('update', 'products', (int) $item[$def['id_column']], $audit_before);
-                    }
-                    if (!empty($def['seo_stale_page']) && ((int) $item[$def['seo_stale_page']] > 0)) {
-                        db_q("UPDATE page SET seo_analysis_current = '0' WHERE page_id = ?", array((int) $item[$def['seo_stale_page']]));
-                    }
-                    $number_of_items++;
+                if ($skip) {
+                    $too_long[] = $item[$def['name_column']];
+                } elseif ($replacement > 0) {
+                    $updates[] = [$def, $item];
+                    $number_of_replacements += $replacement;
                 }
             }
         }
 
+        foreach ($updates as $update) {
+            list($def, $item) = $update;
+
+            $sql_set = '';
+            foreach ($def['columns'] as $col) {
+                if ($sql_set != '') $sql_set .= ', ';
+                $sql_set .= "$col = '" . e($item[$col]) . "'";
+            }
+            // The SEO score reads these texts and the scheduled SEO
+            // job scores only stale rows.
+            if (($def['seo_stale'] ?? '') === 'row') {
+                $sql_set .= ", seo_analysis_current = '0'";
+            }
+            // The lists' Last Modified shows which rows the replace changed.
+            if (!empty($def['touch'])) {
+                $sql_set .= ", {$def['touch'][0]} = UNIX_TIMESTAMP(), {$def['touch'][1]} = '" . (int) $user['id'] . "'";
+            }
+            // Products are traced in the audit trail; the other tables here are not.
+            $audit_before = ($def['table'] === 'products') ? pg_audit_fetch('products', (int) $item[$def['id_column']]) : array();
+            db("UPDATE {$def['table']} SET $sql_set WHERE {$def['id_column']} = '" . (int) $item[$def['id_column']] . "'");
+            if ($def['table'] === 'products') {
+                pg_audit_record('update', 'products', (int) $item[$def['id_column']], $audit_before);
+            }
+            if (!empty($def['seo_stale_page']) && ((int) $item[$def['seo_stale_page']] > 0)) {
+                db_q("UPDATE page SET seo_analysis_current = '0' WHERE page_id = ?", array((int) $item[$def['seo_stale_page']]));
+            }
+            $number_of_items++;
+        }
+
+        if ($too_long) {
+            $liveform->add_notice(h(lang('Some values were not saved because they are longer than the field allows') . ': ' . implode(', ', $too_long)));
+        }
+
         if ($number_of_replacements == 0) {
-            $liveform->mark_error('find', lang('Sorry, no matches were found. Please try entering different text to find.'));
+            if (!$too_long) {
+                $liveform->mark_error('find', lang('Sorry, no matches were found. Please try entering different text to find.'));
+            }
             go($_SERVER['PHP_SELF']);
         }
 

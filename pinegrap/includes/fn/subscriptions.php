@@ -612,9 +612,11 @@ function pg_subscription_create_from_order_line($order, $item, $driver, $period,
  * @param int    $id
  * @param string $to
  * @param string $detail a line for the history
+ * @param string $from   the status the caller checked the move against;
+ *                       '' to move from whatever status the row has
  * @return bool true when the row moved
  */
-function pg_subscription_set_status($id, $to, $detail = '')
+function pg_subscription_set_status($id, $to, $detail = '', $from = '')
 {
     if (!pg_subscriptions_ready()) {
         return false;
@@ -622,7 +624,10 @@ function pg_subscription_set_status($id, $to, $detail = '')
 
     $row = db_item("SELECT id, status, cancelled_at, ended_at FROM subscriptions WHERE id = '" . e((int) $id) . "'");
 
-    if (!$row) {
+    // A move checked against one status is not made from another: a pause
+    // checked on an active row must not stop the retries of a row the
+    // renewal job moved to past_due meanwhile.
+    if (!$row || (((string) $from !== '') && ((string) $row['status'] !== (string) $from))) {
         return false;
     }
 

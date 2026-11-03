@@ -91,7 +91,7 @@ function test_container_dimensions_are_a_legend_with_labelled_boxes()
 	pg_assert_true(strpos($src, '<label class="form-label">\' . lang(\'Dimensions\')') === false, 'no orphan Dimensions label');
 	$boxes = array('length' => 'Length', 'width' => 'Width', 'height' => 'Height', 'lengthcm' => 'Length', 'widthcm' => 'Width', 'heightcm' => 'Height');
 	foreach ($boxes as $id => $word) {
-		pg_assert_contains('<label for="' . $id . '" class="form-label">\' . lang(\'' . $word . '\') . \'</label>', $src, $id . ' has a visible label');
+		pg_assert_contains('<label for="' . $id . '" class="form-label">\' . lang(\'' . $word . '\') . \'<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>', $src, $id . ' has a visible label marked required');
 		pg_assert_contains('id="' . $id . '" name="' . $id . '"', $src, $id . ' keeps its id and name');
 	}
 	foreach (array('L', 'W', 'H') as $letter) {

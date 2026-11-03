@@ -56,6 +56,7 @@ function test_erp_quote_link_state_asks_the_quote()
 	pg_assert_same('closed', erp_quote_link_state($link, erp_quote_links_test_quote(array('status' => 'cancelled')), $now), 'cancelled');
 	pg_assert_same('closed', erp_quote_link_state($link, erp_quote_links_test_quote(array('status' => 'rejected')), $now), 'rejected');
 	pg_assert_same('accepted', erp_quote_link_state($link, erp_quote_links_test_quote(array('status' => 'accepted')), $now), 'accepted another way');
+	pg_assert_same('closed', erp_quote_link_state($link, erp_quote_links_test_quote(array('signed' => 1)), $now), 'signed, then opened again');
 }
 
 function test_erp_quote_link_token_parts_and_shape()
@@ -190,4 +191,30 @@ function test_erp_quote_page_is_sensitive_and_offers_no_payment()
 	foreach (array('payment', 'checkout', 'pay_', 'iyzico', 'stripe', 'collection') as $word) {
 		pg_assert_false(stripos(preg_replace('#/\*.*?\*/#s', '', $page), $word) !== false, 'no ' . $word);
 	}
+}
+
+function test_erp_quote_link_refuses_a_signed_quote()
+{
+	$issue = pg_test_function_source('erp_quote_link_issue');
+	pg_assert_contains('erp_quote_link_quote($quote_id)', $issue, 'issue reads the signature');
+	pg_assert_true(strpos($issue, "!empty(\$quote['signed'])") < strpos($issue, 'pg_short_link_new_token()'), 'a signed quote is refused before a token is made');
+	pg_assert_contains('erp_quote_link_quote(', pg_test_function_source('erp_quote_link_accept'), 'accept reads the signature');
+	pg_assert_contains('erp_quote_link_quote(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/erp_quote.php'), 'the page reads the signature');
+
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_erp_quote.php');
+	pg_assert_contains("\$can_link = (\$state === 'open') && (\$signature === null) && erp_quote_links_ready();", $page);
+	pg_assert_contains("' . (\$can_link ? '", $page, 'the e-mail switch');
+	pg_assert_contains("if (\$can_link) {\n        \$guest_buttons .= \$action_button('guest_link'", $page, 'the create button');
+}
+
+function test_erp_quote_screen_texts_and_phone_facts()
+{
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_erp_quote.php');
+	pg_assert_contains("lang('Mark as accepted')", $page);
+	pg_assert_contains("lang('Mark as rejected')", $page);
+	pg_assert_contains("\$action_button('guest_link_revoke', lang('Stop the link')", $page);
+	pg_assert_contains("(\$state === 'invoiced')\n                    ? lang('The quote was turned into an invoice; changes are made on the invoice.')", $page);
+	pg_assert_contains("implode('</span><span>', \$facts)", $page, 'status, account and date in the page body');
+
+	pg_assert_contains('table-responsive position-relative', (string) file_get_contents(PG_FUNCTIONS_DIR . '/erp_quotes.php'), 'the hidden Signed text stays inside the scroll box');
 }

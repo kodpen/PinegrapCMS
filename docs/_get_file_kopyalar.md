@@ -52,8 +52,8 @@ içindeki son değişikliği parantezde verildi.
 | 13 | `check_private_access` | 1519 | `includes/fn/auth.php` | Mantık aynı: yerel sürüm tarih karşılaştırmasından önce `initialize_timezone()` çağırır; asılda `isset` korumaları | `cb4957d` 2026-08-13 | `6b10e40` 2026-09-17 (`isset` korumaları bu commit'le geldi) | **taşındı** → `includes/authentication.php` (asıl sürüm + `function_exists('initialize_timezone')`) |
 | 14 | `initialize_url_constants` | 1591 | — (`init.php` / `router.php` içinde satır içi) | Kopya değil: `HOSTNAME`, `SOFTWARE_DIRECTORY`, `PATH`'i yalnız yönlendirme gerektiğinde tanımlar | `cb4957d` 2026-08-13 | — | dokunulmadı |
 | 15 | `get_request_uri` | 1631 | `includes/fn/forms.php` | Aynı (yalnız yorum girintisi) | `cb4957d` 2026-08-13 | `6b10e40` 2026-09-17 (`functions.php`: `cb4957d`) | **bilerek bırakıldı** |
-| 16 | `check_if_request_is_secure` | 1662 | `includes/fn/core.php` | Aynı (yorumlar ve `TRUE`/`true` yazımı); kopyanın üstünde "KEEP IN SYNC" notu var | `cb4957d` 2026-08-13 | `6b10e40` 2026-09-17 (`functions.php`: `cb4957d`) | **bilerek bırakıldı** |
-| 17 | `check_proxy_ssl_headers` | 1682 | `includes/fn/core.php` | Aynı (yorumlar ve `TRUE`/`true` yazımı); "KEEP IN SYNC" notu var | `cb4957d` 2026-08-13 | `6b10e40` 2026-09-17 (`functions.php`: `cb4957d`) | **bilerek bırakıldı** |
+| 16 | `check_if_request_is_secure` | 1662 | `includes/fn/core.php` | Aynı (yorumlar ve `TRUE`/`true` yazımı); kopyanın üstünde "KEEP IN SYNC" notu var. Başlık ayrıştırma ve eş güven denetimi iki tarafın da yüklediği `includes/fn/request_scheme.php`'de; kopyada yalnız doğrudan TLS denetimi ve iki çağrı kaldı | `cb4957d` 2026-08-13 | `6b10e40` 2026-09-17 (`functions.php`: `cb4957d`) | **bilerek bırakıldı** |
+| 17 | `check_proxy_ssl_headers` | 1682 | `includes/fn/core.php` | Aynı (yorumlar ve `TRUE`/`true` yazımı); "KEEP IN SYNC" notu var | `cb4957d` 2026-08-13 | `6b10e40` 2026-09-17 (`functions.php`: `cb4957d`) | **kaldırıldı** → `pg_forwarded_https()` (`includes/fn/request_scheme.php`), `get_file.php` doğrudan onu çağırır |
 | 18 | `initialize_timezone` | 1724 | — (`init.php` içinde satır içi, MySQL `time_zone`'u da ayarlar) | Kopya değil: PHP saat dilimini yalnız tarih gerektiğinde kurar; ortak `check_private_access()` onu `function_exists()` ile çağırır | `cb4957d` 2026-08-13 | — | dokunulmadı |
 
 Ayrıca `pg_folder_edit_access` (`get_file.php`'de hiç yoktu) asıl
@@ -72,7 +72,7 @@ tanımlar.
 - **`get_file.php` `functions.php`'yi yüklemez.** Tek bir görsel isteği için 24
   modülü ve `init.php`'yi ayrıştırmamak dosyanın var oluş nedenidir; `db*`,
   `escape` ve URL/TLS yardımcıları (`get_request_uri`,
-  `check_if_request_is_secure`, `check_proxy_ssl_headers`) bu yüzden yerel
+  `check_if_request_is_secure`) bu yüzden yerel
   kalır. Ortak dosyaya alınmaları da mümkün değildir: `includes/authentication.php`
   onları **kullanır**, tanımlarsa `functions.php` tarafıyla çakışır.
 - **`output_error` dosya sunumuna özgüdür.** Dosya isteğine 403/404 kodu ve düz

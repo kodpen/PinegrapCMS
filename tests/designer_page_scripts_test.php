@@ -4,7 +4,8 @@
  *
  * Tests for the platform scripts a visual editor page gets from its markup:
  * pg_bs_tips_inject() adds assets/js/pg_bs_tips.js (Bootstrap tooltips and
- * popovers) to a page holding data-bs-toggle="tooltip" or "popover", once,
+ * popovers, and the tab holding the address's anchor) to a page holding
+ * data-bs-toggle="tooltip", "popover", "tab", "pill" or "list", once,
  * before the last </body>; the editor's Preview asks the same table of
  * markers (_SD_PAGE_SCRIPTS in assets/js/style_designer.src.js) with the same
  * expression, and loads the framework's script only when the design's
@@ -60,13 +61,17 @@ function _test_page_scripts_js_rows()
 	return $rows;
 }
 
-function test_page_scripts_pattern_finds_tooltips_and_popovers()
+function test_page_scripts_pattern_finds_tooltips_popovers_and_tabs()
 {
 	$hits = array(
 		'<p data-bs-toggle="tooltip" title="x">',
 		"<button data-bs-toggle='popover'>",
 		'<a data-bs-toggle=tooltip>',
 		'<span DATA-BS-TOGGLE = "Popover">',
+		// Tabs: the script shows the one holding the address's anchor.
+		'<button data-bs-toggle="tab" data-bs-target="#day-2">',
+		'<a data-bs-toggle="pill" href="#b">',
+		'<a data-bs-toggle="list" href="#c">',
 	);
 	foreach ($hits as $html) {
 		pg_assert_true((bool) preg_match(pg_bs_tips_pattern(), $html), $html);
@@ -76,6 +81,7 @@ function test_page_scripts_pattern_finds_tooltips_and_popovers()
 		'<a data-bs-toggle="dropdown">',
 		'<p data-bs-toggle="tooltips">',
 		'<p title="tooltip">',
+		'<table data-bs-toggle="table">',
 	);
 	foreach ($misses as $html) {
 		pg_assert_false((bool) preg_match(pg_bs_tips_pattern(), $html), $html);

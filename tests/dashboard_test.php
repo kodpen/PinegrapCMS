@@ -331,7 +331,7 @@ function test_dashboard_percent_figures_follow_the_language()
 		'includes/dashboard/widgets/widget_18.php' => array("optimization_percent'] . '%"),
 		'includes/dashboard/widgets/widget_31.php' => array("0) . '%</span>'"),
 		'includes/dashboard/widgets/widget_32.php' => array("0) . '%</span>'"),
-		'includes/dashboard/widgets/widget_2.php'  => array("\$health_score . '%\"", "pg-health-score\">' . (int) \$health_score . '<span>%</span>'"),
+		'includes/fn/health_gauge.php'  => array("\$health_score . '%\"", "pg-health-score\">' . (int) \$health_score . '<span>%</span>'"),
 	);
 
 	foreach ($glued as $path => $needles) {
@@ -352,7 +352,7 @@ function test_dashboard_percent_figures_follow_the_language()
 // gap-y-1 is no class in Bootstrap 6 or the panel CSS; row-gap-1 is.
 function test_dashboard_release_legend_row_gap()
 {
-	$source = dashboard_test_source('welcome.php');
+	$source = dashboard_test_source('includes/fn/system_status.php');
 
 	pg_assert_true(strpos($source, 'gap-y-1') === false, 'gap-y-1 left');
 	pg_assert_contains('d-flex flex-wrap row-gap-1 ', $source);

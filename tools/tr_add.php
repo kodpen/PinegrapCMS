@@ -84,6 +84,13 @@ if ($from !== '') {
 	}
 }
 
+foreach ($pairs as $key => $value) {
+	if (!preg_match('//u', (string) $key) || !preg_match('//u', (string) $value)) {
+		fwrite(STDERR, "Not UTF-8 text: $key\n");
+		exit(1);
+	}
+}
+
 if (!$normalize && (count($pairs) === 0)) {
 	fwrite(STDERR, "Nothing to add. Usage: php tools/tr_add.php [--lang=tr] [--replace] \"English\" \"Translation\"\n");
 	exit(1);

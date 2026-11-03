@@ -43,12 +43,12 @@ $status = $row['status'];
 
 // get user id for user
 $query = "SELECT user_id FROM user WHERE user_username = ?";
-$result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error(lang('Query failed.'));
+$result = db_q($query, array((string) ($_SESSION['sessionusername'] ?? ''))) or output_error(lang('Query failed.'));
 $row = mysqli_fetch_assoc($result);
-$user_id = $row['user_id'];
+$user_id = $row['user_id'] ?? null;
 
 // if order user id is different than user id, output error
-if ($order_user_id != $user_id) {
+if (!pg_order_view_owner_matches($order_user_id, $user_id)) {
     output_error(lang('You do not have access to this order.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 

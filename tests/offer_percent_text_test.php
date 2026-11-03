@@ -39,7 +39,7 @@ function test_offer_percent_value_follows_the_language()
 
 	pg_assert_same(offer_percent_text_test_percent(10), _pg_offer_value_text($order));
 	pg_assert_same(lang('Order') . ' ' . offer_percent_text_test_percent(10), _pg_offer_action_chip($order, array()));
-	pg_assert_same(lang('Shipping') . ' ' . offer_percent_text_test_percent(100), _pg_offer_action_chip($shipping, array()));
+	pg_assert_same(lang(array('string' => 'Shipping {var:1}', 'vars' => offer_percent_text_test_percent(100))), _pg_offer_action_chip($shipping, array()));
 	pg_assert_same(
 		lang(array('string' => '{var:1} off shipping ({var:2})', 'vars' => array(offer_percent_text_test_percent(100), 'Courier'))),
 		_pg_offer_action_text($shipping, array(), $methods)
@@ -79,12 +79,12 @@ function test_offer_editor_percent_uses_the_template()
 	pg_assert_contains("lang('{var:1} off shipping ({var:2})')", $php);
 }
 
-// The Optimize badges on Files, Design Files and Edit File.
+// The Optimize badges on Design Files and Edit File.
 function test_image_optimize_badges_follow_the_language()
 {
 	pg_assert_same(0, calculate_optimizable_percent('/nonexistent/' . md5('x') . '.png'));
 
-	foreach (array('view_files.php', 'view_design_files.php', 'edit_file.php') as $path) {
+	foreach (array('view_design_files.php', 'edit_file.php') as $path) {
 		$source = offer_percent_text_test_source($path);
 		pg_assert_true(strpos($source, "'{var:1}%'") !== false, $path . ' formats through the key');
 		pg_assert_true(strpos($source, "optimization_percent'] . '%") === false, $path . ' glues the sign');

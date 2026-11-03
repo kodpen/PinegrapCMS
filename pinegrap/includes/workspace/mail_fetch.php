@@ -306,7 +306,19 @@ function ws_mail_fetch_box($box, $out)
                 break;
             }
 
-            $ingested = ws_mail_ingest((string) pg_imap_fetch_section($body[$uid], 'BODY[]'), $box);
+            $raw = (string) pg_imap_fetch_section($body[$uid], 'BODY[]');
+
+            // A box that reads bounces records a failure of the site's own
+            // mail (its return path's token signs the address) and files the
+            // report out of the channel: marked or moved as taken mail.
+            if (ws_mail_fetch_records_bounce($box, $raw)) {
+                $outcomes[$uid] = 'done';
+                $taken[] = $uid;
+                $out['bounces'] = (int) ($out['bounces'] ?? 0) + 1;
+                continue;
+            }
+
+            $ingested = ws_mail_ingest($raw, $box);
             $outcome = ws_mail_fetch_outcome($ingested);
 
             if ($outcome === 'stop') {
@@ -350,6 +362,27 @@ function ws_mail_fetch_box($box, $out)
     }
 
     return array_merge($out, array('ok' => true));
+}
+
+/**
+ * Whether a downloaded mail is a bounce of the site's own mail that this
+ * box records: the box reads bounces, the mail is a delivery failure or a
+ * complaint (pg_mail_parse_dsn()) and one of its return-path tokens signs
+ * the address it reports. Anything else goes to ws_mail_ingest() as before.
+ *
+ * @param array  $box
+ * @param string $raw
+ * @return bool
+ */
+function ws_mail_fetch_records_bounce($box, $raw)
+{
+    $settings = ws_mail_box_settings($box);
+
+    if (empty($settings['reads_bounces']) || !function_exists('pg_mail_bounce_record_dsn') || !pg_mail_bounce_tokens_in($raw)) {
+        return false;
+    }
+
+    return pg_mail_bounce_record_dsn(pg_mail_parse_dsn($raw));
 }
 
 /**

@@ -141,6 +141,9 @@ function _render_system_widget_ad_region($tree_json, $widget_id, $cfg = array(),
     ));
     _pg_inject_messages_node($tree, 'ad_region');
 
+    // A page may place one region twice.
+    $placed = ++$placement;
+    $again  = pg_sw_widget_drawn_before($widget_id) ? $placed : 0;
     $split = _split_widget_tree($tree);
     $can_edit = ($region_id > 0 && $mode !== 'background' && pg_aw_can_edit_region($region_id));
     $rows = '';
@@ -153,7 +156,7 @@ function _render_system_widget_ad_region($tree_json, $widget_id, $cfg = array(),
             foreach ($t['children'] as $child) $html .= _render_tree_node($child, 0, 0);
             // The layout's ids are made the row's own before the ad's markup
             // goes in: an id in the ad stays as the ad's author wrote it.
-            $html = pg_sw_uniquify_row_ids(trim($html), $widget_id, (int)$ad['id']);
+            $html = pg_sw_uniquify_loop_row_ids(trim($html), $widget_id, (int)$ad['id'], $again);
             $html = pg_sw_sweep_tokens(_pg_sw_fill_tokens($html, pg_sw_escape_token_values(array(
                 '__ad_name'         => (string)$ad['name'],
                 '__ad_label'        => (string)$ad['label'],
@@ -174,7 +177,6 @@ function _render_system_widget_ad_region($tree_json, $widget_id, $cfg = array(),
         '__ad_region_name' => is_array($region) ? (string)$region['name'] : '',
         '__ad_count'       => (string)count($ads),
     ));
-    // A page may place one region twice.
-    $static = pg_sw_uniquify_row_ids(pg_sw_sweep_tokens(_pg_sw_fill_tokens($static, $tokens)), $widget_id, 1000 + (++$placement));
+    $static = pg_sw_uniquify_row_ids(pg_sw_sweep_tokens(_pg_sw_fill_tokens($static, $tokens)), $widget_id, 1000 + $placed);
     return str_replace('<!--pg-loop-slot-->', $rows, $static);
 }

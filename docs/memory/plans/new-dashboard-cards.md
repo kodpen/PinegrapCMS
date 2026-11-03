@@ -18,8 +18,8 @@ description: New dashboard plan, cards 1-16 (General, Content, Visitors): id, de
 - `notes` My notes, S: one plain-text box saved as typed, at most 2,000 characters, in the layout.
 
 ## Which Content cards?
-- `content` Content and design, M: thumbnails of the four last edited pages (name, Draft, Live or the scheduled time, when); "Open the Visual Editor".
-- `comments` Comment moderation, S: waiting comments as bubbles with Approve and Spam; "All comments". Widget 25.
+- `content` Content and design, M: four last edited pages (name, state, when); "Open the Visual Editor". N7 cards: `ui/dashboard-v2-content-cards.md`.
+- `comments` Comment moderation, S: waiting comments as bubbles with Approve; "All comments". Widget 25.
 - `files` File management, S: storage ring (images, documents, other, free), last uploads; "Go to files". Widget 18.
 
 ## Which Visitors cards?
@@ -27,4 +27,4 @@ description: New dashboard plan, cards 1-16 (General, Content, Visitors): id, de
 - `visitmap` Visitor map, S, 30 days: Turkey with a bubble per city sized by visits; "Last 30 days · 1,284 visits · abroad 6%"; "Cities" bars. Question 2.
 - `engagement` Online engagement, S: "n people on the site now", "11 visits in the last 30 minutes", 30 one-minute bars, pages being viewed. Widget 4; refreshes.
 - `gsearch` Google Search, S, 7 days: clicks, impressions, click rate, average position with changes; top queries. Widget 31, when linked.
-- `ga` Google Analytics, M, 7 days: users, sessions, engagement rate, average time; sources as one stacked bar. Widget 32, when linked.
+- `ga` Google Analytics, M, no period: users, sessions, engagement rate, views; sources as one stacked bar. Widget 32, when linked.

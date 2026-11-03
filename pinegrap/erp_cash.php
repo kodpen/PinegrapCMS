@@ -24,6 +24,10 @@ require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
 include_once('liveform.class.php');
 $liveform = new liveform('erp_cash');
 
+// The read-only accountant reads the tills and their books; nothing that
+// writes is offered.
+$readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
+
 $cash_accounts = (array) db_items("SELECT * FROM erp_cash_accounts
     ORDER BY is_active DESC, sort_order ASC, name ASC");
 
@@ -56,9 +60,9 @@ foreach ($cash_accounts as $till) {
     $output_rows .=
         '<tr>
             <td class="align-middle text-start">
-                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_erp_till.php?id=' . $id . '\'"><i class="bi bi-pencil"></i></button>
+                <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . ($readonly ? lang('View') : lang('Edit')) . '" onclick="window.location.href=\'edit_erp_till.php?id=' . $id . '\'"><i class="bi ' . ($readonly ? 'bi-eye' : 'bi-pencil') . '"></i></button>
             </td>
-            <td class="text-nowrap align-middle chart_label' . $name_class . '">' . h($till['name']) . '</td>
+            <td style="min-width:10rem;max-width:280px" class="text-wrap text-break align-middle chart_label' . $name_class . '">' . h($till['name']) . '</td>
             <td class="align-middle">' . h($kind_labels[$till['kind']] ?? $till['kind']) . '</td>
             <td class="align-middle">' . h($till['bank_name']) . '</td>
             <td style="max-width:220px" class="text-wrap text-break align-middle">' . h($till['iban']) . '</td>
@@ -85,10 +89,10 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                        <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_receipt.php?direction=collection"><i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i>' . lang('Record a Receipt') . '</a>
+                        ' . ($readonly ? '' : '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_receipt.php?direction=collection"><i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i>' . lang('Record a Receipt') . '</a>
                         <a class="btn btn-sm btn-outline theme-secondary" href="add_erp_receipt.php?direction=payment"><i class="bi bi-box-arrow-up me-1" aria-hidden="true"></i>' . lang('Record a Payment') . '</a>
                         <a class="btn btn-sm btn-outline theme-secondary" href="add_erp_transfer.php"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>' . lang('Transfer') . '</a>
-                        <a class="btn btn-sm btn-outline theme-secondary" href="add_erp_till.php"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang('Open a Till') . '</a>
+                        <a class="btn btn-sm btn-outline theme-secondary" href="add_erp_till.php"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang('Open a Till') . '</a>') . '
                         <a class="btn btn-sm btn-outline theme-secondary" href="erp_cashflow.php"><i class="bi bi-graph-up-arrow me-1" aria-hidden="true"></i>' . lang('Cash flow') . '</a>
                     </nav>
 

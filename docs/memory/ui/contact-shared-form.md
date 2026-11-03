@@ -5,12 +5,13 @@ description: The contact create and edit screens share includes/forms/contact_fo
 
 ## Where is the contact form?
 - `includes/forms/contact_form.php` (gate `PG_FUNCTIONS_DIR`). `add_contact.php` and `edit_contact.php` stay at the root as thin wrappers and `require_once` it.
-- Markup: `pg_contact_form_name_row($values, $is_new, $image_html)` (name + picture card), `pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_html)` (work, home, membership, notes, affiliate, groups). `$values` is the raw stored row, `array()` on create; escaping is inside. `$is_new` picks the "New Contact's …" card titles and the picker's input name.
+- Markup: `pg_contact_form_name_card($values, $is_new)`, `pg_contact_form_picture_card($is_new, $image_html)`, `pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_html)` (work, home, membership, notes, affiliate, groups). `$values` is the raw stored row, `array()` on create; escaping is inside. `$is_new` picks the "New Contact's …" card titles; both screens post the picture as `file_id` (`contact-form-checks.md`).
+- Layout (`ui/edit-screen-wide-layout.md`, #5095): `pg_contact_form_layout($form, $status, $buttons)`. Form column: name, subscriber, detail cards. Status column (sticky box): picture, and on edit the connected account card. Membership stays in the form column beside the notes: a taller sticky box would hide its bottom below the window. Test: `tests/contact_form_layout_test.php`.
 - Groups: `pg_contact_form_groups($user)` (allowed, by name), `…_group_states($id, $groups)` (member / opted in), `…_group_cells($groups, $states)`.
 - Description has no `maxlength`: `contacts.description` is LONGTEXT and site forms fill it, so a 50-character cap refused longer notes on save (#2892).
 
 ## What does a save share?
-- `pg_contact_form_email()` (trim + invalid stops), `…_affiliate_code($post, $id)` (trimmed, duplicate check through `…_affiliate_code_taken()`, 0 = new; generates when approved without one; a code of only spaces is blank, so it is not looked up — under PAD SPACE it matched every contact with the empty code and was refused as 'already in use'), `…_columns($post, $user_id)` + `…_affiliate_columns()` (strings for `db_q()`; an array-posted field saves `''`), `…_sync_opt_in()` (same-address opt-in with its audit read/record), `…_save_groups()` (ticked in, unticked out, opt-in rows, join/leave events), `…_affiliate_key_code()`, `…_redirect()` (send_to).
+- `pg_contact_form_email()` (trim + invalid stops), `…_affiliate_code($post, $id)` (trimmed, duplicate check through `…_affiliate_code_taken()`, 0 = new; generates when approved without one; a code of only spaces is blank and not looked up (PAD SPACE matched every empty code)), `…_columns($post, $user_id)` + `…_affiliate_columns()` (strings for `db_q()`; an array-posted field saves `''`), `…_sync_opt_in()` (same-address opt-in with its audit read/record), `…_save_groups()` (ticked in, unticked out, opt-in rows, join/leave events), `…_affiliate_key_code()`, `…_redirect()` (send_to).
 
 ## What stays in the screens?
 - Create: the subscriber card (opt-in ticked), the role-3 "at least one group" check, the INSERT, the create audit line and `pg_announce_contact_created()`, affiliate columns written even while the program is off.
@@ -18,11 +19,11 @@ description: The contact create and edit screens share includes/forms/contact_fo
 - Tests: `tests/contact_form_test.php`. Screen pins (organize, description, totals, names): `tests/contact_screens_test.php`.
 
 ## Which keyboards?
-- `pg_contact_form_text_field()` takes a fifth `$keyboard` argument printed through `pg_contact_form_keyboard_attributes()`: `'tel'` → `inputmode="tel"` (Business Phone/Fax, Home Phone/Fax, Mobile Phone), `'url'` → `inputmode="url" spellcheck="false" autocapitalize="off"` (Website; iOS capitalised its first letter). Same set as the Contacts filters (`contact-filter-keyboards.md`).
+- `pg_contact_form_text_field()` takes a fifth `$keyboard` argument printed through `pg_contact_form_keyboard_attributes()`: `'tel'` → `inputmode="tel"`, `'url'` → `inputmode="url"`, no spellcheck or capitalising (Website). Same set as the Contacts filters (`contact-filter-keyboards.md`).
 - Every box stays `type="text"`: phone values carry spaces, `+` and parentheses, and Website accepts a bare `www.example.com`. Zip codes keep the text keyboard; the e-mail box (`inputmode="email"`) and VKN/TCKN (`inputmode="numeric"`) are written in their own markup.
 - Test: `tests/contact_form_keyboards_test.php`.
 
 ## How do the Contacts list's bulk opt-in, opt-out and organize work?
-- Opt-In/Opt-Out Selected (`edit_contacts.php` `optin`/`optout`) call `pg_contact_bulk_set_opt_in($user, $ids, '1'|'0')`: every accessible ticked contact and every contact with its address get the status, as `edit_contact.php` does. One write per address (`pg_contact_bulk_opt_in_targets()`, case-insensitive); the notice counts only contacts whose status changed (`pg_contact_bulk_opt_in_changed()`), the address's other rows included. Before, only the ticked row changed and every ticked row was counted.
-- Organize Selected skips a posted group id `validate_contact_group_access()` refuses (the popup lists only allowed groups; a crafted post got past it).
+- Opt-In/Opt-Out Selected (`edit_contacts.php` `optin`/`optout`) call `pg_contact_bulk_set_opt_in($user, $ids, '1'|'0')`: every accessible ticked contact and every contact with its address get the status, as `edit_contact.php` does. One write per address (`pg_contact_bulk_opt_in_targets()`, case-insensitive); the notice counts only contacts whose status changed (`pg_contact_bulk_opt_in_changed()`), the address's other rows included.
+- Organize Selected skips a posted group id `validate_contact_group_access()` refuses.
 - Test: `tests/contact_bulk_opt_in_test.php`.

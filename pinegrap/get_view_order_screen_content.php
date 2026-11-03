@@ -167,12 +167,12 @@ function get_view_order_screen_content($properties)
 
     // get user id for user
     $query = "SELECT user_id FROM user WHERE user_username = ?";
-    $result = db_q($query, array((string) $_SESSION['sessionusername'])) or output_error('Query failed.');
+    $result = db_q($query, array((string) ($_SESSION['sessionusername'] ?? ''))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
-    $user_id = $row['user_id'];
+    $user_id = $row['user_id'] ?? null;
 
     // if order user id is different than user id, output error
-    if ($order_user_id != $user_id) {
+    if (!pg_order_view_owner_matches($order_user_id, $user_id)) {
         output_error(lang('You do not have access to this order.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
@@ -506,21 +506,21 @@ function get_view_order_screen_content($properties)
                         if ((ECOMMERCE_CREDIT_DEBIT_CARD == false) || (ECOMMERCE_PAYMENT_GATEWAY != 'ClearCommerce')) {
                             $output_start_date_row =
                                 '<tr>
-                                    <td>Start Date:</td>
+                                    <td>' . h(lang('Start Date')) . ':</td>
                                     <td>' . get_absolute_time(array('timestamp' => strtotime($recurring_start_date), 'type' => 'date', 'size' => 'long')) . '</td>
                                 </tr>';
                         }
                         
                         $output_recurring_schedule_fieldset =
                             '<fieldset class="software_fieldset">
-                                <legend class="software_legend">Payment Schedule</legend>
+                                <legend class="software_legend">' . h(lang('Payment Schedule')) . '</legend>
                                     <table>
                                         <tr>
-                                            <td>Frequency:</td>
+                                            <td>' . h(lang('Frequency')) . ':</td>
                                             <td>' . $recurring_payment_period . '</td>
                                         </tr>
                                         <tr>
-                                            <td>Number of Payments:</td>
+                                            <td>' . h(lang('Number of Payments')) . ':</td>
                                             <td>' . $output_recurring_number_of_payments . '</td>
                                         </tr>
                                         ' . $output_start_date_row . '
@@ -578,23 +578,23 @@ function get_view_order_screen_content($properties)
                                     <legend class="software_legend">Gift Card' . $output_legend_quantity_number . '</legend>
                                         <table>
                                             <tr>
-                                                <td>Amount:</td>
+                                                <td>' . h(lang('Amount')) . ':</td>
                                                 <td><strong>' . prepare_price_for_output($product_price * 100, false, $discounted_price = '', 'html') . '</strong></td>
                                             </tr>
                                             <tr>
-                                                <td>Recipient Email:</td>
+                                                <td>' . h(lang('Recipient Email')) . ':</td>
                                                 <td>' . h($order_item_gift_card['recipient_email_address']) . '</td>
                                             </tr>
                                             <tr>
-                                                <td>Your Name:</td>
+                                                <td>' . h(lang('Your Name')) . ':</td>
                                                 <td>' . h($order_item_gift_card['from_name']) . '</td>
                                             </tr>
                                             <tr>
-                                                <td style="vertical-align: top">Message:</td>
+                                                <td style="vertical-align: top">' . h(lang('Message')) . ':</td>
                                                 <td>' . nl2br(h($order_item_gift_card['message'])) . '</td>
                                             </tr>
                                             <tr>
-                                                <td>Delivery Date:</td>
+                                                <td>' . h(lang('Delivery Date')) . ':</td>
                                                 <td>' . $output_delivery_date . '</td>
                                             </tr>
                                         </table>
@@ -980,7 +980,7 @@ function get_view_order_screen_content($properties)
                         // update grand shipping total
                         $grand_shipping += $shipping_cost;
 
-                        $shipping_description = 'Shipping Method: ' . $shipping_method_name;
+                        $shipping_description = h(lang('Shipping Method')) . ': ' . $shipping_method_name;
 
                         // get arrival date information
                         $query = "SELECT name, custom FROM arrival_dates WHERE id = ?";
@@ -990,7 +990,7 @@ function get_view_order_screen_content($properties)
                         if (mysqli_num_rows($result) > 0) {
                             $row = mysqli_fetch_assoc($result);
                             
-                            $shipping_description .= '; Requested Arrival Date: ';
+                            $shipping_description .= '; ' . h(lang('Requested Arrival Date')) . ': ';
                             
                             // if selected arrival date had a custom field, use actual date in description
                             if ($row['custom'] == 1) {
@@ -1043,12 +1043,12 @@ function get_view_order_screen_content($properties)
                     // prepare output for this ship to
                     $output_ship_tos .=
                         '<tr class="product heading mobile_hide" style="border: none">
-                            <th class="heading_item" style="text-align: left">Item</th>
-                            <th class="heading_description" style="text-align: left">Description</th>
+                            <th class="heading_item" style="text-align: left">' . h(lang('Item')) . '</th>
+                            <th class="heading_description" style="text-align: left">' . h(lang('Description')) . '</th>
                             <th class="heading_selection" style="text-align: left">' . $output_quantity_heading . '</th>
                             ' . $output_shipped_quantity_heading_cell . '
                             <th class="heading_price" style="text-align: right">' . $output_price_heading . '</th>
-                            <th class="heading_amount" style="text-align: right">Amount</th>
+                            <th class="heading_amount" style="text-align: right">' . h(lang('Amount')) . '</th>
                         </tr>
                         ' . $output_products . '
                         ' . $output_shipping . '
@@ -1170,13 +1170,13 @@ function get_view_order_screen_content($properties)
                     // prepare recurring output for this ship to
                     $output_recurring_ship_tos .=
                         '<tr class="products heading mobile_hide" style="border: none">
-                            <th class="heading_item" style="text-align: left">Item</th>
-                            <th class="heading_description" style="text-align: left">Description</th>
-                            <th class="heading_frequency" style="text-align: left">Frequency</th>
+                            <th class="heading_item" style="text-align: left">' . h(lang('Item')) . '</th>
+                            <th class="heading_description" style="text-align: left">' . h(lang('Description')) . '</th>
+                            <th class="heading_frequency" style="text-align: left">' . h(lang('Frequency')) . '</th>
                             <th class="heading_selection" style="text-align: left">' . $output_quantity_heading . '</th>
                             ' . $output_shipped_quantity_heading_cell . '
                             <th class="heading_price" style="text-align: right">' . $output_price_heading . '</th>
-                            <th class="heading_amount" style="text-align: right">Amount</th>
+                            <th class="heading_amount" style="text-align: right">' . h(lang('Amount')) . '</th>
                         </tr>
                         ' . $output_recurring_products . '
                         <tr class="ship_tos data">
@@ -1229,7 +1229,7 @@ function get_view_order_screen_content($properties)
 
             $output_discount =
                     '<tr class="order_totals data">
-                        <td class="mobile_left" colspan="' . (4 + $number_of_shipped_quantity_columns) . '" style="text-align: right">Discount:</td>
+                        <td class="mobile_left" colspan="' . (4 + $number_of_shipped_quantity_columns) . '" style="text-align: right">' . h(lang('Discount')) . ':</td>
                         <td class="mobile_right" style="text-align: right">-' . prepare_price_for_output($order_discount * 100, FALSE, $discounted_price = '', 'html') . '</td>
                     </tr>';
         }
@@ -1258,7 +1258,7 @@ function get_view_order_screen_content($properties)
 
             $output_grand_tax =
                     '<tr class="order_totals data">
-                        <td class="mobile_left" colspan="' . (4 + $number_of_shipped_quantity_columns) . '" style="text-align: right">Tax:</td>
+                        <td class="mobile_left" colspan="' . (4 + $number_of_shipped_quantity_columns) . '" style="text-align: right">' . h(lang('Tax')) . ':</td>
                         <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($grand_tax * 100, FALSE, $discounted_price = '', 'html') . '</td>
                     </tr>';
         }
@@ -1270,7 +1270,7 @@ function get_view_order_screen_content($properties)
 
             $output_grand_shipping =
                 '<tr class="order_totals data">
-                    <td class="mobile_left" colspan="' . (4 + $number_of_shipped_quantity_columns) . '" style="text-align: right">Shipping:</td>
+                    <td class="mobile_left" colspan="' . (4 + $number_of_shipped_quantity_columns) . '" style="text-align: right">' . h(lang('Shipping')) . ':</td>
                     <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($grand_shipping * 100, FALSE, $discounted_price = '', 'html') . '</td>
                 </tr>';
         }
@@ -1329,7 +1329,7 @@ function get_view_order_screen_content($properties)
 
             $output_surcharge =
                 '<tr class="order_totals data">
-                    <td class="mobile_left" colspan="' . (4 + $number_of_shipped_quantity_columns) . '" style="text-align: right">Surcharge:</td>
+                    <td class="mobile_left" colspan="' . (4 + $number_of_shipped_quantity_columns) . '" style="text-align: right">' . h(lang('Surcharge')) . ':</td>
                     <td class="mobile_right" style="text-align: right">' . prepare_price_for_output($surcharge * 100, FALSE, $discounted_price = '', 'html') . '</td>
                 </tr>';
         }
@@ -1341,13 +1341,13 @@ function get_view_order_screen_content($properties)
             
             $output_number_of_installment = 
                 '<tr class="order_totals data">
-                    <td class="mobile_left" colspan="4" style="text-align: right">Number of Installments:</td>
+                    <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Number of Installments')) . ':</td>
                     <td class="mobile_right" style="text-align: right">' . $payment_installment . '</td>
                 </tr>';
 
             $output_installment_charges =
                 '<tr class="order_totals data">
-                    <td class="mobile_left" colspan="4" style="text-align: right">Installment Charge:</td>
+                    <td class="mobile_left" colspan="4" style="text-align: right">' . h(lang('Installment Charge')) . ':</td>
                     <td class="mobile_right" style="text-align: right">' . pg_format_money($installment_charges, BASE_CURRENCY_SYMBOL) . '</td>
                 </tr>';
         }
@@ -1425,7 +1425,7 @@ function get_view_order_screen_content($properties)
             $output_recurring_products =
                 '<div class="recurring_products">
                 <fieldset style="padding: 0px 10px 10px 10px; margin-bottom: 15px" class="software_fieldset">
-                    <legend class="software_legend">Recurring Charges</legend>
+                    <legend class="software_legend">' . h(lang('Recurring Charges')) . '</legend>
                     <table class="products" width="100%" cellspacing="2" cellpadding="2" border="0">
                         ' . $output_recurring_ship_tos . '
                         ' . $output_payment_periods . '
@@ -1549,17 +1549,17 @@ function get_view_order_screen_content($properties)
             ' . h($billing_country) . '<br />';
 
         if ($billing_phone_number) {
-            $output_billing_information .= 'Phone: ' . h($billing_phone_number) . '<br />';
+            $output_billing_information .= h(lang('Phone')) . ': ' . h($billing_phone_number) . '<br />';
         }
 
         if ($billing_fax_number) {
-            $output_billing_information .= 'Fax: ' . h($billing_fax_number) . '<br />';
+            $output_billing_information .= h(lang('Fax')) . ': ' . h($billing_fax_number) . '<br />';
         }
 
         $output_billing_information .= h($billing_email_address) . '<br />';
         
         if ($po_number) {
-            $output_billing_information .= 'PO Number: ' . h($po_number) . '<br />';
+            $output_billing_information .= h(lang('PO Number')) . ': ' . h($po_number) . '<br />';
         }
         
         if (ECOMMERCE_TAX_EXEMPT == true) {
@@ -1595,7 +1595,7 @@ function get_view_order_screen_content($properties)
         if (($gift_card_discount > 0)  && (count($applied_gift_cards) > 0)) {
             $output_applied_gift_cards =
                 '<div class="applied_gift_cards" style="margin-bottom: 1em">
-                    <div class="heading">Applied Gift Cards</div>
+                    <div class="heading">' . h(lang('Applied Gift Cards')) . '</div>
                     <div class="data">
                     <ul style="margin-top: 0em">';
             
@@ -1704,7 +1704,7 @@ function get_view_order_screen_content($properties)
             '<div class="software_order_view">
                 '  . $output_return_messages . $output . $output_returns . '
             </div>
-            <div>' . $output_primary_button . '<a href="' . h(get_page_type_url('my account')) . '" class="software_button_secondary back_button">Back</a>' . $output_delete_button . '</div>';
+            <div>' . $output_primary_button . '<a href="' . h(get_page_type_url('my account')) . '" class="software_button_secondary back_button">' . h(lang('Back')) . '</a>' . $output_delete_button . '</div>';
 
     // Otherwise this is a custom layout.
     } else {

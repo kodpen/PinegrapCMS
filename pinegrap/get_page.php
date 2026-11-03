@@ -60,8 +60,12 @@ foreach (array('page', 'a', 'o', 't', 'utm_source', 'utm_medium', 'utm_campaign'
 // completely, while sqlmap and Nikto (which contain none of the keywords)
 // were classified as ordinary human visitors.
 
+// The panel's own preview of the page (File Manager preview pane, Quick
+// look) is no visit: no visitor record, no page view.
+$pg_panel_preview = pg_request_is_panel_preview($_GET, isset($_SESSION['sessionusername']));
+
 // if visitor tracking is on, initialize tracking
-if (defined('VISITOR_TRACKING') && VISITOR_TRACKING)
+if (defined('VISITOR_TRACKING') && VISITOR_TRACKING && !$pg_panel_preview)
 {
 	init_tracking();
 }
@@ -278,6 +282,10 @@ else
 // submissions for the page it sits on, and only this function can tell it
 // which page that is. First registration wins, so the later call is a no-op.
 pg_rendered_page($page_id);
+// The page an AI fetcher's request drew, for its counter (waf.php).
+if (function_exists('waf_ai_fetch_page')) {
+	waf_ai_fetch_page($page_id);
+}
 // Determine if user has edit access to page.
 // We will use this in several places below.
 if (check_edit_access($folder_id) == true)
@@ -453,8 +461,9 @@ case 'guest':
 	break;
 case 'registration':
 	// if user is not logged in or has an invalid login, then forward user to Registration Entrance page
-	// (the site's designed sign-in page, which links to sign-up, when it has one)
-	if (pg_session_signed_in() == false)
+	// (the site's designed sign-in page, which links to sign-up, when it has one);
+	// a form's confirmation page opens for the visitor who just submitted it
+	if ((pg_session_signed_in() == false) && !pg_cf_registration_gate_lets_submitter($page_id))
 	{
 		header('Location: ' . URL_SCHEME . HOSTNAME . pg_sw_sign_in_url(REQUEST_URL, PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php?send_to=' . urlencode(REQUEST_URL), 'registration entrance', pg_sw_page_is_visual($page_id), $page_id));
 		exit();
@@ -2529,7 +2538,7 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 	else
 	{
 		$output_channel_title = lang(array('string'=>'No feed is available for {var:1}','vars'=>h($page_name)));
-		$output_channel_description = lang(array('string'=>'The page ({var:1}) must be in a Public Folder, and it must be either a Form List View, Calendar View, Catalog, Catalog Detail, or Order Form before a feed can be created.','vars'=>$page_name));
+		$output_channel_description = lang(array('string'=>'The page ({var:1}) must be in a Public Folder, and it must be either a Form List View, Calendar View, Catalog, Catalog Detail, or Order Form before a feed can be created.','vars'=>h($page_name)));
 		set_response_code(404);
 	}
 	// set content type header for XML
@@ -3286,7 +3295,10 @@ else
 	{
 		// disable all links in the content
 		$content = disable_links_in_content($content);
-		$code = $_SESSION['software']['theme_designer'][$_GET['theme_id']]['code'];
+		// theme_id is a key of the theme designer session; anything that is
+		// not a plain value (an array from theme_id[]=) cannot be one.
+		$theme_id = (isset($_GET['theme_id']) && is_scalar($_GET['theme_id'])) ? (string) $_GET['theme_id'] : '';
+		$code = (string) ($_SESSION['software']['theme_designer'][$theme_id]['code'] ?? '');
 		// if the device type is mobile then output mobile border constraint
 		if ($device_type == 'mobile')
 		{
@@ -3309,7 +3321,7 @@ else
 		// Replace software directory placeholders.
 		$code = preg_replace('/{software_directory}/i', pg_regex_replacement(SOFTWARE_DIRECTORY), $code);
 		// put the code that is in the session into the document's head tag
-		$content = preg_replace('/(<\/head>)/i', pg_regex_replacement('<style type="text/css">' . h($code) . '</style>') . '$1', $content);
+		$content = preg_replace('/(<\/head>)/i', pg_regex_replacement('<style type="text/css">' . pg_style_tag_css($code) . '</style>') . '$1', $content);
 	}
 }
 // Stamp local assets with their last-modified time on the way out.
@@ -3329,6 +3341,19 @@ if (function_exists('pg_tr_finalize')) {
 
 if (function_exists('pg_version_assets')) {
 	$content = pg_version_assets($content);
+}
+
+// The real-user speed beacon (includes/fn/page_vitals.php): only on the page a
+// visitor sees, never to staff, the panel's preview or a background render.
+// Before the page cache, so the stored copy measures its visits too.
+if (function_exists('pg_vitals_beacon_inject')) {
+	$content = pg_vitals_beacon_inject($content, $page_id, array(
+		'rendered_html_page' => $rendered_html_page,
+		'toolbar' => $toolbar,
+		'panel_preview' => $pg_panel_preview,
+		'background' => pg_seo_rendering(),
+		'staff' => isset($user) && is_array($user) && ((int) $user['role'] < 3),
+	));
 }
 
 // While the page cache is on: a page drawn the same for every anonymous
@@ -3380,8 +3405,8 @@ if (($rendered_html_page == true) && ($toolbar == false)) {
 	pg_measurable_render(true);
 	pg_rendered_page($page_id);
 }
-// if visitor tracking is on
-if (VISITOR_TRACKING == true)
+// if visitor tracking is on, and this is not the panel's own preview
+if ((VISITOR_TRACKING == true) && !$pg_panel_preview)
 {
 	update_visitor_page_data($page_name, $page_id);
 }

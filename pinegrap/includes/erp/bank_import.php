@@ -791,6 +791,29 @@ function erp_bank_statement_set_separator($statement_id, $separator_key)
 }
 
 /**
+ * The till kinds a bank sends a statement for: a bank account, a card
+ * terminal and a credit card. A cash drawer and a cheque portfolio have none.
+ *
+ * @return string[]
+ */
+function erp_bank_statement_kinds()
+{
+    return array('bank', 'pos', 'credit_card');
+}
+
+/**
+ * The WHERE condition on erp_cash_accounts.kind for the tills a statement
+ * can be taken into.
+ *
+ * @param string $alias  Table alias with its dot, or ''
+ * @return string
+ */
+function erp_bank_statement_kinds_sql($alias = '')
+{
+    return $alias . "kind IN ('" . implode("', '", erp_bank_statement_kinds()) . "')";
+}
+
+/**
  * Take a file in for a bank account: the statement row, with its lines (a
  * CSV) or cells (a workbook) kept until the columns are chosen.
  *
@@ -806,7 +829,7 @@ function erp_bank_statement_upload($cash_account_id, $path, $file_name, $user_id
         return array('success' => false, 'id' => 0, 'error' => lang('Bank statements come with the software update; run the update to use them.'));
     }
 
-    $till = db_item("SELECT id FROM erp_cash_accounts WHERE id = '" . (int) $cash_account_id . "' AND is_active = 1 LIMIT 1");
+    $till = db_item("SELECT id FROM erp_cash_accounts WHERE id = '" . (int) $cash_account_id . "' AND is_active = 1 AND " . erp_bank_statement_kinds_sql() . " LIMIT 1");
 
     if (!is_array($till)) {
         return array('success' => false, 'id' => 0, 'error' => lang('Choose the bank account.'));
@@ -1017,7 +1040,9 @@ function erp_bank_line_key($till_id, $date, $amount, $description)
 
 /**
  * Match the statement's open lines to the till's movements: the same amount,
- * the same way, within three days, and not matched to another line yet.
+ * the same way, within three days, and not matched to another line yet. A
+ * cancel's reversing row and a cancelled movement never happened at the bank,
+ * so neither is a candidate.
  *
  * @param int $statement_id
  * @return int  Lines matched
@@ -1034,6 +1059,8 @@ function erp_bank_statement_match($statement_id)
               AND t.direction = '" . (((int) $line['amount'] > 0) ? 'in' : 'out') . "'
               AND t.amount = '" . abs((int) $line['amount']) . "'
               AND t.doc_date BETWEEN DATE_SUB('" . escape($line['doc_date']) . "', INTERVAL 3 DAY) AND DATE_ADD('" . escape($line['doc_date']) . "', INTERVAL 3 DAY)
+              AND t.doc_type <> 'cancel'
+              AND NOT EXISTS (SELECT 1 FROM erp_cash_transactions r WHERE r.doc_type = 'cancel' AND r.doc_id = t.id)
               AND NOT EXISTS (SELECT 1 FROM erp_bank_statement_lines l WHERE l.cash_id = t.id)
             ORDER BY ABS(DATEDIFF(t.doc_date, '" . escape($line['doc_date']) . "')) ASC, t.id ASC
             LIMIT 1");
@@ -1348,6 +1375,22 @@ function erp_bank_line_record($line_id, $what, $user_id)
     db("UPDATE erp_bank_statement_lines SET status = 'recorded', cash_id = '" . $cash_id . "' WHERE id = '" . (int) $line['id'] . "'");
 
     return array('success' => true, 'error' => '');
+}
+
+/**
+ * Undo a line's match: the line goes back to the open lines and the till
+ * movement can be matched again. A recorded line is not touched: its
+ * movement was written for it.
+ *
+ * @param int $line_id
+ * @return bool  Whether a matched line was undone
+ */
+function erp_bank_line_unmatch($line_id)
+{
+    db("UPDATE erp_bank_statement_lines SET status = 'new', cash_id = 0
+        WHERE id = '" . (int) $line_id . "' AND status = 'matched'");
+
+    return mysqli_affected_rows(db::$con) > 0;
 }
 
 /**

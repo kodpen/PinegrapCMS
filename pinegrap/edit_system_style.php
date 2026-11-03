@@ -201,6 +201,9 @@ if (!$_POST) {
         // A classic style's pages that take it from their folder: Save
         // converts them too unless the box is cleared.
         'classic_folder_pages' => $classic ? $classic['folder_pages'] : array(),
+        // The frame's page tree for the blank tab of a classic style that no
+        // page names as its own; '' otherwise.
+        'classic_frame_tree'   => $classic ? $classic['frame_tree'] : '',
     ));
 
     $liveform->remove_form();

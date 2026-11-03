@@ -46,6 +46,8 @@ return array(
             'label'   => lang('Directory (tenant)'),
             'help'    => lang('common: work, school and personal accounts. organizations: work and school accounts only. Or the directory ID of your organization.'),
             'default' => 'common',
+            'pattern' => pg_connect_tenant_pattern(),
+            'invalid' => lang('The directory (tenant) must be common, organizations, consumers, a domain name or a directory ID.'),
         ),
     ),
     'setup'            => array(

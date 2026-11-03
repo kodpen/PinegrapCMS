@@ -1,6 +1,6 @@
 ---
 name: graph-canvas-core
-description: Plan (2026-10-24, answers #2445; 1-3 done, 4 ready): a box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
+description: Plan (2026-10-24, answers #2445; 1-4 done): a box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
 ---
 
 ## What is asked? (owner, 2026-10-24)
@@ -28,7 +28,7 @@ description: Plan (2026-10-24, answers #2445; 1-3 done, 4 ready): a box-and-arro
    - 2c done #4518: `box()`, `place()`, `edge()`, `mark()`, `announce()`, box move and connect drags; texts `pgc_*` (`ui/graph-canvas-core-module.md`). The outline stays in Flows (its forms, nothing generic yet).
    - 2d done #4557: `autosave(host)`, its state on the host's record; Flows' host sends `ws_flow_save`.
 3. Done #4573: CSS on `pgc-` and `--pgc-*` tokens.
-4. Only when a second user starts: size per node, lower minimum zoom, named ports (`{from, port, to}`), arrows into one frame spread out, non-box targets, stable arrow ids, a thumbnail hook, partial redraw, load without defer.
+4. Done #5401 (ui/graph-canvas-core-sizes-ports.md): size per box, lower minimum zoom, named ports, spread arrow ends, non-box targets, stable arrow ids, thumbnail hook, partial redraw, load without defer.
 
 ## Which questions are answered? (#2445)
 1. Name: `pg_graph_canvas` / `pgc-` (not only the Workspace).
@@ -37,4 +37,4 @@ description: Plan (2026-10-24, answers #2445; 1-3 done, 4 ready): a box-and-arro
 4. Designer texts: `lang()` via `pg_graph_canvas_js_strings()`; the scan reads style_designer.js only, and the core is the designer's first bundle.
 
 ## Where to start?
-- Slices 1-3 are done; slice 4 is ready now (owner, 2026-11-01): the first PR of plans/designer-prototype-links.md slice 1, which is its second user.
+- All slices done; the second user is plans/designer-prototype-links.md slice 1. When it lands, move the lasting decisions to ui/ and delete this plan.

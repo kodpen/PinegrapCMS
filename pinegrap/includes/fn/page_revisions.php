@@ -666,6 +666,25 @@ function pg_page_revisions_list($page_id, $limit = 50, $before_no = 0)
 }
 
 /**
+ * Cuts a list read with one row over the page size back to the page size
+ * and tells whether older rows remain. Read `$limit + 1` rows: a list of
+ * exactly `$limit` rows alone cannot tell a full last page from a page
+ * with more behind it.
+ *
+ * @param array $rows  rows read with a limit of `$limit + 1`
+ * @param int   $limit page size
+ * @return array array(rows cut to `$limit`, bool more)
+ */
+function pg_page_revisions_page($rows, $limit)
+{
+    $rows  = array_values((array) $rows);
+    $limit = max(1, (int) $limit);
+    $more  = count($rows) > $limit;
+
+    return array($more ? array_slice($rows, 0, $limit) : $rows, $more);
+}
+
+/**
  * One revision of a page, tree included; null when there is none.
  *
  * @param int $page_id

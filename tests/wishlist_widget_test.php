@@ -573,7 +573,20 @@ function test_wishlist_widget_my_account_link()
 	pg_assert_contains("\$links['__my_account_wishlist_url'] = pg_wishlist_widget_page_url();", $extras, 'resolved from the widget pages');
 
 	$page_url = wishlist_widget_test_function_source('pg_wishlist_widget_page_url');
-	pg_assert_contains("_pg_sw_open_widget_page_name('wishlist')", $page_url, 'a page carrying the widget');
+	pg_assert_contains("_pg_sw_open_widget_page_name('wishlist', _pg_sw_preferred_style_ids())", $page_url, 'a page carrying the widget, of the drawn design first, then the published one');
+
+	// A site with three designs: the Favourites page of the design being
+	// drawn wins over the published design's and over the first by title.
+	$pages = array(
+		array('page_name' => 'favourites', 'page_folder' => 1, 'page_style' => 10),
+		array('page_name' => 'favourites-2', 'page_folder' => 2, 'page_style' => 20),
+		array('page_name' => 'favourites-3', 'page_folder' => 3, 'page_style' => 30),
+	);
+	$open = function () { return true; };
+	pg_assert_same('favourites-3', pg_sw_first_viewable_page($pages, $open, array(30, 20))['page_name'], 'drawn design first');
+	pg_assert_same('favourites-2', pg_sw_first_viewable_page($pages, $open, array(40, 20))['page_name'], 'then the published design');
+	pg_assert_same('favourites', pg_sw_first_viewable_page($pages, $open, array(40, 50))['page_name'], 'else the first page');
+	pg_assert_contains('pg_sw_first_viewable_page($open, function () { return true; }, (array)$style_ids)', wishlist_widget_test_function_source('_pg_sw_open_widget_page_name'), 'the open pages in design order');
 
 	pg_assert_contains("['__my_account_wishlist_url',", wishlist_widget_test_js_between('var SW_MY_ACCOUNT_TOKEN_GROUPS = [', "\n    ];"), 'offered');
 	pg_assert_contains("href: '__my_account_wishlist_url'", wishlist_widget_test_js_between("case 'my_account': {", "\n            case '"), 'in the starter links');

@@ -128,6 +128,25 @@ function test_pg_image_negotiated_format_behind_proxy()
 	pg_assert_same(array('format' => 'webp', 'vary' => true), pg_image_negotiated_format(array('image_derivative_formats' => '13'), 'jpg', array(), $cf), 'confirmed');
 }
 
+// Cloudflare Tools' edge check is negotiated through the CDN before bit 8 is
+// set, only with its own well-formed token and only while the switch is on.
+function test_pg_image_vary_check_asked()
+{
+	$cf = pg_image_negotiation_test_server('image/webp,*/*', array('HTTP_CF_RAY' => '1-IST'));
+	$check = array('pg_vary_check' => '0123456789abcdef');
+
+	pg_assert_true(pg_image_vary_check_asked($check), 'a token');
+	pg_assert_false(pg_image_vary_check_asked(array('pg_vary_check' => '0123456789ABCDEF')), 'upper case');
+	pg_assert_false(pg_image_vary_check_asked(array('pg_vary_check' => '0123')), 'too short');
+	pg_assert_false(pg_image_vary_check_asked(array('pg_vary_check' => array('0123456789abcdef'))), 'an array');
+	pg_assert_false(pg_image_vary_check_asked(array()), 'none');
+
+	pg_assert_same(array('format' => 'webp', 'vary' => true), pg_image_negotiated_format(array('image_derivative_formats' => '5'), 'jpg', $check, $cf), 'unconfirmed CDN, check');
+	pg_assert_same(array('format' => '', 'vary' => true), pg_image_negotiated_format(array('image_derivative_formats' => '5'), 'jpg', $check, pg_image_negotiation_test_server('*/*')), 'check without WebP');
+	pg_assert_same(array('format' => '', 'vary' => false), pg_image_negotiated_format(array('image_derivative_formats' => '1'), 'jpg', $check, $cf), 'switch off');
+	pg_assert_same(array('format' => '', 'vary' => true), pg_image_negotiated_format(array('image_derivative_formats' => '5'), 'jpg', array('pg_vary_check' => 'x'), $cf), 'a bad token keeps the guard');
+}
+
 function test_pg_image_original_asked()
 {
 	pg_assert_true(pg_image_original_asked(array('f' => 'original')), 'f=original');
@@ -201,4 +220,19 @@ function test_pg_image_mail_original_urls()
 		pg_image_mail_original_urls('<style>.x{background:url(/a.jpg)}</style>', $host),
 		'a style block stays');
 	pg_assert_same('<p>no pictures</p>', pg_image_mail_original_urls('<p>no pictures</p>', $host), 'nothing to do');
+}
+
+function test_pg_image_same_address_state()
+{
+	$off = array('on' => false, 'cdn' => false);
+	$on = array('on' => true, 'cdn' => false);
+	$confirmed = array('on' => true, 'cdn' => true);
+
+	pg_assert_same('off', pg_image_same_address_state($off, true, false), 'switched off');
+	pg_assert_same('off', pg_image_same_address_state(array('on' => false, 'cdn' => true), true, true), 'off, whatever the CDN');
+	pg_assert_same('off', pg_image_same_address_state(null, true, false), 'no settings');
+	pg_assert_same('no_webp', pg_image_same_address_state($on, false, false), 'the server writes no WebP');
+	pg_assert_same('cdn', pg_image_same_address_state($on, true, true), 'a CDN in front, not confirmed');
+	pg_assert_same('on', pg_image_same_address_state($confirmed, true, true), 'a CDN in front, confirmed');
+	pg_assert_same('on', pg_image_same_address_state($on, true, false), 'no CDN');
 }

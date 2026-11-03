@@ -81,3 +81,55 @@ function test_list_widgets_use_the_named_controls()
 	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets.php');
 	pg_assert_true(substr_count($src, '_pg_sw_search_box_html($query_param, $search_query, $search_label, $search_width_cls, $page_param)') === 1, 'form list prints the shared box');
 }
+
+function _list_search_controls_with($uri, $get, $fn)
+{
+	$saved_get = $_GET;
+	$saved_uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : null;
+	$_GET = $get;
+	$_SERVER['REQUEST_URI'] = $uri;
+
+	$out = $fn();
+
+	$_GET = $saved_get;
+	if ($saved_uri === null) unset($_SERVER['REQUEST_URI']); else $_SERVER['REQUEST_URI'] = $saved_uri;
+	return $out;
+}
+
+// The page links and the catalog's filter links of a list on a pretty
+// address carry the visitor's other parameters, not the router's page name:
+// /blog?page_number=2, never /blog?page=blog&page_number=2.
+function test_page_links_drop_router_page_name()
+{
+	$get = array('page' => 'blog', 'lang' => 'en', 'page_number' => '2');
+
+	pg_assert_same('lang=en&page_number=3', _list_search_controls_with('/blog?lang=en&page_number=2', $get, function () {
+		return _pg_sw_build_query('page_number', 3);
+	}));
+	pg_assert_same('lang=en', _list_search_controls_with('/blog?lang=en&page_number=2', $get, function () {
+		return _build_clear_filters_query(array('page_number'));
+	}));
+
+	$html = _list_search_controls_with('/blog?lang=en&page_number=2', $get, function () {
+		return pg_sw_pagination_html('page_number', 2, 3);
+	});
+	pg_assert_contains('href="?lang=en&amp;page_number=3"', $html);
+	pg_assert_false(strpos($html, 'page=blog') !== false, 'no router page name in the page links');
+
+	$paging = _list_search_controls_with('/blog?page_number=2', array('page' => 'blog', 'page_number' => '2'), function () {
+		return pg_sw_list_paging('page_number', 2, 3);
+	});
+	pg_assert_same('?page_number=1', $paging['tokens']['__prev_page_url']);
+	pg_assert_same('?page_number=3', $paging['tokens']['__next_page_url']);
+}
+
+// On /index.php?page=… and on the site's root (/?page=…) the page name is
+// the address and stays in the links.
+function test_page_links_keep_page_on_index_php()
+{
+	foreach (array('/index.php?page=blog', '/?page=blog') as $uri) {
+		pg_assert_same('page=blog&page_number=2', _list_search_controls_with($uri, array('page' => 'blog'), function () {
+			return _pg_sw_build_query('page_number', 2);
+		}), $uri);
+	}
+}

@@ -121,6 +121,8 @@ function pg_settings_modal_markup($user)
     data-pgleavetitle="' . h(lang('Unsaved Changes')) . '"
     data-pgleave="' . h(lang('The changes on this screen have not been saved. Close anyway?')) . '"
     data-pgdiscard="' . h(lang('Close Without Saving')) . '"
+    data-pgswitch="' . h(lang('The changes on this screen have not been saved. Leave this section anyway?')) . '"
+    data-pgswitchdiscard="' . h(lang('Switch Without Saving')) . '"
     data-pgstay="' . h(lang('Keep Editing')) . '"
     data-pgclose="' . h(lang('Close')) . '"
     data-pgfailed="' . h(lang('The request could not be completed. Please try again.')) . '"

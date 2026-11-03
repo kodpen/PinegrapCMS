@@ -422,7 +422,7 @@
     };
 
     // A save with a frame draws it over the layers: into the overlay of a
-    // picture, onto a new artboard's PNG.
+    // picture, onto an artboard's PNG (a new one, or a canvas saved again).
     function frameSave(body, mode) {
         if (!M.frameShape(this.doc.frame, { x: 0, y: 0, w: 100, h: 100 })) {
             return;
@@ -430,19 +430,19 @@
 
         var canvas = document.createElement('canvas'), g, a = this.doc.artboard, box, out;
 
-        if (mode === 'new') {
+        if (a) {
             box = { x: 0, y: 0, w: a.width, h: a.height };
             out = { w: a.width, h: a.height };
         } else {
-            box = M.cropBox(this.doc);
-            out = M.outputSize(this.doc);
+            box = M.saveBox(this.doc);
+            out = M.saveSize(this.doc);
         }
 
         canvas.width = out.w;
         canvas.height = out.h;
         g = canvas.getContext('2d');
 
-        if ((mode === 'new') && a.background && (a.background !== 'transparent')) {
+        if (a && a.background && (a.background !== 'transparent')) {
             g.fillStyle = a.background;
             g.fillRect(0, 0, out.w, out.h);
         }
@@ -450,7 +450,7 @@
         this.paintLayers(g, box, out.w, out.h);
         this.paintFrame(g, box, out.w, out.h);
 
-        if (mode === 'new') {
+        if (a) {
             body.picture = canvas.toDataURL('image/png');
         } else {
             body.overlay = canvas.toDataURL('image/png');
@@ -464,6 +464,11 @@
                 color: (patch.color !== undefined) ? patch.color : now.color,
                 width: (patch.width !== undefined) ? patch.width : now.width
             };
+
+            // Outside the picture, growing the canvas (M.frameOutward()).
+            if ((patch.outside !== undefined) ? patch.outside : now.outside) {
+                next.outside = true;
+            }
 
             doc.frame = (next.kind === 'none') ? null : next;
         }, key || null, !!key);
@@ -490,7 +495,9 @@
                 class: 'pgie-tile' + (on ? ' on' : ''),
                 'aria-pressed': on ? 'true' : 'false',
                 onclick: function () {
-                    self.setFrame({ kind: name, color: (name === 'polaroid') ? '#ffffff' : (fr ? fr.color : '#ffffff') });
+                    // On a picture the polaroid lies outside it, as a print's.
+                    self.setFrame({ kind: name, color: (name === 'polaroid') ? '#ffffff' : (fr ? fr.color : '#ffffff'),
+                        outside: (name === 'polaroid') ? !!self.doc.source : (fr ? !!fr.outside : false) });
                 }
             }, [pic, el('span', { text: label })]));
         });

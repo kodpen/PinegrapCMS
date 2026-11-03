@@ -217,6 +217,14 @@ if (!$_POST) {
                   // Make sure that the form isnt actually being sent.
                   e.preventDefault();
                   e.stopPropagation();
+
+                  // An empty queue sends nothing, so say why nothing happens.
+                  if (myDropzone.getQueuedFiles().length === 0) {
+                    $("#pg_upload_error").text(' . encode_json(lang('Please select a file.')) . ').prop("hidden", false);
+                    return;
+                  }
+
+                  $("#pg_upload_error").prop("hidden", true).text("");
                   myDropzone.processQueue();
                 });
 

@@ -816,6 +816,96 @@ function pg_comment_refresh_record_info($page_id, $item_type, $item_id)
     return true;
 }
 
+/**
+ * Removes what hangs off a form record that is being deleted: its comments
+ * (on every page they were written on) with their notifications and the
+ * attachment files no other comment shares, its watchers, its "allow new
+ * comments" setting and its submitted_form_info counters. Called by every
+ * path that deletes a submitted form, beside pg_signature_delete() and
+ * pg_sfv_delete_views(): no foreign key ties these rows to forms, so without
+ * it the comments stayed in the panel's comment list with no page or record
+ * behind them.
+ *
+ * A failed query is logged and the remaining statements still run, so one
+ * failure does not leave more behind than needed.
+ *
+ * @param mixed $form_id forms.id
+ * @return string[] names of the attachment files that were deleted
+ */
+function pg_comment_delete_record_thread($form_id)
+{
+    $rid = pg_comment_record_id('submitted_form', $form_id);
+
+    if (($rid <= 0) || !class_exists('db') || !isset(db::$con) || !db::$con) {
+        return array();
+    }
+
+    $thread = "(item_type = 'submitted_form') AND (item_id = ?)";
+    $id = array((string) $rid);
+    $deleted = array();
+
+    $result = db_q(
+        "SELECT DISTINCT files.id, files.name
+        FROM comments
+        INNER JOIN files ON files.id = comments.file_id
+        WHERE (comments.item_type = 'submitted_form') AND (comments.item_id = ?)",
+        $id);
+
+    if ($result instanceof mysqli_result) {
+        $files = array();
+
+        while ($row = mysqli_fetch_assoc($result)) {
+            $files[] = $row;
+        }
+
+        mysqli_free_result($result);
+
+        foreach ($files as $file) {
+            // A duplicated page copies its comments with the same file_id,
+            // so the file stays while a comment outside this thread uses it.
+            $shared = _pg_comment_db_int(
+                "SELECT COUNT(*) FROM comments
+                WHERE (file_id = ?) AND NOT ((item_type = 'submitted_form') AND (item_id = ?))",
+                array((string) $file['id'], (string) $rid));
+
+            if ($shared !== 0) {
+                continue;
+            }
+
+            if (db_q("DELETE FROM files WHERE id = ?", array((string) $file['id']))) {
+                if (defined('FILE_DIRECTORY_PATH') && ((string) $file['name'] !== '')) {
+                    @unlink(FILE_DIRECTORY_PATH . '/' . basename((string) $file['name']));
+                }
+
+                $deleted[] = (string) $file['name'];
+            } else {
+                _pg_comment_db_failed();
+            }
+        }
+    } else {
+        _pg_comment_db_failed();
+    }
+
+    $statements = array(
+        "DELETE FROM notifications WHERE comment_id IN (SELECT id FROM (SELECT id FROM comments WHERE " . $thread . ") AS thread_comments)",
+        "DELETE FROM comments WHERE " . $thread,
+        "DELETE FROM watchers WHERE " . $thread,
+        "DELETE FROM allow_new_comments_for_items WHERE " . $thread,
+    );
+
+    foreach ($statements as $sql) {
+        if (!db_q($sql, $id)) {
+            _pg_comment_db_failed();
+        }
+    }
+
+    if (!db_q("DELETE FROM submitted_form_info WHERE submitted_form_id = ?", $id)) {
+        _pg_comment_db_failed();
+    }
+
+    return $deleted;
+}
+
 // The name a comment is stored under. Who may type one is decided by the
 // comment form (get_page_content.php) and add_comment.php alike: a visitor
 // who is not signed in, staff (role < 3), a member with edit rights on the
@@ -881,6 +971,46 @@ function pg_comment_display_name($name)
     $name = (string) $name;
 
     return (($name === '') || ($name === 'Anonymous')) ? lang('Anonymous') : $name;
+}
+
+/**
+ * A comment's name as the Comments list prints it: cut to 40 characters with
+ * the whole name in the title, so one long name (a visitor's field of up to
+ * 100 characters, in a cell that does not wrap) cannot widen the column for
+ * every row. HTML, escaped.
+ *
+ * @param mixed $name comments.name
+ * @return string
+ */
+function pg_comment_list_name($name)
+{
+    $name = pg_comment_display_name($name);
+
+    if (mb_strlen($name, 'UTF-8') <= 40) {
+        return h($name);
+    }
+
+    return '<span title="' . h($name) . '">' . h(rtrim(mb_substr($name, 0, 40, 'UTF-8')) . '…') . '</span>';
+}
+
+/**
+ * A posted star rating as comments.rating stores it: one to five, or 0 for
+ * none. Anything else (out of range, not a number, an array) is none, so a
+ * forged value never lands in the column, where pg_review_rating_sql() would
+ * silently leave the review out of the product's rating. Pure.
+ *
+ * @param mixed $value the posted rating
+ * @return int 0-5
+ */
+function pg_comment_rating_value($value)
+{
+    if (!is_scalar($value) || !preg_match('/^\s*[0-9]+\s*$/', (string) $value)) {
+        return 0;
+    }
+
+    $rating = (int) $value;
+
+    return (($rating >= 1) && ($rating <= 5)) ? $rating : 0;
 }
 
 /**
@@ -1897,6 +2027,11 @@ function _pg_comments_first_int($rows)
  *   purchasers' reviews and forbid ordering them to its liking. A comment
  *   from before the 11.0.14 columns and a staff comment under a product are
  *   not shown there.
+ * - 'kind': 'questions' reads only a product's questions and their answers
+ *   (includes/fn/product_questions.php) and is never a review read;
+ *   'comments' leaves those out. Unset, or before 11.0.148, no kind filter.
+ *   Either adds comments.kind and comments.answer_of to the rows ('comment'
+ *   and 0 before the step).
  *
  * A failed query ends on the db helpers' error page.
  *
@@ -1918,7 +2053,12 @@ function pg_comments_rows($page_id, $thread, $viewer, $options = array(), $fetch
     $page = _pg_comments_sql_value($page_id);
     $where = pg_comments_thread_sql($thread) . pg_comments_visible_sql($viewer);
 
-    if (array_key_exists('review', $options)) {
+    $kind = (isset($options['kind']) && in_array($options['kind'], array('questions', 'comments'), true)) ? $options['kind'] : '';
+    $where .= pg_product_question_kind_sql($kind, ($kind !== '') && pg_product_questions_ready());
+
+    if ($kind === 'questions') {
+        $review = false;
+    } elseif (array_key_exists('review', $options)) {
         $review = ($options['review'] === true);
     } else {
         $review = is_array($thread) && function_exists('pg_review_gate_applies')
@@ -1960,6 +2100,16 @@ function pg_comments_rows($page_id, $thread, $viewer, $options = array(), $fetch
             comments.parent_id"
             : ",
             0 AS parent_id";
+    }
+
+    if ($kind !== '') {
+        $parent .= pg_product_questions_ready()
+            ? ",
+            comments.kind,
+            comments.answer_of"
+            : ",
+            'comment' AS kind,
+            0 AS answer_of";
     }
 
     if (!empty($options['thread_key'])) {
@@ -2152,4 +2302,43 @@ function pg_comments_thread_order($rows, $layout, $max_depth)
     }
 
     return $out;
+}
+
+/**
+ * A page's comment label as stored, with the English default the Edit Page
+ * screen used to fill in ('Comment') read as no label: that word was saved on
+ * the first save of any page and kept the site's language word (lang('Comment'),
+ * "Yorum") from being shown.
+ *
+ * @param string $label page.comments_label
+ * @return string the label, or '' for none
+ */
+function pg_comment_label_stored($label)
+{
+    $label = (string) $label;
+
+    return (trim($label) === 'Comment') ? '' : $label;
+}
+
+/**
+ * The comment label as the start of a line ("Yanıt: ..."): its first letter
+ * in upper case, multibyte-safe, with Turkish dotted i as İ. A template's
+ * reply label is lower case on purpose, to read as a noun inside sentences.
+ *
+ * @param string $label    the label as shown
+ * @param string $language the language code the text is written in
+ * @return string
+ */
+function pg_comment_label_line_start($label, $language)
+{
+    $label = (string) $label;
+
+    if ($label === '') {
+        return '';
+    }
+
+    $first = mb_substr($label, 0, 1, 'UTF-8');
+    $first = (($first === 'i') && (strpos((string) $language, 'tr') === 0)) ? 'İ' : mb_strtoupper($first, 'UTF-8');
+
+    return $first . mb_substr($label, 1, null, 'UTF-8');
 }

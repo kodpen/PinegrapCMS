@@ -102,3 +102,65 @@ function test_ad_form_cards_print_the_region_hint_under_the_select()
 
 	pg_assert_contains('pg_ad_form_region_hint($region_options, $user[\'role\'])', $source, 'the cards print the hint for the signed-in role');
 }
+
+// Sort Order is blank (random order) or a whole number; anything else used
+// to be saved as 0 by MySQL, so the ad silently went back to random order.
+function test_ad_form_sort_order_accepts_blank_and_whole_numbers()
+{
+	foreach (array('', '0', '1', '25', '9999', ' 7 ') as $value) {
+		pg_assert_same('', pg_ad_form_sort_order_error($value), var_export($value, true));
+	}
+}
+
+function test_ad_form_sort_order_refuses_anything_else()
+{
+	foreach (array('abc', '1.5', '-3', '1e3', '0x1A', '+4') as $value) {
+		pg_assert_same(lang('Sort Order must be a whole number, or blank for random order.'), pg_ad_form_sort_order_error($value), var_export($value, true));
+	}
+}
+
+function test_ad_form_validate_checks_the_sort_order()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/ad_form.php');
+
+	pg_assert_contains("pg_ad_form_sort_order_error(\$liveform->get_field_value('sort_order'))", $source);
+	pg_assert_contains("\$liveform->mark_error('sort_order', ", $source);
+}
+
+function test_ad_form_validate_refuses_long_names_and_missing_regions()
+{
+	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/ad_form.php');
+
+	pg_assert_contains("pg_name_too_long(\$liveform->get_field_value('name'), 100)", $form, 'a name over 100 characters is refused, not cut');
+	pg_assert_contains('SELECT id FROM ad_regions WHERE id = ?', $form, 'the chosen ad region must exist for every role');
+	pg_assert_contains("'inputmode'=>'numeric'", $form, 'Sort Order opens a number keyboard');
+	pg_assert_contains("lang('Caption') . ' (' . lang('Add Caption on Top of Content') . ')", $form, 'no spaces inside the caption brackets');
+}
+
+function test_view_ads_filter_and_alignment()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_ads.php');
+
+	pg_assert_false(strpos($source, 'Content that viewed') !== false, 'the region filter is named Ad Region');
+	pg_assert_contains('<th class="text-center">\' . get_column_heading(lang(\'Display Type\')', $source, 'Display Type heading is centred like its cells');
+	pg_assert_contains('<td class="align-middle text-center">\' . $output_label', $source, 'Label cells are centred like their heading');
+	pg_assert_contains("elseif (\$ad['ad_region_display_type'] == 'dynamic')", $source, 'an ad without a region is not shown as Dynamic');
+}
+
+function test_ad_region_options_keep_regions_that_share_a_name()
+{
+	$options = pg_ad_region_option_list(array(
+		array('id' => '4', 'name' => 'banner'),
+		array('id' => '7', 'name' => 'banner'),
+		array('id' => '9', 'name' => 'side'),
+	));
+
+	pg_assert_same(array('' => '', 'banner' => '4', 'banner (#7)' => '7', 'side' => '9'), $options);
+}
+
+function test_ad_region_options_escape_the_name()
+{
+	$options = pg_ad_region_option_list(array(array('id' => '3', 'name' => 'a&b')));
+
+	pg_assert_same(array('' => '', 'a&amp;b' => '3'), $options);
+}

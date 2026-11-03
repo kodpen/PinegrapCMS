@@ -4,7 +4,7 @@ description: Status chips, Payment methods doughnut and Search Console chart tel
 ---
 
 ## What does a System Status chip show when the check has no value of its own?
-- `pg_system_status()` fills the generic word (OK / Warning / Problem / Not applicable) and marks it `generic`. `widget_2.php` prints it in `.pg-check-value` on warn and fail chips, the ones worth looking at, and as a `visually-hidden` span on OK and info chips. Before, the word was dropped and several checks (Unknown Bot Filtering is `bi-robot` in every state) showed their state only by the chip tint.
+- `pg_system_status()` fills the generic word (OK / Warning / Problem / Not applicable) and marks it `generic`. `pg_system_status_chips()` (`includes/fn/health_gauge.php`) prints it in `.pg-check-value` on warn and fail chips, the ones worth looking at, and as a `visually-hidden` span on OK and info chips. Before, the word was dropped and several checks (Unknown Bot Filtering is `bi-robot` in every state) showed their state only by the chip tint.
 
 ## How does a detail row say its state?
 - Chip and job panels draw rows through one closure, `$status_detail_row`. The 6px dot is `aria-hidden`; ok, warn and fail rows put OK / Warning / Problem before the time (`Problem · 3 hours ago`). Info rows carry no word, their time already says Never or Missing. This tells a stalled scheduled task from a healthy one, a required missing server rule from a recommended one, an operations error from a warning.

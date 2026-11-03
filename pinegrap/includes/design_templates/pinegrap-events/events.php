@@ -17,8 +17,8 @@
  * gets one (auto-registration), so the registration's page and My
  * Registrations show it at once. Its Status is an office-use-only field the
  * staff change in the control panel (Registered, Confirmed, Waitlisted,
- * Cancelled, Attended); the messages under it are the page's comments,
- * mailed to the attendee and to the organiser.
+ * Registration cancelled, Attended); the messages under it are the page's
+ * comments, mailed to the attendee and to the organiser.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -55,16 +55,16 @@ $sample_events = array(
           'location' => lang('Online'), 'price' => lang('Free'),
           'summary' => lang('A one-hour webinar on release notes that bring users back, with examples to copy.'), 'image' => $photo('event-webinar', 800, 450)),
     array('title' => lang('Hands-on: Your First Product Analytics Dashboard'), 'event_date' => $event_on(6, 1), 'event_time' => '10:00', 'kind' => lang('Workshop'),
-          'location' => lang('Harbour Congress Centre, Workshop Room'), 'price' => lang('$59'),
+          'location' => lang('Harbour Congress Centre, Workshop Room'), 'price' => $money(array('USD' => 59, 'EUR' => 55, 'GBP' => 49, 'TRY' => 2399)),
           'summary' => lang('A half-day workshop: bring a laptop and leave with a dashboard your team will open every morning.'), 'image' => $photo('event-workshop', 800, 450)),
     array('title' => lang('Engineering Leaders Breakfast'), 'event_date' => $event_on(3, 2), 'event_time' => '08:30', 'kind' => lang('Meetup'),
-          'location' => lang('Quayside Hotel, Istanbul'), 'price' => lang('$25'),
+          'location' => lang('Quayside Hotel, Istanbul'), 'price' => $money(array('USD' => 25, 'EUR' => 23, 'GBP' => 19, 'TRY' => 800)),
           'summary' => lang('Coffee, a long table and one question to talk about: how do you grow a team without slowing it down?'), 'image' => $photo('event-breakfast', 800, 450)),
     array('title' => lang('Ask the Speakers: Live Q&A'), 'event_date' => $event_on(4, 3), 'event_time' => '19:00', 'kind' => lang('Webinar'),
           'location' => lang('Online'), 'price' => lang('Free'),
           'summary' => lang('Three of this year\'s speakers answer your questions before the conference.'), 'image' => $photo('event-qa', 800, 450)),
     array('title' => lang('The Annual Conference'), 'event_date' => $event_on(2, 6), 'event_time' => '09:00', 'kind' => lang('Conference'),
-          'location' => $venue['name'], 'price' => lang('From $149'),
+          'location' => $venue['name'], 'price' => sprintf(lang('Passes from %s'), $passes['day']['price']),
           'summary' => lang('Two days, four tracks and the evening reception. The programme and the speakers are on their own pages.'), 'image' => $photo('hero', 800, 450)),
 );
 
@@ -77,7 +77,7 @@ $diets = array(lang('No requirements'), lang('Vegetarian'), lang('Vegan'), lang(
 // The first sample event's day: the sample text the cards show where the
 // record's own date is drawn, so no fixed date is written into a page.
 $sample_day = new DateTime($sample_events[0]['event_date']);
-$statuses = array(lang('Registered'), lang('Confirmed'), lang('Waitlisted'), lang('Cancelled'), lang('Attended'));
+$statuses = array(lang('Registered'), lang('Confirmed'), lang('Waitlisted'), lang('Registration cancelled'), lang('Attended'));
 
 // An event of the lists: its photo with the date on a leaf over it, the
 // kind, the title (the link to its page), when and where, the words, the
@@ -202,7 +202,7 @@ $event_pages[] = array(
     'key'              => 'registration',
     'name'             => lang('register-for-an-event'),
     'folder'           => 'public',
-    'title'            => lang('Register'),
+    'title'            => lang('Register for an Event'),
     'meta_description' => lang('Register for the conference or one of our events in two minutes; your confirmation comes by e-mail.'),
     'form'             => array(
         'form_name'            => lang('Registrations'),
@@ -219,7 +219,7 @@ $event_pages[] = array(
         'confirm_page_id'      => '{{tab:email_registration_received}}',
     ),
     'tree'             => $page(array(
-        $page_header(lang('Register'), lang('Tell us which event and pass, and who is coming. Your confirmation comes by e-mail, usually within a working day.')),
+        $page_header(lang('Register for an Event'), lang('Tell us which event and pass, and who is coming. Your confirmation comes by e-mail, usually within a working day.')),
         $el('section', 'py-5', lang('Content'), array(
             $container(array(
                 $row(array(
@@ -256,7 +256,7 @@ $event_pages[] = array(
     'key'      => 'registration_view',
     'name'     => lang('registration'),
     'folder'   => 'registration',
-    'title'    => lang('Registration'),
+    'title'    => lang('My Registration'),
     'search'   => false,
     'sitemap'  => false,
     'comments' => array('label' => lang('Message'), 'allow_new' => true, 'auto_publish' => true, 'show_date' => true, 'login' => true,

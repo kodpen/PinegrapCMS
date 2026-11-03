@@ -101,7 +101,8 @@ function test_form_upload_limits_screens_catch_a_discarded_body()
 function test_form_upload_limits_record_rides_in_the_action()
 {
 	$add = (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_erp_expense.php');
-	pg_assert_contains('action="add_erp_expense.php\' . (($id > 0) ? (\'?id=\' . $id) : \'\') . \'"', $add, 'the expense id rides in the action');
+	pg_assert_contains('$form_query = ($id > 0) ? (\'?id=\' . $id . $send_to_query) : \'\';', $add, 'the expense id rides in the form address');
+	pg_assert_contains('action="add_erp_expense.php\' . h($form_query) . \'"', $add, 'the expense id rides in the action');
 
 	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_erp_expense.php');
 	pg_assert_contains('$self_action = h(\'edit_erp_expense.php?id=\' . $id', $edit, 'the expense id rides in the action');

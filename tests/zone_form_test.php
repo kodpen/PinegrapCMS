@@ -91,3 +91,55 @@ function test_zone_form_screens_refuse_a_blank_name()
 	pg_assert_contains('<div id="name-error" class="invalid-feedback d-block">Enter a name.</div>', $html, 'the message under the name');
 	pg_assert_contains(' required', $html, 'the name box is required');
 }
+
+function test_zone_form_wide_layout()
+{
+	$values = array('name' => 'EU', 'base_rate' => '0', 'primary_weight_rate' => '0', 'secondary_weight_rate' => '0', 'item_rate' => '0');
+	$html = pg_zone_form_layout(pg_zone_form_cards($values, '', '', array(), array('countries' => 3, 'states' => 0)), '<b>BUTTONS</b>');
+
+	$form = strpos($html, '<div class="col-12 lg:col-8 2xl:col-9 order-1">');
+	$name = strpos($html, 'id="name"');
+	$status = strpos($html, '<div class="col-12 lg:col-4 2xl:col-3 order-2">');
+	$sticky = strpos($html, '<div class="position-sticky" style="top:3.3rem;">');
+	$bar = strpos($html, '<div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">');
+	$buttons = strpos($html, '<b>BUTTONS</b>');
+
+	pg_assert_true($form !== false && $name > $form, 'the fields sit in the form column');
+	pg_assert_true($status !== false && $status > $name, 'the status column follows the form column');
+	pg_assert_true($sticky !== false && $sticky > $status, 'a sticky box inside the status column, below the top bar');
+	pg_assert_true($bar !== false && $bar > $sticky && $buttons > $bar, 'the sticky save bar last, with the buttons');
+	pg_assert_contains('id="zone_country_count">3</dd>', $html, 'the chosen countries counted');
+	pg_assert_contains('id="zone_state_count">0</dd>', $html, 'the chosen states counted');
+	pg_assert_true(strpos($html, lang('Shipping Methods')) === false, 'a new zone shows no users');
+
+	$edit = pg_zone_form_cards($values, '', '', array(), array('countries' => 0, 'states' => 0, 'products' => 4, 'methods' => 2));
+	pg_assert_contains(lang('Shipping Methods'), $edit, 'an edited zone shows what uses it');
+	pg_assert_same(2, substr_count($edit, 'data-pg-combobox'), 'both pickers hooked');
+
+	foreach (array('add_zone.php', 'edit_zone.php') as $file) {
+		pg_assert_contains('pg_zone_form_layout(', (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file . ' draws the shared layout');
+	}
+}
+
+function test_zone_form_selected_count()
+{
+	$items = array(array('id' => 1), array('id' => 2), array('id' => 3));
+	pg_assert_same(2, pg_zone_form_selected_count($items, array('3', 1, '9')), 'only listed items count, ids as text');
+	pg_assert_same(0, pg_zone_form_selected_count($items, array()), 'none chosen');
+}
+
+function test_zone_form_rate_errors()
+{
+	$values = array('base_rate' => '12,50', 'primary_weight_rate' => '', 'secondary_weight_rate' => '-5,00', 'item_rate' => 'abc');
+	$errors = pg_zone_form_rate_errors($values);
+
+	pg_assert_same(array('secondary_weight_rate', 'item_rate'), array_keys($errors), 'a negative rate and text are named, an amount and a blank box are not');
+	pg_assert_contains(lang('Secondary Weight Rate'), $errors['secondary_weight_rate'], 'the message names its field');
+	pg_assert_same(array(), pg_zone_form_rate_errors(array('base_rate' => '1.234,56', 'item_rate' => '0')), 'group separators and zero pass');
+
+	foreach (array('add_zone.php', 'edit_zone.php') as $file) {
+		pg_assert_contains('pg_zone_form_rate_errors($values)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), $file . ': a wrong rate is refused before the save');
+	}
+
+	pg_assert_contains('data-inputmask-allowMinus="false"', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/zone_form.php'), 'the rate boxes take no minus sign');
+}

@@ -71,11 +71,11 @@ function pg_ad_form_cards($liveform)
                                             </div>
                                             <div class="col-12 md:col-4 my-3">
                                                 <label for="sort_order" class="form-label">' . lang('Sort Order') . '</label>
-                                                ' . $liveform->output_field(array('type'=>'text', 'id'=>'sort_order', 'name'=>'sort_order', 'size'=>'5', 'class'=>'form-control', 'maxlength'=>'4')) . '
+                                                ' . $liveform->output_field(array('type'=>'text', 'id'=>'sort_order', 'name'=>'sort_order', 'size'=>'5', 'class'=>'form-control', 'maxlength'=>'4', 'inputmode'=>'numeric')) . '
                                                 <div class="form-text">' . lang('leave blank for random order') . '</div>
                                             </div>
                                             <div class="col-12 mt-1 mb-3">
-                                                <label for="caption" class="form-label">' . lang('Caption') . ' ( ' . lang('Add Caption on Top of Content') . ' )</label>
+                                                <label for="caption" class="form-label">' . lang('Caption') . ' (' . lang('Add Caption on Top of Content') . ')</label>
                                                 ' . $liveform->output_field(array('type'=>'textarea', 'id'=>'caption', 'name'=>'caption')) . '
                                             </div>
                                         </div>
@@ -112,8 +112,11 @@ function pg_ad_form_region_hint(array $options, $role)
 }
 
 /**
- * The checks a save runs: name and ad region required, the name not used
- * by another ad, and a user role may only pick an ad region it can edit.
+ * The checks a save runs: name required, at most 100 characters (the
+ * column's length; the session is not strict, so a longer name would be
+ * cut into a clash with an existing ad) and not used by another ad; the ad
+ * region required and still there; a user role may only pick an ad region
+ * it can edit.
  *
  * @param liveform $liveform
  * @param array $user  The signed-in user (validate_user())
@@ -124,6 +127,10 @@ function pg_ad_form_validate($liveform, $user, $id)
 {
     $liveform->validate_required_field('name', lang('Name is required.'));
     $liveform->validate_required_field('ad_region_id', lang('Ad Region is required.'));
+
+    if (($liveform->check_field_error('name') == false) && pg_name_too_long($liveform->get_field_value('name'), 100)) {
+        $liveform->mark_error('name', lang(array('string' => 'The name can be at most {var:1} characters long.', 'vars' => array(100))));
+    }
 
     // if there is not already an error for the name field, check to see if name is already in use by a different ad
     if ($liveform->check_field_error('name') == false) {
@@ -142,10 +149,45 @@ function pg_ad_form_validate($liveform, $user, $id)
         }
     }
 
+    // the region may have been deleted while the form was open, or the id was made up
+    if ($liveform->check_field_error('ad_region_id') == false) {
+        $result = db_q("SELECT id FROM ad_regions WHERE id = ?", array((string) $liveform->get_field_value('ad_region_id'))) or output_error('Query failed.');
+
+        if (mysqli_num_rows($result) == 0) {
+            $liveform->mark_error('ad_region_id', lang('The selected Ad Region was not found, so please select a different Ad Region.'));
+        }
+    }
+
+    $sort_order_error = pg_ad_form_sort_order_error($liveform->get_field_value('sort_order'));
+
+    if ($sort_order_error !== '') {
+        $liveform->mark_error('sort_order', $sort_order_error);
+    }
+
     // a user role may only put the ad into an ad region it has access to
     if (($liveform->check_field_error('ad_region_id') == false) && ($user['role'] == 3) && (in_array($liveform->get_field_value('ad_region_id'), get_items_user_can_edit('ad_regions', $user['id'])) == FALSE)) {
         $liveform->mark_error('ad_region_id', lang('You do not have access to the selected Ad Region, so please select a different Ad Region.'));
     }
+}
+
+/**
+ * The error for a Sort Order value, or '' when it is fine: blank (random
+ * order) or a whole number of up to four digits, as the field allows. The
+ * column is an integer, so anything else was stored as 0 or cut, and the
+ * ad went back to random order without a word.
+ *
+ * @param mixed $value  The posted value
+ * @return string
+ */
+function pg_ad_form_sort_order_error($value)
+{
+    $value = trim((string) $value);
+
+    if (($value === '') || preg_match('/^[0-9]{1,4}$/', $value)) {
+        return '';
+    }
+
+    return lang('Sort Order must be a whole number, or blank for random order.');
 }
 
 /**

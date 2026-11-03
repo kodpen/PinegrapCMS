@@ -10,7 +10,7 @@ description: Bell, banner and System Status link only to screens the reader may 
 - Before, a designer, a manager or anyone on a hosted site who clicked it got "Access denied" or "managed by the hosting platform".
 
 ## Why is the System Status chip gated in the widget?
-- `get_system_status_checks()` is cached for every reader, so the File Integrity danger chip keeps `software_repair.php` there. `widget_2.php` drops the href when `pg_software_repair_open_to($user['role'], pg_hosted())` is false; the chip is then the focusable button that opens its popover.
+- `get_system_status_checks()` is cached for every reader, so the File Integrity danger chip keeps `software_repair.php` there. `pg_system_status_chips()` (`includes/fn/health_gauge.php`, drawn by widget 2 and the new dashboard's System Status card) drops the href when `pg_software_repair_open_to($role, pg_hosted())` is false; the chip is then the focusable button that opens its popover.
 
 ## Who sees 'A custom form was submitted'?
 - `pg_notification_visible()` asks `pg_notification_form_visible()` beside `manage_forms`: edit access to the folder of the form's page (`forms.page_id` → `page.page_folder`, `pg_folder_edit_access()`), as `edit_submitted_form.php` asks. Manager and above pass without a query; the rest are cached per request and person, like `pg_notification_comment_visible()`.

@@ -24,14 +24,22 @@ Visitor statistics, page and article views, search engine index flags.
 
 - action-links-rel-nofollow.md: Every action link (login, register, reset, subscribe, remove from cart) must carry rel="nofollow"; crawl-budget reason and server-stamped rel.
 - ai-crawlers-llms-txt.md: AI section of robots.txt (Content-Signal, Disallow groups in step with the WAF switches) and llms.txt: settings, where each line goes, which pages llms.txt lists (2026.11.0, 11.0.21, #739).
+- ai-fetch-counter.md: AI fetch counter: ai_fetch_daily (day|bot|page_id), written at request end by waf.php for AI user fetchers and search indexers the firewall let through; unverified claims as a count only.
+- ai-visibility-figures.md: AI visibility figures and GET /reports/ai-visibility: fetches per bot, top pages per bot, unfetched sitemap pages, robots/llms state, AI assistant referrals, 400-day sweep.
 - article-view-daily-bucket.md: Why per-view submitted_form_views INSERTs became a daily bucket table: schema, backfill cursor, cutover, retention, old table rename (2026.4.1).
 - high-volume-counter-rules.md: Rules for a new high-volume counter, log or report: write-time buckets, sha1 keys, no query string in a key, MAX(id) caps, totals in SQL, ONLY_FULL_GROUP_BY, DST-safe day steps, derived data rebuilt.
 - page-canonical-robots-directives.md: A page's own canonical address and noarchive / max-snippet (page.canonical_url, noarchive, max_snippet; 11.0.22, #802): storage, where it applies, languages, editors, PHP/JS twin.
 - page-noindex-switch.md: What the per-page noindex/nofollow switch does in three places, which four screens write it, the sitemap query rule and the PHP/JS lockstep rule (2026.4.3).
 - page-view-beacon.md: How a visit answered from the page file cache is still counted (PR #1402): the signed beacon in the stored copy, page_view.php, what it counts and what it cannot
+- page-vitals-beacon.md: Real-user LCP/INP/CLS beacon into page_vitals_hourly (11.0.149, #5040): which pages carry it, day-signed page id, rate limit, validation, buckets, upsert, 400-day sweep
+- page-vitals-figures.md: Page speed figures from page_vitals_hourly: the p75 estimate from buckets and sums, the figures of a row, site / pages / trend readers, the reports/vitals API route and MCP tool
+- panel-preview-not-a-visit.md: The File Manager's page previews (preview pane, Quick look) load the page with pg_preview=1; get_page.php opens no visitor record and counts no page view for them
 - robots-large-image-preview.md: The site switch that adds max-image-preview:large to every indexed page's robots meta (config.max_image_preview_large, 11.0.51, #2175): default, new installs, where it is written
 - robots-txt-disallow-rules.md: How noindex pages are written into robots.txt: anchored lines, which User-agent group, private folders, and the no-noindex byte-identical guarantee.
+- search-console-screen-messages.md: Google Search Console screen: when the tiles compare with the period before, and the messages its link, download and sitemap buttons leave
+- seo-link-graph-self-links.md: SEO link graph: a page's link to itself is neither an incoming link nor a click-path step, so a page only its own menu item links to is an orphan
 - seo-structure-non-html-output.md: Pages may output JSON/XML/CSV, so SEO/structure rules must not assume an HTML document; what the structure check does with such output and the robots splice risk.
+- site-search-rollup.md: site_search_daily (11.0.147), the per-day search rollup: who counts, once per visit, the signed result click through page_view.php, the 400-day sweep.
 - site-search-terms-on-visit.md: Who writes visitors.site_search_terms, and why the search widget writes it only on the first results page
 - sitemap-cache.md: sitemap.xml kept in data/cache/sitemap.txt under config.page_cache_generation with a one-hour lifetime (#2054): what redraws it, what waits for the lifetime, the lock, the wait with no copy, the purge
 - sitemap-listed-pages.md: Which pages sitemap.xml lists bare: the page types (pg_sitemap_page_types()), designed pages whose system widget stands in for an unlisted type, the home page exception, detail pages vs their records
@@ -40,6 +48,7 @@ Visitor statistics, page and article views, search engine index flags.
 - visitor-ip-early-removal.md: A visit's IP address set to 0 after config.visitor_ip_days (default 30, step 10.8) by the visitor cleanup, chunked with a cursor marker; dedup check safety, screens that show 0
 - visitor-item-links-and-chart-labels.md: How visitor report rows build item URLs, why chart and tooltip numbers differ, and why the home page is stored under many names.
 - visitor-monthly-partitions.md: The visitors table split into one partition per month (step 10.7, #499): how months are dropped, opened, converted, and what happens without partitioning
+- visitor-report-filters-and-form.md: Visitor report filter checks (unknown field, date, day count), paid/organic rule, the form after a save error, the report name, Visit Details landing page
 - visitor-report-site-time.md: Why the Visitor Report's year/month/day groups and Date filter go through pg_site_time_sql(): the fixed session offset, daylight saving shifts per row, the window, what is left
 - visitor-report-sql-pitfalls.md: How the visitor report page aggregates in SQL not PHP, ONLY_FULL_GROUP_BY traps in rollup queries, and why only the visitors table left MyISAM.
 - visitor-retention-and-cleanup.md: How the visitors table is kept small: retention days, daily summary, chunked deletion, monthly partitions, move to InnoDB, automatic rebuild, bots not recorded, rowless backups, stepwise restore
@@ -48,3 +57,4 @@ Visitor statistics, page and article views, search engine index flags.
 - visitor-rollup-tables.md: The hourly visitor summary tables (visitor_stats_hourly, visitor_content_hourly), bucket_key hashing, and how content items are identified (2026.3.4).
 - visitor-table-size-figures.md: Where the visitor card, the System Status line and the shrink/move before-after sizes get their record count and file size, and how each figure says its source
 - visitor-texts-list.md: Referring address and user agent of a visit kept once each in visitor_texts and named by number in visitors (step 10.6): writer, readers, prune, old rows, upgrade limits
+- web-vitals-ai-visibility-decisions.md: Decisions behind the page speed figures and the AI visibility view (owner 2026-11-02, #5040): privacy, where the beacon is off, derived data, table shapes, unverified bots, where the screens go

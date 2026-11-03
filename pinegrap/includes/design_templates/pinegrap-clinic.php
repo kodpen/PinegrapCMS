@@ -775,7 +775,7 @@ $comment_thread = function ($w) use ($el, $heading, $para, $link, $span, $attr, 
         $fields[] = $el('div', 'alert alert-secondary py-2 small', lang('Replying To'), array(
             $span(lang('Replying to'), 'me-1', lang('Text')),
             $el('strong', '', lang('Name'), array(), array('text' => lang('Jane Cooper'), '_bindings' => array('text' => '__reply_to_name'))),
-            $link(lang('Cancel'), '#', 'ms-3 fw-semibold', array(), array('_bindings' => array('action' => 'comment_reply_cancel'))),
+            $link(lang('Cancel'), '#', 'ms-3 alert-link', array(), array('_bindings' => array('action' => 'comment_reply_cancel'))),
         ), $show_when('is_replying'));
     }
     $fields[] = $el('div', 'mb-3', lang('Rating'), array(
@@ -834,7 +834,7 @@ $comment_thread = function ($w) use ($el, $heading, $para, $link, $span, $attr, 
             $el('div', 'alert alert-secondary', lang('Closed'), array(), array('_bindings' => array('text' => '__comments_closed_message', 'eo_visible_if' => 'comments_closed'))),
             $el('div', 'alert alert-secondary d-flex flex-wrap align-items-center gap-2', lang('Sign in'), array(
                 $span($w['sign_in'], '', lang('Text')),
-                $link(lang('Sign in'), '#', 'fw-semibold', array(), array('rel' => 'nofollow', '_bindings' => array('href' => '__login_url'))),
+                $link(lang('Sign in'), '#', 'alert-link', array(), array('rel' => 'nofollow', '_bindings' => array('href' => '__login_url'))),
             ), $show_when('must_sign_in')),
             $el('form', 'card card-body border-0 bg-body-tertiary rounded-4 p-4', lang('Comment Form'), $fields, array('_bindings' => array('action' => 'comment_form', 'eo_visible_if' => 'can_comment'))),
         )),
@@ -1143,7 +1143,7 @@ foreach ($services as $key => $s) {
                         $el('span', 'd-inline-flex align-items-center gap-1', lang('Duration'), array($icon('bi-clock', 'text-primary'), $span($s['duration'], '', lang('Text')))),
                         $el('span', 'd-inline-flex align-items-center gap-1', lang('Price'), array($icon('bi-receipt', 'text-primary'), $span($s['price'], 'fw-semibold', lang('Text')))),
                     )),
-                    $link(lang('Book this service'), '{{page:appointment}}', 'btn btn-primary px-4'),
+                    $link(lang('Book this service'), '{{page:appointment}}?' . $appointment_query(array('department' => $s['title'])), 'btn btn-primary px-4'),
                 ), '', '6'),
                 $col(array(
                     $el('div', 'p-4 rounded-4 border bg-body', lang('What It Covers'), array(
@@ -1827,7 +1827,7 @@ $pages[] = array(
                     $col(array(
                         $span(lang('Staff only'), 'badge rounded-pill text-bg-primary mb-3', lang('Badge')),
                         $heading('h1', lang('Welcome to the staff area'), 'display-6 fw-bold mb-3'),
-                        $para(lang('The coming appointments, the conversations with patients and the blog are kept here. To confirm or cancel an appointment, open it and press Change Status.'), 'lead text-body-secondary mb-4'),
+                        $para(lang('The coming appointments, the conversations with patients and the blog are kept here. To confirm or cancel an appointment, open it and press Change Status; what you write under it reaches the patient by e-mail.'), 'lead text-body-secondary mb-4'),
                         $el('div', 'd-flex flex-wrap gap-2', lang('Buttons'), array(
                             $link(lang('Open the control panel'), $panel_url, 'btn btn-primary px-4'),
                             $link(lang('All Appointments'), '{{page:my_appointments}}', 'btn btn-outline-primary'),
@@ -3486,7 +3486,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Clinic'),
-    'version'     => '1.1.0',
+    'version'     => '1.1.2',
     'framework'   => 'bootstrap5',
     'order'       => 50,
     'icon'        => 'bi-heart-pulse',

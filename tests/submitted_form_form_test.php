@@ -184,3 +184,21 @@ function test_submitted_form_new_form_reads_the_folder_name()
 	$add = (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_submitted_form.php');
 	pg_assert_contains('pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use_only_access, \'\', $folder_id)', $add, 'the create screen passes the custom form page\'s folder');
 }
+
+function test_submitted_form_email_box_attributes()
+{
+	$attrs = pg_submitted_form_email_attrs('email address');
+	pg_assert_same('email', $attrs['type'], 'an e-mail field is an e-mail box');
+	pg_assert_same('email', $attrs['inputmode'], 'with the e-mail keyboard');
+	pg_assert_same('false', $attrs['spellcheck'], 'without spelling fixes');
+	pg_assert_same('off', $attrs['autocapitalize'], 'without a capital first letter');
+	pg_assert_same(array(), pg_submitted_form_email_attrs('text box'), 'a text box takes none');
+}
+
+function test_add_submitted_form_reads_the_pressed_button()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/add_submitted_form.php');
+	pg_assert_true(strpos($source, "field_in_session('complete_button')") === false, 'the complete button is not read from the session');
+	pg_assert_true(strpos($source, "field_in_session('save_for_later_button')") === false, 'the save for later button is not read from the session');
+	pg_assert_true(strpos($source, "isset(\$_POST['complete_button'])") !== false, 'the button of this request decides');
+}

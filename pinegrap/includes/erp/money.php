@@ -20,6 +20,30 @@ if (!defined('PG_ERP_ENTRY')) {
     exit;
 }
 
+// The largest line amount in kurus (ten trillion in the main unit) and the
+// largest quantity a line takes; erp_line_amount_fits() checks both.
+if (!defined('ERP_MAX_LINE_AMOUNT')) {
+    define('ERP_MAX_LINE_AMOUNT', 1000000000000000);
+}
+if (!defined('ERP_MAX_QUANTITY')) {
+    define('ERP_MAX_QUANTITY', 1000000000000);
+}
+
+/**
+ * Whether typed text is an amount and nothing else: an optional leading
+ * minus, then digits with dots, commas or spaces between them ('-12,50',
+ * '1.250,00', '1 250,00'). erp_kurus() drops whatever else is there, so a
+ * screen that writes the amount asks this first: '12abc' would read 12,00
+ * and '1e3' 13,00.
+ *
+ * @param string $text
+ * @return bool
+ */
+function erp_amount_text_valid($text)
+{
+    return preg_match('/^-?[0-9]+([.,\s]+[0-9]+)*$/', trim(str_replace("\xC2\xA0", ' ', (string) $text))) === 1;
+}
+
 /**
  * Read an amount typed by an operator and return whole kurus.
  *
@@ -114,6 +138,36 @@ function erp_csv_delimiter()
 }
 
 /**
+ * Whether a typed quantity or rate is a number the readers may take.
+ *
+ * erp_quantity_in() and erp_fx_rate_in() drop every character that is not a
+ * digit or a separator, so -3 read as 3 and 2O (a letter O) as 2. A box
+ * that must hold a plain amount asks this first and refuses anything else.
+ * Spaces and a trailing percent sign are allowed; an empty box is too.
+ *
+ * @param mixed $value
+ * @return bool
+ */
+function erp_typed_number_ok($value)
+{
+    if (is_int($value) || is_float($value)) {
+        return $value >= 0;
+    }
+
+    if (!is_string($value)) {
+        return false;
+    }
+
+    $raw = preg_replace('/[\s\x{00A0}\x{202F}]+/u', '', $value);
+
+    if (($raw === null) || ($raw === '')) {
+        return true;
+    }
+
+    return (bool) preg_match('/^(?=.*[0-9])[0-9.,]+%?$/', $raw);
+}
+
+/**
  * Read a quantity typed by an operator: a decimal with up to four places.
  *
  * Both separators are accepted. When both appear, the last is the decimal
@@ -172,6 +226,34 @@ function erp_quantity_text($quantity)
     $text = rtrim(rtrim(number_format((float) $quantity, 4, $separators['decimal'], $separators['thousands']), '0'), $separators['decimal']);
 
     return ($text === '' || $text === '-0') ? '0' : $text;
+}
+
+/**
+ * A decimal written as a document wrote it (a UBL unit price such as
+ * "1250.50" or "0.123456") for the screen, in the panel's number format,
+ * with as many decimals as the value carries and trailing zeros dropped:
+ * 1.250,5 in Turkish, 1,250.5 in English. A value that is not a plain
+ * decimal is returned as it is.
+ *
+ * @param string|int|float $value
+ * @return string
+ */
+function erp_decimal_text($value)
+{
+    $value = trim((string) $value);
+
+    if (!preg_match('/^(-?)(\d+)(?:\.(\d*))?$/', $value, $match)) {
+        return $value;
+    }
+
+    $separators = erp_number_separators();
+    $whole = ltrim($match[2], '0');
+    $whole = ($whole === '') ? '0' : $whole;
+    $whole = ltrim(strrev(implode($separators['thousands'], str_split(strrev($whole), 3))), $separators['thousands']);
+    $fraction = rtrim($match[3] ?? '', '0');
+    $text = $whole . (($fraction !== '') ? ($separators['decimal'] . $fraction) : '');
+
+    return (($match[1] === '-') && ($text !== '0')) ? ('-' . $text) : $text;
 }
 
 /**
@@ -466,6 +548,28 @@ function erp_to_base($kurus, $exchange_rate)
 function erp_line_total($unit_price, $quantity)
 {
     return erp_multiply_units((int) $unit_price, erp_decimal_units($quantity, 4), 10000);
+}
+
+/**
+ * Whether a line's quantity or price can be multiplied safely.
+ *
+ * The cap keeps every total within an integer: 200 lines at the cap, with
+ * both taxes at 100%, stay far under PHP_INT_MAX. Past it the product wrapped
+ * when cast and a draft saved with random totals.
+ *
+ * @param int|float $unit_price  Kurus
+ * @param float     $quantity
+ * @return bool
+ */
+function erp_line_amount_fits($unit_price, $quantity)
+{
+    $quantity = abs((float) $quantity);
+
+    if ($quantity >= ERP_MAX_QUANTITY) {
+        return false;
+    }
+
+    return (abs((float) $unit_price) * $quantity) <= ERP_MAX_LINE_AMOUNT;
 }
 
 /**

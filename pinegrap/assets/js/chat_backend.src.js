@@ -484,6 +484,8 @@
         } else {
             badge.style.display = 'none';
         }
+        // The badge is only drawn, so the launcher's name says the count.
+        launcher.setAttribute('aria-label', count > 0 ? STR.chat + ', ' + STR.unread_conversations + ': ' + count : STR.chat);
         updateTitle();
     }
 
@@ -497,6 +499,7 @@
     launcher.appendChild(launcherIcon);
 
     var badge = el('span', 'pg-chat-badge');
+    badge.setAttribute('aria-hidden', 'true');
     launcher.appendChild(badge);
 
     var panel = el('div', 'pg-chat-panel card shadow');
@@ -577,15 +580,18 @@
 
         var headerActions = el('div', 'd-flex align-items-center gap-3 flex-shrink-0');
 
-        var soundButton = el('button', 'btn btn-sm btn-link fg-secondary p-0');
+        var soundButton = el('button', 'btn btn-sm btn-link fg-secondary p-0 pg-chat-head-btn');
         soundButton.type = 'button';
         soundButton.title = STR.sound;
+        soundButton.setAttribute('aria-label', STR.sound);
+        soundButton.setAttribute('aria-pressed', soundEnabled() ? 'true' : 'false');
         soundButton.setAttribute('data-pg-chat-key', 'sound');
         soundButton.appendChild(el('i', soundEnabled() ? 'bi bi-bell' : 'bi bi-bell-slash'));
         soundButton.addEventListener('click', function () {
             setSoundEnabled(!soundEnabled());
             soundButton.textContent = '';
             soundButton.appendChild(el('i', soundEnabled() ? 'bi bi-bell' : 'bi bi-bell-slash'));
+            soundButton.setAttribute('aria-pressed', soundEnabled() ? 'true' : 'false');
         });
 
         var closeButton = el('button', 'btn-close');
@@ -649,7 +655,7 @@
     // Header link to a profile page. Opens in a new tab so the panel keeps
     // its place, and stops the click so the header does not act on it.
     function headerLink(iconClass, title, href) {
-        var link = el('a', 'btn btn-sm btn-link fg-secondary p-0 me-3 pg-chat-link');
+        var link = el('a', 'btn btn-sm btn-link fg-secondary p-0 me-2 pg-chat-link pg-chat-head-btn');
 
         link.href = href;
         link.target = '_blank';
@@ -799,9 +805,10 @@
 
         var header = el('div', 'card-header border-0 d-flex align-items-center py-3');
 
-        var backButton = el('button', 'btn btn-sm btn-link fg-secondary p-0 me-3');
+        var backButton = el('button', 'btn btn-sm btn-link fg-secondary p-0 me-2 pg-chat-head-btn');
         backButton.type = 'button';
         backButton.title = STR.back;
+        backButton.setAttribute('aria-label', STR.back);
         backButton.appendChild(el('i', 'bi bi-arrow-left'));
         backButton.addEventListener('click', leaveAiView);
         header.appendChild(backButton);
@@ -918,6 +925,10 @@
 
             if (conversation.channel === 'site') {
                 nameLine.appendChild(el('span', 'pg-chat-chip', STR.site));
+            }
+
+            if (conversation.status === 'closed') {
+                nameLine.appendChild(el('span', 'pg-chat-chip', STR.closed_short));
             }
 
             // A site conversation addressed to another operator must not
@@ -1065,7 +1076,12 @@
             gone: false
         };
 
+        // The list refresh stops here, so the unread count is checked on
+        // its own: a message in another conversation still moves the badge
+        // and rings.
         stopTimer('list');
+        stopTimer('badge');
+        state.timers.badge = setInterval(checkUnread, POLL.list * 1000);
         state.listBody = null;
         panel.textContent = '';
 
@@ -1073,9 +1089,10 @@
         // gradient).
         var header = el('div', 'card-header border-0 d-flex align-items-center py-3');
 
-        var backButton = el('button', 'btn btn-sm btn-link fg-secondary p-0 me-3');
+        var backButton = el('button', 'btn btn-sm btn-link fg-secondary p-0 me-2 pg-chat-head-btn');
         backButton.type = 'button';
         backButton.title = STR.back;
+        backButton.setAttribute('aria-label', STR.back);
         backButton.appendChild(el('i', 'bi bi-arrow-left'));
         backButton.addEventListener('click', function () {
             leaveConversationView();
@@ -1153,25 +1170,22 @@
         }
 
         if (state.conversation.canManage) {
-            var closeConversationButton = el('button', 'btn btn-sm btn-link fg-secondary p-0 me-3');
-            closeConversationButton.type = 'button';
-            closeConversationButton.title = STR.close_conversation;
-            closeConversationButton.appendChild(el('i', 'bi bi-check2-circle'));
-            closeConversationButton.addEventListener('click', function () {
-                // A draft has no server row; closing just leaves the view.
-                if (!state.conversation || state.conversation.id === 0) {
-                    leaveConversationView();
-                    return;
-                }
-                api('chat_close', { conversation_id: state.conversation.id }, function () {
-                    leaveConversationView();
-                });
-            });
-            header.appendChild(closeConversationButton);
+            // A closed conversation cannot be closed again.
+            if (state.conversation.status !== 'closed') {
+                var closeConversationButton = el('button', 'btn btn-sm btn-link fg-secondary p-0 me-2 pg-chat-head-btn');
+                closeConversationButton.type = 'button';
+                closeConversationButton.title = STR.close_conversation;
+                closeConversationButton.setAttribute('aria-label', STR.close_conversation);
+                closeConversationButton.appendChild(el('i', 'bi bi-check2-circle'));
+                closeConversationButton.addEventListener('click', confirmClose);
+                header.appendChild(closeConversationButton);
+                state.conversation._closeButton = closeConversationButton;
+            }
 
-            var deleteButton = el('button', 'btn btn-sm btn-link fg-danger p-0');
+            var deleteButton = el('button', 'btn btn-sm btn-link fg-danger p-0 pg-chat-head-btn');
             deleteButton.type = 'button';
             deleteButton.title = STR.delete_conversation;
+            deleteButton.setAttribute('aria-label', STR.delete_conversation);
             deleteButton.appendChild(el('i', 'bi bi-trash'));
             deleteButton.addEventListener('click', confirmDelete);
             header.appendChild(deleteButton);
@@ -1199,6 +1213,19 @@
         var textarea = el('textarea');
         textarea.placeholder = STR.type_a_message;
         textarea.rows = 1;
+        textarea.maxLength = config.max_length || 2000;
+
+        // Characters left, shown only near the limit.
+        var charsLeft = el('div', 'pg-chat-chars-left fg-secondary small text-end');
+        charsLeft.setAttribute('aria-live', 'polite');
+        charsLeft.hidden = true;
+
+        function refreshCharsLeft() {
+            var left = textarea.maxLength - textarea.value.length;
+
+            charsLeft.hidden = left > 100;
+            charsLeft.textContent = STR.chars_left + ': ' + Math.max(0, left);
+        }
 
         var tools = el('div', 'pg-chat-tools');
 
@@ -1286,6 +1313,7 @@
         composer.appendChild(tools);
         composer.appendChild(recRow);
         compose.appendChild(composer);
+        compose.appendChild(charsLeft);
 
         // Emoji panel, between the messages and the composer.
         var emojiPanel = el('div', 'pg-chat-emoji');
@@ -1376,8 +1404,8 @@
                 groups.push({ tab: '\uD83D\uDD53', list: recent, title: STR.recent });
             }
 
-            EMOJI.forEach(function (group) {
-                groups.push({ tab: group.tab, list: group.list.split(' ') });
+            EMOJI.forEach(function (group, index) {
+                groups.push({ tab: group.tab, list: group.list.split(' '), title: (STR.emoji_groups || [])[index] || '' });
             });
 
             emojiTabs.innerHTML = '';
@@ -1388,6 +1416,7 @@
 
                 if (group.title) {
                     tab.title = group.title;
+                    tab.setAttribute('aria-label', group.title);
                 }
 
                 tab.addEventListener('click', function () {
@@ -1684,6 +1713,7 @@
                 textarea.value = '';
                 autoGrow();
                 refreshSendState();
+                refreshCharsLeft();
                 toggleEmoji(false);
                 appendMessages(body, [response.data]);
             }, function () {
@@ -1722,6 +1752,7 @@
 
             autoGrow();
             refreshSendState();
+            refreshCharsLeft();
         });
 
         // Initial load: messages are ready when coming from chat_open; when
@@ -1739,6 +1770,37 @@
         scheduleConversationPoll(body);
 
         textarea.focus();
+    }
+
+    // Closing cannot be undone (the composer goes for good), so it asks
+    // first, like deleting.
+    function confirmClose() {
+        // A draft has no server row; closing just leaves the view.
+        if (!state.conversation || state.conversation.id === 0) {
+            leaveConversationView();
+            return;
+        }
+
+        function reallyClose() {
+            api('chat_close', { conversation_id: state.conversation.id }, function () {
+                leaveConversationView();
+            });
+        }
+
+        if (typeof window.pgConfirm === 'function') {
+            window.pgConfirm({
+                title: STR.close_conversation,
+                message: STR.close_confirm,
+                confirmText: STR.close_conversation,
+                cancelText: STR.cancel
+            }).then(function (confirmed) {
+                if (confirmed && state.conversation) {
+                    reallyClose();
+                }
+            });
+        } else if (window.confirm(STR.close_confirm)) {
+            reallyClose();
+        }
     }
 
     function confirmDelete() {
@@ -1953,9 +2015,14 @@
             if (response.data.status === 'closed' && state.conversation.status !== 'closed') {
                 state.conversation.status = 'closed';
 
-                // Conversation closed: hide the compose area.
+                // Conversation closed: hide the compose area and the close
+                // button.
                 if (state.conversation._compose) {
                     state.conversation._compose.style.display = 'none';
+                }
+
+                if (state.conversation._closeButton && state.conversation._closeButton.parentNode) {
+                    state.conversation._closeButton.parentNode.removeChild(state.conversation._closeButton);
                 }
             }
         });
@@ -1963,6 +2030,7 @@
 
     function leaveConversationView() {
         stopTimer('conversation');
+        stopTimer('badge');
         state.focusAfterList = state.conversation && state.conversation.id ? 'conversation:' + state.conversation.id : '';
         state.conversation = null;
         state.tab = 'conversations';

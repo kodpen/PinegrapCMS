@@ -86,3 +86,45 @@ function test_workspace_claude_bootstrap_instructions()
 	pg_assert_contains('GET /workspace/claude/requests?version=' . WS_CLAUDE_BOOTSTRAP_VERSION, $text, 'the queue with the version');
 	pg_assert_contains('<<<end name>>>', $text, 'what people wrote is data');
 }
+
+// Where the Site API the routine sends stands against this site's: none
+// (a bootstrap before version 2 sent no address), other or current.
+function test_workspace_claude_bootstrap_site_state()
+{
+	$base = workspace_claude_bootstrap_test_base();
+
+	pg_assert_same('none', ws_claude_site_state(null, $base), 'nothing sent');
+	pg_assert_same('none', ws_claude_site_state('', $base), 'an empty value');
+	pg_assert_same('current', ws_claude_site_state($base, $base), 'the same address');
+	pg_assert_same('current', ws_claude_site_state(' ' . $base . '/ ', $base), 'a slash or a space around it is the same address');
+	pg_assert_same('other', ws_claude_site_state('http://shop.example/pinegrap/integration.php', $base), 'the old scheme');
+	pg_assert_same('other', ws_claude_site_state('https://www.shop.example/pinegrap/integration.php', $base), 'another host');
+}
+
+// The note keeps the address the routine sent beside the version, and the
+// card reads both back; a note without an address still reads.
+function test_workspace_claude_bootstrap_site_note()
+{
+	$base = workspace_claude_bootstrap_test_base();
+
+	pg_assert_same('routine_version:2', ws_claude_version_mark(2), 'no address: the old note');
+	pg_assert_same('routine_version:2 site:' . $base, ws_claude_version_mark(2, $base), 'the address sent');
+	pg_assert_same(array('version' => 2, 'site' => $base), ws_claude_note_parse(ws_claude_version_mark(2, $base)), 'both read back');
+	pg_assert_same(array('version' => 0, 'site' => ''), ws_claude_note_parse(ws_claude_version_mark(null)), 'none read back');
+	pg_assert_same(2, ws_claude_version_noted(ws_claude_version_mark(2, $base)), 'the version alone, as before');
+	pg_assert_same(null, ws_claude_note_parse('claude.ai answered HTTP 500.'), 'the error of a start');
+	pg_assert_same(null, ws_claude_note_parse(''), 'nothing stored');
+}
+
+// The bootstrap sends the Site API it was pasted with, so the site notices
+// when its own address has changed since; the served instructions name the
+// current one.
+function test_workspace_claude_bootstrap_sends_its_site()
+{
+	$base = workspace_claude_bootstrap_test_base();
+	$prompt = ws_claude_bootstrap_prompt($base);
+
+	pg_assert_contains('/workspace/claude/instructions?version=' . WS_CLAUDE_BOOTSTRAP_VERSION . '&site=' . rawurlencode($base), $prompt, 'the address goes with the version');
+	pg_assert_true(WS_CLAUDE_BOOTSTRAP_VERSION >= 2, 'the bootstrap text changed, so its version was raised');
+	pg_assert_contains('current address', ws_claude_routine_prompt($base), 'the instructions name the current Site API');
+}

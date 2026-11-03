@@ -1039,10 +1039,53 @@ function pg_chat_rate_limited()
     return false;
 }
 
+// The longest message body, in characters; the panel's composer gets the
+// same value as its maxlength.
+function pg_chat_max_length()
+{
+    return 2000;
+}
+
+// Trims a message body and checks it: anything but a string or a number
+// (an array from a crafted request) counts as empty. Returns the trimmed
+// body and an error message, '' when the body is fine.
+function pg_chat_check_body($body)
+{
+    if (!is_string($body) && !is_int($body) && !is_float($body)) {
+        $body = '';
+    }
+
+    $body = trim((string) $body);
+
+    if ($body === '') {
+        return array('body' => '', 'error' => lang('Message is empty.'));
+    }
+
+    if (mb_strlen($body) > pg_chat_max_length()) {
+        return array('body' => $body, 'error' => lang(array('string' => 'Message is too long. The limit is {var:1} characters.', 'vars' => pg_chat_max_length())));
+    }
+
+    return array('body' => $body, 'error' => '');
+}
+
 function pg_chat_send($conversation_id, $body, $target_user_id = 0)
 {
     $me = (int) USER_ID;
     $conversation_id = (int) $conversation_id;
+
+    // The body and the rate limit are checked before anything is written,
+    // so a refused first message leaves no conversation row behind.
+    $checked = pg_chat_check_body($body);
+
+    if ($checked['error'] !== '') {
+        return array('status' => 'error', 'message' => $checked['error']);
+    }
+
+    $body = $checked['body'];
+
+    if (pg_chat_rate_limited()) {
+        return array('status' => 'error', 'message' => lang('You are sending messages too quickly. Please wait a moment.'));
+    }
 
     // First message coming from a draft: the conversation row is created
     // only now (chat_open writes no row, so empty conversations are never
@@ -1101,20 +1144,6 @@ function pg_chat_send($conversation_id, $body, $target_user_id = 0)
         if ($peer_role === null || !pg_chat_can_pair(USER_ROLE, $peer_role, USER_ID, pg_chat_peer_id($conversation, $me))) {
             return array('status' => 'error', 'message' => lang('You cannot chat with this user.'));
         }
-    }
-
-    $body = trim((string) $body);
-
-    if ($body == '') {
-        return array('status' => 'error', 'message' => lang('Message is empty.'));
-    }
-
-    if (mb_strlen($body) > 2000) {
-        return array('status' => 'error', 'message' => lang('Message is too long.'));
-    }
-
-    if (pg_chat_rate_limited()) {
-        return array('status' => 'error', 'message' => lang('You are sending messages too quickly. Please wait a moment.'));
     }
 
     $now = time();
@@ -1322,6 +1351,7 @@ function pg_chat_conversation_list()
         LEFT JOIN files ON files.id = contacts.file_id
         LEFT JOIN user op ON op.user_id = c.target_user_id
         WHERE " . $where . "
+            AND c.last_message_id > 0
         ORDER BY c.last_message_at DESC, c.id DESC
         LIMIT 50");
 
@@ -1344,6 +1374,7 @@ function pg_chat_conversation_list()
             $peer = array(
                 'id' => (int) $row['peer_id'],
                 'name' => pg_chat_display_name($first_name, $last_name, $row['peer_username']),
+                'username' => (string) $row['peer_username'],
                 'role' => (int) $row['peer_role'],
                 'role_label' => pg_chat_role_label($row['peer_role']),
                 'avatar' => pg_chat_avatar_src(
@@ -1687,6 +1718,10 @@ function pg_chat_panel_strings()
         'delete_confirm' => lang('This conversation will be permanently deleted. Continue?'),
         'conversation_closed' => lang('This conversation is closed.'),
         'closed_short' => lang('Closed'),
+        'close_confirm' => lang('This conversation will be closed and cannot be reopened. Continue?'),
+        'sound' => lang('Notification sound'),
+        'unread_conversations' => lang('Unread conversations'),
+        'chars_left' => lang('Characters left'),
         'delete' => lang('Delete'),
         'cancel' => lang('Cancel'),
         'loading' => lang('Loading'),
@@ -1720,7 +1755,12 @@ function pg_chat_panel_strings()
         'stop_recording' => lang('Stop recording'),
         'discard_recording' => lang('Discard recording'),
         'mic_denied' => lang('Microphone permission was denied.'),
-        'mic_unsupported' => lang('Voice recording is not supported in this browser.')
+        'mic_unsupported' => lang('Voice recording is not supported in this browser.'),
+        // Emoji palette tab names, in the order of EMOJI in chat_backend.src.js.
+        'emoji_groups' => array(
+            lang('Smileys'), lang('People and hands'), lang('Hearts and symbols'), lang('Animals and nature'),
+            lang('Food and drink'), lang('Activities and travel'), lang('Objects'), lang('Signs')
+        )
     );
 }
 
@@ -1757,6 +1797,7 @@ function pg_chat_render_backend_launcher()
             'max' => 5242880
         ),
         'poll' => array('badge' => 60, 'list' => 15, 'conversation' => 5),
+        'max_length' => pg_chat_max_length(),
         // Profile edit link targets; the JS appends the id. Rendered only
         // for peers whose can_edit_user / can_edit_contact flags are true.
         'urls' => array(
@@ -1875,6 +1916,11 @@ function pg_chat_render_backend_launcher()
             #pg-chat-root .pg-chat-row-unread { font-weight: 600; }
             #pg-chat-root .pg-chat-link { color: inherit; text-decoration: none; }
             #pg-chat-root .pg-chat-link:hover { text-decoration: underline; }
+            /* Header icon buttons are at least 24x24 px targets (32 px on a
+               phone, where the window fills the screen and they sit in a
+               row). */
+            #pg-chat-root .pg-chat-head-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; }
+            #pg-chat-root .pg-chat-chars-left { margin-top: 4px; }
             /* Phones: the panel fills the screen and stays put. A fixed
                element is anchored to the LAYOUT viewport, which the
                on-screen keyboard does not shrink — without this the window
@@ -1887,6 +1933,7 @@ function pg_chat_render_backend_launcher()
                 #pg-chat-root .pg-chat-panel { top: 0; left: 0; right: 0; bottom: 0; width: 100%; max-width: 100%; height: 100%; height: 100dvh; max-height: none; border-radius: 0; box-shadow: none; }
                 #pg-chat-root .pg-chat-panel.pg-chat-open { animation: none; }
                 #pg-chat-root.pg-chat-fullscreen .pg-chat-launcher { display: none; }
+                #pg-chat-root .pg-chat-head-btn { min-width: 32px; min-height: 32px; }
                 body.pg-chat-no-scroll { overflow: hidden; }
             }
             /* Forced colours drop backgrounds and box-shadows: the window
@@ -2221,15 +2268,13 @@ function pg_chat_site_send($conversation_id, $body, $page_url)
         return array('status' => 'error', 'code' => 'captcha', 'message' => lang('Slide the piece into place to continue'));
     }
 
-    $body = trim((string) $body);
+    $checked = pg_chat_check_body($body);
 
-    if ($body == '') {
-        return array('status' => 'error', 'message' => lang('Message is empty.'));
+    if ($checked['error'] !== '') {
+        return array('status' => 'error', 'message' => $checked['error']);
     }
 
-    if (mb_strlen($body) > 2000) {
-        return array('status' => 'error', 'message' => lang('Message is too long.'));
-    }
+    $body = $checked['body'];
 
     if (pg_chat_site_rate_limited()) {
         return array('status' => 'error', 'message' => lang('You are sending messages too quickly. Please wait a moment.'));

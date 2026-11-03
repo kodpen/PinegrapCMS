@@ -226,13 +226,13 @@ if (!$_POST) {
         // then add button to allow user to create a user for this contact.
         $output_create_user_button = '';
         if (USER_ROLE < 3) {
-            $output_create_user_button = lang(array('string'=>' {var:1} connected to this contact.','vars'=>array('<a class="alert-link" href="' . h(PATH . SOFTWARE_DIRECTORY . '/add_user.php?contact_id=' . $_GET['id']) . '">' . lang('Create an User') . '</a>') ));
+            $output_create_user_button = ' <a class="alert-link" href="' . h(PATH . SOFTWARE_DIRECTORY . '/add_user.php?contact_id=' . $_GET['id']) . '">' . h(lang('Create a user for this contact')) . '</a>';
         }
 
         $output_user_info ='
         <div class="col-12 my-3">
             <div class="alert theme-primary">
-                <p class="mb-0">' . lang('This Contact does not currently have a User connected to it.') . $output_create_user_button . '</p>
+                <p class="mb-0">' . h(lang('This contact has no user connected to it.')) . $output_create_user_button . '</p>
             </div>
         </div>';
     }
@@ -279,23 +279,19 @@ if (!$_POST) {
         )
     ) . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
                 ' . $output_orders_button . '
                 <form name="form" action="edit_contact.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
-                    ' . pg_contact_form_name_row($row, false, $image) . '
-
-                    <div class="row">
-                        <div class="col-12 md:col-6">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    ' . pg_contact_form_layout(
+                        pg_contact_form_name_card($row, false) . '
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Contact\'s Subscriber Information') . '
-                                </div>
-                                <div class="card-body" >
+                                </h2>
+                                <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 my-3">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="email_address" class="form-label">' . lang('Email') . '</label>
                                             <div class="input-group">
                                                 <input value="' . $email_address . '" type="text" name="email_address" id="email_address" autocomplete="off" class="form-control text-end" maxlength="100" inputmode="email" data-inputmask-alias="email" />
@@ -307,38 +303,29 @@ if (!$_POST) {
                                                 <div class="switch"><input class="" type="checkbox" id="opt_in" name="opt_in" value="1"' . ($row['opt_in'] ? ' checked="checked"' : '') . '></div>
                                                 <label class="" for="opt_in">' . lang('Opt-In Status') . '</label>
                                             </div>
+                                        </div>' . pg_mail_bounce_contact_badge(pg_mail_bounce_row($row['email_address'])) . '
+                                    </div>
+                                </div>
+                            </div>
+                            ' . pg_contact_form_detail_cards($row, false, $output_parasut, pg_contact_form_group_cells($contact_groups, pg_contact_form_group_states($_GET['id'], $contact_groups))),
+                        pg_contact_form_picture_card(false, $image) . '
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Connected Account of this Contact') . '
+                                    </h2>
+                                    <div class="card-body">
+                                        <div class="row">
+                                            ' . $output_user_info . '
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12 md:col-6">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Connected Account of this Contact') . '
-                                </div>
-                                <div class="card-body" >
-                                    <div class="row">
-                                        ' . $output_user_info . '
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    ' . pg_contact_form_detail_cards($row, false, $output_parasut, pg_contact_form_group_cells($contact_groups, pg_contact_form_group_states($_GET['id'], $contact_groups))) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('contact')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                                </div>',
+                        '
+                                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                                        <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('contact')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>'
+                    ) . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '">
                 </form>
-            </div>
-        </div>
-    
+
     <script>
         // The photo x removes its item from an inline handler. This listener
         // runs first, in the capture phase, and moves focus to Change Image,
@@ -348,7 +335,7 @@ if (!$_POST) {
             if (photos) {
                 photos.addEventListener("click", function (event) {
                     if (event.target.closest(".item .card-header button[onclick]")) {
-                        photos.parentNode.querySelector(".card-footer button").focus();
+                        photos.closest(".card").querySelector(".card-footer button").focus();
                     }
                 }, true);
             }
@@ -359,7 +346,17 @@ if (!$_POST) {
 
 } else {
     validate_token_field();
-    
+
+    // "Allow again" on the suppressed badge: lift the block on the stored
+    // address and come back to the card; the rest of the form is not saved.
+    if (($_POST['submit_allow_again'] ?? '') == '1') {
+        pg_mail_bounce_allow_contact($id);
+
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_contact.php?id=' . $id
+            . ((isset($_REQUEST['send_to']) && is_string($_REQUEST['send_to']) && ($_REQUEST['send_to'] !== '')) ? '&send_to=' . urlencode($_REQUEST['send_to']) : ''));
+        exit();
+    }
+
     // if contact was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
         $audit_before = pg_audit_fetch('contacts', (int) ($_POST['id'] ?? 0));
@@ -390,6 +387,8 @@ if (!$_POST) {
         $contact_id = (string) ($_POST['id'] ?? '');
 
         $_POST['email_address'] = pg_contact_form_email($_POST['email_address'] ?? '');
+
+        pg_contact_form_check($user, pg_contact_form_all_groups(), $_POST);
 
         $columns = pg_contact_form_columns($_POST, $user['id']);
         $columns['parasut_contact_id'] = trim(pg_contact_form_posted($_POST, 'parasut_contact_id'));
@@ -427,9 +426,12 @@ if (!$_POST) {
 
         pg_contact_form_save_groups($user, $contact_id, pg_contact_form_all_groups(), $_POST);
 
-        // An affiliate approved just now gets a key code for the affiliate group offer.
+        // An affiliate approved just now gets a key code for the affiliate
+        // group offer, and the approval is announced as the approval link's
+        // screen announces it (no welcome e-mail from here, as before).
         if ((AFFILIATE_PROGRAM == TRUE) && (($_POST['affiliate_approved'] ?? '') == 1) && ($original_affiliate_approved == 0)) {
             pg_contact_form_affiliate_key_code($affiliate_code, $user['id']);
+            pg_announce('affiliate.approved', pg_affiliate_approved_event($contact_id, $affiliate_code, (string) ($columns['affiliate_name'] ?? '')));
         }
 
         log_activity( lang(array('string'=>'contact ({var:1} {var:2}) was modified','vars'=>array($_POST['first_name'],$_POST['last_name']) )), $_SESSION['sessionusername']);

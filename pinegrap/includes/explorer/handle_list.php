@@ -180,6 +180,7 @@ function pg_explorer_handle_list_all_files($type, $request, $user, $folders_that
                 files.size,
                 files.design,
                 files.optimized,
+                files.attachment,
                 files.image_width,
                 files.image_height,
                 files.timestamp,
@@ -197,8 +198,7 @@ function pg_explorer_handle_list_all_files($type, $request, $user, $folders_that
             . " ORDER BY files.name");
 
         // An access rule is inherited down the folder tree, so it
-        // is read off the resolved folder rather than the row --
-        // the same way view_files.php filtered by it.
+        // is read off the resolved folder rather than the row.
         $access_scope = in_array($scope, array('public', 'guest', 'registration', 'membership', 'private'), true) ? $scope : '';
 
         if ($rows) {
@@ -222,7 +222,7 @@ function pg_explorer_handle_list_all_files($type, $request, $user, $folders_that
         'folder_id' => pg_recycle_folder_id(false),
         'retention_days' => pg_recycle_ready() ? pg_recycle_retention_days() : 0,
         'inside' => false,
-        'count' => pg_recycle_ready() ? (int) db_value("SELECT COUNT(*) FROM recycle_bin WHERE item_type IN (" . pg_recycle_item_types_sql($user) . ")") : 0);
+        'count' => pg_recycle_ready() ? pg_recycle_count($user) : 0);
 
     // The upload travels inside a json request, so the form settings do not apply to it.
     $upload_limits = pg_upload_limits();
@@ -363,6 +363,7 @@ function pg_explorer_handle_list($type, $request, $user, $folders_that_user_has_
                 files.size,
                 files.design,
                 files.optimized,
+                files.attachment,
                 files.image_width,
                 files.image_height,
                 files.timestamp,
@@ -418,19 +419,39 @@ function pg_explorer_handle_list($type, $request, $user, $folders_that_user_has_
         'count' => 0);
 
     if ($recycle['available']) {
-        $recycle['count'] = (int) db_value("SELECT COUNT(*) FROM recycle_bin WHERE item_type IN (" . pg_recycle_item_types_sql($user) . ")");
         $recycle['inside'] = (($folder_id > 0) && pg_recycle_is_inside($folder_id));
+
+        // Opening the bin clears the records whose item another path
+        // deleted for good, so what it counts is what it lists.
+        if ($recycle['inside']) {
+            pg_recycle_drop_orphans();
+        }
+
+        $recycle['count'] = pg_recycle_count($user);
     }
 
     $bin_entries = array();
 
     if ($recycle['available'] && $recycle['inside']) {
         $map_for_names = pg_explorer_folder_map();
-        $rows = db_items("SELECT item_type, item_id, original_parent_id, deleted_at FROM recycle_bin");
+        $rows = db_items(
+            "SELECT
+                recycle_bin.item_type,
+                recycle_bin.item_id,
+                recycle_bin.original_parent_id,
+                recycle_bin.deleted_at,
+                user.user_username AS deleted_username
+            FROM recycle_bin
+            LEFT JOIN user ON recycle_bin.deleted_by = user.user_id");
 
         if ($rows) {
             foreach ($rows as $row) {
-                $bin_entries[$row['item_type'] . ':' . $row['item_id']] = pg_explorer_bin_entry($row, $recycle['retention_days'], $map_for_names, time(), $recycle['folder_id'], pg_explorer_root_folder_id());
+                $bin_entry = pg_explorer_bin_entry($row, $recycle['retention_days'], $map_for_names, time(), $recycle['folder_id'], pg_explorer_root_folder_id());
+                // When and by whom, for the details panel; the name is empty
+                // when the account is gone.
+                $bin_entry['deleted_exact'] = pg_explorer_exact_time($row['deleted_at']);
+                $bin_entry['deleted_by'] = pg_explorer_editor_name((string) $row['deleted_username']);
+                $bin_entries[$row['item_type'] . ':' . $row['item_id']] = $bin_entry;
             }
         }
 

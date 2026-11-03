@@ -1,16 +1,21 @@
 ---
 name: main-menu-icons
-description: The panel main menu's two-colour SVG icons (pg_menu_icon()): when a drawing is needed, the 24-unit grid, module colour and accent colour classes, hover motion, what stays a Bootstrap icon.
+description: Main menu icons in two colours: row drawings (pg_menu_icon()), grid, module and accent colours, hover motion, the System tools toolbox, the panel entries' coloured tiles
 ---
 
 ## Which icons are not Bootstrap Icons?
-- Only the rows of the panel's main menu (`output_menu()`): each item names its drawing with `'menu_icon' => '<name>'`, drawn by `pg_menu_icon($name, $color_class)` (`includes/fn/output.php`). Everything else, the entries in the panels those rows open included, stays `bi`.
+- Only the rows of the panel's main menu (`output_menu()`): each item names its drawing with `'menu_icon' => '<name>'`, drawn by `pg_menu_icon($name, $color_class)` (`includes/fn/output.php`). Everything else, the entries in the panels those rows open included, stays `bi` (coloured as below).
 - A new main menu item gets its own drawing in `pg_menu_icon()`. Without one the row falls back to a `bi` icon (`'icon'`), then an svg, then a letter in a circle.
 
 ## Which icons do the panel entries carry?
 - Bootstrap Icons, always as `bi bi-<name> bi-me-2` (a bare `bi-<name>` draws too, but reads as a mistake). A list or screen: the outline icon of what it lists, one icon per subject across the menu and never the same one for two subjects. Create/Add: always `bi-plus-lg`. Reports: one chart shape each (`graph-up-arrow` order reports, `bar-chart` shipping, `clipboard2-data` visitors; the ERP's aging, P&L, VAT, cash flow and stock each their own). No `-fill` or half-filled glyphs. A link that leaves the panel: `box-arrow-up-right`. A module's own settings: `sliders`. `bi-stars` stays the AI mark.
-- Site Settings' categories and tools take their icons from `includes/settings/registry.php`, so the modal's sidebar and the search box show the same ones; its sections carry a neutral `bi-dot`.
-- Settings is the gear (`pg-mi-settings`, `settings-color`), turning one tooth on hover.
+- The System tools groups take their icons from `includes/settings/registry.php`, so the dialog and the search box show the same ones.
+- System tools is a toolbox (`pg-mi-tools`, `settings-color`, amber accent): latch on the front, a screwdriver and a spanner hidden inside (box and lid opaque); on hover the lid swings open on its right hinge, the latch pops and the tools come up. It had no accent hue before and read as single-coloured. The Site Settings gear went with its row (`main-menu-settings-row.md`).
+
+## Why are the panel entries' icons in two colours?
+- The owner asked for every menu icon in two colours, for legibility (2026-11-02). A panel carries its row's module (`data-pg-menu-tone`, from `pg_menu_tone($color_class)`, passed to `pg_menu_panel()`; System tools' group panels via `pg_menu_tools_markup()`'s `$tone`). `backend.src.css` maps each tone to the module's two shades: the glyph in one, a rounded tile of the other behind it, swapped in the dark theme like `.pg-mi-2`.
+- A new row colour class needs its `[data-pg-menu-tone="…"]` line, or its panel's icons stay plain; `tests/menu_panel_test.php` checks every class `output_menu()` uses.
+- Bootstrap Icons' `::before` rule is unlayered and beats `@layer custom`, so its `line-height: 1` stays: the tile centres the glyph with top padding, not line-height. Entry padding shrank so the 1.625rem tile keeps the entry height.
 
 ## How is a menu icon drawn?
 - On a 24-unit grid. First colour: the module's colour class on the `<svg>` sets `currentColor`, which draws the outline; the same colour as a tint (`.pg-mi-2`) fills the body.

@@ -83,6 +83,35 @@ function pg_list_page_window($start, $length)
 }
 
 /**
+ * The page number a list screen's address asks for (?screen=N), counted
+ * from 1. Anything but a whole number of 1 or more is the first page. The
+ * value is compared as a float before it becomes an integer: 1e400 is INF
+ * and 1e19 is past PHP_INT_MAX, and both cast to 0, which made the offset
+ * negative and broke the query and the pager. A number past $max is held at
+ * $max, so the offset stays an integer that LIMIT accepts.
+ *
+ * @param mixed $value the page asked for
+ * @param int   $max   the highest page number handed back
+ * @return int 1 to $max
+ */
+function pg_list_page_number($value, $max = 1000000)
+{
+    $max = max(1, (int) $max);
+
+    if (!is_scalar($value) || is_bool($value) || !is_numeric($value)) {
+        return 1;
+    }
+
+    $number = (float) $value;
+
+    if (is_nan($number) || ($number < 1) || ($number != floor($number))) {
+        return 1;
+    }
+
+    return ($number >= $max) ? $max : (int) $number;
+}
+
+/**
  * A page number held to the pages a list has: 1 to ceil(total / per_page),
  * or 1 when the list is empty or a page holds no rows. A screen that reloads
  * after rows left the list (a bulk accept keeps ?page=N) shows its last page

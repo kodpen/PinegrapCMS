@@ -46,12 +46,23 @@ function pg_test_site_language_literal_texts($file)
 		$parts = preg_split('~<[^<>]*>~', $string);
 		$count = count($parts);
 
-		// A literal without a tag is a value, not markup: not judged here.
+		// A literal without a whole tag is a value, not markup, unless it
+		// holds text between the end of one tag and the start of the next
+		// ('">Label<span id="', the tags joined in from the literals around
+		// it): only that text is judged.
 		if ($count === 1) {
-			continue;
+			if (!preg_match_all('~>([^<>]+)<~', $string, $matches)) {
+				continue;
+			}
+
+			$parts = $matches[1];
+			$count = 0;
 		}
 
 		foreach ($parts as $index => $part) {
+			if ($count === 0) {
+				// Text cut out between two tag edges: nothing to trim.
+			} else
 			// The first piece may close a tag opened in the literal before
 			// (an attribute value joined in), the last may open one: only the
 			// text outside the tag counts.

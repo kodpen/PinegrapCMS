@@ -27,21 +27,8 @@ $liveform = new liveform('view_order_reports');
 
 $keys_and_values = '';
 
-// If a screen was passed and it is a positive integer, then use it.
-// These checks are necessary in order to avoid SQL errors below for a bogus screen value.
-if (
-    isset($_REQUEST['screen'])
-    and $_REQUEST['screen']
-    and is_numeric($_REQUEST['screen'])
-    and $_REQUEST['screen'] > 0
-    and $_REQUEST['screen'] == round($_REQUEST['screen'])
-) {
-    $screen = (int) $_REQUEST['screen'];
-
-// Otherwise, use the default, which is the first screen.
-} else {
-    $screen = 1;
-}
+// The page asked for, a whole number of 1 or more (pg_list_page_number()).
+$screen = pg_list_page_number($_REQUEST['screen'] ?? '');
 
 // The columns this list sorts by, in the order the table shows them.
 // pg_list_state() keeps the choice in the session as a code, so it survives

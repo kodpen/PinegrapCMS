@@ -108,6 +108,19 @@ function test_a11y_form_label()
 	pg_assert_same('soyad', $findings['a11y_form_label']['detail']);
 }
 
+// A select or textarea takes no name from its content: the option texts and
+// the default text are values, not a label.
+function test_a11y_form_label_ignores_control_content()
+{
+	$html = a11y_test_page('<select name="il"><option>İstanbul</option><option>Ankara</option></select>'
+		. '<textarea name="not">Varsayılan metin</textarea>'
+		. '<select name="ilce" aria-label="İlçe"><option>Kadıköy</option></select>');
+	$findings = pg_a11y_check_html($html);
+
+	pg_assert_same(2, isset($findings['a11y_form_label']) ? $findings['a11y_form_label']['occurrences'] : 0, 'option text and default text are no label');
+	pg_assert_same('il', isset($findings['a11y_form_label']) ? $findings['a11y_form_label']['detail'] : '');
+}
+
 function test_a11y_idref_broken()
 {
 	$findings = pg_a11y_check_html(a11y_test_page('<label for="yok">Ad</label><input id="ad" aria-label="Ad" aria-describedby="ipucu gone"><p id="ipucu">İpucu</p>'));
@@ -247,4 +260,110 @@ function test_a11y_report_pdf_never_reads_compliant_before_a_full_pass()
 
 	pg_assert_same(count(pg_a11y_rules()), substr_count($html, 'class="muted">' . h(lang('Not checked yet'))));
 	pg_assert_same(0, substr_count($html, 'class="ok"'));
+}
+
+// What the editor measured on the canvas: only the browser-only rules, counted
+// per code, the first label as the example, marked with the save's time.
+function test_a11y_measured_findings()
+{
+	$findings = pg_a11y_measured_findings(array(
+		array('rule' => 'low_contrast', 'label' => 'Low text contrast 3,1:1: "Sepet"'),
+		array('rule' => 'low_contrast', 'label' => 'Low text contrast 2,0:1: "Ara"'),
+		array('rule' => 'target_size', 'label' => 'Small target 12×12px'),
+		array('rule' => 'redundant_entry', 'label' => 'not measured by the browser'),
+		array('rule' => 'img_alt', 'label' => 'a server check'),
+		'not a finding',
+		array('label' => 'no rule'),
+	), 1761600000);
+
+	pg_assert_same(array('a11y_contrast', 'a11y_target_size'), array_keys($findings));
+	pg_assert_same(array(
+		'code'        => 'a11y_contrast',
+		'severity'    => 'warning',
+		'occurrences' => 2,
+		'source'      => 'editor:1761600000',
+		'detail'      => 'Low text contrast 3,1:1: "Sepet"',
+	), $findings['a11y_contrast']);
+	pg_assert_same(1, $findings['a11y_target_size']['occurrences']);
+	pg_assert_same(250, mb_strlen(pg_a11y_measured_findings(array(array('rule' => 'target_size', 'label' => str_repeat('ü', 300))), 1)['a11y_target_size']['detail']));
+	pg_assert_same(array(), pg_a11y_measured_findings(null, 1));
+	pg_assert_same(array(), pg_a11y_measured_findings('[]', 1));
+}
+
+// The source tells an editor measurement from a server finding, and when it was kept.
+function test_a11y_measured_time_and_note()
+{
+	pg_assert_same(1761600000, pg_a11y_measured_time(pg_a11y_measured_source(1761600000)));
+	pg_assert_same(0, pg_a11y_measured_time(''));
+	pg_assert_same(0, pg_a11y_measured_time('document'));
+	pg_assert_same(0, pg_a11y_measured_time('editor:x'));
+	pg_assert_same('', pg_a11y_measured_note(''));
+	pg_assert_true(strpos(pg_a11y_measured_note('editor:1761600000'), date('Y-m-d H:i', 1761600000)) !== false);
+}
+
+// The PDF says where a finding measured in the editor came from.
+function test_a11y_report_html_names_editor_measurements()
+{
+	$html = pg_a11y_report_html(
+		array('a11y_contrast' => array('pages' => 1, 'occurrences' => 1)),
+		array(array('page_id' => 3, 'page_name' => 'urunler', 'code' => 'a11y_contrast', 'severity' => 'warning', 'occurrences' => 1, 'detail' => 'x', 'source' => 'editor:1761600000')),
+		1, 1761600000, 'ornek.com');
+
+	pg_assert_true(strpos($html, h(pg_a11y_measured_note('editor:1761600000'))) !== false);
+}
+
+function test_a11y_rules_by_criterion_orders_the_checklist()
+{
+	$rules = array(
+		'a11y_title'    => array('criterion' => '2.4.2'),
+		'a11y_lang'     => array('criterion' => '3.1.1'),
+		'a11y_headings' => array('criterion' => '1.3.1'),
+		'a11y_img_alt'  => array('criterion' => '1.1.1'),
+		'a11y_labels'   => array('criterion' => '1.3.1'),
+		'a11y_target'   => array('criterion' => '2.5.8'),
+		'a11y_contrast' => array('criterion' => '1.4.3'),
+		'a11y_links'    => array('criterion' => '2.4.11'),
+	);
+
+	pg_assert_same(
+		array('a11y_img_alt', 'a11y_headings', 'a11y_labels', 'a11y_contrast', 'a11y_title', 'a11y_links', 'a11y_target', 'a11y_lang'),
+		array_keys(pg_a11y_rules_by_criterion($rules)),
+		'criterion number order, a criterion\'s checks together in registry order'
+	);
+
+	$registry = pg_a11y_rules_by_criterion(pg_a11y_rules());
+	pg_assert_same(count(pg_a11y_rules()), count($registry), 'every registered check is kept');
+}
+
+function test_a11y_pass_record_counts_the_pages_checked()
+{
+	pg_assert_same(array('checked' => 29, 'failed' => 2, 'pages' => 31), pg_a11y_pass_record('{"checked":29,"failed":2}', 31), 'the last full pass');
+	pg_assert_same(array('checked' => 31, 'failed' => 0, 'pages' => 31), pg_a11y_pass_record('', 31), 'no record yet: the scope');
+	pg_assert_same(array('checked' => 31, 'failed' => 0, 'pages' => 31), pg_a11y_pass_record('{"checked":40,"failed":0}', 31), 'never more than the scope');
+
+	pg_assert_same('31 published pages checked', pg_a11y_pages_checked_text(31, 31));
+	pg_assert_same('29 of 31 published pages checked', pg_a11y_pages_checked_text(29, 31));
+}
+
+function test_a11y_run_notice_names_the_pages_not_rendered()
+{
+	pg_assert_same('Every published page has been checked (29 in this run).', pg_a11y_run_notice(array('checked' => 29, 'failed' => 0, 'done' => true)));
+	pg_assert_same('The check reached the last page: 29 pages were checked in this run, 2 could not be rendered.', pg_a11y_run_notice(array('checked' => 29, 'failed' => 2, 'done' => true)));
+	pg_assert_same('12 pages were checked. Click again to continue with the rest.', pg_a11y_run_notice(array('checked' => 12, 'failed' => 0, 'done' => false)));
+	pg_assert_same('12 pages were checked, 1 could not be rendered. Click again to continue with the rest.', pg_a11y_run_notice(array('checked' => 12, 'failed' => 1, 'done' => false)));
+}
+
+function test_a11y_rows_cut_note()
+{
+	pg_assert_same('', pg_a11y_rows_cut_note(1000, 1000), 'nothing left out');
+	pg_assert_same('The first 1000 of 2300 findings are shown. Choose a check to narrow the list.', pg_a11y_rows_cut_note(1000, 2300));
+}
+
+function test_a11y_report_html_pages_rows_and_check_heading()
+{
+	$html = pg_a11y_report_html(array(), array(), 31, 0, 'example.com', 29, 2300);
+
+	pg_assert_contains('29 of 31 published pages checked', $html, 'the pages the last pass checked');
+	pg_assert_contains('<th>Automatic check</th>', $html, 'the column names the check, not the verb');
+	pg_assert_false(strpos($html, 'Choose a check'), 'no cut note without findings shown');
 }

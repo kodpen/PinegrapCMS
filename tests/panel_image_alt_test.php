@@ -79,5 +79,6 @@ function test_warning_heading_reads_warning_once()
 	$source = panel_image_alt_source('liveform.class.php');
 
 	pg_assert_false(strpos($source, 'alt="Warning"') !== false, 'English alt before the translated heading');
-	pg_assert_same(2, substr_count($source, 'icon_warning.png" alt=""'), 'both warning icons silent');
+	// One icon serves both headings (site markup; the panel uses a Bootstrap icon).
+	pg_assert_same(1, substr_count($source, 'icon_warning.png" alt=""'), 'warning icon silent');
 }

@@ -60,14 +60,14 @@ function test_create_user_is_a_real_link()
 	$source = panel_link_roles_source('edit_contact.php');
 
 	pg_assert_false(strpos($source, 'href="#!"') !== false, 'Create an User navigates from a script');
-	pg_assert_true(strpos($source, "'<a class=\"alert-link\" href=\"' . h(PATH . SOFTWARE_DIRECTORY . '/add_user.php?contact_id=' . \$_GET['id']) . '\">'") !== false, 'Create an User has a real href');
+	pg_assert_true(strpos($source, "<a class=\"alert-link\" href=\"' . h(PATH . SOFTWARE_DIRECTORY . '/add_user.php?contact_id=' . \$_GET['id']) . '\">'") !== false, 'Create a user for this contact has a real href');
 }
 
 // A button whose only text is a figure is named by that figure; a hidden
 // action word in front of it gives the whole name.
 function test_figure_buttons_carry_their_action_name()
 {
-	foreach (array('view_files.php', 'view_design_files.php') as $file) {
+	foreach (array('view_design_files.php') as $file) {
 		$source = panel_link_roles_source($file);
 		pg_assert_true(strpos($source, '<i class="bi bi-fast-forward-circle" aria-hidden="true"></i><span class="visually-hidden">\' . h(lang(\'Optimize this image\')) . \'</span>\' . $optimize_percent_html') !== false, $file . ': Optimize named');
 	}

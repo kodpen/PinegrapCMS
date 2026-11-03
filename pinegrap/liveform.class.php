@@ -169,6 +169,16 @@ class liveform {
             $datalist = $attributes['datalist'];
         }
 
+        // A browser check of a text field: its pattern, and the title the
+        // browser shows when the value does not match.
+        $output_pattern = '';
+        if (isset($attributes['pattern']) && is_scalar($attributes['pattern']) && ((string) $attributes['pattern'] !== '')) {
+            $output_pattern = ' pattern="' . h((string) $attributes['pattern']) . '"';
+            if ($title != '') {
+                $output_pattern .= ' title="' . h($title) . '"';
+            }
+        }
+
 
         // If this is not a hidden or submit field, then prepare required value.
         if (($type != 'hidden') && ($type != 'submit')) {
@@ -414,7 +424,7 @@ class liveform {
                 if($size != ''){
                     $output_size = ' size="' . h($size) . '"';
                 }
-                return "<input type=\"$type\" name=\"" . h($field) . "\"" . $output_id_attribute . " value=\"" . h($value) . "\"  class=\"$class\" style=\"$style\"$output_readonly$output_onchange$output_onclick$output_onfocus$output_onblur$output_min$output_max$output_step " . $output_datalist . $output_placeholder . $output_size . $output_required . $output_aria_label . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . $output_inline_feedback;
+                return "<input type=\"$type\" name=\"" . h($field) . "\"" . $output_id_attribute . " value=\"" . h($value) . "\"  class=\"$class\" style=\"$style\"$output_readonly$output_onchange$output_onclick$output_onfocus$output_onblur$output_min$output_max$output_step " . $output_datalist . $output_placeholder . $output_size . $output_required . $output_pattern . $output_aria_label . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . $output_inline_feedback;
                 break;
 
             case 'checkbox':
@@ -591,7 +601,10 @@ class liveform {
                     $output_maxlength = ' maxlength="' . h($maxlength) . '"';
                 }
                 
-                return "<textarea name=\"" . h($field) . "\"" . $output_id_attribute . " rows=\"$rows\" cols=\"$cols\" class=\"$class\" style=\"$style\"$output_onclick$output_onfocus$output_readonly" . $output_placeholder . $output_required . $output_aria_label . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . h($value) . "</textarea>" . $output_inline_feedback;
+                // An empty rows or cols is no size at all; the browser's two rows stay.
+                $output_rows_cols = ((string) $rows !== '' ? ' rows="' . h($rows) . '"' : '') . ((string) $cols !== '' ? ' cols="' . h($cols) . '"' : '');
+
+                return "<textarea name=\"" . h($field) . "\"" . $output_id_attribute . $output_rows_cols . " class=\"$class\" style=\"$style\"$output_onclick$output_onfocus$output_readonly" . $output_placeholder . $output_required . $output_aria_label . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . h($value) . "</textarea>" . $output_inline_feedback;
                 break;
 
             case 'password':
@@ -1086,7 +1099,8 @@ class liveform {
             // if there is at least one error, then output message
             if ($error_exists == TRUE) {
                 $output_error_messages = '';
-                $error_icon = '<i class="bi bi-exclamation-triangle-fill me-2" aria-hidden="true"></i>';
+                $panel = self::panel_output();
+                $error_icon = self::alert_icon('bi-exclamation-triangle-fill', $panel);
 
                 // if there is not an error message, then just prepare description
                 if (count($error_messages) == 0) {
@@ -1107,11 +1121,7 @@ class liveform {
                     }
                 }
                 
-                $output =
-                    '<div class="software_error alert alert-danger alert-dismissible show " role="alert">
-                        <button type="button" style="display:none;" class="btn-close no-popover" title="' . lang('Close') . '" data-bs-dismiss="alert" aria-label="' . h(lang('Close')) . '"></button>
-                        ' . $output_error_messages . '
-                    </div>';
+                $output = self::alert_box('software_error', 'danger', $output_error_messages, $panel);
 
                 // expose per-field error messages so the JS auto-injector can render
                 // inline <div class="invalid-feedback"> next to .is-invalid inputs.
@@ -1260,7 +1270,8 @@ class liveform {
     function output_notices()
     {
         $output = '';
-        $notice_icon = '<i class="bi bi-check-circle-fill me-2" aria-hidden="true"></i>';
+        $panel = self::panel_output();
+        $notice_icon = self::alert_icon('bi-check-circle-fill', $panel);
 
         // if there is at least one notice, then output message
         if (isset($_SESSION['software']['liveforms'][$this->form][$this->index]['notices']) && $_SESSION['software']['liveforms'][$this->form][$this->index]['notices']) {
@@ -1281,53 +1292,133 @@ class liveform {
                 }
             }
             
-            $output =
-                '<div class="software_notice alert alert-success alert-dismissible show" role="alert">
-                    <button type="button" style="display:none;" class="btn-close no-popover" title="' . lang('Close') . '" data-bs-dismiss="alert" aria-label="' . h(lang('Close')) . '"></button>
-                    ' . $output_notices . '
-                </div>';
+            $output = self::alert_box('software_notice', 'success', $output_notices, $panel);
         }
 
         return $output;
     }
 
+    /**
+     * The warnings this form is carrying, as plain strings.
+     *
+     * get_warnings() returns them already wrapped in an alert; the visual
+     * designer shows them in its own toasts and needs the messages themselves.
+     *
+     * @return array
+     */
+    function get_warning_messages()
+    {
+        if (!isset($_SESSION['software']['liveforms'][$this->form][$this->index]['warnings'])) {
+            return array();
+        }
+
+        return (array) $_SESSION['software']['liveforms'][$this->form][$this->index]['warnings'];
+    }
+
     function get_warnings()
     {
         $output = '';
-        //if its dark theme
-        if(isset($_COOKIE['prefers-color-scheme']) && $_COOKIE['prefers-color-scheme'] == 'dark'){
-            $warning_color = '#dfb846';
-        }else{
-            //else default
-            $warning_color = '#664d03';
+        $panel = self::panel_output();
+
+        // The panel colours the text through theme-warning; site output keeps
+        // its own ink, lighter when the visitor's theme is dark.
+        $warning_style = '';
+        if (!$panel) {
+            if (isset($_COOKIE['prefers-color-scheme']) && $_COOKIE['prefers-color-scheme'] == 'dark') {
+                $warning_style = ' style="color:#dfb846;"';
+            } else {
+                $warning_style = ' style="color:#664d03;"';
+            }
         }
+
+        if ($panel) {
+            $warning_icon = self::alert_icon('bi-exclamation-circle-fill', true);
+        } else {
+            $warning_icon = '<img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_warning.png" alt="" title="" class="icon" style="display: inline-block;margin-right: 0.5em;min-width: 18px;min-height: 16px;">';
+        }
+
         // If there is at least one warning, then output message.
         if (isset($_SESSION['software']['liveforms'][$this->form][$this->index]['warnings']) && $_SESSION['software']['liveforms'][$this->form][$this->index]['warnings']) {
             $output_warnings = '';
-                
+
             // if there is 1 warning, then output description and warning
             if (count($_SESSION['software']['liveforms'][$this->form][$this->index]['warnings']) == 1) {
-                $output_warnings = '<h5 class="alert-heading description"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_warning.png" alt="" title="" class="icon" style="display: inline-block;margin-right: 0.5em;min-width: 18px;min-height: 16px;">' . lang('Warning') . ':</h5> <p class="warning" style="color:' . $warning_color . ';">' . $_SESSION['software']['liveforms'][$this->form][$this->index]['warnings'][0] . '</p>';
-                
+                $output_warnings = '<h5 class="alert-heading description">' . $warning_icon . lang('Warning') . ':</h5> <p class="warning"' . $warning_style . '>' . $_SESSION['software']['liveforms'][$this->form][$this->index]['warnings'][0] . '</p>';
+
             // else there is more than 1 warning, so output description and list of warnings
             } else {
                 $output_warnings =
-                    '<h5 class="alert-heading description"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_warning.png" alt="" title="" class="icon" style="display: inline-block;margin-right: 0.5em;min-width: 18px;min-height: 16px;">' . lang('Warnings') . ':</h5>';
-                
+                    '<h5 class="alert-heading description">' . $warning_icon . lang('Warnings') . ':</h5>';
+
                 // loop through the warnings in order to output them
                 foreach ($_SESSION['software']['liveforms'][$this->form][$this->index]['warnings'] as $warning) {
-                    $output_warnings .= '<p class="warning" style="color:' . $warning_color . ';">' . $warning . '</p>';
+                    $output_warnings .= '<p class="warning"' . $warning_style . '>' . $warning . '</p>';
                 }
             }
-            
-            $output =
-                '<div class="software_warning alert alert-warning alert-dismissible show" role="alert">
-                    <button type="button" style="display:none;" class="btn-close no-popover" title="' . lang('Close') . '" data-bs-dismiss="alert" aria-label="' . h(lang('Close')) . '"></button>
-                    ' . $output_warnings . '
-                </div>';
+
+            $output = self::alert_box('software_warning', 'warning', $output_warnings, $panel);
         }
 
         return $output;
+    }
+
+    /**
+     * Whether the messages print as panel markup (Bootstrap 6) or as site
+     * markup (Bootstrap 5.3.8). The panel frame and the secure frame
+     * (includes/fn/output.php) define PG_PANEL_OUTPUT before the screen's
+     * messages are printed; every other request is site output.
+     *
+     * @return bool
+     */
+    static function panel_output()
+    {
+        return defined('PG_PANEL_OUTPUT') && PG_PANEL_OUTPUT;
+    }
+
+    /**
+     * The icon in front of an alert's heading.
+     *
+     * @param string $icon  Bootstrap Icons class (bi-…)
+     * @param bool   $panel Panel markup (Bootstrap 6 spacing) or site markup
+     * @return string
+     */
+    static function alert_icon($icon, $panel)
+    {
+        return '<i class="bi ' . $icon . ' ' . ($panel ? 'me-3' : 'me-2') . '" aria-hidden="true"></i>';
+    }
+
+    /**
+     * The alert around a list of errors, warnings or notices.
+     *
+     * Panel: Bootstrap 6's alert component, a theme-<tone> flex row whose
+     * content comes first and whose close button sits at the end of the row
+     * (v6 has no alert-<tone> or alert-dismissible). Site: Bootstrap 5's
+     * alert-<tone> alert-dismissible, its close button hidden until
+     * frontend/backend script shows it.
+     *
+     * @param string $class   software_error, software_warning or software_notice
+     * @param string $tone    danger, warning or success
+     * @param string $content The heading and message paragraphs (HTML)
+     * @param bool   $panel   Panel markup or site markup
+     * @return string
+     */
+    static function alert_box($class, $tone, $content, $panel)
+    {
+        $close = h(lang('Close'));
+
+        if ($panel) {
+            return
+                '<div class="' . $class . ' alert theme-' . $tone . ' d-flex align-items-start gap-3" role="alert">
+                    <div class="flex-grow-1 min-w-0">' . $content . '</div>
+                    <button type="button" class="btn-close no-popover ms-auto flex-shrink-0" title="' . $close . '" data-bs-dismiss="alert" aria-label="' . $close . '"></button>
+                </div>';
+        }
+
+        return
+            '<div class="' . $class . ' alert alert-' . $tone . ' alert-dismissible show" role="alert">
+                <button type="button" style="display:none;" class="btn-close no-popover" title="' . $close . '" data-bs-dismiss="alert" aria-label="' . $close . '"></button>
+                ' . $content . '
+            </div>';
     }
 
     function check_form_notices()

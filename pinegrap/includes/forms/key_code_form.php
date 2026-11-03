@@ -48,8 +48,11 @@ function pg_key_code_form_taken($table, $code, $except_id = null)
  * The checks a posted key code shares between create and edit: offer code
  * required and an offer found for it; the key code not used by another key
  * code and not an offer's own code, which checkout would apply as the offer
- * without ever reading the key code; a typed expiration date valid. Create
- * may leave the code empty for the generator; edit requires it first.
+ * without ever reading the key code; neither code longer than the 50
+ * characters of its column (MySQL would cut it, and the clash check would
+ * have read the uncut value); a typed expiration date a real date as a
+ * whole (pg_date_input_iso()). Create may leave the code empty for the
+ * generator; edit requires it first.
  *
  * @param liveform $liveform
  * @param mixed    $id     null on create, the edited key code's id on edit
@@ -62,6 +65,14 @@ function pg_key_code_form_validate($liveform, $id = null, $taken = null)
     }
 
     $liveform->validate_required_field('offer_code', lang('Offer Code is required.'));
+
+    foreach (array('code', 'offer_code') as $name) {
+        $value = (string) $liveform->get_field_value($name);
+
+        if (!$liveform->check_field_error($name) && (mb_strlen($value) > 50)) {
+            $liveform->mark_error($name, h(lang(array('string' => '"{var:1}" is longer than 50 characters.', 'vars' => array($value)))));
+        }
+    }
 
     $code = (string) $liveform->get_field_value('code');
 
@@ -82,7 +93,7 @@ function pg_key_code_form_validate($liveform, $id = null, $taken = null)
 
     $expiration_date = (string) $liveform->get_field_value('expiration_date');
 
-    if (($expiration_date !== '') && (validate_date($expiration_date) == false)) {
+    if ((trim($expiration_date) !== '') && (pg_date_input_iso($expiration_date) === '')) {
         $liveform->mark_error('expiration_date', lang('Please enter a valid expiration date.'));
     }
 }
@@ -115,11 +126,23 @@ function pg_key_code_form_values($liveform, $code, $stored_enabled = null)
         (string) $code,
         (string) $liveform->get_field_value('offer_code'),
         $enabled,
-        (string) prepare_form_data_for_input((string) $liveform->get_field_value('expiration_date'), 'date'),
+        pg_key_code_form_expiration((string) $liveform->get_field_value('expiration_date')),
         (string) $liveform->get_field_value('notes'),
         (string) $liveform->get_field_value('single_use'),
         (string) $liveform->get_field_value('report'),
     );
+}
+
+/**
+ * The expiration date a save writes: '' (never expires) for an empty box,
+ * else the typed date as ISO through the same reading the check used.
+ *
+ * @param string $typed
+ * @return string
+ */
+function pg_key_code_form_expiration($typed)
+{
+    return (trim((string) $typed) === '') ? '' : pg_date_input_iso($typed);
 }
 
 /**
@@ -152,4 +175,29 @@ function pg_key_code_form_generate($taken = null)
     }
 
     return '';
+}
+
+/**
+ * The number of key codes the create screen is asked for: a whole number
+ * above 0 (commas as thousands separators allowed), 0 for anything else.
+ * A decimal is refused rather than cut: the number box turns a typed ","
+ * into ".", so "2,5" posts 2.5, which created two codes, and 0.5 created
+ * none while the screen reported them created.
+ *
+ * @param mixed $typed
+ * @return int
+ */
+function pg_key_code_form_quantity($typed)
+{
+    if (!is_scalar($typed)) {
+        return 0;
+    }
+
+    $quantity = str_replace(',', '', trim((string) $typed));
+
+    if (!preg_match('/^[0-9]{1,9}$/', $quantity)) {
+        return 0;
+    }
+
+    return (int) $quantity;
 }

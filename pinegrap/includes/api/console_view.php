@@ -65,6 +65,7 @@ function api_console_endpoints_html($try_hint = '') {
 		'site_log'       => lang('Site Log'),
 		'campaigns'      => lang('Campaigns'),
 		'contact_groups' => lang('Contact Groups'),
+		'users'          => lang('Users'),
 		'files'          => lang('Files'),
 		'forms'          => lang('Forms'),
 		'seo'            => lang('SEO'),
@@ -284,12 +285,12 @@ function api_console_endpoints_html($try_hint = '') {
 	// list on the left. Until now the catalogue lived in the source and in the
 	// panel's subscription form, so an integrator reading these pages could not
 	// find out what there was to subscribe to.
-	$nav .= '<div class="doc-nav-group">' . h(lang('Events')) . '</div>
+	$nav .= '<div class="doc-nav-group">' . h(lang('Webhook events')) . '</div>
 		<a class="doc-nav-item" href="#ep_events">
 			<span class="doc-m post">~</span>
 			<span>' . h(lang('What this site can tell you')) . '</span></a>';
 
-	$panels .= '<div class="doc-group-h">' . h(lang('Events')) . '</div>' . api_console_events_html();
+	$panels .= '<div class="doc-group-h">' . h(lang('Webhook events')) . '</div>' . api_console_events_html();
 
 	// The failures, last, with their own place in the list on the left. Neither
 	// block is counted as an endpoint - neither is one - so "31 endpoints"
@@ -328,13 +329,13 @@ function api_console_events_html() {
 
 	return '<div class="doc-ep" id="ep_events">
 		<div class="doc-ep-head">
-			<span class="doc-m post">' . h(lang('Events')) . '</span>
+			<span class="doc-m post">' . h(lang('Webhook events')) . '</span>
 			<code class="doc-path">' . h(lang('Registered with POST /webhooks')) . '</code>
 		</div>
 		<div class="doc-ep-body">
 			<p class="doc-desc">' . h(lang('Rather than ask this API on a timer, an application can register an address and be told. The site posts a JSON body carrying the event name, created_at as a UTC instant, and the few fields in data that identify the thing, and signs it with the subscription secret in the X-Pinegrap-Signature header. Delivery is queued and sent by the scheduled task, so nothing an outside server does can slow down a checkout. Fetch the object itself when you need more than the identifiers.')) . '</p>
 			<div class="doc-curl"><code>{"event": "order.created", "created_at": "2026-01-25T09:14:03Z", "data": {"id": 1042}}</code></div>
-			<div class="doc-params mt-5"><span class="doc-params-h">' . h(lang('Events')) . '</span>
+			<div class="doc-params mt-5"><span class="doc-params-h">' . h(lang('Webhook events')) . '</span>
 				<table class="table table-sm mb-0"><tbody>' . $rows . '</tbody></table></div>
 		</div>
 	</div>';
@@ -483,6 +484,10 @@ window.pgApiConsole = (function () {
 			'string' => '{var:1} could not be read as a list. Enter a JSON array such as ["a", "b"], or values separated by commas.',
 			'vars'   => '%NAME%'
 		)), JSON_UNESCAPED_UNICODE) . ',
+		objectUnreadable: ' . json_encode(lang(array(
+			'string' => '{var:1} could not be read as an object. Enter a JSON object such as {"key": "value"}.',
+			'vars'   => '%NAME%'
+		)), JSON_UNESCAPED_UNICODE) . ',
 		noCredential: ' . json_encode(lang('No credential is available for this call.'), JSON_UNESCAPED_UNICODE) . '
 	};
 
@@ -517,6 +522,9 @@ window.pgApiConsole = (function () {
 			if (type === "list") {
 				html += "<textarea rows=\'2\' class=\'form-control form-control-sm doc-field\'" + attributes +
 					" placeholder=\'[&quot;a&quot;, &quot;b&quot;]\'></textarea>";
+			} else if (type === "object") {
+				html += "<textarea rows=\'3\' class=\'form-control form-control-sm doc-field\'" + attributes +
+					" spellcheck=\'false\' placeholder=\'{&quot;key&quot;: &quot;value&quot;}\'></textarea>";
 			} else if (type === "enum") {
 				var values = [];
 				try { values = JSON.parse(row.dataset.values || "[]"); } catch (e) {}
@@ -545,6 +553,16 @@ window.pgApiConsole = (function () {
 		if (text.indexOf("[") > -1 || text.indexOf("{") > -1) { return null; }
 		return text.split(",").map(function (item) { return item.trim(); })
 			.filter(function (item) { return item !== ""; });
+	}
+
+	// An object field has to be a JSON object: an array, a number or plain
+	// text comes back as null so the caller can name the field.
+	function parseObject(text) {
+		try {
+			var parsed = JSON.parse(text);
+			if (parsed !== null && typeof parsed === "object" && !Array.isArray(parsed)) { return parsed; }
+		} catch (e) {}
+		return null;
 	}
 
 	function showProblem(panel, text) {
@@ -625,6 +643,14 @@ window.pgApiConsole = (function () {
 					return;
 				}
 				body[name] = list;
+				hasBody = true;
+			} else if (field.dataset.type === "object") {
+				var object = parseObject(value);
+				if (object === null) {
+					problem = T.objectUnreadable.replace("%NAME%", name);
+					return;
+				}
+				body[name] = object;
 				hasBody = true;
 			} else {
 				body[name] = value;

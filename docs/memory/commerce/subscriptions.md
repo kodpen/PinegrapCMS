@@ -5,7 +5,7 @@ module: subscriptions
 ---
 
 ## What is in place?
-- Tables (step 11.0.128 `upgrade_2026_11_0_subscriptions()`, both in `get_tables()`; schema as decided in #3183, `workflow/decisions-made-schema-5.md`): `subscriptions` (`user_id`, `product_id`, `order_id` = first order, `order_item_id`, `driver`, `remote_id` '' in store mode, `status`, `period`, `amount` minor units, `currency`, `next_charge_at`, `retry_count`, `card_last4`, `card_ref` sealed, `created_at`, `updated_at`, `cancelled_at`, `ended_at`; unix seconds) and `subscription_events` (`kind`, `order_id`, `amount`, `remote_event_id` NULL + `uk_subscription_event_remote`, `detail`, `created_at`). The same step appends `subscription_renewed`, `subscription_failed`, `subscription_cancelled` to `email_campaign_profiles.action`. `email_campaigns.action` gets them in 11.0.129 (`subscriptions-mails.md`).
+- Tables (step 11.0.128 `upgrade_2026_11_0_subscriptions()`, both in `get_tables()`; schema as decided in #3183, `workflow/decisions-made-schema-5.md`): `subscriptions` (`user_id`, `product_id`, `order_id` = first order, `order_item_id`, `driver`, `remote_id` '' in store mode, `status`, `period`, `amount` minor units, `currency`, `next_charge_at`, `retry_count`, `card_last4`, `card_ref` sealed, `created_at`, `updated_at`, `cancelled_at`, `ended_at`, unix seconds) and `subscription_events` (`kind`, `order_id`, `amount`, `remote_event_id` NULL + `uk_subscription_event_remote`, `detail`, `created_at`). The step appends `subscription_renewed`, `subscription_failed`, `subscription_cancelled` to `email_campaign_profiles.action`. `email_campaigns.action` gets them in 11.0.129 (`subscriptions-mails.md`).
 - Module `includes/fn/subscriptions.php`, readiness `pg_subscriptions_ready()`. The checkout calls `pg_subscription_checkout_create()` (`subscriptions-iyzico.md`, `subscriptions-stripe.md`); `pg_subscription_create_from_order_line()` returns a line's existing row.
 
 ## How does a driver say it runs subscriptions?
@@ -15,7 +15,7 @@ module: subscriptions
 
 ## Which statuses and moves?
 - `active` → past_due, paused, cancelled, ended; `past_due` → active, paused, cancelled, ended; `paused` → active, cancelled, ended; `cancelled` → ended; `ended` final (`pg_subscription_transition_allowed()`).
-- `pg_subscription_set_status()` updates `WHERE id AND status = <the status read>`, so a concurrent move wins; back to active resets `retry_count`; cancelled/ended stamp their time once; each move writes event `status_<to>`.
+- `pg_subscription_set_status($id, $to, $detail, $from)` writes `WHERE id AND status = <read>`; a concurrent move wins, a given `$from` must still be the status; active resets `retry_count`; cancelled/ended stamp their time once; event `status_<to>`.
 
 ## How are dates and retries computed?
 - `pg_subscription_next_charge_at($from, $period, $anchor_day)`: month periods keep the first charge's day and clamp to the month's end (Jan 31 → Feb 28/29 → Mar 31); day periods add calendar days (time of day kept across DST). `pg_subscription_periods()` (twice_monthly = 15 days, as the legacy gateways); `pg_subscription_period_from_legacy()` maps `recurring_payment_period` names.
@@ -29,4 +29,4 @@ module: subscriptions
 ## How was it verified?
 - `tests/subscriptions_test.php`; the step was not run on a dev DB.
 
-Related: commerce/subscriptions-later-start.md, commerce/subscriptions-iyzico.md, commerce/payment-drivers.md, plans/subscriptions-iyzico-stripe.md
+Related: commerce/subscriptions-later-start.md, commerce/subscriptions-iyzico.md, commerce/payment-drivers.md, commerce/subscriptions-decisions.md

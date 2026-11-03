@@ -668,22 +668,26 @@ $input = function ($id, $type, $name, $autocomplete = '', $required = true, $cf 
     if ($cf) $props['_cf'] = $cf;
     return $el('input', 'form-control', lang('Field'), array(), $props);
 };
-$textarea = function ($id, $name, $rows, $required = true) use ($el, $attr) {
+$textarea = function ($id, $name, $rows, $required = true, $cf = array()) use ($el, $attr) {
     $attrs = array($attr('name', $name), $attr('rows', (string)$rows));
     if ($required) $attrs[] = $attr('required', '');
-    return $el('textarea', 'form-control', lang('Field'), array(), array('id' => $id, '_attrs' => $attrs));
+    $props = array('id' => $id, '_attrs' => $attrs);
+    if ($cf) $props['_cf'] = $cf;
+    return $el('textarea', 'form-control', lang('Field'), array(), $props);
 };
 // A pick list: the first, empty option is the prompt, not an answer. Each
 // answer's value is its own words, so the e-mails and the subject line read
 // as the visitor chose.
-$select = function ($id, $name, $prompt, $options, $required = true) use ($el, $attr) {
+$select = function ($id, $name, $prompt, $options, $required = true, $cf = array()) use ($el, $attr) {
     $children = array($el('option', '', lang('Option'), array(), array('text' => $prompt, '_attrs' => array($attr('value', '')))));
     foreach ($options as $text) {
         $children[] = $el('option', '', lang('Option'), array(), array('text' => $text, '_attrs' => array($attr('value', $text))));
     }
     $attrs = array($attr('name', $name));
     if ($required) $attrs[] = $attr('required', '');
-    return $el('select', 'form-select', lang('Field'), $children, array('id' => $id, '_attrs' => $attrs));
+    $props = array('id' => $id, '_attrs' => $attrs);
+    if ($cf) $props['_cf'] = $cf;
+    return $el('select', 'form-select', lang('Field'), $children, $props);
 };
 $submit = function ($text, $class = 'btn btn-primary px-4') use ($el, $attr) {
     return $el('button', $class, lang('Send Button'), array(), array('text' => $text, '_attrs' => array($attr('type', 'submit'))));
@@ -874,7 +878,7 @@ $comment_thread = function ($w) use ($el, $heading, $para, $link, $span, $attr, 
         $fields[] = $el('div', 'alert alert-secondary py-2 small', lang('Replying To'), array(
             $span(lang('Replying to'), 'me-1', lang('Text')),
             $el('strong', '', lang('Name'), array(), array('text' => lang('Jane Cooper'), '_bindings' => array('text' => '__reply_to_name'))),
-            $link(lang('Cancel'), '#', 'ms-3 fw-semibold', array(), array('_bindings' => array('action' => 'comment_reply_cancel'))),
+            $link(lang('Cancel'), '#', 'ms-3 alert-link', array(), array('_bindings' => array('action' => 'comment_reply_cancel'))),
         ), $show_when('is_replying'));
     }
     $fields[] = $el('div', 'mb-3', lang('Rating'), array(
@@ -933,7 +937,7 @@ $comment_thread = function ($w) use ($el, $heading, $para, $link, $span, $attr, 
             $el('div', 'alert alert-secondary', lang('Closed'), array(), array('_bindings' => array('text' => '__comments_closed_message', 'eo_visible_if' => 'comments_closed'))),
             $el('div', 'alert alert-secondary d-flex flex-wrap align-items-center gap-2', lang('Sign in'), array(
                 $span($w['sign_in'], '', lang('Text')),
-                $link(lang('Sign in'), '#', 'fw-semibold', array(), array('rel' => 'nofollow', '_bindings' => array('href' => '__login_url'))),
+                $link(lang('Sign in'), '#', 'alert-link', array(), array('rel' => 'nofollow', '_bindings' => array('href' => '__login_url'))),
             ), $show_when('must_sign_in')),
             $el('form', 'card card-body border-0 bg-body-tertiary rounded-4 p-4', lang('Comment Form'), $fields, array('_bindings' => array('action' => 'comment_form', 'eo_visible_if' => 'can_comment'))),
         )),
@@ -1183,6 +1187,13 @@ $pages[] = array(
                 ), '', 'center'),
             )),
         )),
+        $el('section', 'py-5 border-top', lang('Questions'), array(
+            $container(array(
+                $row(array(
+                    $col(array($widget('product_questions')), '', '8'),
+                ), '', 'center'),
+            )),
+        )),
         $el('section', 'py-5 border-top bg-body-tertiary', lang('Benefits'), array(
             $container(array(
                 $row(array(
@@ -1230,7 +1241,10 @@ $pages[] = array(
 
 // An event on the events page, as a row of the list: the date leaf, the
 // kind, the title, the summary, the time and the place, and the way to
-// reserve a seat (a message from the contact page).
+// reserve a seat (a message from the contact page). Reserve a seat opens the
+// contact form with the reservation topic chosen and the event's title in
+// the message (?topic=, ?event=: the fields' url_param); the topic is fixed
+// text, the same option value the form's pick list draws.
 $event_row = function () use ($el, $span, $para, $icon, $bind, $date_box) {
     return $el('div', 'list-group-item p-3 p-lg-4', lang('Event'), array(
         $el('div', 'd-flex flex-column flex-sm-row gap-3', lang('Event Row'), array(
@@ -1248,7 +1262,14 @@ $event_row = function () use ($el, $span, $para, $icon, $bind, $date_box) {
                 $el('a', 'btn btn-sm btn-outline-primary', lang('Link'), array(
                     $span(lang('Reserve a seat'), '', lang('Link Text')),
                     $span(lang('Poems after Dark'), 'visually-hidden', lang('Name'), $bind('title')),
-                ), array('href' => '{{page:contact}}')),
+                ), array(
+                    'href'        => '{{page:contact}}',
+                    '_bindings'   => array('href' => '__page_link'),
+                    '_bindParams' => array('href' => array('page_id' => '{{tab:contact}}', 'params' => array(
+                        array('name' => 'topic', 'text' => lang('Reserving a seat at an event')),
+                        array('name' => 'event', 'token' => 'title'),
+                    ))),
+                )),
             )),
         )),
     ));
@@ -1273,7 +1294,7 @@ $pages[] = array(
                             $heading('h2', lang('How to reserve a seat'), 'h5 fw-bold mb-3'),
                             $el('ol', 'small text-body-secondary ps-3 mb-0', lang('List'), array(
                                 $el('li', 'mb-2', lang('Step'), array(), array('text' => lang('Press Reserve a seat beside the event.'))),
-                                $el('li', 'mb-2', lang('Step'), array(), array('text' => lang('Write the event and how many seats you need.'))),
+                                $el('li', 'mb-2', lang('Step'), array(), array('text' => lang('The form opens with the event filled in: add how many seats you need.'))),
                                 $el('li', '', lang('Step'), array(), array('text' => lang('We answer by e-mail to confirm your seats.'))),
                             )),
                         )),
@@ -1367,7 +1388,7 @@ $pages[] = array(
                                         $para(lang('by Jane Cooper'), 'small text-body-secondary mb-2'),
                                         $el('p', 'd-flex align-items-start gap-2 small mb-3', lang('Meeting'), array(
                                             $icon('bi-calendar-event', 'text-primary'),
-                                            $span(lang('We meet on Thursday 29 October at 19:00.'), '', lang('Text')),
+                                            $span(lang('We meet on Thursday evenings at 19:00; the next date is on the events page.'), '', lang('Text')),
                                         )),
                                         $link(lang('Find it in the shop'), $category_url('books'), 'btn btn-sm btn-primary'),
                                     )),
@@ -2245,7 +2266,8 @@ $widgets = array(
     ),
     // The product's reviews (the comments widget reads the product in the
     // address): newest first, never pinned; a store reply shows under its
-    // review.
+    // review. Its own layout, so every word says review like the page's
+    // comments label, where the editor's starter says comment.
     'product_reviews' => array(
         'page'     => 'product',
         'requires' => 'ecommerce',
@@ -2257,7 +2279,53 @@ $widgets = array(
             'layout'     => 'flat',
             'per_page'   => 10,
         ),
-        'tree'     => 'starter',
+        'tree'     => $comment_thread(array(
+            'title'     => lang('Customer reviews'),
+            'empty'     => lang('No reviews yet. Be the first to review this product.'),
+            'heading'   => lang('Review this product'),
+            'label'     => lang('Your review'),
+            'sign_in'   => lang('Sign in to write a review.'),
+            'submit'    => lang('Submit review'),
+            'watch_box' => lang('Notify me when a new review is added.'),
+            'follow'    => lang('Notify me of new reviews'),
+            'unfollow'  => lang('Stop notifying me'),
+            'close'     => lang('Stop new reviews'),
+            'reopen'    => lang('Allow new reviews'),
+            'reply'     => true,
+            'watch'     => true,
+        )),
+    ),
+    // The product's questions (includes/fn/product_questions.php): a second
+    // comments widget on the product page, beside the reviews. Anyone signed
+    // in asks without a purchase; staff answer under the question.
+    'product_questions' => array(
+        'page'     => 'product',
+        'requires' => 'ecommerce',
+        'slug'     => lang('questions'),
+        'config'   => array(
+            'regionType' => 'comments',
+            'shows'      => 'questions',
+            'order'      => 'newest',
+            'featured'   => 'none',
+            'layout'     => 'threaded',
+            'max_depth'  => 1,
+            'per_page'   => 10,
+        ),
+        'tree'     => $comment_thread(array(
+            'title'     => lang('Questions and answers'),
+            'empty'     => lang('No questions yet. Ask the first one about this product.'),
+            'heading'   => lang('Ask a question'),
+            'label'     => lang('Your question'),
+            'sign_in'   => lang('Sign in to ask a question.'),
+            'submit'    => lang('Send question'),
+            'watch_box' => lang('Notify me when a new question is asked.'),
+            'follow'    => lang('Notify me of new questions'),
+            'unfollow'  => lang('Stop notifying me'),
+            'close'     => lang('Stop new questions'),
+            'reopen'    => lang('Allow new questions'),
+            'reply'     => true,
+            'watch'     => false,
+        )),
     ),
     'cart' => array(
         'page'     => 'cart',
@@ -2365,8 +2433,8 @@ $widgets = array(
                 lang('Reserving a seat at an event'),
                 lang('Ordering a book you do not have'),
                 lang('Something else'),
-            ))),
-            $field('bk-contact-message', lang('Your Message'), $textarea('bk-contact-message', 'message', 6)),
+            ), true, array('url_param' => 'topic'))),
+            $field('bk-contact-message', lang('Your Message'), $textarea('bk-contact-message', 'message', 6, true, array('url_param' => 'event'))),
             $captcha(),
             $submit(lang('Send Message')),
             $loop(array()),
@@ -3118,7 +3186,7 @@ $widgets = array(
             $mail_box(array(
                 $mail_line(lang('Your group'), array($span(lang('Thursday evenings, in the shop'), '', lang('Group'), $bind('club_group')))),
                 $mail_line(lang('This month\'s pick'), array($span(lang('The Lighthouse Year by Jane Cooper'), '', lang('Text')))),
-                $mail_line(lang('Next meeting'), array($span(lang('Thursday 29 October at 19:00'), '', lang('Date')))),
+                $mail_line(lang('Meetings'), array($span(lang('Thursday evenings at 19:00; the next date is on our events page'), '', lang('Date')))),
             ), lang('Details')),
             $mail_para(lang('Pick up the book at the counter, with 10% off as a member, and come along on the evening. We send a reminder a week before.')),
             $mail_button(lang('See this month\'s pick'), '{{page:book_club}}'),
@@ -3343,7 +3411,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Bookshop'),
-    'version'     => '1.3.0',
+    'version'     => '1.3.4',
     'framework'   => 'bootstrap5',
     'order'       => 40,
     'icon'        => 'bi-book-half',

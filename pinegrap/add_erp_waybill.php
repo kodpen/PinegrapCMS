@@ -194,7 +194,8 @@ if (!$_POST) {
     $result = erp_waybill_create($read['data']);
 
     if (!$result['success']) {
-        $liveform->mark_error('_error', h($result['error']));
+        // The box the refusal is about is marked, the message above the form.
+        $liveform->mark_error((string) ($result['field'] ?? '_error'), h($result['error']));
         go($back_url);
     }
 

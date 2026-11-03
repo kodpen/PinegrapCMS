@@ -182,6 +182,140 @@ function pg_pb_variant_group_id($product_id)
 
 
 /**
+ * Whether a variant set member's posted attribute choice still fits its set:
+ * every attribute must be one of the set's (when the set names any), and no
+ * other member may already hold the same combination. Two members of one
+ * combination cannot be told apart by the storefront picker, and the
+ * combination they replaced can no longer be bought.
+ *
+ * @param array $attributes      Posted pairs: array(array('attribute_id' => , 'option_id' => ), ...)
+ * @param array $set_attributes  The set's attribute ids
+ * @param array $siblings        Other members: product id => array(attribute id => option id)
+ * @return array  array() when it fits; array('outside' => attribute id) or array('clash' => product id)
+ */
+function pg_pb_variant_set_clash($attributes, $set_attributes, $siblings)
+{
+    $posted = array();
+
+    foreach ($attributes as $attribute) {
+        $posted[(int) $attribute['attribute_id']] = (int) $attribute['option_id'];
+    }
+
+    if (!$posted) {
+        return array();
+    }
+
+    $set_attributes = array_map('intval', $set_attributes);
+
+    if ($set_attributes) {
+        foreach (array_keys($posted) as $attribute_id) {
+            if (!in_array($attribute_id, $set_attributes, true)) {
+                return array('outside' => $attribute_id);
+            }
+        }
+    }
+
+    ksort($posted);
+
+    foreach ($siblings as $product_id => $options) {
+        $map = array();
+
+        foreach ($options as $attribute_id => $option_id) {
+            $map[(int) $attribute_id] = (int) $option_id;
+        }
+
+        ksort($map);
+
+        if ($map === $posted) {
+            return array('clash' => (int) $product_id);
+        }
+    }
+
+    return array();
+}
+
+
+/**
+ * The sentence refusing an edited set member's attribute choice, or '' when
+ * the product is in no variant set or the choice fits it
+ * (pg_pb_variant_set_clash()).
+ *
+ * @param int   $product_id
+ * @param array $variants  Decoded variants_json of the edit screen
+ * @return string
+ */
+function pg_pb_variant_set_problem($product_id, $variants)
+{
+    $product_id = (int) $product_id;
+
+    if (!$product_id || (count($variants) !== 1) || empty($variants[0]['attributes'])) {
+        return '';
+    }
+
+    $group_id = pg_pb_variant_group_id($product_id);
+
+    if (!$group_id) {
+        return '';
+    }
+
+    // An unchanged choice is not checked, so a set that already holds a
+    // clash from before still saves its other fields.
+    $stored = array();
+    $posted = array();
+
+    foreach (pg_pb_product_attribute_rows($product_id) as $row) {
+        $stored[(int) $row['attribute_id']] = (int) $row['option_id'];
+    }
+
+    foreach ($variants[0]['attributes'] as $attribute) {
+        $posted[(int) $attribute['attribute_id']] = (int) $attribute['option_id'];
+    }
+
+    ksort($stored);
+    ksort($posted);
+
+    if ($stored === $posted) {
+        return '';
+    }
+
+    $set_attributes = array();
+
+    foreach (db_items("SELECT DISTINCT attribute_id FROM product_groups_attributes_xref WHERE product_group_id = '$group_id'") as $row) {
+        $set_attributes[] = (int) $row['attribute_id'];
+    }
+
+    $siblings = array();
+
+    $rows = db_items(
+        "SELECT products_attributes_xref.product_id, products_attributes_xref.attribute_id, products_attributes_xref.option_id
+        FROM products_groups_xref
+        INNER JOIN products_attributes_xref ON products_attributes_xref.product_id = products_groups_xref.product
+        WHERE products_groups_xref.product_group = '$group_id'
+            AND products_groups_xref.product != '$product_id'");
+
+    foreach ($rows as $row) {
+        $siblings[(int) $row['product_id']][(int) $row['attribute_id']] = (int) $row['option_id'];
+    }
+
+    $clash = pg_pb_variant_set_clash($variants[0]['attributes'], $set_attributes, $siblings);
+
+    if (isset($clash['outside'])) {
+        $name = db_value("SELECT name FROM product_attributes WHERE id = '" . (int) $clash['outside'] . "'");
+
+        return lang(array('string' => 'The attribute {var:1} is not one of this variant set\'s attributes.', 'vars' => array((string) $name)));
+    }
+
+    if (isset($clash['clash'])) {
+        $name = db_value("SELECT name FROM products WHERE id = '" . (int) $clash['clash'] . "'");
+
+        return lang(array('string' => 'The variant {var:1} in this variant set already has these attribute options.', 'vars' => array((string) $name)));
+    }
+
+    return '';
+}
+
+
+/**
  * Products belonging to a variant set, in a stable order.
  *
  * @param int $group_id
@@ -371,6 +505,159 @@ function pg_pb_decimal_from_input($value)
     $fraction = substr($value, $pos + 1);
 
     return (float) (($whole === '' ? '0' : $whole) . '.' . ($fraction === '' ? '0' : $fraction));
+}
+
+/**
+ * A whole number typed into one of the product screen's count boxes
+ * (payments, days, points, quantities), read strictly: digits, optionally
+ * grouped by threes with the panel's thousands separator ("1.200" in
+ * Turkish) or a space. A sign, a decimal part or a letter makes it
+ * unreadable, so "-2", "12,5" and "abc" are refused rather than stored as
+ * whatever a non-strict MySQL session turns them into.
+ *
+ * @param mixed  $value
+ * @param string $thousands  The panel's thousands separator
+ * @return int|string|false  The number, '' for an empty box, false when unreadable
+ */
+function pg_pb_whole_number_from_input($value, $thousands = ',')
+{
+    if (!is_scalar($value)) {
+        return false;
+    }
+
+    $value = trim(str_replace(array("\u{00A0}", "\u{202F}"), ' ', (string) $value));
+
+    if ($value === '') {
+        return '';
+    }
+
+    if (preg_match('/^[0-9]+$/', $value)) {
+        return (int) ltrim($value, '0');
+    }
+
+    $separators = array(' ');
+
+    if (($thousands !== '') && ($thousands !== ' ')) {
+        $separators[] = $thousands;
+    }
+
+    foreach ($separators as $separator) {
+        if (preg_match('/^[0-9]{1,3}(' . preg_quote($separator, '/') . '[0-9]{3})+$/', $value)) {
+            return (int) str_replace($separator, '', $value);
+        }
+    }
+
+    return false;
+}
+
+/**
+ * The thousands separator the panel writes figures with ('.' in Turkish).
+ *
+ * @return string
+ */
+function pg_pb_thousands_separator()
+{
+    if (!function_exists('pg_number_separators')) {
+        return ',';
+    }
+
+    $separators = pg_number_separators();
+
+    return isset($separators['thousands']) ? (string) $separators['thousands'] : ',';
+}
+
+/**
+ * The first number on the product form that cannot be stored as typed, as
+ * a sentence naming its field, or '' when every one is fine. Only fields
+ * present in the post are checked: a block whose gate is closed is not
+ * drawn and posts nothing.
+ *
+ * Count boxes must be whole numbers of zero or more; Label Column Width a
+ * percentage up to 100 (empty or 0 for none); price, extra shipping cost, weight
+ * and dimensions must not be negative (their readers drop the sign). With a
+ * maximum quantity above zero the minimum cannot exceed it, and a default
+ * quantity must lie between the two: otherwise the cart raises the line to
+ * the minimum and lowers it to the maximum in turn.
+ *
+ * @param array  $post
+ * @param string $thousands  The panel's thousands separator
+ * @return string
+ */
+function pg_pb_number_fields_problem($post, $thousands = ',')
+{
+    $whole_fields = array(
+        'number_of_payments' => 'Number of Payments',
+        'start'              => 'Start (days)',
+        'membership_renewal' => 'Add Days to Customer\'s Membership',
+        'private_days'       => 'Access duration',
+        'reward_points'      => 'Reward Points',
+        'default_quantity'   => 'Default Quantity',
+        'minimum_quantity'   => 'Min. Quantity',
+        'maximum_quantity'   => 'Max. Quantity',
+    );
+
+    $numbers = array();
+
+    foreach ($whole_fields as $field => $label) {
+        if (!array_key_exists($field, $post)) {
+            continue;
+        }
+
+        $number = pg_pb_whole_number_from_input($post[$field], $thousands);
+
+        if ($number === false) {
+            return lang(array('string' => '{var:1} must be a whole number of 0 or more.', 'vars' => array(lang($label))));
+        }
+
+        $numbers[$field] = $number;
+    }
+
+    if (array_key_exists('form_label_column_width', $post)) {
+        $width = pg_pb_whole_number_from_input($post['form_label_column_width'], $thousands);
+
+        // 0 is what an earlier save stored for an unreadable value; it reads
+        // as empty, so a product holding it still saves.
+        if (($width === false) || (($width !== '') && ($width > 100))) {
+            return lang(array('string' => '{var:1} must be between {var:2} and {var:3}.', 'vars' => array(lang('Label Column Width'), 1, 100)));
+        }
+    }
+
+    $signed_fields = array(
+        'price'               => 'Unit Price',
+        'extra_shipping_cost' => 'Extra Shipping Cost',
+        'weight'              => 'Weight',
+        'length'              => 'Length',
+        'width'               => 'Width',
+        'height'              => 'Height',
+    );
+
+    foreach ($signed_fields as $field => $label) {
+        if (isset($post[$field]) && is_scalar($post[$field]) && preg_match('/^\s*-/u', (string) $post[$field])
+            && preg_match('/[1-9]/', (string) $post[$field])) {
+            return lang(array('string' => '{var:1} cannot be negative.', 'vars' => array(lang($label))));
+        }
+    }
+
+    $minimum = isset($numbers['minimum_quantity']) && ($numbers['minimum_quantity'] !== '') ? $numbers['minimum_quantity'] : 0;
+    $maximum = isset($numbers['maximum_quantity']) && ($numbers['maximum_quantity'] !== '') ? $numbers['maximum_quantity'] : 0;
+
+    if (($maximum > 0) && ($minimum > $maximum)) {
+        return lang(array('string' => '{var:1} cannot be larger than {var:2}.', 'vars' => array(lang('Min. Quantity'), lang('Max. Quantity'))));
+    }
+
+    if (isset($numbers['default_quantity']) && ($numbers['default_quantity'] !== '')) {
+        $default = $numbers['default_quantity'];
+
+        if (($minimum > 0) && ($default < $minimum)) {
+            return lang(array('string' => '{var:1} cannot be smaller than {var:2}.', 'vars' => array(lang('Default Quantity'), lang('Min. Quantity'))));
+        }
+
+        if (($maximum > 0) && ($default > $maximum)) {
+            return lang(array('string' => '{var:1} cannot be larger than {var:2}.', 'vars' => array(lang('Default Quantity'), lang('Max. Quantity'))));
+        }
+    }
+
+    return '';
 }
 
 /**
@@ -609,6 +896,18 @@ function pg_pb_common_from_post()
         return empty($_POST[$key]) ? '' : '1';
     };
 
+    // A count box as the number it reads as ("1.200" is 1200); the check
+    // before the save refuses an unreadable one, which is passed on as typed.
+    $whole = function ($key, $default = '') {
+        if (!isset($_POST[$key])) {
+            return $default;
+        }
+
+        $number = pg_pb_whole_number_from_input($_POST[$key], pg_pb_thousands_separator());
+
+        return ($number === false) ? $_POST[$key] : $number;
+    };
+
     // Every column the screen draws a control for. A field on screen that is not
     // in this list is filled in by the operator and thrown away on save, and
     // nothing says so — the value simply is not there the next time they look.
@@ -620,14 +919,14 @@ function pg_pb_common_from_post()
         // Recurring payments.
         'recurring'                               => $switch('recurring'),
         'recurring_schedule_editable_by_customer' => $switch('recurring_schedule_editable_by_customer'),
-        'number_of_payments'                      => $post('number_of_payments'),
+        'number_of_payments'                      => $whole('number_of_payments'),
         'payment_period'                          => $post('payment_period'),
-        'start'                                   => $post('start'),
+        'start'                                   => $whole('start'),
 
         // Membership and private access.
-        'membership_renewal'   => $post('membership_renewal'),
+        'membership_renewal'   => $whole('membership_renewal'),
         'grant_private_access' => $switch('grant_private_access'),
-        'private_days'         => $post('private_days'),
+        'private_days'         => $whole('private_days'),
         'private_folder'       => $post('private_folder'),
 
         // Gift card.
@@ -645,7 +944,7 @@ function pg_pb_common_from_post()
         'contact_group_id'               => $post('contact_group_id'),
         'send_to_page'                   => $post('send_to_page'),
         'required_product'               => $post('required_product'),
-        'reward_points'                  => $post('reward_points'),
+        'reward_points'                  => $whole('reward_points'),
 
         // Submit form: buying the product writes a record on a custom form.
         'submit_form'                     => $switch('submit_form'),
@@ -668,9 +967,9 @@ function pg_pb_common_from_post()
         'selection_type'          => $post('selection_type'),
         'code'                    => $post('code'),
         'keywords'                => $post('keywords'),
-        'default_quantity'        => $post('default_quantity'),
-        'minimum_quantity'        => $post('minimum_quantity'),
-        'maximum_quantity'        => $post('maximum_quantity'),
+        'default_quantity'        => $whole('default_quantity'),
+        'minimum_quantity'        => $whole('minimum_quantity'),
+        'maximum_quantity'        => $whole('maximum_quantity'),
         'backorder'               => $switch('backorder'),
         'out_of_stock_message'    => prepare_rich_text_editor_content_for_input($post('out_of_stock_message')),
         'shippable'               => $switch('shippable'),
@@ -699,7 +998,7 @@ function pg_pb_common_from_post()
         // naming, kept so the two forms stay interchangeable.
         'form'                    => $switch('product_form'),
         'form_name'               => $post('form_name'),
-        'form_label_column_width' => $post('form_label_column_width'),
+        'form_label_column_width' => $whole('form_label_column_width'),
         'form_quantity_type'      => $post('form_quantity_type'),
     );
 
@@ -709,6 +1008,13 @@ function pg_pb_common_from_post()
     // refused a value that cannot be stored before this runs.
     if (pg_product_customs_ready()) {
         $common = array_merge($common, pg_product_customs_from_post($_POST));
+    }
+
+    // Pre-order (products.preorder, preorder_date): turning it on turns the
+    // back order on with it, the path that sells before the stock arrives.
+    // pg_pb_validate_product_post() refused a pre-order with no usable date.
+    if (pg_product_preorder_ready()) {
+        $common = array_merge($common, pg_preorder_from_post($_POST));
     }
 
     /* ---------------------------------------------------- checkout */
@@ -726,12 +1032,12 @@ function pg_pb_common_from_post()
     $common['email_page']                       = $post('email_page');
     $common['email_bcc']                        = trim($post('email_bcc'));
     $common['contact_group_id']                 = $post('contact_group_id');
-    $common['membership_renewal']               = $post('membership_renewal');
-    $common['reward_points']                    = $post('reward_points');
+    $common['membership_renewal']               = $whole('membership_renewal');
+    $common['reward_points']                    = $whole('reward_points');
 
     $common['grant_private_access'] = $switch('grant_private_access');
     $common['private_folder']       = $post('private_folder');
-    $common['private_days']         = $post('private_days');
+    $common['private_days']         = $whole('private_days');
     $common['send_to_page']         = $post('send_to_page');
 
     $common['gift_card']               = $switch('gift_card');
@@ -744,7 +1050,7 @@ function pg_pb_common_from_post()
 
     $common['recurring']                               = $switch('recurring');
     $common['recurring_schedule_editable_by_customer'] = $switch('recurring_schedule_editable_by_customer');
-    $common['number_of_payments']                      = $post('number_of_payments');
+    $common['number_of_payments']                      = $whole('number_of_payments');
     $common['payment_period']                          = $post('payment_period');
 
     // Columns behind a configuration gate are left out entirely when the gate
@@ -753,7 +1059,7 @@ function pg_pb_common_from_post()
     // invisible on the screen when their gate is closed, so there is nothing to
     // have decided.
     if (defined('ECOMMERCE_PAYMENT_GATEWAY') && ECOMMERCE_PAYMENT_GATEWAY != 'ClearCommerce') {
-        $common['start'] = $post('start', 0);
+        $common['start'] = $whole('start', 0);
     }
 
     if (defined('AFFILIATE_PROGRAM') && AFFILIATE_PROGRAM == TRUE) {
@@ -1193,7 +1499,7 @@ function pg_pb_create_product($product, $relations = array())
 
     pg_pb_update_row(
         'products',
-        array('address_name' => prepare_catalog_item_address_name($address_source, $product_id)),
+        array('address_name' => prepare_catalog_item_address_name($address_source, $product_id, 'product')),
         'id',
         $product_id);
 
@@ -2992,6 +3298,41 @@ function pg_pb_form_values($set = NULL)
 
     return $values;
 }
+
+/**
+ * The pre-order switch beside the back order one, with the date the stock
+ * is expected (includes/fn/preorder.php); '' before the upgrade adds the
+ * columns. An ended pre-order is drawn off: saving it again would be
+ * refused for its past date.
+ *
+ * @param  callable $v The screen's value reader.
+ * @return string
+ */
+function pg_pb_render_preorder_row($v)
+{
+    if (!pg_product_preorder_ready()) {
+        return '';
+    }
+
+    $today = pg_preorder_today();
+    $date = pg_preorder_date_parse((string) $v('preorder_date', ''));
+    $running = !empty($v('preorder', 0)) && is_string($date) && ($date > $today);
+
+    return pg_pb_render_switch_row(
+        pg_pb_render_switch(array(
+            'id'      => 'preorder',
+            'name'    => 'preorder',
+            'label'   => lang('Pre-order'),
+            'checked' => $running,
+            'help'    => lang('Sell this before its stock arrives; the back order is turned on with it and the pre-order ends on the date or when stock is in.'),
+            'panel'   =>
+                '<div class="col-12 sm:col-6 lg:col-4">
+                    <label for="preorder_date" class="form-label">' . lang('Ships From') . '</label>
+                    <input type="date" name="preorder_date" id="preorder_date" class="form-control" min="' . h(date('Y-m-d', strtotime($today . ' +1 day'))) . '" value="' . h($running ? $date : '') . '" />
+                </div>',
+        )));
+}
+
 /**
  * One switch, optionally revealing a panel when it is on.
  *
@@ -3664,7 +4005,7 @@ function pg_pb_variant_sets_screen()
                         <th>' . lang('Unit Price') . '</th>
                         <th>' . lang('Parent Product Group') . '</th>
                         <th>' . lang('Enabled') . '</th>
-                        <th>' . lang('Created') . '</th>
+                        <th>' . lang('Last Modified') . '</th>
                     </tr>
                 </thead>
                 <tbody>' . $output_rows . '</tbody>
@@ -4059,10 +4400,11 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             'seo_analysis_current' => $v('seo_analysis_current', 0),
         );
 
-        $output_seo_badge = '<span class="ms-auto">' . pg_seo_render_badge($seo_row) . '</span>';
+        $output_seo_badge = '<span class="ms-auto" data-pg-seo-badge="product:' . (int) $seo_record_id . '">' . pg_seo_render_badge($seo_row) . '</span>';
         $output_seo_checklist = '
                                     <div class="col-12">
                                         ' . pg_seo_render_checklist($seo_row, 'product', $seo_record_id) . '
+                                        ' . pg_seo_render_run_script() . '
                                     </div>';
     }
 
@@ -4181,15 +4523,15 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                                         </div>
                                                                         <div class="col-12 my-1">
                                                                             <div class="alert theme-primary">' . lang('Please specify which Submitted Form should be updated.') . '</div>
-                                                                            <div class="input-group w-100">
-                                                                                <span class="input-group-text">
+                                                                            <div class="row g-5">
+                                                                                <div class="col-12 md:col-6">
                                                                                     <label class="form-label" for="submit_form_update_where_field">' . lang('Where:') . '</label>
                                                                                     <select class="form-control" id="submit_form_update_where_field" name="submit_form_update_where_field"></select>
-                                                                                </span>
-                                                                                <span class="input-group-text">
+                                                                                </div>
+                                                                                <div class="col-12 md:col-6">
                                                                                     <label class="form-label" for="submit_form_update_where_value">' . lang('is equal to:') . '</label>
                                                                                     <input class="form-control" type="text" id="submit_form_update_where_value" name="submit_form_update_where_value" value="' . h($v('submit_form_update_where_value')) . '" maxlength="255">
-                                                                                </span>
+                                                                                </div>
                                                                                 <script>init_product_submit_form_update_where("' . escape_javascript($v('submit_form_update_where_field')) . '")</script>
                                                                             </div>
                                                                         </div>
@@ -5206,7 +5548,8 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                                 'name'  => 'backorder',
                                                                 'label' => lang('Backorder'),
                                                                 'help'  => lang('Let customers order this even when stock reaches zero.'),
-                                                            ))),
+                                                            ))) .
+                                                    pg_pb_render_preorder_row($v),
                                             )) .
                                             // Shipping and commission are product-wide switches too, and
                                             // both decide what the rest of the screen is even asking. The
@@ -5410,7 +5753,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
 
                                     <div class="col-12 lg:col-6 my-3">
                                         <label for="address_name" class="form-label">' . lang('Catalog Name') . '</label>
-                                        <input type="text" name="address_name" id="address_name" class="form-control" value="' . h($v('address_name')) . '" />
+                                        <input type="text" name="address_name" id="address_name" class="form-control" maxlength="255" value="' . h($v('address_name')) . '" />
                                         <div class="form-text">' . lang('This option determines the url address of the product. Automatically assigned if left blank.') . '</div>
                                     </div>
                                     <div class="col-12 lg:col-6 my-3">
@@ -6161,7 +6504,7 @@ function pg_pb_update_product($product_id)
     $current        = db_value("SELECT address_name FROM products WHERE id = '" . e($product_id) . "'");
 
     if (($address_source !== '') && ($address_source !== $current)) {
-        $product['address_name'] = prepare_catalog_item_address_name($address_source, $product_id);
+        $product['address_name'] = prepare_catalog_item_address_name($address_source, $product_id, 'product');
     } elseif ($current == '') {
         if ($product['short_description'] !== '') {
             $source = $product['short_description'];
@@ -6170,7 +6513,7 @@ function pg_pb_update_product($product_id)
         } else {
             $source = (string) $product_id;
         }
-        $product['address_name'] = prepare_catalog_item_address_name($source, $product_id);
+        $product['address_name'] = prepare_catalog_item_address_name($source, $product_id, 'product');
     }
 
     // Last modified. Reports and the "recently changed" ordering read it, so a
@@ -6686,9 +7029,17 @@ function pg_pb_validate_product_post($user, $product_id = 0)
         }
     }
 
-    foreach (array('order_receipt_bcc_email_address', 'email_bcc') as $field) {
-        if (!empty($_POST[$field]) && (validate_email_address($_POST[$field]) == FALSE)) {
-            output_error(lang('The e-mail address is invalid.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+    // Each address named by its own field, the same on both screens.
+    $email_fields = array(
+        'order_receipt_bcc_email_address' => 'The order receipt bcc e-mail address is invalid.',
+        'email_bcc'                       => 'The BCC e-mail address is invalid.',
+    );
+
+    foreach ($email_fields as $field => $message) {
+        $address = (isset($_POST[$field]) && is_scalar($_POST[$field])) ? trim((string) $_POST[$field]) : '';
+
+        if (($address !== '') && (validate_email_address($address) == FALSE)) {
+            output_error(lang($message) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
     }
 
@@ -6793,6 +7144,37 @@ function pg_pb_validate_product_post($user, $product_id = 0)
 
         if ($holder) {
             output_error(pg_product_name_taken_text($name, $holder, true) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+        }
+    }
+
+    // A pre-order needs a real date after today; refused rather than saved
+    // off, so the operator is not left thinking the product is on pre-order.
+    if (pg_product_preorder_ready()) {
+
+        $preorder_problem = pg_preorder_problem(
+            !empty($_POST['preorder']),
+            isset($_POST['preorder_date']) ? $_POST['preorder_date'] : '',
+            pg_preorder_today());
+
+        if ($preorder_problem !== '') {
+            output_error(lang($preorder_problem) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+        }
+    }
+
+    // Count boxes, the label width, signs and the quantity range, before
+    // anything is written.
+    $number_problem = pg_pb_number_fields_problem($_POST, pg_pb_thousands_separator());
+
+    if ($number_problem !== '') {
+        output_error(h($number_problem) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+    }
+
+    // A variant set member edited on its own keeps a combination of its own.
+    if ($product_id) {
+        $variant_problem = pg_pb_variant_set_problem($product_id, pg_pb_decode_variants(isset($_POST['variants_json']) ? $_POST['variants_json'] : ''));
+
+        if ($variant_problem !== '') {
+            output_error(h($variant_problem) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
     }
 }

@@ -102,7 +102,7 @@ $output_api_storage = '
                     <div class="pg-f-lg">
                         <label for="api_upload_folder_id" class="form-label">' . lang('Upload Folder') . '</label>
                         <select name="api_upload_folder_id" id="api_upload_folder_id" class="form-control">
-                            <option value="0">' . lang('-Not selected-') . '</option>' . select_folder($api_upload_folder_id, 0) . '
+                            <option value="0">' . lang('-Not selected-') . '</option>' . pg_settings_select_folder($api_upload_folder_id) . '
                         </select>
                         <div class="form-text">' . lang('Files uploaded through the API are filed in this folder. When no folder is selected, or the selected one has since been deleted, they go to the topmost folder.') . '</div>
                     </div>

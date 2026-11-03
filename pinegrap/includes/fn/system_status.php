@@ -754,23 +754,13 @@ function check_directory_file_integrity()
 
 /**
  * Checks whether the current request is securely served over HTTPS
- * and returns 'success' or 'warning' for UI feedback.
+ * and returns 'success' or 'warning' for UI feedback. The answer is Secure
+ * Mode's own (check_if_request_is_secure(): direct TLS, or a forwarded
+ * header from a trusted peer), so the card and the guard never disagree.
  */
 function check_ssl_status()
 {
-    // Common server variables that indicate HTTPS usage
-    $https_enabled = (
-        (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ||
-        (!empty($_SERVER['SERVER_PORT']) && $_SERVER['SERVER_PORT'] == 443) ||
-        (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') ||
-        (!empty($_SERVER['REQUEST_SCHEME']) && $_SERVER['REQUEST_SCHEME'] === 'https')
-    );
-
-    if ($https_enabled) {
-        return 'success';
-    } else {
-        return 'warning';
-    }
+    return check_if_request_is_secure() ? 'success' : 'warning';
 }
 
 /**
@@ -1802,7 +1792,7 @@ function get_system_status_checks()
         'Directory File Integrity' => $weights['file_integrity'],
         'SSL Status'               => $weights['ssl'],
         'CA Certificate Bundle'    => $weights['ca_bundle'],
-        'CA Bundle Setting'        => $weights['ca_setting'],
+        'CA Store'                 => $weights['ca_setting'],
         'Password Hint'            => $weights['password'],
         'CAPTCHA Protection'       => $weights['captcha'],
         'Strong Password'          => $weights['strong_password'],
@@ -1871,7 +1861,7 @@ function get_system_status_checks()
         'Directory File Integrity' => 'Files',
         'SSL Status'               => 'SSL',
         'CA Certificate Bundle'    => 'CA bundle',
-        'CA Bundle Setting'        => 'CA setting',
+        'CA Store'                 => 'CA store',
         'Password Hint'            => 'Password hint',
         'Strong Password'          => 'Strong password',
         'CAPTCHA Protection'       => 'CAPTCHA',
@@ -1907,6 +1897,8 @@ function get_system_status_checks()
         'Google Merchant Center'   => 'Merchant',
         'Incoming E-mail'          => 'Mailboxes',
         'e-Fatura Threshold'       => 'e-Fatura',
+        'WebP At Own Address'      => 'WebP',
+        'Object Storage'           => 'Storage',
     );
 
     // The three checks that answer "can someone get in": files that have been
@@ -1928,7 +1920,6 @@ function get_system_status_checks()
     // renaming a check and forgetting this list is one edit away from being
     // noticed rather than a screen away.
     $job_titles = array(
-        'CA Bundle Setting',
         'Web Server Rules',
         'CORS Preflight',
         'Write Permissions',
@@ -1944,6 +1935,7 @@ function get_system_status_checks()
         'Google Merchant Center',
         'Incoming E-mail',
         'e-Fatura Threshold',
+        'Object Storage',
     );
 
     // Records one check. Named $makeIcon still, and still called as
@@ -2102,22 +2094,109 @@ function get_system_status_checks()
         $score -= $weights['ssl'];
     }
 
+    // 🔌 CA store — a plug, because what fails is every connection out. The
+    // row always says which certificate store outbound HTTPS is verified
+    // against and why (pg_ca_bundle_config_state(): the CURL_CA_BUNDLE
+    // override, the bundled data/cacert.pem on a host whose PHP has no store
+    // or whose store failed the probe, else the server's own store). Red only
+    // when nothing verifies: the override names a missing file, or the
+    // server's store is missing or failing and the bundled file is gone too.
+    if (function_exists('pg_ca_bundle_config_state')) {
+        $ca_store = pg_ca_bundle_config_state();
+        $ca_choice = $ca_store['choice'];
+        $ca_probe_date = ($ca_choice['probe']['checked_at'] > 0) ? pg_ca_bundle_date($ca_choice['probe']['checked_at']) : '';
+        $ca_probe_error = ($ca_choice['probe']['error'] !== '') ? $ca_choice['probe']['error'] : lang('no answer');
+        $ca_store_icon = 'bi-plug-fill';
+        $ca_store_color = 'fg-success';
+
+        if ($ca_store['state'] === 'broken') {
+            $ca_store_color = 'fg-danger';
+            $ca_store_value = lang('File missing');
+            $ca_store_message = array(
+                'string' => 'CURL_CA_BUNDLE in data/config.php names a file that does not exist ({var:1}); it is ignored, and outbound HTTPS is verified against {var:2}.',
+                'vars'   => array(
+                    $ca_choice['override_missing'],
+                    ($ca_choice['file'] !== '') ? lang('the bundled data/cacert.pem') : lang('the server\'s own certificate store'),
+                ),
+            );
+            $score -= $weights['ca_setting'];
+        } elseif ($ca_store['state'] === 'needed') {
+            $ca_store_color = 'fg-danger';
+            $ca_store_value = lang('No store');
+            if ($ca_choice['probe']['state'] === 'needed') {
+                $ca_store_message = array(
+                    'string' => 'The server\'s own certificate store could not verify a connection on {var:1} ({var:2}) and the bundled data/cacert.pem is missing: outbound HTTPS calls - updates, Pinegrap AI, payments, webhooks - fail. Update the CA certificate bundle.',
+                    'vars'   => array($ca_probe_date, $ca_probe_error),
+                );
+            } else {
+                $ca_store_message = 'PHP has no certificate store of its own on this server and the bundled data/cacert.pem is missing: outbound HTTPS calls - updates, Pinegrap AI, payments, webhooks - fail. Update the CA certificate bundle.';
+            }
+            $score -= $weights['ca_setting'];
+        } elseif ($ca_choice['reason'] === 'override') {
+            $ca_store_value = lang('Override');
+            $ca_store_message = array(
+                'string' => 'Outbound HTTPS is verified against the file CURL_CA_BUNDLE in data/config.php names ({var:1}).',
+                'vars'   => array($ca_choice['file']),
+            );
+        } elseif ($ca_choice['reason'] === 'no_store') {
+            $ca_store_value = lang('Bundled file');
+            $ca_store_message = 'PHP has no certificate store of its own on this server; outbound HTTPS is verified against the bundled data/cacert.pem.';
+        } elseif ($ca_choice['reason'] === 'probe') {
+            $ca_store_value = lang('Bundled file');
+            $ca_store_message = array(
+                'string' => 'The server\'s own certificate store could not verify a connection on {var:1} ({var:2}); outbound HTTPS is verified against the bundled data/cacert.pem instead.',
+                'vars'   => array($ca_probe_date, $ca_probe_error),
+            );
+        } elseif ($ca_store['state'] === 'unknown') {
+            // Nothing is known: the probe reached nothing, or there is no
+            // cURL to probe with. Grey, not yellow: the store may well be
+            // fine, and the next probe says.
+            $ca_store_color = 'fg-secondary';
+            $ca_store_value = lang('Not probed');
+            if ($ca_probe_date !== '') {
+                $ca_store_message = array(
+                    'string' => 'Outbound HTTPS is verified against the server\'s own certificate store; the probe of {var:1} reached nothing ({var:2}), so nothing is known about it yet.',
+                    'vars'   => array($ca_probe_date, $ca_probe_error),
+                );
+            } else {
+                $ca_store_message = 'Outbound HTTPS is verified against the server\'s own certificate store, which has not been probed yet.';
+            }
+        } else {
+            $ca_store_value = lang('Server store');
+            $ca_store_message = array(
+                'string' => 'Outbound HTTPS is verified against the server\'s own certificate store, which verified a connection on {var:1}.',
+                'vars'   => array($ca_probe_date),
+            );
+        }
+
+        $output .= $makeIcon(
+            $ca_store_icon,
+            $ca_store_color,
+            'CA Store',
+            $ca_store_message,
+            $ca_store_value
+        );
+    }
+
     // 🩹 CA certificate bundle age -- a patch, because the file is a trust list
     // kept current by replacing it whole, and the padlock is SSL's.
     //
-    // Only measured when the configuration points outbound TLS at its own
-    // cacert.pem. With CURL_CA_BUNDLE empty the system store is in use and the
-    // package manager keeps that current; there is nothing here to read, so no
-    // row at all rather than a grey "not applicable". The bundle carries its
-    // own date in the header curl's mk-ca-bundle writes:
+    // Only measured when outbound TLS is verified against a file: the
+    // CURL_CA_BUNDLE override, or the bundled data/cacert.pem the site chose
+    // (pg_ca_bundle_effective()). With the server's own store in use the
+    // package manager keeps that current; there is nothing here to read, so
+    // no row at all rather than a grey "not applicable". The bundle carries
+    // its own date in the header curl's mk-ca-bundle writes:
     //   ## Certificate data from Mozilla as of: Tue Jan 10 04:12:06 2023 GMT
     // A file without that line, or with one that does not parse, is skipped
     // the same way: a guess about its age is worse than no row. Only the first
     // lines are read; the file is a few hundred kilobytes and the header is at
     // the top.
-    if (defined('CURL_CA_BUNDLE') && (CURL_CA_BUNDLE !== '') && is_file(CURL_CA_BUNDLE) && is_readable(CURL_CA_BUNDLE)) {
+    $ca_bundle_file = function_exists('pg_ca_bundle_effective') ? pg_ca_bundle_effective() : '';
+
+    if (($ca_bundle_file !== '') && is_file($ca_bundle_file) && is_readable($ca_bundle_file)) {
         $ca_bundle_stamp = 0;
-        $ca_bundle_handle = @fopen(CURL_CA_BUNDLE, 'r');
+        $ca_bundle_handle = @fopen($ca_bundle_file, 'r');
         if ($ca_bundle_handle) {
             for ($ca_bundle_line = 0; $ca_bundle_line < 10; $ca_bundle_line++) {
                 $ca_bundle_text = fgets($ca_bundle_handle);
@@ -2179,39 +2258,6 @@ function get_system_status_checks()
                 $ca_bundle_message,
                 lang(array('string' => '{var:1} months', 'vars' => array($ca_bundle_months)))
             );
-        }
-    }
-
-    // 🔌 CA bundle setting — a plug, because what fails is every connection
-    // out. Drawn only when something is wrong: CURL_CA_BUNDLE names a file
-    // that is not there, or it is empty and the host's own store could not
-    // verify a connection (a reinstall brings a config.php with the setting
-    // empty). A job row, because the repair is one click: it points the
-    // setting at the bundled data/cacert.pem.
-    if (function_exists('pg_ca_bundle_config_state')) {
-        $ca_setting = pg_ca_bundle_config_state();
-
-        if ($ca_setting['state'] === 'broken') {
-            $output .= $makeIcon(
-                'bi-plug-fill',
-                'fg-danger',
-                'CA Bundle Setting',
-                array(
-                    'string' => 'CURL_CA_BUNDLE in data/config.php points at a file that does not exist ({var:1}). Outbound HTTPS calls - updates, Pinegrap AI, payments, webhooks - cannot verify certificates and fail.',
-                    'vars'   => array($ca_setting['configured']),
-                ),
-                lang('File missing')
-            );
-            $score -= $weights['ca_setting'];
-        } elseif ($ca_setting['state'] === 'needed') {
-            $output .= $makeIcon(
-                'bi-plug-fill',
-                'fg-danger',
-                'CA Bundle Setting',
-                'This server cannot verify HTTPS certificates with its own certificate store, and CURL_CA_BUNDLE in data/config.php is empty. Outbound calls - updates, Pinegrap AI, payments, webhooks - fail. Point it at the bundled data/cacert.pem.',
-                lang('Not set')
-            );
-            $score -= $weights['ca_setting'];
         }
     }
 
@@ -3002,6 +3048,62 @@ function get_system_status_checks()
         );
     }
 
+    // 🖼 WebP at a picture's own address (includes/image_negotiation.php)
+    //
+    // Reported, not scored: an upgraded site has the switch off until the
+    // operator turns it on, which is a choice, not a fault. Yellow when it is
+    // on and still sends the original: the server writes no WebP, or the
+    // panel came through a CDN nobody confirmed keeps a copy per format.
+    if (function_exists('pg_image_delivery_ready') && pg_image_delivery_ready()) {
+
+        require_once(PG_FUNCTIONS_DIR . '/includes/image_negotiation.php');
+
+        $webp_written = pg_image_derivative_formats(pg_image_derivative_directory());
+        $webp_state = pg_image_same_address_state(
+            pg_image_delivery()['same_address'],
+            !empty($webp_written['webp']),
+            pg_image_behind_proxy($_SERVER));
+        $webp_href = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_features.php#pgset-images';
+
+        if ($webp_state === 'off') {
+            $output .= $makeIcon(
+                'bi-filetype-jpg',
+                'fg-secondary',
+                'WebP At Own Address',
+                'Pictures are sent as uploaded at their own address. Switch on WebP at the picture\'s own address in Image Optimization to send browsers that read WebP a lighter copy.',
+                lang('Off'),
+                $webp_href
+            );
+        } elseif ($webp_state === 'no_webp') {
+            $output .= $makeIcon(
+                'bi-filetype-jpg',
+                'fg-warning',
+                'WebP At Own Address',
+                'WebP at the picture\'s own address is on, but this server cannot write WebP, so every reader gets the original.',
+                lang('No WebP'),
+                $webp_href
+            );
+        } elseif ($webp_state === 'cdn') {
+            $output .= $makeIcon(
+                'bi-filetype-jpg',
+                'fg-warning',
+                'WebP At Own Address',
+                'WebP at the picture\'s own address is on, but this site is reached through a CDN that is not confirmed to keep a copy per format, so requests through it get the original. Set up the CDN to cache pictures per Accept value, then confirm it in Image Optimization.',
+                lang('CDN not confirmed'),
+                $webp_href
+            );
+        } else {
+            $output .= $makeIcon(
+                'bi-filetype-jpg',
+                'fg-success',
+                'WebP At Own Address',
+                'Browsers that read WebP get a lighter WebP copy of each JPEG and PNG at its own address; every other reader gets the original.',
+                lang('On'),
+                $webp_href
+            );
+        }
+    }
+
     $group = 'maintenance';
 
     // 💾 Last backup
@@ -3328,7 +3430,8 @@ function get_system_status_checks()
             }
 
             $webhook_detail[] = array(
-                'label' => $webhook_row['url'],
+                // Scheme and host only: the path can carry the secret.
+                'label' => pg_ops_alert_mask_url($webhook_row['url']),
                 'state' => $webhook_state,
                 'when'  => $webhook_when,
             );
@@ -3338,11 +3441,13 @@ function get_system_status_checks()
 
             // Deliveries that ran out of attempts. next_attempt_at is set to
             // zero when a row is given up on, which is what separates them from
-            // the ones still waiting their turn.
+            // the ones still waiting their turn. Chat notifications
+            // (webhook_id 0) are no subscription; their failures show on
+            // their target in Site Settings.
             $webhook_stuck = 0;
 
             $webhook_queue = @mysqli_query(db::$con,
-                "SELECT COUNT(*) AS total FROM api_webhook_queue WHERE next_attempt_at = 0");
+                "SELECT COUNT(*) AS total FROM api_webhook_queue WHERE next_attempt_at = 0 AND webhook_id > 0");
 
             if ($webhook_queue !== false) {
                 $webhook_queue_row = mysqli_fetch_assoc($webhook_queue);
@@ -3490,6 +3595,67 @@ function get_system_status_checks()
                     $alerts_href
                 );
             }
+        }
+    }
+
+    // Object storage (includes/fn/object_storage_health.php)
+    //
+    // A tile only while a store is set up and switched on. Reported, not
+    // scored: calls that could not reach it in the last hour, else files the
+    // move job left on the disk after its attempts, else reachable.
+    if (function_exists('pg_os_health_recent') && pg_os_ready(pg_os_settings())) {
+
+        $storage_href = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_maintenance.php#pgset-storage';
+        $storage_recent = pg_os_health_recent(time());
+        $storage_move = pg_os_health_move_failures(pg_file_move_state_normalize(json_decode((string) pg_config_text('object_storage_move'), true)), pg_file_move_attempts());
+
+        // Where the uploaded files are, a line under every state of the tile.
+        $storage_usage = pg_file_storage_usage();
+        $storage_name = pg_os_store_name(pg_os_settings());
+        $storage_where = array(
+            array('label' => lang(array('string' => 'On the disk: {var:1} files ({var:2})', 'vars' => array(pg_format_number($storage_usage['local_files'], 0), convert_bytes_to_string($storage_usage['local_bytes'], 1)))), 'state' => 'ok', 'when' => ''),
+            array('label' => lang(array('string' => 'In {var:1}: {var:2} files ({var:3})', 'vars' => array($storage_name, pg_format_number($storage_usage['stored_files'], 0), convert_bytes_to_string($storage_usage['stored_bytes'], 1)))), 'state' => 'ok', 'when' => ''),
+        );
+
+        if ($storage_recent['count'] >= pg_os_health_threshold()) {
+            $output .= $makeIcon(
+                'bi-cloud-slash',
+                'fg-danger',
+                'Object Storage',
+                'Calls to the object storage failed in the last hour. Files already there are not served until it answers again.',
+                lang(array('string' => '{var:1} failed in 1 hour', 'vars' => pg_format_number($storage_recent['count'], 0))),
+                $storage_href,
+                array_merge(array(array('label' => $storage_recent['message'], 'state' => 'fail', 'when' => '')), $storage_where)
+            );
+        } elseif ($storage_move['given_up'] > 0) {
+            $storage_detail = array();
+
+            foreach ($storage_move['given_up_ids'] as $storage_id) {
+                $storage_name = (string) db_value("SELECT name FROM files WHERE id = '" . (int) $storage_id . "'");
+                $storage_detail[] = array('label' => ($storage_name !== '') ? $storage_name : '#' . $storage_id, 'state' => 'warn', 'when' => '');
+            }
+
+            $output .= $makeIcon(
+                'bi-cloud-arrow-up',
+                'fg-warning',
+                'Object Storage',
+                'Some files could not be moved to the object storage after three attempts and stay on the disk. The Site Log names each one.',
+                lang(array('string' => '{var:1} left on the disk', 'vars' => pg_format_number($storage_move['given_up'], 0))),
+                $storage_href,
+                array_merge($storage_detail, $storage_where)
+            );
+        } else {
+            $output .= $makeIcon(
+                'bi-cloud-check',
+                'fg-success',
+                'Object Storage',
+                'The object storage answered every call in the last hour.',
+                ($storage_move['failing'] > 0)
+                    ? lang(array('string' => '{var:1} being retried', 'vars' => pg_format_number($storage_move['failing'], 0)))
+                    : lang('Reachable'),
+                $storage_href,
+                $storage_where
+            );
         }
     }
 
@@ -4375,4 +4541,143 @@ function check_and_repair_database_tables($deep = false)
     }
 
     return $report;
+}
+
+/**
+ * Release notes, the dialog and the button that opens it, drawn on the
+ * System Status header of both dashboards.
+ *
+ * Read here and embedded in the dialog rather than linked, so the browser
+ * never requests changelog.txt over the network. The file sits in the
+ * software directory, which is served directly, and a public release list
+ * tells anyone which version a site runs and which security fixes it is
+ * missing.
+ *
+ * Drawn the way the install screen draws it -- a coloured tag beside each
+ * entry, grouped under its version -- rather than as the raw file in a
+ * <pre>. Same file, same parse; the monospace dump kept the banner and the
+ * column alignment of a text editor, which is exactly what a reader does
+ * not need here. Newest version is open, the rest are folded away.
+ *
+ * @return array button, dialog (HTML; both empty without a changelog) and
+ *               sections (pg_changelog_sections(), which the brief reads too)
+ */
+function pg_changelog_dialog()
+{
+    $output_changelog_button = '';
+$output_changelog_modal = '';
+
+$changelog_sections = pg_changelog_sections();
+
+if (count($changelog_sections) > 0) {
+
+        // The head of the file: the wordmark, the title and the tag key. The
+        // drawing needs a monospace block that does not wrap; the key is drawn with
+        // the same badges the entries below carry, so it reads as a key rather than
+        // as a paragraph about one.
+        $changelog_preamble = pg_changelog_preamble();
+        $output_changelog_head = '';
+
+        if ($changelog_preamble['banner'] != '') {
+            $output_changelog_head .= '
+        <pre class="mb-3 fg-secondary" style="white-space:pre; overflow-x:auto; font-size:.72rem; line-height:1.35; font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;">' . h($changelog_preamble['banner']) . '</pre>';
+        }
+
+        if (count($changelog_preamble['legend']) > 0) {
+
+            $output_changelog_legend = '';
+
+            foreach ($changelog_preamble['legend'] as $changelog_legend_row) {
+                $output_changelog_legend .= '
+            <span class="d-inline-flex align-items-center gap-1 me-5">
+                <span class="badge ' . pg_changelog_tag_class($changelog_legend_row['tag']) . '">' . h($changelog_legend_row['tag']) . '</span>
+                <span class="small fg-secondary">' . h($changelog_legend_row['text']) . '</span>
+            </span>';
+            }
+
+            $output_changelog_head .= '
+        <div class="d-flex flex-wrap row-gap-1 pb-5 mb-5 border-bottom">' . $output_changelog_legend . '</div>';
+        }
+
+        $output_changelog_versions = '';
+
+        foreach ($changelog_sections as $changelog_index => $changelog_section) {
+
+            $output_changelog_entries = '';
+            $changelog_group = '';
+
+            foreach ($changelog_section['entries'] as $changelog_entry) {
+
+                // A release big enough to be written under topic headings keeps
+                // them here. Sixty entries in one undifferentiated column is a
+                // list nobody finishes; the heading is what lets a reader skip
+                // the four areas they do not use and stop at the one they do.
+                $changelog_entry_group = isset($changelog_entry['group']) ? $changelog_entry['group'] : '';
+
+                if ($changelog_entry_group != $changelog_group) {
+
+                    $changelog_group = $changelog_entry_group;
+
+                    if ($changelog_group != '') {
+                        $output_changelog_entries .= '
+            <div class="small fw-bold text-uppercase fg-secondary pt-5 pb-1">' . h($changelog_group) . '</div>';
+                    }
+                }
+
+                $output_changelog_tags = '';
+
+                foreach ($changelog_entry['tags'] as $changelog_tag) {
+                    $output_changelog_tags .=
+                        '<span class="badge ' . pg_changelog_tag_class($changelog_tag) . '">'
+                        . h($changelog_tag) . '</span>';
+                }
+
+                $output_changelog_entries .= '
+            <div class="d-flex gap-3 py-3 border-bottom border-1">
+                <div class="d-flex flex-column gap-1 flex-shrink-0" style="width:6.5rem">' . $output_changelog_tags . '</div>
+                <div class="small">' . h($changelog_entry['text']) . '</div>
+            </div>';
+            }
+
+            // Only the newest section is open. A reader who came for "what changed"
+            // wants this version; the older ones are history and would bury it.
+            $changelog_open = ($changelog_index == 0);
+            $changelog_id = 'changelog_v' . preg_replace('/[^0-9]/', '_', $changelog_section['version']);
+
+            $output_changelog_versions .= '
+        <div class="mb-3">
+            <button class="btn btn-link p-0 text-decoration-none fw-bold' . ($changelog_open ? '' : ' collapsed') . '"
+                    type="button" data-bs-toggle="collapse" data-bs-target="#' . $changelog_id . '"
+                    aria-expanded="' . ($changelog_open ? 'true' : 'false') . '" aria-controls="' . $changelog_id . '">
+                <i class="bi bi-chevron-down me-1"></i>' . h($changelog_section['version']) . '
+            </button>
+            <div class="collapse' . ($changelog_open ? ' show' : '') . '" id="' . $changelog_id . '">
+                ' . $output_changelog_entries . '
+            </div>
+        </div>';
+        }
+
+        // The trigger rides the System Status header; the dialog cannot follow it
+        // there, because a widget card clips and scrolls its own content. It is
+        // printed once with the page body instead.
+        $output_changelog_button = '<button title="' . lang('Release Notes') . '" aria-label="' . lang('Release Notes') . '" class="pg-widget-action no-popover" type="button" data-bs-toggle="dialog" data-bs-target="#changelog_modal"><span class="bi bi-card-list"></span></button>';
+
+        $output_changelog_modal = '
+    <dialog class="dialog dialog-lg dialog-scrollable pg-dialog-centered" id="changelog_modal" aria-labelledby="changelog_modal_label">
+                <div class="dialog-header">
+                    <h5 class="dialog-title" id="changelog_modal_label">
+                        <span class="bi bi-card-list me-3"></span>' . lang('Release Notes') . '
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . lang('Close') . '"></button>
+                </div>
+                <div class="dialog-body text-start">
+                    ' . $output_changelog_head . $output_changelog_versions . '
+                </div>
+                <div class="dialog-footer">
+                    <button type="button" class="btn btn-sm btn-solid theme-secondary" data-bs-dismiss="dialog">' . lang('Close') . '</button>
+                </div>
+    </dialog>';
+    }
+
+    return array('button' => $output_changelog_button, 'dialog' => $output_changelog_modal, 'sections' => $changelog_sections);
 }

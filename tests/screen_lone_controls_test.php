@@ -38,7 +38,6 @@ function screen_lone_controls_screens()
 		'erp_bank_statement.php',
 		'erp_stock_count.php',
 		'calendars.php',
-		'view_files.php',
 		'view_design_files.php',
 		'backups.php',
 	);
@@ -58,7 +57,7 @@ function test_screen_lone_controls_bars_come_from_the_helper()
 
 function test_screen_lone_controls_disk_usage_is_in_the_toolbar()
 {
-	foreach (array('view_files.php', 'view_design_files.php', 'backups.php') as $file) {
+	foreach (array('view_design_files.php', 'backups.php') as $file) {
 		$source = screen_lone_controls_source($file);
 		pg_assert_true((bool) preg_match("/'grow'\\s*=>[^\\n]*lang\\('Disk Usage'\\)/", $source), $file . ' puts Disk Usage in the grow slot');
 		pg_assert_false((bool) preg_match("/<p>' \\. lang\\('Disk Usage'\\)/", $source), $file . ' has no Disk Usage paragraph');
@@ -114,7 +113,7 @@ function test_screen_lone_controls_edit_screen_rows_join_the_toolbar()
 {
 	$screens = array(
 		'edit_common_region.php', 'edit_designer_region.php', 'edit_menu.php', 'edit_calendar_event.php',
-		'edit_email_campaign_profile.php', 'edit_folder.php', 'edit_product_group.php', 'edit_custom_style.php',
+		'edit_email_campaign_profile.php', 'edit_product_group.php', 'edit_custom_style.php',
 		'edit_ad_region.php', 'edit_dynamic_region.php', 'edit_login_region.php', 'view_menu_items.php',
 		'edit_javascript.php', 'edit_theme_css.php', 'view_fields.php', 'add_submitted_form.php',
 	);

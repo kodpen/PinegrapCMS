@@ -10,7 +10,7 @@ module: image_editor
 
 ## Which screens call it?
 - File Manager (`view_folders.php`): `openImageEditorFor()` by id, "New image" a blank 1000 px white canvas saved with `save.mode 'new'` (E12 replaces it with the New image dialog). Its SVG "Save a copy as PNG/JPG/WebP" is not the editor: it uploads the drawn picture beside the SVG through `explorer_upload`.
-- `edit_file.php`, `edit_design_file.php`, `view_files.php`, `view_design_files.php`, the dashboard's heavy-images widget (`widget_18.php`): a button with `data-pg-image-edit="<file name>"` and `pg_image_editor_includes()` beside it. The loader's click handler opens the file and reloads the page after a save, first fetching the bare address with `cache: 'reload'` (files are cached for a week).
+- `edit_file.php`, `edit_design_file.php`, `view_design_files.php`, the dashboard's heavy-images widget (`widget_18.php`): a button with `data-pg-image-edit="<file name>"` and `pg_image_editor_includes()` beside it. The loader's click handler opens the file and reloads the page after a save, first fetching the bare address with `cache: 'reload'` (files are cached for a week).
 - Designer: `designer/image-editor-tool.md`. Workspace: below.
 
 ## How does the live site's edit button work?

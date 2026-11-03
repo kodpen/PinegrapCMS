@@ -33,20 +33,20 @@ function pg_test_menu_layout($drawn)
 
 function test_menu_category_with_no_row_has_no_heading()
 {
-	$shape = pg_test_menu_layout(array(0, 8, 20));
+	$shape = pg_test_menu_layout(array(0, 8, 25));
 
-	pg_assert_same(array(array('', '', array(0)), array('system', 'System', array(8, 20))), $shape, 'only the rows built are laid out');
+	pg_assert_same(array(array('', '', array(0)), array('system', 'System', array(8, 25))), $shape, 'only the rows built are laid out');
 }
 
 function test_menu_categories_keep_the_table_order_whatever_the_build_order()
 {
-	$shape = pg_test_menu_layout(array(20, 8, 15, 10, 1, 2, 23, 0));
+	$shape = pg_test_menu_layout(array(25, 8, 15, 10, 1, 2, 23, 0));
 
 	pg_assert_same(array(
 		array('', '', array(0, 23)),
 		array('content', 'Content', array(2, 1)),
 		array('ecommerce', 'Ecommerce', array(10, 15)),
-		array('system', 'System', array(8, 20)),
+		array('system', 'System', array(8, 25)),
 	), $shape);
 }
 
@@ -63,7 +63,7 @@ function test_menu_categories_for_narrow_rights()
 function test_menu_manager_gets_no_design_heading()
 {
 	// Rows 17 and 21 are built for roles 0 and 1 only.
-	foreach (pg_menu_layout(array(0, 23, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 20, 22), pg_menu_categories()) as $block) {
+	foreach (pg_menu_layout(array(0, 23, 1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 22, 25), pg_menu_categories()) as $block) {
 		pg_assert_false($block['key'] === 'design', 'no Design block');
 	}
 }
@@ -148,8 +148,8 @@ function test_menu_file_manager_row_holds_the_files()
 	$menu = pg_test_function_source('output_menu');
 
 	pg_assert_contains("\$menu_items[1]['href'] = 'view_folders.php';", $menu, 'the row opens the explorer');
-	pg_assert_contains("\$menu_items[1]['data-bs-content'] .= '<a href=\\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files&upload=1\\''", $menu, 'the upload is its entry');
-	pg_assert_contains("\$menu_items[1]['data-bs-content'] .= '<hr class=\\'divider my-3\\' />' . pg_menu_explorer_side('files', \$user, \$toolbar, \$menu_tail);", $menu, 'then the tree, with Files and Pictures in it');
+	pg_assert_contains("\$menu_items[1]['data-bs-content'] = pg_menu_explorer_side('files', \$user, \$toolbar, \$menu_tail);", $menu, 'the panel is the tree alone, with Files and Pictures in it');
+	pg_assert_false(strpos($menu, "/view_folders.php?view=files&upload=1") !== false, 'uploading happens in the explorer, not from an entry');
 	pg_assert_false(strpos($menu, "OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=images") !== false, 'Pictures is not an entry twice');
 	pg_assert_false(strpos($menu, "OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files\\''") !== false, 'nor Files');
 	pg_assert_false(strpos($menu, "\$menu_items[3]") !== false, 'the Files row is gone');
@@ -189,5 +189,5 @@ function test_menu_explorer_views_refresh_the_menu_mark()
 function test_menu_system_category_holds_the_system_tools_row()
 {
 	$categories = pg_menu_categories();
-	pg_assert_same(array(8, 20, 25), $categories['system']['slots'], 'Users, Site Settings, System tools');
+	pg_assert_same(array(8, 25), $categories['system']['slots'], 'Users, System tools');
 }

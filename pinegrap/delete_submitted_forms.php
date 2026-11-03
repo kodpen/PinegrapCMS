@@ -25,12 +25,16 @@ validate_token_field();
 include_once('liveform.class.php');
 $liveform = new liveform('view_submitted_forms');
 
-// if at least one form was selected
-if ($_POST['forms']) {
+// if at least one form was selected (a list of ids; anything else selects none)
+if (isset($_POST['forms']) && is_array($_POST['forms']) && $_POST['forms']) {
     $number_of_forms = 0;
 
     // loop through all forms that were selected for deletion
     foreach ($_POST['forms'] as $form_id) {
+        if (!is_scalar($form_id)) {
+            continue;
+        }
+
         // get folder id so we can validate access to this form
         $query = "SELECT page.page_folder as folder_id
                  FROM forms
@@ -38,7 +42,14 @@ if ($_POST['forms']) {
                  WHERE forms.id = ?";
         $result = db_q($query, array((string) $form_id)) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
-        
+
+        // A form deleted meanwhile (another tab, another user) is passed over
+        // and not counted: check_edit_access() of no folder is true for a
+        // manager.
+        if (!$row) {
+            continue;
+        }
+
         // if user has access to edit this form's custom form then user has access to delete form
         if (check_edit_access($row['folder_id']) == true) {
             // get uploaded files for this form, so they can be deleted
@@ -82,6 +93,9 @@ if ($_POST['forms']) {
             
             // delete views for this submitted form that the form view directory feature uses
             pg_sfv_delete_views('submitted_form_id', $form_id);
+
+            // delete the record's comments, their attachments, watchers and counters
+            pg_comment_delete_record_thread($form_id);
             
             $number_of_forms++;
         }
@@ -91,6 +105,8 @@ if ($_POST['forms']) {
     if ($number_of_forms > 0) {
         log_activity(lang(array('string'=>'{var:1} submitted form(s) were deleted','vars'=>$number_of_forms)), $_SESSION['sessionusername']);
         $liveform->add_notice(lang(array('string'=>'{var:1} form(s) have been deleted.','vars'=>$number_of_forms)) );
+    } else {
+        $liveform->mark_error('no_forms_selected_error', lang('No forms were deleted'));
     }
     
 // else no forms were selected

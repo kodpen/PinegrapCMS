@@ -391,7 +391,7 @@ function pg_dashboard_v2_chip_list()
         'forms'       => array('gate' => 'forms', 'tone' => 'warn', 'url' => 'view_submitted_forms.php'),
         'comments'    => array('gate' => 'staff', 'tone' => 'plain', 'url' => 'view_comments.php'),
         'subscribers' => array('gate' => 'staff', 'tone' => 'good', 'url' => 'view_contacts.php?filter=my_subscribers'),
-        'files'       => array('gate' => 'files', 'tone' => 'plain', 'url' => 'view_files.php'),
+        'files'       => array('gate' => 'files', 'tone' => 'plain', 'url' => 'view_folders.php?view=files'),
         'blocks'      => array('gate' => 'waf', 'tone' => 'plain', 'url' => 'view_waf_log.php'),
         'tasks_done'  => array('gate' => 'workspace', 'tone' => 'good', 'url' => 'workspace_tasks.php'),
     );

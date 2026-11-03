@@ -33,9 +33,8 @@ $id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $file = ($id > 0) ? db_item("SELECT id, name, folder, description FROM files WHERE (id = '" . $id . "') AND (design = '1')") : null;
 $file_name = is_array($file) ? (string) $file['name'] : '';
 if (
-    ($file_name === '')
+    pg_design_file_name_unsafe($file_name)
     || ($file_name !== basename($file_name))
-    || (strpos($file_name, '..') !== false)
     || (mb_strtolower(pathinfo($file_name, PATHINFO_EXTENSION)) !== 'js')
 ) {
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);

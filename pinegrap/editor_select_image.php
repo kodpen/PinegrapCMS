@@ -56,21 +56,8 @@ foreach ($_REQUEST as $key => $value) {
     }
 }
 
-// If a screen was passed and it is a positive integer, then use it.
-// These checks are necessary in order to avoid SQL errors below for a bogus screen value.
-if (
-    isset($_REQUEST['screen'])
-    and $_REQUEST['screen']
-    and is_numeric($_REQUEST['screen'])
-    and $_REQUEST['screen'] > 0
-    and $_REQUEST['screen'] == round($_REQUEST['screen'])
-) {
-    $screen = (int) $_REQUEST['screen'];
-
-// Otherwise, use the default, which is the first screen.
-} else {
-    $screen = 1;
-}
+// The page asked for, a whole number of 1 or more (pg_list_page_number()).
+$screen = pg_list_page_number($_REQUEST['screen'] ?? '');
 
 // If sort is not set, set to "newest".
 if (isset($_SESSION['software']['editor_select_image']['sort']) == false) {
@@ -500,7 +487,7 @@ if ($number_of_results > 0) {
             '<div class="col">
                 <button type="button" class="esi-tile no-popover hover-lift image' . h($images[$key]['access_control_type']) . '" onclick="' . $output_onclick . '" title="' . lang('Image Details') . '" data-bs-content="' . h($output_details) . '">
                     <span class="esi-thumb">
-                        <img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . OUTPUT_PATH . h($images[$key]['name']) . '" class="lazy" alt="">
+                        <img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(pg_image_panel_thumb_url(OUTPUT_PATH . $images[$key]['name'])) . '" class="lazy" alt="">
                         <span class="esi-overlay"><span class="bi bi-check-lg me-1"></span>' . lang('Select') . '</span>
                     </span>
                     <span class="esi-caption text-truncate">' . h($images[$key]['name']) . '</span>

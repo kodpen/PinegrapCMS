@@ -84,7 +84,8 @@ function pg_submitted_form_list_custom_forms($include = null)
  * keeps older forms with the same name, their pages in the Recycle Bin, so
  * a form name that appears more than once gets its page name, a binned form
  * gets ' [IN RECYCLE BIN]' as the other page pickers do, and the binned
- * forms go after the others (each group keeps its order).
+ * forms go after the others (each group keeps its order). A name still
+ * shared after that gets ' (#<id>)' on every form that has it.
  *
  * @param array $forms list of array('id', 'form_name', 'page_name', 'binned')
  * @return array list of array('id', 'name', 'binned'), names not escaped
@@ -116,7 +117,23 @@ function pg_submitted_form_list_labels($forms)
         }
     }
 
-    return array_merge($live, $binned);
+    $labels = array_merge($live, $binned);
+
+    // Forms whose form and page names are both equal (copies a template or
+    // a changed design left in the Recycle Bin) still share a label: each
+    // gets its form id.
+    $label_count = array();
+    foreach ($labels as $label) {
+        $key = mb_strtolower($label['name'], 'UTF-8');
+        $label_count[$key] = ($label_count[$key] ?? 0) + 1;
+    }
+    foreach ($labels as $index => $label) {
+        if ($label_count[mb_strtolower($label['name'], 'UTF-8')] > 1) {
+            $labels[$index]['name'] .= ' (#' . (int) $label['id'] . ')';
+        }
+    }
+
+    return $labels;
 }
 
 /**
@@ -141,6 +158,34 @@ function pg_submitted_form_list_options($custom_forms)
     }
 
     return $options;
+}
+
+/**
+ * The label of a field's box in the advanced filters: the field's label as
+ * the add and edit screens show it, its name when it has none. A long label
+ * (a consent sentence) is cut to $limit characters; the title holds the
+ * whole label and the name.
+ *
+ * @param string $label form_fields.label (may hold HTML from older forms)
+ * @param string $name  form_fields.name
+ * @param int    $limit
+ * @return array('text' => shown text, 'title' => full text), not escaped
+ */
+function pg_submitted_form_list_field_label($label, $name, $limit = 60)
+{
+    $name = (string) $name;
+    $label = trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags((string) $label), ENT_QUOTES, 'UTF-8')));
+
+    if ($label === '') {
+        return array('text' => $name, 'title' => $name);
+    }
+
+    $text = $label;
+    if (mb_strlen($label, 'UTF-8') > $limit) {
+        $text = rtrim(mb_substr($label, 0, $limit - 1, 'UTF-8')) . '…';
+    }
+
+    return array('text' => $text, 'title' => ($label === $name) ? $name : $label . ' (' . $name . ')');
 }
 
 /**
@@ -262,8 +307,6 @@ function pg_submitted_form_list_filter($user)
     $start_timestamp = mktime(0, 0, 0, (int) $state['start_month'], (int) $state['start_day'], (int) $state['start_year']);
     $stop_timestamp = mktime(23, 59, 59, (int) $state['stop_month'], (int) $state['stop_day'], (int) $state['stop_year']);
 
-    $joins = '';
-    $join_params = array();
     $conditions = array('(forms.' . $date_type_column . ' >= ?)', '(forms.' . $date_type_column . ' <= ?)');
     $params = array($start_timestamp, $stop_timestamp);
 
@@ -273,12 +316,13 @@ function pg_submitted_form_list_filter($user)
         if ($checked) {
             $form_conditions = array();
             $data_conditions = array();
+            $data_params = array();
 
             foreach ($checked as $custom_form) {
                 $form_conditions[] = '(forms.page_id = ?)';
                 $params[] = (string) $custom_form;
 
-                // A field with a filter value joins its data and asks for it.
+                // A field with a filter value asks for a stored value holding it.
                 $field_conditions = array();
                 $result = db_q("SELECT form_fields.id FROM form_fields WHERE form_fields.page_id = ? ORDER BY form_fields.sort_order", array((string) $custom_form));
 
@@ -287,10 +331,9 @@ function pg_submitted_form_list_filter($user)
                     $value = pg_submitted_form_list_value($state, 'form_field_' . $field_id);
 
                     if ($value !== '') {
-                        $joins .= ' LEFT JOIN form_data AS form_data_' . $field_id . ' ON ((forms.id = form_data_' . $field_id . '.form_id) AND (form_data_' . $field_id . '.form_field_id = ?) AND (form_data_' . $field_id . '.data LIKE ?))';
-                        $join_params[] = (string) $field_id;
-                        $join_params[] = pg_list_like_pattern($value);
-                        $field_conditions[] = '(form_data_' . $field_id . '.data IS NOT NULL)';
+                        $condition = pg_submitted_form_list_field_condition($field_id, $value);
+                        $field_conditions[] = $condition['sql'];
+                        $data_params = array_merge($data_params, $condition['params']);
                     }
                 }
 
@@ -303,6 +346,7 @@ function pg_submitted_form_list_filter($user)
 
             if ($data_conditions) {
                 $conditions[] = '(' . implode(' OR ', $data_conditions) . ')';
+                $params = array_merge($params, $data_params);
             }
         } else {
             // No custom form checked finds no form.
@@ -421,14 +465,32 @@ function pg_submitted_form_list_filter($user)
             LEFT JOIN contacts ON forms.contact_id = contacts.id
             LEFT JOIN user AS submitted_user ON forms.user_id = submitted_user.user_id
             LEFT JOIN user AS last_modified_user ON forms.last_modified_user_id = last_modified_user.user_id
-            LEFT JOIN user AS form_editor_user ON forms.form_editor_user_id = form_editor_user.user_id' . $joins,
+            LEFT JOIN user AS form_editor_user ON forms.form_editor_user_id = form_editor_user.user_id',
         'where' => 'WHERE ' . implode(' AND ', $conditions),
-        'params' => array_merge($join_params, $params),
+        'params' => $params,
         'order_by' => $order_by,
         'sort_columns' => $sort_columns,
         'sort_default' => $sort_default,
         'sort_levels' => $sort_levels,
         'date_type_column' => $date_type_column,
+    );
+}
+
+/**
+ * The condition a field's filter value puts on a submitted form: one of its
+ * stored values holds the text. A condition, not a join: a check box group
+ * keeps one form_data row per ticked box, and a join listed and counted a
+ * form once for every row the text matched. Pure.
+ *
+ * @param int    $field_id
+ * @param string $value the filter text
+ * @return array array('sql' => condition, 'params' => its values)
+ */
+function pg_submitted_form_list_field_condition($field_id, $value)
+{
+    return array(
+        'sql' => '(EXISTS (SELECT 1 FROM form_data WHERE (form_data.form_id = forms.id) AND (form_data.form_field_id = ?) AND (form_data.data LIKE ?)))',
+        'params' => array((string) (int) $field_id, pg_list_like_pattern((string) $value)),
     );
 }
 
@@ -564,4 +626,111 @@ function pg_submitted_form_list_row($row, $contacts_access)
         pg_list_cell(get_relative_time(array('timestamp' => $row['submitted_timestamp'])) . ' ' . h($submitted_by)),
         pg_list_cell(get_relative_time(array('timestamp' => $row['last_modified_timestamp'])) . ' ' . h($modified_by)),
     ));
+}
+
+/**
+ * The fixed columns the export writes before the field columns, in order;
+ * a quiz adds 'quiz_score' after them.
+ *
+ * @return array
+ */
+function pg_submitted_form_export_columns()
+{
+    return array('form_name', 'reference_code', 'status', 'address_name', 'tracking_code', 'affiliate_code', 'http_referer', 'ip_address', 'submitted', 'last_modified', 'member_id', 'form_editor');
+}
+
+/**
+ * How many leading headings of an imported file are the export's fixed
+ * columns: all of them (and 'quiz_score' after them) when the file starts
+ * with them in the export's order, else 0. Those columns describe the record,
+ * not its fields, so a field named 'status' must not be filled from the
+ * record's status.
+ *
+ * @param array $columns the file's headings
+ * @return int
+ */
+function pg_submitted_form_import_fixed_columns($columns)
+{
+    $columns = array_values((array) $columns);
+    $fixed = pg_submitted_form_export_columns();
+
+    foreach ($fixed as $index => $name) {
+        if (!isset($columns[$index]) || (mb_strtolower(trim((string) $columns[$index]), 'UTF-8') !== $name)) {
+            return 0;
+        }
+    }
+
+    $count = count($fixed);
+    if (isset($columns[$count]) && (mb_strtolower(trim((string) $columns[$count]), 'UTF-8') === 'quiz_score')) {
+        $count++;
+    }
+
+    return $count;
+}
+
+/**
+ * The complete flag of an imported record from the export's status cell:
+ * '0' for the incomplete status the export writes (in the panel language or
+ * in English), '1' otherwise.
+ *
+ * @param mixed $cell
+ * @return string
+ */
+function pg_submitted_form_import_complete($cell)
+{
+    $status = mb_strtolower(trim((string) $cell), 'UTF-8');
+
+    foreach (array('Incomplete', lang('Incomplete')) as $incomplete) {
+        if ($status === mb_strtolower($incomplete, 'UTF-8')) {
+            return '0';
+        }
+    }
+
+    return '1';
+}
+
+/**
+ * An imported cell of a date, date and time or time field as the add screen
+ * stores it: '2026-12-20', '2026-12-20 17:05', '17:05'. The export's ISO
+ * form, the site's day and month order and the dotted Turkish date are read
+ * (pg_date_input_iso()). An empty cell is ''; a value that is no real date
+ * or time is null, so the caller leaves the field empty and names the line.
+ * Other field types are returned as they are.
+ *
+ * @param mixed  $value
+ * @param string $type the form field's type
+ * @return string|null
+ */
+function pg_submitted_form_import_value($value, $type)
+{
+    $value = (string) $value;
+
+    if (!in_array($type, array('date', 'date and time', 'time'), true)) {
+        return $value;
+    }
+
+    $value = trim($value);
+    if ($value === '') {
+        return '';
+    }
+
+    if ($type === 'date') {
+        $date = pg_date_input_iso($value);
+        return ($date !== '') ? $date : null;
+    }
+
+    if ($type === 'time') {
+        return validate_time($value) ? (string) prepare_form_data_for_input($value, 'time') : null;
+    }
+
+    if (!preg_match('/^(\S+?)(?:T|\s+)(\d.*)$/u', $value, $parts)) {
+        return null;
+    }
+
+    $date = pg_date_input_iso($parts[1]);
+    if (($date === '') || !validate_time($parts[2])) {
+        return null;
+    }
+
+    return $date . ' ' . prepare_form_data_for_input($parts[2], 'time');
 }

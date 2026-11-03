@@ -26,8 +26,8 @@ if (!defined('PG_INIT_LOADED')) {
         <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="edit_offer.php"><i class="bi bi-plus-lg" aria-hidden="true"></i> <?=lang('New Offer')?></a>
         <?php
         // One chip per filter; the count rides in a badge so the active chip
-        // stays readable when it fills in. A filter with nothing to show is
-        // left out rather than drawn empty.
+        // stays readable when it fills in. A filter that may be empty is drawn
+        // hidden at 0, so recount() can show it once a toggle gives it a row.
         $filters = array(
             array('key' => 'all',        'label' => lang('All'),        'count' => $counts['all'],        'always' => true),
             array('key' => 'active',     'label' => lang('Active'),     'count' => $counts['active'],     'always' => true),
@@ -40,8 +40,7 @@ if (!defined('PG_INIT_LOADED')) {
         ?>
         <div class="d-flex flex-wrap align-items-center gap-1" role="group" aria-label="<?=lang('Filter')?>">
             <?php foreach ($filters as $f): ?>
-                <?php if (!$f['always'] && $f['count'] == 0) { continue; } ?>
-                <button type="button" class="btn btn-sm btn-outline theme-secondary rounded-pill px-5 d-inline-flex align-items-center gap-3<?php if ($f['key'] == 'all'): ?> active<?php endif ?>" data-filter="<?=$f['key']?>" aria-pressed="<?=$f['key'] == 'all' ? 'true' : 'false'?>">
+                <button type="button" class="btn btn-sm btn-outline theme-secondary rounded-pill px-5 d-inline-flex align-items-center gap-3<?php if ($f['key'] == 'all'): ?> active<?php endif ?><?php if (!$f['always'] && $f['count'] == 0): ?> d-none<?php endif ?>" data-filter="<?=$f['key']?>"<?php if (!$f['always']): ?> data-optional="1"<?php endif ?> aria-pressed="<?=$f['key'] == 'all' ? 'true' : 'false'?>">
                     <?=h($f['label'])?><span class="badge rounded-pill <?=isset($f['badge']) ? $f['badge'] : 'theme-secondary'?>" data-count><?=$f['count']?></span>
                 </button>
             <?php endforeach ?>
@@ -205,8 +204,14 @@ if (!defined('PG_INIT_LOADED')) {
                 counts[tr.getAttribute('data-how')]++;
                 if (tr.getAttribute('data-incomplete') === '1') { counts.incomplete++; }
             });
+            // An optional chip shows while it has rows; the chip in use stays
+            // so the operator is not left on a filter they cannot see.
             $('#pg-offers-toolbar [data-filter]').each(function () {
-                $(this).find('[data-count]').text(counts[$(this).data('filter')] || 0);
+                var chip = $(this), n = counts[chip.data('filter')] || 0;
+                chip.find('[data-count]').text(n);
+                if (chip.attr('data-optional') === '1') {
+                    chip.toggleClass('d-none', n === 0 && !chip.hasClass('active'));
+                }
             });
         }
 

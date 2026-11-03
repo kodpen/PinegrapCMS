@@ -5,7 +5,7 @@ description: GET /customers/{id}/subscriptions, the pause/resume/cancel moves wi
 
 ## What does GET /customers/{id}/subscriptions answer?
 - Route `customers.subscriptions`, scope `customers:read`, handler `api_customers_subscriptions()` (`includes/api/resources/customers.php`), object `Subscription` (`api_subscription_schema()`).
-- Rows of `subscriptions` whose `user_id` is an account with `user.user_contact` = the customer, newest first, cursor paged by id. Product name from the first order's line, else the product. Never `card_ref`, `remote_id` or `driver`.
+- Rows of `subscriptions` whose `user_id` is an account with `user.user_contact` = the customer, newest first, cursor paged by id. Product name from the first order's line, else the product; `customer_id`, `customer_name`, `customer_email` since `GET /subscriptions` shares the object (`api-subscriptions-list.md`). Never `card_ref`, `remote_id` or `driver`.
 - `actions`: `pg_subscription_customer_actions()` minus `update_card` (the card page needs the customer's browser), so the same moves My Account offers.
 - Legacy gateway profiles (`recurring_payment_*` columns) are not listed. No table → empty list.
 
@@ -22,4 +22,4 @@ description: GET /customers/{id}/subscriptions, the pause/resume/cancel moves wi
 ## Tested?
 - `tests/api_customer_subscriptions_test.php` (SQL, presenter, detail, routes and the stop order, event names, payload); `tests/api_customers_test.php` counts 12 customers routes. Not run against a database or a live service.
 
-Related: commerce/subscriptions-account.md, api/api-webhook-events.md, api/api-dry-run.md, plans/subscriptions-iyzico-stripe.md
+Related: commerce/subscriptions-account.md, api/api-webhook-events.md, api/api-dry-run.md, commerce/subscriptions-decisions.md

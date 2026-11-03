@@ -101,6 +101,21 @@ function test_explorer_catalog_quick_quantity()
 	pg_assert_same(null, pg_explorer_catalog_quick_quantity('many'), 'not a number');
 }
 
+// products.inventory_quantity is INT UNSIGNED: a figure past its top is
+// handed back for the screen to refuse, never cut to fit.
+function test_explorer_catalog_quick_quantity_past_the_column()
+{
+	pg_assert_same(4294967295, pg_explorer_catalog_quick_quantity('4294967295'), 'the column\'s top fits');
+	pg_assert_true(pg_inventory_quantity_too_large(pg_explorer_catalog_quick_quantity('5000000000')), 'five billion is past it');
+	pg_assert_true(pg_inventory_quantity_too_large(pg_explorer_catalog_quick_quantity('4294967296')), 'one past the top');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/explorer/handle_catalog_edit.php');
+	$check = strpos($source, 'pg_inventory_quantity_too_large($quick_number)');
+
+	pg_assert_true($check !== false, 'the quick stock cell refuses it');
+	pg_assert_true($check < strpos($source, '$quick_sql = "inventory_quantity = '), 'before the write is built');
+}
+
 // The width a column type declares, or 0 when it declares none.
 function test_explorer_column_length()
 {

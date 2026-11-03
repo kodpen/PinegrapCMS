@@ -13,7 +13,8 @@
  * registration form keeps what the request flow relies on (field names,
  * the event and pass filled from the address, the office-only status, the
  * consent link, the e-mail pages); its messages and the reply e-mail run
- * on the Comments widget, with no fixed comments block.
+ * on the Comments widget, with no fixed comments block; the Turkish words
+ * name one thing one way (a ticket, a track, the registration pages).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -24,6 +25,8 @@
 if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
+
+require_once(__DIR__ . '/helpers/language_map.php');
 
 // The parts as the template file reads them: parts.php first, then each
 // page file in the same scope. Read once per run.
@@ -374,6 +377,23 @@ function test_events_tickets_catalog_and_shop_pages()
 	foreach ($d['passes'] as $p) $pass_skus[] = $p['sku'];
 	pg_assert_same($pass_skus, $skus, 'a product for every pass');
 
+	// A pass card shows its product's price: the same figure for the base
+	// currency, in that currency (#4822: the card said $149, the shop
+	// ₺5.999,00).
+	$currency = defined('BASE_CURRENCY_CODE') ? strtoupper((string)BASE_CURRENCY_CODE) : 'USD';
+	$symbol = defined('BASE_CURRENCY_SYMBOL') ? (string)BASE_CURRENCY_SYMBOL : '$';
+	$i = 0;
+	foreach ($d['passes'] as $key => $pass) {
+		$prices = $group['products'][$i++]['price'];
+		$amount = isset($prices[$currency]) ? $prices[$currency] : $prices['USD'];
+		pg_assert_same(pg_money_text($amount, $symbol), $pass['price'], "pass $key: card price is the product's");
+	}
+	// The sample events' prices are free or in the same currency.
+	foreach ($d['samples'] as $e) {
+		pg_assert_true($e['price'] === lang('Free') || strpos($e['price'], html_entity_decode($symbol, ENT_QUOTES | ENT_HTML5, 'UTF-8')) !== false, $e['title'] . ': price in the base currency');
+	}
+	pg_assert_contains($d['passes']['day']['price'], end($d['samples'])['price'], 'the conference starts at the day pass');
+
 	// The tickets page is there without the shop; every other page and
 	// widget of the shop needs it, and the tickets page places the listing.
 	$keys = array();
@@ -404,6 +424,11 @@ function test_events_tickets_catalog_and_shop_pages()
 	$cart = $t['widgets']['cart']['config'];
 	pg_assert_same('{{tab:checkout}}', $cart['next_page_id_with_shipping']);
 	pg_assert_same('{{tab:checkout}}', $cart['next_page_id_without_shipping']);
+	// The ticket product's breadcrumb starts at the tickets page by its
+	// name, not at "Main Catalog".
+	$detail = $t['widgets']['product_detail']['config'];
+	pg_assert_same('{{tab:tickets}}', $detail['catalog_listing_page_id']);
+	pg_assert_same(lang('Tickets'), $detail['catalog_root_label']);
 	$checkout = $t['widgets']['checkout']['config'];
 	pg_assert_same('{{tab:order}}', $checkout['next_page_id']);
 	pg_assert_same('{{tab:email_order}}', $checkout['order_receipt_email_page_id']);
@@ -413,4 +438,76 @@ function test_events_tickets_catalog_and_shop_pages()
 	// The account bar places the cart link; on a site without the shop
 	// the link is left out with its widget.
 	pg_assert_contains('"templateWidget":"cart_link"', json_encode($d['shared'][0]), 'account bar places the cart link');
+}
+
+// The Turkish words of the template: a pass is a ticket ("bilet", never
+// "geçiş"), a track is an "oturum dizisi" (never "kol"), the help center
+// sends a visitor to the event registration page, not to Sign Up, and the
+// form page and a registration's own page do not share one title.
+function test_events_turkish_words_name_one_thing_one_way()
+{
+	$map = pg_test_language_map('tr');
+	$keys = array();
+	foreach (glob(PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-events{,/*}.php', GLOB_BRACE) as $file) {
+		preg_match_all("/lang\\('((?:[^'\\\\]|\\\\.)*)'\\)/", file_get_contents($file), $m);
+		foreach ($m[1] as $k) $keys[stripslashes($k)] = true;
+	}
+	pg_assert_true(count($keys) > 100, 'template keys found');
+	foreach (array_keys($keys) as $k) {
+		if (!isset($map[$k])) continue;
+		pg_assert_true(!preg_match('/geçiş|\\bkol(u|un|unun|unda|lar)?\\b/u', $map[$k]), "one word for passes and tracks: $k");
+	}
+	$faq = 'Open Register, choose the event and your pass, fill in your details and send the form. Free events and invoiced passes need nothing more; a paid pass can also be bought on the tickets page.';
+	pg_assert_true(strpos($map[$faq], 'Kayıt Ol') === false, 'the help center names the registration page, not Sign Up');
+
+	$register = _test_events_part('pages', 'registration');
+	$view = _test_events_part('pages', 'registration_view');
+	pg_assert_true($map[$register['title']] !== $map[$view['title']], 'the form page and a registration page have their own titles');
+
+	$d = _test_events_load();
+	$speakers = null;
+	foreach ($d['pages'] as $p) if ($p['key'] === 'speakers') $speakers = $p;
+	pg_assert_true((bool)preg_match('/^[a-z0-9-]+$/', $map[$speakers['name']]), 'the speakers page address is plain ASCII');
+	pg_assert_true($map[$speakers['name']] !== $map['speakers'], 'the speakers page address is not the figure label');
+	pg_assert_same('Haberler', $map['News'], 'the news page and menu item are plural');
+}
+
+// On every page of the template a heading is at most one level below the
+// heading before it (the designer audit's heading order check): the
+// programme's day theme is the h2 between the page's h1 and the sessions'
+// h3.
+function test_events_headings_never_skip_a_level()
+{
+	$tpl = _pg_tpl_include(PG_FUNCTIONS_DIR . '/includes/design_templates/pinegrap-events.php');
+	$checked = 0;
+	foreach ($tpl['pages'] as $page) {
+		if (!isset($page['tree']) || !is_array($page['tree'])) continue;
+		$nodes = array();
+		_test_events_nodes($page['tree'], $nodes);
+		$prev = 0;
+		foreach ($nodes as $n) {
+			if (!isset($n['props']['contentType']) || $n['props']['contentType'] !== 'heading') continue;
+			if (!preg_match('/^h([1-6])$/', (string)$n['props']['tag'], $m)) continue;
+			$level = (int)$m[1];
+			pg_assert_true($prev === 0 || $level <= $prev + 1, $page['key'] . ': h' . $level . ' after h' . $prev);
+			$prev = $level;
+			$checked++;
+		}
+	}
+	pg_assert_true($checked > 50, 'headings found');
+}
+
+// The events page, menu, footer, form and help topic of the Events and
+// Bookshop templates use the "Events" key, which reads "Etkinlikler" as the
+// rest of those sites do; the API and firewall screens use their own keys so
+// they keep the technical "Olaylar".
+function test_events_key_reads_as_site_events_in_turkish()
+{
+	$map = pg_test_language_map('tr');
+	pg_assert_same('Etkinlikler', $map['Events'], 'Events is the site word');
+	pg_assert_same('Webhook olayları', $map['Webhook events'], 'API events keep their word');
+	pg_assert_same('Kayıtlı olaylar', $map['Logged events'], 'firewall events keep their word');
+	foreach (array('api_settings.php', 'includes/api/console_view.php', 'view_waf_log.php') as $file) {
+		pg_assert_true(strpos(file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), "lang('Events')") === false, "$file uses its own key");
+	}
 }

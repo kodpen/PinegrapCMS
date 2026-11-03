@@ -16,9 +16,9 @@ description: New dashboard plan: where the switch, layouts, look, role defaults 
 ## Which API actions?
 - In `api.php`, exempt from its role gate like `get_widget_data`, each checking the person itself (`ui/dashboard-widget-files.md`), behind the panel token:
 - `dashboard_switch` {on}: the person's `enabled`.
-- `dashboard_layout_save` {layout, look}: every id against the card list, widths S/M/L, periods and compares 0-2, shortcut and tile keys against their pools, text lengths; refused while the person's role is locked.
+- `dashboard_layout_save` {layout, look}: every id against the card list, widths S/M/L, periods and compares 0-2, shortcut and tile keys against their pools, text lengths; refused while the person's role is locked (never for roles 0-1, `ui/dashboard-v2-share.md`).
 - `dashboard_cards` {cards: [{id, per, cmp}]}: the data of the listed cards in one answer; a card the person may not see answers `denied` and draws nothing; a slow card (Google, flows) is asked for on its own beside the batch.
-- `dashboard_role_default` {role, locked}: role < 2; writes the role row from the person's current layout and look.
+- `dashboard_role_default` {role, locked, layout, look}: role < 2; writes the role row from the layout and look on the person's screen (`ui/dashboard-v2-share.md`).
 
 ## What does a card function return?
 - `includes/dashboard/v2/cards/<id>.php` defines `pg_dashboard_v2_card_<id>($user, $period, $compare)`: `array('status' => 'success'|'denied'|'error', 'data' => array(...))`, figures, rows (text, note, tone, url), points and labels; never HTML, texts already through `lang()`. It checks its own gate and never echoes or exits.
