@@ -63,7 +63,7 @@ description: Generated from the module field of the memory files: each includes/
 - `image`: [[image-accent-colour]], [[image-derivative-upkeep]], [[image-panel-thumbnails]], [[image-same-address-switches]], [[image-upload-cap]]
 - `image_editor`: [[image-editor-access]], [[image-editor-adjust]], [[image-editor-artboard]], [[image-editor-callers]], [[image-editor-canvas-save]], [[image-editor-draw]], [[image-editor-export]], [[image-editor-fonts]], [[image-editor-glyph]], [[image-editor-keys]], [[image-editor-layers]], [[image-editor-modal]], [[image-editor-motion]], [[image-editor-parts]], [[image-editor-recycle-bin]], [[image-editor-redact]], [[image-editor-render]], [[image-editor-save]], [[image-editor-sticker]], [[image-editor-svg]], [[image-editor-text]], [[image-editor-tracks]], [[image-editor-vector]], [[image-editor-versions]]
 - `imap_client`: [[mail-imap-client]]
-- `importers`: [[import-framework]], [[import-media]]
+- `importers`: [[import-framework]], [[import-media]], [[import-woocommerce]]
 - `innodb`: [[innodb-conversion-marker]], [[panel-script-number-format]]
 - `lang`: [[lang-loader]], [[lang-placeholders]]
 - `lang_files`: [[lang-file-writes]], [[lang-files]]
