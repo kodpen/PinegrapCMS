@@ -473,4 +473,5 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - voice-text-keyboard.md: Convert to text under a voice message from the keyboard (pg_voice_text.js): where focus goes while it works, after success and after a failure; the progress meter's name
 - waf-log-paging.md: The firewall log's events (view_waf_log.php) paged, sorted and searched on the server; period, category and search filters stay in the address and drive the summary
 - whole-number-input-mask.md: Panel boxes of whole-number columns take Inputmask's integer alias, never decimal, so a Turkish 1.000 is a thousand
+- workspace-avatar-faces.md: A face from avatar() in the Workspace scripts keeps Bootstrap's .avatar (classList.add, never className =) and is sized by --bs-avatar-size; why a check-in answer's photo once covered the channel
 - zone-shared-form.md: add_zone.php and edit_zone.php draw the shipping zone form and read its rates through includes/forms/zone_form.php; what each screen keeps

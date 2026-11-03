@@ -13285,11 +13285,11 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
 .ws-checkin-answer:first-child {
   border-top: 0;
 }
+/* A Bootstrap .avatar (workspace_status.js keeps the class): its size
+   variable sizes the photo too, which a plain width here would not. */
 .ws-checkin-face {
-  flex: 0 0 1.6rem;
-  width: 1.6rem;
-  height: 1.6rem;
-  border-radius: 50%;
+  --bs-avatar-size: var(--ws-avatar-sm);
+  flex: 0 0 auto;
 }
 .ws-checkin-text {
   min-width: 0;
