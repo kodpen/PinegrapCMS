@@ -206,6 +206,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_search_stats.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ai_visibility.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_search_tuning.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_vitals.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/visitor_insights.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/audit.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/audit_view.php');

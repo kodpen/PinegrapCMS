@@ -180,6 +180,8 @@ function get_help_url($properties = array())
         'view_visitor'         => 'visitors#visit-details',
         'search_console'       => 'visitors#google-search-console',
         'visitor_search'       => 'visitors#site-search',
+        'visitor_vitals'       => 'visitors#page-speed',
+        'visitor_ai'           => 'visitors#ai-visibility',
         'view_accessibility'   => 'seo#accessibility-check',
         'search_audits'        => 'seo#seo-checks',
 
