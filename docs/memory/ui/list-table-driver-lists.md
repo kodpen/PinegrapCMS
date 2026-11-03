@@ -1,6 +1,6 @@
 ---
 name: list-table-driver-lists
-description: Which screens are on the list table driver (pages, users, contacts, submitted forms, products, menus, short links): their sources, columns, bulk actions through the resolver, what each keeps
+description: Which screens are on the list table driver (pages, users, contacts, submitted forms, products, menus, short links, logs): sources, columns, bulk actions, what each keeps
 module: list_table, submitted_form_list
 ---
 
@@ -12,6 +12,8 @@ module: list_table, submitted_form_list
 - Products (`view_products`, `pg_product_list_source()`, TD7b): the first list with quick edit (`ui/product-list-paging.md`). Modify Selected, Assign Barcodes and Delete Selected post `selection` + `list_params` to `edit_products.php` (`pg_product_list_selected_ids()`). No `created` (products keep only the last change).
 
 - Printed whole in browser mode (`pg_list_table_printed()`, TD9a): menus (`view_menus.php`, the name opens the menu's items) and short links (`view_short_links.php`, the name opens the editor, a Visit column for a link with an address). Neither has bulk actions; their old action buttons became the name link.
+
+- Site Log, audit trail, firewall log (`view_log`, `view_audit_log`, `view_waf_log`, #6386): no bulk actions; `ui/site-log-paging.md`, `ui/audit-log-paging.md`, `ui/waf-log-paging.md`.
 
 ## What do they share?
 - Each screen prints its source's first batch with `pg_list_table_html()`, a search box `data-pg-list-search="<list>"`, a hidden `selection` field filled from `pg-list-table:selection` and a `list_params` field; its bulk endpoint calls the list's `pg_<list>_list_selected_ids()` (`null` above 10,000 rows, refused with a "Too many … are selected" message).

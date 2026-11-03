@@ -2,12 +2,13 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The audit trail list (view_audit_log.php), shared by the screen and the
- * panel actions that page it (audit_log_list_rows) and open a line's changes
+ * The audit trail list (view_audit_log.php) on the list table driver
+ * (includes/fn/list_table.php), shared by the screen, the driver's rows
+ * action (list_table_rows) and the action that opens a line's changes
  * (audit_log_changes, includes/panel/lists.php).
  *
- * The screen draws its filters and the headings; the lines come one page at
- * a time, sorted by the headings' kept sort and searched on the server. A
+ * The screen draws its filters and the first lines; the next ones come one
+ * batch at a time, sorted by the kept sort and searched on the server. A
  * line's changed fields can be dozens of indented JSON values, so a row
  * carries only their number and the table is read when it is opened.
  *
@@ -116,22 +117,48 @@ function pg_audit_list_sort()
  */
 function pg_audit_list_search(array $terms, $names = null)
 {
+    // Only a word can match a settings category; without one the names are
+    // not read.
+    return pg_list_search_where($terms, pg_audit_list_search_columns(), pg_audit_list_search_labels($terms ? $names : array()));
+}
+
+/**
+ * The shown names the search box matches, as pg_list_search_where() takes
+ * them: the source, action and record type names, and a settings line's
+ * category name (the line stores the category's key; on any other line the
+ * expression is NULL and never matches).
+ *
+ * @param array|null $names settings category key => shown name; null reads
+ *                          pg_audit_view_settings_names(), an empty array
+ *                          leaves the categories out
+ * @return array
+ */
+function pg_audit_list_search_labels($names = null)
+{
     $labels = array();
 
     foreach (array('source' => 'source', 'action' => 'action', 'type' => 'entity_type') as $kind => $column) {
         $labels[] = array('expr' => $column, 'labels' => pg_audit_view_labels($kind));
     }
 
-    if ($terms) {
-        // Only a settings line's label is a category key; on any other line
-        // the expression is NULL and never matches.
-        $labels[] = array(
-            'expr' => "(CASE WHEN entity_type = 'settings' THEN label END)",
-            'labels' => is_array($names) ? $names : pg_audit_view_settings_names(),
-        );
+    $names = is_array($names) ? $names : pg_audit_view_settings_names();
+
+    if ($names) {
+        $labels[] = array('expr' => "(CASE WHEN entity_type = 'settings' THEN label END)", 'labels' => $names);
     }
 
-    return pg_list_search_where($terms, array(
+    return $labels;
+}
+
+/**
+ * The text columns the search box looks in, as pg_list_search_where()
+ * takes them.
+ *
+ * @return array
+ */
+function pg_audit_list_search_columns()
+{
+    return array(
         'username',
         'label',
         'ip',
@@ -145,7 +172,7 @@ function pg_audit_list_search(array $terms, $names = null)
 
             return ctype_digit($term) ? $term : '';
         }),
-    ), $labels);
+    );
 }
 
 /**
@@ -211,7 +238,7 @@ function pg_audit_list_changes_html(array $changes)
  * @param array $query pg_audit_view_query() of the filters
  * @param int|null $role the viewer's role, USER_ROLE when null: the "Open"
  *                     icon is drawn only when the record's screen admits it
- * @return array array('class', 'cells')
+ * @return array array('id', 'class', 'cells' => column key => cell)
  */
 function pg_audit_list_row(array $line, array $live, array $query, $role = null)
 {
@@ -258,82 +285,80 @@ function pg_audit_list_row(array $line, array $live, array $query, $role = null)
         ? '<div><a class="small pg-link-secondary" href="' . h(pg_audit_list_link($query, array('request' => (string) $line['request_id']))) . '" title="' . h(lang('Show every line of this request')) . '"><code>' . h($line['request_id']) . '</code></a></div>'
         : '';
 
-    return array('class' => 'unselectable', 'cells' => array(
-        pg_list_cell(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $line['created_at']), 'date and time'), 'text-nowrap'),
-        pg_list_cell($who, ''),
-        pg_list_cell('<a href="' . h(pg_audit_list_link($query, array('action' => (string) $line['action']))) . '" class="pg-link-body-emphasis">' . h(pg_audit_view_label('action', $line['action'])) . '</a>', 'text-nowrap'),
-        pg_list_cell('<div class="pg-audit-record">' . $record . '</div>', '', array('style' => 'min-width:12rem')),
-        pg_list_cell($changes, '', array('style' => 'min-width:16rem')),
-        pg_list_cell(h($line['ip']) . $request, 'small text-nowrap'),
+    return array('id' => (string) (int) $line['id'], 'class' => 'unselectable', 'cells' => array(
+        'date' => pg_list_cell(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $line['created_at']), 'date and time'), 'text-nowrap'),
+        'who' => pg_list_cell($who, ''),
+        'action' => pg_list_cell('<a href="' . h(pg_audit_list_link($query, array('action' => (string) $line['action']))) . '" class="pg-link-body-emphasis">' . h(pg_audit_view_label('action', $line['action'])) . '</a>', 'text-nowrap'),
+        'record' => pg_list_cell('<div class="pg-audit-record">' . $record . '</div>', ''),
+        'changes' => pg_list_cell($changes, ''),
+        'ip' => pg_list_cell(h($line['ip']) . $request, 'small text-nowrap'),
     ));
 }
 
 /**
- * The number of lines a condition selects.
+ * The list's columns. The keys are the sort codes pg_audit_list_sort()
+ * keeps, so the sort menu and the headings name the same sort.
  *
- * @param string $sql    a condition with ? placeholders
- * @param array  $params its values
- * @return int|false false when the query failed
+ * @return array key => spec, as pg_list_table_columns() takes them
  */
-function pg_audit_list_count($sql, array $params)
+function pg_audit_list_columns()
 {
-    $result = db_q('SELECT COUNT(*) FROM audit_log WHERE ' . $sql, $params);
-
-    return $result ? (int) mysqli_fetch_row($result)[0] : false;
+    return array(
+        'date' => array('heading' => lang('Date'), 'width' => '11rem', 'kind' => 'date', 'sort' => 'created_at'),
+        'who' => array('heading' => lang('Who'), 'width' => '12rem', 'sort' => 'username'),
+        'action' => array('heading' => lang('Action'), 'width' => '8rem', 'sort' => 'action'),
+        'record' => array('heading' => lang('Record'), 'width' => '16rem', 'sort' => 'label'),
+        'changes' => array('heading' => lang('Changes'), 'width' => '16rem'),
+        'ip' => array('heading' => lang('IP Address'), 'width' => '10rem', 'sort' => 'ip'),
+    );
 }
 
 /**
- * One page of the list: the counts without and with the search, and the
- * rows of the page window.
+ * The trail as the list table driver reads it: the lines the screen's
+ * filters select (its address, checked again), searched by
+ * pg_audit_list_search()'s rule. The screen's gate is the source's: an
+ * account above Manager, or a database without the trail, gets null.
  *
- * @param array $filters pg_audit_view_filters()'s answer
- * @param array $terms   pg_list_search_terms()'s answer
- * @param array $window  pg_list_page_window()'s answer
- * @return array|false array('total', 'filtered', 'rows') or false when a
- *                     query failed
+ * @param array $user   the signed-in user
+ * @param array $params array('filters' => the screen's filters)
+ * @return array|null pg_list_table_source(), or null when the user may not
+ *                    open the list
  */
-function pg_audit_list_page(array $filters, array $terms, array $window)
+function pg_audit_list_source($user, $params)
 {
+    if (!isset($user['role']) || !is_numeric($user['role']) || ((int) $user['role'] > 2) || !pg_audit_ready()) {
+        return null;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+    $filters = pg_audit_view_filters((is_array($params) && isset($params['filters']) && is_array($params['filters'])) ? $params['filters'] : array());
     $condition = pg_audit_view_condition($filters);
-    $search = pg_audit_list_search($terms);
-    $sql = $condition['sql'] . (($search['sql'] !== '') ? ' AND ' . $search['sql'] : '');
-    $params = array_merge($condition['params'], $search['params']);
-
-    $total = pg_audit_list_count($condition['sql'], $condition['params']);
-
-    if ($total === false) {
-        return false;
-    }
-
-    $filtered = ($search['sql'] !== '') ? pg_audit_list_count($sql, $params) : $total;
-
-    if ($filtered === false) {
-        return false;
-    }
-
-    $result = db_q('SELECT id, created_at, request_id, source, user_id, username, ip, action, entity_type, entity_id, label, before_json, after_json FROM audit_log'
-        . ' WHERE ' . $sql . ' ORDER BY ' . pg_audit_list_sort()['order_by'] . pg_list_limit_sql($window), $params);
-
-    if (!$result) {
-        return false;
-    }
-
-    $lines = array();
-
-    while ($line = mysqli_fetch_assoc($result)) {
-        $lines[] = $line;
-    }
-
-    // The records of this page that still exist: only those get an "Open" link.
-    $live = pg_audit_view_live_records($lines);
     $query = pg_audit_view_query($filters);
-    $rows = array();
 
-    foreach ($lines as $line) {
-        $rows[] = pg_audit_list_row($line, $live, $query);
-    }
+    return pg_list_table_source(array(
+        'list' => 'view_audit_log',
+        'columns' => pg_audit_list_columns(),
+        'from' => 'audit_log',
+        'where' => $condition['sql'],
+        'params' => $condition['params'],
+        'id' => 'id',
+        'select' => 'id, created_at, request_id, source, user_id, username, ip, action, entity_type, entity_id, label, before_json, after_json',
+        'search' => array('columns' => pg_audit_list_search_columns(), 'labels' => pg_audit_list_search_labels()),
+        'levels' => pg_audit_list_sort()['sort_levels'],
+        'rows' => function ($lines) use ($query) {
+            // The records of this batch that still exist: only those get an "Open" link.
+            $live = pg_audit_view_live_records($lines);
+            $rows = array();
 
-    return array('total' => $total, 'filtered' => $filtered, 'rows' => $rows);
+            foreach ($lines as $line) {
+                $rows[] = pg_audit_list_row($line, $live, $query);
+            }
+
+            return $rows;
+        },
+        'params_out' => array('filters' => (object) $query),
+    ));
 }
 
 /**
