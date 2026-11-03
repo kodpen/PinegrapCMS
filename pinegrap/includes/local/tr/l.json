@@ -146,7 +146,7 @@
     "Last resort for a host with no usable CA store. While true, update packages are accepted without proof of where they came from. Point CURL_CA_BUNDLE at a cacert.pem in the config file instead whenever that is possible.": "CA deposu kullanılamayan sunucular için son çaredir. true iken güncelleme paketleri nereden geldiği kanıtlanmadan kabul edilir. Mümkün olduğunda bunun yerine yapılandırma dosyasında CURL_CA_BUNDLE ayarını bir cacert.pem dosyasına yönlendirin.",
     "Last row (1 or empty)": "Son satır (1 ya da boş)",
     "Last run": "Son koşum",
-    "Last run of the general job": "Genel işin son çalışması",
+    "Last run of the general job": "Genel görevin son çalışması",
     "Last run of the mail queue": "E-posta kuyruğunun son çalışması",
     "Last run {var:1}": "Son çalışma {var:1}",
     "Last runs": "Son çalıştırmalar",

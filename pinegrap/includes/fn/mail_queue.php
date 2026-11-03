@@ -450,7 +450,10 @@ function pg_mail_enqueue(array $properties)
 // Returns array('sent' => n, 'failed' => n), failed counting attempts that
 // did not get through in this run, whether or not they will be retried, and
 // 'suppressed' => n, the messages the send gate stopped.
-function pg_mail_queue_run($limit = 25, $seconds = 20)
+//
+// $only_id, when given, sends that one message and no other: the mail queue
+// screen's Retry while no scheduled job works the queue.
+function pg_mail_queue_run($limit = 25, $seconds = 20, $only_id = 0)
 {
     $result = array('sent' => 0, 'failed' => 0, 'suppressed' => 0);
 
@@ -511,7 +514,8 @@ function pg_mail_queue_run($limit = 25, $seconds = 20)
             FROM mail_outbox
             WHERE
                 (status = 'queued')
-                AND (send_after <= UNIX_TIMESTAMP())
+                AND (send_after <= UNIX_TIMESTAMP())" . (((int) $only_id > 0) ? "
+                AND (id = '" . (int) $only_id . "')" : '') . "
             ORDER BY send_after, id
             LIMIT 1");
 
