@@ -1,6 +1,6 @@
 ---
 name: merger-wake
-description: How the merging session keeps waking (2026-10-26): a 5-minute session cron, a 10-minute send_later chain and an hourly routine that survive a restart; GitHub events are not relied on
+description: How the merging session keeps waking: a 10-minute send_later chain and an hourly routine that re-arms it (2026-11-03); GitHub events are not relied on
 ---
 
 ## Why not wait for GitHub events?
@@ -8,15 +8,17 @@ description: How the merging session keeps waking (2026-10-26): a 5-minute sessi
 - Events and `send_later` check-ins still help, but nothing waits on them.
 
 ## What wakes the merging session?
-- A session cron (`CronCreate`) every 5 minutes on off-minutes (`2,7,12,…,57 * * * *`). Each tick reads GitHub, not its own memory:
+- A server-side `send_later` chain every 10 minutes, named `Merger: 10-minute tick`: each firing arms the next first, then ticks. A tick reads GitHub, not its own memory:
   - an open `merge-train/*` PR: green → check the PR heads and `origin/development` ancestry, land it by fast-forward ([[merge-train-landing]]), then build the next one; red → find the PR that breaks it; running → end quietly;
   - no open train: build one from the `ready`, green PRs (or green with no push for an hour) ([[merge-train]]);
   - nothing to do: no message.
-- A session cron lives only while the session runs and dies with a restart. So an hourly routine (`create_trigger`, bound to the session, an off-minute such as `41 * * * *`) checks `CronList`, re-creates the tick when it is missing and runs one tick itself.
-- The cron died with a restart twice in two hours on 2026-10-27, and a train sat green for up to 35 minutes until the hourly routine came. So a server-side `send_later` chain (10 minutes, named `Merger: 10-minute tick`) runs a tick too: each firing arms the next first, re-creates the cron when it is missing, then ticks.
+- An hourly routine (`create_trigger`, bound to the session, an off-minute such as `41 * * * *`) re-arms the chain when no `Merger: 10-minute tick` is pending and runs one tick itself.
+- The lander that waits for a train's CI runs in the background and wakes the session when it ends, so a train lands without waiting for a tick.
+- No session cron: since 2026-11-03 the accounts' quota is not unlimited, and every wake costs a turn. A 5-minute cron ran until then (a cron dies with a restart; the chain is server-side).
+- The same day the architect and the coordinators moved to a 30-minute chain (`architect.md`, `coordinator.md`): every wake of a standing session pays for its whole context.
 
 ## What does a new merging session set up first?
-- All three: the 5-minute tick, the 10-minute `send_later` chain and the hourly routine (delete an older routine or chain of a session that is no longer merging). Then it lands or builds as the tick says. A recurring cron expires after 7 days; the hourly routine re-creates it.
+- The 10-minute chain and the hourly routine (delete an older routine or chain of a session that is no longer merging). Then it lands or builds as the tick says.
 - A fresh merging session per window (a routine that creates a session on each firing) is equally safe: the open `merge-train/*` PR is the lock.
 - Reviews of a train run while its CI runs, not before the push: CI takes about ten minutes, a review by sub-agents about as long.
 
