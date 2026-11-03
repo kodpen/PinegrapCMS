@@ -207,7 +207,7 @@ function test_workspace_canvas_save_order()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_file_save.php');
 
 	pg_assert_true(substr_count($source, "ws_canvas_keep(") === 3, 'three places keep a canvas');
-	pg_assert_true(substr_count($source, "\$request['pictures'] ?? null") >= 1, 'the pictures go along');
+	pg_assert_true(substr_count($source, '$request[\'pictures\'] ?? null') >= 2, 'the pictures go along');
 	pg_assert_true(strpos($source, '$pictures = $request[\'pictures\'] ?? null;') < strpos($source, 'unset($request);'), 'taken before the request is let go');
 
 	$canvas = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/canvas.php');
