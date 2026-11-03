@@ -3621,6 +3621,7 @@
     "saved-posts": "kaydedilen-gonderiler",
     "saved. The design still needs saving to keep this address.": "kaydedildi. Bu adresin kalıcı olması için tasarımı da kaydedin.",
     "say-hi": "merhaba-de",
+    "schedule_time must be a time in HH:MM form (24-hour clock).": "schedule_time, SS:DD biçiminde (24 saat) bir saat olmalıdır.",
     "scheduled": "zamanlanmış",
     "scheduled action “{var:1}” now runs as a flow": "“{var:1}” programlanmış işi artık bir akış olarak çalışıyor",
     "scheduled action “{var:1}” was created in the Workspace": "Çalışma Alanı'nda “{var:1}” programlanmış işlemi oluşturuldu",
