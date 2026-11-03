@@ -82,6 +82,8 @@ function test_dashboard_v2_remove_cross_target()
 {
 	$cross = pg_test_dashboard_v2_css_block('.pg-dash-action-remove');
 
-	pg_assert_contains('min-width: 1.5rem', $cross, 'width');
-	pg_assert_contains('min-height: 1.5rem', $cross, 'height');
+	foreach (array('min-width', 'min-height') as $property) {
+		pg_assert_true(preg_match('/' . $property . ':\s*([\d.]+)rem/', $cross, $size) === 1, $property . ' is set in rem');
+		pg_assert_true((float) $size[1] >= 1.5, $property . ' is at least 1.5rem');
+	}
 }
