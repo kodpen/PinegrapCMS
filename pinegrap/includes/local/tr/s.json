@@ -2216,6 +2216,8 @@
     "Skipped": "Atlandı",
     "Skipped and failed": "Atlananlar ve başarısız olanlar",
     "Skipped by {var:1} after: {var:2}": "{var:1} tarafından atlandı, önceki sonuç: {var:2}",
+    "Skipped: \"{var:1}\" is being edited by {var:2}.": "Atlandı: \"{var:1}\" sayfasını {var:2} düzenliyor.",
+    "Skipped: the visual designer does not open this style.": "Atlandı: görsel tasarımcı bu stili açmıyor.",
     "Sky": "Gökyüzü",
     "Slack: an incoming webhook (https://hooks.slack.com/services/…). Teams: an incoming webhook or a Workflows address. The address is a password: it is kept encrypted and not shown again.": "Slack: gelen webhook (https://hooks.slack.com/services/…). Teams: gelen webhook ya da bir Workflows adresi. Adres bir paroladır: şifreli saklanır ve yeniden gösterilmez.",
     "Slash commands": "Komutlar",
