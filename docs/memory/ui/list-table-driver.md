@@ -21,4 +21,4 @@ module: list_table
 ## Which lists are on it?
 - None yet: `pg_list_table_definitions()` is empty until the Pages list moves (`plans/table-driver-steps.md`, TD2).
 
-Related: docs/memory/ui/server-paged-lists.md
+Related: docs/memory/ui/list-table-driver-browser.md, docs/memory/ui/server-paged-lists.md

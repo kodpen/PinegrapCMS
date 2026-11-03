@@ -231,6 +231,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/speculation.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_customs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/preorder.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/audiences.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/audience_doors.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/bookings.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/booking_settings.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/store_credit.php');

@@ -10,6 +10,7 @@ description: Generated from the module field of the memory files: each includes/
 - `address_autocomplete`: [[address-autocomplete]]
 - `ai_prompts`: [[ai-prompt-version]]
 - `ai_visibility`: [[ai-visibility-figures]]
+- `audience_doors`: [[audiences-doors]]
 - `audiences`: [[audiences-recompute]], [[audiences-rules]]
 - `audit`: [[audit-trail-diff]], [[audit-trail-file-content]], [[consent-log-and-audit-trail]]
 - `audit_list`: [[audit-log-paging]]

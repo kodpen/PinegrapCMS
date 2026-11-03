@@ -49,8 +49,9 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-2.md: Decisions list, product part 2 (2026-10-29 on): guest account and receipt of a webhook-completed order; PayTR instalments; layout editor of a page not on a visual design; carrier drivers
 - decisions-made-product-20.md: Decisions list, product part 20 (2026-11-02 on): voice to assistants, transactional campaigns and opt-in, converted regions, event copies, till dates, country names, bank statements, untracked scans
 - decisions-made-product-21.md: Decisions list, product part 21 (2026-11-03 on): clearing the performance log, the Migration screen, panel transitions, the panel back/forward cache, WebP behind an unconfirmed CDN
-- decisions-made-product-22.md: Decisions list, product part 22 (2026-11-03 on): the panel's own table driver replacing DataTables
-- decisions-made-product-23.md: Decisions list, product part 23 (2026-11-03 on): page cache copies under an experiment and audience conditions, designer page links by id outside widgets
+- decisions-made-product-22.md: Decisions list, product part 22 (2026-11-01 evening on): the panel's own table driver replacing DataTables
+- decisions-made-product-23.md: Decisions list, product part 23 (2026-11-03 on): page cache copies under an experiment and audience conditions, designer page links by id outside widgets, the classic styles' bulk run
+- decisions-made-product-24.md: Decisions list, product part 24 (2026-11-01 on): the Visitors overview screen, a daily summary every day, the channel rule, Search Console joined to the pages
 - decisions-made-product-3.md: Decisions list, product part 3 (2026-10-29 on): SVG and ZPL labels, the first international label driver, get_catalog.php's dead top-item block, the PHP 5 remnants, converted common regions' rows
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
@@ -59,6 +60,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-8.md: Decisions list, product part 8 (2026-10-30 midday on): Trendyol-carried packages refused by Create Label, starter dump corrections for #3330, marketing SMS in 2026.11.0, forum template wording
 - decisions-made-product-9.md: Decisions list, product part 9 (2026-10-30 afternoon on): form rules for visitors only, marketplace orders invoiced behind a switch, sales quote guest links and templates, Workspace density switch
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
+- decisions-made-schema-10.md: Decisions list, schema part 10 (2026-11-01 on): the search engines appended to the visitors referring-engine ENUM
 - decisions-made-schema-2.md: Decisions list, schema part 2, approved on 2026-10-28: e-mail tables, workflow tables, MCP preamble, secret widths, prompt version, discussion follow; rules in part 1, 2026-10-29 on in part 3
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies, shipment_labels; rules in part 1
 - decisions-made-schema-4.md: Decisions list, schema part 4 (2026-10-29 afternoon on): ws_flow_templates, ws_refs.source_type to VARCHAR, shipment_labels.order_return_id, config.speculation_prefetch; rules in part 1

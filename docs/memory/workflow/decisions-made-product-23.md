@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-23
-description: Decisions list, product part 23 (2026-11-03 on): page cache copies under an experiment and audience conditions, designer page links by id outside widgets
+description: Decisions list, product part 23 (2026-11-03 on): page cache copies under an experiment and audience conditions, designer page links by id outside widgets, the classic styles' bulk run
 ---
 
 ## Where are the rules and the earlier parts?
@@ -11,3 +11,6 @@ description: Decisions list, product part 23 (2026-11-03 on): page cache copies 
 
 ## Designer page links by id outside widgets (#6233, architect, 2026-11-03)
 - Decided (architect, slice 4 of `plans/designer-prototype-links.md`): a link outside a widget (content link, btn as `<a>`, semantic `a`, in page trees and shared components) may be kept by page id with the existing shape, no new tree prop: `_bindings.href = '__page_link'`, `_bindParams.href = {page_id, params: []}`, `props.href` (or the `_attrs` href) kept as the fallback. The pre-pass `pg_sw_page_link_bindings()` and `pg_sw_page_link_resolve()` run once over the page tree and each shared component before `_apply_bindings()`; a missing or binned page prints the fallback outside widgets (`#` inside, as before). The canvas draws the current name; `pg_link_resolve()` and its JS twin read the bound id before the href; `seo_link` likewise. The Prototype arrow and Bind Data write it; links in text, classic menus, regions and widget page settings stay by name; nothing is rewritten on a rename and existing hrefs are untouched until re-pointed. Reason: the only shape that survives a rename without a redirect or rewriting other pages' revisions; running sites do not change. Not chosen: rewriting names on rename (misses renames by API or the page list, touches other pages' revisions), or no change (against the plan's answer 2).
+
+## LD2: where the bulk conversion of classic styles runs (#6251, architect, 2026-11-03)
+- Decided (architect, LD2 of `plans/legacy-to-designer.md`, PR #6252): a resumable pass in the import framework's shape (`platform/import-framework.md`): a cursor in `data/temp`, worked by the report screen's short requests and a light-lane job tick on the same cursor under one `GET_LOCK`, so it carries on with the tab closed; the dry run is screen-only; no schema. The existing converters; the page-region splice and the region-to-widget step get PHP twins of the editor's; widgets only for named region nodes in the style's frame component, one per region per style (page-tree nodes stay opt-in). The kept report is a JSON file per run under `data/` outside `temp`. Cut LD2a (twins, dry run, tests) and LD2b (the run). Reason: a screen-only run stops with the tab, a cron-only run shows errors late; the frame component reaches every page; a designer choosing styles and seeing the dry run keeps the rule that conversion never runs by itself.

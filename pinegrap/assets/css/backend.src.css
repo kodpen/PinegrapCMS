@@ -21902,6 +21902,100 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     outline-color: Highlight;
   }
 }
+
+/* List table driver (assets/js/pg_list_table.js, includes/fn/list_table.php):
+   the list fills the window from where it starts; its rows scroll in their
+   own box under a sticky heading row, the selection bar stays above them. */
+.pg-list-table {
+  display: flex;
+  flex-direction: column;
+  min-height: 16rem;
+  max-height: calc(100dvh - var(--pg-list-table-top, 12rem) - 1rem);
+}
+.pg-list-table-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.pg-list-table-grid {
+  margin-bottom: 0;
+}
+.pg-list-table-grid > thead > tr > th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--pg-card-bg);
+  box-shadow: inset 0 -1px 0 var(--pg-border-color);
+  white-space: nowrap;
+}
+.pg-list-table-sort {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+}
+.pg-list-table-grid th[aria-sort] .pg-list-table-sort::after {
+  content: "\2191";
+  margin-inline-start: 0.25rem;
+  color: var(--pg-fg-2);
+}
+.pg-list-table-grid th[aria-sort="descending"] .pg-list-table-sort::after {
+  content: "\2193";
+}
+.pg-list-table-grid > tbody > tr {
+  cursor: default;
+  user-select: none;
+}
+.pg-list-table-grid > tbody > tr:focus-visible {
+  outline: var(--pg-focus-ring-width) solid var(--pg-focus-ring-color);
+  outline-offset: calc(var(--pg-focus-ring-width) * -1);
+}
+.pg-list-table-grid > tbody > tr.pg-list-table-selected > td {
+  background: color-mix(in srgb, var(--pg-primary) 14%, transparent);
+}
+.pg-list-table-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border-bottom: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
+  background: color-mix(in srgb, var(--pg-primary) 8%, transparent);
+}
+.pg-list-table-bar[hidden] {
+  display: none;
+}
+.pg-list-table-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-inline-start: auto;
+}
+.pg-list-table-foot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+}
+.pg-list-table-status:empty,
+.pg-list-table-more[hidden] {
+  display: none;
+}
+.pg-list-table-status {
+  margin: 0;
+}
+.pg-list-table-sentinel {
+  height: 1px;
+}
+.pg-list-table-empty {
+  padding: 1rem;
+  margin: 0;
+  text-align: center;
+}
 }
 
 /* Unlayered: Bootstrap 6 gives .fixed-top 1020 in its helpers layer, which
