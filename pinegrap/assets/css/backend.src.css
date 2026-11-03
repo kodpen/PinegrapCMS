@@ -5164,6 +5164,11 @@ table.table.dataTable > tbody > tr.selected > * {
   margin-top: 3rem;
   margin-bottom: 2rem;
 }
+/* Find & Replace results: the table sits right under its card header. */
+.card .table.pg-find-results {
+  margin-top: 0;
+  margin-bottom: 0 !important;
+}
 a.dt-button {
   position: relative;
 }

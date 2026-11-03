@@ -253,3 +253,44 @@ function pg_find_replace_too_long($column, $value, array $limits)
 
     return mb_strlen((string) $value, 'UTF-8') > (int) $limits[$column];
 }
+
+/**
+ * True when a Find & Replace snippet leaves text out after the context it
+ * shows, so it ends with "…". The match end alone is not enough: a text
+ * that ends inside the shown context is not cut.
+ *
+ * @param int $pos         first character of the match
+ * @param int $match_len   characters of the match
+ * @param int $context_len characters shown after the match
+ * @param int $text_len    characters of the whole text
+ * @return bool
+ */
+function pg_find_replace_snippet_cut($pos, $match_len, $context_len, $text_len)
+{
+    return ((int) $pos + (int) $match_len + (int) $context_len) < (int) $text_len;
+}
+
+/**
+ * Joins the result records that share a key, in first-seen order: a
+ * submitted form stores one row per field, and its matches are one record.
+ *
+ * @param array $records each with 'key' and 'matches'
+ * @return array
+ */
+function pg_find_replace_merge_records(array $records)
+{
+    $merged = array();
+    $index  = array();
+
+    foreach ($records as $record) {
+        $key = (string) $record['key'];
+        if (isset($index[$key])) {
+            $merged[$index[$key]]['matches'] = array_merge($merged[$index[$key]]['matches'], $record['matches']);
+        } else {
+            $index[$key] = count($merged);
+            $merged[]    = $record;
+        }
+    }
+
+    return $merged;
+}

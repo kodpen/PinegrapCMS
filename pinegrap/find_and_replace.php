@@ -40,6 +40,7 @@ $all_table_defs = [
         'extra_select' => [],
         'extra_join'   => '',
         'columns'      => ['style_code'],
+        'column_labels' => ['style_code' => lang('Code')],
         'edit_url'     => 'edit_custom_style.php?id={style_id}',
         'url_raw'      => false,
         'touch'        => ['style_timestamp', 'style_user'],
@@ -50,13 +51,18 @@ $all_table_defs = [
         'table'        => 'pregion',
         'id_column'    => 'pregion_id',
         'name_column'  => 'pregion_name',
-        // JOIN with the page table → the frontend URL comes from page_name
+        // JOIN with the page table → the frontend URL and the row's name
+        // come from page_name. A row whose page is gone is not searched.
         'extra_select' => ['page.page_name AS pregion_page_name'],
-        'extra_join'   => 'LEFT JOIN page ON pregion.pregion_page = page.page_id',
+        'extra_join'   => 'INNER JOIN page ON pregion.pregion_page = page.page_id',
         // A page whose content moved into its designer tree no longer reads
-        // its rows.
-        'base_where'   => pg_page_region_read_sql(),
+        // its rows; a page in the Recycle Bin (or a folder carried into it)
+        // is neither listed nor changed, as in mass_edit.php.
+        'base_where'   => pg_page_region_read_sql() . pg_pages_bin_sql(pg_recycle_bin_folder_ids(), false),
         'columns'      => ['pregion_content'],
+        'column_labels' => ['pregion_content' => lang('Content')],
+        // The region's own name is an internal id; the page names the row.
+        'display_name_column' => 'pregion_page_name',
         // The page the region belongs to is marked for SEO rescoring.
         'seo_stale_page' => 'pregion_page',
         'touch'        => ['pregion_timestamp', 'pregion_user'],
@@ -76,6 +82,7 @@ $all_table_defs = [
         // is no longer read.
         'base_where'   => "cregion_designer_type = 'no' AND " . pg_common_region_not_converted_sql(),
         'columns'      => ['cregion_content'],
+        'column_labels' => ['cregion_content' => lang('Content')],
         'edit_url'     => 'edit_common_region.php?id={cregion_id}',
         'url_raw'      => false,
         'touch'        => ['cregion_timestamp', 'cregion_user'],
@@ -90,6 +97,7 @@ $all_table_defs = [
         'extra_join'   => '',
         'base_where'   => "cregion_designer_type = 'yes'",
         'columns'      => ['cregion_content'],
+        'column_labels' => ['cregion_content' => lang('Content')],
         'edit_url'     => 'edit_designer_region.php?id={cregion_id}',
         'url_raw'      => false,
         'touch'        => ['cregion_timestamp', 'cregion_user'],
@@ -103,6 +111,7 @@ $all_table_defs = [
         'extra_select' => [],
         'extra_join'   => '',
         'columns'      => ['dregion_code'],
+        'column_labels' => ['dregion_code' => lang('Code')],
         'edit_url'     => 'edit_dynamic_region.php?id={dregion_id}',
         'url_raw'      => false,
         'touch'        => ['dregion_timestamp', 'dregion_user'],
@@ -126,7 +135,14 @@ if (defined('ECOMMERCE') && ECOMMERCE === true) {
         'name_column'  => 'name',
         'extra_select' => [],
         'extra_join'   => '',
+        // A row in the Recycle Bin opens read-only; it is not changed here.
+        'base_where'   => '1' . pg_catalog_bin_live_sql('products'),
         'columns'      => ['short_description', 'full_description', 'details'],
+        'column_labels' => [
+            'short_description' => lang('Short Description'),
+            'full_description'  => lang('Full Description'),
+            'details'           => lang('Details'),
+        ],
         'edit_url'     => 'edit_product.php?id={id}',
         'url_raw'      => false,
         'touch'        => ['timestamp', 'user'],
@@ -143,7 +159,14 @@ if (defined('ECOMMERCE') && ECOMMERCE === true) {
         'name_column'  => 'name',
         'extra_select' => [],
         'extra_join'   => '',
+        // A row in the Recycle Bin opens read-only; it is not changed here.
+        'base_where'   => '1' . pg_catalog_bin_live_sql('product_groups'),
         'columns'      => ['short_description', 'full_description', 'details'],
+        'column_labels' => [
+            'short_description' => lang('Short Description'),
+            'full_description'  => lang('Full Description'),
+            'details'           => lang('Details'),
+        ],
         'edit_url'     => 'edit_product_group.php?id={id}',
         'url_raw'      => false,
         'touch'        => ['timestamp', 'user'],
@@ -163,6 +186,10 @@ $all_table_defs['form_data'] = [
     'extra_select' => ['form_data.form_id'],
     'extra_join'   => '',
     'columns'      => ['data'],
+    // Each field is a row: the Field column shows the field's name, and the
+    // rows of one submission are one record named by its form.
+    'column_label_from' => 'name',
+    'record_key'   => 'form_id',
     'edit_url'     => 'edit_submitted_form.php?id={form_id}',
     'url_raw'      => false,
 ];
@@ -175,6 +202,7 @@ $all_table_defs['comments'] = [
     'extra_select' => [],
     'extra_join'   => '',
     'columns'      => ['message'],
+    'column_labels' => ['message' => lang('Message')],
     'edit_url'     => 'edit_comment.php?id={id}',
     'url_raw'      => false,
     'touch'        => ['last_modified_timestamp', 'last_modified_user_id'],
@@ -190,6 +218,7 @@ if (defined('ADS') && ADS === true) {
         'extra_select' => [],
         'extra_join'   => '',
         'columns'      => ['content'],
+        'column_labels' => ['content' => lang('Content')],
         'edit_url'     => 'edit_ad.php?id={id}',
         'url_raw'      => false,
         'touch'        => ['last_modified_timestamp', 'last_modified_user_id'],
@@ -222,7 +251,7 @@ function find_match_context($text, $find, $case_sensitive, $is_regex, $context_l
         . h(mb_substr($text, $start, $pos - $start))
         . '<mark class="px-0">' . h($matched) . '</mark>'
         . h(mb_substr($text, $pos + $match_len, $context_len))
-        . ($pos + $match_len < $text_len ? '<span class="fg-secondary">…</span>' : '');
+        . (pg_find_replace_snippet_cut($pos, $match_len, $context_len, $text_len) ? '<span class="fg-secondary">…</span>' : '');
 }
 
 // ── Edit URL builder ──────────────────────────────────────────────────────────
@@ -311,6 +340,34 @@ function find_replace_hidden_fields($find, $replace, $case_sensitive, $use_regex
         $html .= '<input type="hidden" name="scope[]" value="' . h($key) . '">';
     }
     return $html;
+}
+
+// A submitted form record is named by its form and reference code, read in
+// one query for the submissions listed.
+function find_replace_name_submissions($records) {
+    $ids = [];
+    foreach ($records as $record) {
+        $ids[] = (int) $record['key'];
+    }
+    if (!$ids) return $records;
+
+    $names = [];
+    $rows  = db_items(
+        "SELECT forms.id, forms.reference_code, custom_form_pages.form_name
+        FROM forms
+        LEFT JOIN custom_form_pages ON forms.page_id = custom_form_pages.page_id
+        WHERE forms.id IN (" . implode(',', array_unique($ids)) . ")"
+    );
+    foreach ($rows as $row) {
+        $names[(int) $row['id']] = trim($row['form_name'] . ' ' . $row['reference_code']);
+    }
+
+    foreach ($records as $i => $record) {
+        if (($names[(int) $record['key']] ?? '') !== '') {
+            $records[$i]['name'] = $names[(int) $record['key']];
+        }
+    }
+    return $records;
 }
 
 // The replace cannot be undone; both of its buttons ask first.
@@ -574,7 +631,9 @@ if (!$_POST) {
                     if ($cnt > 0) {
                         $snippet = find_match_context($item[$col], $find, $case_sensitive, (bool)$use_regex);
                         $col_matches[] = [
-                            'col'     => $col,
+                            'field'   => !empty($def['column_label_from'])
+                                ? (string) $item[$def['column_label_from']]
+                                : ($def['column_labels'][$col] ?? $col),
                             'count'   => $cnt,
                             'snippet' => $snippet,
                         ];
@@ -583,15 +642,26 @@ if (!$_POST) {
                 }
 
                 if ($col_matches) {
+                    $name = $item[$def['name_column']];
+                    if (!empty($def['display_name_column']) && ((string) $item[$def['display_name_column']] !== '')) {
+                        $name = $item[$def['display_name_column']];
+                    }
                     $group_results[] = [
-                        'id'      => $item[$def['id_column']],
-                        'name'    => $item[$def['name_column']],
+                        'key'     => !empty($def['record_key']) ? $item[$def['record_key']] : $item[$def['id_column']],
+                        'name'    => $name,
                         'url'     => build_find_edit_url($def['edit_url'], $item, $def['url_raw'] ?? false),
                         'matches' => $col_matches,
                     ];
-                    $total_records++;
                 }
             }
+
+            if (!empty($def['record_key'])) {
+                $group_results = pg_find_replace_merge_records($group_results);
+                if ($def['table'] === 'form_data') {
+                    $group_results = find_replace_name_submissions($group_results);
+                }
+            }
+            $total_records += count($group_results);
 
             if ($group_results) {
                 $find_results[$key] = [
@@ -607,11 +677,14 @@ if (!$_POST) {
             go($_SERVER['PHP_SELF']);
         }
 
-        // Build the result HTML
+        // Build the result HTML. Each type lists its first records only: a
+        // one-letter search can match thousands of rows, and the page would
+        // be megabytes of HTML.
+        $find_results_limit = 200;
         $results_html = '';
         foreach ($find_results as $group) {
             $rows = '';
-            foreach ($group['results'] as $r) {
+            foreach (array_slice($group['results'], 0, $find_results_limit) as $r) {
                 $name_cell = $r['url']
                     ? '<a href="' . h($r['url']) . '" target="_blank" rel="noopener" class="fw-semibold text-decoration-none">'
                         . h($r['name'])
@@ -622,7 +695,7 @@ if (!$_POST) {
                     $rows .= '
                     <tr>
                         <td class="align-top text-break">' . $name_cell . '</td>
-                        <td class="align-top fg-secondary small font-monospace">' . h($m['col']) . '</td>
+                        <td class="align-top fg-secondary small">' . h($m['field']) . '</td>
                         <td class="align-top text-center"><span class="badge theme-secondary">' . $m['count'] . '</span></td>
                         <td class="align-top small font-monospace lh-lg text-break">' . $m['snippet'] . '</td>
                     </tr>';
@@ -639,7 +712,7 @@ if (!$_POST) {
                     ))) . '</span>
                 </div>
                 <div class="card-body p-0 table-responsive">
-                    <table class="table table-hover table-sm mb-0">
+                    <table class="table table-hover table-sm pg-find-results">
                         <thead class="pg-table-light">
                             <tr>
                                 <th>' . lang('Name') . '</th>
@@ -651,6 +724,12 @@ if (!$_POST) {
                         <tbody>' . $rows . '</tbody>
                     </table>
                 </div>
+                ' . (count($group['results']) > $find_results_limit
+                    ? '<div class="card-footer bg-reset fg-secondary small">' . h(lang(array(
+                        'string' => 'The first {var:1} records are listed; {var:2} more are not.',
+                        'vars'   => array(pg_format_number($find_results_limit, 0), pg_format_number(count($group['results']) - $find_results_limit, 0)),
+                    ))) . '</div>'
+                    : '') . '
             </div>';
         }
 
