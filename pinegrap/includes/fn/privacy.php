@@ -172,6 +172,7 @@ function pg_consent_log_sources()
         'api',          // an application through the external API
         'iys',          // pulled back from İYS
         'form',         // a custom form: a double opt-in group or a field bound to the e-mail opt-in
+        'complaint',    // a spam complaint reported back for a message (includes/fn/mail_bounces.php)
     );
 }
 
@@ -502,13 +503,60 @@ function pg_consent_log_answers(array $person, array $answers, $source)
     $changes = pg_consent_log_changes(pg_consent_log_current(pg_consent_log_rows($person)), $answers);
     $written = 0;
 
+    // Only a write that proves the address is the person's own lifts a
+    // bounce or complaint block: anyone can type any address into a public
+    // form or a checkout.
+    $proves = in_array((string) $source, pg_consent_log_proving_sources(), true) && function_exists('pg_mail_bounce_clear');
+
     foreach ($changes as $change) {
         if (pg_consent_log_record($change + array('source' => (string) $source) + $stored) > 0) {
             $written++;
+
+            // The person's own yes to e-mail marketing is an explicit
+            // resubscribe: a bounce or complaint block on the address lifts.
+            if ($proves && pg_consent_log_resubscribes($change) && isset($stored['email'])) {
+                pg_mail_bounce_clear($stored['email']);
+            }
         }
     }
 
+    // A changed address is a new address: an old block on it no longer
+    // stands for the person who now gives it.
+    if (
+        $proves
+        && isset($person['previous_email'], $stored['email'])
+        && (strtolower(trim((string) $person['previous_email'])) !== strtolower(trim((string) $stored['email'])))
+    ) {
+        pg_mail_bounce_clear($stored['email']);
+    }
+
     return $written;
+}
+
+/**
+ * The consent sources whose writes prove the address belongs to the person:
+ * a signed-in person's own account, or staff in the panel. Only these (and
+ * the double opt-in confirmation, pg_fs_confirm()) lift a bounce or
+ * complaint block. A public form, a checkout, a sign-up, an import, the API,
+ * İYS and the cookie banner record consent but never clear. Pure.
+ *
+ * @return string[]
+ */
+function pg_consent_log_proving_sources()
+{
+    return array('account', 'panel');
+}
+
+/**
+ * Whether a recorded change is a yes to e-mail marketing (the global opt-in
+ * or a list), which clears a bounce block on the address. Pure.
+ *
+ * @param array $change  channel, purpose, status
+ * @return bool
+ */
+function pg_consent_log_resubscribes(array $change)
+{
+    return (isset($change['channel'], $change['status']) && ($change['channel'] === 'email') && ($change['status'] === 'granted'));
 }
 
 /**
@@ -906,6 +954,7 @@ function pg_privacy_erase_tables()
         'stock_notify'                 => array('find' => array('user_id' => 'user_ids', 'email_address' => 'emails'), 'action' => 'delete', 'fields' => array()),
         'email_recipients'             => array('find' => array('contact_id' => 'contact_ids', 'email_address' => 'emails'), 'action' => 'delete', 'fields' => array()),
         'mail_outbox'                  => array('find' => array('recipient' => 'emails'), 'action' => 'delete', 'fields' => array()),
+        'mail_bounces'                 => array('find' => array('address' => 'emails'), 'action' => 'delete', 'fields' => array()),
         'sms_outbox'                   => array('find' => array('recipient' => 'phones'), 'action' => 'delete', 'fields' => array()),
         'chat_messages'                => array('find' => array('conversation_id' => 'conversation_ids'), 'action' => 'delete', 'fields' => array()),
         'chat_conversations'           => array('find' => array('id' => 'conversation_ids'), 'action' => 'delete', 'fields' => array()),
@@ -1012,6 +1061,7 @@ function pg_privacy_erase_labels()
         'stock_notify'                 => lang('Back-in-stock requests'),
         'email_recipients'             => lang('E-mail campaigns'),
         'mail_outbox'                  => lang('E-mail messages'),
+        'mail_bounces'                 => lang('E-mail bounces and complaints'),
         'sms_outbox'                   => lang('Text messages'),
         'chat_messages'                => lang('Chat messages'),
         'chat_conversations'           => lang('Site chat'),

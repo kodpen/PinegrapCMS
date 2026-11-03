@@ -1890,7 +1890,7 @@ $(document).ready(function () {
 
 
     options["fnInitComplete"] = function () {
-        datatable.columns.adjust();
+        // The table is printed hidden; a measure before show() reads nothing.
         $('table.chart').show();
 
 
@@ -1911,14 +1911,12 @@ $(document).ready(function () {
             }
         });
         $("table.dataTable #select_all").prop("checked", false);
-        datatable.columns.adjust();
 
-        // A list paged on the server would ask for the same page again.
-        // false keeps the page: a bare draw() puts the list back on page 1
-        // and would throw away the page restored from history.state.
-        if (!options.serverSide) {
-            datatable.draw(false);
-        }
+        // One measure, now that the table is visible. No draw() after it:
+        // the first draw already opened on the page restored from
+        // history.state (displayStart), and every draw re-measures the
+        // scrollX head.
+        datatable.columns.adjust();
 
         // DataTables names its pager landmark "pagination" in English
         // whatever the language; the panel language's file names it.
@@ -1947,6 +1945,23 @@ $(document).ready(function () {
             collectionLayout: "fixed two-column",
             columns: ":not(.noVis)",
             columnText: function (dt, idx, title) {
+                // The heading's own words: an icon or a button inside it
+                // (the Pages list's device toggle) is not part of the name.
+                var header = dt.column(idx).header();
+
+                if (header) {
+                    var copy = header.cloneNode(true);
+
+                    $(copy).find('.material-icons, .bi, [aria-hidden="true"], a, button').remove();
+
+                    var words = $.trim($(copy).text());
+
+                    // A heading that is all link keeps the text it had.
+                    if (words !== '') {
+                        title = words;
+                    }
+                }
+
                 title = title.replace("unfold_more", "");
                 title = title.replace("keyboard_arrow_down", "");
                 title = title.replace("keyboard_arrow_up", "");
@@ -2031,9 +2046,8 @@ $(document).ready(function () {
         datatable.tables().every(function () {
             pgListHeadingCopies(this);
         });
-        $(window).on("resize", function () {
-            datatable.columns.adjust();
-        });
+        // No window resize listener: with scrollX, DataTables watches its
+        // own wrapper width with a throttled ResizeObserver.
     }
     //software search no longer available, if there is query paramater in url, search it in datatable, and remove query paramater from url.
     if (window.location.href.indexOf('?query=') > 0 || window.location.href.indexOf('&query=') > 0) {
@@ -2854,10 +2868,16 @@ function software_image_picker(properties) {
                 //default
                 $output_input_name = 'selected_images[]';
                 $output_input_value = decodeURIComponent(properties.image_name);
+                var _image_url_input = '';
                 if (properties.file_input_name !== undefined && properties.file_input_name !== '') {
                     $output_input_name = decodeURIComponent(properties.file_input_name);
                     if (properties.file_input_name == 'file_id') {
                         $output_input_value = properties.file_id;
+                        // An Unsplash image is no file (file_id 0): its address
+                        // goes along as image_url, or the pick was lost on save.
+                        if (/^https?:\/\//.test(properties.image_name)) {
+                            _image_url_input = '<input type="hidden" name="image_url" value="' + h(properties.image_name) + '"/>';
+                        }
                     }
                 }
                 // Support absolute URLs (e.g. Unsplash) — don't prepend path
@@ -2871,7 +2891,7 @@ function software_image_picker(properties) {
                                 <button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" aria-label="' + h(pgLang('Remove')) + '" onclick=" $(this).closest(\'.item\').remove();"></button>\
                             </div>\
                             <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4;background: radial-gradient(transparent, #00000024);" title="' + h(decodeURIComponent(properties.image_name)) + '">\
-                                <input type="hidden" name="' + $output_input_name + '" value="' + $output_input_value + '"/>\
+                                <input type="hidden" name="' + $output_input_name + '" value="' + $output_input_value + '"/>' + _image_url_input + '\
                                 <img class="object-fit-contain w-100 h-100" alt="" src="' + _img_src + '" />\
                             </div>\
                         </div>\
@@ -3010,6 +3030,18 @@ function pgListServerOptions(options, $table) {
         }
     });
 }
+
+// A button of a row that came from the server (a delete in the mail queue)
+// asks its data-confirm-content question here: the software-wide confirm
+// handler binds at DOM ready to the buttons on the page then, before these
+// rows exist.
+$(function () {
+    $(document).on('click', 'table.chart[data-pg-list-action] tbody button[data-confirm-content]', function (event) {
+        if (!window.confirm($(this).attr('data-confirm-content'))) {
+            event.preventDefault();
+        }
+    });
+});
 
 // Folds text for a Turkish list search with window.pgFoldTR (I, İ, ı and i
 // are one letter, ş is s, ç is c), then the other marks stripped as
@@ -5251,10 +5283,12 @@ function product_submit_form_add_field(properties) {
     var container = $('#submit_form_' + action + '_field');
     var output;
 
-    output = '<div class="input-group w-100">\
-    <span class="input-group-text my-1">\
-    <label for="submit_form_' + action + '_field_' + field_number + '_form_field_id" class="form-label">Set &nbsp;</label>\
-    <select class="form-control my-1" id="submit_form_' + action + '_field_' + field_number + '_form_field_id" name="submit_form_' + action + '_field_' + field_number + '_form_field_id"><option value=""></option>';
+    // Label above each control in a wrapping row: on a narrow screen the
+    // two fields stack at full width instead of squeezing side by side.
+    output = '<div class="row g-5 align-items-end my-1 pg-submit-form-field-row">\
+    <div class="col-12 md:col-5">\
+    <label for="submit_form_' + action + '_field_' + field_number + '_form_field_id" class="form-label">' + prepare_content_for_html(lang('Field to set')) + '</label>\
+    <select class="form-control" id="submit_form_' + action + '_field_' + field_number + '_form_field_id" name="submit_form_' + action + '_field_' + field_number + '_form_field_id"><option value=""></option>';
 
     // Assume that the selected field type is "text box" until we find out otherwise.
     // We use this to determine if a text box or text area should be displayed for the value field.
@@ -5271,23 +5305,23 @@ function product_submit_form_add_field(properties) {
         }
         output += '<option value="' + submit_form_custom_form_fields[index]['id'] + '"' + status + '>' + prepare_content_for_html(submit_form_custom_form_fields[index]['name']) + '</option>';
     }
-    output += '</select></span>';
+    output += '</select></div>';
 
     if (field_type != 'text area') {
-        output += '<span class="input-group-text my-1" id="submit_form_' + action + '_field_' + field_number + '_value_cell">\
-        <label for="submit_form_' + action + '_field_' + field_number + '_value" class="form-label">to &nbsp;</label>\
+        output += '<div class="col-12 md:col-6" id="submit_form_' + action + '_field_' + field_number + '_value_cell">\
+        <label for="submit_form_' + action + '_field_' + field_number + '_value" class="form-label">' + prepare_content_for_html(lang('New value')) + '</label>\
         <input class="form-control" id="submit_form_' + action + '_field_' + field_number + '_value" name="submit_form_' + action + '_field_' + field_number + '_value" type="text" value="' + prepare_content_for_html(value) + '"/>\
-        </span>';
+        </div>';
     } else {
-        output += '<span class="input-group-text my-1" id="submit_form_' + action + '_field_' + field_number + '_value_cell">\
-        <label for="submit_form_' + action + '_field_' + field_number + '_value" class="form-label">to &nbsp;</label>\
+        output += '<div class="col-12 md:col-6" id="submit_form_' + action + '_field_' + field_number + '_value_cell">\
+        <label for="submit_form_' + action + '_field_' + field_number + '_value" class="form-label">' + prepare_content_for_html(lang('New value')) + '</label>\
         <textarea class="form-control" id="submit_form_' + action + '_field_' + field_number + '_value" name="submit_form_' + action + '_field_' + field_number + '_value">' + prepare_content_for_html(value) + '</textarea>\
-        </span>';
+        </div>';
     }
 
-    output += '<span class="input-group-text my-1">\
-    <button type="button" class="btn btn-solid theme-danger material-icons" onclick="this.parentNode.parentNode.parentNode.removeChild(this.parentNode.parentNode)">delete</button>\
-    </span>\
+    output += '<div class="col-12 md:col-1">\
+    <button type="button" class="btn btn-solid theme-danger material-icons" aria-label="' + prepare_content_for_html(lang('Remove')) + '" onclick="$(this).closest(\'.pg-submit-form-field-row\').remove()">delete</button>\
+    </div>\
     </div>';
     container.append(output);
 
@@ -5314,11 +5348,11 @@ function product_submit_form_add_field(properties) {
         var previous_value = $('#submit_form_' + action + '_field_' + field_number + '_value').val();
 
         if (field_type != 'text area') {
-            $('#submit_form_' + action + '_field_' + field_number + '_value_cell').html('<label for="submit_form_' + action + '_field_' + field_number + '_value" class="form-label">to &nbsp;</label>\
+            $('#submit_form_' + action + '_field_' + field_number + '_value_cell').html('<label for="submit_form_' + action + '_field_' + field_number + '_value" class="form-label">' + prepare_content_for_html(lang('New value')) + '</label>\
             <input class="form-control" id="submit_form_' + action + '_field_' + field_number + '_value" name="submit_form_' + action + '_field_' + field_number + '_value" type="text" value="' + prepare_content_for_html(previous_value) + '"/>');
 
         } else {
-            $('#submit_form_' + action + '_field_' + field_number + '_value_cell').html('<label for="submit_form_' + action + '_field_' + field_number + '_value" class="form-label">to &nbsp;</label>\
+            $('#submit_form_' + action + '_field_' + field_number + '_value_cell').html('<label for="submit_form_' + action + '_field_' + field_number + '_value" class="form-label">' + prepare_content_for_html(lang('New value')) + '</label>\
         <textarea class="form-control" id="submit_form_' + action + '_field_' + field_number + '_value" name="submit_form_' + action + '_field_' + field_number + '_value">' + prepare_content_for_html(previous_value) + '</textarea>');
 
         }
@@ -5726,6 +5760,16 @@ function check_if_page_type_supports_layout(page_type) {
     }
 }
 
+// The body page of a campaign profile is required only with the HTML
+// format; with plain text its picker is hidden.
+$(document).on('change', 'input[name="format"]', function () {
+    var page = document.getElementById('page_id');
+
+    if (page && document.getElementById('schedule_base') && this.checked) {
+        page.required = (this.value === 'html');
+    }
+});
+
 function change_email_campaign_profile_action() {
     // Hide all items until we determine which need to be shown.
     $('#calendar_event_id_row').removeClass('show');
@@ -5737,9 +5781,23 @@ function change_email_campaign_profile_action() {
     $('#standard_schedule_period_and_base').removeClass('show');
     $('#subscription_fields_row').removeClass('show');
 
-    schedule_period
+    var action = document.getElementById('action').options[document.getElementById('action').selectedIndex].value;
+
+    // Only the item picker of the chosen action is required: a required
+    // picker in a hidden row would stop the browser from sending the form.
+    var item_fields = {
+        calendar_event_reserved: 'calendar_event_id',
+        custom_form_submitted: 'custom_form_page_id',
+        email_campaign_sent: 'email_campaign_profile_id',
+        product_ordered: 'product_id'
+    };
+
+    $.each(item_fields, function (item_action, field_id) {
+        $('#' + field_id).prop('required', item_action === action);
+    });
+
     // Show certain rows based on which destination type was selected.
-    switch (document.getElementById('action').options[document.getElementById('action').selectedIndex].value) {
+    switch (action) {
         case 'calendar_event_reserved':
             $('#calendar_event_id_row').addClass('show');
             $('#schedule_period').addClass('show');
@@ -5945,6 +6003,12 @@ function initialize_filters() {
     }
 }
 
+// The accessible name of a filter row's control: its column heading and the
+// row, e.g. "Field, Filter 2"; the rows have no visible label of their own.
+function pg_filter_control_name(heading, filter_number) {
+    return heading + ', ' + lang('Filter {var:1}').replace('{var:1}', String(filter_number));
+}
+
 // create row for filter
 function create_filter(properties) {
     // if no properties were passed, then set blank values
@@ -5965,7 +6029,7 @@ function create_filter(properties) {
 
     // prepare content for field cell
     var field_cell_html =
-        '<select class="form-control" id="filter_' + filter_number + '_field" name="filter_' + filter_number + '_field" onchange="update_value_cell(' + filter_number + '); update_dynamic_value(' + filter_number + ')">\n\
+        '<select class="form-control" id="filter_' + filter_number + '_field" name="filter_' + filter_number + '_field" aria-label="' + prepare_content_for_html(pg_filter_control_name(lang('Field'), filter_number)) + '" onchange="update_value_cell(' + filter_number + '); update_dynamic_value(' + filter_number + ')">\n\
             <option value=""></option>';
 
     // loop through all field options in order to prepare field options for pick list
@@ -5998,7 +6062,7 @@ function create_filter(properties) {
     td_1.innerHTML = field_cell_html;
 
     // prepare content for operator cell
-    var operator_cell_html = '<select  class="form-control" name="filter_' + filter_number + '_operator">';
+    var operator_cell_html = '<select class="form-control" name="filter_' + filter_number + '_operator" aria-label="' + prepare_content_for_html(pg_filter_control_name(lang('Operator'), filter_number)) + '">';
 
     // create array for operator options
     var operators = new Array(
@@ -6029,19 +6093,24 @@ function create_filter(properties) {
     var td_3 = document.createElement('td');
     td_3.id = 'filter_' + filter_number + '_value_cell';
 
-    // prepare content for dynamic value cell
+    // prepare content for dynamic value cell; the day count of "Day(s) Ago"
+    // is a whole number from 0 (the server refuses anything else) with its
+    // unit beside it
     var dynamic_value_cell_html =
         '<div class="input-group">\
-            <input class="form-control" id="filter_' + filter_number + '_dynamic_value_attribute" name="filter_' + filter_number + '_dynamic_value_attribute" type="text" value="' + prepare_content_for_html(properties['dynamic_value_attribute']) + '" size="2" maxlength="10" style="display: none" />\
-            <select class="form-control" id="filter_' + filter_number + '_dynamic_value" name="filter_' + filter_number + '_dynamic_value" style="display: none" onchange="update_dynamic_value_attribute(' + filter_number + '); clear_value(' + filter_number + ')"></select>\
+            <input class="form-control" id="filter_' + filter_number + '_dynamic_value_attribute" name="filter_' + filter_number + '_dynamic_value_attribute" type="number" min="0" step="1" inputmode="numeric" value="' + prepare_content_for_html(properties['dynamic_value_attribute']) + '" aria-label="' + prepare_content_for_html(pg_filter_control_name(lang('Day(s) Ago'), filter_number)) + '" style="display: none; max-width: 6rem" />\
+            <span class="input-group-text" id="filter_' + filter_number + '_dynamic_value_unit" aria-hidden="true" style="display: none">' + prepare_content_for_html(lang('day(s)')) + '</span>\
+            <select class="form-control" id="filter_' + filter_number + '_dynamic_value" name="filter_' + filter_number + '_dynamic_value" aria-label="' + prepare_content_for_html(pg_filter_control_name(lang('Dynamic Value'), filter_number)) + '" style="display: none" onchange="update_dynamic_value_attribute(' + filter_number + '); clear_value(' + filter_number + ')"></select>\
         </div>';
 
     // insert content into dynamic value cell
     var td_4 = document.createElement('td');
     td_4.innerHTML = dynamic_value_cell_html;
 
-    // prepare content for delete cell
-    var delete_cell_html = '<button type="button" class="btn btn-solid theme-danger material-icons" onclick="delete_filter(this.parentNode.parentNode)" >delete</button>';
+    // prepare content for delete cell: named by its action, the icon's
+    // ligature text is hidden from screen readers
+    var delete_name = prepare_content_for_html(lang('Delete filter') + ', ' + lang('Filter {var:1}').replace('{var:1}', String(filter_number)));
+    var delete_cell_html = '<button type="button" class="btn btn-solid theme-danger" aria-label="' + delete_name + '" title="' + delete_name + '" onclick="delete_filter(this.parentNode.parentNode)"><span class="material-icons" aria-hidden="true">delete</span></button>';
 
     var td_5 = document.createElement('td');
     td_5.innerHTML = delete_cell_html;
@@ -6097,7 +6166,7 @@ function update_value_cell(filter_number, value) {
             // if there are value options for the field, then create HTML for pick list of value options
             if (field_options[i]['value_options']) {
                 value_cell_html =
-                    '<select class="form-control" id="filter_' + filter_number + '_value" name="filter_' + filter_number + '_value">\n\
+                    '<select class="form-control" id="filter_' + filter_number + '_value" name="filter_' + filter_number + '_value" aria-label="' + prepare_content_for_html(pg_filter_control_name(lang('Value'), filter_number)) + '">\n\
                         <option value=""></option>';
 
                 // loop through all value options in order to prepare values options for pick list
@@ -6119,7 +6188,7 @@ function update_value_cell(filter_number, value) {
             } else {
                 var hook = FILTER_VALUE_HOOKS[field_options[i]['type']] || '';
 
-                value_cell_html = '<input class="form-control" id="filter_' + filter_number + '_value" name="filter_' + filter_number + '_value" type="text" value="' + prepare_content_for_html(value) + '" maxlength="255"' + (hook ? ' ' + hook : '') + ' />';
+                value_cell_html = '<input class="form-control" id="filter_' + filter_number + '_value" name="filter_' + filter_number + '_value" type="text" value="' + prepare_content_for_html(value) + '" maxlength="255" aria-label="' + prepare_content_for_html(pg_filter_control_name(lang('Value'), filter_number)) + '"' + (hook ? ' ' + hook : '') + ' />';
             }
 
             // update value cell with HTML; the previous box's control goes first
@@ -6241,13 +6310,14 @@ function update_dynamic_value_attribute(filter_number, dynamic_value_attribute) 
     // get dynamic value for filter
     dynamic_value = document.getElementById('filter_' + filter_number + '_dynamic_value').value;
 
-    // if the dynamic value is days ago, then show attribute
-    if (dynamic_value == 'days ago') {
-        document.getElementById('filter_' + filter_number + '_dynamic_value_attribute').style.display = 'inline';
+    // if the dynamic value is days ago, then show attribute and its unit
+    var shown = (dynamic_value == 'days ago') ? 'inline' : 'none';
+    var unit = document.getElementById('filter_' + filter_number + '_dynamic_value_unit');
 
-        // else the dynamic value is not days ago, so hide attribute
-    } else {
-        document.getElementById('filter_' + filter_number + '_dynamic_value_attribute').style.display = 'none';
+    document.getElementById('filter_' + filter_number + '_dynamic_value_attribute').style.display = shown;
+
+    if (unit) {
+        unit.style.display = shown;
     }
 }
 
@@ -7177,8 +7247,8 @@ function init_edit_comment_publish() {
 function toggle_calendar_event_all_day() {
     // If all day is checked, then prepare start and end date fields to just contain dates.
     if (document.getElementById('all_day').checked == true) {
-        document.getElementById('start_time_label').style.display = 'none';
-        document.getElementById('end_time_label').style.display = 'none';
+        document.getElementById('start_time_suffix').style.display = 'none';
+        document.getElementById('end_time_suffix').style.display = 'none';
         document.getElementById('show_start_time_container').style.display = 'none';
         document.getElementById('show_end_time_container').style.display = 'none';
 
@@ -7200,8 +7270,8 @@ function toggle_calendar_event_all_day() {
 
         // Otherwise all day is not checked, so prepare start and end date fields to contain both dates and times.
     } else {
-        document.getElementById('start_time_label').style.display = '';
-        document.getElementById('end_time_label').style.display = '';
+        document.getElementById('start_time_suffix').style.display = '';
+        document.getElementById('end_time_suffix').style.display = '';
         document.getElementById('show_start_time_container').style.display = '';
         document.getElementById('show_end_time_container').style.display = '';
 
@@ -7303,7 +7373,7 @@ function create_shipping_cutoff(properties) {
 
     // prepare content for shipping method id cell
     var shipping_method_id_cell_html =
-        '<select id="shipping_cutoff_' + shipping_cutoff_number + '_shipping_method_id" name="shipping_cutoff_' + shipping_cutoff_number + '_shipping_method_id" class="form-control">\n\
+        '<select id="shipping_cutoff_' + shipping_cutoff_number + '_shipping_method_id" name="shipping_cutoff_' + shipping_cutoff_number + '_shipping_method_id" class="form-control" aria-label="' + prepare_content_for_html(lang('Shipping Method')) + '">\n\
             <option value=""></option>';
 
     // loop through all shipping method id options in order to prepare options for pick list
@@ -7326,11 +7396,11 @@ function create_shipping_cutoff(properties) {
 
     // prepare content for date and time cell
     var td_2 = document.createElement('td');
-    td_2.innerHTML = '<input id="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" name="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" class="form-control" type="text" value="' + prepare_content_for_html(String(properties['date_and_time'] || '')) + '" size="20" maxlength="22" data-pg-datetime />';
+    td_2.innerHTML = '<input id="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" name="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" class="form-control" type="text" aria-label="' + prepare_content_for_html(lang('Cut-off Date & Time')) + '" value="' + prepare_content_for_html(String(properties['date_and_time'] || '')) + '" size="20" maxlength="22" data-pg-datetime />';
 
     // prepare content for delete cell
     var td_3 = document.createElement('td');
-    td_3.innerHTML = '<button type="button" class="btn btn-solid theme-danger material-icons" onclick="delete_shipping_cutoff(this.parentNode.parentNode)" >delete</button>';
+    td_3.innerHTML = '<button type="button" class="btn btn-solid theme-danger" onclick="delete_shipping_cutoff(this.parentNode.parentNode)" aria-label="' + prepare_content_for_html(lang('Delete')) + '" title="' + prepare_content_for_html(lang('Delete')) + '"><span class="material-icons" aria-hidden="true">delete</span></button>';
 
     tr.appendChild(td_1);
     tr.appendChild(td_2);
@@ -7422,29 +7492,56 @@ async function software_backup_runSteps(backup_name) {
         { step: "check", progress: 100 }
     ];
 
-    for (const s of steps) {
+    // The first step answers "confirm" when a backup of that name exists;
+    // it is sent again with overwrite only after the person agrees.
+    let overwrite = false;
+
+    for (let i = 0; i < steps.length; i++) {
+        const s = steps[i];
+        let response;
         try {
-            const response = await $.ajax({
+            response = await $.ajax({
                 contentType: "application/json",
                 url: "api.php",
                 type: "POST",
+                dataType: "json",
                 data: JSON.stringify({
                     action: "software_backup",
                     token: software_token,
                     step: s.step,
-                    backup_name: backup_name
+                    backup_name: backup_name,
+                    overwrite: overwrite
                 })
             });
+        } catch (err) {
+            // A PHP warning printed before the JSON, a timeout or a server
+            // error page: the answer is not the step's, so say which step.
+            software_backup_handleError({
+                message: lang("The server's answer to the backup step could not be read ({var}). The server's PHP error log may say why.").replace("{var}", s.step)
+            }, backup_btn);
+            return;
+        }
 
-            if (response.status === "success") {
-                software_backup_updateProgress(s.progress, response.message);
-                backup_name = response.backup_name;
-            } else {
-                software_backup_handleError(response, backup_btn);
+        if (response.status === "confirm" && !overwrite) {
+            const agreed = (typeof window.pgConfirm === "function")
+                ? await window.pgConfirm({ title: lang("Backup Manager"), message: response.message, confirmText: lang("Replace"), variant: "warning" })
+                : window.confirm(response.message);
+            if (!agreed) {
+                software_backup_updateProgress(0, lang("The backup was not taken."));
+                backup_btn.prop("disabled", false);
                 return;
             }
-        } catch (err) {
-            software_backup_handleError({ message: lang("An error occurred.") }, backup_btn);
+            overwrite = true;
+            backup_name = response.backup_name;
+            i--;
+            continue;
+        }
+
+        if (response.status === "success") {
+            software_backup_updateProgress(s.progress, response.message);
+            backup_name = response.backup_name;
+        } else {
+            software_backup_handleError(response, backup_btn);
             return;
         }
     }
@@ -7841,19 +7938,6 @@ $(function () {
         }
 
         pg_health_job($button, 'server_config_repair');
-    });
-
-    // Pointing CURL_CA_BUNDLE in data/config.php at the bundled cacert.pem.
-    // Same confirm-then-run shape as the rules file.
-    $(document).on('click', '#ca_bundle_config_repair', function (event) {
-
-        var $button = $(this);
-
-        if (event.isDefaultPrevented() || $button.prop('disabled')) {
-            return;
-        }
-
-        pg_health_job($button, 'ca_bundle_config_repair');
     });
 
     // Opening the folders and files of the software the web server cannot
@@ -8351,6 +8435,16 @@ function initSettingsAnchors() {
 //   { sel, min, max }            → dynamic mode: counter div auto-created after each input (id = "seo_c_" + input.id)
 //   { sel, counterId, min, max } → static mode:  uses a pre-existing div with the given counterId
 //
+// Length of a title or description as the SEO score measures it
+// (pg_seo_normalize_entity() trims, then mb_strlen()): PHP's trim() set is
+// removed from both ends and a character outside the BMP counts once.
+function pgSeoMeasuredLength(value) {
+    return String(value == null ? "" : value)
+        .replace(/^[ \t\n\r\0\x0B]+|[ \t\n\r\0\x0B]+$/g, "")
+        .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]/g, "_")
+        .length;
+}
+
 function initSeoCounters(rules) {
     function renderSeoCounter(input, counterId, min, max) {
         var $input = $(input);
@@ -8368,7 +8462,7 @@ function initSeoCounters(rules) {
             describedBy.push(counterId);
             $input.attr("aria-describedby", describedBy.join(" "));
         }
-        var len = $input.val().length, cls, icon, said;
+        var len = pgSeoMeasuredLength($input.val()), cls, icon, said;
         var range = function (text) {
             return text.replace("{var:1}", len).replace("{var:2}", min).replace("{var:3}", max);
         };
@@ -8436,6 +8530,9 @@ function bindPageIndexingSwitches(ids) {
     var nofollow = document.getElementById(ids.nofollow || 'nofollow');
     var sitemap = document.getElementById(ids.sitemap || 'sitemap');
     var hint = ids.hint ? document.getElementById(ids.hint) : null;
+    // The site map switch as it was before noindex locked it, put back when
+    // noindex is switched off again.
+    var sitemapKept = sitemap ? sitemap.checked : false;
 
     function applyPageIndexingState() {
         if (nofollow) {
@@ -8447,11 +8544,17 @@ function bindPageIndexingSwitches(ids) {
         }
 
         if (sitemap) {
-            sitemap.disabled = noindex.checked;
-
             if (noindex.checked) {
+                if (!sitemap.disabled) {
+                    sitemapKept = sitemap.checked;
+                }
+
                 sitemap.checked = false;
+            } else if (sitemap.disabled) {
+                sitemap.checked = sitemapKept;
             }
+
+            sitemap.disabled = noindex.checked;
         }
 
         if (hint) {

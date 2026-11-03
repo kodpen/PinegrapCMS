@@ -27,32 +27,32 @@ description: Module list of plans/bug-hunt.md, part 2: includes/fn/ modules pric
 - `short_link_redirects`: clean (NY)
 - `signature`: #5131 (NY)
 - `signin`: clean
-- `site_datetime`: open
-- `site_icon`: open
-- `site_log_list`: open
+- `site_datetime`: clean (NY)
+- `site_icon`: clean (NY)
+- `site_log_list`: clean (NY)
 - `site_search`: taken by LX, #4678
-- `site_time_sql`: open
+- `site_time_sql`: clean (NY)
 - `sms`: #4674 (LW; rest clean)
 - `sms_campaigns`: taken by MC, #4707
 - `sms_codes`: clean (#4614)
-- `sms_messages`: open
-- `speculation`: open
+- `sms_messages`: clean (NY)
+- `speculation`: clean (NY)
 - `stock_notify`: #4668
-- `submitted_form_list`: open
+- `submitted_form_list`: #5143 (NY)
 - `subscription_renewal`: fault fixed by LN, #4622 (renewals stop at the line's number of payments, decided in #4623)
 - `subscriptions`: clean (#4621)
-- `subscriptions_account`: open
-- `subscriptions_operator`: open
-- `system_status`: open
+- `subscriptions_account`: #5154 (OF)
+- `subscriptions_operator`: taken by OF, #5181 (moves fixed with #5154)
+- `system_status`: clean (OF; read: PHP2Shell and build date, integrity paths, write-permission repair, check output escaping)
 - `text_search`: taken by MM — #4819
-- `tour`: open
+- `tour`: clean (OF)
 - `translate`: taken by MM — #4753, #4776
-- `update`: open
-- `user_list`: open
+- `update`: clean (OV; read: archive extraction and its checks, backup and rollback, signed vendor update steps, CA bundle)
+- `user_list`: #5169 (OF)
 - `vendor_api`: clean
 - `visitor_ip`: clean
-- `visitor_partitions`: open
-- `visitor_retention`: open
+- `visitor_partitions`: clean (OV)
+- `visitor_retention`: clean (OV; read: cleanup with summary and partition drop, move to InnoDB, rebuild)
 - `visitor_texts`: clean
 - `voice_text`: clean
 - `waf_log_list`: clean

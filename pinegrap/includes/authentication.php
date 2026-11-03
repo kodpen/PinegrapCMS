@@ -790,3 +790,20 @@ function pg_email_address_matches($given, $stored)
 
     return mb_strtolower($given, 'UTF-8') === mb_strtolower($stored, 'UTF-8');
 }
+
+/**
+ * Decrypt API/Secret keys stored in DB. Here rather than in
+ * includes/fn/auth.php because get_file.php unseals the object store's secret
+ * to sign a file's address, and it never loads functions.php.
+ */
+function decode_ssl_keys($key_base64, $iv_base64)
+{
+    $crypto_method = 'aes-256-cbc';
+    $crypto_key = substr(hash('sha256', ENCRYPTION_KEY, true), 0, 32);
+    $key = base64_decode($key_base64);
+    $iv = base64_decode($iv_base64);
+    if ($key === false || $iv === false)
+        return '';
+    $decrypted = openssl_decrypt($key, $crypto_method, $crypto_key, OPENSSL_RAW_DATA, $iv);
+    return ($decrypted !== false) ? $decrypted : '';
+}

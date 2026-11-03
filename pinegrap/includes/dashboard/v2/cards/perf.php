@@ -37,6 +37,30 @@ function pg_dashboard_v2_perf_shape($hits, $slow, $avg)
     );
 }
 
+/**
+ * The tile of the page speed visitors' browsers measured: the site's LCP p75
+ * and its share of good loads (pg_vitals_site()); null when nothing was
+ * measured.
+ *
+ * @param array $site pg_vitals_figures() of the site
+ * @return array|null label, text, note, tone
+ */
+function pg_dashboard_v2_perf_vitals_tile(array $site)
+{
+    $lcp = isset($site['lcp']) ? $site['lcp'] : array();
+
+    if (empty($lcp['samples']) || ($lcp['p75'] === null)) {
+        return null;
+    }
+
+    return array(
+        'label' => lang('Page load (p75)'),
+        'text'  => pg_vitals_display('lcp', $lcp['p75']),
+        'note'  => lang(array('string' => '{var:1} good, last 7 days', 'vars' => array(pg_visitor_insight_percent($lcp['good_share'])))),
+        'tone'  => pg_vitals_tone('lcp', $lcp['p75']),
+    );
+}
+
 function pg_dashboard_v2_card_perf($user, $period, $compare)
 {
     if ((int) $user['role'] >= 3) {
@@ -70,6 +94,18 @@ function pg_dashboard_v2_card_perf($user, $period, $compare)
     $tones = array('secondary' => '', 'success' => 'good', 'warning' => 'warn', 'danger' => 'bad');
     $fast = pg_format_number($shape['fast'] * 100, 0);
 
+    $tiles = array(
+        array('label' => lang('Average'), 'text' => pg_format_number($avg, 0) . ' ms', 'note' => lang('Last 24 hours'), 'tone' => $shape['tone']),
+    );
+    $vitals = pg_dashboard_v2_perf_vitals_tile(pg_vitals_site(date('Y-m-d', strtotime('-6 days 12:00:00')), date('Y-m-d')));
+
+    if ($vitals !== null) {
+        $tiles[] = $vitals;
+    }
+
+    $tiles[] = array('label' => lang('Slow requests'), 'text' => pg_format_number($slow, 0), 'note' => lang(array('string' => 'over {var:1} ms', 'vars' => pg_format_number($slow_ms, 0))), 'tone' => ($slow > 0) ? 'warn' : 'good');
+    $tiles[] = array('label' => lang('Requests'), 'text' => pg_format_number($hits, 0), 'note' => lang('Front end'), 'tone' => '');
+
     $rows = array();
 
     foreach ($summary['pages'] as $page) {
@@ -89,11 +125,7 @@ function pg_dashboard_v2_card_perf($user, $period, $compare)
         'grade_note' => $grade['enough']
             ? lang(array('string' => 'graded on {var:1}, {var:2} ms at its fastest', 'vars' => array(pg_perf_label_display($worst['label']), pg_format_number((int) round($worst['floor_ms']), 0))))
             : lang(array('string' => '{var:1} request{suffix:1} recorded', 'vars' => pg_format_number($hits, 0), 'suffix' => array(($hits === 1) ? '' : 's'))),
-        'tiles'      => array(
-            array('label' => lang('Average'), 'text' => pg_format_number($avg, 0) . ' ms', 'note' => lang('Last 24 hours'), 'tone' => $shape['tone']),
-            array('label' => lang('Slow requests'), 'text' => pg_format_number($slow, 0), 'note' => lang(array('string' => 'over {var:1} ms', 'vars' => pg_format_number($slow_ms, 0))), 'tone' => ($slow > 0) ? 'warn' : 'good'),
-            array('label' => lang('Requests'), 'text' => pg_format_number($hits, 0), 'note' => lang('Front end'), 'tone' => ''),
-        ),
+        'tiles'      => $tiles,
         'rows_title' => lang('Slowest pages'),
         'rows'       => $rows,
         'url'        => 'view_performance_log.php',

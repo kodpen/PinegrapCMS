@@ -334,6 +334,27 @@ function pg_gsc_period($latest, $days)
 }
 
 /**
+ * Whether the period before can be compared with: the download reaches back
+ * to its first day. A site starts with the last 90 days read, so a longer
+ * look back would count the days never read as zero and show a growth that
+ * did not happen.
+ *
+ * @param string $oldest        Y-m-d, the first day read, '' for none
+ * @param string $previous_from Y-m-d, the first day of the period before
+ * @return bool
+ */
+function pg_gsc_comparable($oldest, $previous_from)
+{
+    $pattern = '/^\d{4}-\d{2}-\d{2}$/';
+
+    if (!preg_match($pattern, (string) $oldest) || !preg_match($pattern, (string) $previous_from)) {
+        return false;
+    }
+
+    return ((string) $oldest <= (string) $previous_from);
+}
+
+/**
  * The key a row of seo_search_daily is replaced by.
  *
  * @return string 40 hex characters
@@ -1008,6 +1029,22 @@ function pg_gsc_latest_day()
     }
 
     $day = db_value("SELECT MAX(day) FROM seo_search_daily WHERE kind = 'site'");
+
+    return ($day === null) ? '' : (string) $day;
+}
+
+/**
+ * The first day with site figures, '' when none was read.
+ *
+ * @return string Y-m-d or ''
+ */
+function pg_gsc_oldest_day()
+{
+    if (!pg_gsc_schema_ready()) {
+        return '';
+    }
+
+    $day = db_value("SELECT MIN(day) FROM seo_search_daily WHERE kind = 'site'");
 
     return ($day === null) ? '' : (string) $day;
 }

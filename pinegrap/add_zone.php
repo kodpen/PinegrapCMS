@@ -21,8 +21,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/forms/zone_form.php');
 $user = validate_user();
 validate_ecommerce_access($user);
 
-// A post with a blank name draws the form again with what was typed and
-// the message under the name; nothing is written.
+// A post with a blank name or a rate that is no amount of 0 or more draws
+// the form again with what was typed and the message under the field;
+// nothing is written.
 $values = array('name' => '', 'base_rate' => '0', 'primary_weight_rate' => '0', 'secondary_weight_rate' => '0', 'item_rate' => '0');
 $selected = null;
 $errors = array();
@@ -37,6 +38,8 @@ if ($_POST) {
     if ($name_error !== '') {
         $errors['name'] = $name_error;
     }
+
+    $errors += pg_zone_form_rate_errors($values);
 }
 
 if (!$_POST || $errors) {
@@ -55,23 +58,14 @@ if (!$_POST || $errors) {
             'breadcrumb' => array(array('label' => lang('All Shipping Zones'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_zones.php'), array('label' => lang('Create Shipping Zone'))),
         ]) . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
-                
-                <form name="form" action="add_zone.php" method="post">
-                    ' . get_token_field() . '
-                    ' . pg_zone_form_cards($values, $choices['countries'], $choices['states'], $errors) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
-                </form>
-            </div>
-        </div>
-    
+    <form name="form" action="add_zone.php" method="post">
+        ' . get_token_field() . '
+        ' . pg_zone_form_layout(
+            pg_zone_form_cards($values, $choices['countries'], $choices['states'], $errors, array('countries' => $choices['country_count'], 'states' => $choices['state_count'])),
+            '
+                                        <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>'
+        ) . '
+    </form>
 </main>' .
     output_footer();
 
@@ -79,56 +73,12 @@ if (!$_POST || $errors) {
 
 } else {
     // Rates are stored in minor units.
-    $base_rate = pg_zone_form_rate($_POST['base_rate'] ?? '');
-    $primary_weight_rate = pg_zone_form_rate($_POST['primary_weight_rate'] ?? '');
-    $secondary_weight_rate = pg_zone_form_rate($_POST['secondary_weight_rate'] ?? '');
-    $item_rate = pg_zone_form_rate($_POST['item_rate'] ?? '');
-    
-    // create zone
-    $query = "INSERT INTO zones (
-                name,
-                base_rate,        
-                primary_weight_rate,
-                secondary_weight_rate,
-                item_rate,
-                user,
-                timestamp)
-            VALUES (
-                ?,
-                ?,
-                ?,
-                ?,
-                ?,
-                ?,
-                UNIX_TIMESTAMP())";
-    $result = db_q($query, array($values['name'], (string) $base_rate, (string) $primary_weight_rate, (string) $secondary_weight_rate, (string) $item_rate, (int) $user['id'])) or output_error('Query failed.');
-
-    $zone_id = mysqli_insert_id(db::$con);
-
-    // load all allowed countries in array by exploding string that has allowed country ids separated by commas
-    
-    $allowed_countries = (isset($_POST['allowed_countries']) && is_array($_POST['allowed_countries'])) ? $_POST['allowed_countries'] : array();
-    
-    // foreach allowed country insert row in zones_countries_xref table
-    foreach ($allowed_countries as $country_id) {
-        // if country id is not blank, insert row
-        if ($country_id) {
-            $query = "INSERT INTO zones_countries_xref (zone_id, country_id) VALUES (?, ?)";
-            $result = db_q($query, array((int) $zone_id, (string) $country_id)) or output_error('Query failed.');
-        }
+    $rates = array();
+    foreach (pg_store_zone_rate_columns() as $column) {
+        $rates[$column] = pg_zone_form_rate($_POST[$column] ?? '');
     }
 
-    // load all allowed states in array by exploding string that has allowed state ids separated by commas
-    $allowed_states = (isset($_POST['allowed_states']) && is_array($_POST['allowed_states'])) ? $_POST['allowed_states'] : array();
-
-    // foreach allowed state insert row in zones_states_xref table
-    foreach ($allowed_states as $state_id) {
-        // if state id is not blank, insert row
-        if ($state_id) {
-            $query = "INSERT INTO zones_states_xref (zone_id, state_id) VALUES (?, ?)";
-            $result = db_q($query, array((int) $zone_id, (string) $state_id)) or output_error('Query failed.');
-        }
-    }
+    pg_store_zone_save(0, array('name' => $values['name']) + $rates, $values['allowed_countries'], $values['allowed_states'], (int) $user['id']) or output_error('Query failed.');
 
     log_activity(lang(array('string'=>'shipping zone ({var:1}) was created','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
 

@@ -74,7 +74,8 @@ function ws_mail_providers()
  * @param array $input name, address, channel_id, auth_server, enabled,
  *                     provider, host, port, user, password, folder,
  *                     after_fetch, move_folder, smtp_host, smtp_port,
- *                     reply_via, sent_copy, sent_folder, connection_id
+ *                     reply_via, sent_copy, sent_folder, connection_id,
+ *                     reads_bounces
  * @return array ok, error, values (the same keys; password as typed, '' to keep)
  */
 function ws_mail_box_input($input)
@@ -118,6 +119,7 @@ function ws_mail_box_input($input)
         'sent_copy'   => !empty($input['sent_copy']) ? 1 : 0,
         'sent_folder' => $line('sent_folder'),
         'connection_id' => $connection_id,
+        'reads_bounces' => !empty($input['reads_bounces']) ? 1 : 0,
     );
     $fail = function ($error) use ($values) {
         return array('ok' => false, 'error' => $error, 'values' => $values);
@@ -658,7 +660,7 @@ function ws_mail_settings_post($viewer, $action, $liveform)
         unset($settings['secret']);
     }
 
-    foreach (array('auth_server', 'provider', 'host', 'port', 'user', 'move_folder', 'smtp_host', 'smtp_port', 'sent_copy', 'sent_folder', 'connection_id') as $key) {
+    foreach (array('auth_server', 'provider', 'host', 'port', 'user', 'move_folder', 'smtp_host', 'smtp_port', 'sent_copy', 'sent_folder', 'connection_id', 'reads_bounces') as $key) {
         $settings[$key] = $values[$key];
     }
 
@@ -735,6 +737,13 @@ function ws_mail_box_form($self_url, $box, $channels, $ai_ready = false)
                 ' . ws_mail_first_reply_field($prefix, $box) . '
                 ' . ws_mail_auto_reply_fields($prefix, $box) . '
                 ' . ws_mail_triage_field($prefix, $box, $ai_ready) . '
+                <div class="md:col-12">
+                    <div class="form-field">
+                        <input class="check" type="checkbox" name="reads_bounces" value="1" id="' . $prefix . 'reads_bounces"' . (!empty($settings['reads_bounces']) ? ' checked' : '') . '>
+                        <label for="' . $prefix . 'reads_bounces">' . h(lang('Reads bounces')) . '</label>
+                    </div>
+                    <div class="form-text">' . h(lang('Queued and campaign e-mails are sent with this address as their return path, written with a + and a code after its name. Delivery failures that come back are recorded and leave the channel; an address that keeps failing gets no more mail. The mail server must deliver such addresses to this mailbox, and the site\'s sending address must be on the same domain.')) . '</div>
+                </div>
                 <div class="md:col-12">
                     <div class="form-field">
                         <div class="switch"><input type="checkbox" name="enabled" value="1" id="' . $prefix . 'enabled"' . ((!$box || (int) $box['enabled'] === 1) ? ' checked' : '') . '></div>

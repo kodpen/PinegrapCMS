@@ -54,9 +54,12 @@ function test_panel_narrow_layout_grow_only_bar_is_drawn()
 	pg_assert_true(strpos($bar, '<div class="pg-toolbar-grow"><p class="mb-0">Fact</p></div>') !== false, 'the fact sits in the grow slot');
 }
 
-function test_panel_narrow_layout_subscription_dates_wrap()
+function test_panel_narrow_layout_subscription_dates_fit()
 {
 	$source = panel_narrow_layout_test_source('view_subscriptions.php');
 
-	pg_assert_true(preg_match('/<span class="[^"]*\bflex-wrap\b[^"]*\bmax-w-100\b[^"]*">\s*<input type="date" data-pg-date name="next_from"/', $source) === 1, 'the date range wraps inside the bar');
+	// The range never breaks between its dates (a dash left after the first
+	// one on a phone, #5746): it stays on one line and its boxes shrink.
+	pg_assert_true(preg_match('/<span class="[^"]*\bflex-nowrap\b[^"]*\bmax-w-100\b[^"]*">\s*<input type="date" data-pg-date name="next_from"/', $source) === 1, 'the date range stays on one line inside the bar');
+	pg_assert_same(2, substr_count($source, 'form-control-sm w-auto flex-fill min-w-0'), 'both date boxes shrink to fit a narrow screen');
 }

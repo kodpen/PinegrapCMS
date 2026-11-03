@@ -75,8 +75,8 @@ if (!$_POST) {
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12  my-3">
-                                            <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'class'=>'form-control w-auto', 'required'=>'required')) . '
+                                            <label for="file" class="form-label">' . lang('Select the file to upload') . '</label>
+                                            ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'class'=>'form-control w-auto', 'accept'=>'.csv,.xlsx,.ods', 'required'=>'required')) . '
                                             <div class="form-text">' . lang('A .csv, .xlsx or .ods file. The first row holds the column names.') . '</div>
                                             ' . pg_upload_limit_hint() . '
                                         </div>
@@ -94,7 +94,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_import_products" name="submit_import_products" value="Import Products" class="btn my-1  btn-solid theme-success " onclick="if(document.getElementById(\'update_existing_products\').checked == true){event.preventDefault(); var b=this; pgConfirm({title:\'' . lang('Warning') . '\', message:\'' . lang('WARNING: If an existing product has the same name as a product in the import file, then the existing product data will be replaced.') . '\', confirmText:\'' . lang('Import Products') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'warning\'}).then(function(ok){if(ok){b.disabled=true;b.form.appendChild(Object.assign(document.createElement(\'input\'),{type:\'hidden\',name:\'submit_import_products\',value:\'Import Products\'}));b.form.submit();}}); return false;}"><span class="material-icons me-3">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import Products') ) . '</span></button>
+                                <button type="submit" id="submit_import_products" name="submit_import_products" value="Import Products" class="btn my-1  btn-solid theme-success " onclick="if(document.getElementById(\'update_existing_products\').checked == true){event.preventDefault(); if(!this.form.reportValidity()){return false;} var b=this; pgConfirm({title:\'' . lang('Warning') . '\', message:\'' . lang('WARNING: If an existing product has the same name as a product in the import file, then the existing product data will be replaced.') . '\', confirmText:\'' . lang('Import Products') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'warning\'}).then(function(ok){if(ok){b.disabled=true;b.form.appendChild(Object.assign(document.createElement(\'input\'),{type:\'hidden\',name:\'submit_import_products\',value:\'Import Products\'}));b.form.submit();}}); return false;}"><span class="material-icons me-3">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import Products') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -111,8 +111,8 @@ if (!$_POST) {
 } else {
     validate_token_field();
     
-    // if no file was uploaded
-    if (!$_FILES['file']['name']) {
+    // No file chosen, or a request that carries no file field at all.
+    if (empty($_FILES['file']['name'])) {
         $liveform->mark_error('file', lang('Please select a file.'));
         
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_products.php');
@@ -186,42 +186,14 @@ if (!$_POST) {
         exit();
     }
 
-    $submit_form_fields = array();
-    $column_names = array();
+    // The headings by position: a submit form column (e.g. sfc_example) is
+    // kept for later and holds its place, so every other column is read from
+    // its own cell (pg_products_import_headings()).
+    $headings_read = pg_products_import_headings($columns, 'convert_column_name');
+    $submit_form_fields = $headings_read['submit_form_fields'];
+    $column_names = $headings_read['column_names'];
     // Headings the import does not know, named in the result.
-    $unknown_headings = array();
-    
-    // create array with column field names
-    foreach ($columns as $key => $value) {
-        $prefix = substr($value, 0, 4);
-
-        // If this column is a submit form field (e.g. sfc_example), then store it for later.
-        if (($prefix == 'sfc_') || ($prefix == 'sfu_')) {
-            $field_name = substr($value, 4);
-
-            if ($field_name != '') {
-                if ($prefix == 'sfc_') {
-                    $action = 'create';
-                } else {
-                    $action = 'update';
-                }
-
-                $submit_form_fields[] = array(
-                    'name' => $field_name,
-                    'action' => $action,
-                    'column' => $key);
-            }
-
-        // Otherwise this is a normal column, so deal with it in the general way.
-        } else {
-            $column_name = convert_column_name($value);
-            $column_names[] = $column_name;
-
-            if ($column_name === false) {
-                $unknown_headings[] = $value;
-            }
-        }
-    }
+    $unknown_headings = $headings_read['unknown_headings'];
 
     // Assume that columns do not exist until we find out otherwise.
     $address_name_column_exists = false;
@@ -307,6 +279,25 @@ if (!$_POST) {
 
     $inventory_quantity_position = array_search('inventory_quantity', $column_names, true);
 
+    // The name and short description columns, by position: a row whose cell
+    // is longer than its varchar(100) column is left out whole and named in
+    // the result. Cut to 100 it was stored under a name the file does not
+    // hold, so the next import of the same file added the product again.
+    $text_positions = array();
+
+    foreach (array('name', 'short_description') as $text_column) {
+        $text_position = array_search($text_column, $column_names, true);
+
+        if ($text_position !== false) {
+            $text_positions[$text_column] = $text_position;
+        }
+    }
+
+    // A tax rate cell that is no number or lies outside 0..100 leaves the
+    // row out: parse_tax_rate() would store 100 for 150 and follow the zone
+    // for a word, neither of which the file says.
+    $tax_rate_position = array_search('tax_rate', $column_names, true);
+
     // A file with a tracking or a stock column sets the out-of-stock mark of
     // each product it writes, as the product screens do.
     $stock_columns_in_file = in_array('inventory', $column_names, true) || ($inventory_quantity_position !== false);
@@ -323,6 +314,8 @@ if (!$_POST) {
     $rows_quantity_not_whole = array();
     $rows_not_customs = array();
     $rows_quantity_too_large = array();
+    $rows_text_too_long = array();
+    $rows_tax_rate_not_valid = array();
     // Rows of products in the Recycle Bin, never written: Edit Product,
     // Modify Selected and the Catalog Manager leave a binned product alone
     // too. Before the bin's upgrade step there is no recycled column.
@@ -351,6 +344,16 @@ if (!$_POST) {
             // file. The message is HTML, so the name is escaped. Each list
             // below names its own reason, so the operator knows what to fix.
             $row_label = $row_number . ' (' . htmlspecialchars((string) $row[$name_key], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ')';
+
+            if (pg_products_import_row_text_too_long($row, $text_positions)) {
+                $rows_text_too_long[] = $row_label;
+                continue;
+            }
+
+            if (($tax_rate_position !== false) && (pg_tax_rate_problem(pg_products_import_row_value($row, $tax_rate_position)) !== '')) {
+                $rows_tax_rate_not_valid[] = $row_label;
+                continue;
+            }
 
             if ($row_read['refused']) {
                 if ($row_read['too_large']) {
@@ -503,7 +506,7 @@ if (!$_POST) {
 
                             // if this column is address_name, then prepare address name
                             if ($column_name == 'address_name') {
-                                $column_value = prepare_catalog_item_address_name($column_value, $product_id);
+                                $column_value = prepare_catalog_item_address_name($column_value, $product_id, 'product');
                                 $new_address_name = $column_value;
                             }
 
@@ -1056,6 +1059,19 @@ if (!$_POST) {
     if ($rows_not_customs) {
         $rows_listed = implode(', ', array_slice($rows_not_customs, 0, 50)) . ((count($rows_not_customs) > 50) ? ', ...' : '');
         $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because their HS code or country of origin is not valid: {var:1}.', 'vars' => array($rows_listed))));
+    }
+
+    // Rows left out because their name or short description is longer than
+    // its column.
+    if ($rows_text_too_long) {
+        $rows_listed = implode(', ', array_slice($rows_text_too_long, 0, 50)) . ((count($rows_text_too_long) > 50) ? ', ...' : '');
+        $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because their name or short description is longer than 100 characters: {var:1}.', 'vars' => array($rows_listed))));
+    }
+
+    // Rows left out because their tax rate is no number from 0 to 100.
+    if ($rows_tax_rate_not_valid) {
+        $rows_listed = implode(', ', array_slice($rows_tax_rate_not_valid, 0, 50)) . ((count($rows_tax_rate_not_valid) > 50) ? ', ...' : '');
+        $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because their tax rate is not a number from 0 to 100: {var:1}.', 'vars' => array($rows_listed))));
     }
 
     // Rows left out because their product is in the Recycle Bin.

@@ -37,6 +37,7 @@
 
 include('init.php');
 include_once('product_builder.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/product_attribute_form.php');
 
 
 /**
@@ -185,6 +186,15 @@ switch ($action) {
 
         if (!$options) {
             pg_paa_error(lang('Please add an option.'));
+        }
+
+        // Same rule as the attribute screens and the card's inline add: two
+        // options with one label (case ignored) cannot be told apart. The
+        // message is shown with .text(), so the label goes in unescaped.
+        $duplicate = pg_product_attribute_form_duplicate_label($options);
+
+        if ($duplicate !== '') {
+            pg_paa_error(lang(array('string' => 'The option {var:1} is entered more than once.', 'vars' => array($duplicate))));
         }
 
         db(

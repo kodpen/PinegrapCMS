@@ -134,6 +134,7 @@ function pg_settings_categories()
             'description' => lang('Which features are on, and how images are handled.'),
             'sections' => array(
                 'pgset-features' => lang('Feature Options'),
+                'pgset-search-tuning' => lang('Search Tuning'),
                 'pgset-images'   => lang('Image Optimization'),
                 'pgset-revisions' => lang('Page Revisions'),
                 'pgset-page-cache' => lang('Page Cache'),
@@ -141,6 +142,7 @@ function pg_settings_categories()
             ),
             'keywords' => array(
                 'pgset-features' => pg_settings_keywords(lang('feature, cart, comment, blog, calendar, form, ads, sharing, search, performance, mobile, prefetch, speculation rules, preload')),
+                'pgset-search-tuning' => pg_settings_keywords(lang('search, synonym, synonyms, promoted, recommended, pinned result')),
                 'pgset-images'   => pg_settings_keywords(lang('image, photo, optimization, webp, avif, responsive, quality, size, upload, watermark')),
                 'pgset-revisions' => pg_settings_keywords(lang('revision, revisions, history, version, versions, restore, retention, page, designer')),
                 'pgset-page-cache' => pg_settings_keywords(lang('cache, page cache, cdn, proxy, varnish, nginx, cloudflare, speed, performance, s-maxage, cache-control')),
@@ -367,6 +369,7 @@ function pg_settings_categories()
                 'pgset-channel'     => lang('Update Channel'),
                 'pgset-cron'        => lang('Cron Jobs'),
                 'pgset-backup'      => lang('Backups'),
+                'pgset-storage'     => lang('Storage'),
                 'pgset-alerts'      => lang('Alerts'),
                 'pgset-chat-notify' => lang('Chat notifications'),
                 'pgset-maintenance' => lang('Maintenance Mode'),
@@ -375,6 +378,7 @@ function pg_settings_categories()
                 'pgset-channel'     => pg_settings_keywords(lang('update, channel, beta, stable, version')),
                 'pgset-cron'        => pg_settings_keywords(lang('cron, scheduled, task, job, schedule, automatic')),
                 'pgset-backup'      => pg_settings_keywords(lang('backup, zip, ftp, s3, retention, remote, archive')),
+                'pgset-storage'     => pg_settings_keywords(lang('storage, object storage, s3, bucket, endpoint, files, uploads')),
                 'pgset-alerts'      => pg_settings_keywords(lang('alert, alerts, notification, e-mail, push, monitoring, backup failed, cron stopped, integrity, warning')),
                 'pgset-chat-notify' => pg_settings_keywords(lang('slack, teams, telegram, chat, notification, channel, webhook')),
                 'pgset-maintenance' => pg_settings_keywords(lang('maintenance, offline, closed, 503, coming soon, health, uptime, monitor')),

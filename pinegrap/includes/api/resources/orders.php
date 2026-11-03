@@ -917,6 +917,12 @@ function api_orders_ship($params) {
 
 			}
 
+			if (pg_tracking_number_refusal($number) !== '') {
+
+				api_fail_validation(pg_tracking_number_refusal($number), 'tracking_numbers');
+
+			}
+
 			if (!in_array($number, $numbers, true)) {
 
 				$numbers[] = $number;

@@ -74,7 +74,7 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
         // of form that we are dealing with
         case 'express order':
 
-            if ($_REQUEST['form_type'] == 'shipping') {
+            if (($_REQUEST['form_type'] ?? '') == 'shipping') {
                 $form_type = 'shipping';
             } else {
                 $form_type = 'billing';
@@ -97,6 +97,12 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
     if (($form_type === '') && pg_page_has_designer_form($_GET['page_id'])) {
         $designer_form = true;
         $form_type = 'custom';
+    }
+
+    // A page with no form has no fields to list, and its Create button would
+    // lead to add_field.php's refusal.
+    if ($form_type === '') {
+        pg_form_fields_refuse_page($_GET['page_id']);
     }
 
     // Get the form type name that we will output to user

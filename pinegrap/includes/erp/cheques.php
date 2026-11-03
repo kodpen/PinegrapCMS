@@ -281,6 +281,77 @@ function erp_cheque_till_rate($till_id, $date)
 }
 
 /**
+ * Largest amount a cheque or note may carry, in minor units: just under a
+ * trillion in the till's currency. Far below the BIGINT columns, so the till
+ * and account balances that add many of them up cannot run past their limit.
+ */
+const ERP_CHEQUE_MAX_AMOUNT = 99999999999999;
+
+/**
+ * Why an amount in minor units cannot be a cheque's, or '' when it can.
+ *
+ * Takes the float erp_kurus() returns for a figure past PHP_INT_MAX and
+ * answers without casting it, so no "not representable as an int" warning.
+ *
+ * @param int|float|string $amount
+ * @return string
+ */
+function erp_cheque_amount_refusal($amount)
+{
+    if (!is_int($amount) && !is_float($amount) && !(is_string($amount) && is_numeric($amount))) {
+        return lang('Enter an amount greater than zero.');
+    }
+
+    $amount = is_string($amount) ? (float) $amount : $amount;
+
+    if ($amount > ERP_CHEQUE_MAX_AMOUNT) {
+        return lang('The amount is too large.');
+    }
+
+    if ($amount < 1) {
+        return lang('Enter an amount greater than zero.');
+    }
+
+    return '';
+}
+
+/**
+ * A cheque's notes with a step's reason added: the step's name in front of
+ * it, so it reads as what happened, and the old notes shortened at their end
+ * when both do not fit the 255 characters of the column. Before, the reason
+ * was glued on without a label and lost whole once the notes were long.
+ *
+ * @param string $notes   The notes the cheque has
+ * @param string $label   The status the step leads to ('Bounced')
+ * @param string $reason  At most 150 characters
+ * @return string
+ */
+function erp_cheque_notes_with_reason($notes, $label, $reason)
+{
+    $notes = trim((string) $notes);
+    $reason = mb_substr(trim((string) $reason), 0, 150);
+
+    if ($reason === '') {
+        return mb_substr($notes, 0, 255);
+    }
+
+    $added = trim((string) $label) . ': ' . $reason;
+
+    if ($notes === '') {
+        return mb_substr($added, 0, 255);
+    }
+
+    $separator = ' · ';
+    $room = 255 - mb_strlen($added) - mb_strlen($separator);
+
+    if (mb_strlen($notes) > $room) {
+        $notes = rtrim(mb_substr($notes, 0, max(0, $room - 1))) . '…';
+    }
+
+    return mb_substr($notes . $separator . $added, 0, 255);
+}
+
+/**
  * Record a cheque or note: taken from a customer into the portfolio, or
  * given to a supplier out of the given-cheques till.
  *
@@ -301,14 +372,17 @@ function erp_cheque_create($data, $user_id)
 
     $direction = ((string) ($data['direction'] ?? '') === 'given') ? 'given' : 'received';
     $kind = ((string) ($data['kind'] ?? '') === 'note') ? 'note' : 'cheque';
-    $amount = (int) ($data['amount'] ?? 0);
+    // Compared before the cast: (int) of a float past PHP_INT_MAX warned and
+    // turned a huge typed figure into 0, refused as "greater than zero".
+    $amount = $data['amount'] ?? 0;
+    if (($refusal = erp_cheque_amount_refusal($amount)) !== '') {
+        return $fail($refusal, 'amount');
+    }
+    $amount = (int) $amount;
     $doc_date = (string) ($data['doc_date'] ?? '');
     $due_date = (string) ($data['due_date'] ?? '');
     $till_id = (int) ($data['till_id'] ?? 0);
 
-    if ($amount <= 0) {
-        return $fail(lang('Enter an amount greater than zero.'), 'amount');
-    }
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $doc_date)) {
         return $fail(lang('Please enter a valid date.'), 'doc_date');
     }
@@ -317,6 +391,10 @@ function erp_cheque_create($data, $user_id)
     }
     if ($till_id <= 0) {
         return $fail(lang('Choose where it is kept.'), 'till_id');
+    }
+    // Asked here, not left to the receipt, so the error marks the Account field.
+    if ((int) ($data['account_id'] ?? 0) <= 0) {
+        return $fail(lang('Choose an account.'), 'account_id');
     }
 
     $rate = erp_cheque_till_rate($till_id, $doc_date);
@@ -459,7 +537,9 @@ function erp_cheque_step_date_refusal($date, $doc_date)
     $date = (string) $date;
     $doc_date = (string) $doc_date;
 
-    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $date)) {
+    // The shape alone let 2026-02-30 through to the till movement: a day that
+    // is not on the calendar, which MySQL zeroes or refuses by its SQL mode.
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $parts) || !checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1])) {
         return lang('Please enter a valid date.');
     }
 
@@ -550,6 +630,9 @@ function erp_cheque_step($id, $step, $options, $user_id)
             'description' => mb_substr((($step === 'collect') ? lang(array('string' => '{var:1} collected', 'vars' => $name)) : lang(array('string' => '{var:1} paid by the bank', 'vars' => $name))), 0, 255),
             'created_by' => (int) $user_id,
             'allow_below_zero' => true,
+            // The cheque already sits in its portfolio; taking that till off
+            // must not strand it there.
+            'allow_inactive_till' => true,
         ));
 
         if (empty($moved['success'])) {
@@ -591,6 +674,7 @@ function erp_cheque_step($id, $step, $options, $user_id)
                 : lang(array('string' => '{var:1} bounced', 'vars' => $name))) . (($reason !== '') ? ': ' . $reason : ''), 0, 255),
             'created_by' => (int) $user_id,
             'allow_below_zero' => true,
+            'allow_inactive_till' => true,
         ));
 
         if (empty($posted['success'])) {
@@ -619,13 +703,15 @@ function erp_cheque_step($id, $step, $options, $user_id)
     }
 
     $new_status = array('collect' => 'collected', 'pay' => 'paid', 'endorse' => 'endorsed', 'bounce' => 'bounced');
+    $statuses = erp_cheque_statuses();
+    $notes = erp_cheque_notes_with_reason((string) $cheque['notes'], $statuses[$new_status[$step]][0], (string) ($options['reason'] ?? ''));
 
     $ok = erp_query("UPDATE erp_cheques SET status = '" . $new_status[$step] . "',
             bank_till_id = IF('" . $bank_till . "' > 0, '" . $bank_till . "', bank_till_id),
             endorsed_account_id = '" . $endorsed . "',
             close_cash_id = '" . $close_id . "',
             closed_date = '" . escape($date) . "',
-            notes = IF('" . escape(mb_substr(trim((string) ($options['reason'] ?? '')), 0, 150)) . "' = '', notes, TRIM(CONCAT(notes, ' ', '" . escape(mb_substr(trim((string) ($options['reason'] ?? '')), 0, 150)) . "'))),
+            notes = '" . escape($notes) . "',
             updated_at = UNIX_TIMESTAMP()
         WHERE id = '" . (int) $cheque['id'] . "'");
 

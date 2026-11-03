@@ -609,6 +609,23 @@
     // the browser's back-forward cache.
     var uploadsRunning = 0;
 
+    // Whether this browser's own model hears audio and is on the device
+    // (PGVoiceText.downloaded()): null until asked, then false or true. A
+    // recording is then written out here before it is posted where the
+    // site has no transcription service (channel.voice_browser).
+    var voiceModel = null;
+
+    function voiceModelHere() {
+        if ((voiceModel === null) && window.PGVoiceText && window.PGVoiceText.downloaded) {
+            voiceModel = false;
+            window.PGVoiceText.downloaded(CFG.locale || '').then(function (yes) {
+                voiceModel = !!yes;
+            }, function () {});
+        }
+
+        return voiceModel === true;
+    }
+
     function uploadLeaveGuard(event) {
         event.preventDefault();
         event.returnValue = t('upload_leave');
@@ -2450,6 +2467,34 @@
         });
 
         return toggle;
+    }
+
+    // The panel heading over the screen (output_header()'s .pg-navhead) for
+    // the view on show: Today, the scheduled lists or the channels. The
+    // popover attributes of the heading repeat both lines, so they follow.
+    function screenHeading(key) {
+        var entry = (CFG.headings || {})[key];
+        var head = document.querySelector('.pg-navhead');
+
+        if (!entry || !head) {
+            return;
+        }
+
+        var title = head.querySelector('.pg-navhead-title');
+        var desc = head.querySelector('.pg-navhead-desc');
+
+        if (title) {
+            title.textContent = entry.heading;
+        }
+
+        if (desc) {
+            desc.textContent = entry.description;
+        }
+
+        if (head.hasAttribute('data-bs-title')) {
+            head.setAttribute('data-bs-title', entry.heading);
+            head.setAttribute('data-bs-content', entry.description);
+        }
     }
 
     // The main menu's current entry and its row's hint follow an address
@@ -7331,6 +7376,7 @@
             self.channel = null;
             self.view = 'scheduled';
             self.drawSide();
+            screenHeading(staff ? 'scheduled_actions' : 'scheduled_messages');
 
             var center = clear(self.center);
             var head = el('div', 'ws-head');
@@ -7403,6 +7449,7 @@
             self.channel = null;
             self.view = 'home';
             self.drawSide();
+            screenHeading('home');
 
             var center = clear(self.center);
             var head = el('div', 'ws-head');
@@ -7735,7 +7782,7 @@
                 head.appendChild(el('span', 'ws-home-row-title', task.title));
 
                 if (hot) {
-                    head.appendChild(el('span', 'ws-home-priority ws-home-priority-' + task.priority, (BOOT.priorities || {})[task.priority] || task.priority));
+                    head.appendChild(el('span', 'ws-priority ws-priority-' + task.priority, (BOOT.priorities || {})[task.priority] || task.priority));
                 }
 
                 text.appendChild(head);
@@ -8087,6 +8134,7 @@
                 }
 
                 self.view = 'channel';
+                screenHeading('channel');
                 self.channel = data.channel;
                 self.era = data.era || null;
                 self.messages = data.messages;
@@ -8361,49 +8409,7 @@
                 head.setAttribute('data-ws-colored', '1');
             }
 
-            var title = el('div', 'ws-head-title ws-head-row');
-            var h = el('h2');
-            var tile = el('span', 'ws-head-icon');
-            tile.setAttribute('aria-hidden', 'true');
-            tile.appendChild(channelIcon(channel));
-            h.appendChild(tile);
-            h.appendChild(el('span', 'ws-head-name', channel.name));
-
-            if (channel.topic) {
-                h.title = channel.topic;
-            }
-
-            title.appendChild(h);
-
-            var tags = el('div', 'ws-head-tags');
-
-            // How the work stands, from the latest status update
-            // (workspace_status.js).
-            var statusPill = window.PGWsStatus ? window.PGWsStatus.pill(channel, self, featureHelpers()) : null;
-
-            if (statusPill) {
-                tags.appendChild(statusPill);
-            }
-
-            if (channel.department) {
-                var departmentBadge = tags.appendChild(el('span', 'badge ws-head-tag', channel.department.name));
-                departmentBadge.style.background = channel.department.color;
-                departmentBadge.style.color = readableInk(channel.department.color);
-            }
-
-            // The customer, and beside it the records tied to it.
-            var customer = self.customerNode(channel);
-
-            if (customer) {
-                customer.classList.add('ws-head-tag');
-                tags.appendChild(customer);
-            }
-
-            if (tags.firstChild) {
-                title.appendChild(tags);
-            }
-
-            head.appendChild(title);
+            head.appendChild(self.headTitle(channel));
 
             var actions = el('div', 'ws-head-actions');
             var faces = button('btn btn-sm btn-text theme-secondary ws-head-faces ws-head-wide', '', '', t('members'));
@@ -8698,7 +8704,7 @@
 
             if (channel.can_manage) {
                 item(t('edit_channel'), 'bi-pencil', function () {
-                    channelForm(channel, {}, function (id) { self.reloadChannels(id); });
+                    channelForm(channel, {}, function () { self.refreshInfo(); });
                 });
             }
 
@@ -9180,7 +9186,7 @@
                 var settings = button('btn btn-sm btn-outline theme-secondary rounded-pill w-100 ws-info-settings', t('edit_channel'), 'bi-gear');
 
                 settings.addEventListener('click', function () {
-                    channelForm(channel, {}, function (id) { self.reloadChannels(id); });
+                    channelForm(channel, {}, function () { self.refreshInfo(); });
                 });
                 body.appendChild(settings);
             }
@@ -9264,8 +9270,58 @@
             });
         },
 
-        // The header's people and menu, read from the channel as it is now
-        // (refreshInfo()); the rest of the header does not change there.
+        // The header's sign, name and tags (how the work stands, the
+        // department, the customer), drawn by drawCenter() and anew by
+        // refreshHead() after the channel's settings are saved.
+        headTitle: function (channel) {
+            var self = this;
+            var title = el('div', 'ws-head-title ws-head-row');
+            var h = el('h2');
+            var tile = el('span', 'ws-head-icon');
+            tile.setAttribute('aria-hidden', 'true');
+            tile.appendChild(channelIcon(channel));
+            h.appendChild(tile);
+            h.appendChild(el('span', 'ws-head-name', channel.name));
+
+            if (channel.topic) {
+                h.title = channel.topic;
+            }
+
+            title.appendChild(h);
+
+            var tags = el('div', 'ws-head-tags');
+
+            // How the work stands, from the latest status update
+            // (workspace_status.js).
+            var statusPill = window.PGWsStatus ? window.PGWsStatus.pill(channel, self, featureHelpers()) : null;
+
+            if (statusPill) {
+                tags.appendChild(statusPill);
+            }
+
+            if (channel.department) {
+                var departmentBadge = tags.appendChild(el('span', 'badge ws-head-tag', channel.department.name));
+                departmentBadge.style.background = channel.department.color;
+                departmentBadge.style.color = readableInk(channel.department.color);
+            }
+
+            // The customer, and beside it the records tied to it.
+            var customer = self.customerNode(channel);
+
+            if (customer) {
+                customer.classList.add('ws-head-tag');
+                tags.appendChild(customer);
+            }
+
+            if (tags.firstChild) {
+                title.appendChild(tags);
+            }
+
+            return title;
+        },
+
+        // The header read from the channel as it is now (refreshInfo()): its
+        // colour, title, people and menu.
         refreshHead: function () {
             var self = app;
             var channel = self.channel;
@@ -9273,6 +9329,21 @@
 
             if (!actions || !channel) {
                 return;
+            }
+
+            var head = actions.closest('.ws-head-channel');
+            var title = head.querySelector(':scope > .ws-head-title');
+
+            if (channel.hex) {
+                head.style.setProperty('--ws-ch', channel.hex);
+                head.setAttribute('data-ws-colored', '1');
+            } else {
+                head.style.removeProperty('--ws-ch');
+                head.removeAttribute('data-ws-colored');
+            }
+
+            if (title) {
+                head.replaceChild(self.headTitle(channel), title);
             }
 
             var faces = actions.querySelector('.ws-head-faces');
@@ -13253,8 +13324,11 @@
 
             // Formatting, tags as chips and tables, lists and code as cards
             // (assets/js/workspace_editor.js); a plain box without it.
+            // A discussion's box does not name its title as a channel.
+            var placeholder = self.isThread ? t('thread_composer_placeholder') : t('composer_placeholder', self.channel.name);
+
             self.rich = window.PGWsEditor ? window.PGWsEditor.create({
-                placeholder: t('composer_placeholder', self.channel.name),
+                placeholder: placeholder,
                 onKeydown: keys,
                 onEnter: function () { self.send(); }
             }) : null;
@@ -13263,7 +13337,7 @@
 
             if (!self.rich) {
                 input.rows = 1;
-                input.placeholder = t('composer_placeholder', self.channel.name);
+                input.placeholder = placeholder;
                 input.setAttribute('aria-label', input.placeholder);
             }
 
@@ -13775,7 +13849,7 @@
         // The microphone in place of Send while the box is empty or holds
         // only tags (voiceTags()). Not while a message is changed; beside a
         // reply bar it answers that message (voiceSend()), but not several
-        // at once, nor an MCP agent (voiceAnswers()).
+        // at once (voiceAnswers()).
         voiceSwap: function () {
             var mic = this.voiceMic;
 
@@ -13789,6 +13863,12 @@
 
             mic.classList.toggle('d-none', !show);
             this.sendNode.classList.toggle('d-none', show);
+
+            // Asked once, before the first recording, so the recorder knows
+            // whether this browser writes it out (voiceUnheard()).
+            if (show && this.channel.voice_browser) {
+                voiceModelHere();
+            }
         },
 
         // The box's text while it holds nothing but tags (a person, @ai,
@@ -13806,19 +13886,23 @@
             return (rest.replace(/[\s\u00a0\u200b]/g, '') === '') ? text.trim() : '';
         },
 
-        // Whether a recording may answer this message. An answer to Claude
-        // or Pinegrap AI asks it once the recording is written out
-        // (includes/workspace/voice.php, ws_voice_ask()); an MCP agent reads
-        // only the words, so a recording does not stand in for them.
+        // Whether a recording may answer this message: any one message. An
+        // answer to Claude, Pinegrap AI or an MCP agent asks it once the
+        // recording is written out (includes/workspace/voice.php,
+        // ws_voice_ask()); the agent reads the transcript as the others do
+        // (ws_mcp_agent_heard()).
         // An assistant's answer to the viewer's own message, come in while the
         // conversation is open and in sight, read aloud for a person who
-        // switched it on in this browser (the channel menu). Code blocks,
-        // buttons and change cards are left out of what is read.
+        // switched it on in this browser (the channel menu). An answer to the
+        // viewer's own recording is heard whatever the switch says: the sound
+        // the site made with its speech service is played, else this browser
+        // reads the words. Code blocks, buttons and change cards are left out
+        // of what is read.
         speakAnswer: function (message, node) {
             var voice = window.PGWsVoice;
             var sender = message.sender || {};
 
-            if (!voice || !voice.speakSupported() || !voice.speakOn(CFG.api_url, CFG.me) || document.hidden || !node
+            if (!voice || document.hidden || !node
                 || (message.sender_kind !== 'app') || !(sender.claude || sender.ai || sender.mcp) || !message.parent_id) {
                 return;
             }
@@ -13827,6 +13911,25 @@
             var body = node.querySelector('.ws-msg-body');
 
             if (!parent || !parent.mine || !body) {
+                return;
+            }
+
+            var asked = this.answersRecording(parent);
+
+            if (asked && message.file && (message.file.kind === 'audio')) {
+                var audio = node.querySelector('audio');
+                var playing = (audio && audio.play) ? audio.play() : null;
+
+                // A browser that allows no sound without a gesture refuses
+                // quietly; the player stays for a click.
+                if (playing && playing.catch) {
+                    playing.catch(function () {});
+                }
+
+                return;
+            }
+
+            if (!voice.speakSupported() || (!asked && !voice.speakOn(CFG.api_url, CFG.me))) {
                 return;
             }
 
@@ -13840,9 +13943,15 @@
         },
 
         voiceAnswers: function (message) {
-            var sender = (message && message.sender) || {};
+            return !!message;
+        },
 
-            return !sender.mcp;
+        // Whether a message is a recording (or a spoken answer, named the
+        // same): an answer to it is heard back.
+        answersRecording: function (message) {
+            var file = (message && message.file) || null;
+
+            return !!(file && (file.kind === 'audio') && window.PGWsVoice && window.PGWsVoice.isVoice(file.name));
         },
 
         // Whether a sound in the conversation gets the microphone that
@@ -13851,6 +13960,37 @@
         voiceReplyOffered: function (message) {
             return !!(window.PGWsVoice && window.PGWsVoice.supported()) && (this.tab === 'messages') && !this.era
                 && !!this.channel && !!this.channel.can_post && !message.deleted && this.voiceAnswers(message);
+        },
+
+        // Why the assistants would not hear a recording made here, for the
+        // recorder's hint: the channel's voice_unheard (off: transcripts are
+        // switched off on the site; skipped: this channel keeps its
+        // recordings), only where an assistant could be asked. Role 0 gets
+        // the settings card's link, a manager of a switchable channel the
+        // menu's entry; null when the recording is written out by a
+        // service. Where this browser writes it out instead
+        // (voiceWritesOut()), the hint says so.
+        voiceUnheard: function () {
+            var channel = this.channel;
+            var reason = channel ? (channel.voice_unheard || '') : '';
+
+            if (!reason || !(channel.claude || channel.ai || (BOOT.mcp || []).length)) {
+                return null;
+            }
+
+            if (this.voiceWritesOut()) {
+                return { text: t('voice_browser_hint'), link: null, note: '' };
+            }
+
+            var hint = { text: t(reason === 'off' ? 'voice_unheard_off' : 'voice_unheard_skipped'), link: null, note: '' };
+
+            if ((reason === 'off') && (parseInt(CFG.me_role, 10) === 0) && CFG.urls && CFG.urls.settings) {
+                hint.link = { url: CFG.urls.settings + '#ws-voice', text: t('voice_unheard_settings') };
+            } else if ((reason === 'skipped') && channel.voice && channel.can_manage && !channel.archived) {
+                hint.note = t('voice_unheard_menu');
+            }
+
+            return hint;
         },
 
         // Records into the writing box (the microphone in place of Send, or
@@ -13865,6 +14005,7 @@
 
             window.PGWsVoice.start({
                 box: box,
+                unheard: self.voiceUnheard(),
                 send: function (file, measure) { self.voiceSend(file, measure); },
                 done: function () {
                     self.voiceSwap();
@@ -13897,21 +14038,72 @@
             self.voiceRecord();
         },
 
+        // Does this browser write a recording made here out before it is
+        // posted? Where the site has no transcription service and the
+        // channel allows transcripts (channel.voice_browser), with the
+        // browser's model already on the device.
+        voiceWritesOut: function () {
+            return !!(this.channel && this.channel.voice_browser) && voiceModelHere();
+        },
+
         // A recording leaves as a file of its own: words in the box stay
         // there, tags alone go with it (voiceTags()) and leave the box. It
         // answers the message the reply bar shows when it is sent; the bar
         // closes once it is posted. measure: the length and waveform the
         // recorder heard, kept for the player; its transcript is asked for
         // at once (kickVoice()), and an assistant it asks answers after it.
+        // Where this browser writes it out (voiceWritesOut()), that comes
+        // first and the text goes with it; a failure or Cancel posts it
+        // without, as before.
         voiceSend: function (file, measure) {
             var self = this;
             var parent = (self.reply && self.voiceAnswers(self.reply)) ? self.reply : null;
             var tags = self.voiceTags();
+            var channel = self.channel;
+
+            if (!self.voiceWritesOut()) {
+                self.voicePost(file, measure, parent, tags, channel, '');
+                return;
+            }
+
+            var abort = new window.AbortController();
+            var posted = false;
+            var post = function (text) {
+                if (!posted) {
+                    posted = true;
+                    card.remove();
+                    self.voicePost(file, measure, parent, tags, channel, text);
+                }
+            };
+            var card = uploadCard(t('voice_browser_working'), file.name, function () {
+                abort.abort();
+                post('');
+            });
+
+            card.progress(0, 0);
+
+            window.PGVoiceText.transcribe(file, CFG.locale || '', function (step) {
+                if (typeof step.done === 'number') {
+                    card.progress(Math.round(step.done * 100), 100);
+                }
+            }, abort).then(function (text) {
+                post(text || '');
+            }, function () {
+                post('');
+            });
+        },
+
+        // Posts a recording into the channel it was made in, with the text
+        // this browser wrote ('' for none).
+        voicePost: function (file, measure, parent, tags, channel, transcript) {
+            var self = this;
 
             self.uploadFiles([file], {
                 body: tags,
+                channel: channel,
                 parent_id: parent ? parent.id : 0,
                 voice: measure || null,
+                transcript: transcript,
                 sent: function () {
                     if (parent && (self.reply === parent)) {
                         self.reply = null;
@@ -14779,17 +14971,20 @@
         // refuses here too, and says so. options (a recording, voiceSend()):
         // body sent instead of the box's text, which then stays in the box;
         // parent_id, the message the files answer; voice, a recording's
-        // duration_ms and peaks; sent(), once any is posted.
+        // duration_ms and peaks; transcript, the text this browser wrote of
+        // it; channel, the one it was made in when not the one shown now;
+        // sent(), once any is posted.
         uploadFiles: function (files, options) {
             var self = this;
             var settings = options || {};
+            var channel = settings.channel || self.channel;
             var queue = (files || []).slice();
             var total = queue.length;
             var done = 0;
             var ownBody = (typeof settings.body === 'string');
             var body = ownBody ? settings.body : (self.input ? self.tokens(self.inputText()) : '');
 
-            if (!total || !self.channel || !self.channel.can_post) {
+            if (!total || !channel || !channel.can_post) {
                 return;
             }
 
@@ -14819,12 +15014,13 @@
                     request.xhr.abort();
                 });
                 var request = apiUpload('ws_attach', {
-                    channel_id: self.channel.id,
+                    channel_id: channel.id,
                     name: name,
                     body: body,
                     parent_id: settings.parent_id || 0,
                     voice_duration_ms: settings.voice ? Math.round(settings.voice.duration_ms || 0) : 0,
-                    voice_peaks: settings.voice ? (settings.voice.peaks || '') : ''
+                    voice_peaks: settings.voice ? (settings.voice.peaks || '') : '',
+                    voice_transcript: settings.transcript || ''
                 }, file, name, function (loaded, sent) {
                     card.progress(loaded, sent);
                 });
@@ -16144,7 +16340,10 @@
                 var withFile = data.messages.filter(function (message) { return !!message.file; });
                 var images = withFile.filter(function (message) { return message.file.image; });
                 var videos = withFile.filter(function (message) { return message.file.kind === 'video'; });
-                var others = withFile.filter(function (message) { return !message.file.image && message.file.kind !== 'video'; });
+                // Voice messages and other sound files under their own title,
+                // not among the documents.
+                var audios = withFile.filter(function (message) { return !message.file.image && message.file.kind === 'audio'; });
+                var others = withFile.filter(function (message) { return !message.file.image && message.file.kind !== 'video' && message.file.kind !== 'audio'; });
 
                 if (!withFile.length) {
                     var empty = el('div', 'ws-empty');
@@ -16251,11 +16450,16 @@
                     pane.appendChild(reel);
                 }
 
-                if (others.length) {
-                    pane.appendChild(el('div', 'ws-section-title', t('documents') + ' · ' + others.length));
+                // A titled list of file rows: the sounds, then the documents.
+                var fileRows = function (title, rows) {
+                    if (!rows.length) {
+                        return;
+                    }
+
+                    pane.appendChild(el('div', 'ws-section-title', title + ' · ' + rows.length));
                     var list = el('div', 'ws-file-list');
 
-                    others.forEach(function (message) {
+                    rows.forEach(function (message) {
                         var row = el('div', 'ws-file-row');
                         var link = el('a', 'ws-file-link');
                         link.href = message.file.url;
@@ -16264,7 +16468,10 @@
                         link.appendChild(el('span', 'ws-file-ext', message.file.ext));
                         link.appendChild(el('span', 'text-truncate', message.file.name));
                         row.appendChild(link);
-                        row.appendChild(el('small', 'fg-secondary ws-grow', (message.sender ? message.sender.name + ' · ' : '') + message.time));
+                        // Sender and time on one line, cut short when the row is narrow.
+                        var meta = el('small', 'fg-secondary ws-grow ws-file-meta', (message.sender ? message.sender.name + ' · ' : '') + message.time);
+                        meta.title = meta.textContent;
+                        row.appendChild(meta);
 
                         if (message.file.kind === 'pdf' || message.file.kind === 'audio' || message.file.office) {
                             var look = button('btn btn-sm btn-text theme-secondary', '', message.file.kind === 'audio' ? 'bi-play-circle' : 'bi-eye', t('preview'));
@@ -16292,7 +16499,10 @@
                     });
 
                     pane.appendChild(list);
-                }
+                };
+
+                fileRows(t('voice_and_audio'), audios);
+                fileRows(t('documents'), others);
             }).catch(fail);
         },
 
@@ -18166,7 +18376,9 @@
             }
 
             if (task.priority === 'urgent' || task.priority === 'high') {
-                row.appendChild(el('span', 'badge theme-danger', BOOT.priorities[task.priority]));
+                // The same badge as the Today card: high in the warning
+                // colour, urgent in the danger colour.
+                row.appendChild(el('span', 'ws-priority ws-priority-' + task.priority, BOOT.priorities[task.priority]));
             }
 
             row.appendChild(avatarStack('', task.assignees, 4));
@@ -19413,8 +19625,10 @@
                     var text = el('div', 'ws-grow');
                     text.appendChild(el('small', '', item[1]));
                     text.appendChild(el('b', '', item[0].person.name));
+                    // The count under the name, so a narrow side column
+                    // leaves the whole name its width.
+                    text.appendChild(el('small', 'ws-extreme-count', t('task_count', item[0].total)));
                     row.appendChild(text);
-                    row.appendChild(el('span', 'ws-extreme-count', t('task_count', item[0].total)));
                     row.addEventListener('click', function () {
                         state.person_id = item[0].person.id;
                         load();
@@ -21176,8 +21390,8 @@
 
         var bar = el('nav', 'pg-toolbar navigation mb-5');
         var layout = el('div', 'row g-7 ws-nb');
-        var listCol = el('div', 'lg:col-4 xl:col-3 ws-nb-list-col');
-        var paneCol = el('div', 'lg:col-8 xl:col-9 ws-nb-pane-col');
+        var listCol = el('div', 'lg:col-5 xl:col-4 ws-nb-list-col');
+        var paneCol = el('div', 'lg:col-7 xl:col-8 ws-nb-pane-col');
         var list = el('div', 'ws-nb-list');
         var pane = el('div', 'ws-nb-pane');
 
@@ -21390,7 +21604,6 @@
                     top.appendChild(pinMark);
                 }
 
-                top.appendChild(el('span', 'ws-nb-item-time', note.updated));
 
                 var more = menuButton(button('ws-nb-item-more', '', 'bi-three-dots', t('more')));
                 more.addEventListener('click', function (event) {
@@ -21406,7 +21619,10 @@
                     item.appendChild(el('div', 'ws-nb-item-excerpt', note.excerpt));
                 }
 
+                // The time sits on the line under the title, so a narrow list
+                // column leaves the whole head row to the note's name.
                 var meta = el('div', 'ws-nb-item-meta');
+                meta.appendChild(el('span', 'ws-nb-item-time', note.updated));
 
                 if ((note['with'] || []).length || (note['in'] || []).length || note.access !== 'owner') {
                     meta.appendChild(noteFaces(note, 4));
@@ -21427,9 +21643,7 @@
                     meta.appendChild(claudeTag);
                 }
 
-                if (meta.childNodes.length) {
-                    item.appendChild(meta);
-                }
+                item.appendChild(meta);
 
                 function openThis() {
                     if (!current || current.id !== note.id) {
@@ -21834,6 +22048,10 @@
             var box = el('div', 'ws-nb-placeholder');
             box.appendChild(icon('bi-journal-richtext'));
             box.appendChild(el('div', '', t('notes_pick')));
+
+            var start = button('btn btn-sm btn-outline theme-primary rounded-pill px-5', t('notes_new'), 'bi-plus-lg');
+            start.addEventListener('click', function () { startNew(); });
+            box.appendChild(start);
             pane.appendChild(box);
             root.classList.remove('ws-nb-open');
         }

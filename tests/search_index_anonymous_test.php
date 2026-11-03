@@ -45,10 +45,11 @@ function test_search_index_initialize_user_uses_guard()
 function test_search_index_access_check_reads_session_before_unset()
 {
 	// The person who pressed the button is still checked: the job reads the
-	// session id itself, after init.php, and only then drops $_SESSION.
+	// session id itself, after init.php, and only then closes and empties
+	// $_SESSION.
 	$src = file_get_contents(PG_FUNCTIONS_DIR . '/update_search_index.php');
 	$read = strpos($src, "\$userid = \$_SESSION['sessionuserid']");
-	$unset = strpos($src, 'unset($_SESSION);');
+	$unset = strpos($src, '$_SESSION = array();');
 	$check = strpos($src, 'AND (user_role < \'3\')');
 	pg_assert_true($read !== false && $unset !== false && $check !== false, 'access check present');
 	pg_assert_true($read < $unset && $unset < $check, 'session read, then dropped, then checked');

@@ -97,6 +97,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - custom-form-render.md: custom_form visitor-facing behaviour: hide-from-visitor (office_use_only) and pg_cf_apply_field_bindings render rules (name/id, select options, required, defaults).
 - custom-form-rich-text.md: Rich-text text areas on designed forms: three-state _cf.wysiwyg, one editor per live page, aria-required, filtered prefill, rich seeding, open items.
 - custom-form-settings-shortcut.md: Designer custom_form: "Form settings" shortcut from any node inside the widget, new page form seeded with the site address, silent-form warning in the panel and after publish.
+- custom-form-steps.md: Steps of a designed form (FL2, FL3): the Step break (section form_step), pg_cf_apply_steps() fieldsets, Back/Next, progress, pg_cf_steps_script(), the sessionStorage draft and Start over
 - custom-form-sync.md: custom_form field derivation on the server, per-page ids map and its PHP round-trip trap, name/group rules (_cfEnsureNames), RSS roles per widget.
 - custom-form-translate-switch.md: Per-field "Include in translation" switch of custom forms (form_fields.translate_values, step 11.0.26): three-state _cf.translate, extraction and render skip, legacy screens, stale store and pages
 - custom-form-url-prefill.md: A designed form control filled from a named page-address parameter (props._cf.url_param, ?post=…): where it is stored, names and value rules, order of sources, option matching, what never takes it
@@ -128,6 +129,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-template-news-publishing.md: News template publishing: who may submit, the three-row live rule, scheduling and search, where a draft could leak, search noise, structured data and feeds, author HTML, signed-in tips, e-mails.
 - design-template-news.md: News Portal template (pinegrap-news): what it ships, the Articles form contract, the look, ?r= addresses, sample dates, preview, platform limits.
 - design-template-newsroom-comments.md: News and magazine templates (1.1.0) on the Comments widget: post_comments, conversation_replies, desk_messages, the e-mail card on both comment e-mails, why explicit trees, older sites
+- design-template-realestate.md: Real Estate Agency template (pinegrap-realestate): listings as a collection, neighbourhoods, agents, viewing and valuation requests followed from the account, pre- look, tests.
 - design-template-salon-words.md: Beauty Salon template wording (1.1.1, #4807): hizmet and randevu, own keys for the booking field, staff shortcut and statuses, e-posta page names; sample days and times fit the opening hours (#4944).
 - design-template-salon.md: Beauty Salon template (pinegrap-salon): its parts folder, the booking on the Clinic's request pattern, what is not built, the psl- look, tests.
 - design-template-shop-comments.md: Shop templates (store, boutique, bookshop 1.2.0, hello 2.6.0) on the Comments widget: post_comments, conversation_replies, the reply e-mail card before the System region, why explicit trees
@@ -307,6 +309,11 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - passkey-widget-list.md: Passkeys in the designed account_security widget (PR #1843, #2279): the list, row tokens, flags, rename/remove, the add form with the e-mailed code, device rows
 - photo-gallery-widget.md: Photo Gallery widget and classic page: the folder setting and its fallback, ?folder_id= and the Recycle Bin, image types, alt text, rows, tokens, flags, Where used, what is left out.
 - product-name-sku-and-canvas-placeholders.md: Which product token is the SKU and which the store name, their Bind Data labels and canvas samples; the placeholder of a value with no sample; a bound section's canvas name (#4200)
+- product-questions-output.md: Product questions outside the widget: the asker's mail when answered, API kind and answer_of, the Question/Answer JSON-LD on the Product, the templates' questions widget
+- product-questions.md: Product questions on the comments system: kind question/answer and answer_of, the widget Shows choice and its own claim, the answer box, the unanswered filter
+- prototype-hotspots.md: The Prototype view's hotspot collector (assets/js/pg_proto_hotspots.js, window.PGProtoHotspots): which nodes are hotspots, shared frames, the map read's request, the marks, the layout
+- prototype-map-read.md: The Prototype view's server read (api.php designer prototype_map, includes/fn/prototype_map.php): what it is asked, what it answers, how hidden pages stay hidden
+- prototype-view.md: The visual designer's read-only Prototype view (_sdProtoOpen() in style_designer.src.js): the toolbar toggle, frames and chips on the graph canvas core, what a row click does, where positions are kept
 - record-media-field-share-image.md: A form's RSS media upload opens with the record; og:image comes from the form's share image field, then the media field, and skips an upload an anonymous visitor cannot open (#2191, #2174, #2891)
 - record-value-page-links.md: A form list or detail link opening another page with the record's values in its address (__page_link + _bindParams.href): shape, pre-pass, escaping, values, Publish, export, editor, code view
 - record-view-counts.md: Views on record pages (form counters, people only, counted after sending) and form lists ordered by views, comments, recent views or newest activity; why not visitor_content_hourly
@@ -314,9 +321,11 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - region-node-to-widget.md: "Make designable" on a classic menu, menu sequence, ad or tag cloud region node: the widget kind and setting per type, where the widget goes, what stays the same.
 - responsive-images.md: Designer and widget images with srcset/sizes, AVIF/WebP <picture> on the Image element: which images, sizes rule, widget pass, variant swap, version stamp, e-mail strip (loading order: image-loading)
 - rich-text-profiles.md: pg_sanitize_rich_text() profiles: visitor (default, site output) drops class, layout styles and outside images and marks links ugc; staff keeps the shared allow-list; which callers pass staff.
+- search-index-panel-request.md: How update_search_index.php guards a panel request (POST with the form token, #5819) and closes the session before drawing pages (#5817)
 - search-index-resumable-pass.md: update_search_index.php as a resumable pass (stages, cursor file, skip rule, run budgets, panel window requests, sweep against the pass start) and the hourly delta run between full passes
 - search-index-run-failures.md: How update_search_index.php survives a bad page, event, record or file (isolated render, old row kept) and reports failures and an early stop in the Site Log
 - search-results-catalog-detail-page.md: Search Results widget: a product is a result only when a page opens it (chosen, else a Catalog Detail page the visitor can open); the editor names a site without one (#2062, #4453)
+- search-synonyms-promoted.md: Site search synonyms and promoted results: the two config_text rows, the box formats, pg_search_expand(), how the search widget merges and pins results.
 - sentence-with-values.md: Words beside a value (W26): props._sentence draws one translatable sentence, its N-th child at {var:N}; twins, panel row, code view lock, comment stars' label, order view's withdrawal line
 - seo-check-draft-render.md: The editor's SEO check renders the draft on the server (includes/fn/seo_draft.php): document mode, draft row override in get_page_content(), the save's gate, widgets as the Preview, fragment fallback
 - seo-score-live-check-parity.md: pg_seo_compose() must get all four groups wherever the same SEO score is computed (designer seo_check vs pg_seo_recalculate); which inputs come from where.
@@ -332,7 +341,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - signature-receipt-and-output.md: Signature evidence receipt, the ^^field^^ token output, the h() ampersand pitfall, and why 'signature' was added to the form_fields.type enum.
 - signature-timestamp-rfc3161.md: RFC 3161 timestamping of signatures: what is stamped, storage, network call policy, config columns, settings-test pitfall, auth list, hand-written ASN.1.
 - site-search-index-text.md: What text the site search index stores for a drawn page: main content only, no cookie window, shared header/menu/footer or link addresses (#4096)
-- site-search-query-and-freshness.md: Advanced site search over search_items: the query text in MATCH, the binned-page filter, record and file labels, the index made due after a template install (#3550, #3551, #3552)
+- site-search-query-and-freshness.md: Site search: the query text in MATCH, the binned and archived page filter (advanced and simple), record and file labels, the index made due after a template install (#3550, #3551, #3552)
 - site-search-turkish-i.md: Advanced site search finds "kahvaltı" for KAHVALTI and kahvalti: each word with i, I, ı or İ is searched in its i/ı readings (#4352); the simple LIKE search does not fold yet
 - sizing-panel-lengths.md: Display & Sizing panel lengths (width, height, min/max, top/right/bottom/left): a number without a unit is written in px by the page, the editor and the canvas, in one order
 - store-template-front-end.md: Store template front-end fixes (#3621): footer contact column, no card hint at checkout, product tabs on one line, the product page's edit pencil on the widget and clear of headings.
@@ -353,8 +362,10 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - tag-cloud-widget.md: Tag Cloud widget (tag_cloud_region): the classic <tcloud> region in the designer; which keywords, their order, size and weight, the search links, translation, what is left out.
 - text-inner-elements.md: Elements written inside a heading, paragraph, link or span text (span, strong, a, badge, icon) are picked by themselves on the canvas and in the overview, and edited through the text.
 - token-dictionary.md: System widget token namespaces (bare vs __ prefix), shared cart vocabulary, where token names may appear, old names kept as aliases, raw-HTML key escaping, row id uniquify, check_bindings.php.
+- unread-segment-404.md: A path segment after the page name that no widget reads (/about/xyz) answers 404 into the 404 log; which widgets mark it read and where the check runs (#4826)
 - user-styles-card-edits.md: How the Styles panel's User Styles cards read and edit the User Styles text (assets/js/pg_user_styles.js): which rules are listed, edits in place, Create as one undo step
 - widget-accessible-names.md: Names and keyboard use in system widget output: CAPTCHA answer id and label, no empty liveform ids, product carousel link names, the login region's account toggle as a button.
+- widget-address-params.md: How the system widgets read a value from the address (?r=, ?cancelled=, ?query=): one value only, an array is no value; the warnings #5173 fixed
 - widget-attr-bindings.md: A widget record's values in an element's attributes ({{token}} in the Attributes panel or a title): placeholder and carrier, the pass stage, refused attributes and tokens, editor completion (W15)
 - widget-condition-canvas.md: The canvas state preview of value conditions (W19, #1904): band chips, states, which value a token reads, picking a hidden node, the _sdCondEval twin, list and main loop sample rows (#1914, #1928)
 - widget-condition-panel.md: The Bind Data row "Show only when a value…" (#1665): token, operator, compared text, the canvas chip, the twin lists, no condition on a required control, the compared text translated.
@@ -404,6 +415,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-parts-palette.md: W20a parts palette: a Components group following the selection with a widget's parts and values, row items kept in their loop, the detail widget's placed outside it as parts
 - widget-placement-settings.md: W21 per-placement content of a system widget (#2326 #2345): what a placement may narrow, props.placement, the pg-placement marker, narrowing rules, the panel section, records filter.
 - widget-repeat-placement-ids.md: A system widget drawn twice on one page (header and offcanvas): the per-placement id suffix of its static part and of its main loop's rows, which renderers use it, the fault it fixed.
+- widget-search-like-pattern.md: How the form data list search and the simple site search of the system widgets build their LIKE pattern, and the backslash fault #5160 fixed
 - widget-starters-detail.md: W20b-2 whole-layout starters of the detail widgets (#3234): the starterKeep markers that put the Default tree's parts in place, what each kind keeps, one main loop
 - widget-starters.md: W20b layout starters (#3179): style-neutral layouts per widget kind shipped as files, the gallery's fourth source, how the editor builds one, the kinds, the binding test
 - wishlist-widget.md: Favourites system widget (kind wishlist, widgets_wishlist.php): whose list it shows, tokens, flags, the two row actions and their hidden forms, page cache, My Account link, shop templates

@@ -68,7 +68,7 @@ function test_graph_canvas_css_on_pgc_tokens()
 
 	pg_assert_true((bool) preg_match('/var CLASSES = \{(.*?)\};/s', $core, $block), 'the core names its classes');
 	preg_match_all("/(\w+): '([\w-]+)'/", $block[1], $names, PREG_SET_ORDER);
-	pg_assert_same(8, count($names), 'eight class names');
+	pg_assert_same(9, count($names), 'nine class names');
 
 	foreach ($names as $name) {
 		pg_assert_same(0, strpos($name[2], 'pgc-'), $name[1] . ' is a pgc- class');
@@ -368,47 +368,7 @@ function test_graph_canvas_texts_are_handed_over_and_translated()
 // arrow pressed is selected; the live region is read out again.
 function test_graph_canvas_boxes_and_arrows()
 {
-	$result = graph_canvas_test_node(<<<'JS'
-var focused = null;
-function El(tag) {
-    var self = this;
-    this.tag = tag; this.children = []; this.attrs = {}; this.style = {}; this.className = ''; this.parent = null; this.textContent = '';
-    this.classList = {
-        add: function (name) { var list = self.names(); if (list.indexOf(name) < 0) { list.push(name); } self.className = list.join(' '); },
-        remove: function (name) { self.className = self.names().filter(function (item) { return item !== name; }).join(' '); },
-        contains: function (name) { return self.names().indexOf(name) >= 0; }
-    };
-}
-El.prototype.names = function () { return this.className.split(' ').filter(Boolean); };
-El.prototype.setAttribute = function (name, value) { if (name === 'class') { this.className = String(value); } else { this.attrs[name] = String(value); } };
-El.prototype.getAttribute = function (name) { return (name === 'class') ? this.className : ((name in this.attrs) ? this.attrs[name] : null); };
-El.prototype.removeAttribute = function (name) { delete this.attrs[name]; };
-El.prototype.appendChild = function (child) { child.parent = this; this.children.push(child); return child; };
-El.prototype.focus = function () { focused = this; };
-El.prototype.matches = function (selector) {
-    var self = this;
-    return selector.split(',').some(function (one) {
-        var ok = true;
-        one.replace(/\.([\w-]+)|\[([\w-]+)(?:="([^"]*)")?\]/g, function (all, name, attr, value) {
-            if (name) { ok = ok && self.classList.contains(name); }
-            if (attr) { ok = ok && (self.getAttribute(attr) !== null) && ((value === undefined) || (self.getAttribute(attr) === value)); }
-            return all;
-        });
-        return ok;
-    });
-};
-El.prototype.closest = function (selector) { for (var node = this; node; node = node.parent) { if (node.matches(selector)) { return node; } } return null; };
-El.prototype.querySelectorAll = function (selector) { var out = []; (function walk(node) { node.children.forEach(function (child) { if (child.matches(selector)) { out.push(child); } walk(child); }); })(this); return out; };
-El.prototype.querySelector = function (selector) { return this.querySelectorAll(selector)[0] || null; };
-El.prototype.addEventListener = function () {};
-var under = null;
-var document = {
-    createElement: function (tag) { return new El(tag); },
-    createElementNS: function (ns, tag) { return new El(tag); },
-    elementFromPoint: function () { return under; },
-    addEventListener: function () {}
-};
-window.setTimeout = function (handler) { handler(); };
+	$result = graph_canvas_test_node(graph_canvas_test_dom() . <<<'JS'
 var layer = new El('div');
 ui.layer = layer;
 ui.boxes = layer.appendChild(new El('div'));
@@ -530,6 +490,148 @@ JS
 	pg_assert_same('Arrow added', $result['live'], 'the live region reads the text');
 }
 
+// Slice 4 of the core, for a second user: a box the adapter sizes is drawn
+// and fitted at its size; the zoom may go lower, never below 0.05; an arrow
+// leaves a named port's row and ends spread over its target's left edge;
+// its id is kept as given (a name, not only an index); a box moved without
+// edges() draws only its own arrows again; an arrow may end on another
+// target (an end chip); a box's picture is asked for once it is in sight.
+function test_graph_canvas_sizes_ports_and_targets()
+{
+	$result = graph_canvas_test_node(graph_canvas_test_dom() . <<<'JS'
+var out = {};
+out.spread = G.spread([{ to: 'b', y: 50 }, { to: 'b', y: 10 }, { to: 'c', y: 0 }, { to: 'b', y: 10 }]);
+var sized = { x: 0, y: 0, w: 1200, h: 2000 };
+var far = G.viewport({ ui: ui, view: function (next) { if (next) { state.view = next; } return state.view; }, items: function () { return [sized]; }, size: function (item) { return { w: item.w, h: item.h }; }, zoomMin: 0.01 });
+state.view = { x: 0, y: 0, k: 1 };
+far.zoomBy(0.0001);
+out.floor = state.view.k;
+far.fit();
+out.fit = Math.round(state.view.k * 1000) / 1000;
+var layer = new El('div');
+ui.layer = layer;
+ui.boxes = layer.appendChild(new El('div'));
+ui.svg = layer.appendChild(new El('svg'));
+ui.temp = ui.svg.appendChild(new El('path'));
+ui.temp.className = 'pgc-hidden';
+ui.live = new El('div');
+var listeners = {};
+ui.viewport.addEventListener = function (type, handler) { listeners[type] = handler; };
+ui.viewport.removeEventListener = function () {};
+document.removeEventListener = function () {};
+ui.viewport.classList = { add: function () {}, remove: function () {} };
+ui.viewport.setPointerCapture = function () {};
+ui.viewport.focus = function () {};
+var a = { id: 'a', x: 0, y: 0, w: 320, h: 400 };
+var b = { id: 'b', x: 640, y: 0, w: 320, h: 300 };
+var chip = { id: 'mail', x: 640, y: 480, w: 160, h: 40 };
+var log = [];
+var thumbs = [];
+var canvas = G.create({
+    ui: ui,
+    view: function (next) { if (next) { state.view = next; } return state.view; },
+    items: function () { return [a, b]; },
+    size: function (item) { return { w: item.w, h: item.h }; },
+    zoomMin: 0.05,
+    text: function (key) { return key; },
+    item: function (id) { return { a: a, b: b }[id] || null; },
+    editable: function () { return true; },
+    select: function (selected) { log.push('select ' + selected.type + ' ' + JSON.stringify(selected.id)); },
+    moved: function (item) { log.push('moved ' + item.id); },
+    canConnect: function (from, to, port) { return port === 'nav-1'; },
+    connected: function (from, to, port) { log.push('connected ' + from.id + ' ' + (to ? to.id : null) + ' ' + port); },
+    targets: '[data-target]',
+    target: function (element) { return element.getAttribute('data-target') === 'mail' ? chip : null; },
+    thumb: function (item, holder) { thumbs.push(item.id + ' ' + holder.className); },
+    press: function () { return true; },
+    move: function () {},
+    release: function (event, drag) { log.push('release ' + drag.kind); },
+    cancel: function () {},
+    key: function () { return false; }
+});
+canvas.bind();
+state.view = { x: 0, y: 0, k: 1 };
+var row;
+var boxA = ui.boxes.appendChild(canvas.box(a, { out: true, thumb: true, fill: function (node) {
+    var list = node.appendChild(new El('ul'));
+    list.offsetTop = 200;
+    list.offsetParent = node;
+    row = list.appendChild(new El('li'));
+    row.offsetTop = 32;
+    row.offsetHeight = 24;
+    row.offsetParent = list;
+    row.appendChild(canvas.port('out', 'nav-1'));
+} }));
+var boxB = ui.boxes.appendChild(canvas.box(b, { into: true }));
+var chipEl = ui.boxes.appendChild(new El('div'));
+chipEl.setAttribute('data-target', 'mail');
+out.box = [boxA.style.width, boxA.style.height, boxA.children[0].className, boxA.children[0].attrs['aria-hidden'], thumbs];
+out.port = [row.children[0].className, row.children[0].attrs['data-port']];
+var named = canvas.edge('nav-1>b', a, b, { port: 'nav-1', slot: 0, slots: 2 });
+var plain = canvas.edge('a>b', a, b, { slot: 1, slots: 2 });
+out.named = [named.group.attrs['data-edge'], named.group.children[0].attrs.d === G.curve(320, 244, 640, 100).d, plain.group.children[0].attrs.d === G.curve(320, 200, 640, 200).d];
+log = [];
+pointer('pointerdown', 1, 300, 100, named.group.children[1]);
+pointer('pointerup', 1, 300, 100, named.group.children[1]);
+var before = plain.group.children[0].attrs.d;
+pointer('pointerdown', 2, 300, 100, boxB);
+pointer('pointermove', 2, 332, 100, boxB);
+pointer('pointerup', 2, 332, 100, boxB);
+out.rerouted = [b.x, plain.group.children[0].attrs.d !== before, plain.group.children[0].attrs.d === G.curve(320, 200, 672, 200).d, plain.group.children[1].attrs.d === plain.group.children[0].attrs.d];
+ui.svg.children = ui.svg.children.filter(function (child) { return child !== plain.group; });
+plain.group.parentNode = null;
+canvas.reroute(['a']);
+out.forgotten = plain.group.children[0].attrs.d === G.curve(320, 200, 672, 200).d;
+under = chipEl;
+pointer('pointerdown', 3, 300, 100, row.children[0]);
+pointer('pointermove', 3, 500, 300, row.children[0]);
+out.aim = [ui.temp.attrs.d.indexOf('M320 244 C') === 0, chipEl.className];
+pointer('pointerup', 3, 500, 300, row.children[0]);
+under = boxB;
+pointer('pointerdown', 4, 300, 100, boxA.children[2]);
+pointer('pointermove', 4, 500, 300, boxA.children[2]);
+out.plainAim = [ui.temp.attrs.d.indexOf('M320 200 C') === 0, boxB.className];
+pointer('pointerup', 4, 500, 300, boxB.children[0]);
+out.log = log;
+var observed = [];
+var disconnected = false;
+window.IntersectionObserver = function (handler) { this.handler = handler; observed.push(this); };
+window.IntersectionObserver.prototype.observe = function (node) { this.node = node; };
+window.IntersectionObserver.prototype.unobserve = function () {};
+window.IntersectionObserver.prototype.disconnect = function () { disconnected = true; };
+thumbs = [];
+var later = canvas.box(b, { thumb: true });
+out.lazy = [thumbs.length];
+observed[0].handler([{ isIntersecting: true, target: later.children[0] }]);
+observed[0].handler([{ isIntersecting: true, target: later.children[0] }]);
+out.lazy.push(thumbs);
+canvas.destroy();
+out.lazy.push(disconnected);
+console.log(JSON.stringify(out));
+function pointer(type, id, x, y, target) {
+    listeners[type]({ type: type, pointerId: id, clientX: x, clientY: y, button: 0, target: target, preventDefault: function () {} });
+}
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(array('slot' => 2, 'slots' => 3), array('slot' => 0, 'slots' => 3), array('slot' => 0, 'slots' => 1), array('slot' => 1, 'slots' => 3)), $result['spread'], 'arrows into one box ordered by height, ties in their order');
+	pg_assert_same(0.05, $result['floor'], 'the zoom goes lower when asked, never below 0.05');
+	pg_assert_same(0.252, $result['fit'], 'fit reads each box\'s size');
+	pg_assert_same(array('320px', '400px', 'pgc-thumb', 'true', array('a pgc-thumb')), $result['box'], 'a sized box is drawn at its size, its picture holder first, filled at once without an observer');
+	pg_assert_same(array('pgc-port pgc-port-out', 'nav-1'), $result['port'], 'a named port carries its name');
+	pg_assert_same(array('nav-1>b', true, true), $result['named'], 'an arrow leaves its port\'s row, ends at its slot, its id kept');
+	pg_assert_same(array(672, true, true, true), $result['rerouted'], 'a box moved without edges() draws its own arrows again');
+	pg_assert_true($result['forgotten'], 'an arrow removed from the canvas is forgotten');
+	pg_assert_same(array(true, 'pgc-target'), $result['aim'], 'an arrow from a named port lights another target it may go to');
+	pg_assert_same(array(true, 'pgc-node'), $result['plainAim'], 'a box the adapter refuses stays dark');
+	pg_assert_same(array('select edge "nav-1>b"', 'release none', 'select node "b"', 'moved b', 'connected a mail nav-1', 'connected a b null'), $result['log'], 'a named id is selected as given; the port goes with the arrow');
+	pg_assert_same(array(0, array('b pgc-thumb'), true), $result['lazy'], 'a picture asked for once in sight, once; destroy() stops watching');
+}
+
 // The autosave (autosave()): a change is sent once the changes pause; a
 // change made while a save is on its way goes in a second one; a failure is
 // kept and nothing is sent again by itself; a conflict holds every later
@@ -625,4 +727,53 @@ JS
 	pg_assert_same(0, $result['once'], 'and not sent again as the page goes');
 	pg_assert_same(0, $result['bigLeft'], 'too large for keepalive: left unsaved when the page is left');
 	pg_assert_same(array('6'), $result['bigHidden'], 'saved as usual while the page is only hidden');
+}
+
+// A small stand-in DOM for create(): elements with classes, attributes,
+// children, closest() and querySelectorAll() on simple selectors; the
+// element under the pointer is the variable under.
+function graph_canvas_test_dom()
+{
+	return <<<'JS'
+var focused = null;
+function El(tag) {
+    var self = this;
+    this.tag = tag; this.children = []; this.attrs = {}; this.style = {}; this.className = ''; this.parent = null; this.textContent = '';
+    this.classList = {
+        add: function (name) { var list = self.names(); if (list.indexOf(name) < 0) { list.push(name); } self.className = list.join(' '); },
+        remove: function (name) { self.className = self.names().filter(function (item) { return item !== name; }).join(' '); },
+        contains: function (name) { return self.names().indexOf(name) >= 0; }
+    };
+}
+El.prototype.names = function () { return this.className.split(' ').filter(Boolean); };
+El.prototype.setAttribute = function (name, value) { if (name === 'class') { this.className = String(value); } else { this.attrs[name] = String(value); } };
+El.prototype.getAttribute = function (name) { return (name === 'class') ? this.className : ((name in this.attrs) ? this.attrs[name] : null); };
+El.prototype.removeAttribute = function (name) { delete this.attrs[name]; };
+El.prototype.appendChild = function (child) { child.parent = this; child.parentNode = this; this.children.push(child); return child; };
+El.prototype.focus = function () { focused = this; };
+El.prototype.matches = function (selector) {
+    var self = this;
+    return selector.split(',').some(function (one) {
+        var ok = true;
+        one.replace(/\.([\w-]+)|\[([\w-]+)(?:="([^"]*)")?\]/g, function (all, name, attr, value) {
+            if (name) { ok = ok && self.classList.contains(name); }
+            if (attr) { ok = ok && (self.getAttribute(attr) !== null) && ((value === undefined) || (self.getAttribute(attr) === value)); }
+            return all;
+        });
+        return ok;
+    });
+};
+El.prototype.closest = function (selector) { for (var node = this; node; node = node.parent) { if (node.matches(selector)) { return node; } } return null; };
+El.prototype.querySelectorAll = function (selector) { var out = []; (function walk(node) { node.children.forEach(function (child) { if (child.matches(selector)) { out.push(child); } walk(child); }); })(this); return out; };
+El.prototype.querySelector = function (selector) { return this.querySelectorAll(selector)[0] || null; };
+El.prototype.addEventListener = function () {};
+var under = null;
+var document = {
+    createElement: function (tag) { return new El(tag); },
+    createElementNS: function (ns, tag) { return new El(tag); },
+    elementFromPoint: function () { return under; },
+    addEventListener: function () {}
+};
+window.setTimeout = function (handler) { handler(); };
+JS;
 }

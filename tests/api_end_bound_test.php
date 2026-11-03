@@ -74,3 +74,33 @@ function test_api_router_reads_end_bounds_through_the_helper()
 
 	pg_assert_true(strpos($bootstrap, "require_once(\$pg_api_directory . '/time.php');") !== false, 'loaded by the API entry');
 }
+
+function test_api_time_parse_takes_only_the_documented_forms()
+{
+	$zone = date_default_timezone_get();
+
+	date_default_timezone_set('Europe/Istanbul');
+
+	$day = api_time_parse('2099-12-31');
+	$basic_day = api_time_parse('20991231');
+	$basic_end = api_time_parse_end_bound('20991231');
+	$basic_time = api_time_parse('20261020T182100Z');
+	$offset = api_time_parse('2026-10-20T18:21:00.5+0300');
+	$no_zone = api_time_parse('2026-10-20 18:21');
+
+	date_default_timezone_set($zone);
+
+	pg_assert_same(gmmktime(21, 0, 0, 12, 30, 2099), $day, 'a day is its 00:00 in the site zone');
+	pg_assert_same($day, $basic_day, 'eight digits are a basic ISO day, not a 1970 stamp');
+	pg_assert_same(gmmktime(20, 59, 59, 12, 31, 2099), $basic_end, 'a basic day as an end bound counts whole');
+	pg_assert_same(gmmktime(18, 21, 0, 10, 20, 2026), $basic_time, 'basic day and time in UTC');
+	pg_assert_same(gmmktime(15, 21, 0, 10, 20, 2026), $offset, 'fraction and +hhmm offset');
+	pg_assert_same(gmmktime(15, 21, 0, 10, 20, 2026), $no_zone, 'no zone is the site zone');
+	pg_assert_same(1760000000, api_time_parse('1760000000'), 'a unix stamp');
+
+	foreach (array('2026-02-30', '2026-13-01', 'next monday', 'tomorrow', '+1 day', 'abc', '2026-1020',
+		'2026-10-20T25:00', '2026-10-20T18:60', '2026-10-20T18:21:00+15:00', '20260230', '') as $bad) {
+		pg_assert_same(null, api_time_parse($bad), 'refused: ' . $bad);
+		pg_assert_same(null, api_time_parse_end_bound($bad), 'refused as an end bound: ' . $bad);
+	}
+}

@@ -43,6 +43,9 @@ $ledger_id = (int) $receipt['ledger_id'];
 $is_collection = ((string) $receipt['doc_type'] === 'collection');
 $is_cancelled = ((int) $receipt['reversal_id'] > 0);
 
+// The read-only accountant reads the receipt; it is offered no correction.
+$readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
+
 if ($_POST) {
 
     validate_token_field();
@@ -60,7 +63,10 @@ if ($_POST) {
 
         if ($result['success']) {
             log_activity(lang(array('string' => $is_collection ? 'erp receipt (#{var:1}) was cancelled' : 'erp payment (#{var:1}) was cancelled', 'vars' => $cash_id)), $_SESSION['sessionusername']);
-            $liveform->add_notice(lang(array('string' => $is_collection ? 'The receipt has been cancelled and {var:1} invoice(s) reopened.' : 'The payment has been cancelled and {var:1} invoice(s) reopened.', 'vars' => count($result['reopened']))));
+            $reopened = count((array) ($result['reopened'] ?? array()));
+            $liveform->add_notice(($reopened > 0)
+                ? lang(array('string' => $is_collection ? 'The receipt has been cancelled and {var:1} invoice(s) reopened.' : 'The payment has been cancelled and {var:1} invoice(s) reopened.', 'vars' => $reopened))
+                : ($is_collection ? lang('The receipt has been cancelled.') : lang('The payment has been cancelled.')));
         } else {
             $liveform->mark_error('_error', h($result['error']));
         }
@@ -69,7 +75,7 @@ if ($_POST) {
     }
 
     if ($action === 'unsettle') {
-        $result = erp_settlement_remove((int) ($_POST['settlement_id'] ?? 0), (int) $user['id']);
+        $result = erp_settlement_remove((int) ($_POST['settlement_id'] ?? 0), (int) $user['id'], array('account_txn_id' => $ledger_id));
 
         if ($result['success']) {
             log_activity(lang(array('string' => $is_collection ? 'erp allocation was removed from receipt (#{var:1})' : 'erp allocation was removed from payment (#{var:1})', 'vars' => $cash_id)), $_SESSION['sessionusername']);
@@ -203,7 +209,7 @@ $output_header = '
                         </div>
                     </div>
                     ' . (is_array($reversal) ? '
-                    <div class="alert theme-secondary mt-5 mb-0"><i class="bi bi-arrow-counterclockwise me-3"></i>' . h(prepare_form_data_for_output($reversal['doc_date'], 'date')) . ' &middot; ' . h($reversal['description']) . '</div>' : '') . '
+                    <div class="alert theme-secondary mt-5 mb-0"><i class="bi bi-arrow-counterclockwise me-3"></i>' . h(lang(array('string' => 'Cancelled on {var:1}', 'vars' => prepare_form_data_for_output($reversal['doc_date'], 'date', false)))) . ' &middot; ' . h($reversal['description']) . '</div>' : '') . '
                 </div>
             </div>';
 
@@ -214,7 +220,7 @@ foreach ($settlements as $settlement) {
     $invoice_id = (int) $settlement['invoice_id'];
 
     $output_remove = '';
-    if (!$is_cancelled && ((string) $settlement['invoice_status'] !== 'cancelled')) {
+    if (!$readonly && !$is_cancelled && ((string) $settlement['invoice_status'] !== 'cancelled')) {
         $output_remove = '<form method="post" action="erp_receipt.php" class="d-inline">
                                         ' . get_token_field() . '
                                         <input type="hidden" name="id" value="' . $cash_id . '" />
@@ -268,7 +274,7 @@ $output_allocations = '
 // oldest first, with a proposal already typed in.
 $output_allocate = '';
 
-if (!$no_allocation && ($unallocated > 0)) {
+if (!$readonly && !$no_allocation && ($unallocated > 0)) {
     $suggestion = erp_settlement_suggest($ledger_id);
     $open_invoices = erp_open_invoices((int) $receipt['account_id'], 200, $is_collection ? 'sales' : 'purchase');
 
@@ -355,6 +361,8 @@ if ($receipt_cheque !== null) {
                 <span class="flex-grow-1">' . h(erp_cheque_receipt_refusal($receipt_cheque)) . '</span>
                 <a class="btn btn-sm btn-outline theme-primary" href="erp_cheque.php?id=' . (int) $receipt_cheque['id'] . '"><i class="bi bi-arrow-right me-1" aria-hidden="true"></i>' . lang('Open the cheque or note') . '</a>
             </div>';
+} elseif ($readonly) {
+    $output_cancel = '';
 } elseif ($cancel_locked !== '') {
     $output_cancel = '
             <nav class="buttons navigation text-center position-sticky mb-3" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">

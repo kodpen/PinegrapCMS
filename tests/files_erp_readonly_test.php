@@ -4,7 +4,7 @@
  *
  * Tests that every door through which the file manager writes a file refuses
  * a document the ERP module keeps (pg_files_include_erp_document()): the
- * file's own screen, the explorer actions that take a file id, the explorer's
+ * file's own screen, the bulk edit of a checked list, the explorer actions that take a file id, the explorer's
  * file read, and the image editor's save. Such a row sits with no folder,
  * which check_edit_access() lets staff write to, so the refusal has to be
  * asked for by name at each door.
@@ -28,6 +28,7 @@ function test_files_erp_readonly_every_write_door_asks()
 {
 	$doors = array(
 		'edit_file.php'                     => 'pg_files_include_erp_document(array($_REQUEST[\'id\'] ?? 0, $_POST[\'id\'] ?? 0))',
+		'edit_files.php'                    => 'pg_files_include_erp_document((array) $_POST[\'files\'])',
 		'view_folder_and_files_f.php'       => 'pg_files_include_erp_document(pg_explorer_request_file_ids($type, $request))',
 		'includes/panel/explorer.php'       => 'pg_files_include_erp_document(array($row[\'id\']))',
 		'includes/fn/image_editor.php'      => 'pg_files_include_erp_document(array($row[\'id\']))',

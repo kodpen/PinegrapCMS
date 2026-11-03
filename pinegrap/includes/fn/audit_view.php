@@ -146,9 +146,17 @@ function pg_audit_view_condition(array $filters, $names = null)
         $params[] = (string) (int) $filters['id'];
     }
 
+    // A number is a user's id, or the whole of a username made of digits:
+    // a line's "who" link passes the name, and nothing forbids such a name.
     if ($filters['user'] !== '') {
-        $where[] = ctype_digit($filters['user']) ? 'user_id = ?' : 'username LIKE ?';
-        $params[] = ctype_digit($filters['user']) ? (string) (int) $filters['user'] : '%' . pg_audit_view_like($filters['user']) . '%';
+        if (ctype_digit($filters['user'])) {
+            $where[] = 'user_id = ? OR username = ?';
+            $params[] = (string) (int) $filters['user'];
+            $params[] = $filters['user'];
+        } else {
+            $where[] = 'username LIKE ?';
+            $params[] = '%' . pg_audit_view_like($filters['user']) . '%';
+        }
     }
 
     if ($filters['q'] !== '') {
@@ -376,6 +384,9 @@ function pg_audit_view_record_url($type, $id)
         'order'   => 'view_order.php?id=',
         'offer'   => 'edit_offer.php?id=',
         'contact' => 'edit_contact.php?id=',
+        // view_return.php asks for commerce access; every role that opens
+        // the audit trail (Manager and above) has it.
+        'order_return' => 'view_return.php?id=',
     );
 
     if (isset($screens[$type]) && ($id > 0)) {
@@ -401,7 +412,44 @@ function pg_audit_view_record_tables()
         'order'   => array('orders', 'id'),
         'offer'   => array('offers', 'id'),
         'contact' => array('contacts', 'id'),
+        'order_return' => array('order_returns', 'id'),
     );
+}
+
+/**
+ * The choices of the type or action filter: the stored words, plus the one
+ * already chosen when the trail no longer holds it, ordered by the name
+ * shown in the panel language (pg_geo_label_compare()).
+ *
+ * @param string $kind   type | action
+ * @param array  $words  the stored words
+ * @param string $chosen the word the filter holds, '' for none
+ * @return array word => name
+ */
+function pg_audit_view_filter_options($kind, array $words, $chosen)
+{
+    $words = array_map('strval', $words);
+    $chosen = (string) $chosen;
+
+    if (($chosen !== '') && !in_array($chosen, $words, true)) {
+        $words[] = $chosen;
+    }
+
+    $rows = array();
+
+    foreach (array_unique($words) as $word) {
+        if ($word !== '') {
+            $rows[] = array('word' => $word, 'label' => pg_audit_view_label($kind, $word));
+        }
+    }
+
+    $options = array();
+
+    foreach (pg_geo_sort_by_label($rows) as $row) {
+        $options[$row['word']] = $row['label'];
+    }
+
+    return $options;
 }
 
 /**

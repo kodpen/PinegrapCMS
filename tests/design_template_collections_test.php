@@ -91,6 +91,7 @@ function test_design_template_collection_forms()
 		'pinegrap-magazine'   => array('blog_new', 'staff_entry'),
 		'pinegrap-news'       => array('blog_new', 'staff_entry'),
 		'pinegrap-playground' => array('blog_new', 'staff_entry'),
+		'pinegrap-realestate' => array('blog_new', 'listing_new', 'staff_entry'),
 		'pinegrap-salon'      => array('blog_new', 'staff_entry'),
 		'pinegrap-store'      => array('blog_new', 'staff_entry'),
 	);

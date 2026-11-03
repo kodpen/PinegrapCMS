@@ -2543,12 +2543,12 @@ function pg_return_refund_due($return)
  * The carrier is the one the delivery came with (its parcel row, or the one
  * recognised from the shipping method), else the site's default carrier,
  * else the one of the latest earlier approval. The code is the one given with
- * the latest earlier approval for that carrier: a shop's contracted return
- * code stays the same from one return to the next.
+ * the latest earlier approval for that carrier (pg_return_approval_codes()):
+ * a shop's contracted return code stays the same from one return to the next.
  *
  * @param string $delivery_carrier the delivery's carrier key, or ''
  * @param string $site_default     pg_shipping_default_carrier()
- * @param array  $previous         earlier approvals, newest first: carrier, carrier_code
+ * @param array  $previous         earlier approvals, newest first: carrier, carrier_code, labelled
  * @return array carrier, carrier_code
  */
 function pg_return_approval_defaults($delivery_carrier, $site_default, $previous)
@@ -2567,10 +2567,8 @@ function pg_return_approval_defaults($delivery_carrier, $site_default, $previous
     $code = '';
 
     if ($carrier !== '') {
-        foreach ($previous as $row) {
-            $given = pg_return_text(isset($row['carrier_code']) ? $row['carrier_code'] : '', 64);
-
-            if (($given !== '') && (strcasecmp(pg_return_carrier(isset($row['carrier']) ? $row['carrier'] : ''), $carrier) === 0)) {
+        foreach (pg_return_approval_codes($previous) as $key => $given) {
+            if (strcasecmp((string) $key, $carrier) === 0) {
                 $code = $given;
                 break;
             }
@@ -2578,6 +2576,44 @@ function pg_return_approval_defaults($delivery_carrier, $site_default, $previous
     }
 
     return array('carrier' => $carrier, 'carrier_code' => $code);
+}
+
+/**
+ * Each carrier's contracted return code: the code given with its latest
+ * earlier approval. A request that got a return label carries that label's
+ * barcode or tracking number (pg_return_create_label()), which belongs to
+ * that one parcel and is never handed to another customer, so such a row
+ * gives no code. Pure.
+ *
+ * @param array $previous earlier approvals, newest first: carrier, carrier_code, labelled
+ * @return array carrier => code, newest carrier first
+ */
+function pg_return_approval_codes($previous)
+{
+    $codes = array();
+
+    foreach (is_array($previous) ? $previous : array() as $row) {
+        if (!is_array($row) || !empty($row['labelled'])) {
+            continue;
+        }
+
+        $carrier = pg_return_carrier(isset($row['carrier']) ? $row['carrier'] : '');
+        $given = pg_return_text(isset($row['carrier_code']) ? $row['carrier_code'] : '', 64);
+
+        if (($carrier === '') || ($given === '')) {
+            continue;
+        }
+
+        foreach (array_keys($codes) as $key) {
+            if (strcasecmp((string) $key, $carrier) === 0) {
+                continue 2;
+            }
+        }
+
+        $codes[$carrier] = $given;
+    }
+
+    return $codes;
 }
 
 /**
@@ -2604,21 +2640,41 @@ function pg_return_suggested_approval($return, $state = null)
         }
     }
 
-    $previous = db_items(
-        "SELECT carrier, carrier_code
+    return pg_return_approval_defaults(
+        $delivery_carrier,
+        function_exists('pg_shipping_default_carrier') ? pg_shipping_default_carrier() : '',
+        pg_return_previous_approvals($return['id']));
+}
+
+/**
+ * The shop's latest approvals before a return, newest first, for
+ * pg_return_approval_defaults() and pg_return_approval_codes(): labelled is
+ * 1 when the request has a return label of its own, whose code is that
+ * parcel's barcode.
+ *
+ * @param int $return_id the return to leave out
+ * @return array carrier, carrier_code, labelled
+ */
+function pg_return_previous_approvals($return_id)
+{
+    $labelled = "'0'";
+
+    if (function_exists('pg_shipment_labels_ready') && pg_shipment_labels_ready() && pg_shipment_labels_link_returns()) {
+        $labelled = "(EXISTS (SELECT 1 FROM shipment_labels WHERE shipment_labels.order_return_id = order_returns.id))";
+    }
+
+    $rows = db_items(
+        "SELECT carrier, carrier_code, " . $labelled . " AS labelled
         FROM order_returns
         WHERE
-            (id != '" . (int) $return['id'] . "')
+            (id != '" . (int) $return_id . "')
             AND (decided_at > 0)
             AND (status != 'rejected')
             AND (carrier != '')
         ORDER BY decided_at DESC, id DESC
         LIMIT 20");
 
-    return pg_return_approval_defaults(
-        $delivery_carrier,
-        function_exists('pg_shipping_default_carrier') ? pg_shipping_default_carrier() : '',
-        $previous);
+    return is_array($rows) ? $rows : array();
 }
 
 /**
@@ -2703,24 +2759,29 @@ function pg_return_audit_create_fields($row)
  * @param int    $return_id
  * @param string $to
  * @param array  $options note, carrier, carrier_code, tracking_number,
- *                        status_was (as pg_return_move() takes them)
+ *                        status_was (as pg_return_move() takes them);
+ *                        log_user, the name the activity log line carries
+ *                        ('' is the signed-in person, as on the panel)
  * @param int    $user_id the person making the move
- * @return array ok, error, return (the row as it is now), mailed
+ * @return array ok, error, code (note_required, busy, changed; '' when ok),
+ *               return (the row as it is now), mailed
  */
 function pg_return_staff_move($return_id, $to, $options = array(), $user_id = 0)
 {
     $options = is_array($options) ? $options : array();
     $to = pg_return_status($to);
+    $log_user = isset($options['log_user']) ? (string) $options['log_user'] : '';
+    unset($options['log_user']);
 
     if (($to === 'rejected') && (pg_return_text(isset($options['note']) ? $options['note'] : '', PG_RETURN_NOTE_MAX) === '')) {
-        return array('ok' => false, 'error' => lang('Tell the customer why the return is rejected.'), 'return' => null, 'mailed' => false);
+        return array('ok' => false, 'error' => lang('Tell the customer why the return is rejected.'), 'code' => 'note_required', 'return' => null, 'mailed' => false);
     }
 
     $before = pg_returns_ready() ? db_item("SELECT * FROM order_returns WHERE id = '" . (int) $return_id . "'") : null;
     $lock = $before ? pg_return_lock_name($before['order_id']) : '';
 
     if (($lock !== '') && ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 5)") !== 1)) {
-        return array('ok' => false, 'error' => lang('Another return is being saved for this order. Try again in a moment.'), 'return' => null, 'mailed' => false);
+        return array('ok' => false, 'error' => lang('Another return is being saved for this order. Try again in a moment.'), 'code' => 'busy', 'return' => null, 'mailed' => false);
     }
 
     if ($lock !== '') {
@@ -2735,7 +2796,7 @@ function pg_return_staff_move($return_id, $to, $options = array(), $user_id = 0)
     }
 
     if (!$moved['ok']) {
-        return array('ok' => false, 'error' => $moved['error'], 'return' => null, 'mailed' => false);
+        return array('ok' => false, 'error' => $moved['error'], 'code' => 'changed', 'return' => null, 'mailed' => false);
     }
 
     // Announced once the lock is let go, as pg_return_move() would have.
@@ -2757,26 +2818,26 @@ function pg_return_staff_move($return_id, $to, $options = array(), $user_id = 0)
 
     switch ($to) {
         case 'approved':
-            log_activity(lang(array('string' => 'Return request {var:1} of order {var:2} was approved.', 'vars' => $vars)));
+            log_activity(lang(array('string' => 'Return request {var:1} of order {var:2} was approved.', 'vars' => $vars)), $log_user);
             break;
         case 'rejected':
-            log_activity(lang(array('string' => 'Return request {var:1} of order {var:2} was rejected.', 'vars' => $vars)));
+            log_activity(lang(array('string' => 'Return request {var:1} of order {var:2} was rejected.', 'vars' => $vars)), $log_user);
             break;
         case 'shipped':
-            log_activity(lang(array('string' => 'Return request {var:1} of order {var:2} was recorded as sent back.', 'vars' => $vars)));
+            log_activity(lang(array('string' => 'Return request {var:1} of order {var:2} was recorded as sent back.', 'vars' => $vars)), $log_user);
             break;
         case 'received':
-            log_activity(lang(array('string' => 'The goods of return request {var:1} of order {var:2} were received.', 'vars' => $vars)));
+            log_activity(lang(array('string' => 'The goods of return request {var:1} of order {var:2} were received.', 'vars' => $vars)), $log_user);
             break;
         case 'closed':
-            log_activity(lang(array('string' => 'Return request {var:1} of order {var:2} was closed.', 'vars' => $vars)));
+            log_activity(lang(array('string' => 'Return request {var:1} of order {var:2} was closed.', 'vars' => $vars)), $log_user);
             break;
     }
 
     // The move stands whatever happens to the mail.
     $mailed = in_array($to, array('approved', 'rejected'), true) ? pg_return_send_decision_mail($after['id']) : false;
 
-    return array('ok' => true, 'error' => '', 'return' => $after, 'mailed' => $mailed);
+    return array('ok' => true, 'error' => '', 'code' => '', 'return' => $after, 'mailed' => $mailed);
 }
 
 /**
@@ -3830,25 +3891,31 @@ function pg_return_refund_plan($return)
  *
  * @param int   $return_id
  * @param array $options amount (minor units), method (driver or manual),
- *                       reference (of a manual refund)
+ *                       reference (of a manual refund), log_user (the name
+ *                       the activity log lines carry; '' is the signed-in
+ *                       person, as on the panel)
  * @param int   $user_id
- * @return array ok, error, amount, method, mailed, erp (pg_return_refund_plan()'s),
+ * @return array ok, error, code (why it was refused: not_installed,
+ *               not_found, busy, not_received, no_driver, amount,
+ *               amount_exceeds, changed, refused, unclear; '' when ok),
+ *               amount, method, mailed, erp (pg_return_refund_plan()'s),
  *               unclear (the driver's answer did not say; ok is false)
  */
 function pg_return_refund($return_id, $options, $user_id = 0)
 {
-    $fail = function ($error) {
-        return array('ok' => false, 'error' => $error, 'amount' => 0, 'method' => '', 'mailed' => false, 'erp' => null, 'unclear' => false);
+    $fail = function ($error, $code) {
+        return array('ok' => false, 'error' => $error, 'code' => $code, 'amount' => 0, 'method' => '', 'mailed' => false, 'erp' => null, 'unclear' => false);
     };
+    $log_user = (is_array($options) && isset($options['log_user'])) ? (string) $options['log_user'] : '';
 
     if (!pg_returns_ready() || !pg_schema_has('order_refunds', 'notes') || !pg_schema_has('orders', 'refunded_amount')) {
-        return $fail(lang('Returns are not installed yet: the database has to be updated first.'));
+        return $fail(lang('Returns are not installed yet: the database has to be updated first.'), 'not_installed');
     }
 
     $return = pg_return_load($return_id);
 
     if (!$return) {
-        return $fail(lang('The return could not be found.'));
+        return $fail(lang('The return could not be found.'), 'not_found');
     }
 
     $options = is_array($options) ? $options : array();
@@ -3857,7 +3924,7 @@ function pg_return_refund($return_id, $options, $user_id = 0)
     $lock = pg_return_lock_name($return['order_id']);
 
     if ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 5)") !== 1) {
-        return $fail(lang('Another return is being saved for this order. Try again in a moment.'));
+        return $fail(lang('Another return is being saved for this order. Try again in a moment.'), 'busy');
     }
 
     $release = function () use ($lock) {
@@ -3870,7 +3937,7 @@ function pg_return_refund($return_id, $options, $user_id = 0)
     if (!$return || ((string) $return['status'] !== 'received')) {
         $release();
 
-        return $fail(lang('Only a return whose goods are back can be refunded.'));
+        return $fail(lang('Only a return whose goods are back can be refunded.'), 'not_received');
     }
 
     $plan = pg_return_refund_plan($return);
@@ -3878,25 +3945,25 @@ function pg_return_refund($return_id, $options, $user_id = 0)
     if ($plan === null) {
         $release();
 
-        return $fail(lang('The order could not be found.'));
+        return $fail(lang('The order could not be found.'), 'not_found');
     }
 
     if (($method === 'driver') && ($plan['driver'] === '')) {
         $release();
 
-        return $fail(lang('The payment of this order cannot be refunded from here. Refund it another way and record it.'));
+        return $fail(lang('The payment of this order cannot be refunded from here. Refund it another way and record it.'), 'no_driver');
     }
 
     if (($amount < 0) || (($method === 'driver') && ($amount === 0))) {
         $release();
 
-        return $fail(lang('The refund amount must be greater than 0.'));
+        return $fail(lang('The refund amount must be greater than 0.'), 'amount');
     }
 
     if ($amount > $plan['remaining']) {
         $release();
 
-        return $fail(lang('The refund amount exceeds the remaining refundable amount.'));
+        return $fail(lang('The refund amount exceeds the remaining refundable amount.'), 'amount_exceeds');
     }
 
     $before = db_item("SELECT * FROM order_returns WHERE id = '" . (int) $return['id'] . "'");
@@ -3905,7 +3972,7 @@ function pg_return_refund($return_id, $options, $user_id = 0)
     if (!$moved['ok']) {
         $release();
 
-        return $fail($moved['error']);
+        return $fail($moved['error'], 'changed');
     }
 
     $reference = pg_return_text(isset($options['reference']) ? $options['reference'] : '', 255);
@@ -3939,7 +4006,7 @@ function pg_return_refund($return_id, $options, $user_id = 0)
         $answer = pg_payment_call($plan['driver'], 'refund', array($order_row, $amount, $order_lines));
 
         foreach ($answer['log'] as $line) {
-            log_activity($line);
+            log_activity($line, $log_user);
         }
 
         list($service_words, $service_detail) = pg_return_refund_service_words($answer);
@@ -3950,7 +4017,7 @@ function pg_return_refund($return_id, $options, $user_id = 0)
             // did, the operator finishes it on its own screen.
             $unclear = pg_return_refund_unclear_lines($return['id'], $plan['order']['order_number'], $amount, $plan['driver_label'], $service_words, $service_detail);
 
-            log_activity($unclear['log']);
+            log_activity($unclear['log'], $log_user);
         } elseif (!$answer['success']) {
             db("UPDATE order_returns SET status = 'received', refunded_at = 0"
                 . ($kept ? ", refund_amount = 0, refund_method = '', refund_reference = '', refund_unclear = 0" : "") . "
@@ -3958,9 +4025,9 @@ function pg_return_refund($return_id, $options, $user_id = 0)
 
             $release();
 
-            log_activity(pg_return_refund_refused_line($return['id'], $plan['order']['order_number'], $amount, $plan['driver_label'], ($service_detail !== '') ? $service_detail : (string) $answer['error']));
+            log_activity(pg_return_refund_refused_line($return['id'], $plan['order']['order_number'], $amount, $plan['driver_label'], ($service_detail !== '') ? $service_detail : (string) $answer['error']), $log_user);
 
-            return $fail(((string) $answer['error'] !== '') ? (string) $answer['error'] : lang('The refund could not be made.'));
+            return $fail(((string) $answer['error'] !== '') ? (string) $answer['error'] : lang('The refund could not be made.'), 'refused');
         } else {
             $reference = pg_return_text((string) $answer['refund_reference'], 255);
         }
@@ -4029,6 +4096,7 @@ function pg_return_refund($return_id, $options, $user_id = 0)
         return array(
             'ok'      => false,
             'error'   => $unclear['error'],
+            'code'    => 'unclear',
             'amount'  => $amount,
             'method'  => $method,
             'mailed'  => false,
@@ -4041,11 +4109,12 @@ function pg_return_refund($return_id, $options, $user_id = 0)
 
     log_activity(($method === 'driver')
         ? lang(array('string' => 'Return request {var:1} of order {var:2} was refunded: {var:3}.', 'vars' => $vars))
-        : lang(array('string' => 'Return request {var:1} of order {var:2} was recorded as refunded another way: {var:3}.', 'vars' => $vars)));
+        : lang(array('string' => 'Return request {var:1} of order {var:2} was recorded as refunded another way: {var:3}.', 'vars' => $vars)), $log_user);
 
     return array(
         'ok'     => true,
         'error'  => '',
+        'code'   => '',
         'amount' => $amount,
         'method' => $method,
         'mailed' => ($amount > 0) ? pg_return_send_refund_mail($return['id'], $amount, $method) : false,

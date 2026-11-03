@@ -8,7 +8,7 @@ description: Plan (owner 2026-11-02): eight small independent features: address 
 - Global, as every plan of the review: nothing here is built around one country; the EU VAT step applies only to sites that sell into the EU and changes nothing elsewhere.
 
 ## Which steps, in one line each?
-1. SF1 Address autocomplete: a provider driver (Google Places, Mapbox, Photon) behind a site endpoint, filling the address boxes of checkout, the account's address book and the panel forms; the key never reaches the browser. `commerce/address-labels-by-country.md` is the base; `plans/address-fields-by-country.md` left it out on purpose.
+1. SF1 Address autocomplete: a provider driver (Google Places, Mapbox, Photon) behind a site endpoint, filling the address boxes of checkout, the account's address book and the panel forms; the key never reaches the browser. `commerce/address-labels-by-country.md` is the base; the place lists (`commerce/place-packs.md`) left it out on purpose.
 2. SF2 Accessibility statement: a system widget that writes the statement the EU Accessibility Act and EN 301 549 ask for from the nightly report (`platform/accessibility-report.md`) and a settings card.
 3. SF3 Site search tuning: a daily rollup of search terms and zero-result searches (today only `visitors.site_search_terms` on the visit, `visitors/site-search-terms-on-visit.md`), synonyms and promoted results, a Visitors section.
 4. SF4 Product questions: a question-and-answer thread on product pages on the comments system (`designer/comments-widget-product-page.md`), the staff answer marked, the asker mailed.

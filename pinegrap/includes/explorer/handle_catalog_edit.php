@@ -333,9 +333,12 @@ function pg_explorer_handle_catalog_access_get($type, $request, $user)
                 manage_ecommerce_reports,
                 user_set_offline_payment
             FROM user
-            WHERE user_role = '3'
+            WHERE (user_role = '3')
+                AND ((user_manage_ecommerce = 'yes') OR (manage_ecommerce_reports = '1') OR (user_set_offline_payment = '1'))
             ORDER BY user_username");
 
+        // Only the users who hold a commerce right: customers and members are
+        // role 3 too, so the others are found through the Add a user box.
         foreach ((array) $rows as $row) {
 
             $response['users'][] = array(

@@ -6,13 +6,14 @@ description: The Workspace's first page, Today (?view=home, was Overview): the g
 ## What is the page called, and where is it?
 - "Today" ("Bugün"): the `home` place of `ws_nav_groups()` and `t('home')` in its header (#4196, owner #4192). The address stays `workspace.php?view=home` and every link to it works; the code keeps the name `home` (`showHome()`, `drawHome()`, `ws_home()` in includes/workspace/home.php).
 - The header holds the name alone; the day stands over the greeting.
+- The panel heading above the screen follows the view: `ws_channels_screen_headings()` (home.php), drawn by workspace.php for `?view=home`, swapped by `screenHeading()` in workspace.js on each view. Help stays `workspace#channels` (#5191).
 
 ## What does it show, in which order?
 - The greeting, only here: the day, "Good evening, Name" (`ws_home_greeting()`, by the hour), the count line, the ways to start (new channel, new private channel, a guest conversation where allowed).
 - Three cards: Waiting for you, Today and overdue, Calendar · today. Then two: What happened in the channels, Latest decisions. Then Channels you could join and What is the Workspace? (open for a newcomer). Cards share one look (`.ws-home-card`) and sit in auto-fit grids; the two-column one is `minmax(min(22rem, 100%), 1fr)` so a 360 px phone does not scroll sideways (#4296).
 
 ## What does the count line say?
-- `ws_home_lead()`: unread messages and mentions of the joined channels (the sidebar's counts), approval requests and read receipts waiting, tasks due today or before, each a part ("7 new messages", "1 mention" …), or "Everything is read and nothing is due today." The page joins the parts with dots and lets each wrap whole.
+- `ws_home_lead()`: unread messages and mentions of the joined channels (the sidebar's counts), approval requests and read receipts waiting, tasks due today or before, each a part ("7 new messages", "1 mention" …), or "Everything is read and nothing is due today." The page joins the parts with dots and lets each wrap whole. `ws_home_lead_capitalised()` upper-cases the line's first letter (the Turkish due part starts with a word, #5191).
 
 ## What is in each card?
 - Waiting for you: approvals (`ws_approvals_waiting()`) and read receipts (`ws_acks_waiting()`) drawn by their own files (`homeRows()` of workspace_approvals.js and workspace_acks.js: "Name asks for your approval"), then replies and mentions (`ws_home_talk()`), the unread marked; read ones only while the card has fewer than five rows. Its count, in the accent, is what is unread or asked; a sign sits in a box the size of a face so every row's text starts at one line.
@@ -22,5 +23,5 @@ description: The Workspace's first page, Today (?view=home, was Overview): the g
 - Latest decisions: the timeline's last five.
 
 ## Why?
-- Owner (2026-10-31, `workflow/decisions-made-workspace-5.md`): the drawn design; the name Today because the page leads with today's greeting, tasks and calendar. The old count line "Waiting for you: 0" contradicted the card under it; the new one counts what is new.
+- Owner (2026-10-31, `workflow/decisions-made-workspace-5.md`): the drawn design; the name Today because the page leads with today's greeting, tasks and calendar. The old line "Waiting for you: 0" contradicted the card under it.
 - Tests: `tests/workspace_overview_test.php`.

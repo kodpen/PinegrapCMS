@@ -194,7 +194,7 @@ function test_csv_export_orders_guard_shopper_typed_text()
 	// Card numbers, money and ids stay untouched: the shared quote loops run
 	// before card decryption and the money columns.
 	pg_assert_same(0, substr_count($source, 'pg_csv_formula_guard($value)'), 'the shared per-row loops add no guard');
-	pg_assert_true(strpos($source, "'\"#' . \$card_number . '\",'") !== false, 'the card number cell is unchanged');
+	pg_assert_true(strpos($source, "'\"' . pg_order_export_card_cell(\$card_number) . '\",'") !== false, 'the card number cell is unguarded (# + number, or empty)');
 	pg_assert_true(strpos($source, "'\"' . \$order['order_number'] . '\",'") !== false, 'the order number cell is unchanged');
 }
 

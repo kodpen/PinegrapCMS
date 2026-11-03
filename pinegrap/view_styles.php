@@ -24,6 +24,9 @@ $output_rows = '';
 $user = validate_user();
 validate_area_access($user, 'designer');
 
+// The translated Layout Type column (pg_style_layout_type_label()).
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/custom_style_form.php');
+
 $liveform = new liveform('view_styles');
 
 $number_of_results = 0;
@@ -126,7 +129,7 @@ foreach ($styles as $style) {
             <td class="align-middle text-center">' . pg_format_number(isset($style_usage[$style['id']]) ? $style_usage[$style['id']]['number_of_pages'] : 0, 0) . '</td>
             <td class="align-middle ">' . h($style['theme_name']) . '</td>
             <td class="align-middle text-center">' . strtoupper($style['collection']) . '</td>
-            <td class="align-middle ">' . ucwords($style['layout_type']) . '</td>
+            <td class="align-middle ">' . h(pg_style_layout_type_label($style['layout_type'])) . '</td>
             <td class="align-middle " nowrap>' . get_relative_time(array('timestamp' => $style['last_modified_timestamp'])) . '  ' . h($last_modified_username) . '</td>
         </tr>';
 }

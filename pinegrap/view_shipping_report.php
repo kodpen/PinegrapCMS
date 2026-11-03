@@ -33,14 +33,13 @@ foreach ($_REQUEST as $key => $value) {
     if (is_string($value) == TRUE) {
         $value = trim($value);
 
-        // A date or status the screen cannot use (hand-typed address such as
-        // ?start_date=x or ?status=all) counts as not given. Stored, it stayed
-        // in the session: a bad date showed "The start date is invalid" on
-        // every later visit, and an unknown status left the quantity unset.
-        if ((($key == 'start_date') || ($key == 'end_date')) && ((preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) != 1) || (validate_date($value) == false))) {
+        // The period is read as a pair below, never one date at a time.
+        if (($key == 'start_date') || ($key == 'end_date')) {
             continue;
         }
 
+        // A status the screen cannot use (hand-typed ?status=all) counts as
+        // not given: stored, it left the quantity unset on every later visit.
         if (($key == 'status') && (in_array($value, array('any', 'unshipped', 'shipped'), true) == false)) {
             continue;
         }
@@ -49,23 +48,22 @@ foreach ($_REQUEST as $key => $value) {
     }
 }
 
-// If filters are not set yet, then set defaults.
-if (isset($_SESSION['software']['ecommerce']['view_shipping_report']['start_date']) == false) {
-    $_SESSION['software']['ecommerce']['view_shipping_report']['start_date'] = date('Y-m-d');
-    $_SESSION['software']['ecommerce']['view_shipping_report']['end_date'] = date('Y-m-d', strtotime('+13 day'));
+if (isset($_SESSION['software']['ecommerce']['view_shipping_report']['status']) == false) {
     $_SESSION['software']['ecommerce']['view_shipping_report']['status'] = 'unshipped';
 }
 
-$start_date = ($_SESSION['software']['ecommerce']['view_shipping_report']['start_date'] ?? '');
-$end_date = ($_SESSION['software']['ecommerce']['view_shipping_report']['end_date'] ?? '');
+// An end before the start or an impossible date (hand-typed or shared
+// address) is not taken, so no inverted period is drawn or kept.
+list($start_date, $end_date) = pg_shipping_report_period(
+    (isset($_REQUEST['start_date']) && is_string($_REQUEST['start_date'])) ? trim($_REQUEST['start_date']) : null,
+    (isset($_REQUEST['end_date']) && is_string($_REQUEST['end_date'])) ? trim($_REQUEST['end_date']) : null,
+    $_SESSION['software']['ecommerce']['view_shipping_report']['start_date'] ?? null,
+    $_SESSION['software']['ecommerce']['view_shipping_report']['end_date'] ?? null,
+    date('Y-m-d')
+);
 
-if (validate_date(prepare_form_data_for_output($start_date, 'date')) == false) {
-    output_error(lang('The start date is invalid.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
-}
-
-if (validate_date(prepare_form_data_for_output($end_date, 'date')) == false) {
-    output_error(lang('The end date is invalid.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>');
-}
+$_SESSION['software']['ecommerce']['view_shipping_report']['start_date'] = $start_date;
+$_SESSION['software']['ecommerce']['view_shipping_report']['end_date'] = $end_date;
 
 // The period in the panel language and the site's date order ('31 Ekim
 // 2026 – 13 Kasım 2026'), like the list screens' headings.
@@ -131,7 +129,7 @@ $order_items = db_items(
     WHERE
         (order_items.ship_to_id != '0')
         $sql_status_filter
-        AND (orders.status != 'incomplete')
+        AND (orders.status IN ('complete', 'exported'))
         AND (products.id IS NOT NULL)
         AND (ship_tos.ship_date != '0000-00-00')
     ORDER BY products.name ASC");

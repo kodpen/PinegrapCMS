@@ -113,11 +113,13 @@ function test_product_group_accessible_names_group_screen_buttons_and_landmarks(
 	pg_assert_false(strpos($edit, 'material-icons" onclick="convert_product_group_to_product_form') !== false, 'Modify Selected named by its ligature');
 	// The bar is drawn by pg_screen_toolbar(), which names it Button Bar.
 	pg_assert_contains('pg_screen_toolbar(', $edit);
-	pg_assert_contains('aria-label="\' . h(lang(\'data edit buttons\')) . \'"', $edit);
+	// The save bar landmark is drawn by pg_product_group_form_layout().
+	pg_assert_contains('pg_product_group_form_layout(array(', $edit);
 	pg_assert_false(strpos($edit, 'aria-label="data edit buttons ') !== false, 'literal English landmark');
 
 	$add = product_group_accessible_names_source('add_product_group.php');
-	pg_assert_contains('aria-label="\' . h(lang(\'data edit buttons\')) . \'"', $add);
+	pg_assert_contains('pg_product_group_form_layout(array(', $add);
+	pg_assert_contains('aria-label="\' . h(lang(\'data edit buttons\')) . \'"', product_group_accessible_names_source('includes/forms/product_group_form.php'));
 
 	$form = product_group_accessible_names_source('includes/forms/product_group_form.php');
 	pg_assert_false(strpos($form, '<label for="address_name" class="input-group-text material-icons"') !== false, 'icon label joins the Catalog Name field name');

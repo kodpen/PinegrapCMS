@@ -1921,6 +1921,11 @@ function email($properties)
             $connection = (!$smtp && (($type === 'system') || ($type === 'campaign'))) ? pg_mail_connection($type) : null;
         }
 
+        // A sending service's API (includes/fn/mail_transport.php) takes
+        // what no server or account of the message's own, and no connected
+        // account chosen for its kind, sends; 'smtp' keeps the server below.
+        $transport = (!$smtp && !$connection) ? pg_mail_transport() : 'smtp';
+
         // SMTP config
         if ($smtp) {
             $smtp_secret = pg_connect_unseal(isset($smtp['secret']) ? (string) $smtp['secret'] : '');
@@ -1939,6 +1944,9 @@ function email($properties)
             $mail->Password = (string) $smtp_secret['password'];
             $mail->Timeout = 15;
         } elseif ($connection) {
+            $mail->isSMTP();
+        } elseif ($transport !== 'smtp') {
+            // Built as for SMTP; handed to the service's API at the end.
             $mail->isSMTP();
         } elseif ($type === 'system' && defined('SYSTEM_SMTP_HOSTNAME') && SYSTEM_SMTP_HOSTNAME !== '') {
             $mail->isSMTP();
@@ -2024,6 +2032,14 @@ function email($properties)
 
         $mail->setFrom($header_from, $from_name);
         $mail->Sender = pg_mail_envelope_sender($mail, $header_from);
+
+        // VERP: a queued or campaign message to one recipient carries a
+        // signed token in its return path, so the bounce mailbox can tell
+        // whose delivery failed (includes/fn/mail_bounces.php). Not through
+        // a connected account, whose provider sets its own return path.
+        if (!$connection && !empty($properties['bounce_ref']) && function_exists('pg_mail_bounce_return_path_for')) {
+            $mail->Sender = pg_mail_bounce_envelope($mail->Sender, pg_mail_bounce_return_path_for((string) $properties['bounce_ref'], $to));
+        }
         if (!empty($header_reply_to)) {
             $mail->addReplyTo($header_reply_to);
         }
@@ -2106,8 +2122,9 @@ function email($properties)
             $mail->CharSet = 'utf-8';
         }
 
-        // DKIM
-        if (file_exists(FILE_DIRECTORY_PATH . '/dkim.key')) {
+        // DKIM. A sending service signs with the key of the domain set up
+        // with it.
+        if (($transport === 'smtp') && file_exists(FILE_DIRECTORY_PATH . '/dkim.key')) {
             $mail->DKIM_domain = (defined('DKIM_DOMAIN') && DKIM_DOMAIN) ? DKIM_DOMAIN : substr(strrchr(EMAIL_ADDRESS, '@'), 1);
             $mail->DKIM_private = FILE_DIRECTORY_PATH . '/dkim.key';
             $mail->DKIM_selector = (defined('DKIM_SELECTOR') && DKIM_SELECTOR) ? DKIM_SELECTOR : 'pinegrap';
@@ -2134,6 +2151,30 @@ function email($properties)
             if ($error !== '') {
                 $mail->ErrorInfo = $error;
                 throw new Exception($error);
+            }
+
+            return true;
+        }
+
+        if ($transport !== 'smtp') {
+            $delivery = pg_mail_transport_deliver($transport, pg_mail_transport_message($mail, $type, pg_mail_transport_raw($transport)));
+
+            if (!$delivery['ok']) {
+                $permanent = $delivery['permanent'];
+                $mail->ErrorInfo = $delivery['error'];
+                throw new Exception($delivery['error']);
+            }
+
+            // The copy a caller keeps (a sent folder): the message as SMTP
+            // would have carried it. It is sent already, so a failure to
+            // build the copy only leaves it out.
+            if (!empty($properties['keep_mime'])) {
+                try {
+                    $mail->preSend();
+                    pg_mail_last_sent_mime($mail->getSentMIMEMessage());
+                } catch (Exception $e) {
+                    pg_mail_last_sent_mime('');
+                }
             }
 
             return true;

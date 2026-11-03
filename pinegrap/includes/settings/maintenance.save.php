@@ -56,6 +56,49 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
+    // ── Storage ──────────────────────────────────────────────────────────
+    // Only when the card was drawn (a site that cannot seal draws a note).
+    // Switched on, or about to be tested, the settings must be complete and
+    // the save is refused before anything is written; switched off they are
+    // kept as typed. An empty secret box keeps the saved secret. Written at
+    // the end of this module.
+    $object_storage_save = (post_value('object_storage_card') && function_exists('pg_os_settings')
+        && pg_connect_schema_ready() && pg_connect_can_seal());
+    $object_storage_new = null;
+    $object_storage_on = false;
+
+    if ($object_storage_save) {
+
+        $object_storage_now = pg_os_settings();
+        $object_storage_on = (bool) post_value('object_storage_enabled');
+
+        $object_storage_new = pg_os_normalize(array(
+            'endpoint'   => post_value('object_storage_endpoint'),
+            'region'     => post_value('object_storage_region'),
+            'bucket'     => post_value('object_storage_bucket'),
+            'prefix'     => post_value('object_storage_prefix'),
+            'path_style' => (bool) post_value('object_storage_path_style'),
+            'key_id'     => post_value('object_storage_key_id'),
+            'secret'     => post_value('object_storage_secret'),
+        ));
+
+        $object_storage_check = $object_storage_new;
+
+        if ($object_storage_check['secret'] === '') {
+            $object_storage_check['secret'] = $object_storage_now['secret'];
+        }
+
+        if ($object_storage_on || post_value('object_storage_test')) {
+            foreach (pg_os_config_errors($object_storage_check) as $object_storage_field => $object_storage_error) {
+                $liveform->mark_error($object_storage_field, $object_storage_error);
+            }
+        }
+
+        if ($liveform->check_form_errors()) {
+            return;
+        }
+    }
+
     // ── Scheduled job dispatch ───────────────────────────────────────────
     // Same fragment pattern: an install that has not run the 2026.4.2 upgrade
     // saves nothing here instead of failing the whole screen on an unknown
@@ -428,6 +471,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                 $liveform->add_notice(lang(array('string' => 'The remote backup destination refused the test file: {var:1}', 'vars' => array(h($backup_test_result['error'])))));
             }
         }
+    }
 
     if ($notify_save) {
 
@@ -484,4 +528,51 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                 : lang(array('string' => 'The test message to {var:1} was refused: {var:2}', 'vars' => array(h($notify_kept[$notify_test_id]['label']), h($notify_test['error'])))));
         }
     }
-}
+
+    // Storage: written after the rest of the category, then "Save and test"
+    // reads exactly what was stored. The outcome is a notice either way, as
+    // for the backup test.
+    if ($object_storage_new !== null) {
+
+        if (!pg_os_settings_save($object_storage_new, $object_storage_on, USER_ID)) {
+            $liveform->add_notice(lang('This site has no encryption key, so the storage settings were not saved.'));
+        } elseif (post_value('object_storage_test')) {
+
+            $object_storage_test = pg_os_test(pg_os_settings());
+            pg_os_health_test_save($object_storage_test, time());
+
+            $liveform->add_notice($object_storage_test['ok']
+                ? lang('The storage accepted, returned and deleted the test file.')
+                : lang(array('string' => 'The storage test failed: {var:1}', 'vars' => array(h($object_storage_test['message'])))));
+        }
+
+        // The Files buttons, after the settings they work with were saved.
+        // A start in either direction begins a fresh walk at once: the
+        // direction's cursor, rest and failures are cleared, so files left
+        // behind by an earlier walk are tried again. Pause and resume keep
+        // the walk where it is.
+        $object_storage_action = (string) post_value('object_storage_files_action');
+        $object_storage_value = ($object_storage_action !== '') ? pg_file_storage_mode_after(pg_config_text('object_storage_files'), $object_storage_action) : null;
+
+        if (($object_storage_value !== null) && pg_file_storage_ready() && pg_os_ready(pg_os_settings())) {
+
+            if (in_array($object_storage_action, array('move', 'back'), true)) {
+                pg_config_text_save(
+                    pg_file_move_state_key(($object_storage_action === 'back') ? 'back' : 'to'),
+                    json_encode(pg_file_move_state_normalize(array()))
+                );
+            }
+
+            pg_config_text_save('object_storage_files', $object_storage_value);
+
+            $object_storage_notices = array(
+                'move'   => lang('The files are moved to the storage by the general job, a few each run.'),
+                'back'   => lang('The files are brought back to the disk by the general job, a few each run.'),
+                'pause'  => lang('Paused. Files already moved stay where they are.'),
+                'resume' => lang('Resumed.'),
+            );
+            $liveform->add_notice($object_storage_notices[$object_storage_action]);
+        } elseif ($object_storage_action !== '') {
+            $liveform->add_notice(lang('Switch on "Use object storage" and save a complete connection before moving files.'));
+        }
+    }

@@ -233,13 +233,17 @@ if (!$_POST) {
         // if the user is a designer or above, then validate name field and prepare to update it
         if ($user['role'] <= 1) {
             pg_ad_region_form_validate_name($liveform, (string) $liveform->get_field_value('id'));
-            
-            // if there is an error, forward user back to edit ad region screen
-            if ($liveform->check_form_errors() == true) {
-                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_ad_region.php?id=' . $liveform->get_field_value('id') . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
-                exit();
-            }
-            
+        }
+
+        pg_ad_region_form_validate_behavior($liveform);
+
+        // if there is an error, forward user back to edit ad region screen
+        if ($liveform->check_form_errors() == true) {
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_ad_region.php?id=' . $liveform->get_field_value('id') . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
+            exit();
+        }
+
+        if ($user['role'] <= 1) {
             $sql_name = "name = ?,";
             $name_values = array((string) $liveform->get_field_value('name'));
             

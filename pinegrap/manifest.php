@@ -25,7 +25,15 @@ $_SESSION = array();
 include('init.php');
 header('Content-Type: application/json; charset=utf-8');
 
-$software_url = URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY;
+// A path, never a host: the manifest is fetched from the host the panel was
+// opened on, and the panel is not redirected to the hostname setting. On an
+// alias host (the bare domain beside www, an IP address) a start_url, scope or
+// shortcut on the setting's origin is cross-origin, and the browser drops it:
+// the installed panel opened on whatever page it was installed from and had
+// no shortcuts. A path resolves against the manifest's own address; the id
+// resolves to the same address as before for an install on the main host.
+// The raw path, not OUTPUT_PATH: that one is escaped for HTML, and this is JSON.
+$software_url = PATH . SOFTWARE_DIRECTORY;
 
 // The installed application carries the product name in front of the site's, so
 // that an operator holding several Pinegrap sites can tell the icons apart and

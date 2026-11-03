@@ -86,7 +86,8 @@ function test_contact_form_columns()
 	pg_assert_same(count(pg_contact_form_text_columns()) + 6, count($columns), 'text columns and the six others');
 
 	$empty = pg_contact_form_columns(array(), 1);
-	pg_assert_same('', $empty['expiration_date'], 'no expiration date');
+	pg_assert_same('0000-00-00', $empty['expiration_date'], 'no expiration date is a lifetime membership');
+	pg_assert_same('2027-12-31', pg_contact_form_columns(array('expiration_date' => '31.12.2027'), 1)['expiration_date'], 'a dotted date');
 	pg_assert_same('', $empty['file_id'], 'no file');
 }
 
@@ -161,4 +162,50 @@ function test_contact_form_screens_use_the_shared_form()
 	$add = (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_contact.php');
 	pg_assert_contains("pg_audit_record('create', 'contacts', \$contact_id);", $add, 'add: create audit line');
 	pg_assert_contains('pg_announce_contact_created($contact_id);', $add, 'add: create event');
+}
+
+// A date that is no date and a negative commission rate are refused, not
+// saved as a lifetime membership, the year 0027 or a positive rate.
+function test_contact_form_refusal()
+{
+	pg_assert_same('', pg_contact_form_refusal(array()), 'nothing posted');
+	pg_assert_same('', pg_contact_form_refusal(array('expiration_date' => '31.12.2027', 'affiliate_commission_rate' => '7,5')), 'a dotted date and a rate');
+
+	foreach (array('32/13/2027', '31/12/27', 'abc') as $bad) {
+		pg_assert_same(lang('The membership expiration date is not valid.'), pg_contact_form_refusal(array('expiration_date' => $bad)), $bad);
+	}
+
+	pg_assert_same(lang('The commission rate cannot be negative.'), pg_contact_form_refusal(array('affiliate_commission_rate' => ' -7,5')), 'a negative rate');
+}
+
+// A role 3 user keeps the contact in a group they may edit, on create and
+// on edit alike.
+function test_contact_form_keeps_a_group()
+{
+	$groups = array(array('id' => 4), array('id' => 9));
+	$may_edit = function ($id) { return $id == 9; };
+
+	pg_assert_true(pg_contact_form_keeps_a_group(array('role' => 2), $groups, array(), $may_edit), 'a manager may leave no group');
+	pg_assert_false(pg_contact_form_keeps_a_group(array('role' => 3), $groups, array(), $may_edit), 'no group checked');
+	pg_assert_false(pg_contact_form_keeps_a_group(array('role' => 3), $groups, array('contact_group_4' => '1'), $may_edit), 'only a group they may not edit');
+	pg_assert_true(pg_contact_form_keeps_a_group(array('role' => 3), $groups, array('contact_group_9' => '1'), $may_edit), 'a group they may edit');
+
+	$root = dirname(__DIR__) . '/pinegrap/';
+	pg_assert_contains('pg_contact_form_check($user, $contact_groups, $_POST);', file_get_contents($root . 'add_contact.php'), 'create checks');
+	pg_assert_contains('pg_contact_form_check($user, pg_contact_form_all_groups(), $_POST);', file_get_contents($root . 'edit_contact.php'), 'edit checks');
+}
+
+function test_contact_form_markup_fixes()
+{
+	$form = file_get_contents(dirname(__DIR__) . '/pinegrap/includes/forms/contact_form.php');
+
+	pg_assert_contains("software_image_picker({initialize:true,SingleImage:true,file_input_name:\\'file_id\\'})", $form, 'both screens post the picked picture as file_id');
+	pg_assert_contains('<textarea name="description" id="description" class="form-control" rows="6">', $form, 'a six-line notes box without type');
+	pg_assert_contains('data-inputmask-allowminus="false"', $form, 'the rate box takes no minus');
+	pg_assert_contains('pg_format_number(AFFILIATE_DEFAULT_COMMISSION_RATE, 2)', $form, 'the default rate in the panel\'s number format');
+	pg_assert_contains("lang('Job Title')", $form, 'the work title is a job title');
+	pg_assert_contains("lang('Membership Expiration Date')", $form);
+
+	$js = file_get_contents(dirname(__DIR__) . '/pinegrap/assets/js/backend.src.js');
+	pg_assert_contains('name="image_url"', $js, 'an Unsplash pick goes along as image_url');
 }

@@ -865,100 +865,63 @@ function ws_file_preview_edge($wanted)
 }
 
 /**
+ * The derivative width a preview edge is answered with: the image
+ * derivatives' fixed widths (pg_image_derivative_widths()), so a Workspace
+ * preview and a panel list share one copy. 160 and 320 take the 320 rung,
+ * 640 takes 960, 1280 takes 1440, 1920 stays.
+ *
+ * @param int $wanted the longest edge asked for
+ * @return int
+ */
+function ws_file_preview_width($wanted)
+{
+    $map = array(160 => 320, 320 => 320, 640 => 960, 1280 => 1440, 1920 => 1920);
+
+    return $map[ws_file_preview_edge($wanted)];
+}
+
+/**
  * A smaller copy of a channel's picture, for a phone that shows a channel's
  * pictures in a list before anyone opens one.
  *
- * Drawn by the same engine that optimizes and resizes the file manager's
- * pictures (pg_process_image_file()), in the picture's own format, upright
- * (the EXIF turn is applied) and without its metadata. The copy is kept in
- * data/temp under a name made of the stored file's name, its size, its time
- * and the edge, so a file replaced under the same name gets a new copy and
- * the old one is never served for it. Copies older than thirty days are swept
- * now and then, and drawn again when asked for.
+ * The image derivative of the stored file (pg_image_derivative(), keyed by
+ * its files id), in the picture's own format, upright and without its
+ * metadata: the same cache, signature, encode slots and daily sweep as the
+ * pictures get_file.php sends, so a file replaced under the same name gets a
+ * new copy and a deleted file's copies go with the sweep. The caller has made
+ * the Workspace access checks.
  *
- * Null - send the picture as it is - when it is no larger than the edge
- * already, when it cannot be drawn smaller here (an animated GIF, PNG or
- * WebP, a format the image library does not read, no image library, not
- * enough memory) or when the copy cannot be kept.
+ * Null - send the picture as it is - when it is no wider than the copy would
+ * be, when it cannot be drawn smaller here (an animated picture, a format the
+ * image library does not read, no image library, not enough memory), when
+ * every encode slot is taken or when the copy cannot be kept.
  *
- * @param string $path   the stored file
- * @param int    $wanted the longest edge asked for
+ * @param string $path    the stored file
+ * @param int    $wanted  the longest edge asked for
+ * @param int    $file_id the stored file's files id
  * @return array|null path, mime
  */
-function ws_file_preview($path, $wanted)
+function ws_file_preview($path, $wanted, $file_id)
 {
-    $edge = ws_file_preview_edge($wanted);
-    $size = @getimagesize($path);
-
-    if (!$size || empty($size[0]) || empty($size[1]) || (max((int) $size[0], (int) $size[1]) <= $edge)) {
+    if (((int) $file_id < 1) || !function_exists('pg_image_derivative')) {
         return null;
     }
 
-    // The copy is written in the format the picture was read as, which is
-    // what its bytes are rather than what its name says.
-    $mime = image_type_to_mime_type((int) $size[2]);
+    $preview = pg_image_derivative((int) $file_id, $path, array('width' => ws_file_preview_width($wanted), 'format' => ''), pg_image_derivative_directory(), pg_image_delivery());
+
+    if (($preview['status'] !== 'derivative') || !is_file($preview['path'])) {
+        return null;
+    }
+
+    // The copy's bytes, not its name, say what it is.
+    $size = @getimagesize($preview['path']);
+    $mime = $size ? image_type_to_mime_type((int) $size[2]) : '';
 
     if (strpos($mime, 'image/') !== 0) {
         return null;
     }
 
-    clearstatcache(true, $path);
-
-    $directory = PG_FUNCTIONS_DIR . '/data/temp/workspace_previews';
-    $copy = $directory . '/' . sha1(basename($path) . '|' . (int) @filesize($path) . '|' . (int) @filemtime($path) . '|' . $edge);
-
-    if (is_file($copy)) {
-        return array('path' => $copy, 'mime' => $mime);
-    }
-
-    if (!function_exists('pg_process_image_file')) {
-        return null;
-    }
-
-    $report = pg_process_image_file($path, array('max_dimension' => $edge, 'quality' => 80, 'write' => false));
-
-    if (($report['status'] !== 'success') || empty($report['resized']) || ((string) $report['data'] === '')) {
-        return null;
-    }
-
-    if (!is_dir($directory) && !@mkdir($directory, 0755, true) && !is_dir($directory)) {
-        return null;
-    }
-
-    // Written beside its final name and moved over it, so a request that
-    // arrives while another is still writing never reads half a picture. A
-    // move refused because another request got there first and is sending
-    // its copy (Windows keeps an open file in place) still leaves a copy.
-    $temporary = $copy . '.' . (function_exists('getmypid') ? getmypid() : uniqid());
-
-    if ((@file_put_contents($temporary, $report['data']) === false) || !@rename($temporary, $copy)) {
-        @unlink($temporary);
-
-        return is_file($copy) ? array('path' => $copy, 'mime' => $mime) : null;
-    }
-
-    if (mt_rand(1, 50) === 1) {
-        ws_file_preview_sweep($directory);
-    }
-
-    return array('path' => $copy, 'mime' => $mime);
-}
-
-/**
- * Takes away the smaller copies drawn more than thirty days ago, every copy
- * of a picture since deleted among them; one still asked for is drawn again.
- *
- * @param string $directory
- */
-function ws_file_preview_sweep($directory)
-{
-    $before = time() - (30 * 86400);
-
-    foreach ((array) @glob($directory . '/*') as $file) {
-        if (is_file($file) && ((int) @filemtime($file) < $before)) {
-            @unlink($file);
-        }
-    }
+    return array('path' => $preview['path'], 'mime' => $mime);
 }
 
 /**

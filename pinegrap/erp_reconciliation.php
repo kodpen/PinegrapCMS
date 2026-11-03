@@ -100,6 +100,34 @@ $output_send_note = ($sender !== '')
     ? lang(array('string' => 'Sent from {var:1}; replies come back to the same address.', 'vars' => $sender))
     : lang('The store has no e-mail address to send from. Set one under Settings.');
 
+
+// A read-only accountant sees the preview and the PDF but not the send
+// form: validate_erp_access() refuses their POST, so the button only led
+// to an error page.
+$output_send_card = '';
+if (!(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) {
+    $output_send_card = '
+            <div class="card mb-7">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Send by e-mail') . '</div>
+                <div class="card-body">
+                    <form name="form" method="post" action="erp_reconciliation.php">
+                        ' . get_token_field() . '
+                        <input type="hidden" name="id" value="' . $account_id . '" />
+                        <input type="hidden" name="as_of" value="' . h($options['as_of']) . '" />
+                        <input type="hidden" name="from" value="' . h($options['from']) . '" />
+                        <input type="hidden" name="reply_days" value="' . (int) $options['reply_days'] . '" />
+                        <input type="hidden" name="erp_action" value="send" />
+                        <div class="mb-5">
+                            <label for="to" class="form-label">' . lang('Recipient e-mail') . '</label>
+                            ' . $liveform->output_field(array('type' => 'email', 'id' => 'to', 'name' => 'to', 'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off')) . '
+                            <div class="form-text">' . h($output_send_note) . '</div>
+                        </div>
+                        <button type="submit" name="submit_send" value="Send" class="btn btn-solid theme-success w-100"' . (($sender === '') ? ' disabled' : '') . ' data-confirm-content="' . h(lang('The letter shown in the preview will be e-mailed as a PDF to this address. Continue?')) . '"><i class="bi bi-envelope me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Send the letter') . '</span></button>
+                    </form>
+                </div>
+            </div>';
+}
+
 echo
 pg_page_shell([
     'title' => lang('Reconciliation Letter'),
@@ -167,25 +195,7 @@ pg_page_shell([
                 </div>
             </div>
 
-            <div class="card mb-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Send by e-mail') . '</div>
-                <div class="card-body">
-                    <form name="form" method="post" action="erp_reconciliation.php">
-                        ' . get_token_field() . '
-                        <input type="hidden" name="id" value="' . $account_id . '" />
-                        <input type="hidden" name="as_of" value="' . h($options['as_of']) . '" />
-                        <input type="hidden" name="from" value="' . h($options['from']) . '" />
-                        <input type="hidden" name="reply_days" value="' . (int) $options['reply_days'] . '" />
-                        <input type="hidden" name="erp_action" value="send" />
-                        <div class="mb-5">
-                            <label for="to" class="form-label">' . lang('Recipient e-mail') . '</label>
-                            ' . $liveform->output_field(array('type' => 'email', 'id' => 'to', 'name' => 'to', 'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off')) . '
-                            <div class="form-text">' . h($output_send_note) . '</div>
-                        </div>
-                        <button type="submit" name="submit_send" value="Send" class="btn btn-solid theme-success w-100"' . (($sender === '') ? ' disabled' : '') . ' data-confirm-content="' . h(lang('The letter shown in the preview will be e-mailed as a PDF to this address. Continue?')) . '"><i class="bi bi-envelope me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Send the letter') . '</span></button>
-                    </form>
-                </div>
-            </div>
+' . $output_send_card . '
 
         </div>
         <div class="col-12 lg:col-8">

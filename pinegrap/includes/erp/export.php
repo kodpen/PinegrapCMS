@@ -50,6 +50,8 @@ if (!defined('ERP_EXPORT_MAX_ROWS')) {
  * currency_map  ISO code => the code the target program uses
  * template  spreadsheet template under includes/phpexcel/templates, or ''
  * first_row the first data row of that template
+ * directions  the invoice directions the profile writes, the first one the
+ *           default; a profile without the key has no direction
  *
  * @return array  profile id => definition
  */
@@ -65,7 +67,7 @@ function erp_export_profiles()
     $parasut = array('format' => 'xlsx', 'group' => 'parasut', 'decimal' => '.', 'date' => 'd.m.Y', 'currency_map' => array('TRY' => 'TRL'), 'first_row' => 4);
 
     $profiles = array(
-        'csv_invoices' => $csv + array('entity' => 'invoices', 'label' => lang('Invoices (CSV, one row per line)'), 'file' => 'invoices'),
+        'csv_invoices' => $csv + array('entity' => 'invoices', 'label' => lang('Invoices (CSV, one row per line)'), 'file' => 'invoices', 'directions' => array('sales', 'purchase')),
         'csv_accounts' => $csv + array('entity' => 'accounts', 'label' => lang('Accounts (CSV)'), 'file' => 'accounts'),
         'csv_receipts' => $csv + array('entity' => 'receipts', 'label' => lang('Receipts and payments (CSV)'), 'file' => 'receipts'),
     );
@@ -73,7 +75,7 @@ function erp_export_profiles()
     // Paraşüt is Turkish software; its import sheets are offered to a store
     // that could use them.
     if (erp_turkish_features()) {
-        $profiles['parasut_invoices'] = $parasut + array('entity' => 'invoices', 'label' => lang('Paraşüt - sales invoices (Excel)'), 'file' => 'parasut_satis_faturalari', 'template' => 'parasut_satis_faturalari.xlsx');
+        $profiles['parasut_invoices'] = $parasut + array('entity' => 'invoices', 'label' => lang('Paraşüt - sales invoices (Excel)'), 'file' => 'parasut_satis_faturalari', 'directions' => array('sales'), 'template' => 'parasut_satis_faturalari.xlsx');
         $profiles['parasut_contacts'] = $parasut + array('entity' => 'accounts', 'label' => lang('Paraşüt - customers and suppliers (Excel)'), 'file' => 'parasut_musteri_ve_tedarikciler', 'template' => 'parasut_musteri_ve_tedarikciler.xlsx');
     }
 
@@ -239,13 +241,54 @@ function erp_export_currency($code, $profile)
 // -- fetching ---------------------------------------------------------------------
 
 /**
+ * The invoice direction a run of a profile writes: the posted one when the
+ * profile lists it, else the profile's first direction, else 'sales'. The
+ * Paraşüt sales invoice template is filled with sales invoices only; a
+ * purchase run wrote suppliers as its customers.
+ *
+ * @param array|null $profile
+ * @param mixed      $posted
+ * @return string  sales | purchase
+ */
+function erp_export_direction($profile, $posted)
+{
+    $directions = (is_array($profile) && !empty($profile['directions']) && is_array($profile['directions'])) ? $profile['directions'] : array('sales');
+
+    return in_array($posted, $directions, true) ? (string) $posted : (string) reset($directions);
+}
+
+/**
+ * Whether a posted direction is one the profile cannot write: a profile
+ * with directions refuses another one; nothing posted (a disabled
+ * selector) and a profile without a direction refuse nothing.
+ *
+ * @param array|null $profile
+ * @param mixed      $posted
+ * @return bool
+ */
+function erp_export_direction_refused($profile, $posted)
+{
+    if (!is_array($profile) || empty($profile['directions']) || !is_array($profile['directions'])) {
+        return false;
+    }
+
+    if (!is_string($posted) || ($posted === '')) {
+        return false;
+    }
+
+    return !in_array($posted, $profile['directions'], true);
+}
+
+/**
  * The filters a run is made with, cleaned.
  *
- * @param array $input  profile, from, to, direction, include_drafts,
- *                      include_passive, not_exported
+ * @param array      $input    from, to, direction, include_drafts,
+ *                             include_passive, not_exported
+ * @param array|null $profile  the profile the run writes; its directions
+ *                             bound the direction
  * @return array
  */
-function erp_export_filters($input)
+function erp_export_filters($input, $profile = null)
 {
     $date = function ($value) {
         $value = trim((string) $value);
@@ -255,7 +298,9 @@ function erp_export_filters($input)
     return array(
         'from' => $date($input['from'] ?? ''),
         'to' => $date($input['to'] ?? ''),
-        'direction' => (($input['direction'] ?? 'sales') === 'purchase') ? 'purchase' : 'sales',
+        'direction' => ($profile === null)
+            ? ((($input['direction'] ?? 'sales') === 'purchase') ? 'purchase' : 'sales')
+            : erp_export_direction($profile, $input['direction'] ?? ''),
         'include_drafts' => !empty($input['include_drafts']),
         'include_passive' => !empty($input['include_passive']),
         'not_exported' => !empty($input['not_exported']),

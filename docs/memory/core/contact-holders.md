@@ -25,7 +25,10 @@ module: contacts
 ## What about the ERP mirror?
 - `mirror` (`erp_accounts`: `contacts.erp_account_id`, as `erp_account_link_contact()` keeps it): set on the contact that stays when the account moves to it. #2591 moved the account without it, so the survivor showed no account (fixed in #2620).
 
+## Which columns does the merge read?
+- `pg_contact_merge_select()`, one list for both merge screens (`core/contact-merge-columns.md`).
+
 ## Which audit lines?
 - `core/audit-trail-contacts.md`: a delete line per merged contact, one `merge` line (#2620).
 
-Related: docs/memory/core/audit-trail-contacts.md, docs/memory/core/personal-data-erasure.md, docs/memory/workflow/decisions-made-product-11.md
+Related: docs/memory/core/contact-merge-columns.md, docs/memory/core/audit-trail-contacts.md, docs/memory/core/personal-data-erasure.md, docs/memory/workflow/decisions-made-product-11.md

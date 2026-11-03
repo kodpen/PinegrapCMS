@@ -784,27 +784,3 @@ function api_time($unix) {
 	return gmdate('Y-m-d\TH:i:s\Z', $unix);
 
 }
-
-// Accepts ISO-8601, 'YYYY-MM-DD', or a bare unix integer, and returns a unix
-// timestamp or null. Used for every date filter so they all behave alike.
-function api_time_parse($value) {
-
-	$value = trim((string)$value);
-
-	if ($value === '') {
-
-		return null;
-
-	}
-
-	if (ctype_digit($value)) {
-
-		return (int)$value;
-
-	}
-
-	$parsed = strtotime($value);
-
-	return ($parsed === false) ? null : (int)$parsed;
-
-}

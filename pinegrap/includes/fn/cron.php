@@ -252,7 +252,7 @@ function pg_cron_due_again_stamp($now, $interval, $seconds)
  * Ask for a job to be due again in $seconds rather than after its interval:
  * a resumable pass that stopped at its budget with work left. Its run is
  * moved back now, and pg_cron_dispatch_finished() keeps that instead of
- * stamping the tick. Jobs that have waited longer still go first.
+ * stamping the tick. Jobs due longer still go first.
  *
  * @param string $name Catalogue name.
  * @param int $seconds
@@ -1090,10 +1090,14 @@ function pg_cron_lane($job)
  * The job each dispatch lane would run next. Pure: no database, no files.
  *
  * A lane is a concurrency class: while any job of a lane holds an unexpired
- * lock, that lane hands out nothing. Otherwise its candidate is the due job
- * that has waited longest - the smallest last_run_at, with the catalogue order
- * deciding a tie because the comparison is strict. A job is due once its
- * interval has passed since it last finished.
+ * lock, that lane hands out nothing. Otherwise its candidate is the job that
+ * has been due longest - the smallest last_run_at plus interval, with the
+ * catalogue order deciding a tie because the comparison is strict. A job is
+ * due once its interval has passed since it last finished. Due time rather
+ * than last run, as between lanes (pg_cron_lane_choice()): a resumable daily
+ * pass that asks to come back in a minute (pg_cron_due_again()) carries a
+ * stamp almost a day old, and compared on that it beat the hourly search
+ * index on every tick until the whole pass had ended.
  *
  * The lock check covers every dispatchable job in $jobs, $allowed or not: a
  * job switched off while it runs is still running, and its lane is still
@@ -1143,7 +1147,7 @@ function pg_cron_pick($jobs, $runs, $now, $allowed = null)
             continue;
         }
 
-        $due[$lane][$name] = $last_run;
+        $due[$lane][$name] = $last_run + (int) $job['interval'];
     }
 
     $pick = array('light' => null, 'heavy' => null);
@@ -1154,13 +1158,13 @@ function pg_cron_pick($jobs, $runs, $now, $allowed = null)
             continue;
         }
 
-        $selected_run = 0;
+        $selected_due = 0;
 
-        foreach ($due[$lane] as $name => $last_run) {
+        foreach ($due[$lane] as $name => $due_at) {
 
-            if (($pick[$lane] === null) || ($last_run < $selected_run)) {
+            if (($pick[$lane] === null) || ($due_at < $selected_due)) {
                 $pick[$lane] = $name;
-                $selected_run = $last_run;
+                $selected_due = $due_at;
             }
         }
     }
@@ -1373,12 +1377,68 @@ function pg_cron_claim($name, $seconds = null)
          ON DUPLICATE KEY UPDATE
              locked_until = IF(locked_until < UNIX_TIMESTAMP(), VALUES(locked_until), locked_until)");
 
-    return mysqli_affected_rows(db::$con) >= 1;
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return false;
+    }
+
+    // The stamp just written is this run's token for pg_cron_release(). Read
+    // back at once: nobody else can change it until it expires, a minute at
+    // the least.
+    pg_cron_lock_stamp($name, (int) db_value("SELECT locked_until FROM cron_runs WHERE job_name = '" . e($name) . "'"));
+
+    return true;
 }
 
 /**
- * Give a job's lock back (pg_cron_claim()). Clearing a clear lock changes
- * nothing, so a second call does no harm.
+ * The lock stamp (cron_runs.locked_until) this request's claim of a job
+ * wrote, 0 for none. Stores it when $stamp is given; 0 forgets it.
+ *
+ * A later claim always writes a later stamp: it can only take a lock whose
+ * stamp has passed, and its own lies at least a minute ahead. So the stamp
+ * tells this run's lock from the next run's without a column of its own.
+ *
+ * @param string $name
+ * @param int|null $stamp
+ * @return int
+ */
+function pg_cron_lock_stamp($name, $stamp = null)
+{
+    static $stamps = array();
+
+    if ($stamp !== null) {
+
+        if ((int) $stamp > 0) {
+            $stamps[$name] = (int) $stamp;
+        } else {
+            unset($stamps[$name]);
+        }
+    }
+
+    return isset($stamps[$name]) ? $stamps[$name] : 0;
+}
+
+/**
+ * The statement that gives back the lock carrying $stamp, '' when there is
+ * none to give back. Pure.
+ *
+ * @param string $name
+ * @param int $stamp pg_cron_lock_stamp()
+ * @return string
+ */
+function pg_cron_release_query($name, $stamp)
+{
+    if ((int) $stamp <= 0) {
+        return '';
+    }
+
+    return "UPDATE cron_runs SET locked_until = 0 WHERE (job_name = '" . e($name) . "') AND (locked_until = " . (int) $stamp . ")";
+}
+
+/**
+ * Give back the lock this request's pg_cron_claim() took. Only that lock: a
+ * run that outlasted its lock finds the row stamped by the next run, which
+ * claimed it after expiry, and leaves it alone. Nothing claimed here, or a
+ * second call, changes nothing.
  *
  * @param string $name
  * @return void
@@ -1389,7 +1449,15 @@ function pg_cron_release($name)
         return;
     }
 
-    db("UPDATE cron_runs SET locked_until = 0 WHERE job_name = '" . e($name) . "'");
+    $query = pg_cron_release_query($name, pg_cron_lock_stamp($name));
+
+    if ($query === '') {
+        return;
+    }
+
+    db($query);
+
+    pg_cron_lock_stamp($name, 0);
 }
 
 /**
@@ -1459,25 +1527,27 @@ function pg_cron_dispatch_next_legacy()
             continue;
         }
 
-        $due[$name] = $last_run;
+        $due[$name] = $last_run + (int) $job['interval'];
     }
 
     if (!$due) {
         return '';
     }
 
-    // Longest waiting first, so a rotation forms by itself and nothing
-    // starves. Strict comparison keeps the catalogue order on a tie, which is
-    // what puts the SEO score job ahead of the structure job on a site where
-    // both were just switched on.
+    // Due longest first (last run plus interval), so a rotation forms by
+    // itself and nothing starves: compared on the last run alone, a resumable
+    // daily pass coming back every minute (pg_cron_due_again()) beat every
+    // shorter job until it had ended. Strict comparison keeps the catalogue
+    // order on a tie, which is what puts the SEO score job ahead of the
+    // structure job on a site where both were just switched on.
     $selected = '';
-    $selected_run = 0;
+    $selected_due = 0;
 
-    foreach ($due as $name => $last_run) {
+    foreach ($due as $name => $due_at) {
 
-        if (($selected === '') || ($last_run < $selected_run)) {
+        if (($selected === '') || ($due_at < $selected_due)) {
             $selected = $name;
-            $selected_run = $last_run;
+            $selected_due = $due_at;
         }
     }
 

@@ -818,7 +818,7 @@ function get_order_receipt($properties) {
                         // update grand shipping total
                         $grand_shipping += $shipping_cost;
 
-                        $shipping_description = 'Shipping Method: ' . $shipping_method_name;
+                        $shipping_description = h(lang('Shipping Method')) . ': ' . $shipping_method_name;
 
                         // get arrival date information
                         $query = "SELECT name, custom FROM arrival_dates WHERE id = ?";
@@ -828,7 +828,7 @@ function get_order_receipt($properties) {
                         if (mysqli_num_rows($result) > 0) {
                             $row = mysqli_fetch_assoc($result);
                             
-                            $shipping_description .= '; Requested Arrival Date: ';
+                            $shipping_description .= '; ' . h(lang('Requested Arrival Date')) . ': ';
                             
                             // if selected arrival date had a custom field, use actual date in description
                             if ($row['custom'] == 1) {
@@ -1385,17 +1385,17 @@ function get_order_receipt($properties) {
             ' . h($billing_country) . '<br />';
 
         if ($billing_phone_number) {
-            $output_billing_information .= 'Phone: ' . h($billing_phone_number) . '<br />';
+            $output_billing_information .= h(lang('Phone')) . ': ' . h($billing_phone_number) . '<br />';
         }
 
         if ($billing_fax_number) {
-            $output_billing_information .= 'Fax: ' . h($billing_fax_number) . '<br />';
+            $output_billing_information .= h(lang('Fax')) . ': ' . h($billing_fax_number) . '<br />';
         }
 
         $output_billing_information .= h($billing_email_address) . '<br />';
         
         if ($po_number) {
-            $output_billing_information .= 'PO Number: ' . h($po_number) . '<br />';
+            $output_billing_information .= h(lang('PO Number')) . ': ' . h($po_number) . '<br />';
         }
         
         if (ECOMMERCE_TAX_EXEMPT == true) {

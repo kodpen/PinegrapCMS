@@ -675,11 +675,19 @@ function mp_products_shop_step($account, $action, $id, $user) {
 
 	} elseif (($action === 'shop_listing_update') && mp_can($account['provider'], 'update_listings')) {
 
-		$queued = mp_matches_listing_update($account_id, $ids);
+		$queued = mp_matches_listing_update($account, $ids);
 
 		$message = $queued ? lang(array('string' => 'The changes of {var:1} listing(s) will be sent on the next run.', 'vars' => array(pg_format_number($queued, 0)))) : '';
 
-		$error = $queued ? '' : lang('Tick at least one product whose listing is approved.');
+		if ($account['status'] !== 'active') {
+
+			$error = lang('This account is paused. Nothing is sent while it is, and changes made in the meantime are not queued.');
+
+		} else {
+
+			$error = $queued ? '' : lang('Tick at least one product whose listing is approved.');
+
+		}
 
 	} else {
 
@@ -1078,9 +1086,11 @@ function mp_products_listing_step($account, $action, $id, $user) {
 
 		$answer['message'] = $done['queued']
 			? lang(array('string' => '{var:1} product(s) queued for listing. They go out on the next run.', 'vars' => array(pg_format_number($done['queued'], 0))))
-			: ($done['refused'] ? '' : lang('Already queued.'));
+			: (($done['refused'] || ($account['status'] !== 'active')) ? '' : lang('Already queued.'));
 
-		$answer['error'] = implode(' ', array_unique($done['refused']));
+		$answer['error'] = ($account['status'] !== 'active')
+			? lang('This account is paused. Nothing is sent while it is, and changes made in the meantime are not queued.')
+			: implode(' ', array_unique($done['refused']));
 
 		if ($done['queued']) {
 
@@ -1642,7 +1652,7 @@ a.mpp-title:hover { text-decoration: underline; }
 	border: 1px dashed var(--pg-border-color); border-radius: var(--pg-radius-lg); font-size: 0.78125rem; color: var(--pg-fg-2); }
 .mpp-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
 .mpp-bulk { position: sticky; bottom: 12px; z-index: 5; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
-	margin: 12px auto 0; padding: 10px 14px; max-width: 640px; border-radius: var(--pg-radius-pill);
+	margin: 12px auto 0; padding: 10px 14px; max-width: 960px; border-radius: var(--pg-radius-lg);
 	background: var(--pg-card-bg); border: 1px solid var(--pg-primary); box-shadow: var(--pg-shadow-lg); }
 .mpp-intro { max-width: 640px; margin: 0 auto; text-align: center; padding: 48px 16px; }
 .mpp-intro .bi { font-size: 2.5rem; color: var(--pg-primary); }
@@ -1712,6 +1722,11 @@ a.mpp-title:hover { text-decoration: underline; }
 	.mpp-img { width: 64px; height: 64px; flex-basis: 64px; }
 	.mpp-steps { grid-template-columns: 1fr; }
 	.mpp-hero-actions { align-items: stretch; width: 100%; }
+	/* One scrolling strip on a phone: wrapped buttons made the sticky bar
+	   cover a quarter of the screen. */
+	.mpp-bulk { bottom: 8px; flex-wrap: nowrap; gap: 6px; padding: 8px 10px; overflow-x: auto; overscroll-behavior-x: contain; }
+	.mpp-bulk > * { flex: none; white-space: nowrap; }
+	.mpp-bulk > .flex-grow-1 { display: none; }
 }
 }</style>
 
@@ -1739,7 +1754,7 @@ if ($account && ($supported || $can_listings)) {
 	}
 
 	echo '
-	<nav class="mpp-modes" aria-label="' . h(lang('View')) . '">';
+	<nav class="mpp-modes" aria-label="' . h(lang('Display')) . '">';
 
 	foreach ($modes as $key => $item) {
 
@@ -1756,8 +1771,11 @@ if ($account && ($supported || $can_listings)) {
 
 if (!$account) {
 
+	// No account asked for is not a deleted one: point to the list instead.
 	echo '
-	<div class="alert theme-warning">' . h(lang('That marketplace account no longer exists.')) . '</div>';
+	<div class="alert theme-warning">' . ($account_id
+		? h(lang('That marketplace account no longer exists.'))
+		: h(lang('Pick a marketplace account.')) . ' <a href="marketplace_settings.php">' . h(lang('Marketplaces')) . '</a>') . '</div>';
 
 } elseif ($mode === 'listings') {
 
@@ -1954,7 +1972,10 @@ if ($account) {
 			'disabled'     => lang('Disabled'),
 			'save'         => lang('Save'),
 			'cancel'       => lang('Cancel'),
-			'code'         => lang(array('string' => 'Code on {var:1}', 'vars' => array($provider_name))),
+			// A marketplace that matches by barcode asks for the barcode.
+			'code'         => mp_provider_keys_by_barcode($account['provider'])
+				? lang(array('string' => 'Barcode on {var:1}', 'vars' => array($provider_name)))
+				: lang(array('string' => 'Code on {var:1}', 'vars' => array($provider_name))),
 			'code_hint'    => lang('Left empty, its own code is used: {var:1}'),
 			'confirm_remove' => lang('Remove the match of {var:1} product(s)? Nothing is changed on the marketplace.'),
 			'category_title' => lang(array('string' => 'Category on {var:1}', 'vars' => array($provider_name))),

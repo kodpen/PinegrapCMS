@@ -34,6 +34,16 @@ if (!empty($_POST['orders'])) {
 
         case 'export_orders_for_parasut':
             //This feature is used for invoicing orders via the parasut.com application with the help of a draft excel file.
+
+            // The product VAT rate goes into every line: checked before any file is built.
+            $product_tax_rate = pg_order_parasut_tax_rate($_POST['tax_rate_for_parasut'] ?? '');
+            if ($product_tax_rate === null) {
+                $liveform_view_orders = new liveform('view_orders');
+                $liveform_view_orders->add_error(lang('The product tax rate must be a number from 0 to 100.'));
+                break;
+            }
+            $product_tax_rate_included = $_POST['tax_rate_included_for_parasut'] ?? '';
+
             /** Include PHPExcel */
             require_once dirname(__FILE__) . '/includes/phpexcel/PHPExcel.php';
 
@@ -90,6 +100,8 @@ if (!empty($_POST['orders'])) {
 
             //count orders.
             $number_of_orders = 0;
+            // Cancelled orders and open carts are not sales: left out, counted.
+            $parasut_skipped = 0;
             foreach ($_POST['orders'] as $order_id) {
                 //$objPHPExcel1 is Invoice sheet.
                 //$objPHPExcel2 is Customers sheet.
@@ -128,6 +140,11 @@ if (!empty($_POST['orders'])) {
                 AND orders.id = ?";
                 $result=db_q($query, array((string) $order_id)) or output_error('Query failed.');
                 $row = mysqli_fetch_array($result);
+                // The query reads only completed and exported orders.
+                if (!pg_order_parasut_exportable($row['status'] ?? null)) {
+                    $parasut_skipped++;
+                    continue;
+                }
                 $billing_first_name = $row['billing_first_name'];
                 $billing_last_name = $row['billing_last_name'];
                 $order_date = $row['order_date'];
@@ -165,13 +182,6 @@ if (!empty($_POST['orders'])) {
                         $identification_number = $row['contact_tax_number'];
                     }
                 }
-                $product_tax_rate = $_POST['tax_rate_for_parasut'];
-                $product_tax_rate_included = $_POST['tax_rate_included_for_parasut'] ?? '';
-                //if tax is empty than its 0
-                if($product_tax_rate == ''){
-                    $product_tax_rate = 0;
-                }
-
                 // Typed text goes in as explicit text cells: the default binder would
                 // store a value starting with '=' as a formula and '#N/A' as an error.
                 $objPHPExcel2->getActiveSheet()
@@ -368,6 +378,13 @@ if (!empty($_POST['orders'])) {
                 $number_of_orders++;
             }
 
+            // Nothing to send: no empty workbooks.
+            if ($number_of_orders === 0) {
+                $liveform_view_orders = new liveform('view_orders');
+                $liveform_view_orders->add_warning(lang(array('string'=>'{var:1} order(s) were not completed or were cancelled and skipped','vars'=>array(pg_format_number($parasut_skipped, 0)) )) );
+                break;
+            }
+
             //Generate a date for zip and file names.
             $output_date = date('Y_m_d_H_i_s',time());
             //location to use as temporary directory.
@@ -419,6 +436,18 @@ if (!empty($_POST['orders'])) {
 			}
 			// Zip archive will be created only after closing object
 			$zip->close();
+
+            // if at least one order was exported, then log activity
+            if ($number_of_orders > 0) {
+                log_activity(lang(array('string'=>'{var:1} order(s) were exported for parasut.com','vars'=>array(pg_format_number($number_of_orders, 0)) )) , $_SESSION['sessionusername']);
+            }
+            // The notice is stored before the zip is sent: nothing may follow the zip's bytes.
+            $liveform_view_orders = new liveform('view_orders');
+            $liveform_view_orders->add_notice(lang(array('string'=>'{var:1} order(s) and the information of the contact(s) they are connected to have been exported with {var:2}.zip file.','vars'=>array(pg_format_number($number_of_orders, 0),$temp_folder_name) )) );
+            if ($parasut_skipped > 0) {
+                $liveform_view_orders->add_warning(lang(array('string'=>'{var:1} order(s) were not completed or were cancelled and skipped','vars'=>array(pg_format_number($parasut_skipped, 0)) )) );
+            }
+
 			header('Content-Description: File Transfer');
 			header("Content-type: application/zip"); 
 			header("Content-Disposition: attachment; filename=$temp_folder_name.zip");
@@ -431,9 +460,8 @@ if (!empty($_POST['orders'])) {
 			}
 			fclose($handle);
 
-            //remove temps folder and everything inside it.
-			$dir = $temps_location;
-			$it = new RecursiveDirectoryIterator($dir, RecursiveDirectoryIterator::SKIP_DOTS);
+            // Remove this export's folder only: another export may be writing its own.
+			$it = new RecursiveDirectoryIterator($temps_location . $temp_folder_name, RecursiveDirectoryIterator::SKIP_DOTS);
 			$files = new RecursiveIteratorIterator($it,
 			         RecursiveIteratorIterator::CHILD_FIRST);
 			foreach($files as $file) {
@@ -443,16 +471,10 @@ if (!empty($_POST['orders'])) {
 			        unlink($file->getRealPath());
 			    }
 			}
-			rmdir($dir);
-           
+			rmdir($temps_location . $temp_folder_name);
 
-            // if at least one order was exported, then log activity
-            if ($number_of_orders > 0) {
-                log_activity(lang(array('string'=>'{var:1} order(s) were exported for parasut.com','vars'=>array(pg_format_number($number_of_orders, 0)) )) , $_SESSION['sessionusername']);
-            }
-            $liveform_view_orders = new liveform('view_orders');
-            $liveform_view_orders->add_notice(lang(array('string'=>'{var:1} order(s) and the information of the contact(s) they are connected to have been exported with {var:2}.zip file.','vars'=>array(pg_format_number($number_of_orders, 0),$temp_folder_name) )) );
-            
+            exit;
+
             break;
         // if the user selected to remove card data for orders, then do that
         case 'remove_card_data':
@@ -520,9 +542,16 @@ if (!empty($_POST['orders'])) {
             $bulk_cancelled = 0;
             $bulk_skipped_already = 0;
             $bulk_skipped_shipped = 0;
+            $bulk_skipped_incomplete = 0;
             $bulk_failed = 0;
 
             foreach ($_POST['orders'] as $order_id) {
+                // An incomplete order is a customer's open cart, not an order:
+                // the row's Cancel button is not shown for it either.
+                if ((string) db_value("SELECT status FROM orders WHERE id = '" . (int) $order_id . "'") === 'incomplete') {
+                    $bulk_skipped_incomplete++;
+                    continue;
+                }
                 $audit_before = pg_audit_fetch('orders', $order_id);
                 $res = process_order_cancellation(
                     (int) $order_id,
@@ -563,6 +592,14 @@ if (!empty($_POST['orders'])) {
                     lang(array(
                         'string' => '{var:1} order(s) were already cancelled and skipped',
                         'vars'   => array(pg_format_number($bulk_skipped_already, 0)),
+                    ))
+                );
+            }
+            if ($bulk_skipped_incomplete > 0) {
+                $liveform_view_orders->add_warning(
+                    lang(array(
+                        'string' => '{var:1} order(s) were never completed and skipped',
+                        'vars'   => array(pg_format_number($bulk_skipped_incomplete, 0)),
                     ))
                 );
             }

@@ -99,3 +99,13 @@ function test_cloudflare_page_reports_failures()
 	pg_assert_true(strpos($source, 'getCloudflareAnalytics(') === false, 'the analytics are read once, before the print');
 	pg_assert_contains("\$audit_error .= ': ' . h(", $source, 'the audit log reason is escaped');
 }
+
+// Bandwidth and cached bandwidth sit side by side in MB: the same bytes read
+// the same, so the cached share never looks larger or smaller than it is.
+function test_cloudflare_analytics_cards_use_one_megabyte()
+{
+	$totals = array('requests' => 0, 'bandwidth' => 2000000, 'uniques' => 0, 'cached_requests' => 0, 'cached_bytes' => 2000000, 'error' => '', 'uniques_error' => '');
+
+	pg_assert_same(pg_cloudflare_analytics_card($totals, 'bandwidth'), pg_cloudflare_analytics_card($totals, 'cached_bytes'), 'same bytes, same text');
+	pg_assert_contains('2', pg_cloudflare_analytics_card($totals, 'cached_bytes'), 'two million bytes are 2 MB');
+}

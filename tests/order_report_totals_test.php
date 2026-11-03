@@ -112,3 +112,32 @@ function test_order_report_charge_columns_only_when_non_zero()
 	$grand['installment_charges'] = 3600;
 	pg_assert_same(array('surcharge', 'installment_charges'), pg_order_report_charge_columns($grand), 'the charges that hold money, in column order');
 }
+
+function test_order_report_first_row_opens_a_group_even_when_its_name_is_empty()
+{
+	pg_assert_same(true, pg_order_report_new_group('', null), 'the first row opens a group with no name');
+	pg_assert_same(true, pg_order_report_new_group('Ankara', null), 'the first row opens a named group');
+	pg_assert_same(false, pg_order_report_new_group('', ''), 'a second empty name stays in the group');
+	pg_assert_same(false, pg_order_report_new_group('ANKARA', 'ankara'), 'names compare without case');
+	pg_assert_same(true, pg_order_report_new_group('Bursa', 'Ankara'), 'a new name opens a group');
+}
+
+function test_order_report_new_report_leaves_out_carts_and_cancelled_orders()
+{
+	$filters = pg_order_report_default_filters();
+
+	pg_assert_same(2, count($filters), 'two default filters');
+	pg_assert_same(array('field' => 'order_status', 'operator' => 'is not equal to', 'value' => 'incomplete'), $filters[0], 'carts are left out');
+	pg_assert_same(array('field' => 'order_status', 'operator' => 'is not equal to', 'value' => 'cancelled'), $filters[1], 'cancelled orders are left out');
+}
+
+function test_order_report_days_ago_takes_only_a_whole_number()
+{
+	pg_assert_same(true, pg_order_report_days_ago_valid('5'), 'a whole number');
+	pg_assert_same(true, pg_order_report_days_ago_valid('0'), 'zero is today');
+	pg_assert_same(true, pg_order_report_days_ago_valid(''), 'empty is today');
+	pg_assert_same(false, pg_order_report_days_ago_valid('-5'), 'a negative number');
+	pg_assert_same(false, pg_order_report_days_ago_valid('abc'), 'not a number');
+	pg_assert_same(false, pg_order_report_days_ago_valid('2.5'), 'not a whole number');
+	pg_assert_same(false, pg_order_report_days_ago_valid('99999999999'), 'more than the column holds');
+}

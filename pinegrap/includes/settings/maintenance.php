@@ -505,6 +505,160 @@ $pg_settings_cards[] = '
         </div>
     </div>';
 
+// ── Storage ──
+//
+// The S3-compatible object store (includes/fn/object_storage.php): any
+// service that speaks the S3 API, named by its endpoint. Kept in one sealed
+// connect_apps entry, so the save module writes it only when this card was
+// drawn (object_storage_card). The secret is drawn empty; an empty box keeps
+// it. "Save and test" saves first, then writes, reads and deletes one small
+// file.
+if (!$object_storage_ready) {
+
+    $output_object_storage_settings = '
+                    <div class="col-12"><div class="alert theme-secondary mb-0">' . lang('The storage keeps its secret key encrypted, which needs the site\'s encryption key and the connected accounts tables. Run the upgrade, and check that the encryption key is set.') . '</div></div>';
+
+} else {
+
+    // The last "Save and test" result, kept until the next test.
+    $object_storage_last_test = function_exists('pg_os_health_test_last') ? pg_os_health_test_last() : null;
+    $output_object_storage_last_test = '';
+
+    if ($object_storage_last_test) {
+        $object_storage_last_when = get_relative_time(array('timestamp' => $object_storage_last_test['at'], 'format' => 'plain_text'));
+        $output_object_storage_last_test = '
+                        <div class="form-text ' . ($object_storage_last_test['ok'] ? 'fg-success' : 'fg-danger') . '">' . ($object_storage_last_test['ok']
+            ? h(lang(array('string' => 'Last test {var:1}: passed.', 'vars' => array($object_storage_last_when))))
+            : h(lang(array('string' => 'Last test {var:1}: failed. {var:2}', 'vars' => array($object_storage_last_when, $object_storage_last_test['message']))))) . '</div>';
+    }
+
+    // Uploaded files (includes/fn/file_storage.php): where they are now, the
+    // walk the general job is on and its failures, and the buttons that start,
+    // pause, resume or turn it round. Only with the storage columns and a
+    // saved store that is switched on: before that nothing could move.
+    $output_object_storage_files = '';
+
+    if (function_exists('pg_file_storage_ready') && pg_file_storage_ready() && pg_os_ready($object_storage)) {
+
+        $object_storage_switch = pg_config_text('object_storage_files');
+        $object_storage_mode = pg_file_storage_mode($object_storage_switch);
+        $object_storage_usage = pg_file_storage_usage();
+
+        $object_storage_status = lang('Files stay on the disk.');
+
+        if ($object_storage_mode['direction'] === 'to') {
+            $object_storage_status = $object_storage_mode['paused'] ? lang('Moving files to the storage is paused.') : lang('Files are being moved to the storage a few at a time; new uploads follow.');
+        } elseif ($object_storage_mode['direction'] === 'back') {
+            $object_storage_status = $object_storage_mode['paused'] ? lang('Bringing files back is paused.') : lang('Files are being brought back to the disk a few at a time; new uploads stay on the disk.');
+        }
+
+        $object_storage_failed = '';
+
+        if ($object_storage_mode['direction'] !== '') {
+            $object_storage_failures = pg_os_health_move_failures(
+                pg_file_move_state_normalize(json_decode((string) pg_config_text(pg_file_move_state_key($object_storage_mode['direction'])), true)),
+                pg_file_move_attempts()
+            );
+
+            if ($object_storage_failures['failing'] + $object_storage_failures['given_up'] > 0) {
+                $object_storage_failed = '
+                        <div class="form-text fg-warning">' . h(lang(array(
+                    'string' => 'Failed: {var:1} being retried, {var:2} left where they are after three attempts (named in the Site Log).',
+                    'vars'   => array(pg_format_number($object_storage_failures['failing'], 0), pg_format_number($object_storage_failures['given_up'], 0)),
+                ))) . '</div>';
+            }
+        }
+
+        $object_storage_buttons = array(
+            'move'   => array('bi-cloud-arrow-up', lang('Move existing files')),
+            'back'   => array('bi-cloud-arrow-down', lang('Bring back')),
+            'pause'  => array('bi-pause-fill', lang('Pause')),
+            'resume' => array('bi-play-fill', lang('Resume')),
+        );
+        $output_object_storage_buttons = '';
+
+        foreach (pg_file_storage_actions($object_storage_switch) as $object_storage_action) {
+            $output_object_storage_buttons .= '
+                        <button type="submit" name="object_storage_files_action" value="' . $object_storage_action . '" class="btn btn-sm btn-outline theme-secondary me-2"><i class="bi ' . $object_storage_buttons[$object_storage_action][0] . ' me-1" aria-hidden="true"></i>' . h($object_storage_buttons[$object_storage_action][1]) . '</button>';
+        }
+
+        $output_object_storage_files = '
+                    <div class="col-12">
+                        <div class="form-label">' . lang('Uploaded files') . '</div>
+                        <div>' . h(lang(array(
+            'string' => 'On the disk: {var:1} files ({var:2}). In the storage: {var:3} files ({var:4}).',
+            'vars'   => array(
+                pg_format_number($object_storage_usage['local_files'], 0),
+                convert_bytes_to_string($object_storage_usage['local_bytes'], 1),
+                pg_format_number($object_storage_usage['stored_files'], 0),
+                convert_bytes_to_string($object_storage_usage['stored_bytes'], 1),
+            ),
+        ))) . '</div>
+                        <div class="form-text">' . h($object_storage_status) . ' ' . lang('Design and theme files, style sheets and scripts always stay on the disk.') . '</div>' . $object_storage_failed . '
+                        <div class="mt-3">' . $output_object_storage_buttons . '
+                        </div>
+                    </div>';
+    }
+
+    $output_object_storage_settings = '
+                    <input type="hidden" name="object_storage_card" value="1"/>
+                    <div class="col-12">
+                        <div class="form-field">
+                            <div class="switch"><input value="1"' . ($object_storage['enabled'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="object_storage_enabled" name="object_storage_enabled"/></div>
+                            <label class="" for="object_storage_enabled">' . lang('Use object storage') . '</label><div class="form-text">' . lang('A bucket on any service with an S3-compatible API, hosted or on your own server. Switched off, nothing is sent there.') . '</div>
+                        </div>
+                    </div>
+                    <div class="pg-f-lg">
+                        <label for="object_storage_endpoint" class="form-label">' . lang('Endpoint address') . '</label>
+                        <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="object_storage_endpoint" id="object_storage_endpoint" maxlength="255" class="form-control" value="' . h($object_storage['endpoint']) . '" placeholder="https://s3.example.com" />
+                        <div class="form-text">' . lang('The service\'s S3 API address, as its documentation gives it. Plain http only for a store on the same server or network.') . '</div>
+                    </div>
+                    <div class="pg-f-sm">
+                        <label for="object_storage_region" class="form-label">' . lang('Region') . '</label>
+                        <input type="text" spellcheck="false" autocapitalize="off" name="object_storage_region" id="object_storage_region" maxlength="32" class="form-control" value="' . h($object_storage['region']) . '" placeholder="us-east-1" />
+                    </div>
+                    <div class="pg-f-md">
+                        <label for="object_storage_bucket" class="form-label">' . lang('Bucket name') . '</label>
+                        <input type="text" spellcheck="false" autocapitalize="off" name="object_storage_bucket" id="object_storage_bucket" maxlength="63" class="form-control" value="' . h($object_storage['bucket']) . '" />
+                    </div>
+                    <div class="pg-f-md">
+                        <label for="object_storage_prefix" class="form-label">' . lang('Folder in the bucket') . '</label>
+                        <input type="text" spellcheck="false" autocapitalize="off" name="object_storage_prefix" id="object_storage_prefix" maxlength="200" class="form-control" value="' . h($object_storage['prefix']) . '" placeholder="pinegrap" />
+                    </div>
+                    <div class="pg-f-md">
+                        <label for="object_storage_key_id" class="form-label">' . lang('Access Key') . '</label>
+                        <input type="text" spellcheck="false" autocapitalize="off" name="object_storage_key_id" id="object_storage_key_id" maxlength="255" class="form-control" value="' . h($object_storage['key_id']) . '" autocomplete="off" />
+                    </div>
+                    <div class="pg-f-md">
+                        <label for="object_storage_secret" class="form-label">' . lang('Secret Key') . '</label>
+                        <input type="password" name="object_storage_secret" id="object_storage_secret" class="form-control" value="" autocomplete="new-password" placeholder="' . h($object_storage['secret_stored'] ? lang('Saved') : '') . '" />
+                        <div class="form-text">' . lang('Stored encrypted and never shown again. Leave empty to keep the saved key.') . '</div>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-field">
+                            <div class="switch"><input value="1"' . ($object_storage['path_style'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="object_storage_path_style" name="object_storage_path_style"/></div>
+                            <label class="" for="object_storage_path_style">' . lang('Path-style addresses') . '</label><div class="form-text">' . lang('The bucket goes in the path instead of the host name. MinIO and most self-hosted stores need this; Amazon S3 does not.') . '</div>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" name="object_storage_test" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . lang('Save and test the connection') . '</button>
+                        <div class="form-text">' . lang('Writes a small file to the bucket, reads it back and deletes it.') . '</div>' . $output_object_storage_last_test . '
+                    </div>' . $output_object_storage_files;
+}
+
+$pg_settings_cards[] = '
+    <div id="pgset-storage" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                ' . lang('Storage') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">' . $output_object_storage_settings . '
+                </div>
+            </div>
+        </div>
+    </div>';
+
 // ── Alerts ──
 //
 // Who is told when a backup fails, a scheduled task stops or the software

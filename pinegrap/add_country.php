@@ -76,38 +76,9 @@ if (!$_POST || $errors) {
 
 } else {
     // create country
-    $query = "INSERT INTO countries (
-                name,
-                code,
-                zip_code_required,
-                transit_adjustment_days,
-                default_selected,
-                user,
-                timestamp)
-            VALUES (
-                ?,
-                ?,
-                ?,
-                ?,
-                ?,
-                ?,
-                UNIX_TIMESTAMP())";
-    $result = db_q($query, array(
-        $values['name'],
-        $values['code'],
-        $values['zip_code_required'],
-        $values['transit_adjustment_days'],
-        $values['default_selected'],
-        (string) $user['id'])) or output_error('Query failed.');
-
-    $country_id = mysqli_insert_id(db::$con);
-
-    // if default selected was checked, then turn value off for all other countries
-    if ($values['default_selected'] == 1) {
-        // update country
-        $query = "UPDATE countries SET default_selected = 0 WHERE id != ?";
-        $result = db_q($query, array((int) $country_id)) or output_error('Query failed.');
-    }
+    pg_store_country_save(0, array_merge($values, array(
+        'transit_adjustment_days' => pg_country_form_transit_days($values['transit_adjustment_days']),
+    )), (int) $user['id']) or output_error('Query failed.');
 
     log_activity( lang(array('string'=>'country ({var:1}) was created','vars'=>array($values['name']) )) , $_SESSION['sessionusername']);
 

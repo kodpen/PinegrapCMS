@@ -18,6 +18,9 @@
 
 include('init.php');
 
+// Each of these is one value: one sent as an array counts as not given.
+pg_request_single_values(array('order_item_id', 'screen', 'send_to'));
+
 validate_token_field();
 initialize_order();
 
@@ -25,7 +28,7 @@ if (!($_SESSION['ecommerce']['order_id'] ?? '')) {
     output_error('Sorry, we can\'t remove an item from your cart, because you do not have an active cart.');
 }
 
-$order_item_id = $_GET['order_item_id'];
+$order_item_id = $_GET['order_item_id'] ?? '';
 
 if (!$order_item_id) {
     output_error('Sorry, we don\'t know what item you want to remove from the cart, because "order_item_id" in the request is empty.');
@@ -84,7 +87,7 @@ if (mysqli_num_rows($result) == 0) {
     $result = db_q($query, array((string) $ship_to_id, (string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
 
     // if user removed item from a shipping method screen, check to see if there is another recipient to send user to
-    if ($_GET['screen'] == 'shipping_method') {        
+    if (($_GET['screen'] ?? '') == 'shipping_method') {
         // check to see if there is another recipient in this order that the user needs to fill out information for
         $query = "SELECT id FROM ship_tos WHERE (order_id = ?) AND (complete = 0) AND (id > ?)";
         $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $ship_to_id)) or output_error('Query failed');

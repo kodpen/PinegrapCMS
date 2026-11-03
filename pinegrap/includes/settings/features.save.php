@@ -21,6 +21,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
 
 
+    // Site search tuning: synonyms and promoted results, each a config_text
+    // row (includes/fn/site_search_tuning.php); an empty box removes its row.
+    if (array_key_exists('search_tuning_card', $_POST) && pg_schema_has('config_text')) {
+        pg_search_tuning_save(post_value('search_synonyms'), post_value('search_promoted'));
+    }
+
     // ── Performance monitoring ───────────────────────────────────────────
     //
     // Switching it off discards what was collected. Keeping the rows would
@@ -87,21 +93,29 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // what both use. A changed format set changes the <source>s the pages'
     // Image elements carry, so the page HTML is drawn again after the save.
     $image_formats_changed = false;
+    $image_bits_changed = false;
 
     if (pg_image_settings_ready() && pg_image_delivery_ready()) {
 
-        $image_formats_before = (int) pg_image_settings()['derivative_formats'];
+        // Only the formats (bits 1, 2) change the pages' <source>s; the
+        // own-address switches (4, 8) change what get_file.php answers.
+        $image_bits_before = (int) pg_image_settings()['derivative_formats'];
+        $image_formats_before = $image_bits_before & 3;
 
         $image_delivery = pg_image_delivery_settings(array(
-            'image_derivative_formats' => (post_value('image_derivative_webp') ? 1 : 0) | (post_value('image_derivative_avif') ? 2 : 0),
+            'image_derivative_formats' => (post_value('image_derivative_webp') ? 1 : 0)
+                | (post_value('image_derivative_avif') ? 2 : 0)
+                | (post_value('image_same_address') ? 4 : 0)
+                | (post_value('image_same_address_cdn') ? 8 : 0),
             'image_quality_webp'       => trim((string) post_value('image_quality_webp')),
             'image_quality_avif'       => trim((string) post_value('image_quality_avif'))));
 
-        $image_formats_after = ($image_delivery['formats']['webp'] ? 1 : 0) | ($image_delivery['formats']['avif'] ? 2 : 0);
-        $image_formats_changed = ($image_formats_after !== $image_formats_before);
+        $image_formats_stored = pg_image_delivery_bits($image_delivery);
+        $image_formats_changed = (($image_formats_stored & 3) !== $image_formats_before);
+        $image_bits_changed = ($image_formats_stored !== $image_bits_before);
 
         $sql_image_settings .=
-            "image_derivative_formats = " . $image_formats_after . ",
+            "image_derivative_formats = " . $image_formats_stored . ",
              image_quality_webp = " . (int) $image_delivery['quality']['webp'] . ",
              image_quality_avif = " . (int) $image_delivery['quality']['avif'] . ",";
     }
@@ -205,6 +219,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             " . $sql_workspace_setting . "
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
+
+// The System Status line on WebP at a picture's own address reads these
+// switches; its ten-minute cache would show the old answer after a change.
+if ($image_bits_changed) {
+    @unlink(PG_FUNCTIONS_DIR . '/data/temp/system_status_cache.json');
+}
 
 // The card's own button: the settings are written first, then the authority is
 // asked to stamp a throwaway digest. The values are handed over explicitly

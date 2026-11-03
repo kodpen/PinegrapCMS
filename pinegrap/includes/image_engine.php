@@ -976,6 +976,35 @@ function pg_process_image_file($file_path, $options = array())
 
 
 /**
+ * The jpeg:size hint Imagick reads a JPEG with when it is to be shrunk:
+ * libjpeg then decodes at 1/2, 1/4 or 1/8 of the size, as long as the result
+ * stays at least this large, instead of the whole frame. A 24-megapixel photo
+ * made into a 320 px thumbnail decodes at an eighth of the memory and time.
+ *
+ * Twice the target's longest edge on both sides, so the resize that follows
+ * still has pixels to spare whichever way the EXIF orientation turns it.
+ *
+ * @param int  $type          IMAGETYPE_* of the source
+ * @param bool $resize        whether the picture is shrunk
+ * @param int  $target_width
+ * @param int  $target_height
+ * @return string '' when no hint applies, else WxH
+ */
+function pg_image_jpeg_size_hint($type, $resize, $target_width, $target_height)
+{
+    $longest = max((int) $target_width, (int) $target_height);
+
+    if (!$resize || ((int) $type !== IMAGETYPE_JPEG) || ($longest < 1)) {
+        return '';
+    }
+
+    $side = 2 * $longest;
+
+    return $side . 'x' . $side;
+}
+
+
+/**
  * The Imagick half of pg_process_image_file(). Returns the encoded bytes.
  *
  * @return string|false
@@ -990,6 +1019,15 @@ function pg_process_image_with_imagick($file_path, $type, $resize, $target_width
 
     try {
         $image = new Imagick();
+
+        // An edit works on the full frame; a plain shrink of a JPEG may be
+        // decoded smaller (pg_image_jpeg_size_hint()).
+        $size_hint = $edit ? '' : pg_image_jpeg_size_hint($type, $resize, $target_width, $target_height);
+
+        if ($size_hint !== '') {
+            $image->setOption('jpeg:size', $size_hint);
+        }
+
         $image->readImage(empty($edit['first_frame']) ? $file_path : ($file_path . '[0]'));
 
         // Rotate the pixels to match the EXIF orientation and then drop the
@@ -2471,7 +2509,67 @@ function pg_image_apply_gd_orientation($image, $file_path)
  */
 function pg_image_derivative_widths()
 {
-    return array(480, 960, 1440, 1920);
+    return array(320, 480, 960, 1440, 1920);
+}
+
+
+/**
+ * The widths the pages' srcset offers: every derivative width but the 320
+ * rung, which is there for panel lists (File Manager tiles, the product
+ * table, the image pickers: pg_image_panel_thumb_url()) and left the pages'
+ * markup as it was.
+ *
+ * @return array
+ */
+function pg_image_derivative_page_widths()
+{
+    return array_values(array_filter(pg_image_derivative_widths(), function ($width) {
+        return $width >= 480;
+    }));
+}
+
+
+/**
+ * The address a panel list draws a picture's thumbnail from: its 320 px
+ * derivative, as WebP for a JPEG or PNG, instead of the original a list used
+ * to load for every tile. A GIF (it may move), a vector or an address that
+ * already asks for a width or format stays as it is. The JavaScript twin is
+ * thumbUrl() in view_folders.php.
+ *
+ * @param string $url the picture's address, with or without a query
+ * @return string
+ */
+function pg_image_panel_thumb_url($url)
+{
+    $url = (string) $url;
+    $fragment = '';
+    $hash = strpos($url, '#');
+
+    if ($hash !== false) {
+        $fragment = substr($url, $hash);
+        $url = substr($url, 0, $hash);
+    }
+
+    $question = strpos($url, '?');
+    $path = ($question === false) ? $url : substr($url, 0, $question);
+    $query = ($question === false) ? '' : substr($url, $question + 1);
+
+    if (preg_match('/(^|&)(w|f)=/i', $query)) {
+        return $url . $fragment;
+    }
+
+    $dot = strrpos($path, '.');
+    $extension = ($dot === false) ? '' : strtolower(substr($path, $dot + 1));
+
+    if (in_array($extension, array('jpg', 'jpeg', 'jpe', 'png'), true)) {
+        $add = 'w=320&f=webp';
+    } elseif ($extension === 'webp') {
+        $add = 'w=320';
+    } else {
+        return $url . $fragment;
+    }
+
+    return $url . (($question === false) ? '?' : '&') . $add . $fragment;
 }
 
 
@@ -2656,10 +2754,19 @@ function pg_image_derivative_format($requested, $source_extension, $writable)
  * JPEG (image_resize_quality). AVIF holds up lower on its own scale than the
  * other two, hence its lower floor.
  *
- * @param array|null $row image_derivative_formats (bits: 1 WebP, 2 AVIF),
+ * The same column carries the plain-address switches (bit 4: a JPEG or PNG
+ * is answered with WebP at its own address, held only with bit 1, as a
+ * format switched off is never sent; bit 8: the CDN in front keeps a copy
+ * per format). get_file.php reads them through
+ * pg_image_same_address_settings() (includes/image_negotiation.php), which
+ * applies the same rule.
+ *
+ * @param array|null $row image_derivative_formats (bits: 1 WebP, 2 AVIF,
+ *                        4 own address, 8 CDN confirmed),
  *                        image_quality_webp, image_quality_avif,
  *                        image_resize_quality
- * @return array formats (webp, avif => bool), quality (webp, avif, source)
+ * @return array formats (webp, avif => bool), quality (webp, avif, source),
+ *               same_address (on, cdn => bool)
  */
 function pg_image_delivery_settings($row)
 {
@@ -2684,7 +2791,33 @@ function pg_image_delivery_settings($row)
         'quality' => array(
             'webp'   => $value('image_quality_webp', 80, 40),
             'avif'   => $value('image_quality_avif', 50, 20),
-            'source' => $value('image_resize_quality', 82, 40)));
+            'source' => $value('image_resize_quality', 82, 40)),
+        'same_address' => array(
+            'on'  => (($bits & 5) === 5),
+            'cdn' => (($bits & 8) === 8)));
+}
+
+
+/**
+ * config.image_derivative_formats as stored for these settings: the bits of
+ * pg_image_delivery_settings() put back together, so a save that changes one
+ * switch keeps the others and drops what the clamp refused.
+ *
+ * @param array|null $settings pg_image_delivery_settings(); null for the defaults
+ * @return int
+ */
+function pg_image_delivery_bits($settings)
+{
+    if (!is_array($settings) || !isset($settings['formats'])) {
+        $settings = pg_image_delivery_settings(null);
+    }
+
+    $same = isset($settings['same_address']) ? $settings['same_address'] : array();
+
+    return (!empty($settings['formats']['webp']) ? 1 : 0)
+        | (!empty($settings['formats']['avif']) ? 2 : 0)
+        | (!empty($same['on']) && !empty($settings['formats']['webp']) ? 4 : 0)
+        | (!empty($same['cdn']) ? 8 : 0);
 }
 
 

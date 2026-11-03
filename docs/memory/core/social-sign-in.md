@@ -8,7 +8,7 @@ description: Sign in with Google, Microsoft and Apple: the flow, how an account 
 - Providers are `includes/connect/providers/*.php` with a `signin` block. Google's app and switch are `config.oauth_google_*`; the others are `config.signin_providers` + `connect_apps`. Table `user_identities` (10.74, Google moved in 10.75).
 
 ## How is an account matched?
-- By the identity (`user_identities`), else by the verified e-mail of an account that has no identity at that provider yet (it is tied then), else an account is opened where the screen allows it (`create` on registration, `membership` hands over to the membership form, `none` on every login screen).
+- By the identity (`user_identities`), else by the verified e-mail of an account that has no identity at that provider yet (it is tied then), else an account is opened where the screen allows it (`create` on registration, `membership` hands over to the membership form, `none` on every login screen). On that membership hand-over the password is optional: `pg_member_activate()` skips it, and neither the widget nor the legacy screen's system layout (`get_membership_entrance.php`) marks it `required`; before #6094 the system layout did, so the browser refused the Google sign-up without a password.
 - An e-mail the provider does not vouch for never matches. An account whose address matches but is tied to another person at the provider is neither taken over nor opened a second time.
 - Only the very address (letter case aside) ties; a look-alike is refused: [[social-sign-in-address-match]].
 - A provider account whose address differs from the account's is tied by connecting it while signed in ("Connect with ...", [[social-sign-in-connect]]); signing in with it before that is refused.

@@ -127,6 +127,38 @@ function pg_image_same_address_settings($row)
 }
 
 /**
+ * What the System Status line says about WebP at a picture's own address.
+ *
+ * off: the switch is off (an upgraded site until the operator switches it
+ * on). no_webp: on, but this server cannot write WebP, so every reader gets
+ * the original. cdn: on, but the panel was reached through a CDN or proxy
+ * and nobody has confirmed it keeps a copy per format, so requests through
+ * it get the original. on: pictures go out as WebP where the browser reads
+ * it.
+ *
+ * @param array $same_address on, cdn => bool (pg_image_delivery_settings())
+ * @param bool  $webp_written the server writes WebP (pg_image_derivative_formats())
+ * @param bool  $behind_proxy pg_image_behind_proxy() of the panel's request
+ * @return string off, no_webp, cdn, on
+ */
+function pg_image_same_address_state($same_address, $webp_written, $behind_proxy)
+{
+    if (!is_array($same_address) || empty($same_address['on'])) {
+        return 'off';
+    }
+
+    if (!$webp_written) {
+        return 'no_webp';
+    }
+
+    if ($behind_proxy && empty($same_address['cdn'])) {
+        return 'cdn';
+    }
+
+    return 'on';
+}
+
+/**
  * Whether the request asks for the uploaded bytes whatever else it names
  * (?f=original): a download, a mail.
  *
@@ -139,6 +171,24 @@ function pg_image_original_asked($query)
         && isset($query['f'])
         && is_string($query['f'])
         && (strtolower(trim($query['f'])) === 'original');
+}
+
+/**
+ * Whether the request is Cloudflare Tools' edge check (?pg_vary_check= and
+ * 16 hex characters, fresh for every check): it is negotiated through a CDN
+ * before the operator confirmed the CDN, since the check is what confirms
+ * it. Its own query makes it its own cache entry, so a CDN that ignores Vary
+ * hands that copy to no other reader of the picture.
+ *
+ * @param array $query $_GET
+ * @return bool
+ */
+function pg_image_vary_check_asked($query)
+{
+    return is_array($query)
+        && isset($query['pg_vary_check'])
+        && is_string($query['pg_vary_check'])
+        && (preg_match('/^[a-f0-9]{16}$/', $query['pg_vary_check']) === 1);
 }
 
 /**
@@ -177,7 +227,7 @@ function pg_image_negotiated_format($row, $extension, $query, $server)
         return $none;
     }
 
-    if (pg_image_behind_proxy($server) && !$settings['cdn']) {
+    if (pg_image_behind_proxy($server) && !$settings['cdn'] && !pg_image_vary_check_asked($query)) {
         return array('format' => '', 'vary' => true);
     }
 

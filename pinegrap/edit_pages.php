@@ -358,6 +358,9 @@ if (!$_POST) {
                 $number_of_binned_pages = 0;
                 $binned_home_page = false;
                 $bin_errors = array();
+                // Pages deleted since the list was drawn (another tab, another
+                // manager): skipped, never counted as deleted.
+                $number_of_missing_pages = 0;
                 
                 foreach ($_POST['pages'] as $page_id) {
                     // get page properties
@@ -373,6 +376,11 @@ if (!$_POST) {
                         WHERE page_id = ?";
                     $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
                     $row = mysqli_fetch_assoc($result);
+
+                    if (!$row) {
+                        $number_of_missing_pages++;
+                        continue;
+                    }
 
                     $page_id = $row['page_id'];
                     $page_folder = $row['page_folder'];
@@ -433,6 +441,10 @@ if (!$_POST) {
                         $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
 
                         pg_audit_record('delete', 'page', $page_id, $audit_before);
+                        // A page deleted from the bin leaves no restore record behind.
+                        if (function_exists('pg_recycle_forget')) {
+                            pg_recycle_forget('page', $page_id);
+                        }
 
                         // Stored SEO findings for this page. The single-page
                         // delete in edit_page.php clears these; this screen
@@ -608,6 +620,12 @@ if (!$_POST) {
                     log_activity($binned_message, $_SESSION['sessionusername']);
                     $liveform->add_notice($binned_message
                         . ($binned_home_page ? ' ' . lang('The home page was among them: the site has no home page until another page is marked as home.') : ''));
+                }
+
+                if ($number_of_missing_pages > 0) {
+                    $liveform->add_notice(($number_of_missing_pages == 1)
+                        ? lang('One of the selected pages no longer exists, so it was skipped.')
+                        : lang(array('string' => '{var:1} of the selected pages no longer exist, so they were skipped.', 'vars' => $number_of_missing_pages)));
                 }
 
                 if (count($bin_errors) > 0) {

@@ -1249,6 +1249,58 @@ function get_calendar($calendar_id, $calendars, $view, $status, $user, $date, $l
     }
 }
 /**
+ * The parameters of a Remove / Unremove link of a repeating event's
+ * instance (update_calendar_event_exception.php), or null when one is
+ * missing or wrong: action 'create' or 'delete', the event id (from 1) and
+ * the instance number (from 0), each as one value of digits.
+ *
+ * @param array $get  the query string ($_GET)
+ * @return array|null  'action', 'calendar_event_id', 'recurrence_number'
+ */
+function pg_calendar_event_exception_request($get)
+{
+    foreach (array('action', 'calendar_event_id', 'recurrence_number') as $name) {
+        if (!isset($get[$name]) || !is_string($get[$name])) {
+            return null;
+        }
+    }
+
+    if (!in_array($get['action'], array('create', 'delete'), true)) {
+        return null;
+    }
+
+    if (!ctype_digit($get['calendar_event_id']) || !ctype_digit($get['recurrence_number'])
+        || (strlen($get['calendar_event_id']) > 10) || (strlen($get['recurrence_number']) > 10)
+        || ((int) $get['calendar_event_id'] < 1)) {
+        return null;
+    }
+
+    return array(
+        'action' => $get['action'],
+        'calendar_event_id' => (int) $get['calendar_event_id'],
+        'recurrence_number' => (int) $get['recurrence_number'],
+    );
+}
+
+/**
+ * Whether a repeating event has the given instance: instance 0 is the event
+ * itself, the last is its stored repeat count.
+ *
+ * @param int   $recurrence_number  the instance asked for
+ * @param mixed $recurrence         the event's recurrence flag
+ * @param mixed $total              the event's stored repeat count
+ * @return bool
+ */
+function pg_calendar_event_exception_number_ok($recurrence_number, $recurrence, $total)
+{
+    if ((string) $recurrence !== '1') {
+        return false;
+    }
+
+    return ((int) $recurrence_number >= 0) && ((int) $recurrence_number <= (int) $total);
+}
+
+/**
  * The start and end of one occurrence of a recurring event. The occurrence
  * starts on its own date at the event's start time and lasts as long as the
  * event, so an overnight or multi-day event ends on a later day than the

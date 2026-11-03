@@ -1195,6 +1195,45 @@ function pg_short_link_encode_url($url)
 }
 
 /**
+ * The name a link's destination page or file had before it went to the
+ * Recycle Bin. A binned page or file is renamed pgbin_<id>_<name> so its
+ * address is free (includes/explorer/recycle_names.php); the prefix counts
+ * only with the row's own id and a name after it. '' when the destination is
+ * not parked (a url link, a missing row, any other name). Pure.
+ *
+ * @param array $link A short_links row with destination_type, page_id, page_name, file_id, file_name
+ * @return string
+ */
+function pg_short_link_binned_original($link)
+{
+    $type = (string) ($link['destination_type'] ?? '');
+
+    if ($type === 'url') {
+        return '';
+    }
+
+    if ($type === 'file') {
+        $name = (string) ($link['file_name'] ?? '');
+        $id = (int) ($link['file_id'] ?? 0);
+    } else {
+        $name = (string) ($link['page_name'] ?? '');
+        $id = (int) ($link['page_id'] ?? 0);
+    }
+
+    if ($id <= 0) {
+        return '';
+    }
+
+    $prefix = (defined('PG_RECYCLE_PARK_PREFIX') ? PG_RECYCLE_PARK_PREFIX : 'pgbin_') . $id . '_';
+
+    if ((strlen($name) > strlen($prefix)) && (strpos($name, $prefix) === 0)) {
+        return (string) substr($name, strlen($prefix));
+    }
+
+    return '';
+}
+
+/**
  * Where a link that sends visitors on sends them.
  *
  * A page is reached at the page's own address (under the language prefix the
@@ -1211,10 +1250,17 @@ function pg_short_link_encode_url($url)
  * @param string   $origin   Scheme and host ("https://example.com")
  * @param string   $base     The site's base path (PATH)
  * @param string   $language The base for pages (LANGUAGE_PATH, else PATH)
- * @return string '' when the destination is gone
+ * @return string '' when the destination is gone or in the Recycle Bin
  */
 function pg_short_link_location($link, $captures, $query, $origin, $base = '/', $language = null)
 {
+    // A destination in the Recycle Bin carries its parked name: a 301 to that
+    // address would be kept by browsers and search engines even after the
+    // page is restored. No address; the link answers as its page does.
+    if (pg_short_link_binned_original($link) !== '') {
+        return '';
+    }
+
     $origin = rtrim((string) $origin, '/');
     $base = '/' . ltrim((string) $base, '/');
     $language = ($language === null) ? $base : '/' . ltrim((string) $language, '/');
@@ -1891,7 +1937,15 @@ function pg_short_link_csv_target($link, $base = '/')
         return (string) $link['url'];
     }
 
+    // A destination in the Recycle Bin is written under its own name, the
+    // one it takes back on restore, never the parked pgbin_ address.
+    $original = pg_short_link_binned_original($link);
+
     if ($type === 'file') {
+        if ($original !== '') {
+            return $base . $original;
+        }
+
         return ((string) ($link['file_name'] ?? '') === '') ? '' : $base . $link['file_name'];
     }
 
@@ -1899,7 +1953,7 @@ function pg_short_link_csv_target($link, $base = '/')
         return '';
     }
 
-    $target = $base . $link['page_name'];
+    $target = $base . (($original !== '') ? $original : $link['page_name']);
 
     if (($type === 'product_group') && ((string) ($link['product_group_address_name'] ?? '') !== '')) {
         $target .= '/' . $link['product_group_address_name'];

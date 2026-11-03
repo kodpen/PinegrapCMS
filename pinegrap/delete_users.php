@@ -48,6 +48,14 @@ if (isset($_POST['users']) && is_array($_POST['users']) && $_POST['users']) {
         $query = "SELECT user_role FROM user WHERE user_id = ?";
         $result = db_q($query, array((string) $user_id)) or output_error(lang('Query failed.'));
         $row = mysqli_fetch_assoc($result);
+
+        // A user deleted meanwhile (in another tab, by another
+        // administrator) is skipped: its missing role would read as an
+        // administrator and be counted as deleted.
+        if (!$row) {
+            continue;
+        }
+
         $user_role = $row['user_role'];
         
         // if logged-in user's role is administrator or if logged-in user's role is above this user's role,

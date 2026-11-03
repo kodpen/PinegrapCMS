@@ -31,27 +31,14 @@ if (!defined('ERP_INVOICE_FORM_BLANK_ROWS')) {
 }
 
 /**
- * Unit codes offered on a line, UN/ECE Recommendation 20 codes as the
- * e-document side expects them. Free text is still accepted.
+ * Unit codes offered on a line: the one list of includes/erp/waybills.php,
+ * which every screen that shows a unit has loaded with the ERP.
  *
  * @return array  code => label
  */
 function erp_invoice_form_unit_codes()
 {
-    return array(
-        'C62' => lang('piece'),
-        'KGM' => lang('kilogram'),
-        'GRM' => lang('gram'),
-        'MTR' => lang('metre'),
-        'MTK' => lang('square metre'),
-        'LTR' => lang('litre'),
-        'HUR' => lang('hour'),
-        'DAY' => lang('day'),
-        'MON' => lang('month'),
-        'SET' => lang('set'),
-        'PA' => lang('package'),
-        'BX' => lang('box'),
-    );
+    return erp_waybill_unit_codes();
 }
 
 /**
@@ -176,7 +163,7 @@ function erp_invoice_form_lines($liveform, $stored_rows = array())
  * @param bool       $withholding_shown  Whether the withholding column is open
  * @return string  HTML <tr>
  */
-function erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown = false)
+function erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown = false, $campaign_shown = true)
 {
     $name = function ($field) use ($index) {
         return 'lines[' . $index . '][' . $field . ']';
@@ -246,7 +233,7 @@ function erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown 
                     'value' => $line['unit_price'],
                     'class' => 'form-control form-control-sm text-end', 'maxlength' => '15', 'inputmode' => 'decimal', 'autocomplete' => 'off',
                     'aria-label' => lang('Unit price'))) . '</td>
-                <td>
+                <td' . ($campaign_shown ? '' : ' class="d-none"') . '>
                     <input type="hidden" name="' . h($name('offer_id')) . '" value="' . (int) $line['offer_id'] . '" data-erp-offer-id />
                     ' . $liveform->output_field(array(
                     'type' => 'text', 'id' => $id('offer_discount_rate'), 'name' => $name('offer_discount_rate'),
@@ -336,7 +323,9 @@ function erp_invoice_form_cards($liveform, $options = array())
     $account_options[lang('Choose an account')] = '';
     // liveform prints option labels as-is; account titles come from contact names typed at checkout.
     // Keyed by id with the title as the label, so two accounts of the same name stay two options.
-    foreach (erp_accounts(array('status' => 'active')) as $account) {
+    // A purchase order goes to a supplier: accounts kept as customers only
+    // are left out (erp_purchase_order_account_refusal()).
+    foreach (erp_accounts(array('status' => 'active', 'kind' => $is_order ? 'supplier' : '')) as $account) {
         $account_options['account_' . (int) $account['id']] = array('label' => h($account['title']), 'value' => (string) (int) $account['id']);
     }
 
@@ -390,10 +379,10 @@ function erp_invoice_form_cards($liveform, $options = array())
 
     $output_rows = '';
     foreach (array_values($lines) as $index => $line) {
-        $output_rows .= erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown);
+        $output_rows .= erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown, !$is_order);
     }
 
-    $output_template = erp_invoice_form_line_row($liveform, '__INDEX__', erp_invoice_form_line(array(), false), $withholding_shown);
+    $output_template = erp_invoice_form_line_row($liveform, '__INDEX__', erp_invoice_form_line(array(), false), $withholding_shown, !$is_order);
 
     $date_format = (defined('DATE_FORMAT') && (DATE_FORMAT == 'month_day')) ? 'month_day' : 'day_month';
 
@@ -521,21 +510,21 @@ function erp_invoice_form_cards($liveform, $options = array())
                 ? ' <span id="erp_withholding_hint">' . lang('The buyer pays part of the VAT to the tax office: pick the withholding code on each line it applies to.') . ' ' . lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Withholding'), lang('Withholding code and the share of the VAT the buyer pays to the tax office.')))) . '</span>'
                 : '') . '</div>
             <div class="table-responsive">
-                <table class="table table-sm align-middle mb-0" data-erp-lines-table style="min-width:60rem">
+                <table class="table table-sm align-middle mb-0" data-erp-lines-table style="min-width:66rem">
                     <thead>
                         <tr>
                             <th style="width:2.5rem">#</th>
-                            <th style="width:16%">' . lang('Product') . '</th>
-                            <th>' . lang('Description') . '</th>
-                            <th class="text-end" style="width:8%">' . lang('Quantity') . '</th>
-                            <th style="width:11%">' . lang('Unit') . '</th>
-                            <th class="text-end" style="width:11%">' . lang('Unit price') . '</th>
-                            <th class="text-end" style="width:7%">' . lang('Campaign %') . '</th>
-                            <th class="text-end" style="width:7%">' . lang('Discount %') . '</th>
-                            <th class="text-end" style="width:7%">' . h(erp_tax_label('percent')) . '</th>' . (erp_tax2_enabled() ? '
-                            <th class="text-end" style="width:7%">' . h(erp_tax2_name() . ' %') . '</th>' : '') . '
-                            <th style="width:9%" data-erp-withholding-col' . ($withholding_shown ? '' : ' class="d-none"') . '>' . lang('Withholding') . '</th>
-                            <th class="text-end" style="width:11%">' . lang('Line total') . '</th>
+                            <th style="width:14%">' . lang('Product') . '</th>
+                            <th style="min-width:12rem">' . lang('Description') . '</th>
+                            <th class="text-end" style="width:7%">' . lang('Quantity') . '</th>
+                            <th style="width:9%">' . lang('Unit') . '</th>
+                            <th class="text-end" style="width:10%">' . lang('Unit price') . '</th>
+                            <th class="text-end' . ($is_order ? ' d-none' : '') . '" style="width:6%">' . lang('Campaign %') . '</th>
+                            <th class="text-end" style="width:6%">' . lang('Discount %') . '</th>
+                            <th class="text-end" style="width:6%">' . h(erp_tax_label('percent')) . '</th>' . (erp_tax2_enabled() ? '
+                            <th class="text-end" style="width:6%">' . h(erp_tax2_name() . ' %') . '</th>' : '') . '
+                            <th style="width:8%" data-erp-withholding-col' . ($withholding_shown ? '' : ' class="d-none"') . '>' . lang('Withholding') . '</th>
+                            <th class="text-end" style="width:10%">' . lang('Line total') . '</th>
                             <th style="width:2.5rem"></th>
                         </tr>
                     </thead>
@@ -543,7 +532,7 @@ function erp_invoice_form_cards($liveform, $options = array())
                 </table>
             </div>
             <template data-erp-line-template>' . $output_template . '</template>
-            <div class="form-text" id="erp_lines_columns_hint">' . lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Campaign %'), lang('The store\'s campaign on the product, applied before the typed discount. Clear it to sell at the list price.')))) . ' ' . lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Discount %'), lang('Your discount, applied on what the campaign leaves.')))) . '</div>
+            <div class="form-text" id="erp_lines_columns_hint">' . ($is_order ? '' : lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Campaign %'), lang('The store\'s campaign on the product, applied before the typed discount. Clear it to sell at the list price.')))) . ' ') . lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Discount %'), $is_order ? lang('The discount the supplier gives on the line.') : lang('Your discount, applied on what the campaign leaves.')))) . '</div>
             <div class="form-text">' . lang('Amounts are in the document currency. Empty rows are ignored. Picking a product fills the line; everything on it stays editable.') . '</div>
         </div>
     </div>
@@ -741,6 +730,13 @@ function erp_invoice_form_read($liveform, $user)
             return $fail('_error', lang(array('string' => 'An invoice can carry at most {var:1} lines.', 'vars' => ERP_MANUAL_MAX_LINES)));
         }
 
+        // A box holding a minus sign or a letter reads as -1, which the line
+        // checks (erp_manual_lines_build()) refuse on that box: the readers
+        // drop such characters, and -3 would have saved as 3, 2O as 2.
+        $number = function ($value, $reader) {
+            return erp_typed_number_ok($value) ? $reader($value) : -1.0;
+        };
+
         foreach (array_values($posted_lines) as $line) {
             // One value per field: one posted as an array is not given,
             // rather than a line described as "Array".
@@ -748,16 +744,16 @@ function erp_invoice_form_read($liveform, $user)
             $lines[] = array(
                 'product_id' => (int) ($line['product_id'] ?? 0),
                 'description' => (string) ($line['description'] ?? ''),
-                'quantity' => erp_quantity_in($line['quantity'] ?? ''),
+                'quantity' => $number($line['quantity'] ?? '', 'erp_quantity_in'),
                 'unit_code' => (string) ($line['unit_code'] ?? 'C62'),
                 'unit_price' => erp_kurus($line['unit_price'] ?? ''),
                 'offer_id' => (int) ($line['offer_id'] ?? 0),
-                'offer_discount_rate' => erp_fx_rate_in($line['offer_discount_rate'] ?? ''),
-                'discount_rate' => erp_fx_rate_in($line['discount_rate'] ?? ''),
-                'tax_rate' => erp_fx_rate_in($line['tax_rate'] ?? ''),
-                'tax2_rate' => erp_fx_rate_in($line['tax2_rate'] ?? ''),
+                'offer_discount_rate' => $number($line['offer_discount_rate'] ?? '', 'erp_fx_rate_in'),
+                'discount_rate' => $number($line['discount_rate'] ?? '', 'erp_fx_rate_in'),
+                'tax_rate' => $number($line['tax_rate'] ?? '', 'erp_fx_rate_in'),
+                'tax2_rate' => $number($line['tax2_rate'] ?? '', 'erp_fx_rate_in'),
                 'withholding_code' => trim((string) ($line['withholding_code'] ?? '')),
-                'withholding_rate' => erp_fx_rate_in($line['withholding_rate'] ?? ''),
+                'withholding_rate' => $number($line['withholding_rate'] ?? '', 'erp_fx_rate_in'),
                 'source_line' => (string) ($line['source_line'] ?? ''),
             );
         }

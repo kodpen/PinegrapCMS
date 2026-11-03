@@ -67,7 +67,7 @@ function test_tax_zone_form_both_screens_draw_the_shared_cards()
 	foreach (array('add_tax_zone.php', 'edit_tax_zone.php') as $file) {
 		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 		pg_assert_contains('pg_tax_zone_form_cards(', $source, $file . ' draws the shared cards');
-		pg_assert_contains('pg_tax_zone_form_save_links(', $source, $file . ' writes the links through the shared helper');
+		pg_assert_contains('pg_store_tax_zone_save(', $source, $file . ' writes through the shared tax zone function');
 		pg_assert_contains('validate_token_field()', $source, $file . ' checks the token');
 		pg_assert_contains('validate_ecommerce_access($user)', $source, $file . ' keeps its gate');
 	}

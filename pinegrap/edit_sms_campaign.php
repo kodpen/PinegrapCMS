@@ -25,7 +25,9 @@ if (!pg_sms_campaigns_ready()) {
     output_error(lang('The SMS campaigns are not available yet; run the upgrade.'));
 }
 
-pg_request_single_values(array('id'));
+// A field posted as a list counts as not given: trim() of a list start_at
+// stopped the request, a cast name or text read "Array".
+pg_request_single_values(array('id', 'name', 'body', 'send', 'start_at'));
 
 $id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 
@@ -78,8 +80,13 @@ if ($_POST && !$readonly) {
 
         // No row changed when the job claimed the campaign after it was read:
         // it is no longer ready, so nothing was cancelled to log.
+        $liveform = new liveform('view_sms_campaigns');
+
         if (mysqli_affected_rows(db::$con) === 1) {
             log_activity(lang(array('string' => 'SMS campaign cancelled: {var:1}', 'vars' => array($campaign['name']))), $_SESSION['sessionusername']);
+            $liveform->add_notice(lang('The SMS campaign was cancelled.'));
+        } else {
+            $liveform->add_error(lang('The SMS campaign was not cancelled: it was queued, cancelled or deleted before.'));
         }
 
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_sms_campaigns.php');
@@ -131,7 +138,8 @@ if ($_POST && !$readonly) {
     $choices = array();
 
     foreach (array_keys($groups) as $group_id) {
-        $choices[$group_id] = (string) ($_POST['contact_group_' . $group_id] ?? 'ignored');
+        $choice = $_POST['contact_group_' . $group_id] ?? 'ignored';
+        $choices[$group_id] = is_scalar($choice) ? (string) $choice : 'ignored';
     }
 }
 
@@ -151,7 +159,7 @@ if ($readonly) {
         </div>
         <div class="col-12 my-3">
             <label class="form-label" for="body">' . lang('Text') . '</label>
-            <textarea class="form-control" id="body" name="body" rows="5" maxlength="' . (int) $body_limit . '" data-pg-sms-limit="' . (int) $body_limit . '" aria-describedby="body_help body_count">' . h($campaign['body']) . '</textarea>
+            <textarea class="form-control" id="body" name="body" rows="5" data-pg-sms-limit="' . (int) $body_limit . '" aria-describedby="body_help body_count">' . h($campaign['body']) . '</textarea>
             <div class="form-text" id="body_help">' . lang('The sender identity and the type label from Settings, Communication, SMS Messages are added below the text of every message.') . '</div>
             <div class="form-text" id="body_count" aria-live="polite" data-pg-sms-template="' . h(lang('{var:1} characters left')) . '"></div>
         </div>
@@ -161,7 +169,10 @@ if ($readonly) {
                 var count = document.getElementById(\'body_count\');
                 var limit = parseInt(box.getAttribute(\'data-pg-sms-limit\'), 10);
 
-                // Characters as the server counts them: a line break is one.
+                // Characters as the server counts them: a line break is one,
+                // an emoji is one. The box has no maxlength, which counts
+                // UTF-16 units (an emoji is two) and would stop typing while
+                // the counter still shows room; the save check enforces it.
                 function update() {
                     var used = Array.from(box.value.replace(/\r\n?/g, \'\n\').trim()).length;
                     count.textContent = count.getAttribute(\'data-pg-sms-template\').replace(\'{var:1}\', String(limit - used));
@@ -222,6 +233,16 @@ if ($readonly) {
     $output_delivery =
         '<div class="col-12 md:col-6 my-3"><div class="form-label">' . lang('Status') . '</div><p>' . h($statuses[$campaign['status']] ?? $campaign['status']) . '</p></div>';
 
+    if ((int) $campaign['start_at'] > 0) {
+        $output_delivery .=
+            '<div class="col-12 md:col-6 my-3"><div class="form-label">' . lang('Send Time') . '</div><p>' . get_relative_time(array('timestamp' => (int) $campaign['start_at'])) . '</p></div>';
+    }
+
+    if ((int) ($campaign['queued_at'] ?? 0) > 0) {
+        $output_delivery .=
+            '<div class="col-12 md:col-6 my-3"><div class="form-label">' . lang('Queued for sending') . '</div><p>' . get_relative_time(array('timestamp' => (int) $campaign['queued_at'])) . '</p></div>';
+    }
+
     if ($campaign['status'] === 'queued') {
         $outbox = pg_sms_campaign_outbox_counts($campaign['id']);
 
@@ -271,7 +292,7 @@ if (!$readonly) {
             <div class="container">
                 <div class="btn-group flex-wrap justify-content-center">
                     <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="bi bi-check-circle me-3" aria-hidden="true"></span>' . lang('Save') . '</button>
-                    ' . (($campaign['status'] === 'ready') ? '<button type="submit" name="submit_cancel" value="Cancel" class="btn my-1 btn-solid theme-danger"><span class="bi bi-x-circle me-3" aria-hidden="true"></span>' . lang('Cancel Campaign') . '</button>' : '') . '
+                    ' . (($campaign['status'] === 'ready') ? '<button type="submit" name="submit_cancel" value="Cancel" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(lang('This campaign will be cancelled. A cancelled campaign cannot be scheduled again.')) . '"><span class="bi bi-x-circle me-3" aria-hidden="true"></span>' . lang('Cancel Campaign') . '</button>' : '') . '
                 </div>
             </div>
         </nav>';

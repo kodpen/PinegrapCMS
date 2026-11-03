@@ -142,7 +142,7 @@ $billing_lines = array_filter(array(
     (string)$order['billing_address_1'],
     (string)$order['billing_address_2'],
     trim((string)$order['billing_zip_code'] . ' ' . (string)$order['billing_city'] . ' ' . (string)$order['billing_state']),
-    (string)$order['billing_country'],
+    pg_order_view_country($order['billing_country']),
     (string)$order['billing_phone_number'],
     (string)$order['billing_email_address'],
 ));
@@ -156,10 +156,19 @@ if (!empty($ship_to)) {
         (string)($ship_to['address_1'] ?? ''),
         (string)($ship_to['address_2'] ?? ''),
         trim((string)($ship_to['zip_code'] ?? '') . ' ' . (string)($ship_to['city'] ?? '') . ' ' . (string)($ship_to['state'] ?? '')),
-        (string)($ship_to['country'] ?? ''),
+        pg_order_view_country($ship_to['country'] ?? ''),
         (string)($ship_to['phone_number'] ?? ''),
     ));
 }
+
+// The status as the panel names it, not its stored code.
+$order_status_labels = array(
+    'incomplete' => lang('Incomplete'),
+    'complete'   => lang('Complete'),
+    'exported'   => lang('Exported'),
+    'cancelled'  => lang('Cancelled'),
+);
+$order_status_label = isset($order_status_labels[(string)$order['status']]) ? $order_status_labels[(string)$order['status']] : (string)$order['status'];
 
 header('Content-Type: text/html; charset=utf-8');
 ?><!DOCTYPE html>
@@ -218,7 +227,7 @@ header('Content-Type: text/html; charset=utf-8');
             <?php if (!empty($order['reference_code'])): ?>
                 <div><?= h(lang('Reference Code')) ?>: <?= h((string)$order['reference_code']) ?></div>
             <?php endif; ?>
-            <div><?= h(lang('Status')) ?>: <?= h((string)$order['status']) ?></div>
+            <div><?= h(lang('Status')) ?>: <?= h($order_status_label) ?></div>
         </div>
     </div>
 
@@ -295,7 +304,7 @@ header('Content-Type: text/html; charset=utf-8');
 
     <div class="meta-row">
         <?php if (!empty($order['payment_method'])): ?>
-            <div><?= h(lang('Payment Method')) ?>: <strong><?= h((string)$order['payment_method']) ?></strong></div>
+            <div><?= h(lang('Payment Method')) ?>: <strong><?= h(pg_payment_method_label($order['payment_method'])) ?></strong></div>
         <?php endif; ?>
         <?php if (!empty($order['transaction_id'])): ?>
             <div><?= h(lang('Transaction ID')) ?>: <?= h((string)$order['transaction_id']) ?></div>

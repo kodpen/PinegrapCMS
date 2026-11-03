@@ -17,7 +17,7 @@ module: google_reviews, widgets_google_reviews
 
 ## How long is it kept, and why?
 - Google's Places policies let a site keep the Place ID; other Places content may not be stored beyond what the terms allow. So the answer is only a short cache per language: fresh for `PG_GREV_FRESH` (1 h), a failed read retried after `PG_GREV_RETRY` (10 min), the last good copy shown after failures until `PG_GREV_KEEP` (24 h), then dropped. A failure is logged once (`log_activity`) until a read works.
-- `job.php` runs `pg_grev_job_run()` on every tick (only due languages). A page reads itself only when nothing usable is kept (`pg_grev_place()`); the attempt time is written first so parallel requests do not ask too.
+- `job.php` runs `pg_grev_job_run()` on every tick (only due languages). After a read, `pg_grev_cache_prune()` keeps other languages with a usable answer or a try within `PG_GREV_KEEP`, so a failing one keeps `tried_at` and `logged` (before #6019 two languages with a failing key asked Google on every page). A page reads itself only when nothing usable is kept (`pg_grev_place()`); the attempt time is written first so parallel requests do not ask too.
 
 ## Tokens and flags?
 - Static: `__place_name`, `__place_rating` (one decimal), `__place_review_count`, `__place_maps_url`, `__review_total`, `__google_attribution` ("Google Maps", never translated). Row: `__review_author_name`, `__review_author_url`, `__review_author_photo`, `__review_rating`, `__review_text`, `__review_relative_time` (Google's words in the language asked), `__review_url`. All escaped.

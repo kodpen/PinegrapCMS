@@ -2183,6 +2183,14 @@ function ws_change_check($viewer, $type, $action, $record, $values)
                     return lang('A cancelled order does not ship.');
                 }
 
+                foreach ((array) $values['tracking_numbers'] as $number) {
+                    $refusal = is_scalar($number) ? pg_tracking_number_refusal(trim((string) $number)) : '';
+
+                    if ($refusal !== '') {
+                        return $refusal;
+                    }
+                }
+
                 $addresses = (int) db_value("SELECT COUNT(*) FROM ship_tos WHERE order_id = '" . (int) $record['id'] . "'");
 
                 if ($addresses === 0) {

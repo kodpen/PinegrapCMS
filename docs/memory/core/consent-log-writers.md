@@ -4,7 +4,7 @@ description: Who writes consent_log rows: own e-mail and SMS marketing answers (
 ---
 
 ## What is recorded?
-- A person's own answer to a marketing question they were shown (PR #1581). Staff, API, import, Workspace, job and marketplace writers add none. Channel `email`: purpose `marketing` for `contacts.opt_in`, `group:<id>` for a list's `opt_in` row. Channel `sms`, `marketing`: the SMS box, the log being its only record (`sms-consent-box.md`).
+- A person's own answer to a marketing question they were shown (PR #1581). Staff, API, import, Workspace, job and marketplace writers add none; a spam complaint does (`mail-bounces.md`). Channel `email`: purpose `marketing` for `contacts.opt_in`, `group:<id>` for a list's `opt_in` row. Channel `sms`, `marketing`: the SMS box, the log being its only record (`sms-consent-box.md`).
 
 ## When is a row written?
 - `pg_consent_log_answers()` (`includes/fn/privacy.php`) reads the person's rows once and writes only the answers that differ from the last recorded one (`pg_consent_log_changes()`; none or `pending` counts as no answer). A re-sent form or a second one-click POST writes nothing. The baseline is the log, never `contacts.opt_in`.
@@ -23,4 +23,4 @@ description: Who writes consent_log rows: own e-mail and SMS marketing answers (
 
 The cookie notice's answers (channel `cookie`, source `banner`): `consent-log-cookie-notice.md`.
 
-Gaps, tests: docs/memory/core/consent-log-writer-gaps.md. See docs/memory/core/consent-log-and-audit-trail.md, docs/memory/platform/sms-and-iys-rules.md
+Gaps, tests: consent-log-writer-gaps.md. See consent-log-and-audit-trail.md, docs/memory/platform/sms-and-iys-rules.md

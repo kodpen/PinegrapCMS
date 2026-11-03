@@ -30,6 +30,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+// The forwarded-scheme parser the key reads the proxy's word with. Loaded
+// here too: the router loads this module without functions.php.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/request_scheme.php');
+
 // Longest lifetime, in seconds, a shared cache may keep a page.
 define('PG_PAGE_CACHE_TTL_MAX', 3600);
 
@@ -635,9 +639,9 @@ function pg_page_cache_file_enabled()
  * The scheme the request came in on, as this server sees it, and whether a
  * proxy in front says https ('https', else ''). Both go into the key: Secure
  * Mode may trust the proxy's word and redirect, so a copy drawn for one must
- * never answer the other. The proxy's word is read from the same headers as
- * check_proxy_ssl_headers() (core.php, not loaded in the router) and reduced
- * to one of two values, so a made-up header value draws no copy of its own.
+ * never answer the other. The proxy's word is pg_forwarded_https()'s, the
+ * same parser Secure Mode reads, without its peer check and reduced to one of
+ * two values, so a made-up header value draws no copy of its own.
  *
  * @param array $server $_SERVER
  * @return array [scheme, forwarded]
@@ -647,20 +651,7 @@ function pg_page_cache_request_scheme(array $server)
     $https = (!empty($server['HTTPS']) && (strtolower((string) $server['HTTPS']) !== 'off'))
         || (isset($server['SERVER_PORT']) && ((int) $server['SERVER_PORT'] === 443));
 
-    $header = function ($name) use ($server) {
-        return (isset($server[$name]) && is_scalar($server[$name])) ? strtolower(trim((string) $server[$name])) : '';
-    };
-
-    $first = explode(',', $header('HTTP_X_FORWARDED_PROTO'));
-
-    $proxy_https = (trim($first[0]) === 'https')
-        || (strpos($header('HTTP_CF_VISITOR'), '"scheme":"https"') !== false)
-        || (bool) preg_match('/proto\s*=\s*"?https"?/', $header('HTTP_FORWARDED'))
-        || ($header('HTTP_X_FORWARDED_SSL') === 'on')
-        || ($header('HTTP_FRONT_END_HTTPS') === 'on')
-        || ($header('HTTP_X_FORWARDED_PORT') === '443');
-
-    return array($https ? 'https' : 'http', $proxy_https ? 'https' : '');
+    return array($https ? 'https' : 'http', pg_forwarded_https($server) ? 'https' : '');
 }
 
 /**
@@ -885,10 +876,11 @@ function pg_page_cache_kept_headers(array $headers)
 }
 
 /**
- * A stored file: one line of JSON (layout, time made, headers), then the
- * page as it is sent.
+ * A stored file: one line of JSON (layout, time made, headers, the page),
+ * then the page as it is sent. A file stored before the page was kept reads
+ * back as page 0.
  *
- * @param array  $meta created, headers
+ * @param array  $meta created, headers, page_id
  * @param string $body
  * @return string '' when the headers cannot be written as JSON
  */
@@ -898,6 +890,7 @@ function pg_page_cache_pack(array $meta, $body)
         'v' => PG_PAGE_CACHE_FORMAT,
         'created' => (int) ($meta['created'] ?? 0),
         'headers' => array_values(pg_page_cache_kept_headers((array) ($meta['headers'] ?? array()))),
+        'page_id' => max(0, (int) ($meta['page_id'] ?? 0)),
     ), JSON_UNESCAPED_SLASHES);
 
     return is_string($line) ? $line . "\n" . (string) $body : '';
@@ -908,7 +901,7 @@ function pg_page_cache_pack(array $meta, $body)
  * empty or cut file, another layout).
  *
  * @param string $raw
- * @return array|null ['meta' => [created, headers], 'body' => string]
+ * @return array|null ['meta' => [created, headers, page_id], 'body' => string]
  */
 function pg_page_cache_unpack($raw)
 {
@@ -930,6 +923,7 @@ function pg_page_cache_unpack($raw)
         'meta' => array(
             'created' => (int) $meta['created'],
             'headers' => pg_page_cache_kept_headers($meta['headers']),
+            'page_id' => max(0, (int) ($meta['page_id'] ?? 0)),
         ),
         'body' => (string) substr($raw, $eol + 1),
     );
@@ -1121,6 +1115,11 @@ function pg_page_cache_lookup(array $config, array $server, array $cookies, $uri
  */
 function pg_page_cache_send(array $lookup, $method)
 {
+    // The page an AI fetcher's request drew, for its counter (waf.php).
+    if (function_exists('waf_ai_fetch_page')) {
+        waf_ai_fetch_page((int) ($lookup['entry']['meta']['page_id'] ?? 0));
+    }
+
     foreach ($lookup['entry']['meta']['headers'] as $line) {
         header($line);
     }
@@ -1186,7 +1185,7 @@ function pg_page_cache_store_page($content, $page_id, $page_name)
 
     pg_page_cache_write(
         pg_page_cache_file_path(pg_page_cache_directory(), defined('PG_PAGE_CACHE_GENERATION') ? PG_PAGE_CACHE_GENERATION : 0, $key),
-        pg_page_cache_pack(array('created' => time(), 'headers' => headers_list()), $body));
+        pg_page_cache_pack(array('created' => time(), 'headers' => headers_list(), 'page_id' => (int) $page_id), $body));
 
     pg_page_cache_unlock();
 }
@@ -1445,7 +1444,7 @@ function pg_page_cache_panel_sub_actions()
                 'widget_ghosts', 'preview_widgets', 'legacy_region_preview', 'page_regions_import', 'template_prepare', 'template_from_design',
                 'template_delete', 'template_discard', 'tab_layout', 'revisions_list', 'revision_get',
                 'theme_look_css', 'theme_palette_css',
-                'prototype_links', 'prototype_link_create', 'prototype_link_address', 'prototype_link_revoke',
+                'prototype_links', 'prototype_link_create', 'prototype_link_address', 'prototype_link_revoke', 'prototype_map',
                 'ai_state', 'ai_ask', 'ai_status', 'ai_cancel', 'ai_apply', 'ai_dismiss'),
         ),
         'designer_file' => array(
@@ -1487,10 +1486,10 @@ function pg_page_cache_panel_sub_actions()
                 'explorer_catalog_membership_remove', 'explorer_catalog_create_group',
                 'explorer_catalog_rename', 'explorer_catalog_paste', 'delete_file'),
             'clean' => array('explorer_list', 'explorer_tree', 'explorer_folder_options',
-                'explorer_folder_access_get', 'explorer_delete_check', 'explorer_folder_settings_get',
+                'explorer_folder_access_get', 'explorer_access_user_search', 'explorer_delete_check', 'explorer_folder_settings_get',
                 'explorer_bulk_page_options', 'explorer_bulk_file_options', 'explorer_shared_list',
                 'explorer_files_design', 'explorer_file_get', 'explorer_office_preview',
-                'explorer_file_usage', 'explorer_backups_list', 'explorer_backup_zip',
+                'explorer_file_usage', 'explorer_page_usage', 'explorer_backups_list', 'explorer_backup_zip',
                 'explorer_backup_rename', 'explorer_backup_copy', 'explorer_backup_delete',
                 'explorer_backup_upload', 'explorer_backup_chmod',
                 'explorer_erp_tree', 'explorer_erp_list', 'explorer_short_links_list',

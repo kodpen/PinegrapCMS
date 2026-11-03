@@ -16,6 +16,9 @@ description: The Workspace channel screen as redrawn (C1–C8, 2026-10-31): what
 - Access (`ws_can_read_channel()` and the rest), links that open in a new tab, keyboard use, `prefers-reduced-motion`; the panel's colour tokens in light and dark (`decisions-made-workspace-5.md`), no schema of its own.
 - A misaligned or poorly drawn workspace part met on the way is fixed in the change that meets it, as the drawing would have it: one look for cards, rows and badges, nothing stuck one under the other.
 
+## How is a Workspace card titled?
+- As the overview's `homeCard()`: an `h3.h6.mb-0` with a `me-1` icon in the `.card-header`, never the uppercase `text-uppercase h5 fg-primary fw-bold` form card heading (`ui/form-card-headings.md`). The Summary tab's Time spent (`workspace_task_time.js`) and Customer (`workspace_customer.js`) cards drew that until #5195; `tests/workspace_card_titles_test.php` pins it.
+
 ## What must hold on a phone?
 - The writing box rides on the keyboard: it moves up with it and the message list shrinks above it; 16 px text, the send button and drafts unchanged.
 - The header is one short line (back, name, ⋯); tabs, members, search and info are in ⋯ or a scroll row; the catch-up and pinned lines fold into one thin line, and they and the tabs hide while the keyboard is up.

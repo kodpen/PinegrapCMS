@@ -342,3 +342,44 @@ function erp_test_float_whole_quotient($numerator, $divisor)
 {
 	return ($numerator - fmod($numerator, $divisor)) / $divisor;
 }
+
+// A typed quantity or rate is digits and separators only: a minus sign or a
+// letter ('2O' for 20) is refused, not dropped into another number.
+function test_erp_typed_number_ok_refuses_signs_and_letters()
+{
+	pg_assert_same(true, erp_typed_number_ok(''));
+	pg_assert_same(true, erp_typed_number_ok(' 20 '));
+	pg_assert_same(true, erp_typed_number_ok('1.234,5'));
+	pg_assert_same(true, erp_typed_number_ok('18%'));
+	pg_assert_same(true, erp_typed_number_ok(7.5));
+	pg_assert_same(false, erp_typed_number_ok('-3'));
+	pg_assert_same(false, erp_typed_number_ok('-10'));
+	pg_assert_same(false, erp_typed_number_ok('2O'));
+	pg_assert_same(false, erp_typed_number_ok('.,'));
+	pg_assert_same(false, erp_typed_number_ok(array('1')));
+}
+
+// A line whose quantity times price passes the cap is refused before it is
+// multiplied: past PHP_INT_MAX the cast wrapped into a random total.
+function test_erp_line_amount_fits_caps_the_product()
+{
+	pg_assert_same(true, erp_line_amount_fits(749900, 3));
+	pg_assert_same(true, erp_line_amount_fits(ERP_MAX_LINE_AMOUNT, 1));
+	pg_assert_same(false, erp_line_amount_fits(ERP_MAX_LINE_AMOUNT, 1.0001));
+	pg_assert_same(false, erp_line_amount_fits(99999999999999900, 99999999999));
+	pg_assert_same(false, erp_line_amount_fits(0, 1e13));
+	pg_assert_same(true, erp_line_amount_fits(0, 0));
+}
+
+// A document's unit price keeps its own decimals in the panel's number format.
+function test_erp_decimal_text_formats_a_document_price()
+{
+	$s = erp_number_separators();
+	pg_assert_same('1' . $s['thousands'] . '250' . $s['decimal'] . '5', erp_decimal_text('1250.50'));
+	pg_assert_same('0' . $s['decimal'] . '123456', erp_decimal_text('0.123456'));
+	pg_assert_same('1' . $s['thousands'] . '000' . $s['thousands'] . '000', erp_decimal_text('1000000.00'));
+	pg_assert_same('12', erp_decimal_text('012'));
+	pg_assert_same('-3' . $s['decimal'] . '25', erp_decimal_text('-3.250'));
+	pg_assert_same('0', erp_decimal_text('-0.00'));
+	pg_assert_same('abc', erp_decimal_text('abc'));
+}

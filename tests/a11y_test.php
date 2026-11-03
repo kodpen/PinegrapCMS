@@ -311,3 +311,59 @@ function test_a11y_report_html_names_editor_measurements()
 
 	pg_assert_true(strpos($html, h(pg_a11y_measured_note('editor:1761600000'))) !== false);
 }
+
+function test_a11y_rules_by_criterion_orders_the_checklist()
+{
+	$rules = array(
+		'a11y_title'    => array('criterion' => '2.4.2'),
+		'a11y_lang'     => array('criterion' => '3.1.1'),
+		'a11y_headings' => array('criterion' => '1.3.1'),
+		'a11y_img_alt'  => array('criterion' => '1.1.1'),
+		'a11y_labels'   => array('criterion' => '1.3.1'),
+		'a11y_target'   => array('criterion' => '2.5.8'),
+		'a11y_contrast' => array('criterion' => '1.4.3'),
+		'a11y_links'    => array('criterion' => '2.4.11'),
+	);
+
+	pg_assert_same(
+		array('a11y_img_alt', 'a11y_headings', 'a11y_labels', 'a11y_contrast', 'a11y_title', 'a11y_links', 'a11y_target', 'a11y_lang'),
+		array_keys(pg_a11y_rules_by_criterion($rules)),
+		'criterion number order, a criterion\'s checks together in registry order'
+	);
+
+	$registry = pg_a11y_rules_by_criterion(pg_a11y_rules());
+	pg_assert_same(count(pg_a11y_rules()), count($registry), 'every registered check is kept');
+}
+
+function test_a11y_pass_record_counts_the_pages_checked()
+{
+	pg_assert_same(array('checked' => 29, 'failed' => 2, 'pages' => 31), pg_a11y_pass_record('{"checked":29,"failed":2}', 31), 'the last full pass');
+	pg_assert_same(array('checked' => 31, 'failed' => 0, 'pages' => 31), pg_a11y_pass_record('', 31), 'no record yet: the scope');
+	pg_assert_same(array('checked' => 31, 'failed' => 0, 'pages' => 31), pg_a11y_pass_record('{"checked":40,"failed":0}', 31), 'never more than the scope');
+
+	pg_assert_same('31 published pages checked', pg_a11y_pages_checked_text(31, 31));
+	pg_assert_same('29 of 31 published pages checked', pg_a11y_pages_checked_text(29, 31));
+}
+
+function test_a11y_run_notice_names_the_pages_not_rendered()
+{
+	pg_assert_same('Every published page has been checked (29 in this run).', pg_a11y_run_notice(array('checked' => 29, 'failed' => 0, 'done' => true)));
+	pg_assert_same('The check reached the last page: 29 pages were checked in this run, 2 could not be rendered.', pg_a11y_run_notice(array('checked' => 29, 'failed' => 2, 'done' => true)));
+	pg_assert_same('12 pages were checked. Click again to continue with the rest.', pg_a11y_run_notice(array('checked' => 12, 'failed' => 0, 'done' => false)));
+	pg_assert_same('12 pages were checked, 1 could not be rendered. Click again to continue with the rest.', pg_a11y_run_notice(array('checked' => 12, 'failed' => 1, 'done' => false)));
+}
+
+function test_a11y_rows_cut_note()
+{
+	pg_assert_same('', pg_a11y_rows_cut_note(1000, 1000), 'nothing left out');
+	pg_assert_same('The first 1000 of 2300 findings are shown. Choose a check to narrow the list.', pg_a11y_rows_cut_note(1000, 2300));
+}
+
+function test_a11y_report_html_pages_rows_and_check_heading()
+{
+	$html = pg_a11y_report_html(array(), array(), 31, 0, 'example.com', 29, 2300);
+
+	pg_assert_contains('29 of 31 published pages checked', $html, 'the pages the last pass checked');
+	pg_assert_contains('<th>Automatic check</th>', $html, 'the column names the check, not the verb');
+	pg_assert_false(strpos($html, 'Choose a check'), 'no cut note without findings shown');
+}

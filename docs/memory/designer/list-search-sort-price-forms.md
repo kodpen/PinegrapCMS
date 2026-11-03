@@ -23,3 +23,10 @@ module: widgets
 
 ## What keeps this from coming back?
 - `tests/list_search_controls_test.php` (forms, page links, `/index.php` and `/` keep `page`), `tests/catalog_search_form_binding_test.php`.
+
+## How does the catalog listing match the search text?
+- The product search (name, descriptions, details, keywords, slug, attribute option labels) and the child group search (name, short description, slug) compare with `LIKE` on `e(pg_list_like_pattern($search_query))`: a typed `%` or `_` is a plain character.
+- Before #5155 the pattern was a raw `'%term%'`, so a search for `_` or `%` listed every product (`tests/catalog_search_like_test.php`).
+
+## How does the catalog listing read the search text?
+- `?query=` only when `is_scalar()` (an array is no search), trimmed, cut at 100 characters with `mb_substr()`. Before the fix it was cut at 100 bytes: a long Turkish query split a letter, `h()` printed the invalid UTF-8 as nothing and the box came back empty (`tests/catalog_search_query_read_test.php`).

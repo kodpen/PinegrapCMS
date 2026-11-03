@@ -107,6 +107,8 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
         'Hold, move and reposition' => lang('Hold, move and reposition'),
         'Pin' => lang('Pin'),
         'Remove' => lang('Remove'),
+        'Field to set' => lang('Field to set'),
+        'New value' => lang('New value'),
         'Close' => lang('Close'),
         'Unpin' => lang('Unpin'),
         'Mark as unread' => lang('Mark as unread'),
@@ -159,6 +161,13 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
         'Current Date' => lang('Current Date'),
         'Current Date & Time' => lang('Current Date & Time'),
         'Day(s) Ago' => lang('Day(s) Ago'),
+        'day(s)' => lang('day(s)'),
+        'Field' => lang('Field'),
+        'Operator' => lang('Operator'),
+        'Value' => lang('Value'),
+        'Dynamic Value' => lang('Dynamic Value'),
+        'Filter {var:1}' => lang('Filter {var:1}'),
+        'Delete filter' => lang('Delete filter'),
         'Current Time' => lang('Current Time'),
         'Viewer' => lang('Viewer'),
         'Viewer\'s E-mail Address' => lang('Viewer\'s E-mail Address'),
@@ -349,35 +358,35 @@ PGLOGOSVG;
 
 
 /**
- * The loading curtain.
+ * The loading curtain and the leaving bar.
  *
- * Two jobs, one element. Arriving: an admin screen assembles itself in the
- * browser — the grid settles, the sidebar snaps into place, tables take their
- * widths — and for a moment the page is a half-built layout sliding sideways,
- * which reads as a fault rather than as loading. Leaving: the curtain goes
- * back up the instant a link is clicked, so the wait for the next screen
- * happens behind it instead of on a frozen copy of the old one. Between the
- * two the panel stops flashing between pages at all.
+ * Arriving: an admin screen assembles itself in the browser — the grid
+ * settles, the sidebar snaps into place, tables take their widths — and on a
+ * slow page that half-built layout sliding sideways reads as a fault. The
+ * curtain stays transparent for its first 120 ms and fades in over 100 ms, so
+ * a screen that is ready by then shows nothing at all; a slower one is
+ * covered until the document is ready and the curtain fades out in 100 ms.
+ * A screen still building after that (the visual editor) sets
+ * window.pgPreloaderHold and calls window.pgPreloaderDone() once painted;
+ * only that curtain shows the mark in the middle.
  *
- * It is the page's own background colour with a progress bar across the top,
- * not a picture: this is on every screen, dozens of times an hour, and
- * anything with a personality of its own becomes tiring by the third visit.
- * The bar is what says "working"; the rest is deliberately nothing.
+ * Leaving: no curtain. The old page stays visible; once a navigation has
+ * been under way for 150 ms a thin bar runs across the top and the pointer
+ * turns to "progress", and they stay until the page is gone (pagehide). No
+ * timer or interaction takes them down while the navigation runs. A
+ * navigation that never happens shows nothing: a cancelled confirm() never
+ * navigates, a cancelled "unsaved changes" prompt is read back from the
+ * beforeunload event, and an answer that turns out to be a download (it
+ * carries the pg_download cookie, pg_download_marker_hook()) clears the bar.
  *
  * Deliberately self-contained — markup, style hook and script arrive
  * together, right after <body>, so the curtain is up before any stylesheet or
- * script further down has had to load. Nothing else on the page can be relied
- * on at that point, so nothing else is.
- *
- * Four ways out, because a curtain that sticks makes the panel unusable: the
- * document being ready (the normal one), any interaction after a navigation
- * that did not happen (a cancelled "unsaved changes" prompt), a safety
- * timeout, and a CSS animation that hides the element after ten seconds even
- * if this script never ran at all.
+ * script further down has had to load. If this script never runs, a CSS
+ * animation hides the curtain after ten seconds.
  *
  * toolbar.php is excluded — it is the strip inside the frontend edit frame,
- * a few controls in a thin bar, and a curtain over the site being edited
- * would be the opposite of reassuring.
+ * and a curtain over the site being edited would be the opposite of
+ * reassuring.
  */
 function pg_preloader_markup()
 {
@@ -386,9 +395,10 @@ function pg_preloader_markup()
         return '';
     }
 
-    // The mark in the middle. On a private-label install there is no mark to
-    // show — the whole point of that mode is that the software does not name
-    // itself — so those screens get the three dots and nothing else.
+    // The mark in the middle, drawn only by a held curtain (CSS). On a
+    // private-label install there is no mark to show — the whole point of
+    // that mode is that the software does not name itself — so those
+    // screens get the three dots and nothing else.
     $mark = '';
     if (!defined('PRIVATE_LABEL') or !PRIVATE_LABEL) {
         $mark = '<span class="pg-preloader-logo">' . pg_logo_svg('-pl') . '</span>';
@@ -399,6 +409,7 @@ function pg_preloader_markup()
             . '<div class="pg-preloader-mark">' . $mark
             . '<div class="pg-preloader-dots"><i></i><i></i><i></i></div>'
             . '</div></div>'
+            . '<div class="pg-leave-bar" aria-hidden="true"><i></i></div>'
             . '<noscript><style>#pg-preloader{display:none !important;}</style></noscript>';
 
     return $markup . <<<'PGPRELOADER'
@@ -407,98 +418,167 @@ function pg_preloader_markup()
     (function () {
         var host = document.getElementById('pg-preloader');
         if (!host) return;
+        var root = document.documentElement;
         var timer = 0;
 
         function hide() {
             clearTimeout(timer);
-            // The CSS failsafe hides the curtain after ten seconds in case
-            // this script never ran. Getting here proves it did — and leaving
-            // the animation armed would let it fire `forwards` on a page left
-            // open, after which the curtain could never be raised again on
-            // the way out.
+            if (host.classList.contains('is-done')) return;
+            // The arrival fade-in and the CSS failsafe are animations; taking
+            // them off would snap the curtain to its resting opacity, so the
+            // opacity it has reached is pinned first and then faded out from.
+            // Getting here also proves the script ran, so the failsafe goes.
+            host.style.opacity = getComputedStyle(host).opacity;
             host.style.animation = 'none';
+            void host.offsetWidth;
+            host.style.opacity = '';
             host.classList.add('is-done');
-        }
-        function show() {
-            clearTimeout(timer);
-            host.classList.remove('is-done');
         }
 
         window.pgPreloaderDone = hide;
-        window.pgPreloaderShow = show;
 
-        // A screen that keeps building after the document is ready — the
-        // visual editor is the one — sets pgPreloaderHold and calls
-        // pgPreloaderDone() itself once it has actually painted.
-        if (!window.pgPreloaderHold) {
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', hide);
-            } else {
-                hide();
-            }
+        if (window.pgPreloaderHold) {
+            host.classList.add('is-hold');
+        } else if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', hide);
+        } else {
+            hide();
         }
-        setTimeout(hide, 9000);
+        timer = setTimeout(hide, 9000);
+
+        /* ── On the way out ──────────────────────────────────────────── */
+        var wait = 0, poll = 0, started = 0, unload = null, skipUntil = 0;
+        var cookie = /(?:^|;\s*)pg_download=/;
+
+        function dropMarker() {
+            if (cookie.test(document.cookie)) {
+                document.cookie = 'pg_download=; Max-Age=0; Path=/; SameSite=Lax';
+                return true;
+            }
+            return false;
+        }
+        function settle() {
+            clearTimeout(wait);
+            clearInterval(poll);
+            wait = poll = 0;
+            root.classList.remove('pg-is-leaving');
+        }
+        // An "unsaved changes" prompt was asked for by the beforeunload of
+        // this navigation. Read after the event, when every listener has run.
+        function prompted() {
+            if (!unload || unload.at < started - 50) return false;
+            var e = unload.e;
+            return e.defaultPrevented || (typeof e.returnValue === 'string' && e.returnValue !== '');
+        }
+        function leaving(e) {
+            settle();
+            started = Date.now();
+            dropMarker();
+            wait = setTimeout(function () {
+                wait = 0;
+                if ((e && e.defaultPrevented) || prompted()) return;
+                root.classList.add('pg-is-leaving');
+                poll = setInterval(function () { if (dropMarker()) settle(); }, 400);
+            }, 150);
+        }
+
+        var nav = window.navigation;
+        var hasNav = !!(nav && typeof nav.addEventListener === 'function' && 'NavigateEvent' in window);
+
+        window.addEventListener('beforeunload', function (e) {
+            unload = { e: e, at: Date.now() };
+            // Without the Navigation API this is the one signal every way of
+            // leaving gives: a link, a form, location.href, history.go().
+            if (!hasNav && !wait && !root.classList.contains('pg-is-leaving') && Date.now() > skipUntil) {
+                leaving(null);
+            }
+            // Runs once a prompt is answered; a cancelled one stays here.
+            setTimeout(function () { if (prompted()) settle(); }, 0);
+        });
 
         // Coming back through the browser's back button hands us the page
-        // exactly as it was — curtain and all, if it was up when we left.
-        window.addEventListener('pageshow', function (e) { if (e.persisted) hide(); });
+        // exactly as it was, bar and all.
+        window.addEventListener('pageshow', function (e) {
+            if (e.persisted) { settle(); hide(); }
+        });
 
-        /* ── On the way out ──────────────────────────────────────────────
-         * Raised again the moment a navigation is asked for. The one thing
-         * it must not do is stay up when the navigation never happens — an
-         * unsaved-changes prompt that the operator cancels, a handler that
-         * calls preventDefault. So it comes down again on the first sign
-         * that somebody is still here, and on a timer regardless.
-         */
-        function leaving() {
-            show();
-            timer = setTimeout(hide, 6000);
-            ['pointerdown', 'keydown', 'wheel'].forEach(function (evt) {
-                document.addEventListener(evt, hide, { once: true, capture: true });
+        if (hasNav) {
+            // Every navigation of this window, however it was started; links
+            // that open elsewhere, cancelled clicks and in-page answers never
+            // reach it.
+            nav.addEventListener('navigate', function (e) {
+                if (e.hashChange || e.downloadRequest != null) return;
+                if (e.destination && e.destination.sameDocument) return;
+                var url;
+                try { url = new URL(e.destination.url); } catch (err) { return; }
+                if (url.origin !== location.origin) return;
+                var src = e.sourceElement;
+                if (src && src.closest && src.closest('[data-pg-no-curtain]')) return;
+                if (src && src.form && src.form.hasAttribute('data-pg-no-curtain')) return;
+                leaving(e);
             });
+            return;
         }
 
+        // Without the Navigation API, beforeunload starts the bar; these say
+        // which clicks and submits must not.
+        function skip() { skipUntil = Date.now() + 1000; }
         document.addEventListener('click', function (e) {
-            if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
             var a = e.target && e.target.closest ? e.target.closest('a[href]') : null;
             if (!a) return;
-            if (a.target && a.target !== '_self') return;
-            if (a.hasAttribute('download') || a.hasAttribute('data-bs-toggle')) return;
-            // A main menu row that opens its panel stays on the page; its
-            // address is only for a new tab (backend.src.js, initMenuPanels()).
-            if (a.hasAttribute('data-pg-menu-panel')) return;
-            // A link a script answers on this page (the Workspace list on
-            // the channel screen opens a channel in place): this listener
-            // runs first, so it cannot wait for that script's preventDefault.
-            if (a.hasAttribute('data-pg-no-curtain')) return;
-            // A link the settings dialog answers is not a navigation, and a
-            // curtain over a page that stays put has to be waited out. Asked
-            // of the dialog rather than matched here, so there is one list of
-            // the addresses it claims.
-            if (window.pgSettingsModal && window.pgSettingsModal.asked(a)) return;
+            if (a.hasAttribute('data-pg-no-curtain')) return skip();
             var href = a.getAttribute('href') || '';
-            if (!href || href.charAt(0) === '#') return;
-            if (/^(javascript|mailto|tel|sms|data):/i.test(href)) return;
-            // A link to this page with only the fragment changed is not a
-            // navigation; neither is one that leaves this origin, where the
-            // curtain would be covering a page we no longer control.
+            if (/^(javascript|mailto|tel|sms|data):/i.test(href)) return skip();
             var url;
-            try { url = new URL(a.href, location.href); } catch (err) { return; }
-            if (url.origin !== location.origin) return;
-            if (url.href.split('#')[0] === location.href.split('#')[0]) return;
-            leaving();
+            try { url = new URL(a.href, location.href); } catch (err) { return skip(); }
+            if (url.origin !== location.origin) skip();
         }, true);
-
         document.addEventListener('submit', function (e) {
             var f = e.target;
-            if (e.defaultPrevented || !f || f.tagName !== 'FORM') return;
-            if (f.target && f.target !== '_self') return;   // posting into a frame
-            if (f.hasAttribute('data-pg-no-curtain')) return;
-            leaving();
+            if (f && f.hasAttribute && f.hasAttribute('data-pg-no-curtain')) skip();
         }, true);
     })();
     </script>
 PGPRELOADER;
+}
+
+/**
+ * Whether an answer about to be sent is a file download, from the headers
+ * PHP is going to send (headers_list()).
+ *
+ * @param array $headers header lines
+ * @return bool
+ */
+function pg_download_marker_needed(array $headers)
+{
+    foreach ($headers as $line) {
+        if (preg_match('/^\s*content-disposition\s*:\s*attachment\b/i', (string) $line)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Header callback: a download answer carries a short-lived pg_download
+ * cookie. The page that asked for it is still on screen with its leaving bar
+ * running (pg_preloader_markup()); the bar sees the cookie and stops.
+ */
+function pg_download_marker_hook()
+{
+    if (pg_download_marker_needed(headers_list())) {
+        header('Set-Cookie: pg_download=1; Max-Age=60; Path=/; SameSite=Lax', false);
+    }
+}
+
+/**
+ * init.php: registers pg_download_marker_hook() for this request.
+ */
+function pg_download_marker_watch()
+{
+    if (function_exists('pg_header_callback_add')) {
+        pg_header_callback_add('pg_download_marker_hook');
+    }
 }
 
 
@@ -783,12 +863,15 @@ function pg_period_unit($range, $first_day = null)
  *                           for day, week, month and year
  * @param string $range_html the range as text, already escaped
  * @param string $class      extra classes for the group (' d-none' hides it)
+ * @param array  $query      more values every link carries, e.g. the view of a
+ *                           screen that reads it only from the address
+ *                           (view_contacts.php's filter)
  * @return string
  */
-function pg_period_nav($url, $range, $periods, $range_html, $class = '')
+function pg_period_nav($url, $range, $periods, $range_html, $class = '', $query = array())
 {
-    $link = function ($to) use ($url) {
-        return $url . '?' . http_build_query(array(
+    $link = function ($to) use ($url, $query) {
+        return $url . '?' . http_build_query($query + array(
             'start_month' => $to['start_month'], 'start_day' => $to['start_day'], 'start_year' => $to['start_year'],
             'stop_month' => $to['stop_month'], 'stop_day' => $to['stop_day'], 'stop_year' => $to['stop_year'],
         ));
@@ -1745,6 +1828,20 @@ function pg_output_email_off_close()
     return '<!--/email_off-->';
 }
 
+// The screen's name in front of the <title>, ending in " - "; '' for none.
+// Escaped: a title can carry text from outside, such as the name an OAuth
+// client registered for itself on the consent screen, and a "</title>" in
+// it would end the element and open markup. Entities already written in a
+// translated title (&amp;) are kept as they are.
+function pg_output_page_title($title)
+{
+    if (!is_string($title) || ($title === '')) {
+        return '';
+    }
+
+    return htmlspecialchars($title, ENT_QUOTES, 'UTF-8', false) . ' - ';
+}
+
 function output_header_secure($properties = false)
 {
     // Messages printed from here on are panel markup (liveform::panel_output()).
@@ -1752,10 +1849,7 @@ function output_header_secure($properties = false)
         define('PG_PANEL_OUTPUT', true);
     }
 
-    $software_page_title = '';
-    if (isset($properties['title'])) {
-        $software_page_title = $properties['title'] . ' - ';
-    }
+    $software_page_title = pg_output_page_title(is_array($properties) && isset($properties['title']) ? $properties['title'] : '');
 
     $software_title = '';
     if (!defined('PRIVATE_LABEL') or !PRIVATE_LABEL) {
@@ -1859,10 +1953,7 @@ function output_header($properties = false)
         $output_body_class = $properties['extra classes'];
     }
 
-    $software_page_title = '';
-    if (isset($properties['title'])) {
-        $software_page_title = $properties['title'] . ' - ';
-    }
+    $software_page_title = pg_output_page_title(is_array($properties) && isset($properties['title']) ? $properties['title'] : '');
 
     if (defined('ADVANCED_VISUAL_EFFECTS') && ADVANCED_VISUAL_EFFECTS == 1) {
         $output_body_class .= ' advanced-visuals';
@@ -3415,6 +3506,23 @@ function output_menu($properties = false)
             $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-bar-chart bi-me-2\'>' . lang('Shipping Report') . '</a>';
         }
 
+        // VISITORS > Site Search (visitor_search.php), once the table is there.
+        if (pg_site_search_stats_ready()) {
+            $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-12\' />';
+            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitor_search.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-search bi-me-2\'>' . lang('Site Search') . '</a>';
+        }
+
+        // VISITORS > Page Speed and AI Visibility, once their tables are there.
+        if (pg_vitals_ready() || pg_ai_visibility_ready()) {
+            $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
+        }
+        if (pg_vitals_ready()) {
+            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitor_vitals.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-speedometer2 bi-me-2\'>' . lang('Page Speed') . '</a>';
+        }
+        if (pg_ai_visibility_ready()) {
+            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitor_ai.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-robot bi-me-2\'>' . lang('AI Visibility') . '</a>';
+        }
+
         // VISITORS > Google Search Console
         $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
         $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/search_console.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-google bi-me-2\'>' . lang('Google Search Console') . '</a>';
@@ -3961,7 +4069,19 @@ function output_menu($properties = false)
     // screens beside Site Settings, under system_tools.php's own gate: the
     // screen first, then each group of pg_settings_tool_groups() opening a
     // panel of its screens, every one under its own gate.
-    $menu_tools_groups = ($user['role'] <= 2) ? pg_settings_tool_groups($user) : array();
+    // The groups live in the settings registry, which is not one of the
+    // function modules and loads only behind PG_SETTINGS_MENU.
+    $menu_tools_groups = array();
+
+    if ($user['role'] <= 2) {
+        if (!defined('PG_SETTINGS_MENU')) {
+            define('PG_SETTINGS_MENU', true);
+        }
+
+        include_once(PG_FUNCTIONS_DIR . '/includes/settings/registry.php');
+
+        $menu_tools_groups = pg_settings_tool_groups($user);
+    }
 
     if ($user['role'] <= 2 && pg_settings_tool_count($menu_tools_groups) > 0) {
         $menu_tools = pg_menu_tools_markup($menu_tools_groups, OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $output_parent_target, pg_menu_tone('settings-color'));
@@ -4037,6 +4157,9 @@ function output_menu($properties = false)
         case 'view_visitor_report.php':
         case 'view_visitor.php':
         case 'search_console.php':
+        case 'visitor_search.php':
+        case 'visitor_vitals.php':
+        case 'visitor_ai.php':
             $active_menu = 6;
             break;
         case 'view_contacts.php':
@@ -5189,14 +5312,15 @@ function license_check($properties = false)
                     $curl_error = $answer['error'];
                 } else {
                     // Fallback: file_get_contents with stream context if allow_url_fopen is enabled
-                    // The certificate is verified here as well, against the same CA bundle
-                    // pg_curl_tls() uses when one is configured.
+                    // The certificate is verified here as well, against the store
+                    // pg_curl_tls() uses (pg_ca_bundle_effective()).
                     $ssl_options = array(
                         'verify_peer' => true,
                         'verify_peer_name' => true
                     );
-                    if (defined('CURL_CA_BUNDLE') && CURL_CA_BUNDLE !== '' && is_file(CURL_CA_BUNDLE)) {
-                        $ssl_options['cafile'] = CURL_CA_BUNDLE;
+                    $ca_file = pg_ca_bundle_effective();
+                    if ($ca_file !== '') {
+                        $ssl_options['cafile'] = $ca_file;
                     }
                     $context = stream_context_create(array(
                         'http' => array(
@@ -5713,19 +5837,11 @@ function pg_page_facts($page_id, $style_id, $user, $send_to = null)
         }
 
         if ($next_page_id !== NULL) {
-            $next_page_name = get_page_name($next_page_id);
-
-            if ($next_page_name == '') {
-                $facts[] = array('label' => lang('Next Page'), 'text' => '[' . lang('Not Set') . ']');
-            } else {
-                $facts[] = array('label' => lang('Next Page'), 'text' => $next_page_name, 'url' => OUTPUT_PATH . $next_page_name);
-            }
+            $facts[] = pg_page_fact_page(lang('Next Page'), get_page_name($next_page_id), OUTPUT_PATH);
         }
 
         if (isset($page_type_properties['skip_button_next_page_id']) && ($page_type_properties['skip_button_next_page_id'] != 0)) {
-            $skip_page_name = get_page_name($page_type_properties['skip_button_next_page_id']);
-
-            $facts[] = array('label' => lang('Skip Page'), 'text' => $skip_page_name, 'url' => OUTPUT_PATH . $skip_page_name);
+            $facts[] = pg_page_fact_page(lang('Skip Page'), get_page_name($page_type_properties['skip_button_next_page_id']), OUTPUT_PATH);
         }
     }
 
@@ -5847,6 +5963,28 @@ function pg_page_facts($page_id, $style_id, $user, $send_to = null)
     }
 
     return $facts;
+}
+
+/**
+ * A page panel fact naming another page: its name, linked to the page. The
+ * name is encoded for the path, since a page name may hold "#", "?" or "%".
+ * A page that is not set or no longer exists reads "[Not Set]" with no link.
+ * Pure.
+ *
+ * @param string      $label
+ * @param string|null $page_name get_page_name() of the page, '' when none
+ * @param string      $path      site path the page names sit under
+ * @return array label / text / url
+ */
+function pg_page_fact_page($label, $page_name, $path)
+{
+    $page_name = (string) $page_name;
+
+    if ($page_name === '') {
+        return array('label' => $label, 'text' => '[' . lang('Not Set') . ']');
+    }
+
+    return array('label' => $label, 'text' => $page_name, 'url' => $path . encode_url_path($page_name));
 }
 
 /**
@@ -6877,6 +7015,11 @@ function pg_js_bundles()
         // The graph canvas core (window.PGGraphCanvas), printed before the
         // scripts that draw on it: the flow canvas first.
         'assets/js/pg_graph_canvas.min.js'         => array('assets/js/pg_graph_canvas.js'),
+        // The link resolver's browser twin (window.PGLinkResolve,
+        // includes/fn/link_resolve.php).
+        'assets/js/pg_link_resolve.min.js'         => array('assets/js/pg_link_resolve.js'),
+        // The Prototype view's hotspot collector (window.PGProtoHotspots).
+        'assets/js/pg_proto_hotspots.min.js'       => array('assets/js/pg_proto_hotspots.js'),
         'assets/js/workspace_flow.min.js'          => array('assets/js/workspace_flow.js'),
         'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_guest.js'),
         // The Workspace list of the main menu, on every panel page of the
@@ -6898,6 +7041,8 @@ function pg_js_bundles()
         // page) by pg_image_editor_render.js.
         'assets/js/pg_image_editor_encode.min.js'  => array('assets/js/pg_image_editor_encode.js'),
         'assets/js/pg_fx.min.js'                   => array('assets/js/pg_fx.src.js'),
+        // The real-user speed beacon of public pages (includes/fn/page_vitals.php).
+        'assets/js/pg_vitals.min.js'               => array('assets/js/pg_vitals.src.js'),
         // "Convert to text" under a voice message, loaded before
         // workspace.min.js and beside the chat window's script.
         'assets/js/pg_voice_text.min.js'           => array('assets/js/pg_voice_text.js'),

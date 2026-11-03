@@ -375,10 +375,55 @@ function pg_shipping_method_form_date_time_column($text)
 }
 
 /**
+ * Whether a posted fee box holds an amount of 0 or more as the money mask
+ * writes it (either decimal separator, group separators and spaces
+ * allowed); a blank box is 0. The fee columns are unsigned: a negative
+ * amount was stored as 0 without a word.
+ *
+ * @param mixed $value
+ * @return bool
+ */
+function pg_shipping_method_form_amount_valid($value)
+{
+    if (!is_scalar($value)) {
+        return false;
+    }
+
+    $value = preg_replace('/[\s\x{00A0}]+/u', '', (string) $value);
+
+    return ($value === '') || (preg_match('/^[0-9]+([.,][0-9]+)*$/', $value) === 1);
+}
+
+/**
+ * Whether a posted day count is a whole number from 0 to $max; a blank box
+ * is 0. A decimal was rounded by the column (2.5 became 3) and a negative
+ * or non-numeric count stored as 0.
+ *
+ * @param mixed $value
+ * @param int   $max   The column's largest value
+ * @return bool
+ */
+function pg_shipping_method_form_days_valid($value, $max)
+{
+    if (!is_scalar($value)) {
+        return false;
+    }
+
+    $value = trim((string) $value);
+
+    return ($value === '') || (ctype_digit($value) && (strlen($value) <= 10) && ((int) $value <= $max));
+}
+
+/**
  * What keeps a post from being saved: field name => message for the error
- * screen. The start and end times must be a date and time in the site's
- * order (pg_shipping_method_form_date_time_column()); a blank one is no
- * DATETIME either.
+ * screen. The name is required: a method without one is an empty row in
+ * the list and in the arrival date and ship date adjustment pickers. The
+ * start and end times must be a date and time in the site's order
+ * (pg_shipping_method_form_date_time_column()); a blank one is no DATETIME
+ * either. The fees are amounts of 0 or more and the day counts whole
+ * numbers, as the list's quick edit takes them; the end of day and the
+ * cut-off times are blank or a real time (a typed 25:99 was stored as
+ * 00:00, no limit at all).
  *
  * @param array $post  The posted form
  * @return array
@@ -387,9 +432,55 @@ function pg_shipping_method_form_errors($post)
 {
     $errors = array();
 
+    $name = $post['name'] ?? '';
+
+    if (!is_scalar($name) || (trim((string) $name) === '')) {
+        $errors['name'] = lang(array('string' => 'Please enter a valid value for {var:1}', 'vars' => lang('Display Name')));
+    }
+
     foreach (array('start_time' => lang('Start Time'), 'end_time' => lang('End Time')) as $field => $label) {
         if (pg_shipping_method_form_date_time_column($post[$field] ?? '') === null) {
             $errors[$field] = lang(array('string' => 'Please enter a valid date &amp; time for {var:1}', 'vars' => $label));
+        }
+    }
+
+    foreach (array(
+        'base_rate' => lang('Base Rate'),
+        'primary_weight_rate' => lang('Primary Weight Rate'),
+        'secondary_weight_rate' => lang('Secondary Weight Rate'),
+        'item_rate' => lang('Item Rate'),
+    ) as $field => $label) {
+        if (!pg_shipping_method_form_amount_valid($post[$field] ?? '')) {
+            $errors[$field] = lang(array('string' => '{var:1} takes an amount, such as {var:2}.', 'vars' => array($label, pg_format_number(12.5, 2))));
+        }
+    }
+
+    // handle_days is SMALLINT UNSIGNED, base_transit_days INT UNSIGNED.
+    foreach (array('handle_days' => array(lang('Handling Time'), 65535), 'base_transit_days' => array(lang('Base Transit Time'), 2147483647)) as $field => $rule) {
+        if (!pg_shipping_method_form_days_valid($post[$field] ?? '', $rule[1])) {
+            $errors[$field] = lang(array('string' => '{var:1} takes a whole number from {var:2} to {var:3}.', 'vars' => array($rule[0], pg_format_number(0, 0), pg_format_number($rule[1], 0))));
+        }
+    }
+
+    $times = array('end_of_day' => lang('End of Day Time'));
+
+    foreach (array(
+        'monday' => lang('Monday'),
+        'tuesday' => lang('Tuesday'),
+        'wednesday' => lang('Wednesday'),
+        'thursday' => lang('Thursday'),
+        'friday' => lang('Friday'),
+        'saturday' => lang('Saturday'),
+        'sunday' => lang('Sunday'),
+    ) as $long => $day) {
+        $times['available_on_' . $long . '_cutoff_time'] = lang('Cut-off time') . ' (' . $day . ')';
+    }
+
+    foreach ($times as $field => $label) {
+        $time = $post[$field] ?? '';
+
+        if (!is_scalar($time) || ((trim((string) $time) !== '') && !validate_time(trim((string) $time)))) {
+            $errors[$field] = lang(array('string' => 'Please enter a valid time for {var:1}', 'vars' => $label));
         }
     }
 
@@ -480,28 +571,6 @@ function pg_shipping_method_form_columns($post)
 }
 
 /**
- * Writes the allowed zones and the excluded dates of a post for a shipping
- * method that has none yet.
- *
- * @param int   $shipping_method_id
- * @param array $post  The posted form
- * @return void
- */
-function pg_shipping_method_save_links($shipping_method_id, $post)
-{
-    // No zone chosen posts no list at all.
-    foreach ((array) ($post['allowed_zones'] ?? array()) as $zone_id) {
-        if ($zone_id && is_scalar($zone_id)) {
-            db_q("INSERT INTO shipping_methods_zones_xref (shipping_method_id, zone_id) VALUES (?, ?)", array((int) $shipping_method_id, (string) $zone_id)) or output_error('Query failed.');
-        }
-    }
-
-    foreach (pg_shipping_method_excluded_dates($post['excluded_transit_dates'] ?? '') as $date) {
-        db_q("INSERT INTO excluded_transit_dates (shipping_method_id, date) VALUES (?, ?)", array((int) $shipping_method_id, (string) $date)) or output_error('Query failed.');
-    }
-}
-
-/**
  * The help text under a time field: the hour format the site's time format
  * setting names, HH:mm for twenty_four_hours and h:mm AM/PM otherwise
  * (pg_time_format_help()).
@@ -515,7 +584,9 @@ function pg_shipping_method_form_time_help($time_format)
 }
 
 /**
- * The four field cards of the form, wrapped in their row.
+ * The form column (four field cards) and the sticky status column (enabled
+ * and protected) of the form; the screen wraps them in a row with its save
+ * bar.
  *
  * @param array  $values        pg_shipping_method_form_new_values() or
  *                              pg_shipping_method_form_row_values(); text
@@ -561,12 +632,12 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                                             <label class="form-label" for="base_rate_' . $number . '">' . lang('or') . '</label>
                                                             <div class="d-flex flex-wrap gap-1">
                                                                 <div class="input-group w-auto flex-grow-1">
-                                                                    <input value="' . $value('base_rate_' . $number) . '" style="min-width: 90px; text-align: right;" type="text" name="base_rate_' . $number . '" id="base_rate_' . $number . '" class="form-control" maxlength="12" inputmode="decimal"' . pg_money_mask_html() . ' />
+                                                                    <input value="' . $value('base_rate_' . $number) . '" style="min-width: 90px; text-align: right;" type="text" name="base_rate_' . $number . '" id="base_rate_' . $number . '" class="form-control" maxlength="12" inputmode="decimal"' . pg_money_mask_html() . ' data-inputmask-allowMinus="false" />
                                                                     <label class="input-group-text" for="base_rate_' . $number . '">' . BASE_CURRENCY_SYMBOL . '</label>
                                                                 </div>
                                                                 <div class="input-group w-auto flex-grow-1">
                                                                     <label class="input-group-text text-wrap" for="base_rate_' . $number . '_subtotal">' . lang('if recipient subtotal is at least') . '</label>
-                                                                    <input value="' . $value('base_rate_' . $number . '_subtotal') . '" style="min-width: 90px; text-align: right;" type="text" name="base_rate_' . $number . '_subtotal" id="base_rate_' . $number . '_subtotal" class="form-control" maxlength="12" inputmode="decimal"' . pg_money_mask_html() . ' />
+                                                                    <input value="' . $value('base_rate_' . $number . '_subtotal') . '" style="min-width: 90px; text-align: right;" type="text" name="base_rate_' . $number . '_subtotal" id="base_rate_' . $number . '_subtotal" class="form-control" maxlength="12" inputmode="decimal"' . pg_money_mask_html() . ' data-inputmask-allowMinus="false" />
                                                                     <label class="input-group-text" for="base_rate_' . $number . '_subtotal">' . BASE_CURRENCY_SYMBOL . '</label>
                                                                 </div>
                                                             </div>
@@ -583,12 +654,12 @@ function pg_shipping_method_form_cards($values, $zone_options)
 
     foreach ($rate_labels as $rate => $label) {
         $output_rates .= '
-                                        <div class="col-12 lg:col-4 my-3">
+                                        <div class="col-12 md:col-6 xl:col-4 my-3">
                                             <div class="border-1 border rounded-4 p-3 m-1" role="group" aria-labelledby="' . $rate . '_label">
                                                 <label class="form-label" id="' . $rate . '_label" for="' . $rate . '">' . $label . '</label>
                                                 <label class="form-control form-adorn form-adorn-end">
                                                     <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
-                                                    <input value="' . $value($rate) . '" type="text" name="' . $rate . '" id="' . $rate . '" class="form-ghost" maxlength="12" inputmode="decimal"' . pg_money_mask_html() . '  style="text-align: right;" />
+                                                    <input value="' . $value($rate) . '" type="text" name="' . $rate . '" id="' . $rate . '" class="form-ghost" maxlength="12" inputmode="decimal"' . pg_money_mask_html() . ' data-inputmask-allowMinus="false"  style="text-align: right;" />
                                                 </label>
                                                 <div class="form-field my-3 ms-5">
                                                     <div class="switch"><input class="" type="checkbox" id="' . $rate . '_first_item_excluded" name="' . $rate . '_first_item_excluded" value="1"' . $checked($rate . '_first_item_excluded') . ' /></div>
@@ -633,7 +704,7 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                                                 <div class="col-12">
                                                                     <label for="' . $field . '_cutoff_time" class="form-label">' . lang('Cut-off time') . '</label>
                                                                     <input type="text" name="' . $field . '_cutoff_time" id="' . $field . '_cutoff_time" size="8" maxlength="8" value="' . $value($field . '_cutoff_time') . '"  class="form-control" data-pg-time/>
-                                                                    <div class="form-text text-end">' . $time_help . '</div>
+                                                                    <div class="form-text">' . $time_help . '</div>
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -641,51 +712,53 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                                 </div>';
     }
 
+    // The form column and the status column of the edit screen layout
+    // (product_builder.php): what the method is, costs, delivers and when it
+    // is offered on the left; whether it is offered at all, and whether it
+    // is protected, in a sticky column on the right. Below lg the status
+    // column follows the form in source order.
     return '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
+                        <div class="col-12 lg:col-8 2xl:col-9 order-1">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Main Informations') . '
                                 </h2>
-                                <div class="card-body">
+                                <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 sm:col-6 lg:col-4 my-3">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="name" class="form-label">' . lang('Display Name') . '</label>
-                                            <input value="' . $value('name') . '" type="text" name="name" placeholder="' . lang('Shipping Method Name') . '" id="name" maxlength="50" class="form-control" />
+                                            <input value="' . $value('name') . '" type="text" name="name" placeholder="' . lang('Shipping Method Name') . '" id="name" maxlength="50" class="form-control" required />
                                         </div>
-                                        <div class="col-12 sm:col-6 lg:col-8 my-3">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="description" class="form-label">' . lang('Display Message') . '</label>
                                             <input value="' . $value('description') . '" type="text" name="description" id="description" class="form-control" maxlength="255" />
                                         </div>
-                                        <div class="col-12 sm:col-6 lg:col-4 my-3">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="code" class="form-label">' . lang('Code') . '</label>
                                             <input value="' . $value('code') . '" type="text" name="code" id="code" class="form-control" maxlength="50" />
-                                            <div class="form-text text-end">' . lang('Shipping Method Code for Order Reporting') . '</div>
+                                            <div class="form-text">' . lang('Shipping Method Code for Order Reporting') . '</div>
                                         </div>
-                                        <div class="col-12 sm:col-6 lg:col-4 my-3">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="carrier_title" class="form-label">' . lang('Carrier Title') . '</label>
                                             <input value="' . $value('carrier_title') . '" type="text" name="carrier_title" id="carrier_title" class="form-control" maxlength="255" />
-                                            <div class="form-text text-end">' . lang('Registered company name of the carrier, printed on e-archive invoices for internet sales') . '</div>
+                                            <div class="form-text">' . lang('Registered company name of the carrier, printed on e-archive invoices for internet sales') . '</div>
                                         </div>
-                                        <div class="col-12 sm:col-6 lg:col-4 my-3">
+                                        <div class="col-12 md:col-6 my-3">
                                             ' . pg_carrier_number_field($value('carrier_vkn')) . '
                                         </div>
-                                        <div class="col-12 sm:col-6 lg:col-4 my-3">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="service" class="form-label">' . lang('Service') . '</label>
                                             ' . render(array('template' => 'shipping_method_service.php')) . $output_service_value . '
-                                            <div class="form-text text-end">' . lang('Service for Real-Time Rate & Delivery') . '</div>
+                                            <div class="form-text">' . lang('Service for Real-Time Rate & Delivery') . '</div>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="card my-7">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Shipping Method Charges') . '
                                 </h2>
-                                <div class="card-body">
+                                <div class="card-body pt-0">
                                     <div class="row">
                                         <div class="col-12 my-3 collapse" id="realtime_rate_row">
                                             <div class="form-field">
@@ -695,12 +768,12 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                             <script>init_shipping_method_service()</script>
                                         </div>
                                         <div class="col-12 my-3">
-                                            <div class="col-12 lg:col-4">
+                                            <div class="col-12 md:col-6 xl:col-4">
                                                 <div class=" border-1 border rounded-4 p-3 m-1">
                                                     <label class="form-label" for="base_rate">' . lang('Base Rate') . '</label>
                                                     <label class="form-control form-adorn form-adorn-end">
                                                         <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
-                                                        <input value="' . $value('base_rate') . '" type="text" name="base_rate" id="base_rate" class="form-ghost" maxlength="12" inputmode="decimal"' . pg_money_mask_html() . '  style="text-align: right;" />
+                                                        <input value="' . $value('base_rate') . '" type="text" name="base_rate" id="base_rate" class="form-ghost" maxlength="12" inputmode="decimal"' . pg_money_mask_html() . ' data-inputmask-allowMinus="false"  style="text-align: right;" />
                                                     </label>
                                                     <div class="form-field my-3 ms-5">
                                                         <div class="switch"><input class="collapse-switcher" type="checkbox" id="variable_base_rate" name="variable_base_rate" value="1"' . $checked('variable_base_rate') . ' data-bs-target="#base_rate_rows"/></div>
@@ -720,21 +793,19 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="card my-7">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Destination Delivery Options') . '
                                 </h2>
-                                <div class="card-body">
+                                <div class="card-body pt-0">
                                     <div class="row">
-                                        <div class="col-12 my-3">
+                                        <div class="col-12 md:col-6 my-3">
                                             <div class="form-field">
                                                 <div class="switch"><input class="" type="checkbox" id="street_address" name="street_address" value="1"' . $checked('street_address') . '/></div>
                                                 <label class="" for="street_address">' . lang('Allow Street Address') . '</label>
                                             </div>
                                         </div>
-                                        <div class="col-12 my-3">
+                                        <div class="col-12 md:col-6 my-3">
                                             <div class="form-field">
                                                 <div class="switch"><input class="" type="checkbox" id="po_box" name="po_box" value="1"' . $checked('po_box') . '/></div>
                                                 <label class="" for="po_box">' . lang('Allow PO Box') . '</label>
@@ -744,17 +815,17 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                             <label for="allowed_zones" class="form-label">' . lang('Allowed Zones') . '</label>
                                             <select style="width:100%" class="form-control" data-pg-combobox data-placeholder="' . lang('Click to select shipping zone(s)') . '" id="allowed_zones" name="allowed_zones[]" multiple="multiple">' . $zone_options . '</select>
                                         </div>
-                                        <div class="col-12 md:col-6 lg:col-4 my-1">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="handle_days" class="form-label">' . lang('Handling Time') . '</label>
                                             <div class="input-group">
-                                                <input value="' . $value('handle_days') . '" type="text" name="handle_days" id="handle_days" class="form-control" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
+                                                <input value="' . $value('handle_days') . '" type="text" name="handle_days" id="handle_days" class="form-control" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowMinus="false"  style="text-align: right;" />
                                                 <span class="input-group-text" title="' . lang('day(s) from order date') . '">' . lang('day(s)') . '</span>
                                             </div>
                                         </div>
-                                        <div class="col-12 md:col-6 lg:col-4 my-1">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="end_of_day" class="form-label">' . lang('End of Day Time') . '</label>
                                             <input value="' . $value('end_of_day') . '" type="text" name="end_of_day" id="end_of_day" class="form-control" maxlength="8" data-pg-time/>
-                                            <div class="form-text text-end">' . $time_help . '</div>
+                                            <div class="form-text">' . $time_help . '</div>
                                         </div>
                                         <div class="col-12 my-3">
                                             <h3 class="h5 fg-secondary">' . lang('Handling on') . '</h3>
@@ -766,26 +837,27 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                             <div class="row row-cols-1 sm:row-cols-2 md:row-cols-3 lg:row-cols-auto" role="group" aria-label="' . h(lang('Ships on')) . '">' . $day_boxes('ship') . '
                                             </div>
                                         </div>
-                                        <div class="col-12 md:col-6 lg:col-4 my-1">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="base_transit_days" class="form-label">' . lang('Base Transit Time') . '</label>
                                             <div class="input-group">
-                                                <input value="' . $value('base_transit_days') . '" type="text" name="base_transit_days" id="base_transit_days" class="form-control" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
+                                                <input value="' . $value('base_transit_days') . '" type="text" name="base_transit_days" id="base_transit_days" class="form-control" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-allowMinus="false"  style="text-align: right;" />
                                                 <span class="input-group-text" title="' . lang('day(s) from order date') . '">' . lang('day(s)') . '</span>
                                             </div>
                                         </div>
-                                        <div class="col-12 my-5">
+                                        <div class="w-100"></div>
+                                        <div class="col-12 md:col-6 xl:col-4 my-3">
                                             <div class="form-field">
                                                 <div class="switch"><input class="" type="checkbox" id="adjust_transit" name="adjust_transit" value="1"' . $checked('adjust_transit') . '/></div>
                                                 <label class="" for="adjust_transit">' . lang('Adjust Transit for Country') . '</label>
                                             </div>
                                         </div>
-                                        <div class="col-12 my-5">
+                                        <div class="col-12 md:col-6 xl:col-4 my-3">
                                             <div class="form-field">
                                                 <div class="switch"><input class="" type="checkbox" id="transit_on_saturday" name="transit_on_saturday" value="1"' . $checked('transit_on_saturday') . '/></div>
                                                 <label class="" for="transit_on_saturday">' . lang('Transit on Saturday') . '</label>
                                             </div>
                                         </div>
-                                        <div class="col-12 my-5">
+                                        <div class="col-12 md:col-6 xl:col-4 my-3">
                                             <div class="form-field">
                                                 <div class="switch"><input class="" type="checkbox" id="transit_on_sunday" name="transit_on_sunday" value="1"' . $checked('transit_on_sunday') . '/></div>
                                                 <label class="" for="transit_on_sunday">' . lang('Transit on Sunday') . '</label>
@@ -794,34 +866,19 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="card my-7">
+                            <div class="card mb-7">
                                 <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Shipping Method Availability') . '
                                 </h2>
-                                <div class="card-body">
+                                <div class="card-body pt-0">
                                     <div class="row">
                                         <div class="col-12 my-3">
-                                            <div class="form-field">
-                                                <div class="switch"><input class="" type="checkbox" id="status" name="status" value="1"' . $checked('status') . ' /></div>
-                                                <label class="" for="status">' . lang('Enabled this shipping method') . '</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 my-3">
-                                            <div class="form-field">
-                                                <div class="switch"><input class="" type="checkbox" id="protected" name="protected" value="1"' . $checked('protected') . ' /></div>
-                                                <label class="" for="protected">' . lang('Protected') . '</label>
-                                            </div>
-                                        </div>
-
-                                        <div class="col-12 mt-5 mb-3">
                                             <label for="excluded_transit_dates" class="form-label">' . lang('Excluded Dates') . '</label>
                                             <input value="' . $value('excluded_transit_dates') . '" type="text" name="excluded_transit_dates" id="excluded_transit_dates" class="form-control tagin min-height-tagin" data-pg-chips maxlength="255"/>
                                             <input type="text" id="excluded_transit_date_pick" class="form-control mt-2" data-pg-date data-pg-add-to-chips="excluded_transit_dates" autocomplete="off" placeholder="' . h(lang('Add Date')) . '" aria-label="' . h(lang('Add Date')) . '"/>
-                                            <div class="form-text text-end">' . lang('Excluded Dates for Shipping & Handling (e.g. Holidays). Split dates with enter key or \',\' key') . ' (' . get_date_format_help() . ')</div>
+                                            <div class="form-text">' . lang('Excluded Dates for Shipping & Handling (e.g. Holidays). Split dates with enter key or \',\' key') . ' (' . get_date_format_help() . ')</div>
                                         </div>
-                                        <div class="col-12 lg:col-8 my-5">
+                                        <div class="col-12 my-3">
                                             <div class="row">
                                                 <div class="col-12 md:col">
                                                     <label for="start_time" class="form-label">' . lang('Start Time') . '</label>
@@ -844,7 +901,26 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                 </div>
                             </div>
                         </div>
-                    </div>';
+                        <div class="col-12 lg:col-4 2xl:col-3 order-2">
+                            <!-- 3.3rem: the fixed control panel header covers the top of the window. -->
+                            <div class="position-sticky" style="top:3.3rem;">
+                                <div class="card mb-7">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        ' . lang('Status') . '
+                                    </h2>
+                                    <div class="card-body pt-0">
+                                        <div class="form-field mb-3">
+                                            <div class="switch"><input class="" type="checkbox" id="status" name="status" value="1"' . $checked('status') . ' /></div>
+                                            <label class="" for="status">' . lang('Enabled this shipping method') . '</label>
+                                        </div>
+                                        <div class="form-field">
+                                            <div class="switch"><input class="" type="checkbox" id="protected" name="protected" value="1"' . $checked('protected') . ' /></div>
+                                            <label class="" for="protected">' . lang('Protected') . '</label>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>';
 }
 
 /**

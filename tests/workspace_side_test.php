@@ -281,3 +281,13 @@ function test_workspace_side_discussions_come_in_one_order()
 {
 	pg_assert_contains('ORDER BY c.last_message_at DESC, c.id DESC', pg_test_function_source('ws_threads_for'), 'a tie keeps its order');
 }
+
+// The three buttons beside the panel's name are narrow enough for the name to
+// keep to one line when a long list gives the menu a classic scrollbar.
+function test_workspace_side_head_tools_leave_room_for_the_name()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+
+	pg_assert_true((bool) preg_match('/#menu \.pg-menu-panel-head \.ws-side-head-tools \{[^}]*gap: 0;[^}]*\}/', $css), 'no gap between the buttons');
+	pg_assert_true((bool) preg_match('/#menu \.pg-menu-panel-head \.ws-side-head-tools \.ws-side-tool \{[^}]*width: 1\.625rem;[^}]*\}/', $css), 'the head buttons are narrower than the list\'s');
+}

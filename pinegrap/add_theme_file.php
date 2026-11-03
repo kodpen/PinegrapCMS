@@ -204,6 +204,13 @@ if (!$_POST) {
     // validate the theme type field
     $liveform->validate_required_field('theme_type', lang(array('string'=>'{var:1} is required.','vars'=>lang('A Theme Type') )) );
     
+    // System themes are closed on the form (the Theme Designer is off); a
+    // hand-made request is refused here too, so it neither writes rules nor
+    // builds CSS from a template that lacks most of them.
+    if (($liveform->check_form_errors() == false) && ($liveform->get_field_value('theme_type') !== 'custom')) {
+        $liveform->mark_error('theme_type', lang('The Theme Type is not valid.'));
+    }
+
     // if there is an error, forward user back to add theme file screen
     if ($liveform->check_form_errors() == true) {
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_theme_file.php');
@@ -557,11 +564,15 @@ article,aside,details,figcaption,figure,footer,header,hgroup,nav,section,summary
         
     // else upload and create a custom theme file
     } else {
-        $file_name = prepare_file_name($_FILES['custom_css_file']['name']);
+        // Read before the name is prepared: prepare_file_name() turns an
+        // empty name into "file", so a form sent without a file was answered
+        // with "must be a CSS file".
+        $file_missing = pg_upload_file_missing($_FILES['custom_css_file'] ?? null);
+        $uploaded_name = $file_missing ? '' : trim(pg_basename((string) $_FILES['custom_css_file']['name']));
+        $file_name = $file_missing ? '' : prepare_file_name($uploaded_name);
 
-        $file_type = $_FILES['custom_css_file']['type'];
-        $file_size = $_FILES['custom_css_file']['size'];
-        $file_temp_name = $_FILES['custom_css_file']['tmp_name'];
+        $file_size = $file_missing ? 0 : $_FILES['custom_css_file']['size'];
+        $file_temp_name = $file_missing ? '' : $_FILES['custom_css_file']['tmp_name'];
         $array_file_extension = explode('.', $file_name);
         $size_of_array = count($array_file_extension);
         $file_extension = $array_file_extension[$size_of_array - 1];
@@ -596,8 +607,12 @@ article,aside,details,figcaption,figure,footer,header,hgroup,nav,section,summary
             exit();
         }
         
+        // A taken name is the file box's error, so the folder and description
+        // come back with the form instead of a site error page.
         if (check_name_availability(array('name' => $file_name)) == false) {
-            output_error(lang(array('string'=>'{var:1} already exists','vars'=>h($file_name))). '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+            $liveform->mark_error('custom_css_file', lang(array('string' => '{var:1} already exists. Please choose a different file name.', 'vars' => h($file_name))));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_theme_file.php');
+            exit();
         }
 
         // create file
@@ -639,7 +654,10 @@ article,aside,details,figcaption,figure,footer,header,hgroup,nav,section,summary
         $liveform->remove_form();
         // output a notice to the view themes screen
         $liveform_view_themes = new liveform('view_themes');
-        $liveform_view_themes->add_notice(lang(array('string'=>'The theme file, {var:1}, has been uploaded.','vars'=>'<a href="' . OUTPUT_PATH . h($file_name) . '" target="_blank">' . h($file_name) . '</a>')) );
+        $uploaded_notice = lang(array('string'=>'The theme file, {var:1}, has been uploaded.','vars'=>'<a href="' . OUTPUT_PATH . h($file_name) . '" target="_blank">' . h($file_name) . '</a>'));
+        // The name is the theme's address; say so when it is not the file's own.
+        $saved_as = pg_file_name_saved_as_notice($uploaded_name, $file_name);
+        $liveform_view_themes->add_notice($uploaded_notice . (($saved_as !== '') ? ' ' . $saved_as : ''));
 
         
         // send the user to the view themes screen

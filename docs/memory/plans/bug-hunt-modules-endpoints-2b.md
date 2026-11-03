@@ -6,15 +6,15 @@ description: Module list of plans/bug-hunt.md, part 5: the single root endpoints
 ## Which single endpoints are hunted?
 - Endpoints view_accessibility, update_address_book, allow_or_disallow_new_comments, approve_affiliate, view_audit_log, backups: done #5130 (backups: a folder backup's download served the archive of an earlier version after an update; rest clean)
 
-- Endpoints browse_catalog_menu, cancel_order, carrier_webhook, chat, clean_up, clear_theme_designer_session: open
+- Endpoints browse_catalog_menu, cancel_order, carrier_webhook, chat, clean_up, clear_theme_designer_session: done #5142 (clean_up: names in the delete list printed raw; rest clean; leads: clear_theme_designer_session array file_id fatal, browse_catalog_menu previous_url_id not urlencoded)
 
-- Endpoints cloudflare, confirm_subscription, connected_apps, connections, consent_answer, view_countries: open
+- Endpoints cloudflare, confirm_subscription, connected_apps, connections, consent_answer, view_countries: done #5144, #5161 (cloudflare: DNS table printed record names and contents raw; analytics day reads dropped one date, array dates a TypeError; confirm_subscription, connected_apps, connections, consent_answer, view_countries clean; init.php ?secure_mode=false question #5146)
 
-- Endpoints create_file, get_cross_sell_items, csp_report, view_currencies, database_engine, developer_lock: open
+- Endpoints create_file, get_cross_sell_items, csp_report, view_currencies, database_engine, developer_lock: done #5166 (developer_lock: the PIN could be guessed without a limit; rest clean)
 
-- Endpoints do, excel_reader2, update_exchange_rates, edit_featured_and_new_items, feed, functions: open
+- Endpoints do, excel_reader2, update_exchange_rates, edit_featured_and_new_items, feed, functions: done #5174 (do: missing or array parameters gave PHP 8 warnings and TypeErrors, an array page_id broke the later registration; excel_reader2 bundled, functions a loader, rest clean; add_watcher from any link is by design)
 
-- Endpoints health, get_help_url, update_imported_items, index, init, integration: done #5121 (update_imported_items: data-src rewritten with the src address; health, get_help_url, index, integration clean; leads: update_imported_items reads a missing $imported_items key per reference (PHP 8 warning); init.php ?secure_mode=false skips the forced https redirect and 301s an https request to http, a product question; also #5100 get_form_item_view/get_file submitter e-mail match, #5110 kiosk array text)
+- Endpoints health, get_help_url, update_imported_items, index, init, integration: done #5121 (update_imported_items: data-src rewritten with the src address; health, get_help_url, index, integration clean; leads: init.php ?secure_mode=false skips the forced https redirect and 301s an https request to http, a product question (#5146); also #5100 get_form_item_view/get_file submitter e-mail match, #5110 kiosk array text)
 
 - Endpoints iys_job, edit_javascript, job, kiosk, legal_document, liveform.class: done #5074 (job: page revisions sweep twice per tick; rest clean; lead: kiosk keeps an array dialog_message or button label, shown as "Array")
 

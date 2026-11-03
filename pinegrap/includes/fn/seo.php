@@ -3376,6 +3376,30 @@ function pg_request_is_automated()
     return function_exists('waf_is_pinegrap_client') && waf_is_pinegrap_client();
 }
 
+/**
+ * Whether this request is the panel's own preview of a page: the File
+ * Manager's preview pane and Quick look load the page with pg_preview=1.
+ * Such a draw opens no visitor record and counts no page view, or an operator
+ * looking through pages would raise their views and SEO impact (#5218).
+ *
+ * The marker counts only for a signed-in panel user; a visitor who adds it is
+ * counted as usual. The query string also keeps the page cache out of it, so
+ * no beacon counts it either.
+ *
+ * Pure: no query.
+ *
+ * @param  array $get        request parameters ($_GET)
+ * @param  bool  $signed_in  a panel user is signed in
+ * @return bool
+ */
+function pg_request_is_panel_preview(array $get, $signed_in)
+{
+    return ($signed_in === true)
+        && isset($get['pg_preview'])
+        && is_string($get['pg_preview'])
+        && ($get['pg_preview'] === '1');
+}
+
 // The visitor's row in visitors for this request: opened or found again, with
 // the tracking, affiliate and campaign codes and the referring site. Called
 // by get_page.php for a page it draws and by page_view.php for a page the
@@ -5576,7 +5600,10 @@ function pg_seo_pages_summary($rows)
             }
         }
 
-        if ((int) ($row['seo_checked_at'] ?? 0) == 0) {
+        // Never scored, or marked stale by a change since the last score:
+        // the rows the "SEO Score Not Calculated" filter lists.
+        if (((int) ($row['seo_checked_at'] ?? 0) == 0)
+            || (isset($row['seo_analysis_current']) && ((string) $row['seo_analysis_current'] === '0'))) {
             $summary['not_calculated']++;
         }
 

@@ -22,6 +22,10 @@ validate_area_access($user, 'manager');
 
 validate_token_field();
 
+// The theme is one value; one sent as an array (?id[]=x) counts as not given.
+// Kept in the session, it broke the preview panel of every page after it.
+pg_request_single_values(array('mode', 'id'));
+
 // do different things depending on mode
 switch (($_GET['mode'] ?? '')) {
     // if the user has selected to preview a theme, then do that
@@ -29,7 +33,7 @@ switch (($_GET['mode'] ?? '')) {
         // if a theme ID was not passed, then set the user to preview the activated desktop theme
         if (isset($_GET['id']) == FALSE) {
             // do things differently based on the device type (i.e. desktop or mobile)
-            switch ($_SESSION['software']['device_type']) {
+            switch ($_SESSION['software']['device_type'] ?? '') {
                 // if the device type is desktop then get the activated desktop theme id
                 case 'desktop':
                 default:

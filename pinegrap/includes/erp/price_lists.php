@@ -177,6 +177,32 @@ function erp_account_prices_add($account_id, $product_id, $user_id)
 }
 
 /**
+ * The account-wide discount as typed: digits with at most one decimal mark,
+ * from 0 to 100, nothing for none. A minus, a percent sign or a typo is
+ * refused rather than read around (erp_fx_rate_in() dropped the minus, so
+ * -5 saved 5 and 'abc' saved 0).
+ *
+ * @param string $text
+ * @return float|null  The rate, 0.0 for an empty box, null when refused
+ */
+function erp_account_discount_rate_parse($text)
+{
+    $text = trim((string) $text);
+
+    if ($text === '') {
+        return 0.0;
+    }
+
+    if (preg_match('/^[0-9]+([.,][0-9]+)?$/', $text) !== 1) {
+        return null;
+    }
+
+    $rate = (float) str_replace(',', '.', $text);
+
+    return ($rate > 100) ? null : $rate;
+}
+
+/**
  * The account's discount on everything without terms of its own.
  *
  * @param int    $account_id
@@ -185,9 +211,9 @@ function erp_account_prices_add($account_id, $product_id, $user_id)
  */
 function erp_account_discount_save($account_id, $text)
 {
-    $rate = (trim((string) $text) === '') ? 0.0 : erp_fx_rate_in($text);
+    $rate = erp_account_discount_rate_parse($text);
 
-    if (($rate < 0) || ($rate > 100)) {
+    if ($rate === null) {
         return array('success' => false, 'error' => lang('A price cannot be negative, and a discount runs from 0 to 100.'));
     }
 

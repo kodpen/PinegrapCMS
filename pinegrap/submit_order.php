@@ -3164,14 +3164,19 @@ function submit_order($type) {
                 // else mode is paypal_express_checkout_return, so prepare to send DoExpressCheckoutPayment request to PayPal
                 } else {
 
+                    // PayPal returns one token and one payer id; an array or a missing
+                    // one counts as empty, and PayPal answers that with its own error.
+                    $paypal_express_checkout_token = (isset($_GET['token']) && is_string($_GET['token'])) ? $_GET['token'] : '';
+                    $paypal_express_checkout_payer_id = (isset($_GET['PayerID']) && is_string($_GET['PayerID'])) ? $_GET['PayerID'] : '';
+
                     $post_data =
                         'METHOD=DoExpressCheckoutPayment&' .
                         'VERSION=85.0&' .
                         'USER=' . urlencode(ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT_API_USERNAME) . '&' .
                         'PWD=' . urlencode(ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT_API_PASSWORD) . '&' .
                         'SIGNATURE=' . urlencode(ECOMMERCE_PAYPAL_EXPRESS_CHECKOUT_API_SIGNATURE) . '&' .
-                        'TOKEN=' . urlencode($_GET['token']) . '&' .
-                        'PAYERID=' . urlencode($_GET['PayerID']) . '&' .
+                        'TOKEN=' . urlencode($paypal_express_checkout_token) . '&' .
+                        'PAYERID=' . urlencode($paypal_express_checkout_payer_id) . '&' .
                         'PAYMENTREQUEST_0_PAYMENTACTION=' . $paypal_express_checkout_paymentaction . '&' .
                         'BUTTONSOURCE=Camelback_Cart_EC&' .
                         $paypal_express_checkout_shipping .

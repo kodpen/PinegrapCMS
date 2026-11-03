@@ -118,7 +118,7 @@ function test_panel_accessible_names_filter_selects()
 	// 'groups'...), which would otherwise name the select.
 	$expect = array(
 		'view_users.php' => array('filter_select' => 'Content that viewed'),
-		'view_ads.php' => array('ad_region_id' => 'Content that viewed'),
+		'view_ads.php' => array('ad_region_id' => 'Ad Region'),
 		'view_contacts.php' => array('contact_group' => 'Group', 'filter' => 'Content that viewed'),
 		'view_submitted_forms.php' => array('custom_form' => 'Custom Form', 'custom_form_fake' => 'Custom Form'),
 		'editor_select_page_or_file.php' => array('folder_id' => 'Folder', 'access_control_type' => 'Access'),

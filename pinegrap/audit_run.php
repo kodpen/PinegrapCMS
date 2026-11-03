@@ -100,13 +100,17 @@ session_start();
 $liveform = new liveform($liveform_name);
 
 if ($pass === 'a11y') {
-    if ($run['done']) {
-        $liveform->add_notice(lang(array('string' => 'Every published page has been checked ({var:1} in this run).', 'vars' => array($run['checked']))));
-    } else {
-        $liveform->add_notice(lang(array('string' => '{var:1} pages were checked. Click again to continue with the rest.', 'vars' => array($run['checked']))));
-    }
+    $liveform->add_notice(pg_a11y_run_notice($run));
 
     log_activity(lang('ran the accessibility check'), $username);
+
+    // As the nightly job logs them (seo_a11y_job.php).
+    if ($run['failed']) {
+        log_activity(lang(array(
+            'string' => 'accessibility check could not render {var:1} page{suffix:1}',
+            'vars' => $run['failed'],
+            'suffix' => (($run['failed'] > 1) ? 's' : ''))), $username);
+    }
 } else {
     if ($run['remaining'] > 0) {
         $liveform->add_notice(lang(array(

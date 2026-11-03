@@ -77,11 +77,30 @@ function api_webhook_events() {
 		// retry_count follow, never the card. Announced once per written
 		// event, whoever made the move: the renewal job, a payment service's
 		// message, the customer in My Account, staff on the panel or the API.
+		// A bounce or a spam complaint recorded for an address
+		// (includes/fn/mail_bounces.php, pg_mail_bounce_record()). address,
+		// kind (hard, soft, complaint), source, suppressed (whether mail to
+		// the address is now stopped), message_id and campaign_id. A manual
+		// block from the panel is not announced.
+		'mail.bounced'     => 'A message to an address bounced; suppressed says whether mail to it is now stopped',
+		'mail.complained'  => 'A recipient marked a message as spam: mail to the address is stopped and its e-mail marketing consent withdrawn',
 		'subscription.renewed'   => 'A subscription was charged for its next period; order_id names the renewal order',
 		'subscription.failed'    => 'A subscription\'s renewal was refused or waits for the customer to confirm the payment; status ended when the last retry failed (the end itself is not announced again)',
 		'subscription.cancelled' => 'A subscription was cancelled; it runs until next_charge_at and is not charged again (its end that day is not announced)',
 		'subscription.paused'    => 'A subscription was paused: nothing is charged until it is resumed',
 		'subscription.resumed'   => 'A paused subscription was resumed and is charged again from next_charge_at',
+		// An affiliate commission's status (includes/fn/commission_list.php,
+		// pg_commission_status_save()): id is the commission's; reference_code,
+		// status, previous_status, affiliate_code, order_id and amount follow.
+		// Announced where a person or an application moves it; an order's
+		// cancellation voiding its commissions, and a restore giving them
+		// back, are not (order.cancelled is), nor is a new commission.
+		'commission.status_changed' => 'A commission was moved to another status on the commissions screen or through the API (not the voiding by an order\'s cancellation or its restore; a new commission is not announced)',
+		// An affiliate approved (includes/fn/contacts.php, pg_affiliate_approve()
+		// and the contact form's tick): id is the contact's; affiliate_code and
+		// affiliate_name follow. An automatic approval on the sign-up form is
+		// not announced; customer.created is.
+		'affiliate.approved'        => 'A contact was approved as an affiliate from the approval link, on the contact form or through the API (not the sign-up form\'s automatic approval)',
 		'product.created'      => 'A new product was added',
 		'product.updated'      => 'A product was changed',
 		// Moving a product to the Recycle Bin through the API announces this
@@ -135,6 +154,27 @@ function api_webhook_events() {
 		'product_group.created' => 'A product group was created through the API or the Workspace',
 		'product_group.updated' => 'A product group was changed',
 		'product_group.deleted' => 'A product group was deleted or moved to the Recycle Bin through the API',
+		// Shipping zones and tax zones (includes/fn/store_zones.php): announced
+		// from the shared write functions, so the zone screens and the API
+		// alike. id and name follow.
+		'zone.created'         => 'A shipping zone was created',
+		'zone.updated'         => 'A shipping zone was changed: its name, rates, countries or states',
+		'zone.deleted'         => 'A shipping zone was deleted',
+		'tax_zone.created'     => 'A tax zone was created',
+		'tax_zone.updated'     => 'A tax zone was changed: its name, rate, countries or states',
+		'tax_zone.deleted'     => 'A tax zone was deleted',
+		// Shipping methods (includes/fn/shipping_methods.php): announced from
+		// the shared write functions, so the screens and the API alike.
+		'shipping_method.created' => 'A shipping method was created',
+		'shipping_method.updated' => 'A shipping method was changed',
+		'shipping_method.deleted' => 'A shipping method was deleted',
+		// Currencies (includes/fn/store_currencies.php): announced from the
+		// shared write functions, so the currency screens, the rate refresh
+		// (button and scheduled job) and the API alike. id, code,
+		// exchange_rate and base follow; a deletion carries id and code.
+		'currency.created'     => 'A currency was created',
+		'currency.updated'     => 'A currency was changed, or the rate refresh moved its exchange rate',
+		'currency.deleted'     => 'A currency was deleted',
 		// Uploads from the panel's file screen and writes through the API alike.
 		// A design or theme import brings its own files in bulk and stays quiet,
 		// for the same reason the contact import does.

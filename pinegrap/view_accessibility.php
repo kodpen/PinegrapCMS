@@ -41,7 +41,9 @@ $last_run = isset($runs['seo_a11y_job']) ? (int) $runs['seo_a11y_job'] : 0;
 // ---- PDF -------------------------------------------------------------------
 
 if ($ready && isset($_GET['pdf'])) {
-    $pdf = pg_privacy_export_pdf(pg_a11y_report_html(pg_a11y_report_summary(), pg_a11y_report_rows('', 2000), count(pg_a11y_pages()), $last_run, HOSTNAME_SETTING));
+    // The pages the last full pass rendered, not the whole scope.
+    $pass = pg_a11y_pass_record(pg_config_text('a11y_last_pass'), count(pg_a11y_pages()));
+    $pdf = pg_privacy_export_pdf(pg_a11y_report_html(pg_a11y_report_summary(), pg_a11y_report_rows('', 2000), $pass['pages'], $last_run, HOSTNAME_SETTING, $pass['checked'], pg_a11y_report_count('')));
 
     if ($pdf === false) {
         $liveform->add_notice(lang('The PDF library is not installed.'));
@@ -93,7 +95,8 @@ if (!$ready) {
 
 $summary = pg_a11y_report_summary();
 $criteria = pg_a11y_criteria();
-$rules = pg_a11y_rules();
+// Criterion number order, as the PDF lists them.
+$rules = pg_a11y_rules_by_criterion(pg_a11y_rules());
 $output_checklist = '';
 
 foreach ($rules as $rule_code => $rule) {
@@ -127,7 +130,10 @@ $severity_badges = array(
     'notice'  => array('bg-1 fg-body border', lang('Notice')),
 );
 
-foreach (pg_a11y_report_rows($code, $row_limit) as $row) {
+$report_rows = pg_a11y_report_rows($code, $row_limit);
+$output_rows_cut = (count($report_rows) >= $row_limit) ? pg_a11y_rows_cut_note(count($report_rows), pg_a11y_report_count($code)) : '';
+
+foreach ($report_rows as $row) {
     $badge = isset($severity_badges[$row['severity']]) ? $severity_badges[$row['severity']] : $severity_badges['notice'];
     $note = pg_a11y_measured_note($row['source']);
 
@@ -172,7 +178,7 @@ echo pg_page_shell($shell) . '
                 <a class="btn btn-sm btn-text theme-secondary" href="' . h(pg_settings_link('privacy', 'pgset-a11y-statement')) . '"><i class="bi bi-universal-access me-1" aria-hidden="true"></i>' . h(lang('Create the statement page')) . '</a>
                 <a class="btn btn-sm btn-text theme-secondary" href="view_accessibility.php?statement=1" target="_blank" rel="noopener"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . h(lang('Print the statement')) . '</a>
                 <div class="pg-toolbar-grow"></div>
-                ' . pg_filter_select('code', $code_options, $code, array('label' => lang('Check'), 'icon' => 'funnel', 'action' => 'view_accessibility.php')) . '
+                ' . pg_filter_select('code', $code_options, $code, array('label' => lang('Automatic check'), 'icon' => 'funnel', 'action' => 'view_accessibility.php')) . '
             </nav>
             <p class="small fg-secondary mb-0">' . $output_status . '</p>
             <div class="card my-7">
@@ -180,7 +186,7 @@ echo pg_page_shell($shell) . '
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-sm mb-0">
-                            <thead><tr><th>' . h(lang('Criterion')) . '</th><th>' . h(lang('Level')) . '</th><th>' . h(lang('Check')) . '</th><th>' . h(lang('Result')) . '</th></tr></thead>
+                            <thead><tr><th>' . h(lang('Criterion')) . '</th><th>' . h(lang('Level')) . '</th><th>' . h(lang('Automatic check')) . '</th><th>' . h(lang('Result')) . '</th></tr></thead>
                             <tbody>' . $output_checklist . '</tbody>
                         </table>
                     </div>
@@ -196,7 +202,8 @@ echo pg_page_shell($shell) . '
                                 <thead><tr><th>' . h(lang('Page')) . '</th><th>' . h(lang('Problem')) . '</th><th>' . h(lang('Times')) . '</th><th>' . h(lang('Example')) . '</th></tr></thead>
                                 <tbody>' . $output_rows . '</tbody>
                             </table>
-                        </div>') . '
+                        </div>'
+                        . (($output_rows_cut !== '') ? '<p class="small fg-secondary m-7">' . h($output_rows_cut) . '</p>' : '')) . '
                 </div>
             </div>
         </div>

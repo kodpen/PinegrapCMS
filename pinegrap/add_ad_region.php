@@ -70,6 +70,7 @@ if (!$_POST) {
     $liveform->add_fields_to_session();
     
     pg_ad_region_form_validate_name($liveform, null);
+    pg_ad_region_form_validate_behavior($liveform);
     
     // if there is an error, forward user back to add ad region screen
     if ($liveform->check_form_errors() == true) {

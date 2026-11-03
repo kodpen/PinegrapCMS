@@ -280,6 +280,36 @@ function pg_grev_fetch($key, $place_id, $language)
 }
 
 /**
+ * The kept languages after a read of $language: a language with a usable
+ * answer stays, and so does one whose last try is within PG_GREV_KEEP, as
+ * its try time holds back the next read (PG_GREV_RETRY) and its logged mark
+ * the next log line. Dropping a failing language here would let each page
+ * of it ask Google, and log the failure, again. Anything else, no page
+ * having asked for it within the ceiling, is dropped.
+ *
+ * @param array  $cache    language => entry
+ * @param string $language the language just read, always kept
+ * @param int    $now
+ * @return array
+ */
+function pg_grev_cache_prune(array $cache, $language, $now)
+{
+    foreach ($cache as $code => $kept) {
+        if ((string) $code === (string) $language) {
+            continue;
+        }
+
+        $tried = (is_array($kept) && isset($kept['tried_at'])) ? (int) $kept['tried_at'] : 0;
+
+        if (!pg_grev_usable($kept, $now) && ($now - $tried > PG_GREV_KEEP)) {
+            unset($cache[$code]);
+        }
+    }
+
+    return $cache;
+}
+
+/**
  * Reads a language again and keeps the answer. A failure keeps the last good
  * copy and is logged once until a read works again.
  *
@@ -318,13 +348,7 @@ function pg_grev_refresh($language)
     }
 
     $state['cache'][$language] = $entry;
-
-    // A language no page asked for within the ceiling is dropped.
-    foreach ($state['cache'] as $code => $kept) {
-        if (($code !== $language) && !pg_grev_usable($kept, $now)) {
-            unset($state['cache'][$code]);
-        }
-    }
+    $state['cache'] = pg_grev_cache_prune($state['cache'], $language, $now);
 
     pg_grev_state_put($state);
 

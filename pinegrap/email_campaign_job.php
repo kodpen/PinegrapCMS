@@ -1,6 +1,6 @@
 <?php
 /**
- * PineGrap - Enterprise Website Platform
+ * Pinegrap - Enterprise Website Platform
  *
  * Originally developed as LiveSite by Camelback Web Architects.
  * Since 2017, maintained and evolved by Erdal Güral (Kodpen) under the name PineGrap.
@@ -19,6 +19,14 @@
 require('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/iys/client.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_send.php');
+
+// The scheduler (CLI or the job.php dispatcher) has no session. A web request
+// must come from a signed-in manager, the same gate the scheduled jobs
+// settings sit behind; without it anybody could start the job from a browser.
+if (!pg_cron_is_background_run()) {
+    $user = validate_user();
+    validate_area_access($user, 'manager');
+}
 
 // if the e-mail campaign job is not activated, then output error
 if (email_campaign_job_enabled() == false) {
@@ -473,6 +481,7 @@ if (!pg_email_retry_ready()) {
 } else {
 
     $count = 0;
+    $suppressed = 0;
 
     // Claims that a run left behind - it died, or was killed, between taking
     // its recipients and finishing with them - are released after fifteen
@@ -579,6 +588,13 @@ if (!pg_email_retry_ready()) {
 
         $email_recipient_id = (int) $email_recipient['id'];
 
+        // An address that bounced or complained gets nothing, whatever the
+        // purpose (includes/fn/mail_bounces.php); the campaign counts it.
+        if (pg_email_campaign_skip_suppressed($email_recipient_id, $email_recipient['email_address'], true, $run)) {
+            $suppressed++;
+            continue;
+        }
+
         $prepared = email_campaign_job_prepare($email_recipient);
 
         // Opted out since the campaign was created: drop the recipient.
@@ -672,6 +688,11 @@ foreach ($email_campaigns as $email_campaign_id) {
 // if e-mail campaign job e-mailed at least 1 recipient, then log action
 if ($count > 0) {
     log_activity(lang(array('string' => 'e-mail campaign job sent e-mail(s) to {var:1} recipient(s)', 'vars' => array($count))), $_SESSION['sessionusername']);
+}
+
+// Recipients the send gate skipped: their address bounced or complained.
+if (!empty($suppressed)) {
+    log_activity(lang(array('string' => 'e-mail campaign job skipped {var:1} recipient(s) whose address bounced or complained', 'vars' => array($suppressed))), $_SESSION['sessionusername']);
 }
 
 // Scheduled-task health: record that this job finished. See pg_cron_ran().

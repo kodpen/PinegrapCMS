@@ -18,3 +18,8 @@ description: Incoming e-invoices (4.67): reading the provider's list into erp_ed
 - `erp_edoc_inbox_import()` opens the supplier's account when none matches and writes only a DRAFT purchase invoice (`erp_invoice_draft_save()`, then `invoice_type`, `gib_uuid`, `gib_number`): no number, nothing in the ledger until it is issued like any other. A purchase invoice typed by hand can be linked instead (`erp_edoc_inbox_link()`).
 - States (`erp_edoc_inbox_state()`): new, drafted, imported, ignored (set aside). A document whose invoice was deleted or cancelled is new again.
 - Sales-only e-document rules (date order, Move to today, the send card) never apply to these purchase invoices (erp-edoc-send-readiness.md).
+
+## What do the inbox screens show a read-only accountant, and how are numbers written?
+- `erp_inbox.php` hides the read form; `erp_inbox_document.php`'s `$form()` returns nothing under `USER_ERP_READONLY`, so link, import, set aside, bring back and read again are all hidden; PDF, UBL and the draft or invoice link stay (#5753).
+- A refused read keeps the entered `from` / `to` (liveform values); both boxes have `max` = today and the 93-day limit is written beside the button (#5755).
+- A line's unit price is `erp_decimal_text()` (its own decimals, panel format), the VAT rate `erp_percent_text()` (#5754).

@@ -396,3 +396,26 @@ function test_imap_client_xoauth2_refused()
 	pg_assert_same('auth_disabled', $session['error']);
 	pg_assert_same('', imap_client_test_sent($out));
 }
+
+function test_imap_client_xoauth2_write_fails()
+{
+	// The connection gone before the command is sent: a refused sign-in,
+	// never the broken-session answer array (which reads as true).
+	$in = fopen('php://memory', 'w+b');
+	fwrite($in, "* OK [CAPABILITY IMAP4rev1 AUTH=XOAUTH2 SASL-IR] ready\r\n");
+	rewind($in);
+	$session = pg_imap_session($in, fopen('php://memory', 'rb'));
+
+	pg_assert_true(pg_imap_greeting($session));
+	pg_assert_false(pg_imap_login_xoauth2($session, 'box@contoso.com', 'tok'), 'command not written');
+	pg_assert_same('closed', $session['error']);
+
+	// The same after the go-ahead.
+	$in = fopen('php://memory', 'w+b');
+	fwrite($in, "* OK [CAPABILITY IMAP4rev1 AUTH=XOAUTH2] ready\r\n+ \r\n");
+	rewind($in);
+	$session = pg_imap_session($in, fopen('php://memory', 'rb'));
+
+	pg_assert_true(pg_imap_greeting($session));
+	pg_assert_false(pg_imap_login_xoauth2($session, 'box@contoso.com', 'tok'), 'nothing written at all');
+}

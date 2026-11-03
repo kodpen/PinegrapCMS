@@ -61,12 +61,10 @@ $back_url = pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_fold
 if (!$_POST) {
 
     // If the form has not been submitted yet then autofill fields.
-    if (!$form->field_in_session('find_replace')) {
+    if (!$form->field_in_session('find_and_replace_check')) {
 
-        if (($_SESSION['software']['duplicate_folder']['find_replace'] ?? '')) {
-            $form->set('find_replace', ($_SESSION['software']['duplicate_folder']['find_replace'] ?? ''));
-        } else {
-            $form->set('find_replace', 'false');
+        if (($_SESSION['software']['duplicate_folder']['find_replace'] ?? '') === '1') {
+            $form->set('find_and_replace_check', '1');
         }
 
         $find_replace_keywords = ($_SESSION['software']['duplicate_folder']['find_replace_keywords'] ?? '');
@@ -106,27 +104,28 @@ if (!$_POST) {
     
     $form->add_fields_to_session();
 
+    require_once(dirname(__FILE__) . '/duplicate_folder_f.php');
+
+    // The switch posts find_and_replace_check; its rows count only while it is on.
+    $find_replace_on = ((string) $form->get('find_and_replace_check') === '1');
+
     // Remember if find and replace feature was used, so we can auto-open if user uses duplicate
     // folder feature again in this session.
-    $_SESSION['software']['duplicate_folder']['find_replace'] = $form->get('find_replace');
+    $_SESSION['software']['duplicate_folder']['find_replace'] = $find_replace_on ? '1' : '';
 
-    $find_replace_keywords = array();
+    $find_replace_fields = array('find_and_replace_check' => $find_replace_on ? '1' : '');
+    for ($number = 1; $number <= 10; $number++) {
+        $find_replace_fields['find_' . $number] = $form->get('find_' . $number);
+        $find_replace_fields['replace_' . $number] = $form->get('replace_' . $number);
+    }
 
-    if ($form->get('find_replace') == 'true') {
-        for ($number = 1; $number <= 10; $number++) {
-            if ($form->get('find_' . $number) != '') {
-                $find_replace_keywords[] = array(
-                    'find' => $form->get('find_' . $number),
-                    'replace' => $form->get('replace_' . $number));
-            }
-        }
+    $find_replace_keywords = pg_duplicate_folder_keywords($find_replace_fields);
 
+    if ($find_replace_on) {
         // Store find and replace keywords in session, so we can autofill the same values if the user
         // duplicates a folder again in this session.
         $_SESSION['software']['duplicate_folder']['find_replace_keywords'] = $find_replace_keywords;
     }
-
-    require_once(dirname(__FILE__) . '/duplicate_folder_f.php');
 
     $response = duplicate_folder(array(
         'folder' => $folder,
@@ -138,12 +137,19 @@ if (!$_POST) {
 
     $new_folder = $response['folder'];
 
-    // The File Manager prints its own notices (view_folders.php).
-    $liveform_view_folders = new liveform('view_folders');
-    $liveform_view_folders->add_notice(lang('The folder has been duplicated.'));
+    // Back where it was opened, else the duplicate itself.
+    $location = pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?folder=' . (int) $new_folder['id']);
+
+    // The notice goes to the screen the redirect opens.
+    $notice_form = pg_redirect_notice_form($location);
+    if ($notice_form !== '') {
+        $liveform_target = new liveform($notice_form);
+        $liveform_target->add_notice(lang(array(
+            'string' => 'The folder {var:1} has been created with a copy of {var:2} page(s). Files and sub-folders were not copied.',
+            'vars' => array(h($new_folder['name']), (int) ($response['pages_copied'] ?? 0)))));
+    }
 
     $form->remove();
 
-    // Back where it was opened, else the duplicate itself.
-    go(pg_safe_redirect_path(pg_send_to_url(''), PATH . SOFTWARE_DIRECTORY . '/view_folders.php?folder=' . (int) $new_folder['id']));
+    go($location);
 }

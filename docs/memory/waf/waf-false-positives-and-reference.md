@@ -18,3 +18,6 @@ description: view_waf_log.php likely false positive evidence and Allow/Remove ac
 - `?range=1|7|30` days, 7 by default. PHP turns the numeric keys of `$range_options` into integers, so the select compares `(string) $value` with `$range`; a strict compare marked no option and the select always read "Last 24 hours" over a 7-day list (#2061).
 
 Related: docs/memory/waf/waf-ban-shield-mirror.md
+
+## What does Release do when the ban is already gone?
+- It checks `mysqli_affected_rows()` after the DELETE: no row deleted (expired while the screen was open, released by another admin, sent twice) shows an error and writes no activity-log line (#5861).

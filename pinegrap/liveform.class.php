@@ -169,6 +169,16 @@ class liveform {
             $datalist = $attributes['datalist'];
         }
 
+        // A browser check of a text field: its pattern, and the title the
+        // browser shows when the value does not match.
+        $output_pattern = '';
+        if (isset($attributes['pattern']) && is_scalar($attributes['pattern']) && ((string) $attributes['pattern'] !== '')) {
+            $output_pattern = ' pattern="' . h((string) $attributes['pattern']) . '"';
+            if ($title != '') {
+                $output_pattern .= ' title="' . h($title) . '"';
+            }
+        }
+
 
         // If this is not a hidden or submit field, then prepare required value.
         if (($type != 'hidden') && ($type != 'submit')) {
@@ -414,7 +424,7 @@ class liveform {
                 if($size != ''){
                     $output_size = ' size="' . h($size) . '"';
                 }
-                return "<input type=\"$type\" name=\"" . h($field) . "\"" . $output_id_attribute . " value=\"" . h($value) . "\"  class=\"$class\" style=\"$style\"$output_readonly$output_onchange$output_onclick$output_onfocus$output_onblur$output_min$output_max$output_step " . $output_datalist . $output_placeholder . $output_size . $output_required . $output_aria_label . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . $output_inline_feedback;
+                return "<input type=\"$type\" name=\"" . h($field) . "\"" . $output_id_attribute . " value=\"" . h($value) . "\"  class=\"$class\" style=\"$style\"$output_readonly$output_onchange$output_onclick$output_onfocus$output_onblur$output_min$output_max$output_step " . $output_datalist . $output_placeholder . $output_size . $output_required . $output_pattern . $output_aria_label . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . $output_inline_feedback;
                 break;
 
             case 'checkbox':
@@ -591,7 +601,10 @@ class liveform {
                     $output_maxlength = ' maxlength="' . h($maxlength) . '"';
                 }
                 
-                return "<textarea name=\"" . h($field) . "\"" . $output_id_attribute . " rows=\"$rows\" cols=\"$cols\" class=\"$class\" style=\"$style\"$output_onclick$output_onfocus$output_readonly" . $output_placeholder . $output_required . $output_aria_label . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . h($value) . "</textarea>" . $output_inline_feedback;
+                // An empty rows or cols is no size at all; the browser's two rows stay.
+                $output_rows_cols = ((string) $rows !== '' ? ' rows="' . h($rows) . '"' : '') . ((string) $cols !== '' ? ' cols="' . h($cols) . '"' : '');
+
+                return "<textarea name=\"" . h($field) . "\"" . $output_id_attribute . $output_rows_cols . " class=\"$class\" style=\"$style\"$output_onclick$output_onfocus$output_readonly" . $output_placeholder . $output_required . $output_aria_label . $output_aria_invalid . $output_maxlength . $autocomplete . $autofocus . $spellcheck . $output_inputmode . $output_data_inputmask_alias . $output_data_inputmask_extra . $output_data_inputmask_placeholder . $output_data_pg . $output_data_bs_target . ">" . h($value) . "</textarea>" . $output_inline_feedback;
                 break;
 
             case 'password':

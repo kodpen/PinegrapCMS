@@ -6,7 +6,7 @@ description: The 404 log (2026.11.0, 11.0.30, not_found_log): which 404s are rec
 ## What is recorded?
 - `includes/fn/not_found_log.php`: one row per address that answered 404 after the `*` patterns. `pg_not_found_log_mark()` follows `pg_short_link_not_found()` in `output_error()`, `error()` (404) and `pg_sw_item_missing()`, once per request.
 - Only the router's hand-over to `get_page.php` counts (`PG_SHORT_LINK_PATH`): panel screens, `get_file.php`, feeds, the home branch and CLI renders never reach it.
-- The key is a short link name's stored form (`pg_not_found_log_name()`): no language prefix, no query string, at most 191 characters, only what `pg_short_link_name_fault()` accepts, no `*`, nothing under the software directory. Every row can become a short link; a scanner's `%`, `<`, quotes or long paths are not stored.
+- The key is a short link name's stored form (`pg_not_found_log_name()`): no language prefix, no query string, at most 191 characters, only what `pg_short_link_name_fault()` accepts, no `*`, nothing under the software directory or a language directory in any case (`pg_not_found_log_reserved()`: the router knows a prefix only in lower case, so `/EN/menu` answers 404, and the short link save refused the name as taken, #5793). Every row can become a short link; a scanner's `%`, `<`, quotes or long paths are not stored.
 - Not recorded (`pg_not_found_log_decide()`): POST, the SEO pass, the indexer, e-mail renders, a prefetch, a request the firewall logged (`waf_last_rule()`), a 404 at a live page with no `/` in the name (a bad `?r=`/`?id=`), and a slash variant of a live address (`/blog/post/` while `/blog/post` answers; `/cart/`): the stored form drops the `/`, and a short link under it would take the live address over. So when the name differs from the address as asked, a page that took part of it or has the name skips it.
 
 ## Who is counted?
@@ -19,10 +19,6 @@ description: The 404 log (2026.11.0, 11.0.30, not_found_log): which 404s are rec
 - Row cap `PG_NOT_FOUND_LOG_MAX_ROWS` 10000, checked on 1 in 20 new addresses and by the daily sweep. It cuts by `last_seen` (rows not asked for the longest), not by `MAX(id)` as the firewall log does: the oldest rows here are the long-standing broken links. Retention 90 days on `last_seen`: the general job's daily sweep (`pg_not_found_log_sweep()`, state file `data/temp/not_found_log_sweep.json`), and every list reads `last_seen >= pg_not_found_log_since()`, so a site without cron shows the same. Constants, no config columns.
 - Backups keep its rows (`data/backup-rowless-tables.md`).
 
-## What does the screen do?
-- `view_not_found_log.php`, managers and up (redirects are short links), in the Pages menu after Create Short Link and as a view switcher beside the short link list.
-- Rows: most requested first, search, who asked, sort, first 1000. State from `pg_not_found_log_answers()` (`pg_short_link_keys()`, every name of a key): a short link or a `*` pattern answers it (edit), one in the Recycle Bin holds the name, a page or file answers, or Create redirect.
-- Create redirect opens `add_short_link.php?name=…&redirect_code=301` (`pg_not_found_log_redirect_url()`): name and answer filled, the operator picks the destination, the usual checks on save.
-- Delete a row or clear the log: POST with the token.
+The screen: `not-found-log-screen.md`.
 
 Tests: `tests/not_found_log_test.php`, `tests/short_link_redirects_test.php` (`name_fault_codes`). PR: #1420; the API read: `api/api-seo-not-found.md`.

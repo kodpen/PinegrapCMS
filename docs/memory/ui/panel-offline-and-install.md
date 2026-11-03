@@ -22,5 +22,8 @@ description: The panel's offline notice (sw.js answers offline.html when a page 
 - Only Chromium browsers fire `beforeinstallprompt`. Elsewhere the row never shows; iOS keeps the bell's "Add to home screen" hint.
 - The panel's manifest (`manifest.php`) and its icons were already in place.
 
+## Why does the panel's manifest name paths without a host?
+- `start_url`, `scope`, `id` and the shortcuts are built on `PATH . SOFTWARE_DIRECTORY`, never `URL_SCHEME . HOSTNAME_SETTING` (#6100). The manifest is fetched from the host the panel was opened on, and the panel is never redirected to the main host (`MAIN_HOST_REDIRECT` is the front end's). On an alias host (bare domain beside www, an IP) a field on the setting's origin is cross-origin and the browser drops it: the installed panel opened on the page it was installed from, with no shortcuts. `tests/panel_manifest_origin_test.php` scans the file.
+
 ## What about the site's manifest?
 - No switch and no column (#5065): with Site Settings › SEO › Site Icon set, the site's head links `/site.webmanifest`, which `get_site_icon.php` serves (`platform/site-icon.md`); a template with its own manifest is skipped by `pg_site_icon_declared()`. No service worker on sites.

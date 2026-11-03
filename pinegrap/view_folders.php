@@ -116,6 +116,28 @@ $liveform = new liveform('view_folder_and_files');
 $liveform_pages = new liveform('view_pages');
 $liveform_folders = new liveform('view_folders');
 
+// The explorer is a full-height application screen: an alert box above it
+// pushed the whole explorer down and its status bar off the window. The
+// pending messages are handed to the script and shown as its own toasts
+// (SERVER_MESSAGES), errors first, then warnings, then notices.
+$explorer_messages = array();
+
+foreach (array($liveform, $liveform_pages, $liveform_folders) as $explorer_liveform) {
+    $explorer_messages = array_merge($explorer_messages, pg_designer_screen_messages(
+        $explorer_liveform->get_errors(),
+        $explorer_liveform->get_warning_messages(),
+        $explorer_liveform->get_notices()
+    ));
+}
+
+$explorer_order = array('error' => 0, 'warning' => 1, 'success' => 2);
+usort($explorer_messages, function ($a, $b) use ($explorer_order) {
+    return $explorer_order[$a['type']] - $explorer_order[$b['type']];
+});
+
+// Two forms can carry the same sentence (a handler that wrote to both).
+$explorer_messages = array_values(array_intersect_key($explorer_messages, array_unique(array_map('serialize', $explorer_messages))));
+
 // Deep link support: view_folders.php?folder=123 opens that folder;
 // ?view=files opens the flat all-files view.
 $initial_folder_id = isset($_GET['folder']) ? (int) $_GET['folder'] : 0;
@@ -203,6 +225,7 @@ if ($initial_mode == 'short_links') {
 // Strings the client-side renderer needs. Keys stay English (tr.json rule).
 $explorer_lang = array(
     'loading' => lang('Loading'),
+    'more' => lang('More'),
     'request_failed' => lang('The request failed. Please try again.'),
     'session_expired' => lang('Your session has expired. Please sign in again.'),
     // Shown in the content area when a folder listing cannot be fetched --
@@ -291,6 +314,8 @@ $explorer_lang = array(
     'membership' => lang('Membership'),
     'private' => lang('Private'),
     'inherit' => lang('inherit'),
+    'default_from_parent' => lang('Default (from the parent folder)'),
+    'space_key' => lang('Space'),
     'default' => lang('Default'),
     'confirm_delete_files' => lang('WARNING: Selected {var:1} will be permanently deleted.'),
     'files_word' => lang('files'),
@@ -318,6 +343,8 @@ $explorer_lang = array(
     'leave_during_job' => lang('A job is still running on this screen. If you leave now it stops where it is.'),
     'upload_too_large' => lang('The file is too large. The maximum allowed size is {var:1}.'),
     'upload_done' => lang('{var:1} file(s) were uploaded.'),
+    'uploaded_renamed' => lang('Uploaded under a new name: {var:1}. A file name is its address, so a taken name gets a number and letters an address cannot carry are replaced.'),
+    'renamed_as' => lang('Saved as {var:1}: a file name is its address, so letters an address cannot carry are replaced and a taken name gets a number.'),
     'drop_to_upload' => lang('Drop files here to upload them into this folder'),
     'drop_to_pick_folder' => lang('Drop files here to upload them. You will choose the folder next.'),
     'no_preview' => lang('No preview is available for this item.'),
@@ -331,13 +358,23 @@ $explorer_lang = array(
     'no_access' => lang('None'),
     'inherited_from_parent' => lang('Inherited from parent folder'),
     'inherited_from' => lang('Inherited from {var:1}'),
-    'expiration_date' => lang('Expiration Date'),
+    'expiration_date' => lang('Access ends on'),
+    'access_end_hint' => lang('Leave empty for access with no end date.'),
+    'access_until' => lang('Access until {var:1}'),
+    'access_expired_on' => lang('Ended on {var:1}'),
+    'access_user_rights' => lang('User rights'),
+    'folder_total' => lang('In total, inside'),
+    'rights_users_count' => lang('{var:1} user(s) with a right on this folder'),
+    'access_no_users_yet' => lang('No user holds a right here yet. Find one below to add.'),
+    'access_add_user' => lang('Add a user'),
+    'access_add_user_placeholder' => lang('Name, username or e-mail address'),
+    'access_no_user_found' => lang('No user found.'),
     'save' => lang('Save'),
     'user_column' => lang('User'),
     'rights_column' => lang('Rights'),
     'rights_for_user' => lang('Rights for {var:1}'),
     'no_basic_users' => lang('There are no users with a basic user role.'),
-    'access_note' => lang('Access Control for all Pages and Files within this Folder'),
+    'access_note' => lang('Access control for all pages and files in this folder'),
     'rights_note' => lang('Edit rights also apply to all folders within this folder.'),
     'disk_usage' => lang('Disk Usage'),
     'up' => lang('Up'),
@@ -347,6 +384,8 @@ $explorer_lang = array(
     'renamed' => lang('The item was renamed successfully.'),
     'optimized' => lang('Optimized'),
     'counts_label' => lang('{var:1} folder(s), {var:2} page(s), {var:3} file(s)'),
+    'counts_styles' => lang('{var:1} page style(s)'),
+    'counts_short_links' => lang('{var:1} short link(s)'),
     'delete_folder_title' => lang('Delete Folder and Contents'),
     'delete_folder_summary' => lang('The folder {var:1} and everything inside it will be permanently deleted:'),
     'delete_folder_empty' => lang('The folder is empty.'),
@@ -354,6 +393,13 @@ $explorer_lang = array(
     'type_name_to_confirm' => lang('Type the folder name to confirm.'),
     'name_does_not_match' => lang('The name does not match.'),
     'deleting' => lang('Deleting'),
+    'moving_to_bin' => lang('Moving to the Recycle Bin'),
+    'count_folders' => lang('{var:1} folder(s)'),
+    'count_pages' => lang('{var:1} page(s)'),
+    'count_files' => lang('{var:1} file(s)'),
+    'count_product_groups' => lang('{var:1} product group(s)'),
+    'count_products' => lang('{var:1} product(s)'),
+    'count_short_links' => lang('{var:1} short link(s)'),
     'delete_folder_done' => lang('The folder and its contents were deleted.'),
     'delete_folder_partial' => lang('Some items could not be deleted.'),
     'cancel' => lang('Cancel'),
@@ -361,6 +407,14 @@ $explorer_lang = array(
     'recycle_bin' => lang('Recycle Bin'),
     'empty_bin' => lang('Empty Recycle Bin'),
     'restore' => lang('Restore'),
+    'bin_deleted' => lang('Deleted on'),
+    'backup_kind' => lang('Backup type'),
+    'location' => lang('Location'),
+    'bin_deleted_by' => lang('by {var:1}'),
+    'bin_restores_to' => lang('Restores to'),
+    'bin_purged_in' => lang('Deleted for good in'),
+    'archived_status' => lang('Archived: closed to visitors (410)'),
+    'archived_no_effect' => lang('No effect while the folder is archived.'),
     'delete_permanently' => lang('Delete Permanently'),
     'page_style' => lang('Page Style'),
     'bin_banner' => lang('Items here are deleted permanently after {var:1} days.'),
@@ -406,17 +460,23 @@ $explorer_lang = array(
     'webp_copy_fact' => lang('WebP copy {var:1} ({var:2}% lighter)'),
     'folder_settings' => lang('Folder Settings'),
     'sorting' => lang('Sorting'),
-    'sorting_note' => lang('Display order of this Folder to other Folders'),
+    'sorting_note' => lang('The order of this folder among the folders beside it'),
     'archive' => lang('Archive'),
-    'archive_note' => lang('Archive Folder for Pages and Files that are no longer being used'),
+    'archive_note' => lang('For pages and files no longer in use. While on, the pages directly in this folder answer visitors with 410 (gone), and its pages and files leave the Pages, Files and Pictures views, the site search and the editor pickers. Its files stay reachable at their address.'),
     'desktop_style' => lang('Desktop Page Style'),
     'mobile_style' => lang('Mobile Page Style'),
-    'styles_note' => lang('Default Page Styles for Pages within this Folder'),
+    'styles_note' => lang('Default page styles for the pages in this folder'),
     'resize_optimize' => lang('Resize to {var:1} pixels and optimize'),
     'resize_optimize_all' => lang('Resize all to {var:1} pixels and optimize ({var:2})'),
     'desktop_style_short' => lang('Desktop Style'),
     'mobile_style_short' => lang('Mobile Style'),
     'impact' => lang('Impact'),
+    'impact_hint' => lang('How much fixing this page would gain: (100 − SEO score) × log10(1 + views). The higher, the sooner.'),
+    'views_in_window' => lang('{var:1} views in the last {var:2} days'),
+    'impact_window_days' => (string) (function_exists('pg_seo_impact_window_days') ? pg_seo_impact_window_days() : 30),
+    'form_attachment' => lang('Form attachment'),
+    'form_attachment_hint' => lang('Sent with a submitted form: visitors cannot open it, even in a public folder, unless a view shows its record.'),
+    'inherited_style' => lang('Inherited from parent folder'),
     'views_label' => lang('{var:1} views'),
     'features' => lang('Features'),
     'sitemap_label' => lang('Site Map'),
@@ -682,6 +742,7 @@ $explorer_lang = array(
     'where_used' => lang('Where is it used?'),
     'where_used_looking' => lang('Looking through the site...'),
     'where_used_none' => lang('Nothing on the site refers to this file.'),
+    'where_used_none_page' => lang('Nothing on the site refers to this page.'),
     'where_used_count' => lang('Referred to in {var:1} place(s)'),
     'where_used_more' => lang('Only the first of them are listed.'),
     // A copy of a file posted into a Workspace channel.
@@ -1465,12 +1526,29 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 @media (max-width: 1023.98px) {
     #explorer_main > #explorer_tree_pane, #explorer_preview_pane { display: none !important; }
     #explorer_app { height: calc(100vh - 120px); }
-}
-}</style>
 
-<?php echo $liveform->output_errors() . $liveform->get_warnings() . $liveform->output_notices(); ?>
-<?php echo $liveform_pages->output_errors() . $liveform_pages->output_notices(); ?>
-<?php echo $liveform_folders->output_errors() . $liveform_folders->output_notices(); ?>
+    /* Below the width that has room for the preview panel, "Details" (item
+       menu, Quick look) opens the same panel as a sheet over the right-hand
+       side, so size, access, folder, SEO and "Where is it used?" can be read
+       on a tablet or phone too. */
+    #explorer_app.details-sheet-open #explorer_preview_pane { display: block !important; position: fixed; top: 0; right: 0; bottom: 0; width: min(100%, 420px); min-width: 0; z-index: 1085; padding-top: 3.25rem; background: var(--pg-bg-body); box-shadow: 0 0 2rem color-mix(in srgb, var(--pg-fg-body) 25%, transparent); }
+    #explorer_app.details-sheet-open #explorer_details_backdrop { display: block; position: fixed; inset: 0; z-index: 1084; background: color-mix(in srgb, var(--pg-fg-body) 30%, transparent); }
+    #explorer_app.details-sheet-open #explorer_details_close { display: inline-flex; position: fixed; top: .6rem; right: .6rem; z-index: 1086; }
+}
+#explorer_details_close, #explorer_details_backdrop { display: none; }
+
+/* A touch screen has no Space bar or arrow keys to be told about. */
+@media (hover: none) and (pointer: coarse) {
+    #explorer_quicklook .ql-hint { display: none; }
+}
+
+/* The Files view adds the scope menu to the bar; the search box and the
+   breadcrumb give up the room for it instead of pushing the view switches,
+   the bin and the more menu onto a second row. */
+#explorer_toolbar:has(#file_scope_wrap:not(.d-none)) #explorer_search_wrap { width: auto; flex: 0 1 200px; min-width: 7rem; }
+#explorer_toolbar:has(#file_scope_wrap:not(.d-none)) #explorer_breadcrumb { min-width: 7rem; }
+#file_scope_label { display: inline-block; max-width: 9rem; overflow: hidden; text-overflow: ellipsis; vertical-align: bottom; }
+}</style>
 
 <div id="explorer_app" class="my-3" data-area="<?php echo $explorer_area; ?>">
     <div id="explorer_toolbar" class="pg-toolbar">
@@ -1700,6 +1778,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             <div id="explorer_upload_overlay"><div class="text-center fw-bold fg-primary"><span class="bi bi-cloud-arrow-up fs-4xl d-block"></span><?php echo lang('Drop files here to upload them into this folder'); ?></div></div>
         </div>
         <div id="explorer_preview_pane" class="d-none lg:d-block"></div>
+        <div id="explorer_details_backdrop" aria-hidden="true"></div>
+        <button type="button" class="btn btn-sm btn-solid theme-secondary rounded-pill no-popover" id="explorer_details_close" aria-label="<?php echo h(lang('Close')); ?>" title="<?php echo h(lang('Close')); ?>"><i class="bi bi-x-lg"></i></button>
     </div>
     <div id="explorer_statusbar"></div>
 </div>
@@ -1866,7 +1946,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                         <div class="form-field">
                             <div class="switch"><input class="" type="checkbox" id="file_edit_design" /></div>
                             <label class="" for="file_edit_design"><?php echo lang('Design File'); ?></label>
-                            <div class="form-text"><?php echo lang('Check if File is a Design File that is Managed by Site Designers'); ?></div>
+                            <div class="form-text"><?php echo lang('Mark it as a design file managed by site designers'); ?></div>
                         </div>
                     </div>
                 </div>
@@ -1939,7 +2019,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     <div class="form-field<?php echo (($user['role'] <= 1) ? '' : ' d-none'); ?>">
                         <div class="switch"><input class="" type="checkbox" id="upload_design" /></div>
                         <label class="" for="upload_design"><?php echo lang('Design File'); ?></label>
-                        <div class="form-text"><?php echo lang('Check if File is a Design File that is Managed by Site Designers'); ?></div>
+                        <div class="form-text"><?php echo lang('Mark it as a design file managed by site designers'); ?></div>
                     </div>
                     <div class="form-field mt-3">
                         <div class="switch"><input class="" type="checkbox" id="upload_webp" /></div>
@@ -2137,6 +2217,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         <span class="ql-name" id="quicklook_name"></span>
         <span class="ql-meta" id="quicklook_meta"></span>
         <span class="ms-auto d-flex align-items-center gap-1" id="quicklook_tools"></span>
+        <button type="button" class="btn btn-sm btn-text theme-secondary no-popover lg:d-none" id="quicklook_details" aria-label="<?php echo h(lang('Details')); ?>" title="<?php echo h(lang('Details')); ?>"><i class="bi bi-info-circle"></i></button>
         <button type="button" class="btn btn-sm btn-text theme-secondary no-popover" id="quicklook_close" aria-label="<?php echo h(lang('Close')); ?>" title="<?php echo lang('Close'); ?>"><i class="bi bi-x-lg"></i></button>
     </div>
     <div class="ql-stage" id="quicklook_stage">
@@ -2157,6 +2238,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     'use strict';
 
     var L = <?php echo encode_json($explorer_lang); ?>;
+
+    // What another screen left for this one (a file saved, a folder
+    // duplicated, an upload's warnings), shown as toasts once the script runs.
+    var SERVER_MESSAGES = <?php echo encode_json($explorer_messages); ?>;
 
     // The panel language's decimal and thousands separators, so prices and
     // sizes drawn here read like the figures the server writes beside them.
@@ -2408,10 +2493,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // only place that offer appears, so it is given longer to be read: three
     // and a half seconds is enough to register "moved" and not enough to
     // decide it was the wrong folder.
-    function toast(message, ok, action) {
+    //
+    // The fourth argument is { html, tone, sticky }: html sets the message as
+    // markup (a server message, escaped by whoever wrote it), tone overrides
+    // the colour ('warning') and sticky keeps the toast until it is closed.
+    function toast(message, ok, action, options) {
+        options = options || {};
         var container = document.getElementById('explorer_toasts');
         var element = document.createElement('div');
-        var tone = ok === false ? 'danger' : 'success';
+        var tone = options.tone || (ok === false ? 'danger' : 'success');
         element.className = 'toast align-items-center border-0 bg-' + tone + ' fg-contrast-' + tone;
         // The container is a polite live region, so a notice added to it is
         // read; a failure is an alert, read at once.
@@ -2419,11 +2509,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         element.innerHTML = '<div class="d-flex"><div class="toast-body"></div>' +
             (action ? '<button type="button" class="btn btn-sm btn-subtle theme-secondary my-auto me-1 text-nowrap" data-role="toast-action"></button>' : '') +
             '<button type="button" class="btn-close me-3 m-auto" data-bs-dismiss="toast" aria-label="' + L.close + '"></button></div>';
-        element.querySelector('.toast-body').textContent = message;
+        if (options.html) {
+            element.querySelector('.toast-body').innerHTML = message;
+        } else {
+            element.querySelector('.toast-body').textContent = message;
+        }
         // An open dialog's backdrop would cover a body-level toast.
         pgUI.hostLayer(container);
         container.appendChild(element);
-        var instance = pgUI.toast.get(element, { delay: action ? 9000 : 3500 });
+        var instance = pgUI.toast.get(element, options.sticky ? { autohide: false } : { delay: (action || options.html) ? 9000 : 3500 });
 
         if (action) {
             var actionButton = element.querySelector('[data-role="toast-action"]');
@@ -3182,7 +3276,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         row(L.erp_source, erpSourceHtml(item), true);
 
         if (item.modified) {
-            row(L.last_modified, item.modified + (item.username ? ' ' + fmt(L.modified_by, [esc(item.username)]) : ''), true);
+            row(L.last_modified, item.modified + modifiedByHtml(item), true);
         }
 
         pane.innerHTML =
@@ -3901,7 +3995,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
                 if (grant.expiration_date) {
                     expiry = '<span class="badge ' + (grant.expired ? 'theme-danger' : 'theme-warning') + ' ms-3">' +
-                        '<span class="bi bi-hourglass-split me-1"></span>' + esc(grant.expiration_date) + '</span>';
+                        '<span class="bi bi-hourglass-split me-1" aria-hidden="true"></span>' +
+                        esc(grant.expired ? fmt(L.access_expired_on, [grant.expiration_label || grant.expiration_date]) : fmt(L.access_until, [grant.expiration_label || grant.expiration_date])) + '</span>';
                 }
 
                 // The contact is the person behind the account; without one
@@ -4233,6 +4328,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         document.getElementById('upload_file_item').classList.toggle('d-none', catalogArea);
         document.getElementById('create_file_item').classList.toggle('d-none', catalogArea || backupArea);
+        document.getElementById('new_image_item').classList.toggle('d-none', catalogArea);
 
         // Taking a backup is offered only where backups live.
         document.getElementById('create_backup_item').classList.toggle('d-none', !backupArea);
@@ -4312,7 +4408,86 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // every draw ends scrolled to the last crumb.
     function renderBreadcrumb() {
         drawBreadcrumb();
+        fitBreadcrumb();
         showBreadcrumbEnd();
+    }
+
+    // When the crumbs do not fit, the leading ones go under a "..." menu one
+    // by one, from the left, until the rest fits; the open folder always
+    // stays. Scrolled alone, the bar showed a crumb cut in the middle of a
+    // word ("erim / ...") behind its fade. The hidden crumbs stay in the
+    // markup and the menu entries click them, so each keeps its own action
+    // (folder, catalog group, backup path, ERP folder).
+    var breadcrumbFitWidth = -1;
+
+    function refitBreadcrumb() {
+        if (document.getElementById('explorer_breadcrumb').clientWidth !== breadcrumbFitWidth) {
+            fitBreadcrumb();
+        }
+        showBreadcrumbEnd();
+    }
+
+    function fitBreadcrumb() {
+        var bar = document.getElementById('explorer_breadcrumb');
+        var list = bar.querySelector('.breadcrumb');
+
+        breadcrumbFitWidth = bar.clientWidth;
+
+        if (!list) { return; }
+
+        list.querySelectorAll('.crumb-overflow-entry').forEach(function (entry) { entry.remove(); });
+        list.querySelectorAll('.crumb-overflow').forEach(function (entry) { entry.remove(); });
+        list.querySelectorAll('.breadcrumb-item.crumb-folded').forEach(function (crumb) { crumb.classList.remove('crumb-folded', 'd-none'); });
+
+        if (list.scrollWidth <= list.clientWidth + 1) { return; }
+
+        var crumbs = Array.prototype.slice.call(list.children);
+        var last = crumbs[crumbs.length - 1];
+        var existing = list.querySelector('.breadcrumb-item.pg-menu-wrap');
+        var foldable = crumbs.filter(function (crumb) {
+            return (crumb !== last) && (crumb !== existing) && crumb.classList.contains('breadcrumb-item');
+        });
+
+        if (!foldable.length) { return; }
+
+        // The deep-path "..." menu, when there is one, takes the folded
+        // crumbs too, so the bar never shows two of them.
+        var holder = existing;
+
+        if (!holder) {
+            holder = document.createElement('li');
+            holder.className = 'breadcrumb-item pg-menu-wrap crumb-overflow';
+            holder.innerHTML = '<a href="#" draggable="false" class="pg-link-secondary" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false" role="button" aria-label="' + esc(L.more) + '">&hellip;</a><ul class="menu shadow" style="border-radius:.75rem;"></ul>';
+            list.insertBefore(holder, foldable[0]);
+        }
+
+        var menu = holder.querySelector('ul');
+        var before = menu.firstChild;
+
+        foldable.some(function (crumb) {
+            if (list.scrollWidth <= list.clientWidth + 1) { return true; }
+
+            var target = crumb.querySelector('a, button');
+            var entry = document.createElement('li');
+            var label = (crumb.textContent || '').trim();
+
+            entry.className = 'crumb-overflow-entry';
+            entry.innerHTML = '<a href="#" draggable="false" class="menu-item"><span class="bi bi-folder me-3"></span>' + esc(label) + '</a>';
+            entry.firstChild.addEventListener('click', function (event) {
+                event.preventDefault();
+                if (target) { target.click(); }
+            });
+
+            // Crumbs left of the existing menu come before its entries, the
+            // ones right of it after, so the menu keeps the path's order.
+            var leftOfMenu = !!(existing && (crumb.compareDocumentPosition(existing) & Node.DOCUMENT_POSITION_FOLLOWING));
+
+            if (leftOfMenu) { menu.insertBefore(entry, before); } else { menu.appendChild(entry); }
+
+            crumb.classList.add('crumb-folded', 'd-none');
+
+            return false;
+        });
     }
 
     // Scrolls the bar to its end and fades its left edge while crumbs are
@@ -4499,6 +4674,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         return sortCollator;
     }
 
+    // A page sorts by the type name it shows ("Page", "Page · Custom Form"),
+    // so the order matches the column; the rest by their stored type.
+    function typeSortValue(item) {
+        return (item.kind === 'page') ? itemTypeLabel(item) : (item.type || '');
+    }
+
     function sortItems(list) {
         var key = state.sort.key;
         var dir = state.sort.dir === 'desc' ? -1 : 1;
@@ -4508,7 +4689,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var va, vb;
             if (key === 'size') { va = a.size || 0; vb = b.size || 0; }
             else if (key === 'timestamp') { va = a.timestamp || 0; vb = b.timestamp || 0; }
-            else if (key === 'type') { va = (a.type || ''); vb = (b.type || ''); }
+            else if (key === 'type') { va = typeSortValue(a); vb = typeSortValue(b); }
             // Keys the table has and the menu does not: a heading can be
             // clicked for any column that holds something worth ordering by.
             else if (key === 'folder') { va = (a.folder_name || ''); vb = (b.folder_name || ''); }
@@ -4761,6 +4942,43 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         return item.url + ((item.url.indexOf('?') === -1) ? '?' : '&') + 'v=' + stamp;
     }
 
+    // The address a tile draws a picture from: its 320 px derivative, as
+    // WebP for a JPEG or PNG, rather than the original, which for a camera
+    // photo is megabytes for a box 116 px wide. A GIF (it may move), a vector
+    // or an address that already asks for a width or format stays as it is.
+    // Twin of pg_image_panel_thumb_url() (includes/image_engine.php).
+    function thumbUrl(url) {
+        url = String(url || '');
+
+        var fragment = '';
+        var hash = url.indexOf('#');
+
+        if (hash !== -1) {
+            fragment = url.slice(hash);
+            url = url.slice(0, hash);
+        }
+
+        var question = url.indexOf('?');
+        var urlPath = (question === -1) ? url : url.slice(0, question);
+        var query = (question === -1) ? '' : url.slice(question + 1);
+
+        if (/(^|&)(w|f)=/i.test(query)) { return url + fragment; }
+
+        var dot = urlPath.lastIndexOf('.');
+        var extension = (dot === -1) ? '' : urlPath.slice(dot + 1).toLowerCase();
+        var add = '';
+
+        if (['jpg', 'jpeg', 'jpe', 'png'].indexOf(extension) !== -1) {
+            add = 'w=320&f=webp';
+        } else if (extension === 'webp') {
+            add = 'w=320';
+        } else {
+            return url + fragment;
+        }
+
+        return url + ((question === -1) ? '?' : '&') + add + fragment;
+    }
+
     // A thumbnail that loads on demand rather than the moment it is drawn.
     //
     // The address goes in data-src, not src, so the browser does not fetch it
@@ -4894,7 +5112,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // corner keeps it readable as a group rather than a product.
             if (item.image_name && withPicture) {
                 return '<span class="thumb-wrap">' +
-                    lazyThumb(path + item.image_name) +
+                    lazyThumb(thumbUrl(path + item.image_name)) +
                     '<span class="access-badge bi ' + groupIcon + ' fg-primary"></span></span>';
             }
 
@@ -4908,7 +5126,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // the two are told apart at a glance.
             if (item.image_name && withPicture) {
                 return '<span class="thumb-wrap">' +
-                    lazyThumb(path + item.image_name) +
+                    lazyThumb(thumbUrl(path + item.image_name)) +
                     '<span class="access-badge bi bi-box2-heart fg-secondary"></span></span>';
             }
 
@@ -4934,7 +5152,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // drag (whose URL payload would navigate the tab on a missed
             // drop) — the tile itself is the draggable thing.
             return '<span class="thumb-wrap ' + item.access_control_type + '">' +
-                lazyThumb(imageUrl(item)) + badge + '</span>';
+                lazyThumb(item.erp ? imageUrl(item) : thumbUrl(imageUrl(item))) + badge + '</span>';
         }
 
         var typeIcon = FILETYPE_ICONS[item.type] || 'bi-file-earmark';
@@ -4985,7 +5203,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         var title = fmt(L.days_left, [entry.days_left]) + (entry.origin_name ? ' \u2014 ' + entry.origin_name : '');
 
-        return '<span class="badge theme-warning bin-badge" title="' + esc(title) + '"><span class="bi bi-hourglass-split"></span> ' + entry.days_left + '</span>';
+        return '<span class="badge theme-warning bin-badge" title="' + esc(title) + '"><span class="bi bi-hourglass-split" aria-hidden="true"></span> ' + entry.days_left +
+            '<span class="visually-hidden"> ' + esc(title) + '</span></span>';
     }
 
     function itemFlagsHtml(item) {
@@ -5073,6 +5292,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             '<span class="bi ' + target + ' sl-target"></span></span>';
     }
 
+    // A page loaded by the preview pane or Quick look: the marker tells the
+    // site not to count the draw as a visit (pg_request_is_panel_preview()).
+    function pagePreviewUrl(url) {
+        url = String(url || '');
+        if (url === '') { return url; }
+        return url + ((url.indexOf('?') === -1) ? '?' : '&') + 'pg_preview=1';
+    }
+
     function itemTypeLabel(item) {
         if (item.short_link) { return shortLinkTypeLabel(item.destination_type); }
         if (item.erp) { return erpTypeLabel(item); }
@@ -5080,7 +5307,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (item.kind === 'group') { return isVariantSet(item) ? L.variant_set : L.category; }
         if (item.kind === 'product') { return L.product; }
         if (item.kind === 'folder') { return L.folder; }
-        if (item.kind === 'page') { return L.page + (item.type && item.type !== 'standard' ? ' (' + item.type + ')' : ''); }
+        if (item.kind === 'page') { return L.page + (item.type_name ? ' · ' + item.type_name : ''); }
         return (item.type || '').toUpperCase();
     }
 
@@ -5339,6 +5566,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var catalogColumns = insideCatalog();
         var siteColumns = !insideBackups() && !insideCatalog() && !insideShortLinks() && !insideErp();
         var shortLinkColumns = insideShortLinks();
+        // The Pages view lists nothing but pages: no size to show, a type
+        // worth naming only when it is not a standard page, and the folder
+        // and the last change are what the rows are told apart by.
+        var pagesColumns = (state.mode === 'all') && (state.allFilter === 'pages');
         var columns = [];
 
         columns.push({ id: 'icon', w: 46, cls: 'text-center', cell: function (item) { return itemIconHtml(item, false); } });
@@ -5358,13 +5589,16 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // and a mark nobody can line up with the mark on the row above is not
         // doing its job either.
         columns.push({
-            id: 'flags', key: 'seo', label: L.flags, at: 'md', w: 92, cls: 'text-center text-nowrap',
+            id: 'flags', key: 'seo', label: L.flags, at: 'md', w: (pagesColumns ? 150 : 92), cls: 'text-center text-nowrap',
             cell: function (item) { return seoChipHtml(item, 20) + ' <span class="item-flags">' + itemFlagsHtml(item) + '</span>'; }
         });
 
         columns.push({
             id: 'type', key: 'type', label: L.type, at: 'md', w: 120,
-            cell: function (item) { return '<span class="list-badge">' + esc(itemTypeLabel(item)) + '</span>'; }
+            cell: function (item) {
+                if (pagesColumns && (item.kind === 'page') && !item.type_name) { return ''; }
+                return '<span class="list-badge">' + esc(itemTypeLabel(item)) + '</span>';
+            }
         });
 
         // What an operator reads a list of documents by: who, when, how much,
@@ -5389,7 +5623,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 cell: function (item) { return erpStatusBadge(item); } });
         }
 
-        columns.push({
+        if (!pagesColumns) columns.push({
             id: 'size', key: 'size', label: (catalogColumns ? L.contents : (shortLinkColumns ? L.destination : L.size)), at: 'md', w: 140,
             cell: function (item) {
 
@@ -5471,8 +5705,18 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         columns.push({
             id: 'modified', key: 'timestamp', label: L.last_modified, at: 'lg', w: 170, cls: 'text-nowrap',
-            cell: function (item) { return (item.modified || '') + (item.username ? ' ' + fmt(L.modified_by, [esc(item.username)]) : ''); }
+            cell: function (item) { return (item.modified || '') + modifiedByHtml(item); }
         });
+
+        // In the Pages view the folder and the last change follow the marks,
+        // so they are on screen without scrolling the table sideways.
+        if (pagesColumns) {
+            var leading = columns.filter(function (column) { return (column.id === 'folder') || (column.id === 'modified'); });
+            var rest = columns.filter(function (column) { return (column.id !== 'folder') && (column.id !== 'modified'); });
+            var at = rest.map(function (column) { return column.id; }).indexOf('flags') + 1;
+
+            columns = rest.slice(0, at).concat(leading, rest.slice(at));
+        }
 
         var saved = defaults ? {} : listColumnWidths();
 
@@ -6027,9 +6271,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if (overflow.length > 0) {
 
+            // Placed by Floating UI rather than displayed statically: the bar
+            // is the last row of #explorer_app, which clips its overflow, so a
+            // static menu dropped below the button and was cut off under the
+            // page footer. The fixed strategy takes it out of that clip, and
+            // flip/shift keep it inside the window -- above the button, at the
+            // right edge -- however tall the menu or narrow the screen.
             html += '<span class="pg-menu-wrap">' +
-                '<button type="button" class="btn btn-sm btn-text theme-secondary no-popover" data-bs-toggle="menu" data-bs-placement="top-end" data-bs-display="static" aria-expanded="false" aria-label="' + esc(L.more_actions) + '"><i class="bi bi-three-dots-vertical"></i></button>' +
-                '<ul class="menu pg-menu-end shadow" style="border-radius:.75rem;">';
+                '<button type="button" class="btn btn-sm btn-text theme-secondary no-popover" data-bs-toggle="menu" data-bs-placement="top-end" data-bs-strategy="fixed" aria-expanded="false" aria-label="' + esc(L.more_actions) + '"><i class="bi bi-three-dots-vertical"></i></button>' +
+                '<ul class="menu shadow" style="border-radius:.75rem;">';
 
             overflow.forEach(function (entry) {
                 html += '<li><button type="button" class="menu-item' + (entry.off ? ' disabled' : '') + '" data-selection-action="' + esc(entry.action) + '"' +
@@ -6130,6 +6380,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         var counts = fmt(L.counts_label, [state.items.folders.length, state.items.pages.length, state.items.files.length]);
+
+        // The bin lists page styles and short links among its files; each
+        // kind is counted under its own name.
+        if (insideBin()) {
+            var binStyles = state.items.files.filter(function (entry) { return entry.kind === 'style'; }).length;
+            var binLinks = state.items.files.filter(function (entry) { return !!entry.short_link; }).length;
+            counts = fmt(L.counts_label, [state.items.folders.length, state.items.pages.length, state.items.files.length - binStyles - binLinks]);
+            if (binStyles > 0) { counts += ', ' + fmt(L.counts_styles, [binStyles]); }
+            if (binLinks > 0) { counts += ', ' + fmt(L.counts_short_links, [binLinks]); }
+        }
+
         var listed = state.items.folders.length + state.items.pages.length + state.items.files.length;
 
         // A search or a filter shows part of the folder: say how much.
@@ -6693,7 +6954,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 : ('<div class="text-center empty-note"><i class="bi ' + ((item.kind === 'group') ? 'bi-boxes' : 'bi-box2-heart') + ' pg-display-1 d-block mb-3"></i>' + esc(L.no_preview) + '</div>');
         }
 
-        if (item.kind === 'page') { return '<iframe loading="lazy" src="' + esc(item.url) + '" title="' + esc(item.name) + '" referrerpolicy="no-referrer"></iframe>'; }
+        if (item.kind === 'page') { return '<iframe loading="lazy" src="' + esc(pagePreviewUrl(item.url)) + '" title="' + esc(item.name) + '" referrerpolicy="no-referrer"></iframe>'; }
         // An ERP picture has no thumbnail sizes; the kept file is shown as is.
         if (item.erp && item.picture) { return '<img draggable="false" src="' + esc(item.url) + '" alt="" />'; }
         if (item.is_image) { return '<img draggable="false" src="' + esc(imageUrl(item)) + '" alt="" />'; }
@@ -6852,6 +7113,40 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
     }
 
+    // ── Details sheet (narrow screens) ──────────────────────────────────
+    //
+    // Below 1024 px the preview panel has no room beside the grid. The same
+    // panel, filled by renderPreview(), then opens over the right-hand side
+    // on request and closes with its button, the backdrop or Escape.
+    var detailsSheetReturnFocus = null;
+
+    function detailsSheetWidth() {
+        return !!(window.matchMedia && window.matchMedia('(max-width: 1023.98px)').matches);
+    }
+
+    function detailsSheetIsOpen() {
+        return document.getElementById('explorer_app').classList.contains('details-sheet-open');
+    }
+
+    function openDetailsSheet(item) {
+        if (!item) { return; }
+
+        if (quickLookIsOpen()) { closeQuickLook(); }
+
+        detailsSheetReturnFocus = document.activeElement;
+        setSelection([item], item);
+        document.getElementById('explorer_app').classList.add('details-sheet-open');
+        document.getElementById('explorer_details_close').focus({ preventScroll: true });
+    }
+
+    function closeDetailsSheet() {
+        if (!detailsSheetIsOpen()) { return; }
+
+        document.getElementById('explorer_app').classList.remove('details-sheet-open');
+        restoreFocus(detailsSheetReturnFocus);
+        detailsSheetReturnFocus = null;
+    }
+
     function quickLookIsOpen() {
         return !document.getElementById('explorer_quicklook').classList.contains('d-none');
     }
@@ -6877,10 +7172,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
     }
 
-    // ── Where a file is used ────────────────────────────────────────────
+    // ── Where a file or a page is used ──────────────────────────────────
     //
     // The answer is drawn where the question was asked -- in the panel, under
-    // the file it is about -- rather than in a window that has to be closed
+    // the item it is about -- rather than in a window that has to be closed
     // again before the operator can act on what it said.
     function loadFileUsage(item, container) {
 
@@ -6889,7 +7184,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         container.innerHTML = '<div class="text-center small fg-secondary py-3">' +
             '<span class="spinner-border spinner-border-sm me-3"></span>' + esc(L.where_used_looking) + '</div>';
 
-        api({ type: 'explorer_file_usage', file_id: item.id }, function (response) {
+        var request = (item.kind === 'page')
+            ? { type: 'explorer_page_usage', page_id: item.id }
+            : { type: 'explorer_file_usage', file_id: item.id };
+
+        api(request, function (response) {
 
             // The panel may have moved on to another file while this was out.
             if (!container.isConnected) { return; }
@@ -6900,7 +7199,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             }
 
             if (!response.total) {
-                container.innerHTML = '<div class="small fg-secondary"><i class="bi bi-check2 me-1"></i>' + esc(L.where_used_none) + '</div>';
+                container.innerHTML = '<div class="small fg-secondary"><i class="bi bi-check2 me-1"></i>' + esc((item.kind === 'page') ? L.where_used_none_page : L.where_used_none) + '</div>';
                 return;
             }
 
@@ -6964,7 +7263,18 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 (item.tracking_code ? ('<tr><th>' + esc(L.tracking_code) + '</th><td><code>' + esc(item.tracking_code) + '</code></td></tr>') : '') +
                 (item.link_note ? ('<tr><th>' + esc(L.link_state) + '</th><td>' + esc(item.link_note) + '</td></tr>') : '') +
                 ((item.link_mode && item.link_mode !== 'permanent') ? ('<tr><th>' + esc(L.link_uses) + '</th><td>' + esc(String(item.use_count || 0)) + '</td></tr>') : '') +
-                (item.modified ? ('<tr><th>' + esc(L.last_modified) + '</th><td>' + item.modified + (item.username ? ' ' + fmt(L.modified_by, [esc(item.username)]) : '') + '</td></tr>') : '');
+                (item.modified ? ('<tr><th>' + esc(L.last_modified) + '</th><td>' + item.modified + modifiedByHtml(item) + '</td></tr>') : '');
+
+            // In the bin the link answers nobody and its record is closed to
+            // editing: the panel offers what the bin's menu offers.
+            if (insideBin()) {
+                pane.innerHTML =
+                    '<div class="text-center my-5">' + shortLinkIconHtml(item, true) + '</div>' +
+                    binActionsHtml() +
+                    '<table class="table table-sm"><tbody>' + binRowsHtml(item) + shortLinkRows + '</tbody></table>';
+                bindBinActions(pane);
+                return;
+            }
 
             pane.innerHTML =
                 '<div class="text-center my-5">' + shortLinkIconHtml(item, true) + '</div>' +
@@ -6997,7 +7307,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     '<a class="btn btn-sm btn-outline theme-primary" href="' + esc(backupDownloadUrl(item.path)) + '"><span class="bi bi-download me-1"></span>' + esc(L.download) + '</a></div>');
 
         } else if (item.kind === 'page') {
-            media = '<iframe loading="lazy" src="' + esc(item.url) + '" title="' + esc(item.name) + '" referrerpolicy="no-referrer"></iframe>';
+            media = '<iframe loading="lazy" src="' + esc(pagePreviewUrl(item.url)) + '" title="' + esc(item.name) + '" referrerpolicy="no-referrer"></iframe>';
         } else if (item.kind === 'file' && item.is_image) {
             media = '<a href="' + esc(imageUrl(item)) + '" target="_blank" draggable="false" aria-label="' + esc(L.open_in_new_tab + ': ' + item.name) + '"><img class="preview-media" draggable="false" src="' + esc(imageUrl(item)) + '" alt="" /></a>';
         } else if (item.kind === 'file' && item.type === 'pdf') {
@@ -7013,9 +7323,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         var rows = '';
+        // In the bin the rows that describe the item on the site (its
+        // address, the bin's access, live status, sitemap, search) mean
+        // nothing; what the bin keeps (when, who, where it goes back) is said.
+        var binned = insideBin() && !item.backup;
 
         rows += '<tr><th>' + esc(L.name) + '</th><td class="text-break">' + esc(item.name) + '</td></tr>';
         rows += '<tr><th>' + esc(L.type) + '</th><td>' + esc(itemTypeLabel(item)) + '</td></tr>';
+
+        if (binned) { rows += binRowsHtml(item); }
 
         if (item.kind === 'file') {
             rows += '<tr><th>' + esc(L.size) + '</th><td>' + esc(item.size_label || '') + '</td></tr>';
@@ -7029,18 +7345,67 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if (item.kind === 'folder' && !item.backup) {
             rows += '<tr><th>' + esc(L.size) + '</th><td>' + esc(fmt(L.counts_label, [item.counts.folders, item.counts.pages, item.counts.files])) + '</td></tr>';
+
+            // Everything under it, at any depth: what a delete, a move or an
+            // access change would touch.
+            if (item.counts.total) {
+                var total = item.counts.total;
+                rows += '<tr><th>' + esc(L.folder_total) + '</th><td>' + esc(fmt(L.counts_label, [total.folders, total.pages, total.files])) +
+                    (item.size_label ? ' · ' + esc(item.size_label) : '') + '</td></tr>';
+            }
+
+            // Who holds a right on the folder itself, with the drawer that
+            // lists and changes them.
+            if ((typeof item.counts.rights_users === 'number') && ((item.counts.rights_users > 0) || (item.access_control_type === 'private') || (item.access_control_type === 'membership'))) {
+                rows += '<tr><th>' + esc(L.access_user_rights) + '</th><td>' + esc(fmt(L.rights_users_count, [item.counts.rights_users || 0])) +
+                    (item.can_edit ? ' · <a href="#" draggable="false" class="pg-link-secondary" data-role="open-access">' + esc(L.access_permissions) + '</a>' : '') + '</td></tr>';
+            }
         }
 
         if (item.backup) {
-            rows += '<tr><th>' + esc(L.folder) + '</th><td class="text-break">' + esc(item.path) + '</td></tr>';
+            // One location row, the folders down to the entry; its own name
+            // is the Name row. A folder gets the bytes its files take.
+            if ((item.kind === 'folder') && item.size_label) {
+                rows += '<tr><th>' + esc(L.size) + '</th><td>' + esc(item.size_label) + '</td></tr>';
+            }
+            if (item.backup_note) {
+                rows += '<tr><th>' + esc(L.backup_kind) + '</th><td>' + esc(item.backup_note) + '</td></tr>';
+            }
+            rows += '<tr><th>' + esc(L.location) + '</th><td class="text-break">' + esc(item.location || '') + '</td></tr>';
             rows += '<tr><th>' + esc(L.permissions) + '</th><td><code>' + esc(item.permissions || '') + '</code></td></tr>';
         }
 
-        if (item.kind === 'file' && item.folder_name) {
-            rows += '<tr><th>' + esc(L.folder) + '</th><td>' + esc(item.folder_name) + '</td></tr>';
+        if (item.kind === 'file') {
+            if (item.design) {
+                rows += '<tr><th>' + esc(L.design_file) + '</th><td>' + esc(L.yes) + '</td></tr>';
+            }
+            if (item.is_image) {
+                rows += '<tr><th>' + esc(L.optimized) + '</th><td>' + (item.optimized
+                    ? '<span class="bi bi-check2-circle fg-success me-1"></span>' + esc(L.yes)
+                    : esc(L.no)) + '</td></tr>';
+            }
+            if (item.attachment) {
+                rows += '<tr><th>' + esc(L.form_attachment) + '</th><td>' + esc(L.yes) +
+                    '<div class="form-text mt-0">' + esc(L.form_attachment_hint) + '</div></td></tr>';
+            }
         }
 
-        if (!item.backup) {
+        // The folder a page or file lives in, one click away: the flat views
+        // (Pages, Files) list them without their folders.
+        if (((item.kind === 'file') || (item.kind === 'page')) && item.folder_name && !item.short_link && !binned && !item.backup) {
+            rows += '<tr><th>' + esc(L.folder) + '</th><td><a href="#" draggable="false" class="pg-link-secondary" data-role="open-folder">' +
+                '<span class="bi bi-folder me-1 ' + esc(item.access_control_type || '') + '"></span>' + esc(item.folder_name) + '</a></td></tr>';
+        }
+
+        if ((item.kind === 'page') && item.home && !item.backup) {
+            rows += '<tr><th>' + esc(L.home_page) + '</th><td><span class="bi bi-house-door me-1"></span>' + esc(L.yes) + '</td></tr>';
+        }
+
+        if (((item.kind === 'file') || (item.kind === 'page')) && item.url && !item.backup && !item.short_link && !binned) {
+            rows += '<tr><th>' + esc(L.address) + '</th><td><code class="text-break user-select-all small">' + esc(fullAddress(item.url)) + '</code></td></tr>';
+        }
+
+        if (!item.backup && !binned) {
             rows += '<tr><th>' + esc(L.access_control) + '</th><td><span class="' + item.access_control_type + '"><span class="bi ' + item.access_icon + ' me-1"></span>' + esc(accessLabel(item.access_control_type)) + '</span></td></tr>';
         }
 
@@ -7051,23 +7416,35 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 rows += '<tr><th>' + esc(L.sorting) + '</th><td>' + esc(String(item.order)) + '</td></tr>';
             }
 
-            rows += '<tr><th>' + esc(L.archive) + '</th><td>' + esc(item.archived ? L.yes : L.no) + '</td></tr>';
+            if (!binned) {
+                rows += '<tr><th>' + esc(L.archive) + '</th><td>' + esc(item.archived ? L.yes : L.no) + '</td></tr>';
+            }
             rows += '<tr><th>' + esc(L.desktop_style) + '</th><td>' + styleCellHtml(item.style_desktop) + '</td></tr>';
             rows += '<tr><th>' + esc(L.mobile_style) + '</th><td>' + styleCellHtml(item.style_mobile) + '</td></tr>';
         }
 
-        if ((item.kind === 'page') && !item.backup) {
-            rows += '<tr><th>' + esc(L.status) + '</th><td>' + (item.draft
-                ? '<span class="badge rounded-pill theme-warning" title="' + esc(L.draft_hint) + '"><span class="bi bi-eye-slash me-1"></span>' + esc(L.draft_status) + '</span>'
-                : esc(L.live_on_site)) + '</td></tr>';
-            rows += '<tr><th>' + esc(L.impact) + '</th><td>' + impactCellHtml(item) + '</td></tr>';
-            rows += '<tr><th>' + esc(L.sitemap_label) + '</th><td>' + esc(item.sitemap ? L.yes : L.no) + '</td></tr>';
-            rows += '<tr><th>' + esc(L.searchable_label) + '</th><td>' + esc(item.searchable ? L.yes : L.no) + '</td></tr>';
+        if ((item.kind === 'page') && !item.backup && !binned) {
+            // A page in an archived folder answers visitors with 410 (gone),
+            // draft or not: get_page.php closes it before anything else.
+            rows += '<tr><th>' + esc(L.status) + '</th><td>' + (item.archived
+                ? '<span class="badge rounded-pill theme-secondary"><span class="bi bi-archive me-1"></span>' + esc(L.archived_status) + '</span>'
+                : (item.draft
+                    ? '<span class="badge rounded-pill theme-warning" title="' + esc(L.draft_hint) + '"><span class="bi bi-eye-slash me-1"></span>' + esc(L.draft_status) + '</span>'
+                    : esc(L.live_on_site))) + '</td></tr>';
+            // Without an SEO section the figure stays here; with one it is
+            // written there, beside the score it is made of.
+            if (!item.seo) {
+                rows += '<tr><th>' + esc(L.impact) + '</th><td>' + impactCellHtml(item) + '</td></tr>';
+            }
+            // Both settings are kept but do nothing while the folder is archived.
+            var archivedNote = item.archived ? ('<div class="form-text mt-0">' + esc(L.archived_no_effect) + '</div>') : '';
+            rows += '<tr><th>' + esc(L.sitemap_label) + '</th><td>' + esc(item.sitemap ? L.yes : L.no) + (item.sitemap ? archivedNote : '') + '</td></tr>';
+            rows += '<tr><th>' + esc(L.searchable_label) + '</th><td>' + esc(item.searchable ? L.yes : L.no) + (item.searchable ? archivedNote : '') + '</td></tr>';
             rows += '<tr><th>' + esc(L.comments_label) + '</th><td>' + esc(item.comments ? L.yes : L.no) + '</td></tr>';
         }
 
         if (item.modified) {
-            rows += '<tr><th>' + esc(L.last_modified) + '</th><td>' + (item.modified || '') + (item.username ? ' ' + fmt(L.modified_by, [esc(item.username)]) : '') + '</td></tr>';
+            rows += '<tr><th>' + esc(L.last_modified) + '</th><td>' + (item.modified_exact ? esc(item.modified_exact) + ' · ' : '') + (item.modified || '') + modifiedByHtml(item) + '</td></tr>';
         }
 
         var seoSection = '';
@@ -7083,13 +7460,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 (item.seo.scored ? '<span class="small fg-secondary">' + esc(L.seo_score_label) + ': ' + item.seo.score + '/100</span>'
                     : '<span class="small fg-secondary">' + esc(L.seo_not_ready) + '</span>') +
                 '</div>' + flagNotes +
+                '<div class="small mb-3"><span class="fg-secondary">' + esc(L.impact) + ':</span> ' + impactCellHtml(item, true) +
+                '<div class="form-text mt-0">' + esc(L.impact_hint) + '</div></div>' +
                 '<div id="preview_seo_detail"><div class="text-center my-3"><span class="spinner-border spinner-border-sm fg-secondary"></span></div></div>';
         }
 
         // The file window, from here as well as from the menu and the double
         // click -- the panel is where somebody is looking when they decide
         // the description is wrong.
-        var editButton = ((item.kind === 'file') && item.can_edit && !item.backup && !item.short_link)
+        var editButton = ((item.kind === 'file') && item.can_edit && !item.backup && !item.short_link && !binned)
             ? '<div class="d-grid mb-5"><button type="button" class="btn btn-sm btn-outline theme-secondary" data-role="file-edit">' +
                 '<span class="bi bi-pencil-square me-1"></span>' + esc(L.edit) + '</button></div>'
             : '';
@@ -7100,7 +7479,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // the tile.
         var quickTools = '';
 
-        if (((item.kind === 'file') || (item.kind === 'page')) && !item.backup && !item.short_link) {
+        if (binned) {
+            // The park address a binned item has stops working on restore.
+            quickTools = binActionsHtml();
+        } else if (((item.kind === 'file') || (item.kind === 'page')) && !item.backup && !item.short_link) {
 
             quickTools =
                 '<div class="btn-group btn-group-sm w-100 mb-5">' +
@@ -7117,7 +7499,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // to see what broke. Behind a button rather than loaded with the panel:
         // it walks several text columns without an index, which is fine for a
         // press and would not be for every click on a grid.
-        var usageBlock = ((item.kind === 'file') && !item.backup && !item.short_link)
+        var usageBlock = (((item.kind === 'file') || (item.kind === 'page')) && !item.backup && !item.short_link)
             ? ('<div id="preview_usage" class="mb-5"><button type="button" class="btn btn-sm btn-outline theme-secondary w-100 no-popover" data-role="where-used">' +
                 '<i class="bi bi-diagram-3 me-1"></i>' + esc(L.where_used) + '</button></div>')
             : '';
@@ -7131,6 +7513,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             '<table class="table table-sm"><tbody>' + rows + '</tbody></table>' +
             seoSection;
 
+        bindBinActions(pane);
+
         var fileEditButton = pane.querySelector('[data-role="file-edit"]');
 
         if (fileEditButton) {
@@ -7141,6 +7525,24 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if (copyAddressButton) {
             copyAddressButton.addEventListener('click', function () { copyAddresses([item], 'full'); });
+        }
+
+        var accessLink = pane.querySelector('[data-role="open-access"]');
+
+        if (accessLink) {
+            accessLink.addEventListener('click', function (event) {
+                event.preventDefault();
+                openAccessPanel(item);
+            });
+        }
+
+        var folderLink = pane.querySelector('[data-role="open-folder"]');
+
+        if (folderLink) {
+            folderLink.addEventListener('click', function (event) {
+                event.preventDefault();
+                exitAllFiles(item.folder_id);
+            });
         }
 
         var usageButton = pane.querySelector('[data-role="where-used"]');
@@ -7154,27 +7556,86 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
     }
 
+    // The bin's own rows for an item in it: when and by whom it was deleted,
+    // the folder a restore puts it back in and the days before the daily
+    // purge removes it for good.
+    function binRowsHtml(item) {
+
+        var entry = state.binEntries[itemKey(item)];
+
+        if (!entry) { return ''; }
+
+        var html = '<tr><th>' + esc(L.bin_deleted) + '</th><td>' + esc(entry.deleted_exact || '') +
+            (entry.deleted_by ? (' · ' + esc(fmt(L.bin_deleted_by, [entry.deleted_by]))) : '') + '</td></tr>';
+
+        if (entry.origin_name) {
+            html += '<tr><th>' + esc(L.bin_restores_to) + '</th><td class="text-break">' + esc(entry.origin_name) + '</td></tr>';
+        }
+
+        html += '<tr><th>' + esc(L.bin_purged_in) + '</th><td>' + esc(fmt(L.days_left, [entry.days_left])) + '</td></tr>';
+
+        return html;
+    }
+
+    // Restore and Delete Permanently, the two actions the bin's menu offers.
+    function binActionsHtml() {
+        return '<div class="btn-group btn-group-sm w-100 mb-5">' +
+            '<button type="button" class="btn btn-outline theme-secondary no-popover" data-role="bin-restore"><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' + esc(L.restore) + '</button>' +
+            '<button type="button" class="btn btn-outline theme-danger no-popover" data-role="bin-delete"><i class="bi bi-x-octagon me-1" aria-hidden="true"></i>' + esc(L.delete_permanently) + '</button>' +
+            '</div>';
+    }
+
+    // The panel shows the selected item, so both act on the selection.
+    function bindBinActions(pane) {
+        var restoreButton = pane.querySelector('[data-role="bin-restore"]');
+        var deleteButton = pane.querySelector('[data-role="bin-delete"]');
+
+        if (restoreButton) { restoreButton.addEventListener('click', function () { restoreSelection(); }); }
+        if (deleteButton) { deleteButton.addEventListener('click', function () { permanentDeleteSelection(); }); }
+    }
+
     function styleCellHtml(info) {
         if (!info) { return ''; }
 
         var name = info.name || L.default;
 
-        return esc(name) + (info.inherited ? ' <span class="fg-secondary">(' + esc(L.inherit) + ')</span>' : '');
+        return esc(name) + (info.inherited ? ' <span class="fg-secondary">(' + esc(L.inherited_style) + ')</span>' : '');
+    }
+
+    // " by <name>" beside a change: the editor's contact name, else the
+    // username.
+    function modifiedByHtml(item) {
+        var who = item.editor || item.username || '';
+
+        return who ? (' ' + fmt(L.modified_by, [esc(who)])) : '';
+    }
+
+    // The full address of a page or file, as text to read and copy; the
+    // query a system page carries for the panel is left out.
+    function fullAddress(url) {
+        return window.location.origin + String(url || '').split('?')[0];
     }
 
     // The Impact figure the Pages screen shows: how much fixing this page
     // would matter, weighed by its last month of traffic. Null means "cannot
     // say" (never scored, or nobody visited) — printed as a dash, exactly
     // like pg_seo_render_impact().
-    function impactCellHtml(item) {
+    // inline: the views on the same line (list rows keep one height, the
+    // panel says over which days they were counted).
+    function impactCellHtml(item, inline) {
         if (item.kind !== 'page') { return ''; }
 
         if (item.impact === null || item.impact === undefined) {
             return '<span class="fg-secondary">–</span>';
         }
 
+        if (inline) {
+            return '<span class="fw-semibold">' + item.impact + '</span>' +
+                ' <span class="small fg-secondary">· ' + esc(fmt(L.views_in_window, [item.views, L.impact_window_days])) + '</span>';
+        }
+
         return '<span class="fw-semibold">' + item.impact + '</span>' +
-            '<div class="small fg-secondary">' + esc(fmt(L.views_label, [item.views])) + '</div>';
+            ' <span class="small fg-secondary text-nowrap">· ' + esc(fmt(L.views_label, [item.views])) + '</span>';
     }
 
     // Sitemap / search / comments as three small marks, colored when on.
@@ -7489,7 +7950,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     }
 
                     catalogMenu += menuItem('bi-pencil', L.edit, 'catalog_edit', catalogMulti);
-                    catalogMenu += menuItem('bi-eye', L.quick_look + ' (Space)', 'quick_look', catalogMulti || !quickLookable(item));
+                    catalogMenu += menuItem('bi-eye', L.quick_look + ' (' + L.space_key + ')', 'quick_look', catalogMulti || !quickLookable(item));
 
                     // The three figures a shop changes all day, without the
                     // product screen. Only on a product: a group has no price
@@ -7716,7 +8177,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             } else if (item) {
 
                 erpMenu += menuItem('bi-box-arrow-up-right', L.open_in_new_tab, 'erp_open', erpMulti || !item.url);
-                erpMenu += menuItem('bi-eye', L.quick_look + ' (Space)', 'quick_look', erpMulti || !quickLookable(item));
+                erpMenu += menuItem('bi-eye', L.quick_look + ' (' + L.space_key + ')', 'quick_look', erpMulti || !quickLookable(item));
                 erpMenu += menuItem('bi-download', L.download, 'erp_download', erpMulti || !item.download_url);
                 erpMenu += menuDivider();
 
@@ -7890,7 +8351,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var multi = selected.length > 1;
 
             html += menuItem('bi-box-arrow-up-right', item.kind === 'folder' ? L.open_folder : L.open_in_new_tab, 'open', multi);
-            html += menuItem('bi-eye', L.quick_look + ' (Space)', 'quick_look', multi || !quickLookable(item));
+            html += menuItem('bi-eye', L.quick_look + ' (' + L.space_key + ')', 'quick_look', multi || !quickLookable(item));
+
+            // The preview panel is not on screen below its width; this opens
+            // it as a sheet.
+            if (detailsSheetWidth()) {
+                html += menuItem('bi-info-circle', L.details, 'details', multi);
+            }
 
             if (item.kind === 'file') {
                 html += menuItem('bi-pencil', L.edit, 'edit', multi || !item.can_edit);
@@ -7932,6 +8399,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 if (state.mode === 'all') {
                     html += menuItem('bi-folder2-open', L.open_containing_folder, 'open_containing', multi);
                 }
+                html += menuItem('bi-diagram-3', L.where_used, 'where_used', multi);
             }
 
             // A folder is edited here, with no screen of its own: renamed in
@@ -8272,6 +8740,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             case 'empty_bin': emptyRecycleBin(); break;
             case 'open': openItem(item); break;
             case 'quick_look': if (item) { openQuickLook(item); } break;
+            case 'details': if (item) { openDetailsSheet(item); } break;
             // Answered in the panel, which is opened first if it is not on
             // screen: the report is about the file that is being looked at.
             case 'pin_toggle': if (item) { togglePin(item.id, item.name); } break;
@@ -9426,7 +9895,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // the only answer that is right in both places.
         var target = (item.kind === 'folder') ? item.parent_id : (item.folder_id || state.folderId);
 
-        api({ type: 'explorer_paste', target_folder_id: target, items: [{ kind: item.kind, id: item.id }] }, function (response) {
+        api({ type: 'explorer_paste', target_folder_id: target, items: [{ kind: item.kind, id: item.id }], duplicate: true }, function (response) {
             toast(response.message || L.request_failed, response.status !== 'error');
 
             if ((response.status !== 'error') && response.created && response.created.length > 0 && state.recycle.available) {
@@ -10656,7 +11125,13 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                         undo: { type: renameOp, kind: item.kind, id: item.id, name: item.name },
                         redo: { type: renameOp, kind: item.kind, id: item.id, name: response.name || value }
                     });
-                    toast(L.renamed);
+                    // A file name that had to change (letters an address
+                    // cannot carry, a taken name) is said with the name it got.
+                    if ((item.kind === 'file') && response.name && (response.name !== value)) {
+                        toast(fmt(L.renamed_as, [response.name]), true, null, { tone: 'warning' });
+                    } else {
+                        toast(L.renamed);
+                    }
                     reload();
                 } else {
                     toast(response.message || L.request_failed, false);
@@ -10859,7 +11334,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function startInlineRename(element, original, selectBaseOnly, commit) {
         // The list truncates this span; while it holds an input it must not.
         element.classList.add('is-renaming');
-        element.innerHTML = '<input type="text" class="form-control form-control-sm rename-input" aria-label="' + esc(L.rename) + '" value="' + esc(original) + '" />';
+        // Product and group names are varchar(100); the box stops there, so
+        // a name typed for a new group is never refused and left behind as
+        // the placeholder.
+        element.innerHTML = '<input type="text" class="form-control form-control-sm rename-input" aria-label="' + esc(L.rename) + '" value="' + esc(original) + '"' + (insideCatalog() ? ' maxlength="100"' : '') + ' />';
         var input = element.querySelector('input');
         input.focus();
 
@@ -11193,9 +11671,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 html += '<p class="empty-note">' + esc(L.delete_folder_empty) + '</p>';
             } else {
                 html += '<div class="d-flex gap-5 mb-5">' +
-                    '<span class="badge theme-secondary"><span class="bi bi-folder me-1"></span>' + counts.folders + ' ' + esc(L.folders) + '</span>' +
-                    '<span class="badge theme-secondary"><span class="bi bi-window me-1"></span>' + counts.pages + ' ' + esc(L.pages) + '</span>' +
-                    '<span class="badge theme-secondary"><span class="bi bi-file-earmark me-1"></span>' + counts.files + ' ' + esc(L.files) + '</span>' +
+                    '<span class="badge theme-secondary"><span class="bi bi-folder me-1"></span>' + esc(fmt(L.count_folders, [String(counts.folders)])) + '</span>' +
+                    '<span class="badge theme-secondary"><span class="bi bi-window me-1"></span>' + esc(fmt(L.count_pages, [String(counts.pages)])) + '</span>' +
+                    '<span class="badge theme-secondary"><span class="bi bi-file-earmark me-1"></span>' + esc(fmt(L.count_files, [String(counts.files)])) + '</span>' +
                     '</div>';
             }
 
@@ -11219,7 +11697,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 confirmButton.disabled = true;
             }
 
-            html += '<div id="folder_delete_progress" class="d-none mt-5"><div class="progress" style="height:6px;"><div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" style="width:100%"></div></div><p class="mt-3 mb-0 empty-note">' + esc(L.deleting) + '...</p></div>';
+            html += '<div id="folder_delete_progress" class="d-none mt-5"><div class="progress" style="height:6px;"><div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" style="width:100%"></div></div><p class="mt-3 mb-0 empty-note">' + esc((mode === 'bin') ? L.moving_to_bin : L.deleting) + '...</p></div>';
 
             body.innerHTML = html;
 
@@ -11257,12 +11735,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // A short link arrives dressed as a file, so it has to be counted
         // before files are, or the badge would call it one.
         var kinds = [
-            { icon: 'bi-link-45deg', label: L.short_links, match: function (item) { return !!item.short_link; } },
-            { icon: 'bi-folder', label: L.folders_word, match: function (item) { return item.kind === 'folder'; } },
-            { icon: 'bi-window', label: L.pages, match: function (item) { return item.kind === 'page'; } },
-            { icon: 'bi-file-earmark', label: L.files, match: function (item) { return (item.kind === 'file') && (!item.short_link); } },
-            { icon: 'bi-boxes', label: L.product_groups_word, match: function (item) { return item.kind === 'group'; } },
-            { icon: 'bi-box2-heart', label: L.products_word, match: function (item) { return item.kind === 'product'; } }
+            { icon: 'bi-link-45deg', label: L.count_short_links, match: function (item) { return !!item.short_link; } },
+            { icon: 'bi-folder', label: L.count_folders, match: function (item) { return item.kind === 'folder'; } },
+            { icon: 'bi-window', label: L.count_pages, match: function (item) { return item.kind === 'page'; } },
+            { icon: 'bi-file-earmark', label: L.count_files, match: function (item) { return (item.kind === 'file') && (!item.short_link); } },
+            { icon: 'bi-boxes', label: L.count_product_groups, match: function (item) { return item.kind === 'group'; } },
+            { icon: 'bi-box2-heart', label: L.count_products, match: function (item) { return item.kind === 'product'; } }
         ];
 
         var folderCount = selected.filter(function (item) { return item.kind === 'folder'; }).length;
@@ -11284,7 +11762,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var count = selected.filter(entry.match).length;
 
             if (count > 0) {
-                html += '<span class="badge theme-secondary"><span class="bi ' + entry.icon + ' me-1"></span>' + count + ' ' + esc(entry.label) + '</span>';
+                // The count is written into the sentence, so a language that
+                // keeps the noun singular after a number reads right.
+                html += '<span class="badge theme-secondary"><span class="bi ' + entry.icon + ' me-1"></span>' + esc(fmt(entry.label, [String(count)])) + '</span>';
             }
         });
 
@@ -11308,7 +11788,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 '<div class="form-text fg-danger d-none" id="folder_delete_name_error">' + esc(L.word_does_not_match) + '</div>';
         }
 
-        html += '<div id="folder_delete_progress" class="d-none mt-5"><div class="progress" style="height:6px;"><div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" style="width:100%"></div></div><p class="mt-3 mb-0 empty-note">' + esc(L.deleting) + '...</p></div>';
+        html += '<div id="folder_delete_progress" class="d-none mt-5"><div class="progress" style="height:6px;"><div class="progress-bar progress-bar-striped progress-bar-animated bg-danger" style="width:100%"></div></div><p class="mt-3 mb-0 empty-note">' + esc((mode === 'bin') ? L.moving_to_bin : L.deleting) + '...</p></div>';
 
         body.innerHTML = html;
         confirmButton.disabled = (mode !== 'purge');
@@ -11895,6 +12375,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var maxBytes = state.caps.upload_max_bytes || 0;
         var uploaded = 0;
         var uploadedIds = [];
+        var renamedUploads = [];
         var rootFolderIds = [];
         var folderIds = { '': intoFolderId };
         var queue = entries.slice();
@@ -11954,7 +12435,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                         pushUndo({ undo: { type: 'bin', items: undoItems }, redo: null });
                     }
 
-                    toast(fmt(L.upload_done, [uploaded]));
+                    // A file name is its address, so a name the server had
+                    // to change (taken, or letters an address cannot carry)
+                    // is said, and the toast stays until it is closed.
+                    if (renamedUploads.length > 0) {
+                        toast(fmt(L.upload_done, [uploaded]) + ' ' + fmt(L.uploaded_renamed, [renamedUploads.join(', ')]), true, null, { tone: 'warning', sticky: true });
+                    } else {
+                        toast(fmt(L.upload_done, [uploaded]));
+                    }
 
                     // Uploaded somewhere other than where you are standing:
                     // the screen goes there, because a file you cannot see is
@@ -12002,6 +12490,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                             // listed for undo on its own; the rest are inside a
                             // folder that is already on the list.
                             if ((directory === '') && response.file && response.file.id) { uploadedIds.push(response.file.id); }
+                            if (response.file && response.file.name && (response.file.name !== file.name)) { renamedUploads.push(file.name + ' → ' + response.file.name); }
                         } else {
                             toast(response.message || L.request_failed, false);
                         }
@@ -13218,6 +13707,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // commerce rights belong to the user and cover everything. So this is one
     // panel for the area rather than one per product group -- a per-group
     // switch would promise a separation the storefront does not enforce.
+    var commerceOfflinePayment = false;
+
     function openCommerceAccessPanel() {
 
         api({ type: 'explorer_catalog_access_get' }, function (response) {
@@ -13226,47 +13717,58 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             var body = document.getElementById('access_offcanvas_body');
 
+            commerceOfflinePayment = !!response.offline_payment;
+
             document.getElementById('access_offcanvas_label').innerHTML =
                 '<span class="bi bi-shield-lock me-3"></span>' + esc(L.commerce_access);
 
             var html = '<p class="form-text mt-0">' + esc(L.commerce_access_note) + '</p>';
 
-            if ((!response.can_manage_users) || (response.users.length === 0)) {
+            if (!response.can_manage_users) {
 
                 html += '<p class="empty-note">' + esc(L.no_basic_users) + '</p>';
                 body.innerHTML = html;
 
             } else {
 
-                html += '<div id="commerce_access_list">';
+                // Only the users who hold a commerce right are listed; the
+                // others are added from the search box.
+                html += '<div id="commerce_access_list">' + response.users.map(commerceUserRowHtml).join('') + '</div>' +
+                    '<p class="empty-note" id="commerce_access_empty"' + (response.users.length > 0 ? ' hidden' : '') + '>' + esc(L.access_no_users_yet) + '</p>' +
+                    accessUserSearchHtml();
 
-                response.users.forEach(function (userRow) {
-
-                    html += '<div class="border-bottom pb-3 mb-3" data-user-id="' + userRow.id + '" role="group" aria-labelledby="commerce_user_' + userRow.id + '">' +
-                        '<div class="fw-semibold text-break mb-1" id="commerce_user_' + userRow.id + '">' + esc(userRow.username) + '</div>' +
-                        switchRow('manage', userRow.id, L.commerce_manage, userRow.manage) +
-                        switchRow('reports', userRow.id, L.commerce_reports, userRow.reports) +
-                        (response.offline_payment ? switchRow('offline_payment', userRow.id, L.commerce_offline_payment, userRow.offline_payment) : '') +
-                        '</div>';
-                });
-
-                html += '</div><div class="d-grid mt-5"><button type="button" class="btn btn-solid theme-primary" id="commerce_access_save_button">' + esc(L.save) + '</button></div>';
+                html += '<div class="d-grid mt-5"><button type="button" class="btn btn-solid theme-primary" id="commerce_access_save_button">' + esc(L.save) + '</button></div>';
 
                 body.innerHTML = html;
+
+                bindAccessUserSearch(body, function (found) {
+                    if (body.querySelector('#commerce_access_list [data-user-id="' + found.id + '"]')) { return; }
+                    var holder = document.createElement('div');
+                    holder.innerHTML = commerceUserRowHtml({ id: found.id, username: found.username, manage: false, reports: false, offline_payment: false });
+                    document.getElementById('commerce_access_list').appendChild(holder.firstElementChild);
+                    document.getElementById('commerce_access_empty').hidden = true;
+                });
 
                 document.getElementById('commerce_access_save_button').addEventListener('click', function () {
 
                     var payload = [];
 
-                    body.querySelectorAll('[data-user-id]').forEach(function (row) {
+                    // Only the rows whose switches changed are sent.
+                    body.querySelectorAll('#commerce_access_list [data-user-id]').forEach(function (row) {
 
-                        payload.push({
+                        var entry = {
                             id: parseInt(row.getAttribute('data-user-id'), 10),
                             manage: row.querySelector('[data-right="manage"]').checked,
                             reports: row.querySelector('[data-right="reports"]').checked,
                             offline_payment: (row.querySelector('[data-right="offline_payment"]') || { checked: false }).checked
-                        });
+                        };
+
+                        if ([entry.manage, entry.reports, entry.offline_payment].map(Number).join('') !== row.getAttribute('data-initial')) {
+                            payload.push(entry);
+                        }
                     });
+
+                    if (payload.length === 0) { accessOffcanvas.hide(); return; }
 
                     api({ type: 'explorer_catalog_access_set', users: payload }, function (saveResponse) {
                         toast(saveResponse.message || L.request_failed, saveResponse.status !== 'error');
@@ -13283,6 +13785,21 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         });
     }
 
+    // One user of the commerce access panel; data-initial keeps the three
+    // switches it came with, so a save sends only what changed.
+    function commerceUserRowHtml(userRow) {
+        var offline = commerceOfflinePayment;
+
+        return '<div class="border-bottom pb-3 mb-3" data-user-id="' + userRow.id + '" data-initial="' +
+            [userRow.manage, userRow.reports, offline && userRow.offline_payment].map(Number).join('') +
+            '" role="group" aria-labelledby="commerce_user_' + userRow.id + '">' +
+            '<div class="fw-semibold text-break mb-1" id="commerce_user_' + userRow.id + '">' + esc(userRow.username) + '</div>' +
+            switchRow('manage', userRow.id, L.commerce_manage, userRow.manage) +
+            switchRow('reports', userRow.id, L.commerce_reports, userRow.reports) +
+            (offline ? switchRow('offline_payment', userRow.id, L.commerce_offline_payment, userRow.offline_payment) : '') +
+            '</div>';
+    }
+
     function switchRow(right, userId, label, checked) {
 
         var id = 'commerce_' + right + '_' + userId;
@@ -13290,6 +13807,111 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         return '<div class="form-field">' +
             '<div class="switch"><input class="" type="checkbox" role="switch" id="' + id + '" data-right="' + right + '"' + (checked ? ' checked' : '') + ' /></div>' +
             '<label class="small" for="' + id + '">' + esc(label) + '</label></div>';
+    }
+
+    // One user of the folder access panel: name and inherited right, the
+    // right, and under it, for view access, the day it ends (empty: no end).
+    // The rights and date it came with are kept, so a save sends only the
+    // rows that changed. A user added from the search box came with none.
+    function accessUserRowHtml(userRow, initialRights) {
+
+        var initial = (initialRights === undefined) ? userRow.rights : initialRights;
+        var dateId = 'access_expiration_' + userRow.id;
+        var inherited = '';
+
+        if (userRow.inherited_rights > 0) {
+            inherited = '<span class="badge theme-secondary ms-3" title="' + esc(L.inherited_from_parent) + '">' +
+                esc(userRow.inherited_rights === 2 ? L.edit_access : L.view_access) + ' • ' + esc(L.inherited_style) + '</span>';
+        }
+
+        return '<div class="access-user border-bottom py-3" data-user-id="' + userRow.id + '" data-initial-rights="' + initial + '" data-initial-expiration="' + esc(initialRights === undefined ? (userRow.expiration_date || '') : '') + '">' +
+            '<div class="fw-semibold text-break mb-1">' + esc(userRow.username) + inherited + '</div>' +
+            '<select class="form-control form-control-sm access-rights-select" aria-label="' + esc(fmt(L.rights_for_user, [userRow.username])) + '">' +
+            '<option value="0"' + (userRow.rights === 0 ? ' selected' : '') + '>' + esc(L.no_access) + '</option>' +
+            '<option value="1"' + (userRow.rights === 1 ? ' selected' : '') + '>' + esc(L.view_access) + '</option>' +
+            '<option value="2"' + (userRow.rights === 2 ? ' selected' : '') + '>' + esc(L.edit_access) + '</option>' +
+            '</select>' +
+            '<div class="access-expiration-wrap mt-3"' + (userRow.rights === 1 ? '' : ' hidden') + '>' +
+            '<label class="form-label small mb-1" for="' + dateId + '">' + esc(L.expiration_date) + '</label>' +
+            '<input type="date" data-pg-date id="' + dateId + '" class="form-control form-control-sm access-expiration" value="' + esc(userRow.expiration_date || '') + '" />' +
+            '<div class="form-text mt-1">' + esc(L.access_end_hint) + '</div>' +
+            '</div></div>';
+    }
+
+    function bindAccessUserRows(scope) {
+        scope.querySelectorAll('.access-rights-select').forEach(function (select) {
+            select.addEventListener('change', function () {
+                select.closest('.access-user').querySelector('.access-expiration-wrap').hidden = (select.value !== '1');
+            });
+        });
+    }
+
+    // The rows whose right or end date differ from what they came with.
+    function accessChangedRows(scope) {
+        var changed = [];
+
+        scope.querySelectorAll('.access-user[data-user-id]').forEach(function (row) {
+            var rights = parseInt(row.querySelector('.access-rights-select').value, 10);
+            var expiration = (rights === 1) ? (row.querySelector('.access-expiration').value || '') : '';
+
+            if ((rights !== parseInt(row.getAttribute('data-initial-rights'), 10)) || (expiration !== (row.getAttribute('data-initial-expiration') || ''))) {
+                changed.push({ user_id: parseInt(row.getAttribute('data-user-id'), 10), rights: rights, expiration_date: expiration });
+            }
+        });
+
+        return changed;
+    }
+
+    // The Add a user box both access panels share: a search over the basic
+    // users, the picked one handed to onPick.
+    function accessUserSearchHtml() {
+        return '<div class="mt-5 mb-3">' +
+            '<label class="form-label" for="access_user_search">' + esc(L.access_add_user) + '</label>' +
+            '<input type="search" id="access_user_search" class="form-control form-control-sm" autocomplete="off" placeholder="' + esc(L.access_add_user_placeholder) + '" />' +
+            '<div id="access_user_results" class="list-group mt-1" role="listbox" aria-label="' + esc(L.access_add_user) + '"></div>' +
+            '</div>';
+    }
+
+    function bindAccessUserSearch(scope, onPick) {
+        var input = scope.querySelector('#access_user_search');
+        var results = scope.querySelector('#access_user_results');
+        var timer = null;
+        var asked = 0;
+
+        if (!input) { return; }
+
+        input.addEventListener('input', function () {
+            clearTimeout(timer);
+            var term = input.value.trim();
+
+            if (term === '') { results.innerHTML = ''; return; }
+
+            timer = setTimeout(function () {
+                var ticket = ++asked;
+
+                api({ type: 'explorer_access_user_search', term: term }, function (response) {
+                    // An answer to an older term is dropped.
+                    if (ticket !== asked) { return; }
+
+                    var found = (response.status === 'success') ? (response.users || []) : [];
+
+                    results.innerHTML = (found.length === 0)
+                        ? '<div class="small fg-secondary py-1">' + esc(L.access_no_user_found) + '</div>'
+                        : found.map(function (entry, index) {
+                            return '<button type="button" class="list-group-item list-group-item-action small text-break" role="option" data-index="' + index + '">' +
+                                esc(entry.username) + ((entry.name && entry.name !== entry.username) ? ' <span class="fg-secondary">· ' + esc(entry.name) + '</span>' : '') + '</button>';
+                        }).join('');
+
+                    results.querySelectorAll('[data-index]').forEach(function (button) {
+                        button.addEventListener('click', function () {
+                            onPick(found[parseInt(button.getAttribute('data-index'), 10)]);
+                            input.value = '';
+                            results.innerHTML = '';
+                        });
+                    });
+                });
+            }, 250);
+        });
     }
 
     function openAccessPanel(item) {
@@ -13307,46 +13929,26 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var types = ['', 'public', 'guest', 'registration', 'membership', 'private'];
 
             types.forEach(function (type) {
-                var label = type === '' ? (L.default + ' (' + L.inherit + ')') : accessLabel(type);
+                var label = type === '' ? L.default_from_parent : accessLabel(type);
                 options += '<option value="' + type + '" class="' + type + '"' + (folder.own_access_control_type === type ? ' selected' : '') + '>' + esc(label) + '</option>';
             });
 
             var inheritNote = '';
 
-            if (folder.own_access_control_type === '') {
-                inheritNote = '<div class="form-text"><span class="' + folder.access_control_type + '">' + esc(accessLabel(folder.access_control_type)) + '</span> — ' +
+            // What Default takes from the parent folders: drawn always, shown
+            // only while Default is selected.
+            if (folder.inherited_type) {
+                inheritNote = '<div class="form-text"><span class="' + folder.inherited_type + '">' + esc(accessLabel(folder.inherited_type)) + '</span> — ' +
                     esc(folder.inherited_from ? fmt(L.inherited_from, [folder.inherited_from]) : L.inherited_from_parent) + '</div>';
             }
 
             var usersHtml = '';
 
             if (response.can_manage_users) {
-                if (response.users.length === 0) {
-                    usersHtml = '<p class="empty-note">' + esc(L.no_basic_users) + '</p>';
-                } else {
-                    usersHtml = '<table class="table table-sm align-middle"><thead><tr><th>' + esc(L.user_column) + '</th><th>' + esc(L.rights_column) + '</th><th></th></tr></thead><tbody>';
-
-                    response.users.forEach(function (userRow) {
-                        var inherited = '';
-
-                        if (userRow.inherited_rights > 0) {
-                            inherited = '<span class="badge theme-secondary" title="' + esc(L.inherited_from_parent) + '">' +
-                                esc(userRow.inherited_rights === 2 ? L.edit_access : L.view_access) + ' • ' + esc(L.inherit) + '</span>';
-                        }
-
-                        usersHtml += '<tr data-user-id="' + userRow.id + '">' +
-                            '<td class="text-break">' + esc(userRow.username) + '<div>' + inherited + '</div></td>' +
-                            '<td><select class="form-control form-control-sm access-rights-select" aria-label="' + esc(fmt(L.rights_for_user, [userRow.username])) + '">' +
-                            '<option value="0"' + (userRow.rights === 0 ? ' selected' : '') + '>' + esc(L.no_access) + '</option>' +
-                            '<option value="1"' + (userRow.rights === 1 ? ' selected' : '') + '>' + esc(L.view_access) + '</option>' +
-                            '<option value="2"' + (userRow.rights === 2 ? ' selected' : '') + '>' + esc(L.edit_access) + '</option>' +
-                            '</select></td>' +
-                            '<td><div class="access-expiration-wrap"' + (userRow.rights === 1 ? '' : ' style="display:none"') + '><input type="date" data-pg-date class="form-control form-control-sm access-expiration" title="' + esc(L.expiration_date) + '" aria-label="' + esc(L.expiration_date) + '" value="' + esc(userRow.expiration_date || '') + '" /></div></td>' +
-                            '</tr>';
-                    });
-
-                    usersHtml += '</tbody></table><div class="form-text">' + esc(L.rights_note) + '</div>';
-                }
+                usersHtml = '<div id="access_user_list">' + response.users.map(function (userRow) { return accessUserRowHtml(userRow); }).join('') + '</div>' +
+                    '<p class="empty-note" id="access_user_empty"' + (response.users.length > 0 ? ' hidden' : '') + '>' + esc(L.access_no_users_yet) + '</p>' +
+                    accessUserSearchHtml() +
+                    '<div class="form-text">' + esc(L.rights_note) + '</div>';
             }
 
             body.innerHTML =
@@ -13354,10 +13956,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 '<div class="mb-5">' +
                 '<label class="form-label" for="access_type_select">' + esc(L.access_control) + '</label>' +
                 '<select id="access_type_select" class="form-control">' + options + '</select>' +
-                inheritNote +
+                '<div id="access_inherit_note"' + (folder.own_access_control_type === '' ? '' : ' hidden') + '>' + inheritNote + '</div>' +
                 '<div class="form-text">' + esc(L.access_note) + '</div>' +
                 '</div>' +
-                (usersHtml ? '<hr /><h6>' + esc(L.access_permissions) + '</h6>' + usersHtml : '') +
+                (usersHtml ? '<h6 class="mt-5 mb-3">' + esc(L.access_user_rights) + '</h6>' + usersHtml : '') +
                 '<div class="mt-5 text-end"><button type="button" id="access_save_button" class="btn btn-solid theme-success"><span class="bi bi-save me-3"></span>' + esc(L.save) + '</button></div>';
 
             // The expiry dates go on the date-and-time control once the rows are in the document.
@@ -13365,13 +13967,25 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 window.pgFields.init(body);
             }
 
-            body.querySelectorAll('.access-rights-select').forEach(function (select) {
-                select.addEventListener('change', function () {
-                    // The wrapper, not the hidden store, carries the date box the control draws.
-                    var expiration = select.closest('tr').querySelector('.access-expiration-wrap');
-                    expiration.style.display = (select.value === '1') ? '' : 'none';
-                });
+            bindAccessUserRows(body);
+
+            document.getElementById('access_type_select').addEventListener('change', function () {
+                document.getElementById('access_inherit_note').hidden = (this.value !== '');
             });
+
+            if (response.can_manage_users) {
+                bindAccessUserSearch(body, function (found) {
+                    if (body.querySelector('#access_user_list [data-user-id="' + found.id + '"]')) { return; }
+                    var holder = document.createElement('div');
+                    holder.innerHTML = accessUserRowHtml({ id: found.id, username: found.username, rights: 1, expiration_date: '', inherited_rights: 0 }, 0);
+                    var added = holder.firstElementChild;
+                    document.getElementById('access_user_list').appendChild(added);
+                    document.getElementById('access_user_empty').hidden = true;
+                    if (window.pgFields) { window.pgFields.init(added); }
+                    bindAccessUserRows(added);
+                    added.querySelector('.access-rights-select').focus();
+                });
+            }
 
             document.getElementById('access_save_button').addEventListener('click', function () {
                 var payload = {
@@ -13380,15 +13994,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     access_control_type: document.getElementById('access_type_select').value
                 };
 
-                if (response.can_manage_users && response.users.length > 0) {
-                    payload.user_rights = [];
-                    body.querySelectorAll('tr[data-user-id]').forEach(function (row) {
-                        payload.user_rights.push({
-                            user_id: parseInt(row.getAttribute('data-user-id'), 10),
-                            rights: parseInt(row.querySelector('.access-rights-select').value, 10),
-                            expiration_date: row.querySelector('.access-expiration').value || ''
-                        });
-                    });
+                if (response.can_manage_users) {
+                    var changed = accessChangedRows(body);
+                    if (changed.length > 0) { payload.user_rights = changed; }
                 }
 
                 api(payload, function (saveResponse) {
@@ -14370,7 +14978,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         if (file.modified) {
-            facts.push('<span>' + file.modified + (file.username ? ' ' + fmt(L.modified_by, [esc(file.username)]) : '') + '</span>');
+            facts.push('<span>' + file.modified + modifiedByHtml(file) + '</span>');
         }
 
         document.getElementById('file_edit_facts').innerHTML = facts.join('');
@@ -15288,10 +15896,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     // A wider or narrower bar keeps the open folder in view. Scroll does not
     // bubble and the list is redrawn, so the bar listens in the capture phase.
+    // A width change folds the crumbs again; folding itself leaves the width
+    // alone, so the observer does not call itself back.
     if (window.ResizeObserver) {
-        new ResizeObserver(showBreadcrumbEnd).observe(document.getElementById('explorer_breadcrumb'));
+        new ResizeObserver(refitBreadcrumb).observe(document.getElementById('explorer_breadcrumb'));
     } else {
-        window.addEventListener('resize', showBreadcrumbEnd);
+        window.addEventListener('resize', refitBreadcrumb);
     }
 
     document.getElementById('explorer_breadcrumb').addEventListener('scroll', function (event) {
@@ -15463,6 +16073,19 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     });
 
     document.getElementById('quicklook_close').addEventListener('click', closeQuickLook);
+    document.getElementById('quicklook_details').addEventListener('click', function () { if (quickLookItem) { openDetailsSheet(quickLookItem); } });
+    document.getElementById('explorer_details_close').addEventListener('click', closeDetailsSheet);
+    document.getElementById('explorer_details_backdrop').addEventListener('click', closeDetailsSheet);
+
+    // Escape closes the sheet before any of the screen's own Escape handling
+    // (clearing the selection) sees the key.
+    document.addEventListener('keydown', function (event) {
+        if ((event.key === 'Escape') && detailsSheetIsOpen()) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            closeDetailsSheet();
+        }
+    }, true);
 
     // Escape closes Quick Look in one press, taken on the window before the
     // tooltip of the focused Close button, whose own capture handler on the
@@ -16089,6 +16712,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     } else if (state.erpAllowed && (storageGet('pg_explorer_erp_open') === '1')) {
         setErpTreeOpen(true);
     }
+
+    SERVER_MESSAGES.forEach(function (entry) {
+        toast(entry.message, entry.type === 'success', null, { html: true, tone: entry.type === 'warning' ? 'warning' : '', sticky: entry.type !== 'success' });
+    });
 
     // The tour opens itself only once the grid and the tree have arrived. A
     // tour that starts against a loading screen rings empty boxes and its

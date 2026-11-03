@@ -22,6 +22,10 @@ validate_ecommerce_access($user);
 include_once('liveform.class.php');
 $liveform = new liveform('view_parasut_inbox');
 
+// A value sent as a list (vkn[]=1, start_date[]=x) counts as not given:
+// trim() and h() would throw a TypeError on it.
+pg_request_single_values(array('tab', 'pg', 'vkn', 'start_date', 'end_date'));
+
 if (!defined('ENABLE_PARASUT') || !ENABLE_PARASUT || !defined('PARASUT_COMPANY_ID') || PARASUT_COMPANY_ID === '') {
     $liveform->mark_error('_error', lang('Parasut integration is not enabled. Please configure it in Settings.'));
     go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('accounting', 'pgset-invoice'));
@@ -44,6 +48,8 @@ if ($tab === 'vkn' && isset($_POST['vkn_query'])) {
         if ($vkn_result['refused']) {
             // A malformed or mistyped number is not asked: Paraşüt would
             // answer it as "not registered".
+            // Keep the refused number in the box so it can be corrected.
+            $liveform->assign_field_value('vkn', $vkn);
             $liveform->mark_error('vkn', $vkn_result['error']);
         } elseif (!$vkn_result['success']) {
             $liveform->mark_error('_error', lang('Parasut API Error') . ': ' . h($vkn_result['error']));
@@ -140,12 +146,12 @@ if (in_array($tab, ['incoming', 'outgoing'])) {
     <form method="get" class="row g-3 align-items-end mb-5">
         <input type="hidden" name="tab" value="' . h($tab) . '" />
         <div class="col-auto">
-            <label class="form-label small fg-secondary mb-1">' . lang('Start Date') . '</label>
-            <input type="date" data-pg-date class="form-control form-control-sm" name="start_date" value="' . $start_date_val . '" />
+            <label class="form-label small fg-secondary mb-1" for="parasut_start_date">' . lang('Start Date') . '</label>
+            <input type="date" data-pg-date class="form-control form-control-sm" id="parasut_start_date" name="start_date" value="' . $start_date_val . '" />
         </div>
         <div class="col-auto">
-            <label class="form-label small fg-secondary mb-1">' . lang('End Date') . '</label>
-            <input type="date" data-pg-date class="form-control form-control-sm" name="end_date" value="' . $end_date_val . '" />
+            <label class="form-label small fg-secondary mb-1" for="parasut_end_date">' . lang('End Date') . '</label>
+            <input type="date" data-pg-date class="form-control form-control-sm" id="parasut_end_date" name="end_date" value="' . $end_date_val . '" />
         </div>
         <div class="col-auto">
             <button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-funnel me-1"></i>' . lang('Filter') . '</button>
@@ -269,8 +275,8 @@ if ($tab === 'incoming') {
             $contact_id = $bill['relationships']['supplier']['data']['id'] ?? null;
             $contact_name = $contact_id ? ($incoming_result['contacts'][$contact_id] ?? '—') : '—';
 
-            $issue_date = $attr['issue_date'] ?? '';
-            $due_date   = $attr['due_date']   ?? '';
+            $issue_date = prepare_form_data_for_output((string) ($attr['issue_date'] ?? ''), 'date', false);
+            $due_date   = prepare_form_data_for_output((string) ($attr['due_date'] ?? ''), 'date', false);
             $totals     = parasut_inbox_totals($attr);
             $before_vat = pg_format_number($totals['before_vat'], 2);
             $vat        = pg_format_number($totals['vat'], 2);
@@ -356,8 +362,8 @@ if ($tab === 'outgoing') {
             $contact_id = $inv['relationships']['contact']['data']['id'] ?? null;
             $contact_name = $contact_id ? ($outgoing_result['contacts'][$contact_id] ?? '—') : '—';
 
-            $issue_date  = $attr['issue_date']  ?? '';
-            $due_date    = $attr['due_date']    ?? '';
+            $issue_date  = prepare_form_data_for_output((string) ($attr['issue_date'] ?? ''), 'date', false);
+            $due_date    = prepare_form_data_for_output((string) ($attr['due_date'] ?? ''), 'date', false);
             $invoice_no  = ($attr['invoice_series'] ?? '') . ($attr['invoice_id'] ? '/' . $attr['invoice_id'] : '');
             $totals      = parasut_inbox_totals($attr);
             $before_vat  = pg_format_number($totals['before_vat'], 2);
@@ -478,8 +484,8 @@ if ($tab === 'vkn') {
                 <input type="hidden" name="vkn_query" value="1" />
                 <div class="row g-3 align-items-end">
                     <div class="col-12 sm:col-6 lg:col-4">
-                        <label class="form-label">' . lang('VKN / TCKN') . '</label>
-                        ' . $liveform->output_field(['type' => 'text', 'id' => 'vkn', 'name' => 'vkn', 'class' => 'form-control', 'value' => $vkn_input_val, 'maxlength' => '11', 'inputmode' => 'numeric', 'placeholder' => '1234567890']) . '
+                        <label class="form-label" for="vkn">' . lang('VKN / TCKN') . '</label>
+                        ' . $liveform->output_field(['type' => 'text', 'id' => 'vkn', 'name' => 'vkn', 'class' => 'form-control', 'value' => $vkn_input_val, 'maxlength' => '20', 'inputmode' => 'numeric', 'placeholder' => '1234567890']) . '
                     </div>
                     <div class="col-auto">
                         <button type="submit" class="btn btn-solid theme-primary">

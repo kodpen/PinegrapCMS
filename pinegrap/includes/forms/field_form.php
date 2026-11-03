@@ -320,6 +320,141 @@ function pg_field_form_required_value($type, $posted)
 }
 
 /**
+ * The field types a form of this kind offers, as select_field_type() lists
+ * them: a file upload and a signature only on a custom form, a signature only
+ * where its column exists.
+ *
+ * @param string $form_type        custom, shipping, billing, product, product_group
+ * @param bool $signature_ready    pg_signature_ready()
+ * @return array
+ */
+function pg_field_form_types($form_type, $signature_ready)
+{
+    $types = array('text box', 'text area', 'pick list', 'radio button', 'check box');
+
+    if ($form_type == 'custom') {
+        $types[] = 'file upload';
+    }
+
+    $types = array_merge($types, array('date', 'date and time', 'email address', 'information', 'time'));
+
+    if (($form_type == 'custom') && $signature_ready) {
+        $types[] = 'signature';
+    }
+
+    return $types;
+}
+
+/**
+ * Marks the error of a posted field type that the form does not offer: the
+ * type column is an ENUM, so any other value was stored as an empty type.
+ *
+ * @param liveform $liveform
+ * @param mixed $type
+ * @param string $form_type
+ */
+function pg_field_form_validate_type($liveform, $type, $form_type)
+{
+    $signature_ready = function_exists('pg_signature_ready') && pg_signature_ready();
+
+    if (!is_string($type) || !in_array($type, pg_field_form_types($form_type, $signature_ready), true)) {
+        $liveform->mark_error('type', lang('Please select a field type.'));
+    }
+}
+
+/**
+ * A posted whole number from 0 to $max: empty is 0. A negative, decimal or
+ * too large value is refused rather than stored clipped or rounded by the
+ * unsigned INT column.
+ *
+ * @param mixed $value
+ * @param int $max
+ * @return array  array(valid, the number or 0)
+ */
+function pg_field_form_number($value, $max)
+{
+    if (!is_string($value) && !is_int($value)) {
+        return array(false, 0);
+    }
+
+    $value = trim((string) $value);
+
+    if ($value === '') {
+        return array(true, 0);
+    }
+
+    if (!preg_match('/^[0-9]{1,10}$/', $value) || ((int) $value > $max)) {
+        return array(false, 0);
+    }
+
+    return array(true, (int) $value);
+}
+
+/**
+ * The largest value of each number box of the field form.
+ *
+ * @return array  posted name => maximum
+ */
+function pg_field_form_number_limits()
+{
+    return array('size' => 1000, 'maxlength' => 65535, 'rows' => 1000, 'cols' => 1000);
+}
+
+/**
+ * The number boxes the field form shows for a field type (change_field_type()
+ * in backend.src.js); the others are hidden but still posted.
+ *
+ * @param string $type
+ * @return array  posted names
+ */
+function pg_field_form_number_boxes($type)
+{
+    $boxes = array();
+
+    if (in_array($type, array('text box', 'pick list', 'file upload', 'date', 'date and time', 'email address', 'time'), true)) {
+        $boxes[] = 'size';
+    }
+
+    if (in_array($type, array('text box', 'text area', 'email address'), true)) {
+        $boxes[] = 'maxlength';
+    }
+
+    if ($type == 'text area') {
+        $boxes[] = 'rows';
+        $boxes[] = 'cols';
+    }
+
+    return $boxes;
+}
+
+/**
+ * Checks the number boxes of the field form and returns their values, 0 for
+ * an empty or refused one. A refused box the type shows is marked on the
+ * liveform; a hidden one is saved as 0, as its value is not used.
+ *
+ * @param liveform $liveform
+ * @param array $post
+ * @return array  posted name => number
+ */
+function pg_field_form_validate_numbers($liveform, $post)
+{
+    $numbers = array();
+    $shown = pg_field_form_number_boxes((string) ($post['type'] ?? ''));
+
+    foreach (pg_field_form_number_limits() as $name => $max) {
+        list($valid, $number) = pg_field_form_number($post[$name] ?? '', $max);
+
+        if (!$valid && in_array($name, $shown, true)) {
+            $liveform->mark_error($name, lang(array('string' => 'Please enter a whole number from 0 to {var:1}.', 'vars' => $max)));
+        }
+
+        $numbers[$name] = $number;
+    }
+
+    return $numbers;
+}
+
+/**
  * One line of the choices text, split into its parts:
  * label|value|on|target field=option,option|upload folder id ^^e-mail,e-mail^^
  *
@@ -369,6 +504,31 @@ function pg_field_form_parse_option_line($line)
 }
 
 /**
+ * The choices of the choices text, one per line; a line with neither a label
+ * nor a value (a blank line, a stray "|") is no choice. A choice with an empty
+ * value is written "Select…|".
+ *
+ * @param string $options_text
+ * @return array  pg_field_form_parse_option_line() of each choice
+ */
+function pg_field_form_option_lines($options_text)
+{
+    $options = array();
+
+    foreach (explode("\n", (string) $options_text) as $option_line) {
+        $option = pg_field_form_parse_option_line($option_line);
+
+        if (($option['label'] === '') && ($option['value'] === '')) {
+            continue;
+        }
+
+        $options[] = $option;
+    }
+
+    return $options;
+}
+
+/**
  * A pick list trigger (target field=option,option) split into the target
  * field's name and its options.
  *
@@ -411,9 +571,7 @@ function pg_field_form_save_options($field_id, $type, $options_text, $form_type_
 
     $count = 1;
 
-    foreach (explode("\n", (string) $options_text) as $option_line) {
-        $option = pg_field_form_parse_option_line($option_line);
-
+    foreach (pg_field_form_option_lines($options_text) as $option) {
         if ($option['invalid_email']) {
             $invalid_email_address = true;
         }
@@ -1040,7 +1198,7 @@ function pg_field_form_cards($liveform, $field, $context)
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12">
-                                            <select id="type" name="type" class="form-control collapse-if-selected" data-bs-target="#options_field_row" onchange="change_field_type(this.options[this.selectedIndex].value)"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>lang('field'))) . '-</option>' .  select_field_type($field['type'], $form_type) . '</select>
+                                            <select id="type" name="type" required class="form-control collapse-if-selected" data-bs-target="#options_field_row" onchange="change_field_type(this.options[this.selectedIndex].value)"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>lang('field'))) . '-</option>' .  select_field_type($field['type'], $form_type) . '</select>
                                             <script>
                                                 $(document).ready(function() {
                                                     change_field_type($("select#type option:selected").val());
@@ -1069,11 +1227,11 @@ function pg_field_form_cards($liveform, $field, $context)
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3 collapse" id="size_row">
                                             <label for="size" class="form-label">' . lang('Size') . '</label>
-                                            <input type="number" placeholder="' . lang('Auto') . '" name="size" value="' . h($field['size']) . '" id="size" class="form-control" maxlength="10" />
+                                            <input type="number" placeholder="' . lang('Auto') . '" name="size" value="' . h($field['size']) . '" id="size" class="form-control" min="0" max="1000" step="1" />
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3 collapse" id="maxlength_row">
                                             <label for="maxlength" class="form-label">' . lang('Maximum Characters') . '</label>
-                                            <input type="number" placeholder="' . lang('Unlimited') . '" name="maxlength" value="' . h($field['maxlength']) . '" id="maxlength" class="form-control" maxlength="10" />
+                                            <input type="number" placeholder="' . lang('Unlimited') . '" name="maxlength" value="' . h($field['maxlength']) . '" id="maxlength" class="form-control" min="0" max="65535" step="1" />
                                         </div>
                                         <div class="col-12 md:col-6  lg:col-4 my-3 collapse" id="position_row">
                                             <label for="position" class="form-label">' . lang('Position') . '</label>
@@ -1083,7 +1241,7 @@ function pg_field_form_cards($liveform, $field, $context)
                                         <div class="col-12 my-1 collapse" id="required_row">
                                             <div class="form-field">
                                                 <div class="switch"><input class="" type="checkbox" id="required" name="required" value="1"' . pg_field_form_checked($field['required']) . '></div>
-                                                <label class="" for="required">' . lang('Is This Filed Required?') . '</label>
+                                                <label class="" for="required">' . lang('Is This Field Required?') . '</label>
                                             </div>
                                         </div>
                                         ' . $output_office_use_only_row . '
@@ -1136,10 +1294,10 @@ function pg_field_form_cards($liveform, $field, $context)
                                                 <div class="m-5 position-relative"  style="height:150px;">
                                                     <div class="position-absolute end-0 top-0">
                                                         <label for="cols" class="form-label float-end">' . lang('Columns') . '</label>
-                                                        <input type="text" placeholder="' . lang('Columns') . '" name="cols" id="cols" value="' . h($field['cols']) . '" class="form-control text-end"  maxlength="10" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-digits="8" data-inputmask-digitsoptional="true" data-inputmask-placeholder="0"/>
+                                                        <input type="text" placeholder="' . lang('Columns') . '" name="cols" id="cols" value="' . h($field['cols']) . '" class="form-control text-end"  maxlength="4" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-min="0" data-inputmask-max="1000"/>
                                                     </div>
                                                     <div class="position-absolute start-0 bottom-0">
-                                                        <input type="text" name="rows" placeholder="' . lang('Rows') . '" id="rows" value="' . h($field['rows']) . '" class="form-control text-end" maxlength="10" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-digits="8" data-inputmask-digitsoptional="true" data-inputmask-placeholder="0"/>
+                                                        <input type="text" name="rows" placeholder="' . lang('Rows') . '" id="rows" value="' . h($field['rows']) . '" class="form-control text-end" maxlength="4" inputmode="numeric" data-inputmask-alias="integer" data-inputmask-min="0" data-inputmask-max="1000"/>
                                                         <label for="rows" class="form-label mb-0 mt-3">' . lang('Rows') . '</label>
                                                     </div>
                                                 </div>

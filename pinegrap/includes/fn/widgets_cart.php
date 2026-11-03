@@ -35,6 +35,42 @@ function _pg_cart_default_labels($keys)
 }
 
 /**
+ * The price a shopping cart row strikes through: the product's price, which
+ * an offer or a member price may have lowered the row below. A donation's
+ * amount is what the visitor chose to give, so a donation below the product's
+ * suggested amount is no discount and its row strikes nothing through (the
+ * classic cart shows a discount only for a row an offer lowered).
+ *
+ * @param int             $unit_cents     the row's price
+ * @param int|string|null $product_cents  the product's price, null when the product is gone
+ * @param string          $selection_type the product's selection type
+ * @return int
+ */
+function _pg_cart_row_reference_cents($unit_cents, $product_cents, $selection_type)
+{
+    if ($selection_type === 'donation' || $product_cents === null) return (int)$unit_cents;
+    return (int)$product_cents;
+}
+
+/**
+ * The page id the shopping cart and express order widgets record as the
+ * visitor's cart page (shopping_cart_page_id, express_order_page_id): the
+ * page the address names, else the page being rendered. The home page at the
+ * site root has no name in the address; without the fallback a cart there
+ * was never recorded, so the cart link and remove_item_from_cart.php went to
+ * a cart page seen earlier.
+ *
+ * @param int|string|null $named_page_id    the page whose name $_GET['page'] holds, 0 when none
+ * @param int|string      $rendered_page_id pg_rendered_page()
+ * @return int
+ */
+function _pg_cart_widget_page_id($named_page_id, $rendered_page_id)
+{
+    $named_page_id = (int)$named_page_id;
+    return ($named_page_id > 0) ? $named_page_id : max(0, (int)$rendered_page_id);
+}
+
+/**
  * The empty cart's own block: the message as a plain paragraph and a
  * Continue Shopping button to the shop, like the legacy cart page prints a
  * plain paragraph rather than a success alert. A part with no text is left
@@ -506,6 +542,7 @@ function _apply_shopping_cart_bindings(&$node, $context)
 //   ^^__item_has_low_stock^^, ^^__item_stock_warning^^,
 //   ^^__item_inventory_quantity^^, ^^__item_out_of_stock^^,
 //   ^^__item_out_of_stock_message^^ (product's own WYSIWYG message, inlined)
+//   ^^__item_preorder_label^^ ("Pre-order, ships from <date>" or empty)
 //
 // Architecture notes:
 //   • A single empty <form id="pg-cart-form-wN"> is rendered up front; every
@@ -532,13 +569,15 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     // further down by the hidden page_id fields on the coupon + update
     // forms — those fields are what shopping_cart.php's POST handler reads
     // to look up properties for this cart page.
-    $_pg_cart_pid = 0;
-    if (isset($_GET['page'])) {
-        $_pg_cart_pid = (int)db_value("SELECT page_id FROM page WHERE page_name = '" . e((string)$_GET['page']) . "' LIMIT 1");
-        if ($_pg_cart_pid > 0) {
-            $_SESSION['ecommerce']['shopping_cart_page_id'] = $_pg_cart_pid;
-            unset($_SESSION['ecommerce']['express_order_page_id']);
-        }
+    // A page reached without its name (the home page at the site root) is
+    // the page being rendered, as for the express order widget.
+    $_pg_cart_pid = _pg_cart_widget_page_id(
+        isset($_GET['page']) ? db_value("SELECT page_id FROM page WHERE page_name = '" . e((string)$_GET['page']) . "' LIMIT 1") : 0,
+        pg_rendered_page()
+    );
+    if ($_pg_cart_pid > 0) {
+        $_SESSION['ecommerce']['shopping_cart_page_id'] = $_pg_cart_pid;
+        unset($_SESSION['ecommerce']['express_order_page_id']);
     }
 
     // ── POST-handling moved to cart_action.php ─────────────────────────────
@@ -1113,7 +1152,7 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                     p.form_quantity_type,
                     p.selection_type,
                     p.inventory, p.inventory_quantity, p.backorder,
-                    p.out_of_stock_message,
+                    p.out_of_stock_message" . pg_preorder_select_sql('p', pg_product_preorder_ready()) . ",
                     p.gift_card AS product_is_gift_card,
                     oi.ship_to_id, st.ship_to_name,
                     oi.calendar_event_id, oi.recurrence_number,
@@ -1179,7 +1218,8 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
             foreach ($rows as $r) {
                 $qty        = (int)$r['quantity'];
                 $unit_cents = (int)$r['price'];                  // effective (post-offer)
-                $orig_cents = (int)($r['product_orig_price'] ?? $unit_cents);  // sticker
+                // The sticker price to strike through; a donation has none.
+                $orig_cents = _pg_cart_row_reference_cents($unit_cents, $r['product_orig_price'] ?? null, (string)($r['selection_type'] ?? ''));
                 $line_cents = $unit_cents * $qty;
                 $orig_line_cents = $orig_cents * $qty;
                 $has_d      = ($unit_cents < $orig_cents) ? 1 : 0;
@@ -1397,6 +1437,8 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                     'inventory_quantity'       => (int)($r['inventory_quantity'] ?? 0),
                     'backorder'                => (int)($r['backorder'] ?? 0),
                     'out_of_stock_message'     => (string)($r['out_of_stock_message'] ?? ''),
+                    'preorder'                 => (int)($r['preorder'] ?? 0),
+                    'preorder_date'            => (string)($r['preorder_date'] ?? ''),
                     // Recipient grouping. The query now orders by ship_to_id
                     // first (matching legacy, which loops ship_tos in id order
                     // and items within each), so rows for one recipient are
@@ -1705,6 +1747,10 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
             $row_values['__item_out_of_stock_message'] = ($_item_oos && !empty($item['out_of_stock_message']))
                 ? _pg_rich_text_to_inline((string)$item['out_of_stock_message'])
                 : '';
+
+            // "Pre-order, ships from <date>" while the product's pre-order
+            // runs (includes/fn/preorder.php); empty otherwise.
+            $row_values['__item_preorder_label'] = h(pg_preorder_label($item, pg_preorder_today()));
 
             // ── Recipient grouping ─────────────────────────────────────
             // Legacy prints a "Ship to <name>" band above each recipient's
@@ -2353,6 +2399,23 @@ function pg_express_order_charged_totals($lines, $order_discount, $shipping, $gi
     );
 }
 
+/**
+ * The express order widget for an empty cart: the form's messages (an error,
+ * the notice of a sold-out line the inventory check removed), then the
+ * empty-cart box, for the page container the renderer draws around it.
+ *
+ * @param string $messages_html the form's errors and notices, as HTML
+ * @return string
+ */
+function pg_express_order_empty_html($messages_html)
+{
+    return (string)$messages_html
+        . '<div class="pg-eo-empty alert alert-secondary text-center py-4 my-4">'
+        .   '<h3 class="mb-2">' . h(lang('Your cart is empty')) . '</h3>'
+        .   '<p class="mb-0 text-muted">' . h(lang('Browse the catalog to add products to your cart.')) . '</p>'
+        . '</div>';
+}
+
 // ========================== EXPRESS ORDER (Phase 1) ==========================
 // Single-page checkout: cart + billing + (shipping when needed) + payment.
 // Submits to the legacy `express_order.php` action handler so all order /
@@ -2417,14 +2480,10 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
     // the express_order_pages config row. express_order.php turns away an id
     // that names no express order page, so a page reached without its name
     // (the home page at the site root) takes the id of the page being rendered.
-    $_eo_page_id = 0;
-    if (isset($_GET['page'])) {
-        $_eo_page_id = (int)db_value("SELECT page_id FROM page WHERE page_name = '"
-            . e((string)$_GET['page']) . "' LIMIT 1");
-    }
-    if ($_eo_page_id <= 0) {
-        $_eo_page_id = (int)pg_rendered_page();
-    }
+    $_eo_page_id = _pg_cart_widget_page_id(
+        isset($_GET['page']) ? db_value("SELECT page_id FROM page WHERE page_name = '" . e((string)$_GET['page']) . "' LIMIT 1") : 0,
+        pg_rendered_page()
+    );
     if ($_eo_page_id > 0) {
         $_SESSION['ecommerce']['express_order_page_id'] = $_eo_page_id;
         unset($_SESSION['ecommerce']['shopping_cart_page_id']);
@@ -2710,13 +2769,17 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
     $form_id = 'pg-eo-form-w' . $widget_id;
 
     // ── Empty cart short-circuit ─────────────────────────────────────────────
+    // The inventory check above removes a sold-out line with a notice; when
+    // that was the last line, the notice is the reason the cart is empty.
+    // It is shown here and taken from the session, as the full form does.
     if ($cart_count === 0) {
+        $_eo_empty_messages = $_eo_lf ? (string)$_eo_lf->output_errors() . (string)$_eo_lf->output_notices() : '';
+        if ($_eo_lf) {
+            $_eo_lf->unmark_errors();
+            $_eo_lf->clear_notices();
+        }
         return _pg_widget_layout_css_once()
-            . '<div class="container py-4">'
-            . '<div class="pg-eo-empty alert alert-secondary text-center py-4 my-4">'
-            .   '<h3 class="mb-2">' . h(lang('Your cart is empty')) . '</h3>'
-            .   '<p class="mb-0 text-muted">' . h(lang('Browse the catalog to add products to your cart.')) . '</p>'
-            . '</div></div>';
+            . '<div class="container py-4">' . pg_express_order_empty_html($_eo_empty_messages) . '</div>';
     }
 
     // ── Per-recipient grouping for shipping/cart sections ────────────────────
@@ -3200,7 +3263,10 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
         // session values, then replaces per-recipient ^^__recipient_*^^
         // tokens. Empty recipients list collapses the marker silently.
         if (is_array($eo_recipient_tmpl) && !empty($eo_recipient_tmpl) && !empty($recipients)) {
-            $recipient_loop_html = _eo_render_recipient_loop($eo_recipient_tmpl, $recipients, $_eo_lf);
+            // The recipient rows are drawn after the messages node, which took
+            // the liveform from the session: they read the copy, or every
+            // address box came back empty when the page showed a message.
+            $recipient_loop_html = _eo_render_recipient_loop($eo_recipient_tmpl, $recipients, $_eo_lf_rows);
             $designed_body = str_replace('<!--pg-recipient-loop-slot-->', $recipient_loop_html, $designed_body);
         } else {
             $designed_body = str_replace('<!--pg-recipient-loop-slot-->', '', $designed_body);

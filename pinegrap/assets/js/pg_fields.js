@@ -1481,9 +1481,32 @@
         });
     }
 
+    // On a site page (the site loader's tags), a native date, date-and-time
+    // or time input without a hook gets the hook of its type: designed
+    // pages, system widgets and inputs placed by hand keep their ISO store
+    // and show the one control instead of the browser's own picker.
+    var NATIVE_KINDS = { date: 'date', 'datetime-local': 'datetime', time: 'time' };
+
+    function hookNative(root) {
+        if (!DT.site()) {
+            return;
+        }
+        var list = Array.prototype.slice.call(root.querySelectorAll('input'));
+        if (root !== document && root.matches && root.matches('input')) {
+            list.push(root);
+        }
+        list.forEach(function (el) {
+            var kind = NATIVE_KINDS[String(el.getAttribute('type') || '').toLowerCase()];
+            if (kind && !kindOf(el)) {
+                el.setAttribute(HOOKS[kind], '');
+            }
+        });
+    }
+
     function init(scope) {
         var root = element(scope) || document;
         bindIds(root);
+        hookNative(root);
         var selector = Object.keys(HOOKS).map(function (k) { return '[' + HOOKS[k] + ']'; }).join(',');
         var list = root.querySelectorAll(selector);
         for (var i = 0; i < list.length; i++) {

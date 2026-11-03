@@ -122,6 +122,13 @@ $url = function ($changes = array()) use ($self, $language, $page_id, $group, $f
     return $self . ($query ? '?' . implode('&', $query) : '');
 };
 
+// The view a form posted from this screen comes back to.
+$view_fields = '';
+
+foreach (array('page_id' => $page_id, 'group' => $group, 'filter' => $filter, 'q' => $search) as $view_key => $view_value) {
+    $view_fields .= '<input type="hidden" name="' . $view_key . '" value="' . h((string) $view_value) . '"/>';
+}
+
 $pages = pg_tr_translatable_pages();
 
 // A page deleted or put in the recycle bin since the last update draws
@@ -450,14 +457,14 @@ foreach ($rows as $row) {
     $row_owner_name = $row_owner ? (isset($index_owner_names[$row_owner['kind'] . ':' . $row_owner['id']]) ? $index_owner_names[$row_owner['kind'] . ':' . $row_owner['id']] : '') : '';
 
     $output_rows .= '
-            <div class="pg-tr-row border-bottom py-5" data-string-id="' . (int) $row['id'] . '" data-format="' . h($row['format']) . '">
+            <div class="pg-tr-row border-bottom py-5" data-string-id="' . (int) $row['id'] . '" data-format="' . h($row['format']) . '" data-state="' . h($state) . '">
                 <div class="row g-5">
                     <div class="col-12 xl:col-5 d-flex gap-3">'
                         // A reviewed translation is not offered for "keep as
                         // in the source": the action leaves it as it is.
-                        . (($state !== 'reviewed') ? '<input class="check flex-shrink-0 mt-1 pg-tr-pick" type="checkbox" value="' . (int) $row['id'] . '" aria-label="' . h(lang('Select this text')) . '"/>' : '<span class="flex-shrink-0" style="width: 1em;"></span>') . '
+                        . (($state !== 'reviewed') ? '<input class="check flex-shrink-0 mt-1 pg-tr-pick" type="checkbox" value="' . (int) $row['id'] . '" aria-label="' . h(lang('Select this text')) . '"/>' : '<span class="flex-shrink-0 pg-tr-pick-spacer" style="width: 1em;"></span>') . '
                         <div class="flex-grow-1" style="min-width: 0;">
-                        <div class="pg-tr-source' . (($row['format'] === 'inline') ? ' pg-tr-inline' : '') . '"' . $text_lang($source) . '>' . h($row['source_text']) . '</div>
+                        <div class="pg-tr-source' . (($row['format'] === 'inline') ? ' pg-tr-inline' : '') . '" id="pg_tr_source_' . (int) $row['id'] . '"' . $text_lang($source) . '>' . h($row['source_text']) . '</div>
                         <div class="mt-1 small fg-secondary">'
                             . ($row_owner ? '<span class="badge badge-subtle theme-secondary border me-1">' . h($index_owner_label($row_owner['kind'], $row_owner_name)) . '</span>' : '')
                             . (($row['kind'] === 'seo') ? '<span class="badge badge-subtle theme-secondary border me-1">SEO</span>' : '')
@@ -467,7 +474,7 @@ foreach ($rows as $row) {
                         </div>
                     </div>
                     <div class="col-12 xl:col-5">
-                        <textarea class="form-control pg-tr-target" rows="2" aria-label="' . h(lang('Translation')) . '"' . $text_lang($language) . ' placeholder="' . h(lang('Not translated yet: the source text is shown on the page.')) . '">' . h($has ? (string) $row['text'] : '') . '</textarea>
+                        <textarea class="form-control pg-tr-target" rows="' . pg_tr_screen_target_rows($has ? (string) $row['text'] : '') . '" aria-label="' . h(lang('Translation')) . '" aria-describedby="pg_tr_source_' . (int) $row['id'] . '"' . $text_lang($language) . ' placeholder="' . h(lang('Not translated yet: the source text is shown on the page.')) . '">' . h($has ? (string) $row['text'] : '') . '</textarea>
                     </div>
                     <div class="col-12 xl:col-2">
                         <div class="d-flex xl:flex-column align-items-start gap-3">
@@ -477,7 +484,7 @@ foreach ($rows as $row) {
                                 . '<span class="badge theme-danger pg-tr-suspicious' . (($has && ((int) $row['suspicious'] === 1)) ? '' : ' d-none') . '" title="' . h($suspicious_text) . '"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><span class="visually-hidden">' . h($suspicious_text) . '</span></span>' . '
                             </div>
                             <div class="btn-group btn-group-sm">
-                                <button type="button" class="btn btn-outline theme-secondary pg-tr-save" title="' . h(lang('Save')) . '"><i class="bi bi-check-lg" aria-hidden="true"></i> ' . lang('Save') . '</button>
+                                <button type="button" class="btn btn-outline theme-secondary pg-tr-save" title="' . h(lang('Save')) . '" aria-describedby="pg_tr_source_' . (int) $row['id'] . '"><i class="bi bi-check-lg" aria-hidden="true"></i> ' . lang('Save') . '</button>
                                 <button type="button" class="btn btn-outline theme-secondary pg-tr-review no-popover' . ($has ? '' : ' d-none') . '" title="' . h($review_label) . '" aria-label="' . h($review_label) . '" data-state="' . h($state) . '"><i class="bi ' . (($state === 'reviewed') ? 'bi-eye-slash' : 'bi-eye') . '" aria-hidden="true"></i></button>
                             </div>
                         </div>
@@ -574,6 +581,7 @@ foreach ($glossary as $term) {
         . '<form method="post" action="translations_action.php" class="d-inline" onsubmit="return confirm(' . h(json_encode(lang('Remove this term from the glossary?'))) . ');">'
         . '<input type="hidden" name="action" value="glossary_delete"/>'
         . '<input type="hidden" name="language" value="' . h($language) . '"/>'
+        . $view_fields
         . '<input type="hidden" name="id" value="' . (int) $term['id'] . '"/>'
         . get_token_field()
         . '<button type="submit" class="btn btn-sm btn-text theme-secondary btn-icon fg-danger" aria-label="' . h(lang('Remove')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>'
@@ -717,6 +725,11 @@ $config = array(
         'translator_missing' => lang('This browser has no Translator API. Use desktop Chrome 138 or Edge 148 and newer, or choose another engine.'),
         'translator_unavailable' => lang('The browser cannot translate from {var} to {var2}.'),
         'downloading'       => lang('Downloading the language model… {var}%'),
+        'preparing'         => lang('Preparing the browser translator…'),
+        'model_preparing'   => lang('Preparing the browser\'s AI model…'),
+        'translator_stalled' => lang('The browser did not get its translator ready for {var} to {var2}: its translation service or language pack is not available. Try again later or choose another engine.'),
+        'model_stalled'     => lang('The browser did not get its AI model ready: the model is not available on this computer. Try again later or choose another engine.'),
+        'stopped'           => lang('The update was stopped.'),
         'model_missing'     => lang('This browser has no built-in AI model (Prompt API). Use a recent desktop Chrome, or choose another engine.'),
         'model_unavailable' => lang('The browser\'s AI model cannot write {var}.'),
         'model_fallback'    => lang('The browser\'s AI model does not write {var} on this computer: this language is translated with the browser\'s translation model (Translator API) instead, in runs of plain text, without the context and the style note.'),
@@ -728,6 +741,7 @@ $config = array(
         'glossary_edit'     => lang('Edit the term'),
         'review_all_count'  => lang('{var} translation(s) will be marked as reviewed.'),
         'clear_count'       => lang('{var} translation(s) will be deleted.'),
+        'select_text'       => lang('Select this text'),
         'retrying'          => lang('The server did not answer in time; trying again…'),
         'accept_count'      => lang('{var} text(s) will be approved as written in the source language.'),
     ),
@@ -746,7 +760,7 @@ echo pg_page_shell(array(
        quiet treatment and keeps the line breaks of a multi-line text. */
     .pg-tr-source { white-space: pre-wrap; word-break: break-word; font-size: .9rem; }
     .pg-tr-inline { font-family: var(--pg-font-mono); font-size: .82rem; }
-    .pg-tr-target { font-size: .9rem; }
+    .pg-tr-target { font-size: .9rem; field-sizing: content; min-height: 3.5rem; max-height: 24rem; }
     .pg-tr-row.pg-tr-dirty .pg-tr-save { --bs-btn-color: var(--pg-primary); --bs-btn-border-color: var(--pg-primary); }
     .pg-tr-pages { max-height: calc(100vh - 16rem); overflow-y: auto; }
     .pg-tr-progress { display: none; }
@@ -851,6 +865,7 @@ echo pg_page_shell(array(
                 <form class="d-contents" method="post" action="translations_action.php" enctype="multipart/form-data">
                     <input type="hidden" name="action" value="import"/>
                     <input type="hidden" name="language" value="' . h($language) . '"/>
+                    ' . $view_fields . '
                     ' . get_token_field() . '
                     <div class="dialog-header">
                         <h5 class="dialog-title" id="pg_tr_import_title">' . lang('Import CSV') . '</h5>
@@ -883,7 +898,7 @@ echo pg_page_shell(array(
                         <p class="small fg-secondary">' . lang(array('string' => 'The translations of the texts shown here are deleted, so the next "{var:1}" sends the texts to the engine again. A text that is also used elsewhere loses its translation there too.', 'vars' => h($update_button_label))) . '</p>
                         <div class="form-field mb-5">
                             <input value="1" class="check pg-tr-clear-reviewed" type="checkbox" id="pg_tr_clear_reviewed"' . (($clear_all_count > $clear_machine_count) ? '' : ' disabled="disabled"') . '/>
-                            <label class="" for="pg_tr_clear_reviewed">' . lang('Delete the reviewed translations as well') . ' <span class="opacity-75">' . ($clear_all_count - $clear_machine_count) . '</span></label>
+                            <label class="" for="pg_tr_clear_reviewed">' . lang('Delete the reviewed translations as well') . ' <span class="opacity-75 pg-tr-clear-reviewed-count">' . ($clear_all_count - $clear_machine_count) . '</span></label>
                         </div>
                         <p class="fw-semibold mb-0 pg-tr-clear-count"></p>
                     </div>
@@ -929,6 +944,7 @@ echo pg_page_shell(array(
                 <form class="d-contents" method="post" action="translations_action.php">
                     <input type="hidden" name="action" value="glossary_save"/>
                     <input type="hidden" name="language" value="' . h($language) . '"/>
+                    ' . $view_fields . '
                     <input type="hidden" name="id" value="0"/>
                     ' . get_token_field() . '
                     <div class="dialog-header">

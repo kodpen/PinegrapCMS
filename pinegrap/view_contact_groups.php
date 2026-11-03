@@ -58,16 +58,10 @@ $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 $list_state = pg_list_state('view_contact_groups', $sort_columns, $sort_default);
 $sort_levels = $list_state['sorts'];
 
-// What each sort code orders by. Only codes pg_list_state() let through
-// reach pg_list_order_by(), and it writes nothing but these.
-$order_by = pg_list_order_by($sort_levels, array(
-    'name'          => 'contact_groups.name',
-    'subscription'  => 'contact_groups.email_subscription',
-    'type'          => 'contact_groups.email_subscription_type',
-    'description'   => 'contact_groups.description',
-    'created'       => 'contact_groups.created_timestamp',
-    'last_modified' => 'contact_groups.last_modified_timestamp',
-));
+// What each sort code orders by (the type and the description on the value
+// the row shows). Only codes pg_list_state() let through reach
+// pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, pg_contact_group_list_order_map());
 
 // get all contact groups
 $query =

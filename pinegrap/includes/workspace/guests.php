@@ -1422,9 +1422,11 @@ function ws_guest_file_send($context, $message_id)
         WHERE m.id = '" . (int) $message_id . "' AND m.channel_id = '" . (int) $context['channel']['id'] . "'
         AND m.deleted_at = 0 AND m.sender_kind = 'user' AND m.file_id > 0") : null;
 
-    $path = is_array($row) ? FILE_DIRECTORY_PATH . '/' . basename((string) $row['stored']) : '';
+    // The local file, or a copy of one moved to the object store: the guest
+    // page streams it, the store's address is never shown to a guest.
+    $path = is_array($row) ? pg_file_reader_path(basename((string) $row['stored'])) : '';
 
-    if (($path === '') || !is_file($path)) {
+    if ($path === '') {
         http_response_code(404);
         exit;
     }

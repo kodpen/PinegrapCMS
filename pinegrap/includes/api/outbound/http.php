@@ -292,17 +292,21 @@ function api_http_request($method, $url, $options = array()) {
 
 	}
 
-	// The certificate is verified, and a server whose CA store is not on the
-	// default search path says where one is in data/config.php - the same
-	// setting the update channel uses. There is deliberately no insecure
-	// fallback: a delivery whose receiver cannot be identified is a delivery to
-	// whoever answered, and this client is what carries webhooks, push and the
-	// keys to the shop's marketplace accounts.
+	// The certificate is verified against the store the site chose
+	// (pg_ca_bundle_effective(): the CURL_CA_BUNDLE override, the shipped
+	// data/cacert.pem on a host whose own store is missing or failing, else
+	// the server's own) - the same choice the update channel makes. There
+	// is deliberately no insecure fallback: a delivery whose receiver cannot
+	// be identified is a delivery to whoever answered, and this client is
+	// what carries webhooks, push and the keys to the shop's marketplace
+	// accounts.
 	curl_setopt($handle, CURLOPT_SSL_VERIFYPEER, 1);
 	curl_setopt($handle, CURLOPT_SSL_VERIFYHOST, 2);
 
-	if ((defined('CURL_CA_BUNDLE')) && (CURL_CA_BUNDLE !== '') && (is_file(CURL_CA_BUNDLE))) {
-		curl_setopt($handle, CURLOPT_CAINFO, CURL_CA_BUNDLE);
+	$ca_file = pg_ca_bundle_effective();
+
+	if ($ca_file !== '') {
+		curl_setopt($handle, CURLOPT_CAINFO, $ca_file);
 	}
 
 	curl_setopt($handle, CURLOPT_USERAGENT, $settings['user_agent']);

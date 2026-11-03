@@ -14,7 +14,10 @@
  * one page per neighbourhood, links to known pages, filter links that name
  * answers of the Listings form's lists, the listing widgets they place; the
  * listings (listings.php): the Listings collection and its sample records,
- * the lists' filters and the widgets the other pages place.
+ * the lists' filters and the widgets the other pages place; the requests
+ * (mail.php, requests.php): their pages and folders, every widget placed
+ * once on its page, the forms' fields, pick lists and URL choices, the
+ * staff-only status, private uploads and the lists reading their form.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -40,7 +43,10 @@ function _test_re_load()
 	foreach (array_keys($listings) as $key) $listing_cards[$key] = $listing_card($key);
 	$public = include $dir . '/pages_public.php';
 	$listing_part = include $dir . '/listings.php';
+	include $dir . '/mail.php';
+	$requests = include $dir . '/requests.php';
 	$out = array(
+		'requests'       => $requests,
 		'public'         => $public,
 		'listing_part'   => $listing_part,
 		'areas'          => $areas,
@@ -83,6 +89,7 @@ function _test_re_page_keys()
 		'valuation', 'valuation_view', 'my_valuations', 'staff_valuations', 'privacy',
 		'email_viewing_new', 'email_viewing_received', 'email_valuation_new', 'email_valuation_received', 'email_reply',
 		'contact', 'inbox', 'conversation', 'newsletter', 'blog', 'blog_post', 'search', 'error',
+		'email_new_message', 'email_message_received', 'email_welcome',
 		'my_account', 'staff', 'blog_new', 'login', 'register', 'set_password', 'logout', 'profile',
 		'change_password', 'email_preferences', 'address_book', 'staff_directory', 'staff_entry', 'forgot_password',
 	);
@@ -420,4 +427,139 @@ function test_realestate_listing_widgets()
 			pg_assert_true(isset($controls[$param]) && in_array($value, $controls[$param]['options'], true), "$param names an answer: $value");
 		}
 	}
+}
+
+// The props of each named control of a widget tree, by field name.
+function _test_re_control_props($tree)
+{
+	$nodes = array();
+	_test_re_nodes($tree, $nodes);
+	$out = array();
+	foreach ($nodes as $node) {
+		foreach ($node['props']['_attrs'] ?? array() as $a) {
+			if ($a['name'] === 'name' && in_array($node['props']['tag'] ?? '', array('input', 'select', 'textarea'), true)) $out[$a['value']] = $node['props'];
+		}
+	}
+	return $out;
+}
+
+function test_realestate_request_pages_and_widgets()
+{
+	$d = _test_re_load();
+	$r = $d['requests'];
+	$keys = array();
+	foreach ($r['pages'] as $p) $keys[] = $p['key'];
+	pg_assert_same(array(
+		'viewing', 'viewing_view', 'my_viewings', 'staff_viewings',
+		'valuation', 'valuation_view', 'my_valuations', 'staff_valuations', 'privacy',
+		'email_viewing_new', 'email_viewing_received', 'email_valuation_new', 'email_valuation_received', 'email_reply',
+	), $keys, 'the request pages in order');
+
+	$known = array_flip(_test_re_page_keys());
+	$pages = array();
+	foreach ($r['pages'] as $p) {
+		$pages[$p['key']] = $p;
+		pg_assert_true(isset($known[$p['key']]), $p['key'] . ': a page the template carries');
+		pg_assert_true(trim($p['name']) !== '' && !preg_match('/[^a-z0-9-]/', $p['name']), $p['key'] . ': page name is an address');
+		if (strpos($p['key'], 'email_') === 0 || strpos($p['key'], 'staff_') === 0) {
+			pg_assert_same('private', $p['folder'], $p['key'] . ': private');
+		}
+	}
+	foreach (array('viewing', 'valuation') as $form) {
+		pg_assert_same('registration', $pages[$form . '_view']['folder'], "$form: its page needs an account");
+		pg_assert_same('registration', $pages['my_' . $form . 's']['folder'], "$form: My list needs an account");
+		pg_assert_true(!empty($pages[$form . '_view']['comments']['attachments']), "$form: messages may carry a file");
+		pg_assert_same('{{tab:email_reply}}', $pages[$form . '_view']['comments']['email_page'], "$form: messages mailed with the reply e-mail");
+		$f = $pages[$form]['form'];
+		pg_assert_same('public', $pages[$form]['folder'], "$form: anyone may ask");
+		pg_assert_same(1, $f['auto_registration'], "$form: opens an account");
+		pg_assert_same('{{tab:' . $form . '_view}}', $f['confirmation_page_id'], "$form: opens its page");
+		pg_assert_same('{{tab:email_' . $form . '_new}}', $f['notify_page_id'], "$form: staff e-mail");
+		pg_assert_same('{{tab:email_' . $form . '_received}}', $f['confirm_page_id'], "$form: client e-mail");
+	}
+
+	// Every placed widget is defined, on the page it names, once; every
+	// defined widget is placed.
+	$placed = array();
+	foreach ($r['pages'] as $p) {
+		foreach (_test_re_widgets($p['tree']) as $w) $placed[$w][] = $p['key'];
+	}
+	foreach ($r['widgets'] as $key => $w) {
+		pg_assert_same(array($w['page']), $placed[$key] ?? array(), "widget $key placed once, on its page");
+	}
+	// The newsletter band of a public page is the standard part's.
+	unset($placed['newsletter_band']);
+	foreach ($placed as $key => $on) pg_assert_true(isset($r['widgets'][$key]), "placed widget $key is defined");
+
+	// The lists and views read their own form and open its page.
+	foreach ($r['widgets'] as $key => $w) {
+		$type = $w['config']['regionType'];
+		if ($type === 'form_list_view') {
+			$form = strpos($key, 'viewing') !== false ? 'viewing' : 'valuation';
+			pg_assert_same('{{tab:' . $form . '}}', $w['config']['custom_form_page_id'], "$key: reads its form");
+			pg_assert_same('{{tab:' . $form . '_view}}', $w['config']['detail_page_id'], "$key: opens its page");
+			$controls = _test_re_control_props($r['widgets'][$form . '_form']['tree']);
+			foreach ($w['config']['search_fields'] ?? array() as $f) pg_assert_true(isset($controls[$f]), "$key: searches a field: $f");
+		}
+	}
+	pg_assert_true(!empty($r['widgets']['my_viewings_list']['config']['viewer_filter_submitter']), 'My Viewings shows the client\'s own');
+	pg_assert_same('submitter_only', $r['widgets']['valuation_detail']['config']['access_control'], 'a valuation is the owner\'s to see');
+
+	// Every {{tab:}} and {{page:}} names a page; every {{folder:}} the
+	// private folder.
+	$json = json_encode($r);
+	preg_match_all('/\{\{(tab|page):([a-z0-9_]+)\}\}/', $json, $m);
+	foreach ($m[2] as $key) pg_assert_true(isset($known[$key]), "placeholder names a page: $key");
+	preg_match_all('/\{\{folder:([a-z0-9_]+)\}\}/', $json, $m);
+	pg_assert_same(array('private'), array_values(array_unique($m[1])), 'uploads go to the private folder');
+}
+
+// The forms' lists are the agency's own answers, start from the links'
+// query (?listing=, ?area=, ?agent=), and the status is the staff's.
+function test_realestate_request_forms()
+{
+	$d = _test_re_load();
+	$w = $d['requests']['widgets'];
+	$reserved = function_exists('pg_sw_url_param_reserved') ? pg_sw_url_param_reserved() : array();
+
+	$vw = _test_re_controls($w['viewing_form']['tree']);
+	$vwp = _test_re_control_props($w['viewing_form']['tree']);
+	foreach (array('listing', 'viewing_date', 'preferred_time', 'note', 'contact_method', 'first_name', 'last_name', 'email', 'phone', 'status', 'consent') as $name) {
+		pg_assert_true(isset($vw[$name]), "viewing form: $name");
+	}
+	// The listing page's button sends ?listing= with the title.
+	pg_assert_same('listing', $vwp['listing']['_cf']['url_param'], 'listing from ?listing=');
+	pg_assert_same($d['time_windows'], $vw['preferred_time']['options'], 'viewing time answers');
+
+	$va = _test_re_controls($w['valuation_form']['tree']);
+	$vap = _test_re_control_props($w['valuation_form']['tree']);
+	foreach (array('purpose', 'area', 'property_type', 'address', 'bedrooms', 'size', 'description', 'documents',
+	               'agent', 'preferred_time', 'contact_method', 'first_name', 'last_name', 'email', 'phone', 'status', 'consent') as $name) {
+		pg_assert_true(isset($va[$name]), "valuation form: $name");
+	}
+	pg_assert_same($d['area_titles'], $va['area']['options'], 'neighbourhood answers');
+	pg_assert_same($d['type_titles'], $va['property_type']['options'], 'type answers');
+	pg_assert_same($d['agent_choices'], $va['agent']['options'], 'agent answers');
+	pg_assert_same('area', $vap['area']['_cf']['url_param'], 'area from ?area=');
+	pg_assert_same('agent', $vap['agent']['_cf']['url_param'], 'agent from ?agent=');
+	foreach (array('bedrooms', 'size') as $f) pg_assert_same('number', $va[$f]['kind'], "$f is a number");
+	pg_assert_same('{{folder:private}}', $vap['documents']['_cf']['upload_folder_id'], 'papers kept private');
+
+	foreach (array('viewing' => $vwp, 'valuation' => $vap) as $form => $props) {
+		pg_assert_true(!empty($props['status']['_cf']['office_use_only']), "$form: status is office use only");
+		foreach ($props as $name => $p) {
+			if (isset($p['_cf']['url_param'])) pg_assert_false(in_array($p['_cf']['url_param'], $reserved, true), "$form: $name parameter not reserved");
+		}
+	}
+	// Every field id carries the template's prefix and is unique.
+	$ids = array();
+	foreach (array('viewing_form', 'valuation_form') as $key) {
+		$nodes = array();
+		_test_re_nodes($w[$key]['tree'], $nodes);
+		foreach ($nodes as $node) {
+			if (isset($node['props']['id']) && in_array($node['props']['tag'] ?? '', array('input', 'select', 'textarea'), true)) $ids[] = $node['props']['id'];
+		}
+	}
+	foreach ($ids as $id) pg_assert_same(0, strpos($id, 're-'), "field id prefixed: $id");
+	pg_assert_same(count($ids), count(array_unique($ids)), 'field ids unique');
 }

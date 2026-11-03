@@ -45,8 +45,15 @@
 
     /* ------------------------------------------------------------- helpers */
 
+    // Safe in text and inside a quoted attribute value: option labels, SKUs
+    // and short descriptions are written into value="" and aria-label="".
     function esc(value) {
-        return $('<div>').text(value === undefined || value === null ? '' : value).html();
+        return String(value === undefined || value === null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
     function label(key) {

@@ -5,6 +5,9 @@
  * Every db_q() write of Edit Country, Edit Shipping Method and the shared
  * currency form ends the request with output_error() when it fails, so a
  * failed delete or base/default reset is never logged and reported as done.
+ * The currency form writes nothing now: the base reset is part of
+ * pg_store_currency_save(), whose 0 the currency screens answer with
+ * output_error().
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -46,9 +49,9 @@ function pg_test_unchecked_db_q_writes($file)
 function test_checked_writes_country_shipping_currency()
 {
 	$expected = array(
-		'edit_country.php' => 8,
-		'edit_shipping_method.php' => 7,
-		'includes/forms/currency_form.php' => 1,
+		'edit_country.php' => 0,
+		'edit_shipping_method.php' => 0,
+		'includes/forms/currency_form.php' => 0,
 	);
 
 	foreach ($expected as $file => $count) {

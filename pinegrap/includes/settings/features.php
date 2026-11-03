@@ -270,6 +270,32 @@ $pg_settings_cards[] = '
                             </div>';
             }
 
+            // A JPEG or PNG answered with its WebP copy at its own address
+            // (bit 4, includes/image_negotiation.php), and the operator's word
+            // that the CDN in front keeps a copy per format (bit 8): until it
+            // is given, a request that came through a CDN gets the original.
+            $image_same_address = $image_settings['delivery']['same_address'];
+
+            $image_same_address_note = empty($image_formats_written['webp'])
+                ? '<div class="form-text fg-emphasis-warning">' . lang(array('string' => 'This server cannot write {var:1}, so it is not offered while that stays so.', 'vars' => array('WebP'))) . '</div>'
+                : '';
+
+            $output_image_delivery_fields .= '
+                            <div class="col-12 ">
+                                <div class="form-field">
+                                    <div class="switch"><input value="1"' . ($image_same_address['on'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="image_same_address" name="image_same_address"/></div>
+                                    <label class="" for="image_same_address">' . lang('Send WebP at the picture\'s own address') . '</label>
+                                    <div class="form-text">' . lang('A JPEG or PNG keeps its address and its file; a browser that reads WebP gets a lighter WebP copy there, every other reader the original. Needs WebP offered above.') . '</div>' . $image_same_address_note . '
+                                </div>
+                            </div>
+                            <div class="col-12 ">
+                                <div class="form-field">
+                                    <div class="switch"><input value="1"' . ($image_same_address['cdn'] ? ' checked="checked"' : '') . ' class="" type="checkbox" id="image_same_address_cdn" name="image_same_address_cdn"/></div>
+                                    <label class="" for="image_same_address_cdn">' . lang('The CDN keeps a copy per format') . '</label>
+                                    <div class="form-text">' . lang('A CDN that ignores the Accept header would give its first copy to everyone, so requests through a CDN get the original until this is on. Switch it on only once the CDN caches pictures separately for each Accept value (on Cloudflare, a Cache Rule).') . '</div>
+                                </div>
+                            </div>';
+
             // The % sign goes on the side the panel language writes it
             // (Turkish: %80), as on the resize quality slider above.
             $image_quality_sign_first = (strpos(lang('{var:1}%'), '%') === 0);
@@ -391,6 +417,43 @@ if ($output_image_settings_card !== '') {
 
 // ── Page Revisions ──
 //
+// Site search tuning (includes/fn/site_search_tuning.php): synonym groups and
+// promoted results, each one config_text row as JSON, so the card needs only
+// that table.
+if (pg_schema_has('config_text')) {
+    $search_synonyms_text = pg_search_synonyms_format(pg_search_synonyms());
+    $search_promoted_text = pg_search_promoted_format(pg_search_promoted());
+    // Opened from the site search report's "promote" button: a line for the
+    // term, the address left for the operator to write.
+    if (isset($_GET['search_promote']) && is_string($_GET['search_promote'])) {
+        $search_promoted_text = pg_search_promoted_add_line($search_promoted_text, $_GET['search_promote']);
+    }
+
+    $pg_settings_cards[] = '
+                        <div id="pgset-search-tuning" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Search Tuning') . '
+                                </div>
+                                <div class="card-body">
+                                    <input type="hidden" name="search_tuning_card" value="1"/>
+                                    <div class="row gy-5">
+                                        <div class="col-12">
+                                            <label class="form-label" for="search_synonyms">' . lang('Synonyms') . '</label>
+                                            <textarea class="form-control" id="search_synonyms" name="search_synonyms" rows="5" spellcheck="false">' . h($search_synonyms_text) . '</textarea>
+                                            <div class="form-text">' . lang('One group of words that mean the same per line, separated by commas, such as: shipping, delivery, cargo. A search for one of them also finds the pages of the others.') . '</div>
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label" for="search_promoted">' . lang('Promoted Results') . '</label>
+                                            <textarea class="form-control" id="search_promoted" name="search_promoted" rows="5" spellcheck="false">' . h($search_promoted_text) . '</textarea>
+                                            <div class="form-text">' . lang('One per line: the search terms separated by commas, then => and the address on this site, optionally | and a title, such as: return, refund => return-policy | Returns. A search for one of the terms lists the address first, marked Recommended.') . '</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>';
+}
+
 // How long the published revisions of visual-designer pages and the
 // revisions of collection items are kept (includes/fn/page_revisions.php,
 // includes/fn/record_revisions.php): the last N of each page or item

@@ -11,6 +11,7 @@ description: Who writes cart recurring payment plan columns, the Messages-node-b
 ## Why do row builders read `$_pg_cart_lf_snapshot` and not the liveform?
 - The cart renderer draws the Messages node BEFORE the row loop (static tree ~568, loop ~650). The node consumes the `shopping_cart` form; code in the loop calling `$_pg_cart_form_lf->get_field_value()` reads an already deleted form and finds nothing (the gift-card block did this).
 - Row builders read `$_pg_cart_lf_snapshot` (`pg_liveform_snapshot`, a copy taken before the tree is drawn). A new row block needing the liveform takes the same copy, not the liveform object.
+- The express order does the same with `$_eo_lf_rows`: its item rows and, since #5229, its `recipient_loop_area` rows (`_eo_render_recipient_loop()`). Before, a page showing an error or notice drew every recipient's address boxes empty.
 - This is the cart form of the membership-widget rule "read first, then add the Messages node".
 
 ## Where are staff-only controls gated?

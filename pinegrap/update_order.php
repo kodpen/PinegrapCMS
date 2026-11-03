@@ -34,13 +34,20 @@ function update_order($request) {
     $deliveries = array();
 
     $order = db_item(
-        "SELECT id, billing_email_address, order_number, contact_id,
+        "SELECT id, billing_email_address, order_number, contact_id, status,
             " . (pg_schema_has('orders', 'type') ? 'type' : "'' AS type") . "
         FROM orders
         WHERE id = '" . e($request['order']['id']) . "'");
 
     if (!$order) {
         return error_response('The order could not be found.');
+    }
+
+    // A cancelled order takes no shipment: no parcel row, no shipped event,
+    // mail, review request or invoice on shipment. The API's shipment route
+    // and the order list's bulk action refuse it the same way.
+    if ($order['status'] === 'cancelled') {
+        return error_response(lang('This order was cancelled, so a shipment cannot be recorded against it.'));
     }
 
     // A marketplace sold order's address is the marketplace's relay for its
@@ -80,6 +87,16 @@ function update_order($request) {
 
         // If there is a ship date or delivery date in the request, then update recipient.
         if (isset($recipient_request['ship_date']) or isset($recipient_request['delivery_date'])) {
+
+            // Each date is a real day or empty: anything else would be stored
+            // as 0000-00-00 and wipe the saved date.
+            foreach (array('ship_date', 'delivery_date') as $date_key) {
+                $date_value = isset($recipient_request[$date_key]) ? (string) $recipient_request[$date_key] : '';
+
+                if (!in_array($date_value, array('', '0000-00-00'), true) && (pg_shipment_date($date_value) !== $date_value)) {
+                    return error_response(lang('The ship or delivery date is not a valid date.'));
+                }
+            }
 
             // A delivery date entered, or changed, to a day that has come is
             // the goods arriving (pg_shipment_delivery_entered()). Read before
@@ -183,7 +200,7 @@ function update_order($request) {
             foreach ($recipient_request['items'] as $item_request) {
 
                 $item = db_item(
-                    "SELECT id, ship_to_id AS recipient_id, shipped_quantity FROM order_items
+                    "SELECT id, ship_to_id AS recipient_id, quantity, shipped_quantity FROM order_items
                     WHERE id = '" . e($item_request['id']) . "'");
 
                 if (!$item) {
@@ -198,14 +215,16 @@ function update_order($request) {
                     continue;
                 }
 
-                $show_shipped_quantity = 0;
-                $shipped_quantity = 0;
-                
-                // If shipped quantity was not blank, then mark it to be shown.
-                if ($item_request['shipped_quantity'] != '') {
-                    $show_shipped_quantity = 1;
-                    $shipped_quantity = $item_request['shipped_quantity'];
+                // Blank hides the quantity; otherwise a whole number from 0
+                // to the ordered quantity.
+                $shipped = pg_order_shipped_quantity($item_request['shipped_quantity'], $item['quantity']);
+
+                if (!$shipped['ok']) {
+                    return error_response(lang(array('string' => 'The shipped quantity must be a whole number from 0 to {var:1}.', 'vars' => array((int) $item['quantity']))));
                 }
+
+                $show_shipped_quantity = $shipped['show'];
+                $shipped_quantity = $shipped['quantity'];
             
                 db("UPDATE order_items
                     SET

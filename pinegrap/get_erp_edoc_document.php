@@ -60,10 +60,11 @@ if ($filename === '') {
     $filename = 'edoc_' . $invoice_id . '.' . $format;
 }
 
-header('Content-Type: ' . (string) $result['mime']);
+// The provider's page runs sandboxed, never on the panel's origin.
+foreach (erp_edoc_document_headers((string) $result['mime'], $filename, $download) as $edoc_header) {
+    header($edoc_header);
+}
 header('Content-Length: ' . strlen((string) $result['content']));
-header('Content-Disposition: ' . ($download ? 'attachment' : 'inline') . '; filename="' . $filename . '"');
-header('X-Robots-Tag: noindex');
-header('Cache-Control: private, no-store');
+pg_send_nosniff();
 
 echo $result['content'];

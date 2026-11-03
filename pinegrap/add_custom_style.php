@@ -22,9 +22,25 @@ validate_area_access($user, 'designer');
 
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/custom_style_form.php');
 
+include_once('liveform.class.php');
+$liveform = new liveform('add_custom_style');
+
 // If the form was not just submitted, then continue to output the page.
 if (!$_POST) {
-    
+    // A refused name comes back with everything that was typed.
+    $style = pg_custom_style_form_defaults();
+    $name_error = pg_region_form_name_error_text($liveform);
+
+    if ($name_error !== '') {
+        $style = array(
+            'style_name' => (string) $liveform->get_field_value('name'),
+            'style_code' => (string) $liveform->get_field_value('code'),
+            'collection' => pg_custom_style_form_choice('collection', $liveform->get_field_value('collection')),
+            'layout_type' => pg_custom_style_form_choice('layout_type', $liveform->get_field_value('layout_type')),
+            'social_networking_position' => pg_custom_style_form_choice('social_networking_position', $liveform->get_field_value('social_networking_position')),
+        );
+    }
+
     $output_header = pg_page_shell([
         'title'=> lang('Create Custom Page Style'),
         'extra classes'=>'design',
@@ -43,7 +59,7 @@ if (!$_POST) {
                 
                 <form name="form" action="add_custom_style.php" method="post">
                     ' . get_token_field() . '
-                    ' . pg_custom_style_form_cards(pg_custom_style_form_defaults(), SOCIAL_NETWORKING == TRUE) . '
+                    ' . pg_custom_style_form_cards($style, SOCIAL_NETWORKING == TRUE, $name_error) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -58,6 +74,8 @@ if (!$_POST) {
 </main>' .
     output_footer();
 
+    $liveform->remove_form();
+
 // else save the page style
 } else {
     validate_token_field();
@@ -68,6 +86,16 @@ if (!$_POST) {
     // A name of only spaces passes the browser's required check and is trimmed to ''.
     if ($name === '') {
         output_error(lang('Name is required.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
+    // A longer name would be cut by the column; a taken one keeps the visual
+    // designer from saving either style.
+    $name_error = pg_region_form_name_refusal($name, pg_style_name_taken($name));
+
+    if ($name_error !== '') {
+        $liveform->add_fields_to_session(array('trim' => false));
+        $liveform->mark_error('name', $name_error);
+        go(PATH . SOFTWARE_DIRECTORY . '/add_custom_style.php');
     }
 
     // insert row into style table

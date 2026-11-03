@@ -56,7 +56,7 @@ if (!defined('PG_INIT_LOADED')) {
 											'name' => 'name',
 											'placeholder'=>lang('Auto Dialog Name'),
 											'class' => 'form-control add-header-content-updater',
-											'maxlength' => '50',
+											'maxlength' => '100',
 											'required' => 'required'))?>
                                     </div>
                                     <div class="col-12 sm:col-6 md:col-8 my-3">
@@ -93,7 +93,8 @@ if (!defined('PG_INIT_LOADED')) {
 											'class' => 'form-control text-end',
 											'maxlength'=>'4',
 											'inputmode'=>'numeric',
-											'data-inputmask-alias'=>'decimal'))?>
+											'data-inputmask-alias'=>'integer',
+											'data-inputmask-allowminus'=>'false'))?>
                             		        <label for="width"  class="input-group-text"><?=lang('pixels')?></label>
                             		    </div>
                                     	<div class="form-text text-end"><?=lang('leave blank for auto')?></div>
@@ -108,7 +109,8 @@ if (!defined('PG_INIT_LOADED')) {
 											'class' => 'form-control text-end',
 											'maxlength'=>'4',
 											'inputmode'=>'numeric',
-											'data-inputmask-alias'=>'decimal'))?>
+											'data-inputmask-alias'=>'integer',
+											'data-inputmask-allowminus'=>'false'))?>
                             		        <label for="height"  class="input-group-text"><?=lang('pixels')?></label>
                             		    </div>
                                     	<div class="form-text text-end"><?=lang('leave blank for auto')?></div>
@@ -121,8 +123,10 @@ if (!defined('PG_INIT_LOADED')) {
 											'id' => 'delay',
 											'name' => 'delay',
 											'class' => 'form-control text-end',
+											'maxlength'=>'7',
 											'inputmode'=>'numeric',
-											'data-inputmask-alias'=>'decimal'))?>
+											'data-inputmask-alias'=>'integer',
+											'data-inputmask-allowminus'=>'false'))?>
                             		        <label for="delay"  class="input-group-text"><?=lang('seconds')?></label>
                             		    </div>
                                     	<div class="form-text text-end"><?=lang('leave blank for instant')?></div>
@@ -135,8 +139,10 @@ if (!defined('PG_INIT_LOADED')) {
 											'id' => 'frequency',
 											'name' => 'frequency',
 											'class' => 'form-control text-end',
+											'maxlength'=>'6',
 											'inputmode'=>'numeric',
-											'data-inputmask-alias'=>'decimal'))?>
+											'data-inputmask-alias'=>'integer',
+											'data-inputmask-allowminus'=>'false'))?>
                             		        <label for="frequency"  class="input-group-text"><?=lang('hour(s)')?></label>
                             		    </div>
                                     	<div class="form-text text-end"><?=lang('leave blank for one-time')?></div>

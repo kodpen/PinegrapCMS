@@ -171,6 +171,7 @@ function test_list_edit_gift_card_cells_escape_the_notes()
 
 	pg_assert_contains('&lt;i&gt;vip&lt;/i&gt;', $cells['notes']['html'], 'the notes escaped');
 	pg_assert_contains('<br', $cells['notes']['html'], 'lines drawn as on the list');
-	pg_assert_same('align-middle', $cells['notes']['class'], 'the list\'s class');
+	pg_assert_same('align-middle text-wrap', $cells['notes']['class'], 'the list\'s class, wrapping');
+	pg_assert_contains('<div class="text-wrap text-break" style="max-width:20rem;">', $cells['notes']['html'], 'a long note wraps in a box of its own width');
 	pg_assert_false(strpos($cells['last_modified']['html'], ' by ') !== false, 'nobody named when the change has no user');
 }
