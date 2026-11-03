@@ -161,6 +161,7 @@ description: Generated from the module field of the memory files: each includes/
 - `svg_sanitize`: [[image-editor-svg]]
 - `text_search`: [[capital-i-search-term]], [[find-and-replace-architecture]], [[find-and-replace-results]]
 - `translate`: [[error-screen-language-and-status]]
+- `tree_search`: [[tree-search]]
 - `update`: [[ca-store-choice]], [[migration-screen]]
 - `user_list`: [[server-paged-lists]], [[user-list-folder-filters]], [[user-screens-names-and-dates]]
 - `variant_set_copy`: [[product-group-copy]]

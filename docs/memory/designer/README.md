@@ -373,6 +373,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - tag-cloud-widget.md: Tag Cloud widget (tag_cloud_region): the classic <tcloud> region in the designer; which keywords, their order, size and weight, the search links, translation, what is left out.
 - text-inner-elements.md: Elements written inside a heading, paragraph, link or span text (span, strong, a, badge, icon) are picked by themselves on the canvas and in the overview, and edited through the text.
 - token-dictionary.md: System widget token namespaces (bare vs __ prefix), shared cart vocabulary, where token names may appear, old names kept as aliases, raw-HTML key escaping, row id uniquify, check_bindings.php.
+- tree-search.md: Site search (simple mode) and Find & Replace read designer page trees and shared component trees: which texts, how a replace writes a tree, what is left out
 - unread-segment-404.md: A path segment after the page name that no widget reads (/about/xyz) answers 404 into the 404 log; which widgets mark it read and where the check runs (#4826)
 - user-styles-card-edits.md: How the Styles panel's User Styles cards read and edit the User Styles text (assets/js/pg_user_styles.js): which rules are listed, edits in place, Create as one undo step
 - widget-accessible-names.md: Names and keyboard use in system widget output: CAPTCHA answer id and label, no empty liveform ids, product carousel link names, the login region's account toggle as a button.
