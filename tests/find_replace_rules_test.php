@@ -93,3 +93,37 @@ function test_find_replace_rules_screen_pins()
 	pg_assert_contains("'name'  => 'scope[]'", $source, 'scope boxes are liveform fields and come back as ticked');
 	pg_assert_contains("'touch'", $source, 'changed rows get their last-modified columns');
 }
+
+function test_find_replace_rules_snippet_ellipsis_only_when_cut()
+{
+	pg_assert_false(pg_find_replace_snippet_cut(10, 5, 80, 20), 'the text ends inside the context: no ellipsis');
+	pg_assert_false(pg_find_replace_snippet_cut(10, 5, 80, 95), 'the context reaches the last character');
+	pg_assert_true(pg_find_replace_snippet_cut(10, 5, 80, 96), 'one character left out');
+}
+
+function test_find_replace_rules_records_merge_by_key()
+{
+	$merged = pg_find_replace_merge_records(array(
+		array('key' => 7, 'name' => 'Contact #A1', 'matches' => array(array('col' => 'title', 'count' => 1))),
+		array('key' => 9, 'name' => 'Contact #B2', 'matches' => array(array('col' => 'body', 'count' => 2))),
+		array('key' => 7, 'name' => 'Contact #A1', 'matches' => array(array('col' => 'body', 'count' => 3))),
+	));
+
+	pg_assert_same(2, count($merged), 'one record per submission');
+	pg_assert_same(7, $merged[0]['key'], 'first seen order');
+	pg_assert_same(array('title', 'body'), array_column($merged[0]['matches'], 'col'), 'the field rows of one submission stay together');
+}
+
+function test_find_replace_rules_screen_pins_results()
+{
+	$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/find_and_replace.php');
+
+	pg_assert_contains('INNER JOIN page ON pregion.pregion_page = page.page_id', $source, 'a region whose page is gone is not searched');
+	pg_assert_contains('pg_pages_bin_sql(pg_recycle_bin_folder_ids(), false)', $source, 'regions of binned pages are left out');
+	pg_assert_contains("pg_catalog_bin_live_sql('products')", $source, 'binned products are left out');
+	pg_assert_contains("pg_catalog_bin_live_sql('product_groups')", $source, 'binned product groups are left out');
+	pg_assert_contains("'column_labels'", $source, 'the Field column shows a translated label');
+	pg_assert_false(strpos($source, "h(\$m['col'])") !== false, 'no raw column name in the Field column');
+	pg_assert_contains('pg_find_replace_merge_records(', $source, 'submitted form rows are counted per submission');
+	pg_assert_contains('$find_results_limit', $source, 'the results are capped per type');
+}

@@ -2216,6 +2216,7 @@
     "The first {var:1} are shown; search to find the others.": "İlk {var:1} adres gösteriliyor; diğerlerini bulmak için arayın.",
     "The first {var:1} of {var:2} are shown; the workbook has them all.": "{var:2} kaydın ilk {var:1} tanesi gösteriliyor; Excel dosyasında hepsi var.",
     "The first {var:1} of {var:2} pages by name.": "{var:2} sayfanın ada göre ilk {var:1} tanesi.",
+    "The first {var:1} records are listed; {var:2} more are not.": "İlk {var:1} kayıt listelendi; {var:2} kayıt daha listelenmedi.",
     "The first {var:1} subscriptions are shown. Narrow the list with the filters.": "İlk {var:1} abonelik gösteriliyor. Listeyi süzgeçlerle daraltın.",
     "The fixed block is now the Comments widget \"{var}\": the same comments, watchers and settings.": "Sabit blok artık \"{var}\" Yorumlar widget'ı: aynı yorumlar, izleyiciler ve ayarlar.",
     "The flow": "Akış",
