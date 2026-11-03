@@ -21,7 +21,7 @@ description: Plan (2026-10-24; ready to start, owner 2026-11-01): a Figma/XD-lik
 1. Done (#5401, #5492, #5603, #5619, #5635): the read-only map, designer/prototype-view.md.
 2. Done #6171, #6201 (designer/prototype-view.md): draw and re-point arrows by drag or from a row's target menu (keyboard) within today's rights, undo, the shared and Publish warnings, Save.
 3. Done #1867 in the Preview (designer/designer-preview-play.md): a page link plays the open tab of that name, unsaved tabs too; the Prototype view's hotspots reuse `_sdPreviewPlay()`.
-4. Shared frame positions done #6232 (designer/prototype-view.md). Thumbnails done (#6258, designer/prototype-thumbnails.md). Links by page id outside widgets (#6233: the existing `__page_link` shape, no new prop; `workflow/decisions-made-product-23.md`): site render done (PR pending, designer/page-link-by-id.md). Left (4e): the editor: the canvas draws the bound page's current name, `pg_link_resolve()` and its JS twin and the Prototype map read the bound id before the href, the Prototype arrow and Bind Data write it.
+4. Shared frame positions done #6232 (designer/prototype-view.md). Thumbnails done (#6258, designer/prototype-thumbnails.md). Page-id links (#6233): site done (designer/page-link-by-id.md). Left (4e): the editor: canvas name, resolver twins and map read the bound id, the arrow and Bind Data write it.
 - Schema: none for slices 1-3; a new table or column is asked first.
 
 ## Which questions are answered? (1 a owner 2026-10-24; 2-5 #2446)
@@ -32,4 +32,4 @@ description: Plan (2026-10-24; ready to start, owner 2026-11-01): a Figma/XD-lik
 5. Breakpoint: desktop width, collapsed navbars shown as their links.
 
 ## Where to start?
-- Slice 4 rest (4e): the editor side of page-id links (designer/page-link-by-id.md, #6233): `pg_proto_hotspots.js` `nodeLinks()` skips bound hrefs today. Start from designer/prototype-view.md and designer/prototype-hotspots.md; claim before code.
+- Slice 4 rest (4e): editor side of page-id links (designer/page-link-by-id.md); `nodeLinks()` skips bound hrefs. Start from designer/prototype-view.md and designer/prototype-hotspots.md; claim before code.
