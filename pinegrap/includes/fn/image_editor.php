@@ -3379,6 +3379,8 @@ function pg_image_editor_strings_render()
         'animFormat_gif'  => lang('GIF'),
         'animFormat_apng' => lang('APNG'),
         'animFormat_webp' => lang('WebP'),
+        'animFormat_mp4'  => lang('MP4 video'),
+        'animFormat_webm' => lang('WebM video'),
         'animSize'        => lang('Longest edge'),
         'animRate'        => lang('Frame rate'),
         'animFps'         => lang('fps'),
