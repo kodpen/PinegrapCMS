@@ -3283,13 +3283,20 @@ function waf_csp_report_store($raw)
     return true;
 }
 
+/**
+ * Most reported first; at an equal count the most recently seen first, so
+ * the cap and the screen's list cut the oldest groups, not the newest
+ * violations.
+ */
 function waf_csp_report_compare($a, $b)
 {
-    return (int) $b['n'] - (int) $a['n'];
+    $order = (int) $b['n'] - (int) $a['n'];
+
+    return ($order !== 0) ? $order : (int) (isset($b['l']) ? $b['l'] : 0) - (int) (isset($a['l']) ? $a['l'] : 0);
 }
 
 /**
- * The aggregated reports, most seen first.
+ * The aggregated reports, most seen first, the newest first among equals.
  */
 function waf_csp_report_read()
 {

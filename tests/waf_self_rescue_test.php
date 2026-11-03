@@ -113,6 +113,16 @@ function test_waf_unban_rows()
 		pg_waf_unban_rows($rows, array('mode' => 'all', 'target' => ''))
 	);
 	pg_assert_same(array(), pg_waf_unban_rows($rows, array('mode' => 'address', 'target' => '192.0.2.1')));
+
+	// --all lifts the bans in force only: an expired automatic row bans nobody
+	// and is the memory the ban ladder climbs from.
+	$rows = array(
+		array('ip_address' => '203.0.113.7', 'source' => 'auto', 'expires_at' => 5000),
+		array('ip_address' => '198.51.100.1', 'source' => 'auto', 'expires_at' => 900),
+		array('ip_address' => '198.51.100.2', 'source' => 'auto', 'expires_at' => 0),
+		array('ip_address' => '198.51.100.3', 'source' => 'auto', 'expires_at' => 1000),
+	);
+	pg_assert_same(array($rows[0], $rows[2]), pg_waf_unban_rows($rows, array('mode' => 'all', 'target' => ''), 1000));
 }
 
 // The command the ban e-mail and the usage text name.

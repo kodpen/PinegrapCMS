@@ -164,7 +164,9 @@ function test_waf_offence_would_ban_has_a_badge()
 {
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_waf_log.php');
 	pg_assert_contains("'would-ban'   => array('bg-warning fg-black', lang('Would ban')),", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/waf_log_list.php'));
-	pg_assert_contains("action IN ('would-block','would-rate','would-ban')", $screen);
+	// The screen counts a would-ban apart from the requests it would block.
+	pg_assert_contains("pg_waf_log_list_request_actions('would_block')", $screen);
+	pg_assert_contains("pg_waf_log_list_request_actions('bans')", $screen);
 
 	$widget = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets/widget_21.php');
 	pg_assert_contains("'would-ban'   => array('warning',           lang('Would ban')),", $widget);

@@ -82,6 +82,14 @@ if (isset($_POST['submit_release'])) {
             array((string) $release_ip)
         ) or output_error(lang('Query failed.'));
 
+        // Nothing deleted: the ban ran out while the screen was open, another
+        // admin released it, or the form was sent twice. Say so instead of
+        // reporting (and logging) a release that did not happen.
+        if (mysqli_affected_rows(db::$con) < 1) {
+            $liveform->mark_error('_error', h(lang(array('string' => 'No automatic ban on {var:1} was found. It may have expired or been released already.', 'vars' => $release_ip))));
+            go(PATH . SOFTWARE_DIRECTORY . '/' . $list_url);
+        }
+
         // The pre-database mirror is rewritten at most every five minutes on
         // its own; a release has to reach it now, or the address stays shut
         // out at the door while this screen says it was let back in.
@@ -220,16 +228,20 @@ $summary_result = db_q(
     // SUM(hit_count), not COUNT(*): one row can stand for thousands of
     // requests now that identical events are folded into a five-minute
     // bucket. Counting rows would report an attack as a handful of events.
+    // A ban row is written beside the row of the request that earned it, so
+    // the request counts leave it out and the bans are counted on their own
+    // (pg_waf_log_list_request_actions()).
     "SELECT
-        COALESCE(SUM(hit_count), 0) AS total,
-        COALESCE(SUM(CASE WHEN action IN ('block','rate','ban') THEN hit_count ELSE 0 END), 0) AS blocked,
-        COALESCE(SUM(CASE WHEN action IN ('would-block','would-rate','would-ban') THEN hit_count ELSE 0 END), 0) AS would_block,
+        COALESCE(SUM(CASE WHEN action IN ('" . implode("','", pg_waf_log_list_request_actions('bans')) . "') THEN 0 ELSE hit_count END), 0) AS total,
+        COALESCE(SUM(CASE WHEN action IN ('" . implode("','", pg_waf_log_list_request_actions('blocked')) . "') THEN hit_count ELSE 0 END), 0) AS blocked,
+        COALESCE(SUM(CASE WHEN action IN ('" . implode("','", pg_waf_log_list_request_actions('would_block')) . "') THEN hit_count ELSE 0 END), 0) AS would_block,
+        COALESCE(SUM(CASE WHEN action IN ('" . implode("','", pg_waf_log_list_request_actions('bans')) . "') THEN hit_count ELSE 0 END), 0) AS bans,
         COUNT(DISTINCT ip_address) AS addresses,
         COUNT(*) AS rows_stored
      FROM waf_log WHERE " . $condition['sql'],
     $condition['params']
 );
-$summary = ($summary_result ? mysqli_fetch_assoc($summary_result) : null) ?: array('total' => 0, 'blocked' => 0, 'would_block' => 0, 'addresses' => 0, 'rows_stored' => 0);
+$summary = ($summary_result ? mysqli_fetch_assoc($summary_result) : null) ?: array('total' => 0, 'blocked' => 0, 'would_block' => 0, 'bans' => 0, 'addresses' => 0, 'rows_stored' => 0);
 
 $mode = function_exists('waf_mode') ? waf_mode() : 'off';
 
@@ -505,8 +517,8 @@ echo pg_screen_toolbar(array(
             <select name="category" id="category" class="form-control form-control-sm w-auto">' . $category_select . '</select>
         </div>
         <div class="input-group input-group-sm w-auto flex-nowrap">
-            <label class="input-group-text" for="search" title="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Search')) . '</span></label>
-            <input type="text" name="search" id="search" class="form-control form-control-sm w-auto" value="' . h($search) . '" placeholder="' . lang('IP address, URL, rule, reference') . '"/>
+            <label class="input-group-text" for="search" title="' . h(lang('Every word in the address, request, user agent, rule, reference, match or action')) . '"><i class="bi bi-search" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Search')) . '</span></label>
+            <input type="text" name="search" id="search" class="form-control form-control-sm" style="min-width:12rem;" value="' . h($search) . '" placeholder="' . h(lang('Search events')) . '""/>
         </div>
         <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-funnel me-1" aria-hidden="true"></i>' . lang('Filter') . '</button>
     </form>',
@@ -523,7 +535,8 @@ echo '<div class="row g-5 mb-7">
     <div class="col-6 lg:col-3">
         <div class="card h-100"><div class="card-body">
             <div class="fg-secondary small text-uppercase">' . lang('Logged events') . '</div>
-            <div class="h3 mb-0">' . pg_format_number((int) $summary['total'], 0) . '</div>
+            <div class="h3 mb-0">' . pg_format_number((int) $summary['total'], 0) . '</div>'
+            . (((int) $summary['bans'] > 0) ? '<div class="small fg-secondary">' . lang(array('string' => 'Bans: {var:1}', 'vars' => pg_format_number((int) $summary['bans'], 0))) . '</div>' : '') . '
         </div></div>
     </div>
     <div class="col-6 lg:col-3">
@@ -561,7 +574,11 @@ if ($suspects) {
             <span class="badge bg-subtle-warning fg-emphasis-warning border border-subtle-warning">' . pg_format_number($suspect_count, 0) . '</span>
         </div>
         <div class="card-body">
-            <p class="fg-secondary small">' . lang('These addresses were flagged by the firewall in this period and also look like real people: a signed-in user, a "remember me" sign-in, a named entry in the activity log or a completed order came from the same address. Check them before switching the firewall to Block. Allowing an address puts it on the allowed list in Site Settings and releases any automatic ban on it.') . '</p>
+            <p class="fg-secondary small">' . lang('These addresses were flagged by the firewall in this period and also look like real people: a signed-in user, a "remember me" sign-in, a named entry in the activity log or a completed order came from the same address.') . ' '
+                . (($mode === 'block')
+                    ? lang('The firewall is refusing these addresses; allow one that belongs to a real person.')
+                    : lang('Check them before switching the firewall to Block.'))
+                . ' ' . lang('Allowing an address puts it on the allowed list in Site Settings and releases any automatic ban on it.') . '</p>
             <div class="table-responsive"><table class="table table-sm align-middle mb-0">
                 <thead><tr>
                     <th>' . lang('IP Address') . '</th>
@@ -615,12 +632,16 @@ if ($auto_bans) {
                 </tr></thead><tbody>';
 
     foreach ($auto_bans as $ban) {
-        $remaining = max(0, (int) $ban['expires_at'] - time());
+        // The ladder reaches 10,080 minutes: the end is shown as a relative
+        // time, the clock time on hover.
+        $expires = ((int) $ban['expires_at'] === 0)
+            ? h(lang('Never'))
+            : '<span title="' . h(get_absolute_time(array('timestamp' => (int) $ban['expires_at'], 'format' => 'plain_text'))) . '">' . get_relative_time(array('timestamp' => (int) $ban['expires_at'])) . '</span>';
 
         echo '<tr>
             <td class="font-monospace"><a href="' . h(pg_waf_ban_log_url($ban['ip_address'])) . '" title="' . h(lang('Open the firewall log for this address')) . '">' . h($ban['ip_address']) . '</a></td>
             <td class="small fg-secondary">' . h($ban['note']) . '</td>
-            <td class="small">' . ceil($remaining / 60) . ' ' . lang('minute(s)') . '</td>
+            <td class="small text-nowrap">' . $expires . '</td>
             <td class="text-end">
                 <form method="post" action="' . h($list_url) . '" class="d-inline">'
                     . get_token_field() . '
@@ -682,6 +703,13 @@ if ($csp_entries || $csp_mode !== 'off') {
         }
 
         echo '</tbody></table></div>';
+
+        if (count($csp_entries) > 100) {
+            echo '<p class="fg-secondary small mt-3 mb-0">' . lang(array(
+                'string' => 'Showing {var:1} of {var:2} groups: the most reported, and the most recently seen among equal counts.',
+                'vars'   => array(pg_format_number(100, 0), pg_format_number(count($csp_entries), 0)),
+            )) . '</p>';
+        }
     }
 
     echo '</div></div>';
@@ -694,7 +722,10 @@ echo '<div class="card mb-7">
     </div>
     <div class="card-body">';
 
-if ((int) $summary['rows_stored'] === 0) {
+if ((int) $summary['rows_stored'] === 0 && ($category !== '' || $search !== '')) {
+    // The filter found nothing; the period itself may hold many events.
+    echo '<p class="fg-secondary mb-0">' . lang('No events match the filter.') . ' <a href="' . h(pg_waf_log_list_url(array('range' => $range))) . '">' . lang('Clear the filter') . '</a></p>';
+} elseif ((int) $summary['rows_stored'] === 0) {
     echo '<p class="fg-secondary mb-0">' . lang('No firewall events were recorded in this period.') . '</p>';
 } else {
     echo '<div class="position-relative">

@@ -117,6 +117,7 @@
     "Banned": "Yasaklandı",
     "Banned IP Addresses": "Yasaklanmış IP Adresleri",
     "Bans": "Yasaklar",
+    "Bans: {var:1}": "Yasaklar: {var:1}",
     "Bar": "Çubuk",
     "Barcode": "Barkod",
     "Barcode Operation Menu": "Barkod İşlem Menüsü",
