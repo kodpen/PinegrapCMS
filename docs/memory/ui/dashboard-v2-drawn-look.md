@@ -19,6 +19,10 @@ description: The new dashboard's drawn look (visual pass V): the --pgd-* palette
 - Greeting chips and Activity filters share `.pg-dash-chip`; the filter rules sit under `.pg-dash-cardbox` (#6166 fixed grey pill since-chips; `tests/dashboard_v2_look_test.php`).
 - Next up: a module tag box of one width (form cyan, content fuchsia, team violet, shop amber, erp red). Flows: the run in hand as 34 px rounds with a state glyph (done check, waiting hourglass, failed cross). Activity dots by chip, comments (`data-kind`) yellow. Avatars: the theme class picks a pastel tone. Pins: tiles, remove shown on hover, focus and touch, the adder a dashed last tile.
 
+## What did dev.pinegrap.com show after V2 (#6327)?
+- The chart figure box (`.pg-dash-tip`) sits in `<body>`, outside `.pg-dash`: it read an undefined `--pg-body-bg` and was unreadable, so it names its colours per theme. `tests/dashboard_v2_look_test.php` checks that every `var()` of the stylesheet is defined.
+- The grid takes 4 columns from 1600 px, 5 from 2200, 6 from 2800 (a 2560 px screen had 800 px cards). Calendar days undo the week tile look (light 24 px grid).
+
 ## What differs from the drawings on purpose?
 - Next up's tags are words ("Form", "İçerik"), not the drawing's two-letter codes.
 - Problem and warning chips keep their word ("Problem", "Warning"): colour is never the only sign (widget 2's rule).
