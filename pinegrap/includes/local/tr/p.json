@@ -2015,6 +2015,7 @@
     "products on {var:1}": "{var:1} üzerindeki ürün",
     "profile": "profil",
     "programme": "program",
+    "project": "proje",
     "property, real estate, title deed, lease, rent, construction": "gayrimenkul, emlak, tapu, kira, kiralama, inşaat",
     "proposed the change for approval in #{var:1}": "değişikliği onay için #{var:1} kanalında önerdi",
     "prototype link #{var:1} ({var:2}…) of design ({var:3}) was revoked": "tasarım ({var:3}) prototip bağlantısı #{var:1} ({var:2}…) iptal edildi",
