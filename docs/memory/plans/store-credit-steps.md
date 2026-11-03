@@ -11,7 +11,7 @@ description: Steps SC1-SC4 of plans/store-credit.md: the customer-bound card mod
 - SC1 (M) Model. Done in PR #6156.
   - Migration sub-step (`install_add_column()` ×4, rerun twice). New `includes/fn/store_credit.php`: `pg_credit_kinds()`, `pg_credit_issue($user_id, $amount, $kind, $reason, $expires, $issued_by)` (a `gift_cards` row with a generated code the customer never needs), `pg_credit_balance($user_id)`, `pg_credit_cards($user_id)` (open cards, oldest expiry first), `pg_credit_void($card_id, $reason)`, `pg_credit_pick($cards, $amount)` (pure: which cards cover an amount), `pg_credit_points_value($points)` (pure, minor units, `round()`), the audit-trail lines. Tests: the pick order, the rounding at the smallest unit, a voided card never picked. Memory: `commerce/store-credit-model.md`.
 
-- SC2 (M) Checkout. After SC1.
+- SC2 (M) Checkout. Done in PR #6234 (designer express order widget: no checkbox yet, the X removes credit).
   - Express order and the classic checkout: for a signed-in customer with a balance, "Use my store credit (<amount>)" ticked by default on the payment step; ticked, the picked cards are written to `applied_gift_cards` for the order exactly as a typed code is (the same insert, balance check and refresh in `submit_order.php`); unticked, the rows are removed; a guest sees nothing. The receipt and order screen name the credit used as they name gift cards; a cancelled order restores the balance through `order-cancel-gift-cards.md`'s path. Parity test: an order without credit renders and totals as before. Memory: `commerce/store-credit-checkout.md`.
 
 - SC3 (S) Points to credit. After SC1.

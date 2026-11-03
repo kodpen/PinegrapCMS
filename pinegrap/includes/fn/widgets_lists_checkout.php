@@ -127,13 +127,19 @@ function pg_sw_list_checkout_applied_offers($order_id)
 // them: each card takes what is left of $discount (minor units, the gift
 // card discount of the totals) up to its balance, in the order applied, as
 // submit_order() redeems them. Each array('id', 'code', 'givex', 'balance',
-// 'amount', 'left'), amounts in minor units.
+// 'amount', 'left', 'credit'), amounts in minor units; credit: store credit.
 function pg_sw_list_checkout_gift_cards($order_id, $discount)
 {
     $order_id = (int)$order_id;
     if ($order_id <= 0) return array();
     $rows = db_items("SELECT id, code, old_balance, givex FROM applied_gift_cards WHERE order_id = '" . $order_id . "' ORDER BY id ASC");
-    return pg_sw_list_checkout_redeem(is_array($rows) ? $rows : array(), $discount);
+    $out = pg_sw_list_checkout_redeem(is_array($rows) ? $rows : array(), $discount);
+    // A customer's store credit is named as such, not by a code they never saw.
+    $credit_ids = pg_credit_applied_ids($order_id);
+    foreach ($out as $i => $g) {
+        $out[$i]['credit'] = isset($credit_ids[$g['id']]);
+    }
+    return $out;
 }
 
 // The redemption of pg_sw_list_checkout_gift_cards(), pure: $rows the
@@ -201,7 +207,7 @@ function pg_sw_list_checkout_rows($data)
     $remove_tail = isset($data['remove_tail']) ? (string)$data['remove_tail'] : '';
     foreach ($get('gift_cards') as $g) {
         $out['checkout.gift_cards'][0][] = array(
-            '__gift_card_code'       => $g['givex'] ? protect_givex_gift_card_code($g['code']) : protect_gift_card_code($g['code']),
+            '__gift_card_code'       => !empty($g['credit']) ? lang('Store credit') : ($g['givex'] ? protect_givex_gift_card_code($g['code']) : protect_gift_card_code($g['code'])),
             '__gift_card_amount'     => $fmt($g['amount']),
             '__gift_card_balance'    => $fmt($g['left']),
             '__gift_card_remove_url' => ($remove_base === '') ? '' : $remove_base . (int)$g['id'] . $remove_tail,
