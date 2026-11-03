@@ -287,7 +287,7 @@ if (isset($_POST['arrival_date']) && is_string($_POST['arrival_date'])) {
                 FROM order_items
                 WHERE
                     order_items.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "'
-                    AND order_items.ship_to_id = '" . e($_POST['ship_to_id'] ?? '') . "'");
+                    AND order_items.ship_to_id = '" . e($_POST['ship_to_id'] ?? '') . "'" . pg_order_item_active_sql());
             
             $zones_for_destination = get_valid_zones_for_destination($liveform->get_field_value('country'), $liveform->get_field_value('state'));
             
