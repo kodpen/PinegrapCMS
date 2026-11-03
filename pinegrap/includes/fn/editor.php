@@ -1173,8 +1173,8 @@ function _pg_rich_text_visitor_style($style)
     return implode('; ', $kept);
 }
 
-// Whether a visitor's image address stays on the site: a relative address,
-// the {path} placeholder, or http(s) on $host (HOSTNAME_SETTING, never the
+// Whether a visitor's image address stays on the site: a relative address
+// (the {path} placeholder included), or http(s) on $host (HOSTNAME_SETTING, never the
 // request's Host header). A protocol-relative address, an address with user
 // information and every other scheme are outside.
 function _pg_rich_text_image_is_local($src, $host)
@@ -1182,12 +1182,15 @@ function _pg_rich_text_image_is_local($src, $host)
     $probe = html_entity_decode((string) $src, ENT_QUOTES | ENT_HTML5, 'UTF-8');
     $probe = strtolower(preg_replace('/[\x00-\x20\x7f]+/', '', $probe));
 
+    // Page output replaces every {path} with the site path, which starts and
+    // ends with a slash, so the address is judged as the browser will get it:
+    // "{path}/host/a.png" or "/{path}host/a.png" is "//host/a.png". The
+    // sanitizer turns libxml's percent-encoded placeholder back into {path},
+    // so that spelling counts too.
+    $probe = str_replace(array('{path}', '%7bpath%7d'), '/', $probe);
+
     if ($probe === '') {
         return false;
-    }
-
-    if (strpos($probe, '{path}') === 0) {
-        return true;
     }
 
     // Browsers read a backslash as a slash, so "/\host" is "//host".

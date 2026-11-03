@@ -48,7 +48,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `ecommerce`: open
 
-- `editor`: open
+- `editor`: open, partly hunted (#6032: a visitor image next to `{path}` became protocol-relative; checked: the rich text sanitizer and its URL, style and image helpers, `_pg_rich_text_to_inline()`, the {path} input/output helpers; next worker starts at `get_wysiwyg_editor_code()`, then the `pg_code_editor_*` functions)
 
 - `email_campaign_schedule`: clean
 
