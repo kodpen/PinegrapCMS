@@ -119,9 +119,9 @@ if (!$_POST) {
         $row = mysqli_fetch_assoc($result);
         $currency_name = $row['name'];
         
-        // delete currency
-        $query = "DELETE FROM currencies WHERE id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        if (!pg_store_currency_delete($id)) {
+            output_error('Query failed.');
+        }
         
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('currency'), $currency_name) )), $_SESSION['sessionusername']);
 
@@ -175,24 +175,18 @@ if (!$_POST) {
 
         $exchange_rate = pg_currency_form_exchange_rate($liveform->get_field_value('exchange_rate'), $liveform->get_field_value('base'));
         
-        // update currency
-        $query =
-            "UPDATE currencies
-            SET
-                name = ?,
-                base = ?,
-                code = ?,
-                symbol = ?,
-                exchange_rate = ?,
-                last_modified_user_id = ?,
-                last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = ?";
-        $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) $liveform->get_field_value('base'), (string) $liveform->get_field_value('code'), (string) $liveform->get_field_value('symbol'), (string) $exchange_rate, (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        // The shared write path (includes/fn/store_currencies.php) also keeps
+        // a single base currency and announces the change.
+        $saved = pg_store_currency_save($id, array(
+            'name' => (string) $liveform->get_field_value('name'),
+            'base' => (int) $liveform->get_field_value('base'),
+            'code' => (string) $liveform->get_field_value('code'),
+            'symbol' => (string) $liveform->get_field_value('symbol'),
+            'exchange_rate' => (string) $exchange_rate,
+        ), (int) $user['id']);
 
-        // If this currency was set as the base currency then update all other currencies
-        // in order to make sure that none are set as the base currency.
-        if ($liveform->get_field_value('base') == 1) {
-            pg_currency_form_clear_other_bases($_POST['id'] ?? '');
+        if ($saved <= 0) {
+            output_error('Query failed.');
         }
         
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('Currency'),$liveform->get_field_value('name') ))), $_SESSION['sessionusername']);

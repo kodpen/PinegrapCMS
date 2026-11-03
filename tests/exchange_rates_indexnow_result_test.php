@@ -53,7 +53,8 @@ function test_exchange_rates_notice_counts_written_rates()
 	pg_assert_true(strpos($source, "lang('The exchange rates have been updated.')") === false);
 	pg_assert_true(strpos($source, "'string' => '{var:1} exchange rates were updated.'") !== false);
 	pg_assert_true(strpos($source, 'if ($updated > 0) {') !== false);
-	pg_assert_true(strpos($source, '$updated++;') !== false);
+	pg_assert_true(strpos($source, "\$updated = \$refresh['updated'];") !== false);
+	pg_assert_true(strpos(_exchange_rates_result_source('includes/fn/store_currencies.php'), '$updated++;') !== false);
 
 	// The per-currency mark stays.
 	pg_assert_true(strpos($source, "'string' => 'Failed to update exchange rate for currency {var:1}.'") !== false);
@@ -64,6 +65,7 @@ function test_exchange_rates_no_answer_says_rates_unchanged()
 {
 	$source = _exchange_rates_result_source('update_exchange_rates.php');
 
-	pg_assert_true(strpos($source, 'if ($wanted && !$fetched) {') !== false);
+	pg_assert_true(strpos($source, "if (\$wanted && !\$refresh['reached']) {") !== false);
+	pg_assert_true(strpos(_exchange_rates_result_source('includes/fn/store_currencies.php'), "'reached' => !empty(\$fetched),") !== false);
 	pg_assert_true(strpos($source, "lang('The exchange rate services could not be reached, so the exchange rates were not changed.')") !== false);
 }

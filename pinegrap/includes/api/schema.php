@@ -1495,6 +1495,104 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'store.currencies.get',
+			'method'  => 'GET',
+			'path'    => '/store/currencies/{id}',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_currencies_get',
+			'returns' => 'StoreCurrency',
+			'summary' => 'One currency',
+			'description' => 'One currency as GET /store/currencies lists it.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'store.currencies.create',
+			'method'  => 'POST',
+			'path'    => '/store/currencies',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_currencies_create',
+			'dry_run' => true,
+			'returns' => 'StoreCurrency',
+			'status'  => 201,
+			'summary' => 'Create a currency',
+			'description' => 'Adds a currency visitors can see prices in, as the currency screen does. A blank name, a code that is not three letters or a rate of zero is 422; a code another currency has is 409 code_taken. Announces currency.created.',
+			'params'  => array(
+				array('name' => 'name',          'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The name the currency picker shows.'),
+				array('name' => 'code',          'in' => 'body', 'type' => 'string', 'max_length' => 3, 'required' => true, 'description' => 'The three-letter ISO 4217 code (USD, EUR), taken in capitals; the rate refresh matches currencies by it. Anything else is 422; a code another currency has is 409 code_taken.'),
+				array('name' => 'symbol',        'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'The symbol prices are shown with, as plain text (€, ₺). At most 10 characters once stored; < > & and quotes count as their escaped form.'),
+				array('name' => 'exchange_rate', 'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999.99999, 'description' => 'How much of the currency one unit of the base currency buys, kept to five decimals. Above zero for a currency that is not the base; ignored for the base, which is 1.'),
+				array('name' => 'base',          'in' => 'body', 'type' => 'bool', 'description' => 'true makes it the base currency prices are kept in and orders are charged in, and takes the switch off the previous base. The base cannot be switched off: make another currency the base instead (422).')
+			)
+		),
+
+		array(
+			'id'      => 'store.currencies.rates',
+			'method'  => 'POST',
+			'path'    => '/store/currencies/rates',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_currencies_rates',
+			'dry_run' => true,
+			'returns' => array('requested' => 'string[]', 'updated' => 'integer', 'failed' => 'string[]', 'reached' => 'boolean'),
+			'summary' => 'Refresh the exchange rates',
+			'description' => 'Does what the Update Exchange Rates button and the scheduled job do: asks the exchange rate services for every currency but the base (and the accounting module\'s document currencies) and writes the rates they give. requested lists the codes asked for, failed those no service answered (their rates stay as they were), reached is false when no service could be reached. Each currency whose rate moved announces currency.updated.',
+			'params'  => array()
+		),
+
+		array(
+			'id'      => 'store.currencies.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/store/currencies/{id}',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_currencies_update',
+			'dry_run' => true,
+			'returns' => 'StoreCurrency',
+			'summary' => 'Change a currency',
+			'description' => 'Only the fields sent change. A new code another currency has is 409 code_taken; keeping the stored code is never refused. Announces currency.updated. PATCH is accepted as well; on an IIS server send POST.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',          'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The name the currency picker shows.'),
+				array('name' => 'code',          'in' => 'body', 'type' => 'string', 'max_length' => 3, 'description' => 'The three-letter ISO 4217 code (USD, EUR), taken in capitals; the rate refresh matches currencies by it. Anything else is 422; a code another currency has is 409 code_taken.'),
+				array('name' => 'symbol',        'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'The symbol prices are shown with, as plain text (€, ₺). At most 10 characters once stored; < > & and quotes count as their escaped form.'),
+				array('name' => 'exchange_rate', 'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999.99999, 'description' => 'How much of the currency one unit of the base currency buys, kept to five decimals. Above zero for a currency that is not the base; ignored for the base, which is 1.'),
+				array('name' => 'base',          'in' => 'body', 'type' => 'bool', 'description' => 'true makes it the base currency prices are kept in and orders are charged in, and takes the switch off the previous base. The base cannot be switched off: make another currency the base instead (422).')
+			)
+		),
+
+		array(
+			'id'      => 'store.currencies.delete',
+			'method'  => 'DELETE',
+			'path'    => '/store/currencies/{id}',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_currencies_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a currency',
+			'description' => 'Deletes the currency outright, as the currency screen does; orders keep the code they were written with. The base currency is refused with 409 base_currency: make another currency the base first. Announces currency.deleted. Cannot be undone.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'store.currencies.delete_post',
+			'method'  => 'POST',
+			'path'    => '/store/currencies/{id}/delete',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_currencies_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a currency, addressed as a POST',
+			'description' => 'The same delete as DELETE /store/currencies/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
 			'id'      => 'store.feeds',
 			'method'  => 'GET',
 			'path'    => '/store/feeds',
