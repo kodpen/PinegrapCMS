@@ -8599,6 +8599,12 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
         $cf_liveform = new liveform($form_page_id);
     }
 
+    // A form with a fee (includes/fn/form_payment_step.php): its payment
+    // step, or, while this session has the form's payment open, the payment
+    // alone. Never in the SEO pass.
+    $cf_payment = ($form_page_id > 0 && !pg_seo_rendering()) ? pg_form_payment_render($form_page_id, $cf_liveform) : array('kind' => '', 'html' => '');
+    if ($cf_payment['kind'] === 'replace') return $cf_payment['html'];
+
     // Staff view: the page in edit mode, seen by someone who may edit it. The
     // same gate custom_form.php applies before it reads an office-use-only
     // field from the POST, so what is shown is what will be stored.
@@ -8666,6 +8672,7 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
             ? (string)get_captcha_fields($cf_liveform) : '',
     );
     pg_cf_apply_section_bindings($tree_decoded, $cf_sections);
+    if ($cf_payment['kind'] === 'step') pg_cf_insert_payment_step($tree_decoded, $cf_payment['html'], lang('Payment'));
 
     // "Step" breaks split the controls into fieldsets shown one at a time;
     // a form without one is left exactly as it was.

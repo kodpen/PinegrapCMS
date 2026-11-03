@@ -249,6 +249,27 @@ function api_calendar_event_present($row, $extras = array(), $full = false) {
 
 }
 
+function api_calendar_select() {
+
+	return "SELECT calendars.id, calendars.name, calendars.last_modified_timestamp,
+			(SELECT COUNT(*) FROM calendar_events_calendars_xref
+				WHERE calendar_events_calendars_xref.calendar_id = calendars.id) AS event_count
+		FROM calendars";
+
+}
+
+// The shape of a calendar on the wire.
+function api_calendar_present($row) {
+
+	return array(
+		'id'          => (int)$row['id'],
+		'name'        => (string)$row['name'],
+		'event_count' => (int)$row['event_count'],
+		'updated_at'  => api_time($row['last_modified_timestamp'])
+	);
+
+}
+
 function api_calendars_list($params) {
 
 	api_calendars_require();
@@ -263,22 +284,12 @@ function api_calendars_list($params) {
 
 	}
 
-	$rows = api_rows("SELECT calendars.id, calendars.name, calendars.last_modified_timestamp,
-			(SELECT COUNT(*) FROM calendar_events_calendars_xref
-				WHERE calendar_events_calendars_xref.calendar_id = calendars.id) AS event_count
-		FROM calendars" . $where . "
-		ORDER BY calendars.name ASC, calendars.id ASC");
-
 	$out = array();
 
-	foreach ($rows as $row) {
+	foreach (api_rows(api_calendar_select() . $where . "
+		ORDER BY calendars.name ASC, calendars.id ASC") as $row) {
 
-		$out[] = array(
-			'id'          => (int)$row['id'],
-			'name'        => (string)$row['name'],
-			'event_count' => (int)$row['event_count'],
-			'updated_at'  => api_time($row['last_modified_timestamp'])
-		);
+		$out[] = api_calendar_present($row);
 
 	}
 
@@ -1094,6 +1105,172 @@ function api_calendar_events_delete($params) {
 		'string' => 'Calendar event ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).',
 		'vars'   => array((string)$row['name'], $app['name'], $app['api_key'])
 	)), $app['owner']['username']);
+
+	api_ok(array('id' => $id, 'deleted' => true));
+
+}
+
+/* ----- Calendar writes ---------------------------------------------------- */
+
+// A calendar the owner may open, or 404: one outside the assigned calendars of
+// a user with the calendars right is answered as if it did not exist.
+function api_calendar_or_fail($id) {
+
+	$id = (int)$id;
+
+	$row = api_row(api_calendar_select() . " WHERE calendars.id = '" . $id . "' LIMIT 1");
+
+	$visible = api_calendar_ids_visible();
+
+	if (($row === null) || (($visible !== null) && !in_array($id, $visible, true))) {
+
+		api_fail_not_found(lang('Calendar'));
+
+	}
+
+	return $row;
+
+}
+
+// The name a calendar write sends: required and unused by another calendar,
+// as on the calendar screens (pg_calendar_form_validate_name()).
+function api_calendar_name_in($name, $except_id = 0) {
+
+	$name = trim((string)$name);
+
+	if ($name === '') {
+
+		api_fail_validation(lang('Name is required.'), 'name');
+
+	}
+
+	$taken = pg_calendar_name_taken($name, $except_id);
+
+	if ($taken === null) {
+
+		api_fail_server();
+
+	}
+
+	if ($taken) {
+
+		api_fail(409, 'name_taken', lang('The name that you entered is already in use, so please enter a different name.'), 'name');
+
+	}
+
+	return $name;
+
+}
+
+function api_calendar_log($string, $name) {
+
+	$app = api_current_app();
+
+	log_activity(lang(array(
+		'string' => $string,
+		'vars'   => array($name, $app['name'], $app['api_key'])
+	)), $app['owner']['username']);
+
+}
+
+// A new calendar, as on add_calendar.php: that screen is closed to the user
+// role, which reaches only the calendars assigned to it.
+function api_calendars_create($params) {
+
+	api_calendars_require();
+
+	$app = api_current_app();
+
+	if ((int)$app['owner']['role'] >= 3) {
+
+		api_fail(403, 'forbidden', lang('The account that owns this application may not create calendars.'));
+
+	}
+
+	$name = api_calendar_name_in(isset($params['name']) ? $params['name'] : '');
+
+	api_dry_run_stop('created', 'calendar', array('name' => $name));
+
+	$id = pg_calendar_save(0, $name, (int)$app['owner']['id']);
+
+	if ($id <= 0) {
+
+		api_fail_server();
+
+	}
+
+	api_calendar_log('Calendar ({var:1}) was created through the API by the application {var:2} (key {var:3}).', $name);
+
+	api_ok(api_calendar_present(api_calendar_or_fail($id)), 201);
+
+}
+
+// A calendar's name, as on edit_calendar.php.
+function api_calendars_update($params) {
+
+	api_calendars_require();
+
+	$app = api_current_app();
+
+	$row = api_calendar_or_fail($params['id']);
+
+	$id = (int)$row['id'];
+
+	if (!isset($params['name'])) {
+
+		api_fail_validation(lang('No writable field was sent.'));
+
+	}
+
+	$name = api_calendar_name_in($params['name'], $id);
+
+	api_dry_run_stop('updated', 'calendar', array('id' => $id, 'changes' => array('name')));
+
+	if (pg_calendar_save($id, $name, (int)$app['owner']['id']) <= 0) {
+
+		api_fail_server();
+
+	}
+
+	api_calendar_log('Calendar ({var:1}) was changed through the API by the application {var:2} (key {var:3}).', $name);
+
+	api_ok(api_calendar_present(api_calendar_or_fail($id)));
+
+}
+
+// An empty calendar, with its user assignments and its place in the calendar
+// views. One that still holds events is refused, as on edit_calendar.php.
+function api_calendars_delete($params) {
+
+	api_calendars_require();
+
+	$row = api_calendar_or_fail($params['id']);
+
+	$id = (int)$row['id'];
+
+	$events = pg_calendar_event_count($id);
+
+	if ($events === null) {
+
+		api_fail_server();
+
+	}
+
+	if ($events > 0) {
+
+		api_fail(409, 'calendar_has_events', lang('Please delete or remove all calendar events from this calendar before deleting this calendar.'));
+
+	}
+
+	api_dry_run_stop('deleted', 'calendar', array('id' => $id, 'name' => (string)$row['name']));
+
+	if (!pg_calendar_delete($id)) {
+
+		api_fail_server();
+
+	}
+
+	api_calendar_log('Calendar ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).', (string)$row['name']);
 
 	api_ok(array('id' => $id, 'deleted' => true));
 

@@ -24,6 +24,8 @@
  *                              (view_pages.php, view_users.php,
  *                              view_contacts.php, view_submitted_forms.php,
  *                              view_products.php)
+ *   list_table_sort            keeps the sort of a list the driver prints
+ *                              whole (browser mode), set by a heading click
  *   booking_list_rows          a page of the bookings agenda's list view
  *                              (view_bookings.php?view=list)
  *
@@ -351,6 +353,24 @@ function pg_panel_list_table_rows($request, $action)
     }
 
     return pg_list_table_answer($page, $source['columns']);
+}
+
+function pg_panel_list_table_sort($request, $action)
+{
+    // The general gate has checked the session (any_role). Nothing is read
+    // here: the sort is only kept in the session, and the list's screen
+    // checks it against its own columns when it reads it (pg_list_state()).
+    validate_user();
+    validate_token();
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+    if (!pg_list_table_printed_sort($request['list'] ?? '', $request['sort'] ?? '')) {
+        http_response_code(400);
+        respond(array('status' => 'error', 'message' => lang('Invalid action.')));
+    }
+
+    return array('status' => 'success');
 }
 
 function pg_panel_booking_list_rows($request, $action)
