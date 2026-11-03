@@ -38,6 +38,7 @@ description: Generated from the module field of the memory files: each includes/
 - `cron`: [[scheduled-job-resume]]
 - `currency_rates`: [[exchange-rates-update]]
 - `custom_form`: [[collection-template-refs]], [[custom-form-field-rules]], [[form-field-errors]], [[registration-gate-form-submitter]], [[sms-consent-custom-form]]
+- `custom_form_steps`: [[custom-form-steps]]
 - `designer_fx`: [[designer-interactions]]
 - `designer_vocab`: [[designer-bootstrap-vocabulary]]
 - `ecommerce`: [[affiliate-link-offer-code]], [[barcode-stock-scan-checks]], [[card-data-manual-processing]], [[cart-default-quantity]], [[contact-import-cells]], [[csv-import-headings]], [[currency-form-rules]], [[currency-names-display]], [[express-order-tax-address]], [[import-decimal-cells]], [[marketplace-product-import-queue]], [[order-cancel-commissions]], [[panel-image-alt]], [[product-bulk-duplicate-code]], [[product-mass-edit-checks]]

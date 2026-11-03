@@ -8667,6 +8667,10 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
     );
     pg_cf_apply_section_bindings($tree_decoded, $cf_sections);
 
+    // "Step" breaks split the controls into fieldsets shown one at a time;
+    // a form without one is left exactly as it was.
+    $cf_steps = pg_cf_apply_steps($tree_decoded);
+
     // Render the full tree (loop_area present but hidden)
     $rendered = trim(_render_tree_node($tree_decoded, 0, 0));
 
@@ -8700,7 +8704,8 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
                      ($cf_contact_off ? '<input type="hidden" name="connect_to_contact" value="false">' : '') .
                      ($cf_staff ? '<input type="hidden" name="office_use_only" value="true">' : '');
 
-        $rendered = $form_open . $rendered . pg_cf_validation_script() . '</form>';
+        $rendered = $form_open . $rendered . pg_cf_validation_script()
+                  . ($cf_steps > 1 ? pg_cf_steps_script() : '') . '</form>';
     }
 
     $values = array(
