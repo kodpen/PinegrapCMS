@@ -304,7 +304,7 @@ foreach (pg_ltd_reports(5) as $r) {
     }
     if (!empty($r['more'])) $lines .= '<li class="fg-secondary">' . h(lang(array('string' => '{var:1} more lines', 'vars' => array(pg_format_number($r['more'], 0))))) . '</li>';
     $output_runs .= '
-        <details class="mb-3"><summary>' . h(get_absolute_time(array('timestamp' => (int)($r['finished'] ?? $r['started'])))) . ' · '
+        <details class="mb-3"><summary>' . h(get_absolute_time(array('timestamp' => (int)($r['finished'] ?? $r['started']), 'format' => 'plain_text'))) . ' · '
         . h(lang(array('string' => '{var:1} styles, {var:2} pages, {var:3} components, {var:4} widgets, {var:5} skipped, {var:6} failed',
             'vars' => array($c['styles'], $c['pages'], $c['components'], $c['widgets'], $c['skipped'], $c['failed'])))) . ' · ' . h((string)$r['username']) . '</summary>
             <ul class="small mb-0 mt-1 ps-12">' . $lines . '</ul></details>';
