@@ -20,7 +20,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `contacts`: done #4624
 
-- `content`: open, partly hunted (#5343 #5364: product and group address names; #5387: e-mail charset; #5443: image tag rewrite after an image save; #5515: `escape_regex()` and the edit-mode image button; checked: address name, transliteration, byte sizes, thumbnails, charset, month names, URL ids, form-data variables, image tags, links disabled in content, layout render; next worker starts at `get_form_info()`, the submitted-form content functions, catalog search and `get_catalog_item_from_url()`)
+- `content`: open, partly hunted (#5343 #5364: product and group address names; #5387: e-mail charset; #5443: image tag rewrite after an image save; #5515: `escape_regex()` and the edit-mode image button; #5864: catalog item address from the page parameter; checked: catalog search, address name, transliteration, byte sizes, thumbnails, charset, month names, URL ids, form-data variables, image tags, links disabled in content, layout render; next worker starts at `get_form_info()` and the submitted-form content functions (product form with fields checked))
 
 - `core`: open
 
