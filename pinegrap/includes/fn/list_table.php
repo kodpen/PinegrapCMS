@@ -813,6 +813,7 @@ function pg_list_table_html(array $source, array $page, $label, $actions = '')
     $output = '<div class="pg-list-table" data-pg-list-table="' . h($source['list']) . '"'
         . ' data-pg-list-mode="' . ($source['all'] ? 'browser' : 'server') . '"'
         . (!empty($source['printed']) ? ' data-pg-list-printed="1"' : '')
+        . (!empty($source['ids_field']) ? ' data-pg-list-ids-field="' . h($source['ids_field']) . '"' : '')
         . ' data-pg-list-columns="' . h((string) json_encode(pg_list_table_client_columns($columns), $json)) . '"'
         . ' data-pg-list-params="' . h((string) json_encode((object) $source['params_out'], $json)) . '"'
         . ' data-pg-list-sort="' . h(pg_list_sort_value($source['levels'])) . '"'
@@ -868,6 +869,10 @@ function pg_list_table_html(array $source, array $page, $label, $actions = '')
         . '<button type="button" class="btn btn-sm btn-text theme-secondary pg-list-table-details-close" aria-label="' . h(lang('Close')) . '" title="' . h(lang('Close')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>'
         . '<div class="pg-list-table-details-body"></div></aside></div>';
     $output .= '<div class="visually-hidden" aria-live="polite" data-pg-list-live></div>';
+
+    if (!empty($source['ids_field'])) {
+        $output .= '<span class="pg-list-table-ids" hidden></span>';
+    }
 
     return $output . '</div>';
 }
@@ -1058,7 +1063,11 @@ function pg_list_table_printed_lists()
  *                    'sort'), 'levels' (the sort, e.g. pg_list_state()'s
  *                    'sorts'), 'rows' (list of array('id', 'class', 'cells'
  *                    => key => pg_list_cell())), 'edit' (quick edit, as
- *                    pg_list_table_source() takes it)
+ *                    pg_list_table_source() takes it), 'ids_field' (the
+ *                    name of the form field the selected ids are posted in,
+ *                    e.g. 'styles[]', for a screen whose bulk endpoint reads
+ *                    a list of ids: the driver keeps one hidden field per
+ *                    selected row inside the list)
  * @return array array('source' => pg_list_table_source(), 'page' => the
  *               page pg_list_table_html() prints)
  */
@@ -1082,6 +1091,7 @@ function pg_list_table_printed(array $spec)
 
     $source['levels'] = pg_list_table_levels(isset($spec['levels']) && is_array($spec['levels']) ? $spec['levels'] : array(), $source['columns']);
     $source['printed'] = in_array($source['list'], pg_list_table_printed_lists(), true);
+    $source['ids_field'] = (isset($spec['ids_field']) && is_string($spec['ids_field']) && preg_match('/^[a-z][a-z0-9_]*(\[\])?$/', $spec['ids_field'])) ? $spec['ids_field'] : '';
     $rows = array_values(isset($spec['rows']) && is_array($spec['rows']) ? $spec['rows'] : array());
 
     return array(

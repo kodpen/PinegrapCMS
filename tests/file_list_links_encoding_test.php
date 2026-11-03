@@ -27,7 +27,7 @@ function test_file_lists_encode_send_to_and_file_name()
 	$cases = array(
 		'view_design_files.php' => array(
 			"data-pg-image-edit=\"' . h(\$file['name']) . '\"",
-			"/edit_design_file.php?id=' . \$file['id'] . '&send_to=' . h(escape_javascript(urlencode(REQUEST_URL))) . '",
+			"edit_design_file.php?id=' . (int) \$file['id'] . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '\"",
 		),
 	);
 

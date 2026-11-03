@@ -1,6 +1,6 @@
 ---
 name: list-table-driver-lists
-description: Which screens are on the list table driver (pages, users, contacts, submitted forms, products, menus, short links): their sources, columns, bulk actions through the resolver, what each keeps
+description: Which screens are on the list table driver (pages, users, contacts, submitted forms, products, the printed lists): their sources, columns, bulk actions through the resolver, what each keeps
 module: list_table, submitted_form_list
 ---
 
@@ -12,6 +12,7 @@ module: list_table, submitted_form_list
 - Products (`view_products`, `pg_product_list_source()`, TD7b): the first list with quick edit (`ui/product-list-paging.md`). Modify Selected, Assign Barcodes and Delete Selected post `selection` + `list_params` to `edit_products.php` (`pg_product_list_selected_ids()`). No `created` (products keep only the last change).
 
 - Printed whole in browser mode (`pg_list_table_printed()`, TD9a): menus (`view_menus.php`, the name opens the menu's items) and short links (`view_short_links.php`, the name opens the editor, a Visit column for a link with an address). Neither has bulk actions; their old action buttons became the name link.
+- Printed whole, TD9b: themes, containers, comments (its verified and question filters stay server filters; the old session search is gone, the box searches the rows), styles (Delete Selected posts `styles[]` to `delete_styles.php`; a classic style's "Open in the visual designer" is an actions column) and design files (Modify Selected and Delete Selected post `files[]` to `edit_files.php`; thumbnails through `data-pg-thumb`; a file in an archived folder is an italic row). The name links to the editor (`data-pg-open`) everywhere.
 
 ## What do they share?
 - Each screen prints its source's first batch with `pg_list_table_html()`, a search box `data-pg-list-search="<list>"`, a hidden `selection` field filled from `pg-list-table:selection` and a `list_params` field; its bulk endpoint calls the list's `pg_<list>_list_selected_ids()` (`null` above 10,000 rows, refused with a "Too many … are selected" message).

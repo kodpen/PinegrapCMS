@@ -42,7 +42,6 @@ function test_content_lists_check_marks_named()
 		'view_regions.php' => 3,
 		'view_fields.php' => 2,
 		'view_menu_items.php' => 1,
-		'view_design_files.php' => 1,
 	);
 
 	foreach ($paths as $path => $count) {
@@ -54,6 +53,7 @@ function test_content_lists_check_marks_named()
 	// Printed lists on the list table driver draw their marks with
 	// pg_list_table_check_cell(), which names them.
 	pg_assert_same(3, substr_count(content_lists_source('view_comments.php'), 'pg_list_table_check_cell('), 'view_comments.php: check cells');
+	pg_assert_same(1, substr_count(content_lists_source('view_design_files.php'), 'pg_list_table_check_cell('), 'view_design_files.php: check cells');
 }
 
 function test_content_lists_folder_and_home_ligatures()
@@ -70,9 +70,9 @@ function test_content_lists_folder_and_home_ligatures()
 
 function test_content_lists_row_checkboxes_named()
 {
-	// The pages list selects by row on the list table driver: no checkboxes.
+	// The pages and design files lists select by row on the list table
+	// driver: no checkboxes.
 	$expect = array(
-		'view_design_files.php' => '$file[\'name\']',
 		'view_fields.php' => '$name',
 	);
 
@@ -88,7 +88,7 @@ function test_content_lists_file_download_and_thumbnail()
 		pg_assert_false(strpos($source, 'download="\' . h($file[\'type\']) . \'"') !== false, $path . ': file type as download name');
 		pg_assert_contains('download="\' . h($file[\'name\']) . \'"', $source, $path);
 		pg_assert_contains('style="width: 50px;height:50px;object-fit:cover;"', $source, $path);
-		pg_assert_contains('data-src="\' . h(PATH . encode_url_path($file[\'name\'])) . \'"', $source, $path);
+		pg_assert_contains('data-pg-thumb="\' . h(pg_image_panel_thumb_url(PATH . encode_url_path($file[\'name\']))) . \'"', $source, $path);
 	}
 }
 

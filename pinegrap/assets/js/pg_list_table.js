@@ -1071,9 +1071,36 @@
         this.empty.hidden = this.browser ? (this.order().length > 0) : (this.tbody.rows.length > 0);
         this.more.hidden = !this.next || this.loading || !!this.failed;
 
+        this.fillIds();
+
         this.root.dispatchEvent(new CustomEvent('pg-list-table:selection', {
             detail: { count: count, payload: this.selection.payload(this.condition()) }
         }));
+    };
+
+    /**
+     * A printed list whose bulk endpoint reads a list of ids
+     * (data-pg-list-ids-field, e.g. styles[]): one hidden field per selected
+     * row, posted with the screen's form.
+     */
+    Driver.prototype.fillIds = function () {
+        var name = this.root.getAttribute('data-pg-list-ids-field');
+        var box = name ? this.root.querySelector('.pg-list-table-ids') : null;
+
+        if (!box || this.selection.all) {
+            return;
+        }
+
+        box.textContent = '';
+
+        keys(this.selection.ids).forEach(function (id) {
+            var input = document.createElement('input');
+
+            input.type = 'hidden';
+            input.name = name;
+            input.value = id;
+            box.appendChild(input);
+        });
     };
 
     Driver.prototype.condition = function () {
