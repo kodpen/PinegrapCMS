@@ -164,6 +164,7 @@ function test_design_template_cafe_clinic_privacy_page()
 		'pinegrap-salon'  => array('sl-book-consent'),
 		'pinegrap-launch' => array('lx-ti-consent', 'lx-sr-consent'),
 		'pinegrap-dealership' => array('dl-td-consent', 'dl-ti-consent', 'dl-fi-consent'),
+		'pinegrap-market' => array('mk-ap-consent', 'mk-hp-consent'),
 	);
 	foreach ($consents as $id => $boxes) {
 		$tpl = _test_tpl_cafe_load($id);
