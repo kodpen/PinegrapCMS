@@ -387,6 +387,7 @@ function pg_audit_view_record_url($type, $id)
         // view_return.php asks for commerce access; every role that opens
         // the audit trail (Manager and above) has it.
         'order_return' => 'view_return.php?id=',
+        'store_credit' => 'edit_gift_card.php?id=',
     );
 
     if (isset($screens[$type]) && ($id > 0)) {
@@ -413,6 +414,7 @@ function pg_audit_view_record_tables()
         'offer'   => array('offers', 'id'),
         'contact' => array('contacts', 'id'),
         'order_return' => array('order_returns', 'id'),
+        'store_credit' => array('gift_cards', 'id'),
     );
 }
 
@@ -574,6 +576,7 @@ function pg_audit_view_labels($kind)
             'page'         => lang('Page'),
             'order'        => lang('Order'),
             'order_return' => lang('Return request'),
+            'store_credit' => lang('Store credit'),
             'file'         => lang('File'),
             'offer'        => lang('Offer'),
             'contact'      => lang('Contact'),

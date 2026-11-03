@@ -147,6 +147,8 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_imports();                 // 11.0.156
 	upgrade_2026_11_0_bookings();                // 11.0.157
 	upgrade_2026_11_0_form_fee();                // 11.0.158
+	upgrade_2026_11_0_store_credit();            // 11.0.159
+	upgrade_2026_11_0_user_disabled();           // 11.0.160
 
 }
 
@@ -4718,6 +4720,31 @@ function upgrade_2026_11_0_imports() {
 
 }
 
+// Disabled users and imported authors (2026.11.0, 11.0.160; includes/fn/auth.php,
+// includes/import/write_user.php). user.user_disabled_at is 0 for an enabled
+// account, else the moment it was disabled: such an account matches no
+// credential (password, reset link, provider, passkey, API key) and a live
+// session ends at its next request. A stamp, not a flag, so "since when"
+// costs nothing. Every account on a running site stays enabled.
+// import_items.kind gains 'user' for the authors a WordPress import makes,
+// so the undo can remove one that nobody has taken over.
+function upgrade_2026_11_0_user_disabled() {
+
+	install_add_column('user', 'user_disabled_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	// Widened only when the value is missing, so a second run rebuilds nothing.
+	$info = install_column_info('import_items', 'kind');
+
+	if (is_array($info) && (strpos((string) $info['Type'], "'user'") === false)) {
+		install_modify_column('import_items', 'kind', "ENUM('record','page','file','comment','contact','product','redirect','user') NOT NULL DEFAULT 'record'");
+	} else {
+		install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'import_items.kind user')));
+	}
+
+	install_note('Users: an account can be disabled on the user screen; a disabled account cannot sign in. Every existing account stays enabled.');
+
+}
+
 // Appointment bookings (2026.11.0, 11.0.157; includes/fn/bookings.php).
 // booking_services are what can be booked (length and buffers in minutes,
 // price in minor units), booking_staff the panel users who take bookings with
@@ -4807,5 +4834,23 @@ function upgrade_2026_11_0_form_fee() {
 	install_add_index('forms', 'idx_order_id', "INDEX idx_order_id (order_id)");
 
 	install_note('Forms: a form made in the visual designer can ask for a fee, charged as a one-line order of a product; every existing form stays free.');
+
+}
+
+// Store credit (2026.11.0, 11.0.159; includes/fn/store_credit.php): a gift
+// card bound to a customer. Every existing card keeps user_id 0 and kind
+// 'gift', so it stays a plain gift card. expires_at is the moment the card
+// stops (unix time, 0 = never); expiration_date is still what the checkout
+// reads, and the writer fills both.
+function upgrade_2026_11_0_store_credit() {
+
+	install_add_column('gift_cards', 'user_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('gift_cards', 'kind', "ENUM('gift','points','refund','manual') NOT NULL DEFAULT 'gift'");
+	install_add_column('gift_cards', 'reason', "VARCHAR(255) NOT NULL DEFAULT ''");
+	install_add_column('gift_cards', 'issued_by', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('gift_cards', 'expires_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('gift_cards', 'idx_user', "INDEX idx_user (user_id)");
+
+	install_note('Gift cards: a card can belong to a customer as store credit, with where it came from, why it was issued and when it expires.');
 
 }

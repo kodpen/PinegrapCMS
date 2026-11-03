@@ -17,6 +17,7 @@
 if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_home.php');
 // initialize function that can generate HTML for a system style based on the layout and cells that were submitted which are in the areas array
 function get_system_style_code($layout, $areas, $style_name, $empty_cell_width_percentage, $additional_body_classes)
 {
@@ -3570,9 +3571,9 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         $sitemap = 0;
     }
     // Only staff may promote a page to home; other roles keep the stored
-    // flag (UPDATE) or get '' (INSERT).
+    // flag (UPDATE) or get 'no' (INSERT). page_home is ENUM('no','yes').
     $can_set_home = ((int)$user['role'] < 3);
-    $home_str     = ($can_set_home && $flag('page_home')) ? 'yes' : '';
+    $home_str     = pg_page_home_value(($can_set_home && $flag('page_home')) ? 'yes' : 'no');
 
 
     $folder      = (int)(isset($page['page_folder']) ? $page['page_folder'] : 0);
@@ -3814,6 +3815,12 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
         $page_created = true;
         update_tag_cloud_keywords_for_page($page_id, $search, $keywords, 0, '');
         log_activity(lang(array('string' => 'page ({var:1}) was created', 'vars' => array($name))), $_SESSION['sessionusername']);
+    }
+
+    // The site has one home page: a page saved as the home page takes the
+    // flag from every other page (includes/fn/page_home.php).
+    if ($page_id > 0 && $home_str === 'yes') {
+        pg_page_home_claim($page_id);
     }
 
     // The texts written with AI (page.ai_fields): the columns the editor
@@ -9220,7 +9227,7 @@ function pg_design_template_install($template_id, $user, $opts = array())
     // One home page: the one just marked.
     $home_page_id = ($home_key !== '' && isset($id_map[$home_key])) ? (int)$id_map[$home_key] : 0;
     if ($home_page_id > 0) {
-        db("UPDATE page SET page_home = '' WHERE page_home = 'yes' AND page_id <> '$home_page_id'");
+        pg_page_home_claim($home_page_id);
     }
 
     // The scores the pages list shows, as the editor's save leaves them.

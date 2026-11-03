@@ -1595,6 +1595,11 @@ function initialize_user()
     ) {
         $token_user_id = pg_auth_token_verify($_COOKIE['software']['auth']);
 
+        // A disabled account's token signs nobody in.
+        if ($token_user_id && pg_auth_user_disabled($token_user_id)) {
+            $token_user_id = false;
+        }
+
         if ($token_user_id) {
 
             $user = pg_load_user_row($token_user_id);
@@ -1628,7 +1633,8 @@ function initialize_user()
             session_destroy();
             setcookie('software[auth]', '', time() - 1000, '/');
             unset($_COOKIE['software']['auth']);
-        } else {
+        } elseif (!pg_auth_user_disabled((int) $_SESSION['sessionuserid'])) {
+            // A disabled account's live session is treated as signed out.
             $user = pg_load_user_row((int) $_SESSION['sessionuserid']);
         }
     }

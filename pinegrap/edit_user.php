@@ -279,7 +279,7 @@ if (!$_POST) {
             contacts.first_name,
             contacts.last_name,
             contacts.email_address,
-            contacts.member_id
+            contacts.member_id" . (pg_user_has_disabled_at() ? ", user.user_disabled_at" : "") . "
         FROM user
         LEFT JOIN contacts ON user.user_contact = contacts.id
         WHERE user_id = ?";
@@ -351,7 +351,8 @@ if (!$_POST) {
     // however we just decided to prevent this because there is really no reason to allow it and
     // it might cause confusing log messages eventually (e.g. "example_username -> example_username").
     // It might also cause confusion for the user about what happens if they do that.
-    if ($id != USER_ID) {
+    // Not offered for a disabled account, which login_as_user.php refuses.
+    if (($id != USER_ID) && !pg_user_is_disabled($row)) {
         $output_login_as_user_button = '<a class="btn btn-sm btn-outline theme-secondary rounded-pill px-5" href="login_as_user.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-box-arrow-in-right me-1"></i>' . lang('Login as User') . '</a>';
     }
 
@@ -402,7 +403,7 @@ if (!$_POST) {
         if (($user['role'] == 0) && ($role == 0)) {
 
             $another_administrator = db_value("SELECT user_id FROM user
-                WHERE (user_role = '0') AND (user_id != '" . escape($id) . "')");
+                WHERE (user_role = '0') AND (user_id != '" . escape($id) . "')" . pg_user_enabled_sql() . " LIMIT 1");
 
             if ($another_administrator == '') {
                 $allow_role_change   = false;
@@ -410,6 +411,29 @@ if (!$_POST) {
                 $role_cards_disabled = true;
             }
         }
+    }
+
+    // The "Account enabled" switch, once the column exists. A disabled
+    // account matches no credential (pg_user_is_disabled()). One's own
+    // account and the last enabled administrator cannot be switched off: the
+    // switch is drawn locked, posts nothing, and the save checks again.
+    $output_account_enabled_field = '';
+
+    if (pg_user_has_disabled_at()) {
+        $account_enabled = !pg_user_is_disabled($row);
+        $may_disable = pg_user_form_may_disable($id, USER_ID);
+
+        $output_account_enabled_field =
+            '<div class="col-12">
+                ' . ($may_disable ? '<input type="hidden" name="account_enabled_drawn" value="1" />' : '') . '
+                <div class="form-field">
+                    <div class="switch"><input type="checkbox"' . ($account_enabled ? ' checked="checked"' : '') . ($may_disable ? '' : ' disabled="disabled"') . ' id="account_enabled" name="account_enabled" value="1"/></div>
+                    <label for="account_enabled">' . lang('Account enabled') . '</label>
+                </div>
+                <div class="form-text">' . ($may_disable
+                    ? lang('A disabled account cannot sign in by any means; its content stays.')
+                    : lang('You cannot disable your own account or the last enabled administrator.')) . '</div>
+            </div>';
     }
 
     if ($allow_delete == true) {
@@ -1275,6 +1299,7 @@ if (!$_POST) {
                                             <select class="form-control" name="home_page" id="home_page"><option value="0">[' . lang('None') . ']</option>' . select_page($home) . '</select>
                                             <div class="form-text">' . lang('Opened after signing in.') . '</div>
                                         </div>
+                                        ' . $output_account_enabled_field . '
                                     </div>
 
                                     <hr class="border-subtle-secondary opacity-50 my-5">
@@ -1356,7 +1381,7 @@ if (!$_POST) {
                 FROM user
                 WHERE
                     (user_role = '0')
-                    AND (user_id != ?)";
+                    AND (user_id != ?)" . pg_user_enabled_sql();
             $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             
             // if there is no other administrator user, do not allow user to be deleted
@@ -1532,7 +1557,7 @@ if (!$_POST) {
                 FROM user
                 WHERE
                     (user_role = '0')
-                    AND (user_id != ?)";
+                    AND (user_id != ?)" . pg_user_enabled_sql();
             $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
             
             // if there is no other administrator user, do not allow the role to be changed
@@ -1612,6 +1637,23 @@ if (!$_POST) {
         // column exists.
         $sql_erp_readonly = ((defined('ERP_ENABLED') && ERP_ENABLED) ? pg_user_erp_readonly_sql('set') : '');
 
+        // The "Account enabled" switch, written only when it was drawn
+        // unlocked and the rule still allows it: switched off it stamps the
+        // time once (an account already disabled keeps its date), switched on
+        // it clears it.
+        $sql_disabled = '';
+        $disabling = false;
+
+        if (pg_user_has_disabled_at() && isset($_POST['account_enabled_drawn'])
+            && pg_user_form_may_disable($audit_user_id, USER_ID)) {
+            if (($_POST['account_enabled'] ?? '') === '1') {
+                $sql_disabled = " user_disabled_at = 0,";
+            } else {
+                $sql_disabled = " user_disabled_at = IF(user_disabled_at = 0, UNIX_TIMESTAMP(), user_disabled_at),";
+                $disabling = !pg_user_id_is_disabled($audit_user_id);
+            }
+        }
+
         // The only write to the user row in this save; the rest go to the
         // access lists.
         $audit_before = pg_audit_fetch('user', $audit_user_id);
@@ -1623,6 +1665,7 @@ if (!$_POST) {
                 user_username = '" . escape($username) . "',
                 user_email = '" . escape($_POST['email'] ?? '') . "',
                 $sql_role
+                $sql_disabled
                 user_home = '" . escape($_POST['home_page'] ?? '') . "',
                 user_badge = '" . escape($_POST['badge'] ?? '') . "',
                 user_badge_label = '" . escape($_POST['badge_label'] ?? '') . "',
@@ -1652,6 +1695,12 @@ if (!$_POST) {
         }
 
         pg_audit_record('update', 'user', $audit_user_id, $audit_before);
+
+        // A disabled account keeps no remembered device: its tokens are
+        // retired with the switch, as a password reset retires them.
+        if ($disabling) {
+            pg_auth_token_revoke_user($audit_user_id);
+        }
 
         pg_user_form_save_access($_POST['id'] ?? '', $saved_role, $_POST, true);
 

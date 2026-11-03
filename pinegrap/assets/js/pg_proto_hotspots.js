@@ -753,6 +753,25 @@
         return null;
     }
 
+    // What an arrow from a link row may end on, as the keyboard menu lists
+    // it: every item of a layout (tab frames, then chips) that gives an
+    // href, each { id, href }, an href once (the first item giving it).
+    function drawTargets(laid, env) {
+        var out = [];
+        var seen = {};
+
+        ((laid && laid.frames) || []).concat((laid && laid.chips) || []).forEach(function (item) {
+            var href = hrefTo(item, env);
+
+            if (href !== null && !has(seen, href)) {
+                seen[href] = true;
+                out.push({ id: item.id, href: href });
+            }
+        });
+
+        return out;
+    }
+
     function attrValue(value) {
         return '"' + String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '"';
     }
@@ -834,6 +853,7 @@
         drawable: drawable,
         hrefTo: hrefTo,
         setHtmlHref: setHtmlHref,
-        hrefPatch: hrefPatch
+        hrefPatch: hrefPatch,
+        drawTargets: drawTargets
     };
 })();
