@@ -3219,6 +3219,8 @@ function pg_image_editor_strings_motion()
         'tool_motion'          => lang('Animate'),
         'hintMotion'           => lang('Select a layer and give it an entrance, a loop and an exit. K: play or pause'),
         'motionPick'           => lang('Select a layer to give it motion.'),
+        'motionNothing'        => lang('Add a text or a sticker, then give it motion here.'),
+        'motionAddSticker'     => lang('Add a sticker'),
         'motionStill'          => lang('A redaction does not move: what it hides would show.'),
         'motionLayers'         => lang('{n} layers'),
         'motionIn'             => lang('Entrance'),

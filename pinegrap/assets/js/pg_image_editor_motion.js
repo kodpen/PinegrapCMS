@@ -137,7 +137,7 @@
         }
 
         if (!layers.length) {
-            body.appendChild(el('p', { class: 'pgie-note', text: this.sel.length ? t('motionStill') : t('motionPick') }));
+            this.motionEmpty(body);
             this.motionWhole(body);
             return;
         }
@@ -205,6 +205,38 @@
         }
 
         this.motionWhole(body);
+    };
+
+    // Nothing that may move is selected: the layers to pick from, or, with
+    // none yet, a text or a sticker to add.
+    Editor.prototype.motionEmpty = function (body) {
+        var self = this, tools = this.tools.list, start = el('div', { class: 'pgie-actions pgie-mstart' });
+        var movable = this.doc.layers.some(function (l) { return (STILL.indexOf(l.type) < 0) && !l.hidden; });
+
+        if (this.sel.length) {
+            body.appendChild(el('p', { class: 'pgie-note', text: t('motionStill') }));
+            return;
+        }
+
+        if (movable && this.layerList) {
+            body.appendChild(el('p', { class: 'pgie-note', text: t('motionPick') }));
+            this.layerList(body);
+            return;
+        }
+
+        body.appendChild(el('p', { class: 'pgie-note', text: t('motionNothing') }));
+
+        if ((tools.indexOf('text') >= 0) && this.addTextMiddle) {
+            start.appendChild(button('pgie-btn', t('textAdd'), 'text', function () { self.addTextMiddle(); }, true));
+        }
+
+        if (tools.indexOf('sticker') >= 0) {
+            start.appendChild(button('pgie-btn', t('motionAddSticker'), 'sticker', function () { self.pickTool('sticker'); }, true));
+        }
+
+        if (start.childNodes.length) {
+            body.appendChild(start);
+        }
     };
 
     Editor.prototype.motionFields = function (body, l, phase, cur) {
@@ -471,6 +503,8 @@
     };
 
     Editor.prototype.togglePlay = function () {
+        this.previewEnd = null;
+
         if (this.playing) {
             this.pause();
         } else {
@@ -501,6 +535,14 @@
             last = now;
             end = self.motionEnd();
 
+            // A preview of one phase ends at rest (motionPreview()).
+            if ((self.previewEnd !== null) && (self.time >= self.previewEnd)) {
+                self.previewEnd = null;
+                self.stopMotion();
+                self.render();
+                return;
+            }
+
             if (self.time >= end) {
                 if (self.motionRepeat) {
                     self.time = self.time % end;
@@ -521,12 +563,15 @@
     };
 
     Editor.prototype.pause = function () {
+        this.previewEnd = null;
         this.playing = false;
         window.cancelAnimationFrame(this.raf);
         this.render();
     };
 
     Editor.prototype.seek = function (ms) {
+        this.previewEnd = null;
+
         if (this.playing) {
             this.playing = false;
             window.cancelAnimationFrame(this.raf);
@@ -555,20 +600,31 @@
         }
     };
 
-    // A changed phase shows at once: the playhead moves to where it runs.
+    // A changed phase plays once, from its start to its end (one cycle of a
+    // loop), and every layer is then at rest again: the change shows without
+    // leaving the layer at a moment before its entrance, where it is hidden.
+    // Another change while it plays starts it again; Play, a scrub or Pause
+    // end it.
     Editor.prototype.motionPreview = function (phase) {
         var l = this.motionLayers()[0];
 
-        if (!l || this.playing) {
+        if (!l || (this.playing && (this.previewEnd === null))) {
             return;
         }
 
-        var sp = M.motionSpans(l, this.motionEnd());
-        var at = (phase === 'out') ? sp.outStart : ((phase === 'loop') ? sp.loopStart : sp.inStart);
+        var sp = M.motionSpans(l, this.motionEnd()), a = l.anim || {};
+        var from = (phase === 'out') ? sp.outStart : ((phase === 'loop') ? sp.loopStart : sp.inStart);
+        var to = (phase === 'out') ? sp.outEnd : ((phase === 'loop') ? Math.min(sp.loopEnd, sp.loopStart + (Number(a.loop && a.loop.ms) || 0)) : sp.inEnd);
 
-        if ((at !== null) && (at !== undefined)) {
-            this.seek(at);
+        if ((from === null) || (from === undefined) || !(to > from)) {
+            return;
         }
+
+        window.cancelAnimationFrame(this.raf);
+        this.playing = false;
+        this.time = from;
+        this.previewEnd = to;
+        this.play();
     };
 
     // ---- the stage at the playhead ----
@@ -724,6 +780,7 @@
     Editor.inits.push(function () {
         this.time = null;
         this.playing = false;
+        this.previewEnd = null;
         this.raf = 0;
         this.motionTab = 'in';
         this.motionRepeat = true;
