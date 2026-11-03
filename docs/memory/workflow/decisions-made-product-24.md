@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-24
-description: Decisions list, product part 24 (2026-11-01 on): the Visitors overview screen, a daily summary every day, the channel rule, Search Console joined to the pages, the social template's likes and follows
+description: Decisions list, product part 24 (2026-11-01 on): Visitors overview, daily summary, channel rule, Search Console on pages, social likes and follows, image editor's new tools and video
 ---
 
 ## Where are the rules and the earlier parts?
@@ -11,3 +11,6 @@ description: Decisions list, product part 24 (2026-11-01 on): the Visitors overv
 
 ## Social Community template: likes, following members, member-to-member messages (#6296, owner, 2026-11-03)
 - Owner (2026-11-03, `plans/design-template-social.md`, PR #6297): (1) likes on a record are not built now; the template ships 1.0.0 without them; a separate general plan after 2026.11.0, designed together with the ActivityPub counts, brings them as a general feature (its table and schema step are asked in that plan); template 1.1.0 then uses them. (2) A member following another member: not now, the same later plan (a follow table, a follow button on the profile, a viewer filter on lists); "Saved" stays the watcher filter. (3) Private messages between members: not built; the conversation stays member to site. Reason: all three are product behaviour and schema; the template ships without waiting; likes and follows are designed once as general features every template can use; private member messages bring a moderation load (blocking, reports, notifications). Step L of the plan waits for that plan; steps 1-8 go on.
+
+## Image editor: new tools and video editing inside it (2026-11-03)
+- Owner (2026-11-03, `plans/image-editor-steps-3.md`, `-steps-4.md`, `image-editor-video.md`): (1) a placed sticker, icon or emoji can be changed in place; (2) text converts to outlines; (3) scissors for paths, and three shaping tools: warp, shape builder, free deformation; (4) area and subject selection and background removal with an own algorithm first, a downloadable model maybe later as an option; (5) video editing inside the image editor (trim, split, effects, sound added or detached, pictures and animations over video), widening 2026-10-31 (no video) and #4716 (silent videos): sound is allowed; (6) order: the small tools first, then selection and background, the animation steps beside them, video last; (7) a separate commercial package of the editor is set aside: development stays in PinegrapCMS. Reason: Pintura's range plus vector, SVG and video in the CMS's own editor.

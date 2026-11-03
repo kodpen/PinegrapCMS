@@ -28,7 +28,7 @@ description: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion,
 - AN6 (M) Video. `free` after AN4.
   - WebCodecs with the MP4 and WebM muxers, the MediaRecorder fallback, the limits.
 
-- AN7 (M) Scenes. After AN3.
+- AN7 (M) Scenes. `free` (AN3 and AN4 are done).
   - `doc.scenes`, the strip, transitions, the timeline and exports across scenes; the validator's cap on scenes and their layers goes in one at a time with the save-path steps.
   - Left by AN4 (#6229 review): a canvas animation names source 0, so a replace from one canvas may name another canvas's animation as its target; tie it to its own canvas (record the canvas file, and have `pg_image_editor_animation_open()` open it as a canvas).
 
@@ -38,7 +38,7 @@ description: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion,
 - AN9 (M) Keyframes. Done (#6290, `ui/image-editor-keyframes.md`).
   - A layer's position, scale, rotation and opacity at chosen times (diamonds on its track), eased between; moving a layer with the playhead away from 0 sets one; the path shown on the stage.
 
-- AN10 (M) SVG motion. After E15 and AN1.
+- AN10 (M) SVG motion. `free` (E15 and AN1 are done).
   - E19's content (`image-editor-animation-output.md`): the presets as `@keyframes` in the saved SVG.
 
 - AN11 (S) Access and close-out. The holder.
