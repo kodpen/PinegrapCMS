@@ -211,8 +211,9 @@ function test_search_index_parts_wiring()
 	pg_assert_same(4, substr_count($src, '= $search_index_part('), 'every part asks before it is read: page, event, classic record, visual editor record');
 	pg_assert_contains('pg_search_index_marker_write(', $src, 'a small marker names the part being read');
 	pg_assert_contains('pg_search_index_marker_read()', $src, 'and is read back when the item resumes');
-	pg_assert_contains('db(pg_search_index_keep_pages_sql(array($page[\'id\']), $timestamp));', $src, 'a skipped page item keeps its rows');
-	pg_assert_contains('db(pg_search_index_keep_pages_sql(pg_search_index_host_pages($designer_host), $timestamp));', $src, 'a skipped host keeps its records');
+	pg_assert_contains('$search_index_keep = pg_search_index_keep_pages_sql(array($page[\'id\']), $timestamp);', $src, 'a skipped page item keeps its rows');
+	pg_assert_contains('$search_index_keep = pg_search_index_keep_pages_sql(pg_search_index_host_pages($designer_host), $timestamp);', $src, 'a skipped host keeps its records');
+	pg_assert_same(2, substr_count($src, "if (\$search_index_keep !== '') {"), 'never an empty query: a failed one is fatal');
 	pg_assert_contains("pg_search_index_keep_item(encode_url_path(\$file['name']), \$timestamp);", $src, 'a skipped file keeps its row');
 	pg_assert_contains('ORDER BY calendar_events.id ASC', $src, 'events in a fixed order');
 }

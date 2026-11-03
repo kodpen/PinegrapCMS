@@ -307,7 +307,7 @@ $search_index_item = function ($key) use (&$search_index_state, &$search_index_o
 // no cursor and reads every part.
 $search_index_checkpoint = microtime(true);
 
-$search_index_part = function ($part, $written) use (&$search_index_state, &$search_index_run, $search_index_delta) {
+$search_index_part = function ($part, $written) use (&$search_index_state, $search_index_delta) {
     if ($search_index_delta !== null) {
         return $written ? 'done' : 'run';
     }
@@ -423,7 +423,10 @@ foreach ($pages as $page) {
     if ($search_index_step === 'skip') {
         // Its row, events and classic records carry its id: kept, as its
         // render was never reached.
-        db(pg_search_index_keep_pages_sql(array($page['id']), $timestamp));
+        $search_index_keep = pg_search_index_keep_pages_sql(array($page['id']), $timestamp);
+        if ($search_index_keep !== '') {
+            db($search_index_keep);
+        }
         pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note($page['name'], '', lang('A run ended while reading it'), 200, lang('Page')));
         continue;
     }
@@ -1370,7 +1373,10 @@ foreach ((($search_index_state['stage'] === 'designer') && !$search_index_stoppe
     if ($search_index_step === 'skip') {
         // Its records carry their lists' detail pages: kept, as the tick
         // ended outside any of them (in a list's queries).
-        db(pg_search_index_keep_pages_sql(pg_search_index_host_pages($designer_host), $timestamp));
+        $search_index_keep = pg_search_index_keep_pages_sql(pg_search_index_host_pages($designer_host), $timestamp);
+        if ($search_index_keep !== '') {
+            db($search_index_keep);
+        }
         pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note((string) ($designer_host['page']['name'] ?? ''), '', lang('A run ended while reading it'), 200, lang('Page')));
         continue;
     }
