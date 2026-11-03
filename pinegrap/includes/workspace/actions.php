@@ -1275,7 +1275,8 @@ function ws_handle_action($action, $request)
 
             // A macro file posted before channels refused them opens read only: its edit would be refused.
             $editing = !empty($request['edit']) && ws_can_post_channel($viewer, $channel) && !ws_upload_refused($message['file_name']);
-            $office = pg_office_read(FILE_DIRECTORY_PATH . '/' . $stored, $message['file_name'], $editing);
+            // The file may be in the object store: the reader gets a copy.
+            $office = pg_office_read(pg_file_reader_path($stored), $message['file_name'], $editing);
 
             if (!$office['ok']) {
                 return ws_action_error($office['error']);

@@ -290,8 +290,9 @@ function ws_bulk_message_table($viewer, $message_id)
     }
 
     $stored = (string) db_value("SELECT name FROM files WHERE id = '" . (int) $message['file_id'] . "'");
+    $path = pg_file_reader_path($stored);
 
-    if (($stored === '') || !is_file(FILE_DIRECTORY_PATH . '/' . $stored)) {
+    if ($path === '') {
         return array('ok' => false, 'error' => lang('The file could not be read.'), 'table' => array(), 'name' => '');
     }
 
@@ -299,7 +300,7 @@ function ws_bulk_message_table($viewer, $message_id)
         require_once(PG_FUNCTIONS_DIR . '/import_products_f.php');
     }
 
-    $read = ws_bulk_file_table(FILE_DIRECTORY_PATH . '/' . $stored, (string) $message['file_name']);
+    $read = ws_bulk_file_table($path, (string) $message['file_name']);
 
     return $read + array('name' => (string) $message['file_name']);
 }

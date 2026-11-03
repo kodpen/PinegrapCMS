@@ -125,9 +125,10 @@ function ws_file_text_read($file_id, $text_only = false)
         return null;
     }
 
-    $path = FILE_DIRECTORY_PATH . '/' . $row['name'];
+    // The local file, or a copy of one moved to the object store.
+    $path = pg_file_reader_path($row['name']);
 
-    if (!is_file($path) || ((int) @filesize($path) > WS_FILE_TEXT_MAX)) {
+    if (($path === '') || ((int) @filesize($path) > WS_FILE_TEXT_MAX)) {
         return null;
     }
 
@@ -220,9 +221,9 @@ function ws_file_office_edited($message, $changes, $version)
     };
 
     $stored = (string) db_value("SELECT name FROM files WHERE id = '" . (int) $message['file_id'] . "'");
-    $path = FILE_DIRECTORY_PATH . '/' . basename($stored);
+    $path = pg_file_reader_path(basename($stored));
 
-    if (($stored === '') || !is_file($path)) {
+    if (($stored === '') || ($path === '')) {
         return $fail(lang('The file could not be found.'));
     }
 
