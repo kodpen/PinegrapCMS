@@ -24,7 +24,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `core`: open, partly hunted (#5935: `escape_like()` left the backslash as LIKE's escape for the next character in about seventy searches; checked: redirect path, request lists, CSV guard, `escape_javascript()`, `escape_url()`, `truncate()`, `pluralize()`, `encode_url_path()`; next worker starts at `db_connect()` and the db/schema-cache helpers, then the time functions)
 
-- `cron`: done #5889 (lane pick by due time: a resumable pass starved the hourly search index); read: run stamps, clock and tick budget, due-again, catalogue, AI range refresh, interval label, dispatcher, lanes, claim/release, output handler. Left: `pg_cron_release()` clears the row whoever holds it, so a run that outlasts its lock frees a second run's lock (needs an owner token: schema)
+- `cron`: done #5889 (lane pick by due time: a resumable pass starved the hourly search index); read: run stamps, clock and tick budget, due-again, catalogue, AI range refresh, interval label, dispatcher, lanes, claim/release, output handler; done #5930 (`pg_cron_release()` clears only the lock stamp its own claim wrote, no schema)
 
 - `currency_rates`: open, read once with nothing found (log line, fetch, store, rate on a date); a second look or `clean`
 

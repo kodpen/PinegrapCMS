@@ -14,6 +14,10 @@ module: cron
 - The job due longer (last run plus interval) goes first, in its lane (`pg_cron_pick()`, catalogue order on a tie; the legacy dispatcher too) and between lanes (`pg_cron_lane_choice()`, light on a tie). Compared on last run, a pass asking to come back every minute carried a day-old stamp and won every tick: first over the light jobs, then (until the bug-hunt fix) over the hourly search index in the heavy lane for the whole structure or accessibility pass.
 - `seo_a11y_job` and `seo_analyze_job` lock for 600 s, not the default hour: a tick works one budget.
 
+## Whose lock does `pg_cron_release()` clear?
+- Only the one this request's `pg_cron_claim()` took: the claim keeps the `locked_until` it wrote (`pg_cron_lock_stamp()`) and the release clears the row only while it still carries that stamp (`pg_cron_release_query()`, pure). No owner column: a later claim can only take an expired lock and writes a stamp at least a minute ahead, so stamps never repeat.
+- Why (bug hunt): a run that outlasted its lock cleared the lock of the second run that had claimed it after expiry, letting a third start beside it. A release without a claim in the same request now does nothing.
+
 ## How do the health screens tell a finished run from a stamped tick?
 - The dispatcher stamps the job's row after every tick, finished, crashed or declined (`pg_cron_stamp()`), so the rotation moves. Only `pg_cron_ran()`, called by the job at its real end, also writes `<job>_done` (dispatched, not inline jobs: `pg_cron_done_marker()`).
 - System Status, `pg_ops_alerts_check_cron()` and the accessibility screen's "Last full check" read `pg_cron_health_last_runs()`: the `_done` time stands for the job when present (`pg_cron_health_runs()`, pure). Before, a crashed index run or an accessibility pass cut at its budget showed healthy and "No problem found".
@@ -22,4 +26,4 @@ module: cron
 ## Where does the accessibility pass keep its place?
 - `data/temp/seo_a11y.json` written after every page, not only when the budget runs out: a killed process carries on after the last page checked.
 
-Test: `tests/cron_resume_test.php`.
+Tests: `tests/cron_resume_test.php`, `tests/cron_test.php`.
