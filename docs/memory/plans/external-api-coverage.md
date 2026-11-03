@@ -25,9 +25,9 @@ description: External API (integration.php): find what the panel can do that the
   - X8b `/store/ship-date-adjustments`, `/store/verified-addresses` CRUD (409 `adjustment_taken`): PR #6308.
   - X8c `/store/arrival-dates` CRUD with `shipping_cutoffs` (a row the screen drops is 422): PR #6332 (`api/api-store-arrival-dates.md`).
 - X9 Campaigns, `campaigns:*`, cut in three:
-  - X9a `/campaigns/profiles` CRUD through one write function the profile screens call too: in progress.
+  - X9a `/campaigns/profiles` CRUD, one write function shared with the screens.
   - X9b `GET /campaigns/sms`, event `campaign.sent`.
-  - X9c `POST /campaigns` (draft), `POST /campaigns/{id}/schedule`; it moves `add_email_campaign.php`'s write, so it waits for the B11 redesign PR of that screen.
+  - X9c `POST /campaigns` (draft), `.../schedule`; waits for B11 (`add_email_campaign.php`).
 - X10 Calendars create/update/delete, `/calendars/locations` CRUD, `GET /calendars/events/{id}/reservations`. `calendars:*` with the role-3 row rule. Event `calendar_event.reserved`.
 - X11 `POST /forms/{id}/submissions`, its `/delete`, `GET /forms/{id}/fields`. `forms:*`. Event `form.submission.deleted`; `form.submitted` exists.
 - X12 CRUD for ads, ad regions, auto dialogs, common regions under `/design/`. `design:*`. No events.
