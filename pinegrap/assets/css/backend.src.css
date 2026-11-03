@@ -7155,6 +7155,21 @@ button.pg-job-open {
   margin-bottom: 1.1rem;
 }
 
+/* The footer's two parts (product name, version and year) carry only
+   mx-auto, which leaves no space once both fit on one line: a gap keeps them
+   apart, and on a phone they stand one under the other. */
+#footer {
+  column-gap: 0.75rem;
+  row-gap: 0.25rem;
+}
+@media (max-width: 575.98px) {
+  #footer {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+}
+
 /* Dark theme */
 html[data-bs-theme="dark"] body:not(.advanced-visuals) .card.widget {
   --bs-card-border-color: #3b3b3b;

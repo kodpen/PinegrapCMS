@@ -254,7 +254,7 @@
     "Cancellation reason": "İptal nedeni",
     "Cancellation reason (cancellation form)": "İptal nedeni (iptal formu)",
     "Cancellation reason (optional)": "İptal nedeni (opsiyonel)",
-    "Cancelled": "İptal Edildi",
+    "Cancelled": "İptal edildi",
     "Cancelled (1 or empty)": "İptal edildi (1 ya da boş)",
     "Cancelled at the provider": "Sağlayıcıda iptal edildi",
     "Cancelled automatically: bank transfer not received within {var:1} days.": "Otomatik iptal: havale {var:1} gün içinde alınmadı.",
