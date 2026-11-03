@@ -2859,6 +2859,113 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'calendars.locations',
+			'method'  => 'GET',
+			'path'    => '/calendars/locations',
+			'scope'   => 'calendars:read',
+			'handler' => 'api_calendar_locations_list',
+			'returns' => array('list' => 'CalendarLocation'),
+			'summary' => 'The event locations',
+			'description' => 'The rooms, buildings and other places events are held in, shared by every calendar, with how many events book each one. One page; a site has a handful. The location screens open to roles 0 to 2 only: an owner with the user role is refused (403 forbidden).',
+			'params'  => array()
+		),
+
+		array(
+			'id'      => 'calendars.location_get',
+			'method'  => 'GET',
+			'path'    => '/calendars/locations/{id}',
+			'scope'   => 'calendars:read',
+			'handler' => 'api_calendar_locations_get',
+			'returns' => 'CalendarLocation',
+			'summary' => 'One event location',
+			'description' => 'Refused to an owner with the user role (403 forbidden).',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.location_create',
+			'method'  => 'POST',
+			'path'    => '/calendars/locations',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendar_locations_create',
+			'dry_run' => true,
+			'returns' => 'CalendarLocation',
+			'status'  => 201,
+			'summary' => 'Add an event location',
+			'description' => 'A new location, as on the location screen. Names are unique: 409 name_taken when another location has it. An event books it on the event\'s own screen. Refused to an owner with the user role (403 forbidden).',
+			'params'  => array(
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.location_update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/calendars/locations/{id}',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendar_locations_update',
+			'dry_run' => true,
+			'returns' => 'CalendarLocation',
+			'summary' => 'Rename an event location',
+			'description' => 'Names are unique: 409 name_taken when another location has it. Refused to an owner with the user role (403 forbidden). PATCH is accepted as well, but do not send it to an IIS server. Use POST.',
+			'params'  => array(
+				array('name' => 'id',   'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 100)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.location_delete',
+			'method'  => 'DELETE',
+			'path'    => '/calendars/locations/{id}',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendar_locations_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Remove an event location',
+			'description' => 'With its bookings, as on the location screen: the events that booked it stay, without that location. A dry run answers how many events book it (event_count). Refused to an owner with the user role (403 forbidden).',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.location_delete_post',
+			'method'  => 'POST',
+			'path'    => '/calendars/locations/{id}/delete',
+			'scope'   => 'calendars:write',
+			'handler' => 'api_calendar_locations_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Remove an event location, addressed as a POST',
+			'description' => 'The same removal as DELETE /calendars/locations/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'calendars.event_reservations',
+			'method'  => 'GET',
+			'path'    => '/calendars/events/{id}/reservations',
+			'scope'   => 'calendars:read',
+			'handler' => 'api_calendar_event_reservations',
+			'returns' => array('list' => 'CalendarReservation'),
+			'summary' => 'The reservations of an event',
+			'description' => 'The order lines of placed orders that reserve the event, oldest first, cursor paged; carts not yet ordered are left out. A cancelled order\'s line is listed with its order_status. recurrence_number is the repeat a line reserves (0: the event as a whole, or a repeating event whose repeats share their spots). customer (name, e-mail, contact) is null for an owner who may not open orders. An event on none of the calendars the owner may open is answered 404. The calendar_event.reserved webhook announces each new one.',
+			'params'  => array(
+				array('name' => 'id',                'in' => 'path',  'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'recurrence_number', 'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'Only the reservations of this repeat.'),
+				array('name' => 'limit',             'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',            'in' => 'query', 'type' => 'string', 'max_length' => 200),
+				array('name' => 'include_count',     'in' => 'query', 'type' => 'bool')
+			)
+		),
+
 		/* ----- Webhooks ----------------------------------------------------- */
 
 		array(

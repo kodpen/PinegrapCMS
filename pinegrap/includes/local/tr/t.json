@@ -1076,6 +1076,7 @@
     "The account that owns this application cannot edit this folder.": "Bu uygulamanın sahibi olan hesabın bu klasörde düzenleme yetkisi yok.",
     "The account that owns this application is no longer available.": "Bu uygulamanın sahibi olan hesap artık kullanılamıyor.",
     "The account that owns this application may not create calendars.": "Bu uygulamanın sahibi olan hesap takvim oluşturamaz.",
+    "The account that owns this application may not manage event locations.": "Bu uygulamanın sahibi olan hesap etkinlik konumlarını yönetemez.",
     "The account that owns this application may not publish calendar events.": "Bu uygulamanın sahibi olan hesap takvim etkinliği yayınlayamaz.",
     "The account that signed in on this device is no longer available.": "Bu cihazda oturum açan hesap artık kullanılamıyor.",
     "The account with this tax number. The purchase invoice is written to it.": "Bu vergi numarasının carisi. Alış faturası buna yazılır.",

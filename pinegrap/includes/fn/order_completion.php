@@ -1098,7 +1098,7 @@ function pg_order_complete_lines($order_id, array $lines, array $order)
 
         // Stock and a calendar event's spots.
         pg_order_complete_line_stock($product, $stock_left, $actor, $stock_location_id, $stock_ref);
-        pg_order_complete_line_reservation($product, $contact_id);
+        pg_order_complete_line_reservation($product, $contact_id, array('order_id' => $order_id, 'order_number' => $order['order_number'] ?? 0));
 
         // if contact group has not already been added to array, add it to array
         if (in_array($contact_group_id, $contact_groups) == false) {
@@ -1749,15 +1749,18 @@ function pg_order_complete_line_stock(array $line, array &$stock_left, $actor, $
  * For an order line that reserves a calendar event (calendars on,
  * reservations still on for the event): takes the quantity off the event's
  * remaining spots while the event still limits them (a first reservation
- * starts the count from the initial spots), and creates the event's
- * reserved auto e-mail campaigns for the contact.
+ * starts the count from the initial spots), creates the event's reserved
+ * auto e-mail campaigns for the contact and announces
+ * calendar_event.reserved.
  *
  * @param array $line       calendar_event_id, recurrence_number, reservations,
- *                          limit_reservations, number_of_initial_spots, quantity
+ *                          limit_reservations, number_of_initial_spots,
+ *                          quantity, order_item_id
  * @param int   $contact_id
+ * @param array $order      order_id, order_number
  * @return void
  */
-function pg_order_complete_line_reservation(array $line, $contact_id)
+function pg_order_complete_line_reservation(array $line, $contact_id, array $order = array())
 {
     $calendar_event_id = $line['calendar_event_id'];
     $recurrence_number = $line['recurrence_number'];
@@ -1805,6 +1808,32 @@ function pg_order_complete_line_reservation(array $line, $contact_id)
         'action_item_id' => $calendar_event_id,
         'calendar_event_recurrence_number' => $recurrence_number,
         'contact_id' => $contact_id));
+
+    pg_announce('calendar_event.reserved', pg_order_reservation_event($line, $contact_id, $order));
+}
+
+/**
+ * What calendar_event.reserved carries for an order line that reserved an
+ * event: the event's id as id, the repeat, the spots taken and the order.
+ * Pure.
+ *
+ * @param array $line       calendar_event_id, recurrence_number, quantity,
+ *                          order_item_id
+ * @param int   $contact_id
+ * @param array $order      order_id, order_number
+ * @return array
+ */
+function pg_order_reservation_event(array $line, $contact_id, array $order)
+{
+    return array(
+        'id'                => (int) $line['calendar_event_id'],
+        'recurrence_number' => (int) ($line['recurrence_number'] ?? 0),
+        'quantity'          => (int) ($line['quantity'] ?? 0),
+        'order_item_id'     => (int) ($line['order_item_id'] ?? 0),
+        'order_id'          => (int) ($order['order_id'] ?? 0),
+        'order_number'      => (int) ($order['order_number'] ?? 0),
+        'contact_id'        => ((int) $contact_id > 0) ? (int) $contact_id : null,
+    );
 }
 
 /**

@@ -1275,3 +1275,396 @@ function api_calendars_delete($params) {
 	api_ok(array('id' => $id, 'deleted' => true));
 
 }
+
+/* ----- Event locations ---------------------------------------------------- */
+
+// The event location screens open to roles 0 to 2 only: a user with the
+// calendars right reaches its assigned calendars, not the rooms every calendar
+// shares, so such an owner is refused every location route.
+function api_calendar_locations_require() {
+
+	api_calendars_require();
+
+	$app = api_current_app();
+
+	if ((int)$app['owner']['role'] >= 3) {
+
+		api_fail(403, 'forbidden', lang('The account that owns this application may not manage event locations.'));
+
+	}
+
+}
+
+function api_calendar_location_select() {
+
+	return "SELECT calendar_event_locations.id, calendar_event_locations.name,
+			calendar_event_locations.created_timestamp, calendar_event_locations.last_modified_timestamp,
+			(SELECT COUNT(*) FROM calendar_events_calendar_event_locations_xref
+				WHERE calendar_events_calendar_event_locations_xref.calendar_event_location_id = calendar_event_locations.id) AS event_count
+		FROM calendar_event_locations";
+
+}
+
+// The shape of an event location on the wire. event_count is how many events
+// book it.
+function api_calendar_location_present($row) {
+
+	return array(
+		'id'          => (int)$row['id'],
+		'name'        => (string)$row['name'],
+		'event_count' => (int)$row['event_count'],
+		'created_at'  => api_time($row['created_timestamp']),
+		'updated_at'  => api_time($row['last_modified_timestamp'])
+	);
+
+}
+
+function api_calendar_location_schema() {
+
+	return array(
+		'id'          => 'integer',
+		'name'        => 'string',
+		'event_count' => 'integer',
+		'created_at'  => 'string?',
+		'updated_at'  => 'string?'
+	);
+
+}
+
+function api_calendar_location_or_fail($id) {
+
+	$row = api_row(api_calendar_location_select() . " WHERE calendar_event_locations.id = '" . (int)$id . "' LIMIT 1");
+
+	if ($row === null) {
+
+		api_fail_not_found(lang('Event location'));
+
+	}
+
+	return $row;
+
+}
+
+// The name a location write sends: required and unused by another location,
+// as on the location screens (pg_calendar_event_location_form_name_in_use()).
+function api_calendar_location_name_in($name, $except_id = 0) {
+
+	$name = trim((string)$name);
+
+	if ($name === '') {
+
+		api_fail_validation(lang('Name is required.'), 'name');
+
+	}
+
+	$taken = pg_calendar_location_name_taken($name, $except_id);
+
+	if ($taken === null) {
+
+		api_fail_server();
+
+	}
+
+	if ($taken) {
+
+		api_fail(409, 'name_taken', lang('The name that you entered is already in use, so please enter a different name.'), 'name');
+
+	}
+
+	return $name;
+
+}
+
+function api_calendar_locations_list($params) {
+
+	api_calendar_locations_require();
+
+	$out = array();
+
+	foreach (api_rows(api_calendar_location_select() . "
+		ORDER BY calendar_event_locations.name ASC, calendar_event_locations.id ASC") as $row) {
+
+		$out[] = api_calendar_location_present($row);
+
+	}
+
+	// A site has a handful of rooms, so they come back in one page.
+	api_ok_list($out, max(1, count($out)), null);
+
+}
+
+function api_calendar_locations_get($params) {
+
+	api_calendar_locations_require();
+
+	api_ok(api_calendar_location_present(api_calendar_location_or_fail($params['id'])));
+
+}
+
+// A new location, as on add_calendar_event_location.php.
+function api_calendar_locations_create($params) {
+
+	api_calendar_locations_require();
+
+	$app = api_current_app();
+
+	$name = api_calendar_location_name_in(isset($params['name']) ? $params['name'] : '');
+
+	api_dry_run_stop('created', 'calendar_location', array('name' => $name));
+
+	$id = pg_calendar_location_save(0, $name, (int)$app['owner']['id']);
+
+	if ($id <= 0) {
+
+		api_fail_server();
+
+	}
+
+	api_calendar_log('Event location ({var:1}) was created through the API by the application {var:2} (key {var:3}).', $name);
+
+	api_ok(api_calendar_location_present(api_calendar_location_or_fail($id)), 201);
+
+}
+
+// A location's name, as on edit_calendar_event_location.php.
+function api_calendar_locations_update($params) {
+
+	api_calendar_locations_require();
+
+	$app = api_current_app();
+
+	$row = api_calendar_location_or_fail($params['id']);
+
+	$id = (int)$row['id'];
+
+	if (!isset($params['name'])) {
+
+		api_fail_validation(lang('No writable field was sent.'));
+
+	}
+
+	$name = api_calendar_location_name_in($params['name'], $id);
+
+	api_dry_run_stop('updated', 'calendar_location', array('id' => $id, 'changes' => array('name')));
+
+	if (pg_calendar_location_save($id, $name, (int)$app['owner']['id']) <= 0) {
+
+		api_fail_server();
+
+	}
+
+	api_calendar_log('Event location ({var:1}) was changed through the API by the application {var:2} (key {var:3}).', $name);
+
+	api_ok(api_calendar_location_present(api_calendar_location_or_fail($id)));
+
+}
+
+// A location with its bookings, as on edit_calendar_event_location.php: the
+// events that booked it stay, without that room.
+function api_calendar_locations_delete($params) {
+
+	api_calendar_locations_require();
+
+	$row = api_calendar_location_or_fail($params['id']);
+
+	$id = (int)$row['id'];
+
+	api_dry_run_stop('deleted', 'calendar_location', array('id' => $id, 'name' => (string)$row['name'], 'event_count' => (int)$row['event_count']));
+
+	if (!pg_calendar_location_delete($id)) {
+
+		api_fail_server();
+
+	}
+
+	api_calendar_log('Event location ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).', (string)$row['name']);
+
+	api_ok(array('id' => $id, 'deleted' => true));
+
+}
+
+/* ----- Reservations ------------------------------------------------------- */
+
+// An event on one of the calendars the owner may open, or 404.
+function api_calendar_event_visible_or_fail($id) {
+
+	$id = (int)$id;
+
+	$row = api_row(api_calendar_event_select() . " WHERE calendar_events.id = '" . $id . "' LIMIT 1");
+
+	$visible = api_calendar_ids_visible();
+
+	if (($row !== null) && ($visible !== null)) {
+
+		$extras = api_calendar_event_extras(array($id));
+
+		if (!array_intersect(isset($extras['calendars'][$id]) ? $extras['calendars'][$id] : array(), $visible)) {
+
+			$row = null;
+
+		}
+
+	}
+
+	if ($row === null) {
+
+		api_fail_not_found(lang('Calendar event'));
+
+	}
+
+	return $row;
+
+}
+
+// Whether the owner may read the customers behind the orders: the order
+// screens open to roles 0 to 2 or the e-commerce right (api_owner_scopes()).
+function api_calendar_owner_reads_orders() {
+
+	$app = api_current_app();
+
+	return ((int)$app['owner']['role'] < 3) || !empty($app['owner']['manage_ecommerce']);
+
+}
+
+// The shape of a reservation on the wire: one order line that reserved the
+// event. customer is null for an owner who may not open orders.
+function api_calendar_reservation_present($row, $with_customer) {
+
+	$customer = null;
+
+	if ($with_customer) {
+
+		$customer = array(
+			'contact_id' => ((int)$row['contact_id'] > 0) ? (int)$row['contact_id'] : null,
+			'name'       => trim((string)$row['billing_first_name'] . ' ' . (string)$row['billing_last_name']),
+			'email'      => (string)$row['billing_email_address']
+		);
+
+	}
+
+	return array(
+		'id'                => (int)$row['id'],
+		'order_id'          => (int)$row['order_id'],
+		'order_number'      => ((int)$row['order_number'] > 0) ? (int)$row['order_number'] : null,
+		'order_status'      => (string)$row['status'],
+		'recurrence_number' => (int)$row['recurrence_number'],
+		'quantity'          => (int)$row['quantity'],
+		'reserved_at'       => api_time($row['order_date']),
+		'customer'          => $customer
+	);
+
+}
+
+function api_calendar_reservation_schema() {
+
+	return array(
+		'id'                => 'integer',
+		'order_id'          => 'integer',
+		'order_number'      => 'integer?',
+		'order_status'      => 'string',
+		'recurrence_number' => 'integer',
+		'quantity'          => 'integer',
+		'reserved_at'       => 'string?',
+		'customer'          => 'CalendarReservationCustomer?'
+	);
+
+}
+
+function api_calendar_reservation_customer_schema() {
+
+	return array(
+		'contact_id' => 'integer?',
+		'name'       => 'string',
+		'email'      => 'string'
+	);
+
+}
+
+// The reservations of an event: the lines of placed orders (not carts) that
+// reserve it, oldest first, cursor paged. A cancelled order's line is listed
+// with its status, as the order keeps it.
+function api_calendar_event_reservations($params) {
+
+	api_calendars_require();
+
+	$event = api_calendar_event_visible_or_fail($params['id']);
+
+	$where = array(
+		"order_items.calendar_event_id = '" . (int)$event['id'] . "'",
+		"orders.status != 'incomplete'"
+	);
+
+	if (isset($params['recurrence_number'])) {
+
+		$where[] = "order_items.recurrence_number = '" . (int)$params['recurrence_number'] . "'";
+
+	}
+
+	$paged = $where;
+
+	if (isset($params['cursor']) && $params['cursor'] !== '') {
+
+		$cursor = api_cursor_decode($params['cursor']);
+
+		if ($cursor === null) {
+
+			api_fail(400, 'invalid_cursor', lang('The cursor is not readable. Start the listing again without one.'), 'cursor');
+
+		}
+
+		$paged[] = "order_items.id > '" . (int)$cursor['i'] . "'";
+
+	}
+
+	$limit = isset($params['limit']) ? (int)$params['limit'] : 50;
+
+	$rows = api_rows("SELECT order_items.id, order_items.order_id, order_items.recurrence_number, order_items.quantity,
+			orders.order_number, orders.status, orders.order_date, orders.contact_id,
+			orders.billing_first_name, orders.billing_last_name, orders.billing_email_address
+		FROM order_items
+		INNER JOIN orders ON orders.id = order_items.order_id
+		WHERE " . implode(' AND ', $paged) . pg_order_item_active_sql() . "
+		ORDER BY order_items.id ASC
+		LIMIT " . ($limit + 1));
+
+	$has_more = (count($rows) > $limit);
+
+	if ($has_more) {
+
+		array_pop($rows);
+
+	}
+
+	$next_cursor = null;
+
+	if ($has_more && !empty($rows)) {
+
+		$last = $rows[count($rows) - 1];
+
+		$next_cursor = api_cursor_encode((int)$last['id'], $last['id']);
+
+	}
+
+	$total = null;
+
+	if (!empty($params['include_count'])) {
+
+		$total = (int)api_value("SELECT COUNT(*) FROM order_items
+			INNER JOIN orders ON orders.id = order_items.order_id
+			WHERE " . implode(' AND ', $where) . pg_order_item_active_sql());
+
+	}
+
+	$with_customer = api_calendar_owner_reads_orders();
+
+	$out = array();
+
+	foreach ($rows as $row) {
+
+		$out[] = api_calendar_reservation_present($row, $with_customer);
+
+	}
+
+	api_ok_list($out, $limit, $next_cursor, $total);
+
+}

@@ -714,6 +714,9 @@ function api_openapi_objects()
         'Calendar'           => 'api_calendar_schema',
         'CalendarEvent'      => 'api_calendar_event_schema',
         'CalendarRecurrence' => 'api_calendar_recurrence_schema',
+        'CalendarLocation'   => 'api_calendar_location_schema',
+        'CalendarReservation' => 'api_calendar_reservation_schema',
+        'CalendarReservationCustomer' => 'api_calendar_reservation_customer_schema',
     );
 
     // A module declares the objects its own endpoints answer with, the same way
