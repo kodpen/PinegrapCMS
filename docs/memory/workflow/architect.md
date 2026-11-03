@@ -24,6 +24,6 @@ description: Decision questions (2026-10-27): an architect issue; the architect 
 
 ## Labels and start
 - `architect`: every decision question, open until recorded; `erdal`: a big one waiting for the owner, set only by the architect (`label:erdal` is the owner's list).
-- A new session told: "You are the architect: read `CLAUDE.md` and `workflow/architect.md`, then keep the 30-minute check." First job: the plan files' open questions become issues, each named on its plan line.
+- A new session told: "You are the architect: read `CLAUDE.md` and `workflow/architect.md`, then keep the 30-minute check; ask me owner questions here with AskUserQuestion." First job: the plan files' open questions become issues, each named on its plan line.
 
 Related: docs/memory/workflow/architect-asking.md, docs/memory/workflow/coordinator-limits.md, docs/memory/workflow/session-lifecycle.md

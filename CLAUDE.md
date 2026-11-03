@@ -146,8 +146,9 @@ decision questions.
    PR, turns the PR back to draft and ends the session
    (`workflow/session-lifecycle.md`): a later session continues the branch
    from the decision; what memory already answers is not a question. The architect session analyses it, decides a technical question
-   itself, asks the owner a schema or product-behaviour question as a
-   selectable list (label `erdal`, in Turkish), records the decision and
+   itself, asks the owner a schema or product-behaviour question in its
+   own window with the AskUserQuestion tool, as a selectable list in
+   Turkish (label `erdal` on the issue), records the decision and
    brings it to the PR as a comment. The issue is the only way to ask: no question to the
    owner in a session's reply or PR body, and no `erdal` label but the
    architect's. Everything else is a session's own call, never asked:
