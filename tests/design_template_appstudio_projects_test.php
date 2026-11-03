@@ -26,7 +26,7 @@ if (!defined('PG_TEST_RUNNER')) {
 // projects.php in the same scope. Read once per run. Until mail.php is in
 // the folder, the e-mail builders it shares with every template's mail.php
 // are stood in by plain ones of the same names.
-function _test_map_load()
+function _test_asproj_appstudio_projects_load()
 {
 	static $out = null;
 	if ($out !== null) return $out;
@@ -85,20 +85,20 @@ function _test_map_load()
 }
 
 // Every node of a tree, depth first.
-function _test_map_nodes($node, &$out)
+function _test_asproj_map_nodes($node, &$out)
 {
 	if (!is_array($node)) return;
 	if (isset($node['props'])) $out[] = $node;
 	if (!empty($node['children']) && is_array($node['children'])) {
-		foreach ($node['children'] as $child) _test_map_nodes($child, $out);
+		foreach ($node['children'] as $child) _test_asproj_map_nodes($child, $out);
 	}
 }
 
 // The template widgets a tree places.
-function _test_map_widgets($tree)
+function _test_asproj_map_widgets($tree)
 {
 	$nodes = array();
-	_test_map_nodes($tree, $nodes);
+	_test_asproj_map_nodes($tree, $nodes);
 	$out = array();
 	foreach ($nodes as $node) {
 		if (isset($node['props']['templateWidget'])) $out[] = $node['props']['templateWidget'];
@@ -108,10 +108,10 @@ function _test_map_widgets($tree)
 
 // The form controls of a tree by name: their props and their answers (a
 // radio group's answers gathered from its buttons).
-function _test_map_controls($tree)
+function _test_asproj_map_controls($tree)
 {
 	$nodes = array();
-	_test_map_nodes($tree, $nodes);
+	_test_asproj_map_nodes($tree, $nodes);
 	$out = array();
 	foreach ($nodes as $node) {
 		$tag = $node['props']['tag'] ?? '';
@@ -138,7 +138,7 @@ function _test_map_controls($tree)
 
 function test_appstudio_project_pages_and_widgets()
 {
-	$d = _test_map_load();
+	$d = _test_asproj_appstudio_projects_load();
 	$p = $d['projects'];
 	$keys = array();
 	foreach ($p['pages'] as $page) $keys[] = $page['key'];
@@ -178,7 +178,7 @@ function test_appstudio_project_pages_and_widgets()
 	// defined widget is placed.
 	$placed = array();
 	foreach ($p['pages'] as $page) {
-		foreach (_test_map_widgets($page['tree']) as $w) $placed[$w][] = $page['key'];
+		foreach (_test_asproj_map_widgets($page['tree']) as $w) $placed[$w][] = $page['key'];
 	}
 	foreach ($p['widgets'] as $key => $w) {
 		pg_assert_same(array($w['page']), $placed[$key] ?? array(), "widget $key placed once, on its page");
@@ -187,7 +187,7 @@ function test_appstudio_project_pages_and_widgets()
 
 	// The lists, the view and the e-mails read the request form; the lists
 	// open the request.
-	$controls = _test_map_controls($p['widgets']['project_form']['tree']);
+	$controls = _test_asproj_map_controls($p['widgets']['project_form']['tree']);
 	foreach ($p['widgets'] as $key => $w) {
 		$type = $w['config']['regionType'];
 		if ($type === 'form_list_view' || $type === 'form_item_view') {
@@ -211,7 +211,7 @@ function test_appstudio_project_pages_and_widgets()
 	                '__new_account_email', '__new_account_set_password_url', '__edit_url');
 	foreach (array('project_detail', 'my_projects_list', 'staff_projects_list', 'email_project_admin', 'email_project_client') as $key) {
 		$nodes = array();
-		_test_map_nodes($p['widgets'][$key]['tree'], $nodes);
+		_test_asproj_map_nodes($p['widgets'][$key]['tree'], $nodes);
 		foreach ($nodes as $node) {
 			foreach ($node['props']['_bindings'] ?? array() as $prop => $token) {
 				if ($prop === 'eo_visible_if' || $prop === 'section') continue;
@@ -244,9 +244,9 @@ function test_appstudio_project_pages_and_widgets()
 // links' query (?type=, ?package=), and the status is the staff's.
 function test_appstudio_project_form()
 {
-	$d = _test_map_load();
+	$d = _test_asproj_appstudio_projects_load();
 	$tree = $d['projects']['widgets']['project_form']['tree'];
-	$c = _test_map_controls($tree);
+	$c = _test_asproj_map_controls($tree);
 	foreach (array('project_type', 'package', 'app_name', 'about', 'design', 'budget', 'start', 'documents',
 	               'contact_method', 'first_name', 'last_name', 'email', 'phone', 'company', 'status', 'consent') as $name) {
 		pg_assert_true(isset($c[$name]), "project form: $name");
@@ -274,7 +274,7 @@ function test_appstudio_project_form()
 	}
 	foreach ($d['package_cards'] as $key => $card) {
 		$nodes = array();
-		_test_map_nodes($card, $nodes);
+		_test_asproj_map_nodes($card, $nodes);
 		$found = false;
 		foreach ($nodes as $node) {
 			$href = $node['props']['href'] ?? '';
@@ -291,7 +291,7 @@ function test_appstudio_project_form()
 
 	// Every field id carries the template's prefix and is unique.
 	$nodes = array();
-	_test_map_nodes($tree, $nodes);
+	_test_asproj_map_nodes($tree, $nodes);
 	$ids = array();
 	foreach ($nodes as $node) {
 		if (isset($node['props']['id']) && in_array($node['props']['tag'] ?? '', array('input', 'select', 'textarea'), true)) $ids[] = $node['props']['id'];
@@ -304,7 +304,7 @@ function test_appstudio_project_form()
 // request's page; the client's says what it opened for them.
 function test_appstudio_project_mails()
 {
-	$d = _test_map_load();
+	$d = _test_asproj_appstudio_projects_load();
 	foreach ($d['projects']['pages'] as $page) {
 		if (strpos($page['key'], 'email_') !== 0) continue;
 		$json = json_encode($page['tree']);
