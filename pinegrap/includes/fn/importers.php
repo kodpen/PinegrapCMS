@@ -291,7 +291,8 @@ function pg_import_totals($counts)
 /**
  * Adds a skipped or failed line to the report: kept in full up to
  * PG_IMPORT_REPORT_LINES, counted beyond. Made rows are not listed, the
- * tally and import_items hold them. Pure.
+ * tally and import_items hold them, unless the writer gave a note (a
+ * picture kept at its old address). Pure.
  *
  * @param array  $report array('lines' => array, 'more' => int)
  * @param string $result
@@ -304,7 +305,7 @@ function pg_import_report_add($report, $result, $item, $reason)
     $report = is_array($report) ? $report : array();
     $report += array('lines' => array(), 'more' => 0);
 
-    if ($result === 'made') {
+    if (($result === 'made') && (trim((string) $reason) === '')) {
         return $report;
     }
 

@@ -17,7 +17,7 @@ module: importers
 ## What does a writer provide?
 - `includes/import/write_<kind>.php`: `pg_import_write_<kind>($item, $import)` → `result` made/skipped/failed, `id`, `reason`; `pg_import_unwrite_<kind>($item_id)` deletes through the kind's own path. Any other answer, made without an id, or a thrown error is failed (`pg_import_writer_answer()`).
 - A writer finds an earlier item (a comment's record) with `pg_import_item_id($related, $kind, $key)`.
-- IM1 ships no writer: author with IM2, record and comment with IM2b, page and file with IM3, product with IM4, contact with IM5, redirect with IM6. A kind without a writer fails.
+- Page, file: `import-media.md`; author IM2 (`import-wordpress.md`), record and comment IM2b, product IM4, contact IM5, redirect IM6. A kind without a writer fails: "This site cannot write this kind of item yet."
 
 ## When is an item skipped?
 - When its source key is in `import_items` of this import or an earlier one of the same kind that is not undone (`pg_import_related_ids()`): a second upload makes nothing twice. Writers add their own checks (SKU, e-mail).
@@ -27,10 +27,10 @@ module: importers
 - `GET_LOCK('pg_import_<id>', 0)`: only one request works an import; a busy answer makes the screen wait 3 s.
 
 ## What does the report keep?
-- Counts per writer kind; skipped and failed lines with reason up to 2000 (`PG_IMPORT_REPORT_LINES`), the rest counted as `more`. Made rows are not listed: `import_items` holds them.
+- Counts per writer kind; skipped and failed lines with reason up to 2000 (`PG_IMPORT_REPORT_LINES`), the rest counted as `more`. Made rows are not listed (`import_items` holds them) unless the writer gave a note.
 
 ## How does undo work?
-- Open for 30 days after `finished_at` (`pg_import_undo_open()`), at once for a stopped run; a running one is stopped first. Rows are removed newest first, 8 s per request, so records go before the author they point at. An unwrite answering `array('kept' => name)` (taken over since the import) keeps its row; the `import_items` row goes and the report gets a Kept line. A kind without an unwrite function keeps its rows and the run keeps its status, so Undo can finish later.
+- Open for 30 days after `finished_at` (`pg_import_undo_open()`), at once for a stopped run; a running one is stopped first. Rows are removed newest first, 8 s per request. An unwrite answering `array('kept' => name)` keeps its row; the `import_items` row goes and the report gets a Kept line. A kind without an unwrite function keeps its rows and the run keeps its status, so Undo can finish later.
 - The job sweeps `import_items` of imports finished over 30 days ago (5000 a tick) and their source file; the `imports` row stays.
 
 ## How is the kind told?

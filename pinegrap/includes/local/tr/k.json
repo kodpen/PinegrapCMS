@@ -70,6 +70,7 @@
     "Kept as long as the record": "Kayıt durdukça tutuluyor",
     "Kept as one unit of its amount": "Tutarıyla tek birim olarak alındı",
     "Kept as text: formulas are not worked out here.": "Metin olarak tutuldu: formüller burada hesaplanmaz.",
+    "Kept at the old address: {var:1}": "Eski adresinde kaldı: {var:1}",
     "Kept by {var:1}, {var:2}": "{var:1} sakladı, {var:2}",
     "Kept copy": "Saklı kopya",
     "Kept element": "Korunan öğe",

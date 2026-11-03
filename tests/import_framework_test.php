@@ -76,6 +76,9 @@ function test_import_report_cap()
 	$report = pg_import_report_add(array(), 'made', $item, '');
 	pg_assert_same(array(), $report['lines'], 'made not listed');
 
+	$noted = pg_import_report_add(array(), 'made', $item, 'Kept at the old address: x');
+	pg_assert_same('made', $noted['lines'][0]['result'], 'made with a note listed');
+
 	$report = pg_import_report_add($report, 'failed', $item, 'No title');
 	pg_assert_same(array('result' => 'failed', 'kind' => 'record', 'key' => 'post:1', 'title' => 'Hello', 'reason' => 'No title'), $report['lines'][0], 'line');
 
