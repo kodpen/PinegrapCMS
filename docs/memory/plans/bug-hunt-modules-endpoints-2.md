@@ -24,7 +24,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 - Endpoints `shopping` (2): #6113
 - Endpoints `short` (5): clean
 - Endpoints `software` (3): done #6121, see -2c
-- Endpoints `style` (4): clean; view_styles usage counts with inherited mobile styles #PR
+- Endpoints `style` (4): clean; view_styles usage counts with inherited mobile styles #6180
 - Endpoints `submitted` (5): done #6098 (edit_submitted_form: one checked id); the rest clean
 - Endpoints `subscription` (3): clean
 - Endpoints `system` (5): #6111

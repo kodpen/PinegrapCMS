@@ -12,4 +12,4 @@ module: style_usage
 - A mobile style that works out to the desktop style is counted once. Style 0 (none) is not listed; folders reachable only through a loop in the rows are not walked.
 
 ## What did it fix?
-- The old recursive count compared the stored ids: a page with neither style of its own never counted its folder's mobile style, and a page whose own desktop style equalled the inherited mobile one was counted twice (#PR).
+- The old recursive count compared the stored ids: a page with neither style of its own never counted its folder's mobile style, and a page whose own desktop style equalled the inherited mobile one was counted twice (#6180).
