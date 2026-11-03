@@ -386,6 +386,36 @@ function pg_contact_merge_optional_columns(array $present)
 }
 
 /**
+ * The source a merged contact's row of one group is written back with: a
+ * hand, form or product row of any merged contact wins over a rule row, as
+ * the recompute never removes it; only rule rows stay a rule row. A row read
+ * before the upgrade, or of an unknown source, is hand. Pure.
+ *
+ * @param array $rows     the merged contacts' group rows (contact_group_id, source)
+ * @param int   $group_id
+ * @return string hand, form, product or rule
+ */
+function pg_contact_merge_group_source(array $rows, $group_id)
+{
+    $found = array();
+
+    foreach ($rows as $row) {
+        if ((string) $row['contact_group_id'] === (string) $group_id) {
+            $source = isset($row['source']) ? (string) $row['source'] : 'hand';
+            $found[in_array($source, array('hand', 'form', 'product', 'rule'), true) ? $source : 'hand'] = true;
+        }
+    }
+
+    foreach (array('hand', 'form', 'product', 'rule') as $source) {
+        if (isset($found[$source])) {
+            return $source;
+        }
+    }
+
+    return 'hand';
+}
+
+/**
  * Which of the merge's optional columns this site's contacts table has.
  *
  * @return array  column => bool
@@ -472,6 +502,8 @@ function merge_contacts($contacts, &$refused = 0)
             contacts_contact_groups_xref.contact_id,
 
             contacts_contact_groups_xref.contact_group_id,
+
+            " . (pg_audience_ready() ? 'contacts_contact_groups_xref.source,' : '') . "
 
             contact_groups.name,
 
@@ -623,20 +655,14 @@ function merge_contacts($contacts, &$refused = 0)
                         $query = "DELETE FROM contacts_contact_groups_xref WHERE (contact_id = ?) AND (contact_group_id = ?)";
                         $result = db_q($query, array((string) $child['id'], (string) $contact_group_to_be_merged['contact_group_id'])) or output_error(lang('Query failed.'));
                         // insert a new xref record
-                        $query = "INSERT INTO contacts_contact_groups_xref (
-
-                                contact_id,
-
-                                contact_group_id)
-
-                            VALUES (
-
-                                ?,
-
-                                ?
-
-                                )";
-                        $result = db_q($query, array((string) $child['id'], (string) $contact_group_to_be_merged['contact_group_id'])) or output_error(lang('Query failed.'));
+                        // keep the row's source, so a merged rule row stays one the recompute reaches
+                        $values = array((string) $child['id'], (string) $contact_group_to_be_merged['contact_group_id']);
+                        $query = "INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id) VALUES (?, ?)";
+                        if (pg_audience_ready()) {
+                            $values[] = pg_contact_merge_group_source($contact_groups_to_be_merged, $contact_group_to_be_merged['contact_group_id']);
+                            $query = "INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id, source) VALUES (?, ?, ?)";
+                        }
+                        $result = db_q($query, $values) or output_error(lang('Query failed.'));
                         $contact_groups_to_be_merged_opt_in = '1';
                         // loop through the contact groups to be merged to get the new opt in value for this contact group,
                         // and add the contact group's id to the merged contact groups ids array so that they are not processed after this one is complete
@@ -842,20 +868,14 @@ function merge_contacts($contacts, &$refused = 0)
                         $query = "DELETE FROM contacts_contact_groups_xref WHERE (contact_id = ?) AND (contact_group_id = ?)";
                         $result = db_q($query, array((string) $remaining_orphan['id'], (string) $contact_group_to_be_merged['contact_group_id'])) or output_error(lang('Query failed.'));
                         // insert a new xref record
-                        $query = "INSERT INTO contacts_contact_groups_xref (
-
-                                contact_id,
-
-                                contact_group_id)
-
-                            VALUES (
-
-                                ?,
-
-                                ?
-
-                                )";
-                        $result = db_q($query, array((string) $remaining_orphan['id'], (string) $contact_group_to_be_merged['contact_group_id'])) or output_error(lang('Query failed.'));
+                        // keep the row's source, so a merged rule row stays one the recompute reaches
+                        $values = array((string) $remaining_orphan['id'], (string) $contact_group_to_be_merged['contact_group_id']);
+                        $query = "INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id) VALUES (?, ?)";
+                        if (pg_audience_ready()) {
+                            $values[] = pg_contact_merge_group_source($contact_groups_to_be_merged, $contact_group_to_be_merged['contact_group_id']);
+                            $query = "INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id, source) VALUES (?, ?, ?)";
+                        }
+                        $result = db_q($query, $values) or output_error(lang('Query failed.'));
                         $contact_groups_to_be_merged_opt_in = 1;
                         // loop through the contact groups to be merged to get the new opt in value,
                         // and add the contact groups to the merged contact groups ids array so that they are not processed again

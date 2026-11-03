@@ -1009,6 +1009,77 @@ function pg_audience_write_queries($group_id, array $diff)
 }
 
 /**
+ * The review shown when a group is switched to dynamic: the recompute never
+ * touches its hand, form and product rows, so the user chooses at the
+ * switch whether to keep them (the default), remove them, or turn them into
+ * rule rows that the next recompute drops when the rule does not select
+ * the contact. Pure: the count query, the counts by source from its rows,
+ * and the statements of the two actions.
+ *
+ * @param int   $group_id
+ * @param array $rows the count query's rows (array('source', 'n'))
+ * @return array array('count' => query, 'counts' => array('hand', 'form',
+ *               'product' => int), 'total' => int, 'remove' => query[],
+ *               'to_rule' => query[]); each query array('sql', 'params')
+ */
+function pg_audience_switch_review($group_id, array $rows = array())
+{
+    $params = array((int) $group_id);
+    $counts = array('hand' => 0, 'form' => 0, 'product' => 0);
+
+    foreach ($rows as $row) {
+        $source = isset($row['source']) ? (string) $row['source'] : '';
+
+        if (isset($counts[$source])) {
+            $counts[$source] += max(0, (int) (isset($row['n']) ? $row['n'] : 0));
+        }
+    }
+
+    return array(
+        'count' => array(
+            'sql' => "SELECT source, COUNT(*) AS n FROM contacts_contact_groups_xref WHERE contact_group_id = ? AND source <> 'rule' GROUP BY source",
+            'params' => $params,
+        ),
+        'counts' => $counts,
+        'total' => array_sum($counts),
+        'remove' => array(
+            array('sql' => "DELETE FROM contacts_contact_groups_xref WHERE contact_group_id = ? AND source <> 'rule'", 'params' => $params),
+        ),
+        // The xref has no unique key: a contact that already has a rule row
+        // loses its other row first, so the update leaves one row each.
+        'to_rule' => array(
+            array(
+                'sql' => 'DELETE other FROM contacts_contact_groups_xref AS other'
+                    . ' INNER JOIN contacts_contact_groups_xref AS by_rule'
+                    . " ON by_rule.contact_group_id = other.contact_group_id AND by_rule.contact_id = other.contact_id AND by_rule.source = 'rule'"
+                    . " WHERE other.contact_group_id = ? AND other.source <> 'rule'",
+                'params' => $params,
+            ),
+            array('sql' => "UPDATE contacts_contact_groups_xref SET source = 'rule' WHERE contact_group_id = ? AND source <> 'rule'", 'params' => $params),
+        ),
+    );
+}
+
+/**
+ * Whether the group is still dynamic: read again before each page's write,
+ * since a pass can run for its whole budget while the group is switched
+ * back to static.
+ *
+ * @param int $group_id
+ * @return bool|null null on a failed query
+ */
+function pg_audience_still_dynamic($group_id)
+{
+    $result = db_q("SELECT id FROM contact_groups WHERE id = ? AND kind = 'dynamic'", array((int) $group_id));
+
+    if (!$result) {
+        return null;
+    }
+
+    return (bool) mysqli_fetch_assoc($result);
+}
+
+/**
  * Writes one page's change into the xref.
  *
  * @param int   $group_id
@@ -1054,7 +1125,7 @@ function pg_audience_next_step($last, $elapsed, $budget)
  * @param int $group_id
  * @param int $budget seconds
  * @return array|null array('done' => bool, 'added' => int, 'removed' => int,
- *               'cursor' => int); null when the group is not a dynamic one
+ *               'cursor' => int); null when the group is not (or stops being) a dynamic one
  *               or a query failed
  */
 function pg_audience_recompute($group_id, $budget)
@@ -1096,8 +1167,17 @@ function pg_audience_recompute($group_id, $budget)
         }
 
         $diff = pg_audience_diff($selected, $by_rule, $by_other);
+        $dynamic = pg_audience_still_dynamic($group_id);
 
-        if (!pg_audience_write($group_id, $diff)) {
+        if ($dynamic === false) {
+            // Switched back to static mid-pass: end without writing or
+            // announcing, and leave no cursor or state for a later switch.
+            db_q('UPDATE contact_groups SET compute_cursor = 0 WHERE id = ?', array($group_id));
+            pg_audience_state_write($group_id, null);
+            return null;
+        }
+
+        if (($dynamic === null) || !pg_audience_write($group_id, $diff)) {
             return null;
         }
 
