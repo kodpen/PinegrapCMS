@@ -1149,16 +1149,17 @@
 
   /* ── Work cards: Next up ──────────────────────────────────────────────── */
 
+  /* Ruled rows: the module tag box, the text over its toned note, the
+     action as a 34 px button. */
   .pg-dash-queue-sub {
     margin: 0;
-    font-size: .8125rem;
-    color: var(--pg-fg-2);
+    font-size: .75rem;
+    color: var(--pgd-muted);
   }
 
   .pg-dash-queue {
     display: flex;
     flex-direction: column;
-    gap: .375rem;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -1166,28 +1167,45 @@
 
   .pg-dash-queue-row {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: 3.75rem minmax(0, 1fr) auto;
     align-items: center;
-    gap: .625rem;
-    padding: .5rem .625rem;
-    border: var(--pg-border-width) solid var(--pg-border-color);
-    border-inline-start-width: .25rem;
-    border-radius: var(--pg-radius);
+    gap: .75rem;
+    padding: .625rem 0;
   }
 
-  .pg-dash-queue-row[data-tone="bad"] { border-inline-start-color: var(--pg-danger); }
-  .pg-dash-queue-row[data-tone="warn"] { border-inline-start-color: var(--pg-warning); }
+  .pg-dash-queue-row + .pg-dash-queue-row {
+    border-top: 1px solid var(--pgd-line);
+  }
 
   .pg-dash-queue-tag {
-    min-width: 4.5rem;
-    padding: .125rem .375rem;
-    border-radius: 999px;
-    background: var(--pg-tint);
+    --pg-dash-tag-bg: rgba(148, 163, 184, .16);
+    --pg-dash-tag-fg: var(--pgd-soft);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.125rem;
+    padding: 0 .25rem;
+    overflow: hidden;
+    border-radius: .625rem;
+    background: var(--pg-dash-tag-bg);
     font-size: .6875rem;
-    font-weight: 600;
-    text-align: center;
-    color: var(--pg-fg-2);
+    font-weight: 800;
+    color: var(--pg-dash-tag-fg);
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
+
+  .pg-dash-queue-tag[data-module="content"] { --pg-dash-tag-bg: rgba(217, 70, 239, .14); --pg-dash-tag-fg: #a21caf; }
+  .pg-dash-queue-tag[data-module="team"] { --pg-dash-tag-bg: rgba(167, 139, 250, .18); --pg-dash-tag-fg: #6d28d9; }
+  .pg-dash-queue-tag[data-module="shop"] { --pg-dash-tag-bg: rgba(251, 191, 36, .16); --pg-dash-tag-fg: #b45309; }
+  .pg-dash-queue-tag[data-module="form"] { --pg-dash-tag-bg: rgba(34, 211, 238, .14); --pg-dash-tag-fg: #0e7490; }
+  .pg-dash-queue-tag[data-module="erp"] { --pg-dash-tag-bg: rgba(248, 113, 113, .14); --pg-dash-tag-fg: #b91c1c; }
+
+  html[data-bs-theme="dark"] .pg-dash-queue-tag[data-module="content"] { --pg-dash-tag-fg: #f0abfc; }
+  html[data-bs-theme="dark"] .pg-dash-queue-tag[data-module="team"] { --pg-dash-tag-fg: #c4b5fd; }
+  html[data-bs-theme="dark"] .pg-dash-queue-tag[data-module="shop"] { --pg-dash-tag-fg: #fde68a; }
+  html[data-bs-theme="dark"] .pg-dash-queue-tag[data-module="form"] { --pg-dash-tag-fg: #67e8f9; }
+  html[data-bs-theme="dark"] .pg-dash-queue-tag[data-module="erp"] { --pg-dash-tag-fg: #fecaca; }
 
   .pg-dash-queue-text {
     display: flex;
@@ -1197,19 +1215,40 @@
 
   .pg-dash-queue-title {
     overflow: hidden;
-    font-size: .875rem;
+    font-size: .8125rem;
     white-space: nowrap;
     text-overflow: ellipsis;
-    color: var(--pg-fg-emphasis);
+    color: var(--pgd-fg);
   }
 
   .pg-dash-queue-note {
     font-size: .75rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
-  .pg-dash-queue-row[data-tone="bad"] .pg-dash-queue-note { color: var(--pg-danger-fg-emphasis); }
-  .pg-dash-queue-row[data-tone="warn"] .pg-dash-queue-note { color: var(--pg-warning-fg-emphasis); }
+  .pg-dash-queue-row[data-tone="bad"] .pg-dash-queue-note { color: var(--pgd-bad); }
+  .pg-dash-queue-row[data-tone="warn"] .pg-dash-queue-note { color: var(--pgd-warn); }
+
+  .pg-dash .pg-dash-queue-action,
+  .pg-dash .pg-dash-flow-action {
+    display: inline-flex;
+    align-items: center;
+    height: 2.125rem;
+    padding: 0 .625rem;
+    border: 1px solid var(--pgd-line-2);
+    border-radius: .5625rem;
+    background: var(--pgd-fill);
+    font-size: .8125rem;
+    color: var(--pgd-fg);
+    white-space: nowrap;
+  }
+
+  .pg-dash .pg-dash-queue-action:hover,
+  .pg-dash .pg-dash-flow-action:hover {
+    border-color: var(--pgd-accent-line);
+    background: var(--pgd-fill);
+    color: var(--pgd-strong);
+  }
 
   @media (max-width: 639.98px) {
     .pg-dash-queue-row {
@@ -1227,16 +1266,17 @@
   }
 
   @media (forced-colors: active) {
-    .pg-dash-queue-row[data-tone="bad"],
-    .pg-dash-queue-row[data-tone="warn"] { border-inline-start-color: CanvasText; }
+    .pg-dash-queue-tag { border: 1px solid CanvasText; }
   }
 
   /* ── Work cards: Pipeline ─────────────────────────────────────────────── */
 
+  /* Steps as faint tiles: the kicker, a 28 px figure beside its cyan
+     sparkline, the note and a toned flag. */
   .pg-dash-pipe-sub {
-    margin: 0 0 .75rem;
-    font-size: .8125rem;
-    color: var(--pg-fg-2);
+    margin: 0;
+    font-size: .75rem;
+    color: var(--pgd-muted);
   }
 
   .pg-dash-pipe {
@@ -1253,16 +1293,18 @@
     flex-direction: column;
     gap: .25rem;
     height: 100%;
-    padding: .75rem .875rem;
-    border: var(--pg-border-width) solid var(--pg-border-color);
-    border-radius: var(--pg-radius-lg);
-    color: inherit;
+    padding: .875rem;
+    border: 1px solid var(--pgd-line);
+    border-radius: .9375rem;
+    background: linear-gradient(180deg, var(--pgd-fill), transparent);
+    color: var(--pgd-fg);
     text-decoration: none;
   }
 
   a.pg-dash-pipe-step:hover,
   a.pg-dash-pipe-step:focus-visible {
-    background: var(--pg-tint-hover);
+    border-color: var(--pgd-accent-line);
+    color: var(--pgd-fg);
   }
 
   .pg-dash-pipe-label {
@@ -1270,7 +1312,7 @@
     font-weight: 600;
     letter-spacing: .06em;
     text-transform: uppercase;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
   .pg-dash-pipe-figure {
@@ -1282,41 +1324,42 @@
 
   .pg-dash-pipe-value {
     font-size: 1.75rem;
-    font-weight: 700;
+    font-weight: 800;
     line-height: 1.1;
-    color: var(--pg-fg-emphasis);
+    letter-spacing: -.02em;
+    color: var(--pgd-strong);
   }
 
   .pg-dash-pipe-spark {
     flex: 0 1 5.625rem;
     min-width: 3rem;
     height: 1.875rem;
-    color: var(--pg-primary);
+    color: var(--pgd-chart-1);
   }
 
   .pg-dash-pipe-note {
     font-size: .75rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
-  .pg-dash-pipe-note[data-tone="good"] { color: var(--pg-success-fg-emphasis); }
-  .pg-dash-pipe-note[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
+  .pg-dash-pipe-note[data-tone="good"] { color: var(--pgd-good); }
+  .pg-dash-pipe-note[data-tone="bad"] { color: var(--pgd-bad); }
 
   .pg-dash-pipe-flag {
     align-self: flex-start;
-    margin-top: .25rem;
-    padding: .125rem .5rem;
-    border: var(--pg-border-width) solid color-mix(in srgb, var(--pg-warning) 45%, transparent);
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--pg-warning) 14%, transparent);
+    margin-top: .375rem;
+    padding: .125rem .5625rem;
+    border: 1px solid var(--pgd-warn-line);
+    border-radius: .5rem;
+    background: var(--pgd-warn-bg);
     font-size: .75rem;
-    color: var(--pg-warning-fg-emphasis);
+    color: var(--pgd-warn);
   }
 
   .pg-dash-pipe-flag[data-tone="bad"] {
-    border-color: color-mix(in srgb, var(--pg-danger) 45%, transparent);
-    background: color-mix(in srgb, var(--pg-danger) 14%, transparent);
-    color: var(--pg-danger-fg-emphasis);
+    border-color: var(--pgd-bad-line);
+    background: var(--pgd-bad-bg);
+    color: var(--pgd-bad);
   }
 
   @media (forced-colors: active) {
@@ -1327,17 +1370,32 @@
 
   /* ── Work cards: Flows ────────────────────────────────────────────────── */
 
+  /* The run in hand as a chain of rounds (green done, amber waiting, red
+     failed, grey to do) on a thread green as far as it went; the last runs
+     as ruled rows behind a glowing dot of their tone. */
   .pg-dash-flow-now {
-    margin-top: .75rem;
+    margin-top: 0;
   }
 
   .pg-dash-flow-head {
     margin: 0 0 .5rem;
-    font-size: .75rem;
+    font-size: .6875rem;
     font-weight: 600;
-    letter-spacing: .04em;
+    letter-spacing: .08em;
     text-transform: uppercase;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-flow-head a {
+    color: var(--pgd-soft);
+    text-decoration: none;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  .pg-dash-flow-head a:hover,
+  .pg-dash-flow-head a:focus-visible {
+    text-decoration: underline;
   }
 
   .pg-dash-flow-line {
@@ -1348,56 +1406,64 @@
   }
 
   .pg-dash-flow-node {
+    --pg-dash-node: rgba(148, 163, 184, .45);
     position: relative;
     display: flex;
     flex: 1 1 0;
     flex-direction: column;
     align-items: center;
-    gap: .25rem;
+    gap: .375rem;
     min-width: 0;
     text-align: center;
   }
 
-  /* The thread to the box before. */
+  .pg-dash-flow-node[data-state="done"] { --pg-dash-node: #34d399; }
+  .pg-dash-flow-node[data-state="waiting"] { --pg-dash-node: #fbbf24; }
+  .pg-dash-flow-node[data-state="failed"] { --pg-dash-node: #f87171; }
+
+  /* The thread to the round before. */
   .pg-dash-flow-node + .pg-dash-flow-node::before {
     position: absolute;
-    top: .6875rem;
+    top: calc(1.0625rem - 1px);
     inset-inline-end: 50%;
     width: 100%;
     height: 2px;
-    background: var(--pg-border-color);
+    background: rgba(148, 163, 184, .3);
     content: "";
   }
 
   .pg-dash-flow-node[data-state="done"] + .pg-dash-flow-node::before {
-    background: var(--pg-success);
+    background: #34d399;
   }
 
   .pg-dash-flow-dot {
     position: relative;
     z-index: 1;
-    width: 1.375rem;
-    height: 1.375rem;
-    border: 2px solid var(--pg-border-color);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.125rem;
+    height: 2.125rem;
+    border: 2px solid var(--pg-dash-node);
     border-radius: 50%;
-    background: var(--pg-card-bg);
+    background: color-mix(in srgb, var(--pg-dash-node) 16%, var(--pgd-card));
+    font-size: .875rem;
+    color: var(--pg-dash-node);
   }
-
-  .pg-dash-flow-node[data-state="done"] .pg-dash-flow-dot { border-color: var(--pg-success); background: color-mix(in srgb, var(--pg-success) 20%, var(--pg-card-bg)); }
-  .pg-dash-flow-node[data-state="waiting"] .pg-dash-flow-dot { border-color: var(--pg-warning); background: color-mix(in srgb, var(--pg-warning) 20%, var(--pg-card-bg)); }
-  .pg-dash-flow-node[data-state="failed"] .pg-dash-flow-dot { border-color: var(--pg-danger); background: color-mix(in srgb, var(--pg-danger) 20%, var(--pg-card-bg)); }
 
   .pg-dash-flow-name {
     max-width: 100%;
     overflow: hidden;
     font-size: .6875rem;
+    line-height: 1.3;
     white-space: nowrap;
     text-overflow: ellipsis;
-    color: var(--pg-fg-2);
+    color: var(--pgd-soft);
   }
 
-  .pg-dash-flow-node[data-state="waiting"] .pg-dash-flow-name { color: var(--pg-warning-fg-emphasis); }
-  .pg-dash-flow-node[data-state="failed"] .pg-dash-flow-name { color: var(--pg-danger-fg-emphasis); }
+  .pg-dash-flow-node[data-state="waiting"] .pg-dash-flow-name { color: var(--pgd-warn); }
+  .pg-dash-flow-node[data-state="failed"] .pg-dash-flow-name { color: var(--pgd-bad); }
+  .pg-dash-flow-node[data-state="todo"] .pg-dash-flow-name { color: var(--pgd-muted); }
 
   .pg-dash-flow-runs {
     display: flex;
@@ -1408,17 +1474,31 @@
   }
 
   .pg-dash-flow-run {
+    --pg-dash-run: var(--pgd-muted);
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: .5rem minmax(0, 1fr) auto auto;
     align-items: center;
-    gap: .5rem;
-    padding: .5rem 0;
-    border-top: var(--pg-border-width) solid var(--pg-border-color);
+    gap: .75rem;
+    padding: .625rem 0;
+    border-top: 1px solid var(--pgd-line);
   }
 
   .pg-dash-flow-run:first-child {
     border-top: 0;
   }
+
+  .pg-dash-flow-run::before {
+    width: .5rem;
+    height: .5rem;
+    border-radius: 50%;
+    background: var(--pg-dash-run);
+    box-shadow: 0 0 8px var(--pg-dash-run);
+    content: "";
+  }
+
+  .pg-dash-flow-run[data-tone="good"] { --pg-dash-run: #34d399; }
+  .pg-dash-flow-run[data-tone="warn"] { --pg-dash-run: #fbbf24; }
+  .pg-dash-flow-run[data-tone="bad"] { --pg-dash-run: #f87171; }
 
   .pg-dash-flow-text {
     display: flex;
@@ -1428,10 +1508,10 @@
 
   .pg-dash-flow-title {
     overflow: hidden;
-    font-size: .875rem;
+    font-size: .8125rem;
     white-space: nowrap;
     text-overflow: ellipsis;
-    color: var(--pg-fg-emphasis);
+    color: var(--pgd-fg);
     text-decoration: none;
   }
 
@@ -1442,17 +1522,17 @@
 
   .pg-dash-flow-note {
     font-size: .75rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
-  .pg-dash-flow-run[data-tone="good"] .pg-dash-flow-note { color: var(--pg-success-fg-emphasis); }
-  .pg-dash-flow-run[data-tone="warn"] .pg-dash-flow-note { color: var(--pg-warning-fg-emphasis); }
+  .pg-dash-flow-run[data-tone="good"] .pg-dash-flow-note { color: var(--pgd-good); }
+  .pg-dash-flow-run[data-tone="warn"] .pg-dash-flow-note { color: var(--pgd-warn); }
   .pg-dash-flow-run[data-tone="bad"] .pg-dash-flow-note,
-  .pg-dash-flow-note[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
+  .pg-dash-flow-note[data-tone="bad"] { color: var(--pgd-bad); }
 
   .pg-dash-flow-when {
-    font-size: .75rem;
-    color: var(--pg-fg-2);
+    font-size: .8125rem;
+    color: var(--pgd-muted);
     white-space: nowrap;
   }
 
@@ -1462,6 +1542,7 @@
     .pg-dash-flow-node[data-state="waiting"] .pg-dash-flow-dot,
     .pg-dash-flow-node[data-state="failed"] .pg-dash-flow-dot { background: Highlight; }
     .pg-dash-flow-node + .pg-dash-flow-node::before { background: CanvasText; }
+    .pg-dash-flow-run::before { forced-color-adjust: none; background: CanvasText; box-shadow: none; }
   }
 
   /* ── Edit mode ────────────────────────────────────────────────────────── */
