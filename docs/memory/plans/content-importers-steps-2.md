@@ -12,7 +12,7 @@ description: Steps IM4-IM7 of plans/content-importers.md: the WooCommerce and Sh
 - IM5 (M) Shopify reader. In #6236.
   - `includes/import/shopify.php`: products CSV (handle groups rows into one product, options 1-3 as variant sets, body HTML, images, prices, inventory) and customers CSV (contacts with address, phone, "accepts marketing" as `opt_in` with a consent log line naming the import as the source, tags as a contact group). Tests on the fixture. Memory: `platform/import-shopify.md`.
 
-- IM6 (S) Redirects and undo. After IM2-IM5.
+- IM6 (S) Redirects and undo. Done in #6322.
   - Every imported item with an old address (post, page, product, category) gets a redirect through the short-link redirect writer (old path → the new address, 301), listed in the report with a CSV download; Undo removes the redirects with the rest. Memory: `platform/import-framework.md` grows.
 
 - IM7 (S) Close-out. After IM1-IM6.
