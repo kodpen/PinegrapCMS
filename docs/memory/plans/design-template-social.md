@@ -22,7 +22,7 @@ description: Plan for the Social Community template (pinegrap-social): a photo c
 - 1 Done (#6297). Data and shared parts: `parts.php` (builders, samples; account bar, header, footer, join band, avatar, post, profile and topic cards, page shells, form fields, comment thread, staff bar); test `design_template_social_test.php`.
 - 2 Public pages: `pages_public.php` (home, topics, about, guidelines, FAQ, help, privacy, terms).
 - 3 Profiles: `profiles.php` (`my_profile` with the collection and samples, `people`, `member` with the member's posts, `staff_members`).
-- 4 Posts: `posts.php` (`post_new` with the collection and samples, `explore`, `tag`, `post`, `my_posts`, `saved`, home lists).
+- 4 Done (#6342). Posts: `posts.php` (`post_new`, `explore`, `tag`, `post`, `my_posts`, `saved`, `home_*_posts`).
 - 5 Reports and mail: `mail.php`, `reports.php` (`report`, `report_view`, `my_reports`, `staff_reports`, `staff_report` with `report_notes`, `staff_posts`, `email_reply`, `email_comment`, notify e-mails).
 - 6 Standard: `standard.php` (contact, inbox, conversation, newsletter, blog "Community News", blog post, search, error); test `…_standard_test.php`.
 - 7 Account and staff: `account.php` (sign-in pages, My Account, staff area, `blog_new`, account e-mails); test `…_account_test.php`.
