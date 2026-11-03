@@ -182,9 +182,24 @@ if (!$_POST) {
 // else the form has been submitted, so process it
 } else {
     validate_token_field();
-    
+
+    // The pages list sends its selection as the list table driver keeps it:
+    // the pages picked, or the whole view by its condition less the
+    // exceptions. It is read back with the list's own query and the user's
+    // rights (pg_page_list_selected_ids()).
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_list.php');
+    $page_ids = pg_page_list_selected_ids($user, $_POST['selection'] ?? '', $_POST['list_params'] ?? '');
+
+    if ($page_ids === false) {
+        output_error('Query failed.');
+    }
+
+    if ($page_ids === null) {
+        output_error(lang('Too many pages are selected. Select fewer pages and try again.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+    }
+
     // if at least one page was selected
-    if (!empty($_POST['pages'])) {
+    if ($page_ids) {
         $number_of_pages = 0;
         
         switch ($_POST['action'] ?? '') {
@@ -221,7 +236,7 @@ if (!$_POST) {
                 $number_of_style_skipped_pages = 0;
 
                 // loop through each page and process actions
-                foreach ($_POST['pages'] as $page_id) {
+                foreach ($page_ids as $page_id) {
                     $page = pg_page_bulk_fetch($page_id);
 
                     if (!$page) {
@@ -362,7 +377,7 @@ if (!$_POST) {
                 // manager): skipped, never counted as deleted.
                 $number_of_missing_pages = 0;
                 
-                foreach ($_POST['pages'] as $page_id) {
+                foreach ($page_ids as $page_id) {
                     // get page properties
                     $query =
                         "SELECT

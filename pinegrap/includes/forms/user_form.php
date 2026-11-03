@@ -428,3 +428,37 @@ function pg_user_form_save_access($user_id, $role, $post, $replace)
         pg_user_form_save_xref("SELECT id FROM ad_regions", 'ad_region_', 'users_ad_regions_xref', 'ad_region_id', $user_id, $post);
     }
 }
+
+/**
+ * Whether the edit screen may switch an account off, the same rule that keeps
+ * the last administrator from being demoted or deleted: nobody disables his/
+ * her own account, and the last enabled administrator (role 0, not disabled)
+ * stays enabled, or the site is left with nobody who can reach the
+ * admin-only screens. Switching an account back on is always allowed.
+ * Asked only when pg_user_has_disabled_at(): it reads the column.
+ *
+ * @param int $user_id   the account being edited
+ * @param int $editor_id the signed-in editor
+ * @return bool
+ */
+function pg_user_form_may_disable($user_id, $editor_id)
+{
+    $user_id = (int) $user_id;
+
+    if (($user_id <= 0) || ($user_id === (int) $editor_id)) {
+        return false;
+    }
+
+    $target = db_item("SELECT user_role, user_disabled_at FROM user WHERE user_id = '" . $user_id . "'");
+
+    if (!is_array($target)) {
+        return false;
+    }
+
+    if (((int) $target['user_role'] !== 0) || pg_user_is_disabled($target)) {
+        return true;
+    }
+
+    return (bool) db_value("SELECT user_id FROM user
+        WHERE (user_role = '0') AND (user_id != '" . $user_id . "')" . pg_user_enabled_sql() . " LIMIT 1");
+}

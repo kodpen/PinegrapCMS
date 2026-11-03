@@ -153,13 +153,18 @@ function test_design_template_cafe_price_hint()
 function test_design_template_cafe_clinic_privacy_page()
 {
 	$consents = array(
+		'pinegrap-appstudio' => array('ma-st-consent', 'ma-pj-consent', 'ma-beta-consent'),
 		'pinegrap-cafe'   => array('cf-res-consent', 'cf-quote-consent'),
 		'pinegrap-clinic' => array('cl-appt-consent'),
 		'pinegrap-courses' => array('pco-enrol-consent'),
 		'pinegrap-events' => array('ev-reg-consent'),
 		'pinegrap-law'    => array('lw-con-consent', 'lw-app-consent'),
+		'pinegrap-portfolio' => array('pd-br-consent'),
 		'pinegrap-realestate' => array('re-vw-consent', 're-va-consent'),
 		'pinegrap-salon'  => array('sl-book-consent'),
+		'pinegrap-launch' => array('lx-ti-consent', 'lx-sr-consent'),
+		'pinegrap-dealership' => array('dl-td-consent', 'dl-ti-consent', 'dl-fi-consent'),
+		'pinegrap-hotel' => array('ht-bk-consent', 'ht-ev-consent'),
 	);
 	foreach ($consents as $id => $boxes) {
 		$tpl = _test_tpl_cafe_load($id);

@@ -29,22 +29,27 @@ if (!defined('PG_FUNCTIONS_DIR')) {
    --------------------------------------------------------------------------- */
 
 /**
- * The booking policy: how far ahead and how soon a slot may be booked, how
- * long a hold lives. The defaults until Settings › Bookings stores its own;
- * the zone is the site's.
+ * The site's booking policy (Settings › Bookings, pg_booking_policy()) with
+ * the zone the slot engine works in, the site's.
  *
- * @return array zone, lead_minutes, horizon_days, hold_minutes, step_minutes
- *               (0: the service's length)
+ * @return array as pg_booking_policy(), plus zone
  */
-function pg_booking_policy()
+function pg_booking_widget_policy()
 {
-    return array(
-        'zone'         => date_default_timezone_get(),
-        'lead_minutes' => 60,
-        'horizon_days' => 60,
-        'hold_minutes' => 10,
-        'step_minutes' => 0,
-    );
+    return array('zone' => date_default_timezone_get()) + pg_booking_policy();
+}
+
+/**
+ * The words for a time another visitor took first: the site's own from
+ * Settings › Bookings, else the widget's.
+ *
+ * @return string
+ */
+function pg_booking_widget_taken_text()
+{
+    $texts = function_exists('pg_booking_texts') ? pg_booking_texts() : array();
+
+    return isset($texts['taken']) ? (string) $texts['taken'] : lang('This time was just taken. Please pick another one.');
 }
 
 /**
@@ -510,7 +515,7 @@ function pg_booking_busy_between($staff, $from, $until, $now)
  */
 function pg_booking_widget_settings($services, $staff)
 {
-    $policy = pg_booking_policy();
+    $policy = pg_booking_widget_policy();
 
     return array(
         'url'   => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/booking_slots.php',
@@ -522,7 +527,7 @@ function pg_booking_widget_settings($services, $staff)
             'noTimes'  => lang('No time is free on this day. Please pick another day.'),
             'noDays'   => lang('No day is free in this month.'),
             'loading'  => lang('Loading…'),
-            'taken'    => lang('This time was just taken. Please pick another one.'),
+            'taken'    => pg_booking_widget_taken_text(),
             'held'     => lang('We are keeping {time} for you for {minutes} minutes.'),
             'failed'   => lang('Something went wrong. Please try again.'),
             'times'    => lang('Free times on {day}'),
@@ -738,7 +743,7 @@ function pg_booking_slots_request($request, $now)
         }
     }
 
-    $policy = pg_booking_policy();
+    $policy = pg_booking_widget_policy();
     $zone = new DateTimeZone($policy['zone']);
     $action = (string) $request['action'];
 
@@ -796,7 +801,7 @@ function pg_booking_slots_request($request, $now)
     }
 
     if (!$offered) {
-        return array('ok' => false, 'error' => 'taken', 'message' => lang('This time was just taken. Please pick another one.'));
+        return array('ok' => false, 'error' => 'taken', 'message' => pg_booking_widget_taken_text());
     }
 
     $held = pg_booking_hold(array(
@@ -807,7 +812,7 @@ function pg_booking_slots_request($request, $now)
     ), $policy['hold_minutes'], $now);
 
     if ($held['answer'] === 'taken') {
-        return array('ok' => false, 'error' => 'taken', 'message' => lang('This time was just taken. Please pick another one.'));
+        return array('ok' => false, 'error' => 'taken', 'message' => pg_booking_widget_taken_text());
     }
 
     if ($held['answer'] !== 'ok') {

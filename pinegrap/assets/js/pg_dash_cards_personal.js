@@ -385,11 +385,18 @@
             if (stored.length < (data.most || 8)) {
                 var add = button("btn btn-outline theme-secondary btn-sm pg-dash-personal-add", " " + L.add);
                 add.insertBefore(icon("bi-plus-lg"), add.firstChild);
+                // Beside pins the button is the grid's last, dashed tile.
+                var slot = (data.pins || []).length ? el("li", "pg-dash-pin-adder") : null;
                 add.addEventListener("click", function () {
-                    add.remove();
+                    (slot || add).remove();
                     pinSearch(body, data, entry);
                 });
-                body.appendChild(add);
+                if (slot) {
+                    slot.appendChild(add);
+                    list.appendChild(slot);
+                } else {
+                    body.appendChild(add);
+                }
             } else {
                 body.appendChild(el("p", "pg-dash-personal-hint", L.full));
             }

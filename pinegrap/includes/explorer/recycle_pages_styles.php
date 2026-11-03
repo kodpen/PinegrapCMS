@@ -52,6 +52,12 @@ function pg_recycle_page($page_id, $user)
         return array('status' => 'error', 'message' => lang('You do not have access to delete pages.'), 'home' => false);
     }
 
+    $held = pg_experiment_variant_hold_message($page['page_id'], $page['page_name']);
+
+    if ($held !== '') {
+        return array('status' => 'error', 'message' => $held, 'home' => false);
+    }
+
     $bin_id = (int) pg_recycle_folder_id(true);
 
     if ($bin_id <= 0) {

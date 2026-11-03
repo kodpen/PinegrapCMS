@@ -254,6 +254,14 @@ function api_authenticate($input) {
 
 	api_check_ip_allowlist($app);
 
+	// A key whose owner is disabled answers like an invalid one. Not counted
+	// as an offence: the caller holds a real key and only keeps retrying it.
+	if (pg_user_id_is_disabled((int)$app['owner_user_id'])) {
+
+		api_fail_unauthorized();
+
+	}
+
 	$owner = api_load_owner((int)$app['owner_user_id']);
 
 	if ($owner === null) {
@@ -317,8 +325,8 @@ function api_check_ip_allowlist($app) {
 
 }
 
-// The owner, in the shape the scope rules expect. Signed-out, suspended or
-// deleted accounts answer null.
+// The owner, in the shape the scope rules expect. Signed-out, suspended,
+// disabled or deleted accounts answer null.
 function api_load_owner($user_id) {
 
 	if ($user_id <= 0) {
@@ -330,7 +338,7 @@ function api_load_owner($user_id) {
 	$row = api_row("SELECT user_id, user_username, user_role,
 			user_manage_ecommerce, user_manage_contacts, user_manage_forms
 		FROM user
-		WHERE user_id = '" . (int)$user_id . "'
+		WHERE user_id = '" . (int)$user_id . "'" . pg_user_enabled_sql() . "
 		LIMIT 1");
 
 	if ($row === null) {

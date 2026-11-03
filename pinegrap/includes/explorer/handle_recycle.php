@@ -267,6 +267,14 @@ function pg_explorer_handle_recycle_delete($type, $request, $user)
                     break;
                 }
 
+                // A variant draft of an open experiment stays until it ends.
+                $held = pg_experiment_variant_hold_message($item_id, $page['page_name']);
+
+                if ($held !== '') {
+                    $errors[] = $held;
+                    break;
+                }
+
                 $original_parent_id = (int) $page['page_folder'];
 
                 db(

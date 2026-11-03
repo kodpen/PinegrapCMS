@@ -113,7 +113,7 @@ function pg_ai_chat($messages, $options = array())
         return array('ok' => false, 'text' => '', 'error' => lang('Pinegrap AI lists no model to answer with.'));
     }
 
-    $timeout = isset($options['timeout']) ? (int) $options['timeout'] : (function_exists('ws_ai_call_timeout') ? ws_ai_call_timeout() : 55);
+    $timeout = isset($options['timeout']) ? (int) $options['timeout'] : (function_exists('ws_ai_call_timeout') ? ws_ai_call_timeout() : 500);
 
     $response = ws_ai_http('POST', '/chat/completions', array(
         'model'            => $model,

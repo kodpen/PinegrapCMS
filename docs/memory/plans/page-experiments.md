@@ -19,9 +19,10 @@ description: Plan (owner 2026-11-02): A/B experiments on designed pages (a draft
 - Counting follows `visitors/high-volume-counter-rules.md`; nothing is written per visitor beyond the cookie; a bucket cookie needs no consent (strictly functional) but is listed.
 - Express-order totals and the checkout flow are untouched; the order goal reads `pg_order_complete()`'s context only.
 
-## Which questions are decided? (#5038)
+## Which questions are decided? (#5038, #6238)
 1. `experiments`, `experiment_variants`, `experiment_hourly` as written; shape in the issue.
 2. The `pg_exp` cookie lives 90 days; the page cache keeps one copy per variant and decides as today.
+3. Architect (#6238): a page with both an experiment and audience conditions is cached by layered keys, audience first, then experiment; the order of lookup and store, the headers and the tests are in `workflow/decisions-made-product-23.md`.
 
 ## Where does it start?
 - PX1 alone, then PX2, PX4 and PX6 together. Read the `designer/` and `visitors/` key rules, `designer/page-drafts.md`, `page-revisions.md`, `widget-condition-panel.md`, `platform/page-cache-invalidation.md`. Steps: `page-experiments-steps.md`, `-steps-2.md`.

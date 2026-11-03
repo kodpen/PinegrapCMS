@@ -68,3 +68,65 @@ function test_download_marker_only_for_attachments()
 	pg_assert_false(pg_download_marker_needed(array('X-Note: Content-Disposition: attachment')), 'only the header itself');
 	pg_assert_false(pg_download_marker_needed(array()), 'no headers');
 }
+
+function test_panel_html_may_enter_the_back_forward_cache()
+{
+	pg_assert_same('private, no-cache', pg_panel_cache_control('/pinegrap/view_orders.php'), 'an ordinary screen');
+	pg_assert_same('private, no-cache', pg_panel_cache_control('welcome.php'), 'file name alone');
+	pg_assert_false(strpos(pg_panel_cache_control('view_pages.php'), 'no-store') !== false, 'no no-store');
+}
+
+function test_secret_screens_keep_no_store()
+{
+	foreach (array('api_settings.php', 'connections.php', 'connected_apps.php', 'edit_user.php', 'view_key_codes.php', 'edit_key_code.php',
+		'workspace_calendar_feed.php', 'workspace_mcp.php', 'erp_accountant.php', 'edit_erp_quote.php',
+		'view_short_links.php', 'view_folders.php', 'view_cart_quotes.php') as $script) {
+		pg_assert_same('private, no-store', pg_panel_cache_control('/pinegrap/' . $script), $script);
+	}
+	pg_assert_same('private, no-store', pg_panel_cache_control('API_Settings.php'), 'any case');
+}
+
+function test_restored_page_asks_for_the_session()
+{
+	$html = pg_preloader_markup();
+	pg_assert_contains('/session_state.php"', $html, 'session address on the curtain');
+	pg_assert_contains("host.getAttribute('data-pg-session')", $html, 'read on pageshow');
+	pg_assert_contains('data-pg-view="', $html, 'view key on the curtain');
+	pg_assert_contains("n.type === 'back_forward'", $html, 'an HTTP-cache history visit is checked too');
+	pg_assert_contains('if (e.persisted || historyVisit()) checkSession();', $html, 'checked on every history pageshow');
+	pg_assert_contains('html.pg-session-check body{visibility:hidden}', $html, 'hidden until the answer');
+	pg_assert_contains("d.signed_in === true && (want === '' || d.view === want)", $html, 'only the same session and user is shown');
+	pg_assert_contains('.catch(function () { location.reload(); })', $html, 'a failed check loads the page again');
+}
+
+function test_view_key_names_session_and_user()
+{
+	$a = pg_session_view_key_for('nonce-one', 7);
+	pg_assert_same(32, strlen($a), 'length');
+	pg_assert_same($a, pg_session_view_key_for('nonce-one', '7'), 'stable');
+	pg_assert_true($a !== pg_session_view_key_for('nonce-one', 8), 'another user');
+	pg_assert_true($a !== pg_session_view_key_for('nonce-two', 7), 'another session');
+	pg_assert_same('', pg_session_view_key_for('', 7), 'no nonce');
+	pg_assert_same('', pg_session_view_key_for('nonce-one', 0), 'no user');
+}
+
+function test_a_screen_s_own_cache_control_is_kept()
+{
+	pg_assert_true(pg_panel_cache_is_session_default(array('Content-Type: text/html')), 'none set');
+	pg_assert_true(pg_panel_cache_is_session_default(array('Expires: Thu, 19 Nov 1981 08:52:00 GMT', 'Cache-Control: no-store, no-cache, must-revalidate', 'Pragma: no-cache')), 'the session default');
+	pg_assert_true(pg_panel_cache_is_session_default(array('Cache-Control: no-store, no-cache, must-revalidate, post-check=0, pre-check=0')), 'older PHP');
+	pg_assert_false(pg_panel_cache_is_session_default(array('Cache-Control: no-store, max-age=0')), 'device pairing');
+	pg_assert_false(pg_panel_cache_is_session_default(array('cache-control: private, no-store')), 'any case');
+}
+
+function test_every_session_end_clears_the_browser_cache()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+	foreach (array('includes/fn/forms.php', 'includes/fn/auth.php', 'account_security.php', 'kiosk.php', 'login_as_user.php') as $file) {
+		$source = (string) file_get_contents($root . $file);
+		$ends = preg_match_all('/session_destroy\(\);/', $source);
+		$cleared = preg_match_all('/session_destroy\(\);(?:\s*\/\/[^\n]*)*\s*pg_session_end_clear_cache\(\);/', $source);
+		pg_assert_true($ends > 0, $file . ' ends a session');
+		pg_assert_same($ends, $cleared, $file . ': every session_destroy() clears the cache');
+	}
+}

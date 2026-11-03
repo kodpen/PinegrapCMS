@@ -50,6 +50,17 @@ if (!$is_gateway_return && !pg_order_page_known($_POST['page_id'] ?? '', 'order 
 
 initialize_order();
 
+// A changed "Use my store credit" choice (or its Update button) shows the
+// page again with the new totals; a purchase is never charged for a total
+// not seen.
+if (
+    !$is_gateway_return
+    && (pg_credit_checkout_take_post((int) ($_SESSION['ecommerce']['order_id'] ?? 0), $_POST) || isset($_POST['submit_store_credit']))
+) {
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . encode_url_path(get_page_name($_POST['page_id'])));
+    exit();
+}
+
 // if the apply gift card button was clicked and gift cards are enabled, then check to see if a gift card code was entered
 if ((isset($_POST['submit_apply_gift_card']) == TRUE) && (ECOMMERCE_GIFT_CARD == TRUE)) {
     include_once('liveform.class.php');
@@ -98,10 +109,17 @@ if ((isset($_POST['submit_apply_gift_card']) == TRUE) && (ECOMMERCE_GIFT_CARD ==
                 "SELECT
                     id,
                     balance,
-                    expiration_date
+                    expiration_date"
+                    . pg_credit_owner_select_sql() . "
                 FROM gift_cards
                 WHERE code = '" . escape($gift_card_code)  . "'")
                 ?: array('id' => ''); // no card with this code
+
+            // A customer's store credit is applied only by that customer; to anyone
+            // else its code is no card at all.
+            if (($gift_card['id'] != '') && !pg_credit_card_usable_by($gift_card['user_id'], pg_credit_checkout_user())) {
+                $gift_card = array('id' => '');
+            }
 
             // If a gift card could not be found in this system,
             // and givex is disabled (or the code was only dashes and spaces), then output error.

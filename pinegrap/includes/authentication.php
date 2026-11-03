@@ -128,6 +128,34 @@ function pg_user_has_erp_readonly_column()
 }
 
 /**
+ * Is this account disabled (user.user_disabled_at > 0)? The get_file.php side
+ * of pg_user_id_is_disabled() in includes/fn/auth.php, which this defers to
+ * when functions.php is loaded; without it the column is probed by exact name.
+ * Before the column exists no account is disabled.
+ *
+ * @param int $user_id
+ * @return bool
+ */
+function pg_auth_user_disabled($user_id)
+{
+    if (function_exists('pg_user_id_is_disabled')) {
+        return pg_user_id_is_disabled($user_id);
+    }
+
+    static $has = null;
+
+    if ($has === null) {
+        $has = pg_auth_column_exists('user', 'user_disabled_at');
+    }
+
+    if (!$has || ((int) $user_id <= 0)) {
+        return false;
+    }
+
+    return (int) db_value("SELECT user_disabled_at FROM user WHERE user_id = '" . (int) $user_id . "'") > 0;
+}
+
+/**
  * The read-only right as a piece of the user screens' SQL, or '' before the
  * upgrade: 'columns' and 'values' for an INSERT, 'set' for an UPDATE. Each
  * piece ends in a comma, like the lines around it.

@@ -362,10 +362,49 @@ function pg_arrival_date_form_values($post, $user_id)
 }
 
 /**
- * Saves the posted shipping cut-offs of an arrival date. A cut-off needs a
- * shipping method not used by an earlier row and a valid date and time
- * between the arrival date's start and end dates; any other row is left
- * out.
+ * One shipping cut-off as it is stored: array(shipping method id,
+ * 'Y-m-d H:i:s'), or null when it cannot be kept. A cut-off needs a
+ * shipping method not in $taken and a valid date and time between the
+ * arrival date's start (00:00:00) and end (23:59:59).
+ *
+ * @param mixed  $shipping_method_id
+ * @param mixed  $date_and_time  as the cut-off table or the API sends it
+ * @param string $start  'Y-m-d H:i:s'
+ * @param string $end    'Y-m-d H:i:s'
+ * @param array  $taken  the shipping method ids of the earlier cut-offs
+ * @return array|null
+ */
+function pg_arrival_date_form_cutoff($shipping_method_id, $date_and_time, $start, $end, $taken)
+{
+    if (!is_scalar($shipping_method_id) || !is_scalar($date_and_time)) {
+        return null;
+    }
+
+    $shipping_method_id = trim((string) $shipping_method_id);
+    $date_and_time = trim((string) $date_and_time);
+
+    if (
+        ($shipping_method_id === '')
+        || in_array($shipping_method_id, array_map('strval', $taken), true)
+        || ($date_and_time === '')
+        || (validate_date_and_time($date_and_time) == FALSE)
+    ) {
+        return null;
+    }
+
+    $stored = (string) prepare_form_data_for_input($date_and_time, 'date and time');
+
+    if (($stored < $start) || ($stored > $end)) {
+        return null;
+    }
+
+    return array((int) $shipping_method_id, $stored);
+}
+
+/**
+ * Saves the posted shipping cut-offs of an arrival date in place of the
+ * stored ones (pg_store_arrival_date_cutoffs_save()). A row
+ * pg_arrival_date_form_cutoff() cannot keep is left out.
  *
  * @param mixed $arrival_date_id
  * @param array $post
@@ -374,44 +413,19 @@ function pg_arrival_date_form_values($post, $user_id)
 function pg_arrival_date_form_save_cutoffs($arrival_date_id, $post)
 {
     $left_out = false;
-
-    // One cut-off per shipping method.
-    $shipping_cutoff_shipping_methods = array();
+    $cutoffs = array();
+    $taken = array();
     $start = prepare_form_data_for_input($post['start_date'] ?? '', 'date') . ' 00:00:00';
     $end = prepare_form_data_for_input($post['end_date'] ?? '', 'date') . ' 23:59:59';
-
     for ($i = 1; $i <= ($post['last_shipping_cutoff_number'] ?? 0); $i++) {
-        $shipping_method_id = $post['shipping_cutoff_' . $i . '_shipping_method_id'] ?? '';
-        $date_and_time = $post['shipping_cutoff_' . $i . '_date_and_time'] ?? '';
-
-        if (
-            ($shipping_method_id != '')
-            && (in_array($shipping_method_id, $shipping_cutoff_shipping_methods) == FALSE)
-            && ($date_and_time != '')
-            && (validate_date_and_time($date_and_time) == TRUE)
-            && (prepare_form_data_for_input($date_and_time, 'date and time') >= $start)
-            && (prepare_form_data_for_input($date_and_time, 'date and time') <= $end)
-        ) {
-            $query =
-                "INSERT INTO shipping_cutoffs (
-                    arrival_date_id,
-                    shipping_method_id,
-                    date_and_time)
-                VALUES (
-                    ?,
-                    ?,
-                    ?)";
-            db_q($query, array(
-                (string) $arrival_date_id,
-                (string) $shipping_method_id,
-                (string) prepare_form_data_for_input($date_and_time, 'date and time'))) or output_error('Query failed.');
-
-            $shipping_cutoff_shipping_methods[] = $shipping_method_id;
-
-        } else {
+        $cutoff = pg_arrival_date_form_cutoff($post['shipping_cutoff_' . $i . '_shipping_method_id'] ?? '', $post['shipping_cutoff_' . $i . '_date_and_time'] ?? '', $start, $end, $taken);
+        if ($cutoff === null) {
             $left_out = true;
+            continue;
         }
+        $cutoffs[] = $cutoff;
+        $taken[] = $cutoff[0];
     }
-
+    pg_store_arrival_date_cutoffs_save($arrival_date_id, $cutoffs) or output_error('Query failed.');
     return $left_out;
 }

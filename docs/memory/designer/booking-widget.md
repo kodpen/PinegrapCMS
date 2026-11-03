@@ -22,7 +22,7 @@ module: widgets_booking
 - Rate limits per address (`pg_booking_throttled()`): reads 120 / 5 min, holds 20 / 10 min, logged as `rate-booking-read|hold`.
 
 ## Where does the policy come from?
-- `pg_booking_policy()`: lead 60 min, horizon 60 days, hold 10 min, step = length, the PHP zone. BK2 (Settings › Bookings) replaces the defaults with stored values.
+- `pg_booking_widget_policy()`: Settings › Bookings' `pg_booking_policy()` (lead, horizon, hold, step; `booking_settings.php`) plus the site's zone for the slot engine. The "just taken" words are the site's `pg_booking_texts()['taken']` when set (`pg_booking_widget_taken_text()`).
 
 ## What is left for 4b?
 - Details form, consent, confirm (`pg_booking_confirm()` with the session's hold id), the confirmation panel, "just taken"/"expired hold" on confirm, phone layout, browser try. Tests: `tests/booking_widget_test.php`.

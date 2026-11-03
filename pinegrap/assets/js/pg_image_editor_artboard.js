@@ -404,7 +404,8 @@
     // A picture's save lays it on its canvas (extend); a canvas reopened
     // from its file names it for a replace or a copy (the core sends its
     // PNG, picture); pictures from this computer go along to be kept as files
-    // (pictures) in the target folder: not for a picture's copy, which
+    // (pictures) in the target folder, a canvas another endpoint keeps
+    // included (save.url, the Workspace): not for a picture's copy, which
     // keeps no document.
     Editor.saveHooks.push(function (body, mode) {
         var layout = (mode !== 'new') ? M.saveLayout(this.doc) : null, list = [];
@@ -417,7 +418,7 @@
             body.file_id = this.opts.fileId;
         }
 
-        if ((mode === 'replace') || (mode === 'new') || ((mode === 'copy') && this.doc.artboard)) {
+        if ((mode === 'replace') || (mode === 'new') || (((mode === 'copy') || (mode === 'url')) && this.doc.artboard)) {
             this.doc.layers.forEach(function (l) {
                 if ((l.type === 'image') && !l.fileId && /^data:image\/(png|jpeg);base64,/.test(l.src || '')) {
                     list.push({ id: l.id, data: l.src, name: l.fileName || '' });

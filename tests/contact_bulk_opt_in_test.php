@@ -55,7 +55,7 @@ function test_contact_bulk_opt_in_screen_syncs_the_address()
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/edit_contacts.php');
 
 	pg_assert_true(strpos($source, "includes/forms/contact_form.php") !== false, 'the list loads the shared contact helpers');
-	pg_assert_same(2, substr_count($source, 'pg_contact_bulk_set_opt_in($user, $_POST[\'contacts\'], '), 'opt-in and opt-out go through the address-wide writer');
+	pg_assert_same(2, substr_count($source, 'pg_contact_bulk_set_opt_in($user, $contact_ids, '), 'opt-in and opt-out go through the address-wide writer');
 	pg_assert_true(strpos($source, 'SET opt_in = 1') === false && strpos($source, 'SET opt_in = 0') === false, 'no ticked-row-only write is left');
 	pg_assert_same(2, substr_count($source, 'validate_contact_group_access($user, $contact_group_id)'), 'organize checks every added and removed group');
 

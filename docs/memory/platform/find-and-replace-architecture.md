@@ -23,6 +23,8 @@ Each entry of the `$all_table_defs` array has these fields:
 ]
 ```
 
+- `tree` (`'page'` or `'component'`): the column is a designer tree; the search reads and replaces the words of its nodes, and a replace writes the tree whole (`designer/tree-search.md`).
+
 ## How is the result URL built?
 - `url_raw = true` → `OUTPUT_PATH . url` (frontend page, used for pregion).
 - `url_raw = false` → `OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . url`.

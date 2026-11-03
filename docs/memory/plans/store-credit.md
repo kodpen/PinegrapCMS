@@ -18,9 +18,10 @@ description: Plan (owner 2026-11-02): store credit as customer-bound gift cards:
 - Money stays in minor units rounded with `round()` (CLAUDE.md fixed rule 7); the conversion rate is read as `pg_parse_amount()` reads amounts; a credit card never pays for a gift card product (the rule `submit_order.php` already keeps).
 - Credit is not a payment method: no driver, no charge, no refund to the PSP; a refund to credit is written as a refund in `order_returns.refund_*` with the card id as its reference.
 
-## Which questions are decided? (#5039)
+## Which questions are decided? (#5039, #6306)
 1. `gift_cards.user_id` (indexed), `kind`, `reason`, `issued_by` and `expires_at` (0 = never); no second table.
 2. `credit_issued` and `credit_expiring` appended to the campaign actions; the notice 14 days ahead (a module constant).
+3. Owner (#6306): an order's points are taken back on cancellation and refund; a shortfall from a conversion reduces or expires the newest points card, never below zero; not retroactive (`workflow/decisions-made-product-25.md`).
 
 ## Where does it start?
 - SC1 alone, then SC2, SC3, SC4 and SC5 together. Read `commerce/README.md` key rules, `commerce/order-returns-refund.md`, `order-returns-refund-columns.md`, `order-cancel-gift-cards.md`, `gift-card-balance-edit.md`, `includes/fn/order_completion.php` (`pg_order_complete_rewards()`), `submit_order.php` around `applied_gift_cards`. Steps: `store-credit-steps.md`, `-steps-2.md`.

@@ -126,54 +126,22 @@ if (!$_POST) {
         }
     }
 
-    // delete shipping cut-offs (we do this regardless of whether the arrival date is being deleted or edited)
-    $query = "DELETE FROM shipping_cutoffs WHERE arrival_date_id = ?";
-    $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-    
-    // assume that there is not an error for a shipping cut-off until we find out otherwise
     $shipping_cutoff_error = FALSE;
-    
     // if arrival date was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
-        // delete arrival date
-        $query = "DELETE FROM arrival_dates WHERE id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        // The arrival date goes with its shipping cut-offs.
+        pg_store_arrival_date_delete($id) or output_error('Query failed.');
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was deleted','vars'=>array(lang('arrival date'), $_POST['name']) )), $_SESSION['sessionusername']);
     // else arrival date was not selected for delete
     } else {
-        // update arrival date
-        $query =
-            "UPDATE arrival_dates SET
-                name = ?,
-                description = ?,
-                code = ?,
-                arrival_date = ?,
-                status = ?,
-                start_date = ?,
-                end_date = ?,
-                default_selected = ?,
-                sort_order = ?,
-                custom = ?,
-                custom_maximum_arrival_date = ?,
-                user = ?,
-                timestamp = UNIX_TIMESTAMP()
-            WHERE id = ?";
-        $result = db_q($query, array_merge(pg_arrival_date_form_values($_POST, $user['id']), array((string) ($_POST['id'] ?? '')))) or output_error('Query failed.');
-
-        // if default selected was checked, then turn value off for all other arrival dates
-        if (($_POST['default_selected'] ?? '') == 1) {
-            // update arrival date
-            $query = "UPDATE arrival_dates SET default_selected = 0 WHERE id != ?";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-        }
-        
-        // Cut-offs without a shipping method, with a method used twice or with
-        // a time outside the dates are left out.
-        $shipping_cutoff_error = pg_arrival_date_form_save_cutoffs($_POST['id'] ?? '', $_POST);
-
+        // One saved as the default takes the switch off every other one.
+        pg_store_arrival_date_save($id, pg_arrival_date_form_values($_POST, $user['id'])) or output_error('Query failed.');
+        // The stored cut-offs are replaced; those without a shipping method,
+        // with a method used twice or with a time outside the dates are left
+        // out.
+        $shipping_cutoff_error = pg_arrival_date_form_save_cutoffs($id, $_POST);
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('arrival date'), $_POST['name']) )), $_SESSION['sessionusername']);
     }
-    
     // if there was a shipping cut-off error, then add notice and forward user to edit arrival date screen
     if ($shipping_cutoff_error == TRUE) {
         $liveform->add_notice(lang('The arrival date has been saved, however one or more shipping cut-offs were removed because of an error. It is recommended that you review the shipping cut-offs. Please make sure you select a shipping method, enter a valid cut-off date &amp; time that falls between the start date and end date, and make sure you do not enter multiple shipping cut-offs for the same shipping method.'));
