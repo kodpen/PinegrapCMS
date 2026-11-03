@@ -48,7 +48,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-19.md: Decisions list, product part 19 (2026-11-02 on): the owner answers of the 2026-11 feature plans (booking, importers, forms, mail complaints, Fediverse, stock, EU VAT, TLS settings)
 - decisions-made-product-2.md: Decisions list, product part 2 (2026-10-29 on): guest account and receipt of a webhook-completed order; PayTR instalments; layout editor of a page not on a visual design; carrier drivers
 - decisions-made-product-20.md: Decisions list, product part 20 (2026-11-02 on): voice to assistants, transactional campaigns and opt-in, converted regions, event copies, till dates, country names, bank statements, untracked scans
-- decisions-made-product-21.md: Decisions list, product part 21 (2026-11-03 on): clearing the performance log, the Migration screen, panel transitions, the panel back/forward cache
+- decisions-made-product-21.md: Decisions list, product part 21 (2026-11-03 on): clearing the performance log, the Migration screen, panel transitions, the panel back/forward cache, WebP behind an unconfirmed CDN
 - decisions-made-product-3.md: Decisions list, product part 3 (2026-10-29 on): SVG and ZPL labels, the first international label driver, get_catalog.php's dead top-item block, the PHP 5 remnants, converted common regions' rows
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14

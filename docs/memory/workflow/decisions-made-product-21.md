@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-21
-description: Decisions list, product part 21 (2026-11-03 on): clearing the performance log, the Migration screen, panel transitions, the panel back/forward cache
+description: Decisions list, product part 21 (2026-11-03 on): clearing the performance log, the Migration screen, panel transitions, the panel back/forward cache, WebP behind an unconfirmed CDN
 ---
 
 ## Where are the rules and the earlier parts?
@@ -18,3 +18,6 @@ description: Decisions list, product part 21 (2026-11-03 on): clearing the perfo
 
 ## Panel pages may enter the back/forward cache (2026-11-03, #6081)
 - Owner: panel HTML is sent `private, no-cache` (no `no-store`) from one place; the sign-out answer carries `Clear-Site-Data: "cache"`; a page restored on `pageshow` asks for the session and goes to sign-in when it is gone; secret screens (API keys, recovery codes, password reset, 2FA setup, connected-account tokens) keep `no-store`; in-page JSON replies drop `no-store` too. Reason: list, record, Back is the panel's most frequent move.
+
+## WebP at the own address behind a CDN nobody confirmed (2026-11-03, #6144)
+- Owner (2026-11-03, as reported on the issue): the software handles WebP at the picture's own address by itself; no site depends on an outside setting. Decided (architect, replacing the CDN guard of 2026-11-01 in product-17): behind a CDN or proxy without bit 8 the picture is still negotiated and the WebP, the original and a 304 carry `private, max-age=604800` with `Vary: Accept`, so no cache hands out a wrong copy; the one-off `pg_vary_check` answers stay `public` so the edge can be measured; the general job runs the token-free self-test at switch-on and daily while unconfirmed: copies per format set bit 8 (public again), one shared copy keeps `private`, a cached private answer sends the original as before until the next test; the mode is kept beside the derivative cache's per-server test, no schema; System Status names the mode; the change purges nothing. Price: pictures leave an unconfirmed CDN's edge cache until the test passes or the Cloudflare rule is written.
