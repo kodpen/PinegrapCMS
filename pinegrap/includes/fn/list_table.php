@@ -694,7 +694,7 @@ function pg_list_table_row_html(array $row, array $columns)
             }
         }
 
-        $output .= '>' . $cell['html'] . '</td>';
+        $output .= ($columns[$key]['hidden'] ? ' hidden' : '') . '>' . $cell['html'] . '</td>';
     }
 
     return $output . '</tr>';
@@ -715,6 +715,28 @@ function pg_list_table_aria_sort(array $levels, $key)
     }
 
     return ($levels[0]['order'] === 'desc') ? 'descending' : 'ascending';
+}
+
+/**
+ * The driver's texts, translated here; '%n' stands for a number the
+ * browser writes in.
+ *
+ * @return array
+ */
+function pg_list_table_texts()
+{
+    return array(
+        'more' => lang('Show more'),
+        'loading' => lang('Loading...'),
+        'failed' => lang('The list could not be loaded.'),
+        'retry' => lang('Try again'),
+        'loaded' => lang(array('string' => '{var:1} rows loaded', 'vars' => array('%n'))),
+        'selected' => lang(array('string' => '{var:1} selected', 'vars' => array('%n'))),
+        'all' => lang(array('string' => 'All {var:1} rows selected', 'vars' => array('%n'))),
+        'clear' => lang('Clear selection'),
+        'undo' => lang('Undo the previous selection'),
+        'sort' => lang('Sort by this column'),
+    );
 }
 
 /**
@@ -739,8 +761,14 @@ function pg_list_table_html(array $source, array $page, $label)
         . ' data-pg-list-params="' . h((string) json_encode((object) $source['params_out'], $json)) . '"'
         . ' data-pg-list-sort="' . h(pg_list_sort_value($source['levels'])) . '"'
         . ' data-pg-list-next="' . h((string) $page['next']) . '"'
-        . ' data-pg-list-total="' . (int) $page['total'] . '">';
+        . ' data-pg-list-total="' . (int) $page['total'] . '"'
+        . ' data-pg-list-texts="' . h((string) json_encode(pg_list_table_texts(), $json)) . '">';
 
+    // The selection bar stays above the rows; the rows scroll in their own
+    // box under a sticky heading row, so the list fills the window.
+    $output .= '<div class="pg-list-table-bar" hidden><span class="pg-list-table-count" aria-live="polite"></span>'
+        . '<span class="pg-list-table-actions"></span></div>';
+    $output .= '<div class="pg-list-table-scroll" tabindex="-1">';
     $output .= '<table class="table pg-list-table-grid" role="table" aria-label="' . h($label) . '">';
     $output .= '<thead role="rowgroup"><tr role="row">';
 
@@ -764,6 +792,7 @@ function pg_list_table_html(array $source, array $page, $label)
 
     $output .= '</tbody></table>';
     $output .= '<p class="pg-list-table-empty fg-secondary"' . ($page['rows'] ? ' hidden' : '') . '>' . h(lang('No records found.')) . '</p>';
+    $output .= '<div class="pg-list-table-foot"></div></div>';
     $output .= '<div class="visually-hidden" aria-live="polite" data-pg-list-live></div>';
 
     return $output . '</div>';
