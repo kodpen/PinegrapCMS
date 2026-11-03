@@ -1038,6 +1038,7 @@
     "Choose…": "Seçin…",
     "Choose… (optional)": "Seçin… (isteğe bağlı)",
     "Choosing Write holds the read position open; the record keeps only what you chose.": "Yazma seçildiğinde okuma açık tutulur; kayıtta yalnız sizin seçtiğiniz durur.",
+    "Choosing a model": "Model seçimi",
     "Choosing a type loads that type's ready-made layout and renames the widget after the type instead of <code>{var}</code>.": "Türü seçince o türün hazır düzeni yüklenir ve widget <code>{var}</code> yerine türüne göre adlandırılır.",
     "Choosing one rebuilds the inside of the widget from that form's fields.": "Seçince widget'ın içi o formun alanlarıyla yeniden kurulur.",
     "Choosing sunglasses for your face": "Yüzünüze uygun güneş gözlüğünü seçmek",
