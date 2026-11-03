@@ -5,7 +5,7 @@ module: visitor_periods
 ---
 
 ## What is the screen?
-- `visitors.php` (root): `validate_user()`, `validate_visitors_access()`, the period from `$_GET`, the toolbar (Saved reports; the dates and the compared dates in the grow slot; the period bar in the search slot), then `pg_visitors_render_sections()`. With no section file the screen says the sections are on their way. Opened by the Visitors menu entry (V1, #PR).
+- `visitors.php` (root): `validate_user()`, `validate_visitors_access()`, the period from `$_GET`, the toolbar (Saved reports; the dates and the compared dates in the grow slot; the period bar in the search slot), then `pg_visitors_render_sections()`. With no section file the screen says the sections are on their way. Opened by the Visitors menu entry (V1, #6361).
 - Its stylesheet `assets/css/pg_visitors.src.css` (`pg_css_bundles()`, linked through `pg_visitors_style_url()` in the head) and script `assets/js/pg_visitors.src.js` (`pg_js_bundles()`); Chart.js is loaded only when a section printed a `data-pg-chart` canvas.
 
 ## How is the period read?
