@@ -738,6 +738,13 @@ function pg_list_table_texts()
         'clear' => lang('Clear selection'),
         'undo' => lang('Undo the previous selection'),
         'sort' => lang('Sort by this column'),
+        'columns' => lang('Columns'),
+        'details' => lang('Details'),
+        'close' => lang('Close'),
+        'up' => lang('Move up'),
+        'down' => lang('Move down'),
+        'reset' => lang('Reset'),
+        'pick' => lang('Select a row to see its details.'),
     );
 }
 
@@ -766,12 +773,23 @@ function pg_list_table_html(array $source, array $page, $label, $actions = '')
         . ' data-pg-list-sort="' . h(pg_list_sort_value($source['levels'])) . '"'
         . ' data-pg-list-next="' . h((string) $page['next']) . '"'
         . ' data-pg-list-total="' . (int) $page['total'] . '"'
+        . ' data-pg-list-user="' . (defined('USER_ID') ? (int) USER_ID : 0) . '"'
         . ' data-pg-list-texts="' . h((string) json_encode(pg_list_table_texts(), $json)) . '">';
 
-    // The selection bar stays above the rows; the rows scroll in their own
-    // box under a sticky heading row, so the list fills the window.
-    $output .= '<div class="pg-list-table-bar" hidden><span class="pg-list-table-count" aria-live="polite"></span>'
-        . '<span class="pg-list-table-actions">' . $actions . '</span></div>';
+    // The bar stays above the rows: the selection's count and bulk actions
+    // while rows are selected, the columns menu and the details switch
+    // always. The rows scroll in their own box under a sticky heading row,
+    // so the list fills the window; the details panel stands beside them.
+    $output .= '<div class="pg-list-table-bar is-empty"><span class="pg-list-table-count" aria-live="polite"></span>'
+        . '<span class="pg-list-table-actions">' . $actions . '</span>'
+        . '<span class="pg-list-table-tools">'
+        . '<span class="pg-menu-wrap"><button type="button" class="btn btn-sm btn-text theme-secondary pg-list-table-columns" data-bs-toggle="menu" data-bs-auto-close="outside" aria-expanded="false">'
+        . '<i class="bi bi-layout-three-columns me-1" aria-hidden="true"></i>' . h(lang('Columns')) . '</button>'
+        . '<div class="menu pg-menu-end pg-list-table-columns-menu"></div></span>'
+        . '<button type="button" class="btn btn-sm btn-text theme-secondary pg-list-table-details-switch" aria-pressed="false">'
+        . '<i class="bi bi-layout-sidebar-reverse me-1" aria-hidden="true"></i>' . h(lang('Details')) . '</button>'
+        . '</span></div>';
+    $output .= '<div class="pg-list-table-body">';
     $output .= '<div class="pg-list-table-scroll" tabindex="-1">';
     $output .= '<table class="table pg-list-table-grid" role="table" aria-label="' . h($label) . '">';
     $output .= '<thead role="rowgroup"><tr role="row">';
@@ -797,6 +815,10 @@ function pg_list_table_html(array $source, array $page, $label, $actions = '')
     $output .= '</tbody></table>';
     $output .= '<p class="pg-list-table-empty fg-secondary"' . ($page['rows'] ? ' hidden' : '') . '>' . h(lang('No records found.')) . '</p>';
     $output .= '<div class="pg-list-table-foot"></div></div>';
+    $output .= '<aside class="pg-list-table-details" aria-label="' . h(lang('Details')) . '" hidden>'
+        . '<div class="pg-list-table-details-head"><strong>' . h(lang('Details')) . '</strong>'
+        . '<button type="button" class="btn btn-sm btn-text theme-secondary pg-list-table-details-close" aria-label="' . h(lang('Close')) . '" title="' . h(lang('Close')) . '"><i class="bi bi-x-lg" aria-hidden="true"></i></button></div>'
+        . '<div class="pg-list-table-details-body"></div></aside></div>';
     $output .= '<div class="visually-hidden" aria-live="polite" data-pg-list-live></div>';
 
     return $output . '</div>';

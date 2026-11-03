@@ -21919,6 +21919,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   overscroll-behavior: contain;
 }
 .pg-list-table-grid {
+  margin-top: 0;
   margin-bottom: 0;
 }
 .pg-list-table-grid > thead > tr > th {
@@ -21965,14 +21966,132 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   border-bottom: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
   background: color-mix(in srgb, var(--pg-primary) 8%, transparent);
 }
-.pg-list-table-bar[hidden] {
+.pg-list-table-bar.is-empty {
+  background: none;
+}
+.pg-list-table-bar.is-empty > .pg-list-table-count,
+.pg-list-table-bar.is-empty > .pg-list-table-actions {
   display: none;
 }
 .pg-list-table-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.25rem;
+}
+/* The columns menu and the details switch keep the bar's right end. */
+.pg-list-table-tools {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
   margin-inline-start: auto;
+}
+.pg-list-table-columns-menu {
+  min-width: 16rem;
+  max-height: 60dvh;
+  overflow: auto;
+  padding: 0.25rem;
+}
+.pg-list-table-columns-menu.show {
+  opacity: 1;
+}
+.pg-list-table-column {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+.pg-list-table-column-name {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.25rem 0.5rem;
+  cursor: pointer;
+}
+/* The rows and the details panel side by side. */
+.pg-list-table-body {
+  display: flex;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.pg-list-table-body > .pg-list-table-scroll {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.pg-list-table-details {
+  flex: 0 0 20rem;
+  overflow: auto;
+  padding: 0.5rem 0.75rem;
+  border-inline-start: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
+  background: var(--pg-card-bg);
+}
+.pg-list-table-details[hidden] {
+  display: none;
+}
+.pg-list-table-details-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+.pg-list-table-details dl {
+  margin: 0;
+}
+.pg-list-table-details dt {
+  font-weight: 600;
+  color: var(--pg-fg-2);
+}
+.pg-list-table-details dd {
+  margin: 0 0 0.75rem;
+  overflow-wrap: anywhere;
+}
+/* Below 1024 px the details panel is a sheet over the list's right side. */
+@media (max-width: 1023.98px) {
+  .pg-list-table-details {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-end: 0;
+    z-index: 1045;
+    width: min(22rem, 100vw);
+    box-shadow: var(--pg-shadow-lg);
+  }
+}
+/* Below 768 px a row is a card: every shown cell under its column's name. */
+@media (max-width: 767.98px) {
+  .pg-list-table-grid > thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .pg-list-table-grid,
+  .pg-list-table-grid > tbody,
+  .pg-list-table-grid > tbody > tr,
+  .pg-list-table-grid > tbody > tr > td {
+    display: block;
+    width: 100%;
+  }
+  .pg-list-table-grid > tbody > tr {
+    margin: 0.5rem 0;
+    border: var(--pg-border-width) var(--pg-border-style) var(--pg-border-color);
+    border-radius: var(--pg-radius);
+  }
+  .pg-list-table-grid > tbody > tr > td {
+    display: flex;
+    gap: 0.5rem;
+    text-align: start;
+    border: 0;
+  }
+  .pg-list-table-grid > tbody > tr > td[hidden] {
+    display: none;
+  }
+  .pg-list-table-grid > tbody > tr > td::before {
+    content: attr(data-pg-label);
+    flex: 0 0 40%;
+    text-align: start;
+    font-weight: 600;
+    color: var(--pg-fg-2);
+  }
 }
 .pg-list-table-foot {
   display: flex;
