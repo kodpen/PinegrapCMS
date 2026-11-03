@@ -845,8 +845,9 @@ function pg_a11y_run($time_budget)
     $state = json_decode((string) @file_get_contents(pg_a11y_state_path()), true);
     $after = (is_array($state) && isset($state['after'])) ? (int) $state['after'] : 0;
     // The whole pass's counts, kept with its place: a pass spans many runs.
-    $pass_checked = (is_array($state) && isset($state['checked'])) ? (int) $state['checked'] : 0;
-    $pass_failed = (is_array($state) && isset($state['failed'])) ? (int) $state['failed'] : 0;
+    // Without a place ('after') a new pass starts and counts from zero.
+    $pass_checked = (is_array($state) && isset($state['after'], $state['checked'])) ? (int) $state['checked'] : 0;
+    $pass_failed = (is_array($state) && isset($state['after'], $state['failed'])) ? (int) $state['failed'] : 0;
     $pages = pg_a11y_pages();
     $checked = 0;
     $failed = 0;
