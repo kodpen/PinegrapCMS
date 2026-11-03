@@ -161,6 +161,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - erp-account-shared-form.md: add_erp_account.php and edit_erp_account.php share their cards, field list, checks and the erp_account_save() row through includes/erp/account_form.php; what each screen keeps
 - erp-line-editor-hints.md: ERP line editor and inbox e-invoice lines show their hints as text: barcode and withholding hints, column notes, the barcode "not found" message, the zone-rate source, the inbox mismatch figures
 - erp-link-rights.md: ERP order, receipt, contact and user links and the Record a Receipt/Payment buttons show only when the target screen admits the clerk; plain text otherwise
+- experiments-screen.md: The Experiments results screen (experiments.php, PX5): figures per variant from experiment_hourly, lift, the two-proportion z-test as a sentence, daily rates; the per-IP limit on click goals
 - explorer-access-drawers.md: File Manager access drawers (folder and commerce) list only rights holders, add users by search, save changed rows, None deletes the row; end date layout, inherit note
 - explorer-bin-records-and-names.md: File Manager bin count skips records of gone items, classic page deletes clear the record, bin status bar kinds; paste, Duplicate, rename and upload toasts name the name a copy or file took
 - explorer-bin-toast.md: File and Catalog Manager Delete toasts count what the server moved to the bin and show its refusal reasons
