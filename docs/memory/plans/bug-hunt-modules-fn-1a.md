@@ -44,7 +44,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `designer_theme_vars`: open
 
-- `designer_vocab`: open
+- `designer_vocab`: clean
 
 - `ecommerce`: open
 
