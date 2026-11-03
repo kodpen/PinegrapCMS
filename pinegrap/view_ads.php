@@ -235,13 +235,13 @@ if ($ads) {
             $last_modified_username = ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($ad['last_modified_username']) ) ) );
         }
 
-        // if the ad region display type is static then prepare output value
+        // an ad whose region is gone (or has no valid type) shows no type
         if ($ad['ad_region_display_type'] == 'static') {
             $output_ad_region_display_type = lang('Static');
-            
-        // else the ad region display type is dynamic, so prepare output value
-        } else {
+        } elseif ($ad['ad_region_display_type'] == 'dynamic') {
             $output_ad_region_display_type = lang('Dynamic');
+        } else {
+            $output_ad_region_display_type = '';
         }
         
         $output_label = '';
@@ -267,7 +267,7 @@ if ($ads) {
                 <td class="chart_label">' . h($ad['ad_name']) . '</td>
                 <td class="chart_label">' . h($ad['ad_region_name']) . '</td>
                 <td class="align-middle text-center">' . $output_ad_region_display_type . '</td>
-                <td >' . $output_label . '</td>
+                <td class="align-middle text-center">' . $output_label . '</td>
                 <td class="align-middle text-center">' . $output_sort_order . '</td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' => $ad['created_timestamp'])) . $created_username . '</td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' => $ad['last_modified_timestamp'])) . $last_modified_username . '</td>
@@ -298,8 +298,8 @@ print
                         // form is drawn here rather than by pg_filter_select().
                         '<form id="search_form" action="view_ads.php" method="get" class="pg-toolbar-filter disable_shortcut">
                             <div class="input-group input-group-sm w-auto flex-nowrap">
-                                <label class="input-group-text" title="' . h(lang('Content that viewed')) . '" for="ad_region_id"><i class="bi bi-eye" aria-hidden="true"></i></label>
-                                <select id="ad_region_id" aria-label="' . h(lang('Content that viewed')) . '" name="ad_region_id" class="form-control form-control-sm w-auto" onchange="this.form.submit()"><option value="[All]">[' . lang('All') . '] (' . pg_format_number($all_ads, 0) . ')</option>' . $output_ad_region_options . '</select>
+                                <label class="input-group-text" title="' . h(lang('Ad Region')) . '" for="ad_region_id"><i class="bi bi-eye" aria-hidden="true"></i></label>
+                                <select id="ad_region_id" aria-label="' . h(lang('Ad Region')) . '" name="ad_region_id" class="form-control form-control-sm w-auto" onchange="this.form.submit()"><option value="[All]">[' . lang('All') . '] (' . pg_format_number($all_ads, 0) . ')</option>' . $output_ad_region_options . '</select>
                             </div>
                             <noscript><button type="submit" class="btn btn-sm btn-outline theme-secondary">' . h(lang('Apply')) . '</button></noscript>
                         </form>',
@@ -313,7 +313,7 @@ print
                                     <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
                                     <th>' . get_column_heading(lang('Name'), $sort_levels, '', '', 'name') . '</th>
                                     <th>' . get_column_heading(lang('Ad Region'), $sort_levels, '', '', 'ad_region') . '</th>
-                                    <th>' . get_column_heading(lang('Display Type'), $sort_levels, '', '', 'display_type') . '</th>
+                                    <th class="text-center">' . get_column_heading(lang('Display Type'), $sort_levels, '', '', 'display_type') . '</th>
                                     <th class="text-center">' . lang('Label') . '</th>
                                     <th class="text-center">' . lang('Sort Order') . '</th>
                                     <th>' . get_column_heading(lang('Created'), $sort_levels, '', '', 'created') . '</th>

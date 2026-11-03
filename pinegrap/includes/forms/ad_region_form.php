@@ -84,7 +84,7 @@ function pg_ad_region_form_card($liveform, $name_field, $defaults = false)
                                                             <label class="form-label" for="transition_duration">' . lang('Transition Duration') . '</label>
                                                             <label class="form-control form-adorn form-adorn-end">
                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('milliseconds') . '</span>
-                                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'transition_duration', 'id'=>'transition_duration', 'class'=>'form-ghost text-end', 'inputmode'=>'numeric', 'maxlength'=>'4', 'data-inputmask-alias'=>'integer', 'data-inputmask-placeholder'=>'0')) . '
+                                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'transition_duration', 'id'=>'transition_duration', 'class'=>'form-ghost text-end', 'inputmode'=>'numeric', 'maxlength'=>'4', 'data-inputmask-alias'=>'integer', 'data-inputmask-allowminus'=>'false', 'data-inputmask-placeholder'=>'0')) . '
                                                             </label>
                                                             <div class="form-text text-end">' . lang('leave blank for default, 1 for instant, 1000 for 1 second') . '</div>
                                                         </div>
@@ -101,7 +101,7 @@ function pg_ad_region_form_card($liveform, $name_field, $defaults = false)
                                                                             <label class="form-label" for="slideshow_interval">' . lang('Interval') . '</label>
                                                                             <label class="form-control form-adorn form-adorn-end">
                                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('seconds') . '</span>
-                                                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'slideshow_interval', 'id'=>'slideshow_interval', 'class'=>'form-ghost text-end', 'inputmode'=>'numeric', 'maxlength'=>'3', 'data-inputmask-alias'=>'decimal', 'data-inputmask-placeholder'=>'0')) . '
+                                                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'slideshow_interval', 'id'=>'slideshow_interval', 'class'=>'form-ghost text-end', 'inputmode'=>'numeric', 'maxlength'=>'3', 'data-inputmask-alias'=>'integer', 'data-inputmask-allowminus'=>'false', 'data-inputmask-placeholder'=>'0')) . '
                                                                             </label>
                                                                         </div>
                                                                         <div class="col-12 my-1">
@@ -126,35 +126,61 @@ function pg_ad_region_form_card($liveform, $name_field, $defaults = false)
 }
 
 /**
- * Checks the posted name: required, the name rule, not used by another ad
- * region. Errors are marked on the form.
+ * Why a posted ad region name is refused, or '' when it may be saved:
+ * required, at most 100 characters (the column's length; the session is
+ * not strict, so a longer name would be cut into a clash with an existing
+ * one), the name rule, and not taken by another ad region.
+ *
+ * @param string $name
+ * @param string|null $previous_name  Stored name on edit, null on create
+ * @param callable $taken  function (string $name): bool, true when another region uses it
+ * @return string
+ */
+function pg_ad_region_name_error($name, $previous_name, $taken)
+{
+    $name = (string) $name;
+
+    if (trim($name) === '') {
+        return lang('Name is required.');
+    }
+
+    if (pg_name_too_long($name, 100)) {
+        return lang(array('string' => 'The name can be at most {var:1} characters long.', 'vars' => array(100)));
+    }
+
+    $error = pg_tag_name_error($name, $previous_name);
+
+    if ($error !== '') {
+        return $error;
+    }
+
+    if ($taken($name)) {
+        return lang('The name that you entered is already in use, so please enter a different name.');
+    }
+
+    return '';
+}
+
+/**
+ * Checks the posted name (pg_ad_region_name_error()) and marks an error on
+ * the form.
  *
  * @param liveform $liveform
  * @param string|null $id  Edited region's id, null on create
  */
 function pg_ad_region_form_validate_name($liveform, $id)
 {
-    $liveform->validate_required_field('name', lang('Name is required.'));
+    $previous_name = null;
 
-    if ($liveform->check_field_error('name') == false) {
-        $previous_name = null;
-
-        if ($id !== null) {
-            $result = db_q("SELECT name FROM ad_regions WHERE id = ?", array((string) $id)) or output_error('Query failed.');
-            $row = mysqli_fetch_assoc($result);
-            $previous_name = (string) ($row['name'] ?? '');
-        }
-
-        $error = pg_tag_name_error($liveform->get_field_value('name'), $previous_name);
-
-        if ($error !== '') {
-            $liveform->mark_error('name', $error);
-        }
+    if ($id !== null) {
+        $result = db_q("SELECT name FROM ad_regions WHERE id = ?", array((string) $id)) or output_error('Query failed.');
+        $row = mysqli_fetch_assoc($result);
+        $previous_name = (string) ($row['name'] ?? '');
     }
 
-    if ($liveform->check_field_error('name') == false) {
+    $taken = function ($name) use ($id) {
         $query = "SELECT id FROM ad_regions WHERE (name = ?)";
-        $values = array((string) $liveform->get_field_value('name'));
+        $values = array((string) $name);
 
         if ($id !== null) {
             $query .= " AND (id != ?)";
@@ -163,28 +189,110 @@ function pg_ad_region_form_validate_name($liveform, $id)
 
         $result = db_q($query, $values) or output_error('Query failed.');
 
-        if (mysqli_num_rows($result) > 0) {
-            $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
-        }
+        return mysqli_num_rows($result) > 0;
+    };
+
+    $error = pg_ad_region_name_error($liveform->get_field_value('name'), $previous_name, $taken);
+
+    if ($error !== '') {
+        $liveform->mark_error('name', $error);
+    }
+}
+
+/**
+ * The region behaviour fields a save refuses, as field => error: Display
+ * Type static or dynamic; for a dynamic region Transition Type slide or
+ * fade and Transition Duration blank or 0-9999 milliseconds; with autoplay
+ * on, Interval blank or 1-999 whole seconds. The columns are enums and
+ * small integers and the session is not strict, so a wrong value was
+ * stored as an empty type, a negative number or a rounded one.
+ *
+ * @param array $fields  display_type, transition_type, transition_duration, slideshow, slideshow_interval
+ * @return array
+ */
+function pg_ad_region_behavior_errors(array $fields)
+{
+    $errors = array();
+    $value = function ($name) use ($fields) {
+        return isset($fields[$name]) && is_scalar($fields[$name]) ? trim((string) $fields[$name]) : '';
+    };
+
+    if (!in_array($value('display_type'), array('static', 'dynamic'), true)) {
+        $errors['display_type'] = lang('Please select a Display Type.');
+
+        return $errors;
+    }
+
+    if ($value('display_type') !== 'dynamic') {
+        return $errors;
+    }
+
+    if (!in_array($value('transition_type'), array('slide', 'fade'), true)) {
+        $errors['transition_type'] = lang('Please select a Transition Type.');
+    }
+
+    $duration = $value('transition_duration');
+
+    if (($duration !== '') && !preg_match('/^[0-9]{1,4}$/', $duration)) {
+        $errors['transition_duration'] = lang('Transition Duration must be a whole number from 0 to 9999 milliseconds, or blank for the default.');
+    }
+
+    $interval = $value('slideshow_interval');
+
+    if (($value('slideshow') === '1') && ($interval !== '') && (!preg_match('/^[0-9]{1,3}$/', $interval) || ((int) $interval < 1))) {
+        $errors['slideshow_interval'] = lang('Interval must be a whole number of seconds from 1 to 999, or blank.');
+    }
+
+    return $errors;
+}
+
+/**
+ * Marks the region behaviour errors (pg_ad_region_behavior_errors()) on
+ * the form.
+ *
+ * @param liveform $liveform
+ */
+function pg_ad_region_form_validate_behavior($liveform)
+{
+    $fields = array();
+
+    foreach (array('display_type', 'transition_type', 'transition_duration', 'slideshow', 'slideshow_interval') as $name) {
+        $fields[$name] = $liveform->get_field_value($name);
+    }
+
+    foreach (pg_ad_region_behavior_errors($fields) as $name => $error) {
+        $liveform->mark_error($name, $error);
     }
 }
 
 /**
  * The six region behaviour values a save writes, in INSERT/UPDATE order:
  * display type, transition type, transition duration, autoplay, interval,
- * continuous play.
+ * continuous play. A value the form does not show for the chosen type (a
+ * static region's transition, an interval with autoplay off) is not
+ * checked, so it is written as its default instead of as posted.
  *
  * @param liveform $liveform
  * @return array
  */
 function pg_ad_region_form_values($liveform)
 {
+    $value = function ($name) use ($liveform) {
+        $field = $liveform->get_field_value($name);
+
+        return is_scalar($field) ? trim((string) $field) : '';
+    };
+
+    $type = in_array($value('transition_type'), array('slide', 'fade'), true) ? $value('transition_type') : 'slide';
+    $duration = preg_match('/^[0-9]{1,4}$/', $value('transition_duration')) ? $value('transition_duration') : '0';
+    $interval = (preg_match('/^[0-9]{1,3}$/', $value('slideshow_interval')) && ((int) $value('slideshow_interval') >= 1)) ? $value('slideshow_interval') : '0';
+
     return array(
-        (string) $liveform->get_field_value('display_type'),
-        (string) $liveform->get_field_value('transition_type'),
-        (string) $liveform->get_field_value('transition_duration'),
-        (string) $liveform->get_field_value('slideshow'),
-        (string) $liveform->get_field_value('slideshow_interval'),
-        (string) $liveform->get_field_value('slideshow_continuous'),
+        ($value('display_type') === 'dynamic') ? 'dynamic' : 'static',
+        $type,
+        $duration,
+        ($value('slideshow') === '1') ? '1' : '0',
+        $interval,
+        ($value('slideshow_continuous') === '1') ? '1' : '0',
     );
 }
