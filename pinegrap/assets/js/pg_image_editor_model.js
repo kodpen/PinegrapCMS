@@ -3133,6 +3133,49 @@
         animFrames: animFrames, animSamples: animSamples, animEstimate: animEstimate, animName: animName
     };
 
+    // -- saving an animation into Files (pg_image_editor_render.js) --
+
+    // Whether a file of bytes fits the server's limit (0: none known).
+    function animFits(bytes, limit) {
+        return !(Number(limit) > 0) || (Number(bytes) || 0) <= Number(limit);
+    }
+
+    // A smaller longest edge or frame rate whose file fits limit, from the
+    // estimate at set: the size scales with the frame's area and the frame
+    // count. The largest such file (the least lost), with a tenth spare;
+    // null when the settings fit or nothing offered does.
+    function animSmaller(out, set, bytes, limit) {
+        var f = ANIM_FORMATS[set.format] || ANIM_FORMATS.gif, now = animSize(out, set.edge), best = null;
+
+        if (animFits(bytes, limit)) {
+            return null;
+        }
+
+        animEdges(out, set.format).forEach(function (edge) {
+            var size = animSize(out, edge), area = (size.w * size.h) / (now.w * now.h);
+
+            f.rates.forEach(function (fps) {
+                var est = Math.round(bytes * area * fps / set.fps);
+
+                if ((size.w <= now.w) && (fps <= set.fps) && ((size.w < now.w) || (fps < set.fps)) && (est * 1.1 <= limit)
+                    && (!best || (est > best.bytes) || ((est === best.bytes) && (edge > best.edge)))) {
+                    best = { edge: edge, fps: fps, bytes: est };
+                }
+            });
+        });
+
+        return best;
+    }
+
+    // What a save into Files does: replace the animation the editor opened
+    // when it is of the same format and may be written over, else a new
+    // file.
+    function animSaveMode(made, format) {
+        return (made && made.replace && (made.format === (ANIM_FORMATS[format] || ANIM_FORMATS.gif).ext)) ? 'replace' : 'new';
+    }
+
+    var ANIMSAVE = { animFits: animFits, animSmaller: animSmaller, animSaveMode: animSaveMode };
+
     // -- access (pg_image_editor_access.js) --
 
     // A letter picks a tool of the call: the first of its tools the call
@@ -3405,7 +3448,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, TRACKS, RENDER, ACCESS, GFONTS, GLYPH].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, TRACKS, RENDER, ANIMSAVE, ACCESS, GFONTS, GLYPH].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

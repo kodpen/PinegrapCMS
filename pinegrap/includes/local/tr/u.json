@@ -368,6 +368,7 @@
     "Use thick paper in a quiet colour and fold the edges under before you tape them, so no cut edge shows. A real ribbon, tied by hand, does the rest.": "Sakin renkte kalın bir kâğıt kullanın ve kesik kenar görünmesin diye bantlamadan önce kenarları içe katlayın. Elle bağlanmış gerçek bir kurdele gerisini halleder.",
     "Use this text": "Bu metni kullan",
     "Use this theme": "Bu temayı kullan",
+    "Use {size} at {fps} ({bytes})": "{size}, {fps} kullan ({bytes})",
     "Used as the ^^__empty_message^^ token.": "^^__empty_message^^ token'ı olarak kullanılır.",
     "Used as the ^^__not_logged_in^^ token.": "^^__not_logged_in^^ token'ı olarak kullanılır.",
     "Used as the prefix of every variant SKU.": "Her varyant SKU'sunun ön eki olarak kullanılır.",

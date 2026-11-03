@@ -2738,6 +2738,7 @@
     "An animated GIF cannot be replaced. Save it as a new file instead.": "Hareketli bir GIF değiştirilemez. Bunun yerine yeni dosya olarak kaydedin.",
     "An animated image cannot be replaced. Save it as a new file instead.": "Hareketli bir görsel değiştirilemez. Bunun yerine yeni dosya olarak kaydedin.",
     "An animated image is saved as a still copy.": "Hareketli görsel, hareketsiz bir kopya olarak kaydedilir.",
+    "An animation is replaced only by one in the same format. Save it as a new file instead.": "Bir animasyonun yerine yalnızca aynı biçimde bir animasyon yazılır. Bunun yerine yeni dosya olarak kaydedin.",
     "An answer can be at most 2000 characters long.": "Yanıt en fazla 2000 karakter olabilir.",
     "An answer can be at most {var:1} characters long.": "Bir yanıt en çok {var:1} karakter olabilir.",
     "An answer is at most {var:1} characters.": "Bir yanıt en çok {var:1} karakter olabilir.",

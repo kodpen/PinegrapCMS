@@ -547,7 +547,9 @@
     };
 
     Editor.prototype.closeAnimation = function () {
-        if (!this.animBox) {
+        // A file being sent is written whatever happens here: the dialog
+        // waits for the answer.
+        if (!this.animBox || this.animUploading) {
             return;
         }
 
@@ -618,9 +620,24 @@
             main.appendChild(el('p', { class: 'pgie-note pgie-anim-warn', role: 'alert', text: t('animTooLong').replace('{n}', X.decimal(f.maxMs / 1000)) }));
         }
 
-        var download = button('pgie-btn pgie-primary', t('animDownload'), 'download', function () { self.startAnimation(); }, true);
+        this.animEls.limit = el('div', { class: 'pgie-anim-limit', 'aria-live': 'polite' });
+        main.appendChild(this.animEls.limit);
+
+        var mode = M.animSaveMode(this.animFile, set.format), replace = null;
+
+        if (mode === 'replace') {
+            replace = el('input', { type: 'checkbox' });
+            replace.checked = (set.replace !== false);
+            replace.addEventListener('change', function () { set.replace = replace.checked; });
+            main.appendChild(el('label', { class: 'pgie-check' }, [replace, el('span', { text: t('animReplace').replace('{name}', this.animFile.name) })]));
+        }
+
+        var download = button('pgie-btn', t('animDownload'), 'download', function () { self.startAnimation('download'); }, true);
+        var files = button('pgie-btn pgie-primary', t('animSaveFiles'), 'check', function () { self.startAnimation((replace && replace.checked) ? 'replace' : 'new'); }, true);
 
         download.disabled = long;
+        files.disabled = long;
+        this.animEls.files = files;
 
         box.appendChild(el('div', { class: 'pgie-confirm-box pgie-anim-box' }, [
             el('div', { class: 'pgie-anim-head' }, [
@@ -628,7 +645,7 @@
                 button('pgie-ibtn', t('close'), 'close', function () { self.closeAnimation(); })
             ]),
             el('div', { class: 'pgie-anim-body' }, [el('div', { class: 'pgie-anim-side' }, [preview, this.animEls.caption]), main]),
-            el('div', { class: 'pgie-anim-foot' }, [el('p', { class: 'pgie-note', text: t('animLocal') }), download])
+            el('div', { class: 'pgie-anim-foot' }, [el('p', { class: 'pgie-note', text: t('animLocal') }), download, files])
         ]));
 
         this.animPreviewAt(size);
@@ -637,7 +654,7 @@
             this.estimateAnimation();
         }
 
-        (box.querySelector('.pgie-chip.on') || download).focus({ preventScroll: true });
+        (box.querySelector('.pgie-chip.on') || files).focus({ preventScroll: true });
     };
 
     // The preview shows the middle of the animation.
@@ -692,6 +709,7 @@
 
                 e.children[1].textContent = '≈ ' + bytesText(r.bytes);
                 e.children[2].textContent = t('animFrames').replace('{n}', r.count) + ' · ' + X.decimal(M.docMotion(self.doc).duration / 1000) + ' ' + t('motionSecondsUnit');
+                self.animLimit(r.bytes);
             }, function (err) {
                 if ((self.animTask === task) && err) {
                     self.animTask = null;
@@ -701,11 +719,70 @@
         }, ESTIMATE_DELAY);
     };
 
+    // The server's upload limit beside the estimate; over it Save to Files
+    // waits and a smaller size or rate that fits is offered (Download still
+    // works).
+    Editor.prototype.animLimit = function (bytes) {
+        var self = this, limit = Number(config().animationLimit) || 0, box = this.animEls.limit, fits = M.animFits(bytes, limit);
+        var smaller = fits ? null : M.animSmaller(M.saveSize(this.doc), this.animSet, bytes, limit);
+
+        box.textContent = '';
+        this.animEls.files.disabled = !fits;
+
+        if (!limit) {
+            return;
+        }
+
+        box.classList.toggle('pgie-anim-warn', !fits);
+        box.appendChild(el('p', { class: 'pgie-note', role: fits ? null : 'alert', text: (fits ? t('animLimit') : t('animOverLimit')).replace('{size}', bytesText(limit)) }));
+
+        if (smaller) {
+            var size = M.animSize(M.saveSize(this.doc), smaller.edge);
+
+            box.appendChild(el('button', { type: 'button', class: 'pgie-btn pgie-anim-smaller', text: t('animUseSmaller').replace('{size}', size.w + ' × ' + size.h + ' px').replace('{fps}', smaller.fps + ' ' + t('animFps')).replace('{bytes}', '≈ ' + bytesText(smaller.bytes)), onclick: function () {
+                self.animSet.edge = smaller.edge;
+                self.animSet.fps = smaller.fps;
+                self.renderAnimation();
+            } }));
+        }
+    };
+
+    // The finished file into Files, after the request's line as it is
+    // (pg_image_editor_binary_body()): beside the picture, in the canvas's
+    // folder, or over the animation the editor opened.
+    Editor.prototype.saveAnimationFile = function (blob, mode, name) {
+        var self = this, cfg = config(), head = {
+            token: cfg.token || '', action: 'animation', mode: mode, doc: this.doc, base: this.versionBase || 0,
+            file_id: this.opts.fileId || 0, folder_id: (this.opts.save && this.opts.save.folderId) || 0,
+            name: (this.opts.save && this.opts.save.name) || name,
+            target: (mode === 'replace') ? this.animFile.id : 0
+        };
+
+        return fetch(cfg.api, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: { 'Content-Type': 'application/octet-stream', Accept: 'application/json' },
+            body: new Blob([JSON.stringify(head) + '\n', blob])
+        }).then(function (res) {
+            return res.json().catch(function () { return null; });
+        }).then(function (r) {
+            if (!r || (r.status !== 'success')) {
+                throw new Error((r && r.message) || t('animSaveError'));
+            }
+
+            // The next save replaces this file, as when it was opened.
+            self.animFile = { id: r.id, name: r.name, format: r.format, replace: true };
+
+            return r;
+        });
+    };
+
     // The working view: the file, a bar, the steps and Cancel; at the end
-    // the file is handed to the browser to keep.
-    Editor.prototype.startAnimation = function () {
+    // the file is handed to the browser to keep (target download) or saved
+    // into Files (new, replace).
+    Editor.prototype.startAnimation = function (target) {
         var self = this, set = Object.assign({}, this.animSet), f = M.ANIM_FORMATS[set.format];
-        var name = M.animName((this.file && this.file.name) || this.opts.fileName || '', f.ext);
+        var name = (target === 'replace') ? this.animFile.name : M.animName((this.file && this.file.name) || this.opts.fileName || '', f.ext);
         var bar = el('span'), percent = el('b'), steps = el('ul', { class: 'pgie-anim-steps' });
         var size = M.animSize(M.saveSize(this.doc), set.edge), main, side;
 
@@ -736,10 +813,10 @@
         foot.appendChild(cancel);
         cancel.focus({ preventScroll: true });
 
-        var order = ['base', 'frames', 'encode'];
+        var order = (target === 'download') ? ['base', 'frames', 'encode'] : ['base', 'frames', 'encode', 'upload'];
 
         function progress(stage, done, count) {
-            var at = order.indexOf(stage), p = Math.round(100 * ((at === 0) ? 0 : (at === 1 ? 0.05 + 0.9 * done / count : 0.97)));
+            var at = order.indexOf(stage), p = Math.round(100 * ((at === 0) ? 0 : (at === 1 ? 0.05 + 0.9 * done / count : (at === 2 ? 0.96 : 0.98))));
 
             bar.style.width = p + '%';
             bar.parentNode.setAttribute('aria-valuenow', String(p));
@@ -761,6 +838,33 @@
                 return;
             }
 
+            if (target !== 'download') {
+                // Once sent the file is written: Cancel no longer stops it.
+                progress('upload', 0, 1);
+                cancel.disabled = true;
+                self.animUploading = true;
+
+                self.saveAnimationFile(blob, target, name).then(function (r) {
+                    self.animUploading = false;
+
+                    if (self.animTask === task) {
+                        self.animTask = null;
+                        self.closeAnimation();
+                        self.showMessage(t('animSaved').replace('{name}', r.name));
+                    }
+                }, function (err) {
+                    self.animUploading = false;
+
+                    if (self.animTask === task) {
+                        self.animTask = null;
+                        self.closeAnimation();
+                        self.showMessage(err.message || t('animSaveError'), true);
+                    }
+                });
+
+                return;
+            }
+
             self.animTask = null;
 
             var a = el('a', { href: URL.createObjectURL(blob), download: name });
@@ -778,6 +882,20 @@
                 self.showMessage(err.message || t('animError'), true);
             }
         });
+    };
+
+    // An animation the editor made opens as its document; the open answer
+    // names the file, which Save to Files replaces.
+    var openFile = Editor.prototype.openFile;
+
+    Editor.prototype.openFile = function (r) {
+        this.animFile = (r && r.animation && r.animation.id) ? r.animation : null;
+
+        if (r && r.doc && (typeof r.doc === 'object')) {
+            delete r.doc.animation;
+        }
+
+        openFile.call(this, r);
     };
 
     // "Save animation" in the top bar, while something moves.
@@ -805,6 +923,8 @@
     Editor.inits.push(function () {
         this.animBox = null;
         this.animSet = null;
+        this.animFile = null;
+        this.animUploading = false;
         this.animBase = null;
         this.animTask = null;
         this.animTimer = 0;
