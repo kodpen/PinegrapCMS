@@ -642,6 +642,7 @@ function api_openapi_objects()
         'StoreTaxZone' => 'api_store_tax_zone_schema',
         'StoreState'   => 'api_store_state_schema',
         'StoreCountry' => 'api_store_country_schema',
+        'StoreCountryState' => 'api_store_country_state_schema',
         'StoreCurrency' => 'api_store_currency_schema',
         'StoreFeed'    => 'api_store_feed_schema',
         'GiftCard'     => 'api_gift_card_schema',

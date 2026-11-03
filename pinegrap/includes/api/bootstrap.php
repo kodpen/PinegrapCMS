@@ -63,6 +63,7 @@ require_once($pg_api_directory . '/resources/menus.php');
 require_once($pg_api_directory . '/resources/comments.php');
 require_once($pg_api_directory . '/resources/short_links.php');
 require_once($pg_api_directory . '/resources/store.php');
+require_once($pg_api_directory . '/resources/store_regions.php');
 require_once($pg_api_directory . '/resources/gift_cards.php');
 require_once($pg_api_directory . '/resources/commissions.php');
 require_once($pg_api_directory . '/resources/visitors.php');
