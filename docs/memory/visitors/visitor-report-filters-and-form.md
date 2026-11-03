@@ -8,7 +8,7 @@ module: visitor_report
 - `pg_visitor_report_filter_column($field, $from, $to)` (`includes/fn/visitor_report.php`) gives the SQL a filter compares, `''` for an empty or unknown field. The WHERE loop skips such a filter, so a report saved with `field = ''` (the ENUM takes it) opens again instead of a permanent "Query failed." (#5779).
 - The save refuses it: "Please select a field for each filter."
 - A date filter: the screen prints `get_date_picker_format() . pg_fields_script()` so the `data-pg-date` box gets the picker; the value is read with `pg_date_input_iso()` (21.10.2026 included), stored as `YYYY-MM-DD`, and an unreadable one is refused with "Please enter a valid date." A stored value that does not read keeps the old `prepare_form_data_for_input()` path (#5782).
-- A "day(s) ago" count must pass `pg_visitor_report_days_ago_valid()` (whole number 0 to INT UNSIGNED, empty = today); it used to be saved as 0 silently. The box is still `type=text` in `backend.src.js` (left for a script PR).
+- A "day(s) ago" count must pass `pg_visitor_report_days_ago_valid()` (whole number 0 to INT UNSIGNED, empty = today); it used to be saved as 0 silently. The box is `type=number min=0 step=1` (`backend.src.js`, the filter row shared with the order report).
 
 ## How is Pay Per Click / Organic counted?
 By the daily summary's rule, `pg_visitor_channel_sql()`, through `pg_visitor_report_channel_sql($filter)`: with an empty flag nothing is paid. The screen's own `LIKE "%flag%"` matched every visit when the setting was empty (#5783). Filter values stay `pay_per_click` / `organic` / `neither`; the grouping returns the English names `update_summarize_by_name()` translates.
