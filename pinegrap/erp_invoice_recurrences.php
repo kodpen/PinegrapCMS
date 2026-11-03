@@ -48,7 +48,7 @@ foreach ($recurrences as $row) {
                 . (((string) $row['end_date'] !== '0000-00-00') ? '<div class="small fg-secondary">' . h(lang(array('string' => 'Until {var:1}.', 'vars' => prepare_form_data_for_output((string) $row['end_date'], 'date', false)))) . '</div>' : '') . '</td>
             <td class="text-end text-nowrap" data-sort="' . (int) $row['grand_total'] . '">' . h(erp_money_out_currency((int) $row['grand_total'], (string) $row['currency'])) . '</td>
             <td class="text-end">' . (int) $row['occurrences'] . '</td>
-            <td>' . (((int) $row['last_invoice_id'] > 0)
+            <td>' . (((int) ($row['last_found_id'] ?? 0) > 0)
                 ? '<a class="pg-link-body-emphasis" href="' . (((string) $row['last_status'] === 'draft') ? 'edit_erp_invoice_draft.php' : 'edit_erp_invoice.php') . '?id=' . (int) $row['last_invoice_id'] . '">' . h(((string) $row['last_number'] !== '') ? (string) $row['last_number'] : lang('Draft')) . '</a>'
                 : '—')
                 . (((string) $row['last_error'] !== '') ? '<div class="small fg-danger">' . h((string) $row['last_error']) . '</div>' : '') . '</td>

@@ -156,7 +156,7 @@ function erp_invoice_recurrences($active_only = true)
     }
 
     return (array) db_items("SELECT r.*, a.title AS account_title,
-            s.full_number AS source_number, l.full_number AS last_number, l.status AS last_status
+            s.full_number AS source_number, l.id AS last_found_id, l.full_number AS last_number, l.status AS last_status
         FROM erp_invoice_recurrences r
         LEFT JOIN erp_accounts a ON a.id = r.account_id
         LEFT JOIN erp_invoices s ON s.id = r.source_invoice_id

@@ -49,7 +49,7 @@ function erp_drawer_markup($type)
 <dialog class="drawer drawer-end pg-erp-drawer" id="erp_drawer" aria-labelledby="erp_drawer_title" data-erp-drawer-type="' . h($type) . '" data-erp-drawer-url="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/get_erp_drawer.php') . '" data-erp-drawer-error="' . h(lang('The details could not be loaded.')) . '" data-erp-drawer-loading="' . h(lang('Loading...')) . '">
     <div class="drawer-header border-bottom gap-3">
         <h5 class="drawer-title text-break me-auto" id="erp_drawer_title"></h5>
-        <a class="btn btn-sm btn-outline theme-secondary d-none" id="erp_drawer_open" href="#"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . lang('Open in full') . '</a>
+        <a class="btn btn-sm btn-outline theme-secondary text-nowrap d-none" id="erp_drawer_open" href="#" title="' . h(lang('Open in full')) . '" aria-label="' . h(lang('Open in full')) . '"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i><span class="pg-btn-label d-none sm:d-inline ms-1">' . lang('Open in full') . '</span></a>
         <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . lang('Close') . '"></button>
     </div>
     <div class="drawer-body" id="erp_drawer_body"></div>
@@ -330,11 +330,13 @@ function erp_drawer_invoice($invoice_id)
         ? '<div class="table-responsive"><table class="table table-sm small mb-0"><thead><tr class="fg-secondary"><th class="fw-normal">' . lang('Description') . '</th><th class="fw-normal text-end">' . lang('Quantity') . '</th><th class="fw-normal text-end">' . h(erp_line_tax_label('tax', $lines_have_tax2)) . '</th><th class="fw-normal text-end">' . lang('Amount') . '</th></tr></thead><tbody>' . $output_lines . '</tbody></table></div>'
         : '<p class="small fg-secondary mb-0">' . lang('The document has no lines yet.') . '</p>';
 
-    // The e-document, only where there is one to speak of.
+    // The e-document, only where there is one to speak of: the same rule as
+    // the register's column, so a cancelled invoice never sent shows nothing.
     $output_edoc = '';
+    $edoc_unsent = ((string) ($invoice['edoc_status'] ?? 'none') === 'none');
 
     if (erp_edoc_installed() && !$is_draft && ((string) $invoice['direction'] === 'sales')
-        && ((erp_edoc_active() !== '') || ((string) ($invoice['edoc_status'] ?? 'none') !== 'none'))) {
+        && (!$edoc_unsent || ((erp_edoc_active() !== '') && ((string) $invoice['status'] !== 'cancelled')))) {
         $labels = erp_edoc_status_labels();
         $edoc_status = (string) ($invoice['edoc_status'] ?? 'none');
         $label = $labels[$edoc_status] ?? array($edoc_status, 'secondary');

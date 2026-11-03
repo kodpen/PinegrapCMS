@@ -1013,7 +1013,7 @@ function erp_api_invoice_recurrence_select()
     return "SELECT r.id, r.source_invoice_id, r.account_id, r.every_months, r.day_of_month, r.next_date, r.end_date,
             r.mode, r.grand_total, r.currency, r.occurrences, r.last_invoice_id, r.last_error, r.status,
             r.stopped_at, r.created_at, r.updated_at,
-            a.title AS account_title, s.full_number AS source_number, l.full_number AS last_number
+            a.title AS account_title, s.full_number AS source_number, l.id AS last_found_id, l.full_number AS last_number
         FROM erp_invoice_recurrences r
         LEFT JOIN erp_accounts a ON a.id = r.account_id
         LEFT JOIN erp_invoices s ON s.id = r.source_invoice_id
@@ -1036,7 +1036,8 @@ function erp_api_invoice_recurrence_present($row)
         'currency' => (string) $row['currency'],
         'grand_total' => api_money($row['grand_total']),
         'occurrences' => (int) $row['occurrences'],
-        'last_invoice_id' => (int) $row['last_invoice_id'],
+        // A deleted draft leaves no invoice to point at.
+        'last_invoice_id' => (int) ($row['last_found_id'] ?? 0),
         'last_number' => (string) ($row['last_number'] ?? ''),
         'last_error' => (string) $row['last_error'],
         'status' => (string) $row['status'],
