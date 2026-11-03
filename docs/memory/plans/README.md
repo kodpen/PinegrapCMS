@@ -51,8 +51,9 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - content-importers-steps-2.md: Steps IM4-IM7 of plans/content-importers.md: the WooCommerce and Shopify readers, redirects and undo, close-out; claim as [plan:content-importers] IM<n>
 - content-importers-steps.md: Steps IM1-IM3 of plans/content-importers.md: the import framework and screen, the WordPress WXR reader, pages and media fetches; claim as [plan:content-importers] IM<n>
 - content-importers.md: Plan (owner 2026-11-02): importers for WordPress (WXR), WooCommerce and Shopify (CSV): records, pages, media, comments, customers, products, old addresses as redirects; steps IM1-IM7
-- design-template-appstudio.md: Plan for the Mobile App Developer template (pinegrap-appstudio): own apps and release notes as collections, support and project requests, beta sign-up; parts in a folder; steps 1-9
-- design-template-launch.md: Plan for the Phone Launch Site template (pinegrap-launch): three models, specs and compare, the shop, trade-in and support requests; parts in a folder; steps 1-7
+- design-template-dealership.md: Plan for the Car Dealership template (pinegrap-dealership): vehicles as a collection with filters, test drive, trade-in and finance requests followed from the account; parts in a folder; steps 1-8
+- design-template-hotel.md: Plan for the Hotel template (pinegrap-hotel): rooms as a collection with rates, booking and event enquiries followed from the account, gift vouchers in the shop; parts in a folder; steps 1-9
+- design-template-market.md: Plan for the Marketplace template (pinegrap-market): makers' shops as a Sellers collection beside the store's catalog, seller applications and order help; parts in a folder; steps 1-8
 - designer-form-logic-steps-2.md: Steps FL5-FL8 of plans/designer-form-logic.md: the payment step on the site, the staff side and API, template fees, close-out; claim as [plan:designer-form-logic] FL<n>
 - designer-form-logic-steps.md: Steps FL1-FL4 of plans/designer-form-logic.md: Shown when rules, form steps with progress, the browser draft, the fee setting and order writer; claim as [plan:designer-form-logic] FL<n>
 - designer-form-logic.md: Plan (owner 2026-11-02): designed forms get Shown-when rules, steps with progress, and a payment step that places a one-line order through the payment drivers; steps FL1-FL8
@@ -131,6 +132,13 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - table-driver.md: Plan (owner 2026-11-03): the panel's own list table driver replacing DataTables, and the move of every table.chart screen to it, screen by screen (TD1-TD14)
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
+- visitors-overview-data.md: Data side of plans/visitors-overview.md: which table answers which figure, the daily summary against the raw rows, the channel rule and search engines, how a Google page meets a site page
+- visitors-overview-design.md: Contract of plans/visitors-overview.md: the files and who owns each, the period model, the section function, the menu, access and texts; the data side is in visitors-overview-data.md
+- visitors-overview-steps-2.md: Steps V5-V11 of plans/visitors-overview.md, the sections: traffic, conversions, sources, content, Google search, pages with Google, places; claim as [plan:visitors-overview] V<n>
+- visitors-overview-steps-3.md: Steps V12-V17 of plans/visitors-overview.md: alerts, saved reports tidy-up, API routes, status lines, close-out, the speed, AI and site search sections; claim as [plan:visitors-overview] V<n>
+- visitors-overview-steps.md: Steps V1-V4 of plans/visitors-overview.md, the foundations: shell and period, figures module, daily summary every day, channel and search engines; claim as [plan:visitors-overview] V<n>
+- visitors-overview-workers.md: How two coordinators' workers take plans/visitors-overview.md: the waves, which steps run side by side, what a section step owns and may edit, what its PR shows, who reviews
+- visitors-overview.md: Plan (owner 2026-11-01): the Visitors section as one overview screen on the rollups and a daily summary written every day, Search Console joined to the pages; steps V1-V17 in the -steps files
 - workspace-agent-handles.md: Plan (2026-10-21, steps 1 and 5 done, 4 waits for 2): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
 - workspace-assistant-key-setup.md: Plan (2026-10-23; steps 1-3 (#1462, #1523, #1726) and question 6 done): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
 - workspace-menu-layout.md: Plan (owner decision 2026-10-30) for a tidier Workspace list in the main menu: search, places, one Channels section, discussions, Tools tiles; channel screen unchanged

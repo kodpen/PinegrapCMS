@@ -2730,6 +2730,11 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
     // shipping, in submit_order()'s order (pg_express_order_charged_totals()):
     // the visitor confirms the amount the card is charged, and the recheck
     // at submit compares the same figure.
+    // A signed-in customer's store credit goes on (or comes off when they
+    // removed it) before the totals are read.
+    if ($order_id > 0) {
+        pg_credit_checkout_sync($order_id);
+    }
     $totals = $order_id > 0
         ? db_item("SELECT subtotal, discount, gift_card_discount, surcharge, tax_exempt, billing_country, billing_state
                    FROM orders WHERE id = '" . (int)$order_id . "' LIMIT 1")

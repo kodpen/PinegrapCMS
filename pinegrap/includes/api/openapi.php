@@ -647,6 +647,7 @@ function api_openapi_objects()
         'StoreCountry' => 'api_store_country_schema',
         'StoreCountryState' => 'api_store_country_state_schema',
         'StoreCurrency' => 'api_store_currency_schema',
+        'StoreReferralSource' => 'api_store_referral_source_schema',
         'StoreFeed'    => 'api_store_feed_schema',
         'GiftCard'     => 'api_gift_card_schema',
         'GiftCardRedemption' => 'api_gift_card_redemption_schema',

@@ -2766,6 +2766,13 @@ else
 	if (is_array($pg_experiment) && (($_SERVER['REQUEST_METHOD'] ?? '') !== 'HEAD')) {
 		pg_experiment_count_view($pg_experiment['experiment_id'], $pg_experiment['variant_id']);
 	}
+	// A page another page's experiment names as its goal counts for the
+	// visitor's variant of that experiment; staff, the designer and Preview
+	// never count.
+	if (function_exists('pg_experiment_goal') && (($_SERVER['REQUEST_METHOD'] ?? '') === 'GET') && !$email_mode
+		&& ($view_page_mode !== 'edit') && empty($pg_panel_preview)) {
+		pg_experiment_goal('page', array('page_id' => (int) $page_id));
+	}
 	// if the toolbar should be outputted, then output it
 	if ($toolbar == true)
 	{
@@ -3361,6 +3368,12 @@ if (function_exists('pg_vitals_beacon_inject')) {
 		'background' => pg_seo_rendering(),
 		'staff' => isset($user) && is_array($user) && ((int) $user['role'] < 3),
 	));
+}
+
+// A page experiment whose goal is a click on a marked element carries the
+// script that posts the click; before the page cache, so the copy has it too.
+if (function_exists('pg_experiment_click_script_for_served') && $rendered_html_page && !$toolbar) {
+	$content = pg_experiment_click_script_for_served($content);
 }
 
 // While the page cache is on: a page drawn the same for every anonymous

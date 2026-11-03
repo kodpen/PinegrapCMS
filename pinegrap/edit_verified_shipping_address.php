@@ -104,8 +104,7 @@ if (!$_POST) {
     $liveform->add_fields_to_session();
 
     if ($liveform->get_field_value('submit_delete') == 'Delete') {
-        db("DELETE FROM verified_shipping_addresses WHERE id = '" . escape($liveform->get_field_value('id')) . "'");
-
+        pg_store_verified_address_delete($liveform->get_field_value('id')) or output_error('Query failed.');
         log_activity(lang(array('string' => 'verified shipping address ({var:1}) was deleted', 'vars' => array($verified_shipping_address['name']))), $_SESSION['sessionusername']);
 
         $liveform_view = new liveform('view_verified_shipping_addresses');
@@ -123,18 +122,7 @@ if (!$_POST) {
         }
 
         $values = pg_verified_shipping_address_form_values($liveform);
-        $set = array();
-        foreach ($values as $column => $value) {
-            $set[] = $column . " = '" . escape($value) . "'";
-        }
-
-        db(
-            "UPDATE verified_shipping_addresses
-            SET
-                " . implode(",\n                ", $set) . ",
-                last_modified_user_id = '" . $user['id'] . "',
-                last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($liveform->get_field_value('id')) . "'");
+        pg_store_verified_address_save($liveform->get_field_value('id'), $values, $user['id']) or output_error('Query failed.');
 
         $name = pg_verified_shipping_address_form_name($values['company'], $values['address_1']);
 

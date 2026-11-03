@@ -516,6 +516,15 @@ if (pg_image_derivative_sweep_due(pg_image_derivative_directory())) {
     }
 }
 
+// WebP at a picture's own address behind a CDN or proxy nobody confirmed
+// (includes/fn/image_vary_check.php): the token-free self-test through the
+// site's own address, once after the switch is turned on or the confirmation
+// taken back, then daily while unconfirmed. It sets the confirmation when the
+// edge keeps a copy per format, and sends the original when the edge keeps
+// even private answers. A tick with nothing due reads one small file.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/image_vary_check.php');
+pg_image_vary_test_daily();
+
 // Uploaded files to the object store (includes/fn/file_storage.php): while
 // the switch is on, the newest local files first, twenty files or twenty
 // seconds a tick, each checked by its size in the store before its bytes
@@ -896,6 +905,17 @@ if (pg_cron_job_is_enabled('push_job')) {
     pg_push_queue_run(10);
 
     pg_cron_ran('push_job');
+
+}
+
+// Booking reminders (pg_booking_reminders_run() in
+// includes/fn/booking_messages.php): the confirmed bookings whose reminder
+// moment fell since the last pass get their mail and text. Before the mail
+// and SMS passes, so a reminder made now goes out in this run. Nothing to do
+// on a site without the booking tables; otherwise one indexed read.
+if (function_exists('pg_booking_reminders_run')) {
+
+    pg_booking_reminders_run(time());
 
 }
 

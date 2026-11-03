@@ -621,6 +621,10 @@
         this.notice.textContent = '';
         this.renderMeta();
         this.fit();
+        // The panel was drawn before the picture and its document arrived:
+        // a document opened from a version (saved layers, an animation)
+        // shows its layers only once the panel is drawn again.
+        this.render();
     };
 
     // The size the picture will be saved at, under the file name.

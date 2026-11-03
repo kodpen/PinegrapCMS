@@ -67680,7 +67680,7 @@ const StyleDesigner = (function () {
         return 'pg_proto_pos_' + ((_design && _design.styleId) ? _design.styleId : 'new');
     }
 
-    function _sdProtoSaved() {
+    function _sdProtoLocal() {
         try {
             var raw = window.localStorage.getItem(_sdProtoStoreKey());
             var parsed = raw ? JSON.parse(raw) : null;
@@ -67690,10 +67690,40 @@ const StyleDesigner = (function () {
         }
     }
 
+    function _sdProtoLocalWrite(saved) {
+        try {
+            if (Object.keys(saved).length) window.localStorage.setItem(_sdProtoStoreKey(), JSON.stringify(saved));
+            else window.localStorage.removeItem(_sdProtoStoreKey());
+        } catch (e) {}
+    }
+
+    // Where frames and chips stand: the places shared on the design
+    // (_pgTabProto, style.style_tab_layout), then this browser's on top.
+    function _sdProtoSaved() {
+        var saved = window.PGProtoHotspots.places(_pgTabProto);
+        var local = _sdProtoLocal();
+        Object.keys(local).forEach(function (id) { saved[id] = local[id]; });
+        return saved;
+    }
+
+    // A frame of a saved tab or a shared component moved by an operator who
+    // may arrange the tabs is shared with everyone opening the design, its
+    // own place in this browser dropped; chips, unsaved tabs and a
+    // content-level operator's moves stay in the browser.
     function _sdProtoKeep(item) {
-        var saved = _sdProtoSaved();
-        saved[item.id] = { x: item.x, y: item.y };
-        try { window.localStorage.setItem(_sdProtoStoreKey(), JSON.stringify(saved)); } catch (e) {}
+        var local = _sdProtoLocal();
+        var key = window.PGProtoHotspots.placeKey(item.id);
+        if (key && _pgTabLayoutEditable() && _design && _design.styleId) {
+            _pgTabProto[key] = { x: Math.round(item.x), y: Math.round(item.y) };
+            if (local[item.id]) {
+                delete local[item.id];
+                _sdProtoLocalWrite(local);
+            }
+            _pgTabsLayoutSave();
+            return;
+        }
+        local[item.id] = { x: item.x, y: item.y };
+        _sdProtoLocalWrite(local);
     }
 
     function _sdProtoEl(tag, cls, text) {
@@ -67951,6 +67981,7 @@ const StyleDesigner = (function () {
         if (meta) head.appendChild(_sdProtoEl('span', 'sd-proto-meta', meta));
         node.appendChild(head);
         node.setAttribute('aria-label', _sdProtoFrameName(item));
+        if (item.thumb) node.appendChild(_sdProtoThumb(item));
 
         if (!item.rows.length) {
             node.appendChild(_sdProtoEl('div', 'sd-proto-empty', _sdT('No links')));
@@ -67978,6 +68009,43 @@ const StyleDesigner = (function () {
             }
             node.appendChild(r);
         });
+    }
+
+    // The frame's thumbnail: its page as bands (PGProtoHotspots.sketch()),
+    // a dot per link up to five. Drawn from numbers and roles only; it says
+    // nothing a screen reader needs (the rows list the links).
+    function _sdProtoThumb(item) {
+        var H = window.PGProtoHotspots;
+        var NS = 'http://www.w3.org/2000/svg';
+        var w = H.FRAME.w - 20;
+        var h = item.thumb - 13;
+        var wrap = _sdProtoEl('div', 'sd-proto-thumb');
+        var svg = document.createElementNS(NS, 'svg');
+        svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+        svg.setAttribute('width', String(w));
+        svg.setAttribute('height', String(h));
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('focusable', 'false');
+        H.sketchBoxes(item.sketch, w, h).forEach(function (box) {
+            var r = document.createElementNS(NS, 'rect');
+            r.setAttribute('class', 'sd-proto-sk sd-proto-sk-' + box.role);
+            r.setAttribute('x', '0');
+            r.setAttribute('y', String(box.y));
+            r.setAttribute('width', String(w));
+            r.setAttribute('height', String(box.h));
+            r.setAttribute('rx', '2');
+            svg.appendChild(r);
+            for (var i = 0; i < Math.min(5, box.links); i++) {
+                var c = document.createElementNS(NS, 'circle');
+                c.setAttribute('class', 'sd-proto-sk-link');
+                c.setAttribute('cx', String(w - 6 - i * 7));
+                c.setAttribute('cy', String(box.y + box.h / 2));
+                c.setAttribute('r', String(Math.min(2.5, box.h / 2)));
+                svg.appendChild(c);
+            }
+        });
+        wrap.appendChild(svg);
+        return wrap;
     }
 
     function _sdProtoChipText(chip) {
@@ -71028,6 +71096,7 @@ const StyleDesigner = (function () {
     var _PG_TAB_GROUP_COLORS = ['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange'];
     var _pgTabGroups = {};            // gid → { name, color }
     var _pgTabGroupsCollapsed = {};   // gid → true, this browser only
+    var _pgTabProto = {};             // 'p<page_id>' / 's<id>' → { x, y }: Prototype view frames
     var _pgTabLayoutTimer = 0;
     var _pgTabDrag = null;
     var _pgTabDragClickBlock = 0;
@@ -71077,8 +71146,12 @@ const StyleDesigner = (function () {
     // named ones.
     function _pgTabsApplyLayout(layout) {
         _pgTabGroups = {};
+        _pgTabProto = {};
         _pages.forEach(function (p) { p.tabGroup = ''; });
         if (!_pgTabLayoutReady() || !layout || typeof layout !== 'object') return;
+        if (layout.proto && typeof layout.proto === 'object') {
+            Object.keys(layout.proto).forEach(function (k) { _pgTabProto[k] = layout.proto[k]; });
+        }
         var groups = (layout.groups && typeof layout.groups === 'object') ? layout.groups : {};
         Object.keys(groups).forEach(function (gid) {
             var g = groups[gid];
@@ -71139,7 +71212,9 @@ const StyleDesigner = (function () {
             }
             tabs.push(t);
         });
-        return { v: 1, groups: groups, tabs: tabs };
+        var out = { v: 1, groups: groups, tabs: tabs };
+        if (Object.keys(_pgTabProto).length) out.proto = _pgTabProto;
+        return out;
     }
 
     // `now`: no debounce (the editor is about to navigate).

@@ -1323,7 +1323,8 @@ if ($liveform->check_form_errors() == false) {
         // loop through contact groups that contact should be added to
         foreach ($contact_groups as $contact_group_id) {
             // check if contact group exists
-            $query = "SELECT id FROM contact_groups WHERE id = ?";
+            // a group filled by rules is never written by a form
+            $query = "SELECT id FROM contact_groups WHERE (id = ?) AND " . pg_audience_hand_sql();
             $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
             
             // if contact group exists
@@ -1858,6 +1859,10 @@ if ($liveform->check_form_errors() == false) {
                  WHERE (id = ?) AND (custom_form_submitted = '0')";
         $result = db_q($query, array((string) $form_name, (string) $_SESSION['software']['visitor_id'])) or output_error('Query failed.');
     }
+
+    // A page experiment whose goal is this form counts it for the visitor's
+    // variant, outside the visitor tracking switch (includes/fn/experiments.php).
+    pg_experiment_goal('form', array('page_id' => (int) $_POST['page_id']));
 
     // Check if there are auto e-mail campaigns that should be created based on this custom form being submitted.
     create_auto_email_campaigns(array(

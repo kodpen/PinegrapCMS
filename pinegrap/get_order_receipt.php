@@ -1118,6 +1118,7 @@ function get_order_receipt($properties) {
             // get applied gift cards in order to output them
             $query =
                 "SELECT
+                    id,
                     code,
                     new_balance,
                     givex
@@ -1436,12 +1437,11 @@ function get_order_receipt($properties) {
                     <ul style="margin-top: 0em">';
             
             // loop through applied gift cards in order to prepare to output them
+            // A customer's store credit is named as such, not by a code they never saw.
+            $store_credit_ids = pg_credit_applied_ids($order_id);
+
             foreach ($applied_gift_cards as $applied_gift_card) {
-                if ($applied_gift_card['givex'] == 0) {
-                    $protected_gift_card_code = protect_gift_card_code($applied_gift_card['code']);
-                } else {
-                    $protected_gift_card_code = protect_givex_gift_card_code($applied_gift_card['code']);
-                }
+                $protected_gift_card_code = pg_credit_applied_name($applied_gift_card, $store_credit_ids);
                 
                 $output_applied_gift_cards .= '<li>' . h($protected_gift_card_code) . ' (Remaining Balance: ' . prepare_price_for_output($applied_gift_card['new_balance'], FALSE, $discounted_price = '', 'html') . ')</li>';
             }
@@ -2159,6 +2159,9 @@ function get_order_receipt($properties) {
                 ORDER BY id ASC");
                 
             // Loop through the applied gift cards to prepare info for each one.
+            // A customer's store credit is named as such, not by a code they never saw.
+            $store_credit_ids = pg_credit_applied_ids($order_id);
+
             foreach ($applied_gift_cards as $key => $gift_card) {
 
                 $gift_card['amount_info'] = prepare_price_for_output($gift_card['amount'] * 100, false, $discounted_price = '', 'html');
@@ -2167,11 +2170,7 @@ function get_order_receipt($properties) {
 
                 $gift_card['new_balance_info'] = prepare_price_for_output($gift_card['new_balance'] * 100, false, $discounted_price = '', 'html');
 
-                if ($gift_card['givex'] == 0) {
-                    $gift_card['protected_code'] = protect_gift_card_code($gift_card['code']);
-                } else {
-                    $gift_card['protected_code'] = protect_givex_gift_card_code($gift_card['code']);
-                }
+                $gift_card['protected_code'] = pg_credit_applied_name($gift_card, $store_credit_ids);
 
                 $applied_gift_cards[$key] = $gift_card;
 

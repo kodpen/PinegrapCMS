@@ -2571,7 +2571,8 @@ $(document).ready(function () {
             design_region: { thumb: function (_r) { return makeThumb('bi-code-square', 'fg-emphasis-warning', null); }, url: function (r) { return path + software_directory + '/edit_designer_region.php?id=' + r.id; } },
             login_region: { thumb: function (_r) { return makeThumb('bi-shield-lock', 'fg-emphasis-info', null); }, url: function (r) { return path + software_directory + '/edit_login_region.php?id=' + r.id; } },
             short_link: { thumb: function (_r) { return makeThumb('bi-link-45deg', 'fg-emphasis-success', null); }, url: function (r) { return path + software_directory + '/edit_short_link.php?id=' + r.id; } },
-            order: { thumb: function (_r) { return makeThumb('bi-receipt', 'fg-emphasis-success', null); }, url: function (r) { return path + software_directory + '/view_order.php?id=' + r.id; } }
+            order: { thumb: function (_r) { return makeThumb('bi-receipt', 'fg-emphasis-success', null); }, url: function (r) { return path + software_directory + '/view_order.php?id=' + r.id; } },
+            booking: { thumb: function (_r) { return makeThumb('bi-calendar-check', 'fg-emphasis-info', null); }, url: function (r) { return path + software_directory + '/edit_booking.php?id=' + r.id; } }
         };
 
         $(document).on('keydown', function (e) {
@@ -5798,6 +5799,7 @@ function change_email_campaign_profile_action() {
     $('#schedule_base').removeClass('show');
     $('#standard_schedule_period_and_base').removeClass('show');
     $('#subscription_fields_row').removeClass('show');
+    $('#booking_fields_row').removeClass('show');
 
     var action = document.getElementById('action').options[document.getElementById('action').selectedIndex].value;
 
@@ -5846,6 +5848,14 @@ function change_email_campaign_profile_action() {
         case 'subscription_cancelled':
         case 'subscription_price_changed':
             $('#subscription_fields_row').addClass('show');
+            $('#standard_schedule_period_and_base').addClass('show');
+            break;
+
+        case 'booking_confirmed':
+        case 'booking_reminder':
+        case 'booking_rescheduled':
+        case 'booking_cancelled':
+            $('#booking_fields_row').addClass('show');
             $('#standard_schedule_period_and_base').addClass('show');
             break;
 

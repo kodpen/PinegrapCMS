@@ -9,10 +9,10 @@ description: The designer's Prototype view (_sdProtoOpen()): toolbar toggle, fra
 
 ## How is it drawn?
 - `_sdProtoLoad()`: `PGProtoHotspots.design()` over `_pages` (the open tab's live tree through `_pgTreeOf()`) and `_sharedCache`, `prefetchShared()` for components not fetched yet, `_pgApiPost('prototype_map', request)` (designer/prototype-map-read.md), `mark()`, then `layout()` (designer/prototype-hotspots.md). A later load or a close drops an earlier answer (`_sdProto.seq`).
-- Frames (`p:<tab key>`, `s:<shared id>`) side by side, one row per link with a named port; chips per mark and href right of them; arrows spread with `G.spread()`, tab arrows in the accent colour, broken ones dashed red. A shared frame says on how many tabs it sits; the open tab's frame is outlined.
+- Frames (`p:<tab key>`, `s:<shared id>`) side by side, a thumbnail (designer/prototype-thumbnails.md) above one row per link with a named port; chips per mark and href right of them; arrows spread with `G.spread()`, tab arrows in the accent colour, broken ones dashed red. A shared frame says on how many tabs it sits; the open tab's frame is outlined.
 
 ## What can be done in it?
-- Frames and chips move; a moved one is kept per browser in `localStorage` `pg_proto_pos_<style id>` (id → x, y). Shared positions (`style.style_tab_layout`) are slice 4.
+- Frames and chips move; where a moved one is kept (on the design or in the browser): designer/prototype-places.md.
 - A row (click, Enter or Space) closes the view, opens its tab (`_pgTabsSwitch()`; for a shared frame the open tab if it places the component, else the first tab that does; a locked tab only gets the folder-rights toast), then selects the node (`findNodeById()` in the tab's tree or the component's) with `renderSelectionOnly()`, `renderProperties()` and `scrollCanvasToNode()`.
 
 ## How is an arrow drawn or re-pointed (#6171)?

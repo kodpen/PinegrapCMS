@@ -15,7 +15,7 @@ module: experiments
 - `pg_experiment_for_page($page_id)`: the running experiment with at least two variants (the oldest if data holds more), cached per request; null before the upgrade created the tables (`pg_schema_has()`).
 
 ## What is in the pg_exp cookie?
-- `<experiment id>:<key>` pairs joined by dots, sorted by id, at most 20 (oldest ids drop), keys `[a-z0-9]{1,8}`. 90 days, path `/`, HttpOnly, `SameSite=Lax`. `pg_experiment_bucket_read()` / `_write()`; write also updates `$_COOKIE`.
+- `<experiment id>:<key>` pairs (a third part `:<day>` is a goal's once-a-day mark, `visitors/experiment-goals.md`) joined by dots, sorted by id, at most 20 (oldest ids drop), keys `[a-z0-9]{1,8}`. 90 days, path `/`, HttpOnly, `SameSite=Lax`. `pg_experiment_bucket_read()` / `_write()`; write also updates `$_COOKIE`.
 - Listed in `pg_consent_catalogue()` under necessary (strictly functional, no consent).
 - `pg_page_cache_set_cookie_names()` leaves it out, so setting it keeps a page cacheable. The cacheable path still runs `header_remove('Set-Cookie')`, then sends a bucket written in the request again (`page-experiments-serving.md`).
 

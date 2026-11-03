@@ -201,7 +201,9 @@ function pg_panel_actions()
         'commission_profile_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_commission_profile_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'site_log_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_site_log_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'audit_log_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_audit_log_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
+        'booking_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_booking_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'audit_log_changes' => array('file' => 'lists.php', 'handler' => 'pg_panel_audit_log_changes', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
+        'list_table_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_list_table_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'waf_log_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_waf_log_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'mail_queue_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_mail_queue_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'sms_queue_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_sms_queue_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
@@ -214,6 +216,9 @@ function pg_panel_actions()
         // with a user name and a password in the body; their names and
         // answers are a contract.
         'get_designer_regions' => array('file' => 'designer.php', 'handler' => 'pg_panel_get_designer_regions', 'exempt' => false, 'token' => false, 'write' => false),
+        // The visual designs as templates, with their managed files
+        // (includes/fn/site_migration.php); a designer or an administrator.
+        'get_designs' => array('file' => 'designer.php', 'handler' => 'pg_panel_get_designs', 'exempt' => false, 'token' => false, 'write' => false),
         'get_styles' => array('file' => 'designer.php', 'handler' => 'pg_panel_get_styles', 'exempt' => false, 'token' => false, 'write' => false),
         // The front-end toolbar's open/closed state lives in the caller's own
         // session. Every role; the handler checks the session and the token.

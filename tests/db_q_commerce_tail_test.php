@@ -124,8 +124,7 @@ function db_q_commerce_tail_test_files()
 {
 	return array(
 		'add_tax_zone.php' => 0,
-		'edit_referral_source.php' => 3,
-		'add_referral_source.php' => 1,
+		'edit_referral_source.php' => 0,
 		'view_referral_sources.php' => 0,
 		'edit_featured_and_new_items.php' => 3,
 		'view_product_attributes.php' => 0,

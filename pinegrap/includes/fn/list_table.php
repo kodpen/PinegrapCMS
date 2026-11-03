@@ -1,0 +1,953 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * The panel's list table driver, server side.
+ *
+ * A list screen that moves to the driver describes its list once as a
+ * "source": its columns (key, heading, width, kind, sortable, editable),
+ * the FROM and WHERE of its own query with the user's rights already in
+ * it, the record id, the search columns and a function that turns records
+ * into rows of cells. From that source this module prints the first rows
+ * with the page (pg_list_table_html()), answers the rows action that hands
+ * the browser the next rows (pg_list_table_page(), pg_list_table_answer())
+ * and resolves a selection - a list of ids, or the whole list by its
+ * condition with exceptions - into the ids a bulk action acts on
+ * (pg_list_table_selected_ids()).
+ *
+ * Rows come in batches by keyset, not by offset: the cursor holds the sort
+ * values and the id of the last row handed out, and the next batch starts
+ * after it. A row added or deleted meanwhile neither repeats nor skips one.
+ * The count of the list runs once per condition, with the first batch.
+ *
+ * Row cells are pg_list_cell() cells (includes/fn/list_paging.php), keyed
+ * by column key, so the browser can hide and reorder columns.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_FUNCTIONS_DIR')) {
+    exit;
+}
+
+/**
+ * The lists the rows action serves: list name => array('file' => the module
+ * under PG_FUNCTIONS_DIR that holds the source function, 'source' => the
+ * function's name). The source function takes ($user, $params) and answers
+ * the list's source (pg_list_table_source()), or null when the user may not
+ * open the list. A list joins this table in the step that moves its screen.
+ *
+ * @return array
+ */
+function pg_list_table_definitions()
+{
+    return array();
+}
+
+/**
+ * A list's entry in pg_list_table_definitions(), or null for a name that
+ * is not there.
+ *
+ * @param mixed $name
+ * @return array|null array('file', 'source')
+ */
+function pg_list_table_definition($name)
+{
+    $definitions = pg_list_table_definitions();
+
+    if (!is_string($name) || !isset($definitions[$name])) {
+        return null;
+    }
+
+    return $definitions[$name];
+}
+
+/**
+ * The rows one batch holds.
+ *
+ * @return int
+ */
+function pg_list_table_batch()
+{
+    return 100;
+}
+
+/**
+ * The kinds of column the driver draws, each with the side its content
+ * leans to.
+ *
+ * @return array kind => 'start'|'end'|'center'
+ */
+function pg_list_table_kinds()
+{
+    return array(
+        'text' => 'start',
+        'link' => 'start',
+        'number' => 'end',
+        'money' => 'end',
+        'date' => 'start',
+        'badge' => 'start',
+        'image' => 'center',
+        'check' => 'center',
+        'actions' => 'end',
+    );
+}
+
+/**
+ * The kinds of input a quick-edit cell offers.
+ *
+ * @return array
+ */
+function pg_list_table_edit_kinds()
+{
+    return array('text', 'number', 'money', 'select', 'check', 'date');
+}
+
+/**
+ * One column of a list, its settings checked and filled in.
+ *
+ * @param string $key  the column's key: lower-case letters, digits and '_',
+ *                     starting with a letter
+ * @param array  $spec 'heading' (shown text, already translated), 'width'
+ *                     (a CSS length: px, rem, em, ch or %), 'kind'
+ *                     (pg_list_table_kinds(), default text), 'sort' (the SQL
+ *                     expression the column sorts by; written into the query
+ *                     as it is, so never from a request, and usable in WHERE:
+ *                     no select alias), 'sortable' (default true when 'sort'
+ *                     is given), 'editable' (a pg_list_table_edit_kinds()
+ *                     input, or false), 'hideable' (default true), 'hidden'
+ *                     (hidden until the user shows it, default false)
+ * @return array|null the column, or null when the key is not valid
+ */
+function pg_list_table_column($key, array $spec)
+{
+    $key = is_string($key) ? $key : '';
+
+    if (!preg_match('/^[a-z][a-z0-9_]{0,39}$/', $key)) {
+        return null;
+    }
+
+    $kinds = pg_list_table_kinds();
+    $kind = (isset($spec['kind']) && is_string($spec['kind']) && isset($kinds[$spec['kind']])) ? $spec['kind'] : 'text';
+    $width = (isset($spec['width']) && is_scalar($spec['width'])) ? trim((string) $spec['width']) : '';
+
+    if (!preg_match('/^\d{1,4}(\.\d{1,2})?(px|rem|em|ch|%)$/', $width)) {
+        $width = '';
+    }
+
+    $sort = (isset($spec['sort']) && is_string($spec['sort'])) ? trim($spec['sort']) : '';
+    $sortable = ($sort !== '') && (!array_key_exists('sortable', $spec) || !empty($spec['sortable']));
+    $editable = (isset($spec['editable']) && is_string($spec['editable']) && in_array($spec['editable'], pg_list_table_edit_kinds(), true)) ? $spec['editable'] : '';
+
+    return array(
+        'key' => $key,
+        'heading' => (isset($spec['heading']) && is_scalar($spec['heading'])) ? (string) $spec['heading'] : '',
+        'width' => $width,
+        'kind' => $kind,
+        'align' => $kinds[$kind],
+        'sortable' => $sortable,
+        'sort' => $sortable ? $sort : '',
+        'editable' => $editable,
+        'hideable' => !array_key_exists('hideable', $spec) || !empty($spec['hideable']),
+        'hidden' => !empty($spec['hidden']),
+    );
+}
+
+/**
+ * A list's columns, in order. A column with a key that is not valid or
+ * already taken is left out. The first column is the record's name: it can
+ * never be hidden.
+ *
+ * @param array $specs key => spec, as pg_list_table_column() takes them
+ * @return array key => column
+ */
+function pg_list_table_columns(array $specs)
+{
+    $columns = array();
+
+    foreach ($specs as $key => $spec) {
+        $column = pg_list_table_column($key, is_array($spec) ? $spec : array());
+
+        if (($column === null) || isset($columns[$column['key']])) {
+            continue;
+        }
+
+        if (!$columns) {
+            $column['hideable'] = false;
+            $column['hidden'] = false;
+        }
+
+        $columns[$column['key']] = $column;
+    }
+
+    return $columns;
+}
+
+/**
+ * The columns as the browser gets them: without the SQL they sort by.
+ *
+ * @param array $columns pg_list_table_columns()
+ * @return array list of columns
+ */
+function pg_list_table_client_columns(array $columns)
+{
+    $client = array();
+
+    foreach ($columns as $column) {
+        unset($column['sort']);
+        $client[] = $column;
+    }
+
+    return $client;
+}
+
+/**
+ * The sortable columns as pg_list_state() takes them: key => heading.
+ *
+ * @param array $columns pg_list_table_columns()
+ * @return array
+ */
+function pg_list_table_sort_columns(array $columns)
+{
+    $sort_columns = array();
+
+    foreach ($columns as $key => $column) {
+        if ($column['sortable']) {
+            $sort_columns[$key] = $column['heading'];
+        }
+    }
+
+    return $sort_columns;
+}
+
+/**
+ * A list's source, checked and filled in.
+ *
+ * @param array $spec 'list' (the list's name in pg_list_table_definitions()
+ *                    and its pg_list_state() key), 'columns' (specs, as
+ *                    pg_list_table_columns() takes them), 'from' (the FROM
+ *                    part with its joins), 'where' (the list's condition
+ *                    with the user's rights in it, default '1 = 1'),
+ *                    'params' (values bound to the placeholders in 'from'
+ *                    and 'where', in order), 'id' (the record id's SQL),
+ *                    'id_order' ('asc' or 'desc', the last sort level),
+ *                    'select' (the columns the rows function reads),
+ *                    'group' (true when the joins can repeat a record),
+ *                    'search' (array('columns', 'labels') for
+ *                    pg_list_search_where()), 'levels' (pg_list_state()'s
+ *                    sorts), 'created' (SQL of the record's creation time
+ *                    in Unix seconds, for a selection's "as of"; '' when the
+ *                    list has none), 'rows' (callable: records => rows,
+ *                    each array('id', 'class', 'cells' => key =>
+ *                    pg_list_cell())), 'all' (true for a small list printed
+ *                    whole: the browser sorts and searches it itself),
+ *                    'params_out' (the list parameters the browser sends
+ *                    back with every rows request)
+ * @return array
+ */
+function pg_list_table_source(array $spec)
+{
+    $columns = pg_list_table_columns(isset($spec['columns']) && is_array($spec['columns']) ? $spec['columns'] : array());
+
+    return array(
+        'list' => (string) ($spec['list'] ?? ''),
+        'columns' => $columns,
+        'from' => (string) ($spec['from'] ?? ''),
+        'where' => (isset($spec['where']) && (trim((string) $spec['where']) !== '')) ? (string) $spec['where'] : '1 = 1',
+        'params' => array_values(isset($spec['params']) && is_array($spec['params']) ? $spec['params'] : array()),
+        'id' => (string) ($spec['id'] ?? ''),
+        'id_order' => (($spec['id_order'] ?? '') === 'asc') ? 'asc' : 'desc',
+        'select' => (string) ($spec['select'] ?? ''),
+        'group' => !empty($spec['group']),
+        'search' => array(
+            'columns' => (array) ($spec['search']['columns'] ?? array()),
+            'labels' => (array) ($spec['search']['labels'] ?? array()),
+        ),
+        'levels' => pg_list_table_levels(isset($spec['levels']) && is_array($spec['levels']) ? $spec['levels'] : array(), $columns),
+        'created' => (string) ($spec['created'] ?? ''),
+        'rows' => $spec['rows'] ?? null,
+        'all' => !empty($spec['all']),
+        'params_out' => isset($spec['params_out']) && is_array($spec['params_out']) ? $spec['params_out'] : array(),
+    );
+}
+
+/**
+ * Sort levels kept to the list's sortable columns, each 'asc' or 'desc'; a
+ * column named twice counts once. May be empty: the id alone orders then.
+ *
+ * @param array $levels  list of array('sort' => key, 'order' => direction)
+ * @param array $columns pg_list_table_columns()
+ * @return array list of array('sort', 'order')
+ */
+function pg_list_table_levels(array $levels, array $columns)
+{
+    $clean = array();
+
+    foreach ($levels as $level) {
+        $key = (is_array($level) && isset($level['sort']) && is_scalar($level['sort'])) ? (string) $level['sort'] : '';
+
+        if (!isset($columns[$key]) || !$columns[$key]['sortable'] || isset($clean[$key])) {
+            continue;
+        }
+
+        $clean[$key] = array('sort' => $key, 'order' => (($level['order'] ?? '') === 'desc') ? 'desc' : 'asc');
+    }
+
+    return array_values($clean);
+}
+
+/**
+ * A source sorted the way a rows request asks (a heading clicked in the
+ * browser, no reload): the sort value as the address carries it
+ * (pg_list_sort_value()). Columns that are not sortable are dropped; when
+ * none is left, or no value was sent, the source keeps its levels.
+ *
+ * @param array $source pg_list_table_source()
+ * @param mixed $value  e.g. 'name:asc,last_modified:desc'
+ * @return array the source
+ */
+function pg_list_table_apply_sort(array $source, $value)
+{
+    if (!is_string($value) || ($value === '')) {
+        return $source;
+    }
+
+    $levels = pg_list_table_levels(pg_list_sort_parse($value, pg_list_table_sort_columns($source['columns'])), $source['columns']);
+
+    if ($levels) {
+        $source['levels'] = $levels;
+    }
+
+    return $source;
+}
+
+/**
+ * The source's sort kept in the session the way pg_list_state() keeps a
+ * list's sort, so the screen comes back sorted the same way.
+ *
+ * @param array $source pg_list_table_source()
+ * @return void
+ */
+function pg_list_table_keep_sort(array $source)
+{
+    if (($source['list'] === '') || !$source['levels']) {
+        return;
+    }
+
+    $kept = $source['levels'][0];
+
+    if (count($source['levels']) > 1) {
+        $kept['then'] = array_slice($source['levels'], 1);
+    }
+
+    $_SESSION['software']['list_state'][$source['list']] = $kept;
+}
+
+/**
+ * The ORDER BY list of a source: its sort levels, then the id, so no two
+ * rows ever tie and a cursor names one place in the list.
+ *
+ * @param array $source pg_list_table_source()
+ * @return string
+ */
+function pg_list_table_order_sql(array $source)
+{
+    $parts = array();
+
+    foreach ($source['levels'] as $level) {
+        $parts[] = $source['columns'][$level['sort']]['sort'] . ' ' . $level['order'];
+    }
+
+    $parts[] = $source['id'] . ' ' . $source['id_order'];
+
+    return implode(', ', $parts);
+}
+
+/**
+ * The condition that keeps the rows after a cursor, in the source's order.
+ * MySQL sorts NULL before every value, so in an ascending level a NULL is
+ * the lowest value and in a descending one the highest: a row is after a
+ * NULL cursor value going up when it has any value, and nothing is after it
+ * going down but a further level.
+ *
+ * @param array $source pg_list_table_source()
+ * @param array $cursor pg_list_table_cursor_decode()'s answer
+ * @return array array('sql', 'params')
+ */
+function pg_list_table_keyset_where(array $source, array $cursor)
+{
+    $levels = array();
+
+    foreach ($source['levels'] as $number => $level) {
+        $levels[] = array(
+            'expr' => $source['columns'][$level['sort']]['sort'],
+            'order' => $level['order'],
+            'value' => $cursor['values'][$number] ?? null,
+            'nullable' => true,
+        );
+    }
+
+    // The id is never NULL: no IS NULL alternative for it.
+    $levels[] = array('expr' => $source['id'], 'order' => $source['id_order'], 'value' => $cursor['id'], 'nullable' => false);
+
+    $alternatives = array();
+    $params = array();
+    $equal_sql = array();
+    $equal_params = array();
+
+    foreach ($levels as $level) {
+        $expr = $level['expr'];
+        $value = $level['value'];
+        $after = '';
+        $after_params = array();
+
+        if ($level['order'] === 'asc') {
+            if ($value === null) {
+                $after = $expr . ' IS NOT NULL';
+            } else {
+                $after = $expr . ' > ?';
+                $after_params[] = $value;
+            }
+        } elseif ($value !== null) {
+            $after = $level['nullable'] ? '(' . $expr . ' < ? OR ' . $expr . ' IS NULL)' : $expr . ' < ?';
+            $after_params[] = $value;
+        }
+
+        if ($after !== '') {
+            $alternatives[] = '(' . implode(' AND ', array_merge($equal_sql, array($after))) . ')';
+            $params = array_merge($params, $equal_params, $after_params);
+        }
+
+        if ($value === null) {
+            $equal_sql[] = $expr . ' IS NULL';
+        } else {
+            $equal_sql[] = $expr . ' = ?';
+            $equal_params[] = $value;
+        }
+    }
+
+    return array(
+        'sql' => $alternatives ? '(' . implode(' OR ', $alternatives) . ')' : '(1 = 0)',
+        'params' => $params,
+    );
+}
+
+/**
+ * The sort the cursor belongs to, so a cursor from another sort is not
+ * read against this one.
+ *
+ * @param array $source pg_list_table_source()
+ * @return string e.g. 'name:asc,last_modified:desc,#desc'
+ */
+function pg_list_table_sort_key(array $source)
+{
+    $pairs = array();
+
+    foreach ($source['levels'] as $level) {
+        $pairs[] = $level['sort'] . ':' . $level['order'];
+    }
+
+    $pairs[] = '#' . $source['id_order'];
+
+    return implode(',', $pairs);
+}
+
+/**
+ * The cursor after a row: its sort values and id, for the next batch.
+ * Every value goes back to the query as a bound value, never as SQL.
+ *
+ * @param array $source pg_list_table_source()
+ * @param array $values the row's sort values, one per level, in order
+ * @param mixed $id     the row's id
+ * @return string base64url text
+ */
+function pg_list_table_cursor_encode(array $source, array $values, $id)
+{
+    $values = array_map(function ($value) {
+        return ($value === null) ? null : (string) $value;
+    }, array_values($values));
+
+    $json = json_encode(array('s' => pg_list_table_sort_key($source), 'v' => $values, 'i' => (string) $id));
+
+    return rtrim(strtr(base64_encode((string) $json), '+/', '-_'), '=');
+}
+
+/**
+ * A cursor read back. A cursor that is not one, or belongs to another sort
+ * (the user sorted again in another tab), answers null: the list starts
+ * over from its first row.
+ *
+ * @param array $source pg_list_table_source()
+ * @param mixed $cursor
+ * @return array|null array('values' => list, 'id' => string)
+ */
+function pg_list_table_cursor_decode(array $source, $cursor)
+{
+    if (!is_string($cursor) || ($cursor === '') || (strlen($cursor) > 4096) || !preg_match('/^[A-Za-z0-9_-]+$/', $cursor)) {
+        return null;
+    }
+
+    $data = json_decode((string) base64_decode(strtr($cursor, '-_', '+/'), true), true);
+
+    if (!is_array($data) || (($data['s'] ?? null) !== pg_list_table_sort_key($source))
+        || !isset($data['v']) || !is_array($data['v']) || (count($data['v']) !== count($source['levels']))
+        || !isset($data['i']) || !is_string($data['i']) || ($data['i'] === '')) {
+        return null;
+    }
+
+    foreach ($data['v'] as $value) {
+        if (($value !== null) && !is_string($value)) {
+            return null;
+        }
+    }
+
+    return array('values' => array_values($data['v']), 'id' => $data['i']);
+}
+
+/**
+ * The search condition of a source for the words of a search box.
+ *
+ * @param array $source pg_list_table_source()
+ * @param array $terms  pg_list_search_terms()
+ * @return array array('sql', 'params'); 'sql' is '' without a word
+ */
+function pg_list_table_search_where(array $source, array $terms)
+{
+    if (!$terms) {
+        return array('sql' => '', 'params' => array());
+    }
+
+    return pg_list_search_where($terms, $source['search']['columns'], $source['search']['labels']);
+}
+
+/**
+ * One batch of a list's rows: the first when there is no cursor, with the
+ * count of the condition; else the rows after the cursor, uncounted.
+ *
+ * @param array       $source pg_list_table_source()
+ * @param array       $terms  pg_list_search_terms()
+ * @param string|null $cursor the cursor the browser sent back, or null
+ * @return array|false array('rows', 'next' => cursor or null, 'total' =>
+ *                     int, or null when not counted, 'restarted' => true
+ *                     when a cursor was sent but could not be read) or
+ *                     false when a query failed
+ */
+function pg_list_table_page(array $source, array $terms, $cursor = null)
+{
+    $after = ($cursor === null) ? null : pg_list_table_cursor_decode($source, $cursor);
+    $search = pg_list_table_search_where($source, $terms);
+    $where = '(' . $source['where'] . ')';
+    $params = $source['params'];
+
+    if ($search['sql'] !== '') {
+        $where .= ' AND ' . $search['sql'];
+        $params = array_merge($params, $search['params']);
+    }
+
+    $total = null;
+
+    if ($after === null) {
+        $result = db_q('SELECT COUNT(DISTINCT ' . $source['id'] . ') FROM ' . $source['from'] . ' WHERE ' . $where, $params);
+
+        if (!$result) {
+            return false;
+        }
+
+        $total = (int) mysqli_fetch_row($result)[0];
+    } else {
+        $keyset = pg_list_table_keyset_where($source, $after);
+        $where .= ' AND ' . $keyset['sql'];
+        $params = array_merge($params, $keyset['params']);
+    }
+
+    $select = array($source['id'] . ' AS pg_lt_id');
+
+    foreach ($source['levels'] as $number => $level) {
+        $select[] = $source['columns'][$level['sort']]['sort'] . ' AS pg_lt_k' . $number;
+    }
+
+    if ($source['select'] !== '') {
+        $select[] = $source['select'];
+    }
+
+    $limit = $source['all'] ? null : pg_list_table_batch();
+
+    $result = db_q(
+        'SELECT ' . implode(', ', $select)
+        . ' FROM ' . $source['from']
+        . ' WHERE ' . $where
+        . ($source['group'] ? ' GROUP BY ' . $source['id'] : '')
+        . ' ORDER BY ' . pg_list_table_order_sql($source)
+        . (($limit === null) ? '' : ' LIMIT ' . ($limit + 1)),
+        $params);
+
+    if (!$result) {
+        return false;
+    }
+
+    $records = array();
+
+    while ($record = mysqli_fetch_assoc($result)) {
+        $records[] = $record;
+    }
+
+    $next = null;
+
+    if (($limit !== null) && (count($records) > $limit)) {
+        $records = array_slice($records, 0, $limit);
+        $last = end($records);
+        $values = array();
+
+        foreach (array_keys($source['levels']) as $number) {
+            $values[] = $last['pg_lt_k' . $number];
+        }
+
+        $next = pg_list_table_cursor_encode($source, $values, $last['pg_lt_id']);
+    }
+
+    $rows = is_callable($source['rows']) ? call_user_func($source['rows'], $records) : array();
+
+    return array(
+        'rows' => array_values((array) $rows),
+        'next' => $next,
+        'total' => $total,
+        'restarted' => ($cursor !== null) && ($after === null),
+    );
+}
+
+/**
+ * A row as the browser gets it: its id, classes and cells by column key;
+ * a cell the row lacks is empty, a cell of no column is dropped.
+ *
+ * @param array $row     array('id', 'class', 'cells' => key => pg_list_cell())
+ * @param array $columns pg_list_table_columns()
+ * @return array
+ */
+function pg_list_table_row_data(array $row, array $columns)
+{
+    $cells = array();
+
+    foreach ($columns as $key => $column) {
+        $cell = $row['cells'][$key] ?? pg_list_cell('');
+        $data = array('html' => (string) ($cell['html'] ?? ''), 'class' => (string) ($cell['class'] ?? ''));
+
+        if (!empty($cell['attributes'])) {
+            $data['attrs'] = $cell['attributes'];
+        }
+
+        $cells[$key] = $data;
+    }
+
+    return array('id' => (string) ($row['id'] ?? ''), 'class' => (string) ($row['class'] ?? ''), 'cells' => $cells);
+}
+
+/**
+ * The answer of the rows action.
+ *
+ * @param array $page    pg_list_table_page()
+ * @param array $columns pg_list_table_columns()
+ * @return array
+ */
+function pg_list_table_answer(array $page, array $columns)
+{
+    $rows = array();
+
+    foreach ($page['rows'] as $row) {
+        $rows[] = pg_list_table_row_data($row, $columns);
+    }
+
+    $answer = array('status' => 'success', 'rows' => $rows, 'next' => $page['next']);
+
+    if ($page['total'] !== null) {
+        $answer['total'] = (int) $page['total'];
+    }
+
+    if (!empty($page['restarted'])) {
+        $answer['restarted'] = true;
+    }
+
+    return $answer;
+}
+
+/**
+ * A row as table markup, its cells in the columns' order.
+ *
+ * @param array $row     array('id', 'class', 'cells' => key => pg_list_cell())
+ * @param array $columns pg_list_table_columns()
+ * @return string
+ */
+function pg_list_table_row_html(array $row, array $columns)
+{
+    $data = pg_list_table_row_data($row, $columns);
+    $output = '<tr role="row" data-pg-id="' . h($data['id']) . '"' . (($data['class'] !== '') ? ' class="' . h($data['class']) . '"' : '') . '>';
+
+    foreach ($data['cells'] as $key => $cell) {
+        $class = trim($cell['class'] . (($columns[$key]['align'] !== 'start') ? ' text-' . $columns[$key]['align'] : ''));
+        $output .= '<td role="cell" data-pg-col="' . h($key) . '"' . (($class !== '') ? ' class="' . h($class) . '"' : '');
+
+        foreach ($cell['attrs'] ?? array() as $name => $value) {
+            if (preg_match('/^[a-z][a-z0-9-]*$/', (string) $name)) {
+                $output .= ' ' . $name . '="' . h($value) . '"';
+            }
+        }
+
+        $output .= ($columns[$key]['hidden'] ? ' hidden' : '') . '>' . $cell['html'] . '</td>';
+    }
+
+    return $output . '</tr>';
+}
+
+/**
+ * The aria-sort value of a column: 'ascending' or 'descending' when it
+ * leads the sort, '' otherwise (the attribute belongs to one heading).
+ *
+ * @param array  $levels pg_list_table_levels()
+ * @param string $key
+ * @return string
+ */
+function pg_list_table_aria_sort(array $levels, $key)
+{
+    if (!$levels || ($levels[0]['sort'] !== (string) $key)) {
+        return '';
+    }
+
+    return ($levels[0]['order'] === 'desc') ? 'descending' : 'ascending';
+}
+
+/**
+ * The driver's texts, translated here; '%n' stands for a number the
+ * browser writes in.
+ *
+ * @return array
+ */
+function pg_list_table_texts()
+{
+    return array(
+        'more' => lang('Show more'),
+        'loading' => lang('Loading...'),
+        'failed' => lang('The list could not be loaded.'),
+        'retry' => lang('Try again'),
+        'loaded' => lang(array('string' => '{var:1} rows loaded', 'vars' => array('%n'))),
+        'selected' => lang(array('string' => '{var:1} selected', 'vars' => array('%n'))),
+        'all' => lang(array('string' => 'All {var:1} rows selected', 'vars' => array('%n'))),
+        'clear' => lang('Clear selection'),
+        'undo' => lang('Undo the previous selection'),
+        'sort' => lang('Sort by this column'),
+    );
+}
+
+/**
+ * A list printed with its first batch: the headings, the rows, the empty
+ * line and the live region; the column model, the list's parameters, the
+ * cursor of the next batch and the count ride on data attributes for the
+ * browser part (assets/js/pg_list_table.js).
+ *
+ * @param array  $source pg_list_table_source()
+ * @param array  $page   pg_list_table_page() of the first batch
+ * @param string $label  the list's name for assistive technology
+ * @return string
+ */
+function pg_list_table_html(array $source, array $page, $label)
+{
+    $columns = $source['columns'];
+    $json = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE;
+
+    $output = '<div class="pg-list-table" data-pg-list-table="' . h($source['list']) . '"'
+        . ' data-pg-list-mode="' . ($source['all'] ? 'browser' : 'server') . '"'
+        . ' data-pg-list-columns="' . h((string) json_encode(pg_list_table_client_columns($columns), $json)) . '"'
+        . ' data-pg-list-params="' . h((string) json_encode((object) $source['params_out'], $json)) . '"'
+        . ' data-pg-list-sort="' . h(pg_list_sort_value($source['levels'])) . '"'
+        . ' data-pg-list-next="' . h((string) $page['next']) . '"'
+        . ' data-pg-list-total="' . (int) $page['total'] . '"'
+        . ' data-pg-list-texts="' . h((string) json_encode(pg_list_table_texts(), $json)) . '">';
+
+    // The selection bar stays above the rows; the rows scroll in their own
+    // box under a sticky heading row, so the list fills the window.
+    $output .= '<div class="pg-list-table-bar" hidden><span class="pg-list-table-count" aria-live="polite"></span>'
+        . '<span class="pg-list-table-actions"></span></div>';
+    $output .= '<div class="pg-list-table-scroll" tabindex="-1">';
+    $output .= '<table class="table pg-list-table-grid" role="table" aria-label="' . h($label) . '">';
+    $output .= '<thead role="rowgroup"><tr role="row">';
+
+    foreach ($columns as $key => $column) {
+        $class = 'pg-list-col-' . $column['kind'] . (($column['align'] !== 'start') ? ' text-' . $column['align'] : '');
+        $aria_sort = pg_list_table_aria_sort($source['levels'], $key);
+
+        $output .= '<th role="columnheader" scope="col" data-pg-col="' . h($key) . '" class="' . h($class) . '"'
+            . ($column['sortable'] ? ' data-pg-sortable="1"' : '')
+            . (($aria_sort !== '') ? ' aria-sort="' . $aria_sort . '"' : '')
+            . (($column['width'] !== '') ? ' style="width: ' . h($column['width']) . '"' : '')
+            . ($column['hidden'] ? ' hidden' : '')
+            . '>' . h($column['heading']) . '</th>';
+    }
+
+    $output .= '</tr></thead><tbody role="rowgroup">';
+
+    foreach ($page['rows'] as $row) {
+        $output .= pg_list_table_row_html($row, $columns);
+    }
+
+    $output .= '</tbody></table>';
+    $output .= '<p class="pg-list-table-empty fg-secondary"' . ($page['rows'] ? ' hidden' : '') . '>' . h(lang('No records found.')) . '</p>';
+    $output .= '<div class="pg-list-table-foot"></div></div>';
+    $output .= '<div class="visually-hidden" aria-live="polite" data-pg-list-live></div>';
+
+    return $output . '</div>';
+}
+
+/**
+ * Record ids from a request: whole numbers above 0, each once, at most
+ * $max of them.
+ *
+ * @param mixed $value
+ * @param int   $max
+ * @return array|null list of ints, or null when there are more than $max
+ */
+function pg_list_table_ids($value, $max)
+{
+    $ids = array();
+
+    foreach (is_array($value) ? $value : array() as $id) {
+        if ((is_int($id) || (is_string($id) && ctype_digit($id))) && ((int) $id > 0) && ((string) (int) $id === (string) $id)) {
+            $ids[(int) $id] = (int) $id;
+        }
+    }
+
+    return (count($ids) > $max) ? null : array_values($ids);
+}
+
+/**
+ * A selection as the browser sends it, checked: either the rows picked one
+ * by one, array('ids' => [...]), or the whole list by its condition,
+ * array('condition' => array('search' => the search box, 'params' => the
+ * list's parameters), 'except' => ids left out, 'as_of' => Unix time the
+ * selection was made). A condition never reaches past its moment: rows
+ * created later are not in it.
+ *
+ * @param mixed $input the decoded request value
+ * @param int   $now   the current Unix time
+ * @param int   $max   the most ids a list of ids or exceptions may hold
+ * @return array|null array('mode' => 'ids', 'ids') or array('mode' =>
+ *                    'condition', 'search', 'params', 'except', 'as_of'),
+ *                    or null when it is not a selection
+ */
+function pg_list_table_selection_parse($input, $now, $max = 10000)
+{
+    if (!is_array($input)) {
+        return null;
+    }
+
+    if (array_key_exists('ids', $input)) {
+        $ids = pg_list_table_ids($input['ids'], $max);
+
+        return ($ids === null) ? null : array('mode' => 'ids', 'ids' => $ids);
+    }
+
+    if (!isset($input['condition']) || !is_array($input['condition'])) {
+        return null;
+    }
+
+    $except = pg_list_table_ids($input['except'] ?? array(), $max);
+    $as_of = $input['as_of'] ?? null;
+
+    if (($except === null) || !(is_int($as_of) || (is_string($as_of) && ctype_digit($as_of))) || ((int) $as_of <= 0)) {
+        return null;
+    }
+
+    $search = $input['condition']['search'] ?? '';
+    $params = $input['condition']['params'] ?? array();
+
+    return array(
+        'mode' => 'condition',
+        'search' => is_scalar($search) ? (string) $search : '',
+        'params' => is_array($params) ? $params : array(),
+        'except' => $except,
+        'as_of' => min((int) $as_of, (int) $now),
+    );
+}
+
+/**
+ * The condition a selection adds to its list's own: the ids picked, or the
+ * list's search, less the exceptions, up to the moment of the selection.
+ * The list's own WHERE, with the user's rights, always comes first, so a
+ * picked id the user may not reach is never in it.
+ *
+ * @param array $source    pg_list_table_source(), built from the
+ *                         selection's parameters
+ * @param array $selection pg_list_table_selection_parse()
+ * @return array array('sql', 'params')
+ */
+function pg_list_table_selection_where(array $source, array $selection)
+{
+    if ($selection['mode'] === 'ids') {
+        if (!$selection['ids']) {
+            return array('sql' => '(1 = 0)', 'params' => array());
+        }
+
+        return array(
+            'sql' => $source['id'] . ' IN (' . implode(', ', array_fill(0, count($selection['ids']), '?')) . ')',
+            'params' => $selection['ids'],
+        );
+    }
+
+    $parts = array();
+    $params = array();
+    $search = pg_list_table_search_where($source, pg_list_search_terms($selection['search']));
+
+    if ($search['sql'] !== '') {
+        $parts[] = $search['sql'];
+        $params = $search['params'];
+    }
+
+    if ($selection['except']) {
+        $parts[] = $source['id'] . ' NOT IN (' . implode(', ', array_fill(0, count($selection['except']), '?')) . ')';
+        $params = array_merge($params, $selection['except']);
+    }
+
+    if ($source['created'] !== '') {
+        $parts[] = '(' . $source['created'] . ' <= ?)';
+        $params[] = $selection['as_of'];
+    }
+
+    return array('sql' => $parts ? implode(' AND ', $parts) : '(1 = 1)', 'params' => $params);
+}
+
+/**
+ * The ids a selection stands for, read with the list's own query and the
+ * user's rights, lowest first.
+ *
+ * @param array $source    pg_list_table_source()
+ * @param array $selection pg_list_table_selection_parse()
+ * @param int   $limit     the most ids handed back
+ * @return array|false array('ids' => list of ints, 'more' => true when
+ *                     the selection holds more than $limit) or false when
+ *                     the query failed
+ */
+function pg_list_table_selected_ids(array $source, array $selection, $limit = 10000)
+{
+    $limit = max(1, (int) $limit);
+    $where = pg_list_table_selection_where($source, $selection);
+
+    $result = db_q(
+        'SELECT DISTINCT ' . $source['id'] . ' AS pg_lt_id FROM ' . $source['from']
+        . ' WHERE (' . $source['where'] . ') AND ' . $where['sql']
+        . ' ORDER BY pg_lt_id LIMIT ' . ($limit + 1),
+        array_merge($source['params'], $where['params']));
+
+    if (!$result) {
+        return false;
+    }
+
+    $ids = array();
+
+    while ($row = mysqli_fetch_row($result)) {
+        $ids[] = (int) $row[0];
+    }
+
+    $more = count($ids) > $limit;
+
+    return array('ids' => array_slice($ids, 0, $limit), 'more' => $more);
+}

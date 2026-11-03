@@ -33,6 +33,7 @@ if (!$_POST) {
            id,
            name
         FROM contact_groups
+        WHERE " . pg_audience_hand_sql() . "
         ORDER BY name";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     
@@ -235,7 +236,8 @@ if (!$_POST) {
     $column_list .= 'user, timestamp';
     
     // get all contact groups
-    $query = "SELECT id FROM contact_groups";
+    // a group filled by rules is not offered and never imported into
+    $query = "SELECT id FROM contact_groups WHERE " . pg_audience_hand_sql();
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     
     $contact_groups = array();
