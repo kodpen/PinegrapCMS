@@ -148,7 +148,7 @@ echo pg_page_shell($shell) . '
             pg_filter_select('days', $period_options, (string) $days, array('label' => lang('Period'), 'icon' => 'calendar', 'action' => 'visitor_search.php')),
         ),
     ), array('class' => 'my-5')) . '
-    <div class="row g-12">' . $tiles . '</div>
+    <div class="row g-7">' . $tiles . '</div>
     <div class="row">
         <div class="col-12 xl:col-7">
             ' . $card(lang('Top Searches'),
