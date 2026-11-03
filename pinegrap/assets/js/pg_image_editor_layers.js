@@ -491,12 +491,43 @@
         reader.readAsDataURL(file);
     };
 
-    // The layers list's name: the type's own (a text's words), else its
-    // label, numbered when there are more of the type.
-    Editor.prototype.layerName = function (l) {
-        var same = this.doc.layers.filter(function (o) { return o.type === l.type; }), own = kind(l).name ? kind(l).name.call(this, l) : '';
+    // The number in a layer's id ("l3" → 3, M.newId()); -1 for an id
+    // without one.
+    function idNumber(l) {
+        var m = /^l(\d+)$/.exec(String(l.id));
 
-        return own || (t('layer_' + l.type) + ((same.length > 1) ? ' ' + (same.indexOf(l) + 1) : ''));
+        return m ? parseInt(m[1], 10) : -1;
+    }
+
+    // The layers list's name: the type's own (a text's words), else its
+    // label, numbered when there are more of the type. The number follows
+    // the order the layers were added in (their ids), not the stacking
+    // order, so arranging a layer moves its row and keeps its name; ids
+    // without a number come after, in stacking order.
+    Editor.prototype.layerName = function (l) {
+        var own = kind(l).name ? kind(l).name.call(this, l) : '', layers = this.doc.layers, same;
+
+        if (own) {
+            return own;
+        }
+
+        same = layers.filter(function (o) { return o.type === l.type; });
+
+        if (same.length < 2) {
+            return t('layer_' + l.type);
+        }
+
+        same.sort(function (a, b) {
+            var na = idNumber(a), nb = idNumber(b);
+
+            if (na < 0 || nb < 0 || na === nb) {
+                return (na < 0) - (nb < 0) || layers.indexOf(a) - layers.indexOf(b);
+            }
+
+            return na - nb;
+        });
+
+        return t('layer_' + l.type) + ' ' + (same.indexOf(l) + 1);
     };
 
     // The Select tool's panel: the selection's arrange, align, opacity,
