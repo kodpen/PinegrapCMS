@@ -17,13 +17,13 @@ description: External API (integration.php): find what the panel can do that the
 - X5a Countries and states CRUD, `store:write`: PR #6005 (`api/api-store-country-state-writes.md`).
 - X5b Currencies CRUD and rate refresh: PR #6051 (`api/api-store-currency-writes.md`).
 - X6 `POST /orders` as `add_order.php`, Idempotency-Key, dry run, `orders:write`, event `order.created`, cut in two:
-  - X6a `local_sale_complete()` moves into `includes/fn/local_order.php`, free of the session cart; the screen calls it, tests pin it: PR #6107 (`erp/erp-counter-sale-completion.md`).
+  - X6a `local_sale_complete()` in `fn/local_order.php`: PR #6107 (`erp/erp-counter-sale-completion.md`).
   - X6b The route on it: PR #6148 (`api/api-orders-create.md`).
 - X7 `POST /offers`, `POST /offers/{id}/duplicate` through the editor's validate and save, `offers:write`, events `offer.created|updated|deleted`: PR #6175 (`api/api-offers-create.md`).
 - X8 Store lookup lists, cut in three:
   - X8a Shared write path of the eight screens (`fn/store_lookups.php`), `/store/referral-sources` CRUD: PR #6247 (`api/api-store-lookups.md`).
   - X8b `/store/ship-date-adjustments`, `/store/verified-addresses` CRUD (409 `adjustment_taken`): PR #6308.
-  - X8c `/store/arrival-dates` CRUD with `shipping_cutoffs` (a row the screen drops is 422): PR #6332 (`api/api-store-arrival-dates.md`).
+  - X8c `/store/arrival-dates` CRUD: PR #6332 (`api/api-store-arrival-dates.md`).
 - X9 Campaigns, `campaigns:*`, cut in three:
   - X9a `/campaigns/profiles` CRUD: PR #6353 (`api/api-campaign-profiles.md`).
   - X9b `GET /campaigns/sms`, event `campaign.sent`.
