@@ -9,6 +9,9 @@ description: Deleting shared components and system widgets without opening a des
 - Columns: name; kind (widget label from `pg_sw_type_labels()`, the PHP mirror of `SW_TYPES` in `style_designer.js`, kept in step by `tests/designer_components_test.php`); source (template, from a `template:` category or `template_origin`; import, from `import:<project>`); where it is used; last change.
 - Delete goes through `shared_component` sub-action `delete_many`: a row a saved page still places is kept unless the request says `force` and comes back in `kept` with its usage; content editor grants go with the row; one activity log line names every deleted row.
 
+## When are the rows read?
+- Only when the panel first opens (#6075: 1117 rows, 1.2 MB of HTML and ~19,000 DOM nodes printed into the closed drawer on every visit). The card reads `COUNT(*)` for the button; `designer_home.js` asks `shared_component/home_rows` (full designer, `pg_designer_components_rows()`, page cache clean) on the opener's click and fills `#sd-comp-rows`. A failed load shows its message and asks again on the next open. Rows keep `data-usage` for the confirmation.
+
 ## How many rows can one delete take?
 - Any number, in one request (#4452). The 500 cap is gone: tested templates leave hundreds of rows, and clearing them in rounds was too hard.
 - The panel has no filter and draws every row, so "Select all" ticks them all. The confirmation names the first 20 (the used ones lead) and counts the rest (`and {var:1} more`).

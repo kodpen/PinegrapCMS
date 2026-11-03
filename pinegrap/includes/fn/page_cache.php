@@ -1466,7 +1466,7 @@ function pg_page_cache_panel_sub_actions()
             'key' => 'sub_action',
             'dirty' => array('create', 'from_designer_region', 'from_common_region', 'update', 'content_update', 'set_content_editable', 'update_config',
                 'rename', 'delete', 'delete_many'),
-            'clean' => array('list', 'usage_all', 'prefetch', 'get', 'list_custom_forms',
+            'clean' => array('list', 'usage_all', 'prefetch', 'get', 'home_rows', 'list_custom_forms',
                 'list_form_item_view_pages', 'list_calendars', 'list_calendar_event_pages',
                 'list_product_groups', 'list_folders', 'list_catalog_pages', 'list_catalog_listing_pages',
                 'list_catalog_detail_pages', 'list_shopping_cart_pages', 'list_all_pages', 'list_form_fields', 'template_layouts', 'starter_layouts'),

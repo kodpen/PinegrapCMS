@@ -1402,8 +1402,8 @@ function pg_designer_start_screen($ctx)
         }
     }
 
-    // Button and panel come from one query: the button only shows when the
-    // panel has rows to list.
+    // Button and panel come from one count: the button only shows when the
+    // panel has rows to list; the rows load when it opens.
     $comp = pg_designer_components_card($user);
 
     if ($can_create) {
@@ -1541,8 +1541,60 @@ function pg_designer_components_card($user)
     if (!pg_designer_is_full($user)) return $none;
     if (!pg_schema_has('shared_components')) return $none;
 
+    // Only the number is read here: the rows and where each is placed (a
+    // pass over every page tree) come from shared_component/home_rows when
+    // the panel first opens, so a closed panel costs one COUNT.
+    $comp_total = (int)db_value("SELECT COUNT(*) FROM shared_components");
+    if ($comp_total === 0) return $none;
+
+    $comp_button = '<button type="button" class="btn btn-sm btn-text theme-secondary" id="sd-comp-open" data-bs-toggle="drawer" data-bs-target="#sd-comp-offcanvas" aria-controls="sd-comp-offcanvas"><i class="bi bi-boxes me-1" aria-hidden="true"></i>' . h(lang('Shared components and system widgets')) . ' <span class="sdh-count" id="sd-comp-total">' . $comp_total . '</span></button>';
+
+    $comp_panel = '
+        <dialog class="drawer drawer-end" id="sd-comp-offcanvas" aria-labelledby="sd-comp-offcanvas-title">
+            <div class="drawer-header border-bottom">
+                <h2 class="drawer-title text-uppercase h5 fg-primary fw-bold mb-0" id="sd-comp-offcanvas-title">' . h(lang('Shared components and system widgets')) . '</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
+            </div>
+            <div class="d-flex justify-content-end px-5 py-3 border-bottom">
+                <button type="button" class="btn btn-sm btn-outline theme-warning" id="sd-comp-delete" disabled><i class="bi bi-trash me-1" aria-hidden="true"></i>' . h(lang('Delete selected')) . ' (<span id="sd-comp-count">0</span>)</button>
+            </div>
+            <div class="drawer-body p-0">
+                <p class="small fg-secondary px-5 pt-5 mb-5">' . h(lang('These do not belong to a single design: they stay when a design is deleted, and a template opened later gives its own a numbered name. Delete the ones you no longer need here; they are edited in the editor.')) . '</p>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox" class="check" id="sd-comp-all" aria-label="' . h(lang('Select all')) . '" disabled></th>
+                                <th>' . h(lang('Name')) . '</th>
+                                <th>' . h(lang('Type')) . '</th>
+                                <th>' . h(lang('Source')) . '</th>
+                                <th>' . h(lang('Used on')) . '</th>
+                                <th nowrap>' . h(lang('Last Modified')) . '</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sd-comp-rows">
+                            <tr class="sd-comp-wait"><td colspan="6" class="text-center fg-secondary py-5" role="status">' . h(lang('Loading…')) . '</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </dialog>';
+
+    return array('button' => $comp_button, 'panel' => $comp_panel);
+}
+
+/**
+ * The rows of the shared components panel (pg_designer_components_card()),
+ * asked by the panel when it first opens (shared_component/home_rows).
+ * Each row carries data-usage, the places the delete confirmation names.
+ *
+ * Returns array('total' => number of rows, 'html' => the <tr> rows).
+ */
+function pg_designer_components_rows()
+{
     $comp_rows = db_items("SELECT id, name, category, updated_at, system_region_config FROM shared_components ORDER BY name");
-    if (!is_array($comp_rows) || count($comp_rows) === 0) return $none;
+    if (!is_array($comp_rows)) $comp_rows = array();
+    if (count($comp_rows) === 0) return array('total' => 0, 'html' => '');
 
     $comp_usage     = pg_shared_component_usage(null);
     $comp_types     = pg_sw_type_labels();
@@ -1620,39 +1672,7 @@ function pg_designer_components_card($user)
                     </tr>';
     }
 
-    $comp_button = '<button type="button" class="btn btn-sm btn-text theme-secondary" id="sd-comp-open" data-bs-toggle="drawer" data-bs-target="#sd-comp-offcanvas" aria-controls="sd-comp-offcanvas"><i class="bi bi-boxes me-1" aria-hidden="true"></i>' . h(lang('Shared components and system widgets')) . ' <span class="sdh-count" id="sd-comp-total">' . count($comp_rows) . '</span></button>';
-
-    $comp_panel = '
-        <dialog class="drawer drawer-end" id="sd-comp-offcanvas" aria-labelledby="sd-comp-offcanvas-title">
-            <div class="drawer-header border-bottom">
-                <h2 class="drawer-title text-uppercase h5 fg-primary fw-bold mb-0" id="sd-comp-offcanvas-title">' . h(lang('Shared components and system widgets')) . '</h2>
-                <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
-            </div>
-            <div class="d-flex justify-content-end px-5 py-3 border-bottom">
-                <button type="button" class="btn btn-sm btn-outline theme-warning" id="sd-comp-delete" disabled><i class="bi bi-trash me-1" aria-hidden="true"></i>' . h(lang('Delete selected')) . ' (<span id="sd-comp-count">0</span>)</button>
-            </div>
-            <div class="drawer-body p-0">
-                <p class="small fg-secondary px-5 pt-5 mb-5">' . h(lang('These do not belong to a single design: they stay when a design is deleted, and a template opened later gives its own a numbered name. Delete the ones you no longer need here; they are edited in the editor.')) . '</p>
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th><input type="checkbox" class="check" id="sd-comp-all" aria-label="' . h(lang('Select all')) . '"></th>
-                                <th>' . h(lang('Name')) . '</th>
-                                <th>' . h(lang('Type')) . '</th>
-                                <th>' . h(lang('Source')) . '</th>
-                                <th>' . h(lang('Used on')) . '</th>
-                                <th nowrap>' . h(lang('Last Modified')) . '</th>
-                            </tr>
-                        </thead>
-                        <tbody>' . $comp_output_rows . '
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </dialog>';
-
-    return array('button' => $comp_button, 'panel' => $comp_panel);
+    return array('total' => count($comp_rows), 'html' => $comp_output_rows);
 }
 
 /**
