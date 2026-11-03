@@ -19,7 +19,7 @@ description: Steps E21-E25 of plans/image-editor.md (owner 2026-11-03): change a
   - A Scissors tool beside the pen: a click on a path cuts it there (`M.splitAt()`): an open path becomes two, a closed one opens; a drag across paths cuts each where the line crosses. A shape is converted to a path first.
   - Tests: cuts on lines, curves and closed shapes in the model (knot counts, end points).
 
-- E24 (M) Shape builder. After E23, beside E25.
+- E24 (M) Shape builder. After E23, beside E25. Done (#6405).
   - Pathfinder buttons for two or more selected shapes or paths: unite, subtract front, intersect, exclude, divide. A Shape builder tool: drag across overlapping regions to merge them, Alt-drag to remove one.
   - Own path booleans: curves flattened (0.25 px), polygon clipping (Martinez-Rueda), refitted to curves (`M.refitPath()`), holes as even-odd subpaths. Tests: the five operations on squares and circles, holes, touching edges.
 
