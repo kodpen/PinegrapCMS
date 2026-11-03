@@ -4044,6 +4044,7 @@
     "The site was restored but not upgraded. Install a package that knows this version, then run the upgrade from this screen.": "Site geri yüklendi ama yükseltilmedi. Bu sürümü tanıyan bir paket kurun, sonra yükseltmeyi bu ekrandan çalıştırın.",
     "The site will no longer use {var:1}, and every feature that does stops until an account is connected again.": "Site artık {var:1} hesabını kullanmayacak; onu kullanan her özellik yeniden bir hesap bağlanana kadar durur.",
     "The site works on either engine; a table left on MyISAM is not an error.": "Site her iki motorla da çalışır; MyISAM'da kalan bir tablo hata değildir.",
+    "The site's address answered with HTTP {var:1}.": "Sitenin adresi HTTP {var:1} ile yanıt verdi.",
     "The site's application API is switched off; an administrator switches it on first:": "Sitenin uygulama API'si kapalı; önce bir yönetici açmalı:",
     "The site's certificate needs renewing: {{result}}": "Sitenin sertifikası yenilenmeli: {{result}}",
     "The site's connection to the service ended: connect it again in the Workspace settings.": "Sitenin hizmetle bağlantısı sona erdi: Çalışma Alanı ayarlarından yeniden bağlayın.",
