@@ -16,9 +16,9 @@ description: External API (integration.php): find what the panel can do that the
 - X4 Users read: `GET /users`, `/users/{id}` (role, permission columns, last sign-in, MFA; no secrets). New `users:read`, designer ceiling. Writes: X13 (`external-api-coverage-2.md`). PR #5898 (`api/api-users-read.md`).
 - X5a Countries and states CRUD, `store:write`: PR #6005 (`api/api-store-country-state-writes.md`).
 - X5b Currencies CRUD and `POST /store/currencies/rates`, `store:write`, events `currency.*`: PR #6051 (`api/api-store-currency-writes.md`).
-- X6 `POST /orders` as `add_order.php`, Idempotency-Key, dry run. `orders:write`. Event `order.created`. Cut in two (over ~1,000 lines):
-  - X6a The counter sale's completion (`local_sale_complete()`) moves into `includes/fn/local_order.php`, free of the session cart; the screen calls it, behaviour unchanged, tests pin it.
-  - X6b The API route on that function: lines, customer, payment; Idempotency-Key, dry run through its check function.
+- X6 `POST /orders` as `add_order.php`, Idempotency-Key, dry run, `orders:write`, event `order.created`, cut in two:
+  - X6a `local_sale_complete()` moves into `includes/fn/local_order.php`, free of the session cart; the screen calls it, tests pin it.
+  - X6b The route on it: lines, customer, payment, dry run via its check.
 - X7 `POST /offers`, `POST /offers/{id}/duplicate` (`edit_offer_f.php` rules). `offers:write`. New events `offer.created|updated|deleted`.
 - X8 CRUD `/store/arrival-dates`, `/store/ship-date-adjustments`, `/store/verified-addresses`, `/store/referral-sources`. `orders:read`, `store:write`. No events.
 - X9 `POST /campaigns` (draft), `POST /campaigns/{id}/schedule`, campaign profiles CRUD, `GET /campaigns/sms`. `campaigns:*`. Event `campaign.sent`.
