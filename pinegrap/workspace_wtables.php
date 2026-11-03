@@ -863,7 +863,8 @@ if (!$table) {
                     break;
 
                 case 'date':
-                    $input = '<input type="text" class="form-control form-control-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '" value="' . h($value) . '" ' . (!empty($options['time']) ? 'data-pg-datetime' : 'data-pg-date') . ' autocomplete="off">';
+                    // A native input keeps the ISO store the cell is saved in.
+                    $input = '<input type="' . (!empty($options['time']) ? 'datetime-local' : 'date') . '" class="form-control form-control-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '" value="' . h($value) . '" ' . (!empty($options['time']) ? 'data-pg-datetime' : 'data-pg-date') . ' autocomplete="off">';
                     break;
 
                 case 'text':

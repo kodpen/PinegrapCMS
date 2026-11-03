@@ -157,6 +157,30 @@ function test_workspace_wtable_screen_amount_hint_written_the_site_way()
 	});
 }
 
+function test_workspace_wtable_screen_date_cells_round_trip()
+{
+	$dated = array('type' => 'date', 'options' => array());
+	$timed = array('type' => 'date', 'options' => array('time' => true));
+
+	pg_assert_same('2026-11-20', ws_wtable_screen_cell_to_form($dated, '2026-11-20'), 'a date field is a native date input');
+	pg_assert_same('2026-11-20T14:30', ws_wtable_screen_cell_to_form($timed, '2026-11-20 14:30'), 'a date and time field is a native datetime-local input');
+	pg_assert_same('2026-11-20T00:00', ws_wtable_screen_cell_to_form($timed, '2026-11-20'), 'a date stored without a time is midnight');
+	pg_assert_same('2026-11-20', ws_wtable_screen_cell_to_form($dated, '2026-11-20 14:30'), 'a date field drops a stored time');
+	pg_assert_same('', ws_wtable_screen_cell_to_form($dated, 'soon'), 'what is no date leaves the field empty');
+
+	pg_assert_same('2026-11-20 14:30', ws_wtable_screen_cell_from_form($timed, ws_wtable_screen_cell_to_form($timed, '2026-11-20 14:30')), 'round trip with a time');
+	pg_assert_same('2026-11-20', ws_wtable_screen_cell_from_form($dated, ws_wtable_screen_cell_to_form($dated, '2026-11-20')), 'round trip without a time');
+	pg_assert_same('2026-11-20 14:30', ws_wtable_screen_cell_from_form($timed, '2026-11-20T14:30:00'), 'seconds a browser adds are dropped');
+}
+
+function test_workspace_wtable_screen_date_text_in_the_site_format()
+{
+	pg_assert_same('20.11.2026', ws_wtable_screen_date_text('2026-11-20', 'day_month', 'twenty_four_hours'));
+	pg_assert_same('20.11.2026 14:30', ws_wtable_screen_date_text('2026-11-20 14:30', 'day_month', 'twenty_four_hours'));
+	pg_assert_same('11/20/2026 2:30 PM', ws_wtable_screen_date_text('2026-11-20 14:30', 'month_day', 'twelve_hours'));
+	pg_assert_same('soon', ws_wtable_screen_date_text('soon', 'day_month', 'twenty_four_hours'), 'anything else as it was');
+}
+
 function test_workspace_wtable_screen_cells_from_form()
 {
 	pg_assert_same(true, ws_wtable_screen_cell_from_form(array('type' => 'checkbox'), '1'));
