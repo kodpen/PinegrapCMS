@@ -19,7 +19,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 - Endpoints `return` (4): clean
 - Endpoints `search` (3): open
 - Endpoints `seo` (8): open
-- Endpoints `setting` (14): open
+- Endpoints `setting` (14): clean
 - Endpoints `ship` (3): open
 - Endpoints `shipment` (3): open
 - Endpoints `shipping` (9): open
