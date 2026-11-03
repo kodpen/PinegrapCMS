@@ -223,6 +223,7 @@
     "Each variant needs the option pairs that make it that variant.": "Her varyant, onu o varyant yapan seçenek çiftlerini içermelidir.",
     "Each version runs in its own request, so a request limit of the web server (FastCGI, proxy) bounds one version rather than the whole upgrade.": "Her sürüm kendi isteğinde çalışır; bu yüzden web sunucusunun istek sınırı (FastCGI, proxy) yükseltmenin tamamını değil yalnızca tek bir sürümü sınırlar.",
     "Each visit decides it: the page leaves the element out while the fact does not pass; the canvas keeps showing it. Nothing about the visitor is shown.": "Her ziyaret kendisi karar verir: bilgi koşulu sağlamadıkça sayfa öğeyi göstermez; tuval göstermeye devam eder. Ziyaretçiye ait hiçbir şey gösterilmez.",
+    "Each visual design comes with its pages, shared components, widgets, forms, look and design files; its pages and styles are then left out of the classic copy. The source must run a current Pinegrap version.": "Her görsel tasarım sayfaları, ortak bileşenleri, bileşenleri, formları, görünümü ve tasarım dosyalarıyla gelir; bu tasarımın sayfaları ve stilleri klasik kopyadan çıkarılır. Kaynak sitede güncel bir Pinegrap sürümü çalışmalıdır.",
     "Eager": "Hemen",
     "Earlier Projects": "Önceki Projeler",
     "Earlier days": "Önceki günler",

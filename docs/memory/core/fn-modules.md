@@ -130,6 +130,7 @@ description: Generated from the module field of the memory files: each includes/
 - `site_datetime`: [[site-datetime-loader]]
 - `site_icon`: [[site-icon]]
 - `site_log_list`: [[site-log-paging]]
+- `site_migration`: [[migration-carries-designs]]
 - `site_search`: [[site-search-index-text]], [[site-search-query-and-freshness]], [[site-search-terms-on-visit]], [[site-search-turkish-i]]
 - `site_search_stats`: [[site-search-rollup]]
 - `site_search_tuning`: [[search-synonyms-promoted]]

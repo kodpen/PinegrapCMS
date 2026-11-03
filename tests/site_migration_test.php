@@ -99,3 +99,23 @@ function test_site_migration_rows_carried_by_design()
 	pg_assert_false(pg_migration_style_carried_by_design(array('layout' => 'visual_designer'), false));
 	pg_assert_false(pg_migration_style_carried_by_design(array('layout' => 'one_column'), true));
 }
+
+function test_site_migration_uses_the_template_export_both_ways()
+{
+	$mig = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/site_migration.php');
+	pg_assert_contains("pg_design_template_build((int)\$s['style_id']", $mig, 'the source builds a design with the template export');
+	pg_assert_contains("'explicit_trees' => true", $mig, 'a widget placeholder stays a tree, so the server can install it');
+	pg_assert_contains('pg_design_template_install(', $mig, 'the target installs it the way a template is installed');
+
+	$dtc = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/design_templates_custom.php');
+	pg_assert_contains('$built = pg_design_template_build($style_id, $meta);', $dtc, 'turning a design into a template uses the same builder');
+
+	$dsg = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
+	pg_assert_contains('pg_design_template_custom_get($id)', $dsg, 'a template written in this request is found past the cached list');
+
+	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/actions.php');
+	pg_assert_contains("'get_designs' => array('file' => 'designer.php', 'handler' => 'pg_panel_get_designs', 'exempt' => false, 'token' => false, 'write' => false)", $actions, 'designers and administrators only, read-only');
+
+	$content = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/content.php');
+	pg_assert_same(2, substr_count($content, "pg_migration_skipped_folders_sql("), 'get_folders and get_pages leave the bin, drafts and Workspace out');
+}
