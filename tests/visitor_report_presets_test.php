@@ -111,10 +111,18 @@ function test_visitor_report_order_columns_need_ecommerce()
 		}
 
 		if (count($run) > 0) {
-			$blocks++;
 			$size = count($run);
-			pg_assert_true(($size === 5) || ($size === 3), 'figure cells left outside the order block at line ' . ($run[0] + 1) . ': ' . $size);
-			pg_assert_contains('$output_order_cells', $text, 'order block follows the figures at line ' . ($run[0] + 1));
+
+			// The figures (5 cells, 3 on a visit row) open the order block;
+			// its 7 cells close it.
+			if ($size === 7) {
+				$blocks++;
+				pg_assert_same("' : '') . '", $text, 'order block closes at line ' . ($number + 1));
+			} else {
+				pg_assert_true(($size === 5) || ($size === 3), 'figure cells left outside the order block at line ' . ($run[0] + 1) . ': ' . $size);
+				pg_assert_same("' . (\$output_order_cells ? '", $text, 'order block follows the figures at line ' . ($run[0] + 1));
+			}
+
 			$run = array();
 		}
 	}
