@@ -39,13 +39,11 @@ foreach ($categories as $c) $seller_category_titles[] = $c['title'];
 $seller_city_names = array_values($cities);
 $seller_featured_answers = array('yes' => lang('Yes'), 'no' => lang('No'));
 
-// The product group of a maker in the shop's catalog (under "Shops") and
-// its address on the shop page: the sample of the record's shop address.
-$seller_group_key = function ($key) {
-    return 'shop-' . $key;
-};
-$seller_shop_url = function ($key) use ($seller_group_key) {
-    return '{{page:shop}}/{{product_group_path:' . $seller_group_key($key) . '}}';
+// The address of a maker's product group on the shop page (the group
+// under "Shops" whose key is the maker's key in $sellers): the sample of
+// the record's shop address.
+$seller_shop_url = function ($key) {
+    return '{{page:shop}}/{{product_group_path:' . $key . '}}';
 };
 
 // A filter row of a list's settings: the field, how it compares and the

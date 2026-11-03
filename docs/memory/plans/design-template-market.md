@@ -24,7 +24,7 @@ description: Plan for the Marketplace template (pinegrap-market): makers' shops 
 
 - 3 Shop: `shop.php` (category and maker groups, `shop`, product, cart, checkout, order, `email_order`).
 
-- 4 Makers: `sellers.php` (`seller_new` with the Sellers collection and samples, `sellers` with filters, `seller` record page with reviews, the home's list widgets).
+- 4 Done (#6286). Makers: `sellers.php` (`seller_new` with the Sellers collection and samples, `sellers` with filters, `seller` record page with reviews, the home's list widgets). The `shop_url` sample is the maker group's address (`{{product_group_path:<seller key>}}`); test `design_template_market_sellers_test.php`.
 
 - 5 Requests: `mail.php`, `requests.php` (`apply`, `application_view`, `my_applications`, `staff_applications`, `help`, `help_view`, `my_help`, `staff_help`, `privacy`, `email_reply`, notify e-mails).
 

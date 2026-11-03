@@ -106,7 +106,8 @@ function test_market_sellers_form_and_samples()
 				pg_assert_true(in_array($value, $controls[$name]['options'], true), "sample $n: $name '$value' is an answer");
 			}
 		}
-		pg_assert_contains('{{product_group_path:shop-', $r['shop_url'], "sample $n: the maker's group in the shop");
+		pg_assert_same(1, preg_match('/\\{\\{product_group_path:([a-z]+)\\}\\}$/', $r['shop_url'], $g), "sample $n: a group's address");
+		pg_assert_true(isset($d['sellers'][$g[1]]), "sample $n: the maker's own group");
 		if ($r['featured'] === lang('Yes')) $featured++;
 	}
 	pg_assert_same(3, $featured, 'three featured makers');
