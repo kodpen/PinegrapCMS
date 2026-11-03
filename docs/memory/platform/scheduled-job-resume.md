@@ -8,6 +8,7 @@ module: cron
 - `job.php` notes its start and limit (`pg_cron_clock()`): `JOB_TIME_LIMIT` in `data/config.php` when above 0, else `max_execution_time` (none on the command line). A job run alone uses `REQUEST_TIME_FLOAT`.
 - `pg_cron_time_left($budget)` caps a pass's own budget (`SEO_ANALYZE_TIME_BUDGET`) by the time left, less a margin for the closing writes (a fifth of the limit, at most 15 s), never below 1 (`pg_cron_tick_budget()`, pure). The structure and accessibility jobs use it.
 - Why: a hosting job runner or a Windows task stops `job.php` after a fixed time; a pass that worked past it lost its tick and kept its lock.
+- `max_execution_time` does not know the runner's limit: such a host sets `JOB_TIME_LIMIT` below it (the host's setting). Without it the tick budget (`SEO_ANALYZE_TIME_BUDGET`, 120 s) does not run out before the kill, and every tick of the search index ends inside an item (`designer/search-index-item-parts.md`).
 
 ## What does an unfinished pass do at the end of its tick?
 - `pg_cron_due_again($name, 60)`: `last_run_at` moved back to `now - interval + 60` (`pg_cron_due_again_stamp()`, never later than now), so the job is due in a minute instead of after its interval. `pg_cron_dispatch_finished()` keeps that time instead of stamping the tick.
@@ -25,5 +26,6 @@ module: cron
 
 ## Where does the accessibility pass keep its place?
 - `data/temp/seo_a11y.json` written after every page, not only when the budget runs out: a killed process carries on after the last page checked.
+- The structure and accessibility passes have no skip rule for a page that itself ends the run (alone longer than the runner's limit, or a fatal error PHP cannot catch): left out as rare. The search index has one (`designer/search-index-resumable-pass.md`).
 
 Tests: `tests/cron_resume_test.php`, `tests/cron_test.php`.

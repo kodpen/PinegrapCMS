@@ -181,7 +181,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - update-backup-rollback.md: Backup a software update or repair writes before replacing files (pre-update-*.zip) and the rollback on Repair Software: contents, hash record, effect on files and config.version
 - update-beta-builds.md: Beta builds of one version over the Kodpen API (PR #3755): data/update_build.json, when a same-version build is offered (#3204), the re-run after replace, backup/rollback and integrity ref
 - update-channel-stable-beta.md: Update channel (stable/beta): config key, the three channel functions all callers must use, download_assistant stays stable, switching, version format.
-- update-check-errors.md: How the software update check reports a failed answer (HTTP status, cURL, invalid), the checks-off state, and its single Site Log line.
+- update-check-errors.md: How the software update check reports a failed answer (HTTP status, cURL, invalid), the checks-off state, its single Site Log line, and the one "update available" bell row.
 - update-package-extraction.md: How update packages must be downloaded and extracted (pg_extract_archive, pg_looks_like_zip) so a partial install is never reported as success.
 - update-tls-verification.md: TLS on outgoing cURL: pg_curl_tls() / da_curl_tls(), no silent downgrade, the store from pg_ca_bundle_effective(), ALLOW_INSECURE_UPDATE_TLS; who uses it (classic Stripe and iyzico do not).
 - upload-drop-area-sizes.md: Upload File and Upload Design Files write the drop-area sizes and the too-big refusal in the panel's units and decimal mark, not Dropzone's

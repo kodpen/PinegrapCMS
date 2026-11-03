@@ -19,26 +19,11 @@ description: Plan for the Social Community template (pinegrap-social): a photo c
 - `member` is the public profile, `my_profile` the member's own; `profile` stays the account page.
 
 ## Which steps are there?
-- 1 Done (#6297). Data and shared parts: `parts.php` (builders, samples; account bar, header, footer, join band, avatar, post, profile and topic cards, page shells, form fields, comment thread, staff bar); test `design_template_social_test.php`.
-
-- 2 Done (#6339). Public pages: `pages_public.php`; home places `home_posts`, `home_news`.
-
-- 3 Done (#6341). Profiles: `profiles.php` (`my_profile` and its collection, `people`, `member` with their posts, `staff_members`).
-
-- 4 Done (#6342). Posts: `posts.php` (`post_new`, `explore`, `tag`, `post`, `my_posts`, `saved`, `home_*_posts`).
-
-- 5 Done (#6340). Reports and mail: `mail.php`, `reports.php`; test `…_reports_test.php`.
-
-- 6 Done (#6343). Standard: `standard.php` (contact, inbox, newsletter, Community News, search, error); test `…_standard_test.php`.
-
-- 7 Done (#6346). Account and staff: `account.php`; test `…_account_test.php`.
+- Done: 1 #6297, 2 #6339, 3 #6341, 4 #6342, 5 #6340, 6 #6343, 7 #6346.
 
 - 8 Assembly: `pinegrap-social.php` (order 78, icon `bi-camera`, look and palette, contact group `newsletter`, folders `posts` and `avatars`, `psc-` User Styles, search map), shared tests' lists, `designer/design-template-social.md`, plan deleted; PR body names `[NEW] Added the Social Community design template`.
 
-- L Held: likes and follows (1.1.0), only after #6296 decides general features for them.
-
-## Which questions are open?
-- #6296: likes, follows, member messages: not built, or general features. Steps 1-8 do not wait.
+- L Held: likes and follows (1.1.0), after the general plan that brings them (#6296, `workflow/decisions-made-product-24.md`).
 
 ## Where to start?
 - `pinegrap-market/`, `pinegrap-hotel/`, `pinegrap-forum.php` (member posts and archive, reports, live rule), [[design-templates-file-format]], [[design-template-threads]], [[collection-template-refs]]. Steps 2-7 may run in parallel after step 1; the next free step is the lowest one not marked done here.
