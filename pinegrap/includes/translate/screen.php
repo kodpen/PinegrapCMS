@@ -338,3 +338,89 @@ function pg_tr_accept_source($language, $string_ids, $user_id = 0)
 
     return $result;
 }
+
+/**
+ * The query string of the view a form of the screen was posted from: the
+ * language, the page or group, the filter and the search. The screen checks
+ * each value again when it is opened, so this only keeps them well formed.
+ *
+ * @param string $language
+ * @param array  $source   the posted fields (page_id, group, filter, q)
+ * @return string
+ */
+function pg_tr_screen_view_query($language, $source)
+{
+    $value = function ($key) use ($source) {
+        return (isset($source[$key]) && is_scalar($source[$key])) ? trim((string) $source[$key]) : '';
+    };
+
+    $group = $value('group');
+    $group = preg_match('/^[a-z0-9_]{1,40}$/', $group) ? $group : '';
+    $page_id = ($group === '') ? max(0, (int) $value('page_id')) : 0;
+    $filter = $value('filter');
+    $filter = in_array($filter, array('pending', 'machine', 'reviewed', 'suspicious', 'blocking'), true) ? $filter : '';
+    $search = mb_substr($value('q'), 0, 255);
+
+    $params = array('language' => (string) $language, 'page_id' => $page_id, 'group' => $group, 'filter' => $filter, 'q' => $search);
+    $query = array();
+
+    foreach ($params as $key => $param) {
+        if (($param === '') || ($param === 0)) {
+            continue;
+        }
+
+        $query[] = rawurlencode($key) . '=' . rawurlencode((string) $param);
+    }
+
+    return implode('&', $query);
+}
+
+/**
+ * The glossary row a term would repeat: the same term, compared without
+ * regard to case unless both rows match case exactly. The row being edited
+ * ($id) is not a repeat of itself.
+ *
+ * @param array  $rows           glossary rows (id, term, case_sensitive)
+ * @param int    $id             the row being saved, 0 for a new one
+ * @param string $term
+ * @param bool   $case_sensitive
+ * @return array|null the row, or null when there is none
+ */
+function pg_tr_glossary_duplicate($rows, $id, $term, $case_sensitive)
+{
+    $term = (string) $term;
+
+    foreach ((array) $rows as $row) {
+        if ((int) $row['id'] === (int) $id) {
+            continue;
+        }
+
+        $other = (string) $row['term'];
+        $exact = $case_sensitive && ((int) $row['case_sensitive'] === 1);
+
+        if ($exact ? ($other === $term) : (mb_strtolower($other, 'UTF-8') === mb_strtolower($term, 'UTF-8'))) {
+            return $row;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * The rows a translation box opens with: enough for its text, at least 2
+ * and at most 12 (the box scrolls past that). Browsers that size a box to
+ * its content (field-sizing) grow it as it is typed in as well.
+ *
+ * @param string $text
+ * @return int
+ */
+function pg_tr_screen_target_rows($text)
+{
+    $rows = 0;
+
+    foreach (preg_split('/\r\n?|\n/', (string) $text) as $line) {
+        $rows += max(1, (int) ceil(mb_strlen($line, 'UTF-8') / 70));
+    }
+
+    return max(2, min(12, $rows));
+}

@@ -146,8 +146,54 @@
 
     // ── the editor rows ──
 
+    // The "clear translations" counts follow a row's change of state: a
+    // translation written or emptied, one turned reviewed or machine.
+    function countState(before, after) {
+        var button = document.querySelector('#pg_tr_clear_modal .pg-tr-clear');
+        if (!button || (before === after)) {
+            return;
+        }
+        var all = (parseInt(button.getAttribute('data-all'), 10) || 0) + ((after !== 'pending') ? 1 : 0) - ((before !== 'pending') ? 1 : 0);
+        var machine = (parseInt(button.getAttribute('data-machine'), 10) || 0) + ((after === 'machine') ? 1 : 0) - ((before === 'machine') ? 1 : 0);
+        all = Math.max(0, all);
+        machine = Math.max(0, Math.min(all, machine));
+        button.setAttribute('data-all', all);
+        button.setAttribute('data-machine', machine);
+        var reviewedCount = document.querySelector('#pg_tr_clear_modal .pg-tr-clear-reviewed-count');
+        if (reviewedCount) {
+            reviewedCount.textContent = all - machine;
+        }
+    }
+
+    // A reviewed text is not offered for "keep as in the source": its tick
+    // box comes and goes with the state, and the selection count follows.
+    function pickState(row, state) {
+        var pick = row.querySelector('.pg-tr-pick');
+        var spacer = row.querySelector('.pg-tr-pick-spacer');
+        if ((state === 'reviewed') && pick) {
+            spacer = document.createElement('span');
+            spacer.className = 'flex-shrink-0 pg-tr-pick-spacer';
+            spacer.style.width = '1em';
+            pick.replaceWith(spacer);
+        } else if ((state !== 'reviewed') && !pick && spacer) {
+            pick = document.createElement('input');
+            pick.type = 'checkbox';
+            pick.className = 'check flex-shrink-0 mt-1 pg-tr-pick';
+            pick.value = row.getAttribute('data-string-id');
+            pick.setAttribute('aria-label', text('select_text'));
+            spacer.replaceWith(pick);
+        } else {
+            return;
+        }
+        app.dispatchEvent(new CustomEvent('pg-tr-picks-changed'));
+    }
+
     function rowState(row, state, engine, suspicious) {
         var badge = row.querySelector('.pg-tr-state-badge');
+        var before = row.getAttribute('data-state');
+        row.setAttribute('data-state', state);
+        countState(before, state);
+        pickState(row, state);
         var engineEl = row.querySelector('.pg-tr-engine');
         var review = row.querySelector('.pg-tr-review');
         var warn = row.querySelector('.pg-tr-suspicious');
@@ -258,26 +304,97 @@
         });
     }
 
+    // create() of a browser with the API but no service or language pack
+    // behind it never settles either. A download in progress keeps the wait
+    // alive; this long without a sign gives up with $message. While it waits,
+    // "Stop" ends it through preparing.stop(). start(alive) calls create()
+    // synchronously, so the click's gesture still reaches it.
+    var CREATE_STALL_MS = 30000;
+    var preparing = null;
+
+    function guardCreate(start, message) {
+        return new Promise(function (resolve, reject) {
+            var timer = null;
+            var settled = false;
+
+            function settle() {
+                settled = true;
+                window.clearTimeout(timer);
+                preparing = null;
+            }
+
+            function alive() {
+                if (settled) {
+                    return;
+                }
+                window.clearTimeout(timer);
+                timer = window.setTimeout(function () {
+                    settle();
+                    reject(new Error(message));
+                }, CREATE_STALL_MS);
+            }
+
+            preparing = {
+                stop: function () {
+                    if (!settled) {
+                        settle();
+                        var stopped = new Error(text('stopped'));
+                        stopped.stopped = true;
+                        reject(stopped);
+                    }
+                }
+            };
+
+            alive();
+
+            start(alive).then(function (value) {
+                if (settled) {
+                    // Ready after the wait gave up: let it go.
+                    if (value && (typeof value.destroy === 'function')) {
+                        value.destroy();
+                    }
+                    return;
+                }
+                settle();
+                resolve(value);
+            }, function (error) {
+                if (!settled) {
+                    settle();
+                    reject(error);
+                }
+            });
+        });
+    }
+
     // Created synchronously in the click handler itself: the API wants a user
     // gesture when the model still has to be downloaded, and the gesture is
     // gone once anything is awaited first - an availability() check that
     // takes a few seconds is enough to lose it. So create() is called at once;
     // availability() is asked only to explain a failure.
     function createTranslator() {
+        if (!translatorSupported()) {
+            return Promise.reject(new Error(text('translator_missing')));
+        }
+
+        showProgress(text('preparing'), 0, 1);
+
+        return guardCreate(function (alive) {
+            return startTranslator(alive);
+        }, text('translator_stalled', config.source, config.language));
+    }
+
+    function startTranslator(alive) {
         var options = {
             sourceLanguage: config.source,
             targetLanguage: config.language,
             monitor: function (monitor) {
                 monitor.addEventListener('downloadprogress', function (event) {
+                    alive();
                     var percent = (event.total > 0) ? Math.round((event.loaded / event.total) * 100) : Math.round((event.loaded || 0) * 100);
                     showProgress(text('downloading', percent), percent, 100);
                 });
             }
         };
-
-        if (!translatorSupported()) {
-            return Promise.reject(new Error(text('translator_missing')));
-        }
 
         var created;
 
@@ -400,10 +517,17 @@
             return Promise.reject(new Error(text('model_missing')));
         }
 
+        showProgress(text('model_preparing'), 0, 1);
+
+        return guardCreate(startModel, text('model_stalled'));
+    }
+
+    function startModel(alive) {
         var options = modelLanguages(modelInput);
         options.initialPrompts = [{ role: 'system', content: config.ai_instructions || '' }];
         options.monitor = function (monitor) {
             monitor.addEventListener('downloadprogress', function (event) {
+                alive();
                 var percent = (event.total > 0) ? Math.round((event.loaded / event.total) * 100) : Math.round((event.loaded || 0) * 100);
                 showProgress(text('downloading', percent), percent, 100);
             });
@@ -665,7 +789,7 @@
 
     if (updateButton) {
         updateButton.addEventListener('click', function () {
-            if (running) {
+            if (running || preparing) {
                 return;
             }
 
@@ -757,7 +881,7 @@
             }).catch(function (error) {
                 hideProgress();
                 running = null;
-                toast(error.message, 'error');
+                toast(error.message, error.stopped ? 'info' : 'error');
             }).then(function () {
                 updateButton.disabled = false;
             });
@@ -766,7 +890,11 @@
 
     if (cancelButton) {
         cancelButton.addEventListener('click', function () {
-            if (running && window.confirm(text('confirm_cancel'))) {
+            // Nothing is sent yet while the browser gets its translator
+            // ready: that wait is left without a question.
+            if (preparing) {
+                preparing.stop();
+            } else if (running && window.confirm(text('confirm_cancel'))) {
                 running.stop = true;
             }
         });
@@ -977,6 +1105,8 @@
                 syncPicks();
             }
         });
+
+        app.addEventListener('pg-tr-picks-changed', syncPicks);
 
         pgUI.dialog.on(acceptModal, 'show', function () {
             var count = picked().length;
