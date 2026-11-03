@@ -149,3 +149,56 @@ function pg_https_peer_trusted($remote, $trusted_raw, $override = null)
 
     return waf_ip_in_any($remote, waf_cloudflare_ranges());
 }
+
+/**
+ * What the Firewall screen offers to list under Trusted Proxies for the peer
+ * that sent an https claim this server does not trust yet, so Secure Mode can
+ * be turned on in one step. The peer's own address, never its network:
+ *
+ *   loopback  both 127.0.0.1 and ::1, since a local tunnel or TLS proxy on
+ *             this host may connect over either family;
+ *   private   that one address (10/8, 172.16/12, 192.168/16, a ULA); a proxy
+ *             that moves within its network is listed by hand;
+ *   public    nothing: a CDN or load balancer is listed with all of its
+ *             published ranges first (Cloudflare is recognised on its own);
+ *   other     nothing: link-local and reserved addresses are listed by hand.
+ *
+ * An IPv4 peer handed over as ::ffff:a.b.c.d is offered as a.b.c.d, the form
+ * the firewall matches it in. Pure: no list is read.
+ *
+ * @param string $remote REMOTE_ADDR
+ * @return array kind ('loopback', 'private', 'public', 'other', '' for no
+ *               address) and entries (the addresses to add, possibly none)
+ */
+function pg_https_peer_offer($remote)
+{
+    $remote = trim((string) $remote);
+
+    if (preg_match('/^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i', $remote, $mapped)) {
+        $remote = $mapped[1];
+    }
+
+    if (($remote === '') || (filter_var($remote, FILTER_VALIDATE_IP) === false)) {
+        return array('kind' => '', 'entries' => array());
+    }
+
+    $packed = @inet_pton($remote);
+
+    $loopback = (strpos($remote, ':') === false)
+        ? (strpos($remote, '127.') === 0)
+        : ($packed === str_repeat("\0", 15) . "\x01");
+
+    if ($loopback) {
+        return array('kind' => 'loopback', 'entries' => array('127.0.0.1', '::1'));
+    }
+
+    if (filter_var($remote, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE) === false) {
+        return array('kind' => 'private', 'entries' => array($remote));
+    }
+
+    if (filter_var($remote, FILTER_VALIDATE_IP, FILTER_FLAG_NO_RES_RANGE) === false) {
+        return array('kind' => 'other', 'entries' => array());
+    }
+
+    return array('kind' => 'public', 'entries' => array());
+}

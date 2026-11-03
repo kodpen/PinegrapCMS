@@ -1708,6 +1708,7 @@
     "Province": "İl",
     "Proxied": "Proxy'li",
     "Proxy Address": "Vekil Adresi",
+    "Proxy address (REMOTE_ADDR)": "Vekil sunucu adresi (REMOTE_ADDR)",
     "Pspell Extension": "Pspell Uzantısı",
     "Public": "Herkese Açık",
     "Public API description": "Herkese açık API tanımı",

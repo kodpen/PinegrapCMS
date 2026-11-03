@@ -951,13 +951,15 @@ if (!empty($_SERVER['HTTP_HOST'])) {
             );
 
             // Redirect loop guard. A proxy or CDN is telling us the visitor already
-            // arrived over HTTPS, but TRUST_PROXY_SSL_HEADERS is off so that claim was
-            // not honoured above. Redirecting to HTTPS would come straight back to this
-            // point over the proxy's plain HTTP leg and loop forever - the classic
-            // Cloudflare "Flexible" SSL lockout. Stop and explain instead.
+            // arrived over HTTPS, but the peer that said so is not trusted (not on
+            // Trusted Proxies, not a Cloudflare edge, no TRUST_PROXY_SSL_HEADERS),
+            // so that claim was not honoured above. Redirecting to HTTPS would come
+            // straight back to this point over the proxy's plain HTTP leg and loop
+            // forever - the classic Cloudflare "Flexible" SSL lockout. Stop and
+            // explain instead.
         } elseif (check_proxy_ssl_headers() === true) {
             output_error(
-                lang('Secure Mode is enabled and your connection appears to be secure, but this server cannot verify it because SSL is terminated by a proxy or CDN (for example Cloudflare Flexible SSL). Enable TRUST_PROXY_SSL_HEADERS in the config file, or turn off Secure Mode.'),
+                lang('Secure Mode is enabled and your connection appears to be secure, but this server cannot verify it, because SSL is terminated by a proxy or CDN (for example Cloudflare Flexible SSL) that is not listed under Trusted Proxies in the Firewall settings. List the proxy there, or turn off Secure Mode.'),
                 500
             );
         } else {

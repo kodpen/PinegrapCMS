@@ -564,6 +564,35 @@ if ($security_ready) {
 ';
 }
 
+// The Secure Mode one-step offer. When this request came over plain HTTP
+// through a proxy that reports HTTPS and is not trusted yet, the box lets the
+// save list the peer's own address under Trusted Proxies and turn Secure Mode
+// on together (firewall.save.php checks the peer against the list it writes).
+// A public peer gets no box: a CDN or load balancer is listed with all of its
+// published ranges by hand. Only while the mode is off; on, nothing is asked.
+$output_secure_mode_offer = '';
+
+if (($url_scheme !== 'https://') && !check_if_request_is_secure() && pg_forwarded_https($_SERVER)) {
+
+    $secure_mode_peer = isset($_SERVER['REMOTE_ADDR']) ? (string) $_SERVER['REMOTE_ADDR'] : '';
+    $secure_mode_offer = pg_https_peer_offer($secure_mode_peer);
+
+    if ($secure_mode_offer['entries'] && function_exists('waf_table_has_column') && waf_table_has_column('config', 'waf_trusted_proxies')) {
+        $output_secure_mode_offer = '
+                                            <div class="form-field mt-3">
+                                                <input value="1" class="check" type="checkbox" id="secure_mode_trust_proxy" name="secure_mode_trust_proxy"/>
+                                                <label class="" for="secure_mode_trust_proxy">' . lang('Add this proxy to Trusted Proxies') . '</label>
+                                                <div class="form-text">' . lang(array('string' => 'This request reached the server over plain HTTP through a proxy at {var:1} that reports HTTPS. The proxy is not listed under Trusted Proxies, so Secure Mode cannot be turned on yet. With this box ticked, saving lists {var:2} there and turns Secure Mode on in one step.', 'vars' => array(h($secure_mode_peer), h(implode(', ', $secure_mode_offer['entries']))))) . '</div>
+                                            </div>';
+    } elseif ($secure_mode_offer['kind'] === 'public') {
+        $output_secure_mode_offer = '
+                                            <div class="form-text fg-warning mt-3">' . lang(array('string' => 'This request reached the server over plain HTTP through a CDN or load balancer at {var:1} that reports HTTPS. It is not listed under Trusted Proxies, so Secure Mode cannot be turned on yet: list all of its published address ranges there first (Cloudflare is recognised on its own), or switch it to Full (end-to-end) mode.', 'vars' => h($secure_mode_peer))) . '</div>';
+    } else {
+        $output_secure_mode_offer = '
+                                            <div class="form-text fg-warning mt-3">' . lang(array('string' => 'This request reached the server over plain HTTP through a proxy at {var:1} that reports HTTPS. It is not listed under Trusted Proxies, so Secure Mode cannot be turned on yet: list its address there first.', 'vars' => h($secure_mode_peer))) . '</div>';
+    }
+}
+
 $pg_settings_cards[] = '
     <div id="pgset-headers" class="pg-set-card">
         <div class="card">
@@ -578,10 +607,10 @@ $pg_settings_cards[] = '
                                                 <div class="switch"><input value="1"' . $secure_mode_checked . ' class="" type="checkbox" id="secure_mode" name="secure_mode"/></div>
                                                 <label class="" for="secure_mode">' . lang('Secure Mode') . '</label>
                                                 <div class="form-text">' . lang('Every address the site writes starts with https:// and a plain http request is redirected. This is the switch the HSTS option below depends on.') . '</div>
-                                            </div>
+                                            </div>' . $output_secure_mode_offer . '
                                             <div class="alert theme-warning mt-3 mb-0">
                                                 <p>' . lang(array('string'=>'Warning: Do not enable Secure Mode until you have {var:1} that your site has a working SSL Certificate.','vars'=>array('<a class="alert-link" href="https://' . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/test_secure_mode.php" target="_blank">' . lang('verified') . '</a>') )) . '</p>
-                                                <p class="mb-0 small">' . lang('A padlock in your browser is not enough on its own. If SSL is terminated by a proxy or CDN before the request reaches this server (for example Cloudflare "Flexible" SSL), this server sees plain HTTP and Secure Mode will redirect every request in an endless loop, making the site unreachable. The test page above reports what this server actually sees. If it asks you to, set TRUST_PROXY_SSL_HEADERS in the config file before enabling Secure Mode.') . '</p>
+                                                <p class="mb-0 small">' . lang('A padlock in your browser is not enough on its own. If SSL is terminated by a proxy or CDN before the request reaches this server (for example Cloudflare "Flexible" SSL), this server sees plain HTTP, and a proxy it does not trust would make Secure Mode redirect every request in an endless loop, making the site unreachable. The test page above reports what this server actually sees. When the request comes through a proxy that is not listed under Trusted Proxies yet, this card offers to list it as Secure Mode is turned on.') . '</p>
                                             </div>
                                         </div>
                     ' . $output_security_headers_block . '

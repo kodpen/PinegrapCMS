@@ -58,7 +58,7 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 - waf-outgoing-user-agent.md: Every outgoing cURL call must set CURLOPT_USERAGENT via pinegrap_user_agent(); an empty UA made one Pinegrap install block another as bot-empty.
 - waf-path-exemption-and-robots.md: waf_is_excluded() matches the resolved script path only (never query, PATH_INFO or encoded tricks); /robots.txt, /.well-known/ and health.php are exempt from bot policy; feed readers are good bots.
 - waf-score-calibration-and-bot-order.md: WAF signature score bands (thresholds 15/10/6, dead zone 7-9), targets key, and the fixed bot classification order with token-boundary residual signal.
-- waf-secure-mode-enable-guard.md: firewall.save.php refuses to enable Secure Mode from a request not seen as HTTPS: predicate, messages, early return, why disabling is unchecked.
+- waf-secure-mode-enable-guard.md: firewall.save.php refuses to enable Secure Mode from a request not seen as HTTPS: predicate, the messages per peer kind, the one-step Trusted Proxies offer, early return, why disabling is unchecked.
 - waf-secure-mode-query-param.md: The ?secure_mode=false query parameter in init.php and get_file.php: ignored on a Secure Mode site, a 302 to http only on a site without it (#5146).
 - waf-security-headers-hsts.md: Security headers are sent outside waf_run(), independent of the firewall switch; HSTS default off and its https gating; Permissions-Policy; nosniff and Referrer-Policy never doubled by server rules.
 - waf-self-rescue.md: CLI waf_unban.php lifts a ban from the server, Settings refuses a block entry covering your own address, the sign-in lock spares allow-listed addresses (#2187)

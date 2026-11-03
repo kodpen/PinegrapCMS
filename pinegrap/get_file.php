@@ -92,7 +92,7 @@ if (!empty($_SERVER['HTTP_HOST'])) {
         // Redirect loop guard - see the matching block in init.php.
         } elseif (pg_forwarded_https($_SERVER) === TRUE) {
             output_error(
-                'Secure Mode is enabled and your connection appears to be secure, but this server cannot verify it because SSL is terminated by a proxy or CDN (for example Cloudflare Flexible SSL). Enable TRUST_PROXY_SSL_HEADERS in the config file, or turn off Secure Mode.',
+                'Secure Mode is enabled and your connection appears to be secure, but this server cannot verify it, because SSL is terminated by a proxy or CDN (for example Cloudflare Flexible SSL) that is not listed under Trusted Proxies in the Firewall settings. List the proxy there, or turn off Secure Mode.',
                 500
             );
         } else {

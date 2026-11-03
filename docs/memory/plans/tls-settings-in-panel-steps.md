@@ -15,7 +15,7 @@ description: Steps TP1-TP4 of plans/tls-settings-in-panel.md: scheme helper, Sec
   - Both are used by `check_if_request_is_secure()`, the copy in `get_file.php` and `check_ssl_status()` (System Status). `pg_request_is_https()` and `page_cache.php` use only the parser. The list counts whether or not the firewall is on.
   - Tests: the header matrix, the chain case, and the trust matrix (constant, listed, Cloudflare, unlisted, loopback not listed). Memory: `platform/proxy-https-trust.md` (`module: request_scheme`).
 
-- TP2 (M) Secure Mode one-click offer. After TP1.
+- TP2 (M) Secure Mode one-click offer. After TP1. Done, #5831.
   - `includes/settings/firewall.save.php`: when Secure Mode is asked for, the request is untrusted and `pg_forwarded_https()` is true, the screen shows the peer and the entries to add. A second POST (with token) writes them through `waf_proxy_list_on_save()`, checks again, saves Secure Mode and calls `log_activity()`.
   - What is added depends on the peer (#5375: the peer's own address, never its network):
     - loopback: both `127.0.0.1` and `::1` (a local tunnel may use either);

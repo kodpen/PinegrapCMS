@@ -122,7 +122,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - page-file-cache.md: Pinegrap's own page cache on disk (PR #1402): router serving, the key, when a page is stored, stale copies, the sweep, what a hit skips
 - page-rename-redirect.md: A renamed page's old address as a 301 short link to the page (2026.11.0): where it is offered, what is skipped, why a redirect of the page's own gives its name back
 - performance-monitor-cost.md: Performance monitor cost rules (perf_monitor_shutdown()): hourly perf_stats buckets, slow requests only in perf_log, no percentile, sanity gate, flush-gated sweep, row cap, sampling.
-- proxy-https-trust.md: HTTPS behind a proxy: pg_forwarded_https() parses the forwarded headers, pg_https_peer_trusted() decides whose word counts (Trusted Proxies, Cloudflare, the constant); who asks which.
+- proxy-https-trust.md: HTTPS behind a proxy: pg_forwarded_https() parses the headers, pg_https_peer_trusted() says whose word counts (Trusted Proxies, Cloudflare, the constant); who asks which.
 - record-breadcrumb-list-step.md: The middle step of a post's BreadcrumbList JSON-LD: the list page that links its records to the record page (pg_record_list_page(), #2181), how one is picked, when there is none
 - record-page-schema-type.md: A custom form chooses the schema.org type of its record pages (BlogPosting, Article, NewsArticle, none) and their author; where each is stored, read and set.
 - redirect-after-hostname.md: Never append raw input after HOSTNAME in a redirect; use pg_safe_redirect_path() everywhere and why it checks only the first two characters (a design decision).
@@ -131,6 +131,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - scheduled-job-resume.md: Resumable dispatched passes (#4744): tick budget inside job.php's time limit, pg_cron_due_again(), the _done completion markers the health screens read, minute locks
 - scheduled-jobs-command-line-render.md: Why the search index and SEO structure jobs render pages from the command line (crontab or general job) without PHP warnings, and what a command line render lacks.
 - search-and-audits-screen.md: Search and audits screen (search_audits.php): engine cards, state, progress and failure sources, the job switch, Run now, where it is linked
+- secure-mode-proxy-offer.md: Turning Secure Mode on through a proxy not yet trusted: the Add this proxy to Trusted Proxies box, what the save lists and checks, the log line, what test_secure_mode.php reports.
 - server-config-compression-cache.md: Web-root server rules for compression and browser caching (PR #2848): static files only, a week, IIS clientCache inside the one staticContent, nginx static location after the deny rules
 - server-config-paths-and-detection.md: server_config.php path semantics: patterns carry no PATH but actions do, folder name measured (retarget), server type detection, X-Powered-By removal.
 - server-config-web-root-rules.md: includes/server_config.php: why web-root web.config/.htaccess rules live in one list, how to add a block, default-must-pass-detect invariant, repair rules.
