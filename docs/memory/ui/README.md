@@ -47,7 +47,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - app-screen-messages.md: Application-like screens (File Manager, visual designer) show liveform messages as their own toasts; a send_to redirect leaves its notice on the screen it opens
 - arrival-date-shared-form.md: The arrival date create and edit screens share includes/forms/arrival_date_form.php: what it holds, what stays in the screens
 - ascii-names-in-urls-iis.md: IIS re-encodes non-ASCII URL paths to the ANSI code page so Turkish-named files 404 (pg_ascii_file_name); Windows drops a trailing dot, so no stored file name ends in one
-- audit-log-paging.md: The audit trail list (view_audit_log.php) paged, sorted and searched on the server; changes read when a line's fold opens; filters stay in the address
+- audit-log-paging.md: The audit trail list (view_audit_log.php) on the list table driver, sorted and searched on the server; changes read when a line's fold opens; filters stay in the address
 - auto-dialog-shared-form.md: add_auto_dialog.php and edit_auto_dialog.php share the template and includes/forms/auto_dialog_form.php (checks, page clean-up, saved values); what stays in the screens
 - back-arrow-no-copies.md: The way back to a parent or list screen is only the back arrow and the breadcrumb; which back-to-list copies were removed and where the screens now go back
 - back-arrow-targets.md: The back arrow of a panel screen (pg_page_shell 'cancel') goes where its Save goes, send_to first; the screens fixed for it and the ones that keep another target
@@ -260,7 +260,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-stale-filter.md: All Ads, Verified Shipping Addresses and Submitted Forms reset a remembered filter whose ad region, state or custom form is gone to '[All]' (pg_list_filter_known())
 - list-status-words.md: A word beside a list row's green or red state (pg_list_status_word()): product groups, key codes, arrival dates, gift cards, ERP expenses
 - list-table-driver-browser.md: List table driver in the browser (assets/js/pg_list_table.js): selection, Ctrl+A, undo, rows on scroll, sort, search, columns menu, details panel, phone cards, thumbnails, layout
-- list-table-driver-lists.md: Which screens are on the list table driver (pages, users, contacts): their sources, columns, bulk actions through the resolver, what each keeps
+- list-table-driver-lists.md: Which screens are on the list table driver (pages, users, contacts, the three logs): their sources, columns, bulk actions through the resolver, what each keeps
 - list-table-driver.md: List table driver server core (includes/fn/list_table.php): source and column model, first rows printed, keyset batches, the list_table_rows action, the selection resolver
 - list-table-quick-edit.md: Quick edit mode of the list table driver (assets/js/pg_list_table_edit.js): the source's edit key, F2, save on leave, refused values, undo, apply to the selected rows
 - live-filter-status.md: Live filters that say what they found (API applications, Workspace MCP tools, marketplace picker and category search): hidden status region, empty line, Enter in the MCP tool filter
@@ -429,7 +429,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - site-button-box.md: Editing buttons over a site page (get_page.php) as a top-right corner box in the site page's colours (#3316): place, collapse arrow, narrow default, SEO panel and save/cancel pair under it
 - site-datetime-loader.md: The date-and-time control on site pages, loaded on demand (pg_site_datetime_inject()): the hooks that bring it, what it prints, site mode in pg_datetime.js and pg_fields.js, the library's own CSS
 - site-log-action-lines.md: Which panel actions write a Site Log line on success: order exports, Cloudflare Tools, the Site Log's own Delete buttons
-- site-log-paging.md: The Site Log (view_log.php): database view paged and searched on the server, the error_log view printed whole, who a row without a user is, the language log lines are written in
+- site-log-paging.md: The Site Log (view_log.php) on the list table driver: database view in batches, the error_log view printed whole with a type filter, who a row without a user is, the language log lines are written in
 - site-native-date-inputs.md: Native date, datetime-local and time inputs on site pages get the date-and-time control by type, ISO kept; the server reads the ISO they post (S4a)
 - site-page-toolbar-theme.md: The editor toolbar over a site page (toolbar.php in #software_toolbar): why its root stays light and its body takes the theme under Bootstrap 6, the unreadable dark toolbar it fixed (PR #2448)
 - smtp-settings-keyboards.md: Phone keyboards of the SMTP Settings boxes: URL keyboard on hosts and the DKIM domain, no auto-capitalisation on user names and the DKIM selector
@@ -469,6 +469,6 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - visitors-ai-section.md: The AI visibility section (visitor_ai.php until the Visitors overview takes it): bots and firewall state, fetches by day, top pages per bot, AI assistant visits, unfetched sitemap pages
 - visitors-speed-section.md: The Speed section (visitor_vitals.php until the Visitors overview takes it): period, device and order filters, p75 tiles with the good share, slowest pages, trend; the perf card's page load tile
 - voice-text-keyboard.md: Convert to text under a voice message from the keyboard (pg_voice_text.js): where focus goes while it works, after success and after a failure; the progress meter's name
-- waf-log-paging.md: The firewall log's events (view_waf_log.php) paged, sorted and searched on the server; period, category and search filters stay in the address and drive the summary
+- waf-log-paging.md: The firewall log's events (view_waf_log.php) on the list table driver, sorted and searched on the server; period, category and search filters stay in the address and drive the summary
 - whole-number-input-mask.md: Panel boxes of whole-number columns take Inputmask's integer alias, never decimal, so a Turkish 1.000 is a thousand
 - zone-shared-form.md: add_zone.php and edit_zone.php draw the shipping zone form and read its rates through includes/forms/zone_form.php; what each screen keeps

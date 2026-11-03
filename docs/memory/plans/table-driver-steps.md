@@ -16,7 +16,7 @@ description: Steps of the table driver plan: the driver core, its parts, the ser
 
 5. TD5 (M) After TD2. Commissions, recurring commission profiles and the mail queue move.
 
-6. TD6 (M) After TD2. Site Log (its type filter as a driver filter, today `view_log.php` calls `column(1).search()`), the audit log and the firewall log move.
+6. TD6 (M) done (#6386). Site Log (its type filter as a driver filter, today `view_log.php` calls `column(1).search()`), the audit log and the firewall log move.
 
 7. TD7 (L) After TD3. Quick edit mode ("Hızlı düzenleme", F2, per-cell save, undo, apply to the selected rows) over `pg_list_edit_request()`; the products list moves.
    Cut in two: TD7a done (#6337) the quick edit mode in the driver (`pg_list_table_edit.js`, `ui/list-table-quick-edit.md`), no screen on it yet; TD7b next: the products list (`view_products.php`, `product_list.php`) moves with its bulk actions and its quick edit columns (source `edit`, cells with `pg_list_edit_cell_attributes()`, column keys matching the edit fields).
