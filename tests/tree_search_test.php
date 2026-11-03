@@ -1,0 +1,106 @@
+<?php
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * Tests for search over designer trees (includes/fn/tree_search.php): which
+ * texts are read, the replace that leaves wiring alone, the components a
+ * tree places and the plain text site search counts in.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+if (!defined('PG_TEST_RUNNER')) {
+	exit;
+}
+
+function tree_search_test_tree()
+{
+	return array(
+		'type' => 'root',
+		'props' => array(),
+		'children' => array(
+			array('id' => 'h', 'type' => 'content', 'props' => array('contentType' => 'heading', 'text' => 'Kodpen <b>news</b> &amp; more', 'cssClass' => 'kodpen-title'), 'children' => array()),
+			array('id' => 's', 'type' => 'semantic', 'props' => array('tag' => 'div', 'text' => 'About Kodpen', '_attrs' => array(array('name' => 'title', 'value' => 'Kodpen team'), array('name' => 'data-x', 'value' => 'kodpen'))), 'children' => array(
+				array('id' => 'c', 'type' => 'semantic', 'props' => array('tag' => 'code', 'text' => 'kodpen()'), 'children' => array()),
+				array('id' => 'b', 'type' => 'content', 'props' => array('contentType' => 'paragraph', 'text' => 'sample', '_bindings' => array('text' => 'name')), 'children' => array()),
+			)),
+			array('id' => 'r', 'type' => 'shared_ref', 'props' => array('sharedId' => 7, 'sharedName' => 'Kodpen footer'), 'children' => array()),
+		),
+	);
+}
+
+function test_tree_search_texts_are_the_words()
+{
+	$texts = pg_tree_search_texts(tree_search_test_tree());
+	$values = array();
+	foreach ($texts as $text) {
+		$values[] = $text['field'] . '=' . $text['value'];
+	}
+
+	pg_assert_same(array('text=Kodpen <b>news</b> &amp; more', 'text=About Kodpen', '_attrs:title=Kodpen team'), $values,
+		'texts and worded attributes, not classes, other attributes, code, bound samples or component names');
+}
+
+function test_tree_search_replace_leaves_wiring()
+{
+	$tree = tree_search_test_tree();
+	list($new, $count) = pg_tree_search_replace($tree, function ($text) {
+		$n = 0;
+		$out = str_replace('Kodpen', 'Pinegrap', $text, $n);
+		return array($out, $n);
+	});
+
+	pg_assert_same(3, $count, 'three texts changed');
+	pg_assert_same('Pinegrap <b>news</b> &amp; more', $new['children'][0]['props']['text'], 'heading text replaced');
+	pg_assert_same('kodpen-title', $new['children'][0]['props']['cssClass'], 'class kept');
+	pg_assert_same('Pinegrap team', $new['children'][1]['props']['_attrs'][0]['value'], 'title attribute replaced');
+	pg_assert_same('kodpen', $new['children'][1]['props']['_attrs'][1]['value'], 'other attribute kept');
+	pg_assert_same('kodpen()', $new['children'][1]['children'][0]['props']['text'], 'code kept');
+	pg_assert_same('Kodpen footer', $new['children'][2]['props']['sharedName'], 'component snapshot name kept');
+	pg_assert_same('Kodpen <b>news</b> &amp; more', $tree['children'][0]['props']['text'], 'the given tree is not changed');
+
+	list($same, $none) = pg_tree_search_replace($tree, function ($text) {
+		return array('x', 0);
+	});
+	pg_assert_same(0, $none, 'no count, no change');
+	pg_assert_same($tree, $same, 'tree as it was');
+}
+
+function test_tree_search_shared_ids()
+{
+	$tree = tree_search_test_tree();
+	$tree['children'][] = array('type' => 'semantic', 'props' => array('tag' => 'div'), 'children' => array(
+		array('type' => 'shared_ref', 'props' => array('sharedId' => '3'), 'children' => array()),
+		array('type' => 'shared_ref', 'props' => array('sharedId' => 7), 'children' => array()),
+	));
+
+	pg_assert_same(array(3, 7), pg_tree_search_shared_ids($tree), 'each placed component once, by id');
+	pg_assert_same(array(), pg_tree_search_shared_ids(null), 'no tree, no ids');
+}
+
+function test_tree_search_plain_text_reads_components()
+{
+	$footer = array('type' => 'root', 'props' => array(), 'children' => array(
+		array('type' => 'content', 'props' => array('contentType' => 'paragraph', 'text' => 'Call   us'), 'children' => array()),
+		array('type' => 'shared_ref', 'props' => array('sharedId' => 7), 'children' => array()),
+	));
+
+	$text = pg_tree_search_plain_text(tree_search_test_tree(), array(7 => $footer));
+
+	pg_assert_same("Kodpen news & more\nAbout Kodpen\nKodpen team\nCall us", $text,
+		'markup removed, entities decoded, component read once though it places itself');
+	pg_assert_same(3, mb_substr_count(mb_strtolower(pg_tree_search_plain_text(tree_search_test_tree())), 'kodpen'), 'a missing component adds nothing');
+}
+
+function test_tree_search_list_of_nodes()
+{
+	$list = array(
+		array('type' => 'content', 'props' => array('contentType' => 'paragraph', 'text' => 'one'), 'children' => array()),
+		array('type' => 'content', 'props' => array('contentType' => 'paragraph', 'text' => 'two'), 'children' => array()),
+	);
+
+	pg_assert_same(2, count(pg_tree_search_texts($list)), 'a list of nodes is walked');
+}

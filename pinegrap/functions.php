@@ -235,6 +235,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/bookings.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/store_credit.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/variant_set_copy.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/text_search.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/tree_search.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/graph_canvas.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/health_gauge.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/store_zones.php');
