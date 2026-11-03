@@ -3292,6 +3292,7 @@
     "The official copy could not be fetched from the e-document provider. Try again later.": "Resmî kopya e-Belge sağlayıcısından alınamadı. Daha sonra yeniden deneyin.",
     "The official copy could not be fetched from the e-document provider: {var:1}": "Resmî kopya e-Belge sağlayıcısından alınamadı: {var:1}",
     "The official copy of the e-document (from the provider, with its GİB number) is attached.": "e-Belgenin resmî kopyası (sağlayıcıdan, GİB numarasıyla) eklenir.",
+    "The og:locale of {var:1} must look like en_US: a lower-case language code, an underscore and an upper-case country code.": "{var:1} dilinin og:locale değeri en_US gibi olmalıdır: küçük harfli dil kodu, alt çizgi ve büyük harfli ülke kodu.",
     "The oil and its filter are changed, and the air and cabin filters are looked at.": "Yağ ve yağ filtresi değiştirilir, hava ve polen filtrelerine bakılır.",
     "The oil is pressed at the village mill the same day, and a bottle of it goes home with everyone who helped.": "Yağ aynı gün köyün değirmeninde sıkılır ve yardım eden herkes evine bir şişe götürür.",
     "The old address /{var:1} is in use on this site already, so no redirect was added.": "Eski adres /{var:1} bu sitede zaten kullanılıyor, bu yüzden yönlendirme eklenmedi.",

@@ -147,7 +147,7 @@ foreach ($translation_languages as $translation_code => $translation_row) {
                                 </div>
                                 <div class="col-12 md:col-6 xl:col-3">
                                     <label class="form-label" for="tr_og_' . h($translation_code) . '">og:locale</label>
-                                    <input type="text" class="form-control font-monospace" id="tr_og_' . h($translation_code) . '" name="' . $translation_name . '[og_locale]" value="' . h($translation_row['og_locale']) . '" maxlength="16" placeholder="' . h($translation_og_example) . '" aria-describedby="tr_formats_hint_' . h($translation_code) . '"/>
+                                    <input type="text" class="form-control font-monospace" id="tr_og_' . h($translation_code) . '" name="' . $translation_name . '[og_locale]" pattern="[a-z]{2,3}_[A-Z]{2,4}" value="' . h($translation_row['og_locale']) . '" maxlength="16" placeholder="' . h($translation_og_example) . '" aria-describedby="tr_formats_hint_' . h($translation_code) . '"/>
                                 </div>
                                 <div class="col-12">
                                     <div class="form-text" id="tr_formats_hint_' . h($translation_code) . '">' . lang('Number: how 1234.56 is written in this language, for example 1.234,56. Date: PHP date letters (j day, n month, Y year; d and m with a leading zero). og:locale: language_COUNTRY, for example tr_TR; any other shape is cleared on save. An empty number or date box uses the language\'s own format.') . '</div>
