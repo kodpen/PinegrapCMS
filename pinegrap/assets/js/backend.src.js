@@ -13358,6 +13358,139 @@ window.pgConfirmTicked = function (form) {
 };
 
 
+/**
+ * A settings page after a save the server refused: what was typed is put back
+ * over the cards, which were drawn from storage, and the refused fields are
+ * marked with their sentence, the first one focused. The settings dialog never
+ * redraws a refused pane, so only the page needs this.
+ *
+ * @param {HTMLFormElement} form
+ * @param {{values: ?Object<string, string[]>, fields: Object<string, string>}} data
+ *     values by control name (pg_settings_typed_values()); null when the
+ *     typed values are gone, and the marks alone are shown
+ */
+window.pgSettingsRestore = function (form, data) {
+
+    if (!form || !data) {
+        return;
+    }
+
+    var values = data.values || null;
+    var has = function (object, key) { return Object.prototype.hasOwnProperty.call(object, key); };
+    var changed = [];
+
+    if (values) {
+
+        Array.prototype.forEach.call(form.elements, function (control) {
+
+            var name = control.name;
+            var type = String(control.type || '').toLowerCase();
+
+            if (!name || control.disabled || (control.tagName === 'BUTTON') || (control.tagName === 'FIELDSET')
+                || /^(hidden|password|file|submit|button|reset|image)$/.test(type)) {
+                return;
+            }
+
+            var posted = has(values, name) ? values[name] : null;
+
+            // An unticked box is not posted at all: its absence is its value.
+            if ((type === 'checkbox') || (type === 'radio')) {
+
+                var on = !!posted && (posted.indexOf(control.value) !== -1);
+
+                if (control.checked !== on) {
+                    control.checked = on;
+                    changed.push(control);
+                }
+
+                return;
+            }
+
+            if (posted === null) {
+                return;
+            }
+
+            if (control.tagName === 'SELECT') {
+
+                var moved = false;
+
+                Array.prototype.forEach.call(control.options, function (option) {
+
+                    var chosen = control.multiple
+                        ? (posted.indexOf(option.value) !== -1)
+                        : (option.value === posted[0]);
+
+                    if (option.selected !== chosen) {
+                        option.selected = chosen;
+                        moved = true;
+                    }
+                });
+
+                if (moved) {
+                    changed.push(control);
+                }
+
+                return;
+            }
+
+            // Several controls of one name take the posted values in order.
+            if (!posted.length) {
+                return;
+            }
+
+            var value = posted.shift();
+
+            if (control.value !== value) {
+                control.value = value;
+            }
+        });
+
+        // A box or a list that opens part of a card does so on change.
+        changed.forEach(function (control) {
+            $(control).trigger('change');
+        });
+    }
+
+    var fields = data.fields || {};
+    var esc = (window.CSS && CSS.escape) ? CSS.escape : function (text) { return String(text).replace(/["\\]/g, '\\$&'); };
+    var first = null;
+
+    Object.keys(fields).forEach(function (name) {
+
+        var found = form.querySelectorAll('[name="' + esc(name) + '"], [name="' + esc(name + '[]') + '"], [name^="' + esc(name + '[') + '"]');
+
+        for (var i = 0; i < found.length; i++) {
+
+            if (found[i].type === 'hidden') {
+                continue;
+            }
+
+            found[i].setAttribute('data-pg-set-marked', '');
+
+            if (typeof window.pgFieldInvalid === 'function') {
+                window.pgFieldInvalid(found[i], true, fields[name]);
+            }
+
+            if (!first && !found[i].disabled && found[i].getClientRects().length) {
+                first = found[i];
+            }
+
+            break;
+        }
+    });
+
+    // A marked field loses the mark once it is edited.
+    $(form).on('change input', '[data-pg-set-marked]', function () {
+        this.removeAttribute('data-pg-set-marked');
+        window.pgFieldInvalid(this, false);
+    });
+
+    if (first) {
+        first.focus();
+    }
+};
+
+
 // A settings page posts its form natively; a ticked box that asks first holds
 // the submit until the answer. The settings dialog asks in its own save().
 $(document).on('submit', 'form', function (event) {

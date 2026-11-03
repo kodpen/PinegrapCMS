@@ -554,6 +554,79 @@ function pg_settings_refuse_lists($key, $liveform)
 
 
 /**
+ * What a settings page posted, by the name of the control that sent it, so a
+ * refused save can put it back into the form it redraws
+ * (pgSettingsRestore(), backend.src.js). Every value is a list: a name can
+ * be posted more than once. A list of plain values ("x[]") is given under
+ * both "x[]" and "x[0]", "x[1]", ..., so a control named either way finds
+ * it. The token, the decoy field and the save button are left out. Pure.
+ *
+ * @param array $post $_POST
+ * @return array control name => list of strings
+ */
+function pg_settings_typed_values($post)
+{
+    $typed = array();
+    $skip  = array('token' => true, 'fake_user' => true, 'submitted_button_field' => true, 'submit_save' => true);
+
+    $walk = function ($name, $value) use (&$walk, &$typed) {
+
+        if (!is_array($value)) {
+            $typed[$name][] = (string) $value;
+            return;
+        }
+
+        $list = ($value !== array()) && (array_keys($value) === range(0, count($value) - 1));
+
+        foreach ($value as $key => $item) {
+
+            if ($list && !is_array($item)) {
+                $typed[$name . '[]'][] = (string) $item;
+            }
+
+            $walk($name . '[' . $key . ']', $item);
+        }
+    };
+
+    foreach ((array) $post as $name => $value) {
+
+        if (!isset($skip[(string) $name])) {
+            $walk((string) $name, $value);
+        }
+    }
+
+    return $typed;
+}
+
+
+/**
+ * The posted values that may be printed back into the page: a password or a
+ * file control of the drawn markup is left out, so a secret typed into a
+ * refused save never travels back in the page source. Pure.
+ *
+ * @param array  $typed pg_settings_typed_values()
+ * @param string $html  the drawn cards
+ * @return array
+ */
+function pg_settings_typed_restorable($typed, $html)
+{
+    $typed = is_array($typed) ? $typed : array();
+
+    if (preg_match_all('/<input\b[^>]*>/i', (string) $html, $inputs)) {
+
+        foreach ($inputs[0] as $tag) {
+
+            if (preg_match('/\btype\s*=\s*["\']?(password|file)\b/i', $tag) && preg_match('/\bname\s*=\s*"([^"]*)"/i', $tag, $name)) {
+                unset($typed[html_entity_decode($name[1], ENT_QUOTES, 'UTF-8')]);
+            }
+        }
+    }
+
+    return $typed;
+}
+
+
+/**
  * The fields a refused save marked, by name, each with its sentence ('' when
  * it was marked without one), so the dialog can mark them in view. Read from
  * the liveform's state: the form-level errors (_form_error_N) and the notice
