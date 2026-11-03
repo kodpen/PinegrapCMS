@@ -20,7 +20,6 @@ function pg_test_list_like_sites()
 {
 	return array(
 		'view_orders.php',
-		'view_comments.php',
 		'includes/fn/contact_list.php',
 		'includes/fn/submitted_form_list.php',
 		'includes/panel/search.php',

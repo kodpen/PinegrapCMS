@@ -39,7 +39,6 @@ function test_content_lists_check_marks_named()
 {
 	$paths = array(
 		'includes/fn/page_list.php' => 1,
-		'view_comments.php' => 1,
 		'view_regions.php' => 3,
 		'view_fields.php' => 2,
 		'view_menu_items.php' => 1,
@@ -51,6 +50,10 @@ function test_content_lists_check_marks_named()
 		pg_assert_false(strpos($source, '<span class="material-icons">task_alt</span>') !== false, $path . ': unnamed check mark');
 		pg_assert_same($count, substr_count($source, '<span class="material-icons" role="img" aria-label="\' . h(lang(\'Yes\')) . \'">task_alt</span>'), $path . ': named check marks');
 	}
+
+	// Printed lists on the list table driver draw their marks with
+	// pg_list_table_check_cell(), which names them.
+	pg_assert_same(3, substr_count(content_lists_source('view_comments.php'), 'pg_list_table_check_cell('), 'view_comments.php: check cells');
 }
 
 function test_content_lists_folder_and_home_ligatures()
@@ -93,7 +96,7 @@ function test_content_lists_comment_link_title_and_calendar_usernames()
 {
 	$comments = content_lists_source('view_comments.php');
 	pg_assert_false(strpos($comments, '<i class="bi bi-link" title=') !== false, 'title on the icon');
-	pg_assert_same(4, substr_count($comments, '" title="\' . lang(\'Go To Comment\') . \'"><i class="bi bi-link"></i></a>'));
+	pg_assert_same(1, substr_count($comments, '" title="\' . h(lang(\'Go To Comment\')) . \'" aria-label="\' . h(lang(\'Go To Comment\')) . \'"><i class="bi bi-link" aria-hidden="true"></i></a>'));
 
 	$calendars = content_lists_source('view_calendars.php');
 	pg_assert_contains("'vars'=>array(h(\$calendar['created_username']))", $calendars);
