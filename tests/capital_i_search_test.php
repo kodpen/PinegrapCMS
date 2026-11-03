@@ -57,7 +57,7 @@ function test_capital_i_search_screens_use_the_helpers()
 {
 	$dir = PG_FUNCTIONS_DIR . '/';
 
-	foreach (array('view_themes.php', 'view_comments.php', 'editor_select_image.php', 'editor_select_page_or_file.php', 'find_and_replace.php') as $file) {
+	foreach (array('view_comments.php', 'editor_select_image.php', 'editor_select_page_or_file.php', 'find_and_replace.php') as $file) {
 		$source = (string) file_get_contents($dir . $file);
 		// Find & Replace lowercases through pg_search_like_term(), which
 		// also lets a capital I fetch a dotless ı row.
@@ -65,6 +65,10 @@ function test_capital_i_search_screens_use_the_helpers()
 		pg_assert_contains($helper, $source, $file . ' lowercases the term with ' . $helper . ')');
 		pg_assert_false((bool) preg_match('/LIKE.*mb_strtolower\(|mb_strtolower\(\(\$_SESSION/', $source), $file . ' has no search term lowercased with mb_strtolower() alone');
 	}
+
+	// The themes list is printed whole and searched in the browser
+	// (pgListTurkishMatch()): no search term reaches its query.
+	pg_assert_false(strpos((string) file_get_contents($dir . 'view_themes.php'), 'LIKE') !== false, 'view_themes.php searches in the browser');
 
 	$find = (string) file_get_contents($dir . 'find_and_replace.php');
 	pg_assert_false(strpos($find, 'str_ireplace(') !== false, 'Find & Replace does not replace with str_ireplace()');
