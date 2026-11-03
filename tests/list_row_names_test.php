@@ -67,7 +67,7 @@ function test_list_row_names_product_row()
 		$html .= $cell['html'];
 	}
 
-	pg_assert_contains(list_row_names_select('MUG <1>'), $row['cells'][0]['html'], 'the row box names the product');
+	pg_assert_contains('>MUG &lt;1&gt;</a>', $row['cells']['id']['html'], 'the row\'s link names the product');
 	pg_assert_contains('class="pg-seo-open d-block text-decoration-none" aria-label="' . h(lang('SEO score has not been calculated yet.')) . '"', $html, 'the SEO link names the score');
 }
 

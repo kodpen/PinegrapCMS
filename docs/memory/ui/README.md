@@ -260,7 +260,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-stale-filter.md: All Ads, Verified Shipping Addresses and Submitted Forms reset a remembered filter whose ad region, state or custom form is gone to '[All]' (pg_list_filter_known())
 - list-status-words.md: A word beside a list row's green or red state (pg_list_status_word()): product groups, key codes, arrival dates, gift cards, ERP expenses
 - list-table-driver-browser.md: List table driver in the browser (assets/js/pg_list_table.js): selection, Ctrl+A, undo, rows on scroll, sort, search, columns menu, details panel, phone cards, thumbnails, layout
-- list-table-driver-lists.md: Which screens are on the list table driver (pages, users, contacts): their sources, columns, bulk actions through the resolver, what each keeps
+- list-table-driver-lists.md: Which screens are on the list table driver (pages, users, contacts, products): their sources, columns, bulk actions through the resolver, what each keeps
 - list-table-driver.md: List table driver server core (includes/fn/list_table.php): source and column model, first rows printed, keyset batches, the list_table_rows action, the selection resolver
 - list-table-quick-edit.md: Quick edit mode of the list table driver (assets/js/pg_list_table_edit.js): the source's edit key, F2, save on leave, refused values, undo, apply to the selected rows
 - live-filter-status.md: Live filters that say what they found (API applications, Workspace MCP tools, marketplace picker and category search): hidden status region, empty line, Enter in the MCP tool filter
@@ -371,7 +371,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - product-attribute-shared-form.md: The product attribute create and edit screens share includes/forms/product_attribute_form.php: what it holds, what stays in the screens
 - product-edit-vs-set-edit.md: Why product editing (edit_product.php) and variant set editing (edit_product_group.php) are separate screens, and why the product screen has no variant matrix.
 - product-group-shared-form.md: The product group create and edit screens share includes/forms/product_group_form.php: what it holds, what stays in the screens
-- product-list-paging.md: The products list (view_products.php) paged on the server: views and their columns, quick edits on paged rows, search, barcode button, export, what moved where (PR #2655)
+- product-list-paging.md: The products list (view_products.php): views and their columns, the list table driver source, quick edit columns, bulk actions, search, barcode button, export
 - progressbar-names.md: Names of panel progress bars (role="progressbar"): the sentence goes on the bar as aria-label, the hover title is only for the mouse; which Workspace bars are named, which are not yet
 - range-value-bubble.md: Panel sliders as the Bootstrap 6 Range with a value bubble (step B9e, #2207): markup, pgUI.range.bubble(), data-pg-range, where it is used, the site Range that stays v5
 - referral-source-shared-form.md: add_referral_source.php and edit_referral_source.php draw the referral source card and read its posted values through includes/forms/referral_source_form.php; what each screen keeps

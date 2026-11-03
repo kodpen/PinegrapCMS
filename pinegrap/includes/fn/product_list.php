@@ -2,14 +2,14 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The products list (view_products.php), shared by the screen, its export
- * and the panel action that pages it (product_list_rows,
- * includes/panel/lists.php).
+ * The products list (view_products.php), shared by the screen, its export,
+ * its bulk actions (edit_products.php) and the list table driver's rows
+ * action (list_table_rows, includes/panel/lists.php).
  *
  * A view is one of the filter menu's choices: its condition, the columns it
  * shows (in order) and the columns it sorts by. The screen draws the
  * headings from the same column list the rows are built from, so a header
- * row and a body row cannot disagree about how many cells there are. A
+ * row and a body row cannot disagree about which cells there are. A
  * product in the Recycle Bin is on no view.
  *
  * Loaded where it is needed (require_once), not by functions.php.
@@ -418,6 +418,7 @@ function pg_product_list_view($filter, $tax, $compare_at, $show_image, $custom_l
         'heading' => $filters[$filter]['label'],
         'subheading' => $filters[$filter]['description'],
         'where' => $conditions ? 'WHERE ' . implode(' AND ', $conditions) : '',
+        'condition' => $conditions ? implode(' AND ', $conditions) : '',
         'columns' => pg_product_list_column_codes($filter, $tax, $compare_at, $custom_labels),
         'labels' => $labels,
         'sort_columns' => $sort_columns,
@@ -454,31 +455,83 @@ function pg_product_list_site_view($filter)
 }
 
 /**
- * The heading cells of a view, the check box and the action column first.
+ * The list's columns for the list table driver, in the order the table
+ * shows them: the name (the editor link, with the SEO bar), the picture,
+ * the view's columns, the SEO score where the view sorts by it (hidden at
+ * first, as the bar shows it), and the row's buttons. A column sorts when
+ * the view sorts by its code, so a sort kept in the session still names
+ * its column. A column whose key is a quick edit field changes in place.
  *
- * @param array $view pg_product_list_view()'s answer
- * @return string
+ * @param array $view       pg_product_list_view()'s answer
+ * @param array $quick_edit pg_pb_quick_edit_columns(), or an empty array
+ *                          when nothing may change in place
+ * @return array key => spec, as pg_list_table_columns() takes them
  */
-function pg_product_list_headings($view)
+function pg_product_list_columns($view, $quick_edit)
 {
-    $output = '<th class="noVis"><div class="form-field"><div class="switch"><input class="" title="' . lang('Select/Deselect All') . '" type="checkbox" id="select_all"></div></div></th>'
-        . '<th class="noVis">' . lang('Action') . '</th>'
-        . ($view['show_image'] ? '<th>' . lang('Image') . '</th>' : '');
+    $sql = pg_product_list_sort_sql();
+    $sql['impact'] = pg_seo_impact_sql('products.seo_score', 'products.seo_checked_at');
+    $sql['seo'] = 'products.seo_score';
 
-    foreach ($view['columns'] as $code) {
-        $label = $view['labels'][$code];
-        $heading = in_array($code, array('allowed_zones', 'disallowed_zones'), true)
-            ? h($label)
-            : get_column_heading($label, $view['sort_levels'], $view['order'], '', $code);
+    $kinds = array(
+        'enabled' => 'check', 'price' => 'money', 'compare_at_price' => 'money', 'inventory_quantity' => 'number',
+        'taxable' => 'check', 'default_quantity' => 'number', 'shippable' => 'check', 'pwp' => 'number', 'swp' => 'number',
+        'cont_req' => 'check', 'prep' => 'number', 'free_ship' => 'check', 'extra_ship' => 'money',
+        'recurring_payment' => 'check', 'number_of_payments' => 'number', 'allow_to_schedule' => 'check',
+        'order_receipt_message' => 'check', 'seo' => 'badge', 'impact' => 'number', 'last_modified' => 'date',
+        'out_of_stock_date' => 'date',
+    );
+    $widths = array(
+        'id' => '12rem', 'short_description' => '16rem', 'price' => '8rem', 'compare_at_price' => '8rem',
+        'inventory_quantity' => '7rem', 'allowed_zones' => '12rem', 'disallowed_zones' => '12rem',
+        'last_modified' => '10rem', 'out_of_stock_date' => '10rem',
+    );
+    // The input each quick edit field type opens as.
+    $inputs = array('text' => 'text', 'select' => 'select', 'money' => 'money', 'integer' => 'number');
 
-        if ($code == 'impact') {
-            $output .= '<th style="text-align: center;" title="' . h(lang('How much a weak score costs, weighed against how many people see the page')) . '">' . $heading . '</th>';
-        } else {
-            $output .= '<th>' . $heading . '</th>';
+    $spec = function ($code, $heading) use ($view, $sql, $kinds, $widths, $quick_edit, $inputs) {
+        $column = array('heading' => $heading, 'kind' => $kinds[$code] ?? 'text');
+
+        if (isset($widths[$code])) {
+            $column['width'] = $widths[$code];
         }
+
+        if (isset($view['sort_columns'][$code], $sql[$code])) {
+            $column['sort'] = $sql[$code];
+        }
+
+        if (isset($quick_edit[$code]['type'], $inputs[$quick_edit[$code]['type']])) {
+            $column['editable'] = $inputs[$quick_edit[$code]['type']];
+        }
+
+        return $column;
+    };
+
+    $columns = array('id' => $spec('id', $view['labels']['id']));
+    $columns['id']['kind'] = 'link';
+
+    if ($view['show_image']) {
+        $columns['image'] = array('heading' => lang('Image'), 'width' => '6rem', 'kind' => 'image');
     }
 
-    return $output;
+    $seo = isset($view['sort_columns']['seo']);
+
+    foreach ($view['columns'] as $code) {
+        if ($code === 'id') {
+            continue;
+        }
+
+        // The score before the impact it weighs.
+        if (($code === 'impact') && $seo) {
+            $columns['seo'] = $spec('seo', lang('SEO')) + array('hidden' => true);
+        }
+
+        $columns[$code] = $spec($code, $view['labels'][$code]);
+    }
+
+    $columns['actions'] = array('heading' => lang('Action'), 'width' => '7rem', 'kind' => 'actions');
+
+    return $columns;
 }
 
 /**
@@ -594,14 +647,14 @@ function pg_product_list_search_columns($view)
 }
 
 /**
- * The FROM of the list: the product with the names its cells show. Each
+ * The FROM of the list (without the word): the product with the names its cells show. Each
  * join finds one row at most, so a count over it counts products.
  *
  * @return string
  */
 function pg_product_list_from()
 {
-    return 'FROM products
+    return 'products
         LEFT JOIN user ON products.user = user.user_id
         LEFT JOIN contact_groups ON contact_groups.id = products.contact_group_id
         LEFT JOIN page AS email_page ON email_page.page_id = products.email_page
@@ -690,7 +743,7 @@ function pg_product_list_zones($product_ids)
  *
  * @param array $view     pg_product_list_view()'s answer
  * @param array $products rows of pg_product_list_select()
- * @return array list rows for pg_list_row_html() / pg_list_row_data()
+ * @return array rows for the list table driver (pg_product_list_row())
  */
 function pg_product_list_rows($view, $products)
 {
@@ -737,7 +790,7 @@ function pg_product_list_days($days)
  * @param array $context array('quick_edit' => pg_pb_quick_edit_columns(),
  *                       'more_images' => pg_product_more_images(),
  *                       'zones' => pg_product_list_zones())
- * @return array array('class', 'cells')
+ * @return array array('id', 'class', 'cells' => column key => pg_list_cell())
  */
 function pg_product_list_row($product, $view, $context)
 {
@@ -768,73 +821,74 @@ function pg_product_list_row($product, $view, $context)
         $buttons .= '<button type="button" class="m-1 btn-data-control btn btn-outline theme-secondary border-2" title="' . lang('Print Barcode') . '" data-pg-barcode-product="' . h(encode_json($label)) . '" onclick="pgPrintProductBarcode(' . $id . ', this)"><i class="bi bi-printer"></i></button>';
     }
 
+    // The name opens the product, from a click or a double-click or Enter
+    // on the row (data-pg-open); the SEO bar under it opens the analysis.
     $cells = array(
-        pg_list_cell('<input class="check" type="checkbox" name="products[]" value="' . $id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($product['name'])))) . '" />', 'select-all align-middle text-start'),
-        pg_list_cell($buttons, 'align-middle text-start action-buttons'),
+        'id' => pg_list_cell(
+            '<a class="pg-link-body-emphasis text-decoration-none" data-pg-open href="edit_product.php?id=' . $id . '">' . h($product['name']) . '</a>'
+            . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" aria-label="' . h(pg_seo_link_name($product)) . '" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=product&amp;id=' . $id . get_token_query_string_field() . '" data-pg-seo-bar="product:' . $id . '">' . pg_seo_render_bar($product) . '</a>',
+            $list_cells['name']['class'],
+            array('data-pg-cell' => 'name')),
     );
 
     if ($view['show_image']) {
-        $cells[] = pg_list_cell(pg_product_image_cell_content('product-' . $id, $product['image_name'], $product['name'], $product['short_description'], $context['more_images'][$id] ?? array()), 'align-middle text-start');
+        $cells['image'] = pg_list_cell(pg_product_image_cell_content('product-' . $id, $product['image_name'], $product['name'], $product['short_description'], $context['more_images'][$id] ?? array()), 'align-middle');
     }
 
     foreach ($view['columns'] as $code) {
         switch ($code) {
-            case 'id':
-                $cells[] = pg_list_cell(h($product['name']) . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" aria-label="' . h(pg_seo_link_name($product)) . '" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=product&amp;id=' . $id . get_token_query_string_field() . '" data-pg-seo-bar="product:' . (int) $id . '">' . pg_seo_render_bar($product) . '</a>', $list_cells['name']['class'], array('data-pg-cell' => 'name'));
-                break;
-
             case 'short_description':
             case 'enabled':
             case 'price':
             case 'compare_at_price':
-                $cells[] = $edit($code, $list_cells[$code]['html'], $list_cells[$code]['class']);
+                $cells[$code] = $edit($code, $list_cells[$code]['html'], $list_cells[$code]['class']);
                 break;
 
             case 'inventory_quantity':
                 // Only a product that tracks stock has a count to change here.
                 $stock = $list_cells['inventory_quantity'];
-                $cells[] = ((string) $product['inventory'] === '1')
+                $cells[$code] = ((string) $product['inventory'] === '1')
                     ? $edit('inventory_quantity', $stock['html'], $stock['class'])
                     : pg_list_cell($stock['html'], $stock['class'], array('title' => $stock['title']));
                 break;
 
             case 'taxable':
-                $cells[] = pg_list_cell(($product['taxable'] == 1) ? $check : '', 'align-middle text-center');
+                $cells[$code] = pg_list_cell(($product['taxable'] == 1) ? $check : '', 'align-middle text-center');
                 break;
 
             case 'product_form':
-                $cells[] = pg_list_cell(h($product['form_name']));
+                $cells[$code] = pg_list_cell(h($product['form_name']));
                 break;
 
             case 'selection_type':
-                $cells[] = pg_list_cell(pg_product_list_selection_types()[$product['selection_type']] ?? '');
+                $cells[$code] = pg_list_cell(pg_product_list_selection_types()[$product['selection_type']] ?? '');
                 break;
 
             case 'default_quantity':
-                $cells[] = pg_list_cell(h($product['default_quantity']), 'align-middle text-center');
+                $cells[$code] = pg_list_cell(h($product['default_quantity']), 'align-middle text-center');
                 break;
 
             case 'shippable':
-                $cells[] = pg_list_cell(($product['shippable'] == 1) ? $check : '', 'align-middle text-center');
+                $cells[$code] = pg_list_cell(($product['shippable'] == 1) ? $check : '', 'align-middle text-center');
                 break;
 
             case 'custom_field_1':
             case 'custom_field_2':
             case 'custom_field_3':
             case 'custom_field_4':
-                $cells[] = pg_list_cell(h($product[$code]));
+                $cells[$code] = pg_list_cell(h($product[$code]));
                 break;
 
             case 'weight':
-                $cells[] = pg_list_cell(($product['weight'] > 0) ? h(($product['weight'] + 0) . ' ' . lang('lb')) : '', 'align-middle text-center');
+                $cells[$code] = pg_list_cell(($product['weight'] > 0) ? h(($product['weight'] + 0) . ' ' . lang('lb')) : '', 'align-middle text-center');
                 break;
 
             case 'pwp':
-                $cells[] = pg_list_cell(h($product['primary_weight_points']), 'align-middle text-center');
+                $cells[$code] = pg_list_cell(h($product['primary_weight_points']), 'align-middle text-center');
                 break;
 
             case 'swp':
-                $cells[] = pg_list_cell(h($product['secondary_weight_points']), 'align-middle text-center');
+                $cells[$code] = pg_list_cell(h($product['secondary_weight_points']), 'align-middle text-center');
                 break;
 
             case 'dim':
@@ -844,149 +898,191 @@ function pg_product_list_row($product, $view, $context)
                     $dimensions = ($product['length'] + 0) . '&Prime; x ' . ($product['width'] + 0) . '&Prime; x ' . ($product['height'] + 0) . '&Prime;';
                 }
 
-                $cells[] = pg_list_cell($dimensions);
+                $cells[$code] = pg_list_cell($dimensions);
                 break;
 
             case 'cont_req':
-                $cells[] = pg_list_cell($product['container_required'] ? $check : '', 'align-middle text-center');
+                $cells[$code] = pg_list_cell($product['container_required'] ? $check : '', 'align-middle text-center');
                 break;
 
             case 'prep':
-                $cells[] = pg_list_cell(h($product['preparation_time']), 'align-middle text-center');
+                $cells[$code] = pg_list_cell(h($product['preparation_time']), 'align-middle text-center');
                 break;
 
             case 'free_ship':
-                $cells[] = pg_list_cell(($product['free_shipping'] == 1) ? $check : '', 'align-middle text-center');
+                $cells[$code] = pg_list_cell(($product['free_shipping'] == 1) ? $check : '', 'align-middle text-center');
                 break;
 
             case 'extra_ship':
-                $cells[] = pg_list_cell(pg_format_money($product['extra_shipping_cost'] / 100, BASE_CURRENCY_SYMBOL), 'align-middle text-end');
+                $cells[$code] = pg_list_cell(pg_format_money($product['extra_shipping_cost'] / 100, BASE_CURRENCY_SYMBOL), 'align-middle text-end');
                 break;
 
             case 'allowed_zones':
             case 'disallowed_zones':
                 $names = $context['zones'][$id][($code == 'allowed_zones') ? 'allowed' : 'disallowed'] ?? array();
-                $cells[] = pg_list_cell(implode(',<br />', array_map('h', $names)));
+                $cells[$code] = pg_list_cell(implode(',<br />', array_map('h', $names)));
                 break;
 
             case 'recurring_payment':
-                $cells[] = pg_list_cell(($product['recurring'] == 1) ? $check : '', 'align-middle text-center');
+                $cells[$code] = pg_list_cell(($product['recurring'] == 1) ? $check : '', 'align-middle text-center');
                 break;
 
             case 'start':
-                $cells[] = pg_list_cell(h(((string) $product['recurring_start'] !== '0') ? pg_product_list_days($product['recurring_start']) : lang('Immediately')));
+                $cells[$code] = pg_list_cell(h(((string) $product['recurring_start'] !== '0') ? pg_product_list_days($product['recurring_start']) : lang('Immediately')));
                 break;
 
             case 'number_of_payments':
-                $cells[] = pg_list_cell(h(((string) $product['number_of_payments'] !== '0') ? $product['number_of_payments'] : lang('Unlimited')), 'align-middle text-center');
+                $cells[$code] = pg_list_cell(h(((string) $product['number_of_payments'] !== '0') ? $product['number_of_payments'] : lang('Unlimited')), 'align-middle text-center');
                 break;
 
             case 'payment_period':
-                $cells[] = pg_list_cell(h($product['payment_period']));
+                $cells[$code] = pg_list_cell(h($product['payment_period']));
                 break;
 
             case 'allow_to_schedule':
-                $cells[] = pg_list_cell(($product['recurring_schedule_editable_by_customer'] == 1) ? $check : '', 'align-middle text-center');
+                $cells[$code] = pg_list_cell(($product['recurring_schedule_editable_by_customer'] == 1) ? $check : '', 'align-middle text-center');
                 break;
 
             case 'set_start_page':
-                $cells[] = pg_list_cell(((string) $product['grant_private_access'] === '1') ? h($product['start_page']) : '');
+                $cells[$code] = pg_list_cell(((string) $product['grant_private_access'] === '1') ? h($product['start_page']) : '');
                 break;
 
             case 'grant_private_access':
-                $cells[] = pg_list_cell(((string) $product['grant_private_access'] === '1') ? h($product['private_folder']) : '', 'align-middle ');
+                $cells[$code] = pg_list_cell(((string) $product['grant_private_access'] === '1') ? h($product['private_folder']) : '', 'align-middle ');
                 break;
 
             case 'membership_renewal':
-                $cells[] = pg_list_cell(h(pg_product_list_days($product['membership_renewal'])));
+                $cells[$code] = pg_list_cell(h(pg_product_list_days($product['membership_renewal'])));
                 break;
 
             case 'order_receipt_message':
-                $cells[] = pg_list_cell(((string) $product['order_receipt_message'] !== '') ? $check : '', 'align-middle text-center');
+                $cells[$code] = pg_list_cell(((string) $product['order_receipt_message'] !== '') ? $check : '', 'align-middle text-center');
                 break;
 
             case 'order_receipt_bcc':
-                $cells[] = pg_list_cell(h($product['order_receipt_bcc_email_address']));
+                $cells[$code] = pg_list_cell(h($product['order_receipt_bcc_email_address']));
                 break;
 
             case 'email_page':
-                $cells[] = pg_list_cell(h($product['email_page']));
+                $cells[$code] = pg_list_cell(h($product['email_page']));
                 break;
 
             case 'email_page_bcc':
-                $cells[] = pg_list_cell(h($product['email_bcc']));
+                $cells[$code] = pg_list_cell(h($product['email_bcc']));
                 break;
 
             case 'contact_group':
-                $cells[] = pg_list_cell(h($product['contact_group_name']));
+                $cells[$code] = pg_list_cell(h($product['contact_group_name']));
                 break;
 
             case 'impact':
-                $cells[] = pg_list_cell(pg_seo_render_impact($product), 'align-middle text-center');
+                if (isset($view['sort_columns']['seo'])) {
+                    $cells['seo'] = pg_list_cell('<a href="javascript:void(0)" class="pg-seo-open text-decoration-none" data-pg-seo-badge="product:' . $id . '" aria-label="' . h(pg_seo_link_name($product)) . '" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=product&amp;id=' . $id . get_token_query_string_field() . '">' . pg_seo_render_badge($product) . '</a>', 'align-middle');
+                }
+
+                $cells[$code] = pg_list_cell(pg_seo_render_impact($product), 'align-middle text-center');
                 break;
 
             case 'last_modified':
-                $cells[] = pg_list_cell(pg_list_when($product['timestamp'], $product['user'] ?? ''));
+                $cells[$code] = pg_list_cell(pg_list_when($product['timestamp'], $product['user'] ?? ''));
                 break;
 
             case 'out_of_stock_date':
-                $cells[] = pg_list_cell(get_relative_time(array('timestamp' => $product['out_of_stock_timestamp'])));
+                $cells[$code] = pg_list_cell(get_relative_time(array('timestamp' => $product['out_of_stock_timestamp'])));
                 break;
         }
     }
 
-    return array('class' => '', 'cells' => $cells);
+    $cells['actions'] = pg_list_cell($buttons, 'align-middle action-buttons');
+
+    return array('id' => $id, 'class' => '', 'cells' => $cells);
 }
 
 /**
- * One page of the list: the counts without and with the search, and the
- * rows of the page window.
+ * The products list as the list table driver's source
+ * (includes/fn/list_table.php), for the screen, the rows action and the
+ * bulk actions (edit_products.php) alike. It is the screen's gate too: a
+ * manager or above, or a user with the e-commerce right
+ * (validate_ecommerce_access()); the same users change cells in place, on
+ * the screen's own pg_list_edit_request() endpoint.
  *
- * @param array $view   pg_product_list_view()'s answer
- * @param array $terms  pg_list_search_terms()'s answer
- * @param array $window pg_list_page_window()'s answer
- * @return array|false array('total', 'filtered', 'rows') or false when a
- *                     query failed
+ * @param array $user   the signed-in user
+ * @param array $params the list's parameters: 'filter' (the view)
+ * @return array|null pg_list_table_source(), or null when the user may not
+ *                    open the list
  */
-function pg_product_list_page($view, $terms, $window)
+function pg_product_list_source($user, $params)
 {
-    $base = pg_product_list_from() . ' ' . $view['where'];
-    $columns = pg_product_list_search_columns($view);
-    $search = pg_list_search_where($terms, $columns['columns'], $columns['labels']);
-    $search_sql = ($search['sql'] !== '') ? (($view['where'] !== '') ? ' AND ' : ' WHERE ') . $search['sql'] : '';
+    if (!is_array($user) || (((int) ($user['role'] ?? 9) > 2) && empty($user['manage_ecommerce']))) {
+        return null;
+    }
 
-    $result = db_q('SELECT COUNT(*) FROM products ' . $view['where'], array());
+    // The cells a quick edit changes are the product screen's (pg_pb_list_cells()).
+    require_once(PG_FUNCTIONS_DIR . '/seo.php');
+    require_once(PG_FUNCTIONS_DIR . '/product_builder.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
-    if (!$result) {
+    $view = pg_product_list_site_view(pg_product_list_filter_name((is_array($params) && isset($params['filter'])) ? $params['filter'] : ''));
+    $quick_edit = pg_pb_quick_edit_columns();
+
+    // The traffic behind the impact figure joins only the list's read.
+    return pg_list_table_source(array(
+        'list' => 'view_products',
+        'columns' => pg_product_list_columns($view, $quick_edit),
+        'from' => pg_product_list_from() . ' ' . pg_seo_traffic_join('product', 'products.id'),
+        'where' => $view['condition'],
+        'id' => 'products.id',
+        'id_order' => 'asc',
+        'select' => pg_product_list_select($view),
+        'search' => pg_product_list_search_columns($view),
+        'levels' => $view['sort_levels'],
+        'rows' => function ($records) use ($view) {
+            return pg_product_list_rows($view, $records);
+        },
+        'params_out' => array('filter' => $view['filter']),
+        'edit' => array('url' => 'view_products.php', 'columns' => $quick_edit),
+    ));
+}
+
+/**
+ * The products a bulk action of the list acts on (Modify Selected, Assign
+ * Barcodes, Delete Selected): the selection the list table driver posted
+ * (JSON), read with the list's own query and rights. A selection of ids is
+ * read in the view the list showed, sent beside it; a condition carries
+ * its view itself. A product in the Recycle Bin is on no view, so it is
+ * never among them.
+ *
+ * @param array $user        the signed-in user
+ * @param mixed $selection   the posted selection, JSON
+ *                           (pg_list_table_selection_parse())
+ * @param mixed $list_params the posted list parameters, JSON ('filter')
+ * @return array|false|null product ids (empty when nothing or nothing
+ *                          reachable was selected), false when the query
+ *                          failed, null when the selection holds more than
+ *                          10,000 products
+ */
+function pg_product_list_selected_ids($user, $selection, $list_params)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
+    $selection = pg_list_table_selection_parse(is_string($selection) ? json_decode($selection, true) : null, time());
+
+    if ($selection === null) {
+        return array();
+    }
+
+    $params = ($selection['mode'] === 'condition') ? $selection['params'] : json_decode(is_string($list_params) ? $list_params : '', true);
+    $source = pg_product_list_source($user, is_array($params) ? $params : array());
+
+    if ($source === null) {
+        return array();
+    }
+
+    $selected = pg_list_table_selected_ids($source, $selection);
+
+    if ($selected === false) {
         return false;
     }
 
-    $total = (int) mysqli_fetch_row($result)[0];
-    $filtered = $total;
-
-    if ($search_sql !== '') {
-        $result = db_q('SELECT COUNT(*) ' . $base . $search_sql, $search['params']);
-
-        if (!$result) {
-            return false;
-        }
-
-        $filtered = (int) mysqli_fetch_row($result)[0];
-    }
-
-    // The traffic behind the impact figure joins only the page's read.
-    $result = db_q('SELECT ' . pg_product_list_select($view) . ' ' . pg_product_list_from() . ' ' . pg_seo_traffic_join('product', 'products.id')
-        . ' ' . $view['where'] . $search_sql . ' ORDER BY ' . $view['order_by'] . pg_list_limit_sql($window), $search['params']);
-
-    if (!$result) {
-        return false;
-    }
-
-    $products = array();
-
-    while ($row = mysqli_fetch_assoc($result)) {
-        $products[] = $row;
-    }
-
-    return array('total' => $total, 'filtered' => $filtered, 'rows' => pg_product_list_rows($view, $products));
+    return $selected['more'] ? null : $selected['ids'];
 }
