@@ -24,7 +24,7 @@ description: Plan for the Car Dealership template (pinegrap-dealership): vehicle
 
 - 4 Done (#6264). Test drives and trade-ins: `mail.php`, `requests.php` (requests, privacy, `email_reply`, e-mails); test `…_requests_test.php`.
 
-- 5 Finance: `finance_requests.php` (`finance_apply`, `finance_view`, `my_finance`, `staff_finance`, notify e-mails).
+- 5 Done (#6268). Finance: `finance_requests.php` (`finance_apply`, `finance_view`, `my_finance`, `staff_finance`).
 
 - 6 Standard: `standard.php` (contact, inbox, conversation, newsletter, blog "Showroom News", blog post, search, error); test `…_standard_test.php`.
 
