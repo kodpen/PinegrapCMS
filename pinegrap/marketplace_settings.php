@@ -1895,6 +1895,11 @@ echo pg_page_shell(array(
 	text-decoration: none; color: inherit; display: block; }
 .mp-tab.sel { border-color: var(--pg-primary); background: var(--pg-bg-1); }
 .mp-tab small { color: var(--pg-fg-2); }
+/* An account name is free text of up to 100 characters, possibly one long
+   word: it breaks inside the tile, the account card header and the drawer
+   title instead of pushing the page (and the drawer's close button) sideways. */
+.mp-name { min-width: 0; overflow-wrap: anywhere; }
+#mp_drawer .drawer-header .btn-close { flex: 0 0 auto; }
 .mp-count { display: flex; gap: 18px; flex-wrap: wrap; }
 .mp-count div { min-width: 82px; }
 .mp-count b { font-size: 1.25rem; display: block; line-height: 1.1; }
@@ -1964,7 +1969,7 @@ if (!$accounts) {
 			<a class="mp-tab' . ($is_selected ? ' sel" aria-current="page' : '') . '" href="marketplace_settings.php?account=' . (int)$row['id'] . '">
 				<div class="d-flex align-items-center gap-3">
 					<i class="bi bi-shop"></i>
-					<b>' . h($row['name']) . '</b>
+					<b class="mp-name">' . h($row['name']) . '</b>
 					<span class="ms-auto">' . $state . '</span>
 				</div>
 				<small>' . h(mp_provider_name($row['provider']))
@@ -2033,7 +2038,7 @@ if ($selected) {
 	echo '
 	<div class="card mb-5">
 		<div class="card-header d-flex align-items-center flex-wrap gap-3">
-			<i class="bi bi-sliders me-1"></i><b>' . h($selected['name']) . '</b>
+			<i class="bi bi-sliders me-1"></i><b class="mp-name">' . h($selected['name']) . '</b>
 			<span class="small opacity-75">' . h(mp_provider_name($selected['provider'])) . '</span>'
 			. ((isset($selected['credentials']['environment']) && $selected['credentials']['environment'] === 'stage')
 				? ' <span class="mp-pill off">' . lang('Test environment') . '</span>' : '') . '
@@ -2808,7 +2813,7 @@ if ($selected) {
 		<input type="hidden" name="mp_action" value="update">
 		<input type="hidden" name="account_id" value="' . $selected_id . '">
 		<div class="drawer-header border-bottom">
-			<h5 class="drawer-title" id="mp_drawer_title"><i class="bi bi-sliders me-3"></i>' . h($selected['name']) . '</h5>
+			<h5 class="drawer-title mp-name" id="mp_drawer_title"><i class="bi bi-sliders me-3"></i>' . h($selected['name']) . '</h5>
 			<button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
 		</div>
 		<div class="drawer-body">
