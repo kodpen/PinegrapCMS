@@ -119,20 +119,20 @@ function test_dashboard_v2_visitor_dates()
 {
 	$now = mktime(15, 0, 0, 3, 10, 2026);
 
-	$today = pg_dashboard_v2_visitor_dates(0, 1, $now);
+	$today = pg_dashboard_v2_visitor_dates(0, 0, $now);
 	pg_assert_same(array('2026-03-10'), $today['dates']);
 	pg_assert_same(array('2026-03-09'), $today['compare']);
 	pg_assert_true($today['hourly']);
 
-	$week = pg_dashboard_v2_visitor_dates(1, 2, $now);
+	$week = pg_dashboard_v2_visitor_dates(1, 1, $now);
 	pg_assert_same('2026-03-04', $week['dates'][0]);
 	pg_assert_same('2026-03-10', $week['dates'][6]);
 	pg_assert_same('2026-02-25', $week['before'][0]);
 	pg_assert_same('2025-03-04', $week['compare'][0]);
 	pg_assert_false($week['hourly']);
 
-	pg_assert_same(30, count(pg_dashboard_v2_visitor_dates(2, 0, $now)['dates']));
-	pg_assert_same(array(), pg_dashboard_v2_visitor_dates(2, 0, $now)['compare']);
+	pg_assert_same(30, count(pg_dashboard_v2_visitor_dates(2, 2, $now)['dates']));
+	pg_assert_same(array(), pg_dashboard_v2_visitor_dates(2, 2, $now)['compare']);
 }
 
 function test_dashboard_v2_visitor_series()
