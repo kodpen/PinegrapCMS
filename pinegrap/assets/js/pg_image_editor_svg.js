@@ -87,6 +87,23 @@
                 return;
             }
 
+            // A save's motion group gives back its one element, the group's
+            // transform before the element's own.
+            if (M.svgMotionGroup(name, child.getAttribute('class'), Array.prototype.map.call(child.attributes, function (a) { return a.name; }), child.children.length)) {
+                var inner = child.children[0], moved = ((child.getAttribute('transform') || '') + ' ' + (inner.getAttribute('transform') || '')).trim();
+
+                if (moved) {
+                    inner.setAttribute('transform', moved);
+                }
+
+                child = inner;
+                name = child.localName;
+
+                if ((SKIP.indexOf(name) >= 0) || (DEFS.indexOf(name) >= 0)) {
+                    return;
+                }
+            }
+
             var node = document.importNode(child, true), own = M.svgTransform(node.getAttribute('transform'));
 
             INHERITED.forEach(function (a) {
@@ -368,6 +385,14 @@
         }
 
         n.setAttribute('transform', M.svgMatrixText(M.svgMatrix(l)));
+
+        var cls = M.svgMotionClass(n.getAttribute('class'));
+
+        if (cls) {
+            n.setAttribute('class', cls);
+        } else {
+            n.removeAttribute('class');
+        }
 
         if ((l.opacity !== undefined) && (l.opacity < 1)) {
             var own = n.hasAttribute('opacity') ? Number(n.getAttribute('opacity')) : 1;

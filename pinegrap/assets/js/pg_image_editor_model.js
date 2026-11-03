@@ -3437,7 +3437,22 @@
         return out.length ? { duration: m.duration, loop: m.loop, layers: out } : null;
     }
 
-    var SVGMOTION = { svgMotion: svgMotion };
+    // Whether a top-level element of a saved SVG is the group a save put
+    // around one moving layer: a g whose only class is pgm-n, with no other
+    // attribute than that and a transform, holding one element. It opens as
+    // that element (svgMotionOpen()), so a text stays a text.
+    function svgMotionGroup(name, cls, attrs, children) {
+        return (name === 'g') && /^\s*pgm-\d+\s*$/.test(String(cls || '')) && (children === 1)
+            && (attrs || []).every(function (a) { return (a === 'class') || (a === 'transform'); });
+    }
+
+    // A class list without the pgm-n names a save gives its groups, so a
+    // stale one never matches a later save's rules.
+    function svgMotionClass(cls) {
+        return String(cls || '').split(/\s+/).filter(function (c) { return c && !/^pgm-\d+$/.test(c); }).join(' ');
+    }
+
+    var SVGMOTION = { svgMotion: svgMotion, svgMotionGroup: svgMotionGroup, svgMotionClass: svgMotionClass };
 
     // -- access (pg_image_editor_access.js) --
 

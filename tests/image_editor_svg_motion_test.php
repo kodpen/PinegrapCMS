@@ -71,7 +71,7 @@ function test_image_editor_svg_motion_css()
 	$css = pg_image_editor_svg_motion_css($motion, 'logo');
 
 	pg_assert_true(strpos($css, '@media (prefers-reduced-motion: no-preference){') === 0, 'inside the reduced-motion guard');
-	pg_assert_true(strpos($css, '#logo .pgm-1{transform-box:view-box;transform-origin:0 0;animation:logo-pgm-1 2s linear 3 both}') !== false, 'scoped, plays');
+	pg_assert_true(strpos($css, '#logo > .pgm-1{transform-box:view-box;transform-origin:0 0;animation:logo-pgm-1 2s linear 3 both}') !== false, 'scoped, plays');
 	pg_assert_true(strpos($css, '50%{opacity:0.5;transform:translate(70px,42.5px) rotate(90deg) scale(1.2) translate(-60px,-45px)}') !== false, 'a frame about the centre');
 
 	$forever = $motion;
@@ -112,8 +112,32 @@ function test_image_editor_svg_motion_add()
 	$motion = array('duration' => 1000, 'loop' => 0, 'layers' => array(array('n' => 0, 'cx' => 2.5, 'cy' => 2.5, 'frames' => array(array(0, 0, 0, 0, 1, 0), array(100, 1, 0, 0, 1, 0)))));
 	$out = pg_image_editor_svg_motion_add($svg, $motion);
 
-	pg_assert_same(1, preg_match('/^<svg[^>]* id="(pgsvg-[0-9a-f]{10})"[^>]*><style>@media/', $out, $m), 'id and style first');
-	pg_assert_true(strpos($out, '#' . $m[1] . ' .pgm-0{') !== false, 'scoped to that id');
+	pg_assert_same(1, preg_match('/^<svg[^>]* id="(pgsvg-[0-9a-f]{10})"[^>]*><style><!\[CDATA\[@media/', $out, $m), 'id and style first');
+	pg_assert_true(strpos($out, '#' . $m[1] . ' > .pgm-0{') !== false, 'scoped to the root\'s own children');
 	pg_assert_same($svg, pg_image_editor_svg_motion_add($svg, null), 'no motion');
 	pg_assert_same($svg, pg_image_editor_svg_motion_add($svg, array('duration' => 'x')), 'refused motion');
+}
+
+// Reopening: a save's group around one element opens as that element; any
+// other group, or one with more than the class and a transform, stays a
+// group; a layer saved again loses a stale pgm-n class.
+function test_image_editor_svg_motion_reopen()
+{
+	$r = image_editor_render_node(
+		'console.log(JSON.stringify({' . "\n"
+		. ' ours: M.svgMotionGroup("g", "pgm-2", ["class"], 1), moved: M.svgMotionGroup("g", " pgm-0 ", ["class", "transform"], 1),' . "\n"
+		. ' two: M.svgMotionGroup("g", "pgm-2", ["class"], 2), more: M.svgMotionGroup("g", "pgm-2 logo", ["class"], 1), fill: M.svgMotionGroup("g", "pgm-2", ["class", "fill"], 1),' . "\n"
+		. ' rect: M.svgMotionGroup("rect", "pgm-2", ["class"], 0), name: M.svgMotionGroup("g", "pgm-x", ["class"], 1),' . "\n"
+		. ' clean: [M.svgMotionClass("pgm-1 logo pgm-22"), M.svgMotionClass("pgm-1"), M.svgMotionClass("pgm-a")]' . "\n"
+		. '}));'
+	);
+
+	if ($r === null) {
+		return;
+	}
+
+	pg_assert_false(isset($r['error']), isset($r['error']) ? $r['error'] : 'ran');
+	pg_assert_true($r['ours'] && $r['moved'], 'a save\'s group opens as its element');
+	pg_assert_false($r['two'] || $r['more'] || $r['fill'] || $r['rect'] || $r['name'], 'anything else stays as it is');
+	pg_assert_same(array('logo', '', 'pgm-a'), $r['clean'], 'stale pgm-n names dropped');
 }

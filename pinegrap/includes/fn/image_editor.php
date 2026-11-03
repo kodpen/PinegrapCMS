@@ -3276,7 +3276,7 @@ function pg_image_editor_svg_motion_add($svg, $motion)
     $root->setAttribute('id', $id);
 
     $style = $dom->createElementNS('http://www.w3.org/2000/svg', 'style');
-    $style->appendChild($dom->createTextNode($css));
+    $style->appendChild($dom->createCDATASection($css));
     $root->insertBefore($style, $root->firstChild);
 
     $out = $dom->saveXML($root);
@@ -3286,7 +3286,8 @@ function pg_image_editor_svg_motion_add($svg, $motion)
 
 /**
  * The @keyframes of an SVG's moving layers, from numbers only: for each
- * layer its group (class pgm-n inside the root #$id) turns about its centre
+ * layer its group (class pgm-n, a child of the root #$id: a stale class on a
+ * nested group never matches) turns about its centre
  * through the sampled frames, the plays as the document's (0 forever),
  * all inside prefers-reduced-motion: no-preference, so a reader who asks
  * for less motion sees every layer at rest. '' when anything is out of
@@ -3348,7 +3349,7 @@ function pg_image_editor_svg_motion_css($motion, $id)
                 . $text($f[5]) . 'deg) scale(' . $text($f[4]) . ') translate(' . $text(-$layer['cx']) . 'px,' . $text(-$layer['cy']) . 'px)}';
         }
 
-        $rules[] = '#' . $id . ' .pgm-' . $layer['n'] . '{transform-box:view-box;transform-origin:0 0;animation:' . $name . ' ' . $text($duration / 1000) . 's linear '
+        $rules[] = '#' . $id . ' > .pgm-' . $layer['n'] . '{transform-box:view-box;transform-origin:0 0;animation:' . $name . ' ' . $text($duration / 1000) . 's linear '
             . ($loop ? $loop : 'infinite') . ' both}' . "\n" . '@keyframes ' . $name . '{' . implode('', $steps) . '}';
     }
 
