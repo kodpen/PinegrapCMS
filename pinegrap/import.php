@@ -424,10 +424,11 @@ if ($import === null) {
         $body .= $card(lang('Report'), $counts_table($import['counts'], array('made' => lang('Made'), 'skipped' => lang('Skipped'), 'failed' => lang('Failed'))));
 
         $lines = '';
+        $line_results = array('made' => lang('Made, with a note'), 'skipped' => lang('Skipped'), 'failed' => lang('Failed'));
 
         foreach ((array) ($import['report']['lines'] ?? array()) as $line) {
             $lines .= '<tr>
-                <td>' . h(($line['result'] ?? '') === 'failed' ? lang('Failed') : lang('Skipped')) . '</td>
+                <td>' . h($line_results[$line['result'] ?? ''] ?? lang('Skipped')) . '</td>
                 <td>' . h($writer_kinds[$line['kind'] ?? ''] ?? ($line['kind'] ?? '')) . '</td>
                 <td>' . h((string) (($line['title'] ?? '') !== '' ? $line['title'] : ($line['key'] ?? ''))) . '</td>
                 <td>' . h((string) ($line['reason'] ?? '')) . '</td>
@@ -436,7 +437,7 @@ if ($import === null) {
 
         if ($lines !== '') {
             $more = (int) ($import['report']['more'] ?? 0);
-            $body .= $card(lang('Skipped and failed'), '<table class="table"><thead><tr>
+            $body .= $card(lang('Notes, skipped and failed'), '<table class="table"><thead><tr>
                 <th scope="col">' . h(lang('Result')) . '</th>
                 <th scope="col">' . h(lang('Kind')) . '</th>
                 <th scope="col">' . h(lang('Item')) . '</th>

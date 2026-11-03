@@ -17,7 +17,7 @@ module: importers
 ## What does a writer provide?
 - `includes/import/write_<kind>.php`: `pg_import_write_<kind>($item, $import)` → `result` made/skipped/failed, `id`, `reason`; `pg_import_unwrite_<kind>($item_id)` deletes through the kind's own path. `pg_import_writer_answer()` turns any other answer, or made without an id, into failed; a thrown error is failed with its message.
 - A writer finds an earlier item (a comment's record) with `pg_import_item_id($related, $kind, $key)`.
-- IM1 ships no writer: record, comment and author come with IM2, page and file with IM3, product with IM4, contact with IM5, redirect with IM6. A kind without a writer fails with "This site cannot write this kind of item yet."
+- Page, file: `import-media.md`; record, comment, author IM2, product IM4, contact IM5, redirect IM6. A kind without a writer fails: "This site cannot write this kind of item yet."
 
 ## When is an item skipped?
 - When its source key is in `import_items` of this import or an earlier one of the same kind that is not undone (`pg_import_related_ids()`, `idx_source`): a second upload makes nothing twice. Writers add their own checks (SKU, e-mail).
@@ -27,7 +27,7 @@ module: importers
 - `GET_LOCK('pg_import_<id>', 0)`: only one request works an import; a busy answer makes the screen wait 3 s.
 
 ## What does the report keep?
-- Counts per writer kind; skipped and failed lines with reason up to 2000 (`PG_IMPORT_REPORT_LINES`), the rest counted as `more`. Made rows are not listed: `import_items` holds them.
+- Counts per writer kind; skipped and failed lines with reason up to 2000 (`PG_IMPORT_REPORT_LINES`), the rest counted as `more`. Made rows are not listed (`import_items` holds them) unless the writer gave a note.
 
 ## How does undo work?
 - Open for 30 days after `finished_at` (`pg_import_undo_open()`), at once for a stopped run; a running one is stopped first. Rows are removed newest first, 8 s per request. A kind without an unwrite function keeps its rows and the run keeps its status, so Undo can finish later.
