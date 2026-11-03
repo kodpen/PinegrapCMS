@@ -158,13 +158,13 @@ function test_image_editor_glyph_icon_files()
 	pg_assert_contains("bootstrap-icons.json?v=", $source);
 }
 
-// The glyph part is bundled last and hooks the Sticker panel.
+// The glyph part is bundled after the sticker part and hooks its panel.
 function test_image_editor_glyph_bundled()
 {
 	$bundles = pg_js_bundles();
 	$files = $bundles['assets/js/pg_image_editor.min.js'];
 
-	pg_assert_same('assets/js/pg_image_editor_glyph.js', end($files), 'after the sticker part, whose panel it wraps');
+	pg_assert_true(array_search('assets/js/pg_image_editor_glyph.js', $files, true) > array_search('assets/js/pg_image_editor_sticker.js', $files, true), 'after the sticker part, whose panel it wraps');
 	pg_assert_true(in_array('glyph', pg_image_editor_parts(), true), 'a part with its strings');
 
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_image_editor_glyph.js');
