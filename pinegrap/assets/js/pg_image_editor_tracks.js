@@ -41,6 +41,10 @@
         return (100 * Math.max(0, Math.min(end, ms)) / end) + '%';
     }
 
+    // fn(lane, l, end, selected) on the editor for each row: more marks
+    // on a layer's lane.
+    Editor.trackMarks = [];
+
     Editor.prototype.tracksShown = function () {
         return !(window.matchMedia && window.matchMedia(NO_TRACKS).matches) && (this.doc.layers.length > 0);
     };
@@ -144,6 +148,9 @@
 
             lane.appendChild(bar);
         });
+
+        // Marks other parts add on the lane (the keyframes' diamonds).
+        Editor.trackMarks.forEach(function (mark) { mark.call(self, lane, l, end, on); });
 
         // A press beside the bars selects the layer.
         lane.addEventListener('pointerdown', function (e) {

@@ -97,6 +97,7 @@ function test_design_template_collection_forms()
 		'pinegrap-salon'      => array('blog_new', 'staff_entry'),
 		'pinegrap-store'      => array('blog_new', 'staff_entry'),
 		'pinegrap-launch'     => array('blog_new', 'staff_entry'),
+		'pinegrap-dealership' => array('blog_new', 'staff_entry', 'vehicle_new'),
 	);
 	$templates = _test_tpl_coll_templates();
 	foreach ($expected as $id => $keys) {

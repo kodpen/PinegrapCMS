@@ -67,6 +67,11 @@
     // goes under a phase's fields in the panel (null for none).
     Editor.motionDocks = [];
 
+    // More tabs beside entrance, loop and exit (the keyframes part):
+    // { id, label, has(anim), panel(body, layers) }, each called on the
+    // editor; panel() fills the tab in place of the kinds.
+    Editor.motionPanes = [];
+
     function seconds(ms) {
         return X.decimal(ms / 1000) + ' ' + t('motionSecondsUnit');
     }
@@ -106,7 +111,7 @@
                     a[phase] = Object.assign({}, a[phase] || {}, patch);
                 }
 
-                if (a['in'] || a.loop || a.out) {
+                if (a['in'] || a.loop || a.out || (a.keys && a.keys.length)) {
                     l.anim = a;
                 } else {
                     delete l.anim;
@@ -149,8 +154,10 @@
             el('span', { class: 'pgie-mname', text: (layers.length > 1) ? t('motionLayers').replace('{n}', layers.length) : this.layerName(l) })
         ]));
 
-        [['in', t('motionIn')], ['loop', t('motionLoop')], ['out', t('motionOut')]].forEach(function (tab) {
-            var on = (phase === tab[0]), has = !!a[tab[0]];
+        var panes = Editor.motionPanes, pane = panes.filter(function (p) { return p.id === phase; })[0];
+
+        [['in', t('motionIn')], ['loop', t('motionLoop')], ['out', t('motionOut')]].concat(panes.map(function (p) { return [p.id, t(p.label), p]; })).forEach(function (tab) {
+            var on = (phase === tab[0]), has = tab[2] ? tab[2].has.call(self, a) : !!a[tab[0]];
 
             tabs.appendChild(el('button', { type: 'button', role: 'tab', class: (on ? 'on' : '') + (has ? ' pgie-mhas' : ''), 'aria-selected': on ? 'true' : 'false', text: tab[1], onclick: function () {
                 self.motionTab = tab[0];
@@ -159,6 +166,12 @@
         });
 
         body.appendChild(tabs);
+
+        if (pane) {
+            pane.panel.call(this, body, layers);
+            this.motionWhole(body);
+            return;
+        }
 
         var kinds = (phase === 'loop') ? M.MOTION_LOOP : M.MOTION_IN;
         var grid = el('div', { class: 'pgie-tiles pgie-mkinds', role: 'group', 'aria-label': t('motion_' + phase + 'Kinds') });

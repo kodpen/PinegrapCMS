@@ -11,7 +11,7 @@ description: WordPress WXR reader of the import framework: streaming walk, what 
 ## What does each item become?
 - post and every custom post type: `record`; page: `page`; attachment: `file` (`url`, caption, parent post). Source key `<host>:post:<id>`, comments `<host>:comment:<id>`.
 - Left out: `nav_menu_item`, `revision`, block editor and customizer internals (`pg_import_wp_skipped_types()`), status trash and auto-draft. publish and inherit are published; draft, pending, future and private are drafts.
-- A record's data: post type, status, body, excerpt, time, slug, old link (for redirects), parent, author (login, display name, e-mail), categories, tags, and the featured image as the attachment's source key (`_thumbnail_id`): the file item may come later in the file, so the writer looks it up then.
+- A record's data: post type, status, old status `wp_status`, password flag `protected` (`import-records.md`), body, excerpt, time, slug, old link (for redirects), parent, author (login, display name, e-mail), categories, tags, and the featured image as the attachment's source key (`_thumbnail_id`): the file item may come later in the file, so the writer looks it up then.
 
 ## How do the authors come in?
 - `pg_import_wordpress_open()` puts the authors of the site head first as `user` items (`<site>:author:<login>`), so a record finds its author's account.

@@ -1,13 +1,17 @@
 ---
 name: page-list-paging
-description: The pages list (view_pages.php) paged on the server (PR #6114, issues #6076 #6088): views, folder access in SQL, inherited styles from one folder read, SEO refresh before the fetch
+description: The pages list (view_pages.php) on the list table driver (paged since #6114, issues #6076 #6088): views, source, bulk actions by selection, folder access in SQL, inherited styles
 module: page_list
 ---
 
 ## Where does the list live?
-- `includes/fn/page_list.php`: the views (`pg_page_list_filters()`: label = heading, description, condition, the access type a view keeps to, the RSS and custom form joins), the view (`pg_page_list_view()`: sort columns, `ORDER BY` with `page.page_id` last, device type, theme preview), one page (`pg_page_list_page()`) and its rows.
-- Action `page_list_rows` (`includes/panel/lists.php`): the screen's gate (role ≤ 3, a basic user needs `no_acl_check()`), filter from `data-pg-list-params`, sort from the session.
-- `view_pages.php` keeps the toolbar, the SEO summary strip, the Refresh SEO Scores link and the headings; the table body is empty.
+- `includes/fn/page_list.php`: the views (`pg_page_list_filters()`: label = heading, description, condition, the access type a view keeps to, the RSS and custom form joins), the view (`pg_page_list_view()`: sort columns, device type, theme preview) and the driver source (`pg_page_list_source($user, {filter})`, list `view_pages`): columns (`pg_page_list_columns()`, name first, actions last; style unsortable while another theme is previewed; impact sorts by `pg_seo_impact_sql()`, the expression without its alias, because the keyset compares it in WHERE), rows keyed by column (`pg_page_list_rows()`).
+- The source is the gate (role ≤ 3, a basic user needs `no_acl_check()`); the rows come from `list_table_rows` (`ui/list-table-driver.md`). The old DataTables action `page_list_rows` is gone.
+- `view_pages.php` prints the toolbar (search box `data-pg-list-search="view_pages"`, the desktop/mobile style toggle, sort menu, view), the SEO summary strip and the first 100 rows; the name links to the editor (`data-pg-open`).
+
+## How do the bulk actions find their pages?
+- Modify Selected and Delete Selected sit in the selection bar and post `selection` (the driver's payload) and `list_params` to `edit_pages.php`, which reads the ids with `pg_page_list_selected_ids()`: the list's own query and rights, so Ctrl+A acts on the whole view (search included, exceptions left out), not only the rows loaded. Before, they posted the ticked `pages[]` of the drawn page.
+- The page table has no creation time, so the source has no `created`: a whole-view selection is not held to its moment.
 
 ## Why was it changed?
 - #6076: every page was printed (~3 KB a row, 1.09 MB HTML for 299 pages) and DataTables showed 100.

@@ -236,6 +236,10 @@ function pg_import_wp_item($item, $site)
         'data'       => array(
             'post_type'  => $type,
             'status'     => $status,
+            // What the old site kept from its readers: a private or
+            // password-protected post is not made a record.
+            'wp_status'  => strtolower(trim((string) $wp->status)),
+            'protected'  => (trim((string) $wp->post_password) !== ''),
             'body'       => pg_import_wp_autop(pg_import_wp_shortcodes((string) $content->encoded)),
             'excerpt'    => trim((string) $excerpt->encoded),
             'time'       => $time,

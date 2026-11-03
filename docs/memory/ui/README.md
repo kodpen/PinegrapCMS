@@ -226,6 +226,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - image-editor-export.md: The image editor's export panel (E13, E13b): format, quality, edge, progressive JPEG, PNG colours, camera details, sRGB, the estimate action, another format as a copy, the optimise profile
 - image-editor-fonts.md: The image editor's Google Fonts choice in the Text tool and the one font catalogue it shares with the visual designer
 - image-editor-glyph.md: The image editor's Bootstrap Icons and emoji in the Sticker tool: the glyph layer, where the icon font and map come from, the emoji set and its recent row
+- image-editor-keyframes.md: The Animate tool's keyframes (AN9): anim.keys and M.keyAt() composed in M.motionAt(), the Path tab, dragging a layer at the playhead, diamonds on the tracks, the path on the stage
 - image-editor-keys.md: The image editor's keys: shortcuts, Escape on keydown, Enter and Space to focused buttons, arrows to sliders (ownsKey), focus kept after a panel redraw, panning
 - image-editor-layers.md: The image editor's layers and the Select tool: the layer box model, selection and handles, snapping, align, distribute, order, the layers list, keys, pasting a picture, and the overlay a save draws
 - image-editor-modal.md: The image editor core (window.PgImageEditor): files, loader, bundles, the pure model, labels via lang(), options, full screen, the phone layout, recording a change
@@ -240,7 +241,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - image-editor-vector.md: The image editor's vector pen: path layers as boxes with knots inside, drawing point by point, editing points and handles, smooth and corner, open and closed, convert to path
 - image-editor-versions.md: The image editor's versions (file_versions, 2026.11.0): base and save rows, what opening loads, what a save, restore and delete write, retention, the drawer, deleting a file, Disk Usage
 - image-editor-video.md: The image editor's MP4 and WebM output (AN6): WebCodecs with own MP4 and WebM muxers, the MediaRecorder fallback, the limits, the estimate from the bit rate
-- image-editor-workspace.md: Workspace canvas (E16, #4762): New canvas in a channel's Insert menu and a note's toolbar, saved through workspace_file_save.php with its document in file_versions, opened again with its layers
+- image-editor-workspace.md: Workspace canvas (E16 #4762, E16b): New canvas in a channel or note, saved with its document in file_versions and its pictures as files beside it, opened again with its layers
 - inline-feedback-placement.md: Where a panel field's error message goes on Bootstrap 6 (pgPlaceInlineFeedback(), #2578) and how script-set marks get aria-invalid and their message (pgFieldInvalid(), class observer, #3026)
 - installer-wizard-a11y.md: Installer wizard (install/index.php) from the keyboard and a screen reader: focus on step change, step status, rail current/Completed, step problems, the announced run, choice cards
 - key-code-shared-form.md: The key code create and edit screens share includes/forms/key_code_form.php: the checks, the offer-code clash, the values, the generator, what stays in the screens
@@ -305,7 +306,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - page-form-lazy-page-pickers.md: Create Page / Edit Page untyped page pickers carry only their stored page and fill from one <template> when opened (select_page(), pg_page_picker_lazy()); the page list is read once per request
 - page-form-number-ranges.md: Page form System Options number boxes (quiz pass percentage, day counts, photo gallery thumbnail size) refused out of range by pg_page_form_number_errors() instead of cut by their columns
 - page-form-refused-save.md: Create Page and Edit Page come back with what was typed when a save is refused: the stored post, the redraw helpers in includes/forms/page_form.php, what is not redrawn
-- page-list-paging.md: The pages list (view_pages.php) paged on the server (PR #6114, issues #6076 #6088): views, folder access in SQL, inherited styles from one folder read, SEO refresh before the fetch
+- page-list-paging.md: The pages list (view_pages.php) on the list table driver (paged since #6114, issues #6076 #6088): views, source, bulk actions by selection, folder access in SQL, inherited styles
 - page-shared-form.md: The page create and edit screens share includes/forms/page_form.php: the type picker and System Options card, and the save checks; what differs and what stays in the screens
 - page-style-screen-guards.md: Page style screens: which styles the custom edit screen opens, where View Source returns, how bulk delete reads its selection
 - pages-list-bulk-edit-fixes.md: Pages list and Mass Edit fixes (#5288-#5293): a deleted page in Delete Selected, too long values, Find & Replace skips, stale SEO scores, column names and row labels
