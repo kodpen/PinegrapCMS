@@ -19,7 +19,7 @@ description: Plan for the Hotel template (pinegrap-hotel): rooms as a collection
 ## Which steps are there?
 - 1 Done (#6216). Data and shared parts: `parts.php` (builders, the hotel's data, sample rooms, rates, plans, offers, vouchers, pick lists; account bar, header, footer, booking band, room, plan and offer cards, page shells, form fields, comment thread, staff bar); test `design_template_hotel_test.php`.
 
-- 2 Public pages: `pages_public.php` (home, about, dining, spa, location, offers, rates, FAQ).
+- 2 Done (#6283). Public pages: `pages_public.php`; home places `home_rooms` (step 3), `google_reviews`, `home_posts` (step 7).
 
 - 3 Rooms: `rooms.php` (`room_new` with the Rooms collection and samples, `rooms` with filters, `room` record page, the home's list widgets).
 
