@@ -66,7 +66,11 @@ $row = mysqli_fetch_row($result);
 $all_styles = $row[0];
 
 // get the number of folders and pages that use each style
-$style_usage = get_style_usage();
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/style_usage.php');
+$style_usage = pg_style_usage(
+    db_items("SELECT folder_id AS id, folder_parent AS parent_folder_id, folder_style AS style_id, mobile_style_id FROM folder"),
+    db_items("SELECT page_folder AS folder_id, page_style AS style_id, mobile_style_id FROM page")
+);
 
 
 $query =
@@ -200,138 +204,3 @@ pg_page_shell([
 output_footer();
 
 $liveform->remove_form('view_styles');
-
-// get the number of folders and pages that use each style
-// we pass data in arrays instead of performing a query at each branch of the folder tree for performance reasons
-function get_style_usage($parent_folder_id = 0, $style_id = 0, $mobile_style_id = 0, $folders = array(), $pages = array())
-{
-    $style_usage = array();
-    
-    // if this is the first time this function has run, then get all folders and pages
-    if ($parent_folder_id == 0) {
-        // get all folders
-        $query =
-            "SELECT
-                folder_id as id,
-                folder_parent as parent_folder_id,
-                folder_style as style_id,
-                mobile_style_id
-            FROM folder
-            ORDER BY folder_level, folder_order";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-        while ($row = mysqli_fetch_assoc($result)) {
-            // if this folder is the parent folder, then set styles
-            if ($row['id'] == $parent_folder_id) {
-                $style_id = $row['style_id'];
-                $mobile_style_id = $row['mobile_style_id'];
-            }
-            
-            $folders[] = $row;
-        }
-        
-        // get all pages
-        $query =
-            "SELECT
-                page_folder as folder_id,
-                page_style as style_id,
-                mobile_style_id
-            FROM page";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-        while ($row = mysqli_fetch_assoc($result)) {
-            $pages[] = $row;
-        }
-    }
-    
-    // increase the number of folders that use the desktop style
-    if (!isset($style_usage[$style_id])) {
-        $style_usage[$style_id] = array('number_of_folders' => 0, 'number_of_pages' => 0);
-    }
-    ++$style_usage[$style_id]['number_of_folders'];
-
-    // if the mobile style is not also the desktop style, then increase the number of folders that use the mobile style
-    // if they are using custom styles, then they could technically select the same style for both desktop and mobile,
-    // if that happens, we don't want to count the style twice for the same folder
-    if ($mobile_style_id != $style_id) {
-        if (!isset($style_usage[$mobile_style_id])) {
-            $style_usage[$mobile_style_id] = array('number_of_folders' => 0, 'number_of_pages' => 0);
-        }
-        ++$style_usage[$mobile_style_id]['number_of_folders'];
-    }
-    
-    $child_folders = array();
-    
-    // loop through folders array in order to get all folders that are in parent folder
-    foreach ($folders as $folder) {
-        // if the parent folder id for this folder is equal to the parent folder id, then this is a child folder, so add to array
-        if ($folder['parent_folder_id'] == $parent_folder_id) {
-            $child_folders[] = $folder;
-        }
-    }
-    
-    // loop through child folders
-    foreach ($child_folders as $folder) {
-        // if the child folder does not have a desktop style set, then set desktop style to inherited style
-        if ($folder['style_id'] == 0) {
-            $folder['style_id'] = $style_id;
-        }
-
-        // if the child folder does not have a mobile style set, then set mobile style to inherited style
-        if ($folder['mobile_style_id'] == 0) {
-            $folder['mobile_style_id'] = $mobile_style_id;
-        }
-        
-        $child_folder_style_usage = get_style_usage($folder['id'], $folder['style_id'], $folder['mobile_style_id'], $folders, $pages);
-        
-        // loop through child folder style usage, so that we can add values to array
-        foreach ($child_folder_style_usage as $key => $style_id_usage) {
-            if (!isset($style_usage[$key])) {
-                $style_usage[$key] = array('number_of_folders' => 0, 'number_of_pages' => 0);
-            }
-            $style_usage[$key]['number_of_folders'] = $style_usage[$key]['number_of_folders'] + $style_id_usage['number_of_folders'];
-            $style_usage[$key]['number_of_pages'] = $style_usage[$key]['number_of_pages'] + $style_id_usage['number_of_pages'];
-        }
-    }
-    
-    // loop through all pages in order to figure out which pages are in this folder
-    foreach ($pages as $page) {
-        // if this page is in the parent folder, then get style data for page
-        if ($page['folder_id'] == $parent_folder_id) {
-            // if this page has a desktop style set for it, then increment data for that desktop style
-            if ($page['style_id'] != 0) {
-                if (!isset($style_usage[$page['style_id']])) {
-                    $style_usage[$page['style_id']] = array('number_of_folders' => 0, 'number_of_pages' => 0);
-                }
-                ++$style_usage[$page['style_id']]['number_of_pages'];
-
-            // else this page does not have a desktop style set for it, so increment data for inherited desktop style
-            } else {
-                if (!isset($style_usage[$style_id])) {
-                    $style_usage[$style_id] = array('number_of_folders' => 0, 'number_of_pages' => 0);
-                }
-                ++$style_usage[$style_id]['number_of_pages'];
-            }
-
-            // if the mobile style is not also the desktop style, then increase the number of pages that use the mobile style
-            if ($page['mobile_style_id'] != $page['style_id']) {
-                // if this page has a mobile style set for it, then increment data for that mobile style
-                if ($page['mobile_style_id'] != 0) {
-                    if (!isset($style_usage[$page['mobile_style_id']])) {
-                        $style_usage[$page['mobile_style_id']] = array('number_of_folders' => 0, 'number_of_pages' => 0);
-                    }
-                    ++$style_usage[$page['mobile_style_id']]['number_of_pages'];
-
-                // else this page does not have a mobile style set for it, so increment data for inherited mobile style
-                } else {
-                    if (!isset($style_usage[$mobile_style_id])) {
-                        $style_usage[$mobile_style_id] = array('number_of_folders' => 0, 'number_of_pages' => 0);
-                    }
-                    ++$style_usage[$mobile_style_id]['number_of_pages'];
-                }
-            }
-        }
-    }
-    
-    return $style_usage;
-}
