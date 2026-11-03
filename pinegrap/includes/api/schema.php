@@ -2269,6 +2269,40 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Users ------------------------------------------------------- */
+
+		array(
+			'id'      => 'users.list',
+			'method'  => 'GET',
+			'path'    => '/users',
+			'scope'   => 'users:read',
+			'handler' => 'api_users_list',
+			'returns' => array('list' => 'User'),
+			'summary' => 'Panel users',
+			'description' => 'The accounts of the panel as the users screen lists them, for an HR, single sign-on or audit system: role (administrator, designer, manager, user), the rights stored on the account, the contact record it is linked to (customer_id, as under GET /customers/{id}), when it was last online, whether it signs in with a second factor (two_step: an authenticator app, passkeys, and whether its role is required to have one) and whether it is linked to a Google account. Roles 0 to 2 hold the module rights by their role; the permissions are what is stored for the user role, which they decide. No password, password hint, token, PIN, key or second-factor secret is ever answered. An application whose owner is an administrator reaches every account; one whose owner is a designer only the managers and users, as on the users screen. Cursor paged by id; there is no updated_since, as a sign-in or a second-factor change does not move updated_at.',
+			'params'  => array(
+				array('name' => 'role',        'in' => 'query', 'type' => 'enum', 'values' => array('administrator', 'designer', 'manager', 'user')),
+				array('name' => 'email',       'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Only the account with this e-mail address.'),
+				array('name' => 'customer_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the account linked to this customer record.'),
+				array('name' => 'limit',       'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',      'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'users.get',
+			'method'  => 'GET',
+			'path'    => '/users/{id}',
+			'scope'   => 'users:read',
+			'handler' => 'api_users_get',
+			'returns' => 'User',
+			'summary' => 'One panel user',
+			'description' => 'The same fields as the list, for one account; 404 for one the owner does not reach (a designer\'s application asking for an administrator or another designer).',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Operations --------------------------------------------------- */
 
 		array(

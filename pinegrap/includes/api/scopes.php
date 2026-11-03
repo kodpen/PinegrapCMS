@@ -125,6 +125,11 @@ function api_scope_groups() {
 		// them out and records their choice for the group's e-mail.
 		'contact_groups' => array('label' => 'Contact Groups', 'read' => 'contact_groups:read', 'write' => 'contact_groups:write'),
 
+		// The panel's accounts: role, rights, last online and second factor,
+		// never a password or a key. Read only for now; opening and closing
+		// accounts is a right of its own.
+		'users'     => array('label' => 'Users',      'read' => 'users:read',     'write' => ''),
+
 		// Who did what on the site, from which address. Read only.
 		'site_log'  => array('label' => 'Site Log',   'read' => 'site_log:read',  'write' => ''),
 
@@ -412,6 +417,12 @@ function api_owner_scopes($owner) {
 		// events.
 		$scopes[] = 'system:read';
 
+		// The users screen opens to managers too, but a list of every account
+		// with its rights and second factor is the map of who can reach what,
+		// so handing it to a machine sits with the same roles. A designer
+		// reaches the accounts below it, as on the screen.
+		$scopes[] = 'users:read';
+
 	}
 
 	// Site name, currency, tax rate, order status vocabulary. Read-only and
@@ -496,12 +507,13 @@ function api_assistant_scopes(array $groups, array $leave_out = array()) {
 
 // The reads an assistant's key is made without. Neither assistant needs them:
 // the owner's own bell and devices, codes a shopper could redeem, spendable
-// gift card codes, who did what from which address, and the firewall and
-// file integrity state with the audit trail. An administrator can still add any of them to the key
-// in Application Access.
+// gift card codes, who did what from which address, the firewall and file
+// integrity state with the audit trail, and the panel's accounts with their
+// rights. An administrator can still add any of them to the key in
+// Application Access.
 function api_assistant_scopes_left_out() {
 
-	return array('account:read', 'key_codes:read', 'gift_cards:read', 'site_log:read', 'system:read');
+	return array('account:read', 'key_codes:read', 'gift_cards:read', 'site_log:read', 'system:read', 'users:read');
 
 }
 
