@@ -65,8 +65,8 @@ function test_booking_step()
 	$entry = booking_slots_test_body($source, 'upgrade_to_2026_11_0');
 	$step = booking_slots_test_body($source, 'upgrade_2026_11_0_bookings');
 
-	pg_assert_true(preg_match('/upgrade_2026_11_0_bookings\(\);\s+\/\/ 11\.0\.153\b/', $entry) === 1, 'called with its label');
-	pg_assert_same(1, preg_match_all('/\/\/ 11\.0\.153\b/', $entry), 'the label is used once');
+	pg_assert_true(preg_match('/upgrade_2026_11_0_bookings\(\);\s+\/\/ 11\.0\.156\b/', $entry) === 1, 'called with its label');
+	pg_assert_same(1, preg_match_all('/\/\/ 11\.0\.156\b/', $entry), 'the label is used once');
 
 	foreach (array('booking_services', 'booking_staff', 'bookings') as $table) {
 		pg_assert_contains("install_create_table('" . $table . "', \"CREATE TABLE " . $table . ' (', $step);
