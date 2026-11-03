@@ -62,10 +62,9 @@ function pg_dashboard_widget_18($request, $user)
     $fm_largest_limit  = 5;
 
     // Exactly what optimize_image() accepts. 'tif' is absent on
-    // purpose: optimize.php answers that spelling with "we don't
-    // support optimizing that type of file", so offering the
+    // purpose: optimize.php refuses that spelling, so offering the
     // button for one would hand the operator a guaranteed error.
-    $fm_optimizable_types = array('jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp');
+    $fm_optimizable_types = pg_optimizable_image_types();
 
     // Everything counted as an image, which is the wider set: the
     // column stores whatever extension was uploaded, and a .tif

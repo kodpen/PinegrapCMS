@@ -66,9 +66,15 @@ if ($_POST) {
 				pg_connect_flash('error', implode(' ', array_merge($link['notices'], array($link['error']))));
 			}
 
+		} else {
+			pg_connect_flash('error', lang('The selected Google account is no longer connected for Search Console.'));
 		}
 
-	} elseif (($action === 'sync') && pg_gsc_linked()) {
+	} elseif ((($action === 'sync') || ($action === 'sitemap')) && !pg_gsc_linked()) {
+
+		pg_connect_flash('error', lang('The site is not linked to Search Console.'));
+
+	} elseif ($action === 'sync') {
 
 		$sync = pg_gsc_sync(120);
 
@@ -78,7 +84,7 @@ if ($_POST) {
 			pg_connect_flash('error', lang(array('string' => 'The search figures could not be downloaded yet: {var:1}', 'vars' => $sync['error'])));
 		}
 
-	} elseif (($action === 'sitemap') && pg_gsc_linked()) {
+	} elseif ($action === 'sitemap') {
 
 		$settings = pg_gsc_settings();
 		$account = pg_gsc_account();
@@ -219,7 +225,7 @@ if (!$linked) {
 
 	if (!$can_manage) {
 
-		$setup = '<p class="mb-0">' . h(lang('The site is not linked to Google Search Console yet. An administrator or a manager can link it here.')) . '</p>';
+		$setup = '<p class="mb-0">' . h(lang('The site is not linked to Google Search Console yet. An administrator, a designer or a manager can link it here.')) . '</p>';
 
 	} elseif (!pg_connect_can_seal() || !pg_connect_app_ready(pg_connect_app('google'))) {
 
@@ -319,7 +325,11 @@ if (!$linked) {
 
 		$period = pg_gsc_period($latest, $days);
 		$now = pg_gsc_totals($period['from'], $period['to']);
-		$before = pg_gsc_totals($period['previous_from'], $period['previous_to']);
+		// Days never downloaded would count as zero, so the period before
+		// is compared with only when the download reaches back to its start.
+		$before = pg_gsc_comparable(pg_gsc_oldest_day(), $period['previous_from'])
+			? pg_gsc_totals($period['previous_from'], $period['previous_to'])
+			: null;
 		$daily = pg_gsc_daily($period['from'], $period['to']);
 
 		$chart = array('labels' => array(), 'clicks' => array(), 'impressions' => array());
@@ -349,17 +359,26 @@ if (!$linked) {
 				<div class="col-6 lg:col-3"><div class="card h-100"><div class="card-body">
 					<div class="small text-uppercase fg-secondary">' . h($label) . '</div>
 					<div class="h4 mb-0">' . $value . '</div>
-					<div class="small fg-secondary">' . (($change !== '') ? $change . ' ' : '') . h($note) . '</div>
+					' . (($change !== '') ? '<div class="small fg-secondary">' . $change . ' ' . h($note) . '</div>' : '') . '
 				</div></div></div>';
 		};
 
 		$compare = lang(array('string' => 'against the {var:1} days before', 'vars' => $days));
 
+		$changes = is_array($before)
+			? array(
+				'clicks'      => search_console_change($now['clicks'], $before['clicks']),
+				'impressions' => search_console_change($now['impressions'], $before['impressions']),
+				'ctr'         => search_console_change($now['ctr'], $before['ctr']),
+				'position'    => search_console_change($now['position'], $before['position'], true),
+			)
+			: array('clicks' => '', 'impressions' => '', 'ctr' => '', 'position' => '');
+
 		$tiles =
-			$tile(lang('Clicks'), search_console_number($now['clicks']), search_console_change($now['clicks'], $before['clicks']), $compare)
-			. $tile(lang('Impressions'), search_console_number($now['impressions']), search_console_change($now['impressions'], $before['impressions']), $compare)
-			. $tile(lang('Click rate'), search_console_percent($now['ctr']), search_console_change($now['ctr'], $before['ctr']), $compare)
-			. $tile(lang('Average position'), ($now['impressions'] > 0) ? search_console_number($now['position'], 1) : '–', search_console_change($now['position'], $before['position'], true), $compare);
+			$tile(lang('Clicks'), search_console_number($now['clicks']), $changes['clicks'], $compare)
+			. $tile(lang('Impressions'), search_console_number($now['impressions']), $changes['impressions'], $compare)
+			. $tile(lang('Click rate'), search_console_percent($now['ctr']), $changes['ctr'], $compare)
+			. $tile(lang('Average position'), ($now['impressions'] > 0) ? search_console_number($now['position'], 1) : '–', $changes['position'], $compare);
 
 		$table = function ($kind, $label) use ($period) {
 

@@ -8,6 +8,8 @@ description: Product import rows left out and why each list says so (too large, 
   - a price, compare-at price or extra shipping cost that is not an amount (`rows_not_amounts`), or one above `PG_PRODUCT_PRICE_MAX` / with more than 15 digits (`rows_price_too_large`, "…is too large (at most ₺21.474.836,47)", the top through `pg_money_text()` in the base currency);
   - a weight, length, width or height above decimal(12,4)'s top (`rows_decimal_too_large`), or a decimal cell or stock cell that is no number at all (`rows_not_numbers`);
   - a stock cell with a fraction or a minus sign (`rows_quantity_not_whole`, "…is not a whole number of zero or more"), or one above the column (`rows_quantity_too_large`);
+  - a name or short description longer than its varchar(100) column (`rows_text_too_long`, `pg_products_import_row_text_too_long()`, characters not bytes): cut to 100 it was stored under a name the file does not hold, so each re-import added the product again (#5308);
+  - a tax rate cell that is no number or outside 0..100 (`rows_tax_rate_not_valid`, `pg_tax_rate_problem()`): `parse_tax_rate()` stored 100 for 150 (#5309);
   - an HS code or country of origin that cannot be stored (`rows_not_customs`);
   - a product in the Recycle Bin (`rows_binned`).
 - The readers are pure, in `includes/fn/ecommerce.php`: `pg_products_import_price_read()` (`cents`, `too_large`), `pg_products_import_row_prices()` (adds `too_large`), `pg_products_import_row_decimals_problem()` (`''`, `not_number`, `too_large`), `pg_products_import_quantity_refusal()` (`not_whole`, `not_number`, called once `pg_products_mass_quantity_value()` gave null).

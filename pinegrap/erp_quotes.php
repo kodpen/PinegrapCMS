@@ -116,7 +116,7 @@ pg_page_shell([
             ' . $output_filter_note . '
 
             <div class="card my-7">
-                <div class="card-body p-0 table-responsive">
+                <div class="card-body p-0 table-responsive position-relative">
                     <table class="table table-hover align-middle mb-0" data-pg-sort>
                         <thead>
                             <tr>

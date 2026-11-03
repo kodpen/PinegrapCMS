@@ -183,3 +183,30 @@ function test_cron_pick_job_without_row_is_due()
 
 	pg_assert_same('heavy_a', pg_cron_pick($jobs, array(), 1000000)['heavy']);
 }
+
+// Inside a lane the job due longer goes first, not the one with the older
+// stamp: a resumable daily pass that asks to come back in a minute carries a
+// stamp almost a day old, and on the stamp it beat the hourly search index on
+// every tick until the whole pass had ended.
+function test_cron_pick_lane_by_due_time()
+{
+	$now = 1000000;
+
+	$jobs = array(
+		'index'     => array('dispatch' => true, 'interval' => 3600, 'lane' => 'heavy'),
+		'structure' => array('dispatch' => true, 'interval' => 86400, 'lane' => 'heavy'),
+	);
+
+	$runs = array(
+		'index'     => array('last_run_at' => $now - 7200, 'locked_until' => 0),
+		'structure' => array('last_run_at' => pg_cron_due_again_stamp($now - 60, 86400, 60), 'locked_until' => 0),
+	);
+
+	// The index was due an hour ago, the pass just now.
+	pg_assert_same('index', pg_cron_pick($jobs, $runs, $now)['heavy'], 'due longer');
+
+	// Once the index has run, the pass carries on.
+	$runs['index']['last_run_at'] = $now - 60;
+
+	pg_assert_same('structure', pg_cron_pick($jobs, $runs, $now)['heavy'], 'pass resumes');
+}

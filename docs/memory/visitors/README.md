@@ -36,6 +36,7 @@ Visitor statistics, page and article views, search engine index flags.
 - panel-preview-not-a-visit.md: The File Manager's page previews (preview pane, Quick look) load the page with pg_preview=1; get_page.php opens no visitor record and counts no page view for them
 - robots-large-image-preview.md: The site switch that adds max-image-preview:large to every indexed page's robots meta (config.max_image_preview_large, 11.0.51, #2175): default, new installs, where it is written
 - robots-txt-disallow-rules.md: How noindex pages are written into robots.txt: anchored lines, which User-agent group, private folders, and the no-noindex byte-identical guarantee.
+- search-console-screen-messages.md: Google Search Console screen: when the tiles compare with the period before, and the messages its link, download and sitemap buttons leave
 - seo-structure-non-html-output.md: Pages may output JSON/XML/CSV, so SEO/structure rules must not assume an HTML document; what the structure check does with such output and the robots splice risk.
 - site-search-rollup.md: site_search_daily (11.0.147), the per-day search rollup: who counts, once per visit, the signed result click through page_view.php, the 400-day sweep.
 - site-search-terms-on-visit.md: Who writes visitors.site_search_terms, and why the search widget writes it only on the first results page
@@ -55,3 +56,4 @@ Visitor statistics, page and article views, search engine index flags.
 - visitor-rollup-tables.md: The hourly visitor summary tables (visitor_stats_hourly, visitor_content_hourly), bucket_key hashing, and how content items are identified (2026.3.4).
 - visitor-table-size-figures.md: Where the visitor card, the System Status line and the shrink/move before-after sizes get their record count and file size, and how each figure says its source
 - visitor-texts-list.md: Referring address and user agent of a visit kept once each in visitor_texts and named by number in visitors (step 10.6): writer, readers, prune, old rows, upgrade limits
+- web-vitals-ai-visibility-decisions.md: Decisions behind the page speed figures and the AI visibility view (owner 2026-11-02, #5040): privacy, where the beacon is off, derived data, table shapes, unverified bots, where the screens go

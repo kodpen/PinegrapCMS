@@ -21,4 +21,4 @@ description: AI fetch counter: ai_fetch_daily (day|bot|page_id), written at requ
 ## Which rules hold for the table?
 - Derived data (`visitor-rollup-consistency.md`): a wrong bucket is truncated, never fixed in place; read with `SUM(fetches)`.
 - Retention: 400 days, swept by the general job (`ai-visibility-figures.md`).
-- Tests: `tests/ai_visibility_fetch_counter_test.php`. PR: #5398 (WV3 of `plans/web-vitals-ai-visibility.md`).
+- Tests: `tests/ai_visibility_fetch_counter_test.php`. PR: #5398.

@@ -92,7 +92,9 @@ function erp_quote_link_expires_at($valid_until)
  *   used      the customer accepted through it
  *   expired   past expires_at
  *   accepted  the quote was accepted another way
- *   closed    the quote is expired, invoiced, cancelled or rejected
+ *   closed    the quote is expired, invoiced, cancelled or rejected, or
+ *             it was signed once and opened again (one signature per
+ *             document, so a second one would be refused)
  *   open      the customer may accept
  *
  * Pure but for erp_quote_state()'s today.
@@ -124,11 +126,29 @@ function erp_quote_link_state(array $link, array $quote, $now)
         return 'accepted';
     }
 
-    if (($state !== 'open') || (erp_quote_status_refusal($quote, 'accepted') !== '')) {
+    if (($state !== 'open') || !empty($quote['signed']) || (erp_quote_status_refusal($quote, 'accepted') !== '')) {
         return 'closed';
     }
 
     return 'open';
+}
+
+/**
+ * The quote a link works on, with 'signed' set when it already carries the
+ * customer's signature, as erp_quote_link_state() asks.
+ *
+ * @param int $quote_id
+ * @return array|null
+ */
+function erp_quote_link_quote($quote_id)
+{
+    $quote = erp_quote($quote_id);
+
+    if ($quote !== null) {
+        $quote['signed'] = (function_exists('erp_signature') && (erp_signature('quote', (int) $quote['id']) !== null)) ? 1 : 0;
+    }
+
+    return $quote;
 }
 
 /**
@@ -258,10 +278,14 @@ function erp_quote_link_issue($quote_id, $user_id, $replace = true)
         return $fail(lang('Guest links of quotes come with the software update; run the update to use them.'));
     }
 
-    $quote = erp_quote($quote_id);
+    $quote = erp_quote_link_quote($quote_id);
 
     if ($quote === null) {
         return $fail(lang('The quote could not be found.'));
+    }
+
+    if (!empty($quote['signed'])) {
+        return $fail(lang('The quote is signed already, so it cannot be sent as a guest link.'));
     }
 
     if ((erp_quote_state($quote) !== 'open') || (erp_quote_status_refusal($quote, 'accepted') !== '')) {
@@ -315,7 +339,7 @@ function erp_quote_link_accept($token, $png, $signer_name)
     };
 
     $link = erp_quote_link_for_token($token);
-    $quote = is_array($link) ? erp_quote((int) $link['quote_id']) : null;
+    $quote = is_array($link) ? erp_quote_link_quote((int) $link['quote_id']) : null;
 
     if (($link === null) || ($quote === null) || (erp_quote_link_state($link, $quote, time()) !== 'open')) {
         return $fail(lang('This quote can no longer be accepted through this link.'));

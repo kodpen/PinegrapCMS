@@ -848,6 +848,12 @@ function pg_a11y_run($time_budget)
     // Without a place ('after') a new pass starts and counts from zero.
     $pass_checked = (is_array($state) && isset($state['after'], $state['checked'])) ? (int) $state['checked'] : 0;
     $pass_failed = (is_array($state) && isset($state['after'], $state['failed'])) ? (int) $state['failed'] : 0;
+    // When this pass began and when the last finished one did: the Search
+    // and audits card shows the failure lines from the last finished pass on.
+    $cursor = array(
+        'started'      => (is_array($state) && isset($state['after'], $state['started'])) ? (int) $state['started'] : time(),
+        'last_started' => (is_array($state) && isset($state['last_started'])) ? (int) $state['last_started'] : 0,
+    );
     $pages = pg_a11y_pages();
     $checked = 0;
     $failed = 0;
@@ -874,7 +880,7 @@ function pg_a11y_run($time_budget)
         @file_put_contents(pg_a11y_state_path(), json_encode(array(
             'after'   => $after,
             'checked' => $pass_checked + $checked,
-            'failed'  => $pass_failed + $failed)), LOCK_EX);
+            'failed'  => $pass_failed + $failed) + $cursor), LOCK_EX);
     }
 
     db(
@@ -884,7 +890,9 @@ function pg_a11y_run($time_budget)
             AND (LEFT(code, 5) = 'a11y_')
             AND (entity_id NOT IN (" . ($pages ? implode(',', array_keys($pages)) : '0') . "))");
 
-    @unlink(pg_a11y_state_path());
+    // Finished: no cursor ('after') is left, so the next run starts again
+    // from the first page; only the start of this pass is kept.
+    @file_put_contents(pg_a11y_state_path(), json_encode(array('last_started' => $cursor['started'])), LOCK_EX);
 
     // What the report, its PDF and the statement say was checked: the pages
     // this pass rendered, not every page in the scope.

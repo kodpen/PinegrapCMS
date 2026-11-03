@@ -121,7 +121,19 @@ function pg_file_serve_cached_copy($id, $type, $size)
 
     clearstatcache(true, $path);
 
-    return (is_file($path) && ((int) @filesize($path) === (int) $size)) ? $path : '';
+    if (!is_file($path) || ((int) @filesize($path) !== (int) $size)) {
+        return '';
+    }
+
+    // Used now, as pg_file_cache_used() marks it: the access time only, the
+    // modification time is what a derivative's signature reads.
+    $mtime = @filemtime($path);
+
+    if ($mtime !== false) {
+        @touch($path, (int) $mtime, time());
+    }
+
+    return $path;
 }
 
 

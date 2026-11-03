@@ -467,7 +467,9 @@ function pg_file_image_dimensions($file)
         return array((int) $file['image_width'], (int) $file['image_height']);
     }
 
-    $size = @getimagesize(FILE_DIRECTORY_PATH . '/' . $file['name']);
+    // Never fetched from the object store here: a list measures many files.
+    $path = function_exists('pg_file_present_path') ? pg_file_present_path($file) : FILE_DIRECTORY_PATH . '/' . $file['name'];
+    $size = ($path !== '') ? @getimagesize($path) : false;
 
     $width  = isset($size[0]) ? (int) $size[0] : 0;
     $height = isset($size[1]) ? (int) $size[1] : 0;
@@ -1690,8 +1692,11 @@ function pg_image_derivative_sweep_run($directory, $seconds = 10)
 
         $names = array();
 
-        foreach ((array) db_items("SELECT id, name FROM files WHERE id IN (" . implode(',', $chunk) . ")") as $row) {
+        $rows = array();
+
+        foreach ((array) db_items("SELECT id, name, type FROM files WHERE id IN (" . implode(',', $chunk) . ")") as $row) {
             $names[(int) $row['id']] = (string) $row['name'];
+            $rows[(int) $row['id']] = $row;
         }
 
         foreach ($chunk as $id) {
@@ -1706,8 +1711,11 @@ function pg_image_derivative_sweep_run($directory, $seconds = 10)
             $source = null;
 
             if (isset($names[$id])) {
-                $path = FILE_DIRECTORY_PATH . '/' . $names[$id];
-                $mtime = @filemtime($path);
+                // A stored file's derivatives were made from its cached copy
+                // and are signed with the copy's time; without the copy they
+                // cannot be matched, and a new copy signs anew.
+                $path = function_exists('pg_file_present_path') ? pg_file_present_path($rows[$id]) : FILE_DIRECTORY_PATH . '/' . $names[$id];
+                $mtime = ($path !== '') ? @filemtime($path) : false;
                 $size = @filesize($path);
 
                 if (($mtime !== false) && ($size !== false)) {
@@ -2033,3 +2041,29 @@ function pg_image_warmup_run($directory, $seconds = 10, $settings = null, $fetch
     return $result;
 }
 
+/**
+ * The file types optimize_image() (optimize_image.php) compresses or resizes.
+ * 'tif' is not among them: the optimizer has never taken that spelling.
+ *
+ * @return array lower-case extensions
+ */
+function pg_optimizable_image_types()
+{
+    return array('jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp');
+}
+
+/**
+ * The answer for a file the image optimizer does not take: the file's name,
+ * its type and the list of the types it does take.
+ *
+ * @param string $name the file name
+ * @param string $type its extension as stored in files.type
+ * @return string plain text
+ */
+function pg_optimize_unsupported_message($name, $type)
+{
+    return lang(array(
+        'string' => 'Sorry, {var:1} cannot be optimized: its file type ({var:2}) is not supported. The following types are supported: {var:3}.',
+        'vars'   => array((string) $name, mb_strtolower((string) $type), implode(', ', pg_optimizable_image_types())),
+    ));
+}

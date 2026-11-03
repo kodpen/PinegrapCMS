@@ -20,7 +20,7 @@ description: Steps VA1-VA6 of plans/voice-to-assistants.md: deaf hint, keyless h
   - The voice card gets a speech part: OpenAI-compatible `/audio/speech`, with the same address and key by default, a model and a voice from a list, stored as `config_text` rows. The consent line names the provider.
   - `ws_voice_speak($text, $locale)` is a pure request builder plus `api_http_request()`. It returns a file kept like a recording: a `voice-…` name and a `done` `ws_voice` row whose transcript is the text. Text over 1,500 characters is cut at a sentence end.
 
-- VA4 (M) Spoken answers. After VA3; question 2 is decided (#5390).
+- VA4 (M) Spoken answers. Done, #5805 (`workspace/workspace-voice-spoken-answers.md`).
   - Where an assistant's answer is written (Claude's answer route, Pinegrap AI, MCP agents), an answer to a recording gets its sound from `ws_voice_speak()` on the same message.
   - Without a speech service, the asker's browser reads the answer aloud (`speakAnswer()`). This applies in channels and discussions alike, and the answer's text stays as it is.
 

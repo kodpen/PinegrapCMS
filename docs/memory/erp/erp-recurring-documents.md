@@ -22,3 +22,5 @@ description: Repeating ERP expenses (4.96) and invoices (4.93): what may repeat,
 ## How is a recurrence stopped or restarted?
 - Stopping keeps what it wrote. A stopped recurrence row is not started again; starting the document again writes a new row. One active recurrence per source document.
 - A restarted expense repeat goes on from the stopped one's `next_date`, stepped to today, and never writes a past period again; the new row keeps the first expense's `source_expense_id`, so `erp_expense_recurrence_of()` finds the same repeat from any of its expenses (#1227, erp-expense-recurring-restart.md).
+- A new invoice repeat never starts in the past: the card proposes the later of one period after the invoice and tomorrow (`erp_invoice_recurring_first_default()`), with `min` on its date inputs, and `erp_invoice_recurrence_create()` refuses a first date before today; running repeats keep the 12-date catch-up, which is for missed job runs only (#5322).
+- Deleting a draft a repeat wrote clears that repeat's `last_invoice_id`; the repeats screen and the API read the last invoice through the join, so an id with no row shows as none (#5304).

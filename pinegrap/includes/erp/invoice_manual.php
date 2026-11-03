@@ -1008,7 +1008,10 @@ function erp_invoice_draft_delete($invoice_id)
     }
 
     if ((erp_query("DELETE FROM erp_invoice_items WHERE invoice_id = '" . $invoice_id . "'") === false)
-        || (erp_query("DELETE FROM erp_invoices WHERE id = '" . $invoice_id . "' AND status = 'draft'") === false)) {
+        || (erp_query("DELETE FROM erp_invoices WHERE id = '" . $invoice_id . "' AND status = 'draft'") === false)
+        // A repeat that wrote this draft no longer points at it.
+        || (function_exists('erp_invoice_recurring_ready') && erp_invoice_recurring_ready()
+            && (erp_query("UPDATE erp_invoice_recurrences SET last_invoice_id = 0 WHERE last_invoice_id = '" . $invoice_id . "'") === false))) {
         $error = erp_db_error();
         erp_tx_rollback();
         return $fail($error);

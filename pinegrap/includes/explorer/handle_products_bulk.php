@@ -224,6 +224,44 @@ function pg_products_mass_change_besides_price($post, $quantity_value)
         || ((string) ($post['edit_tax_rate_method'] ?? '') !== '');
 }
 
+// Why the product list's Modify Selected submit cannot be carried out, or ''
+// when it can: a stock process with no figure ('quantity_missing'), a tax
+// rate to set with none or no number ('tax_rate_missing'), one outside
+// 0..100 ('tax_rate_range'), or a shipping zone both allowed and disallowed
+// ('zones_overlap': the allow ran first and the disallow removed it again).
+// The screen refuses the whole submit, before any product is touched.
+function pg_products_mass_edit_problem($post)
+{
+    $process = (string) ($post['edit_inventory_quantity_process'] ?? '');
+
+    if (in_array($process, array('value', 'increase', 'decrease'), true)
+        && (trim((string) ($post['edit_inventory_quantity'] ?? '')) === '')) {
+        return 'quantity_missing';
+    }
+
+    if ((string) ($post['edit_tax_rate_method'] ?? '') === 'set') {
+        $rate = (string) ($post['edit_tax_rate_value'] ?? '');
+        $problem = pg_tax_rate_problem($rate);
+
+        if ($problem === 'out_of_range') {
+            return 'tax_rate_range';
+        }
+
+        if (($problem !== '') || (trim($rate) === '')) {
+            return 'tax_rate_missing';
+        }
+    }
+
+    $allowed = array_filter(array_map('trim', explode(',', (string) ($post['edit_allowed_zones'] ?? ''))), 'strlen');
+    $disallowed = array_filter(array_map('trim', explode(',', (string) ($post['edit_disallowed_zones'] ?? ''))), 'strlen');
+
+    if (array_intersect($allowed, $disallowed)) {
+        return 'zones_overlap';
+    }
+
+    return '';
+}
+
 // ── Bulk product edit: the choices the panel can offer ──────────
 //
 // Which fields the panel draws depends on what this installation

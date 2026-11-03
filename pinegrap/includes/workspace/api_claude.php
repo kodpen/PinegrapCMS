@@ -961,6 +961,12 @@ function ws_api_claude_answer($params)
         api_fail_validation($sent['error'], 'text');
     }
 
+    // An answer to a recording is heard back: its sound is made and kept on
+    // the same message where the speech service is set (voice.php).
+    if (function_exists('ws_voice_answer_spoken')) {
+        ws_voice_answer_spoken($channel, (int) $sent['message_id'], (int) $row['message_id'], $text, (int) $row['requested_by']);
+    }
+
     $now = time();
 
     foreach ($drafts as $draft) {

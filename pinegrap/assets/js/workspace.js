@@ -13870,13 +13870,16 @@
         // (ws_mcp_agent_heard()).
         // An assistant's answer to the viewer's own message, come in while the
         // conversation is open and in sight, read aloud for a person who
-        // switched it on in this browser (the channel menu). Code blocks,
-        // buttons and change cards are left out of what is read.
+        // switched it on in this browser (the channel menu). An answer to the
+        // viewer's own recording is heard whatever the switch says: the sound
+        // the site made with its speech service is played, else this browser
+        // reads the words. Code blocks, buttons and change cards are left out
+        // of what is read.
         speakAnswer: function (message, node) {
             var voice = window.PGWsVoice;
             var sender = message.sender || {};
 
-            if (!voice || !voice.speakSupported() || !voice.speakOn(CFG.api_url, CFG.me) || document.hidden || !node
+            if (!voice || document.hidden || !node
                 || (message.sender_kind !== 'app') || !(sender.claude || sender.ai || sender.mcp) || !message.parent_id) {
                 return;
             }
@@ -13885,6 +13888,25 @@
             var body = node.querySelector('.ws-msg-body');
 
             if (!parent || !parent.mine || !body) {
+                return;
+            }
+
+            var asked = this.answersRecording(parent);
+
+            if (asked && message.file && (message.file.kind === 'audio')) {
+                var audio = node.querySelector('audio');
+                var playing = (audio && audio.play) ? audio.play() : null;
+
+                // A browser that allows no sound without a gesture refuses
+                // quietly; the player stays for a click.
+                if (playing && playing.catch) {
+                    playing.catch(function () {});
+                }
+
+                return;
+            }
+
+            if (!voice.speakSupported() || (!asked && !voice.speakOn(CFG.api_url, CFG.me))) {
                 return;
             }
 
@@ -13899,6 +13921,14 @@
 
         voiceAnswers: function (message) {
             return !!message;
+        },
+
+        // Whether a message is a recording (or a spoken answer, named the
+        // same): an answer to it is heard back.
+        answersRecording: function (message) {
+            var file = (message && message.file) || null;
+
+            return !!(file && (file.kind === 'audio') && window.PGWsVoice && window.PGWsVoice.isVoice(file.name));
         },
 
         // Whether a sound in the conversation gets the microphone that

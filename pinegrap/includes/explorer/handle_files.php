@@ -80,9 +80,11 @@ function pg_explorer_handle_paste($type, $request, $user)
                     break;
                 }
 
-                $source_path = FILE_DIRECTORY_PATH . '/' . $file['name'];
+                // A stored file is copied from its cached copy; the copy is
+                // a new local file the move job sends on.
+                $source_path = pg_file_reader_path($file['name']);
 
-                if (file_exists($source_path) == false) {
+                if (($source_path === '') || (file_exists($source_path) == false)) {
                     $errors[] = lang(array('string' => 'The file does not exist on the file system ({var:1}).', 'vars' => $file['name']));
                     break;
                 }

@@ -1011,7 +1011,7 @@ function erp_api_invoice_recurrences_ready()
 function erp_api_invoice_recurrence_select()
 {
     return "SELECT r.id, r.source_invoice_id, r.account_id, r.every_months, r.day_of_month, r.next_date, r.end_date,
-            r.mode, r.grand_total, r.currency, r.occurrences, r.last_invoice_id, r.last_error, r.status,
+            r.mode, r.grand_total, r.currency, r.occurrences, IFNULL(l.id, 0) AS last_invoice_id, r.last_error, r.status,
             r.stopped_at, r.created_at, r.updated_at,
             a.title AS account_title, s.full_number AS source_number, l.full_number AS last_number
         FROM erp_invoice_recurrences r

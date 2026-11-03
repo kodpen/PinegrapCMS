@@ -94,6 +94,12 @@ if (!$ready) {
     $liveform->mark_error('', lang('Account prices come with the software update; run the update to use them.'));
 }
 
+// Purchase documents never read these terms (the invoice editor applies them
+// on sales only), so a supplier's page says so instead of looking in force.
+if ($ready && ((string) $account['kind'] === 'supplier')) {
+    $liveform->add_warning(h(lang('This account is a supplier only. Account prices apply to sales only (invoices, quotes and the store), never to purchases.')));
+}
+
 // The products' price and discount change in place, saved as soon as they
 // are typed.
 $quick_edit = (!$readonly && $ready) ? erp_account_price_edit_columns() : array();

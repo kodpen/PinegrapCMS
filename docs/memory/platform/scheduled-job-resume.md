@@ -11,7 +11,7 @@ module: cron
 
 ## What does an unfinished pass do at the end of its tick?
 - `pg_cron_due_again($name, 60)`: `last_run_at` moved back to `now - interval + 60` (`pg_cron_due_again_stamp()`, never later than now), so the job is due in a minute instead of after its interval. `pg_cron_dispatch_finished()` keeps that time instead of stamping the tick.
-- Jobs that waited longer still go first in their lane (`pg_cron_pick()`, smallest `last_run_at`). Between lanes the job due longer (last run plus interval) goes first, light on a tie (`pg_cron_lane_choice()`): compared on last run, a heavy pass asking to come back every minute carried a day-old stamp and won every tick while the light jobs waited.
+- The job due longer (last run plus interval) goes first, in its lane (`pg_cron_pick()`, catalogue order on a tie; the legacy dispatcher too) and between lanes (`pg_cron_lane_choice()`, light on a tie). Compared on last run, a pass asking to come back every minute carried a day-old stamp and won every tick: first over the light jobs, then (until the bug-hunt fix) over the hourly search index in the heavy lane for the whole structure or accessibility pass.
 - `seo_a11y_job` and `seo_analyze_job` lock for 600 s, not the default hour: a tick works one budget.
 
 ## How do the health screens tell a finished run from a stamped tick?

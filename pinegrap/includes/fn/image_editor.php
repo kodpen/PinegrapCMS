@@ -606,8 +606,11 @@ function pg_image_editor_file($file_id, $user)
         return array('refusal' => pg_image_editor_refusal(lang('Access denied'), 403));
     }
 
-    $path = FILE_DIRECTORY_PATH . '/' . $row['name'];
-    $size = is_file($path) ? @getimagesize($path) : false;
+    // Read from the object store's cached copy for a stored file; every
+    // write goes to the file directory (local), which the general job then
+    // takes as the file's bytes (pg_file_storage_reconcile_run()).
+    $path = pg_file_local_copy((int) $row['id']);
+    $size = (($path !== '') && is_file($path)) ? @getimagesize($path) : false;
 
     // A picture the browser shows and the engine writes back; a browser shows
     // no TIFF.
@@ -623,6 +626,7 @@ function pg_image_editor_file($file_id, $user)
         'refusal'  => null,
         'row'      => $row,
         'path'     => $path,
+        'local'    => FILE_DIRECTORY_PATH . '/' . $row['name'],
         'type'     => (int) $size[2],
         'animated' => $animated,
         // A design file is written over only by administrators (0) and
@@ -2285,9 +2289,12 @@ function pg_image_editor_action_restore($request, $user)
 
     $data = @file_get_contents(pg_file_versions_path($row));
 
-    if (!is_string($data) || !pg_image_editor_put($file['path'], $data)) {
+    if (!is_string($data) || !pg_image_editor_put($file['local'], $data)) {
         return pg_image_editor_refusal(lang('Sorry, the file could not be saved.'));
     }
+
+    // The restored bytes are the file now, whatever was read before.
+    $file['path'] = $file['local'];
 
     $record = pg_image_editor_record('replace', (string) $file['row']['name'], (int) $file['row']['folder'], (string) $file['row']['type'], $file['row'], $user);
 
@@ -3102,7 +3109,7 @@ function pg_image_editor_svg_file($file_id, $user)
     return array(
         'refusal' => null,
         'row'     => $row,
-        'path'    => FILE_DIRECTORY_PATH . '/' . $row['name'],
+        'path'    => pg_file_local_copy((int) $row['id']),
         // A design file is written over only by administrators and designers.
         'replace' => !(((int) $row['design'] === 1) && ($user['role'] > 1)));
 }

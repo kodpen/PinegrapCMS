@@ -125,7 +125,7 @@ $order_by = pg_list_order_by($sort_levels, array(
 
 $kept_extras = $kept ? h('&' . http_build_query($kept)) : '';
 
-$where = pg_not_found_log_where(array('since' => pg_not_found_log_since(), 'who' => $who, 'search' => $search));
+$where = pg_not_found_log_where(array('since' => pg_not_found_log_since(), 'who' => $who, 'search' => $search, 'turkish' => pg_list_search_turkish_charset()));
 
 // One row per address, so the counts are sums and the rows are counted.
 $summary = db_item(
@@ -151,6 +151,11 @@ $answers = pg_not_found_log_answers(array_column($rows, 'path'));
 
 $output_rows = '';
 
+// table.chart cells keep to one line; the address, its note and the referrer
+// wrap inside a bounded width instead, so a long address or the Recycle Bin
+// note does not push the counts and dates off the screen.
+$wrap_style = 'white-space: normal; min-width: 12rem; max-width: 28rem; overflow-wrap: anywhere';
+
 foreach ($rows as $row) {
     $path = (string) $row['path'];
     $answer = isset($answers[$path]) ? $answers[$path] : null;
@@ -167,6 +172,8 @@ foreach ($rows as $row) {
         // pattern.
         $output_state = ' <span class="badge rounded-pill badge-subtle theme-secondary border">' . h(($answer['state'] === 'pattern') ? lang('Wildcard') : lang('Short link')) . '</span>';
         $output_create = '<a class="m-1 btn-data-control btn btn-outline theme-primary border-2" href="edit_short_link.php?id=' . (int) $answer['id'] . h('&send_to=' . urlencode($log_url)) . '" title="' . h(lang('Edit')) . '" aria-label="' . h(lang('Edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></a>';
+    } elseif ($answer['state'] === 'reserved') {
+        $output_state = '<div class="small fg-secondary">' . h(lang('This address starts with a language directory, so a short link cannot have this name.')) . '</div>';
     } elseif ($answer['state'] === 'binned') {
         $output_state = '<div class="small fg-secondary">' . h(lang('A short link in the Recycle Bin has this name: restore it, or delete it for good, in the File Manager.')) . '</div>';
     } else {
@@ -184,10 +191,10 @@ foreach ($rows as $row) {
                 <a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" href="' . OUTPUT_PATH . h(encode_url_path($path)) . '" target="_blank" rel="noopener" title="' . h(lang('Visit')) . '" aria-label="' . h(lang('Visit')) . '"><i class="bi bi-link" aria-hidden="true"></i></a>
                 <button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 no-submit pg-404-delete" data-id="' . (int) $row['id'] . '" data-path="' . h($path) . '" title="' . h(lang('Delete')) . '" aria-label="' . h(lang('Delete')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>
             </td>
-            <td class="align-middle chart_label"><span class="font-monospace text-break">' . $address . '</span>' . $output_state . '</td>
+            <td class="align-middle chart_label"><div style="' . $wrap_style . '"><span class="font-monospace text-break">' . $address . '</span>' . $output_state . '</div></td>
             <td class="align-middle" data-order="' . $hits . '">' . pg_format_number($hits, 0) . '</td>
             <td class="align-middle" data-order="' . $crawler_hits . '">' . (($crawler_hits > 0) ? pg_format_number($crawler_hits, 0) : '<span class="fg-secondary">-</span>') . '</td>
-            <td class="align-middle small text-break">' . (($referrer !== '') ? h(mb_substr($referrer, 0, 90, 'UTF-8')) . ((mb_strlen($referrer, 'UTF-8') > 90) ? '…' : '') : '<span class="fg-secondary">-</span>') . '</td>
+            <td class="align-middle small">' . (($referrer !== '') ? '<div class="text-break" style="' . $wrap_style . '">' . h(mb_substr($referrer, 0, 90, 'UTF-8')) . ((mb_strlen($referrer, 'UTF-8') > 90) ? '…' : '') . '</div>' : '<span class="fg-secondary">-</span>') . '</td>
             <td class="align-middle text-nowrap" data-order="' . (int) $row['first_seen'] . '">' . get_relative_time(array('timestamp' => (int) $row['first_seen'])) . '</td>
             <td class="align-middle text-nowrap" data-order="' . (int) $row['last_seen'] . '">' . get_relative_time(array('timestamp' => (int) $row['last_seen'])) . '</td>
         </tr>';

@@ -1489,15 +1489,27 @@ foreach ($files as $file) {
 
         // A file the converter cannot read keeps its last indexed text.
         try {
+            // The bytes of a file in the object store are read from its
+            // cached copy; one that cannot be had keeps its last text.
+            $file_path = FILE_DIRECTORY_PATH . '/' . $file['name'];
+
+            if (in_array(mb_strtolower($file['type']), array('doc', 'docx', 'pdf', 'ppt', 'pptx', 'txt', 'xls', 'xlsx'), true)) {
+                $file_path = pg_file_reader_path($file['name']);
+
+                if ($file_path === '') {
+                    throw new RuntimeException(lang('The file could not be read.'));
+                }
+            }
+
             // Get the content in different ways depending on the type of file.
             // We only get content for certain file types.
             switch (mb_strtolower($file['type'])) {
                 case 'doc':
-                    $content = convert_doc_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    $content = convert_doc_to_text($file_path);
                     break;
 
                 case 'docx':
-                    $content = convert_docx_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    $content = convert_docx_to_text($file_path);
                     break;
 
                 case 'pdf':
@@ -1533,28 +1545,28 @@ foreach ($files as $file) {
 
                     // If a pdftotext path has been found, then convert PDF to text.
                     if (($pdftotext_path != '') && function_exists('shell_exec')) {
-                        $content = (string) shell_exec($pdftotext_path . ' ' . escapeshellarg(FILE_DIRECTORY_PATH . '/' . $file['name']) . ' -');
+                        $content = (string) shell_exec($pdftotext_path . ' ' . escapeshellarg($file_path) . ' -');
                     }
                     break;
 
                 case 'ppt':
-                    $content = convert_ppt_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    $content = convert_ppt_to_text($file_path);
                     break;
 
                 case 'pptx':
-                    $content = convert_pptx_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    $content = convert_pptx_to_text($file_path);
                     break;
 
                 case 'txt':
-                    $content = @file_get_contents(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    $content = @file_get_contents($file_path);
                     break;
 
                 case 'xls':
-                    $content = convert_xls_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    $content = convert_xls_to_text($file_path);
                     break;
 
                 case 'xlsx':
-                    $content = convert_xlsx_to_text(FILE_DIRECTORY_PATH . '/' . $file['name']);
+                    $content = convert_xlsx_to_text($file_path);
                     break;
             }
         } catch (Throwable $throwable) {

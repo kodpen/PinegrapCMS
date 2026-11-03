@@ -59,7 +59,10 @@ function test_capital_i_search_screens_use_the_helpers()
 
 	foreach (array('view_themes.php', 'view_comments.php', 'editor_select_image.php', 'editor_select_page_or_file.php', 'find_and_replace.php') as $file) {
 		$source = (string) file_get_contents($dir . $file);
-		pg_assert_contains('pg_search_lower(', $source, $file . ' lowercases the term with pg_search_lower()');
+		// Find & Replace lowercases through pg_search_like_term(), which
+		// also lets a capital I fetch a dotless ı row.
+		$helper = ($file === 'find_and_replace.php') ? 'pg_search_like_term(' : 'pg_search_lower(';
+		pg_assert_contains($helper, $source, $file . ' lowercases the term with ' . $helper . ')');
 		pg_assert_false((bool) preg_match('/LIKE.*mb_strtolower\(|mb_strtolower\(\(\$_SESSION/', $source), $file . ' has no search term lowercased with mb_strtolower() alone');
 	}
 

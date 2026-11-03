@@ -63,8 +63,9 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - file-manager-where-used-by-id.md: "Where used" counts form, comment and contact attachments by file id, only those the viewer may open; Edit Submitted Form marks a binned or deleted attachment
 - file-manager-where-used.md: The file manager's "Where used" (explorer_file_usage): the sources it scans by name, what it reads by id, the cap, the answer
 - file-name-last-segment.md: pg_basename() and pg_file_name_stem(), not basename() or pathinfo(), for a name a person gave: before PHP 8.0 they drop the non-ASCII letters a name starts with; the doors, and pg_backup_folder_name()
-- file-object-storage.md: Uploaded files in the object store: storage columns (11.0.152), the switch, the move job, get_file.php redirect, replace and delete handling, local copies; 3c left
-- find-and-replace-architecture.md: find_and_replace.php table definition shape ($all_table_defs fields), url_raw URL rules, and ECOMMERCE/ADS gating of tables.
+- file-object-storage-readers.md: How readers, in-place doors and passes get a path to a file that may be in the object store; the cached copy's last use and derivative signatures
+- file-object-storage.md: Uploaded files in the object store: storage columns (11.0.152), the switch, the move job, get_file.php redirect, replace and delete handling, how readers and in-place doors get a path
+- find-and-replace-architecture.md: find_and_replace.php table definition shape ($all_table_defs fields), url_raw URL rules, ECOMMERCE/ADS gating, and the refusals that keep a replace from writing where it should not.
 - form-upload-beside-fields.md: Forms that carry a file beside typed fields (ERP expense, bank statement, ERP accounts import, Add/Edit Submitted Form): discarded body, the record in the action, the stated limit, refused uploads.
 - front-visitor-missing-keys.md: Front-end paths a visitor without a session or page properties reaches must not read session or property keys unguarded: the warning prints before the DOCTYPE where display_errors is on
 - gd-image-destroy.md: Freeing a GD image: pg_image_destroy() calls imagedestroy() only below PHP 8.0, since it does nothing from 8.0 on and PHP 8.5 deprecates it (#1669)
@@ -100,6 +101,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - main-host-redirect.md: Redirect to the main host (config.main_host_redirect, 11.0.52, #2179): which requests get a 301 to config.hostname, which never do, why it starts off everywhere
 - maintenance-mode-end-time.md: How Settings › General reads the maintenance end time (the zone of the same save) and when a passed end time refuses the save (only switching on or a new end)
 - maintenance-mode-health.md: Maintenance mode (503 + Retry-After on page renders only, who passes, end time) and health.php for uptime monitors (statuses, no session); settings, status tile, API field
+- not-found-log-screen.md: The 404 log screen (view_not_found_log.php): rows and their state, the search in the stored form with the Turkish rule, wrapping cells, Create redirect
 - not-found-log.md: The 404 log (2026.11.0, 11.0.30, not_found_log): which 404s are recorded and which not, bots and verified crawlers, the end-of-request write, row cap and 90 days, the screen and its Create redirect
 - notification-channels-delivery.md: Slack, Teams and Telegram delivery: targets in the sealed notify_channels entry, api_webhook_queue rows with webhook_id 0, the retry ladder, secrets masked
 - notification-channels.md: Chat notification channels (includes/fn/notify_channels.php): Slack, Teams and Telegram targets, the pure builders, the settings card and the Test button

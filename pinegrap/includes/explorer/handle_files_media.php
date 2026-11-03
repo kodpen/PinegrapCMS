@@ -78,7 +78,7 @@ function pg_explorer_handle_office_preview($type, $request, $user)
 
     $office_edit = !empty($request['edit']) && !$office_erp && pg_explorer_file_editable_by($office_file, $user);
 
-    $office = pg_office_read(FILE_DIRECTORY_PATH . '/' . $office_file['name'], $office_file['name'], $office_edit);
+    $office = pg_office_read(pg_file_reader_path($office_file['name']), $office_file['name'], $office_edit);
 
     if (!$office['ok']) {
         respond(array('status' => 'error', 'message' => $office['error']));
@@ -121,9 +121,10 @@ function pg_explorer_handle_rotate($type, $request, $user)
         respond(array('status' => 'error', 'message' => lang('Sorry, that type of file cannot be rotated here.')));
     }
 
-    $path = FILE_DIRECTORY_PATH . '/' . $file['name'];
+    // Turned in the file directory; a stored file is brought there first.
+    $path = pg_file_make_local($file['name']);
 
-    if (is_file($path) == false) {
+    if (($path === '') || (is_file($path) == false)) {
         respond(array('status' => 'error', 'message' => lang('The file is recorded here but is not on the disk.')));
     }
 
@@ -207,7 +208,7 @@ function pg_explorer_handle_optimize($type, $request, $user)
     // the exact case it exists for).
     $optimize_mode = ((isset($request['mode']) && ($request['mode'] == 'resize')) ? 'resize' : 'optimize');
 
-    $optimizable_types = array('jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp');
+    $optimizable_types = pg_optimizable_image_types();
     $optimized_count = 0;
     $errors = array();
 
@@ -242,7 +243,7 @@ function pg_explorer_handle_optimize($type, $request, $user)
         }
 
         if (in_array(mb_strtolower($file['type']), $optimizable_types, true) == false) {
-            $skipped[] = lang(array('string' => 'Sorry, we don\'t support optimizing that type of file ({var:1}). The following types are supported: jpg, jpeg, png, gif, bmp, tiff.', 'vars' => $file['name']));
+            $skipped[] = pg_optimize_unsupported_message($file['name'], $file['type']);
             continue;
         }
 
@@ -369,9 +370,9 @@ function pg_explorer_handle_webp($type, $request, $user)
             continue;
         }
 
-        $path = FILE_DIRECTORY_PATH . '/' . $file['name'];
+        $path = pg_file_reader_path($file['name']);
 
-        if (!is_file($path)) {
+        if (($path === '') || !is_file($path)) {
             $errors[] = lang(array('string' => 'Sorry, {var:1} is recorded here but is not on the disk.', 'vars' => $file['name']));
             continue;
         }

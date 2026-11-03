@@ -407,6 +407,90 @@ function pg_clean_up_list_row($icon, $name)
     return '<li class="list-group-item bg-reset border-0 fg-danger"><span class="material-icons me-5">' . h((string) $icon) . '</span>' . h((string) $name) . '</li>';
 }
 
+/**
+ * The names under data/temp that the Cleanup tool (clean_up.php) never lists:
+ * the directory guard and the records nothing writes again as the same file.
+ * hash_reference.json is this installation's own integrity baseline;
+ * erp_packages holds the ZIPs the accountant's link reads; csp_reports.json,
+ * php_errors.log, shield_pending.log, waf_ban_notice.log and
+ * ai_write_usage.json are logs, queues and today's AI counter; server_config
+ * holds the copies of web.config / .htaccess the server rules repair keeps
+ * before it rewrites them (pg_server_config_backup()).
+ *
+ * @return array
+ */
+function pg_clean_up_temp_keep()
+{
+    return array(
+        '.', '..', '.htaccess', 'hash_reference.json',
+        'erp_packages', 'csp_reports.json', 'php_errors.log',
+        'shield_pending.log', 'waf_ban_notice.log', 'ai_write_usage.json',
+        'server_config',
+    );
+}
+
+/**
+ * Delete a file or a folder with everything in it for the Cleanup tool and
+ * say whether it is gone. A file the web server may not remove (no right, held
+ * open by another request) makes the answer false and keeps its folder, so the
+ * tool does not count it as deleted.
+ *
+ * @param string $path
+ * @return bool true when the path existed and no longer does
+ */
+function pg_clean_up_delete_path($path)
+{
+    if (is_link($path) || is_file($path)) {
+        return @unlink($path);
+    }
+
+    if (!is_dir($path)) {
+        return false;
+    }
+
+    $removed = true;
+    // scandir() rather than a glob: a {,.}* pattern also matched '..'.
+    foreach (array_diff((array) @scandir($path), array('.', '..')) as $item) {
+        if (!pg_clean_up_delete_path($path . '/' . $item)) {
+            $removed = false;
+        }
+    }
+
+    return $removed && @rmdir($path);
+}
+
+/**
+ * A Cleanup sentence with the folder and file counts in it: $string carries
+ * {var:1} (folders), {var:2} (" and"), {var:3} (files) and their two plural
+ * suffixes. Both counts 0 gives '', so the caller says that nothing was found
+ * or deleted instead of printing the sentence with its counts left empty.
+ *
+ * @param string $string the English key
+ * @param int    $folders
+ * @param int    $files
+ * @param array  $more  further values for {var:4} onwards
+ * @return string
+ */
+function pg_clean_up_count_text($string, $folders, $files, $more = array())
+{
+    $folders = (int) $folders;
+    $files = (int) $files;
+
+    if (($folders === 0) && ($files === 0)) {
+        return '';
+    }
+
+    $folder_text = ($folders !== 0) ? ' ' . $folders . ' ' . lang('folder') : '';
+    $and_text = (($folders !== 0) && ($files !== 0)) ? ' ' . lang('and') : '';
+    $file_text = ($files !== 0) ? ' ' . $files . ' ' . lang('file') : '';
+
+    return lang(array(
+        'string' => $string,
+        'vars'   => array_merge(array($folder_text, $and_text, $file_text), array_values((array) $more)),
+        'suffix' => array(($folders > 1) ? 's' : '', ($files > 1) ? 's' : ''),
+    ));
+}
+
 // Create a function that is used in various areas where files are added,
 // in order to reduce the file name length (if necessary) and replace special characters.
 function prepare_file_name($file_name)
@@ -460,6 +544,11 @@ function prepare_file_name($file_name)
     $file_name = str_replace('&', '_', $file_name);
     $file_name = str_replace('+', '_', $file_name);
     $file_name = str_replace('#', '_', $file_name);
+    // A run of dots becomes one: the theme, CSS and design file screens refuse
+    // to open a name with ".." in it, so such a record could be neither fixed
+    // nor deleted there. Asked after the length limit, which can cut the
+    // part before the extension right after a dot.
+    $file_name = preg_replace('/\.{2,}/', '.', $file_name);
     // Windows drops the dots at the end of a file name, so "photo.jpg." would
     // be written over photo.jpg while its record kept a name of its own. The
     // length limit above can leave one too. Never empty here: a name that
@@ -483,6 +572,63 @@ function prepare_file_name($file_name)
         $file_name = 'file';
     }
     return $file_name;
+}
+
+/**
+ * Whether a design file's stored name would leave the files folder when it is
+ * joined to it: empty, "." or "..", a slash or backslash, or a NUL byte. A
+ * name that merely holds two dots ("old..theme.css", stored before
+ * prepare_file_name() collapsed them) stays inside and is opened, so it can be
+ * renamed or deleted.
+ *
+ * @param mixed $name the stored name
+ * @return bool
+ */
+function pg_design_file_name_unsafe($name)
+{
+    if (!is_string($name) || ($name === '') || ($name === '.') || ($name === '..')) {
+        return true;
+    }
+
+    return strpbrk($name, "/\\\0") !== false;
+}
+
+/**
+ * Whether a single-file box arrived without a file chosen. Read before
+ * prepare_file_name(), which turns an empty name into "file".
+ *
+ * @param array|null $file the $_FILES entry
+ * @return bool
+ */
+function pg_upload_file_missing($file)
+{
+    if (!is_array($file) || !isset($file['name']) || !is_string($file['name'])) {
+        return true;
+    }
+
+    if (isset($file['error']) && is_scalar($file['error']) && ((int) $file['error'] === UPLOAD_ERR_NO_FILE)) {
+        return true;
+    }
+
+    return trim($file['name']) === '';
+}
+
+/**
+ * The sentence that says a file was stored under another name than the one
+ * typed or uploaded (letters an address cannot carry replaced), or '' when
+ * the name was kept.
+ *
+ * @param string $typed  the name as typed or uploaded
+ * @param string $stored the name stored
+ * @return string HTML
+ */
+function pg_file_name_saved_as_notice($typed, $stored)
+{
+    if ((string) $typed === (string) $stored) {
+        return '';
+    }
+
+    return lang(array('string' => 'Saved as {var:1}: a file name is its address, so letters an address cannot carry are replaced.', 'vars' => h((string) $stored)));
 }
 
 // Writes $content to $path as a whole and returns true, or returns false
