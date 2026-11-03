@@ -2164,6 +2164,8 @@
     "The file {var:1} is not on the disk.": "{var:1} dosyası diskte yok.",
     "The file {var:1} was moved to the object store, but its copy on the disk could not be deleted.": "{var:1} dosyası nesne deposuna taşındı, ancak diskteki kopyası silinemedi.",
     "The file, {var:1}, has been uploaded.": "{var:1} dosyası yüklendi.",
+    "The files are brought back to the disk by the general job, a few each run.": "Dosyalar genel görev tarafından her çalışmada birkaç tane olmak üzere diske geri alınır.",
+    "The files are moved to the storage by the general job, a few each run.": "Dosyalar genel görev tarafından her çalışmada birkaç tane olmak üzere depolamaya taşınır.",
     "The files could not be loaded.": "Dosyalar yüklenemedi.",
     "The files of the new build are in place, but data/update_build.json could not be written. Run Repair Software to finish the update.": "Yeni derlemenin dosyaları yerinde, ancak data/update_build.json yazılamadı. Güncellemeyi tamamlamak için Yazılımı Onar'ı çalıştırın.",
     "The files of the new build are in place, but the database could not be prepared for its upgrade steps. Run Repair Software to finish the update.": "Yeni derlemenin dosyaları yerinde, ancak veritabanı yükseltme adımlarına hazırlanamadı. Güncellemeyi tamamlamak için Yazılımı Onar'ı çalıştırın.",

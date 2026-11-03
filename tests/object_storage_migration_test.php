@@ -47,6 +47,15 @@ function test_object_storage_migration_mode_after()
 	pg_assert_same(null, pg_file_storage_mode_after('1', 'delete'), 'an unknown button');
 }
 
+function test_object_storage_migration_actions()
+{
+	pg_assert_same(array('move'), pg_file_storage_actions(''));
+	pg_assert_same(array('pause', 'back'), pg_file_storage_actions('1'));
+	pg_assert_same(array('resume', 'back'), pg_file_storage_actions('paused'));
+	pg_assert_same(array('pause', 'move'), pg_file_storage_actions('back'));
+	pg_assert_same(array('resume', 'move'), pg_file_storage_actions('back_paused'));
+}
+
 function test_object_storage_migration_state_key()
 {
 	pg_assert_same('object_storage_move', pg_file_move_state_key('to'));

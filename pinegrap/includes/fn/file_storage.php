@@ -137,6 +137,25 @@ function pg_file_storage_mode_after($value, $action)
 
 
 /**
+ * The Storage card's buttons for the switch's value, in their order: start
+ * a move, pause or resume the running walk, turn it round. Pure.
+ *
+ * @param mixed $value config_text object_storage_files
+ * @return array actions ('move', 'back', 'pause', 'resume')
+ */
+function pg_file_storage_actions($value)
+{
+    $mode = pg_file_storage_mode($value);
+
+    if ($mode['direction'] === '') {
+        return array('move');
+    }
+
+    return array($mode['paused'] ? 'resume' : 'pause', ($mode['direction'] === 'to') ? 'back' : 'move');
+}
+
+
+/**
  * The config_text key holding the job's state for a direction.
  *
  * @param string $direction 'to' or 'back'
