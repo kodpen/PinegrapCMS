@@ -8,7 +8,7 @@ module: list_paging, user_list, submitted_form_list, contact_list
 - The users list (`view_users.php`, PR #2460). It printed every account, several queries per row.
 - The submitted forms list (`view_submitted_forms.php`, PR #2509, issue #2038). It checked `check_edit_access()` per row and printed 100, so search saw those 100 only. The folder rule is in the query; the filters (date range, custom form, advanced filters, `query`) come from the session through `pg_submitted_form_list_filter()`, which Export and Delete All Forms use too.
 - The contacts list (`view_contacts.php`, PR #2528). It printed every contact with a picture and group lookup per row. Filters come from the session, the view from the address, through `pg_contact_list_filter()` (Export, Delete All and Merge too); the duplicates view stays printed whole. Rows carry `DT_RowId`.
-- Products (#2655), commissions (#2675), Site Log, audit, firewall log: `ui/product-list-paging.md`, `ui/commission-list-paging.md`, `ui/site-log-paging.md`, `ui/audit-log-paging.md`, `ui/waf-log-paging.md`.
+- Pages (#6114, `ui/page-list-paging.md`), products (#2655), commissions (#2675), Site Log, audit, firewall log: `ui/product-list-paging.md`, `ui/commission-list-paging.md`, `ui/site-log-paging.md`, `ui/audit-log-paging.md`, `ui/waf-log-paging.md`.
 
 ## How does such a screen work?
 - The screen draws the toolbar and headings only; its `table.chart` carries `data-pg-list-action` (the `api.php` action) and `data-pg-list-params` (JSON, e.g. the filter). `pgListServerOptions()` in `backend.src.js` turns DataTables to `serverSide`: each draw posts `{action, token, draw, start, length, search, ...params}`.
