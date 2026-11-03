@@ -208,3 +208,137 @@ function pg_tree_search_walk(&$node, $visit)
         }
     }
 }
+
+/**
+ * Whether a plain search term may pre-select tree rows with a LIKE over the
+ * stored JSON: the JSON writes a text as typed but for a double quote, a
+ * backslash and control characters, which it escapes. A regular expression
+ * or such a term reads every tree and lets the PHP count decide.
+ *
+ * @param string $find
+ * @param bool   $is_regex
+ * @return bool
+ */
+function pg_tree_search_like_safe($find, $is_regex)
+{
+    return !$is_regex && !preg_match('/["\\\\\x00-\x1F]/', (string) $find);
+}
+
+/**
+ * Writes a page tree a replace changed, as a designer save without other
+ * changes would: the tree, the body drawn again, the modified time and
+ * author, a stale SEO score, a revision (the state before seeded when the
+ * page has none) and the translated texts marked. False when the page is
+ * gone, has no tree of its own or the body could not be drawn.
+ *
+ * @param int   $page_id
+ * @param array $tree
+ * @param int   $user_id
+ * @return bool
+ */
+function pg_tree_search_save_page($page_id, $tree, $user_id)
+{
+    $page_id = (int) $page_id;
+    $row = db_item("SELECT page_id, page_name, page_style FROM page
+                    WHERE page_id = '$page_id' AND page_tree_json IS NOT NULL AND page_tree_json <> '' LIMIT 1");
+    $tree_json = function_exists('pg_designer_tree_encode') ? pg_designer_tree_encode($tree) : '';
+
+    if (!is_array($row) || $tree_json === '') {
+        return false;
+    }
+
+    $style_id = (int) $row['page_style'];
+    $body_classes = (string) db_value("SELECT additional_body_classes FROM style WHERE style_id = '$style_id' LIMIT 1");
+
+    // The messages node shows the session's pending form messages and uses
+    // them up; they belong to the screen this request answers.
+    $has_liveforms = isset($_SESSION['software']['liveforms']);
+    $liveforms = $has_liveforms ? $_SESSION['software']['liveforms'] : null;
+    unset($_SESSION['software']['liveforms']);
+    $code = generate_style_code_from_tree($tree, (string) $row['page_name'], $body_classes);
+    if ($has_liveforms) {
+        $_SESSION['software']['liveforms'] = $liveforms;
+    }
+
+    if ($code === '') {
+        return false;
+    }
+
+    if (function_exists('pg_page_revision_seed')) {
+        pg_page_revision_seed($page_id);
+    }
+
+    db_q("UPDATE page SET page_tree_json = ?, page_tree_code = ?, page_timestamp = UNIX_TIMESTAMP(),
+            page_user = ?, seo_analysis_current = '0'
+          WHERE page_id = ?", array($tree_json, $code, (int) $user_id, $page_id));
+
+    if (function_exists('pg_page_revision_record')) {
+        pg_page_revision_record($page_id, $style_id, $tree_json, $code, (int) $user_id, 'publish');
+    }
+
+    if (function_exists('pg_tr_owner_saved')) {
+        pg_tr_owner_saved('page', $page_id);
+    }
+
+    return true;
+}
+
+/**
+ * Writes a shared component tree a replace changed; every page placing it
+ * draws it from the row on its next request.
+ *
+ * @param int   $component_id
+ * @param array $tree
+ * @return bool
+ */
+function pg_tree_search_save_component($component_id, $tree)
+{
+    $component_id = (int) $component_id;
+    $tree_json = function_exists('pg_designer_tree_encode') ? pg_designer_tree_encode($tree) : '';
+
+    if ($component_id <= 0 || $tree_json === '') {
+        return false;
+    }
+
+    db_q("UPDATE shared_components SET tree_json = ?, updated_at = ? WHERE id = ? LIMIT 1",
+        array($tree_json, time(), $component_id));
+
+    if (function_exists('pg_tr_owner_saved')) {
+        pg_tr_owner_saved('shared', $component_id);
+    }
+
+    return true;
+}
+
+/**
+ * The decoded trees of the shared components, id => tree, read once per
+ * request for site search (system widgets left out: their words come from
+ * their settings and records).
+ *
+ * @return array
+ */
+function pg_tree_search_components()
+{
+    static $trees = null;
+
+    if ($trees !== null) {
+        return $trees;
+    }
+
+    $trees = array();
+
+    if (!function_exists('pg_schema_has') || !pg_schema_has('shared_components', 'system_region_config')) {
+        return $trees;
+    }
+
+    $rows = db_items("SELECT id, tree_json FROM shared_components WHERE system_region_config IS NULL");
+
+    foreach ((array) $rows as $row) {
+        $tree = json_decode((string) $row['tree_json'], true);
+        if (is_array($tree)) {
+            $trees[(int) $row['id']] = $tree;
+        }
+    }
+
+    return $trees;
+}

@@ -104,3 +104,28 @@ function test_tree_search_list_of_nodes()
 
 	pg_assert_same(2, count(pg_tree_search_texts($list)), 'a list of nodes is walked');
 }
+
+function test_tree_search_like_safe()
+{
+	pg_assert_true(pg_tree_search_like_safe('Kodpen news', false), 'a plain term pre-selects with LIKE');
+	pg_assert_true(pg_tree_search_like_safe('çay & ğ/ı', false), 'letters, slashes and entities are stored as typed');
+	pg_assert_true(!pg_tree_search_like_safe('say "hi"', false), 'a double quote is escaped in JSON');
+	pg_assert_true(!pg_tree_search_like_safe('a\\b', false), 'a backslash is escaped in JSON');
+	pg_assert_true(!pg_tree_search_like_safe("two\nlines", false), 'a line break is escaped in JSON');
+	pg_assert_true(!pg_tree_search_like_safe('Kodpen', true), 'a regular expression reads every tree');
+}
+
+function test_tree_search_screens_read_trees()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+	$far = file_get_contents($root . 'find_and_replace.php');
+	$search = file_get_contents($root . 'get_search_results.php');
+
+	pg_assert_true(strpos($far, "\$all_table_defs['page_tree']") !== false, 'Find & Replace lists designer pages');
+	pg_assert_true(strpos($far, "\$all_table_defs['shared_component']") !== false, 'Find & Replace lists shared components');
+	pg_assert_true(strpos($far, "'base_where'   => 'system_region_config IS NULL'") !== false, 'system widgets are left out');
+	pg_assert_true(strpos($far, 'pg_tree_search_like_safe($find, $is_regex)') !== false, 'a term JSON escapes reads every tree');
+	pg_assert_true(strpos($far, "pg_collab_may_edit_page('', \$tree_id)") !== false, 'a page open in the designer is not written');
+	pg_assert_true(strpos($far, 'pg_tree_search_save_page(') !== false && strpos($far, 'pg_tree_search_save_component(') !== false, 'trees are written whole');
+	pg_assert_true(strpos($search, 'pg_tree_search_plain_text(json_decode($page_tree, true), pg_tree_search_components())') !== false, 'simple site search counts in the page tree and its components');
+}

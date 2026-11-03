@@ -2228,6 +2228,7 @@
     "Some folders of the software are not writable.": "Yazılımın bazı klasörlerine yazılamıyor.",
     "Some for clients, some for friends, most for no reason at all. Open one to see the details.": "Kimi müşteriler için, kimi arkadaşlar için, çoğu ise hiçbir sebep yokken. Ayrıntıları görmek için birini açın.",
     "Some items could not be deleted.": "Bazı öğeler silinemedi.",
+    "Some items were not changed because they are open in the visual designer": "Bazı öğeler görsel tasarımcıda açık olduğu için değiştirilmedi",
     "Some lines no longer fit the stock. Correct them and complete the sale again.": "Bazı satırlar artık stoğa sığmıyor. Düzeltip satışı yeniden tamamlayın.",
     "Some members answer question after question, and theirs are the replies marked as the best answer. We looked at what they do differently.": "Bazı üyeler soru üstüne soru yanıtlar ve en iyi yanıt olarak işaretlenen yanıtlar onlarındır. Neyi farklı yaptıklarına baktık.",
     "Some page names could not be updated because the name is already in use": "Bazı sayfa adları zaten kullanımda olduğu için güncellenemedi",

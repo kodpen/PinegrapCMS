@@ -17,7 +17,7 @@ description: A page's own regions (pregion) moved into its designer tree: one _e
 ## Who edits it afterwards? What stops?
 - Page edit rights are unchanged: the `_editable` block is edited at content level by managers and by users with the folder's edit right, through the page merge (`designer-content-roles-save-gate.md`).
 - Front-end inline editing of the page's regions ends (owner 2026-10-27): the saved tree prints no `<pregion>` tag. The `pregion` rows stay, no longer read by the page; undo is the editor's undo or a page revision.
-- Site search (`get_search_results.php`) and find and replace (`pregion`) skip the rows a page no longer reads: `pg_page_region_read_sql()` (`includes/fn/content.php`) keeps a row when its page has no tree of its own, or its `page_tree_code` holds `<pregion>` or the marker of a component that prints one (`pg_page_region_component_ids()`: `"regionType":"page"` in `tree_json`, then the components placing those, read once per request). Neither searches a designer page tree, so a converted page is found by neither, like every designed page.
+- Site search (`get_search_results.php`) and find and replace (`pregion`) skip the rows a page no longer reads: `pg_page_region_read_sql()` (`includes/fn/content.php`) keeps a row when its page has no tree of its own, or its `page_tree_code` holds `<pregion>` or the marker of a component that prints one (`pg_page_region_component_ids()`: `"regionType":"page"` in `tree_json`, then the components placing those, read once per request). Both read the page's tree instead (`tree-search.md`).
 
 ## Tests?
 - `tests/page_region_blocks_test.php`; the endpoint and the editor action need a database and a browser.

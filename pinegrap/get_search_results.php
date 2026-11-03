@@ -213,6 +213,20 @@ function get_search_results($properties) {
                             $pages[$this_page_id] = (isset($pages[$this_page_id]) ? $pages[$this_page_id] : 0) + $increment_value;
                         }
                     }
+
+                    // A visual designer page keeps its words in its tree and
+                    // in the shared components it places, a converted common
+                    // region among them.
+                    $page_tree = pg_page_tree_json($this_page_id);
+                    if ($page_tree !== '') {
+                        $increment_value = mb_substr_count(
+                            mb_strtolower(pg_tree_search_plain_text(json_decode($page_tree, true), pg_tree_search_components())),
+                            mb_strtolower($query));
+
+                        if ($increment_value != 0) {
+                            $pages[$this_page_id] = (isset($pages[$this_page_id]) ? $pages[$this_page_id] : 0) + $increment_value;
+                        }
+                    }
                 }
             }
             
