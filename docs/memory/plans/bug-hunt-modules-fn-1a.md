@@ -58,7 +58,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `events`: clean
 
-- `explorer_side`: open
+- `explorer_side`: clean (gates match view_folders.php, view_product_groups.php and the menu rows; ids filtered; markup escaped; script builds rows with textContent)
 
 - `files`: done #4613
 
