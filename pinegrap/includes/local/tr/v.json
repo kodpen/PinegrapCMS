@@ -374,6 +374,7 @@
     "vegan, vegetarian, gluten free, allergens, diet": "vegan, vejetaryen, glütensiz, alerjen, diyet",
     "venue": "mekan",
     "venue, address, location, rooms, halls": "mekân, adres, konum, salonlar",
+    "venue, hall, garden, terrace, capacity, seats": "mekân, salon, bahçe, teras, kapasite, kişi sayısı",
     "verified": "doğrulama",
     "verified shipping address": "doğrulanmış teslimat adresi",
     "verified shipping address ({var:1}) was created": "doğrulanmış teslimat adresi ({var:1}) oluşturuldu",
