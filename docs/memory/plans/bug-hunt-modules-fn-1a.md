@@ -21,7 +21,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 - `db_maintenance`: #5984 (MyISAM/Aria free-space share counted the holes twice)
 - `design_templates_custom`: #5976
 - `design_themes`: #6021 (a look or palette name closed its stylesheet comment; rest of the module checked clean)
-- `designer`: open
+- `designer`: #6034 (svg drawing cleaner let event handlers and unquoted script URLs through)
 - `designer_fx`: open
 - `designer_theme_vars`: open
 - `designer_vocab`: clean
