@@ -38,7 +38,8 @@ pg_login_throttle_guard($shipworks_username);
 // Try to find the user by name, then verify the raw password against the stored
 // hash in PHP (pg_password_verify handles legacy MD5, wrapped and modern rows,
 // and upgrades on a correct password). A wrong password empties $user so the
-// existing "login invalid" branch fires unchanged.
+// existing "login invalid" branch fires unchanged. A disabled account is no
+// match, so it lands there too.
 $user = db_item(
     "SELECT
         user_id AS id,
@@ -51,7 +52,7 @@ $user = db_item(
         (
             (user_username = '" . escape($shipworks_username) . "')
             OR (user_email = '" . escape($shipworks_username) . "')
-        )
+        )" . pg_user_enabled_sql() . "
     LIMIT 1");
 
 if (!is_array($user)

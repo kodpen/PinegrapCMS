@@ -4,7 +4,7 @@ description: Page tab order and named coloured groups in the designer (style.sty
 ---
 
 ## Where are tab order and groups kept?
-- The order is the order of `_pages`; a tab's group is `p.tabGroup` (`''` or a key of `_pgTabGroups`). Stored on the design in `style.style_tab_layout` (2026.4.8, step 8.19) as `{v:1, groups:{gid:{name,color}}, tabs:[{id[,g]}]}`, saved pages only.
+- The order is the order of `_pages`; a tab's group is `p.tabGroup` (`''` or a key of `_pgTabGroups`). Stored on the design in `style.style_tab_layout` (2026.4.8, step 8.19) as `{v:1, groups:{gid:{name,color}}, tabs:[{id[,g]}]}`, saved pages only, plus an optional `proto` (#6232): the Prototype view's shared frame places, `p<page_id>` (a page of the design) or `s<shared id>` → `{x, y}`, whole units within ±1,000,000, at most 500 (`pg_designer_tab_layout_proto()`; JS twin `PGProtoHotspots.places()`). The strip's save carries them (`_pgTabProto`); the key is left out when there are none.
 - Written only by `designer/tab_layout` → `pg_designer_tab_layout_save()`, the moment the strip changes: not tied to Save and not part of the dirty check (it is how the editor looks; the site never reads it). Without the column (`pg_style_tab_layout_ready()`, `sdDesign.tabLayout.ready`) the strip is plain and the endpoint refuses.
 - A content-level operator sees the layout and folds groups but does not rearrange (`_pgTabLayoutEditable()`).
 

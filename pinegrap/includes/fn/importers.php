@@ -85,6 +85,7 @@ function pg_import_writer_kinds()
         'contact'  => lang('Contacts'),
         'product'  => lang('Products'),
         'redirect' => lang('Redirects'),
+        'user'     => lang('Authors'),
     );
 }
 
@@ -290,7 +291,8 @@ function pg_import_totals($counts)
 /**
  * Adds a skipped or failed line to the report: kept in full up to
  * PG_IMPORT_REPORT_LINES, counted beyond. Made rows are not listed, the
- * tally and import_items hold them. Pure.
+ * tally and import_items hold them, unless the writer gave a note (a
+ * picture kept at its old address). Pure.
  *
  * @param array  $report array('lines' => array, 'more' => int)
  * @param string $result
@@ -303,7 +305,7 @@ function pg_import_report_add($report, $result, $item, $reason)
     $report = is_array($report) ? $report : array();
     $report += array('lines' => array(), 'more' => 0);
 
-    if ($result === 'made') {
+    if (($result === 'made') && (trim((string) $reason) === '')) {
         return $report;
     }
 
@@ -780,6 +782,8 @@ function pg_import_undo($import_id, $budget = 10)
 
     $stop = microtime(true) + max(1, (int) $budget);
     $kept_kinds = array();
+    $report = $import['report'];
+    $kept_rows = 0;
 
     while (microtime(true) < $stop) {
 
@@ -800,8 +804,17 @@ function pg_import_undo($import_id, $budget = 10)
                 continue;
             }
 
-            call_user_func($unwrite, (int) $row['item_id']);
+            $unwritten = call_user_func($unwrite, (int) $row['item_id']);
             db("DELETE FROM import_items WHERE id = '" . (int) $row['id'] . "'");
+
+            // A row someone took over after the import (an author enabled by
+            // hand) is no longer the import's: it stays and the report names it.
+            if (is_array($unwritten) && isset($unwritten['kept'])) {
+                $report = pg_import_report_add($report, 'kept', array('kind' => $kind, 'title' => (string) $unwritten['kept']), lang('Taken over after the import, so it stays.'));
+                $kept_rows++;
+                continue;
+            }
+
             $answer['removed']++;
 
             if (microtime(true) >= $stop) {
@@ -820,6 +833,10 @@ function pg_import_undo($import_id, $budget = 10)
     // Rows of a kind without a delete path stay listed, and the run keeps
     // its status, so Undo can finish once that kind's writer has one.
     $answer['done'] = ($answer['left'] === $answer['kept']);
+
+    if ($kept_rows > 0) {
+        pg_import_save($import_id, array('report' => $report));
+    }
 
     if ($answer['left'] === 0) {
         pg_import_save($import_id, array('status' => 'undone'));

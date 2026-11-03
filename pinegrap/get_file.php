@@ -1094,8 +1094,11 @@ $image_delivery_row = null;
 // config.image_derivative_formats, read from the router's config row, so no
 // query of its own). ?f=original always sends the uploaded bytes. Files that
 // get no derivatives (ERP documents, workspace files, attachments) are never
-// negotiated.
-$image_negotiation = array('format' => '', 'vary' => false);
+// negotiated. Through a CDN or proxy nobody confirmed (bit 8) the answer is
+// private, or the original when the self-test found the edge keeps private
+// answers too: its state sits beside the derivatives (same_address.json,
+// includes/fn/image_vary_check.php), read only for such a request.
+$image_negotiation = array('format' => '', 'vary' => false, 'private' => false);
 $image_original_asked = false;
 
 if (($erp_document === false) && ($workspace_file === false) && ($file['attachment'] != 1)) {
@@ -1106,11 +1109,20 @@ if (($erp_document === false) && ($workspace_file === false) && ($file['attachme
     require_once(dirname(__FILE__) . '/includes/image_negotiation.php');
 
     $image_original_asked = pg_image_original_asked($_GET);
+    $image_negotiation_row = isset($router_config_row) ? $router_config_row : null;
+    $image_negotiation_mode = 'private';
+
+    if (pg_image_behind_proxy($_SERVER) && !pg_image_same_address_settings($image_negotiation_row)['cdn']) {
+        $image_negotiation_mode = pg_image_same_address_mode(
+            @json_decode((string) @file_get_contents(dirname(FILE_DIRECTORY_PATH) . '/cache/img/same_address.json'), true));
+    }
+
     $image_negotiation = pg_image_negotiated_format(
-        isset($router_config_row) ? $router_config_row : null,
+        $image_negotiation_row,
         $extension,
         $_GET,
-        $_SERVER);
+        $_SERVER,
+        $image_negotiation_mode);
 }
 
 if ((isset($_GET['w']) || isset($_GET['f']) || ($image_negotiation['format'] !== '')) && !$image_original_asked && isset(db::$con) && db::$con) {
@@ -1322,6 +1334,13 @@ if ($workspace_file) {
 // would serve it to visitors the page does not show it to, and keep a record
 // taken back to draft open for a week.
 if ($designed_attachment) {
+    $cache_control_type = 'private';
+}
+
+// A negotiated picture through a CDN or proxy nobody confirmed keeps a copy
+// per format: no shared cache keeps either answer (or the 304), so none can
+// hand a browser the other's copy; the browser keeps its own for a week.
+if ($image_negotiation['private']) {
     $cache_control_type = 'private';
 }
 
@@ -1595,6 +1614,11 @@ function initialize_user()
     ) {
         $token_user_id = pg_auth_token_verify($_COOKIE['software']['auth']);
 
+        // A disabled account's token signs nobody in.
+        if ($token_user_id && pg_auth_user_disabled($token_user_id)) {
+            $token_user_id = false;
+        }
+
         if ($token_user_id) {
 
             $user = pg_load_user_row($token_user_id);
@@ -1628,7 +1652,8 @@ function initialize_user()
             session_destroy();
             setcookie('software[auth]', '', time() - 1000, '/');
             unset($_COOKIE['software']['auth']);
-        } else {
+        } elseif (!pg_auth_user_disabled((int) $_SESSION['sessionuserid'])) {
+            // A disabled account's live session is treated as signed out.
             $user = pg_load_user_row((int) $_SESSION['sessionuserid']);
         }
     }

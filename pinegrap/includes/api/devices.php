@@ -491,6 +491,13 @@ function api_device_authenticate($token) {
 
 	}
 
+	// A token of a disabled account answers like one that was never issued.
+	if (pg_user_id_is_disabled((int)$row['user_id'])) {
+
+		api_fail(401, 'unauthorized', lang('The access token is not valid. Renew it, or sign in again.'));
+
+	}
+
 	$owner = api_load_owner((int)$row['user_id']);
 
 	if ($owner === null) {

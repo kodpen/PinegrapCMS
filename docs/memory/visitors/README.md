@@ -27,6 +27,7 @@ Visitor statistics, page and article views, search engine index flags.
 - ai-fetch-counter.md: AI fetch counter: ai_fetch_daily (day|bot|page_id), written at request end by waf.php for AI user fetchers and search indexers the firewall let through; unverified claims as a count only.
 - ai-visibility-figures.md: AI visibility figures and GET /reports/ai-visibility: fetches per bot, top pages per bot, unfetched sitemap pages, robots/llms state, AI assistant referrals, 400-day sweep.
 - article-view-daily-bucket.md: Why per-view submitted_form_views INSERTs became a daily bucket table: schema, backfill cursor, cutover, retention, old table rename (2026.4.1).
+- experiment-goals.md: Page experiment goals (PX3, #6230): form, order, click, page; counted for the variant the pg_exp cookie holds, once a day per experiment by a mark in the cookie, into experiment_hourly.goals
 - high-volume-counter-rules.md: Rules for a new high-volume counter, log or report: write-time buckets, sha1 keys, no query string in a key, MAX(id) caps, totals in SQL, ONLY_FULL_GROUP_BY, DST-safe day steps, derived data rebuilt.
 - page-canonical-robots-directives.md: A page's own canonical address and noarchive / max-snippet (page.canonical_url, noarchive, max_snippet; 11.0.22, #802): storage, where it applies, languages, editors, PHP/JS twin.
 - page-noindex-switch.md: What the per-page noindex/nofollow switch does in three places, which four screens write it, the sitemap query rule and the PHP/JS lockstep rule (2026.4.3).

@@ -3509,6 +3509,16 @@ function pg_designer_save_page($style_id, $page, $user, $dry_run = false)
     foreach ($schedule['warnings'] as $w) $warnings[] = $w;
     if ($schedule['apply']) $draft_plan['want'] = $schedule['draft'];
 
+    // A draft that is an open experiment's variant stays a draft until the
+    // experiment ends: published, its own address would answer for visitors
+    // beside the live page it is compared with.
+    if ($draft_plan['was'] && !$draft_plan['want'] && function_exists('pg_experiment_variant_hold_message')) {
+        $held = pg_experiment_variant_hold_message($page_id, $name);
+        if ($held !== '') {
+            return array('ok' => false, 'page_id' => $page_id, 'errors' => array($held), 'warnings' => $warnings);
+        }
+    }
+
     if ($dry_run) {
         return array('ok' => true, 'page_id' => $page_id, 'errors' => array(), 'warnings' => $warnings, 'draft' => $draft_plan['want']);
     }
@@ -7719,12 +7729,15 @@ function _pg_tpl_include($file)
     return include $file;
 }
 
-// One template, or null.
+// One template, or null. A template made from a design and written in this
+// request is not in the cached list yet (the Migration installs one per
+// design it carries), so it is read from its row.
 function pg_design_template($id)
 {
     $all = pg_design_templates();
     $id  = is_scalar($id) ? (string)$id : '';
-    return isset($all[$id]) ? $all[$id] : null;
+    if (isset($all[$id])) return $all[$id];
+    return function_exists('pg_design_template_custom_get') ? pg_design_template_custom_get($id) : null;
 }
 
 // What the gallery shows of a template - no trees.
@@ -10032,7 +10045,9 @@ function pg_designer_widget_ghosts($page_id, $widget, $limit = 10)
 // Stored shape, version 1:
 //   {"v":1,
 //    "groups":{"g1":{"name":"Docs","color":"orange"}},
-//    "tabs":[{"id":12},{"id":13,"g":"g1"},{"id":14,"g":"g1"},{"id":15}]}
+//    "tabs":[{"id":12},{"id":13,"g":"g1"},{"id":14,"g":"g1"},{"id":15}],
+//    "proto":{"p12":{"x":0,"y":0},"s5":{"x":408,"y":0}}}
+// `proto` (optional) holds the Prototype view's frame places.
 // `id` is a page_id of the design. The editor keeps a twin of the
 // normaliser (_pgTabsNormalizeGroups()); the two are changed together.
 
@@ -10144,7 +10159,40 @@ function pg_designer_tab_layout_normalize($layout, $page_ids)
         if (!isset($members[$gid])) unset($groups[$gid]);
     }
 
-    return array('v' => 1, 'groups' => $groups, 'tabs' => $tabs);
+    $out = array('v' => 1, 'groups' => $groups, 'tabs' => $tabs);
+    $proto = pg_designer_tab_layout_proto(isset($layout['proto']) ? $layout['proto'] : null, $known);
+    if ($proto) $out['proto'] = $proto;
+    return $out;
+}
+
+/**
+ * The places of the Prototype view's frames (designer/prototype-view.md),
+ * shared by everyone who opens the design. Keys are `p<page_id>` for a page
+ * of the design and `s<shared component id>`; a place is {x, y}, whole
+ * canvas units within ±1,000,000. Other keys and values are dropped, at most
+ * 500 places are kept. Twin: PGProtoHotspots.places() reads the same shape.
+ *
+ * @param mixed $proto decoded `proto` of a layout
+ * @param array $known page_id => true, the pages of the design
+ * @return array key => {x, y}
+ */
+function pg_designer_tab_layout_proto($proto, $known)
+{
+    $out = array();
+    if (!is_array($proto)) return $out;
+    foreach ($proto as $key => $at) {
+        if (count($out) >= 500) break;
+        if (!preg_match('/^([ps])([1-9][0-9]{0,9})$/', (string)$key, $m) || !is_array($at)) continue;
+        if ($m[1] === 'p' && !isset($known[(int)$m[2]])) continue;
+        $pos = array();
+        foreach (array('x', 'y') as $axis) {
+            $v = isset($at[$axis]) ? $at[$axis] : null;
+            if (!is_numeric($v) || !is_finite((float)$v)) continue 2;
+            $pos[$axis] = (int)max(-1000000, min(1000000, round((float)$v)));
+        }
+        $out[(string)$key] = $pos;
+    }
+    return $out;
 }
 
 /**
@@ -10154,6 +10202,7 @@ function pg_designer_tab_layout_normalize($layout, $page_ids)
 function pg_designer_tab_layout_export($layout)
 {
     $layout['groups'] = (object)$layout['groups'];
+    if (isset($layout['proto'])) $layout['proto'] = (object)$layout['proto'];
     return $layout;
 }
 

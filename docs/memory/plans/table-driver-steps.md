@@ -4,7 +4,7 @@ description: Steps of the table driver plan: the driver core, its parts, the ser
 ---
 
 ## Which steps, in one line each?
-1. TD1 (L) `free`. Server core: `includes/fn/list_table.php` column model (key, heading, width, kind, sortable, editable), the first rows printed, the rows answer, keyset paging over `list_paging.php`, the selection resolver ({ids} or {condition, exceptions, as of}, with the list's own query and rights); tests.
+1. TD1 (L) done (#6226). Server core: `includes/fn/list_table.php` column model (key, heading, width, kind, sortable, editable), the first rows printed, the rows answer, keyset paging over `list_paging.php`, the selection resolver ({ids} or {condition, exceptions, as of}, with the list's own query and rights); tests.
 
 2. TD2 (L) After TD1. Browser core in `assets/js/pg_list_table.js`: rows, selection and its bar, Ctrl+A by condition, the undo of a replaced selection, rows on scroll, sort without a reload, the fill-height layout with a sticky header, empty, loading and failed states, CSS; the Pages list (`view_pages.php`, server-paged since #6114) moves with its bulk actions.
 

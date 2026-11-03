@@ -60,6 +60,12 @@ if ($login_as_user_id == USER_ID) {
     output_error(lang('Access denied. You may not login as yourself.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
 }
 
+// A disabled account signs nobody in, this screen included: the session
+// opened below would end at the next request anyway.
+if (pg_user_id_is_disabled($login_as_user_id)) {
+    output_error(lang('This account is disabled, so you cannot log in as this user.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+}
+
 // Remove session data so that user will have a fresh new session
 // as different user.
 session_unset();

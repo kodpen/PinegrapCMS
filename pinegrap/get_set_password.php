@@ -50,6 +50,7 @@ function get_set_password($properties) {
             $token_hash = hash('sha256', $token);
 
             // Check database if token is valid.
+            // A disabled account's token answers as an invalid one.
             $user = db_item(
                 "SELECT
                     user_id AS id,
@@ -57,7 +58,7 @@ function get_set_password($properties) {
                     user_email AS email,
                     token_timestamp
                 FROM user
-                WHERE token = '" . e($token_hash) . "'");
+                WHERE token = '" . e($token_hash) . "'" . pg_user_enabled_sql());
 
             // If query to database return no results for token
             if (!is_array($user) || !$user['id']) {

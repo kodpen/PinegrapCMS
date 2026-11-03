@@ -270,6 +270,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing
 - layout-widget-offer.md: Y5 widget offer beside a custom layout: page type to widget kind, carried settings, the panel buttons that place it and remove the region, why no 301
 - legacy-region-preview.md: The canvas preview of a classic page's system region drawn by its custom layout (designer/legacy_region_preview): who sees it, the markers, the background render, read only, when it is asked again
+- legacy-to-designer-report.md: The "Move to the visual designer" readiness report (LD1): what it lists per classic style, how the state is worked out, what it does not do
 - link-button-inline-children.md: Spans and icons inside a link or button: two ways to hold them, why an inline edit keeps a link's markup, which drops a button accepts, where the label prints beside children.
 - link-target-in-attrs.md: A link's window and rel: props first, _attrs when the prop is empty (link and button link, server and canvas alike), the selection-time fold, starter trees and templates, page bodies drawn before
 - list-search-sort-price-forms.md: List widget search, sort and price forms (server box, catalog's bound form) and page links: accessible names, translated words, no router page name in hidden inputs or links (#4457, #4538).
@@ -280,6 +281,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - member-widgets-tokens-and-fields.md: Membership widget tokens/sections, Google rules, core vs contacts-column fields, login-screen redirect, register-link tri-state, reset screens, page-name box.
 - menu-sequence-widget.md: Menu Sequence widget (menu_sequence_region, #1817): the classic <menu_sequence> region in the designer; reading order of a menu's pages, previous and next links, wrap to the first, tokens, flags.
 - menu-widget.md: Menu widget (menu_region, #1781): a classic menu region in the designer; items stay in the menu screen; menu.children lists, row tokens, current item, access, window, edit chip, gaps.
+- migration-carries-designs.md: Migration screen Visual Designs switch (LD4): get_designs via the template export, managed files, install with target ids, skipped bin/drafts/Workspace folders, what stays behind
 - multi-page-design-model.md: Data model of multi-page visual designer designs (style + page_style, page_tree_json), tree-reading helpers, design-page detection, start screen, recycle bin rules.
 - multi-page-designer-editor.md: Editor screen code, save flow, JSON api.php body, the dirty check and unchanged pages, tab switching/menu/rename DOM rules, toolbar overflow, palette order and designer texts.
 - no-form-in-form.md: No form inside a form in the designer: semantic forms at any depth, widgets the server wraps in a form (_SD_FORM_WIDGET_TYPES), blocks, widgets and components that bring one.
@@ -294,6 +296,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - page-drafts.md: Drafts of visual-designer pages (2026.4.7): the private Drafts folder, page_drafts and the folder a page returns to, how a save sets the state, new pages start as drafts, Save vs Publish, copies.
 - page-experiments-model.md: Page experiments model: the three tables (11.0.153), statuses and moves, the weighted draw, the pg_exp bucket cookie, which requests never join
 - page-experiments-serving.md: Serving a page experiment variant: body swap, the bucket at render and in the router, one cache copy per variant, private headers, views into experiment_hourly
+- page-experiments-sheet.md: The Experiments sheet (page_experiments.php, PX4 #6184): set-up with a variant draft, start/pause/end, Publish the winner through the page save, the chips, the holds on a variant draft
 - page-html-rebuild.md: Rebuild Page HTML (pg_designer_rebuild_page_code()): every designer page drawn again from its stored tree; when it runs, what stays, session cursor; per-body once-assets
 - page-link-fixed-text.md: A value of a link to another page that is fixed text, the same in every record ({name, text} in _bindParams.href.params): spec, address, list rows, the panel's Fixed text row
 - page-link-list-rows.md: A page link (__page_link) drawn in a list row sends values of the row: row params, props._pgRowLinks, the pgpl placeholder, stage 2 fill, settle, the panel's row group (W15, #1734)
@@ -318,6 +321,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - product-questions.md: Product questions on the comments system: kind question/answer and answer_of, the widget Shows choice and its own claim, the answer box, the unanswered filter
 - prototype-hotspots.md: The Prototype view's hotspot collector (assets/js/pg_proto_hotspots.js, window.PGProtoHotspots): which nodes are hotspots, shared frames, the map read's request, the marks, the layout
 - prototype-map-read.md: The Prototype view's server read (api.php designer prototype_map, includes/fn/prototype_map.php): what it is asked, what it answers, how hidden pages stay hidden
+- prototype-places.md: Where the Prototype view keeps a moved frame or chip: frames shared on the design in the tab layout's proto (#6232), the rest per browser; the twin normalisers
 - prototype-view.md: The designer's Prototype view (_sdProtoOpen()): toolbar toggle, frames and chips on the graph canvas core, row clicks, arrows drawn by hand, where positions are kept
 - record-media-field-share-image.md: A form's RSS media upload opens with the record; og:image comes from the form's share image field, then the media field, and skips an upload an anonymous visitor cannot open (#2191, #2174, #2891)
 - record-value-page-links.md: A form list or detail link opening another page with the record's values in its address (__page_link + _bindParams.href): shape, pre-pass, escaping, values, Publish, export, editor, code view

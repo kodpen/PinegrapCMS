@@ -1,0 +1,24 @@
+---
+name: list-table-driver
+description: List table driver server core (includes/fn/list_table.php): source and column model, first rows printed, keyset batches, the list_table_rows action, the selection resolver
+module: list_table
+---
+
+## What does a list give the driver?
+- A source (`pg_list_table_source()`): `list` (name and `pg_list_state()` key), `columns` (key => heading, width, kind, `sort` SQL, sortable, editable, hideable, hidden), `from`, `where` with the user's rights and its bound `params`, `id` and `id_order`, `select`, `group`, `search` (`pg_list_search_where()` columns and labels), `levels`, `created` (Unix seconds SQL, for a selection's "as of"), `rows` (records => rows with `id`, `class`, `cells` keyed by column key), `all` (small list printed whole: browser mode), `params_out` (sent back by the browser).
+- A sort expression is used in WHERE by the keyset, so it is a real expression, never a select alias. Only `pg_list_table_client_columns()` (no SQL) reaches the page.
+- The first column is the record's name: never hideable or hidden.
+
+## How do the rows come?
+- `pg_list_table_html()` prints the first batch (100, `pg_list_table_batch()`) with the column model, params, sort, next cursor and total on `data-pg-list-*` attributes, roles `table`/`row`/`cell`, `aria-sort` on the leading sort, an empty line and a live region.
+- The `list_table_rows` action (`includes/panel/lists.php`, any_role + token) looks the list up in `pg_list_table_definitions()` (name => `file`, `source`); the source function is the screen's gate and answers null to refuse (403). It applies `sort` (a heading click, no reload) and keeps it in the session, then answers `pg_list_table_answer()`: `rows`, `next`, `total` only on the first batch (counted once per condition), `restarted` when a cursor could not be read.
+- Keyset, not offset: the cursor (base64url JSON) holds the sort key, the last row's sort values and id; a cursor of another sort restarts. NULL sorts lowest in MySQL, so `pg_list_table_keyset_where()` writes `IS NOT NULL` / `IS NULL` alternatives; the id gets none.
+
+## What does a selection resolve to?
+- `pg_list_table_selection_parse()`: `{ids}` or `{condition: {search, params}, except, as_of}`; ids are whole numbers, at most 10,000; `as_of` is held to now.
+- `pg_list_table_selected_ids()` reads the ids with the list's own WHERE (rights) and `pg_list_table_selection_where()`: ids `IN`, or the search less `NOT IN` exceptions and `created <= as_of`.
+
+## Which lists are on it?
+- None yet: `pg_list_table_definitions()` is empty until the Pages list moves (`plans/table-driver-steps.md`, TD2).
+
+Related: docs/memory/ui/server-paged-lists.md
