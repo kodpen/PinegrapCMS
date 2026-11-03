@@ -556,7 +556,9 @@ if ($kept) {
     $import_card = '
     <div class="card mb-5 border-primary" id="ws-wt-import">
         <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-file-earmark-arrow-up me-1" aria-hidden="true"></i>'
-            . h(lang(array('string' => '{var:1} rows from “{var:2}”', 'vars' => array(count($kept['rows']), $kept['file'])))) . '</h2></div>
+            . h($kept['note']
+                ? lang(array('string' => '{var:1} rows from the note “{var:2}”', 'vars' => array(count($kept['rows']), $kept['file'])))
+                : lang(array('string' => '{var:1} rows from “{var:2}”', 'vars' => array(count($kept['rows']), $kept['file'])))) . '</h2></div>
         <div class="card-body">
             ' . ($kept['more'] ? '<div class="alert theme-warning small py-3">' . h(lang(array('string' => 'The file has more rows than a table holds: only the first {var:1} are read.', 'vars' => ws_wtable_limits()['rows']))) . '</div>' : '') . '
             <p class="small fg-secondary">' . h($kept['note'] ? ($table
@@ -868,7 +870,9 @@ if (!$table) {
                     break;
 
                 case 'text':
-                    $input = '<textarea class="form-control form-control-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '" rows="1">' . h($value) . '</textarea>';
+                    // Tall enough for the lines the value has, two at least.
+                    $lines = min(8, max(2, count(preg_split('/\r\n|\r|\n/', $value))));
+                    $input = '<textarea class="form-control form-control-sm' . $invalid . '" name="' . h($name) . '" id="' . $field_id . '" rows="' . $lines . '">' . h($value) . '</textarea>';
                     break;
 
                 default:
@@ -985,7 +989,7 @@ if (!$table) {
                     <input type="hidden" name="wt_table" value="' . $id . '">
                     <input type="hidden" name="wt_column" value="' . (int) $column_id . '">
                     <div class="mb-3"><label class="form-label small mb-1" for="' . $prefix . '_name">' . h(lang('Name')) . '</label>
-                        <input type="text" class="form-control form-control-sm" name="name" id="' . $prefix . '_name" value="' . h($column['name']) . '" required></div>
+                        <input type="text" class="form-control form-control-sm" name="name" id="' . $prefix . '_name" value="' . h($column['name']) . '" maxlength="' . (int) ws_wtable_limits()['name'] . '" required></div>
                     ' . $option_fields($column['type'], $column, $prefix) . '
                     <button type="submit" class="btn btn-sm btn-outline theme-primary rounded-pill px-5">' . h(lang('Save')) . '</button>
                 </form>
