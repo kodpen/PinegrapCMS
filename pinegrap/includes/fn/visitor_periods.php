@@ -2,10 +2,11 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The period of the Visitors overview (visitors.php): which days a preset or
- * a custom range covers by the site's clock, the period it is compared with,
- * the grain its charts are drawn in (weeks start on Monday) and the links
- * that keep it. Pure: nothing here reads the database or the session, the
+ * The period and the section list of the Visitors overview (visitors.php):
+ * which days a preset or a custom range covers by the site's clock, the
+ * period it is compared with, the grain its charts are drawn in (weeks start
+ * on Monday), the links that keep it, and the sections the screen and the
+ * Visitors menu list. Nothing here reads the database or the session; the
  * period travels in the query string only.
  *
  * @author      Erdal Güral (Kodpen)
@@ -332,4 +333,41 @@ function pg_visitor_period_query(array $period, array $change = array())
     }
 
     return http_build_query($query, '', '&');
+}
+
+/**
+ * The overview's sections in the screen's order, name => heading. A section
+ * is the file includes/visitors/<name>.php; its name is also its anchor
+ * (visitors.php#sources).
+ *
+ * @return array
+ */
+function pg_visitors_sections()
+{
+    return array(
+        'alerts'      => lang('Alerts'),
+        'traffic'     => lang('Traffic'),
+        'conversions' => lang('Conversions'),
+        'sources'     => lang('Sources'),
+        'content'     => lang('Content'),
+        'site_search' => lang('Site Search'),
+        'google'      => lang('Google Search'),
+        'pages'       => lang('Pages and Google'),
+        'speed'       => lang('Page Speed'),
+        'ai'          => lang('AI Visibility'),
+        'places'      => lang('Places and Devices'),
+    );
+}
+
+/**
+ * Whether a section's file is there yet.
+ *
+ * @param string $name a key of pg_visitors_sections()
+ * @return bool
+ */
+function pg_visitors_section_exists($name)
+{
+    $sections = pg_visitors_sections();
+
+    return isset($sections[$name]) && is_file(PG_FUNCTIONS_DIR . '/includes/visitors/' . $name . '.php');
 }

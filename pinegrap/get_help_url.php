@@ -179,6 +179,7 @@ function get_help_url($properties = array())
         'import_submitted_forms' => 'forms#import-submitted-forms',
 
         // Visitors
+        'visitors'             => 'visitors#overview',
         'view_visitor_reports' => 'visitors#visitor-reports',
         'view_visitor_report'  => 'visitors#create-edit-visitor-report',
         'view_visitor'         => 'visitors#visit-details',

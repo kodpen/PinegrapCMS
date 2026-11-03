@@ -4325,6 +4325,7 @@
     "after must be an item with the same parent.": "after aynı üst öğenin altındaki bir öğe olmalı.",
     "after the return period": "cayma süresinden sonra",
     "against the {var:1} days before": "önceki {var:1} güne göre",
+    "against {var:1}": "{var:1} ile karşılaştırmalı",
     "agent, realtor, team, languages": "danışman, emlakçı, ekip, diller",
     "agents": "danismanlar",
     "ago": "önce",
