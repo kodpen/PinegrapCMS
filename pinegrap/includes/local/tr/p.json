@@ -799,6 +799,7 @@
     "Pictures": "Resimler",
     "Pictures Row": "Görseller Satırı",
     "Pictures and logo": "Görseller ve logo",
+    "Pictures and the shop": "Resimler ve dükkân",
     "Pictures are not shrunk on upload.": "Resimler yüklenirken küçültülmez.",
     "Pictures are sent as WebP at their own address to browsers that read it": "Resimler, WebP okuyan tarayıcılara kendi adreslerinde WebP olarak gönderilir",
     "Pictures are sent as uploaded at their own address. Switch on WebP at the picture's own address in Image Optimization to send browsers that read WebP a lighter copy.": "Resimler kendi adreslerinde yüklendikleri gibi gönderiliyor. WebP okuyan tarayıcılara daha hafif bir kopya göndermek için Görsel Optimizasyonu'nda resmin kendi adresinde WebP ayarını açın.",
