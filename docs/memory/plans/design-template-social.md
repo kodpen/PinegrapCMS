@@ -9,7 +9,7 @@ description: Plan for the Social Community template (pinegrap-social): a photo c
 
 ## How does it work without new product behaviour?
 - A post is a record of the Posts form, a collection sent by a member: photo (image kind, `posts` folder), alt text, caption, topic, tags, place. Office: status Live/Hidden (`status is not equal to Hidden` on lists and view), featured. Lists `?topic=`, `tags contains ?tag=` ([[collection-lists]]); the post page is the record view, comments on its Comments widget (`post_comments`).
-- A profile is a record of the Profiles form, sent once by the member, edited by them ("Allow submitter to edit…"): display name, bio, city, interests (a topic), avatar, website. The member page is its record view; its post list filters `?member=submitter_name` (the forum's member archive).
+- A profile is a record of the Profiles form, sent once by the member, edited by them ("Allow submitter to edit…"): display name, bio, city, interests (a topic), avatar, website. The member page lists that profile and the posts by `?member=submitter_name` (the forum's member archive).
 - Saved posts: the thread's follow box; Saved lists watched posts ([[form-list-viewer-filter]]).
 - A report: a Reports record (`?post=form_item_view`), moderators' notes on its page; staff hide a post by its status.
 - Not built (new behaviour, #6296): likes, following members, member-to-member messages (the conversation stays member to site), stories, video.
@@ -19,7 +19,7 @@ description: Plan for the Social Community template (pinegrap-social): a photo c
 - `member` is the public profile, `my_profile` the member's own; `profile` stays the account page.
 
 ## Which steps are there?
-- 1 Data and shared parts: `parts.php` (builders, samples; account bar, header, footer, join band, avatar, post, profile and topic cards, page shells, form fields, comment thread, staff bar); test `design_template_social_test.php`.
+- 1 Done (#6297). Data and shared parts: `parts.php` (builders, samples; account bar, header, footer, join band, avatar, post, profile and topic cards, page shells, form fields, comment thread, staff bar); test `design_template_social_test.php`.
 - 2 Public pages: `pages_public.php` (home, topics, about, guidelines, FAQ, help, privacy, terms).
 - 3 Profiles: `profiles.php` (`my_profile` with the collection and samples, `people`, `member` with the member's posts, `staff_members`).
 - 4 Posts: `posts.php` (`post_new` with the collection and samples, `explore`, `tag`, `post`, `my_posts`, `saved`, home lists).
