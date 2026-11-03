@@ -16,9 +16,6 @@ description: Steps N1-N14 and the visual pass V of plans/new-dashboard.md: size,
 - N10 Pipeline and queue. Screens 02, 03.
   - N10d (S) `visitmap` as question 2 decided. Held: a raw `visitors` count clashes with the `visitors/` key rules; architect issue #4896.
 
-- N12 (M) Goals, pins, notes, performance, subscriptions. Screens 01, 04, 18, 19. Cut in three.
-  - N12c (S) `subs`, hidden until the vendor licence client answers (`plans/kodpen-vendor-api-client-steps.md`, P8).
-
 - N14 (M) Phone, keyboard and close-out. Screen 20. After N2-N13.
   - Phone pass (390x844, 844x390, touch), keyboard and screen reader, reduced motion, forced colours, every screen in light and dark.
 
