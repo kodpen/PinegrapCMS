@@ -110,6 +110,7 @@ function pg_image_editor_strings_core()
         'tool_sticker'   => lang('Sticker'),
         'tool_frame'     => lang('Frame'),
         'tool_vector'    => lang('Vector'),
+        'tool_scissors'  => lang('Scissors'),
         'tool_artboard'  => lang('Canvas'),
         'tool_image'     => lang('Image'),
         'tool_export'    => lang('Export'),
@@ -3076,6 +3077,8 @@ function pg_image_editor_strings_vector()
         'pathClosed'     => lang('Closed'),
         'finishPath'     => lang('Finish'),
         'convertToPath'  => lang('Convert to path'),
+        'hintScissors'   => lang('Click a path: cut it there. Drag across paths: cut where the line crosses.'),
+        'scissorsNote'   => lang('Click a path or shape to cut it at that point: an open path becomes two, a closed one opens. Drag a line across paths to cut each where it crosses. A shape becomes a path first.'),
     );
 }
 

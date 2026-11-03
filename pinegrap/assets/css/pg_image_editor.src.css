@@ -1915,6 +1915,11 @@
   stroke-width: 1.5;
 }
 
+/* The scissors' cutting line. */
+.pgie-vpath.pgie-scut {
+  stroke-dasharray: 5 4;
+}
+
 .pgie-vline {
   fill: none;
   stroke: var(--pgie-sel);
