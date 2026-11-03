@@ -1020,7 +1020,8 @@ function _pg_sw_current_page_id()
     if ($page_id !== null) return $page_id;
 
     $page_id = 0;
-    $slug = isset($_GET['page']) ? (string)$_GET['page'] : '';
+    // A non-string page (page[]=2) is no slug; casting it raised a warning.
+    $slug = (isset($_GET['page']) && is_string($_GET['page'])) ? $_GET['page'] : '';
     if ($slug !== '') {
         $first_slash = mb_strpos($slug, '/');
         if ($first_slash !== false) $slug = mb_substr($slug, 0, $first_slash);

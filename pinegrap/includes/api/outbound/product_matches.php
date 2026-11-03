@@ -187,7 +187,7 @@ function mp_matches_page($account_id, $filter, $search, $page, $per_page) {
 			marketplace_product_map.last_pushed"
 			. (mp_commission_ready() ? ", marketplace_product_map.commission" : '') . "
 		" . $where . "
-		ORDER BY (marketplace_product_map.status = 'error') DESC, products.short_description ASC, products.name ASC, products.id ASC
+		ORDER BY (marketplace_product_map.status <=> 'error') DESC, products.short_description ASC, products.name ASC, products.id ASC
 		LIMIT " . (max(0, (int) $page - 1) * (int) $per_page) . ", " . (int) $per_page);
 
 	return array('rows' => $rows, 'total' => $total);
@@ -477,12 +477,15 @@ function mp_matches_clear_stale($account_id, $code = null, $binned = true) {
 
 // Queue a listing update (title, description, pictures) for the approved
 // listings among these products, on a marketplace whose connector updates
-// listings. Answers how many were queued.
-function mp_matches_listing_update($account_id, $product_ids) {
+// listings. Answers how many were queued: none on an account that is not
+// active, whose waiting rows the job would close as failed unsent.
+function mp_matches_listing_update($account, $product_ids) {
+
+	$account_id = (int) $account['id'];
 
 	$product_ids = mp_matches_ids($product_ids);
 
-	if (!$product_ids) {
+	if (!$product_ids || ($account['status'] !== 'active')) {
 
 		return 0;
 
