@@ -1,6 +1,6 @@
 ---
 name: bug-hunt-modules-endpoints-2
-description: Module list of plans/bug-hunt.md, part 4: root endpoint groups optimize to zone by area word; single endpoints in bug-hunt-modules-endpoints-2b.md, one line each with its state
+description: Module list of plans/bug-hunt.md, part 4: root endpoint groups optimize to zone by area word, one line each with its state; single endpoints in endpoints-2b
 ---
 
 ## Which root endpoint groups (optimize to zone) are hunted?
@@ -17,7 +17,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 - Endpoints `registration` (4): done #6041 (lang() labels, send_to[])
 - Endpoints `remove` (3): done #6041 (cart ids[])
 - Endpoints `return` (4): clean
-- Endpoints `search` (3): open
+- Endpoints `search` (5): #6064 (simple search); rest clean
 - Endpoints `seo` (8): open
 - Endpoints `setting` (14): open
 - Endpoints `ship` (3): open
