@@ -18,4 +18,7 @@ description: How an upgrade step that may outrun the web server's time limit is 
 - Those three parts (schema, backfill, engine change) were once three versions (2026.3.4, 2026.3.5, 2026.3.6). With one open version at a time they are separate sub-steps or work handed to the general job; a big engine change is left to the operator's Database Engine screen (`data/table-engines-and-row-size.md`).
 - A backfill that reads a table the same request has just created asks with `$recheck` (`schema-probe-rules.md`).
 
+## How does an engine conversion remember an attempt that died?
+- `pg_innodb_convert_table()` writes one entry per table in `data/temp/innodb_convert.json` (`pg_innodb_marker_set()`) before its ALTER and removes only that entry after it. An entry left with no ALTER running is answered `aborted`, so the upgrade does not start the copy that timed out again. Until #PRNUM the file held one table and the next table's conversion erased it, so the following pass of 2026.4.8 restarted the dead copy.
+
 Related: docs/memory/release/upgrade-runner-behavior.md, docs/memory/release/how-to-add-migration.md

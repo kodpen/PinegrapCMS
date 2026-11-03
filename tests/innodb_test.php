@@ -590,3 +590,39 @@ function test_innodb_state_text_too_wide()
 	pg_assert_contains('1118', $fallback);
 	pg_assert_contains('Row size too large', $fallback);
 }
+
+// The conversion marker keeps one entry per table: converting another table
+// must not erase the record of an earlier attempt that died on its copy, or
+// the next upgrade pass starts that same ALTER again. A marker in the older
+// single-table form is read as one entry.
+function test_innodb_marker_keeps_other_tables()
+{
+	$file = @tempnam(sys_get_temp_dir(), 'pginnodb');
+	pg_assert_true($file !== false, 'temporary file');
+
+	file_put_contents($file, json_encode(array('table' => 'orders', 'started' => 100, 'pid' => 7)));
+
+	pg_assert_same(array('orders' => array('started' => 100, 'pid' => 7)), pg_innodb_marker_entries($file), 'older single-table marker');
+
+	pg_innodb_marker_set($file, 'products', array('started' => 200, 'pid' => 8));
+
+	pg_assert_same(array('orders', 'products'), array_keys(pg_innodb_marker_entries($file)), 'second table added beside the first');
+
+	pg_innodb_marker_set($file, 'products', null);
+
+	pg_assert_same(array('orders' => array('started' => 100, 'pid' => 7)), pg_innodb_marker_entries($file), 'the finished table removed, the aborted one kept');
+
+	pg_innodb_marker_set($file, 'orders', null);
+
+	pg_assert_true(!file_exists($file), 'an empty marker is removed');
+
+	pg_assert_same(array(), pg_innodb_marker_entries($file), 'no marker file');
+
+	file_put_contents($file, 'not json');
+	pg_assert_same(array(), pg_innodb_marker_entries($file), 'unreadable marker');
+
+	file_put_contents($file, json_encode(array('tables' => array('a`b' => array('started' => 1), 'menus' => 'x', 'page' => array('started' => '5')))));
+	pg_assert_same(array('page' => array('started' => 5, 'pid' => 0)), pg_innodb_marker_entries($file), 'bad names and entries dropped');
+
+	@unlink($file);
+}

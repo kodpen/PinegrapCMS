@@ -128,16 +128,160 @@ function pg_innodb_core_tables()
 }
 
 /**
- * The file that says a conversion has started and not yet ended:
- * {"table": ..., "started": unix time, "pid": ...}. It is written before the
- * ALTER and removed after it, whichever way it ended, so a file that is still
- * there after the ALTER is no longer running means the request died under it.
+ * The file that says which conversions have started and not yet ended:
+ * {"tables": {table: {"started": unix time, "pid": ...}, ...}}. A table's
+ * entry is written before its ALTER and removed after it, whichever way it
+ * ended, so an entry that is still there after the ALTER is no longer running
+ * means the request died under it. Entries of other tables stay: one table's
+ * conversion must not erase the record of another's that never finished.
  *
  * @return string
  */
 function pg_innodb_temp_marker()
 {
     return PG_FUNCTIONS_DIR . '/data/temp/innodb_convert.json';
+}
+
+/**
+ * The entries of a conversion marker, from its decoded JSON. The older form,
+ * one table at the top level ({"table", "started", "pid"}), is read as one
+ * entry. Names that are not table names and entries without a start time are
+ * dropped.
+ *
+ * No database access.
+ *
+ * @param mixed $data
+ * @return array table => array('started' => int, 'pid' => int)
+ */
+function pg_innodb_marker_parse($data)
+{
+    if (!is_array($data)) {
+        return array();
+    }
+
+    if (isset($data['table']) && is_string($data['table'])) {
+        $data = array('tables' => array($data['table'] => $data));
+    }
+
+    if (!isset($data['tables']) || !is_array($data['tables'])) {
+        return array();
+    }
+
+    $entries = array();
+
+    foreach ($data['tables'] as $table => $entry) {
+        if ((preg_match('/^[a-z0-9_]+$/', (string) $table) !== 1) || !is_array($entry) || !isset($entry['started']) || !is_numeric($entry['started'])) {
+            continue;
+        }
+
+        $entries[(string) $table] = array(
+            'started' => (int) $entry['started'],
+            'pid' => (isset($entry['pid']) && is_numeric($entry['pid'])) ? (int) $entry['pid'] : 0,
+        );
+    }
+
+    return $entries;
+}
+
+/**
+ * The entries of the conversion marker file (pg_innodb_temp_marker()).
+ *
+ * @param string|null $file null for pg_innodb_temp_marker()
+ * @return array table => array('started' => int, 'pid' => int)
+ */
+function pg_innodb_marker_entries($file = null)
+{
+    $file = ($file === null) ? pg_innodb_temp_marker() : (string) $file;
+
+    if (!is_file($file)) {
+        return array();
+    }
+
+    return pg_innodb_marker_parse(@json_decode((string) @file_get_contents($file), true));
+}
+
+/**
+ * Adds, replaces or (with null) removes one table's entry of the conversion
+ * marker file, under an exclusive lock, keeping the other tables' entries.
+ * The file is removed when no entry is left.
+ *
+ * @param string|null $file  null for pg_innodb_temp_marker()
+ * @param string      $table
+ * @param array|null  $entry array('started' => int, 'pid' => int), or null
+ * @return bool
+ */
+function pg_innodb_marker_set($file, $table, $entry)
+{
+    $file = ($file === null) ? pg_innodb_temp_marker() : (string) $file;
+    $table = (string) $table;
+
+    if ($entry === null && !is_file($file)) {
+        return true;
+    }
+
+    $directory = dirname($file);
+
+    if (!is_dir($directory)) {
+        @mkdir($directory, 0755, true);
+    }
+
+    // The file is removed when its last entry goes; a writer that was
+    // waiting for the lock meanwhile holds a file no longer at this path
+    // and opens it again, so its entry is not written into the removed one.
+    for ($attempt = 0; $attempt < 5; $attempt++) {
+        $handle = @fopen($file, 'c+');
+
+        if (!$handle) {
+            return false;
+        }
+
+        @flock($handle, LOCK_EX);
+
+        clearstatcache(true, $file);
+        $held = @fstat($handle);
+        $current = @stat($file);
+
+        if (is_array($held) && is_array($current) && ($held['ino'] == $current['ino']) && ($held['dev'] == $current['dev'])) {
+            break;
+        }
+
+        @flock($handle, LOCK_UN);
+        fclose($handle);
+        $handle = null;
+    }
+
+    if (!$handle) {
+        return false;
+    }
+
+    $entries = pg_innodb_marker_parse(@json_decode((string) stream_get_contents($handle), true));
+
+    if ($entry === null) {
+        unset($entries[$table]);
+    } else {
+        $entries[$table] = array(
+            'started' => isset($entry['started']) ? (int) $entry['started'] : time(),
+            'pid' => isset($entry['pid']) ? (int) $entry['pid'] : 0,
+        );
+    }
+
+    if (count($entries) == 0) {
+        // Removed while still locked: a writer waiting for the lock sees
+        // the file gone and opens a new one (above).
+        @unlink($file);
+        @flock($handle, LOCK_UN);
+        fclose($handle);
+        return true;
+    }
+
+    ftruncate($handle, 0);
+    rewind($handle);
+    $written = (fwrite($handle, (string) json_encode(array('tables' => $entries))) !== false);
+    fflush($handle);
+    @flock($handle, LOCK_UN);
+    fclose($handle);
+
+    return $written;
 }
 
 /**
@@ -890,15 +1034,15 @@ function pg_innodb_convert_table($table, $options = array())
     $result['rows'] = $status[$table]['rows'];
     $result['bytes'] = $status[$table]['bytes'];
 
-    $marker_file = pg_innodb_temp_marker();
-    $marker = @json_decode((string) @file_get_contents($marker_file), true);
-    $marker_is_ours = (is_array($marker) && isset($marker['table']) && ($marker['table'] === $table));
+    $markers = pg_innodb_marker_entries();
+    $marker = isset($markers[$table]) ? $markers[$table] : null;
+    $marker_is_ours = ($marker !== null);
 
     if ($status[$table]['engine'] === 'innodb') {
         // A marker left by an attempt that the server finished after the
         // request had gone.
         if ($marker_is_ours) {
-            @unlink($marker_file);
+            pg_innodb_marker_set(null, $table, null);
         }
         $result['state'] = 'already';
         return $result;
@@ -941,17 +1085,10 @@ function pg_innodb_convert_table($table, $options = array())
         return $result;
     }
 
-    $marker_directory = dirname($marker_file);
-
-    if (!is_dir($marker_directory)) {
-        @mkdir($marker_directory, 0755, true);
-    }
-
-    @file_put_contents($marker_file, json_encode(array(
-        'table' => $table,
+    pg_innodb_marker_set(null, $table, array(
         'started' => time(),
-        'pid' => (function_exists('getmypid') ? getmypid() : 0),
-    )), LOCK_EX);
+        'pid' => (function_exists('getmypid') ? (int) getmypid() : 0),
+    ));
 
     // The session settings are put back afterwards; the same connection
     // carries on with the rest of the request.
@@ -990,7 +1127,7 @@ function pg_innodb_convert_table($table, $options = array())
         db_q("SET SESSION sql_mode = ?", array((string) $previous['sql_mode']));
     }
 
-    @unlink($marker_file);
+    pg_innodb_marker_set(null, $table, null);
 
     if ($done) {
         $result['state'] = 'converted';

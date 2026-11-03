@@ -384,10 +384,16 @@ $engine_running = pg_db_running_statement('');
 
 // A conversion marker with nothing running behind it: an attempt that never
 // finished.
-$engine_marker = @json_decode((string) @file_get_contents(pg_innodb_temp_marker()), true);
-$engine_marker_table = (($engine_running === null) && is_array($engine_marker) && isset($engine_marker['table']) && isset($engine_pending[$engine_marker['table']]))
-    ? (string) $engine_marker['table']
-    : '';
+$engine_marker_table = '';
+
+if ($engine_running === null) {
+    foreach (pg_innodb_marker_entries() as $engine_marker_name => $engine_marker_entry) {
+        if (isset($engine_pending[$engine_marker_name])) {
+            $engine_marker_table = (string) $engine_marker_name;
+            break;
+        }
+    }
+}
 
 // The same for OPTIMIZE. Half a minute of grace: the request that wrote the
 // marker may be about to start its statement. Said once, then forgotten.
