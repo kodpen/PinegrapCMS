@@ -37,6 +37,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - audit-trail-workspace.md: How Workspace writes reach audit_log through ws_change_write(): kind to table, recycle vs deletes the helpers write, offers, the job as actor for bulk and scheduled changes
 - audit-trail-writers.md: Which save paths write audit_log rows, how they read the row before and after (pg_audit_fetch, pg_audit_record), which paths are not hooked
 - auto-registration-set-password-link.md: Accounts a form auto-registers or an administrator creates (add user, import) get a single-use set password link, not the password; who sees it, what $auto_registration_password holds.
+- build-url-host-parts.md: build_url() keeps the port and user information of the URL it is given unless a hostname property replaces the host.
 - code-comment-rules.md: Mandatory prohibitions for in-code comments: English only, no AI/session/process traces, classic what-and-why style, retroactive conversion.
 - code-editor-completion.md: Code editor completion (pg_code_editor.js): css/js sources inside an HTML editor, addCompletionRanker, colour swatches, the slot sources and the lezer lookup-cache reset
 - code-editor-emmet.md: The code editor's Emmet: the MIT emmet core in the lazy bundle, ed.expandAbbreviation() on Mod+E (why not Tab), the context from the syntax tree, tab-stops, locks, the `emmet` option (PR #2909)
@@ -99,6 +100,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - lang-files.md: Turkish wording as sorted shards in includes/local/tr/: why, layout, pg_lang_map() the one reader, old tr.json on updated sites, tr_add.php, tr_resolve.php, check_lang.php, speed
 - lang-function-syntax.md: lang() call forms: plain, variables {var:N}, case modifiers |c |u |l, plural suffix, no text concatenated outside lang(), and the lang(['info' => true]) active-language query.
 - lang-loader.md: Where lang() lives (includes/fn/lang.php), how get_file.php loads it without functions.php, the software language a request outside init.php speaks
+- lang-placeholders.md: How lang() fills {var:N}, its case modifiers and {suffix}: one strtr() pass, values never re-scanned, plain {var} left for JavaScript
 - mail-bounce-screens.md: Where the bounce record is shown: campaign delivery counts, the Suppressed contact view and export column, the contact card badge with Allow again, personal data export and erasure
 - mail-bounce-verp.md: VERP return path with a signed per-message token, pg_mail_parse_dsn() for delivery reports and ARF complaints, and the Workspace mailbox that reads bounces and records them
 - mail-bounces.md: The bounce record (mail_bounces, one row per address) and the send gate the mail queue and campaigns ask before a send; complaint withdraws e-mail consent; resubscribe or address change clears

@@ -2592,7 +2592,18 @@ function build_url($properties)
     if ($hostname != '') {
         $url_hostname = $hostname;
     } else if (isset($url_parts['host'])) {
+        // The port and user information belong to the given host: without
+        // them an address on port 8443 was sent to the default port. A
+        // hostname property replaces all three (HOSTNAME carries its port).
         $url_hostname = $url_parts['host'];
+
+        if (isset($url_parts['port'])) {
+            $url_hostname .= ':' . $url_parts['port'];
+        }
+
+        if (isset($url_parts['user'])) {
+            $url_hostname = $url_parts['user'] . (isset($url_parts['pass']) ? ':' . $url_parts['pass'] : '') . '@' . $url_hostname;
+        }
     }
 
     $url_path = '';

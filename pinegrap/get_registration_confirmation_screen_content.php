@@ -46,9 +46,9 @@ function get_registration_confirmation_screen_content($host = null)
     }
     
     return
-        'Email: ' . h($email_address) . '<br />
-        Username: ' . h($username) . '<br />
+        lang('Email') . ': ' . h($email_address) . '<br />
+        ' . lang('Username') . ': ' . h($username) . '<br />
         <br />
-        <a href="' . URL_SCHEME . $host . h(pg_safe_redirect_path($_REQUEST['send_to'] ?? '')) . '" class="software_button_primary">Continue</a><br />';
+        <a href="' . URL_SCHEME . $host . h(pg_safe_redirect_path($_REQUEST['send_to'] ?? '')) . '" class="software_button_primary">' . lang('Continue') . '</a><br />';
 }
 ?>
