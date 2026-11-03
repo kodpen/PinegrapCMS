@@ -25,6 +25,17 @@ function test_preloader_prints_the_curtain_and_the_leaving_bar()
 	pg_assert_contains('timer = setTimeout(hide, 9000);', $html, 'the boot timer is the one hide() clears');
 }
 
+function test_preloader_waits_for_a_list_table()
+{
+	$html = pg_preloader_markup();
+	pg_assert_contains("document.addEventListener('DOMContentLoaded', arrived);", $html, 'DOM ready decides, the table is parsed by then');
+	pg_assert_contains("document.querySelector('table.chart') && window.jQuery && jQuery.fn && jQuery.fn.DataTable", $html, 'a list screen keeps the curtain for DataTables');
+
+	$js = (string)file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
+	pg_assert_contains("$('table.chart').one('error.dt', pgListCurtainDone);", $js, 'a DataTables error lifts the curtain');
+	pg_assert_true(substr_count($js, 'pgListCurtainDone();') >= 2, 'init complete and a throw lift the curtain');
+}
+
 function test_preloader_leaving_has_no_curtain_and_no_timer_exit()
 {
 	$html = pg_preloader_markup();
