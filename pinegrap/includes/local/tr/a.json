@@ -3208,6 +3208,7 @@
     "An unfinished restore": "Yarım kalmış geri yükleme",
     "An unknown function.": "Bilinmeyen işlev.",
     "An update writes only the columns the file supplies; balances are never touched.": "Güncelleme yalnız dosyanın verdiği sütunları yazar; bakiyelere hiç dokunulmaz.",
+    "An upload that is not started is removed with its file after {var:1} days.": "Başlatılmayan bir yükleme {var:1} gün sonra dosyasıyla birlikte kaldırılır.",
     "An İYS code is made of digits only.": "İYS numarası yalnızca rakamlardan oluşur.",
     "Analytics": "Analitik",
     "Analytics could not be read: {var:1}": "Analizler okunamadı: {var:1}",

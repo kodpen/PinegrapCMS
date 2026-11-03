@@ -181,7 +181,7 @@ foreach ($report as $s) {
     $output_action = '';
     if ($s['state'] !== 'blocked') {
         $output_action .= '<input class="check m-1" type="checkbox" name="styles[]" value="' . (int)$s['id'] . '" form="ltd_dry_run" aria-label="' . h($s['name']) . '"' . (isset($chosen[$s['id']]) ? ' checked' : '') . '>';
-        $output_action = '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" title="' . h(lang('Open in the visual designer')) . '" href="edit_system_style.php?id=' . (int)$s['id'] . '&amp;classic=1"><i class="bi bi-magic"></i></a>';
+        $output_action .= '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" title="' . h(lang('Open in the visual designer')) . '" href="edit_system_style.php?id=' . (int)$s['id'] . '&amp;classic=1"><i class="bi bi-magic"></i></a>';
     }
 
     $output_rows .= '
@@ -218,7 +218,7 @@ $output_table = $report
                 <tr>
                     <th>' . lang('Action') . '</th>
                     <th>' . lang('Style') . '</th>
-                    <th>' . lang('State') . '</th>
+                    <th>' . lang('Status') . '</th>
                     <th>' . lang('Pages') . '</th>
                     <th>' . lang('Regions') . '</th>
                     <th>' . lang('Notes') . '</th>
@@ -332,6 +332,7 @@ pg_page_shell([
         'icon' => 'design',
         'heading' => lang('Move to the visual designer'),
         'heading_description' => lang('Every classic style with its pages and regions, and what each needs before it is opened in the visual designer. Nothing is changed here.'),
+        'breadcrumb' => array(array('label' => lang('All Page Styles'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_styles.php'), array('label' => lang('Move to the visual designer'))),
     ]) . '
 <main id="content" class="container-fluid">
     ' . pg_screen_toolbar(array(

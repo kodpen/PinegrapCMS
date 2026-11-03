@@ -46,6 +46,10 @@ const PG_IMPORT_UNDO_DAYS = 30;
 // Skipped and failed lines the report keeps in full; the rest are counted.
 const PG_IMPORT_REPORT_LINES = 2000;
 
+// Days an upload that was checked but never started keeps its file; the
+// general job then removes the row and the file.
+const PG_IMPORT_UNSTARTED_DAYS = 7;
+
 /**
  * The two tables come with the 2026.11.0 upgrade (11.0.156).
  *
@@ -213,6 +217,27 @@ function pg_import_writer_load($kind)
 }
 
 /**
+ * Why the writer of $kind would skip an item, '' when it would write it or
+ * has no check of its own (pg_import_precheck_<kind>($item) in its file):
+ * the dry run asks it so an item the run will refuse (an e-mail address or
+ * a SKU the site holds already) is not counted as new.
+ *
+ * @param string $kind
+ * @param array  $item
+ * @return string
+ */
+function pg_import_precheck($kind, $item)
+{
+    $check = 'pg_import_precheck_' . $kind;
+
+    if (!pg_import_writer_load($kind) || !function_exists($check)) {
+        return '';
+    }
+
+    return trim((string) call_user_func($check, $item));
+}
+
+/**
  * A writer's answer in the one shape the run counts, whatever it returned.
  * Pure.
  *
@@ -373,6 +398,72 @@ function pg_import_mapping_clean($rows, $posted)
     }
 
     return array('mapping' => $mapping, 'missing' => $missing);
+}
+
+/**
+ * Whether a form field of $type may take a mapping row whose writer fills
+ * only $types (all when empty). An information field holds no value and
+ * never does. Pure.
+ *
+ * @param string   $type
+ * @param string[] $types
+ * @return bool
+ */
+function pg_import_field_fits($type, $types)
+{
+    $type = (string) $type;
+
+    if (($type === '') || ($type === 'information')) {
+        return false;
+    }
+
+    return !$types || in_array($type, (array) $types, true);
+}
+
+/**
+ * The choices of a tree picker (folders, product groups): id => label in
+ * tree order, siblings in the order given, each label its path ("Shop ›
+ * private"), so two folders of one name tell apart. A lone top node (the
+ * root folder) leads every path, so it is left out of them. A node in
+ * $left_out drops with everything below it. Pure.
+ *
+ * @param array $rows     id => array('parent' => id, 'name' => text), siblings in order
+ * @param int[] $left_out ids whose subtree is not offered
+ * @return array<string,string>
+ */
+function pg_import_tree_choices($rows, $left_out)
+{
+    $children = array();
+
+    foreach ((array) $rows as $id => $row) {
+        $children[(int) ($row['parent'] ?? 0)][] = (int) $id;
+    }
+
+    $left_out = array_flip(array_map('intval', (array) $left_out));
+    $choices = array();
+    $seen = array();
+
+    $lone_top = (count($children[0] ?? array()) === 1);
+
+    // Depth first from the top nodes; $path holds the names that lead the
+    // labels below.
+    $walk = function ($parent, $path) use (&$walk, &$choices, &$seen, $children, $left_out, $rows, $lone_top) {
+        foreach ($children[$parent] ?? array() as $id) {
+            if (isset($left_out[$id]) || isset($seen[$id])) {
+                continue;
+            }
+
+            $seen[$id] = true;
+            $name = (string) ($rows[$id]['name'] ?? '');
+            $own = array_merge($path, array($name));
+            $choices[(string) $id] = implode(' › ', $own);
+            $walk($id, (($parent === 0) && $lone_top) ? array() : $own);
+        }
+    };
+
+    $walk(0, array());
+
+    return $choices;
 }
 
 // ---- Files ---------------------------------------------------------------
@@ -725,12 +816,17 @@ function pg_import_dry_run($import_id, $budget, $sample = 50)
 
         $item_kind = (string) ($item['kind'] ?? '');
         $seen = pg_import_item_id($related, $item_kind, (string) ($item['source_key'] ?? '')) > 0;
-        $dry['counts'] = pg_import_tally($dry['counts'], $item_kind, $seen ? 'skipped' : 'made');
+        $refusal = $seen ? '' : pg_import_precheck($item_kind, $item);
+
+        // The dry run's tally: made is new, skipped imported already, and
+        // failed what the writer will refuse (shown as "Will be skipped").
+        $dry['counts'] = pg_import_tally($dry['counts'], $item_kind, $seen ? 'skipped' : (($refusal !== '') ? 'failed' : 'made'));
 
         if (count($dry['lines']) < $sample) {
             $line = (array) call_user_func('pg_import_' . $kind . '_plan', $item);
             $line['kind'] = $item_kind;
             $line['seen'] = $seen;
+            $line['refusal'] = $refusal;
             $dry['lines'][] = $line;
         }
     }
@@ -766,23 +862,32 @@ function pg_import_start($import_id, $mapping)
  * A kind without a delete path keeps its rows, which are named in the
  * answer.
  *
+ * closed: the import is missing or no longer undoable (undone already,
+ * past the 30 days), so there is nothing to ask again. busy: another
+ * request holds the import (a run step or a second undo); ask later.
+ *
  * @param int $import_id
  * @param int $budget
- * @return array{removed:int,left:int,kept:int,done:bool}
+ * @return array{removed:int,left:int,kept:int,done:bool,closed:bool,busy:bool}
  */
 function pg_import_undo($import_id, $budget = 10)
 {
     $import_id = (int) $import_id;
-    $answer = array('removed' => 0, 'left' => 0, 'kept' => 0, 'done' => false);
+    $answer = array('removed' => 0, 'left' => 0, 'kept' => 0, 'done' => false, 'closed' => false, 'busy' => false);
     $import = pg_import_get($import_id);
 
     if (($import === null) || !pg_import_undo_open($import['status'], $import['finished_at'], time())) {
+        $answer['done'] = true;
+        $answer['closed'] = true;
+
         return $answer;
     }
 
     $lock = 'pg_import_' . $import_id;
 
     if ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 0)") !== 1) {
+        $answer['busy'] = true;
+
         return $answer;
     }
 
@@ -893,5 +998,36 @@ function pg_import_job_tick($budget)
         @unlink(pg_import_source_path($old['id'], $old['file_name']));
     }
 
+    // An upload checked but never started made nothing; after a week its
+    // row and its file (up to the upload limit in data/temp) go.
+    foreach ((array) db_items("SELECT id FROM imports
+        WHERE status IN ('uploaded', 'dry_run') AND created_at < '" . (int) (time() - (PG_IMPORT_UNSTARTED_DAYS * 86400)) . "'
+        LIMIT 50") as $old) {
+        pg_import_discard($old['id']);
+    }
+
     return $answer;
+}
+
+/**
+ * Removes an import that was never started (uploaded or checked) with its
+ * file: it made nothing, so only the row and data/temp hold it. False when
+ * the import is missing or was started.
+ *
+ * @param int $import_id
+ * @return bool
+ */
+function pg_import_discard($import_id)
+{
+    $import = pg_import_get($import_id);
+
+    if (($import === null) || !in_array($import['status'], array('uploaded', 'dry_run'), true)) {
+        return false;
+    }
+
+    db("DELETE FROM imports WHERE id = '" . (int) $import['id'] . "' AND status IN ('uploaded', 'dry_run')");
+    @unlink(pg_import_source_path($import['id'], $import['file_name']));
+    @unlink(pg_import_cursor_path($import['id']));
+
+    return true;
 }

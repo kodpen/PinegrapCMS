@@ -1211,6 +1211,7 @@
     "Will be created": "Oluşturulacak",
     "Will be deleted": "Silinecek",
     "Will be kept with personal fields replaced": "Kişisel alanları değiştirilerek saklanacak",
+    "Will be skipped": "Atlanacak",
     "Will create: {var:1}": "Oluşturulacak: {var:1}",
     "Will move: {var:1}": "Taşınacak: {var:1}",
     "Will plan: {var:1}": "Planlanacak: {var:1}",
