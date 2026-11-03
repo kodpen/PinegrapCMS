@@ -3483,6 +3483,71 @@ function api_schema() {
 			)
 		),
 
+		array(
+			'id'      => 'forms.fields',
+			'method'  => 'GET',
+			'path'    => '/forms/{id}/fields',
+			'scope'   => 'forms:read',
+			'handler' => 'api_form_fields',
+			'returns' => array('list' => 'FormField'),
+			'summary' => 'The fields of a form',
+			'description' => 'The same field list GET /forms/{id} carries, on its own: what a client reads before it sends a submission. name is what a submission\'s values are addressed by; options lists the choices of a pick list, radio button or check box, and an answer to one of those is one of their value strings. In form order, one page. A form on a page in a folder the owner may not edit is answered 404.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.')
+			)
+		),
+
+		array(
+			'id'      => 'forms.submission_create',
+			'method'  => 'POST',
+			'path'    => '/forms/{id}/submissions',
+			'scope'   => 'forms:write',
+			'handler' => 'api_form_submission_create',
+			'dry_run' => true,
+			'returns' => 'FormSubmission',
+			'status'  => 201,
+			'summary' => 'Add a submission',
+			'description' => 'Records a submission the way staff add one on the Add Submitted Form screen, through the same checks and the same write: the owner is stored as the submitter, office-use fields may be answered, and no visitor columns (address, referrer, tracking code) are written. Answers are addressed by the field name (GET /forms/{id}/fields). A required field is refused when it is left empty and the submission is complete; a date is YYYY-MM-DD, a time HH:MM, an e-mail address must be one, and the answer to a choice field must be one of its option values - a check box group or a multiple pick list takes its name once per choice. A file upload or a signature field cannot be answered through the API. A complete submission announces form.submitted; send_notifications also sends the e-mails a visitor\'s submission would. Contact records, memberships and the confirmation page of a visitor\'s submission are not part of it. A form on a page in a folder the owner may not edit is answered 404.',
+			'params'  => array(
+				array('name' => 'id',                 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'values',             'in' => 'body', 'type' => 'list', 'of' => array('name' => 'string', 'value' => 'string'), 'max_items' => 200, 'description' => 'Objects of {name, value}: the field name and its answer, up to 10000 characters each.'),
+				array('name' => 'complete',           'in' => 'body', 'type' => 'bool', 'description' => 'false saves it for later: required fields are not enforced and nothing is announced. true by default.'),
+				array('name' => 'send_notifications', 'in' => 'body', 'type' => 'bool', 'description' => 'true sends the notification e-mails the form sends for a visitor\'s submission. Off by default; only for a complete submission.')
+			)
+		),
+
+		array(
+			'id'      => 'forms.submission_delete',
+			'method'  => 'DELETE',
+			'path'    => '/forms/{id}/submissions/{submission_id}',
+			'scope'   => 'forms:write',
+			'handler' => 'api_form_submission_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a submission',
+			'description' => 'As the submitted form screens delete one, which cannot be undone: its answers, its uploaded files, its signatures, its comments and their attachments go with it. Announces form.submission.deleted. A submission made on another form, or on a form in a folder the owner may not edit, is answered 404. A default IIS install answers DELETE itself before PHP is reached: POST /forms/{id}/submissions/{submission_id}/delete does the same thing and always arrives.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'forms.submission_delete_post',
+			'method'  => 'POST',
+			'path'    => '/forms/{id}/submissions/{submission_id}/delete',
+			'scope'   => 'forms:write',
+			'handler' => 'api_form_submission_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a submission, addressed as a POST',
+			'description' => 'The same deletion as DELETE /forms/{id}/submissions/{submission_id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id',            'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true, 'description' => 'The form id, which is the page id.'),
+				array('name' => 'submission_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Pages -------------------------------------------------------- */
 
 		array(

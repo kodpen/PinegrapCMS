@@ -229,7 +229,8 @@ function pg_submitted_form_create($liveform, $fields, $page_id, $complete, $user
 /**
  * Deletes a submitted form with everything that names it: its uploaded
  * files, the forms and form_data rows, its signatures, its view rows and its
- * comment thread (data/submitted-form-delete-thread.md).
+ * comment thread (data/submitted-form-delete-thread.md), then announces
+ * form.submission.deleted.
  *
  * @param int|string $form_id
  * @return array|false  The names of the files deleted with it, false when
@@ -242,6 +243,9 @@ function pg_submitted_form_delete($form_id)
     if ($form_id <= 0) {
         return false;
     }
+
+    // What the announcement names, read while the row is there.
+    $record = db_item("SELECT page_id, reference_code FROM forms WHERE id = '" . $form_id . "'");
 
     $result = db_q(
         "SELECT
@@ -288,6 +292,16 @@ function pg_submitted_form_delete($form_id)
 
     // The record's comments, their attachments, watchers and counters.
     pg_comment_delete_record_thread($form_id);
+
+    // Identifiers only, as form.submitted: the answers are gone, and they
+    // were never posted to a receiver.
+    if ($record) {
+        pg_announce('form.submission.deleted', array(
+            'id'             => $form_id,
+            'form_id'        => (int) $record['page_id'],
+            'reference_code' => (string) $record['reference_code'],
+        ));
+    }
 
     return $deleted_files;
 }

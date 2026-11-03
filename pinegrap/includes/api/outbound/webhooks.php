@@ -202,7 +202,10 @@ function api_webhook_events() {
 		'form.submitted'       => 'A visitor submitted a form',
 		// The order's completion when the payment service confirmed it, or the
 		// payment staff recorded for an offline one.
-		'form.paid'            => 'The fee of a designed form\'s record was paid'
+		'form.paid'            => 'The fee of a designed form\'s record was paid',
+		// The submitted form screens' deletes and the API's alike (includes/fn/
+		// submitted_form_writes.php); undoing an import stays quiet.
+		'form.submission.deleted' => 'A form submission was deleted'
 	);
 
 	// A module announces its own events from its own file. The core list wins a

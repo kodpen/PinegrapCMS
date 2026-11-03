@@ -127,7 +127,7 @@ function db_q_campaign_screens_test_calls($path)
 function db_q_campaign_screens_test_files()
 {
 	return array(
-		'delete_submitted_forms.php' => 5,
+		'delete_submitted_forms.php' => 1,
 		'delete_email_campaigns.php' => 4,
 		'view_email_campaigns.php' => 2,
 		'view_email_campaign_history.php' => 2,
