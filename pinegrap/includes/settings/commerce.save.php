@@ -30,8 +30,9 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     if ($product_feeds_save_ready) {
         foreach (array('product_feed_seller_url', 'product_feed_privacy_policy_url', 'product_feed_terms_url') as $product_feeds_field) {
             if (!pg_product_feed_valid_url(post_value($product_feeds_field))) {
+                // Marked, not returned: the checks below mark their fields on
+                // the same save, and check_form_errors() stops the write.
                 $liveform->mark_error($product_feeds_field, lang('Enter a full address starting with https://, or leave the field empty.'));
-                return;
             }
         }
     }
@@ -85,6 +86,27 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
     // The address autocomplete card (includes/fn/address_autocomplete.php).
     $addr_settings_decision = pg_addr_settings_check($_POST, $liveform);
+
+    // Next Order Number: written only when it was changed on this screen
+    // (the value the screen was opened with comes back in a hidden field),
+    // so a save of another field never sets back a counter that orders have
+    // moved since; and only above every number already given.
+    $next_order_number_write = false;
+
+    if (isset($_POST['ecommerce_next_order_number'])) {
+        $next_order_number_posted = trim((string) $_POST['ecommerce_next_order_number']);
+        $next_order_number_was = isset($_POST['ecommerce_next_order_number_was']) ? trim((string) $_POST['ecommerce_next_order_number_was']) : null;
+
+        if ($next_order_number_posted !== $next_order_number_was) {
+            $next_order_number_refusal = pg_next_order_number_refusal($next_order_number_posted, (int) db_value("SELECT MAX(order_number) FROM orders"));
+
+            if ($next_order_number_refusal !== '') {
+                $liveform->mark_error('ecommerce_next_order_number', $next_order_number_refusal);
+            } else {
+                $next_order_number_write = true;
+            }
+        }
+    }
 
     if ($liveform->check_form_errors()) {
         return;
@@ -246,27 +268,20 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
 
 
-    // if there was a next order number field, update next order number
-    if (isset($_POST['ecommerce_next_order_number']) == true) {
-        // if next order number that was submitted is blank, set order number to 1
-        if (!$_POST['ecommerce_next_order_number']) {
-            $ecommerce_next_order_number = 1;
-        } else {
-            $ecommerce_next_order_number = $_POST['ecommerce_next_order_number'];
-        }
-        
-        // lock table, so no one can read table
+    // The Next Order Number, when it was changed and accepted above. The lock
+    // is the one order completion takes before it reads the counter.
+    if ($next_order_number_write) {
+        $ecommerce_next_order_number = (string) (int) $next_order_number_posted;
+
         $query = "LOCK TABLES next_order_number WRITE";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        
-        // delete existing record for next order number
-        $query = "DELETE FROM next_order_number";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        
-        // create new record for next order number
-        $query = "INSERT INTO next_order_number VALUES (?)";
-        $result = db_q($query, array((string) $ecommerce_next_order_number)) or output_error('Query failed.');
-        
+
+        if ((int) db_value("SELECT COUNT(*) FROM next_order_number") > 0) {
+            db_q("UPDATE next_order_number SET next_order_number = ?", array($ecommerce_next_order_number)) or output_error('Query failed.');
+        } else {
+            db_q("INSERT INTO next_order_number VALUES (?)", array($ecommerce_next_order_number)) or output_error('Query failed.');
+        }
+
         // release lock on table
         $query = "UNLOCK TABLES";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');

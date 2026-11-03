@@ -39,7 +39,8 @@ $pg_settings_cards[] = '
     : '') . '
                                                         <div id="pgsub-store" class="pg-f-xs">
                                                             <label for="ecommerce_next_order_number" class="form-label">' . lang('Next Order Number') . '</label>
-                                                            <input type="number" name="ecommerce_next_order_number" id="ecommerce_next_order_number" class="form-control" value="' . $ecommerce_next_order_number . '" maxlength="20"/>
+                                                            <input type="number" name="ecommerce_next_order_number" id="ecommerce_next_order_number" class="form-control" value="' . h($ecommerce_next_order_number) . '" min="1" step="1"/>
+                                                            <input type="hidden" name="ecommerce_next_order_number_was" value="' . h($ecommerce_next_order_number) . '"/>
                                                         </div>
                                                         <div class="pg-f-lg">
                                                             <label for="ecommerce_email_address" class="form-label">' . lang('Commerce E-mail Address') . '</label>
