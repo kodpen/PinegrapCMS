@@ -5714,6 +5714,7 @@
     "This gift card was automatically expired because order #{var:1} was cancelled. Its expiration date was {var:2}.": "Bu hediye kartı, #{var:1} numaralı sipariş iptal edildiği için otomatik olarak geçersiz kılındı. Son kullanma tarihi {var:2} idi.",
     "This gift card was automatically expired because the associated order was cancelled.": "Bu hediye kartı, ilgili sipariş iptal edildiği için sistem tarafından otomatik olarak geçersiz kılınmıştır.",
     "This gift card was created manually, so there is no order info.": "Bu hediye kartı manuel olarak oluşturulmuş, bu nedenle sipariş bilgisi yok.",
+    "This group already has members: {var:1}.": "Bu grubun zaten üyeleri var: {var:1}.",
     "This group has nothing in it yet.": "Bu grupta henüz bir şey yok.",
     "This guide could not be found, or it is not yours to see.": "Bu rehber bulunamadı ya da görme yetkiniz yok.",
     "This guide is not available. It may not be published yet, or it was taken out of the docs.": "Bu rehbere ulaşılamıyor. Henüz yayınlanmamış ya da dokümanlardan kaldırılmış olabilir.",

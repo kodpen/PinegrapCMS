@@ -463,6 +463,7 @@
     "Let tasks repeat on the last weekday of the month": "Görevler ayın son iş gününde tekrarlanabilsin",
     "Let the numbers rest a minute. How are you doing?": "Rakamlar biraz dinlensin. Sen nasılsın?",
     "Let the reminders resume": "Hatırlatmalar sürsün",
+    "Let the rules decide them": "Kurallar karar versin",
     "Let us talk about your project": "Projenizi konuşalım",
     "Let {var:1} know: “{var:2}”": "{var:1} kişisine haber ver: “{var:2}”",
     "Lets the Workspace use the tools of the service's MCP server under its alias.": "Çalışma Alanı'nın, hizmetin MCP sunucusundaki araçları takma adıyla kullanmasını sağlar.",
