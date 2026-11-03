@@ -18,7 +18,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 - Endpoints `remove` (3): done #6041 (cart ids[])
 - Endpoints `return` (4): clean
 - Endpoints `search` (3): open
-- Endpoints `seo` (8): taken by RV
+- Endpoints `seo` (8): done #6091 (self link hid an orphan page); the rest clean
 - Endpoints `setting` (14): open
 - Endpoints `ship` (3): open
 - Endpoints `shipment` (3): open
@@ -39,6 +39,6 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 - Endpoints `verified` (3): open
 - Endpoints `view` (2): open
 - Endpoints `visitor` (3): open
-- Endpoints `waf` (4: view_waf_log, waf, waf_ranges_job, waf_unban): done (#4601, #4620)
+- Endpoints `waf` (4): done (#4601, #4620)
 - Endpoints `workspace` (21): open
 - Endpoints `zone` (3): open
