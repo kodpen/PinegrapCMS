@@ -152,6 +152,7 @@ description: Generated from the module field of the memory files: each includes/
 - `sms_codes`: [[sms-codes]]
 - `speculation`: [[speculation-prefetch]], [[speculation-prefetch-left-out]]
 - `stock_locations`: [[stock-locations-model]]
+- `stock_moves`: [[stock-locations-moves]]
 - `stock_notify`: [[back-in-stock-notices]]
 - `store_credit`: [[store-credit-checkout]], [[store-credit-model]]
 - `store_currencies`: [[api-store-currency-writes]]
