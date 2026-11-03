@@ -21,7 +21,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 - Endpoints `commission` (2): done #5113
 - Endpoints `common` (3): clean (an empty name is unchecked on purpose: ui/common-region-shared-form.md)
 - Endpoints `connect` (3): clean (connect, connect_client, connect_user_to_order)
-- Endpoints `contact` (8): #5124 (view_contacts); the rest clean but add_contact, edit_contact: open (held by #5095)
+- Endpoints `contact` (8): #5124 (view_contacts); #6139 (edit_contact: one checked id); the rest clean (add_contact: #6126)
 - Endpoints `container` (3): #5133; view_containers clean
 - Endpoints `country` (2): clean (view_countries: #5144)
 - Endpoints `currency` (3): #5147 (exchange rate 0)
@@ -33,17 +33,17 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 - Endpoints `editor` (4): #5167 (editor_add_file: a closing script tag got out of escape_javascript()); editor_edit_file, editor_select_image, editor_select_page_or_file clean
 - Endpoints `email` (16): clean (access, CSRF and role-3 creator checks on the panel screens; email_a_friend, email_preferences one-click unsubscribe; email_campaign_job is web-callable by design)
 - Endpoints `erp` (77): taken by PC in slices: get_erp_* (12) done #5549 (edoc document sandbox; the rest clean); add_erp_*, edit_erp_* (20) done #5607 (allocation removal; the rest clean); erp_a* to erp_e* (22) done #5622 (cheque step date; the rest clean); erp_i* to erp_w* (23): clean #5643 (gates and areas, tokens before reads, read-only refusal through validate_erp_access(), public invoice and quote links, stock count status checks, escaping, money and period dates)
-- Endpoints `expres` (2): #5265 (a posted recurring payment period was stored unchecked); express_order.php read, the rest clean; open: get_express_order.php (only the output escaping spot-checked: calendar range, custom form content, offer code label and message)
+- Endpoints `expres` (2): #5265 (a posted recurring payment period was stored unchecked); express_order.php read, the rest clean; get_express_order.php done #6126 (3D Secure tooltip untranslated)
 - Endpoints `field` (4): clean (OV; add_field, edit_field, delete_fields, view_fields)
 - Endpoints `file` (6): done #5407 (OV; edit_files ERP rows; add_file, edit_file, get_file ERP and key gates, get_files_for_picker clean)
 - Endpoints `find` (2): clean #6027
 - Endpoints `folder` (8): #6027 (folder view listed form uploads), #6066 (copies dropped the upload mark); rest clean
 - Endpoints `forgot` (2): done #6104
 - Endpoints `form` (6, and get_form_view_directory_screen_content): done #4571, #4582
-- Endpoints `generate` (3): open
+- Endpoints `generate` (3): clean
 - Endpoints `gift` (3): done #4576, #4586
 - Endpoints `google` (3): clean #6092
-- Endpoints `image` (3): open
+- Endpoints `image` (3): edit clean; api held by #5148
 - Endpoints `key` (5): done #6092
 - Endpoints `login` (4): taken by KZ: #4594; the rest clean
 - Endpoints `logout` (2): clean #6092

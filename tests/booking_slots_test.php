@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for the booking model and slot engine (2026.11.0, 11.0.153;
+ * Tests for the booking model and slot engine (2026.11.0, 11.0.156;
  * includes/fn/bookings.php): the step that creates the three tables, the
  * weekly hours and dated exceptions, the free slots of a day (DST change
  * days, buffers, lead time, horizon, holidays), the statuses and their

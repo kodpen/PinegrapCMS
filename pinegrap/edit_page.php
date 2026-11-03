@@ -515,7 +515,8 @@ if (!$_POST) {
             $form_layout_type,
             pg_page_form_redraw_type_properties($page_type_properties, $form_page_type, $posted),
             $user,
-            $page_id);
+            $page_id,
+            true);
 
         $output_page_type_selector = $page_type_fields['selector'];
         $output_page_type_properties = $page_type_fields['properties'];

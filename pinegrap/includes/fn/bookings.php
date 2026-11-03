@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Appointment bookings (2026.11.0, 11.0.153): the model of the three tables
+ * Appointment bookings (2026.11.0, 11.0.156): the model of the three tables
  * booking_services, booking_staff and bookings, and the slot engine.
  *
  * Times are unix seconds (UTC) in the tables; a staff member's hours are

@@ -129,8 +129,8 @@ function pg_lang_accept_parse($header)
 /**
  * The site language a language tag is read in, '' when none is.
  *
- * The tag's own form first (en-GB, then en); for Chinese the script or the
- * region decides between Simplified and Traditional, for Portuguese Brazil
+ * The tag's own form first (en-GB, then en); for Chinese the script (else the
+ * region) decides between Simplified and Traditional, for Portuguese Brazil
  * between pt-BR and pt; old and alternative codes are read as the ones the
  * site uses (iw is he, nb and nn are no). Last, another variety of the same
  * language (pt-PT on a site that has only pt-BR).
@@ -168,7 +168,10 @@ function pg_lang_match($tag, $codes)
     }
 
     if ($language === 'zh') {
-        $candidates = array((($script === 'hant') || in_array($region, array('tw', 'hk', 'mo'), true)) ? 'zh-tw' : 'zh-cn');
+        // A written script decides (zh-Hans-HK reads Simplified); without
+        // one, Taiwan, Hong Kong and Macau read Traditional.
+        $traditional = ($script !== '') ? ($script === 'hant') : in_array($region, array('tw', 'hk', 'mo'), true);
+        $candidates = array($traditional ? 'zh-tw' : 'zh-cn');
     } elseif ($language === 'pt') {
         $candidates = array(($region === 'br') ? 'pt-br' : 'pt');
     } else {

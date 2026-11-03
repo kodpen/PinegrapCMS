@@ -23,7 +23,11 @@ validate_contacts_access($user);
 // Stop early when the screen is opened without an existing record (stale
 // link, hand-typed URL, row deleted meanwhile): a "not found" screen instead
 // of a half-empty form and PHP notices from the unchecked row below.
-$id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
+// The id is the one the handlers act on (the form's on a submit, the URL's
+// otherwise), never $_REQUEST's, which a cookie of the same name can feed:
+// the contact access check below must look at the contact that is written.
+$requested_contact_id = $_POST ? ($_POST['id'] ?? '') : ($_GET['id'] ?? '');
+$id = is_scalar($requested_contact_id) ? (int) $requested_contact_id : 0;
 if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM contacts WHERE id = '" . $id . "'") < 1)) {
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
@@ -32,7 +36,7 @@ include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/contact_form.php');
 
 // if user does not have access to contact, then output error
-if (validate_contact_access($user, $_REQUEST['id']) == false) {
+if (validate_contact_access($user, $id) == false) {
     log_activity(lang('access denied to edit contact because user does not have access to a contact group that the contact is in'), $_SESSION['sessionusername']);
     output_error(lang('Access denied.'));
 }
@@ -45,7 +49,7 @@ if (!$_POST) {
     // if ecommerce is on, then output orders button to show orders for contact
     if ((ECOMMERCE === true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))) {
         $output_bar_links .= '
-                    <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="view_orders_for_contact.php?id=' . h(urlencode($_REQUEST['id'])) . '"><span class="material-icons me-1">storefront</span>' . lang('View Orders') . '</a>';
+                    <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="view_orders_for_contact.php?id=' . $id . '"><span class="material-icons me-1">storefront</span>' . lang('View Orders') . '</a>';
     }
 
     // The ledger account behind this contact, for a user the ERP module lets
@@ -53,7 +57,7 @@ if (!$_POST) {
     // this card. Read from the account side; contacts.erp_account_id is only
     // a mirror.
     if (defined('ERP_ENABLED') && ERP_ENABLED && (($user['role'] < 3) || !empty($user['manage_erp']))) {
-        $erp_account = db_item("SELECT id, balance FROM erp_accounts WHERE contact_id = '" . (int) $_REQUEST['id'] . "' ORDER BY id ASC LIMIT 1");
+        $erp_account = db_item("SELECT id, balance FROM erp_accounts WHERE contact_id = '" . $id . "' ORDER BY id ASC LIMIT 1");
 
         if (is_array($erp_account)) {
             require_once(PG_FUNCTIONS_DIR . '/includes/erp/bootstrap.php');
@@ -66,7 +70,7 @@ if (!$_POST) {
         } elseif (($user['role'] < 3) || empty($user['manage_erp_readonly'])) {
             // The ERP's read-only right opens no account.
             $output_bar_links .= '
-                    <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="add_erp_account.php?contact_id=' . (int) $_REQUEST['id'] . '"><i class="bi bi-journal-plus me-1"></i>' . lang('Open an Account') . '</a>';
+                    <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="add_erp_account.php?contact_id=' . $id . '"><i class="bi bi-journal-plus me-1"></i>' . lang('Open an Account') . '</a>';
         }
     }
 
@@ -88,11 +92,11 @@ if (!$_POST) {
     // channels and the tasks about it.
     if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
         require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
-        $workspace_contact = db_item("SELECT first_name, last_name, company FROM contacts WHERE id = '" . (int) $_REQUEST['id'] . "'");
+        $workspace_contact = db_item("SELECT first_name, last_name, company FROM contacts WHERE id = '" . $id . "'");
         $workspace_label = is_array($workspace_contact)
             ? trim(trim($workspace_contact['first_name'] . ' ' . $workspace_contact['last_name']) ?: (string) $workspace_contact['company'])
             : '';
-        $output_bar_links .= ws_record_button($user, 'contact', (int) $_REQUEST['id'], $workspace_label, 'btn btn-link pg-link-secondary py-0 mb-3');
+        $output_bar_links .= ws_record_button($user, 'contact', $id, $workspace_label, 'btn btn-link pg-link-secondary py-0 mb-3');
     }
 
     $output_orders_button = pg_screen_toolbar(array(
@@ -150,7 +154,7 @@ if (!$_POST) {
         FROM contacts
         LEFT JOIN user ON contacts.id = user.user_contact
         WHERE contacts.id = ?";
-    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed');
+    $result = db_q($query, array((string) $id)) or output_error('Query failed');
     $row = mysqli_fetch_assoc($result);
     $image = '';
     // A file deleted in the File Manager leaves contacts.file_id behind;
@@ -226,7 +230,7 @@ if (!$_POST) {
         // then add button to allow user to create a user for this contact.
         $output_create_user_button = '';
         if (USER_ROLE < 3) {
-            $output_create_user_button = ' <a class="alert-link" href="' . h(PATH . SOFTWARE_DIRECTORY . '/add_user.php?contact_id=' . $_GET['id']) . '">' . h(lang('Create a user for this contact')) . '</a>';
+            $output_create_user_button = ' <a class="alert-link" href="' . h(PATH . SOFTWARE_DIRECTORY . '/add_user.php?contact_id=' . $id) . '">' . h(lang('Create a user for this contact')) . '</a>';
         }
 
         $output_user_info ='
@@ -307,7 +311,7 @@ if (!$_POST) {
                                     </div>
                                 </div>
                             </div>
-                            ' . pg_contact_form_detail_cards($row, false, $output_parasut, pg_contact_form_group_cells($contact_groups, pg_contact_form_group_states($_GET['id'], $contact_groups))),
+                            ' . pg_contact_form_detail_cards($row, false, $output_parasut, pg_contact_form_group_cells($contact_groups, pg_contact_form_group_states($id, $contact_groups))),
                         pg_contact_form_picture_card(false, $image) . '
                                 <div class="card mb-7">
                                     <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
@@ -323,7 +327,7 @@ if (!$_POST) {
                                         <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
                                         <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('contact')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>'
                     ) . '
-                    <input type="hidden" name="id" value="' . h($_GET['id']) . '">
+                    <input type="hidden" name="id" value="' . $id . '">
                 </form>
 
     <script>
@@ -359,23 +363,23 @@ if (!$_POST) {
 
     // if contact was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
-        $audit_before = pg_audit_fetch('contacts', (int) ($_POST['id'] ?? 0));
+        $audit_before = pg_audit_fetch('contacts', $id);
 
         // delete contact
         $query =
             "DELETE FROM contacts
             WHERE id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        $result = db_q($query, array((string) $id)) or output_error('Query failed.');
 
-        pg_audit_record('delete', 'contacts', (int) ($_POST['id'] ?? 0), $audit_before);
+        pg_audit_record('delete', 'contacts', $id, $audit_before);
         
         // delete contact references in contacts_contact_groups_xref
         $query = "DELETE FROM contacts_contact_groups_xref WHERE contact_id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        $result = db_q($query, array((string) $id)) or output_error('Query failed.');
         
         // delete contact references in opt_in
         $query = "DELETE FROM opt_in WHERE contact_id = ?";
-        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        $result = db_q($query, array((string) $id)) or output_error('Query failed.');
 
         log_activity(lang(array('string' => 'contact ({var:1} {var:2}) was deleted', 'vars' => array($_POST['first_name'], $_POST['last_name']))), $_SESSION['sessionusername']);
         
@@ -384,7 +388,7 @@ if (!$_POST) {
         
     // else contact was not selected for delete
     } else {
-        $contact_id = (string) ($_POST['id'] ?? '');
+        $contact_id = (string) $id;
 
         $_POST['email_address'] = pg_contact_form_email($_POST['email_address'] ?? '');
 

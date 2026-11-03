@@ -274,6 +274,14 @@ if ($_POST) {
             if ($department) {
                 $archive = !$department['archived'];
 
+                // Saving refuses a second active department of one name; bringing
+                // one back must not make that pair either.
+                if (!$archive && ((int) db_value("SELECT COUNT(*) FROM ws_departments WHERE name = '" . e($department['name']) . "' AND id <> '" . (int) $department['id'] . "' AND archived = 0") > 0)) {
+                    $liveform->add_error(lang('There is already a department with this name.') . ' ' . lang('Rename one of them first.'));
+                    $anchor = '#ws-departments';
+                    break;
+                }
+
                 db("UPDATE ws_departments SET archived = '" . ($archive ? 1 : 0) . "' WHERE id = '" . (int) $department['id'] . "'");
                 log_activity($archive
                     ? lang(array('string' => 'workspace department ({var:1}) was archived', 'vars' => $department['name']))

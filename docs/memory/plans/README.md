@@ -35,7 +35,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bug-hunt-modules-endpoints-1c.md: Module list of plans/bug-hunt.md, part 3c: root endpoint groups mail, manifest and marketplace, one line each with its state
 - bug-hunt-modules-endpoints-2.md: Module list of plans/bug-hunt.md, part 4: root endpoint groups optimize to zone by area word, one line each with its state; single endpoints in endpoints-2b
 - bug-hunt-modules-endpoints-2b.md: Module list of plans/bug-hunt.md, part 5: the single root endpoints (one file per area word), six to a line, each line with its state
-- bug-hunt-modules-endpoints-2c.md: Module list of plans/bug-hunt.md, part 4c: root endpoint groups sms, state and tax, one line each with its state
+- bug-hunt-modules-endpoints-2c.md: Module list of plans/bug-hunt.md, part 4c: root endpoint groups sms, state and tax, one line each with its state; the software group's findings
 - bug-hunt-modules-endpoints-2d.md: Module list of plans/bug-hunt.md, part 4d: root endpoint groups ship and shipment, one line each with its state
 - bug-hunt-modules-fn-1.md: Module list of plans/bug-hunt.md, part 1: includes/fn/ modules a11y to cloudflare_tools, one line each with its state
 - bug-hunt-modules-fn-1a.md: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules collections to editor, one line each with its state
@@ -51,6 +51,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - content-importers-steps-2.md: Steps IM4-IM7 of plans/content-importers.md: the WooCommerce and Shopify readers, redirects and undo, close-out; claim as [plan:content-importers] IM<n>
 - content-importers-steps.md: Steps IM1-IM3 of plans/content-importers.md: the import framework and screen, the WordPress WXR reader, pages and media fetches; claim as [plan:content-importers] IM<n>
 - content-importers.md: Plan (owner 2026-11-02): importers for WordPress (WXR), WooCommerce and Shopify (CSV): records, pages, media, comments, customers, products, old addresses as redirects; steps IM1-IM7
+- design-template-portfolio.md: Plan for the Web Designer Portfolio template (pinegrap-portfolio): case studies as a collection, services and packages, a project brief followed from the account; parts in a folder; steps 1-7
 - designer-form-logic-steps-2.md: Steps FL5-FL8 of plans/designer-form-logic.md: the payment step on the site, the staff side and API, template fees, close-out; claim as [plan:designer-form-logic] FL<n>
 - designer-form-logic-steps.md: Steps FL1-FL4 of plans/designer-form-logic.md: Shown when rules, form steps with progress, the browser draft, the fee setting and order writer; claim as [plan:designer-form-logic] FL<n>
 - designer-form-logic.md: Plan (owner 2026-11-02): designed forms get Shown-when rules, steps with progress, and a payment step that places a one-line order through the payment drivers; steps FL1-FL8

@@ -1,11 +1,11 @@
 ---
 name: bookings-model
-description: Appointment bookings model and slot engine: the three tables (11.0.153), hours JSON, slot rules (DST, buffers, lead, horizon, holidays), hold/confirm on the unique key, manage token
+description: Appointment bookings model and slot engine: the three tables (11.0.156), hours JSON, slot rules (DST, buffers, lead, horizon, holidays), hold/confirm on the unique key, manage token
 module: bookings
 ---
 
 ## What are the tables?
-- Step `upgrade_2026_11_0_bookings()` (11.0.153), shape decided in #5032: `booking_services` (length, `buffer_before`/`buffer_after` in minutes, `price` minor units, `capacity` 1), `booking_staff` (one row per panel user, `service_ids`/`hours`/`exceptions` JSON text), `bookings` (times unix UTC, `status` ENUM held/requested/confirmed/cancelled/no_show/done, `hold_until`, `manage_token` = sha256 of the link token). `slot_at` = copy of `start_at`, NULL on a cancelled row; UNIQUE `idx_staff_slot (staff_id, slot_at)` (NULLs never collide, so a cancelled booking frees its slot and keeps its real time; #6135). A cancel writes `status = 'cancelled', slot_at = NULL` in one UPDATE; a reschedule moves `start_at`, `end_at`, `slot_at` in one UPDATE (1062 there is "just taken" too). `idx_start (start_at)` serves the agenda.
+- Step `upgrade_2026_11_0_bookings()` (11.0.156), shape decided in #5032: `booking_services` (length, `buffer_before`/`buffer_after` in minutes, `price` minor units, `capacity` 1), `booking_staff` (one row per panel user, `service_ids`/`hours`/`exceptions` JSON text), `bookings` (times unix UTC, `status` ENUM held/requested/confirmed/cancelled/no_show/done, `hold_until`, `manage_token` = sha256 of the link token). `slot_at` = copy of `start_at`, NULL on a cancelled row; UNIQUE `idx_staff_slot (staff_id, slot_at)` (NULLs never collide, so a cancelled booking frees its slot and keeps its real time; #6135). A cancel writes `status = 'cancelled', slot_at = NULL` in one UPDATE; a reschedule moves `start_at`, `end_at`, `slot_at` in one UPDATE (1062 there is "just taken" too). `idx_start (start_at)` serves the agenda.
 - Readers call `pg_booking_ready()` first: files land before the upgrade.
 
 ## How are hours stored?

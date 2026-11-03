@@ -2596,6 +2596,24 @@ const StyleDesigner = (function () {
                       _cfHint(esc(_sdT('The field is required when that field\'s answer is one of these (as the option\'s value, upper and lower case alike).')))
                     : _cfHint(esc(_sdT('Make the field required only for some answers of another field.')))));
         }
+        // "Shown when": the same pick list and answers; on the site the
+        // field's row is hidden (and its controls disabled) until the other
+        // field has one of them, and the server drops a hidden field's value.
+        var shownWhen   = (rules.shown_when && typeof rules.shown_when === 'object') ? rules.shown_when : {};
+        var shownOthers = ruleOthers.slice();
+        if (shownWhen.field && !shownOthers.some(function (o) { return String(o[0]).toLowerCase() === String(shownWhen.field).toLowerCase(); })) {
+            shownOthers.push([shownWhen.field, _sdT('{var} (not on this form)', shownWhen.field)]);
+        }
+        if (shownOthers.length) {
+            html += row(_sdT('Shown when'),
+                _cfSel('sd-cf-shown-field', shownWhen.field || '', shownOthers, _sdT('— Always shown —')) +
+                (shownWhen.field
+                    ? '<textarea class="form-control form-control-sm mt-1 sd-cf-shown-answers" rows="2" spellcheck="false"' +
+                          ' aria-label="' + esc(_sdT('Answers')) + '" placeholder="' + esc(_sdT('one answer per line')) + '">' +
+                          esc((Array.isArray(shownWhen.answers) ? shownWhen.answers : []).join('\n')) + '</textarea>' +
+                      _cfHint(esc(_sdT('The field is shown when that field\'s answer is one of these; while hidden it is not required and nothing it holds is sent.')))
+                    : _cfHint(esc(_sdT('Show the field only for some answers of another field.')))));
+        }
 
         if (c.itype === 'file' && folders.length) {
             html += row(_sdT('Upload to'),
@@ -2875,6 +2893,23 @@ const StyleDesigner = (function () {
                 .filter(function (a) { if (!a || seen[a]) return false; seen[a] = true; return true; });
             _cfWriteRules(fl, r);
             commit(false);
+        });
+        on('sd-cf-shown-field', 'change', function (el) {
+            var fl = _cfFieldLeadOf(node, w.tree), r = _cfRulesOf(fl);
+            var was = (r.shown_when && Array.isArray(r.shown_when.answers)) ? r.shown_when.answers : [];
+            if (el.value) r.shown_when = { field: el.value, answers: was }; else delete r.shown_when;
+            _cfWriteRules(fl, r);
+            commit(true);
+        });
+        on('sd-cf-shown-answers', 'change', function (el) {
+            var fl = _cfFieldLeadOf(node, w.tree), r = _cfRulesOf(fl);
+            if (!r.shown_when) return;
+            var seen = {};
+            r.shown_when.answers = String(el.value || '').split(/\r\n|\r|\n/)
+                .map(function (a) { return a.trim(); })
+                .filter(function (a) { if (!a || seen[a]) return false; seen[a] = true; return true; });
+            _cfWriteRules(fl, r);
+            commit(true);
         });
         on('sd-cf-folder', 'change', function (el) {
             _cfRec(lead).upload_folder_id = parseInt(el.value, 10) || 0;
@@ -6734,6 +6769,8 @@ const StyleDesigner = (function () {
         '.sd-wrap.sd-cond { position:relative; }',
         '.sd-wrap.sd-cond::before { content:attr(data-sd-cond); position:absolute; top:2px; left:2px; z-index:5; max-width:calc(100% - 4px); overflow:hidden; text-overflow:ellipsis; padding:1px 6px; border-radius:3px; background:#6f42c1; color:#fff; font-size:.6rem; font-weight:700; line-height:1.5; pointer-events:none; white-space:nowrap; }',
         '.sd-wrap.sd-cond:has([contenteditable="true"])::before { display:none; }',
+        '.sd-wrap.sd-cf-shown-chip { position:relative; }',
+        '.sd-wrap.sd-cf-shown-chip:not(.sd-cond)::before { content:attr(data-sd-cf-shown); position:absolute; top:-8px; right:2px; z-index:5; max-width:calc(100% - 4px); overflow:hidden; text-overflow:ellipsis; padding:0 6px; border-radius:3px; background:#0d6efd; color:#fff; font-size:.6rem; font-weight:700; line-height:1.5; pointer-events:none; white-space:nowrap; }',
         // Repeated template row(s) — dashed-outline treatment via inset box-shadow
         // on the cells (a <tr> itself can\'t take a visible border reliably
         // across browsers when cells have their own backgrounds).
@@ -13064,6 +13101,13 @@ const StyleDesigner = (function () {
             // On a page: named, always drawn (each visit decides it).
             wrapper.classList.add('sd-cond');
             wrapper.setAttribute('data-sd-cond', _sdCondSentence(node));
+        }
+        // A form field shown only for some answers of another ("Shown
+        // when", `_cf.rules.shown_when`): named on its control, always drawn.
+        var _cfShown = (node.props && node.props._cf && node.props._cf.rules && node.props._cf.rules.shown_when) || null;
+        if (_cfShown && typeof _cfShown === 'object' && _cfShown.field) {
+            wrapper.classList.add('sd-cf-shown-chip');
+            wrapper.setAttribute('data-sd-cf-shown', _sdT('Shown when {var}', String(_cfShown.field)));
         }
         // "Hide when empty": left out in the state that empties it.
         if (_sysWidgetRenderCfg && _sdHideEmptyCanvasOff(node, _sdCondStateOf(_sysWidgetRenderTreeRoot))) {
