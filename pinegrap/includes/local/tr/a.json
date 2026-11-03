@@ -920,6 +920,7 @@
     "A refusal settles it at once. The result is written into the channel as a locked decision and lands on the Decision Timeline.": "Bir ret isteği hemen sonuçlandırır. Sonuç kanala kilitli bir karar olarak yazılır ve Karar Zaman Çizelgesi'ne düşer.",
     "A region element of the page has no region chosen. Choose one or remove the element, then save again.": "Sayfadaki bir bölge öğesinde bölge seçilmemiş. Bir bölge seçin ya da öğeyi kaldırın, sonra yeniden kaydedin.",
     "A region is a name such as us-east-1 or auto.": "Bölge, us-east-1 ya da auto gibi bir addır.",
+    "A regular expression that matches empty text cannot be used.": "Boş metne uyan bir düzenli ifade kullanılamaz.",
     "A regular expression; the whole value must match (e.g. <code>[0-9]{10}</code>). The browser checks before submitting, the server on submit.": "Düzenli ifade; değerin tamamı uymalı (ör. <code>[0-9]{10}</code>). Tarayıcı gönderimden önce, sunucu gönderimde denetler.",
     "A rehearsal answers 200, as nothing is written.": "Prova hiçbir şey yazmadığı için 200 döner.",
     "A rejected or cancelled quote is not invoiced. Open it again first.": "Reddedilmiş ya da iptal edilmiş teklif faturalanmaz. Önce yeniden açın.",

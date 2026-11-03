@@ -800,6 +800,7 @@
     "Replace": "Değiştir",
     "Replace All": "Hepsini Değiştir",
     "Replace File": "Dosyayı Değiştir",
+    "Replace every match in the selected types of items? This cannot be undone.": "Seçili öğe türlerindeki bütün eşleşmeler değiştirilsin mi? Bu işlem geri alınamaz.",
     "Replace every software file with the release package now? Files you changed by hand will be lost. Take a backup first.": "Her yazılım dosyası şimdi sürüm paketiyle değiştirilsin mi? Elle değiştirdiğiniz dosyalar kaybolur. Önce yedek alın.",
     "Replace the file": "Dosyayı değiştir",
     "Replace the layout in the editor with a newly generated one? Nothing is saved until you save the file.": "Düzenleyicideki düzen yeni oluşturulan düzenle değiştirilsin mi? Dosyayı kaydedene kadar hiçbir şey kaydedilmez.",
