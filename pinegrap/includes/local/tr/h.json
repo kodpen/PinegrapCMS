@@ -23,6 +23,7 @@
     "HTTP Basic": "HTTP Basic",
     "HTTP Basic: the user name is the key above, the password is the secret. This line is the whole handshake - hand it to the integrator with the key.": "HTTP Basic: kullanıcı adı yukarıdaki anahtar, parola gizli anahtardır. Bağlanmanın tamamı bu satırdır — anahtarla birlikte entegratöre verin.",
     "HTTP allowed": "HTTP'ye izin veriliyor",
+    "HTTP method": "Yöntem",
     "HTTPS and Security Headers": "HTTPS ve Güvenlik Başlıkları",
     "HTTPS required": "HTTPS zorunlu",
     "Hair": "Saç",
