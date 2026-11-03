@@ -1042,6 +1042,7 @@
     "Every month on day {var:1}": "Her ay, ayın {var:1}. günü",
     "Every month on day {var:1} at {var:2}, from {var:3}": "{var:3} itibarıyla her ay, ayın {var:1}. günü saat {var:2}",
     "Every month on day {var:1} {var:2}": "Her ayın {var:1}. günü {var:2}",
+    "Every month we visit one of our makers and write down how their things are made.": "Her ay üreticilerimizden birini ziyaret ediyor, ürünlerinin nasıl yapıldığını yazıyoruz.",
     "Every month-end: check the invoices, follow up what is due and report the month.": "Her ay sonu: faturaları kontrol et, vadesi geleni takip et, ayı raporla.",
     "Every morning says how many forms were submitted in the last day, when there are any.": "Her sabah, varsa son bir günde gönderilen formların sayısını söyler.",
     "Every morning tells you how many products have 5 or fewer left in stock, when there are any.": "Her sabah, varsa stokta 5 veya daha az kalan ürünlerin sayısını size bildirir.",
