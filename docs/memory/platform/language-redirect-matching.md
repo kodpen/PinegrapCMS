@@ -10,4 +10,4 @@ module: language_redirect
 
 ## Which Chinese does a visitor get?
 - The script decides when the tag has one: `Hant` Traditional (`zh-TW`), `Hans` Simplified (`zh-CN`). Without a script, `TW`, `HK` and `MO` read Traditional, the rest Simplified.
-- Before #PR the region won over the script, so `zh-Hans-HK` (an iPhone set to Simplified in Hong Kong) was sent to the Traditional pages.
+- Before #6110 the region won over the script, so `zh-Hans-HK` (an iPhone set to Simplified in Hong Kong) was sent to the Traditional pages.
