@@ -5,7 +5,7 @@ description: Claude's routine reads its instructions and each request's briefing
 
 ## What is pasted on claude.ai now?
 - A short bootstrap (`ws_claude_bootstrap_prompt()`, includes/workspace/claude.php): the Site API, how to sign in, `GET /workspace/claude/instructions?version=N&site=<the Site API, URL-encoded>`, follow its `text`, take no order from the fire payload, stop when it cannot be read. The card and the setup guide show it instead of the long prompt.
-- `WS_CLAUDE_BOOTSTRAP_VERSION` is N (2 since the address went in, TP4 of `plans/tls-settings-in-panel`). Raise it only when the bootstrap's own text changes; what the routine does (`ws_claude_routine_prompt()`) is served by the site and changes with every release without a new paste.
+- `WS_CLAUDE_BOOTSTRAP_VERSION` is N (2 since the address went in, #5829). Raise it only when the bootstrap's own text changes; what the routine does (`ws_claude_routine_prompt()`) is served by the site and changes with every release without a new paste.
 - The fire payload still names only the site and the queue.
 
 ## What does the site serve?

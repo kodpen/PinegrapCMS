@@ -18,6 +18,6 @@ module: request_scheme
 
 ## Why not trust loopback or private peers by themselves?
 - Shared hosts and container networks share those addresses; a local tunnel (`cloudflared`, a TLS proxy in front of `docker/`) is listed on Trusted Proxies by the operator (owner, 2026-11-02, #5375). `TRUST_PROXY_SSL_HEADERS` stays a file-level override for an origin only the proxy can reach (`workflow/decisions-made-access.md`).
-- The installer keeps its own `X-Forwarded-Proto` read: its scheme only builds the install's own links.
+- The installer keeps its own `X-Forwarded-Proto` read: its scheme only builds the install's own links, and the stored `url_scheme` starts as `http://` (the shipped templates' config row). No schema change came with it (TP1 #5714, TP2 #5831, TP3 #5711, TP4 #5829).
 
 Related: docs/memory/platform/secure-mode-proxy-offer.md, docs/memory/waf/waf-secure-mode-enable-guard.md, docs/memory/waf/waf-security-headers-hsts.md, docs/memory/platform/page-file-cache.md
