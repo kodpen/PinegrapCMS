@@ -22,7 +22,7 @@ description: Plan for the Phone Launch Site template (pinegrap-launch): three mo
 
 - 2 Done (#6189). Public pages: `pages_public.php` (home, features, camera, specs, compare, about, FAQ).
 
-- 3 Shop: `shop.php` (Phones and Accessories groups, `buy`, `accessories`, product, cart, checkout, order, `email_order`).
+- 3 Done (#6202). Shop: `shop.php` (Phones and Accessories groups, `buy`, `accessories`, product, cart, checkout, order, `email_order`).
 
 - 4 Requests: `mail.php`, `requests.php` (`tradein`, `tradein_view`, `my_tradeins`, `staff_tradeins`, `support`, `support_view`, `my_support`, `staff_support`, `privacy`, `email_reply`, notify e-mails).
 
