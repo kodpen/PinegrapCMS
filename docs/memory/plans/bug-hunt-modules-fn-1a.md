@@ -54,7 +54,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `email_campaign_send`: done (#5934)
 
-- `errors`: open
+- `errors`: #6017
 
 - `events`: clean
 
