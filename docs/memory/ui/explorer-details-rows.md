@@ -15,6 +15,10 @@ description: File Manager details panel rows for pages, files, archived pages, b
 - In the bin (`binRowsHtml()`): Deleted on (`deleted_exact`) by `deleted_by`, Restores to (`origin_name`), Deleted for good in (days); no Address, Access, Folder, Archive, Status, Sitemap or Searchable row, no Edit, copy, download or open (the park address dies on restore), no Visit/Edit on a short link (its save refuses a binned link): Restore and Delete Permanently instead. The countdown badge carries its title as visually hidden text.
 - A backup: one Location row ("Backups / sub"), never the item's own path as "Folder"; a folder's Size is the bytes of its files (`pg_explorer_backup_folder_size()`, "+" past 50,000 entries); a weekly automatic backup names its ISO week and dates (`pg_explorer_backup_auto_week()`).
 
+## What does a folder's panel add?
+- Size (direct content), then "In total, inside": folders, pages, files at any depth and the bytes of the files (`pg_explorer_folder_totals()`; bin content counts up to the bin only). User rights: how many users hold a right on the folder itself, with a link opening Access Permissions, for private and membership folders or any with rights.
+- Folder Settings' Default style option names the inherited style (`pg_explorer_folder_style_default_label()`), as this panel does.
+
 ## Whose name is written beside a change?
 - Payloads carry `editor`: `pg_explorer_editor_name($username)` (`view_folder_and_files_f.php`), one query per request mapping every username to `pg_user_display_name()` (contact first and last name, else the username). The list, panel, Quick look and file window all write it through `modifiedByHtml()`.
 
@@ -27,4 +31,4 @@ description: File Manager details panel rows for pages, files, archived pages, b
 ## What is still missing?
 - The WebP copy and its size are only in the file window (`pg_explorer_file_webp_copy()`); the panel does not stat each file for it.
 
-Fixed #5219, #5221, #5224, #5476, #5477, #5482.
+Fixed #5219, #5221, #5224, #5476, #5477, #5482, #5483.

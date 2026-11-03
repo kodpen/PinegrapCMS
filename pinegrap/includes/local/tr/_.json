@@ -1526,6 +1526,7 @@
     "{var:1} unused record(s) were deleted.": "{var:1} kullanılmayan kayıt silindi.",
     "{var:1} user name(s) already exist. ({var:2})": "{var:1} kullanıcı adı zaten var. ({var:2})",
     "{var:1} user was deleted": "{var:1} kullanıcı silindi",
+    "{var:1} user(s) with a right on this folder": "Bu klasörde hakkı olan {var:1} kullanıcı",
     "{var:1} users were deleted": "{var:1} kullanıcı silindi",
     "{var:1} users were imported": "{var:1} kullanıcı içe aktarıldı",
     "{var:1} variant product{suffix:1} were created in group ({var:2})": "{var:1} varyant ürün ({var:2}) grubunda oluşturuldu.",

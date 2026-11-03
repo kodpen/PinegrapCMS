@@ -358,7 +358,17 @@ $explorer_lang = array(
     'no_access' => lang('None'),
     'inherited_from_parent' => lang('Inherited from parent folder'),
     'inherited_from' => lang('Inherited from {var:1}'),
-    'expiration_date' => lang('Expiration Date'),
+    'expiration_date' => lang('Access ends on'),
+    'access_end_hint' => lang('Leave empty for access with no end date.'),
+    'access_until' => lang('Access until {var:1}'),
+    'access_expired_on' => lang('Ended on {var:1}'),
+    'access_user_rights' => lang('User rights'),
+    'folder_total' => lang('In total, inside'),
+    'rights_users_count' => lang('{var:1} user(s) with a right on this folder'),
+    'access_no_users_yet' => lang('No user holds a right here yet. Find one below to add.'),
+    'access_add_user' => lang('Add a user'),
+    'access_add_user_placeholder' => lang('Name, username or e-mail address'),
+    'access_no_user_found' => lang('No user found.'),
     'save' => lang('Save'),
     'user_column' => lang('User'),
     'rights_column' => lang('Rights'),
@@ -3984,7 +3994,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
                 if (grant.expiration_date) {
                     expiry = '<span class="badge ' + (grant.expired ? 'theme-danger' : 'theme-warning') + ' ms-3">' +
-                        '<span class="bi bi-hourglass-split me-1"></span>' + esc(grant.expiration_date) + '</span>';
+                        '<span class="bi bi-hourglass-split me-1" aria-hidden="true"></span>' +
+                        esc(grant.expired ? fmt(L.access_expired_on, [grant.expiration_label || grant.expiration_date]) : fmt(L.access_until, [grant.expiration_label || grant.expiration_date])) + '</span>';
                 }
 
                 // The contact is the person behind the account; without one
@@ -7323,6 +7334,21 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if (item.kind === 'folder' && !item.backup) {
             rows += '<tr><th>' + esc(L.size) + '</th><td>' + esc(fmt(L.counts_label, [item.counts.folders, item.counts.pages, item.counts.files])) + '</td></tr>';
+
+            // Everything under it, at any depth: what a delete, a move or an
+            // access change would touch.
+            if (item.counts.total) {
+                var total = item.counts.total;
+                rows += '<tr><th>' + esc(L.folder_total) + '</th><td>' + esc(fmt(L.counts_label, [total.folders, total.pages, total.files])) +
+                    (item.size_label ? ' · ' + esc(item.size_label) : '') + '</td></tr>';
+            }
+
+            // Who holds a right on the folder itself, with the drawer that
+            // lists and changes them.
+            if ((typeof item.counts.rights_users === 'number') && ((item.counts.rights_users > 0) || (item.access_control_type === 'private') || (item.access_control_type === 'membership'))) {
+                rows += '<tr><th>' + esc(L.access_user_rights) + '</th><td>' + esc(fmt(L.rights_users_count, [item.counts.rights_users || 0])) +
+                    (item.can_edit ? ' · <a href="#" draggable="false" class="pg-link-secondary" data-role="open-access">' + esc(L.access_permissions) + '</a>' : '') + '</td></tr>';
+            }
         }
 
         if (item.backup) {
@@ -7488,6 +7514,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if (copyAddressButton) {
             copyAddressButton.addEventListener('click', function () { copyAddresses([item], 'full'); });
+        }
+
+        var accessLink = pane.querySelector('[data-role="open-access"]');
+
+        if (accessLink) {
+            accessLink.addEventListener('click', function (event) {
+                event.preventDefault();
+                openAccessPanel(item);
+            });
         }
 
         var folderLink = pane.querySelector('[data-role="open-folder"]');
@@ -13660,6 +13695,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // commerce rights belong to the user and cover everything. So this is one
     // panel for the area rather than one per product group -- a per-group
     // switch would promise a separation the storefront does not enforce.
+    var commerceOfflinePayment = false;
+
     function openCommerceAccessPanel() {
 
         api({ type: 'explorer_catalog_access_get' }, function (response) {
@@ -13668,47 +13705,58 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             var body = document.getElementById('access_offcanvas_body');
 
+            commerceOfflinePayment = !!response.offline_payment;
+
             document.getElementById('access_offcanvas_label').innerHTML =
                 '<span class="bi bi-shield-lock me-3"></span>' + esc(L.commerce_access);
 
             var html = '<p class="form-text mt-0">' + esc(L.commerce_access_note) + '</p>';
 
-            if ((!response.can_manage_users) || (response.users.length === 0)) {
+            if (!response.can_manage_users) {
 
                 html += '<p class="empty-note">' + esc(L.no_basic_users) + '</p>';
                 body.innerHTML = html;
 
             } else {
 
-                html += '<div id="commerce_access_list">';
+                // Only the users who hold a commerce right are listed; the
+                // others are added from the search box.
+                html += '<div id="commerce_access_list">' + response.users.map(commerceUserRowHtml).join('') + '</div>' +
+                    '<p class="empty-note" id="commerce_access_empty"' + (response.users.length > 0 ? ' hidden' : '') + '>' + esc(L.access_no_users_yet) + '</p>' +
+                    accessUserSearchHtml();
 
-                response.users.forEach(function (userRow) {
-
-                    html += '<div class="border-bottom pb-3 mb-3" data-user-id="' + userRow.id + '" role="group" aria-labelledby="commerce_user_' + userRow.id + '">' +
-                        '<div class="fw-semibold text-break mb-1" id="commerce_user_' + userRow.id + '">' + esc(userRow.username) + '</div>' +
-                        switchRow('manage', userRow.id, L.commerce_manage, userRow.manage) +
-                        switchRow('reports', userRow.id, L.commerce_reports, userRow.reports) +
-                        (response.offline_payment ? switchRow('offline_payment', userRow.id, L.commerce_offline_payment, userRow.offline_payment) : '') +
-                        '</div>';
-                });
-
-                html += '</div><div class="d-grid mt-5"><button type="button" class="btn btn-solid theme-primary" id="commerce_access_save_button">' + esc(L.save) + '</button></div>';
+                html += '<div class="d-grid mt-5"><button type="button" class="btn btn-solid theme-primary" id="commerce_access_save_button">' + esc(L.save) + '</button></div>';
 
                 body.innerHTML = html;
+
+                bindAccessUserSearch(body, function (found) {
+                    if (body.querySelector('#commerce_access_list [data-user-id="' + found.id + '"]')) { return; }
+                    var holder = document.createElement('div');
+                    holder.innerHTML = commerceUserRowHtml({ id: found.id, username: found.username, manage: false, reports: false, offline_payment: false });
+                    document.getElementById('commerce_access_list').appendChild(holder.firstElementChild);
+                    document.getElementById('commerce_access_empty').hidden = true;
+                });
 
                 document.getElementById('commerce_access_save_button').addEventListener('click', function () {
 
                     var payload = [];
 
-                    body.querySelectorAll('[data-user-id]').forEach(function (row) {
+                    // Only the rows whose switches changed are sent.
+                    body.querySelectorAll('#commerce_access_list [data-user-id]').forEach(function (row) {
 
-                        payload.push({
+                        var entry = {
                             id: parseInt(row.getAttribute('data-user-id'), 10),
                             manage: row.querySelector('[data-right="manage"]').checked,
                             reports: row.querySelector('[data-right="reports"]').checked,
                             offline_payment: (row.querySelector('[data-right="offline_payment"]') || { checked: false }).checked
-                        });
+                        };
+
+                        if ([entry.manage, entry.reports, entry.offline_payment].map(Number).join('') !== row.getAttribute('data-initial')) {
+                            payload.push(entry);
+                        }
                     });
+
+                    if (payload.length === 0) { accessOffcanvas.hide(); return; }
 
                     api({ type: 'explorer_catalog_access_set', users: payload }, function (saveResponse) {
                         toast(saveResponse.message || L.request_failed, saveResponse.status !== 'error');
@@ -13725,6 +13773,21 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         });
     }
 
+    // One user of the commerce access panel; data-initial keeps the three
+    // switches it came with, so a save sends only what changed.
+    function commerceUserRowHtml(userRow) {
+        var offline = commerceOfflinePayment;
+
+        return '<div class="border-bottom pb-3 mb-3" data-user-id="' + userRow.id + '" data-initial="' +
+            [userRow.manage, userRow.reports, offline && userRow.offline_payment].map(Number).join('') +
+            '" role="group" aria-labelledby="commerce_user_' + userRow.id + '">' +
+            '<div class="fw-semibold text-break mb-1" id="commerce_user_' + userRow.id + '">' + esc(userRow.username) + '</div>' +
+            switchRow('manage', userRow.id, L.commerce_manage, userRow.manage) +
+            switchRow('reports', userRow.id, L.commerce_reports, userRow.reports) +
+            (offline ? switchRow('offline_payment', userRow.id, L.commerce_offline_payment, userRow.offline_payment) : '') +
+            '</div>';
+    }
+
     function switchRow(right, userId, label, checked) {
 
         var id = 'commerce_' + right + '_' + userId;
@@ -13732,6 +13795,111 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         return '<div class="form-field">' +
             '<div class="switch"><input class="" type="checkbox" role="switch" id="' + id + '" data-right="' + right + '"' + (checked ? ' checked' : '') + ' /></div>' +
             '<label class="small" for="' + id + '">' + esc(label) + '</label></div>';
+    }
+
+    // One user of the folder access panel: name and inherited right, the
+    // right, and under it, for view access, the day it ends (empty: no end).
+    // The rights and date it came with are kept, so a save sends only the
+    // rows that changed. A user added from the search box came with none.
+    function accessUserRowHtml(userRow, initialRights) {
+
+        var initial = (initialRights === undefined) ? userRow.rights : initialRights;
+        var dateId = 'access_expiration_' + userRow.id;
+        var inherited = '';
+
+        if (userRow.inherited_rights > 0) {
+            inherited = '<span class="badge theme-secondary ms-3" title="' + esc(L.inherited_from_parent) + '">' +
+                esc(userRow.inherited_rights === 2 ? L.edit_access : L.view_access) + ' • ' + esc(L.inherited_style) + '</span>';
+        }
+
+        return '<div class="access-user border-bottom py-3" data-user-id="' + userRow.id + '" data-initial-rights="' + initial + '" data-initial-expiration="' + esc(initialRights === undefined ? (userRow.expiration_date || '') : '') + '">' +
+            '<div class="fw-semibold text-break mb-1">' + esc(userRow.username) + inherited + '</div>' +
+            '<select class="form-control form-control-sm access-rights-select" aria-label="' + esc(fmt(L.rights_for_user, [userRow.username])) + '">' +
+            '<option value="0"' + (userRow.rights === 0 ? ' selected' : '') + '>' + esc(L.no_access) + '</option>' +
+            '<option value="1"' + (userRow.rights === 1 ? ' selected' : '') + '>' + esc(L.view_access) + '</option>' +
+            '<option value="2"' + (userRow.rights === 2 ? ' selected' : '') + '>' + esc(L.edit_access) + '</option>' +
+            '</select>' +
+            '<div class="access-expiration-wrap mt-3"' + (userRow.rights === 1 ? '' : ' hidden') + '>' +
+            '<label class="form-label small mb-1" for="' + dateId + '">' + esc(L.expiration_date) + '</label>' +
+            '<input type="date" data-pg-date id="' + dateId + '" class="form-control form-control-sm access-expiration" value="' + esc(userRow.expiration_date || '') + '" />' +
+            '<div class="form-text mt-1">' + esc(L.access_end_hint) + '</div>' +
+            '</div></div>';
+    }
+
+    function bindAccessUserRows(scope) {
+        scope.querySelectorAll('.access-rights-select').forEach(function (select) {
+            select.addEventListener('change', function () {
+                select.closest('.access-user').querySelector('.access-expiration-wrap').hidden = (select.value !== '1');
+            });
+        });
+    }
+
+    // The rows whose right or end date differ from what they came with.
+    function accessChangedRows(scope) {
+        var changed = [];
+
+        scope.querySelectorAll('.access-user[data-user-id]').forEach(function (row) {
+            var rights = parseInt(row.querySelector('.access-rights-select').value, 10);
+            var expiration = (rights === 1) ? (row.querySelector('.access-expiration').value || '') : '';
+
+            if ((rights !== parseInt(row.getAttribute('data-initial-rights'), 10)) || (expiration !== (row.getAttribute('data-initial-expiration') || ''))) {
+                changed.push({ user_id: parseInt(row.getAttribute('data-user-id'), 10), rights: rights, expiration_date: expiration });
+            }
+        });
+
+        return changed;
+    }
+
+    // The Add a user box both access panels share: a search over the basic
+    // users, the picked one handed to onPick.
+    function accessUserSearchHtml() {
+        return '<div class="mt-5 mb-3">' +
+            '<label class="form-label" for="access_user_search">' + esc(L.access_add_user) + '</label>' +
+            '<input type="search" id="access_user_search" class="form-control form-control-sm" autocomplete="off" placeholder="' + esc(L.access_add_user_placeholder) + '" />' +
+            '<div id="access_user_results" class="list-group mt-1" role="listbox" aria-label="' + esc(L.access_add_user) + '"></div>' +
+            '</div>';
+    }
+
+    function bindAccessUserSearch(scope, onPick) {
+        var input = scope.querySelector('#access_user_search');
+        var results = scope.querySelector('#access_user_results');
+        var timer = null;
+        var asked = 0;
+
+        if (!input) { return; }
+
+        input.addEventListener('input', function () {
+            clearTimeout(timer);
+            var term = input.value.trim();
+
+            if (term === '') { results.innerHTML = ''; return; }
+
+            timer = setTimeout(function () {
+                var ticket = ++asked;
+
+                api({ type: 'explorer_access_user_search', term: term }, function (response) {
+                    // An answer to an older term is dropped.
+                    if (ticket !== asked) { return; }
+
+                    var found = (response.status === 'success') ? (response.users || []) : [];
+
+                    results.innerHTML = (found.length === 0)
+                        ? '<div class="small fg-secondary py-1">' + esc(L.access_no_user_found) + '</div>'
+                        : found.map(function (entry, index) {
+                            return '<button type="button" class="list-group-item list-group-item-action small text-break" role="option" data-index="' + index + '">' +
+                                esc(entry.username) + ((entry.name && entry.name !== entry.username) ? ' <span class="fg-secondary">· ' + esc(entry.name) + '</span>' : '') + '</button>';
+                        }).join('');
+
+                    results.querySelectorAll('[data-index]').forEach(function (button) {
+                        button.addEventListener('click', function () {
+                            onPick(found[parseInt(button.getAttribute('data-index'), 10)]);
+                            input.value = '';
+                            results.innerHTML = '';
+                        });
+                    });
+                });
+            }, 250);
+        });
     }
 
     function openAccessPanel(item) {
@@ -13755,40 +13923,20 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             var inheritNote = '';
 
-            if (folder.own_access_control_type === '') {
-                inheritNote = '<div class="form-text"><span class="' + folder.access_control_type + '">' + esc(accessLabel(folder.access_control_type)) + '</span> — ' +
+            // What Default takes from the parent folders: drawn always, shown
+            // only while Default is selected.
+            if (folder.inherited_type) {
+                inheritNote = '<div class="form-text"><span class="' + folder.inherited_type + '">' + esc(accessLabel(folder.inherited_type)) + '</span> — ' +
                     esc(folder.inherited_from ? fmt(L.inherited_from, [folder.inherited_from]) : L.inherited_from_parent) + '</div>';
             }
 
             var usersHtml = '';
 
             if (response.can_manage_users) {
-                if (response.users.length === 0) {
-                    usersHtml = '<p class="empty-note">' + esc(L.no_basic_users) + '</p>';
-                } else {
-                    usersHtml = '<table class="table table-sm align-middle"><thead><tr><th>' + esc(L.user_column) + '</th><th>' + esc(L.rights_column) + '</th><th></th></tr></thead><tbody>';
-
-                    response.users.forEach(function (userRow) {
-                        var inherited = '';
-
-                        if (userRow.inherited_rights > 0) {
-                            inherited = '<span class="badge theme-secondary" title="' + esc(L.inherited_from_parent) + '">' +
-                                esc(userRow.inherited_rights === 2 ? L.edit_access : L.view_access) + ' • ' + esc(L.inherit) + '</span>';
-                        }
-
-                        usersHtml += '<tr data-user-id="' + userRow.id + '">' +
-                            '<td class="text-break">' + esc(userRow.username) + '<div>' + inherited + '</div></td>' +
-                            '<td><select class="form-control form-control-sm access-rights-select" aria-label="' + esc(fmt(L.rights_for_user, [userRow.username])) + '">' +
-                            '<option value="0"' + (userRow.rights === 0 ? ' selected' : '') + '>' + esc(L.no_access) + '</option>' +
-                            '<option value="1"' + (userRow.rights === 1 ? ' selected' : '') + '>' + esc(L.view_access) + '</option>' +
-                            '<option value="2"' + (userRow.rights === 2 ? ' selected' : '') + '>' + esc(L.edit_access) + '</option>' +
-                            '</select></td>' +
-                            '<td><div class="access-expiration-wrap"' + (userRow.rights === 1 ? '' : ' style="display:none"') + '><input type="date" data-pg-date class="form-control form-control-sm access-expiration" title="' + esc(L.expiration_date) + '" aria-label="' + esc(L.expiration_date) + '" value="' + esc(userRow.expiration_date || '') + '" /></div></td>' +
-                            '</tr>';
-                    });
-
-                    usersHtml += '</tbody></table><div class="form-text">' + esc(L.rights_note) + '</div>';
-                }
+                usersHtml = '<div id="access_user_list">' + response.users.map(function (userRow) { return accessUserRowHtml(userRow); }).join('') + '</div>' +
+                    '<p class="empty-note" id="access_user_empty"' + (response.users.length > 0 ? ' hidden' : '') + '>' + esc(L.access_no_users_yet) + '</p>' +
+                    accessUserSearchHtml() +
+                    '<div class="form-text">' + esc(L.rights_note) + '</div>';
             }
 
             body.innerHTML =
@@ -13796,10 +13944,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 '<div class="mb-5">' +
                 '<label class="form-label" for="access_type_select">' + esc(L.access_control) + '</label>' +
                 '<select id="access_type_select" class="form-control">' + options + '</select>' +
-                inheritNote +
+                '<div id="access_inherit_note"' + (folder.own_access_control_type === '' ? '' : ' hidden') + '>' + inheritNote + '</div>' +
                 '<div class="form-text">' + esc(L.access_note) + '</div>' +
                 '</div>' +
-                (usersHtml ? '<hr /><h6>' + esc(L.access_permissions) + '</h6>' + usersHtml : '') +
+                (usersHtml ? '<h6 class="mt-5 mb-3">' + esc(L.access_user_rights) + '</h6>' + usersHtml : '') +
                 '<div class="mt-5 text-end"><button type="button" id="access_save_button" class="btn btn-solid theme-success"><span class="bi bi-save me-3"></span>' + esc(L.save) + '</button></div>';
 
             // The expiry dates go on the date-and-time control once the rows are in the document.
@@ -13807,13 +13955,25 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 window.pgFields.init(body);
             }
 
-            body.querySelectorAll('.access-rights-select').forEach(function (select) {
-                select.addEventListener('change', function () {
-                    // The wrapper, not the hidden store, carries the date box the control draws.
-                    var expiration = select.closest('tr').querySelector('.access-expiration-wrap');
-                    expiration.style.display = (select.value === '1') ? '' : 'none';
-                });
+            bindAccessUserRows(body);
+
+            document.getElementById('access_type_select').addEventListener('change', function () {
+                document.getElementById('access_inherit_note').hidden = (this.value !== '');
             });
+
+            if (response.can_manage_users) {
+                bindAccessUserSearch(body, function (found) {
+                    if (body.querySelector('#access_user_list [data-user-id="' + found.id + '"]')) { return; }
+                    var holder = document.createElement('div');
+                    holder.innerHTML = accessUserRowHtml({ id: found.id, username: found.username, rights: 1, expiration_date: '', inherited_rights: 0 }, 0);
+                    var added = holder.firstElementChild;
+                    document.getElementById('access_user_list').appendChild(added);
+                    document.getElementById('access_user_empty').hidden = true;
+                    if (window.pgFields) { window.pgFields.init(added); }
+                    bindAccessUserRows(added);
+                    added.querySelector('.access-rights-select').focus();
+                });
+            }
 
             document.getElementById('access_save_button').addEventListener('click', function () {
                 var payload = {
@@ -13822,15 +13982,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     access_control_type: document.getElementById('access_type_select').value
                 };
 
-                if (response.can_manage_users && response.users.length > 0) {
-                    payload.user_rights = [];
-                    body.querySelectorAll('tr[data-user-id]').forEach(function (row) {
-                        payload.user_rights.push({
-                            user_id: parseInt(row.getAttribute('data-user-id'), 10),
-                            rights: parseInt(row.querySelector('.access-rights-select').value, 10),
-                            expiration_date: row.querySelector('.access-expiration').value || ''
-                        });
-                    });
+                if (response.can_manage_users) {
+                    var changed = accessChangedRows(body);
+                    if (changed.length > 0) { payload.user_rights = changed; }
                 }
 
                 api(payload, function (saveResponse) {
