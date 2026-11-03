@@ -101,3 +101,46 @@ function test_experiment_daily_series()
 	pg_assert_same(array(20.0, null, null), $series['rates'][1], 'a day without views has no rate');
 	pg_assert_same(array(null, null, 25.0), $series['rates'][2], 'percent');
 }
+
+// Each variant against the live page; the live page is the control.
+function test_experiment_results_rows()
+{
+	$rows = pg_experiment_results_rows(array(
+		'a' => array('id' => 1, 'draft_page_id' => 0, 'views' => 1000, 'goals' => 100),
+		'b' => array('id' => 2, 'draft_page_id' => 9, 'views' => 1000, 'goals' => 130),
+		'c' => array('id' => 3, 'draft_page_id' => 8, 'views' => 0, 'goals' => 4),
+	));
+
+	pg_assert_true($rows['a']['control'], 'the live page is the control');
+	pg_assert_same(null, $rows['a']['result'], 'the control has no comparison');
+	_test_experiment_near(0.1, $rows['a']['rate'], 0.00001, 'control rate');
+	_test_experiment_near(0.3, $rows['b']['lift'], 0.00001, 'b lift');
+	pg_assert_true($rows['b']['result']['significant'], 'b beyond chance');
+	pg_assert_same(0, $rows['c']['goals'], 'goals held inside the views');
+	pg_assert_same(null, $rows['c']['rate'], 'no views, no rate');
+}
+
+// The chart covers the run, at most the last 90 days.
+function test_experiment_chart_range()
+{
+	$now = strtotime('2026-11-03 15:00:00');
+
+	pg_assert_same(array('from' => '2026-11-01', 'to' => '2026-11-03'),
+		pg_experiment_chart_range(array('started_at' => strtotime('2026-11-01 09:00:00')), $now), 'running');
+	pg_assert_same(array('from' => '2026-10-01', 'to' => '2026-10-10'),
+		pg_experiment_chart_range(array('started_at' => strtotime('2026-10-01 09:00:00'), 'ended_at' => strtotime('2026-10-10 09:00:00')), $now), 'ended');
+	pg_assert_same('2026-08-06', pg_experiment_chart_range(array('started_at' => strtotime('2025-01-01')), $now)['from'], 'the last 90 days');
+	pg_assert_same(array('from' => '2026-11-03', 'to' => '2026-11-03'), pg_experiment_chart_range(array(), $now), 'never started');
+}
+
+// One polyline per variant with a rate; nothing without one.
+function test_experiment_chart_svg()
+{
+	$series = array('days' => array('d1', 'd2', 'd3'), 'rates' => array(1 => array(10.0, null, 20.0), 2 => array(null, null, null)));
+	$svg = pg_experiment_chart_svg($series, array(1 => 'var(--pg-primary)', 2 => 'var(--pg-success)'));
+
+	pg_assert_same(1, substr_count($svg, '<polyline'), 'a line for the variant with rates');
+	pg_assert_true(strpos($svg, 'aria-hidden="true"') !== false, 'the table carries the figures');
+	pg_assert_true(strpos($svg, 'points="0,80 600,0"') !== false, 'scaled to the top of 20: ' . $svg);
+	pg_assert_same('', pg_experiment_chart_svg(array('days' => array('d1'), 'rates' => array(1 => array(null))), array()), 'no rates, no chart');
+}

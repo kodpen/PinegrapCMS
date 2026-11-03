@@ -219,6 +219,7 @@ function pg_panel_backend_search($request, $action)
 
     // ── Design ────────────────────────────────────────────────────────────
     if ($gate['design']) {
+        $actions[] = array('label' => lang('Experiments'), 'icon' => 'bi-bar-chart-line', 'url' => $base_url . '/experiments.php', 'keys' => array('deney', 'deneyler', 'ab test', 'a/b', 'experiment', 'experiments', 'varyant', 'variant'));
         $actions[] = array('label' => lang('Styles'), 'icon' => 'bi-window', 'url' => $base_url . '/view_styles.php', 'keys' => array('stil', 'stiller', 'style', 'styles', 'stl'));
         $actions[] = array('label' => lang('Add Style'), 'icon' => 'bi-window-plus', 'url' => $base_url . '/add_style.php', 'keys' => array('stil ekle', 'add style', 'yeni stil', 'stilekle'));
         $actions[] = array('label' => lang('Themes'), 'icon' => 'bi-palette', 'url' => $base_url . '/view_themes.php', 'keys' => array('tema', 'theme', 'them', 'tem'));

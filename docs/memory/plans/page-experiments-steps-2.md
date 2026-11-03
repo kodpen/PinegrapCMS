@@ -6,7 +6,7 @@ description: Steps PX5-PX8 of plans/page-experiments.md: the results screen, aud
 ## Which steps are there?
 - Sizes, tests and memory rules as in `page-experiments-steps.md`; PX6 runs beside PX2 and PX4.
 
-- PX5 (M) Results screen. After PX3.
+- PX5 (M) Results screen. After PX3. Done in #6255.
   - `experiments.php` (panel, under the Pages tools and the panel search): the list with status and dates; per experiment a table of views, conversions and rate per variant, lift against the control, a plain sentence from a two-proportion z-test ("B is ahead by 12 %, and the difference is unlikely to be chance" / "not enough visits yet: about N more"), a daily chart of rates from `experiment_hourly`; Publish the winner here too. `pg_experiment_significance()` pure and tested against known pairs. The Visitors overview (`plans/visitors-overview.md`) may later show the running ones as a card. Memory: `ui/experiments-screen.md`.
 
 - PX6 (M) Audience conditions. `free`.

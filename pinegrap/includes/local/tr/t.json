@@ -3325,6 +3325,7 @@
     "The page type for this page could not be changed because there are submitted forms for this page.  All submitted forms for this page must be deleted before the page type for this page is allowed to be changed.": "Bu sayfa için gönderilen formlar olduğundan bu sayfanın sayfa türü değiştirilemedi. Bu sayfa için gönderilen tüm formlar, bu sayfanın sayfa türünün değiştirmeden önce silinmelidir.",
     "The page was changed after this proposal was made. Open it in the editor, or ask again.": "Bu öneri yapıldıktan sonra sayfa değişti. Düzenleyicide açın ya da yeniden isteyin.",
     "The page was changed.": "Sayfa değiştirildi.",
+    "The page was deleted.": "Sayfa silindi.",
     "The page was moved to the Recycle Bin.": "Sayfa Geri Dönüşüm Kutusuna taşındı.",
     "The page was not found (404)": "Sayfa bulunamadı (404)",
     "The page was not found.": "Sayfa bulunamadı.",

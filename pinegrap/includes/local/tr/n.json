@@ -852,6 +852,7 @@
     "No exchange rate is recorded for {var:1} on {var:2}. Run Update Exchange Rates or enter the rate.": "{var:2} tarihi için {var:1} kuru kayıtlı değil. Döviz Kurlarını Güncelle'yi çalıştırın ya da kuru girin.",
     "No exchange rate is recorded for {var:1} on {var:2}. Set exchange_rate on the draft, or run Update Exchange Rates in the panel.": "{var:2} tarihi için {var:1} kuru kayıtlı değil. Taslağa exchange_rate girin ya da panelde Döviz Kurlarını Güncelle'yi çalıştırın.",
     "No expense in this period.": "Bu dönemde gider yok.",
+    "No experiments yet. Open a page of a visual design in the pages list and choose Experiments to set one up.": "Henüz deney yok. Bir deney kurmak için sayfa listesinde görsel tasarımlı bir sayfayı açın ve Deneyler'i seçin.",
     "No expiry warning e-mail is configured in settings.": "Ayarlarda süre dolum uyarı e-postası tanımlı değil.",
     "No export has been recorded yet.": "Henüz kayıtlı bir dışa aktarım yok.",
     "No external firewall or CDN was detected in front of this site, so this firewall is the only layer protecting it.": "Bu sitenin önünde harici bir güvenlik duvarı veya CDN tespit edilmedi; bu güvenlik duvarı siteyi koruyan tek katman.",

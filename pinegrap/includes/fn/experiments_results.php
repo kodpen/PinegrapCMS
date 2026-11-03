@@ -197,3 +197,184 @@ function pg_experiment_daily_series(array $rows, array $variant_ids, $from, $to)
 
     return array('days' => $days, 'rates' => $rates);
 }
+
+/**
+ * The results rows of an experiment's variants: each variant's figures and,
+ * for every variant but the control, the comparison with it. The control is
+ * the variant without a draft (the live page), else the first. Pure.
+ *
+ * @param array $variants key => [id, draft_page_id, views, goals, ...]
+ * @return array key => the variant with rate, lift, result (null for the
+ *               control), control (bool)
+ */
+function pg_experiment_results_rows(array $variants)
+{
+    $control = function_exists('pg_experiment_control_key') ? pg_experiment_control_key($variants) : '';
+
+    if (($control === '') && $variants) {
+        $control = (string) key($variants);
+    }
+
+    $base = isset($variants[$control]) ? $variants[$control] : array('views' => 0, 'goals' => 0);
+    $rows = array();
+
+    foreach ($variants as $key => $variant) {
+        $views = max(0, (int) ($variant['views'] ?? 0));
+        $goals = max(0, min((int) ($variant['goals'] ?? 0), $views));
+        $is_control = ((string) $key === $control);
+        $result = $is_control ? null : pg_experiment_significance($base['views'] ?? 0, $base['goals'] ?? 0, $views, $goals);
+
+        $variant['views'] = $views;
+        $variant['goals'] = $goals;
+        $variant['rate'] = ($views > 0) ? $goals / $views : null;
+        $variant['lift'] = $result ? $result['lift'] : null;
+        $variant['result'] = $result;
+        $variant['control'] = $is_control;
+        $rows[(string) $key] = $variant;
+    }
+
+    return $rows;
+}
+
+/**
+ * The days the chart covers: from the start (or the creation) to the end, or
+ * today while it runs; at most the last 90 days. Pure.
+ *
+ * @param array $experiment started_at, ended_at, created_at
+ * @param int   $now
+ * @return array from, to (Y-m-d)
+ */
+function pg_experiment_chart_range(array $experiment, $now)
+{
+    $start = (int) ($experiment['started_at'] ?? 0) ?: (int) ($experiment['created_at'] ?? 0) ?: (int) $now;
+    $end = (int) ($experiment['ended_at'] ?? 0) ?: (int) $now;
+    $end = max($end, $start);
+    $start = max($start, strtotime('-89 days', $end));
+
+    return array('from' => date('Y-m-d', $start), 'to' => date('Y-m-d', $end));
+}
+
+/**
+ * The daily rates as an inline SVG line chart, one polyline per variant; the
+ * figures are in the table the screen prints beside it, so the picture is
+ * aria-hidden. Pure.
+ *
+ * @param array $series pg_experiment_daily_series()
+ * @param array $colors variant id => CSS colour (a var(--pg-…) token)
+ * @return string '' when no day has a rate
+ */
+function pg_experiment_chart_svg(array $series, array $colors)
+{
+    $max = 0.0;
+
+    foreach ($series['rates'] as $list) {
+        foreach ($list as $rate) {
+            if ($rate !== null) {
+                $max = max($max, (float) $rate);
+            }
+        }
+    }
+
+    $count = count($series['days']);
+
+    if (($max <= 0) || ($count === 0)) {
+        return '';
+    }
+
+    $width = 600;
+    $height = 160;
+    $top = ceil($max / 5) * 5;
+    $step = ($count > 1) ? $width / ($count - 1) : 0;
+    $lines = '';
+
+    foreach ($series['rates'] as $id => $list) {
+        $points = array();
+
+        foreach ($list as $i => $rate) {
+            if ($rate !== null) {
+                $points[] = round($i * $step, 1) . ',' . round($height - ($rate / $top) * $height, 1);
+            }
+        }
+
+        if ($points) {
+            $color = isset($colors[$id]) ? (string) $colors[$id] : 'currentColor';
+            $lines .= '<polyline fill="none" stroke="' . h($color) . '" stroke-width="2" vector-effect="non-scaling-stroke" points="' . implode(' ', $points) . '"/>';
+
+            if (count($points) === 1) {
+                list($x, $y) = explode(',', $points[0]);
+                $lines .= '<circle cx="' . $x . '" cy="' . $y . '" r="3" fill="' . h($color) . '"/>';
+            }
+        }
+    }
+
+    return '<svg class="w-100" viewBox="-4 -4 ' . ($width + 8) . ' ' . ($height + 8) . '" preserveAspectRatio="none" height="' . $height . '" aria-hidden="true" focusable="false">'
+        . '<line x1="0" y1="' . $height . '" x2="' . $width . '" y2="' . $height . '" stroke="var(--pg-border-color)" stroke-width="1" vector-effect="non-scaling-stroke"/>'
+        . $lines . '</svg>';
+}
+
+/**
+ * Every experiment of the site with its page and its summed views and
+ * goals, newest first.
+ *
+ * @return array id, page_id, name, status, goal_kind, goal_target, started_at,
+ *               ended_at, page_name, page_folder, views, goals
+ */
+function pg_experiment_results_list()
+{
+    if (!function_exists('pg_experiment_sheet_ready') || !pg_experiment_sheet_ready()) {
+        return array();
+    }
+
+    $rows = (array) db_items(
+        "SELECT experiments.id, experiments.page_id, experiments.name, experiments.status, experiments.goal_kind,
+            experiments.goal_target, experiments.started_at, experiments.ended_at, page.page_name, page.page_folder
+        FROM experiments
+        LEFT JOIN page ON page.page_id = experiments.page_id
+        ORDER BY experiments.id DESC");
+
+    $sums = array();
+
+    if ($rows && pg_schema_has('experiment_hourly')) {
+        foreach ((array) db_items("SELECT experiment_id, SUM(views) AS views, SUM(goals) AS goals FROM experiment_hourly GROUP BY experiment_id") as $sum) {
+            $sums[(int) $sum['experiment_id']] = $sum;
+        }
+    }
+
+    foreach ($rows as $i => $row) {
+        $rows[$i]['views'] = isset($sums[(int) $row['id']]) ? (int) $sums[(int) $row['id']]['views'] : 0;
+        $rows[$i]['goals'] = isset($sums[(int) $row['id']]) ? (int) $sums[(int) $row['id']]['goals'] : 0;
+    }
+
+    return $rows;
+}
+
+/**
+ * The hourly rows of an experiment summed per day and variant over a range.
+ *
+ * @param int    $experiment_id
+ * @param string $from Y-m-d
+ * @param string $to   Y-m-d
+ * @return array day, variant_id, views, goals
+ */
+function pg_experiment_results_days($experiment_id, $from, $to)
+{
+    if (!pg_schema_has('experiment_hourly')) {
+        return array();
+    }
+
+    $result = db_q(
+        "SELECT day, variant_id, SUM(views) AS views, SUM(goals) AS goals
+        FROM experiment_hourly
+        WHERE experiment_id = ? AND day BETWEEN ? AND ?
+        GROUP BY day, variant_id
+        ORDER BY day",
+        array((int) $experiment_id, (string) $from, (string) $to));
+
+    $rows = array();
+
+    while ($result && ($row = mysqli_fetch_assoc($result))) {
+        $rows[] = $row;
+    }
+
+    return $rows;
+}

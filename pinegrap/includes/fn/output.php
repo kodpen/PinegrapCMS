@@ -3886,6 +3886,9 @@ function output_menu($properties = false)
         // the site's other languages (includes/translate/).
         $menu_items[21]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
         $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/translations.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-translate bi-me-2\'>' . lang('Translations') . '</a>';
+        // VISUAL PAGE EDITOR > Experiments: the A/B experiments of designed
+        // pages and their results (experiments.php, designers).
+        $menu_items[21]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/experiments.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-bar-chart-line bi-me-2\'>' . lang('Experiments') . '</a>';
 
         // DESIGN > Menus and DESIGN > Regions. Neither is a row of the menu:
         // both are reached from the panel of Page Styles, below.
@@ -4437,6 +4440,10 @@ function output_menu($properties = false)
 
         // The pages of Site Settings (settings_<category>.php) have no row
         // since slot 20 was retired, so they mark none.
+        case 'experiments.php':
+        case 'page_experiments.php':
+            $active_menu = 21;
+            break;
         case 'translations.php':
             // A manager reaches it from the Pages panel; row 21 is built for
             // role < 2 only.
