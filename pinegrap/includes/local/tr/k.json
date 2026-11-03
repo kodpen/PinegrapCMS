@@ -82,6 +82,7 @@
     "Kept in": "Tutulduğu yer",
     "Kept in a password manager or cloud account, so your other devices can use it too.": "Bir parola yöneticisinde ya da bulut hesabında saklanır; diğer cihazlarınız da kullanabilir.",
     "Kept in each record": "Her kaydın kendi içinde",
+    "Kept in the notes when the status becomes Cancelled.": "Durum İptal edildi olduğunda notlara eklenir.",
     "Kept in {var:1}; movements at their booked base value, the opening figure left out.": "{var:1} olarak tutulur; hareketler kayıt kurundan, açılış rakamı dışarıda.",
     "Kept on {var:1}": "{var:1} tarihinde saklandı",
     "Kept out of search results by the page's own setting": "Sayfanın kendi ayarıyla arama sonuçlarının dışında",

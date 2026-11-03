@@ -156,6 +156,18 @@ function api_contact_group_load_or_fail($id) {
 
 }
 
+// A group filled by rules is changed only by its rules: no member is added or
+// taken out through the API (or MCP, which runs the same handler).
+function api_contact_group_hand_or_fail($id) {
+
+	if (pg_audience_group_is_dynamic($id)) {
+
+		api_fail(409, 'contact_group_by_rule', pg_audience_door_message());
+
+	}
+
+}
+
 // The add screen opens from the manager role up only. Below that an account
 // works inside the groups given to it, and a group it made would be given to
 // nobody.
@@ -682,6 +694,8 @@ function api_contact_groups_members_update($params) {
 	$group = api_contact_group_load_or_fail($params['id']);
 
 	$id = (int)$group['id'];
+
+	api_contact_group_hand_or_fail($id);
 
 	$add = api_contact_group_ids_from(array_key_exists('add', $params) ? $params['add'] : array());
 

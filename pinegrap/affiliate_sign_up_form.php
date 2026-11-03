@@ -288,7 +288,7 @@ if (!isset($_POST['submit'])) {
         }
         
         // check if affiliate contact group exists
-        $query = "SELECT id FROM contact_groups WHERE id = ?";
+        $query = "SELECT id FROM contact_groups WHERE (id = ?) AND " . pg_audience_hand_sql();
         $result = db_q($query, array((string) AFFILIATE_CONTACT_GROUP_ID)) or output_error('Query failed.');
         
         // if affiliate contact group exists

@@ -1323,7 +1323,8 @@ if ($liveform->check_form_errors() == false) {
         // loop through contact groups that contact should be added to
         foreach ($contact_groups as $contact_group_id) {
             // check if contact group exists
-            $query = "SELECT id FROM contact_groups WHERE id = ?";
+            // a group filled by rules is never written by a form
+            $query = "SELECT id FROM contact_groups WHERE (id = ?) AND " . pg_audience_hand_sql();
             $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
             
             // if contact group exists

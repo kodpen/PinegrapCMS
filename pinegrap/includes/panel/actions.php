@@ -201,6 +201,7 @@ function pg_panel_actions()
         'commission_profile_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_commission_profile_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'site_log_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_site_log_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'audit_log_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_audit_log_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
+        'booking_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_booking_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'audit_log_changes' => array('file' => 'lists.php', 'handler' => 'pg_panel_audit_log_changes', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'list_table_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_list_table_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'waf_log_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_waf_log_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
