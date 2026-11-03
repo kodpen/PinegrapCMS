@@ -899,6 +899,17 @@ if (pg_cron_job_is_enabled('push_job')) {
 
 }
 
+// Booking reminders (pg_booking_reminders_run() in
+// includes/fn/booking_messages.php): the confirmed bookings whose reminder
+// moment fell since the last pass get their mail and text. Before the mail
+// and SMS passes, so a reminder made now goes out in this run. Nothing to do
+// on a site without the booking tables; otherwise one indexed read.
+if (function_exists('pg_booking_reminders_run')) {
+
+    pg_booking_reminders_run(time());
+
+}
+
 // Queued e-mail (includes/fn/mail_queue.php): password resets, order receipts,
 // form and comment notifications that email() handed over instead of sending
 // inside the visitor's request.
