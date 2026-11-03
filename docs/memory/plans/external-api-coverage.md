@@ -29,7 +29,7 @@ description: External API (integration.php): find what the panel can do that the
 - X10 Calendars, cut in two:
   - X10a Calendars create/update/delete (`fn/calendar_writes.php`): PR #6375 (`api/api-calendar-writes.md`).
   - X10b `/calendars/locations` CRUD (screen SQL into `fn/calendar_writes.php`; role 3 refused), `GET /calendars/events/{id}/reservations`. Event `calendar_event.reserved`.
-- X11 `POST /forms/{id}/submissions`, its `/delete`, `GET /forms/{id}/fields`. `forms:*`. Event `form.submission.deleted`; `form.submitted` exists.
+- X11 Form submission create and delete, `GET /forms/{id}/fields`: PR #6424 (`api/api-form-submission-writes.md`).
 - X12 CRUD for ads, ad regions, auto dialogs, common regions under `/design/`. `design:*`. No events.
 
 ## What is not a step?
