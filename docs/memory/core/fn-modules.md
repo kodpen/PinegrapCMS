@@ -103,7 +103,7 @@ description: Generated from the module field of the memory files: each includes/
 - `prototype_map`: [[prototype-map-read]]
 - `record_revisions`: [[collection-history]], [[collection-revisions]]
 - `request_scheme`: [[proxy-https-trust]], [[secure-mode-proxy-offer]]
-- `returns`: [[bootstrap-6-runtime-markup]]
+- `returns`: [[api-returns]], [[bootstrap-6-runtime-markup]]
 - `reviews`: [[product-review-photos]], [[product-reviews-verified]]
 - `search_audits`: [[search-and-audits-screen]]
 - `seo`: [[indexnow-ping-result]], [[list-row-names]], [[main-host-redirect]], [[panel-preview-not-a-visit]], [[record-breadcrumb-list-step]], [[record-page-schema-type]], [[recycle-bin-offline]], [[robots-large-image-preview]], [[seo-default-share-image-warning]], [[sitemap-cache]], [[sitemap-listed-pages]]
