@@ -40,7 +40,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 - `google_reviews`: done #6019
 - `image`: open
 - `image_editor`: open
-- `imap_client`: done #6020
+- `imap_client`: done (#6020)
 - `innodb`: open
 - `lang`: done #6045 (placeholder values re-scanned; rest reviewed: language pick, source, cache, log/staff language)
 - `lang_files`: open
