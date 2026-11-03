@@ -1621,6 +1621,7 @@
     "Product group ({var:1}) was moved to the Recycle Bin through the API by the application {var:2} (key {var:3}).": "Ürün grubu ({var:1}), {var:2} uygulaması tarafından API üzerinden Geri Dönüşüm Kutusuna taşındı (anahtar {var:3}).",
     "Product group behaves like a product and provides the ability to select options in product detail page.": "Ürün grubu bir ürün gibi davranır ve ürün detay sayfasında özellik seçilmesini sağlar.",
     "Product group searched": "Aranan ürün grubu",
+    "Product group the categories go under": "Kategorilerin altına ekleneceği ürün grubu",
     "Product groups have a management screen of their own these days.": "Ürün gruplarının artık kendi yönetim ekranı var.",
     "Product groups have a management screen of their own.": "Ürün gruplarının artık kendi yönetim ekranı var.",
     "Product groups that present several forms of the same product as one catalog item.": "Aynı ürünün farklı biçimlerini tek katalog öğesi olarak sunan ürün grupları.",
