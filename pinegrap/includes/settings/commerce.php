@@ -254,6 +254,79 @@ $pg_settings_cards[] = '
         </div>
     </div>';
 
+// ── Stock locations ──
+// Where units are kept (includes/fn/stock_moves.php). A location is never
+// deleted, since its moves name it; it is turned off instead. The card is
+// drawn before the upgrade too, with a note, so the chip always has its card.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/stock_moves.php');
+
+$stock_card_ready = pg_stock_ready();
+$stock_card_rows = '';
+$stock_card_locations = $stock_card_ready ? pg_stock_locations() : array();
+$stock_card_default = pg_stock_pick_default($stock_card_locations);
+
+foreach ($stock_card_locations as $stock_card_location) {
+    $stock_card_id = (int) $stock_card_location['id'];
+    $stock_card_rows .= '
+                        <tr>
+                            <td><input type="text" class="form-control form-control-sm" name="stock_location_name[' . $stock_card_id . ']" maxlength="' . PG_STOCK_NAME_LENGTH . '" value="' . h($stock_card_location['name']) . '" aria-label="' . h(lang('Name')) . '" required /></td>
+                            <td><input type="text" class="form-control form-control-sm" name="stock_location_address[' . $stock_card_id . ']" maxlength="' . PG_STOCK_ADDRESS_LENGTH . '" value="' . h((string) $stock_card_location['address']) . '" aria-label="' . h(lang(array('string' => 'Address of {var:1}', 'vars' => array($stock_card_location['name'])))) . '" /></td>
+                            <td><input type="number" min="0" max="65535" step="1" class="form-control form-control-sm" style="width:5.5rem" name="stock_location_order[' . $stock_card_id . ']" value="' . (int) $stock_card_location['sort_order'] . '" aria-label="' . h(lang(array('string' => 'Order of {var:1}', 'vars' => array($stock_card_location['name'])))) . '" /></td>
+                            <td class="text-center"><input type="radio" class="radio" name="stock_location_default" value="' . $stock_card_id . '"' . (($stock_card_id === $stock_card_default) ? ' checked' : '') . ' aria-label="' . h(lang(array('string' => 'Make {var:1} the default', 'vars' => array($stock_card_location['name'])))) . '" /></td>
+                            <td class="text-center"><div class="switch d-inline-block"><input type="checkbox" value="1" name="stock_location_enabled[' . $stock_card_id . ']"' . (((int) $stock_card_location['enabled'] === 1) ? ' checked' : '') . ' aria-label="' . h(lang(array('string' => '{var:1} is on', 'vars' => array($stock_card_location['name'])))) . '" /></div></td>
+                        </tr>';
+}
+
+$pg_settings_cards[] = '
+    <div id="pgset-stock-locations" class="pg-set-card">
+        <div class="card">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                ' . lang('Stock locations') . '
+            </div>
+            <div class="card-body">
+                <div class="row gy-5">
+                    <div class="col-12">
+                        <div class="form-text">' . lang('The places your units are kept: a warehouse, a shop, goods on consignment. A product\'s stock is the sum of its locations. While no location is added, stock is one number as before; the first location you add becomes the default and holds every product\'s current stock.') . '</div>' . (!$stock_card_ready ? '
+                        <div class="form-text fg-warning">' . lang('Stock locations become available once the database upgrade has run.') . '</div>' : '') . '
+                    </div>' . ($stock_card_ready ? '
+                    <input type="hidden" name="stock_location_card" value="1" />' . (($stock_card_rows !== '') ? '
+                    <div class="col-12">
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle mb-0">
+                                <caption class="visually-hidden">' . lang('Stock locations') . '</caption>
+                                <thead>
+                                    <tr>
+                                        <th scope="col">' . lang('Name') . '</th>
+                                        <th scope="col">' . lang('Address') . '</th>
+                                        <th scope="col">' . lang('Order') . '</th>
+                                        <th scope="col" class="text-center">' . lang('Default') . '</th>
+                                        <th scope="col" class="text-center">' . lang('On') . '</th>
+                                    </tr>
+                                </thead>
+                                <tbody>' . $stock_card_rows . '
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="form-text">' . lang('A location that is turned off takes no transfers; the units it holds still count in the product\'s stock.') . '</div>
+                    </div>' : '') . '
+                    <div class="col-12 mb-0"><h6 class="fg-secondary text-uppercase">' . lang('New location') . '</h6></div>
+                    <div class="pg-f-md">
+                        <label for="stock_location_new_name" class="form-label">' . lang('Name') . '</label>
+                        <input type="text" name="stock_location_new_name" id="stock_location_new_name" class="form-control" maxlength="' . PG_STOCK_NAME_LENGTH . '" value="" />
+                    </div>
+                    <div class="pg-f-lg">
+                        <label for="stock_location_new_address" class="form-label">' . lang('Address') . '</label>
+                        <input type="text" name="stock_location_new_address" id="stock_location_new_address" class="form-control" maxlength="' . PG_STOCK_ADDRESS_LENGTH . '" value="" />
+                        <div class="form-text">' . lang('Added when you save.') . '</div>
+                    </div>
+                    <div class="col-12">
+                        <a class="btn btn-sm btn-text theme-secondary" href="view_stock_moves.php"><i class="bi bi-clock-history me-1" aria-hidden="true"></i>' . lang('Stock history') . '</a>
+                    </div>' : '') . '
+                </div>
+            </div>
+        </div>
+    </div>';
+
 // ── Address Autocomplete ──
 // The provider account is kept with the connected accounts' applications,
 // the key sealed (includes/fn/address_autocomplete.php).

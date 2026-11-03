@@ -50,6 +50,7 @@ function pg_list_table_definitions()
         'view_contacts' => array('file' => 'includes/fn/contact_list.php', 'source' => 'pg_contact_list_source'),
         'view_submitted_forms' => array('file' => 'includes/fn/submitted_form_list.php', 'source' => 'pg_submitted_form_list_source'),
         'view_products' => array('file' => 'includes/fn/product_list.php', 'source' => 'pg_product_list_source'),
+        'view_stock_moves' => array('file' => 'includes/fn/stock_moves.php', 'source' => 'pg_stock_move_list_source'),
     );
 }
 
