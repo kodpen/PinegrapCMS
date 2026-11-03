@@ -8,5 +8,5 @@ module: widgets
 - The form data list search (`fd_q.data LIKE …` in `includes/fn/widgets.php`) and the simple site search (`$like`: regions, page titles, descriptions, keywords, page trees, comments) compare with `LIKE` on `e(pg_list_like_pattern($term))`: a typed backslash, `%` or `_` is a plain character.
 
 ## What did #5160 fix?
-- Both built `'%' . e(escape_like($term)) . '%'`. `escape_like()` escapes `%` and `_` but not the backslash, so a backslash typed into the box escaped the next pattern character: `C:\temp` looked for `C:temp`, and a lone `\` found only values ending in `%`.
+- Both built `'%' . e(escape_like($term)) . '%'`. `escape_like()` then escaped `%` and `_` but not the backslash (it does since the core bug hunt's #5935), so a backslash typed into the box escaped the next pattern character: `C:\temp` looked for `C:temp`, and a lone `\` found only values ending in `%`.
 - `tests/widgets_search_like_test.php` keeps `escape_like(` out of the module and checks both searches use `pg_list_like_pattern()`.

@@ -1004,11 +1004,11 @@ function sql_device_type($device_type)
     return ((string) $device_type === 'mobile') ? 'mobile' : 'desktop';
 }
 
+// A value as plain text in a LIKE pattern (before e()): MySQL's escape
+// character, the backslash, is doubled first, then % and _ get one.
 function escape_like($string)
 {
-    $string = str_replace('%', '\%', $string);
-    $string = str_replace('_', '\_', $string);
-    return $string;
+    return str_replace(array('\\', '%', '_'), array('\\\\', '\\%', '\\_'), (string) $string);
 }
 
 function escape_javascript($string)
