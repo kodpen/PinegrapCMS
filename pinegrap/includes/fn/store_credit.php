@@ -475,3 +475,351 @@ function pg_credit_void($card_id, $reason = '')
 
     return true;
 }
+
+/**
+ * Which applied_gift_cards rows a customer's credit needs on an order. Ticked
+ * ($use), every open card not applied yet is added (in the order given, which
+ * is pg_credit_cards()'s spend order), an applied card whose balance moved is
+ * refreshed and one no longer open (spent, voided, expired) is removed;
+ * unticked, every applied credit row is removed. No amount per row:
+ * submit_order() takes min(total, sum of old_balance) and
+ * pg_order_complete_gift_cards() redeems the rows by id.
+ *
+ * @param array $open_cards  pg_credit_cards() rows: id, code, balance
+ * @param array $applied     this order's applied_gift_cards rows of the
+ *                           customer's cards: id, gift_card_id, old_balance
+ * @param bool  $use
+ * @return array  insert: list of (gift_card_id, code, old_balance);
+ *                delete: applied ids; refresh: applied id => balance
+ */
+function pg_credit_checkout_plan(array $open_cards, array $applied, $use)
+{
+    $plan = array('insert' => array(), 'delete' => array(), 'refresh' => array());
+
+    $open = array();
+    foreach ($open_cards as $card) {
+        $open[(int) $card['id']] = $card;
+    }
+
+    $applied_cards = array();
+    foreach ($applied as $row) {
+        $card_id = (int) $row['gift_card_id'];
+
+        if (!$use || !isset($open[$card_id]) || isset($applied_cards[$card_id])) {
+            $plan['delete'][] = (int) $row['id'];
+            continue;
+        }
+
+        $applied_cards[$card_id] = true;
+        $balance = (int) $open[$card_id]['balance'];
+
+        if ($balance !== (int) $row['old_balance']) {
+            $plan['refresh'][(int) $row['id']] = $balance;
+        }
+    }
+
+    if ($use) {
+        foreach ($open as $card_id => $card) {
+            if (!isset($applied_cards[$card_id])) {
+                $plan['insert'][] = array('gift_card_id' => $card_id, 'code' => (string) $card['code'], 'old_balance' => (int) $card['balance']);
+            }
+        }
+    }
+
+    return $plan;
+}
+
+/**
+ * The "Use my store credit" choice a form posted: null when the form did not
+ * draw the box (store_credit_shown marks it), else whether it was ticked.
+ *
+ * @param array $post
+ * @return bool|null
+ */
+function pg_credit_checkout_posted(array $post)
+{
+    if (!isset($post['store_credit_shown']) || ($post['store_credit_shown'] !== '1')) {
+        return null;
+    }
+
+    return isset($post['use_store_credit']) && ($post['use_store_credit'] === '1');
+}
+
+/**
+ * Whether credit is spent on an order: yes unless the customer unticked the
+ * box (or removed a credit row) on this very order.
+ *
+ * @param int $order_id
+ * @param int $off_order_id  pg_credit_checkout_off_order()
+ * @return bool
+ */
+function pg_credit_checkout_wanted($order_id, $off_order_id)
+{
+    return ((int) $off_order_id === 0) || ((int) $off_order_id !== (int) $order_id);
+}
+
+/**
+ * The order the customer unticked store credit on in this session, 0 for none.
+ *
+ * @return int
+ */
+function pg_credit_checkout_off_order()
+{
+    return isset($_SESSION['ecommerce']['store_credit_off']) ? (int) $_SESSION['ecommerce']['store_credit_off'] : 0;
+}
+
+/**
+ * Records the customer's choice for an order.
+ *
+ * @param int  $order_id
+ * @param bool $use
+ */
+function pg_credit_checkout_choose($order_id, $use)
+{
+    if ($use) {
+        unset($_SESSION['ecommerce']['store_credit_off']);
+    } else {
+        $_SESSION['ecommerce']['store_credit_off'] = (int) $order_id;
+    }
+}
+
+/**
+ * The customer whose credit an order may spend, or 0: gift cards on, the
+ * columns there, a signed-in customer (not a guest, not staff on someone's
+ * behalf) and a line that is not a gift card (no gift card pays for gift
+ * cards, the rule submit_order() keeps).
+ *
+ * @param int $order_id
+ * @return int  user id
+ */
+function pg_credit_checkout_customer($order_id)
+{
+    $order_id = (int) $order_id;
+
+    if (($order_id <= 0) || !defined('ECOMMERCE_GIFT_CARD') || (ECOMMERCE_GIFT_CARD != true) || !pg_credit_ready()) {
+        return 0;
+    }
+
+    $user_id = pg_credit_checkout_user();
+
+    if ($user_id <= 0) {
+        return 0;
+    }
+
+    $lines = (int) db_value(
+        "SELECT COUNT(*)
+        FROM order_items
+        LEFT JOIN products ON order_items.product_id = products.id
+        WHERE order_items.order_id = " . $order_id . pg_order_item_active_sql() . "
+            AND products.gift_card = '0'");
+
+    return ($lines > 0) ? $user_id : 0;
+}
+
+/**
+ * An order's applied_gift_cards rows of a customer's cards.
+ *
+ * @param int $order_id
+ * @param int $user_id
+ * @return array  rows: id, gift_card_id, old_balance
+ */
+function pg_credit_checkout_applied($order_id, $user_id)
+{
+    $rows = db_items(
+        "SELECT applied_gift_cards.id, applied_gift_cards.gift_card_id, applied_gift_cards.old_balance
+        FROM applied_gift_cards
+        JOIN gift_cards ON gift_cards.id = applied_gift_cards.gift_card_id
+        WHERE applied_gift_cards.order_id = " . (int) $order_id . "
+            AND applied_gift_cards.givex = 0
+            AND gift_cards.user_id = " . (int) $user_id . "
+        ORDER BY applied_gift_cards.id");
+
+    return is_array($rows) ? $rows : array();
+}
+
+/**
+ * Brings an order's applied credit in line with the customer's cards and
+ * choice (pg_credit_checkout_plan()). Called where the checkout totals are
+ * read, so the total shown already has the credit taken off. Does nothing
+ * for an order that may not spend credit.
+ *
+ * @param int $order_id
+ * @return int  the customer's balance, 0 when the order may not spend credit
+ */
+function pg_credit_checkout_sync($order_id)
+{
+    $order_id = (int) $order_id;
+    $user_id = pg_credit_checkout_customer($order_id);
+
+    if ($user_id <= 0) {
+        return 0;
+    }
+
+    $cards = pg_credit_cards($user_id);
+    $plan = pg_credit_checkout_plan(
+        $cards,
+        pg_credit_checkout_applied($order_id, $user_id),
+        pg_credit_checkout_wanted($order_id, pg_credit_checkout_off_order()));
+
+    foreach ($plan['delete'] as $id) {
+        db_q("DELETE FROM applied_gift_cards WHERE id = ? AND order_id = ?", array((int) $id, $order_id));
+    }
+
+    foreach ($plan['refresh'] as $id => $balance) {
+        db_q("UPDATE applied_gift_cards SET old_balance = ? WHERE id = ? AND order_id = ?", array((int) $balance, (int) $id, $order_id));
+    }
+
+    foreach ($plan['insert'] as $row) {
+        db_q(
+            "INSERT INTO applied_gift_cards (gift_card_id, order_id, code, old_balance, givex) VALUES (?, ?, ?, ?, 0)",
+            array($row['gift_card_id'], $order_id, $row['code'], $row['old_balance']));
+    }
+
+    $balance = 0;
+    foreach ($cards as $card) {
+        $balance += (int) $card['balance'];
+    }
+
+    return $balance;
+}
+
+/**
+ * The "Use my store credit" box for an order, after pg_credit_checkout_sync():
+ * show (a customer with credit who may spend it here), checked, balance.
+ *
+ * @param int $order_id
+ * @param int $balance  what pg_credit_checkout_sync() returned
+ * @return array  show, checked, balance (minor units)
+ */
+function pg_credit_checkout_box($order_id, $balance)
+{
+    return array(
+        'show'    => ((int) $balance > 0),
+        'checked' => pg_credit_checkout_wanted($order_id, pg_credit_checkout_off_order()),
+        'balance' => (int) $balance,
+    );
+}
+
+/**
+ * The box as the built-in checkout screens draw it: a hidden marker, the
+ * checkbox and an Update button that the checkbox presses, so the page comes
+ * back with the new totals before anything is charged.
+ *
+ * @param array  $box           pg_credit_checkout_box()
+ * @param string $button_class
+ * @return string  HTML
+ */
+function pg_credit_checkout_box_html(array $box, $button_class = 'software_input_submit_small_secondary')
+{
+    if (empty($box['show'])) {
+        return '';
+    }
+
+    return '<div class="store_credit" style="margin-bottom: 1em">'
+        . '<input type="hidden" name="store_credit_shown" value="1">'
+        . '<label><input type="checkbox" name="use_store_credit" value="1" class="software_input_checkbox"'
+        . (!empty($box['checked']) ? ' checked' : '')
+        . ' onchange="var b = this.form.elements[\'submit_store_credit\']; if (b) { b.click(); }"> '
+        . h(lang('Use my store credit')) . ' (' . prepare_price_for_output($box['balance'], false, '', 'html') . ')</label> '
+        . '<input type="submit" name="submit_store_credit" value="' . h(lang('Update')) . '" class="' . h($button_class) . '" formnovalidate>'
+        . '</div>';
+}
+
+/**
+ * Takes a posted choice of the box: when it differs from the one in force,
+ * records it and updates the order's rows. True when the choice changed,
+ * so a purchase is held back and the page shown again with the new totals.
+ *
+ * @param int   $order_id
+ * @param array $post
+ * @return bool
+ */
+function pg_credit_checkout_take_post($order_id, array $post)
+{
+    $choice = pg_credit_checkout_posted($post);
+
+    if (($choice === null) || ($choice === pg_credit_checkout_wanted($order_id, pg_credit_checkout_off_order()))) {
+        return false;
+    }
+
+    pg_credit_checkout_choose($order_id, $choice);
+    pg_credit_checkout_sync($order_id);
+
+    return true;
+}
+
+/**
+ * Called when a customer removes an applied card from the order: removing
+ * their own credit counts as unticking the box, or the next page view would
+ * apply it again.
+ *
+ * @param int $applied_gift_card_id
+ * @param int $order_id
+ */
+function pg_credit_checkout_removed($applied_gift_card_id, $order_id)
+{
+    $user_id = pg_credit_checkout_user();
+
+    if (($user_id <= 0) || ((int) $order_id <= 0) || !pg_credit_ready()) {
+        return;
+    }
+
+    $owner = (int) db_value(
+        "SELECT gift_cards.user_id
+        FROM applied_gift_cards
+        JOIN gift_cards ON gift_cards.id = applied_gift_cards.gift_card_id
+        WHERE applied_gift_cards.id = " . (int) $applied_gift_card_id . "
+            AND applied_gift_cards.order_id = " . (int) $order_id . "
+            AND applied_gift_cards.givex = 0");
+
+    if (($owner > 0) && ($owner === $user_id)) {
+        pg_credit_checkout_choose($order_id, false);
+    }
+}
+
+/**
+ * The ids of an order's applied_gift_cards rows that are store credit, so a
+ * receipt or order screen names them "Store credit" instead of a code the
+ * customer never saw.
+ *
+ * @param int $order_id
+ * @return array  applied id => true
+ */
+function pg_credit_applied_ids($order_id)
+{
+    if (((int) $order_id <= 0) || !pg_credit_ready()) {
+        return array();
+    }
+
+    $ids = array();
+    $rows = db_items(
+        "SELECT applied_gift_cards.id
+        FROM applied_gift_cards
+        JOIN gift_cards ON gift_cards.id = applied_gift_cards.gift_card_id
+        WHERE applied_gift_cards.order_id = " . (int) $order_id . "
+            AND applied_gift_cards.givex = 0
+            AND gift_cards.user_id > 0");
+
+    foreach ((is_array($rows) ? $rows : array()) as $row) {
+        $ids[(int) $row['id']] = true;
+    }
+
+    return $ids;
+}
+
+/**
+ * How an applied card is named on a checkout, receipt or order screen:
+ * "Store credit" for a customer's credit, the masked code otherwise.
+ *
+ * @param array $row         applied_gift_cards row: id, code, givex
+ * @param array $credit_ids  pg_credit_applied_ids()
+ * @return string  plain text
+ */
+function pg_credit_applied_name(array $row, array $credit_ids)
+{
+    if (isset($credit_ids[(int) $row['id']])) {
+        return lang('Store credit');
+    }
+
+    return ((int) $row['givex'] === 0) ? protect_gift_card_code($row['code']) : protect_givex_gift_card_code($row['code']);
+}
