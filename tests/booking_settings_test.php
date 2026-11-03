@@ -187,3 +187,20 @@ function test_booking_settings_service_ids()
 	pg_assert_same(array(2, 5), pg_booking_settings_service_ids(array('5', '2', '5', '9', 'x', array()), array(2, 5, 7)));
 	pg_assert_same(array(), pg_booking_settings_service_ids('5', array(5)));
 }
+
+// The category is wired where every category is.
+function test_booking_settings_category_files()
+{
+	$root = PG_FUNCTIONS_DIR;
+
+	pg_assert_true(is_file($root . '/settings_bookings.php'));
+	pg_assert_true(is_file($root . '/includes/settings/bookings.php'));
+	pg_assert_true(is_file($root . '/includes/settings/bookings.save.php'));
+	pg_assert_contains("'settings_bookings'", (string) file_get_contents($root . '/get_help_url.php'));
+
+	$registry = (string) file_get_contents($root . '/includes/settings/registry.php');
+
+	pg_assert_contains("'bookings' => array(", $registry);
+	pg_assert_contains("'booking_service' => 2,", $registry);
+	pg_assert_contains("'booking_staff'   => 3,", $registry);
+}

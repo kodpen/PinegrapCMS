@@ -79,6 +79,7 @@ function get_help_url($properties = array())
         'settings_firewall'   => 'site-settings#firewall',
         'settings_commerce'   => 'site-settings#commerce',
         'settings_accounting' => 'site-settings#accounting',
+        'settings_bookings'   => 'site-settings#bookings',
         'settings_privacy'    => 'site-settings#visitors-and-privacy',
         'settings_api'        => 'site-settings#api',
         'settings_maintenance' => 'site-settings#updates-and-maintenance',

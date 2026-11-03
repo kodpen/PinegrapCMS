@@ -11,7 +11,7 @@ description: Steps BK1-BK5 of plans/appointment-booking.md: schema and slot engi
 - BK1 (M) Schema, model and the slot engine. Done in #6137 (unique key on `slot_at`, NULL when cancelled: #6135).
   - Migration sub-step with `install_create_table()` for the three tables (in `get_tables()`, rerun twice on a dev DB). New `includes/fn/bookings.php`: statuses and the allowed transitions, `pg_booking_hours_clean()` (weekly hours JSON, exceptions), `pg_booking_slots($service, $staff, $day, $busy, $now, $policy)` (pure: length, buffers, hours, holidays, busy ranges, lead time, horizon, DST days, the site zone), `pg_booking_hold()` and `pg_booking_confirm()` (one INSERT on the unique key; a duplicate is the "just taken" answer, never a second row), `pg_booking_manage_token()` (HMAC, `ENCRYPTION_KEY`, expires with the booking). Tests: slots on a DST change day, buffers, a hold that expired, the duplicate. Memory: `commerce/bookings-model.md`.
 
-- BK2 (M) Settings. After BK1.
+- BK2 (M) Settings. After BK1. Done in #PRNUM (`ui/booking-settings.md`; rules and texts in `config_text`).
   - Settings › Bookings (`includes/settings/`): services (list, add, edit, order, enabled), staff (pick panel users, their services, weekly hours grid with a copy-to-all, day exceptions, time off), policies (lead time, horizon, cancellation window, reschedule allowed, hold minutes, reminder hours), the widget's texts; every box through the panel's own controls (`pgDatePicker`, chips). Memory: `ui/booking-settings.md`.
 
 - BK3 (M) Staff agenda. After BK1.
