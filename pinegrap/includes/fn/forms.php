@@ -1662,7 +1662,8 @@ function log_activity($description, $user = '')
 }
 /**
  * Who a site log row names, on the Site Log and in the dashboard's Activity
- * card. A row with no user, or the literal UNKNOWN older jobs wrote, and no
+ * card. The fixed word SYSTEM system jobs write is shown as "System". A row
+ * with no user, or the literal UNKNOWN older jobs wrote, and no
  * address came from a scheduled job (they run from the command line); with an
  * address it is a visitor nobody knows.
  *
@@ -1673,6 +1674,12 @@ function log_activity($description, $user = '')
 function pg_log_actor($user, $ip)
 {
     $user = (string) $user;
+
+    // Backups, operation alerts, recurring invoices and outbound webhooks
+    // write the fixed word SYSTEM.
+    if ($user === 'SYSTEM') {
+        return lang('System');
+    }
 
     if (($user !== '') && ($user !== 'UNKNOWN')) {
         return $user;
