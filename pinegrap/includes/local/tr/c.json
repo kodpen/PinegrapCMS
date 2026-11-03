@@ -1962,6 +1962,7 @@
     "Convert to design elements": "Tasarım öğelerine dönüştür",
     "Convert to metric system": "Metrik sisteme dönüştür",
     "Convert to path": "Yola dönüştür",
+    "Convert to store credit": "Mağaza kredisine çevir",
     "Convert to text": "Metne dönüştür",
     "Convert {var:1} to InnoDB now? Writes to the table wait until the conversion ends.": "{var:1} şimdi InnoDB'ye dönüştürülsün mü? Dönüşüm bitene kadar tabloya yazma işlemleri bekler.",
     "Converted": "Dönüştürüldü",

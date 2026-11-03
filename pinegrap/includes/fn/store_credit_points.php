@@ -77,13 +77,33 @@ function pg_credit_points_parse_smallest($raw)
 }
 
 /**
- * The conversion settings.
+ * The rate as the settings screen shows it, with the panel's decimal mark.
+ *
+ * @param string $stored  pg_credit_points_parse_rate()'s answer
+ * @return string
+ */
+function pg_credit_points_rate_for_input($stored)
+{
+    $stored = (string) $stored;
+
+    if (!is_numeric($stored)) {
+        return '';
+    }
+
+    $s = pg_number_separators();
+
+    return str_replace('.', $s['decimal'], $stored);
+}
+
+/**
+ * The conversion settings. Points are only earned while the reward program
+ * is on, so with it off there is nothing to convert either.
  *
  * @return array  rate (float, 0 = off), smallest (int, minor units)
  */
 function pg_credit_points_settings()
 {
-    $rate = pg_config_text('credit_points_per_unit');
+    $rate = (defined('ECOMMERCE_REWARD_PROGRAM') && ECOMMERCE_REWARD_PROGRAM) ? pg_config_text('credit_points_per_unit') : '';
     $smallest = pg_config_text('credit_points_smallest');
 
     return array(

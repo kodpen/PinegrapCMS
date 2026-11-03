@@ -3307,7 +3307,9 @@ function pg_order_complete_rewards($user_id, $contact_id, $reward_points, $order
 
     $new_reward_points = $old_reward_points + $reward_points;
 
-    db_q("UPDATE user SET user_reward_points = ? WHERE user_id = ?", array((string) $new_reward_points, (string) $user_id)) or output_error('Query failed.');
+    // Added in place: a conversion to store credit running at the same
+    // moment must not be overwritten by the balance read above.
+    db_q("UPDATE user SET user_reward_points = user_reward_points + ? WHERE user_id = ?", array((int) $reward_points, (string) $user_id)) or output_error('Query failed.');
 
     // Only the order that reaches the goal completes its actions.
     if (

@@ -1422,6 +1422,8 @@
     "{var:1} return request(s) approved.": "{var:1} iade talebi onaylandı.",
     "{var:1} return(s) were no longer waiting for an answer and were left as they are.": "{var:1} iade artık yanıt beklemediği için olduğu gibi bırakıldı.",
     "{var:1} returned": "{var:1} iade",
+    "{var:1} reward points converted": "{var:1} ödül puanı çevrildi",
+    "{var:1} reward points were added to your store credit as {var:2}.": "{var:1} ödül puanı, mağaza kredinize {var:2} olarak eklendi.",
     "{var:1} row(s) brought back.": "{var:1} satır geri alındı.",
     "{var:1} row(s) put aside. They stay listed under \"Put aside\" and can be brought back.": "{var:1} satır kenara ayrıldı. \"Kenara ayrıldı\" sekmesinde durur ve geri alınabilir.",
     "{var:1} rows": "{var:1} satır",

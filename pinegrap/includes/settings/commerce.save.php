@@ -272,6 +272,14 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     }
 
+    // Points to store credit: two config_text rows, only when the reward
+    // program card was posted. '' (empty or zero) turns conversion off.
+    if (array_key_exists('credit_points_per_unit', $_POST)) {
+        pg_config_text_save('credit_points_per_unit', pg_credit_points_parse_rate(post_value('credit_points_per_unit')));
+        $credit_points_smallest_minor = pg_credit_points_parse_smallest(post_value('credit_points_smallest'));
+        pg_config_text_save('credit_points_smallest', ($credit_points_smallest_minor > 0) ? (string) $credit_points_smallest_minor : '');
+    }
+
     // Product feeds: their own JSON column, written after the screen's
     // columns. A new address that cannot be shown again (no site key) is shown
     // once here; a build asked for, or caused by a feed just switched on, is
