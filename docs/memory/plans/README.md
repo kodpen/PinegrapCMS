@@ -90,8 +90,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - new-dashboard-top.md: New dashboard plan: the switch row on both dashboards, the greeting card (sign-in chips, shortcuts, four tiles) and the System Status gauge card; what each shows and where it comes from
 - new-dashboard-visuals.md: The new dashboard design the owner asked for on 2026-11-01: its 22 screens and prototype source in plans/new-dashboard/, what each shows and which step of new-dashboard-steps.md builds it
 - new-dashboard.md: Plan (owner 2026-11-01): a new dashboard from the owner's design, turned on per person by a switch at the top of the current one, which stays as it is; steps N1-N14
-- object-storage-steps.md: Steps OS1-OS7 of plans/object-storage.md: SigV4 client, backup target, file rows and move job, get_file.php redirect, Workspace files, health, close-out; claim as [plan:object-storage] OS<n>
-- object-storage.md: Plan (owner 2026-11-02): an S3-compatible object store (S3, R2, B2, MinIO) as a backup target first, then the home of uploaded files behind get_file.php; steps OS1-OS7
 - page-experiments-steps-2.md: Steps PX5-PX8 of plans/page-experiments.md: the results screen, audience conditions and their cache rule, API and events, close-out; claim as [plan:page-experiments] PX<n>
 - page-experiments-steps.md: Steps PX1-PX4 of plans/page-experiments.md: the experiment model and bucket, serving a variant with the cache, goals into the rollup, the designer sheet; claim as [plan:page-experiments] PX<n>
 - page-experiments.md: Plan (owner 2026-11-02): A/B experiments on designed pages (a draft as the variant, a sticky bucket, goals in a rollup, the winner published) and audience conditions; steps PX1-PX8
