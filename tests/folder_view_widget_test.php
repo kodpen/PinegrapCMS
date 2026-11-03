@@ -111,3 +111,13 @@ function test_folder_view_widget_registered()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_folder_view.php');
 	pg_assert_contains("_pg_inject_messages_node(\$tree, 'folder_view')", $source, 'Messages named after the classic liveform');
 }
+
+// A submitted form's upload (files.attachment = 1) is never listed: the
+// visitor's file is refused to everyone else, and its name is theirs.
+function test_folder_view_widget_files_sql_leaves_out_form_uploads()
+{
+	$sql = pg_fv_files_sql(7);
+	pg_assert_true(strpos($sql, "(folder = '7')") !== false, 'the folder asked for');
+	pg_assert_true(strpos($sql, '(attachment = 0)') !== false, 'no form upload');
+	pg_assert_true(strpos(pg_fv_files_sql('7 OR 1'), "(folder = '7')") !== false, 'the id is an integer');
+}

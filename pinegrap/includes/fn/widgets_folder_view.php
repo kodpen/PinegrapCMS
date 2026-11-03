@@ -188,6 +188,18 @@ function pg_fv_flags($settings, $top, $start)
     return $fv_flags;
 }
 
+// The files a folder view lists in folder $folder_id (the classic page and
+// the widget). A submitted form's upload (attachment) is left out: it may be
+// a CV or an identity scan in the public upload folder, get_file.php refuses
+// it to other visitors, and the list named it with a link that did not open.
+function pg_fv_files_sql($folder_id)
+{
+    return "SELECT name, description, design
+        FROM files
+        WHERE (folder = '" . (int)$folder_id . "') AND (attachment = 0)
+        ORDER BY name ASC";
+}
+
 // What the folder view of $root_id may show, read as the classic page reads
 // it, in the shape pg_sw_list_folder_view_rows() takes. A folder is read
 // once, whatever its parents say.
@@ -223,8 +235,7 @@ function _pg_fv_read($root_id, $include_pages, $include_files)
                 ORDER BY page_name ASC");
         }
         if ($include_files) {
-            $data['files'][$id] = (array)db_items(
-                "SELECT name, description, design FROM files WHERE folder = '" . $id . "' ORDER BY name ASC");
+            $data['files'][$id] = (array)db_items(pg_fv_files_sql($id));
         }
     }
     return $data;
