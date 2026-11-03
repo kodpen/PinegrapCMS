@@ -3044,6 +3044,95 @@
 
     var TRACKS = { TRACK_STEP: TRACK_STEP, trackBars: trackBars, trackTargets: trackTargets, trackSnap: trackSnap, trackEdit: trackEdit };
 
+    // -- frames and animation files (pg_image_editor_render.js) --
+
+    // The formats the Save animation dialog offers, with their limits:
+    // longest edges (never past the picture's), the default edge, the
+    // longest animation in ms and the frame rates.
+    var ANIM_FORMATS = {
+        gif: { mime: 'image/gif', ext: 'gif', edges: [240, 320, 480, 640, 800], edge: 480, maxMs: 15000, rates: [10, 15, 20, 25], rate: 15 }
+    };
+
+    // Repeat choices: forever (0), once, three times, and the document's own.
+    function animLoops(loop) {
+        var list = [0, 1, 3];
+
+        loop = Math.max(0, Math.round(Number(loop) || 0));
+
+        if (list.indexOf(loop) < 0) {
+            list.push(loop);
+        }
+
+        return list.sort(function (a, b) { return (a === 0) ? -1 : ((b === 0) ? 1 : a - b); });
+    }
+
+    // The settings the dialog starts from; small (a phone with little
+    // memory) starts at the smallest edge.
+    function animDefaults(doc, format, small) {
+        var f = ANIM_FORMATS[format] || ANIM_FORMATS.gif;
+
+        return { format: ANIM_FORMATS[format] ? format : 'gif', edge: small ? f.edges[0] : f.edge, fps: f.rate, loop: docMotion(doc).loop, dither: true };
+    }
+
+    // The frame size for out (the save's size) at a longest edge, never
+    // larger than out; whole pixels, at least 1.
+    function animSize(out, edge) {
+        var long = Math.max(out.w, out.h), k = Math.min(1, Math.max(1, Number(edge) || long) / long);
+
+        return { w: Math.max(1, Math.round(out.w * k)), h: Math.max(1, Math.round(out.h * k)) };
+    }
+
+    // The edges the dialog offers for out: those under its longest edge,
+    // and that edge itself when it is shorter than the largest.
+    function animEdges(out, format) {
+        var f = ANIM_FORMATS[format] || ANIM_FORMATS.gif, long = Math.max(out.w, out.h);
+        var list = f.edges.filter(function (e) { return e < long; });
+
+        if (long <= f.edges[f.edges.length - 1]) {
+            list.push(long);
+        }
+
+        return list.length ? list : [long];
+    }
+
+    // How many frames one play of ms holds at fps.
+    function animFrames(ms, fps) {
+        return Math.max(1, Math.round(Math.max(0, Number(ms) || 0) * fps / 1000));
+    }
+
+    // n frame numbers spread evenly over count, each once: the samples the
+    // palette and the estimate come from.
+    function animSamples(count, n) {
+        var out = [];
+
+        for (var k = 0; k < Math.min(n, count); k++) {
+            var i = Math.floor((k + 0.5) * count / Math.min(n, count));
+
+            if (out.indexOf(i) < 0) {
+                out.push(i);
+            }
+        }
+
+        return out;
+    }
+
+    // The file's size from the encoder's header and average frame.
+    function animEstimate(header, frame, count) {
+        return Math.round((Number(header) || 0) + (Number(frame) || 0) * Math.max(0, count) + 1);
+    }
+
+    // The file name: the picture's name with the format's extension.
+    function animName(name, ext) {
+        var base = String(name || '').replace(/^.*[\\/]/, '').replace(/\.[^.]*$/, '');
+
+        return (base || 'animation') + '.' + ext;
+    }
+
+    var RENDER = {
+        ANIM_FORMATS: ANIM_FORMATS, animLoops: animLoops, animDefaults: animDefaults, animSize: animSize, animEdges: animEdges,
+        animFrames: animFrames, animSamples: animSamples, animEstimate: animEstimate, animName: animName
+    };
+
     // -- access (pg_image_editor_access.js) --
 
     // A letter picks a tool of the call: the first of its tools the call
@@ -3316,7 +3405,7 @@
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, TRACKS, ACCESS, GFONTS, GLYPH].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, TRACKS, RENDER, ACCESS, GFONTS, GLYPH].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

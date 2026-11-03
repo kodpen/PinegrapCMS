@@ -15,10 +15,11 @@ description: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion,
 - AN2 (M) Tracks. Done (#5062, part `tracks`, `ui/image-editor-tracks.md`).
   - A row per layer under the stage with its bar from the start of in to the end of out; drag the bar or an end; snapping to 0.1 s and to other ends; on a phone the panel's fields only.
 
-- AN3 (M) Frames and GIF. `free` after AN1 and E10b, beside AN2.
+- AN3 (M) Frames and GIF. Done (#5148, part `render`, `ui/image-editor-render.md`).
   - Part `render`: `renderFrame()` and `paintLayers()` with a time; action `base` (calls `pg_image_editor_render()`, writes nothing); the encoder worker with GIF; the dialog with estimate, progress, Cancel and Download.
 
 - AN4 (M) Save into Files. After AN3 and E13, one at a time with the save-path steps.
+  - Left by AN3: the upload limit beside the estimate (`pg_upload_limits()` in the config) and a smaller size or rate offered when over it; Save to Files beside Download.
   - Action `animation`, the type by its bytes, a new file and its version with the document, reopening it, the same-format replace, `.webm` in the MIME map.
 
 - AN5 (S) APNG and animated WebP. `free` after AN3, beside AN4.
