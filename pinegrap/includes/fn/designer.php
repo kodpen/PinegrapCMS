@@ -5786,30 +5786,182 @@ function pg_binding_text_slot($text, $token)
  * <foreignObject>, frames, event handler attributes and script URLs; a data:
  * URL is kept only for an image. The editor's twin is _sdSvgElement() in
  * style_designer.js. '' when $raw holds no <svg>.
+ *
+ * The node is not locked for content-level operators, so the tags are read
+ * the way a browser reads them (_pg_svg_clean_tags()), not with a pattern:
+ * a handler after a slash (<svg/onload=…>) or straight after a quoted value
+ * is an attribute to the browser too.
  */
 function pg_designer_svg_markup($raw)
 {
-    $raw = (string)$raw;
+    $raw = str_replace("\0", '', (string)$raw);
     $start = stripos($raw, '<svg');
     $end   = strripos($raw, '</svg');
     if ($start === false || $end === false || $end < $start) return '';
     $close = strpos($raw, '>', $end);
     if ($close === false) return '';
-    $svg = substr($raw, $start, $close - $start + 1);
+    return _pg_svg_clean_tags(substr($raw, $start, $close - $start + 1));
+}
 
-    $svg = preg_replace('~<(script|foreignObject|iframe|object|embed)\b[^>]*>.*?</\1\s*>~is', '', $svg);
-    $svg = preg_replace('~<(script|foreignObject|iframe|object|embed)\b[^>]*/?>~is', '', $svg);
-    // Event handlers, quoted or not.
-    $svg = preg_replace('~\s+on[a-z0-9_:.-]*\s*=\s*("[^"]*"|\'[^\']*\'|[^\s>]+)~i', '', $svg);
-    // Any attribute that names a script URL, entities and spaces folded first.
-    $svg = preg_replace_callback('~\s+([a-z_:][a-z0-9_:.-]*)\s*=\s*("[^"]*"|\'[^\']*\')~i', function ($m) {
-        $name  = strtolower($m[1]);
-        $value = strtolower(preg_replace('~[\s\x00-\x1f]+~', '', html_entity_decode(substr($m[2], 1, -1), ENT_QUOTES | ENT_HTML5, 'UTF-8')));
-        if (strpos($value, 'javascript:') !== false || strpos($value, 'vbscript:') !== false) return '';
-        if (($name === 'href' || $name === 'xlink:href') && strpos($value, 'data:') === 0 && strpos($value, 'data:image/') !== 0) return '';
-        return $m[0];
-    }, $svg);
-    return is_string($svg) ? $svg : '';
+/**
+ * Rewrites every tag of a drawing from its attributes as an HTML tokenizer
+ * reads them: each value decoded, checked, and written again double-quoted
+ * and escaped, so no value can hold markup. Script-like elements go with
+ * their content; comments and processing instructions go; a CDATA section
+ * becomes escaped text (inside <title> or <desc> the browser parses HTML,
+ * where CDATA is no section). A tag never closed is dropped with the rest.
+ * Anything the browser might read as a tag is read as one here, so dropping
+ * is the only way the two can differ.
+ */
+function _pg_svg_clean_tags($svg)
+{
+    $drop = array('script' => 1, 'foreignobject' => 1, 'iframe' => 1, 'object' => 1, 'embed' => 1);
+    $len  = strlen($svg);
+    $out  = '';
+    $skip = '';     // the dropped element whose content is being skipped
+    $depth = 0;
+    $i = 0;
+    while ($i < $len) {
+        $lt = strpos($svg, '<', $i);
+        if ($lt === false) {
+            if ($skip === '') $out .= substr($svg, $i);
+            break;
+        }
+        if ($skip === '') $out .= substr($svg, $i, $lt - $i);
+        $i = $lt;
+
+        if (substr($svg, $i, 4) === '<!--') {
+            // Closed by -->, --!>, or at once by <!--> and <!--->.
+            if (substr($svg, $i + 4, 1) === '>') { $i += 5; continue; }
+            if (substr($svg, $i + 4, 2) === '->') { $i += 6; continue; }
+            $a = strpos($svg, '-->', $i + 4);
+            $b = strpos($svg, '--!>', $i + 4);
+            if ($a === false && $b === false) break;
+            $i = ($b === false || ($a !== false && $a < $b)) ? $a + 3 : $b + 4;
+            continue;
+        }
+        if (substr($svg, $i, 9) === '<![CDATA[') {
+            $c = strpos($svg, ']]>', $i + 9);
+            $text = ($c === false) ? substr($svg, $i + 9) : substr($svg, $i + 9, $c - $i - 9);
+            if ($skip === '') $out .= htmlspecialchars($text, ENT_NOQUOTES, 'UTF-8');
+            if ($c === false) break;
+            $i = $c + 3;
+            continue;
+        }
+        $next = substr($svg, $i + 1, 1);
+        if ($next === '!' || $next === '?' || ($next === '/' && !ctype_alpha(substr($svg, $i + 2, 1)))) {
+            // A bogus comment, to the first '>'.
+            $gt = strpos($svg, '>', $i + 1);
+            if ($gt === false) break;
+            $i = $gt + 1;
+            continue;
+        }
+        $closing = ($next === '/');
+        $p = $i + ($closing ? 2 : 1);
+        if (!ctype_alpha(substr($svg, $p, 1))) {
+            if ($skip === '') $out .= '&lt;';
+            $i++;
+            continue;
+        }
+
+        $tag = _pg_svg_read_tag($svg, $p);
+        if ($tag === null) break;   // never closed: the browser drops it
+        $i = $tag['end'];
+        $lname = strtolower($tag['name']);
+
+        if ($skip !== '') {
+            if ($lname === $skip) {
+                if ($closing) {
+                    if (--$depth === 0) $skip = '';
+                } elseif (!$tag['self']) {
+                    $depth++;
+                }
+            }
+            continue;
+        }
+        if (isset($drop[$lname])) {
+            if (!$closing && !$tag['self']) {
+                $skip  = $lname;
+                $depth = 1;
+            }
+            continue;
+        }
+        if (!preg_match('/^[a-z][a-z0-9:_.-]*$/i', $tag['name'])) continue;
+        if ($closing) {
+            $out .= '</' . $tag['name'] . '>';
+            continue;
+        }
+
+        $attrs = '';
+        foreach ($tag['attrs'] as $a) {
+            $name = $a[0];
+            if (!preg_match('/^[a-z_:][a-z0-9_:.-]*$/i', $name)) continue;
+            $lattr = strtolower($name);
+            if (strncmp($lattr, 'on', 2) === 0) continue;
+            if ($a[1] === null) {
+                $attrs .= ' ' . $name;
+                continue;
+            }
+            $value = html_entity_decode($a[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            $check = strtolower(preg_replace('~[\s\x00-\x1f]+~', '', $value));
+            if (strpos($check, 'javascript:') !== false || strpos($check, 'vbscript:') !== false) continue;
+            if (($lattr === 'href' || $lattr === 'xlink:href') && strpos($check, 'data:') === 0 && strpos($check, 'data:image/') !== 0) continue;
+            $attrs .= ' ' . $name . '="' . htmlspecialchars($value, ENT_QUOTES, 'UTF-8') . '"';
+        }
+        $out .= '<' . $tag['name'] . $attrs . ($tag['self'] ? '/>' : '>');
+    }
+    return $out;
+}
+
+/**
+ * One tag of _pg_svg_clean_tags(), from its name at $p, read as the HTML
+ * tokenizer does: attributes split at blanks and slashes, a value quoted or
+ * running to a blank or '>'. Returns name, attrs (list of array(name,
+ * raw value or null)), self (ends with '/>') and end (offset after '>'), or
+ * null when the tag never closes.
+ */
+function _pg_svg_read_tag($s, $p)
+{
+    $len = strlen($s);
+    $blank = " \t\n\r\f";
+    $n = strcspn($s, $blank . '/>', $p);
+    $tag = array('name' => substr($s, $p, $n), 'attrs' => array(), 'self' => false, 'end' => 0);
+    $p += $n;
+    while (true) {
+        $p += strspn($s, $blank . '/', $p);
+        if ($p >= $len) return null;
+        if ($s[$p] === '>') {
+            $tag['self'] = ($s[$p - 1] === '/');
+            $tag['end'] = $p + 1;
+            return $tag;
+        }
+        // A name runs to a blank, '/', '>' or '='; a leading '=' is part of it.
+        $n = 1 + strcspn($s, $blank . '/>=', $p + 1);
+        $name = substr($s, $p, $n);
+        $p += $n;
+        $p += strspn($s, $blank, $p);
+        if ($p >= $len) return null;
+        if ($s[$p] !== '=') {
+            $tag['attrs'][] = array($name, null);
+            continue;
+        }
+        $p++;
+        $p += strspn($s, $blank, $p);
+        if ($p >= $len) return null;
+        $q = $s[$p];
+        if ($q === '"' || $q === "'") {
+            $e = strpos($s, $q, $p + 1);
+            if ($e === false) return null;
+            $tag['attrs'][] = array($name, substr($s, $p + 1, $e - $p - 1));
+            $p = $e + 1;
+        } elseif ($q === '>') {
+            $tag['attrs'][] = array($name, '');
+        } else {
+            $n = strcspn($s, $blank . '>', $p);
+            $tag['attrs'][] = array($name, substr($s, $p, $n));
+            $p += $n;
+        }
+    }
 }
 
 // Render a content node as HTML

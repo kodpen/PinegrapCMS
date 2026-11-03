@@ -14,6 +14,7 @@ description: Designer HTML import: three entry points, one converter, inline SVG
 
 ## What becomes of inline SVG and icons?
 - An inline `<svg>` is never written to a file: on every path it becomes an `svg` content node (`html` = the drawing, its `class` → `cssClass`); one with a `bi-*` class becomes an icon node. `pg_di_lift_svgs()` takes each one out before parsing (libxml nests `<path/>`), counting nested `<svg>`. The markup is cleaned when drawn: `pg_designer_svg_markup()` (PHP) and its twin `_sdSvgElement()` (JS).
+- The `svg` node is not locked for content-level operators, so the PHP cleaner is a security gate: `_pg_svg_clean_tags()` reads each tag as the browser's tokenizer does and writes it again (values decoded, checked, re-quoted and escaped); script-like elements go with their content, comments and `<?…>` go, CDATA becomes escaped text. A pattern-based cleaner let `<svg/onload=…>`, `x="1"onload=…` and unquoted `href=javascript:` through (#PR).
 - A text-less `<i>`/`<span>` with a `bi-*` class becomes an icon node (`pg_di_icon_props()`); a link holding one is built as nodes, not as a link content node (`pg_di_has_icon_child()`). An icon inside heading or paragraph text stays in the rich text.
 - In the editor every element that draws an icon by its class gets the icon picker (`_sdBiIconClass()`, `_sdBiIconSection()`, `_sdSetBiIcon()`).
 
