@@ -200,10 +200,13 @@ function update_shipping_cost_for_ship_to($ship_to_id) {
 
 function get_delivery_date($properties) {
 
-    $ship_to_id = $properties['ship_to_id'];
-    $shipping_method = $properties['shipping_method'];
-    $zip_code = trim($properties['zip_code']);
-    $country = $properties['country'];
+    $ship_to_id = is_scalar($properties['ship_to_id'] ?? '') ? ($properties['ship_to_id'] ?? '') : '';
+    // The public API passes its request body here as it came: a method sent
+    // as one value is no method (reading its id threw a TypeError, a 500),
+    // and a value sent as a list is no zip code or country (trim() threw).
+    $shipping_method = (is_array($properties['shipping_method'] ?? null) && is_scalar($properties['shipping_method']['id'] ?? '')) ? $properties['shipping_method'] : array();
+    $zip_code = is_scalar($properties['zip_code'] ?? '') ? trim((string) ($properties['zip_code'] ?? '')) : '';
+    $country = is_scalar($properties['country'] ?? '') ? (string) ($properties['country'] ?? '') : '';
 
     // Allows us to specify that we only want an exact delivery date from a carrier and don't want
     // to calculate a general delivery date from liveSite, if there is an issue with carrier.
@@ -243,7 +246,7 @@ function get_delivery_date($properties) {
                 transit_on_sunday,
                 transit_on_saturday
             FROM shipping_methods
-            WHERE id = '" . e($shipping_method['id']) . "'");
+            WHERE id = '" . e($shipping_method['id'] ?? '') . "'");
 
         if (!$shipping_method) {
             return array(
@@ -1552,14 +1555,22 @@ function get_shipping_method_base_rate($properties) {
 
 function get_shipping_methods($properties) {
 
-    $ship_to_id = $properties['ship_to_id'];
-    $address_1 = $properties['address_1'];
-    $state = $properties['state'];
-    $zip_code = trim($properties['zip_code']);
-    $country = $properties['country'];
+    // The public API passes its request body here as it came: a value sent
+    // as a list counts as empty (trim() threw a TypeError, a 500).
+    foreach (array('ship_to_id', 'address_1', 'state', 'zip_code', 'country', 'arrival_date_id', 'arrival_date') as $key) {
+        if (isset($properties[$key]) && !is_scalar($properties[$key])) {
+            $properties[$key] = '';
+        }
+    }
+
+    $ship_to_id = $properties['ship_to_id'] ?? '';
+    $address_1 = (string) ($properties['address_1'] ?? '');
+    $state = (string) ($properties['state'] ?? '');
+    $zip_code = trim((string) ($properties['zip_code'] ?? ''));
+    $country = (string) ($properties['country'] ?? '');
     // The forced-method check below asks without an arrival date.
     $arrival_date_id = $properties['arrival_date_id'] ?? 0;
-    $arrival_date = $properties['arrival_date'];
+    $arrival_date = $properties['arrival_date'] ?? '';
 
     $order_id = ($_SESSION['ecommerce']['order_id'] ?? '');
 

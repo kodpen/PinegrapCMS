@@ -78,3 +78,19 @@ function test_menu_tree_renderers_read_the_tree()
 	pg_assert_same(1, preg_match('/SELECT parent_id, COUNT\(\*\) AS children\s+FROM menu_items\s+WHERE parent_id IN \(/', $tree), 'children counted by parent only, in any menu');
 	pg_assert_same(2, substr_count($tree, 'db_items('), 'two queries for a menu');
 }
+
+// A page name may hold ?, # or %, so the classic menu links to it as an
+// encoded path, as every other page link does; the parent picker lists items
+// in the order the site prints them.
+function test_menu_page_link_is_encoded()
+{
+	$section = menu_tree_test_function_source('includes/fn/content.php', 'get_menu_content');
+
+	pg_assert_contains("OUTPUT_PATH . h(encode_url_path(\$menu_item['link_page_name']))", $section, 'the link is the encoded page name');
+	pg_assert_contains("PATH . encode_url_path(\$menu_item['link_page_name'])", $section, 'the prefetch note is the same address');
+	pg_assert_same('/faq%3F', '/' . encode_url_path('faq?'), 'a question mark stays part of the name');
+
+	$options = menu_tree_test_function_source('includes/fn/content.php', 'get_menu_item_options');
+
+	pg_assert_contains('ORDER BY sort_order, id', $options, 'parent picker in printing order');
+}

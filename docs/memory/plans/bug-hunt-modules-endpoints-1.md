@@ -38,7 +38,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 - Endpoints `file` (6): done #5407 (OV; edit_files ERP rows; add_file, edit_file, get_file ERP and key gates, get_files_for_picker clean)
 - Endpoints `find` (2): clean #6027
 - Endpoints `folder` (8): #6027 (folder view listed form uploads), #6066 (copies dropped the upload mark); rest clean
-- Endpoints `forgot` (2): taken by AR
+- Endpoints `forgot` (2): done #6104
 - Endpoints `form` (6, and get_form_view_directory_screen_content): done #4571, #4582
 - Endpoints `generate` (3): open
 - Endpoints `gift` (3): done #4576, #4586
@@ -47,10 +47,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 - Endpoints `key` (5): done #6092
 - Endpoints `login` (4): taken by KZ: #4594; the rest clean
 - Endpoints `logout` (2): clean #6092
-- Endpoints `mail` (2): open
-- Endpoints `manifest` (2): open
-- Endpoints `marketplace` (3): open
-- Endpoints `membership` (5): open
+- Endpoints `membership` (5): #6094 (Google sign-up); rest clean
 - Endpoints `menu` (7): done #4673
 - Endpoints `my` (4): done #4653
 - Endpoints `offer` (5): clean (add_offer, duplicate_offer, edit_offer, edit_offer_f, view_offers)

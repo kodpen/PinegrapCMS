@@ -559,3 +559,14 @@ function test_signin_block_list_source_lets_staff_through()
 	pg_assert_true(strpos($body, 'pg_signin_address_user($identity)') !== false, 'an untied account is found by its address');
 	pg_assert_same(0, preg_match('/pg_signin_identity_add\(|pg_signin_identity_touch\(|pg_signin_match_user\(/', $body), 'nothing is tied or touched');
 }
+
+// The forgot password form takes one address: email[]=x reached e() as an
+// array, a TypeError on PHP 8 (an error page on an anonymous endpoint).
+function test_signin_password_reset_email_is_one_address()
+{
+	pg_assert_same('jane@example.com', pg_password_reset_email('jane@example.com'), 'an address');
+	pg_assert_same('', pg_password_reset_email(array('jane@example.com')), 'an array');
+	pg_assert_same('', pg_password_reset_email(null), 'not sent');
+	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/forgot_password.php');
+	pg_assert_true(strpos($src, "pg_password_reset_email(\$form->get_field_value('email'))") !== false, 'forgot_password.php reads through it');
+}

@@ -25,7 +25,9 @@ if (!pg_sms_campaigns_ready()) {
     output_error(lang('The SMS campaigns are not available yet; run the upgrade.'));
 }
 
-pg_request_single_values(array('id'));
+// A field posted as a list counts as not given: trim() of a list start_at
+// stopped the request, a cast name or text read "Array".
+pg_request_single_values(array('id', 'name', 'body', 'send', 'start_at'));
 
 $id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 
@@ -136,7 +138,8 @@ if ($_POST && !$readonly) {
     $choices = array();
 
     foreach (array_keys($groups) as $group_id) {
-        $choices[$group_id] = (string) ($_POST['contact_group_' . $group_id] ?? 'ignored');
+        $choice = $_POST['contact_group_' . $group_id] ?? 'ignored';
+        $choices[$group_id] = is_scalar($choice) ? (string) $choice : 'ignored';
     }
 }
 

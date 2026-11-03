@@ -521,9 +521,11 @@ function get_menu_content($menu_id, $parent_id = 0, $current_menu_item_id = 0, $
             // if this is not an accordion menu or a sub-menu does not exist and there is a link, then prepare link
             if ((($menu['effect'] != 'Accordion') || ($sub_menu_exists == false)) && (($menu_item['link_page_name'] != '') || ($menu_item['link_url'] != ''))) {
                 // if there is a link page name, then prepare link to page
+                // A page name may hold ?, # or % (only spaces and & are
+                // replaced when a page is saved), so it is encoded as a path.
                 if ($menu_item['link_page_name']) {
-                    $output_link_href = OUTPUT_PATH . h($menu_item['link_page_name']);
-                    pg_speculation_note(array(PATH . $menu_item['link_page_name']));
+                    $output_link_href = OUTPUT_PATH . h(encode_url_path($menu_item['link_page_name']));
+                    pg_speculation_note(array(PATH . encode_url_path($menu_item['link_page_name'])));
                     // else there is not a link page name, so prepare link to URL
                 } else {
                     $output_link_href = h($menu_item['link_url']);
@@ -627,7 +629,7 @@ function get_menu_item_options($menu_id, $exception_menu_item_id = 0, $parent_id
 
             AND (parent_id = ?)
 
-        ORDER BY sort_order";
+        ORDER BY sort_order, id";
     $result = db_q($query, array((string) $menu_id, (string) $exception_menu_item_id, (string) $parent_id)) or output_error(lang('Query failed.'));
     $menu_items = array();
     // loop through menu items in order to build array
