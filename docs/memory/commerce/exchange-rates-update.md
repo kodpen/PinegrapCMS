@@ -11,7 +11,7 @@ module: currency_rates
 
 ## Which feed addresses are called?
 
-- Frankfurter (ECB) in one batch call: `pg_currency_rates_frankfurter_url()` builds `https://api.frankfurter.dev/v1/latest?from=…&to=…`. The old `api.frankfurter.app` host answers 301 and the outbound client follows no redirect, so until the bug-hunt fix every rate fell to HexaRate, one call per code (`tests/currency_rates_feed_url_test.php`).
+- Frankfurter (ECB) in one batch call: `pg_currency_rates_frankfurter_url()` builds `https://api.frankfurter.dev/v1/latest?from=…&to=…`. The old `api.frankfurter.app` host answers 301 and the outbound client follows no redirect, so until #5924 every rate fell to HexaRate, one call per code (`tests/currency_rates_feed_url_test.php`).
 - HexaRate (`hexarate.paikama.co`) per code for the rest. BGN is not in `pg_currency_rates_frankfurter_codes()`: the ECB stopped it when Bulgaria adopted the euro.
 - A feed that moves again shows as the Frankfurter batch failing silently; check the address with `curl -I` before suspecting the parser.
 
