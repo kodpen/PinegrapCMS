@@ -19,7 +19,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 - Endpoints `return` (4): clean
 - Endpoints `search` (5): #6064 (simple search); rest clean
 - Endpoints `seo` (8): done #6091 (self link hid an orphan page); the rest clean
-- Endpoints `setting` (14): open
+- Endpoints `setting` (14): clean
 - Endpoints `ship` (3): open
 - Endpoints `shipment` (3): open
 - Endpoints `shipping` (9): done #6086
