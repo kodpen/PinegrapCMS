@@ -1225,8 +1225,23 @@
 
         fields.keep.addEventListener('change', syncKeep);
 
+        // A save the server refused comes back with what was typed in the
+        // fields (data-reopen): the dialog opens again with it as it is.
+        var reopening = (glossaryModal.getAttribute('data-reopen') === '1');
+
         pgUI.dialog.on(glossaryModal, 'show', function (event) {
+            if (reopening) {
+                reopening = false;
+                syncKeep();
+                return;
+            }
+
             var row = event.relatedTarget ? event.relatedTarget.closest('.pg-tr-term') : null;
+
+            [fields.term, fields.translation].forEach(function (field) {
+                field.classList.remove('is-invalid');
+                field.removeAttribute('aria-invalid');
+            });
 
             fields.id.value = row ? row.getAttribute('data-id') : '0';
             fields.term.value = row ? row.getAttribute('data-term') : '';
@@ -1240,7 +1255,12 @@
         });
 
         pgUI.dialog.on(glossaryModal, 'shown', function () {
-            fields.term.focus();
+            var invalid = glossaryModal.querySelector('.is-invalid');
+            (invalid || fields.term).focus();
         });
+
+        if (reopening) {
+            pgUI.dialog.show(glossaryModal);
+        }
     }
 })();

@@ -339,8 +339,31 @@ $status_labels = array(
     'cancelled' => lang('Cancelled'),
 );
 
+// A refused glossary save comes back with what was typed: the dialog opens
+// again with it, the refused field marked.
+$glossary_back = null;
+
+if (((string) $liveform->get('glossary_form') === '1') && $liveform->check_form_errors()) {
+    $glossary_back = array('error' => $liveform->check_field_error('translation') ? 'translation' : 'term');
+
+    foreach (array('id', 'term', 'translation', 'keep', 'case_sensitive', 'all_languages', 'note') as $glossary_field) {
+        $glossary_back[$glossary_field] = (string) $liveform->get($glossary_field);
+    }
+}
+
 $liveform_messages = $liveform->output_errors() . $liveform->output_notices();
 $liveform->remove_form();
+
+// The glossary dialog's field values and marks: empty, or the refused save's.
+$glossary_value = function ($field) use ($glossary_back) {
+    return $glossary_back ? h($glossary_back[$field]) : '';
+};
+$glossary_checked = function ($field) use ($glossary_back) {
+    return ($glossary_back && ($glossary_back[$field] === '1')) ? ' checked="checked"' : '';
+};
+$glossary_invalid = function ($field) use ($glossary_back) {
+    return ($glossary_back && ($glossary_back['error'] === $field)) ? ' is-invalid" aria-invalid="true' : '';
+};
 
 $token = (string) ($_SESSION['software']['token'] ?? '');
 
@@ -502,9 +525,9 @@ foreach ($rows as $row) {
 
 if (($language !== '') && !$rows) {
     $output_rows = '<div class="py-12 text-center fg-secondary">'
-        // Nothing at all in the page or group (no filter or search hides
-        // anything): it has not been scanned yet.
-        . ((($scope_stats['total'] === 0) && ($search === '') && ($filter === 'all'))
+        // No text at all in the page or group, whatever the filter: it has
+        // not been scanned yet.
+        . (($scope_stats['total'] === 0)
             ? lang(array('string' => 'No text has been scanned yet. Press "{var:1}": the pages are read and their texts are listed here.', 'vars' => h($update_button_label)))
             : lang('No text matches the filter.'))
         . '</div>';
@@ -949,41 +972,41 @@ echo pg_page_shell(array(
                         <button type="button" class="btn btn-solid theme-primary pg-tr-accept-go"><i class="bi bi-check2-square me-1" aria-hidden="true"></i>' . lang('Approve') . '</button>
                     </div>
         </dialog>
-        <dialog class="dialog" id="pg_tr_glossary_modal" aria-labelledby="pg_tr_glossary_modal_title">
+        <dialog class="dialog" id="pg_tr_glossary_modal" aria-labelledby="pg_tr_glossary_modal_title"' . ($glossary_back ? ' data-reopen="1"' : '') . '>
                 <form class="d-contents" method="post" action="translations_action.php">
                     <input type="hidden" name="action" value="glossary_save"/>
                     <input type="hidden" name="language" value="' . h($language) . '"/>
                     ' . $view_fields . '
-                    <input type="hidden" name="id" value="0"/>
+                    <input type="hidden" name="id" value="' . ($glossary_back ? (int) $glossary_back['id'] : 0) . '"/>
                     ' . get_token_field() . '
                     <div class="dialog-header">
-                        <h5 class="dialog-title" id="pg_tr_glossary_modal_title">' . lang('Add a term') . '</h5>
+                        <h5 class="dialog-title" id="pg_tr_glossary_modal_title">' . (($glossary_back && ((int) $glossary_back['id'] > 0)) ? lang('Edit the term') : lang('Add a term')) . '</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
                     <div class="dialog-body">
                         <div class="mb-5">
                             <label class="form-label" for="pg_tr_term">' . lang('Term') . ' <span class="fg-secondary fw-normal">(' . h(pg_tr_language_label($source)) . ')</span></label>
-                            <input type="text" class="form-control" id="pg_tr_term" name="term" maxlength="255" required="required" autocomplete="off"' . $text_lang($source) . '/>
+                            <input type="text" class="form-control' . $glossary_invalid('term') . '" id="pg_tr_term" name="term" value="' . $glossary_value('term') . '" maxlength="255" required="required" autocomplete="off"' . $text_lang($source) . '/>
                         </div>
                         <div class="form-field mb-5">
-                            <div class="switch"><input value="1" class="" type="checkbox" role="switch" id="pg_tr_term_keep" name="keep"/></div>
+                            <div class="switch"><input value="1" class="" type="checkbox" role="switch" id="pg_tr_term_keep" name="keep"' . $glossary_checked('keep') . '/></div>
                             <label class="" for="pg_tr_term_keep">' . lang('Keep as written (a brand, a product name)') . '</label>
                         </div>
                         <div class="mb-5 pg-tr-term-translation">
                             <label class="form-label" for="pg_tr_term_translation">' . lang('Translation to use') . ' <span class="fg-secondary fw-normal">(' . h(pg_tr_language_label($language)) . ')</span></label>
-                            <input type="text" class="form-control" id="pg_tr_term_translation" name="translation" maxlength="255" autocomplete="off"' . $text_lang($language) . '/>
+                            <input type="text" class="form-control' . $glossary_invalid('translation') . '" id="pg_tr_term_translation" name="translation" value="' . $glossary_value('translation') . '" maxlength="255" autocomplete="off"' . $text_lang($language) . '/>
                         </div>
                         <div class="form-field mb-3 pg-tr-term-all">
-                            <div class="switch"><input value="1" class="" type="checkbox" role="switch" id="pg_tr_term_all" name="all_languages"/></div>
+                            <div class="switch"><input value="1" class="" type="checkbox" role="switch" id="pg_tr_term_all" name="all_languages"' . $glossary_checked('all_languages') . '/></div>
                             <label class="" for="pg_tr_term_all">' . lang('For every language') . '</label>
                         </div>
                         <div class="form-field mb-5">
-                            <div class="switch"><input value="1" class="" type="checkbox" role="switch" id="pg_tr_term_case" name="case_sensitive"/></div>
+                            <div class="switch"><input value="1" class="" type="checkbox" role="switch" id="pg_tr_term_case" name="case_sensitive"' . $glossary_checked('case_sensitive') . '/></div>
                             <label class="" for="pg_tr_term_case">' . lang('Match upper and lower case exactly') . '</label>
                         </div>
                         <div>
                             <label class="form-label" for="pg_tr_term_note">' . lang('Note for the translator') . ' <span class="fg-secondary fw-normal">(' . lang('optional') . ')</span></label>
-                            <input type="text" class="form-control" id="pg_tr_term_note" name="note" maxlength="255" autocomplete="off"/>
+                            <input type="text" class="form-control" id="pg_tr_term_note" name="note" value="' . $glossary_value('note') . '" maxlength="255" autocomplete="off"/>
                         </div>
                     </div>
                     <div class="dialog-footer">
