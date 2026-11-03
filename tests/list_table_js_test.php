@@ -20,7 +20,7 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
 
-// Runs the script after the driver in Node and answers what it printed as
+// Runs the script after the driver (both sources of its bundle) in Node and answers what it printed as
 // JSON; null when Node cannot run.
 function list_table_js_test_node($script)
 {
@@ -43,6 +43,7 @@ function list_table_js_test_node($script)
 	}
 
 	file_put_contents($file, "var window = {};\n" . file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_list_table.js')
+		. "\n" . file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_list_table_edit.js')
 		. "\nvar T = window.PGListTable;\n" . $script);
 	$out = array();
 	@exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);

@@ -2839,6 +2839,7 @@
     "The last action was undone.": "Son işlem geri alındı.",
     "The last backup is older than it should be, and {var:1} is a five minute job.": "Son yedek olması gerekenden eski; {var:1} beş dakikalık bir iş.",
     "The last build failed: {var:1} The file built before is still served.": "Son oluşturma başarısız oldu: {var:1} Önceki dosya sunulmaya devam ediyor.",
+    "The last change was undone.": "Son değişiklik geri alındı.",
     "The last complete read of {var:1} did not find this card.": "{var:1} listesinin son tam okumasında bu kart yoktu.",
     "The last day cannot be before the first.": "Son gün ilk günden önce olamaz.",
     "The last day comes before the first.": "Son gün, ilk günden önce geliyor.",
