@@ -35,6 +35,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - aws-sigv4-signing.md: includes/fn/aws_sign.php: AWS Signature Version 4 without an SDK (header signing, presigned links), tested against the AWS test suite; used by Amazon SES, written for object storage too
 - background-render.md: pg_background_render(): the one in-process page render of the passes that draw many pages; what it catches, restores and lends; which pages each pass covers and as whom (audit_run.php)
 - backup-folder-download-zip.md: Backup Manager Download of a folder backup: the archive kept inside the folder is rebuilt when the backup was updated after it.
+- backup-manager-names-and-list.md: Backup Manager hand-made backups: the folder name (no basename, 100 characters), reserved names, the overwrite question, step errors, the list's time and order, incomplete folders, delete warnings
 - backup-object-storage.md: The backup destination "S3-compatible storage" (remote type s3): its own card fields mapped onto the shared object storage client, multipart upload, the bucket's retention prune
 - backup-upload-extraction.md: Backup archives: install-screen upload streamed into data/temp and checksum-checked; the file explorer's backup extract/upload and web-root zip extract follow the same rule plus name and size limits.
 - browser-image-preshrink.md: Browser-side pre-shrink of images over server upload limits: when, EXIF orientation check, quality-before-pixels order, shrinkTo/shrinkQuality, blob name.

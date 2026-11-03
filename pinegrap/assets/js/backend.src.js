@@ -7483,29 +7483,56 @@ async function software_backup_runSteps(backup_name) {
         { step: "check", progress: 100 }
     ];
 
-    for (const s of steps) {
+    // The first step answers "confirm" when a backup of that name exists;
+    // it is sent again with overwrite only after the person agrees.
+    let overwrite = false;
+
+    for (let i = 0; i < steps.length; i++) {
+        const s = steps[i];
+        let response;
         try {
-            const response = await $.ajax({
+            response = await $.ajax({
                 contentType: "application/json",
                 url: "api.php",
                 type: "POST",
+                dataType: "json",
                 data: JSON.stringify({
                     action: "software_backup",
                     token: software_token,
                     step: s.step,
-                    backup_name: backup_name
+                    backup_name: backup_name,
+                    overwrite: overwrite
                 })
             });
+        } catch (err) {
+            // A PHP warning printed before the JSON, a timeout or a server
+            // error page: the answer is not the step's, so say which step.
+            software_backup_handleError({
+                message: lang("The server's answer to the backup step could not be read ({var}). The server's PHP error log may say why.").replace("{var}", s.step)
+            }, backup_btn);
+            return;
+        }
 
-            if (response.status === "success") {
-                software_backup_updateProgress(s.progress, response.message);
-                backup_name = response.backup_name;
-            } else {
-                software_backup_handleError(response, backup_btn);
+        if (response.status === "confirm" && !overwrite) {
+            const agreed = (typeof window.pgConfirm === "function")
+                ? await window.pgConfirm({ title: lang("Backup Manager"), message: response.message, confirmText: lang("Replace"), variant: "warning" })
+                : window.confirm(response.message);
+            if (!agreed) {
+                software_backup_updateProgress(0, lang("The backup was not taken."));
+                backup_btn.prop("disabled", false);
                 return;
             }
-        } catch (err) {
-            software_backup_handleError({ message: lang("An error occurred.") }, backup_btn);
+            overwrite = true;
+            backup_name = response.backup_name;
+            i--;
+            continue;
+        }
+
+        if (response.status === "success") {
+            software_backup_updateProgress(s.progress, response.message);
+            backup_name = response.backup_name;
+        } else {
+            software_backup_handleError(response, backup_btn);
             return;
         }
     }

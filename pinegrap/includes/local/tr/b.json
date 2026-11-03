@@ -65,6 +65,7 @@
     "Backing up": "Yedekleniyor",
     "Backorder": "Ön Sipariş",
     "Backup": "Yedekle",
+    "Backup ({var:1}) created.": "Yedek ({var:1}) oluşturuldu.",
     "Backup ({var:1}) is deleted": "Yedek ({var:1}) silindi",
     "Backup Archive": "Yedek Arşivi",
     "Backup Builder Starting...": "Yedek oluşturucu başlıyor...",
