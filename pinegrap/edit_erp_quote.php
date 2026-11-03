@@ -225,6 +225,11 @@ if ($_POST) {
 
 $state = erp_quote_state($quote);
 $statuses = erp_quote_statuses();
+
+// One signature per document: a quote signed once and opened again takes no
+// second one, so it gets no guest link either.
+$signature = erp_signature('quote', $quote_id);
+$can_link = ($state === 'open') && ($signature === null) && erp_quote_links_ready();
 $editable = ((string) $quote['status'] === 'open') && !$readonly;
 $money = function ($kurus) use ($quote) {
     return h(erp_money_out_currency((int) $kurus, (string) $quote['currency']));
@@ -243,10 +248,10 @@ if (!$readonly) {
         $output_actions .= $action_button('invoice', lang('Turn into an invoice'), 'bi-receipt', 'btn-solid theme-success', lang('Make an invoice draft from this quote, at the prices quoted and dated today?'));
     }
     if (in_array($state, array('open', 'expired'), true)) {
-        $output_actions .= $action_button('accepted', lang('Accepted'), 'bi-hand-thumbs-up', 'btn-outline theme-success');
+        $output_actions .= $action_button('accepted', lang('Mark as accepted'), 'bi-hand-thumbs-up', 'btn-outline theme-success');
     }
     if (in_array($state, array('open', 'expired', 'accepted'), true)) {
-        $output_actions .= $action_button('rejected', lang('Rejected'), 'bi-hand-thumbs-down', 'btn-outline theme-danger');
+        $output_actions .= $action_button('rejected', lang('Mark as rejected'), 'bi-hand-thumbs-down', 'btn-outline theme-danger');
         $output_actions .= $action_button('cancelled', lang('Cancel'), 'bi-x-circle', 'btn-outline theme-secondary', lang('Cancel this quote? It stays on the list, marked cancelled.'));
     }
     if (in_array($state, array('expired', 'accepted', 'rejected', 'cancelled'), true)) {
@@ -390,7 +395,7 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
                     <textarea class="form-control" id="mail_message" name="mail_message" rows="3" maxlength="5000">' . h((string) $defaults['message']) . '</textarea>
                     <div class="form-text"><i class="bi bi-paperclip" aria-hidden="true"></i> ' . lang('The quote PDF is attached.') . '</div>
                 </div>
-                ' . (($state === 'open') && erp_quote_links_ready() ? '
+                ' . ($can_link ? '
                 <div class="col-12">
                     <div class="form-field">
                         <div class="switch"><input type="checkbox" id="mail_guest_link" name="mail_guest_link" value="1" /></div>
@@ -425,7 +430,6 @@ $status = $statuses[$state] ?? array($state, 'secondary');
 
 // The customer's signature: shown once given, never redrawn or removed; the
 // pad while the quote may still be signed.
-$signature = erp_signature('quote', $quote_id);
 $output_signature = '';
 $output_signature_icon = '';
 
@@ -530,11 +534,11 @@ if (!$readonly && erp_quote_links_ready()) {
     }
 
     $guest_buttons = '';
-    if ($state === 'open') {
+    if ($can_link) {
         $guest_buttons .= $action_button('guest_link', lang('Create guest link'), 'bi-link-45deg', 'btn-outline theme-primary', ($live_link !== null) ? lang('Make a new guest link? The earlier one stops working.') : '');
     }
     if ($live_link !== null) {
-        $guest_buttons .= ' ' . $action_button('guest_link_revoke', lang('Revoke'), 'bi-x-circle', 'btn-outline theme-danger', lang('Stop the guest link? The customer can no longer open the quote with it.'));
+        $guest_buttons .= ' ' . $action_button('guest_link_revoke', lang('Stop the link'), 'bi-x-circle', 'btn-outline theme-danger', lang('Stop the guest link? The customer can no longer open the quote with it.'));
     }
 
     if (($guest_body !== '') || ($guest_buttons !== '')) {
@@ -568,6 +572,14 @@ if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
     $output_workspace_button = ws_record_button($user, 'erp_quote', (int) $quote_id, lang('Sales quote') . ' ' . (string) $quote['full_number']);
 }
 
+// The status, the account and the date it runs to, in the page body too:
+// the heading is hidden on a phone (panel-top-bar-phone).
+$facts = array(
+    '<span class="fg-secondary me-2">' . lang('Status') . '</span><span class="badge theme-' . h($status[1]) . '">' . h($status[0]) . '</span>' . $output_signature_icon,
+    '<span class="fg-secondary me-2">' . lang('Account') . '</span><a class="pg-link-body-emphasis fw-semibold" href="edit_erp_account.php?id=' . (int) $quote['account_id'] . '">' . h((string) $quote['account_title']) . '</a>',
+    h(lang(array('string' => 'Valid until {var:1}', 'vars' => prepare_form_data_for_output((string) $quote['valid_until'], 'date', false)))),
+);
+
 echo
 pg_page_shell([
     'title' => h((string) $quote['full_number']),
@@ -588,6 +600,8 @@ pg_page_shell([
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
+            <div class="mb-3 small d-flex flex-wrap align-items-center column-gap-5 row-gap-1"><span>' . implode('</span><span>', $facts) . '</span></div>
+
             <nav id="button_bar" class="pg-toolbar navigation d-flex flex-wrap gap-1" aria-label="' . lang('Button Bar') . '">
                 <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_quote_pdf.php?id=' . $quote_id . '" target="_blank" rel="noopener"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . lang('PDF') . '</a>
                 <a class="btn btn-sm btn-outline theme-secondary" href="get_erp_quote_pdf.php?id=' . $quote_id . '&amp;download=1"><i class="bi bi-download me-1" aria-hidden="true"></i>' . lang('Download') . '</a>
@@ -599,7 +613,11 @@ pg_page_shell([
             </nav>
 
             ' . $output_invoice . '
-            ' . ((!$editable && ((string) $quote['status'] !== 'open') && !$readonly) ? '<div class="form-text mb-3">' . lang('Only an open quote can be changed; "Open again" makes it editable.') . '</div>' : '') . '
+            ' . ((!$editable && ((string) $quote['status'] !== 'open') && !$readonly)
+                ? '<div class="form-text mb-3">' . (($state === 'invoiced')
+                    ? lang('The quote was turned into an invoice; changes are made on the invoice.')
+                    : lang('Only an open quote can be changed; "Open again" makes it editable.')) . '</div>'
+                : '') . '
             ' . $output_body . '
             ' . $output_signature . '
             ' . $output_guest_link . '
