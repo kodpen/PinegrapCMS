@@ -324,8 +324,8 @@ function _pg_dtc_tokenize_props($props, $ctx, $depth = 0)
 /**
  * A page, widget or shared component tree made portable.
  *
- * The editor's own state on a node (_id, _expanded, _sharedDirty) is
- * dropped; the editor gives the nodes their ids again when the template is
+ * The editor's own state on a node (_id, _expanded, _sharedDirty) and the
+ * team's notes on it (props._notes, _notes_by, _notes_at) are dropped; the editor gives the nodes their ids again when the template is
  * opened. A shared_ref is pointed at the template's entry for the row it
  * places: props.templateWidget ($ctx['widgets_by_sid'], row id => key) or
  * props.templateShared ($ctx['shared_by_sid']); one placing a row that is
@@ -354,6 +354,10 @@ function pg_dtc_tokenize_tree($node, $ctx, &$dropped = 0, $depth = 0)
     }
 
     if (isset($node['props']) && is_array($node['props'])) {
+        // The team's notes on a node (designer_collab.php) belong to this
+        // site's editors: their text, author name and time stay out of a
+        // document that is carried to other sites.
+        unset($node['props']['_notes'], $node['props']['_notes_by'], $node['props']['_notes_at']);
         $node['props'] = _pg_dtc_tokenize_props($node['props'], $ctx);
     }
     if (isset($node['children']) && is_array($node['children'])) {
