@@ -1129,6 +1129,7 @@
     "Send the e-Delivery Note": "e-İrsaliyeyi gönder",
     "Send the e-mail": "E-postayı gönder",
     "Send the edited copy": "Düzenlenmiş kopyayı gönder",
+    "Send the expiration warning 1 to 999 days before the membership ends.": "Süre bitimi uyarısı üyelik bitmeden 1 ile 999 gün önce gönderilmelidir.",
     "Send the file as a form part named file, or as content_base64.": "Dosyayı file adlı bir form parçası olarak ya da content_base64 olarak gönderin.",
     "Send the file once: as a form part named file, or as content_base64.": "Dosyayı bir kez gönderin: file adlı bir form parçası olarak ya da content_base64 olarak.",
     "Send the form again whenever you want to change something: your newest profile is the one members see.": "Bir şeyi değiştirmek istediğinizde formu yeniden gönderin: üyeler en yeni profilinizi görür.",

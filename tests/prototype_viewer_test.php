@@ -681,7 +681,7 @@ function test_background_render_prints_no_analytics_tag()
 	// address.
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/get_page_content.php');
 
-	pg_assert_same(1, preg_match("~if \(\(GOOGLE_ANALYTICS == TRUE\) && \(GOOGLE_ANALYTICS_WEB_PROPERTY_ID != ''\) && !pg_seo_rendering\(\)\)~", $source));
+	pg_assert_same(1, preg_match("~if \(\(GOOGLE_ANALYTICS == TRUE\) && \(\\\$google_analytics_tag_id !== ''\) && !pg_seo_rendering\(\)\)~", $source));
 }
 
 // A My Account widget set to send signed-out visitors to the sign-in page
