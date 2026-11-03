@@ -534,8 +534,8 @@ function ws_library_send($viewer, $channel, $file_id, $body = '')
     }
 
     $name = (string) $found['file']['name'];
-    $path = FILE_DIRECTORY_PATH . '/' . basename($name);
-    $size = is_file($path) ? @filesize($path) : false;
+    $path = pg_file_reader_path(basename($name));
+    $size = ($path !== '') ? @filesize($path) : false;
 
     if ($size === false) {
         return array('ok' => false, 'error' => lang('The file could not be read.'), 'message_id' => 0);

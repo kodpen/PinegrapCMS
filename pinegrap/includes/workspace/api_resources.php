@@ -1563,9 +1563,11 @@ function ws_api_files_get($params)
     ws_api_channel_or_404($viewer, $message['channel_id']);
 
     $stored = basename((string) db_value("SELECT name FROM files WHERE id = '" . (int) $message['file_id'] . "'"));
-    $path = FILE_DIRECTORY_PATH . '/' . $stored;
 
-    if (($stored === '') || !is_file($path)) {
+    // The local file, or a copy of one moved to the object store.
+    $path = pg_file_reader_path($stored);
+
+    if (($stored === '') || ($path === '')) {
         api_fail_not_found(lang('File'));
     }
 

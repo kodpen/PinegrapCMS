@@ -197,8 +197,8 @@ function erp_document_logo()
         return $logo;
     }
 
-    $directory = defined('FILE_DIRECTORY_PATH') ? FILE_DIRECTORY_PATH : PG_FUNCTIONS_DIR . '/data/files';
-    $path = $directory . '/' . basename($setting);
+    // The logo may have been moved to the object store: a copy is read.
+    $path = defined('FILE_DIRECTORY_PATH') ? pg_file_reader_path(basename($setting)) : PG_FUNCTIONS_DIR . '/data/files/' . basename($setting);
     $types = array('png' => 'image/png', 'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'gif' => 'image/gif', 'svg' => 'image/svg+xml', 'webp' => 'image/webp');
     $extension = mb_strtolower(pathinfo($path, PATHINFO_EXTENSION));
 

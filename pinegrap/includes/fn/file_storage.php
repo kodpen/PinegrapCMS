@@ -646,6 +646,30 @@ function pg_file_cache_forget($id)
 
 
 /**
+ * Whether a file's bytes are kept anywhere, by its stored name: on the disk,
+ * or in the object store for a moved row. Fetches nothing, for a screen
+ * that only says whether a file is there and links to it.
+ *
+ * @param string $name files.name
+ * @return bool
+ */
+function pg_file_kept($name)
+{
+    $name = (string) $name;
+
+    if (!defined('FILE_DIRECTORY_PATH') || ($name === '') || (pg_basename($name) !== $name)) {
+        return false;
+    }
+
+    if (is_file(FILE_DIRECTORY_PATH . '/' . $name)) {
+        return true;
+    }
+
+    return pg_file_storage_ready() && ((int) db_value("SELECT id FROM files WHERE name = '" . e($name) . "' AND storage = 's3' AND storage_key <> '' LIMIT 1") > 0);
+}
+
+
+/**
  * A path on the disk holding a file's bytes, for a reader that cannot work
  * from an address: the local file, or for a stored file a copy fetched into
  * data/cache/objects (kept and reused while its size matches the row).

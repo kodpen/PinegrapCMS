@@ -1944,8 +1944,8 @@ function ws_voice_run($row)
     }
 
     $stored = (string) db_value("SELECT name FROM files WHERE id = '" . (int) $row['file_id'] . "'");
-    $path = FILE_DIRECTORY_PATH . '/' . basename($stored);
-    $size = ($stored !== '') ? @filesize($path) : false;
+    $path = ($stored !== '') ? pg_file_reader_path(basename($stored)) : '';
+    $size = ($path !== '') ? @filesize($path) : false;
 
     if (($size === false) || ($size <= 0)) {
         return ws_voice_finish($row, 'failed', lang('The recording could not be read.'));
