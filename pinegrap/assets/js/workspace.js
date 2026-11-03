@@ -6071,9 +6071,13 @@
                 });
             }
 
-            // What the rail of the other screens links to.
+            // An address kept from when the list had an Inbox entry opens the
+            // bell, the one inbox, on Workspace; the workspace's own list only
+            // where the page has no bell.
             if (query.inbox) {
-                openInbox(function () { self.sync(); });
+                if (!((typeof window.pgBellOpen === 'function') && window.pgBellOpen('workspace'))) {
+                    openInbox(function () { self.sync(); });
+                }
             } else if (query.panel === 'archived') {
                 self.showArchived();
             } else if ((query.panel === 'audit') && BOOT.me.rights.staff) {
@@ -6144,7 +6148,6 @@
                 manage: manage,
                 nav: {
                     home: function () { self.showHome(true); },
-                    inbox: function () { openInbox(function () { self.sync(); }); },
                     scheduled: function () { self.showScheduled(true); },
                     archived: function () { self.showArchived(); },
                     audit: function () { self.showAudit(); }
@@ -6159,13 +6162,6 @@
                         window.PGWsPalette.open();
                     }
                 },
-                // The workspace's own tour (includes/workspace/tour.php): it
-                // points at the tiles of the Tools section; a place behind
-                // More is opened by the tour itself (PGWsSide.openFor()).
-                tour: (window.PgTour && window.PG_TOUR && window.PG_TOUR.key) ? function () {
-                    window.PGWsSide.openSections(['tools']);
-                    window.PgTour.start(window.PG_TOUR.key);
-                } : null,
                 pin: function (channel, pinned) { self.pinChannel(channel, pinned); },
                 decorateChannel: function (link, channel, box, sortable) {
                     if (sortable) {
@@ -8396,10 +8392,10 @@
 
             // Header, one line: the channel's sign and name, how its work
             // stands, its department and its customer; then its people,
-            // search, its info, a new task and its menu. The purpose is in
-            // the info (showMembers()) and on the name's tooltip. On a phone
-            // the line keeps the way back, the name and the menu, which then
-            // holds the rest.
+            // search, its info, a new task, the workspace's tour and its
+            // menu. The purpose is in the info (showMembers()) and on the
+            // name's tooltip. On a phone the line keeps the way back, the
+            // name and the menu, which then holds the rest.
             var head = el('div', 'ws-head ws-head-channel');
             head.appendChild(channelsToggle());
 
@@ -8431,6 +8427,15 @@
             var addTask = button('btn btn-sm btn-text theme-secondary ws-head-wide', '', 'bi-check2-square', t('new_task'));
             addTask.addEventListener('click', function () { self.newChannelTask(); });
             actions.appendChild(addTask);
+
+            // The tour shows the workspace around this screen, so it is
+            // played again from here; its last step points at this button.
+            if (self.tourReady()) {
+                var tour = button('btn btn-sm btn-text theme-secondary ws-head-wide', '', 'bi-signpost-split', t('tour_start'));
+                tour.setAttribute('data-ws-tour', '1');
+                tour.addEventListener('click', function () { self.startTour(); });
+                actions.appendChild(tour);
+            }
 
             actions.appendChild(self.channelMenu());
             head.appendChild(actions);
@@ -8669,6 +8674,23 @@
             }
         },
 
+        // Whether the workspace's own tour (includes/workspace/tour.php) is
+        // on this page to be played again.
+        tourReady: function () {
+            return !!(window.PgTour && window.PG_TOUR && window.PG_TOUR.key);
+        },
+
+        // Plays the tour again. It points at the tiles of the Tools section,
+        // so that section is opened first; a place behind More is opened by
+        // the tour itself (PGWsSide.openFor()).
+        startTour: function () {
+            if (window.PGWsSide) {
+                window.PGWsSide.openSections(['tools']);
+            }
+
+            window.PgTour.start(window.PG_TOUR.key);
+        },
+
         channelMenu: function () {
             var self = this;
             var channel = self.channel;
@@ -8695,11 +8717,17 @@
             }
 
             // On a phone the header keeps only the name: the channel's info,
-            // people and search beside it on a wider screen come first here
-            // (a new task is the Tasks tab's button and the / command).
+            // people, search and the tour beside it on a wider screen come
+            // first here (a new task is the Tasks tab's button and the /
+            // command).
             item(t('channel_info'), 'bi-info-circle', function () { self.showMembers(); }, 'ws-head-narrow');
             item(t('members') + ' (' + channel.members.length + ')', 'bi-people', function () { self.showMembers(); }, 'ws-head-narrow');
             item(t('channel_search'), 'bi-search', function () { self.searchChannel(); }, 'ws-head-narrow');
+
+            if (self.tourReady()) {
+                item(t('tour_start'), 'bi-signpost-split', function () { self.startTour(); }, 'ws-head-narrow');
+            }
+
             divider('ws-head-narrow');
 
             if (channel.can_manage) {
@@ -24715,15 +24743,14 @@
             }, true);
         }
 
-        // The main menu's Workspace list (workspace_side.js) opens the inbox
-        // and the search box on this screen at once, before the start-up
-        // below is back: the inbox needs nothing it brings. The channel
-        // screen hands in the rest once it has started (app.sideHooks()).
+        // The main menu's Workspace list (workspace_side.js) opens the search
+        // box on this screen at once, before the start-up below is back, as
+        // the box needs nothing from it. The channel screen hands in the rest
+        // once it has started (app.sideHooks()).
         var inline = (CFG.mode !== 'record' && window.PGWsSide) ? window.PGWsSide.inline() : null;
 
         if ((CFG.mode !== 'record') && window.PGWsSide) {
             window.PGWsSide.attach({
-                nav: { inbox: function () { openInbox(function () {}); } },
                 palette: function () {
                     if (window.PGWsPalette) {
                         window.PGWsPalette.open();
