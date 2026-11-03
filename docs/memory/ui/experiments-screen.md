@@ -1,6 +1,6 @@
 ---
 name: experiments-screen
-description: The Experiments results screen (experiments.php, PX5 #6255): the list, per-variant figures from experiment_hourly, lift, the two-proportion z-test as a sentence, the daily-rate SVG with its table, buttons posted to the page's sheet
+description: The Experiments results screen (experiments.php, PX5 #6255): list, per-variant figures, lift, the z-test as a sentence, the daily-rate SVG, buttons posted to the sheet
 module: experiments_results
 ---
 
