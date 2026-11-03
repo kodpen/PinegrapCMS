@@ -48,7 +48,8 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-product-19.md: Decisions list, product part 19 (2026-11-02 on): the owner answers of the 2026-11 feature plans (booking, importers, forms, mail complaints, Fediverse, stock, EU VAT, TLS settings)
 - decisions-made-product-2.md: Decisions list, product part 2 (2026-10-29 on): guest account and receipt of a webhook-completed order; PayTR instalments; layout editor of a page not on a visual design; carrier drivers
 - decisions-made-product-20.md: Decisions list, product part 20 (2026-11-02 on): voice to assistants, transactional campaigns and opt-in, converted regions, event copies, till dates, country names, bank statements, untracked scans
-- decisions-made-product-21.md: Decisions list, product part 21 (2026-11-03 on): clearing the performance log, the Migration screen, panel transitions, the panel back/forward cache
+- decisions-made-product-21.md: Decisions list, product part 21 (2026-11-03 on): clearing the performance log, the Migration screen, panel transitions, the panel back/forward cache, WebP behind an unconfirmed CDN
+- decisions-made-product-22.md: Decisions list, product part 22 (2026-11-03 on): the panel's own table driver replacing DataTables
 - decisions-made-product-3.md: Decisions list, product part 3 (2026-10-29 on): SVG and ZPL labels, the first international label driver, get_catalog.php's dead top-item block, the PHP 5 remnants, converted common regions' rows
 - decisions-made-product-4.md: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
 - decisions-made-product-5.md: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
@@ -64,7 +65,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-schema-6.md: Decisions list, schema part 6 (2026-10-30 midday on): district and plate_code, iys_sms_status, form_fields.rules, the marketplace auto-invoice switch, erp_quote_links, erp_quote_templates
 - decisions-made-schema-7.md: Decisions list, schema part 7 (2026-10-31 on): SMS campaign tables; image versions table in principle; ws_file_edits.redacted for a redacted Workspace replace
 - decisions-made-schema-8.md: Decisions list, schema part 8 (2026-11-02 on): tables and columns of the 2026-11 feature plans (#5032-#5042) and the Assistant card summary columns (#5014, #5227)
-- decisions-made-schema-9.md: Decisions list, schema part 9 (2026-11-03 on): columns of the external API coverage steps and the designer form fee
+- decisions-made-schema-9.md: Decisions list, schema part 9 (2026-11-03 on): columns of the external API coverage steps, the designer form fee, the booking slot key
 - decisions-made-schema.md: Decisions list, schema part: steps approved in advance (ENUM appends in the 4.48 shape), the tables and columns approved on 2026-10-27 and 2026-10-28, who decides schema
 - decisions-made-seo.md: Decisions list, SEO part (2026-10-27/28): large image preview, site icon, main-host redirect, per-form structured-data type, author source and share-image field; defaults keep running sites
 - decisions-made-waf.md: Decisions list, firewall part: thresholds stay, a concurrent refusal is no offence, rate bans off the ladder, global limit before the session, no lock release, nothing served to a ban.
