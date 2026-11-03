@@ -133,6 +133,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_form_field_product_group(); // 11.0.141
 	upgrade_2026_11_0_image_upload_cap();        // 11.0.142
 	upgrade_2026_11_0_dashboard_layout();        // 11.0.143
+	upgrade_2026_11_0_ws_file_edit_redacted();   // 11.0.144
 	upgrade_2026_11_0_claude_daily_summary();    // 11.0.145
 	upgrade_2026_11_0_mail_bounces();            // 11.0.146
 	upgrade_2026_11_0_site_search_daily();      // 11.0.147
@@ -141,6 +142,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ai_fetch_daily();          // 11.0.150
 	upgrade_2026_11_0_product_preorder();        // 11.0.151
 	upgrade_2026_11_0_file_storage();            // 11.0.152
+	upgrade_2026_11_0_page_experiments();        // 11.0.153
 	upgrade_2026_11_0_store_credit();            // 11.0.155
 
 }
@@ -4306,6 +4308,17 @@ function upgrade_2026_11_0_dashboard_layout() {
 
 }
 
+// A Workspace picture replaced with a redaction burnt in: its earlier
+// version shows what the redaction covers, so ws_file_history() lists it for
+// the person who made the edit alone. Existing rows stay 0, listed as before.
+function upgrade_2026_11_0_ws_file_edit_redacted() {
+
+	install_add_column('ws_file_edits', 'redacted', "TINYINT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Workspace: when a picture is replaced with redacted areas, its earlier version is listed in the message history only for the person who edited it.');
+
+}
+
 // The Assistant card's daily summary (2026.11.0, 11.0.145;
 // includes/dashboard/v2/cards/ai.php, includes/workspace/claude.php). At the
 // chosen hour the hourly job queues one summary request; the routine answers
@@ -4559,6 +4572,60 @@ function upgrade_2026_11_0_file_storage() {
 	}
 
 	install_note('Files: each file records whether its bytes are on the web server or in the object store; every existing file stays on the web server.');
+
+}
+
+// Page experiments (2026.11.0, 11.0.153; includes/fn/experiments.php). An
+// experiment names a live designed page, a goal and a status (draft, running,
+// paused, ended); idx_page finds a page's running one. Its variants are the
+// live page itself (draft_page_id 0) and draft pages, each with a short key
+// kept in the visitor's pg_exp cookie and a weight for the draw; idx_key
+// keeps a key once per experiment. experiment_hourly is the rollup of views
+// and goals per hour and variant, aggregated at write time: id is the SHA-1
+// of "day|hour|experiment|variant", raised by one INSERT ... ON DUPLICATE
+// KEY UPDATE per event, never a row per visitor.
+function upgrade_2026_11_0_page_experiments() {
+
+	install_create_table('experiments', "CREATE TABLE experiments (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		page_id           INT UNSIGNED NOT NULL DEFAULT 0,
+		name              VARCHAR(100) NOT NULL DEFAULT '',
+		status            ENUM('draft','running','paused','ended') NOT NULL DEFAULT 'draft',
+		goal_kind         ENUM('form','order','click','page') NOT NULL DEFAULT 'form',
+		goal_target       VARCHAR(255) NOT NULL DEFAULT '',
+		started_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		ended_at          INT UNSIGNED NOT NULL DEFAULT 0,
+		winner_variant_id INT UNSIGNED NOT NULL DEFAULT 0,
+		created_user_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_page (page_id, status)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('experiment_variants', "CREATE TABLE experiment_variants (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		experiment_id INT UNSIGNED NOT NULL DEFAULT 0,
+		draft_page_id INT UNSIGNED NOT NULL DEFAULT 0,
+		variant_key   VARCHAR(8) NOT NULL DEFAULT '',
+		weight        TINYINT UNSIGNED NOT NULL DEFAULT 50,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_key (experiment_id, variant_key)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('experiment_hourly', "CREATE TABLE experiment_hourly (
+		id            CHAR(40) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+		day           DATE NOT NULL,
+		hour          TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		experiment_id INT UNSIGNED NOT NULL DEFAULT 0,
+		variant_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		views         INT UNSIGNED NOT NULL DEFAULT 0,
+		goals         INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_exp_day (experiment_id, day)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Page experiments: a designed page can now be compared with a draft variant; the tables for experiments, their variants and the hourly views and goals are in place.');
 
 }
 

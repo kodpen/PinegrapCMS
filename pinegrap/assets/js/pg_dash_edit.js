@@ -286,7 +286,7 @@
         reset.addEventListener("click", backToDefault);
         var stop = button("btn btn-outline theme-secondary btn-sm", S.cancel);
         stop.addEventListener("click", cancel);
-        var keep = button("btn theme-primary btn-sm", S.save);
+        var keep = button("btn btn-solid theme-primary btn-sm", S.save);
         keep.addEventListener("click", function () {
             save(false, keep);
         });

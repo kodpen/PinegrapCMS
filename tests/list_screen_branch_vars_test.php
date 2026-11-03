@@ -43,9 +43,9 @@ function test_visitor_report_date_changer_default()
 // Pages list: every row starts with no mobile style warning class.
 function test_pages_list_mobile_warning_class_per_row()
 {
-	$source = file_get_contents(PG_FUNCTIONS_DIR . '/view_pages.php');
-	$row = strpos($source, "\$output_style_name = '';\n        \$output_no_mobile_style_warning_class = '';");
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/page_list.php');
+	$row = strpos($source, "\$page_id = (int) \$page['page_id'];\n        \$class = 'align-middle';");
 
-	pg_assert_true($row !== false, 'class reset next to the style name');
-	pg_assert_same(1, substr_count($source, "\$output_no_mobile_style_warning_class = '';"), 'one reset per row');
+	pg_assert_true($row !== false, 'class set for each row of the style column');
+	pg_assert_same(1, substr_count($source, "\$class .= ' fg-danger';"), 'the warning only where the desktop style stands in');
 }

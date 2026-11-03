@@ -23,6 +23,202 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/local_sale.php');
 
 /**
+ * Order lines with their figures worked out: the counter's cart rows
+ * (local_sale_lines()) or the rows an API call is about to write.
+ *
+ * net / tax / gross are the line's; unit_gross is the price with VAT a shelf
+ * label would carry, for display only.
+ *
+ * @param array $rows  id, product_id, quantity, price, and the product's
+ *                     name, short_description, enabled, inventory,
+ *                     inventory_quantity, taxable, tax_rate
+ * @return array
+ */
+function pg_local_order_lines($rows)
+{
+    $lines = array();
+    $taxed = array();
+
+    foreach ($rows as $row) {
+        $rate = local_sale_line_rate($row);
+        $net = (int) $row['price'] * (int) $row['quantity'];
+
+        $row['rate'] = $rate;
+        $row['net'] = $net;
+        $lines[] = $row;
+        $taxed[] = array('amount' => $net, 'rate' => $rate);
+    }
+
+    // The VAT per rate on the sum of the sale's lines, spread back over them,
+    // as the checkout takes it (pg_tax_by_rate()): the order's tax and its
+    // invoice's are then the e-document provider's.
+    $taxes = pg_tax_by_rate($taxed);
+
+    foreach ($lines as $index => $row) {
+        $tax = (int) $taxes[$index];
+        $rate = $row['rate'];
+        $net = $row['net'];
+
+        $lines[$index]['tax'] = $tax;
+        $lines[$index]['gross'] = $net + $tax;
+        $lines[$index]['unit_gross'] = (int) $row['price'] + pg_tax_apply_rate((int) $row['price'], $rate);
+        // What the till view shows (local_sale_prices_net()).
+        $lines[$index]['unit_till'] = local_sale_prices_net() ? (int) $row['price'] : $lines[$index]['unit_gross'];
+        $lines[$index]['amount_till'] = local_sale_prices_net() ? $net : ($net + $tax);
+    }
+
+    return $lines;
+}
+
+/**
+ * The customer a sale is recorded for: a contact (with the ERP account it is
+ * linked to) or, with the ERP on, an account. null when neither is found.
+ *
+ * @param int $contact_id
+ * @param int $account_id  read only when no contact is given
+ * @return array|null  contact_id, account_id, label
+ */
+function pg_local_order_customer($contact_id, $account_id)
+{
+    $contact_id = (int) $contact_id;
+    $account_id = (int) $account_id;
+    $erp = local_sale_erp_on();
+    $label = '';
+
+    if ($contact_id > 0) {
+        $contact = db_item("SELECT id, first_name, last_name, company FROM contacts WHERE id = '" . $contact_id . "' LIMIT 1");
+        if ($contact) {
+            $person = trim(trim((string) $contact['first_name']) . ' ' . trim((string) $contact['last_name']));
+            $label = ($person !== '') ? $person : ((trim((string) $contact['company']) !== '') ? trim((string) $contact['company']) : ('#' . $contact_id));
+            // The account the contact is linked to, when it has one; the ERP
+            // opens one from the card otherwise, at invoicing.
+            $account_id = $erp ? (int) db_value("SELECT id FROM erp_accounts WHERE contact_id = '" . $contact_id . "' ORDER BY id ASC LIMIT 1") : 0;
+        } else {
+            $contact_id = 0;
+        }
+    } elseif (($account_id > 0) && $erp) {
+        $account = db_item("SELECT id, title, contact_id FROM erp_accounts WHERE id = '" . $account_id . "' LIMIT 1");
+        if ($account) {
+            $label = (string) $account['title'];
+            $contact_id = (int) $account['contact_id'];
+        } else {
+            $account_id = 0;
+        }
+    } else {
+        $account_id = 0;
+    }
+
+    if (($contact_id <= 0) && ($account_id <= 0)) {
+        return null;
+    }
+
+    return array('contact_id' => $contact_id, 'account_id' => $account_id, 'label' => $label);
+}
+
+/**
+ * The lines an API call asks for: a list of {product_id, quantity}, each a
+ * whole number (quantity 1 to 9999, as a cart line's own box takes it). A
+ * product named twice becomes one line of both quantities, the way the
+ * counter's cart adds a second scan to the line already there.
+ *
+ * @param mixed $raw
+ * @return array  items (product_id => quantity), error ('' | shape |
+ *                quantity), index (the item at fault, 0-based; -1 none)
+ */
+function pg_local_order_items_input($raw)
+{
+    $whole = function ($value) {
+        if (is_int($value)) {
+            return $value;
+        }
+
+        return (is_string($value) && (preg_match('/^\d{1,9}$/', $value) === 1)) ? (int) $value : null;
+    };
+
+    $items = array();
+
+    if (!is_array($raw) || empty($raw)) {
+        return array('items' => array(), 'error' => 'shape', 'index' => -1);
+    }
+
+    foreach (array_values($raw) as $index => $item) {
+        $product_id = is_array($item) ? $whole($item['product_id'] ?? null) : null;
+        $quantity = is_array($item) ? $whole($item['quantity'] ?? null) : null;
+
+        if (($product_id === null) || ($product_id < 1) || ($quantity === null)) {
+            return array('items' => array(), 'error' => 'shape', 'index' => $index);
+        }
+
+        $total = ($items[$product_id] ?? 0) + $quantity;
+
+        if (($quantity < 1) || ($total > 9999)) {
+            return array('items' => array(), 'error' => 'quantity', 'index' => $index);
+        }
+
+        $items[$product_id] = $total;
+    }
+
+    return array('items' => $items, 'error' => '', 'index' => -1);
+}
+
+/**
+ * Open an incomplete local order holding the given lines, the order the
+ * counter's cart writers (initialize_order(), add_order_item()) build up one
+ * scan at a time: the product's price on each line, no recipient (a counter
+ * sale is handed over at the till), the store's base currency.
+ *
+ * @param int   $user_id
+ * @param array $items  product_id => [quantity, name (the SKU), price]
+ * @return int  the order id, 0 when it could not be written
+ */
+function pg_local_order_open($user_id, $items)
+{
+    $type = pg_schema_has('orders', 'type') ? ", type = 'local'" : '';
+    $written = db("INSERT INTO orders SET
+            order_date = UNIX_TIMESTAMP(),
+            last_modified_timestamp = UNIX_TIMESTAMP(),
+            user_id = '" . (int) $user_id . "',
+            reference_code = '" . escape(generate_order_reference_code()) . "',
+            currency_code = '" . escape(BASE_CURRENCY_CODE) . "'" . $type);
+
+    $order_id = $written ? (int) mysqli_insert_id(db::$con) : 0;
+
+    if ($order_id <= 0) {
+        return 0;
+    }
+
+    foreach ($items as $product_id => $item) {
+        db("INSERT INTO order_items SET
+                order_id = '" . $order_id . "',
+                ship_to_id = '0',
+                product_id = '" . (int) $product_id . "',
+                product_name = '" . escape((string) $item['name']) . "',
+                quantity = '" . (int) $item['quantity'] . "',
+                price = '" . (int) $item['price'] . "'");
+    }
+
+    return $order_id;
+}
+
+/**
+ * Remove an order opened by pg_local_order_open() that was never completed:
+ * the order and its lines, while it is still incomplete.
+ *
+ * @param int $order_id
+ */
+function pg_local_order_discard($order_id)
+{
+    $order_id = (int) $order_id;
+
+    if ((string) db_value("SELECT status FROM orders WHERE id = '" . $order_id . "' LIMIT 1") !== 'incomplete') {
+        return;
+    }
+
+    db("DELETE FROM order_items WHERE order_id = '" . $order_id . "'");
+    db("DELETE FROM orders WHERE id = '" . $order_id . "' AND status = 'incomplete'");
+}
+
+/**
  * Why a line cannot be sold as it stands, by line id: a product switched off,
  * or more units of a stock-tracked product than its stock holds. The units of
  * a product on several lines are counted together, and every one of those
@@ -79,14 +275,16 @@ function pg_local_order_pay_method($raw)
  * stops after it.
  *
  * @param array $user
- * @param int   $order_id  the incomplete order
- * @param array $lines     local_sale_lines($order_id)
+ * @param int   $order_id  the incomplete order, 0 while the lines are not written yet
+ * @param array $lines     local_sale_lines($order_id), or pg_local_order_lines() of the rows to be written
  * @param array $input     pay_method, pay_till, received (kuruş), pay_parts
  * @return array  local_sale_ok() with split (the parts, or null), or a refusal
  */
 function pg_local_order_check($user, $order_id, $lines, $input)
 {
-    if (((int) $order_id <= 0) || empty($lines)) {
+    // No order holds no lines (local_sale_lines() of 0 is empty); the API
+    // checks lines it has not written yet.
+    if (empty($lines)) {
         return local_sale_fail(lang('The cart is empty.'), array('level' => 'warning'));
     }
 

@@ -31,7 +31,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_image_editor_parts()
 {
-    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'access', 'fonts', 'glyph');
+    return array('core', 'crop', 'adjust', 'layers', 'draw', 'text', 'sticker', 'redact', 'versions', 'artboard', 'export', 'vector', 'svg', 'motion', 'tracks', 'access', 'fonts', 'glyph');
 }
 
 /**
@@ -3219,6 +3219,8 @@ function pg_image_editor_strings_motion()
         'tool_motion'          => lang('Animate'),
         'hintMotion'           => lang('Select a layer and give it an entrance, a loop and an exit. K: play or pause'),
         'motionPick'           => lang('Select a layer to give it motion.'),
+        'motionNothing'        => lang('Add a text or a sticker, then give it motion here.'),
+        'motionAddSticker'     => lang('Add a sticker'),
         'motionStill'          => lang('A redaction does not move: what it hides would show.'),
         'motionLayers'         => lang('{n} layers'),
         'motionIn'             => lang('Entrance'),
@@ -3280,6 +3282,24 @@ function pg_image_editor_strings_motion()
         'motionPause'          => lang('Pause (K)'),
         'motionScrub'          => lang('Playhead'),
         'motionRepeat'         => lang('Repeat the preview'),
+    );
+}
+
+// -- Tracks (pg_image_editor_tracks.js) --
+
+/**
+ * The tracks part's labels: the rows under the play bar and the Animate
+ * tool's hint while they show.
+ *
+ * @return array key => translated text
+ */
+function pg_image_editor_strings_tracks()
+{
+    return array(
+        'tracksRegion' => lang('Animation tracks'),
+        'tracksNote'   => lang('Drag a bar on its track to change when it plays, and its ends to change how long. Shift turns off the 0.1 s step.'),
+        'tracksLayers' => lang('Layers'),
+        'hintTracks'   => lang('Tracks: drag to move, ends change the duration, Shift turns off the 0.1 s step. K: play or pause'),
     );
 }
 
@@ -3409,12 +3429,12 @@ function pg_image_editor_icon_urls()
  * @param string $path
  * @param array  $request
  * @return array error: '' or why not; data: the bytes; extension: jpg,
- *               png, webp or gif
+ *               png, webp or gif; redacted: whether areas were burnt in
  */
 function pg_image_editor_render($path, $request)
 {
     $check = pg_image_edit_validate(isset($request['doc']) ? $request['doc'] : null);
-    $refused = array('error' => lang('Invalid request.'), 'data' => '', 'extension' => '');
+    $refused = array('error' => lang('Invalid request.'), 'data' => '', 'extension' => '', 'redacted' => false);
     $size = is_file($path) ? @getimagesize($path) : false;
     $types = array(IMAGETYPE_JPEG => 'jpg', IMAGETYPE_PNG => 'png', IMAGETYPE_WEBP => 'webp', IMAGETYPE_GIF => 'gif');
 
@@ -3485,16 +3505,16 @@ function pg_image_editor_render($path, $request)
     pg_image_editor_drop_redactions($redactions);
 
     if (($report['status'] !== 'success') || !is_string($report['data'])) {
-        return array('error' => pg_image_editor_report_message($report, basename($path)), 'data' => '', 'extension' => '');
+        return array('error' => pg_image_editor_report_message($report, basename($path)), 'data' => '', 'extension' => '', 'redacted' => false);
     }
 
     $made = @getimagesizefromstring($report['data']);
 
     if (!$made || !isset($types[(int) $made[2]])) {
-        return array('error' => lang('Sorry, the file could not be saved.'), 'data' => '', 'extension' => '');
+        return array('error' => lang('Sorry, the file could not be saved.'), 'data' => '', 'extension' => '', 'redacted' => false);
     }
 
-    return array('error' => '', 'data' => $report['data'], 'extension' => $types[(int) $made[2]]);
+    return array('error' => '', 'data' => $report['data'], 'extension' => $types[(int) $made[2]], 'redacted' => !empty($redactions));
 }
 
 /**

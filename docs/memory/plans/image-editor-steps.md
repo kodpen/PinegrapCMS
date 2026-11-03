@@ -42,5 +42,5 @@ description: Steps E1-E10 of plans/image-editor.md: core modal, crop, server sav
 - E10b (S) Redaction through save.url. Done (#4745).
   - A save to another endpoint (`save.url`: the Workspace's `workspace_file_save.php`) loses the redaction: the redact part sends its masks only for replace and copy and `pg_image_editor_render()` takes none, so the saved picture shows what was covered. The hook sends them for `url` too; `pg_image_editor_render()` checks them with `pg_image_editor_take_redactions()`, burns them in as a save's step 4 does and removes the masks on every path. A test renders a solid area through it; try a redacted Workspace picture.
 
-- E10c (S) A redacted Workspace replace. `free` after E10b.
+- E10c (S) A redacted Workspace replace. Done (#4844).
   - Owner, #4783: the replaced original is listed in the message's earlier versions only for the person who edited. `ws_file_edits.redacted` (step `11.0.144`, `install_add_column()`), set by `workspace_file_save.php` when the replace burnt masks in; `ws_file_history()` leaves such rows out for anyone else. A test.

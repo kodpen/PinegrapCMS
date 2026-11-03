@@ -9,7 +9,7 @@ description: Coordinator's to-do list (2026-10-27): one item per worker PR in th
 
 ## When is an item struck through?
 - When its PR is merged: the item is marked completed, which strikes it through, and stays in the list. A PR closed without merging is marked completed too, with "closed" in its text.
-- The 10-minute check-in changes the list only when its listing of the open PRs changed, so a quiet check-in stays cheap.
+- The 30-minute check-in changes the list only when its listing of the open PRs changed, so a quiet check-in stays cheap.
 
 ## Why keep the list?
 - The owner reads the session windows, not PR bodies (`CLAUDE.md`, Working mode 9): the list shows in one window what each worker is on and what has landed.

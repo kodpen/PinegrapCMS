@@ -128,7 +128,7 @@ function test_list_sort_items()
 function test_list_label_sort_screens()
 {
 	$checks = array(
-		'view_pages.php' => "pg_list_label_order('page.page_type', get_page_type_names())",
+		'includes/fn/page_list.php' => "pg_list_label_order('page.page_type', get_page_type_names())",
 		'includes/fn/product_list.php' => "pg_list_label_order('products.selection_type', pg_product_list_selection_types())",
 		'view_email_campaign_profiles.php' => "pg_list_label_order('email_campaign_profiles.action', \$action_names)",
 		'view_short_links.php' => "pg_list_label_order('short_links.destination_type', \$destination_type_names)",

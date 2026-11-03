@@ -216,7 +216,9 @@ function pg_sa_flags($has_recipient, $multi_recipient, $has_arrival_dates, $has_
  * classic page's software.init_country() does: the pick list named `state`
  * for a country with states, the text box for any other, and the zip code
  * required for a country that requires one. Both controls carry
- * data-pg-sa-state; the label moves to the one shown.
+ * data-pg-sa-state and data-pg-sa-for (the state's name), so a form with
+ * several addresses (the checkout: each recipient and the billing address)
+ * switches each pair on its own; the label moves to the one shown.
  *
  * @param string $form_id
  * @param array  $states   country code => list of [code, name]
@@ -231,8 +233,9 @@ function pg_sa_state_script($form_id, $states, $zip, $prefix = '')
     return '<script>(function(){'
         . 'var f=document.getElementById(' . encode_json((string)$form_id) . ');if(!f)return;'
         . 'var d=' . $data . ';'
-        . 'var c=f.querySelector("select[name=' . $prefix . 'country]"),t=f.querySelector("[data-pg-sa-state=text]"),'
-        .   'l=f.querySelector("[data-pg-sa-state=list]"),z=f.querySelector("input[name=' . $prefix . 'zip_code]");'
+        . 'var c=f.querySelector("select[name=' . $prefix . 'country]"),'
+        .   't=f.querySelector("[data-pg-sa-state=text][data-pg-sa-for=\""+d.name+"\"]"),'
+        .   'l=f.querySelector("[data-pg-sa-state=list][data-pg-sa-for=\""+d.name+"\"]"),z=f.querySelector("input[name=' . $prefix . 'zip_code]");'
         . 'if(!c)return;'
         . 'function lab(from,to){if(!from||!to||!from.id||!to.id)return;'
         .   'f.querySelectorAll("label[for=\""+from.id+"\"]").forEach(function(x){x.htmlFor=to.id;});}'
@@ -540,14 +543,16 @@ function _pg_sa_name_arrival_row(&$tree, $date_id)
 // Mark the two state controls (the text box and the pick list, both named
 // $name: `state`, `billing_state` on the billing step) for the script, fill the pick list with the country's states and
 // leave unnamed and hidden the one the country does not use, so the form
-// posts the right one before the script runs.
+// posts the right one before the script runs. data-pg-sa-for keeps the
+// name, which the unused control loses, so the script finds its own pair.
 function _pg_sa_state_controls(&$tree, $value, $country_states, $name = 'state')
 {
     $use_list = !empty($country_states);
     $chosen = pg_sa_state_pick((string)$value, (array)$country_states);
-    _pg_member_edit_control($tree, $name, function (&$node) use ($value, $country_states, $use_list, $chosen) {
+    _pg_member_edit_control($tree, $name, function (&$node) use ($value, $country_states, $use_list, $chosen, $name) {
         $is_list = strtolower((string)$node['props']['tag']) === 'select';
         _pg_member_set_attr($node, 'data-pg-sa-state', $is_list ? 'list' : 'text');
+        _pg_member_set_attr($node, 'data-pg-sa-for', (string)$name);
         if ($is_list) {
             $kids = array(array('type' => 'semantic', 'props' => array('tag' => 'option', 'text' => '',
                 '_attrs' => array(array('name' => 'value', 'value' => ''))), 'children' => array()));

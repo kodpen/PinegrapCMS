@@ -86,11 +86,14 @@ function test_local_order_check_empty()
 {
 	$user = array('id' => 1, 'role' => 0);
 
-	foreach (array(array(0, array(local_order_test_line(1, 10, 1))), array(9, array())) as $case) {
-		$res = pg_local_order_check($user, $case[0], $case[1], array('pay_method' => 'card'));
+	foreach (array(0, 9) as $order_id) {
+		$res = pg_local_order_check($user, $order_id, array(), array('pay_method' => 'card'));
 		pg_assert_false($res['ok'], 'refused');
 		pg_assert_same('warning', $res['level']);
 	}
+
+	// Lines checked before they are written (the API) need no order yet.
+	pg_assert_true(pg_local_order_check($user, 0, array(local_order_test_line(1, 10, 1)), array('pay_method' => 'card'))['ok'], 'unwritten lines');
 }
 
 function test_local_order_check_line_errors()
@@ -143,7 +146,7 @@ function test_local_order_screen_hands_over_its_cart()
 
 	// The claim comes before every write and the check before the claim.
 	$check = strpos($order, '$checked = pg_local_order_check(');
-	$claim = strpos($order, "WHERE id = '\" . \$order_id . \"' AND status = 'incomplete'\");");
+	$claim = strpos($order, "UPDATE orders SET status = 'complete', type = 'local'");
 	$number = strpos($order, '$order_number = local_sale_next_order_number();');
 	pg_assert_true(($check !== false) && ($claim !== false) && ($check < $claim), 'checked, then claimed');
 	pg_assert_true(($number !== false) && ($claim < $number), 'claimed, then numbered');
