@@ -46,6 +46,11 @@ define('PG_EXPERIMENT_COOKIE_DAYS', 90);
 define('PG_EXPERIMENT_COOKIE_PAIRS', 20);
 
 /**
+ * Goals one address may count in a minute (pg_experiment_goal_rate_exceeded()).
+ */
+define('PG_EXPERIMENT_GOAL_RATE_LIMIT', 10);
+
+/**
  * The statuses of an experiment, in their usual order.
  *
  * @return array
@@ -1024,7 +1029,7 @@ function pg_experiment_goal($kind, array $event = array())
 
     $plan = pg_experiment_goal_lines($experiments, $buckets, pg_experiment_goal_seen_read(), $kind, $event, pg_experiment_day_number(date('Y-m-d')));
 
-    if ($plan['lines'] === array()) {
+    if (($plan['lines'] === array()) || pg_experiment_goal_rate_exceeded()) {
         return 0;
     }
 
@@ -1035,6 +1040,30 @@ function pg_experiment_goal($kind, array $event = array())
     }
 
     return count($plan['lines']);
+}
+
+/**
+ * Whether the visitor's address counted more goals than
+ * PG_EXPERIMENT_GOAL_RATE_LIMIT in the last minute (the firewall's counter,
+ * as the page speed beacon's). The cookie that keeps a goal to once a day is
+ * the visitor's own, so a script that rewrites it is held here; asked only
+ * when a goal would count.
+ *
+ * @return bool
+ */
+function pg_experiment_goal_rate_exceeded()
+{
+    if (!function_exists('waf_rate_exceeded') || !function_exists('waf_client_ip')) {
+        return false;
+    }
+
+    $ip = waf_client_ip();
+
+    if (function_exists('waf_ip_subject')) {
+        $ip = waf_ip_subject($ip);
+    }
+
+    return waf_rate_exceeded($ip, 'exp_goal', PG_EXPERIMENT_GOAL_RATE_LIMIT, 60);
 }
 
 /**
