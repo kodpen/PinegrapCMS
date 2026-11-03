@@ -332,6 +332,7 @@
     "Finished {var:1}": "Bitti: {var:1}",
     "Finished.": "Tamamlandı.",
     "Finished: {var} translated, {var2} failed. The screen reloads.": "Bitti: {var} çevrildi, {var2} başarısız. Ekran yenileniyor.",
+    "Finished; {var:1} could not be rendered.": "Tamamlandı; {var:1} sayfa işlenemedi.",
     "Finnish": "Fince",
     "Firewall": "Güvenlik Duvarı",
     "Firewall Events": "Güvenlik Duvarı Olayları",
