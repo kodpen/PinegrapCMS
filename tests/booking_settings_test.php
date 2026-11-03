@@ -204,3 +204,20 @@ function test_booking_settings_category_files()
 	pg_assert_contains("'booking_service' => 2,", $registry);
 	pg_assert_contains("'booking_staff'   => 3,", $registry);
 }
+
+// The pane's labels use booking keys, not the shared 'Services' (shuttle
+// sense in Turkish), 'Order' (a purchase) or 'Length'; the Reminders box
+// takes commas, so it asks for no numeric keypad.
+function test_booking_settings_pane_labels_and_reminder_keyboard()
+{
+	$pane = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/bookings.php');
+
+	foreach (array("lang('Services')", "lang('Order')", "lang('Length')") as $key) {
+		pg_assert_same(false, strpos($pane, $key), 'not used: ' . $key);
+	}
+
+	pg_assert_contains("lang('Bookable services')", $pane);
+	pg_assert_contains("lang('Display order')", $pane);
+	pg_assert_contains("lang('Duration')", $pane);
+	pg_assert_true(preg_match('/id="booking_reminder_hours"[^>]*inputmode="numeric"/', $pane) === 0, 'no numeric keypad for a list');
+}
