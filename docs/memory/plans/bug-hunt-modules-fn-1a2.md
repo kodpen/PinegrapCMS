@@ -18,7 +18,7 @@ description: Module list of plans/bug-hunt.md, part 1a2: includes/fn/ modules em
 - `image`: open
 - `image_editor`: open
 - `imap_client`: done (#6020)
-- `innodb`: open
+- `innodb`: #6085
 - `lang`: done #6045 (placeholder values re-scanned; rest reviewed: language pick, source, cache, log/staff language)
 - `lang_files`: open
 - `language_redirect`: open

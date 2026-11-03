@@ -59,6 +59,7 @@ Table structures and SQL pitfalls.
 - designer-page-queries.md: Queries per designer-built page (2026-11-01 sandbox measure, four design templates): what repeated, the request-scope reads that removed it (PR #4403), what is left, why no fragment cache yet
 - files-type-column-width.md: files.type is four characters wide, so long extensions are stored cut (webmanifest as webm); the file manager reads the kind from the name instead; which views still read the column
 - filter-on-form-data-rows.md: A filter on a submitted form's answers is an EXISTS condition, never a join: a check box group keeps one form_data row per ticked box.
+- innodb-conversion-marker.md: How pg_innodb_convert_table() remembers a MyISAM-to-InnoDB conversion that died, and why an aborted table survives the next table's conversion
 - menu-tree-queries.md: Classic menus (get_menu_content(), get_menu_sequence()) read a menu once per request through pg_menu_tree(): two queries, printing order, children counted across menus, what the output must keep
 - orders-table-write-traps.md: Three traps when INSERTing into orders (reference_code, payment_method ENUM, order_date), the next_order_number table lock and where it is taken, and the orders.type values and list filter.
 - slug-generation.md: Which function builds address/slug names for forms, products, files and pages, the two transliteration tables, the lowercase-order rule, and the files.name invariant.
