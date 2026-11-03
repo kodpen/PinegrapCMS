@@ -91,7 +91,9 @@
             var text = el('div', 'ws-checkin-text');
             var who = el('div', 'ws-checkin-who');
 
-            face.className = 'ws-checkin-face';
+            // Added beside .avatar, never in its place: .avatar is what
+            // holds a photo to the face's size.
+            face.classList.add('ws-checkin-face');
             row.appendChild(face);
             who.appendChild(el('b', '', answer.name));
             who.appendChild(el('span', 'ws-checkin-time', answer.time));
