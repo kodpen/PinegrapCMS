@@ -160,6 +160,8 @@ function test_audit_view_record_url()
 	pg_assert_same('edit_product.php?id=4', pg_audit_view_record_url('product', 4), 'product');
 	pg_assert_same('view_order.php?id=8', pg_audit_view_record_url('order', '8'), 'order');
 	pg_assert_same('edit_contact.php?id=12', pg_audit_view_record_url('contact', 12), 'contact');
+	pg_assert_same('view_return.php?id=10', pg_audit_view_record_url('order_return', 10), 'return request');
+	pg_assert_same(array('order_returns', 'id'), pg_audit_view_record_tables()['order_return'], 'a deleted return request gets no link');
 	pg_assert_same('', pg_audit_view_record_url('product', 0), 'no id');
 	pg_assert_same('api_settings.php', pg_audit_view_record_url('api_key', 2), 'API keys');
 	pg_assert_same('', pg_audit_view_record_url('settings', 0), 'settings');
@@ -278,4 +280,22 @@ function test_audit_view_condition_finds_settings_by_shown_name()
 
 	$condition = pg_audit_view_condition(pg_audit_view_filters(array('q' => 'general')), $names);
 	pg_assert_same('(label LIKE ?)', $condition['sql'], 'the key alone matches through the label');
+}
+
+// The type and action choices are ordered by the name shown, not the
+// stored word; the empty choice is not among them.
+function test_audit_view_filter_options_by_name()
+{
+	$options = pg_audit_view_filter_options('type', array('user', 'order', 'api_app'), '');
+	$names = array_values($options);
+	$sorted = $names;
+	usort($sorted, 'pg_geo_label_compare');
+
+	pg_assert_same($sorted, $names);
+	pg_assert_same(lang('User'), $options['user']);
+	pg_assert_same(3, count($options));
+
+	$options = pg_audit_view_filter_options('action', array('create'), 'gone_word');
+	pg_assert_true(isset($options['gone_word']), 'the chosen word is kept');
+	pg_assert_same('gone_word', $options['gone_word']);
 }

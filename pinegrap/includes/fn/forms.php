@@ -1674,11 +1674,59 @@ function pg_log_actor($user, $ip)
 {
     $user = (string) $user;
 
+    // Background writers (backups, operations alerts, recurring invoices,
+    // outbound webhooks) store the literal SYSTEM.
+    if ($user === 'SYSTEM') {
+        return lang('System');
+    }
+
     if (($user !== '') && ($user !== 'UNKNOWN')) {
         return $user;
     }
 
     return ((string) $ip === '') ? lang('Scheduled job') : lang('Unknown');
+}
+
+/**
+ * Whether a user may clear a log for good (the Site Log's delete controls,
+ * the Performance Log's clear action): administrators, or every user who can
+ * open the screen when mass deletion is on.
+ *
+ * @param mixed $mass_deletion The MASS_DELETION setting.
+ * @param mixed $role          The user's role number (USER_ROLE), null when unknown.
+ * @return bool
+ */
+function pg_log_clear_allowed($mass_deletion, $role)
+{
+    if ($mass_deletion == true) {
+        return true;
+    }
+
+    return ($role !== null) && ((int) $role < 1);
+}
+
+/**
+ * A log screen's search term from the request: trimmed and cut to $max
+ * characters. The cut counts characters, so a multi-byte letter is never
+ * split (a broken byte sequence is printed back by h() as an empty box).
+ *
+ * @param mixed $value The request value; anything but a string is no term.
+ * @param int   $max   The most characters kept.
+ * @return string
+ */
+function pg_log_search_term($value, $max = 200)
+{
+    if (!is_string($value)) {
+        return '';
+    }
+
+    $value = trim($value);
+
+    if (mb_strlen($value, 'UTF-8') > $max) {
+        $value = mb_substr($value, 0, $max, 'UTF-8');
+    }
+
+    return $value;
 }
 function get_number_of_contacts($contact_group, $require_email = false)
 {

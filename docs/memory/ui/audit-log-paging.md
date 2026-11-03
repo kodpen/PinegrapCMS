@@ -17,3 +17,9 @@ module: audit_list
 ## How is it sorted and searched?
 - Heading links (`pg_list_state('view_audit_log')`): date (default, newest first), who (`username`), action, record (`label`), IP; ties by `id` in the first level's direction. The sort menu sits above the table, outside the filter form (it has its own GET form).
 - The search box: every word in the user name, record name, IP, request id, the stored action/type words, the shown source/action/type names (`pg_audit_view_labels()`), a settings line's shown category name (`pg_audit_view_settings_names()`, on settings lines only; before, "Genel" found nothing and only the key `general` did: #4414, PR #4495), or the record's number (`#12`). The "Record name" filter and the CSV export are unchanged; the export still goes newest first by id.
+
+## How are dates, choices, links and widths drawn?
+- Start and End go through `pg_date_input_iso()` (the site's order with `/`, `-`, `,` or `.`, so "01.10.2026" is read). A date it cannot read stays in its box with `is-invalid` and "Enter a valid date.", filters nothing, and "Clear filters" shows; before, it vanished silently and every line was listed (#5837).
+- Type and Action choices come from `pg_audit_view_filter_options()`: ordered by the shown name (`pg_geo_label_compare()`), the chosen word kept, "All" first (#5842).
+- A return request line opens `view_return.php?id=` when the `order_returns` row still exists (#5842).
+- The record cell's content sits in `.pg-audit-record` (wraps anywhere, at most 24rem, style in the screen): the td inherits `white-space: nowrap` from `table.chart`, so a long name pinned the column to its one-line width and pushed the IP column off screen (#5836).
