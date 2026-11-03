@@ -70,7 +70,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `google_analytics`: open
 
-- `google_reviews`: taken by bughunt-google-reviews (Elçin V11 worker)
+- `google_reviews`: done #6019
 
 - `image`: open
 
