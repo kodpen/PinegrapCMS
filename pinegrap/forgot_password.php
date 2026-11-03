@@ -46,7 +46,9 @@ $form = new liveform('forgot_password');
 
 $form->add_fields_to_session();
 
-$email = $form->get_field_value('email');
+// One address: an email[] array counts as none and gets the required error.
+$email = pg_password_reset_email($form->get_field_value('email'));
+$form->assign_field_value('email', $email);
 $send_to = $form->get_field_value('send_to');
 
 // A designed page (the forgot_password widget) names itself in return_to;

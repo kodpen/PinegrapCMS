@@ -1065,10 +1065,22 @@ function waf_ip_lists($recheck = false)
 /**
  * Cheap cached "does this table have this column" probe.
  * Used everywhere instead of assuming the upgrade has run.
+ *
+ * Once functions.php is loaded and connected, pg_schema_has() answers: it
+ * keeps the answer in a file under data/temp, so a request asks nothing of
+ * the database. Before that (the router phase) a SHOW COLUMNS query answers,
+ * kept for the request only; a name that is not a plain name goes that way
+ * as well.
  */
 function waf_table_has_column($table, $column)
 {
     static $cache = array();
+
+    if (function_exists('pg_schema_has') && class_exists('db', false) && !empty(db::$con)
+        && (preg_match('/^[a-z0-9_]+$/', (string) $table) === 1)
+        && (preg_match('/^[a-z0-9_]+$/', (string) $column) === 1)) {
+        return pg_schema_has($table, $column);
+    }
 
     $key = $table . '.' . $column;
 

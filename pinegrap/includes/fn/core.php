@@ -617,11 +617,106 @@ function pg_schema_cache_forget($cache, $table)
     return $cache;
 }
 
-// What pg_schema_has() knows in this request: the cache and the file it came
-// from ('' when there is no file to keep, see pg_schema_has()).
+/**
+ * This request's cache with what a stored cache file adds: the tables, and
+ * the missing tables, this request has no answer about. This request's answer
+ * wins for a table both know, and a table in $forgotten is not taken from the
+ * file (pg_schema_forget() asked to read it again). Concurrent requests write
+ * the same file, so without this one request's answers would wipe another's.
+ *
+ * No database access.
+ *
+ * @param array $ours
+ * @param mixed $stored     the decoded file
+ * @param array $forgotten  table names
+ * @return array
+ */
+function pg_schema_cache_merge($ours, $stored, $forgotten = array())
+{
+    if (!is_array($ours)) {
+        $ours = array();
+    }
+
+    $tables = (isset($ours['tables']) && is_array($ours['tables'])) ? $ours['tables'] : array();
+    $missing = (isset($ours['missing']) && is_array($ours['missing'])) ? array_values($ours['missing']) : array();
+    $merged = array('tables' => $tables, 'missing' => $missing);
+
+    if (!is_array($stored)) {
+        return $merged;
+    }
+
+    $known = function ($table) use ($tables, $missing, $forgotten) {
+        return isset($tables[$table]) || in_array($table, $missing, true) || in_array($table, (array) $forgotten, true);
+    };
+
+    if (isset($stored['tables']) && is_array($stored['tables'])) {
+        foreach ($stored['tables'] as $table => $columns) {
+            if (is_string($table) && is_array($columns) && !$known($table)) {
+                $merged['tables'][$table] = array_values(array_filter($columns, 'is_string'));
+            }
+        }
+    }
+
+    if (isset($stored['missing']) && is_array($stored['missing'])) {
+        foreach ($stored['missing'] as $table) {
+            if (is_string($table) && !$known($table) && !isset($merged['tables'][$table])
+                && !in_array($table, $merged['missing'], true)) {
+                $merged['missing'][] = $table;
+            }
+        }
+    }
+
+    return $merged;
+}
+
+/**
+ * Writes $cache to cache file $file, merged with what the file holds now
+ * (pg_schema_cache_merge()), through a temporary file and rename(). Windows
+ * does not rename over a file that exists (above all one another request is
+ * reading), so the old file is then deleted and the rename tried again.
+ *
+ * @param string $file
+ * @param array  $cache
+ * @param array  $forgotten  table names not to take from the file
+ * @return array|null the merged cache, null when it could not be written
+ */
+function pg_schema_cache_file_write($file, $cache, $forgotten = array())
+{
+    $directory = dirname($file);
+
+    if (!is_dir($directory)) {
+        @mkdir($directory, 0755, true);
+    }
+
+    $cache = pg_schema_cache_merge($cache, @json_decode((string) @file_get_contents($file), true), $forgotten);
+
+    $temporary = $file . '.' . (function_exists('getmypid') ? getmypid() : mt_rand()) . '.tmp';
+    $encoded = json_encode(array('tables' => (object) $cache['tables'], 'missing' => array_values($cache['missing'])));
+
+    if (!is_string($encoded) || (@file_put_contents($temporary, $encoded, LOCK_EX) === false)) {
+        @unlink($temporary);
+        return null;
+    }
+
+    if (@rename($temporary, $file)) {
+        return $cache;
+    }
+
+    if (is_file($file) && @unlink($file) && @rename($temporary, $file)) {
+        return $cache;
+    }
+
+    @unlink($temporary);
+
+    return null;
+}
+
+// What pg_schema_has() knows in this request: the cache, the file it came
+// from ('' when there is no file to keep, see pg_schema_has()) and the tables
+// pg_schema_forget() dropped, which a merge with the file must not restore.
 function &pg_schema_cache_state()
 {
-    static $state = array('loaded' => false, 'file' => '', 'cache' => array('tables' => array(), 'missing' => array()));
+    static $state = array('loaded' => false, 'file' => '', 'cache' => array('tables' => array(), 'missing' => array()), 'forgotten' => array());
 
     return $state;
 }
@@ -670,6 +765,7 @@ function pg_schema_forget($table)
     $state = &pg_schema_cache_state();
 
     $state['cache'] = pg_schema_cache_forget($state['cache'], (string) $table);
+    $state['forgotten'][] = (string) $table;
 }
 
 /**
@@ -685,7 +781,7 @@ function pg_schema_cache_clear()
     }
 
     $state = &pg_schema_cache_state();
-    $state = array('loaded' => false, 'file' => '', 'cache' => array('tables' => array(), 'missing' => array()));
+    $state = array('loaded' => false, 'file' => '', 'cache' => array('tables' => array(), 'missing' => array()), 'forgotten' => array());
 }
 
 /**
@@ -755,20 +851,10 @@ function pg_schema_has($table, $column = null)
     }
 
     if ($state['file'] !== '') {
-        $directory = dirname($state['file']);
+        $written = pg_schema_cache_file_write($state['file'], $state['cache'], isset($state['forgotten']) ? $state['forgotten'] : array());
 
-        if (!is_dir($directory)) {
-            @mkdir($directory, 0755, true);
-        }
-
-        $temporary = $state['file'] . '.' . (function_exists('getmypid') ? getmypid() : mt_rand()) . '.tmp';
-
-        $encoded = json_encode(array('tables' => (object) $state['cache']['tables'], 'missing' => array_values($state['cache']['missing'])));
-
-        if (@file_put_contents($temporary, $encoded, LOCK_EX) !== false) {
-            if (!@rename($temporary, $state['file'])) {
-                @unlink($temporary);
-            }
+        if ($written !== null) {
+            $state['cache'] = $written;
         }
     }
 

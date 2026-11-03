@@ -33,6 +33,12 @@ if ($_POST) {
     $deleted = 0;
 
     foreach ((array) ($_POST['sms_campaigns'] ?? array()) as $id) {
+        // A nested list (sms_campaigns[][]=x) cast to int is 1: skipped, it
+        // would delete campaign 1.
+        if (!is_scalar($id)) {
+            continue;
+        }
+
         $id = (int) $id;
         $owner = db_value("SELECT created_by FROM sms_campaigns WHERE id = '" . $id . "'");
 
