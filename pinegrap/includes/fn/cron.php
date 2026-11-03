@@ -252,7 +252,7 @@ function pg_cron_due_again_stamp($now, $interval, $seconds)
  * Ask for a job to be due again in $seconds rather than after its interval:
  * a resumable pass that stopped at its budget with work left. Its run is
  * moved back now, and pg_cron_dispatch_finished() keeps that instead of
- * stamping the tick. Jobs that have waited longer still go first.
+ * stamping the tick. Jobs due longer still go first.
  *
  * @param string $name Catalogue name.
  * @param int $seconds
@@ -1090,10 +1090,14 @@ function pg_cron_lane($job)
  * The job each dispatch lane would run next. Pure: no database, no files.
  *
  * A lane is a concurrency class: while any job of a lane holds an unexpired
- * lock, that lane hands out nothing. Otherwise its candidate is the due job
- * that has waited longest - the smallest last_run_at, with the catalogue order
- * deciding a tie because the comparison is strict. A job is due once its
- * interval has passed since it last finished.
+ * lock, that lane hands out nothing. Otherwise its candidate is the job that
+ * has been due longest - the smallest last_run_at plus interval, with the
+ * catalogue order deciding a tie because the comparison is strict. A job is
+ * due once its interval has passed since it last finished. Due time rather
+ * than last run, as between lanes (pg_cron_lane_choice()): a resumable daily
+ * pass that asks to come back in a minute (pg_cron_due_again()) carries a
+ * stamp almost a day old, and compared on that it beat the hourly search
+ * index on every tick until the whole pass had ended.
  *
  * The lock check covers every dispatchable job in $jobs, $allowed or not: a
  * job switched off while it runs is still running, and its lane is still
@@ -1143,7 +1147,7 @@ function pg_cron_pick($jobs, $runs, $now, $allowed = null)
             continue;
         }
 
-        $due[$lane][$name] = $last_run;
+        $due[$lane][$name] = $last_run + (int) $job['interval'];
     }
 
     $pick = array('light' => null, 'heavy' => null);
@@ -1154,13 +1158,13 @@ function pg_cron_pick($jobs, $runs, $now, $allowed = null)
             continue;
         }
 
-        $selected_run = 0;
+        $selected_due = 0;
 
-        foreach ($due[$lane] as $name => $last_run) {
+        foreach ($due[$lane] as $name => $due_at) {
 
-            if (($pick[$lane] === null) || ($last_run < $selected_run)) {
+            if (($pick[$lane] === null) || ($due_at < $selected_due)) {
                 $pick[$lane] = $name;
-                $selected_run = $last_run;
+                $selected_due = $due_at;
             }
         }
     }
@@ -1459,25 +1463,27 @@ function pg_cron_dispatch_next_legacy()
             continue;
         }
 
-        $due[$name] = $last_run;
+        $due[$name] = $last_run + (int) $job['interval'];
     }
 
     if (!$due) {
         return '';
     }
 
-    // Longest waiting first, so a rotation forms by itself and nothing
-    // starves. Strict comparison keeps the catalogue order on a tie, which is
-    // what puts the SEO score job ahead of the structure job on a site where
-    // both were just switched on.
+    // Due longest first (last run plus interval), so a rotation forms by
+    // itself and nothing starves: compared on the last run alone, a resumable
+    // daily pass coming back every minute (pg_cron_due_again()) beat every
+    // shorter job until it had ended. Strict comparison keeps the catalogue
+    // order on a tie, which is what puts the SEO score job ahead of the
+    // structure job on a site where both were just switched on.
     $selected = '';
-    $selected_run = 0;
+    $selected_due = 0;
 
-    foreach ($due as $name => $last_run) {
+    foreach ($due as $name => $due_at) {
 
-        if (($selected === '') || ($last_run < $selected_run)) {
+        if (($selected === '') || ($due_at < $selected_due)) {
             $selected = $name;
-            $selected_run = $last_run;
+            $selected_due = $due_at;
         }
     }
 
