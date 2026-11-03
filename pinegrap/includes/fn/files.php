@@ -1868,6 +1868,49 @@ function pg_image_dimensions_label($width, $height)
     return round($width) . ' × ' . round($height) . ' px';
 }
 
+/**
+ * A file name's extension, lower-cased, read from the name: files.type is
+ * four characters wide, so it holds "woff" for a .woff2. A name with no dot,
+ * or one that ends in a dot, has no extension. Pure.
+ *
+ * @param string $name
+ * @return string
+ */
+function pg_file_name_extension($name)
+{
+    $name = (string) $name;
+    $dot = mb_strrpos($name, '.');
+
+    if ($dot === false) {
+        return '';
+    }
+
+    return mb_strtolower(mb_substr($name, $dot + 1));
+}
+
+/**
+ * The `files` condition that leaves out files in the Recycle Bin and in the
+ * folders under it: a design file sent there is no longer one of the site's
+ * design files until the bin's own restore brings it back.
+ *
+ * @param int[]|null $bin_folder_ids the bin and its sub-folders; read when null
+ * @return string " AND (...)" or ""
+ */
+function pg_design_files_bin_where($bin_folder_ids = null)
+{
+    if ($bin_folder_ids === null) {
+        $bin_folder_ids = function_exists('pg_recycle_bin_folder_ids') ? pg_recycle_bin_folder_ids() : array();
+    }
+
+    $ids = array_values(array_unique(array_map('intval', (array) $bin_folder_ids)));
+
+    if (count($ids) == 0) {
+        return '';
+    }
+
+    return ' AND (files.folder NOT IN (' . implode(', ', $ids) . '))';
+}
+
 // The name a panel user is shown by beside a change: the first and last name
 // of the user's contact (user.user_contact), else the username, as the
 // Workspace writes a person.

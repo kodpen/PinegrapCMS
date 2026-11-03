@@ -29,9 +29,12 @@ require_once(PG_FUNCTIONS_DIR . '/includes/forms/design_file_form.php');
 // "not found" screen instead of PHP notices from the unchecked row below or
 // an error page. The screen renames and deletes the file, so the record must
 // also be a design file stored under a plain name in the files folder: a
-// File Manager file opened by a hand-typed URL is not found either.
+// File Manager file opened by a hand-typed URL is not found either. A file
+// in the Recycle Bin is not listed and not found: its folder is not in the
+// Folder list, so a save would move it out of the bin, and only the bin's
+// own restore brings it back.
 $id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
-$stored_name = ($id > 0) ? (string) db_value("SELECT name FROM files WHERE (id = '" . $id . "') AND (design = '1')") : '';
+$stored_name = ($id > 0) ? (string) db_value("SELECT name FROM files WHERE (id = '" . $id . "') AND (design = '1')" . pg_design_files_bin_where()) : '';
 if (
     pg_design_file_name_unsafe($stored_name)
     || ($stored_name !== basename($stored_name))
@@ -43,7 +46,9 @@ $from = '';
 if(isset($_GET['from'])){
     $from = ($_GET['from'] ?? '');
 }
-if (empty($_POST['name'])) {
+// Any POST is a Save or a Delete, whatever the name box holds: an empty
+// name is refused below, and Delete does not need one.
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     $query = 
         "SELECT 
             files.name, 
@@ -57,7 +62,7 @@ if (empty($_POST['name'])) {
         FROM files 
         LEFT JOIN folder ON files.folder = folder.folder_id
         WHERE files.id = ?";
-    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
+    $result = db_q($query, array((string) $id)) or output_error('Query failed.');
     $row = mysqli_fetch_array($result);
     
     $file_name = $row['name'];
@@ -84,6 +89,12 @@ if (empty($_POST['name'])) {
         $output_file_name = h($file_name);
     }
     
+    // The kind comes from the name: files.type is cut to four characters.
+    $file_extension = pg_file_name_extension($file_name);
+
+    // The images the browser shows, the list's thumbnail kinds.
+    $preview_types = array('bmp', 'gif', 'jpg', 'jpeg', 'png', 'tif', 'tiff', 'webp');
+
     // Only set for images; other design files show neither.
     $output_thumbnail = '';
     $output_image_info = '';
@@ -91,7 +102,7 @@ if (empty($_POST['name'])) {
     if (!$on_disk) {
         $output_thumbnail = '<div class="col-12"><div class="alert theme-warning">' . lang('The file is recorded here but is not on the disk.') . '</div></div>';
 
-    } elseif ((mb_strtolower($file_type) == 'bmp') || (mb_strtolower($file_type) == 'gif') || (mb_strtolower($file_type) == 'jpg') || (mb_strtolower($file_type) == 'jpeg') || (mb_strtolower($file_type) == 'png') || (mb_strtolower($file_type) == 'tif') || (mb_strtolower($file_type) == 'tiff')) {
+    } elseif (in_array($file_extension, $preview_types, true)) {
         // Get the dimensions of the image.
         $image_size = @getimagesize(FILE_DIRECTORY_PATH . '/' . $file_name);
 
@@ -100,7 +111,7 @@ if (empty($_POST['name'])) {
 
         // A file that is not a readable image has no size to show.
         if ($image_size !== false) {
-            $output_image_info = ' | ' . $image_size[0] . 'px - ' .  $image_size[1] . 'px';
+            $output_image_info = ' | ' . h(pg_image_dimensions_label($image_size[0], $image_size[1]));
         }
 
     }
@@ -111,19 +122,10 @@ if (empty($_POST['name'])) {
     $optimize_button = '';
     $image_buttons = '';
 
-    $file['type'] = mb_strtolower($row['type']);
-    if ($on_disk && (
-            ($file['type'] == 'jpg')
-            or ($file['type'] == 'jpeg')
-            or ($file['type'] == 'png')
-            or ($file['type'] == 'gif')
-            or ($file['type'] == 'bmp')
-            or ($file['type'] == 'tiff')
-            or ($file['type'] == 'webp')
-        )){
+    if ($on_disk && in_array($file_extension, array('jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp'), true)) {
              if (!$optimized &&(extension_loaded('imagick') || extension_loaded('gd'))) {
                 $optimize_button =
-                    '<a class="btn btn-link pg-link-secondary py-0 mb-3" href="optimize.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-rocket bi-me-2"></i>' . lang('Optimize this image') . '</a>';
+                    '<a class="btn btn-link pg-link-secondary py-0 mb-3" href="optimize.php?id=' . h($id) . get_token_query_string_field() . h('&send_to=' . urlencode(PATH . SOFTWARE_DIRECTORY . '/view_design_files.php')) . '"><i class="bi bi-rocket bi-me-2"></i>' . lang('Optimize this image') . '</a>';
             }
             $image_buttons = $optimize_button . ' <button type="button" class="btn btn-link pg-link-secondary py-0 mb-3" data-pg-image-edit="' . h($file_name) . '"><i class="bi bi-flower2 bi-me-2"></i>' . lang(array('string'=>'Edit this image with {var:1}','vars'=>array(lang('Image Editor')) )) . '</button>' . pg_image_editor_includes();
     }
@@ -139,9 +141,6 @@ if (empty($_POST['name'])) {
     // Convert file size to a user friendly output.
     $output_file_size = convert_bytes_to_string($file_size);
     
-    // get file extension
-    $file_extension = mb_strtolower(mb_substr($file_name, mb_strrpos($file_name, '.') + 1));
-    
     // Images and other formats without an editor get no edit button.
     $output_edit_file_button = '';
 
@@ -154,20 +153,20 @@ if (empty($_POST['name'])) {
         if ($file_extension == 'css') {
             // check to see if this is a system theme
             $query = "SELECT COUNT(id) FROM system_theme_css_rules WHERE file_id = ?";
-            $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
+            $result = db_q($query, array((string) $id)) or output_error('Query failed.');
             $row = mysqli_fetch_row($result);
         
             // if this is a system theme then output the edit theme button
             if ($row[0] > 0) {
                 $edit_file_button_value = 'Edit Theme';
                 $edit_file_button_label = lang('Edit Theme');
-                $edit_file_button_location = 'edit_theme_css.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri()) . '&from=edit_design_file';
+                $edit_file_button_location = 'edit_theme_css.php?id=' . urlencode($id) . '&send_to=' . urlencode(get_request_uri()) . '&from=edit_design_file';
                 $system_theme = true;
             } else {
                 // else output the edit css button
                 $edit_file_button_value = 'Edit CSS';
                 $edit_file_button_label = lang('Edit CSS');
-                $edit_file_button_location = 'edit_theme_css.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri()) . '&from=edit_design_file';
+                $edit_file_button_location = 'edit_theme_css.php?id=' . urlencode($id) . '&send_to=' . urlencode(get_request_uri()) . '&from=edit_design_file';
                 $system_theme = false;
             }
         
@@ -175,7 +174,7 @@ if (empty($_POST['name'])) {
             // else this is a JS file so output the JS label and location
             $edit_file_button_value = 'Edit JavaScript';
             $edit_file_button_label = lang('Edit JavaScript');
-            $edit_file_button_location = 'edit_javascript.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri());
+            $edit_file_button_location = 'edit_javascript.php?id=' . urlencode($id) . '&send_to=' . urlencode(get_request_uri());
         }
     
         $output_edit_file_button = '<button type="button" value="' . $edit_file_button_value . '" class="btn my-1 btn-solid theme-primary" OnClick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/' . $edit_file_button_location)) . '\'"><span class="material-icons me-3">edit</span><span class="pg-btn-label">' . $edit_file_button_label . '</span></button>';
@@ -186,7 +185,7 @@ if (empty($_POST['name'])) {
     elseif (in_array($file_extension, array('json', 'txt', 'svg', 'xml'))) {
         $edit_file_button_value = 'Edit ' . strtoupper($file_extension);
         $edit_file_button_label = lang( array('string'=>'Edit {var:1}','vars'=>strtoupper($file_extension)) );
-        $edit_file_button_location = 'editor_edit_file.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri()) . '&from=edit_design_file';
+        $edit_file_button_location = 'editor_edit_file.php?id=' . urlencode($id) . '&send_to=' . urlencode(get_request_uri()) . '&from=edit_design_file';
     
         $output_edit_file_button = '<button type="button" value="' . $edit_file_button_value . '" class="btn my-1 btn-solid theme-primary" OnClick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/' . $edit_file_button_location)) . '\'"><span class="material-icons me-3">edit</span><span class="pg-btn-label">' . $edit_file_button_label . '</span></button>';
     }
@@ -194,7 +193,7 @@ if (empty($_POST['name'])) {
     // A CSS file shows the Theme switch; a system theme cannot change it.
     $theme_row = null;
 
-    if (mb_strtolower($file_type) == 'css') {
+    if ($file_extension == 'css') {
         $theme_row = array('checked' => ($theme == 1), 'disabled' => ($system_theme == true));
     }
     
@@ -232,7 +231,7 @@ if (empty($_POST['name'])) {
                 )) . '
                 <form action="edit_design_file.php" method="post">
                     ' . get_token_field() . '
-                    <input type="hidden" name="id" value="' . h($_GET['id']) . '"><input type="hidden" name="from" value="' . h($from) . '">
+                    <input type="hidden" name="id" value="' . h($id) . '"><input type="hidden" name="from" value="' . h($from) . '">
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
                     <div class="row">
                         <div class="col-12">
@@ -279,7 +278,8 @@ if (empty($_POST['name'])) {
     // above checked.
     $_POST['id'] = $id;
 
-    $name = prepare_file_name($_POST['name'] ?? '');
+    $name_posted = is_scalar($_POST['name'] ?? null) ? trim((string) $_POST['name']) : '';
+    $name = prepare_file_name($name_posted);
     
     // if file was selected for delete
     if (!empty($_POST['delete']))
@@ -316,8 +316,15 @@ if (empty($_POST['name'])) {
     {
         // A blank name would become 'file' in prepare_file_name() and break
         // every link to the stored file.
-        if (trim((string) ($_POST['name'] ?? '')) === '') {
+        if ($name_posted === '') {
             output_error(lang('Please enter a name.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+
+        // A new name the server would run (.php, .htaccess, ...) is refused
+        // as an upload of it is, before prepare_file_name() quietly turns
+        // its dot into an underscore and breaks every link to the file.
+        if (($name_posted !== $stored_name) && pg_upload_name_blocked($name_posted)) {
+            output_error(h(pg_upload_blocked_message($name_posted)) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
 
         // if file name is invalid, output error
@@ -329,10 +336,8 @@ if (empty($_POST['name'])) {
             output_error( lang(array('string'=>'{var:1} already exists. Please choose a different file name.','vars'=>array(h($name)) )) . '  <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
 
-        // get file extension
-        $array_file_extension = explode('.', $name);
-        $size_of_array = count($array_file_extension);
-        $file_extension = $array_file_extension[$size_of_array - 1];
+        // A name without a dot has no extension, so no type.
+        $file_extension = pg_file_name_extension($name);
 
         $sql_theme = "";
 
