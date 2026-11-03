@@ -6489,6 +6489,7 @@
     "Too many pairing codes were made in the last hour. Please wait and try again.": "Son bir saatte çok fazla eşleştirme kodu oluşturuldu. Lütfen bekleyip tekrar deneyin.",
     "Too many paragraphs were changed at once. Save at most {var:1} paragraphs at a time.": "Bir seferde çok fazla paragraf değişti. Her seferinde en çok {var:1} paragraf kaydedin.",
     "Too many password reset requests. Please wait {var:1} minutes and try again.": "Çok fazla şifre sıfırlama isteği. Lütfen {var:1} dakika bekleyip tekrar deneyin.",
+    "Too many products are selected. Select fewer products and try again.": "Çok fazla ürün seçildi. Daha az ürün seçip yeniden deneyin.",
     "Too many requests from your address. Please wait a moment and try again.": "Adresinizden çok fazla istek geldi. Lütfen biraz bekleyip tekrar deneyin.",
     "Too many return requests in a short time. Please try again later.": "Kısa sürede çok fazla iade isteği yapıldı. Lütfen daha sonra yeniden deneyin.",
     "Too many signed-in devices": "Çok fazla açık cihaz",

@@ -4,7 +4,6 @@
  *
  * Panel actions - the rows of the big list screens, one page at a time.
  *
- *   product_list_rows          a page of the products list (view_products.php)
  *   commission_list_rows       a page of the commissions list
  *                              (view_commissions.php)
  *   commission_profile_list_rows
@@ -20,10 +19,11 @@
  *                              (mail_queue.php?tab=sms)
  *   list_table_rows            a batch of rows of a list drawn by the list
  *                              table driver (includes/fn/list_table.php):
- *                              the pages, users, contacts and
- *                              submitted forms lists (view_pages.php,
- *                              view_users.php, view_contacts.php,
- *                              view_submitted_forms.php)
+ *                              the pages, users, contacts,
+ *                              submitted forms and products lists
+ *                              (view_pages.php, view_users.php,
+ *                              view_contacts.php, view_submitted_forms.php,
+ *                              view_products.php)
  *   booking_list_rows          a page of the bookings agenda's list view
  *                              (view_bookings.php?view=list)
  *
@@ -41,41 +41,6 @@
 
 if (!defined('PG_PANEL_ACTIONS')) {
     exit;
-}
-
-function pg_panel_product_list_rows($request, $action)
-{
-    // Kept global: helpers read the session user through `global $user`;
-    // see includes/panel/actions.php.
-    global $user;
-
-    // The general gate has checked the session (any_role). The screen's own
-    // gate is validate_ecommerce_access(), answered here in JSON.
-    $user = validate_user();
-
-    if (((int) $user['role'] > 2) && ($user['manage_ecommerce'] != true)) {
-        http_response_code(403);
-        respond(array('status' => 'error', 'message' => lang('Access denied')));
-    }
-
-    validate_token();
-
-    // The list's cells are the product screen's (pg_pb_list_cells()).
-    require_once(PG_FUNCTIONS_DIR . '/product_builder.php');
-    require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_list.php');
-
-    // The sort is the one the screen kept in the session.
-    $page = pg_product_list_page(
-        pg_product_list_site_view(pg_product_list_filter_name($request['filter'] ?? '')),
-        pg_list_search_terms($request['search'] ?? ''),
-        pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100));
-
-    if ($page === false) {
-        http_response_code(500);
-        respond(array('status' => 'error', 'message' => lang('Query failed.')));
-    }
-
-    return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
 }
 
 // Both commission screens' gate: validate_ecommerce_access(), answered in
