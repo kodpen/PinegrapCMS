@@ -1035,6 +1035,12 @@ function pg_order_complete($order_id, array $values, array $documents = array(),
         $values['total'],
         array('city' => $order['billing_city'], 'state' => $order['billing_state'], 'zip_code' => $order['billing_zip_code'], 'country' => $order['billing_country']));
 
+    // A page experiment whose goal is an order counts it for the variant the
+    // buyer's pg_exp cookie holds; a payment service's own request has none.
+    if (function_exists('pg_experiment_goal')) {
+        pg_experiment_goal('order');
+    }
+
     // The activity log line and the new_order notification.
     pg_order_complete_announce(
         $order_id,

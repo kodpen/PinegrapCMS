@@ -1859,6 +1859,10 @@ if ($liveform->check_form_errors() == false) {
         $result = db_q($query, array((string) $form_name, (string) $_SESSION['software']['visitor_id'])) or output_error('Query failed.');
     }
 
+    // A page experiment whose goal is this form counts it for the visitor's
+    // variant, outside the visitor tracking switch (includes/fn/experiments.php).
+    pg_experiment_goal('form', array('page_id' => (int) $_POST['page_id']));
+
     // Check if there are auto e-mail campaigns that should be created based on this custom form being submitted.
     create_auto_email_campaigns(array(
         'action' => 'custom_form_submitted',

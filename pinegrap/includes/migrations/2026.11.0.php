@@ -148,6 +148,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_bookings();                // 11.0.157
 	upgrade_2026_11_0_form_fee();                // 11.0.158
 	upgrade_2026_11_0_store_credit();            // 11.0.159
+	upgrade_2026_11_0_user_disabled();           // 11.0.160
 
 }
 
@@ -4716,6 +4717,31 @@ function upgrade_2026_11_0_imports() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Import: exports of WordPress, WooCommerce and Shopify can be brought in from a file; every run keeps the list of what it made, so it can be undone for 30 days.');
+
+}
+
+// Disabled users and imported authors (2026.11.0, 11.0.160; includes/fn/auth.php,
+// includes/import/write_user.php). user.user_disabled_at is 0 for an enabled
+// account, else the moment it was disabled: such an account matches no
+// credential (password, reset link, provider, passkey, API key) and a live
+// session ends at its next request. A stamp, not a flag, so "since when"
+// costs nothing. Every account on a running site stays enabled.
+// import_items.kind gains 'user' for the authors a WordPress import makes,
+// so the undo can remove one that nobody has taken over.
+function upgrade_2026_11_0_user_disabled() {
+
+	install_add_column('user', 'user_disabled_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	// Widened only when the value is missing, so a second run rebuilds nothing.
+	$info = install_column_info('import_items', 'kind');
+
+	if (is_array($info) && (strpos((string) $info['Type'], "'user'") === false)) {
+		install_modify_column('import_items', 'kind', "ENUM('record','page','file','comment','contact','product','redirect','user') NOT NULL DEFAULT 'record'");
+	} else {
+		install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'import_items.kind user')));
+	}
+
+	install_note('Users: an account can be disabled on the user screen; a disabled account cannot sign in. Every existing account stays enabled.');
 
 }
 

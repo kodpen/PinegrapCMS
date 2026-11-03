@@ -657,6 +657,11 @@ function pg_page_list_rows($view, $pages)
     $check = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
     $rows = array();
 
+    // Experiments: a chip on a page with an open one and on its variant
+    // draft; the sheet's button for designers on a designed page.
+    $experiment_states = pg_experiment_page_states(array_column($pages, 'page_id'));
+    $experiments_open = pg_experiment_sheet_ready() && defined('USER_ROLE') && ((int) USER_ROLE <= 1);
+
     foreach ($pages as $page) {
         $id = (int) $page['page_id'];
 
@@ -675,9 +680,10 @@ function pg_page_list_rows($view, $pages)
             pg_list_cell('<input class="check" type="checkbox" name="pages[]" value="' . $id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($page['page_name'])))) . '" />', 'select-all align-middle text-start'),
             pg_list_cell(
                 '<button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . h(escape_javascript($edit_url)) . '\'"><i class="bi bi-pencil"></i></button>'
-                . '<button type="button" class="m-1 btn-data-control btn btn-outline theme-secondary border-2" title="' . lang('Preview') . '" onclick="window.location.href=\'' . h(escape_javascript($link_url)) . '\'"><i class="bi bi-link"></i></button>',
+                . '<button type="button" class="m-1 btn-data-control btn btn-outline theme-secondary border-2" title="' . lang('Preview') . '" onclick="window.location.href=\'' . h(escape_javascript($link_url)) . '\'"><i class="bi bi-link"></i></button>'
+                . (($experiments_open && pg_page_is_visual_design($page)) ? '<a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" title="' . h(lang('Experiments')) . '" aria-label="' . h(lang('Experiments')) . '" href="page_experiments.php?page_id=' . $id . '"><i class="bi bi-signpost-split" aria-hidden="true"></i></a>' : ''),
                 'align-middle text-start action-buttons'),
-            pg_list_cell($home . h($page['page_name']) . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" data-pg-seo-bar="page:' . (int) $page['page_id'] . '" aria-label="' . h(pg_seo_link_name($page)) . '" title="' . lang('SEO Detail') . '" data-seo-url="' . $seo_url . '">' . pg_seo_render_bar($page) . '</a>', 'align-middle chart_label position-relative'),
+            pg_list_cell($home . h($page['page_name']) . pg_experiment_chip_html($experiment_states[$id] ?? null) . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" data-pg-seo-bar="page:' . (int) $page['page_id'] . '" aria-label="' . h(pg_seo_link_name($page)) . '" title="' . lang('SEO Detail') . '" data-seo-url="' . $seo_url . '">' . pg_seo_render_bar($page) . '</a>', 'align-middle chart_label position-relative'),
         );
 
         if ($view['custom_form']) {

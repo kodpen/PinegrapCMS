@@ -67680,7 +67680,7 @@ const StyleDesigner = (function () {
         return 'pg_proto_pos_' + ((_design && _design.styleId) ? _design.styleId : 'new');
     }
 
-    function _sdProtoSaved() {
+    function _sdProtoLocal() {
         try {
             var raw = window.localStorage.getItem(_sdProtoStoreKey());
             var parsed = raw ? JSON.parse(raw) : null;
@@ -67690,10 +67690,40 @@ const StyleDesigner = (function () {
         }
     }
 
+    function _sdProtoLocalWrite(saved) {
+        try {
+            if (Object.keys(saved).length) window.localStorage.setItem(_sdProtoStoreKey(), JSON.stringify(saved));
+            else window.localStorage.removeItem(_sdProtoStoreKey());
+        } catch (e) {}
+    }
+
+    // Where frames and chips stand: the places shared on the design
+    // (_pgTabProto, style.style_tab_layout), then this browser's on top.
+    function _sdProtoSaved() {
+        var saved = window.PGProtoHotspots.places(_pgTabProto);
+        var local = _sdProtoLocal();
+        Object.keys(local).forEach(function (id) { saved[id] = local[id]; });
+        return saved;
+    }
+
+    // A frame of a saved tab or a shared component moved by an operator who
+    // may arrange the tabs is shared with everyone opening the design, its
+    // own place in this browser dropped; chips, unsaved tabs and a
+    // content-level operator's moves stay in the browser.
     function _sdProtoKeep(item) {
-        var saved = _sdProtoSaved();
-        saved[item.id] = { x: item.x, y: item.y };
-        try { window.localStorage.setItem(_sdProtoStoreKey(), JSON.stringify(saved)); } catch (e) {}
+        var local = _sdProtoLocal();
+        var key = window.PGProtoHotspots.placeKey(item.id);
+        if (key && _pgTabLayoutEditable() && _design && _design.styleId) {
+            _pgTabProto[key] = { x: Math.round(item.x), y: Math.round(item.y) };
+            if (local[item.id]) {
+                delete local[item.id];
+                _sdProtoLocalWrite(local);
+            }
+            _pgTabsLayoutSave();
+            return;
+        }
+        local[item.id] = { x: item.x, y: item.y };
+        _sdProtoLocalWrite(local);
     }
 
     function _sdProtoEl(tag, cls, text) {
@@ -71028,6 +71058,7 @@ const StyleDesigner = (function () {
     var _PG_TAB_GROUP_COLORS = ['grey', 'blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange'];
     var _pgTabGroups = {};            // gid → { name, color }
     var _pgTabGroupsCollapsed = {};   // gid → true, this browser only
+    var _pgTabProto = {};             // 'p<page_id>' / 's<id>' → { x, y }: Prototype view frames
     var _pgTabLayoutTimer = 0;
     var _pgTabDrag = null;
     var _pgTabDragClickBlock = 0;
@@ -71077,8 +71108,12 @@ const StyleDesigner = (function () {
     // named ones.
     function _pgTabsApplyLayout(layout) {
         _pgTabGroups = {};
+        _pgTabProto = {};
         _pages.forEach(function (p) { p.tabGroup = ''; });
         if (!_pgTabLayoutReady() || !layout || typeof layout !== 'object') return;
+        if (layout.proto && typeof layout.proto === 'object') {
+            Object.keys(layout.proto).forEach(function (k) { _pgTabProto[k] = layout.proto[k]; });
+        }
         var groups = (layout.groups && typeof layout.groups === 'object') ? layout.groups : {};
         Object.keys(groups).forEach(function (gid) {
             var g = groups[gid];
@@ -71139,7 +71174,9 @@ const StyleDesigner = (function () {
             }
             tabs.push(t);
         });
-        return { v: 1, groups: groups, tabs: tabs };
+        var out = { v: 1, groups: groups, tabs: tabs };
+        if (Object.keys(_pgTabProto).length) out.proto = _pgTabProto;
+        return out;
     }
 
     // `now`: no debounce (the editor is about to navigate).
@@ -73678,6 +73715,12 @@ const StyleDesigner = (function () {
         var list = keys.map(_pgPageByKey).filter(function (p) {
             return p && p.access !== 'locked' && !p.pickedPending && (!!p.page_draft !== on);
         });
+        // An open experiment's variant stays a draft; the server refuses it too.
+        var held = on ? [] : list.filter(_pgExperimentHeld);
+        if (held.length) {
+            list = list.filter(function (p) { return !_pgExperimentHeld(p); });
+            if (!list.length) { sdToast(esc(_sdT('This page is a variant in an experiment: it stays a draft until the experiment ends.')), 'info', 4000); return; }
+        }
         // The home page stays on the site; the server would refuse it too.
         var home = on ? list.filter(function (p) { return p.page_home; }) : [];
         if (on) list = list.filter(function (p) { return !p.page_home; });
@@ -73786,7 +73829,53 @@ const StyleDesigner = (function () {
         box.disabled = home || waits;
         box.title    = home ? _sdT('The home page stays on the site.')
                      : (waits ? _sdT('The page stays a draft until its publish time.') : '');
+        if (_pgExperimentHeld(p)) {
+            box.disabled = true;
+            box.title = _sdT('This page is a variant in an experiment: it stays a draft until the experiment ends.');
+        }
         _pgSyncScheduleFields(p, home);
+    }
+
+    // ── Experiments ──
+    // A page in an A/B experiment (page_experiments.php): a chip in the top
+    // bar says so - the experiment's status on the live page, "Variant of
+    // <page>" on its variant draft - and opens the Experiments sheet. A
+    // variant stays a draft while its experiment is open; the server refuses
+    // its publish and its bin too (pg_experiment_variant_hold_message()).
+    // The states are read when the editor opens.
+    function _pgExperimentOf(p) {
+        var ex = _design && _design.experiments;
+        if (!ex || !ex.pages || !p || !(p.page_id > 0)) return null;
+        return ex.pages[String(p.page_id)] || null;
+    }
+    function _pgExperimentHeld(p) { var st = _pgExperimentOf(p); return !!(st && st.held); }
+    function _pgExperimentSync(a) {
+        var ex = (_design && _design.experiments) || {};
+        var st = _pgExperimentOf(a);
+        var labels = { running: _sdT('Experiment running'), paused: _sdT('Experiment paused'), draft: _sdT('Experiment set up') };
+        var themes = { running: 'theme-success', paused: 'theme-warning', draft: 'theme-secondary' };
+        var text = (st && labels[st.status])
+            ? (st.role === 'variant' ? _sdT('Variant of {var:1}').replace('{var:1}', st.live_page_name) : labels[st.status]) : '';
+        // The sheet belongs to the live page; a variant's chip opens it too.
+        var sheet = function (id) { return (ex.ready && id > 0) ? ex.url + id : ''; };
+        var chip = document.getElementById('sd-experiment-chip');
+        if (chip) {
+            var url = text ? sheet(st.live_page_id) : '';
+            chip.className = 'badge text-decoration-none ' + (text ? themes[st.status] : 'd-none');
+            chip.textContent = text;
+            chip.title = text ? labels[st.status] : '';
+            if (url) chip.setAttribute('href', url); else chip.removeAttribute('href');
+        }
+        var link = document.getElementById('sd-page-experiments');
+        var status = document.getElementById('sd-page-experiment-status');
+        if (link) {
+            var own = (a && !a.page_draft) ? sheet(a.page_id) : (st ? sheet(st.live_page_id) : '');
+            link.classList.toggle('disabled', !own);
+            if (own) link.setAttribute('href', own); else link.removeAttribute('href');
+        }
+        if (status) {
+            status.textContent = text ? text : ((a && a.page_draft) ? _sdT('A draft is not on the site: it can be a variant, not the page tested.') : '');
+        }
     }
 
     // ── Scheduled publishing ──
@@ -73933,10 +74022,11 @@ const StyleDesigner = (function () {
         // Publish puts it on. A page on the site has one, Publish.
         var pub = document.getElementById('sd-publish-page');
         if (pub) {
-            var both = draft && _pgDraftsCanChange() && !!a && !a.pickedPending;
+            var both = draft && _pgDraftsCanChange() && !!a && !a.pickedPending && !_pgExperimentHeld(a);
             pub.classList.toggle('d-none', !both);
             btn.classList.toggle('sd-publish-solo', both);
         }
+        _pgExperimentSync(a);
         var more = document.querySelector('.sd-publish-more');
         if (!more) return;
         var anyDraft = _pages.some(function (p) { return !!p.page_draft; });
@@ -73946,7 +74036,7 @@ const StyleDesigner = (function () {
             if (b && b.parentNode) b.parentNode.classList.toggle('d-none', !on);
         };
         show('page-draft',   !!a && !draft && !a.page_home && !a.pickedPending);
-        show('page-publish', draft);
+        show('page-publish', draft && !_pgExperimentHeld(a));
         show('all-draft',    anyLive);
         show('all-publish',  anyDraft);
     }
