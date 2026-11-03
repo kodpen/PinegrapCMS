@@ -22,7 +22,7 @@ description: Plan for the Marketplace template (pinegrap-market): makers' shops 
 
 - 2 Public pages: `pages_public.php` (home, categories, how it works, sell with us, about, FAQ, gift guide).
 
-- 3 Shop: `shop.php` (category and maker groups, `shop`, product, cart, checkout, order, `email_order`).
+- 3 In progress. Shop: `shop.php`, `cart_link`; group keys = category/maker keys; uses Launch's `$mail_*`, `maker_band`.
 
 - 4 Makers: `sellers.php` (`seller_new` with the Sellers collection and samples, `sellers` with filters, `seller` record page with reviews, the home's list widgets).
 
