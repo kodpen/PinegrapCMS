@@ -3609,6 +3609,14 @@ function get_system_status_checks()
         $storage_recent = pg_os_health_recent(time());
         $storage_move = pg_os_health_move_failures(pg_file_move_state_normalize(json_decode((string) pg_config_text('object_storage_move'), true)), pg_file_move_attempts());
 
+        // Where the uploaded files are, a line under every state of the tile.
+        $storage_usage = pg_file_storage_usage();
+        $storage_name = pg_os_store_name(pg_os_settings());
+        $storage_where = array(
+            array('label' => lang(array('string' => 'On the disk: {var:1} files ({var:2})', 'vars' => array(pg_format_number($storage_usage['local_files'], 0), convert_bytes_to_string($storage_usage['local_bytes'], 1)))), 'state' => 'ok', 'when' => ''),
+            array('label' => lang(array('string' => 'In {var:1}: {var:2} files ({var:3})', 'vars' => array($storage_name, pg_format_number($storage_usage['stored_files'], 0), convert_bytes_to_string($storage_usage['stored_bytes'], 1)))), 'state' => 'ok', 'when' => ''),
+        );
+
         if ($storage_recent['count'] >= pg_os_health_threshold()) {
             $output .= $makeIcon(
                 'bi-cloud-slash',
@@ -3617,7 +3625,7 @@ function get_system_status_checks()
                 'Calls to the object storage failed in the last hour. Files already there are not served until it answers again.',
                 lang(array('string' => '{var:1} failed in 1 hour', 'vars' => pg_format_number($storage_recent['count'], 0))),
                 $storage_href,
-                array(array('label' => $storage_recent['message'], 'state' => 'fail', 'when' => ''))
+                array_merge(array(array('label' => $storage_recent['message'], 'state' => 'fail', 'when' => '')), $storage_where)
             );
         } elseif ($storage_move['given_up'] > 0) {
             $storage_detail = array();
@@ -3634,7 +3642,7 @@ function get_system_status_checks()
                 'Some files could not be moved to the object storage after three attempts and stay on the disk. The Site Log names each one.',
                 lang(array('string' => '{var:1} left on the disk', 'vars' => pg_format_number($storage_move['given_up'], 0))),
                 $storage_href,
-                $storage_detail
+                array_merge($storage_detail, $storage_where)
             );
         } else {
             $output .= $makeIcon(
@@ -3645,7 +3653,8 @@ function get_system_status_checks()
                 ($storage_move['failing'] > 0)
                     ? lang(array('string' => '{var:1} being retried', 'vars' => pg_format_number($storage_move['failing'], 0)))
                     : lang('Reachable'),
-                $storage_href
+                $storage_href,
+                $storage_where
             );
         }
     }

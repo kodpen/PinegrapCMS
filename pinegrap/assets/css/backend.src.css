@@ -1089,8 +1089,15 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
 .table {
   --bs-table-bg: var(--bs-card-bg);
 }
+/* A table in a card starts at the card's edge (the 3rem of .table is for
+   tables on the page), and .mb-0 lets an edge-to-edge table in a
+   card-body p-0 sit on the card's bottom. */
 .card .table {
+  margin-top: 0;
   margin-bottom: 1.5rem !important;
+}
+.card .table.mb-0 {
+  margin-bottom: 0 !important;
 }
 
 .table > :not(caption) > * > * {
@@ -11240,6 +11247,18 @@ body.pg-side-panel-open .pg-chat-launcher {
 .pg-sale-status { display: flex; flex-direction: column; gap: 1rem; }
 @media (min-width: 1024px) {
   .pg-sale-status { position: sticky; top: 3.3rem; }
+}
+/* Database Engine: the side column sticks beside the long table list, but
+   it is taller than a short window, so it scrolls inside itself rather than
+   leaving its lower cards out of reach until the end of the page. */
+@media (min-width: 1024px) {
+  .pg-engine-side {
+    position: sticky;
+    top: 3.3rem;
+    max-height: calc(100vh - 4.3rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
 }
 .pg-sale-total { padding: 1rem 1rem .85rem; }
 .pg-sale-total-label {

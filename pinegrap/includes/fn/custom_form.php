@@ -2470,7 +2470,9 @@ function pg_cf_validation_script()
          . 'form.addEventListener("submit",function(e){'
          . 'if(e.submitter&&e.submitter.hasAttribute("formnovalidate"))return;'
          . 'if(!form.checkValidity()){e.preventDefault();e.stopPropagation();'
-         . 'var bad=form.querySelector(":invalid");if(bad&&bad.focus)bad.focus();}'
+         // Controls only: a <fieldset> holding an invalid control (a step,
+         // a box group) matches :invalid too and takes no focus.
+         . 'var bad=form.querySelector("input:invalid,select:invalid,textarea:invalid");if(bad&&bad.focus)bad.focus();}'
          . 'form.classList.add("was-validated");},false);'
          // An image field (data-pg-image-preview) shows the chosen picture
          // below itself before the form is sent.

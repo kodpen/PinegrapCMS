@@ -187,20 +187,25 @@ function pg_a11y_statement_limits($summary, $rules)
 /**
  * What the report holds for the statement.
  *
- * @return array summary, error_pages, pages, last_run
+ * @return array summary, error_pages, pages (checked), scope_pages, nightly, last_run
  */
 function pg_a11y_statement_data()
 {
     require_once(PG_FUNCTIONS_DIR . '/includes/fn/a11y.php');
 
     $runs = function_exists('pg_cron_health_last_runs') ? pg_cron_health_last_runs() : array();
+    // The pages the last full pass rendered: a page it could not render was
+    // not checked and is not claimed.
+    $pass = pg_a11y_pass_record(pg_config_text('a11y_last_pass'), count(pg_a11y_pages()));
 
     return array(
         'summary'     => pg_a11y_report_summary(),
         'error_pages' => (int) db_value(
             "SELECT COUNT(DISTINCT entity_id) FROM seo_issue
             WHERE (entity_type = 'page') AND (LEFT(code, 5) = 'a11y_') AND (severity = 'error')"),
-        'pages'       => count(pg_a11y_pages()),
+        'pages'       => $pass['checked'],
+        'scope_pages' => $pass['pages'],
+        'nightly'     => function_exists('pg_cron_job_is_enabled') && pg_cron_job_is_enabled('seo_a11y_job'),
         'last_run'    => isset($runs['seo_a11y_job']) ? (int) $runs['seo_a11y_job'] : 0,
     );
 }
@@ -232,9 +237,12 @@ function pg_a11y_statement_parts($settings, $data, $rules, $site)
 
     $organisation = ($settings['organisation'] !== '') ? $settings['organisation'] : $site;
 
+    $scope_pages = isset($data['scope_pages']) ? (int) $data['scope_pages'] : (int) $data['pages'];
+
     return array(
-        'verdict' => $verdict,
-        'rows'    => $rows,
+        'verdict'    => $verdict,
+        'rows'       => $rows,
+        'assessment' => pg_a11y_assessment_text((int) $data['pages'], $scope_pages, !empty($data['nightly'])),
         'tokens'  => array(
             '__a11y_organisation' => $organisation,
             '__a11y_scope'        => ($settings['scope'] !== '') ? $settings['scope'] : $site,
@@ -249,6 +257,31 @@ function pg_a11y_statement_parts($settings, $data, $rules, $site)
             '__limit_total'       => (string) count($rows),
         ),
     );
+}
+
+/**
+ * The statement's "Assessment approach" sentence: the pages the last full
+ * pass checked (of how many, when it could not render some), and "every
+ * night" only while the nightly job is on.
+ *
+ * @param int  $checked Pages the last full pass checked.
+ * @param int  $pages   Pages the report covers.
+ * @param bool $nightly The nightly job is switched on.
+ * @return string plain text
+ */
+function pg_a11y_assessment_text($checked, $pages, $nightly)
+{
+    $rest = ' ' . lang('An automatic check covers only part of each criterion; the rest is reviewed by people.');
+
+    if ($checked < $pages) {
+        return ($nightly
+            ? lang(array('string' => 'Self-evaluation with an automatic check of {var:1} of {var:2} published pages every night.', 'vars' => array($checked, $pages)))
+            : lang(array('string' => 'Self-evaluation with an automatic check of {var:1} of {var:2} published pages.', 'vars' => array($checked, $pages)))) . $rest;
+    }
+
+    return ($nightly
+        ? lang(array('string' => 'Self-evaluation with an automatic check of {var:1} published pages every night.', 'vars' => array($pages)))
+        : lang(array('string' => 'Self-evaluation with an automatic check of {var:1} published pages.', 'vars' => array($pages)))) . $rest;
 }
 
 /**
@@ -315,7 +348,7 @@ function pg_a11y_statement_html($parts)
         . ($flags['has_contact'] ? $p($t['__a11y_contact']) : '')
         . ($flags['has_feedback'] ? $p($t['__a11y_feedback']) : '')
         . '<h2>' . h(lang('Assessment approach')) . '</h2>'
-        . $p(lang(array('string' => 'Self-evaluation with an automatic check of {var:1} published pages every night. An automatic check covers only part of each criterion; the rest is reviewed by people.', 'vars' => array($t['__a11y_pages']))))
+        . $p($parts['assessment'])
         . ($flags['has_enforcement'] ? '<h2>' . h(lang('Enforcement procedure')) . '</h2>' . $p($t['__a11y_enforcement']) : '')
         . '<h2>' . h(lang('Date')) . '</h2>'
         . $p(lang(array('string' => 'This statement was prepared on {var:1}.', 'vars' => array($t['__a11y_date']))))

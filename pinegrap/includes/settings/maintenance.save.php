@@ -545,4 +545,34 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                 ? lang('The storage accepted, returned and deleted the test file.')
                 : lang(array('string' => 'The storage test failed: {var:1}', 'vars' => array(h($object_storage_test['message'])))));
         }
+
+        // The Files buttons, after the settings they work with were saved.
+        // A start in either direction begins a fresh walk at once: the
+        // direction's cursor, rest and failures are cleared, so files left
+        // behind by an earlier walk are tried again. Pause and resume keep
+        // the walk where it is.
+        $object_storage_action = (string) post_value('object_storage_files_action');
+        $object_storage_value = ($object_storage_action !== '') ? pg_file_storage_mode_after(pg_config_text('object_storage_files'), $object_storage_action) : null;
+
+        if (($object_storage_value !== null) && pg_file_storage_ready() && pg_os_ready(pg_os_settings())) {
+
+            if (in_array($object_storage_action, array('move', 'back'), true)) {
+                pg_config_text_save(
+                    pg_file_move_state_key(($object_storage_action === 'back') ? 'back' : 'to'),
+                    json_encode(pg_file_move_state_normalize(array()))
+                );
+            }
+
+            pg_config_text_save('object_storage_files', $object_storage_value);
+
+            $object_storage_notices = array(
+                'move'   => lang('The files are moved to the storage by the general job, a few each run.'),
+                'back'   => lang('The files are brought back to the disk by the general job, a few each run.'),
+                'pause'  => lang('Paused. Files already moved stay where they are.'),
+                'resume' => lang('Resumed.'),
+            );
+            $liveform->add_notice($object_storage_notices[$object_storage_action]);
+        } elseif ($object_storage_action !== '') {
+            $liveform->add_notice(lang('Switch on "Use object storage" and save a complete connection before moving files.'));
+        }
     }

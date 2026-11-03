@@ -532,6 +532,74 @@ if (!$object_storage_ready) {
             : h(lang(array('string' => 'Last test {var:1}: failed. {var:2}', 'vars' => array($object_storage_last_when, $object_storage_last_test['message']))))) . '</div>';
     }
 
+    // Uploaded files (includes/fn/file_storage.php): where they are now, the
+    // walk the general job is on and its failures, and the buttons that start,
+    // pause, resume or turn it round. Only with the storage columns and a
+    // saved store that is switched on: before that nothing could move.
+    $output_object_storage_files = '';
+
+    if (function_exists('pg_file_storage_ready') && pg_file_storage_ready() && pg_os_ready($object_storage)) {
+
+        $object_storage_switch = pg_config_text('object_storage_files');
+        $object_storage_mode = pg_file_storage_mode($object_storage_switch);
+        $object_storage_usage = pg_file_storage_usage();
+
+        $object_storage_status = lang('Files stay on the disk.');
+
+        if ($object_storage_mode['direction'] === 'to') {
+            $object_storage_status = $object_storage_mode['paused'] ? lang('Moving files to the storage is paused.') : lang('Files are being moved to the storage a few at a time; new uploads follow.');
+        } elseif ($object_storage_mode['direction'] === 'back') {
+            $object_storage_status = $object_storage_mode['paused'] ? lang('Bringing files back is paused.') : lang('Files are being brought back to the disk a few at a time; new uploads stay on the disk.');
+        }
+
+        $object_storage_failed = '';
+
+        if ($object_storage_mode['direction'] !== '') {
+            $object_storage_failures = pg_os_health_move_failures(
+                pg_file_move_state_normalize(json_decode((string) pg_config_text(pg_file_move_state_key($object_storage_mode['direction'])), true)),
+                pg_file_move_attempts()
+            );
+
+            if ($object_storage_failures['failing'] + $object_storage_failures['given_up'] > 0) {
+                $object_storage_failed = '
+                        <div class="form-text fg-warning">' . h(lang(array(
+                    'string' => 'Failed: {var:1} being retried, {var:2} left where they are after three attempts (named in the Site Log).',
+                    'vars'   => array(pg_format_number($object_storage_failures['failing'], 0), pg_format_number($object_storage_failures['given_up'], 0)),
+                ))) . '</div>';
+            }
+        }
+
+        $object_storage_buttons = array(
+            'move'   => array('bi-cloud-arrow-up', lang('Move existing files')),
+            'back'   => array('bi-cloud-arrow-down', lang('Bring back')),
+            'pause'  => array('bi-pause-fill', lang('Pause')),
+            'resume' => array('bi-play-fill', lang('Resume')),
+        );
+        $output_object_storage_buttons = '';
+
+        foreach (pg_file_storage_actions($object_storage_switch) as $object_storage_action) {
+            $output_object_storage_buttons .= '
+                        <button type="submit" name="object_storage_files_action" value="' . $object_storage_action . '" class="btn btn-sm btn-outline theme-secondary me-2"><i class="bi ' . $object_storage_buttons[$object_storage_action][0] . ' me-1" aria-hidden="true"></i>' . h($object_storage_buttons[$object_storage_action][1]) . '</button>';
+        }
+
+        $output_object_storage_files = '
+                    <div class="col-12">
+                        <div class="form-label">' . lang('Uploaded files') . '</div>
+                        <div>' . h(lang(array(
+            'string' => 'On the disk: {var:1} files ({var:2}). In the storage: {var:3} files ({var:4}).',
+            'vars'   => array(
+                pg_format_number($object_storage_usage['local_files'], 0),
+                convert_bytes_to_string($object_storage_usage['local_bytes'], 1),
+                pg_format_number($object_storage_usage['stored_files'], 0),
+                convert_bytes_to_string($object_storage_usage['stored_bytes'], 1),
+            ),
+        ))) . '</div>
+                        <div class="form-text">' . h($object_storage_status) . ' ' . lang('Design and theme files, style sheets and scripts always stay on the disk.') . '</div>' . $object_storage_failed . '
+                        <div class="mt-3">' . $output_object_storage_buttons . '
+                        </div>
+                    </div>';
+    }
+
     $output_object_storage_settings = '
                     <input type="hidden" name="object_storage_card" value="1"/>
                     <div class="col-12">
@@ -575,7 +643,7 @@ if (!$object_storage_ready) {
                     <div class="col-12">
                         <button type="submit" name="object_storage_test" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-plug me-1" aria-hidden="true"></i>' . lang('Save and test the connection') . '</button>
                         <div class="form-text">' . lang('Writes a small file to the bucket, reads it back and deletes it.') . '</div>' . $output_object_storage_last_test . '
-                    </div>';
+                    </div>' . $output_object_storage_files;
 }
 
 $pg_settings_cards[] = '

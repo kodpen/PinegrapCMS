@@ -844,6 +844,10 @@ function pg_a11y_run($time_budget)
     $started = microtime(true);
     $state = json_decode((string) @file_get_contents(pg_a11y_state_path()), true);
     $after = (is_array($state) && isset($state['after'])) ? (int) $state['after'] : 0;
+    // The whole pass's counts, kept with its place: a pass spans many runs.
+    // Without a place ('after') a new pass starts and counts from zero.
+    $pass_checked = (is_array($state) && isset($state['after'], $state['checked'])) ? (int) $state['checked'] : 0;
+    $pass_failed = (is_array($state) && isset($state['after'], $state['failed'])) ? (int) $state['failed'] : 0;
     // When this pass began and when the last finished one did: the Search
     // and audits card shows the failure lines from the last finished pass on.
     $cursor = array(
@@ -873,7 +877,10 @@ function pg_a11y_run($time_budget)
         // The place is kept after every page: a process stopped from outside
         // (a runner's time limit) carries on after the last page it checked.
         $after = $page_id;
-        @file_put_contents(pg_a11y_state_path(), json_encode(array('after' => $after) + $cursor), LOCK_EX);
+        @file_put_contents(pg_a11y_state_path(), json_encode(array(
+            'after'   => $after,
+            'checked' => $pass_checked + $checked,
+            'failed'  => $pass_failed + $failed) + $cursor), LOCK_EX);
     }
 
     db(
@@ -886,6 +893,11 @@ function pg_a11y_run($time_budget)
     // Finished: no cursor ('after') is left, so the next run starts again
     // from the first page; only the start of this pass is kept.
     @file_put_contents(pg_a11y_state_path(), json_encode(array('last_started' => $cursor['started'])), LOCK_EX);
+
+    // What the report, its PDF and the statement say was checked: the pages
+    // this pass rendered, not every page in the scope.
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/config_text.php');
+    pg_config_text_save('a11y_last_pass', json_encode(array('checked' => $pass_checked + $checked, 'failed' => $pass_failed + $failed)));
 
     return array('checked' => $checked, 'failed' => $failed, 'done' => true, 'ready' => true);
 }
@@ -1104,6 +1116,132 @@ function pg_a11y_report_rows($code, $limit)
 }
 
 /**
+ * How many findings the report holds, for the note under a cut list.
+ *
+ * @param string $code One check, or '' for all.
+ * @return int
+ */
+function pg_a11y_report_count($code)
+{
+    $rules = pg_a11y_rules();
+    $sql_code = isset($rules[$code]) ? " AND (seo_issue.code = '" . e($code) . "')" : " AND (LEFT(seo_issue.code, 5) = 'a11y_')";
+
+    return (int) db_value(
+        "SELECT COUNT(*)
+        FROM seo_issue
+        JOIN page ON page.page_id = seo_issue.entity_id
+        WHERE (seo_issue.entity_type = 'page')" . $sql_code);
+}
+
+/**
+ * The note under a findings list cut at its limit; '' when nothing is left
+ * out.
+ *
+ * @param int $shown Rows listed.
+ * @param int $total Rows the report holds.
+ * @return string plain text
+ */
+function pg_a11y_rows_cut_note($shown, $total)
+{
+    if ((int) $total <= (int) $shown) {
+        return '';
+    }
+
+    return lang(array('string' => 'The first {var:1} of {var:2} findings are shown. Choose a check to narrow the list.', 'vars' => array((int) $shown, (int) $total)));
+}
+
+/**
+ * The checks in criterion number order (1.1.1, 1.3.1, ... 2.4.11), the
+ * checks of one criterion together in registry order: the screen's
+ * checklist, its filter and the PDF read the same order.
+ *
+ * @param array $rules pg_a11y_rules()
+ * @return array
+ */
+function pg_a11y_rules_by_criterion($rules)
+{
+    $groups = array();
+
+    foreach ($rules as $code => $rule) {
+        $groups[(string) $rule['criterion']][$code] = $rule;
+    }
+
+    ksort($groups, SORT_NATURAL);
+
+    $ordered = array();
+
+    foreach ($groups as $codes) {
+        $ordered += $codes;
+    }
+
+    return $ordered;
+}
+
+/**
+ * The pages the last full pass checked, from its config_text record
+ * 'a11y_last_pass'. Before a pass has kept one, the scope stands in.
+ *
+ * @param string $stored config_text value (JSON)
+ * @param int $pages Pages the report covers now.
+ * @return array checked, failed, pages
+ */
+function pg_a11y_pass_record($stored, $pages)
+{
+    $pages = max(0, (int) $pages);
+    $record = json_decode((string) $stored, true);
+
+    if (!is_array($record) || !isset($record['checked'])) {
+        return array('checked' => $pages, 'failed' => 0, 'pages' => $pages);
+    }
+
+    return array(
+        'checked' => min($pages, max(0, (int) $record['checked'])),
+        'failed'  => isset($record['failed']) ? max(0, (int) $record['failed']) : 0,
+        'pages'   => $pages,
+    );
+}
+
+/**
+ * "N published pages checked", or "M of N" when the last pass could not
+ * render some of them.
+ *
+ * @param int $checked
+ * @param int $pages
+ * @return string plain text
+ */
+function pg_a11y_pages_checked_text($checked, $pages)
+{
+    if ((int) $checked < (int) $pages) {
+        return lang(array('string' => '{var:1} of {var:2} published pages checked', 'vars' => array((int) $checked, (int) $pages)));
+    }
+
+    return lang(array('string' => '{var:1} published pages checked', 'vars' => array((int) $pages)));
+}
+
+/**
+ * The notice after Check Pages Now, naming the pages that could not be
+ * rendered.
+ *
+ * @param array $run pg_a11y_run()
+ * @return string plain text
+ */
+function pg_a11y_run_notice($run)
+{
+    $checked = (int) $run['checked'];
+    $failed = (int) $run['failed'];
+
+    if ($run['done']) {
+        return $failed
+            ? lang(array('string' => 'The check reached the last page: {var:1} pages were checked in this run, {var:2} could not be rendered.', 'vars' => array($checked, $failed)))
+            : lang(array('string' => 'Every published page has been checked ({var:1} in this run).', 'vars' => array($checked)));
+    }
+
+    return $failed
+        ? lang(array('string' => '{var:1} pages were checked, {var:2} could not be rendered. Click again to continue with the rest.', 'vars' => array($checked, $failed)))
+        : lang(array('string' => '{var:1} pages were checked. Click again to continue with the rest.', 'vars' => array($checked)));
+}
+
+/**
  * Where a finding was measured, for the screen and the PDF: '' for the
  * server's checks of the published markup, else "Measured in the editor" and
  * the time of the save that kept it.
@@ -1127,18 +1265,18 @@ function pg_a11y_measured_note($source)
  * @param int $pages Pages the report covers.
  * @param int $last_run Time the last full pass ended, 0 for never.
  * @param string $site The site's host name.
+ * @param int|null $checked Pages the last full pass checked; null for $pages.
+ * @param int|null $total_rows Findings the report holds; null for count($rows).
  * @return string
  */
-function pg_a11y_report_html($summary, $rows, $pages, $last_run, $site)
+function pg_a11y_report_html($summary, $rows, $pages, $last_run, $site, $checked = null, $total_rows = null)
 {
     $criteria = pg_a11y_criteria();
     $by_criterion = array();
 
-    foreach (pg_a11y_rules() as $code => $rule) {
+    foreach (pg_a11y_rules_by_criterion(pg_a11y_rules()) as $code => $rule) {
         $by_criterion[$rule['criterion']][$code] = $rule;
     }
-
-    ksort($by_criterion, SORT_NATURAL);
 
     // A comment or text before the charset meta makes dompdf read the page
     // as Latin-1 (core/dompdf-embedding.md).
@@ -1147,11 +1285,11 @@ function pg_a11y_report_html($summary, $rows, $pages, $last_run, $site)
         . 'table{width:100%;border-collapse:collapse}th,td{border:0.5pt solid #adb5bd;padding:3pt 4pt;text-align:left;vertical-align:top}th{background:#e9ecef}'
         . '.muted{color:#6c757d}.ok{color:#146c43}.fail{color:#b02a37}</style></head><body>'
         . '<h1>' . h(lang('Accessibility report')) . '</h1>'
-        . '<p>' . h($site) . ' · ' . h(lang(array('string' => '{var:1} published pages checked', 'vars' => array($pages)))) . ' · '
+        . '<p>' . h($site) . ' · ' . h(pg_a11y_pages_checked_text(($checked === null) ? $pages : $checked, $pages)) . ' · '
         . h($last_run ? lang(array('string' => 'last full check {var:1}', 'vars' => array(date('Y-m-d H:i', $last_run)))) : lang('no full check has finished yet')) . '</p>'
         . '<p class="muted">' . h(lang('The checks read the published markup of each page against WCAG 2.2. They cover only what can be checked automatically; every criterion still needs a person to review the rest.')) . ' '
         . h(lang('Contrast and target size are also measured in the visual editor when a page is saved; those findings say so and when.')) . '</p>'
-        . '<h2>' . h(lang('Checklist')) . '</h2><table><tr><th>' . h(lang('Criterion')) . '</th><th>' . h(lang('Level')) . '</th><th>' . h(lang('Check')) . '</th><th>' . h(lang('Result')) . '</th></tr>';
+        . '<h2>' . h(lang('Checklist')) . '</h2><table><tr><th>' . h(lang('Criterion')) . '</th><th>' . h(lang('Level')) . '</th><th>' . h(lang('Automatic check')) . '</th><th>' . h(lang('Result')) . '</th></tr>';
 
     foreach ($by_criterion as $number => $codes) {
         foreach ($codes as $code => $rule) {
@@ -1183,6 +1321,12 @@ function pg_a11y_report_html($summary, $rows, $pages, $last_run, $site)
         }
 
         $html .= '</table>';
+
+        $cut = pg_a11y_rows_cut_note(count($rows), ($total_rows === null) ? count($rows) : $total_rows);
+
+        if ($cut !== '') {
+            $html .= '<p class="muted">' . h($cut) . '</p>';
+        }
     }
 
     return $html . '</body></html>';

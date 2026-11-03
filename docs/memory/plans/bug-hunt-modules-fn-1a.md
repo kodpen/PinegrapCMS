@@ -30,11 +30,11 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `custom_form`: done #5926 (custom shipping and billing forms stored option values outside the list); read: field sync and options, ensure/adopt form, settings write, render bindings and URL prefill, rules, rich text ids, controls and reconcile, sample seeding, shipping/billing prepare and submit, mail links, new account texts, fill-time token, form limits
 
-- `dashboard`: open
+- `dashboard`: clean (appearance whitelist, auto backdrop map, refresh bounds 10 s–1 day incl. INF strings, role gate; all callers load it via functions.php)
 
-- `db_maintenance`: open
+- `db_maintenance`: #5984 (MyISAM/Aria free-space share counted the holes twice)
 
-- `design_templates_custom`: open
+- `design_templates_custom`: #5976
 
 - `design_themes`: open
 
@@ -50,13 +50,13 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `editor`: open
 
-- `email_campaign_schedule`: open
+- `email_campaign_schedule`: clean
 
 - `email_campaign_send`: done (#5934)
 
 - `errors`: open
 
-- `events`: open
+- `events`: clean
 
 - `explorer_side`: open
 
@@ -66,7 +66,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `forms`: open
 
-- `geo`: open
+- `geo`: done #5975
 
 - `google_analytics`: open
 

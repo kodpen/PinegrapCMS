@@ -61,6 +61,10 @@ if (!defined('PG_INIT_LOADED')) {
                                 <dd> <?=h(VERSION)?> <?=h(EDITION)?> </dd>
                                 <dt><?=lang('Disk Usage')?> (<?=lang('Files')?>)</dt>
                                 <dd> <?=h(convert_bytes_to_string($disk_usage, 2))?> </dd>
+                                <?php if ($storage_usage['stored_files'] > 0): ?>
+                                <dt><?=lang('Object Storage')?> (<?=lang('Files')?>)</dt>
+                                <dd> <?=h(lang(array('string' => '{var:1} in {var:2}', 'vars' => array(convert_bytes_to_string($storage_usage['stored_bytes'], 2), ($storage_name !== '') ? $storage_name : lang('Object Storage')))))?> </dd>
+                                <?php endif ?>
                                 <dt><?=lang('Disk Usage')?> (<?=lang('Backups')?>)</dt>
                                 <dd> <?=h(convert_bytes_to_string(folderSize('data/backups'), 2))?> </dd>
                                 <dt><?=lang('Private Label')?></dt>

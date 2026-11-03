@@ -2063,10 +2063,12 @@ function pg_file_versions_sweep($seconds = 5)
     return $removed;
 }
 
-// The bytes the files and their versions take, for Disk Usage.
+// The bytes the files and their versions take on this disk, for Disk Usage.
+// Files moved to the object store are not on the disk; System Info and the
+// System Status tile count them apart (pg_file_storage_usage()).
 function pg_files_disk_usage()
 {
-    $bytes = (float) db_value("SELECT SUM(size) FROM files");
+    $bytes = pg_file_storage_usage()['local_bytes'];
 
     if (pg_file_versions_ready()) {
         $bytes += (float) db_value("SELECT SUM(size) FROM file_versions");

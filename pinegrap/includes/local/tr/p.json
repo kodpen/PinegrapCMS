@@ -456,6 +456,7 @@
     "Pause the ticker": "Kayan şeridi duraklat",
     "Paused": "Duraklatılmış",
     "Paused · v{var:1}": "Duraklatıldı · v{var:1}",
+    "Paused. Files already moved stay where they are.": "Duraklatıldı. Taşınmış dosyalar oldukları yerde kalır.",
     "Pay": "Öde",
     "Pay Online": "Çevrim İçi Öde",
     "Pay Per Click": "Tıklama Başına Ödeme",

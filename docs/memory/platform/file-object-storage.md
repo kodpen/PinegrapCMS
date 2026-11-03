@@ -6,10 +6,10 @@ module: file_storage
 
 ## Where does a row say its bytes are?
 - `files.storage` ENUM('local','s3') and `files.storage_key` (11.0.152, #5037). `pg_file_storage($row)` reads 's3' only with a key. Key `files/<id>/<name>` (`pg_file_storage_key()`), kept in the row: a rename changes only the row (every rename door skips a missing local file).
-- Switch: config_text `object_storage_files` = '1' plus a ready store (`pg_file_storage_on()`); not in the connect_apps options, which `pg_os_settings_save()` writes whole. No screen sets it yet; OS4 adds it.
+- Switch: config_text `object_storage_files` ('1' move, 'back' bring home, `paused`/`back_paused`) plus a ready store; not in the connect_apps options, which `pg_os_settings_save()` writes whole. Set by the Storage card's buttons (`object-storage-migration.md`).
 
 ## How does the move job work?
-- `pg_file_move_run(20, 20)` in `job.php`: local rows, newest id first, state in config_text `object_storage_move` (cursor, failures, rested_at); the cursor passes every row read; a finished pass rests 10 minutes.
+- `pg_file_move_run(20, 20)` in `job.php`, direction 'to': local rows, newest id first, state in config_text `object_storage_move` (cursor, failures, rested_at); the cursor passes every row read; a finished pass rests 10 minutes.
 - `pg_file_move_one()`: put, HEAD must give the size, size and mtime unchanged, then `UPDATE … storage, storage_key, size … WHERE id AND name AND storage='local'` must touch one row; only then the local file goes. A refusal deletes the object. 3 failed passes: named once in the Site Log, left local.
 - Never moved (`pg_file_storage_movable()`): design and theme files, `.css`/`.js` (get_file.php rewrites `{path}` in them) and `dkim.key`.
 

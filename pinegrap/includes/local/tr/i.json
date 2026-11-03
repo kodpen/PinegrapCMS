@@ -382,6 +382,7 @@
     "In your own flows a change is proposed for your approval first: choose the channel to ask in.": "Kendi akışlarınızda bir değişiklik önce onayınıza sunulur: onayın isteneceği kanalı seçin.",
     "In your own flows a summary of counts goes to a channel, not to e-mail addresses.": "Kendi akışlarınızda sayıların özeti e-posta adreslerine değil, bir kanala gider.",
     "In {var:1}": "{var:1} cinsinden",
+    "In {var:1}: {var:2} files ({var:3})": "{var:1} içinde: {var:2} dosya ({var:3})",
     "Inactive": "Pasif",
     "Inbox": "Gelen kutusu",
     "Inbox Card": "Gelen Kutusu Kartı",

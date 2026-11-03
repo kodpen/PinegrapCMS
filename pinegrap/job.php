@@ -508,14 +508,17 @@ if (pg_image_derivative_sweep_due(pg_image_derivative_directory())) {
 // the switch is on, the newest local files first, twenty files or twenty
 // seconds a tick, each checked by its size in the store before its bytes
 // leave the disk. A file that fails three passes stays local and is named in
-// the Site Log. With the switch off this is one settings read.
+// the Site Log. "Bring back" on the Storage card turns the walk round: the
+// stored files are fetched home the same way. Off or paused, this is one
+// settings read.
 $file_move = pg_file_move_run(20, 20);
 
 if ($file_move['moved'] > 0) {
-    log_activity(lang(array(
-        'string' => 'general job moved {var:1} file(s) to the object store ({var:2})',
-        'vars'   => array(pg_format_number($file_move['moved'], 0), convert_bytes_to_string($file_move['bytes'], 1)),
-    )), 'UNKNOWN');
+    $file_move_vars = array(pg_format_number($file_move['moved'], 0), convert_bytes_to_string($file_move['bytes'], 1));
+
+    log_activity(($file_move['direction'] === 'back')
+        ? lang(array('string' => 'general job brought {var:1} file(s) back from the object store ({var:2})', 'vars' => $file_move_vars))
+        : lang(array('string' => 'general job moved {var:1} file(s) to the object store ({var:2})', 'vars' => $file_move_vars)), 'UNKNOWN');
 }
 
 // A stored file whose name has bytes on the disk again was replaced: its
