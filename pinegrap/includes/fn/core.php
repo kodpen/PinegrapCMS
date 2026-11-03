@@ -3533,7 +3533,12 @@ function check_name_availability($properties)
     }
     // We also need to manually loop through all of the files in the root directory
     // in order to do a case-insensitive check.
-    $handle = opendir('../');
+    // opendir() answers false where open_basedir or the permissions keep the
+    // directory closed, and readdir(false) is a TypeError on PHP 8.
+    $handle = @opendir('../');
+    if ($handle === false) {
+        return true;
+    }
     // Loop through root directory in order to check files and directories in it.
     while (false !== ($file_name = readdir($handle))) {
         // If this is a valid file or directory and the lowercase version of the name
@@ -4565,6 +4570,9 @@ function get_mime_type($file_extention)
 {
     // Generic binary type for extensions not listed below.
     $output = 'application/octet-stream';
+    // files.type keeps the extension as it was uploaded ("JPG"), and a
+    // caller may pass it with its dot.
+    $file_extention = strtolower(ltrim(trim((string) $file_extention), '.'));
     switch ($file_extention) {
         case 'jpeg':
         case 'jpg':
@@ -4629,8 +4637,13 @@ function get_mime_type($file_extention)
 // Detect mime type from file path using mime_content_type, finfo, or fallback
 function detect_mime_type($file_path)
 {
+    // mime_content_type() answers false for a file it cannot read or name;
+    // the extension below is still a better answer than false.
     if (function_exists('mime_content_type')) {
-        return mime_content_type($file_path);
+        $mime = @mime_content_type($file_path);
+        if (is_string($mime) && ($mime !== '')) {
+            return $mime;
+        }
     }
 
     if (function_exists('finfo_open')) {
