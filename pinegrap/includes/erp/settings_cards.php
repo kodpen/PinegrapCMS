@@ -282,13 +282,13 @@ function erp_settings_cards_refusals($post, $cards)
     }
 
     if (in_array('late_fee', $cards, true)) {
-        $rate = (trim($text('late_fee_rate')) === '') ? 0.0 : erp_fx_rate_in($text('late_fee_rate'));
+        $rate = (trim($text('late_fee_rate')) === '') ? 0.0 : erp_late_fee_percent_in($text('late_fee_rate'));
 
         if (($rate < 0) || ($rate > ERP_LATE_FEE_MAX_RATE)) {
             $refusals['late_fee_rate'] = lang(array('string' => 'The monthly rate runs from 0 to {var:1}.', 'vars' => ERP_LATE_FEE_MAX_RATE));
         }
 
-        $tax_rate = (trim($text('late_fee_tax_rate')) === '') ? null : erp_fx_rate_in($text('late_fee_tax_rate'));
+        $tax_rate = (trim($text('late_fee_tax_rate')) === '') ? null : erp_late_fee_percent_in($text('late_fee_tax_rate'));
 
         if (($tax_rate !== null) && (($tax_rate < 0) || ($tax_rate > 100))) {
             $refusals['late_fee_tax_rate'] = lang('The tax rate runs from 0 to 100.');

@@ -921,7 +921,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                                     </div>
                                                     <div class="pg-f-xs">
                                                         <label for="merchant_return_days" class="form-label">' . lang('Return Window (days)') . '</label>
-                                                        <input type="text" inputmode="numeric" name="merchant_return_days" id="merchant_return_days" class="form-control" value="' . (($merchant_return_days >= 0) ? (int) $merchant_return_days : '') . '"/>
+                                                        <input type="text" inputmode="numeric" maxlength="4" name="merchant_return_days" id="merchant_return_days" class="form-control" value="' . (($merchant_return_days >= 0) ? (int) $merchant_return_days : '') . '"/>
                                                         <div class="form-text">' . lang('Leave blank to leave the return policy out of the markup. Enter 0 if returns are not accepted.') . '</div>
                                                     </div>
                                                     <div class="pg-f-md">
@@ -975,7 +975,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $output_enforcement = '';
     // if there is enforcement tell user its
     if( defined('ENFORCEMENT_SOFTWARE_LANGUAGE') ){
-        $output_enforcement = '(' . lang('Enforcement: ') . ENFORCEMENT_SOFTWARE_LANGUAGE . ')';
+        $output_enforcement = ' (' . lang('Enforcement: ') . ENFORCEMENT_SOFTWARE_LANGUAGE . ')';
     }
     $software_language = $row['software_language'];
     if($software_language != NULL){
@@ -1242,12 +1242,18 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     }
 
     // Loop through the time zones in order to prepare options for pick list.
+    // Only the first option of the zone is selected: a select shows the last
+    // selected option, so a second label of the same zone would replace the
+    // one the operator chose.
+    $timezone_selected = false;
+
     foreach ($timezones as $label => $value) {
         $selected = '';
 
         // If this timezone is the current timezone, then select it.
-        if ($value == $timezone) {
+        if (!$timezone_selected && ($value == $timezone)) {
             $selected = ' selected="selected"';
+            $timezone_selected = true;
         }
 
         $output_timezone_options .= '<option value="' . h($value) . '"' . $selected . '>' . h($label) . '</option>';

@@ -1061,6 +1061,125 @@ function pg_audience_switch_review($group_id, array $rows = array())
 }
 
 /**
+ * The choice posted with a switch to rules for the group's hand, form and
+ * product rows: 'remove', 'to_rule' (keys of pg_audience_switch_review()),
+ * else 'keep', which touches nothing. Pure.
+ *
+ * @param array $post
+ * @return string
+ */
+function pg_audience_switch_action(array $post)
+{
+    $value = isset($post['switch_rows']) ? $post['switch_rows'] : '';
+
+    return (is_string($value) && in_array($value, array('remove', 'to_rule'), true)) ? $value : 'keep';
+}
+
+/**
+ * The count line of the switch review, sources with no rows left out:
+ * "1,240 by hand, 30 from forms, 12 from products"; '' with no rows.
+ *
+ * @param array $counts pg_audience_switch_review() counts
+ * @return string
+ */
+function pg_audience_switch_review_text(array $counts)
+{
+    $texts = array(
+        'hand' => '{var:1} by hand',
+        'form' => '{var:1} from forms',
+        'product' => '{var:1} from products',
+    );
+    $parts = array();
+
+    foreach ($texts as $source => $text) {
+        $count = isset($counts[$source]) ? (int) $counts[$source] : 0;
+
+        if ($count > 0) {
+            $parts[] = lang(array('string' => $text, 'vars' => array(pg_format_number($count, 0))));
+        }
+    }
+
+    return implode(', ', $parts);
+}
+
+/**
+ * The switch review of a group with its counts read: the group's rows that
+ * are not rule-made, by source.
+ *
+ * @param int $group_id
+ * @return array|null pg_audience_switch_review(); null on a failed query
+ */
+function pg_audience_switch_counts($group_id)
+{
+    $review = pg_audience_switch_review($group_id);
+    $result = db_q($review['count']['sql'], $review['count']['params']);
+
+    if (!$result) {
+        return null;
+    }
+
+    $rows = array();
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $rows[] = $row;
+    }
+
+    return pg_audience_switch_review($group_id, $rows);
+}
+
+/**
+ * Runs the chosen action of the switch review once the switch is saved.
+ * 'remove' announces the contacts that leave the group (those with no rule
+ * row beside the removed one); 'to_rule' changes no membership, so it
+ * announces nothing; the next recompute takes the turned rows as its own.
+ *
+ * @param int    $group_id
+ * @param string $action pg_audience_switch_action()
+ * @return bool false on a failed query
+ */
+function pg_audience_switch_apply($group_id, $action)
+{
+    if (!in_array($action, array('remove', 'to_rule'), true)) {
+        return true;
+    }
+
+    $group_id = (int) $group_id;
+    $leavers = array();
+
+    if ($action === 'remove') {
+        $result = db_q(
+            "SELECT DISTINCT other.contact_id FROM contacts_contact_groups_xref AS other"
+            . " LEFT JOIN contacts_contact_groups_xref AS by_rule"
+            . " ON by_rule.contact_group_id = other.contact_group_id AND by_rule.contact_id = other.contact_id AND by_rule.source = 'rule'"
+            . " WHERE other.contact_group_id = ? AND other.source <> 'rule' AND by_rule.contact_id IS NULL",
+            array($group_id)
+        );
+
+        if (!$result) {
+            return false;
+        }
+
+        while ($row = mysqli_fetch_row($result)) {
+            $leavers[] = (int) $row[0];
+        }
+    }
+
+    $review = pg_audience_switch_review($group_id);
+
+    foreach ($review[$action] as $query) {
+        if (!db_q($query['sql'], $query['params'])) {
+            return false;
+        }
+    }
+
+    if ($leavers) {
+        pg_announce_contact_group_members($group_id, array(), $leavers);
+    }
+
+    return true;
+}
+
+/**
  * Whether the group is still dynamic: read again before each page's write,
  * since a pass can run for its whole budget while the group is switched
  * back to static.

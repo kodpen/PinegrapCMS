@@ -54,6 +54,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - designer-form-logic.md: Plan (owner 2026-11-02): designed forms get Shown-when rules, steps with progress, and a payment step that places a one-line order through the payment drivers; steps FL1-FL8
 - designer-prototype-links-code.md: What the code holds for plans/designer-prototype-links.md: where links sit, the two href places, page links by id, renames, the resolver's limits, editor state, rights and Publish
 - designer-prototype-links.md: Plan (2026-10-24; ready to start, owner 2026-11-01): a Figma/XD-like prototype view in the visual designer: pages as frames, menu items and links as hotspots, an arrow sets the page a click opens
+- encryption-key-reseal.md: Plan: Reset Encryption Key re-seals every value sealed with the key in the same save (owner, 2026-11-03, #6392, after the warn-and-confirm fix); claim as [plan:encryption-key-reseal] RK<n>
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19): auto invoice with its two filters and the e-Fatura threshold warning built (#697, #958, #1773); only the internet-sale UBL fields (step 3) left
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it
@@ -73,6 +74,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - image-editor-steps-2.md: Steps E11-E20 of plans/image-editor.md: versions, canvas and artboard, optimisation, pen, SVG, Workspace, designer, access, close-out; claim as [plan:image-editor] E<n>
 - image-editor-steps-3.md: Steps E21-E25 of plans/image-editor.md (owner 2026-11-03): change a placed sticker, text to outlines, scissors, shape builder, warp; claim as [plan:image-editor] E<n>
 - image-editor-steps-4.md: Steps E26-E29 of plans/image-editor.md (owner 2026-11-03): free deformation, area selection, select subject and remove background with an own algorithm, access; claim as [plan:image-editor] E<n>
+- image-editor-steps-5.md: Steps E23b and E30 of plans/image-editor.md (owner 2026-11-03 and -04): one Vektör rail item for the vector tools, the photo's picture as its bottom layer; claim as [plan:image-editor] E<n>
 - image-editor-steps.md: Steps E1-E10 of plans/image-editor.md: core modal, crop, server save, adjust, layers, shapes, text, stickers, the switch that removes the old editor, redaction; claim as [plan:image-editor] E<n>
 - image-editor-video-steps.md: Steps V0-V11 of plans/image-editor-video.md: screens, decoding, video layer, timeline, sound, effects, overlays, export, large files, reopening, phone, access; claim as [plan:image-editor-video] V<n>
 - image-editor-video.md: Plan (owner 2026-11-03): video editing inside the image editor: clips on the timeline, trim, split, effects, sound added or detached, layers over video, export with sound; held with image-editor.md

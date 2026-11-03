@@ -87,6 +87,55 @@ function api_app_oauth_create_refusal($kind, $existing_name) {
 
 }
 
+// The first entry of an IP allow list that is no address, CIDR range or
+// IPv4 wildcard, or '' when every entry is one. api_ip_allowlist_admits()
+// matches nothing for such an entry, so a list holding only bad entries
+// would refuse every call made with the key. Judged the firewall's way.
+function api_app_ip_allowlist_bad($allowlist) {
+
+	if (!is_string($allowlist) || !function_exists('waf_valid_ip_pattern')) {
+
+		return '';
+
+	}
+
+	foreach (preg_split('/[\s,;]+/', trim($allowlist), -1, PREG_SPLIT_NO_EMPTY) as $entry) {
+
+		if (!waf_valid_ip_pattern($entry)) {
+
+			return $entry;
+
+		}
+
+	}
+
+	return '';
+
+}
+
+// The drawer's rate limit, typed: the whole number of requests a minute
+// from 1 to 6000, null for an empty box (the stored value is kept), or false
+// for anything else. An empty box used to be stored as 1 a minute.
+function api_app_rate_limit_in($text) {
+
+	$text = is_string($text) ? trim($text) : '';
+
+	if ($text === '') {
+
+		return null;
+
+	}
+
+	if (!preg_match('/^[0-9]{1,4}$/', $text) || ((int)$text < 1) || ((int)$text > 6000)) {
+
+		return false;
+
+	}
+
+	return (int)$text;
+
+}
+
 // The first of the drawer's text fields that is longer than its api_apps
 // column, or '' when all fit. The session is non-strict, so MySQL would cut
 // a longer value without an error; for the IP allow list a cut inside its

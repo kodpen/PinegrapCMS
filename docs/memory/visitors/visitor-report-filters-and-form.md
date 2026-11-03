@@ -11,7 +11,7 @@ module: visitor_report
 - A "day(s) ago" count must pass `pg_visitor_report_days_ago_valid()` (whole number 0 to INT UNSIGNED, empty = today); it used to be saved as 0 silently. The box is `type=number min=0 step=1` (`backend.src.js`, the filter row shared with the order report).
 
 ## How is Pay Per Click / Organic counted?
-By the daily summary's rule, `pg_visitor_channel_sql()`, through `pg_visitor_report_channel_sql($filter)`: with an empty flag nothing is paid. The screen's own `LIKE "%flag%"` matched every visit when the setting was empty (#5783). Filter values stay `pay_per_click` / `organic` / `neither`; the grouping returns the English names `update_summarize_by_name()` translates.
+By `pg_visitor_paid_organic_sql()` (the old two-way split; the full channel is `visitor-channel-rule.md`), through `pg_visitor_report_channel_sql($filter)`: with an empty flag nothing is paid. The screen's own `LIKE "%flag%"` matched every visit when the setting was empty (#5783). Filter values stay `pay_per_click` / `organic` / `neither`; the grouping returns the English names `update_summarize_by_name()` translates.
 
 ## How does the form come back after a save error?
 "Submitted" is `field_in_session('last_filter_number')` (the hidden field posted with every save). It used to be `submit_button`, the Delete button's name, so defaults (Year/Month/Day) and the stored filters overwrote what was entered. An existing report opens its form again when `check_form_errors()` is true (#5781).

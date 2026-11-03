@@ -27,7 +27,7 @@ if (!defined('PG_DASHBOARD_V2')) {
  * does not shift them.
  *
  * @param int $period   0 today, 1 last 7 days, 2 last 30 days
- * @param int $compare  0 none, 1 the period before, 2 last year
+ * @param int $compare  0 the period before, 1 last year, 2 off (no change figure)
  * @param int $midnight today's midnight
  * @return array name => array(from, to)
  */
@@ -40,7 +40,7 @@ function pg_dashboard_v2_shop_windows($period, $compare, $midnight)
 
     $windows = array('now' => array($from, $tomorrow));
 
-    if ($compare === 2) {
+    if ($compare === 1) {
         $windows['before'] = array((int) strtotime('-1 year', $from), (int) strtotime('-1 year', $tomorrow));
     } else {
         $windows['before'] = array((int) strtotime('-' . $days . ' days', $from), $from);
@@ -102,7 +102,7 @@ function pg_dashboard_v2_card_shop($user, $period, $compare)
 
     $total = (float) ($sums['now_total'] ?? 0);
     $count = (int) ($sums['now_count'] ?? 0);
-    $change = ($compare > 0) ? pg_dashboard_v2_change($total, (float) ($sums['before_total'] ?? 0)) : null;
+    $change = ($compare !== 2) ? pg_dashboard_v2_change($total, (float) ($sums['before_total'] ?? 0)) : null;
 
     $period_names = array(0 => lang('Today'), 1 => lang('Last 7 days'), 2 => lang('Last 30 days'));
 

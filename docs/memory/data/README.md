@@ -61,7 +61,7 @@ Table structures and SQL pitfalls.
 - filter-on-form-data-rows.md: A filter on a submitted form's answers is an EXISTS condition, never a join: a check box group keeps one form_data row per ticked box.
 - innodb-conversion-marker.md: How pg_innodb_convert_table() remembers a MyISAM-to-InnoDB conversion that died, and why an aborted table survives the next table's conversion
 - menu-tree-queries.md: Classic menus (get_menu_content(), get_menu_sequence()) read a menu once per request through pg_menu_tree(): two queries, printing order, children counted across menus, what the output must keep
-- orders-table-write-traps.md: Three traps when INSERTing into orders (reference_code, payment_method ENUM, order_date), the next_order_number table lock and where it is taken, and the orders.type values and list filter.
+- orders-table-write-traps.md: Traps when INSERTing into orders, the next_order_number lock and where it is taken, when the Commerce settings save writes the next number, and the orders.type values.
 - slug-generation.md: Which function builds address/slug names for forms, products, files and pages, the two transliteration tables, the lowercase-order rule, and the files.name invariant.
 - sql-silent-wrong-results.md: SQL that runs without an error but reads or writes the wrong thing: an INT or DATE compared to '', SET order, SELECT * replaced by a column list, columns a migration adds, table-specific traps.
 - submitted-form-delete-thread.md: What deleting a submitted form removes besides forms/form_data (comments, attachments, notifications, watchers, counters), the shared helper and the three delete paths.

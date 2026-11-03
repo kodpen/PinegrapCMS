@@ -25,7 +25,7 @@
 (function (X) {
     'use strict';
 
-    var Editor = X.Editor, M = X.M, SVGNS = X.SVGNS, t = X.t, el = X.el, button = X.button, section = X.section;
+    var Editor = X.Editor, M = X.M, SVGNS = X.SVGNS, t = X.t, el = X.el, button = X.button, section = X.section, pct = X.pct;
 
     var STILL = ['redact'];
     // A dragged diamond lands on a tenth of a second; Shift on a hundredth.
@@ -139,9 +139,9 @@
         [
             ['x', t('keysX'), -span, span, 1, k.x, function (v) { return Math.round(v) + ' px'; }, 1],
             ['y', t('keysY'), -span, span, 1, k.y, function (v) { return Math.round(v) + ' px'; }, 1],
-            ['scale', t('keysScale'), 5, 400, 1, Math.round(k.scale * 100), function (v) { return Math.round(v) + '%'; }, 100],
+            ['scale', t('keysScale'), 5, 400, 1, Math.round(k.scale * 100), function (v) { return pct(Math.round(v)); }, 100],
             ['rot', t('keysRot'), -360, 360, 1, k.rot, function (v) { return Math.round(v) + '°'; }, 1],
-            ['opacity', t('keysOpacity'), 0, 100, 1, Math.round(k.opacity * 100), function (v) { return Math.round(v) + '%'; }, 100]
+            ['opacity', t('keysOpacity'), 0, 100, 1, Math.round(k.opacity * 100), function (v) { return pct(Math.round(v)); }, 100]
         ].forEach(function (f) {
             var shown = el('span', { class: 'pgie-val', text: f[6](f[5]) });
             var slider = el('input', { type: 'range', class: 'pgie-range', min: String(f[2]), max: String(f[3]), step: String(f[4]), value: String(f[5]), 'aria-label': f[1] });

@@ -7,7 +7,7 @@ module: image_editor
 ## What does the Sticker tool offer?
 - Eight built-in stickers (`STICKERS` in the model: burst, pill, tag, stamp, speech bubble, check, star, heart), placed in the middle of the visible stage at a size in hundredths of the picture's shorter side, selected. The tool is a select tool: the selection's handles, moves and keys work in it (`Editor.selectTools`).
 - With stickers selected: sticker colour, label colour (not for a star or heart), the label of one sticker (a double click with Select opens the sheet and focuses it), then duplicate, forward, backward, delete. Select's panel shows the same colours and label (`layerTypes.sticker.panel`).
-- "Picture from Files" opens on demand: the 60 newest pictures (jpg, png, gif, webp) or those whose name holds the search, from the API action `sticker_files`; none in the Recycle Bin, and a role-3 user's folders filtered in the query before its LIMIT (`pg_image_editor_sticker_where()`). A press adds an `image` layer with the file's address (same origin, so the save's canvas stays clean) and `fileId`. Not offered in a callback save or without the API.
+- "Picture from Files" opens on demand: the 60 newest pictures (jpg, png, gif, webp) or those whose name holds the search, from the API action `sticker_files`; none in the Recycle Bin, no ERP document (`erp_doc_type`, as every picker), and a role-3 user's folders filtered in the query before its LIMIT (`pg_image_editor_sticker_where()`). A press adds an `image` layer with the file's address (same origin, so the save's canvas stays clean) and `fileId`. Not offered in a callback save or without the API.
 - Under them, Icons and Emoji add glyph layers (`image-editor-glyph.md`).
 
 ## What is a sticker layer?

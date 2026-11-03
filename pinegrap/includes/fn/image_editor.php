@@ -80,6 +80,7 @@ function pg_image_editor_strings_core()
         'zoomOut'        => lang('Zoom out'),
         'zoomFit'        => lang('Fit to screen'),
         'zoomActual'     => lang('Actual size'),
+        'percent'        => lang('{var:1}%'),
         'tools'          => lang('Tools'),
         'layers'         => lang('Layers'),
         'selection'      => lang('Selection'),
@@ -1545,19 +1546,26 @@ function pg_image_editor_sticker_rows($rows, $folders)
 
 /**
  * The WHERE clause of the sticker panel's listing: pictures only, none in
- * the Recycle Bin (pg_image_editor_file() treats those as offline), a
+ * the Recycle Bin (pg_image_editor_file() treats those as offline), no ERP
+ * document (expense receipts and signatures are personal data kept in
+ * read-only virtual folders, left out like every other picker does), a
  * role-3 user's folders only, and the name search. The folders are filtered
  * here, before the LIMIT, so a user whose folders hold none of the newest
  * pictures still sees theirs.
  *
- * @param string     $search  the name search ('' for none)
- * @param array|null $folders the folder ids a role-3 user may reach; null for every folder
- * @param array      $bin     the Recycle Bin's folder ids
+ * @param string     $search    the name search ('' for none)
+ * @param array|null $folders   the folder ids a role-3 user may reach; null for every folder
+ * @param array      $bin       the Recycle Bin's folder ids
+ * @param bool|null  $erp_ready whether files.erp_doc_type exists; null asks the schema
  * @return string|null the clause, or null when the user may reach no folder
  */
-function pg_image_editor_sticker_where($search, $folders, $bin)
+function pg_image_editor_sticker_where($search, $folders, $bin, $erp_ready = null)
 {
-    $where = "(type IN ('jpg', 'jpeg', 'png', 'gif', 'webp')) AND (name != '')";
+    if ($erp_ready === null) {
+        $erp_ready = function_exists('waf_table_has_column') && waf_table_has_column('files', 'erp_doc_type');
+    }
+
+    $where = "(type IN ('jpg', 'jpeg', 'png', 'gif', 'webp')) AND (name != '')" . ($erp_ready ? " AND (erp_doc_type = '')" : '');
     $ids = function ($list) {
         return implode(', ', array_map(function ($id) { return "'" . (int) $id . "'"; }, $list));
     };
@@ -4115,8 +4123,9 @@ function pg_image_editor_strings_glyph()
         'glyphIcons'         => lang('Icons'),
         'glyphIcon'          => lang('Icon'),
         'glyphEmoji'         => lang('Emoji'),
-        'glyphIconFind'      => lang('Search icons'),
+        'glyphIconFind'      => lang('Search icons by English name'),
         'glyphIconNone'      => lang('No icon matches the search.'),
+        'glyphIconEnglish'   => lang('Icon names are in English, for example heart or star.'),
         'glyphIconMore'      => lang('Search to find the other icons.'),
         'glyphIconError'     => lang('The icons could not be loaded.'),
         'glyphRecent'        => lang('Recently used'),

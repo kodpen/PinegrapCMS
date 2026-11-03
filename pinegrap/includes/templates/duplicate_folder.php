@@ -78,7 +78,7 @@ if (!defined('PG_INIT_LOADED')) {
 					<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="<?= h(lang('data edit buttons')) ?>">
 						<div class="container">
 							<div class=" btn-group flex-wrap justify-content-center">
-								<button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">control_point_duplicate</span><span class="pg-btn-label" ><?=lang(array('string'=>'Duplicate') )?></span></button>
+								<button type="submit" id="submit_duplicate" name="submit_duplicate" value="Duplicate" class="btn my-1  btn-solid theme-success "><i class="bi bi-copy me-3" aria-hidden="true"></i><span class="pg-btn-label" ><?=lang(array('string'=>'Duplicate') )?></span></button>
 							</div>
 						</div>
 					</nav>

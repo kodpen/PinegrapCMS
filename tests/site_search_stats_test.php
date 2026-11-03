@@ -195,6 +195,6 @@ function test_site_search_report_screen()
 	pg_assert_contains("settings_features.php?search_promote=", $screen);
 
 	$menu = site_search_stats_test_source('includes/fn/output.php');
-	pg_assert_contains("/visitor_search.php\\''", $menu, 'the Visitors menu opens it');
+	pg_assert_contains("'site_search' => array('visitor_search.php', 'bi-search', pg_site_search_stats_ready())", $menu, 'the Visitors menu opens it until the overview has the section');
 	pg_assert_contains("case 'visitor_search.php':", $menu);
 }

@@ -16,11 +16,12 @@ module: site_migration
 
 ## Which rows does the classic copy leave out?
 - `get_folders` and `get_pages` never send the Recycle Bin, Drafts or Workspace folders or anything below them (`pg_migration_skipped_folder_ids()`, #6006 bug part); the design export skips pages in them too.
-- With the switch on, a classic style that is a visual design and a page marked `visual_design` (new field of `get_pages`) are left out of the classic copy: they come with their design. Without the switch the classic copy runs as before.
+- A classic style that is a visual design and a page marked `visual_design` (field of `get_pages`) are never copied as classic rows, switch on or off: their classic columns are empty. With the switch they come with their design; without it a notice counts the styles and pages left out and points at the switch.
+- With the switch on, a source folder whose subtree holds design pages and no classic page is left out of the classic copy too (`pg_migration_design_only_folder_ids()`), with the folders below it: the design install makes its own folders, so no empty duplicates sit under "Migration".
 - An older source answers `get_designs` with an error and the run stops before writing, with the reason.
 
 ## What is not carried?
 - Only what the template shape holds: a page's meta tags, custom JSON-LD, canonical, schedule and search keywords stay behind; shared components no page places stay behind; shop pages and widgets are dropped on a target without the shop (`requires`).
 
 ## Tests?
-- `tests/site_migration_test.php`: folder subtrees, managed file names, the entry check, classic rows left out, the shared builder and gates (source scan).
+- `tests/site_migration_test.php`: folder subtrees, managed file names, the entry check, classic rows and design-only folders left out, the shared builder and gates (source scan).

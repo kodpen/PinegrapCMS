@@ -32,4 +32,4 @@ description: Plan (2026-10-24; ready to start, owner 2026-11-01): a Figma/XD-lik
 5. Breakpoint: desktop width, collapsed navbars shown as their links.
 
 ## Where to start?
-- Slice 4 rest (4f): Bind Data picks a page outside widgets (designer/page-link-by-id.md). Start from designer/prototype-view.md and designer/prototype-hotspots.md; claim before code.
+- All slices done (4f #6376). Left: close the plan: decisions to designer/prototype-view.md, the -code plan to designer/page-link-by-id.md, fix the links to both plans, delete them.

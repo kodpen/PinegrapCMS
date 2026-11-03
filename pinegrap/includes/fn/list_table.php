@@ -50,6 +50,9 @@ function pg_list_table_definitions()
         'view_contacts' => array('file' => 'includes/fn/contact_list.php', 'source' => 'pg_contact_list_source'),
         'view_submitted_forms' => array('file' => 'includes/fn/submitted_form_list.php', 'source' => 'pg_submitted_form_list_source'),
         'view_products' => array('file' => 'includes/fn/product_list.php', 'source' => 'pg_product_list_source'),
+        'view_log' => array('file' => 'includes/fn/site_log_list.php', 'source' => 'pg_site_log_list_source'),
+        'view_audit_log' => array('file' => 'includes/fn/audit_list.php', 'source' => 'pg_audit_list_source'),
+        'view_waf_log' => array('file' => 'includes/fn/waf_log_list.php', 'source' => 'pg_waf_log_list_source'),
     );
 }
 

@@ -373,7 +373,9 @@
     };
 
     // A restore wrote the file: closing without a save still tells the
-    // caller, so its list shows the restored picture.
+    // caller, so its list shows the restored picture. The document it gets
+    // is the restored one (the opening reopen() set up once the picture
+    // loaded), not the edits that were just discarded.
     var finish = Editor.prototype.finish;
 
     Editor.prototype.finish = function (result) {
@@ -381,7 +383,7 @@
         this.versionUrls = [];
 
         if (!result && this.restoredFile && !this.finished) {
-            result = { file: this.restoredFile, doc: M.clone(this.doc), fileId: this.restoredFile.id };
+            result = { file: this.restoredFile, doc: M.clone(this.opening || this.doc), fileId: this.restoredFile.id };
 
             if (typeof this.opts.onSave === 'function') {
                 this.opts.onSave(result);

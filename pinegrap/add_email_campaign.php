@@ -20,6 +20,7 @@
 ini_set('memory_limit', '-1');
 include('init.php');
 require_once(dirname(__FILE__) . '/includes/forms/email_campaign_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_recipients.php');
 $user = validate_user();
 validate_email_access($user);
 
@@ -115,7 +116,8 @@ if (!$_POST) {
     $query =
         "SELECT
            id,
-           name
+           name,
+           email_subscription
         FROM contact_groups
         ORDER BY name";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
@@ -129,14 +131,16 @@ if (!$_POST) {
         
         // if user has access to contact group, then include this contact group
         if (validate_contact_group_access($user, $id) == true) {
-            // get number of contacts in contact group
-            $number_of_contacts = get_number_of_contacts($id, $require_email = true);
+            // count the contacts with an address and those opted in: both are
+            // shown, so a change of purpose needs no reload
+            $result_count = db_q(pg_email_campaign_group_count_query($row['email_subscription'] == 1), array((string) $id)) or output_error('Query failed.');
+            $counts = mysqli_fetch_assoc($result_count);
             
-            // if contact group has at least one contact
-            if ($number_of_contacts > 0) {
+            // if contact group has at least one contact with an address
+            if ((int) $counts['total'] > 0) {
                 $output_contact_group_rows .=
                     '<tr>
-                        <td id="contact_group_name_' . $id . '">' . h($name) . ' (' . pg_format_number($number_of_contacts, 0) . ')</td>
+                        <td id="contact_group_name_' . $id . '">' . pg_email_campaign_group_label($name, $counts['total'], $counts['opted_in']) . '</td>
                         <td style="text-align: center"><div class="form-field  d-inline-grid me-5"><input class="radio" type="radio" name="contact_group_' . $id . '" value="ignored" aria-labelledby="contact_group_name_' . $id . ' contact_group_ignore" checked="checked" /></div></td>
                         <td style="text-align: center"><div class="form-field  d-inline-grid me-5"><input class="radio" type="radio" name="contact_group_' . $id . '" value="included" aria-labelledby="contact_group_name_' . $id . ' contact_group_include" /></div></td>
                         <td style="text-align: center"><div class="form-field  d-inline-grid me-5"><input class="radio" type="radio" name="contact_group_' . $id . '" value="excluded" aria-labelledby="contact_group_name_' . $id . ' contact_group_exclude" /></div></td>
@@ -348,42 +352,10 @@ if (!$_POST) {
                 $row = mysqli_fetch_assoc($result);
                 $email_subscription = $row['email_subscription'];
                 
-                // if this is a subscription contact group
-                if ($email_subscription == 1) {
-                    // get all contacts in this contact group that are global opted-in and opted-in to this contact group
-                    $query =
-                        "SELECT
-                            contacts.id,
-                            contacts.email_address,
-                            opt_in.opt_in
-                        FROM contacts_contact_groups_xref
-                        LEFT JOIN contacts ON contacts_contact_groups_xref.contact_id = contacts.id
-                        LEFT JOIN opt_in ON (contacts_contact_groups_xref.contact_id = opt_in.contact_id) AND (contacts_contact_groups_xref.contact_group_id = opt_in.contact_group_id)
-                        WHERE
-                            (contacts_contact_groups_xref.contact_group_id = ?)
-                            AND (contacts.opt_in = 1)
-                            AND (
-                                (opt_in.opt_in = 1)
-                                OR (opt_in.opt_in IS NULL)
-                            )
-                            AND (contacts.email_address != '')";
-                    $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
-                    
-                // else this is not a subscription contact group
-                } else {
-                    // get all contacts in this contact group that are global opted-in
-                    $query =
-                        "SELECT
-                            contacts.id,
-                            contacts.email_address
-                        FROM contacts_contact_groups_xref
-                        LEFT JOIN contacts ON contacts_contact_groups_xref.contact_id = contacts.id
-                        WHERE
-                            (contacts_contact_groups_xref.contact_group_id = ?)
-                            AND (contacts.opt_in = 1)
-                            AND (contacts.email_address != '')";
-                    $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
-                }
+                // a commercial campaign takes opted-in contacts only, a
+                // transactional one every contact of the group with an address
+                $query = pg_email_campaign_recipient_query($_POST['purpose'], $email_subscription == 1);
+                $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
                 
                 // loop through all contact e-mail addresses
                 while ($row = mysqli_fetch_assoc($result)) {

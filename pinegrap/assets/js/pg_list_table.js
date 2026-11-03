@@ -21,7 +21,11 @@
  * The bar's columns menu shows, hides and orders the columns, and its
  * details switch opens a panel with every column of the current row (a
  * side sheet below 1024 px); both choices are kept per user and list in
- * localStorage (pg.list.<user id>.<list>). Below 768 px each row is drawn
+ * localStorage (pg.list.<user id>.<list>). A filter button
+ * (data-pg-list-filter, PGListTable's bindFilters()) narrows the list by one
+ * column: a list printed whole keeps the rows whose cell carries that
+ * data-pg-filter value, a server list sends it with its parameters. Below
+ * 768 px each row is drawn
  * as a card, every cell under its column's name (data-pg-label). Pictures
  * named by img[data-pg-thumb] load as they come into sight, six at a time.
  *
@@ -473,6 +477,7 @@
         this.next = root.getAttribute('data-pg-list-next') || null;
         this.total = parseInt(root.getAttribute('data-pg-list-total'), 10) || 0;
         this.search = '';
+        this.filters = {};
         this.loading = false;
         this.request = 0;
         this.selection = new Selection();
@@ -1344,22 +1349,74 @@
         }
 
         if (this.browser) {
-            var match = window.pgListTurkishMatch || function (term, haystack) {
-                return haystack.toLowerCase().indexOf(term.toLowerCase()) !== -1;
-            };
-            var shown = 0;
-
-            Array.prototype.forEach.call(this.tbody.rows, function (row) {
-                row.hidden = (value !== '') && !match(value, row.textContent);
-                shown += row.hidden ? 0 : 1;
-            });
-
-            this.total = shown;
-            this.paint();
+            this.showHere();
             return;
         }
 
         this.load(true);
+    };
+
+    /**
+     * A filter of one column ('' for every value). A list printed whole
+     * hides the rows whose cell of that column does not carry the value in
+     * data-pg-filter; a server list sends it with its parameters and asks
+     * again. Like new search words, it replaces a whole-list selection.
+     */
+    Driver.prototype.setFilter = function (key, value) {
+        value = String(value || '');
+
+        if ((this.filters[key] || '') === value) {
+            return;
+        }
+
+        if (value === '') {
+            delete this.filters[key];
+        } else {
+            this.filters[key] = value;
+        }
+
+        if (this.selection.all) {
+            this.replace(function () { this.clear(); });
+        }
+
+        if (this.browser) {
+            this.showHere();
+            return;
+        }
+
+        if (value === '') {
+            delete this.params[key];
+        } else {
+            this.params[key] = value;
+        }
+
+        this.load(true);
+    };
+
+    /** A list printed whole: the rows the search words and the filters keep. */
+    Driver.prototype.showHere = function () {
+        var value = this.search;
+        var filters = this.filters;
+        var match = window.pgListTurkishMatch || function (term, haystack) {
+            return haystack.toLowerCase().indexOf(term.toLowerCase()) !== -1;
+        };
+        var shown = 0;
+
+        Array.prototype.forEach.call(this.tbody.rows, function (row) {
+            var hidden = (value !== '') && !match(value, row.textContent);
+
+            keys(filters).forEach(function (key) {
+                var cell = row.querySelector('td[data-pg-col="' + key + '"]');
+
+                hidden = hidden || !cell || (cell.getAttribute('data-pg-filter') !== filters[key]);
+            });
+
+            row.hidden = hidden;
+            shown += hidden ? 0 : 1;
+        });
+
+        this.total = shown;
+        this.paint();
     };
 
     Driver.prototype.reload = function () {
@@ -1397,6 +1454,37 @@
         });
     }
 
+    // A filter button names its list and column:
+    // <button data-pg-list-filter="list name" data-pg-filter-column="key"
+    // data-pg-filter-value="value">; '' shows every value. The buttons of one
+    // list and column are a group: the pressed one is marked active.
+    function bindFilters() {
+        document.addEventListener('click', function (event) {
+            var button = event.target && event.target.closest && event.target.closest('[data-pg-list-filter]');
+
+            if (!button) {
+                return;
+            }
+
+            var name = button.getAttribute('data-pg-list-filter').replace(/["\\]/g, '');
+            var key = button.getAttribute('data-pg-filter-column') || '';
+            var root = document.querySelector('.pg-list-table[data-pg-list-table="' + name + '"]');
+
+            event.preventDefault();
+
+            Array.prototype.forEach.call(document.querySelectorAll('[data-pg-list-filter="' + name + '"]'), function (other) {
+                if ((other.getAttribute('data-pg-filter-column') || '') === key) {
+                    other.classList.toggle('active', other === button);
+                    other.setAttribute('aria-pressed', (other === button) ? 'true' : 'false');
+                }
+            });
+
+            if (root && root.pgListTable && key) {
+                root.pgListTable.setFilter(key, button.getAttribute('data-pg-filter-value'));
+            }
+        });
+    }
+
     window.PGListTable = {
         Selection: Selection,
         Driver: Driver,
@@ -1417,6 +1505,7 @@
 
     if (typeof document !== 'undefined' && document.addEventListener) {
         bindSearch();
+        bindFilters();
 
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', function () { init(); });

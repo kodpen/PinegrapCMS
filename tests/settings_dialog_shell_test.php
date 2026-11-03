@@ -72,7 +72,8 @@ function test_settings_dialog_shows_warnings_in_their_own_tone()
 	$paint = settings_dialog_shell_test_function('paint');
 	pg_assert_contains('response.warnings', $paint, 'a pane read shows the warnings a tool left');
 
-	$save = settings_dialog_shell_test_function('save');
+	// save() asks first when a box deletes something; send() posts and reads the answer.
+	$save = settings_dialog_shell_test_function('send');
 	pg_assert_contains('response.warnings', $save, 'a save shows the warnings its modules left');
 }
 

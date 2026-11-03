@@ -2484,6 +2484,10 @@ body:not(.toolbar) .software-content {
   margin-left: 0.5rem;
   flex: 0 0 auto;
 }
+/* Not flush against the arrow of a row that opens a panel. */
+#menu.expanded .pg-menu-main .list-group-item.pg-menu-parent .pg-menu-badge {
+  margin-right: 0.375rem;
+}
 #menu:not(.expanded) .pg-menu-hint {
   display: none;
 }
@@ -2729,12 +2733,18 @@ body:not(.toolbar) .software-content {
   line-height: 1.4;
   text-align: start;
   color: var(--pg-fg-body);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
   cursor: pointer;
 }
+/* A long name ("Tüm Doğrulanmış Teslimat Adresleri") wraps onto a second
+   line beside its icon instead of ending in an ellipsis: the icon is the
+   first item of a row and the name the second. */
+#menu .menu-body .pg-menu-panel-body > a.bi {
+  display: flex;
+  align-items: center;
+}
 #menu .menu-body .pg-menu-panel-body > a::before {
+  flex: 0 0 auto;
   font-size: 1rem;
   vertical-align: -0.15em;
 }
@@ -2944,6 +2954,9 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
     flex: 0 0 auto;
     font-size: 0.7rem;
     padding: 0.3em 0.55em;
+  }
+  #menu:not(.expanded) .list-group .list-group-item.pg-menu-parent .pg-menu-badge {
+    margin-right: 0.375rem;
   }
   #menu:not(.expanded) .pg-menu-hint {
     display: block;
@@ -3749,6 +3762,12 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
   }
 }
 
+/* The menu is a column of a fixed or capped height that scrolls: its rows
+   keep their height. The licence card (overflow hidden, so no automatic
+   minimum height) shrank instead and hid its buttons below its edge. */
+#header .pg-usermenu > li {
+  flex-shrink: 0;
+}
 #header .pg-usermenu .menu-item {
   display: flex;
   align-items: center;
@@ -4030,6 +4049,18 @@ html[data-bs-theme="dark"] #menu .menu-body .pg-menu-panel[data-pg-menu-tone] .p
   overflow: hidden;
   border-radius: var(--pg-radius-lg);
   background: var(--pg-lic-bg);
+}
+/* The technical diagnostic under a failed licence check (managers only). */
+#header .pg-lic-diag {
+  font-size: 0.65rem;
+}
+#header .pg-lic-diag > summary {
+  cursor: pointer;
+}
+#header .pg-lic-diag > pre {
+  font-size: 0.65rem;
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 #header .pg-lic-success {
   --pg-lic-ink: var(--pg-success-ink);
@@ -11092,6 +11123,9 @@ body.pg-side-panel-open .pg-chat-launcher {
 }
 .pg-sale-res-price small { display: block; }
 .pg-sale-res[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+/* A button for an action that does nothing here: aria-disabled, not
+   disabled, so it still takes focus and names its reason. */
+.btn.pg-btn-inert { opacity: .65; cursor: default; }
 .pg-sale-res-new b { color: var(--pg-link-color); }
 .pg-sale-res-empty { padding: .7rem; color: var(--pg-fg-2); font-size: .875rem; }
 
@@ -12829,6 +12863,9 @@ html[data-bs-theme="dark"] .ws-group-icon {
   align-items: center;
   gap: .1rem;
   flex-shrink: 0;
+  /* A touch target as tall as the header's other buttons (it measured
+     23 px on a phone). */
+  min-height: 2rem;
   padding: .25rem .6rem .25rem .35rem;
   border: 0;
   border-radius: 999px;
@@ -12899,6 +12936,24 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   gap: .25rem;
   flex-shrink: 0;
   align-items: center;
+}
+/* The channel's More menu holds about twenty entries on a phone (the
+   header's own buttons move into it) and .ws-app clips what runs past the
+   screen, so the menu keeps to the screen's height and scrolls itself. */
+.ws-head-menu {
+  max-height: calc(100vh - 9rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+@supports (height: 100dvh) {
+  .ws-head-menu { max-height: calc(100dvh - 9rem); }
+}
+/* The share notice above the tabs: the sentence starts from no width, so it
+   stays beside its icon instead of wrapping onto a row of its own (a phone
+   showed the icon alone on the first line). */
+.ws-share-bar-text {
+  flex: 1 1 0;
+  min-width: 0;
 }
 .ws-avatars {
   display: inline-flex;
@@ -17570,13 +17625,20 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 .ws-fd-window {
   margin-top: .35rem;
 }
+/* The pane looks like the Flows canvas (.pgc-stage, .pgc-viewport): its
+   surface and its grid of dots, light or dark with the panel, the dots 10 px
+   apart (the canvas's 16 px grid at the card's 128/208 scale) and moving
+   with the drawing as it scrolls. */
 .ws-fd-pane {
   max-width: 100%;
   max-height: 16rem;
   overflow: auto;
-  border: 1px solid var(--pg-border-color);
+  border: 1px solid var(--pg-border-color-translucent);
   border-radius: var(--ws-radius);
-  background: var(--pg-bg-body);
+  background-color: var(--pg-bg-1);
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--pg-fg-body) 16%, transparent) 1px, transparent 1.25px);
+  background-size: 10px 10px;
+  background-attachment: local;
 }
 .ws-fd-pane svg {
   display: block;
@@ -22161,6 +22223,17 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   .pg-list-table-grid > tbody > tr > td.pg-list-table-saved {
     animation: none;
   }
+}
+
+/* Bookings week (view_bookings.php?view=week): seven day columns from xl up.
+   A flex item's min-width is its content, so a booking's unbreakable first
+   line (time and status badge) widened the columns until Saturday and Sunday
+   wrapped to a second row; the columns may shrink and that line wraps. */
+.pg-bookings-week > section {
+  min-width: 0;
+}
+.pg-bookings-week .list-group-item .d-flex {
+  flex-wrap: wrap;
 }
 }
 
