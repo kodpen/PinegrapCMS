@@ -112,7 +112,7 @@ function test_dashboard_v2_status_card_folds_chips_past_eight()
 
 	pg_assert_true(strpos($chips, pg_system_status_chips(array_slice($ordered, 0, 8), 2)) === 0, 'the first eight are drawn as widget 2 draws them');
 	pg_assert_contains('<details class="pg-dash-status-more"><summary>+2 more</summary>', $chips, 'two folded, no tone for calm checks');
-	pg_assert_contains(pg_system_status_chips(array_slice($ordered, 8), 2, 'system_status_more_'), $chips, 'the folded two');
+	pg_assert_contains('<div class="pg-dash-status-more-list">' . pg_system_status_chips(array_slice($ordered, 8), 2, 'system_status_more_') . '</div></details>', $chips, 'the folded two in their own row box');
 	pg_assert_contains('id="system_status_more_2"', $chips, 'a folded panel has its own id');
 
 	preg_match_all('/\sid="([^"]+)"/', $chips, $ids);
