@@ -106,7 +106,9 @@ foreach ($booking_posted as $user_id => $row) {
 // A user picked to be added must be a panel user who is not staff yet.
 $booking_add = (int) post_value('booking_staff_add');
 
-if (($booking_add > 0) && !isset(pg_booking_settings_candidates($booking_staff)[$booking_add])) {
+$booking_candidates = ($booking_add > 0) ? pg_booking_settings_candidates($booking_staff) : array();
+
+if (($booking_add > 0) && !isset($booking_candidates[$booking_add])) {
     $liveform->mark_error('booking_staff_add', lang('Choose a panel user who does not take bookings yet.'));
 }
 
