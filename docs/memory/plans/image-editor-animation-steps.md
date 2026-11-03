@@ -22,7 +22,7 @@ description: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion,
   - Left by AN3: the upload limit beside the estimate (`pg_upload_limits()` in the config) and a smaller size or rate offered when over it; Save to Files beside Download.
   - Action `animation`, the type by its bytes, a new file and its version with the document, reopening it, the same-format replace, `.webm` in the MIME map.
 
-- AN5 (S) APNG and animated WebP. `free` after AN3, beside AN4.
+- AN5 (S) APNG and animated WebP. `free` after AN3, beside AN4. Claimed.
   - In the worker; the dialog's formats.
 
 - AN6 (M) Video. `free` after AN4.
