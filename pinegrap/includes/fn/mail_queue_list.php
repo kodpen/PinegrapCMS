@@ -275,10 +275,10 @@ function pg_mail_queue_list_row(array $row, $now)
     $buttons = '';
 
     if (in_array($row['status'], array('queued', 'failed'), true)) {
-        $buttons .= '<button type="submit" name="mail_action" value="retry:' . $id . '" class="btn btn-sm btn-outline theme-secondary me-1" title="' . h(lang('Retry')) . '"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>';
+        $buttons .= '<button type="submit" name="mail_action" value="retry:' . $id . '" class="no-submit btn btn-sm btn-outline theme-secondary me-1" title="' . h(lang('Retry')) . '"><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>';
     }
 
-    $buttons .= '<button type="submit" name="mail_action" value="delete:' . $id . '" class="btn btn-sm btn-outline theme-warning" title="' . h(lang('Delete')) . '" data-confirm-content="' . h(pg_mail_queue_list_delete_question($row['status'])) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>';
+    $buttons .= '<button type="submit" name="mail_action" value="delete:' . $id . '" class="no-submit btn btn-sm btn-outline theme-warning" title="' . h(lang('Delete')) . '" data-confirm-content="' . h(pg_mail_queue_list_delete_question($row['status'])) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>';
 
     return array('id' => $id, 'class' => '', 'cells' => array(
         'recipient' => pg_list_cell(h($row['recipient']), 'align-middle'),
@@ -356,10 +356,10 @@ function pg_sms_queue_list_row(array $row, $now)
             ? ' data-confirm-content="' . h(lang('The provider may already have delivered this message, and sent again it would arrive twice. Check the provider\'s report first.')) . '"'
             : '';
 
-        $buttons .= '<button type="submit" name="sms_action" value="retry:' . $id . '" class="btn btn-sm btn-outline theme-secondary me-1" title="' . h(lang('Retry')) . '"' . $confirm . '><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>';
+        $buttons .= '<button type="submit" name="sms_action" value="retry:' . $id . '" class="no-submit btn btn-sm btn-outline theme-secondary me-1" title="' . h(lang('Retry')) . '"' . $confirm . '><i class="bi bi-arrow-clockwise" aria-hidden="true"></i></button>';
     }
 
-    $buttons .= '<button type="submit" name="sms_action" value="delete:' . $id . '" class="btn btn-sm btn-outline theme-warning" title="' . h(lang('Delete')) . '" data-confirm-content="' . h(pg_mail_queue_list_delete_question($row['status'])) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>';
+    $buttons .= '<button type="submit" name="sms_action" value="delete:' . $id . '" class="no-submit btn btn-sm btn-outline theme-warning" title="' . h(lang('Delete')) . '" data-confirm-content="' . h(pg_mail_queue_list_delete_question($row['status'])) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>';
 
     return array('id' => $id, 'class' => '', 'cells' => array(
         'recipient' => pg_list_cell('+' . h($row['recipient']), 'align-middle text-nowrap'),

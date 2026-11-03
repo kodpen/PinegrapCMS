@@ -14,7 +14,7 @@ description: Steps of the table driver plan: the driver core, its parts, the ser
 4. TD4 (M) After TD2. Users, contacts and submitted forms move with their bulk actions (export, merge, delete all) through the resolver.
    Cut in three, one screen each: TD4a done (#6325): the users list (Delete Selected); TD4b done (#6347): the contacts list (its selected-row actions: organize, opt in/out, merge, delete; Export, Merge and Delete All already act on the whole filter); TD4c the submitted forms list (export, delete all).
 
-5. TD5 (M) After TD2. Commissions, recurring commission profiles and the mail queue move.
+5. TD5 (M) done (#6380). Commissions, recurring commission profiles and the mail queue (both tabs) move.
 
 6. TD6 (M) After TD2. Site Log (its type filter as a driver filter, today `view_log.php` calls `column(1).search()`), the audit log and the firewall log move.
 
