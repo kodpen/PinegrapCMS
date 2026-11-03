@@ -26,6 +26,25 @@ if (!defined('PG_INIT_LOADED')) {
 	}
 
 	function edit_products() {
+		// The window has no real submit, so the browser never checks the
+		// boxes' own limits: the tax rate box (0..100) is asked here, and a
+		// stock process without a figure is stopped before anything is sent.
+		if (document.getElementById("tax_rate_method").value == "set") {
+			var tax_rate_box = document.getElementById("tax_rate_value");
+			tax_rate_box.required = true;
+			var tax_rate_valid = tax_rate_box.reportValidity();
+			tax_rate_box.required = false;
+			if (!tax_rate_valid) {
+				return;
+			}
+		}
+		if ((document.getElementById("inventory_quantity_process").value != "") && (document.getElementById("inventory_quantity").value == "")) {
+			var quantity_box = document.getElementById("inventory_quantity");
+			quantity_box.setCustomValidity(<?=json_encode(lang('Enter an inventory quantity.'))?>);
+			quantity_box.reportValidity();
+			quantity_box.setCustomValidity("");
+			return;
+		}
 		// If the user selected an option for the enabled field then update field in the form.
 		if(document.getElementById("enabled").value != "") {
 			opener.document.form.edit_enabled.value = document.getElementById("enabled").value;
@@ -88,6 +107,19 @@ if (!defined('PG_INIT_LOADED')) {
 		opener.document.form.submit();
 		window.close();
 	}
+
+	// A zone is either allowed or disallowed: ticking it in one card clears
+	// it in the other.
+	document.addEventListener("change", function (event) {
+		var box = event.target;
+		if (!box.checked || ((box.name != "allowed_zones") && (box.name != "disallowed_zones"))) {
+			return;
+		}
+		var other = document.getElementById(((box.name == "allowed_zones") ? "disallowed_zone_" : "allowed_zone_") + box.value);
+		if (other) {
+			other.checked = false;
+		}
+	});
 </script>
 
 <nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body">

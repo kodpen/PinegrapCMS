@@ -3396,6 +3396,36 @@ function parse_tax_rate($raw)
 }
 
 
+/**
+ * Why a typed tax rate cannot be stored as it is, or '' when it can (empty
+ * included: it follows the tax zone). 'not_number' for text that is no
+ * number, 'out_of_range' for one below 0 or above 100. parse_tax_rate()
+ * holds such a value to the bound; a screen or an import that must not
+ * store a rate nobody typed asks here first.
+ *
+ * @param  mixed $raw
+ * @return string  '', 'not_number' or 'out_of_range'
+ */
+function pg_tax_rate_problem($raw)
+{
+    $raw = str_replace(',', '.', trim((string) $raw));
+
+    if ($raw === '') {
+        return '';
+    }
+
+    if (!is_numeric($raw)) {
+        return 'not_number';
+    }
+
+    if (((float) $raw < 0) || ((float) $raw > 100)) {
+        return 'out_of_range';
+    }
+
+    return '';
+}
+
+
 
 /**
  * Site Settings' card surcharge percentage as
@@ -13605,6 +13635,28 @@ function pg_products_import_row_decimals_problem($row, $decimal_positions)
     }
 
     return '';
+}
+
+/**
+ * Whether a product import row's name or short description is longer than
+ * its varchar(100) column. The non-strict session would cut it without a
+ * word, and the name is the key the next import finds the product by: a cut
+ * name never matches the file's again, so every import added another
+ * product. Counted in characters, as the column counts them.
+ *
+ * @param array $row
+ * @param array $text_positions column => position
+ * @return bool
+ */
+function pg_products_import_row_text_too_long($row, $text_positions)
+{
+    foreach ($text_positions as $text_position) {
+        if (mb_strlen(pg_products_import_row_value($row, $text_position), 'UTF-8') > 100) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /**

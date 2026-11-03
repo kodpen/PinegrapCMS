@@ -711,14 +711,22 @@ function pg_product_list_rows($view, $products)
 }
 
 /**
- * A day count as the list shows it: '1 Day', '30 Days'.
+ * A day count as the list shows it: '1 day', '30 days' (in Turkish '30 gün':
+ * the count and the word are one key, so a language puts the noun the way it
+ * follows a number). No count (NULL, empty or 0) shows nothing.
  *
  * @param mixed $days
  * @return string not escaped
  */
 function pg_product_list_days($days)
 {
-    return $days . ' ' . (((string) $days === '1') ? lang('Day') : lang('Days'));
+    $days = trim((string) $days);
+
+    if (($days === '') || ($days === '0')) {
+        return '';
+    }
+
+    return lang(array('string' => ($days === '1') ? '{var:1} day' : '{var:1} days', 'vars' => array($days)));
 }
 
 /**
@@ -890,7 +898,7 @@ function pg_product_list_row($product, $view, $context)
                 break;
 
             case 'membership_renewal':
-                $cells[] = pg_list_cell(((string) $product['membership_renewal'] !== '0') ? h(pg_product_list_days($product['membership_renewal'])) : '');
+                $cells[] = pg_list_cell(h(pg_product_list_days($product['membership_renewal'])));
                 break;
 
             case 'order_receipt_message':
