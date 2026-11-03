@@ -1992,6 +1992,7 @@ function pg_css_bundles()
         'assets/css/backend.min.css' => 'assets/css/backend.src.css',
         'assets/css/pg_image_editor.min.css' => 'assets/css/pg_image_editor.src.css',
         'assets/css/pg_dash.min.css' => 'assets/css/pg_dash.src.css',
+        'assets/css/pg_visitors.min.css' => 'assets/css/pg_visitors.src.css',
     );
 }
 
@@ -3691,12 +3692,31 @@ function output_menu($properties = false)
     if (($user['role'] < 3) || ($user['manage_visitors'] == true)) {
         // VISITORS
         $menu_items[6]['id'] = 6;
-        $menu_items[6]['href'] = 'view_visitor_reports.php';
+        $menu_items[6]['href'] = 'visitors.php';
         $menu_items[6]['menu_icon'] = 'statistics';
         $menu_items[6]['color_class'] = 'statistics-color';
         $menu_items[6]['title'] = 'Visitors';
         $menu_items[6]['context'] = true;
-        $menu_items[6]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_reports.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-clipboard2-data bi-me-2\'>' . lang('Visitors') . '</a>';
+        // VISITORS > Overview, then its sections as anchors. Site Search, Page
+        // Speed and AI Visibility stay links to their own screens, under the
+        // same ready checks, until their sections are there.
+        $menu_items[6]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitors.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-speedometer bi-me-2\'>' . lang('Overview') . '</a>';
+        $visitor_screens = array(
+            'site_search' => array('visitor_search.php', 'bi-search', pg_site_search_stats_ready()),
+            'speed'       => array('visitor_vitals.php', 'bi-speedometer2', pg_vitals_ready()),
+            'ai'          => array('visitor_ai.php', 'bi-robot', pg_ai_visibility_ready()),
+        );
+        foreach (pg_visitors_sections() as $visitor_section => $visitor_section_label) {
+            if (pg_visitors_section_exists($visitor_section) && (!isset($visitor_screens[$visitor_section]) || $visitor_screens[$visitor_section][2])) {
+                $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitors.php#' . $visitor_section . '\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-dot bi-me-2\'>' . h($visitor_section_label) . '</a>';
+            } elseif (isset($visitor_screens[$visitor_section]) && $visitor_screens[$visitor_section][2]) {
+                $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $visitor_screens[$visitor_section][0] . '\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi ' . $visitor_screens[$visitor_section][1] . ' bi-me-2\'>' . h($visitor_section_label) . '</a>';
+            }
+        }
+
+        // VISITORS > Saved reports
+        $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
+        $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_reports.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-clipboard2-data bi-me-2\'>' . lang('Saved reports') . '</a>';
         $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Visitor Report'))) . '</a>';
         if (ECOMMERCE === true and USER_MANAGE_ECOMMERCE_REPORTS) {
             // ECOMMERCE > Order Reports
@@ -3710,26 +3730,10 @@ function output_menu($properties = false)
             $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_shipping_report.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-bar-chart bi-me-2\'>' . lang('Shipping Report') . '</a>';
         }
 
-        // VISITORS > Site Search (visitor_search.php), once the table is there.
-        if (pg_site_search_stats_ready()) {
-            $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-12\' />';
-            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitor_search.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-search bi-me-2\'>' . lang('Site Search') . '</a>';
-        }
 
-        // VISITORS > Page Speed and AI Visibility, once their tables are there.
-        if (pg_vitals_ready() || pg_ai_visibility_ready()) {
-            $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-        }
-        if (pg_vitals_ready()) {
-            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitor_vitals.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-speedometer2 bi-me-2\'>' . lang('Page Speed') . '</a>';
-        }
-        if (pg_ai_visibility_ready()) {
-            $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/visitor_ai.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-robot bi-me-2\'>' . lang('AI Visibility') . '</a>';
-        }
-
-        // VISITORS > Google Search Console
+        // VISITORS > Search Console settings
         $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-        $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/search_console.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-google bi-me-2\'>' . lang('Google Search Console') . '</a>';
+        $menu_items[6]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/search_console.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-google bi-me-2\'>' . lang('Search Console settings') . '</a>';
 
         // VISITORS > Analystics
         // if an external web stats link is supplied in the settings, then prepare link to web stats
@@ -4364,6 +4368,7 @@ function output_menu($properties = false)
         case 'import_submitted_forms.php':
             $active_menu = 5;
             break;
+        case 'visitors.php':
         case 'view_visitor_reports.php':
         case 'view_visitor_report.php':
         case 'view_visitor.php':
@@ -7278,6 +7283,8 @@ function pg_js_bundles()
         // The new dashboard (includes/dashboard/v2/page.php): the grid and
         // card frame first, then each card group's renderers.
         'assets/js/pg_dash.min.js'                => array('assets/js/pg_dash.js', 'assets/js/pg_dash_cards_visitors.js', 'assets/js/pg_dash_cards_content.js', 'assets/js/pg_dash_cards_security.js', 'assets/js/pg_dash_cards_team.js', 'assets/js/pg_dash_cards_work.js', 'assets/js/pg_dash_edit.js', 'assets/js/pg_dash_panel.js', 'assets/js/pg_dash_cards_personal.js', 'assets/js/pg_dash_cards_shop.js', 'assets/js/pg_dash_cards_assistant.js'),
+        // The Visitors overview (visitors.php): its period bar and charts.
+        'assets/js/pg_visitors.min.js'            => array('assets/js/pg_visitors.src.js'),
     );
 }
 
