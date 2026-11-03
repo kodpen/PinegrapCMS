@@ -10606,6 +10606,8 @@ body.pg-side-panel-open .pg-chat-launcher {
   transition: opacity .15s linear;
 }
 .pg-sm.is-busy .pg-sm-progress { opacity: 1; }
+/* The closed dialog stays display:flex, so the bar loops only while busy. */
+.pg-sm.is-busy .pg-sm-progress::after { animation-play-state: running; }
 .pg-sm-progress::after {
   position: absolute;
   inset-block: 0;
@@ -10613,7 +10615,7 @@ body.pg-side-panel-open .pg-chat-launcher {
   width: 40%;
   background: var(--pg-primary);
   content: "";
-  animation: pg-sm-slide 1.1s ease-in-out infinite;
+  animation: pg-sm-slide 1.1s ease-in-out infinite paused;
 }
 @keyframes pg-sm-slide {
   0%   { transform: translateX(-100%); }
