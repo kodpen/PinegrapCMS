@@ -7033,6 +7033,9 @@ function pg_js_bundles()
         // The link resolver's browser twin (window.PGLinkResolve,
         // includes/fn/link_resolve.php).
         'assets/js/pg_link_resolve.min.js'         => array('assets/js/pg_link_resolve.js'),
+        // The list table driver (window.PGListTable, includes/fn/list_table.php),
+        // printed by the screens whose list it draws.
+        'assets/js/pg_list_table.min.js'           => array('assets/js/pg_list_table.js'),
         // The Prototype view's hotspot collector (window.PGProtoHotspots).
         'assets/js/pg_proto_hotspots.min.js'       => array('assets/js/pg_proto_hotspots.js'),
         'assets/js/workspace_flow.min.js'          => array('assets/js/workspace_flow.js'),

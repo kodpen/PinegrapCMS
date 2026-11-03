@@ -2812,6 +2812,7 @@
     "The list beside the settings takes you straight to a section.": "Ayarların yanındaki liste seni doğrudan ilgili bölüme götürür.",
     "The list cannot be read: {var:1}": "Liste okunamıyor: {var:1}",
     "The list could not be fetched.": "Liste alınamadı.",
+    "The list could not be loaded.": "Liste yüklenemedi.",
     "The list found nothing": "Liste kayıt bulamadı",
     "The list found records": "Liste kayıt buldu",
     "The list holds {var:1} items.": "Liste {var:1} öğe içeriyor.",
