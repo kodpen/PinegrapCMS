@@ -1461,6 +1461,7 @@
     "removed from a product group": "ürün grubundan çıkarıldı",
     "removed from sitemap.xml": "sitemap.xml dosyasından kaldırıldı",
     "removed the firewall ban on {var:1} from the command line": "{var:1} üzerindeki güvenlik duvarı yasağını komut satırından kaldırdı",
+    "removed the {var:1} application of connected accounts": "bağlı hesapların {var:1} uygulamasını kaldırdı",
     "removed their own calendar from their Work Calendar": "kendi takvimini İş Takviminden kaldırdı",
     "removing old items": "eski öğeler kaldırılıyor",
     "renew, cancel, subscription, automatic": "yenileme, iptal, abonelik, otomatik",

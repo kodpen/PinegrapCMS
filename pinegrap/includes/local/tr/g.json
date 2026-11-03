@@ -293,6 +293,7 @@
     "Google could not verify the site: {var:1}": "Google siteyi doğrulayamadı: {var:1}",
     "Google did not answer with the place: {var:1}": "Google yeri döndürmedi: {var:1}",
     "Google did not give a verification code: {var:1}": "Google doğrulama kodu vermedi: {var:1}",
+    "Google features use the Sign in with Google application again.": "Google özellikleri yeniden Google ile oturum aç uygulamasını kullanıyor.",
     "Google found {var:1}: rated {var:2} from {var:3} ratings, {var:4} reviews to show.": "Google {var:1} yerini buldu: {var:3} puanlamadan {var:2} puan, gösterilecek {var:4} yorum.",
     "Google has a review of the business to show": "Google'da işletmenin gösterilecek bir yorumu var",
     "Google no longer accepts the account's permission. Connect it again to keep the figures coming.": "Google hesabın iznini artık kabul etmiyor. Verilerin gelmeye devam etmesi için hesabı yeniden bağlayın.",
