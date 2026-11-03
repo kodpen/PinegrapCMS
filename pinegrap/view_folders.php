@@ -6271,9 +6271,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if (overflow.length > 0) {
 
+            // Placed by Floating UI rather than displayed statically: the bar
+            // is the last row of #explorer_app, which clips its overflow, so a
+            // static menu dropped below the button and was cut off under the
+            // page footer. The fixed strategy takes it out of that clip, and
+            // flip/shift keep it inside the window -- above the button, at the
+            // right edge -- however tall the menu or narrow the screen.
             html += '<span class="pg-menu-wrap">' +
-                '<button type="button" class="btn btn-sm btn-text theme-secondary no-popover" data-bs-toggle="menu" data-bs-placement="top-end" data-bs-display="static" aria-expanded="false" aria-label="' + esc(L.more_actions) + '"><i class="bi bi-three-dots-vertical"></i></button>' +
-                '<ul class="menu pg-menu-end shadow" style="border-radius:.75rem;">';
+                '<button type="button" class="btn btn-sm btn-text theme-secondary no-popover" data-bs-toggle="menu" data-bs-placement="top-end" data-bs-strategy="fixed" aria-expanded="false" aria-label="' + esc(L.more_actions) + '"><i class="bi bi-three-dots-vertical"></i></button>' +
+                '<ul class="menu shadow" style="border-radius:.75rem;">';
 
             overflow.forEach(function (entry) {
                 html += '<li><button type="button" class="menu-item' + (entry.off ? ' disabled' : '') + '" data-selection-action="' + esc(entry.action) + '"' +

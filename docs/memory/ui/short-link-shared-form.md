@@ -14,6 +14,7 @@ description: The short link create and edit screens share includes/forms/short_l
 - `…_answer($liveform, $id, $name, $current_code)` runs `pg_short_link_redirect_columns()` on a form without errors.
 - `…_destination_column($type)` names the column and field of the target (`file` → `file_id`; a page has none, it keeps `page_id`). Create inserts only that column; edit sets it and clears the other three.
 
+- Open lead: a `file` destination checks neither a positive id nor that the file exists (the wizard does); `file=abc` fails the INSERT. Waits for #5403, which holds this file.
 ## What stays in the screens?
 - Create: the 404 log prefill, link mode and duration (one-time links skip the name check), the INSERT with token columns, the notice with the one-time address.
 - Edit: not-found, binned and nameless guards, the field prefill, the Visit link, the QR card, delete (to the bin when ready), the UPDATE, the redirect back with `?id=`.

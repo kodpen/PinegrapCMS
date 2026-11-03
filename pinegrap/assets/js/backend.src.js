@@ -1890,7 +1890,7 @@ $(document).ready(function () {
 
 
     options["fnInitComplete"] = function () {
-        datatable.columns.adjust();
+        // The table is printed hidden; a measure before show() reads nothing.
         $('table.chart').show();
 
 
@@ -1911,14 +1911,12 @@ $(document).ready(function () {
             }
         });
         $("table.dataTable #select_all").prop("checked", false);
-        datatable.columns.adjust();
 
-        // A list paged on the server would ask for the same page again.
-        // false keeps the page: a bare draw() puts the list back on page 1
-        // and would throw away the page restored from history.state.
-        if (!options.serverSide) {
-            datatable.draw(false);
-        }
+        // One measure, now that the table is visible. No draw() after it:
+        // the first draw already opened on the page restored from
+        // history.state (displayStart), and every draw re-measures the
+        // scrollX head.
+        datatable.columns.adjust();
 
         // DataTables names its pager landmark "pagination" in English
         // whatever the language; the panel language's file names it.
@@ -2048,9 +2046,8 @@ $(document).ready(function () {
         datatable.tables().every(function () {
             pgListHeadingCopies(this);
         });
-        $(window).on("resize", function () {
-            datatable.columns.adjust();
-        });
+        // No window resize listener: with scrollX, DataTables watches its
+        // own wrapper width with a throttled ResizeObserver.
     }
     //software search no longer available, if there is query paramater in url, search it in datatable, and remove query paramater from url.
     if (window.location.href.indexOf('?query=') > 0 || window.location.href.indexOf('&query=') > 0) {
