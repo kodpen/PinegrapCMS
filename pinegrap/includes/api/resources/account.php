@@ -745,8 +745,41 @@ function api_notification_present($row, $read) {
 		'url'         => $url,
 		'subject'     => $subject,
 		'read'        => (bool)$read,
-		'created_at'  => api_time($row['timestamp'])
+		'created_at'  => api_time($row['timestamp']),
+		'fold'        => api_notification_fold($display)
 	);
+
+}
+
+// The key the panel's bell folds a row by (the runs of one flow that ended
+// the same way, ws_bell_fold_key()), or null for a row that stands alone.
+function api_notification_fold($display) {
+
+	$fold = isset($display['fold']) ? (string)$display['fold'] : '';
+
+	return ($fold === '') ? null : $fold;
+
+}
+
+// The bell's chips as a WHERE condition: workspace is what the workspace told
+// this person, site is every other row, as the panel's bell splits them. No
+// group lists every row. Applied in SQL, before paging, so a page holds limit
+// rows of the group when there are that many.
+function api_notifications_group_where($group) {
+
+	if ($group === 'workspace') {
+
+		return "notifications.action = 'workspace'";
+
+	}
+
+	if ($group === 'site') {
+
+		return "(notifications.action IS NULL OR notifications.action <> 'workspace')";
+
+	}
+
+	return null;
 
 }
 
@@ -778,7 +811,8 @@ function api_notification_schema() {
 		'url'        => 'string?',
 		'subject'    => array('type' => 'string?', 'id' => 'integer?'),
 		'read'       => 'boolean',
-		'created_at' => 'string'
+		'created_at' => 'string',
+		'fold'       => 'string?'
 	);
 
 }
@@ -824,6 +858,14 @@ function api_notifications_list($params) {
 	if (isset($params['since']) && $params['since'] !== null) {
 
 		$where[] = "notifications.timestamp >= '" . (int)$params['since'] . "'";
+
+	}
+
+	$group_where = api_notifications_group_where(isset($params['group']) ? (string)$params['group'] : null);
+
+	if ($group_where !== null) {
+
+		$where[] = $group_where;
 
 	}
 

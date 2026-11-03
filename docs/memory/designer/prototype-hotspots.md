@@ -23,3 +23,6 @@ description: The Prototype view's hotspot collector (assets/js/pg_proto_hotspots
 
 ## How does layout() place things?
 - `layout(marked, saved)`: frames (`p:<tab key>`, then `s:<shared id>`) side by side (`FRAME`: 248 wide, 160 apart), each 44 + 30 per row + 10 high; a menu or region gives one row per link (label "menu › item"), one broken row when the read knows no such name. One chip (`c:<n>`) per mark and href outside the tabs, grouped by mark (page, anchor, contact, external, hidden, broken), stacked right of the frames; a hidden menu item gets no arrow. Arrows `<frame id>|<port>` to the tab frame or chip. `saved` (id → x, y) overrides a place; `rowY()` is a row port's height.
+
+## What does an arrow drawn by hand write?
+- `hrefPatch(node, row, href)` answers `{ key, value }`, a copy of the prop (`drawable()`, `hrefTo()`); `setHtmlHref()` rewrites the nth link's href in double quotes, the rest byte for byte. Rows carry `index`. Use: designer/prototype-view.md.

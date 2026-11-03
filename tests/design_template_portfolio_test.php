@@ -10,7 +10,9 @@
  * link of the shared parts names a page of the finished template, the
  * shared parts carry no class of another template, a project card reads
  * the Projects form's fields and a package card opens the brief with the
- * package chosen.
+ * package chosen; the public pages (pages_public.php) in order, linking
+ * only the template's pages with filter and choice values the lists and
+ * the brief know, placing the widgets the later parts define.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -36,7 +38,9 @@ function _test_pd_load()
 	foreach (array_keys($packages) as $key) $package_cards[$key] = $package_card($key);
 	$testimonial_cards = array();
 	foreach (array_keys($testimonials) as $n) $testimonial_cards[] = $testimonial_card($n);
+	$public = include $dir . '/pages_public.php';
 	$out = array(
+		'public'            => $public,
 		'designer'          => $designer,
 		'categories'        => $categories,
 		'services'          => $services,
@@ -236,5 +240,116 @@ function test_portfolio_package_card_chooses_the_package()
 		pg_assert_same(1, count($hrefs), "package $key: one brief link");
 		parse_str(substr($hrefs[0], strlen('{{page:brief}}?')), $q);
 		pg_assert_true(in_array($q['package'], $d['package_choices'], true), "package $key: the link names a Package answer");
+	}
+}
+
+// Every page link of a tree, and the query of each that has one.
+function _test_pd_links($tree, &$keys, &$queries)
+{
+	$nodes = array();
+	_test_pd_nodes($tree, $nodes);
+	foreach ($nodes as $node) {
+		foreach (array('href', 'text') as $prop) {
+			if (!isset($node['props'][$prop]) || !is_string($node['props'][$prop])) continue;
+			preg_match_all('/\{\{page:([a-z0-9_]+)\}\}(\?[^#"\s]*)?/', $node['props'][$prop], $m, PREG_SET_ORDER);
+			foreach ($m as $hit) {
+				$keys[] = $hit[1];
+				if (!empty($hit[2])) {
+					parse_str(substr($hit[2], 1), $q);
+					$queries[] = array($hit[1], $q);
+				}
+			}
+		}
+	}
+}
+
+// The template widgets a tree places.
+function _test_pd_widgets($tree)
+{
+	$nodes = array();
+	_test_pd_nodes($tree, $nodes);
+	$out = array();
+	foreach ($nodes as $node) {
+		if (isset($node['props']['templateWidget'])) $out[] = $node['props']['templateWidget'];
+	}
+	return $out;
+}
+
+function test_portfolio_public_pages()
+{
+	$d = _test_pd_load();
+	$keys = array();
+	$names = array();
+	foreach ($d['public'] as $p) {
+		pg_assert_same('public', $p['folder'], $p['key'] . ': public folder');
+		pg_assert_true(trim($p['name']) !== '' && trim($p['title']) !== '' && trim($p['meta_description']) !== '', $p['key'] . ': name, title, description');
+		pg_assert_true(!preg_match('/[^a-z0-9-]/', $p['name']), $p['key'] . ': page name is an address: ' . $p['name']);
+		$keys[] = $p['key'];
+		$names[] = $p['name'];
+	}
+	pg_assert_same(array('home', 'services', 'process', 'about', 'faq'), $keys, 'the public pages in order');
+	pg_assert_same(count($names), count(array_unique($names)), 'page names unique');
+
+	$known = array_flip(_test_pd_page_keys());
+	$links = array();
+	$queries = array();
+	foreach ($d['public'] as $p) _test_pd_links($p['tree'], $links, $queries);
+	foreach ($links as $key) pg_assert_true(isset($known[$key]), "public pages link a page of the template: $key");
+	// A choice link names an answer of the brief list it fills, so the form
+	// starts from words it knows.
+	$answers = array('type' => $d['category_titles'], 'package' => $d['package_choices']);
+	pg_assert_true(count($queries) >= 8, 'choice links');
+	foreach ($queries as $hit) {
+		pg_assert_same('brief', $hit[0], 'a query only on the brief');
+		foreach ($hit[1] as $param => $value) {
+			pg_assert_true(isset($answers[$param]), "known parameter: $param");
+			pg_assert_true(in_array($value, $answers[$param], true), "$param names an answer: $value");
+		}
+	}
+	// No class or field id of another template, and the FAQ's ids its own.
+	foreach ($d['public'] as $p) {
+		$nodes = array();
+		_test_pd_nodes($p['tree'], $nodes);
+		foreach ($nodes as $node) {
+			$class = isset($node['props']['cssClass']) ? (string)$node['props']['cssClass'] : '';
+			pg_assert_false((bool)preg_match('/\b(plw|psl|pre|pco|pev|pcl|pf)-[a-z]/', $class), $p['key'] . ': no class of another template: ' . $class);
+			$id = isset($node['props']['id']) ? (string)$node['props']['id'] : '';
+			pg_assert_false((bool)preg_match('/^(lw|re)-/', $id), $p['key'] . ': no field id of another template: ' . $id);
+		}
+	}
+}
+
+// The home places the selected work, the Journal, the reviews and the
+// newsletter; services shows every service and the three packages; about
+// tells the experience; the Turkish trap words stay out of the pages.
+function test_portfolio_public_pages_place_their_parts()
+{
+	$d = _test_pd_load();
+	$by_key = array();
+	foreach ($d['public'] as $p) $by_key[$p['key']] = $p;
+	$home = _test_pd_widgets($by_key['home']['tree']);
+	foreach (array('home_projects', 'home_posts', 'google_reviews', 'newsletter_band') as $w) {
+		pg_assert_true(in_array($w, $home, true), "home places $w");
+	}
+	$count = function ($tree, $label) {
+		$nodes = array();
+		_test_pd_nodes($tree, $nodes);
+		$n = 0;
+		foreach ($nodes as $node) {
+			if (isset($node['props']['_label']) && $node['props']['_label'] === $label) $n++;
+		}
+		return $n;
+	};
+	pg_assert_same(count($d['packages']), $count($by_key['services']['tree'], lang('Package Card')), 'services: every package');
+	pg_assert_same(count($d['packages']), $count($by_key['home']['tree'], lang('Package Card')), 'home: every package');
+	foreach ($d['services'] as $s) pg_assert_same(1, $count($by_key['services']['tree'], $s['title']), 'services: ' . $s['title']);
+	pg_assert_same(count($d['process']), $count($by_key['process']['tree'], lang('Step Number')), 'process: every step');
+	pg_assert_same(count($d['testimonials']), $count($by_key['about']['tree'], lang('Client Quote')), 'about: what clients say');
+	pg_assert_same(count($d['experience']), $count($by_key['about']['tree'], lang('Years')), 'about: the experience');
+	foreach ($d['public'] as $p) {
+		pg_assert_same(1, $count($p['tree'], lang('Main Content')), $p['key'] . ': one main');
+		foreach (array('Process', 'Contact', 'Testimonial', 'Business') as $trap) {
+			pg_assert_same(0, $count($p['tree'], lang($trap)), $p['key'] . ": no $trap label");
+		}
 	}
 }
