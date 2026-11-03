@@ -1897,7 +1897,7 @@ echo pg_page_shell(array(
 .mp-tab small { color: var(--pg-fg-2); }
 /* An account name is free text of up to 100 characters, possibly one long
    word: it breaks inside the tile, the account card header and the drawer
-   title instead of pushing the page (and the drawer's close button) sideways. */
+   title instead of pushing the page (and the close button of the drawer) sideways. */
 .mp-name { min-width: 0; overflow-wrap: anywhere; }
 #mp_drawer .drawer-header .btn-close { flex: 0 0 auto; }
 .mp-count { display: flex; gap: 18px; flex-wrap: wrap; }
@@ -1915,6 +1915,16 @@ echo pg_page_shell(array(
 }</style>
 
 <main id="content" class="container-fluid">
+	' . pg_screen_toolbar(array(
+		'primary' => '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-bs-toggle="dialog" data-bs-target="#mp_new">'
+			. '<i class="bi bi-plus-lg me-2" aria-hidden="true"></i>' . lang('Connect a Marketplace') . '</button>',
+		'grow'    => $accounts
+			? '<span class="small fg-secondary"><i class="bi bi-clock-history me-1" aria-hidden="true"></i>'
+				. ($last_run
+					? lang(array('string' => 'Last run {var:1}', 'vars' => array(mp_settings_ago($last_run))))
+					: lang('The scheduled job has not run yet.')) . '</span>'
+			: '',
+	)) . '
 	<div class="row"><div class="col-12">
 		' . $liveform->output_errors() . $liveform->output_notices() . $liveform->get_warnings() . '
 	</div></div>
@@ -1932,28 +1942,14 @@ if (!$accounts) {
 		<div class="card-body text-center py-12">
 			<i class="bi bi-shop" style="font-size:2.125rem;opacity:.35"></i>
 			<p class="mt-5 mb-1"><b>' . lang('No marketplace is connected yet.') . '</b></p>
-			<p class="small opacity-75 mb-7" style="max-width:520px;margin:0 auto">'
+			<p class="small opacity-75 mb-0" style="max-width:520px;margin:0 auto">'
 				. lang('Connect a marketplace account and match your products to the codes it knows them by. Stock and price changes here are then sent over there on a schedule.') . '</p>
-			<button type="button" class="btn btn-solid theme-primary" data-bs-toggle="dialog" data-bs-target="#mp_new">
-				<i class="bi bi-plus-lg me-1"></i>' . lang('Connect a Marketplace') . '</button>
 		</div>
 	</div>';
 
 } else {
 
 	echo '
-	<div class="d-flex align-items-center gap-3 mb-5 flex-wrap">
-		<span class="small opacity-75">
-			<i class="bi bi-clock-history me-1"></i>'
-			. ($last_run
-				? lang(array('string' => 'Last run {var:1}', 'vars' => array(mp_settings_ago($last_run))))
-				: lang('The scheduled job has not run yet.')) . '
-		</span>
-		<div class="flex-grow-1"></div>
-		<button type="button" class="btn btn-sm btn-solid theme-primary" data-bs-toggle="dialog" data-bs-target="#mp_new">
-			<i class="bi bi-plus-lg me-1"></i>' . lang('Connect a Marketplace') . '</button>
-	</div>
-
 	<div class="row g-5 mb-5">';
 
 	foreach ($accounts as $row) {
