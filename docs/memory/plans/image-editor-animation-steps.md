@@ -25,7 +25,7 @@ description: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion,
 - AN5 (S) APNG and animated WebP. Done (#6228, `ui/image-editor-encode.md`).
   - In the worker; the dialog's formats.
 
-- AN6 (M) Video. `free` after AN4.
+- AN6 (M) Video. Done (#6314, `ui/image-editor-video.md`).
   - WebCodecs with the MP4 and WebM muxers, the MediaRecorder fallback, the limits.
 
 - AN7 (M) Scenes. After AN3.

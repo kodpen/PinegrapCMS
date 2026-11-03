@@ -137,6 +137,7 @@ function test_image_editor_video_mp4()
 	pg_assert_same(array('header' => 1000, 'frame' => 2083), $r['est'], 'estimate from the bit rate');
 
 	$mp4 = base64_decode($r['mp4']);
+	pg_assert_same('mp4', pg_image_editor_animation_type($mp4), 'the server tells it by its bytes');
 	$top = image_editor_video_boxes($mp4, 0, strlen($mp4));
 	pg_assert_same(array('ftyp', 'moov', 'mdat'), array_map(function ($b) { return $b[0]; }, $top), 'index first');
 	pg_assert_same('isom', substr($top[0][2], 0, 4), 'brand');
@@ -234,6 +235,7 @@ function test_image_editor_video_webm()
 	pg_assert_same('video/webm', $r['mime'], 'mime');
 
 	$webm = base64_decode($r['webm']);
+	pg_assert_same('webm', pg_image_editor_animation_type($webm), 'the server tells it by its bytes');
 	$top = image_editor_video_children($webm, 0, strlen($webm));
 	pg_assert_same(array(0x1A45DFA3, 0x18538067), array($top[0][0], $top[1][0]), 'header and segment');
 	pg_assert_true(strpos(substr($webm, 0, $top[0][2] + $top[0][1]), "\x42\x82\x84webm") !== false, 'doctype webm');
