@@ -7120,16 +7120,6 @@ function pg_pb_validate_product_post($user, $product_id = 0)
         }
     }
 
-    // A quantity by location that is not a whole count of zero or more is
-    // refused before anything is written, as the prices below.
-    if (isset($_POST['stock_location']) && is_array($_POST['stock_location'])) {
-        $stock_check = pg_stock_posted_changes(pg_stock_screen_locations(), $_POST['stock_location'], array());
-
-        if (!$stock_check['ok']) {
-            output_error(lang('Enter an inventory quantity.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
-        }
-    }
-
     // A unit price or an extra shipping cost the column cannot hold is
     // refused before anything is written, as the "was" price below.
     if (pg_pb_price_above_column_top(isset($_POST['price']) ? $_POST['price'] : '')) {
@@ -7262,6 +7252,16 @@ function pg_pb_validate_product_post($user, $product_id = 0)
 
         if ($variant_problem !== '') {
             output_error(h($variant_problem) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+        }
+    }
+
+    // A quantity by location that is not a whole count of zero or more is
+    // refused before anything is written, as the prices above.
+    if (isset($_POST['stock_location']) && is_array($_POST['stock_location'])) {
+        $stock_check = pg_stock_posted_changes(pg_stock_screen_locations(), $_POST['stock_location'], array());
+
+        if (!$stock_check['ok']) {
+            output_error(lang('Enter an inventory quantity.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
     }
 }
