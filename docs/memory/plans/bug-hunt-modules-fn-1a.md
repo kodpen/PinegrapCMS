@@ -34,7 +34,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 - `explorer_side`: open
 - `files`: done #4613
 - `form_subscription`: open
-- `forms`: open
+- `forms`: done #6044 (validate_date() took a date inside longer text)
 - `geo`: done #5975
 - `google_analytics`: open
 - `google_reviews`: done #6019

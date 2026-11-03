@@ -227,3 +227,20 @@ function test_date_input_iso()
 		pg_assert_same('', pg_date_input_iso($bad), 'no date: ' . json_encode($bad));
 	}
 }
+
+// A date in the site's format is valid only when the whole value is one:
+// '5/5/20271' was read as 5/5/2027 and stored with the year 20271, and text
+// before or after a date passed as well.
+function test_forms_validate_date_whole_value()
+{
+	forms_test_date_format();
+
+	pg_assert_true(validate_date('05/05/2027'), 'a site date');
+	pg_assert_true(validate_date(' 5-5-2027 '), 'surrounding white space');
+	pg_assert_false(validate_date('5/5/20271'), 'a five-digit year');
+	pg_assert_false(validate_date('15/5/2027x'), 'text after the date');
+	pg_assert_false(validate_date('x5/5/2027'), 'text before the date');
+	pg_assert_false(validate_date('5/5/2027 5:05 PM'), 'a date and time');
+	pg_assert_true(validate_date_and_time('5/5/2027 5:05 PM'), 'still a date and time');
+	pg_assert_same('2027-05-05', prepare_form_data_for_input(' 5/5/2027 ', 'date'), 'stored without the white space');
+}

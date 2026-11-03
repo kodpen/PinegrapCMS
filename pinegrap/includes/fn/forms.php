@@ -1783,8 +1783,9 @@ function validate_date($date)
         return checkdate((int)$iso[2], (int)$iso[3], (int)$iso[1]);
     }
 
-    // if format of date is valid
-    if (preg_match('/(\d{1,2})[-,\/](\d{1,2})[-,\/](\d{4})/', $date, $date_parts) == 1) {
+    // The whole value is the date in the site's day and month order; a
+    // date found inside longer text ('5/5/20271') was stored with a wrong year.
+    if (is_scalar($date) && (preg_match('/^\s*(\d{1,2})[-,\/](\d{1,2})[-,\/](\d{4})\s*$/', (string) $date, $date_parts) == 1)) {
         $year = $date_parts[3];
         if (DATE_FORMAT == 'month_day') {
             $month = $date_parts[1];
@@ -1794,7 +1795,7 @@ function validate_date($date)
             $day = $date_parts[1];
         }
         // if date is valid (i.e. does the day exist for the month)
-        if (checkdate($month, $day, $year) == true) {
+        if (checkdate((int) $month, (int) $day, (int) $year) == true) {
             return true;
         } else {
             return false;
@@ -3578,7 +3579,7 @@ function prepare_form_data_for_input($data, $type)
                 if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})$/', trim((string)$data), $iso)) {
                     return sprintf('%04d-%02d-%02d', $iso[1], $iso[2], $iso[3]);
                 }
-                $date_parts = preg_split('/[-,\/]/', $data);
+                $date_parts = preg_split('/[-,\/]/', trim((string) $data));
 
                 // A value that is not in a date format does not split into three parts.
                 $date_parts = $date_parts + array('', '', '');
