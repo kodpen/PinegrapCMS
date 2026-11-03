@@ -17,7 +17,7 @@ description: Plan for the Hotel template (pinegrap-hotel): rooms as a collection
 - Turkish: check shared keys in tr.json before reuse (`Process` reads İşlem).
 
 ## Which steps are there?
-- 1 Data and shared parts: `parts.php` (builders, the hotel's data, sample rooms, rates, plans, offers, vouchers, pick lists; account bar, header, footer, booking band, room, plan and offer cards, page shells, form fields, comment thread, staff bar); test `design_template_hotel_test.php`.
+- 1 Done (#6216). Data and shared parts: `parts.php` (builders, the hotel's data, sample rooms, rates, plans, offers, vouchers, pick lists; account bar, header, footer, booking band, room, plan and offer cards, page shells, form fields, comment thread, staff bar); test `design_template_hotel_test.php`.
 
 - 2 Public pages: `pages_public.php` (home, about, dining, spa, location, offers, rates, FAQ).
 
