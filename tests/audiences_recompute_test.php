@@ -19,24 +19,24 @@ if (!defined('PG_TEST_RUNNER')) {
 function test_audiences_diff_on_fixed_sets()
 {
 	pg_assert_same(
-		array('add' => array(1, 4), 'remove' => array(7, 9)),
+		array('add' => array(1, 4), 'remove' => array(7, 9), 'convert' => array(), 'drop' => array()),
 		pg_audience_diff(array(4, 1, 2, 3), array(2, 3, 7, 9), array()),
 		'new contacts added, the ones no longer selected removed'
 	);
 
 	pg_assert_same(
-		array('add' => array(5), 'remove' => array()),
+		array('add' => array(5), 'remove' => array(), 'convert' => array(6), 'drop' => array()),
 		pg_audience_diff(array(5, 6, 6, '6', 0, -3), array(), array(6)),
-		'a member by hand is not added again; repeats and bad ids ignored'
+		'a member by hand is not added again, its row becomes a rule row; repeats and bad ids ignored'
 	);
 
 	pg_assert_same(
-		array('add' => array(), 'remove' => array(8)),
+		array('add' => array(), 'remove' => array(8, 11), 'convert' => array(), 'drop' => array()),
 		pg_audience_diff(array(), array(8), array(8, 11)),
-		'a rule row goes when the rule drops the contact; the hand row stays untouched'
+		'every row of a contact the rule drops goes, whatever its source'
 	);
 
-	pg_assert_same(array('add' => array(), 'remove' => array()), pg_audience_diff(array(3), array(3), array()), 'nothing to do');
+	pg_assert_same(array('add' => array(), 'remove' => array(), 'convert' => array(), 'drop' => array()), pg_audience_diff(array(3), array(3), array()), 'nothing to do');
 }
 
 function test_audiences_write_in_chunks()
@@ -48,7 +48,7 @@ function test_audiences_write_in_chunks()
 	pg_assert_same(PG_AUDIENCE_WRITE_CHUNK * 2, count($queries[0]['params']));
 	pg_assert_same(array(PG_AUDIENCE_WRITE_CHUNK + 1, 7), $queries[1]['params']);
 	pg_assert_same("INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id, source) VALUES (?, ?, 'rule')", $queries[1]['sql']);
-	pg_assert_same("DELETE FROM contacts_contact_groups_xref WHERE contact_group_id = ? AND source = 'rule' AND contact_id IN (?, ?)", $queries[2]['sql']);
+	pg_assert_same("DELETE FROM contacts_contact_groups_xref WHERE contact_group_id = ? AND contact_id IN (?, ?)", $queries[2]['sql']);
 	pg_assert_same(array(7, 20, 21), $queries[2]['params']);
 
 	foreach ($queries as $query) {

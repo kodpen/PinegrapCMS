@@ -18,7 +18,7 @@ description: Steps AU1-AU6 of plans/audiences.md: rule model and SQL builder, re
 
 - AU4 (S) Readers and doors. After AU1. Done in #6249 (`core/audiences-doors.md`).
 
-- AU4b (S) Rows the recompute cannot reach. After AU4; free now (touches `includes/fn/contacts.php`, `includes/fn/audiences.php`).
+- AU4b (S) Rows the recompute cannot reach. Done in #6307 (`core/audiences-recompute.md`, `core/audiences-doors.md`).
   - `merge_contacts()` (`includes/fn/contacts.php`, the two delete/re-insert blocks of group rows) keeps each row's `source` (or re-inserts only `hand` rows), so a merged contact's `rule` row stays `rule`.
   - A static group turned dynamic keeps its members only until the first recompute: the recompute (or the switch) removes or converts its non-`rule` rows. Tests: the merge's re-insert keeps `source`; the diff drops non-rule rows of a dynamic group. Memory: `core/audiences-doors.md` (the two "open, step AU4b" lines), `core/audiences-recompute.md`.
 

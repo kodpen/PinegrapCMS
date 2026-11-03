@@ -5,8 +5,10 @@ module: audiences
 ---
 
 ## What does a recompute do?
-- `pg_audience_recompute($group_id, $budget)` (`includes/fn/audiences.php`) walks the contacts in pages of 10,000 ids (`PG_AUDIENCE_PAGE`) from `contact_groups.compute_cursor`. Per page it reads the ids the rule selects (`pg_audience_sql_page()`), the group's `rule` rows and its rows of any other source, and `pg_audience_diff()` (pure) gives what to add and remove.
-- Only `source = 'rule'` rows are inserted or deleted, 500 a statement (`pg_audience_write_queries()`, pure). A contact already in the group by hand, form or product is never added a second time and its row is never touched (decision #5033: a recompute never removes a hand row).
+- `pg_audience_recompute($group_id, $budget)` (`includes/fn/audiences.php`) walks the contacts in pages of 10,000 ids (`PG_AUDIENCE_PAGE`) from `contact_groups.compute_cursor`. Per page it reads the ids the rule selects (`pg_audience_sql_page()`), the group's `rule` rows and its rows of any other source, and `pg_audience_diff()` (pure) gives `add`, `remove`, `convert`, `drop`.
+- Every row of a dynamic group ends up a `rule` row (#6307): a hand, form or product row whose contact the rule selects is turned into a `rule` row (`convert`), or deleted when the contact also has a `rule` row (`drop`); a contact the rule no longer selects leaves with all its rows (`remove`, any source). New members are inserted as `rule`. 500 ids a statement (`pg_audience_write_queries()`, pure).
+- Why: a static group turned dynamic keeps its members only until the first recompute (`plans/audiences.md`), and a row the recompute could not reach (a merged contact's, a switched group's) kept a contact in the group for good. The doors refuse new hand rows (`audiences-doors.md`).
+- Removed contacts of other sources are announced with the rest; converted ones stay members and are not.
 - The last page runs to the top of the id range, so rule rows of deleted contacts go too.
 - A pass that ends stamps `computed_at`, puts the cursor back to 0 and announces the whole change once through `pg_announce_contact_group_members()` (`contact_group.members_changed`: Flows, webhooks, campaign-profile triggers react as for a hand edit). A pass that stops at its budget keeps its cursor and the ids changed so far in `data/temp/audience_<id>.json`; the next call goes on from there.
 - Returns null for a group that is not dynamic, before the upgrade, or on a failed query.

@@ -43,7 +43,7 @@ function test_audiences_merge_inserts_write_the_source()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/contacts.php');
 
 	pg_assert_same(2, substr_count($source, 'pg_contact_merge_group_source($contact_groups_to_be_merged,'), 'both merge blocks pick the source');
-	pg_assert_same(0, preg_match('/INSERT INTO contacts_contact_groups_xref \(\s*contact_id,\s*contact_group_id\)/', $source), 'no merge insert leaves the source out');
+	pg_assert_same(2, substr_count($source, 'INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id, source) VALUES (?, ?, ?)'), 'both merge inserts write the source');
 	pg_assert_contains('contacts_contact_groups_xref.source', $source, 'the merge reads the source');
 }
 

@@ -16,8 +16,9 @@ module: audience_doors
 
 ## What is left as it was?
 - Readers: campaigns, SMS campaigns, the account's group list, exports, `GET` members read the xref rows whatever their source.
-- Erasure deletes a contact's xref rows and recomputes nothing. A merge (`merge_contacts()`) re-inserts the merged contact's rows without `source`, so a `rule` row comes back `hand` and the recompute never removes it (open, step AU4b).
-- Hand rows of a group switched to dynamic stay too: the recompute removes only `rule` rows (open, step AU4b).
+- Erasure deletes a contact's xref rows and recomputes nothing.
+- A merge (`merge_contacts()`, both blocks) re-inserts each group row with a source from `pg_contact_merge_group_source()` (pure, `includes/fn/contacts.php`): a hand, form or product row of any merged contact wins, else `rule`; before the upgrade no source is read or written (#6307). Before, every row came back `hand`, so a merged contact stayed in a dynamic group the rule no longer selected.
+- Hand rows of a group switched to dynamic are kept until its first recompute, which turns or removes them (`audiences-recompute.md`, #6307).
 - The form and product editors still list every group; the sale or submission skips a dynamic one.
 
 ## Tests?

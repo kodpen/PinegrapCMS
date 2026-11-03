@@ -801,16 +801,18 @@ define('PG_AUDIENCE_PAGE', 10000);
 define('PG_AUDIENCE_WRITE_CHUNK', 500);
 
 /**
- * What a page of a recompute changes: the contacts the rule selects that
- * are not members yet are added; the rule-made rows whose contact the rule
- * no longer selects are removed. A contact that is a member by another
- * source (a hand, form or product row) is never added a second time, and
- * its row is never touched. Pure; each list sorted, without repeats.
+ * What a page of a recompute changes. The contacts the rule selects that
+ * are not members yet are added; every member the rule no longer selects
+ * leaves, whatever its row's source. A group turned dynamic keeps its hand,
+ * form and product rows only until here: a selected contact's other row
+ * becomes a rule row ('convert'), or goes when the contact also has a rule
+ * row ('drop'), so every row of a dynamic group ends up one the recompute
+ * reaches. Pure; each list sorted, without repeats.
  *
  * @param int[] $selected the contacts the rule selects
  * @param int[] $by_rule  the contacts with a rule-made row
  * @param int[] $by_other the contacts with a row of another source
- * @return array array('add' => int[], 'remove' => int[])
+ * @return array array('add', 'remove', 'convert', 'drop' => int[])
  */
 function pg_audience_diff(array $selected, array $by_rule, array $by_other)
 {
@@ -819,12 +821,17 @@ function pg_audience_diff(array $selected, array $by_rule, array $by_other)
     $by_other = pg_audience_id_set($by_other);
 
     $add = array_keys(array_diff_key($selected, $by_rule, $by_other));
-    $remove = array_keys(array_diff_key($by_rule, $selected));
+    $remove = array_keys(array_diff_key($by_rule + $by_other, $selected));
+    $kept_other = array_intersect_key($by_other, $selected);
+    $convert = array_keys(array_diff_key($kept_other, $by_rule));
+    $drop = array_keys(array_intersect_key($kept_other, $by_rule));
 
     sort($add);
     sort($remove);
+    sort($convert);
+    sort($drop);
 
-    return array('add' => $add, 'remove' => $remove);
+    return array('add' => $add, 'remove' => $remove, 'convert' => $convert, 'drop' => $drop);
 }
 
 /**
@@ -971,8 +978,9 @@ function pg_audience_page_end($after)
 
 /**
  * The statements that write one page's change into the xref, in chunks of
- * PG_AUDIENCE_WRITE_CHUNK: inserts as 'rule' rows, deletes of 'rule' rows
- * only. Pure.
+ * PG_AUDIENCE_WRITE_CHUNK: other rows turned into 'rule' rows, inserts as
+ * 'rule' rows, deletes of every row of a contact that leaves, deletes of
+ * the other row beside a rule row. Pure.
  *
  * @param int   $group_id
  * @param array $diff pg_audience_diff()
@@ -981,6 +989,16 @@ function pg_audience_page_end($after)
 function pg_audience_write_queries($group_id, array $diff)
 {
     $queries = array();
+    $in = function ($sql, array $chunk) use ($group_id) {
+        return array(
+            'sql' => $sql . ' AND contact_id IN (' . implode(', ', array_fill(0, count($chunk), '?')) . ')',
+            'params' => array_merge(array((int) $group_id), array_map('intval', $chunk)),
+        );
+    };
+
+    foreach (array_chunk(isset($diff['convert']) ? $diff['convert'] : array(), PG_AUDIENCE_WRITE_CHUNK) as $chunk) {
+        $queries[] = $in("UPDATE contacts_contact_groups_xref SET source = 'rule' WHERE contact_group_id = ? AND source <> 'rule'", $chunk);
+    }
 
     foreach (array_chunk($diff['add'], PG_AUDIENCE_WRITE_CHUNK) as $chunk) {
         $params = array();
@@ -998,11 +1016,11 @@ function pg_audience_write_queries($group_id, array $diff)
     }
 
     foreach (array_chunk($diff['remove'], PG_AUDIENCE_WRITE_CHUNK) as $chunk) {
-        $queries[] = array(
-            'sql' => "DELETE FROM contacts_contact_groups_xref WHERE contact_group_id = ? AND source = 'rule' AND contact_id IN ("
-                . implode(', ', array_fill(0, count($chunk), '?')) . ')',
-            'params' => array_merge(array((int) $group_id), array_map('intval', $chunk)),
-        );
+        $queries[] = $in('DELETE FROM contacts_contact_groups_xref WHERE contact_group_id = ?', $chunk);
+    }
+
+    foreach (array_chunk(isset($diff['drop']) ? $diff['drop'] : array(), PG_AUDIENCE_WRITE_CHUNK) as $chunk) {
+        $queries[] = $in("DELETE FROM contacts_contact_groups_xref WHERE contact_group_id = ? AND source <> 'rule'", $chunk);
     }
 
     return $queries;
