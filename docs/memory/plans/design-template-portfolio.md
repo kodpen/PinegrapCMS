@@ -21,7 +21,7 @@ description: Plan for the Web Designer Portfolio template (pinegrap-portfolio): 
 
 - 2 Public pages: `pages_public.php` (home, services with packages, process, about, FAQ).
 
-- 3 Work: `work.php` (`project_new` with the Projects collection and its samples, `work` with category filters, `project` record page with images, facts, the story and the brief button, the list widgets the home places).
+- 3 Done (#6168). `work.php`: `work`, `project`, `project_new`; widgets `work_list`, `project_detail`, `project_more`, `home_projects` (the home's three featured); helpers `$work_…`.
 
 - 4 Briefs: `mail.php`, `briefs.php` (`brief`, `brief_view`, `my_briefs`, `staff_briefs`, `privacy`, `email_reply`, notify e-mails).
 
