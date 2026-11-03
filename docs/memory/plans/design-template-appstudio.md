@@ -21,7 +21,7 @@ description: Plan for the Mobile App Developer template (pinegrap-appstudio): ow
 
 - 2 Public pages: `pages_public.php` (home, services with packages, process, about, FAQ, press kit).
 
-- 3 Apps: `apps.php` (`app_new` with the Apps collection and samples, `apps` with filters, `app` record page, the home's list widgets).
+- 3 Done (#6199). Apps: `apps.php` (`app_new` with the Apps collection and samples, `apps` with filters, `app` record page, home `home_apps`).
 
 - 4 Releases and beta: `releases.php` (`release_new` with the Releases collection and samples, `releases` with `?app=`, `beta`, `beta_view`, `staff_beta`).
 
