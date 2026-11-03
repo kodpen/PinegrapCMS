@@ -48,6 +48,10 @@ function pg_list_table_definitions()
         'view_pages' => array('file' => 'includes/fn/page_list.php', 'source' => 'pg_page_list_source'),
         'view_users' => array('file' => 'includes/fn/user_list.php', 'source' => 'pg_user_list_source'),
         'view_contacts' => array('file' => 'includes/fn/contact_list.php', 'source' => 'pg_contact_list_source'),
+        'view_commissions' => array('file' => 'includes/fn/commission_list.php', 'source' => 'pg_commission_list_source'),
+        'view_recurring_commission_profiles' => array('file' => 'includes/fn/commission_list.php', 'source' => 'pg_commission_profile_list_source'),
+        'mail_queue' => array('file' => 'includes/fn/mail_queue_list.php', 'source' => 'pg_mail_queue_list_source'),
+        'mail_queue_sms' => array('file' => 'includes/fn/mail_queue_list.php', 'source' => 'pg_sms_queue_list_source'),
     );
 }
 

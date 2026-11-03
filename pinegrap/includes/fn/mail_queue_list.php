@@ -3,14 +3,13 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The mail queue screen's lists (mail_queue.php): the e-mail queue
- * (mail_outbox) and the text message queue (sms_outbox), shared by the
- * screen and the panel actions that page them (mail_queue_list_rows and
- * sms_queue_list_rows, includes/panel/lists.php).
- *
- * The screen printed the newest 100 rows, while its count cards counted the
- * whole table: failed messages past the 100th could not be found, retried or
- * deleted. The rows are now read one page at a time and searched on the
- * server, newest first.
+ * (mail_outbox) and the text message queue (sms_outbox), drawn by the list
+ * table driver (includes/fn/list_table.php). Their sources
+ * (pg_mail_queue_list_source(), pg_sms_queue_list_source()) serve the
+ * screen and the driver's list_table_rows action alike: the screen prints
+ * the first rows, the next ones come in batches as the list scrolls,
+ * searched and sorted on the server, so a failed message far down the
+ * queue can still be found, retried or deleted.
  *
  * Loaded where it is needed (require_once), not by functions.php.
  *
@@ -145,43 +144,98 @@ function pg_mail_queue_list_time($timestamp)
 }
 
 /**
- * The search box's condition on the e-mail queue: every word in the
- * recipient, the subject or the last error, or in the name a status or a
- * type is shown under.
+ * The e-mail queue's search columns: every word in the recipient, the
+ * subject or the last error, or in the name a status or a type is shown
+ * under.
  *
- * @param array $terms pg_list_search_terms()'s answer
- * @return array array('sql', 'params')
+ * @return array array('columns', 'labels') for pg_list_search_where()
  */
-function pg_mail_queue_list_search(array $terms)
+function pg_mail_queue_list_search_columns()
 {
-    return pg_list_search_where(
-        $terms,
-        array('recipient', 'subject', 'last_error'),
-        array(
+    return array(
+        'columns' => array('recipient', 'subject', 'last_error'),
+        'labels' => array(
             array('expr' => 'status', 'labels' => pg_mail_queue_list_status_labels(pg_mail_queue_list_statuses())),
             array('expr' => 'mail_type', 'labels' => pg_mail_queue_list_types()),
-        )
+        ),
     );
 }
 
 /**
- * The search box's condition on the text message queue: every word in the
- * recipient, the message, the reference, the last error or the provider's
- * id, or in the name a status or a kind is shown under.
+ * The text message queue's search columns: every word in the recipient,
+ * the message, the reference, the last error or the provider's id, or in
+ * the name a status or a kind is shown under.
  *
- * @param array $terms pg_list_search_terms()'s answer
- * @return array array('sql', 'params')
+ * @return array array('columns', 'labels') for pg_list_search_where()
  */
-function pg_sms_queue_list_search(array $terms)
+function pg_sms_queue_list_search_columns()
 {
-    return pg_list_search_where(
-        $terms,
-        array('recipient', 'body', 'reference', 'last_error', 'provider_id'),
-        array(
+    return array(
+        'columns' => array('recipient', 'body', 'reference', 'last_error', 'provider_id'),
+        'labels' => array(
             array('expr' => 'status', 'labels' => pg_mail_queue_list_status_labels(pg_sms_queue_list_statuses())),
             array('expr' => 'kind', 'labels' => pg_sms_queue_list_kinds()),
-        )
+        ),
     );
+}
+
+/**
+ * The columns both queues share around their own: the recipient leads (the
+ * row's name), the status, kind, attempts and last error follow the
+ * message, the times and the number come last, then the buttons.
+ *
+ * @param array  $statuses status => array(label, class)
+ * @param string $kind     the kind column's SQL (mail_type or kind)
+ * @param array  $kinds    kind => label
+ * @param array  $own      the queue's own columns after the recipient
+ * @param array  $after    the queue's own columns after the last error
+ * @return array key => spec, as pg_list_table_columns() takes them
+ */
+function pg_mail_queue_list_shared_columns(array $statuses, $kind, array $kinds, array $own, array $after)
+{
+    return array(
+        'recipient' => array('heading' => lang('Recipient'), 'width' => '16rem', 'sort' => 'recipient'),
+    ) + $own + array(
+        'status' => array('heading' => lang('Status'), 'width' => '9rem', 'kind' => 'badge', 'sort' => pg_list_label_order('status', pg_mail_queue_list_status_labels($statuses))),
+        'kind' => array('heading' => lang('Kind'), 'width' => '8rem', 'sort' => pg_list_label_order($kind, $kinds)),
+        'attempts' => array('heading' => lang('Attempts'), 'width' => '6rem', 'kind' => 'number', 'sort' => 'attempts'),
+        'last_error' => array('heading' => lang('Last error'), 'width' => '20rem'),
+    ) + $after + array(
+        'created' => array('heading' => lang('Created'), 'width' => '11rem', 'kind' => 'date', 'sort' => 'created_at'),
+        'when' => array('heading' => lang('Next attempt or sent'), 'width' => '11rem', 'kind' => 'date'),
+        'number' => array('heading' => '#', 'width' => '6rem', 'kind' => 'number', 'sort' => 'id'),
+        'actions' => array('heading' => lang('Action'), 'width' => '6rem', 'kind' => 'actions'),
+    );
+}
+
+/**
+ * The e-mail queue's columns for the list table driver.
+ *
+ * @return array key => spec
+ */
+function pg_mail_queue_list_columns()
+{
+    return pg_mail_queue_list_shared_columns(
+        pg_mail_queue_list_statuses(),
+        'mail_type',
+        pg_mail_queue_list_types(),
+        array('subject' => array('heading' => lang('Subject'), 'width' => '20rem', 'sort' => 'subject')),
+        array());
+}
+
+/**
+ * The text message queue's columns for the list table driver.
+ *
+ * @return array key => spec
+ */
+function pg_sms_queue_list_columns()
+{
+    return pg_mail_queue_list_shared_columns(
+        pg_sms_queue_list_statuses(),
+        'kind',
+        pg_sms_queue_list_kinds(),
+        array('message' => array('heading' => lang('Message'), 'width' => '20rem')),
+        array('provider' => array('heading' => lang('Provider'), 'width' => '10rem', 'sort' => 'provider')));
 }
 
 /**
@@ -191,7 +245,7 @@ function pg_sms_queue_list_search(array $terms)
  *                   attempts, last_error, sent_at, mail_type, recipient,
  *                   subject)
  * @param int   $now the time "on the next run" is measured from
- * @return array array('class', 'cells')
+ * @return array array('id', 'class', 'cells' => column key => pg_list_cell())
  */
 function pg_mail_queue_list_row(array $row, $now)
 {
@@ -226,17 +280,17 @@ function pg_mail_queue_list_row(array $row, $now)
 
     $buttons .= '<button type="submit" name="mail_action" value="delete:' . $id . '" class="btn btn-sm btn-outline theme-warning" title="' . h(lang('Delete')) . '" data-confirm-content="' . h(pg_mail_queue_list_delete_question($row['status'])) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>';
 
-    return array('class' => 'unselectable', 'cells' => array(
-        pg_list_cell($buttons, 'align-middle text-nowrap'),
-        pg_list_cell((string) $id, 'align-middle'),
-        pg_list_cell('<span class="badge ' . h($status[1]) . '">' . h($status[0]) . '</span>' . $permanent, 'align-middle text-nowrap'),
-        pg_list_cell(h(isset($types[$row['mail_type']]) ? $types[$row['mail_type']] : (string) $row['mail_type']), 'align-middle'),
-        pg_list_cell(h($row['recipient']), 'align-middle'),
-        pg_list_cell(pg_mail_queue_list_wrap(h($row['subject'])), 'align-middle'),
-        pg_list_cell((string) (int) $row['attempts'], 'align-middle'),
-        pg_list_cell(pg_mail_queue_list_wrap(h((string) $row['last_error'])), 'align-middle small fg-danger'),
-        pg_list_cell(pg_mail_queue_list_time($row['created_at']), 'align-middle text-nowrap'),
-        pg_list_cell($when, 'align-middle text-nowrap'),
+    return array('id' => $id, 'class' => '', 'cells' => array(
+        'recipient' => pg_list_cell(h($row['recipient']), 'align-middle'),
+        'subject' => pg_list_cell(pg_mail_queue_list_wrap(h($row['subject'])), 'align-middle'),
+        'status' => pg_list_cell('<span class="badge ' . h($status[1]) . '">' . h($status[0]) . '</span>' . $permanent, 'align-middle text-nowrap'),
+        'kind' => pg_list_cell(h(isset($types[$row['mail_type']]) ? $types[$row['mail_type']] : (string) $row['mail_type']), 'align-middle'),
+        'attempts' => pg_list_cell((string) (int) $row['attempts'], 'align-middle text-end'),
+        'last_error' => pg_list_cell(pg_mail_queue_list_wrap(h((string) $row['last_error'])), 'align-middle small fg-danger'),
+        'created' => pg_list_cell(pg_mail_queue_list_time($row['created_at']), 'align-middle text-nowrap'),
+        'when' => pg_list_cell($when, 'align-middle text-nowrap'),
+        'number' => pg_list_cell((string) $id, 'align-middle text-end'),
+        'actions' => pg_list_cell($buttons, 'align-middle text-nowrap'),
     ));
 }
 
@@ -247,7 +301,7 @@ function pg_mail_queue_list_row(array $row, $now)
  *                   expires_at, status, attempts, last_error, sent_at, kind,
  *                   recipient, body, reference, provider, provider_id)
  * @param int   $now the time expiry and "on the next run" are measured from
- * @return array array('class', 'cells')
+ * @return array array('id', 'class', 'cells' => column key => pg_list_cell())
  */
 function pg_sms_queue_list_row(array $row, $now)
 {
@@ -307,86 +361,102 @@ function pg_sms_queue_list_row(array $row, $now)
 
     $buttons .= '<button type="submit" name="sms_action" value="delete:' . $id . '" class="btn btn-sm btn-outline theme-warning" title="' . h(lang('Delete')) . '" data-confirm-content="' . h(pg_mail_queue_list_delete_question($row['status'])) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>';
 
-    return array('class' => 'unselectable', 'cells' => array(
-        pg_list_cell($buttons, 'align-middle text-nowrap'),
-        pg_list_cell((string) $id, 'align-middle'),
-        pg_list_cell('<span class="badge ' . h($status[1]) . '">' . h($status[0]) . '</span>', 'align-middle'),
-        pg_list_cell(h(isset($kinds[$row['kind']]) ? $kinds[$row['kind']] : (string) $row['kind']), 'align-middle'),
-        pg_list_cell('+' . h($row['recipient']), 'align-middle text-nowrap'),
-        pg_list_cell(pg_mail_queue_list_wrap(h($row['body']) . (($reference !== '') ? '<div class="small fg-secondary">' . h($reference) . '</div>' : '')), 'align-middle'),
-        pg_list_cell((string) (int) $row['attempts'], 'align-middle'),
-        pg_list_cell(pg_mail_queue_list_wrap(h((string) $row['last_error'])), 'align-middle small fg-danger'),
-        pg_list_cell(h($provider), 'align-middle small text-nowrap'),
-        pg_list_cell(pg_mail_queue_list_time($row['created_at']), 'align-middle text-nowrap'),
-        pg_list_cell($when, 'align-middle text-nowrap'),
+    return array('id' => $id, 'class' => '', 'cells' => array(
+        'recipient' => pg_list_cell('+' . h($row['recipient']), 'align-middle text-nowrap'),
+        'message' => pg_list_cell(pg_mail_queue_list_wrap(h($row['body']) . (($reference !== '') ? '<div class="small fg-secondary">' . h($reference) . '</div>' : '')), 'align-middle'),
+        'status' => pg_list_cell('<span class="badge ' . h($status[1]) . '">' . h($status[0]) . '</span>', 'align-middle'),
+        'kind' => pg_list_cell(h(isset($kinds[$row['kind']]) ? $kinds[$row['kind']] : (string) $row['kind']), 'align-middle'),
+        'attempts' => pg_list_cell((string) (int) $row['attempts'], 'align-middle text-end'),
+        'last_error' => pg_list_cell(pg_mail_queue_list_wrap(h((string) $row['last_error'])), 'align-middle small fg-danger'),
+        'provider' => pg_list_cell(h($provider), 'align-middle small text-nowrap'),
+        'created' => pg_list_cell(pg_mail_queue_list_time($row['created_at']), 'align-middle text-nowrap'),
+        'when' => pg_list_cell($when, 'align-middle text-nowrap'),
+        'number' => pg_list_cell((string) $id, 'align-middle text-end'),
+        'actions' => pg_list_cell($buttons, 'align-middle text-nowrap'),
     ));
 }
 
 /**
- * The number of rows of a table a condition selects.
+ * A queue's source for the list table driver, newest first unless the user
+ * sorted it otherwise. Only the screen's own users (a role above User) get
+ * one, and only once the queue's table exists.
  *
- * @param string $table  mail_outbox or sms_outbox
- * @param string $sql    a condition with ? placeholders, or ''
- * @param array  $params its values
- * @return int|false false when the query failed
+ * @param string $queue mail or sms
+ * @param array  $user  the session user
+ * @return array|null pg_list_table_source(), or null when the list may not
+ *                    be opened
  */
-function pg_mail_queue_list_count($table, $sql, array $params)
+function pg_mail_queue_list_queue_source($queue, $user)
 {
-    $result = db_q('SELECT COUNT(*) FROM ' . $table . (($sql !== '') ? ' WHERE ' . $sql : ''), $params);
+    if (!is_array($user) || !isset($user['role']) || !is_numeric($user['role']) || ((int) $user['role'] > 2)) {
+        return null;
+    }
 
-    return $result ? (int) mysqli_fetch_row($result)[0] : false;
-}
+    if (!(($queue === 'sms') ? pg_sms_queue_ready() : pg_mail_queue_ready())) {
+        return null;
+    }
 
-/**
- * One page of a queue, newest first: the row counts without and with the
- * search box, and the rows of the page window.
- *
- * @param string $queue  mail or sms
- * @param array  $terms  pg_list_search_terms()'s answer
- * @param array  $window pg_list_page_window()'s answer
- * @param int    $now
- * @return array|false array('total', 'filtered', 'rows') or false when a
- *                     query failed
- */
-function pg_mail_queue_list_page($queue, array $terms, array $window, $now)
-{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/list_table.php');
+
     if ($queue === 'sms') {
-        $table = 'sms_outbox';
-        $columns = 'id, created_at, send_after, expires_at, status, attempts, last_error, sent_at, kind, recipient, body, reference, provider, provider_id';
-        $search = pg_sms_queue_list_search($terms);
+        $list = 'mail_queue_sms';
+        $columns = pg_sms_queue_list_columns();
+        $select = 'id, created_at, send_after, expires_at, status, attempts, last_error, sent_at, kind, recipient, body, reference, provider, provider_id';
+        $search = pg_sms_queue_list_search_columns();
         $builder = 'pg_sms_queue_list_row';
     } else {
-        $table = 'mail_outbox';
-        $columns = 'id, created_at, send_after, status, attempts, last_error, sent_at, mail_type, recipient, subject';
-        $search = pg_mail_queue_list_search($terms);
+        $list = 'mail_queue';
+        $columns = pg_mail_queue_list_columns();
+        $select = 'id, created_at, send_after, status, attempts, last_error, sent_at, mail_type, recipient, subject';
+        $search = pg_mail_queue_list_search_columns();
         $builder = 'pg_mail_queue_list_row';
     }
 
-    $total = pg_mail_queue_list_count($table, '', array());
+    $levels = pg_list_state($list, pg_list_table_sort_columns(pg_list_table_columns($columns)), array('sort' => 'created', 'order' => 'desc'))['sorts'];
+    $now = time();
 
-    if ($total === false) {
-        return false;
-    }
+    return pg_list_table_source(array(
+        'list' => $list,
+        'columns' => $columns,
+        'from' => ($queue === 'sms') ? 'sms_outbox' : 'mail_outbox',
+        'id' => 'id',
+        'id_order' => 'desc',
+        'select' => $select,
+        'search' => $search,
+        'levels' => $levels,
+        'created' => 'created_at',
+        'rows' => function ($records) use ($builder, $now) {
+            $rows = array();
 
-    $filtered = ($search['sql'] !== '') ? pg_mail_queue_list_count($table, $search['sql'], $search['params']) : $total;
+            foreach ($records as $record) {
+                $rows[] = $builder($record, $now);
+            }
 
-    if ($filtered === false) {
-        return false;
-    }
+            return $rows;
+        },
+    ));
+}
 
-    $result = db_q('SELECT ' . $columns . ' FROM ' . $table
-        . (($search['sql'] !== '') ? ' WHERE ' . $search['sql'] : '')
-        . ' ORDER BY id DESC' . pg_list_limit_sql($window), $search['params']);
+/**
+ * The e-mail queue's source for the list table driver.
+ *
+ * @param array $user   the session user
+ * @param array $params the list parameters the browser sends back (none)
+ * @return array|null
+ */
+function pg_mail_queue_list_source($user, $params)
+{
+    return pg_mail_queue_list_queue_source('mail', $user);
+}
 
-    if (!$result) {
-        return false;
-    }
-
-    $rows = array();
-
-    while ($row = mysqli_fetch_assoc($result)) {
-        $rows[] = $builder($row, $now);
-    }
-
-    return array('total' => $total, 'filtered' => $filtered, 'rows' => $rows);
+/**
+ * The text message queue's source for the list table driver.
+ *
+ * @param array $user   the session user
+ * @param array $params the list parameters the browser sends back (none)
+ * @return array|null
+ */
+function pg_sms_queue_list_source($user, $params)
+{
+    return pg_mail_queue_list_queue_source('sms', $user);
 }

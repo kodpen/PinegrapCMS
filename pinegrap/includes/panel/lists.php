@@ -7,24 +7,19 @@
  *   submitted_form_list_rows   a page of the submitted forms list
  *                              (view_submitted_forms.php)
  *   product_list_rows          a page of the products list (view_products.php)
- *   commission_list_rows       a page of the commissions list
- *                              (view_commissions.php)
- *   commission_profile_list_rows
- *                              a page of the recurring commission profiles
- *                              (view_recurring_commission_profiles.php)
  *   site_log_list_rows         a page of the Site Log (view_log.php)
  *   audit_log_list_rows        a page of the audit trail (view_audit_log.php)
  *   audit_log_changes          the changed fields of one audit trail line
  *   waf_log_list_rows          a page of the firewall log's events
  *                              (view_waf_log.php)
- *   mail_queue_list_rows       a page of the e-mail queue (mail_queue.php)
- *   sms_queue_list_rows        a page of the text message queue
- *                              (mail_queue.php?tab=sms)
  *   list_table_rows            a batch of rows of a list drawn by the list
  *                              table driver (includes/fn/list_table.php):
  *                              the pages, users and contacts lists
  *                              (view_pages.php, view_users.php,
- *                              view_contacts.php)
+ *                              view_contacts.php), the commission lists
+ *                              (view_commissions.php,
+ *                              view_recurring_commission_profiles.php) and
+ *                              the mail queue (mail_queue.php, both tabs)
  *   booking_list_rows          a page of the bookings agenda's list view
  *                              (view_bookings.php?view=list)
  *
@@ -104,60 +99,6 @@ function pg_panel_product_list_rows($request, $action)
     // The sort is the one the screen kept in the session.
     $page = pg_product_list_page(
         pg_product_list_site_view(pg_product_list_filter_name($request['filter'] ?? '')),
-        pg_list_search_terms($request['search'] ?? ''),
-        pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100));
-
-    if ($page === false) {
-        http_response_code(500);
-        respond(array('status' => 'error', 'message' => lang('Query failed.')));
-    }
-
-    return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
-}
-
-// Both commission screens' gate: validate_ecommerce_access(), answered in
-// JSON. Each action checks the form token itself.
-function pg_panel_commission_list_gate()
-{
-    // Kept global: helpers read the session user through `global $user`;
-    // see includes/panel/actions.php.
-    global $user;
-
-    $user = validate_user();
-
-    if (((int) $user['role'] > 2) && ($user['manage_ecommerce'] != true)) {
-        http_response_code(403);
-        respond(array('status' => 'error', 'message' => lang('Access denied')));
-    }
-
-    require_once(PG_FUNCTIONS_DIR . '/includes/fn/commission_list.php');
-}
-
-function pg_panel_commission_list_rows($request, $action)
-{
-    pg_panel_commission_list_gate();
-    validate_token();
-
-    // The date range is the one the screen kept in the session.
-    $page = pg_commission_list_page(
-        pg_commission_list_range(),
-        pg_list_search_terms($request['search'] ?? ''),
-        pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100));
-
-    if ($page === false) {
-        http_response_code(500);
-        respond(array('status' => 'error', 'message' => lang('Query failed.')));
-    }
-
-    return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
-}
-
-function pg_panel_commission_profile_list_rows($request, $action)
-{
-    pg_panel_commission_list_gate();
-    validate_token();
-
-    $page = pg_commission_profile_list_page(
         pg_list_search_terms($request['search'] ?? ''),
         pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100));
 
@@ -300,73 +241,6 @@ function pg_panel_waf_log_list_rows($request, $action)
 
     $page = pg_schema_has('waf_log') ? pg_waf_log_list_page(
         pg_waf_log_list_filters($filters),
-        pg_list_search_terms($request['search'] ?? ''),
-        pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100),
-        time()) : false;
-
-    if ($page === false) {
-        http_response_code(500);
-        respond(array('status' => 'error', 'message' => lang('Query failed.')));
-    }
-
-    return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
-}
-
-function pg_panel_mail_queue_list_rows($request, $action)
-{
-    // Kept global: helpers read the session user through `global $user`;
-    // see includes/panel/actions.php.
-    global $user;
-
-    // The general gate has checked the session (any_role). The screen's own
-    // gate is validate_area_access($user, 'manager'), answered here in JSON.
-    $user = validate_user();
-
-    if ((int) $user['role'] > 2) {
-        http_response_code(403);
-        respond(array('status' => 'error', 'message' => lang('Access denied')));
-    }
-
-    validate_token();
-
-    return pg_panel_queue_list_page($request, 'mail');
-}
-
-function pg_panel_sms_queue_list_rows($request, $action)
-{
-    // Kept global: helpers read the session user through `global $user`;
-    // see includes/panel/actions.php.
-    global $user;
-
-    // The general gate has checked the session (any_role). The screen's own
-    // gate is validate_area_access($user, 'manager'), answered here in JSON.
-    $user = validate_user();
-
-    if ((int) $user['role'] > 2) {
-        http_response_code(403);
-        respond(array('status' => 'error', 'message' => lang('Access denied')));
-    }
-
-    validate_token();
-
-    return pg_panel_queue_list_page($request, 'sms');
-}
-
-/**
- * A page of one of the mail queue screen's lists, past its action's gate.
- *
- * @param array  $request the action's JSON body
- * @param string $queue   mail or sms
- * @return array
- */
-function pg_panel_queue_list_page($request, $queue)
-{
-    require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_queue_list.php');
-
-    $ready = ($queue === 'sms') ? pg_sms_queue_ready() : pg_mail_queue_ready();
-
-    $page = $ready ? pg_mail_queue_list_page(
-        $queue,
         pg_list_search_terms($request['search'] ?? ''),
         pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100),
         time()) : false;

@@ -20,6 +20,8 @@ validate_area_access($user, 'manager');
 include_once('liveform.class.php');
 $liveform = new liveform('mail_queue');
 
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_queue_list.php');
+
 $self_url = PATH . SOFTWARE_DIRECTORY . '/mail_queue.php';
 
 // The SMS tab is offered while SMS is set up or its queue still holds
@@ -122,6 +124,16 @@ if ($mail_queue_tab === 'sms') {
 
     $sms_queue_counts = pg_sms_queue_counts();
 
+    // The list table driver prints the first rows; the next ones come from
+    // its list_table_rows action (includes/panel/lists.php) as the list
+    // scrolls, so a message far down the queue can still be found.
+    $sms_queue_list_source = pg_sms_queue_list_source($user, array());
+    $sms_queue_list_page = ($sms_queue_list_source !== null) ? pg_list_table_page($sms_queue_list_source, array(), null) : false;
+
+    if ($sms_queue_list_page === false) {
+        output_error(lang('Query failed.'));
+    }
+
     $sms_queue_stats = '';
 
     foreach (
@@ -177,6 +189,10 @@ if ($mail_queue_tab === 'sms') {
                     <button type="submit" name="sms_action" value="run_now" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Run now') . '</button>
                 </form>
                 <div class="pg-toolbar-grow"></div>
+                <label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search">
+                    <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                    <input type="search" class="form-ghost" data-pg-list-search="mail_queue_sms" placeholder="' . h(lang('Search')) . '" aria-label="' . h(lang('Search')) . '">
+                </label>
                 <div class="small">' . $sms_queue_state . '</div>
             </nav>
 
@@ -187,28 +203,7 @@ if ($mail_queue_tab === 'sms') {
 
             <form action="mail_queue.php?tab=sms" method="post" class="disable_shortcut">
                 ' . get_token_field() . '
-                <div class="card my-7">
-                    <div class="card-body p-0 position-relative">
-                        <table class="chart table-hover table" style="width:100%;display:none;" data-pg-list-action="sms_queue_list_rows">
-                            <thead>
-                                <tr>
-                                    <th class="noVis">' . lang('Action') . '</th>
-                                    <th>#</th>
-                                    <th>' . lang('Status') . '</th>
-                                    <th>' . lang('Kind') . '</th>
-                                    <th>' . lang('Recipient') . '</th>
-                                    <th>' . lang('Message') . '</th>
-                                    <th>' . lang('Attempts') . '</th>
-                                    <th>' . lang('Last error') . '</th>
-                                    <th>' . lang('Provider') . '</th>
-                                    <th>' . lang('Created') . '</th>
-                                    <th>' . lang('Next attempt or sent') . '</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                </div>
+                ' . pg_list_table_html($sms_queue_list_source, $sms_queue_list_page, lang('SMS')) . '
             </form>';
 
 } elseif (!pg_mail_queue_ready()) {
@@ -224,6 +219,13 @@ if ($mail_queue_tab === 'sms') {
             SUM(CASE WHEN (status = 'sent') AND (sent_at >= " . (time() - 86400) . ") THEN 1 ELSE 0 END) AS sent,
             SUM(CASE WHEN status = 'failed' THEN 1 ELSE 0 END) AS failed
         FROM mail_outbox");
+
+    $mail_queue_list_source = pg_mail_queue_list_source($user, array());
+    $mail_queue_list_page = ($mail_queue_list_source !== null) ? pg_list_table_page($mail_queue_list_source, array(), null) : false;
+
+    if ($mail_queue_list_page === false) {
+        output_error(lang('Query failed.'));
+    }
 
     $mail_queue_runs = pg_cron_last_runs();
 
@@ -288,6 +290,10 @@ if ($mail_queue_tab === 'sms') {
                     <button type="submit" name="mail_action" value="run_now" class="btn btn-sm btn-solid theme-primary rounded-pill px-5"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Run now') . '</button>
                 </form>
                 <div class="pg-toolbar-grow"></div>
+                <label class="form-control form-control-sm form-adorn rounded-pill pg-toolbar-search">
+                    <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                    <input type="search" class="form-ghost" data-pg-list-search="mail_queue" placeholder="' . h(lang('Search')) . '" aria-label="' . h(lang('Search')) . '">
+                </label>
                 <div class="small">' . $mail_queue_state . '</div>
             </nav>
 ' . $mail_queue_transport_warning . '
@@ -298,27 +304,7 @@ if ($mail_queue_tab === 'sms') {
 
             <form action="mail_queue.php" method="post" class="disable_shortcut">
                 ' . get_token_field() . '
-                <div class="card my-7">
-                    <div class="card-body p-0 position-relative">
-                        <table class="chart table-hover table" style="width:100%;display:none;" data-pg-list-action="mail_queue_list_rows">
-                            <thead>
-                                <tr>
-                                    <th class="noVis">' . lang('Action') . '</th>
-                                    <th>#</th>
-                                    <th>' . lang('Status') . '</th>
-                                    <th>' . lang('Kind') . '</th>
-                                    <th>' . lang('Recipient') . '</th>
-                                    <th>' . lang('Subject') . '</th>
-                                    <th>' . lang('Attempts') . '</th>
-                                    <th>' . lang('Last error') . '</th>
-                                    <th>' . lang('Created') . '</th>
-                                    <th>' . lang('Next attempt or sent') . '</th>
-                                </tr>
-                            </thead>
-                            <tbody></tbody>
-                        </table>
-                    </div>
-                </div>
+                ' . pg_list_table_html($mail_queue_list_source, $mail_queue_list_page, lang('Mail queue')) . '
             </form>';
 }
 
@@ -367,6 +353,7 @@ pg_page_shell(array(
         </div>
     </div>
 </main>
+' . pg_js_bundle_tags('assets/js/pg_list_table.min.js') . '
 ' .
 output_footer();
 
