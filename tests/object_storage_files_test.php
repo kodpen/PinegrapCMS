@@ -4,7 +4,8 @@
  *
  * Tests for the pure parts of includes/fn/file_storage.php: where a row's
  * bytes are, the object key, which rows the move job takes, its state from
- * tick to tick, the cache names and the cache sweep's choice.
+ * tick to tick, the cache names, a copy's last use and the cache sweep's
+ * choice.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -121,4 +122,27 @@ function test_object_storage_files_cache_sweep_pick()
 	pg_assert_same(array('/c/1.jpg', '/c/4.jpg', '/c/5.jpg.1.part'), $delete, 'stale, dead fetches, then least recently used above the cap');
 
 	pg_assert_same(array(), pg_file_cache_sweep_pick(array('/c/3.jpg' => array(400, $now)), 1000, $now));
+}
+
+function test_object_storage_files_cache_last_use()
+{
+	pg_assert_same(200, pg_file_cache_last_use(100, 200), 'read after the fetch');
+	pg_assert_same(300, pg_file_cache_last_use(300, 100), 'an access time not kept by the mount');
+	pg_assert_same(100, pg_file_cache_last_use(100, false), 'no access time');
+	pg_assert_same(0, pg_file_cache_last_use(false, false));
+}
+
+function test_object_storage_files_cache_used_keeps_mtime()
+{
+	$path = tempnam(sys_get_temp_dir(), 'pgcopy');
+	@touch($path, 1000000, 1000000);
+	clearstatcache(true, $path);
+
+	pg_file_cache_used($path);
+	clearstatcache(true, $path);
+
+	pg_assert_same(1000000, (int) filemtime($path), 'the fetch time a derivative signature reads');
+	pg_assert_true(pg_file_cache_last_use(filemtime($path), fileatime($path)) > 1000000, 'the use counts for the sweep');
+
+	@unlink($path);
 }
