@@ -1465,6 +1465,7 @@
     "{var:1} short link(s) imported from a CSV file": "CSV dosyasından {var:1} kısa bağlantı içe aktarıldı",
     "{var:1} short link(s) will be deleted for good. Short links have no recycle bin.": "{var:1} kısa bağlantı kalıcı olarak silinecek. Kısa bağlantıların geri dönüşüm kutusu yoktur.",
     "{var:1} sign-in failed: the private key could not sign": "{var:1} ile giriş başarısız: özel anahtar imzalayamadı",
+    "{var:1} sign-in refused because the account is disabled ({var:2})": "{var:1} ile giriş, hesap pasif olduğu için reddedildi ({var:2})",
     "{var:1} sign-in refused because the email address is blocked ({var:2})": "{var:1} ile giriş reddedildi, çünkü e-posta adresi engelli ({var:2})",
     "{var:1} sign-in refused for an unknown account ({var:2})": "{var:1} ile giriş bilinmeyen bir hesap için reddedildi ({var:2})",
     "{var:1} sign-in refused for an unknown account without a verified e-mail address ({var:2})": "{var:1} ile giriş, doğrulanmış e-posta adresi olmayan bilinmeyen bir hesap için reddedildi ({var:2})",

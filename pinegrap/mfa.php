@@ -92,6 +92,19 @@ function pg_mfa_screen_complete($user_id, $username, $send_to, $remember)
 {
     pg_mfa_pending_clear();
 
+    // The account was disabled while its second step waited: refused with
+    // the sign-in screen's one answer, which names no account state.
+    if (pg_user_id_is_disabled($user_id)) {
+        global $origin, $back_url;
+
+        list($disabled_form) = pg_mfa_origin_form($origin);
+        $disabled_liveform = new liveform($disabled_form);
+        $disabled_liveform->mark_error('', pg_login_refused_message());
+
+        header('Location: ' . $back_url);
+        exit();
+    }
+
     pg_device_limit_gate($user_id, $username, $send_to, $remember, true);
     pg_login_set_device_cookie($user_id, $remember);
 
