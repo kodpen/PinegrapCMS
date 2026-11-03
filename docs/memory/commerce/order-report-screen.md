@@ -21,3 +21,6 @@ module: order_report
 
 ## How are group names shown?
 - Order status through `pg_order_log_status()`, payment method through `pg_payment_method_label()`; the summarize-by optgroup closings use distinct keys (`#optgroup-end-N`): a shared `''` key kept only one `</optgroup>` (#5763, #5764).
+
+## How are the filter row controls named?
+- `create_filter()` / `update_value_cell()` in `backend.src.js` (shared with the Visitor Report and form list view) give each control `aria-label` "<column heading>, Filter N" (`pg_filter_control_name()`); the delete button is named "Delete filter, Filter N" with its icon `aria-hidden`. The "Day(s) Ago" count is `type=number min=0 step=1` with a visible "day(s)" unit, and a stored 0 (today) shows again on edit. The words come through the `$translate` map in `includes/fn/output.php` (#5761, #5764).

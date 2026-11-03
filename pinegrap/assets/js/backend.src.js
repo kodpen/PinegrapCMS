@@ -5994,6 +5994,12 @@ function initialize_filters() {
     }
 }
 
+// The accessible name of a filter row's control: its column heading and the
+// row, e.g. "Field, Filter 2"; the rows have no visible label of their own.
+function pg_filter_control_name(heading, filter_number) {
+    return heading + ', ' + lang('Filter {var:1}').replace('{var:1}', String(filter_number));
+}
+
 // create row for filter
 function create_filter(properties) {
     // if no properties were passed, then set blank values
@@ -6014,7 +6020,7 @@ function create_filter(properties) {
 
     // prepare content for field cell
     var field_cell_html =
-        '<select class="form-control" id="filter_' + filter_number + '_field" name="filter_' + filter_number + '_field" onchange="update_value_cell(' + filter_number + '); update_dynamic_value(' + filter_number + ')">\n\
+        '<select class="form-control" id="filter_' + filter_number + '_field" name="filter_' + filter_number + '_field" aria-label="' + prepare_content_for_html(pg_filter_control_name(lang('Field'), filter_number)) + '" onchange="update_value_cell(' + filter_number + '); update_dynamic_value(' + filter_number + ')">\n\
             <option value=""></option>';
 
     // loop through all field options in order to prepare field options for pick list
@@ -6047,7 +6053,7 @@ function create_filter(properties) {
     td_1.innerHTML = field_cell_html;
 
     // prepare content for operator cell
-    var operator_cell_html = '<select  class="form-control" name="filter_' + filter_number + '_operator">';
+    var operator_cell_html = '<select class="form-control" name="filter_' + filter_number + '_operator" aria-label="' + prepare_content_for_html(pg_filter_control_name(lang('Operator'), filter_number)) + '">';
 
     // create array for operator options
     var operators = new Array(
@@ -6078,19 +6084,24 @@ function create_filter(properties) {
     var td_3 = document.createElement('td');
     td_3.id = 'filter_' + filter_number + '_value_cell';
 
-    // prepare content for dynamic value cell
+    // prepare content for dynamic value cell; the day count of "Day(s) Ago"
+    // is a whole number from 0 (the server refuses anything else) with its
+    // unit beside it
     var dynamic_value_cell_html =
         '<div class="input-group">\
-            <input class="form-control" id="filter_' + filter_number + '_dynamic_value_attribute" name="filter_' + filter_number + '_dynamic_value_attribute" type="text" value="' + prepare_content_for_html(properties['dynamic_value_attribute']) + '" size="2" maxlength="10" style="display: none" />\
-            <select class="form-control" id="filter_' + filter_number + '_dynamic_value" name="filter_' + filter_number + '_dynamic_value" style="display: none" onchange="update_dynamic_value_attribute(' + filter_number + '); clear_value(' + filter_number + ')"></select>\
+            <input class="form-control" id="filter_' + filter_number + '_dynamic_value_attribute" name="filter_' + filter_number + '_dynamic_value_attribute" type="number" min="0" step="1" inputmode="numeric" value="' + prepare_content_for_html(properties['dynamic_value_attribute']) + '" aria-label="' + prepare_content_for_html(pg_filter_control_name(lang('Day(s) Ago'), filter_number)) + '" style="display: none; max-width: 6rem" />\
+            <span class="input-group-text" id="filter_' + filter_number + '_dynamic_value_unit" aria-hidden="true" style="display: none">' + prepare_content_for_html(lang('day(s)')) + '</span>\
+            <select class="form-control" id="filter_' + filter_number + '_dynamic_value" name="filter_' + filter_number + '_dynamic_value" aria-label="' + prepare_content_for_html(pg_filter_control_name(lang('Dynamic Value'), filter_number)) + '" style="display: none" onchange="update_dynamic_value_attribute(' + filter_number + '); clear_value(' + filter_number + ')"></select>\
         </div>';
 
     // insert content into dynamic value cell
     var td_4 = document.createElement('td');
     td_4.innerHTML = dynamic_value_cell_html;
 
-    // prepare content for delete cell
-    var delete_cell_html = '<button type="button" class="btn btn-solid theme-danger material-icons" onclick="delete_filter(this.parentNode.parentNode)" >delete</button>';
+    // prepare content for delete cell: named by its action, the icon's
+    // ligature text is hidden from screen readers
+    var delete_name = prepare_content_for_html(lang('Delete filter') + ', ' + lang('Filter {var:1}').replace('{var:1}', String(filter_number)));
+    var delete_cell_html = '<button type="button" class="btn btn-solid theme-danger" aria-label="' + delete_name + '" title="' + delete_name + '" onclick="delete_filter(this.parentNode.parentNode)"><span class="material-icons" aria-hidden="true">delete</span></button>';
 
     var td_5 = document.createElement('td');
     td_5.innerHTML = delete_cell_html;
@@ -6146,7 +6157,7 @@ function update_value_cell(filter_number, value) {
             // if there are value options for the field, then create HTML for pick list of value options
             if (field_options[i]['value_options']) {
                 value_cell_html =
-                    '<select class="form-control" id="filter_' + filter_number + '_value" name="filter_' + filter_number + '_value">\n\
+                    '<select class="form-control" id="filter_' + filter_number + '_value" name="filter_' + filter_number + '_value" aria-label="' + prepare_content_for_html(pg_filter_control_name(lang('Value'), filter_number)) + '">\n\
                         <option value=""></option>';
 
                 // loop through all value options in order to prepare values options for pick list
@@ -6168,7 +6179,7 @@ function update_value_cell(filter_number, value) {
             } else {
                 var hook = FILTER_VALUE_HOOKS[field_options[i]['type']] || '';
 
-                value_cell_html = '<input class="form-control" id="filter_' + filter_number + '_value" name="filter_' + filter_number + '_value" type="text" value="' + prepare_content_for_html(value) + '" maxlength="255"' + (hook ? ' ' + hook : '') + ' />';
+                value_cell_html = '<input class="form-control" id="filter_' + filter_number + '_value" name="filter_' + filter_number + '_value" type="text" value="' + prepare_content_for_html(value) + '" maxlength="255" aria-label="' + prepare_content_for_html(pg_filter_control_name(lang('Value'), filter_number)) + '"' + (hook ? ' ' + hook : '') + ' />';
             }
 
             // update value cell with HTML; the previous box's control goes first
@@ -6290,13 +6301,14 @@ function update_dynamic_value_attribute(filter_number, dynamic_value_attribute) 
     // get dynamic value for filter
     dynamic_value = document.getElementById('filter_' + filter_number + '_dynamic_value').value;
 
-    // if the dynamic value is days ago, then show attribute
-    if (dynamic_value == 'days ago') {
-        document.getElementById('filter_' + filter_number + '_dynamic_value_attribute').style.display = 'inline';
+    // if the dynamic value is days ago, then show attribute and its unit
+    var shown = (dynamic_value == 'days ago') ? 'inline' : 'none';
+    var unit = document.getElementById('filter_' + filter_number + '_dynamic_value_unit');
 
-        // else the dynamic value is not days ago, so hide attribute
-    } else {
-        document.getElementById('filter_' + filter_number + '_dynamic_value_attribute').style.display = 'none';
+    document.getElementById('filter_' + filter_number + '_dynamic_value_attribute').style.display = shown;
+
+    if (unit) {
+        unit.style.display = shown;
     }
 }
 

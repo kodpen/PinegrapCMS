@@ -306,8 +306,9 @@ if (!$_POST) {
             $order_date_filter_exists = true;
         }
         
-        // if dynamic value attribute is equal to 0, then set to empty string
-        if ($filter['dynamic_value_attribute'] == 0) {
+        // the day count belongs to "days ago" only, where 0 (today) is a
+        // value of its own; other filters store 0 for none
+        if ($filter['dynamic_value'] != 'days ago') {
             $filter['dynamic_value_attribute'] = '';
         }
         
