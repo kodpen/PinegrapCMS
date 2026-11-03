@@ -59,14 +59,54 @@ function test_store_credit_points_minimum_is_the_fewest_points_that_reach_the_sm
 {
 	pg_assert_same(50, pg_credit_points_minimum(10, 500), '10 points a unit, 5,00 smallest');
 	pg_assert_same(1, pg_credit_points_minimum(10, 0), 'no smallest: one point is 0,10');
-	pg_assert_same(5, pg_credit_points_minimum(1000, 0), '1000 a unit: 5 points round to one minor unit');
+	pg_assert_same(10, pg_credit_points_minimum(1000, 0), '1000 a unit: 10 points are one whole minor unit');
 	pg_assert_same(0, pg_credit_points_minimum(0, 500), 'off');
 
 	foreach (array(array(3, 700), array(7, 1), array(0.3333, 999), array(250, 0)) as $case) {
 		$minimum = pg_credit_points_minimum($case[0], $case[1]);
-		pg_assert_true(pg_credit_points_value($minimum, $case[0], $case[1]) >= max(1, $case[1]), 'the minimum reaches the smallest');
-		pg_assert_true(($minimum === 1) || (pg_credit_points_value($minimum - 1, $case[0], $case[1]) < max(1, $case[1])), 'one point fewer does not');
+		pg_assert_true(pg_credit_points_take($minimum, $case[0], $case[1])['value'] >= max(1, $case[1]), 'the minimum reaches the smallest');
+		pg_assert_true(($minimum === 1) || (pg_credit_points_take($minimum - 1, $case[0], $case[1])['value'] < max(1, $case[1])), 'one point fewer does not');
 	}
+}
+
+function test_store_credit_points_take_never_gives_more_than_the_points_are_worth()
+{
+	pg_assert_same(array('value' => 500, 'points' => 1000), pg_credit_points_take(1000, 200, 0), 'rate 200: 1000 points');
+	pg_assert_same(array('value' => 0, 'points' => 0), pg_credit_points_take(1, 200, 0), 'half a minor unit is not rounded up');
+	pg_assert_same(array('value' => 500, 'points' => 1000), pg_credit_points_take(1001, 200, 0), 'the odd point stays with the customer');
+	pg_assert_same(array('value' => 0, 'points' => 0), pg_credit_points_take(5, 1000, 0), 'rate 1000: 5 points are worth nothing yet');
+	pg_assert_same(array('value' => 333, 'points' => 999), pg_credit_points_take(1000, 300, 0), 'rate 3: the remainder stays');
+	pg_assert_same(array('value' => 100, 'points' => 7), pg_credit_points_take(7, 7, 0), 'an exact rate spends every point');
+	pg_assert_same(array('value' => 100, 'points' => 1), pg_credit_points_take(1, 1, 0), 'one point a unit');
+	pg_assert_same(array('value' => 0, 'points' => 0), pg_credit_points_take(40, 10, 500), 'under the smallest');
+
+	// Splitting never pays more than converting at once.
+	foreach (array(200, 1000, 3, 0.3333, 7) as $rate) {
+		$whole = pg_credit_points_take(5000, $rate, 0)['value'];
+		$pieces = 0;
+		$left = 5000;
+		while ($left > 0) {
+			$take = pg_credit_points_take(min($left, 13), $rate, 0);
+			if ($take['points'] === 0) {
+				break;
+			}
+			$pieces += $take['value'];
+			$left -= $take['points'];
+		}
+		pg_assert_true($pieces <= $whole, 'pieces of 13 points at rate ' . $rate);
+		pg_assert_true($pieces <= 5000 * 100 / $rate + 1e-6, 'never above the exact worth at rate ' . $rate);
+	}
+}
+
+function test_store_credit_points_staff_save_writes_only_a_changed_field()
+{
+	pg_assert_same('', pg_credit_points_staff_sql('120', '120'), 'unchanged: the balance is left alone');
+	pg_assert_same('user_reward_points = 300,', pg_credit_points_staff_sql('300', '120'), 'changed: written');
+	pg_assert_same('user_reward_points = 0,', pg_credit_points_staff_sql('', '120'), 'cleared: zero');
+	pg_assert_same('user_reward_points = 50,', pg_credit_points_staff_sql('50', null), 'an older form without the original');
+	pg_assert_same('', pg_credit_points_staff_sql(null, null), 'not posted: left alone');
+	pg_assert_same('user_reward_points = 0,', pg_credit_points_staff_sql('1e5', '1'), 'not a whole number: zero');
+	pg_assert_same('user_reward_points = 4294967295,', pg_credit_points_staff_sql('99999999999', '1'), 'capped at the column');
 }
 
 function test_store_credit_points_conversion_never_runs_without_a_user()

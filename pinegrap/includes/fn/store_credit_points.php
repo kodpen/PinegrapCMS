@@ -113,6 +113,42 @@ function pg_credit_points_settings()
 }
 
 /**
+ * What converting $points gives and how many of them it spends. The value is
+ * the whole minor units the points are fully worth (never rounded up), and
+ * only the points that value needs are spent; the rest stay with the
+ * customer. Rounding half up here would let a customer split a conversion
+ * into small pieces that each round up and get more than the points are
+ * worth. Under the smallest conversion (or one minor unit) nothing is
+ * converted.
+ *
+ * @param int       $points
+ * @param int|float $rate      points per unit of money
+ * @param int       $smallest  minor units
+ * @return array  value (minor units), points (spent)
+ */
+function pg_credit_points_take($points, $rate, $smallest = 0)
+{
+    $points = (int) $points;
+    $rate = (float) $rate;
+    $none = array('value' => 0, 'points' => 0);
+
+    if (($points <= 0) || ($rate <= 0)) {
+        return $none;
+    }
+
+    // The small allowance keeps 0.07 * 100 / 0.07 from landing just under 100.
+    $value = (int) floor(($points * 100 / $rate) + 1e-9);
+
+    if ($value < max(1, (int) $smallest)) {
+        return $none;
+    }
+
+    $spent = (int) ceil(($value * $rate / 100) - 1e-9);
+
+    return array('value' => $value, 'points' => max(1, min($points, $spent)));
+}
+
+/**
  * Why a conversion of $points out of $balance is refused, '' when it may go
  * ahead.
  *
@@ -140,7 +176,7 @@ function pg_credit_points_check($points, $balance, $rate, $smallest)
         return 'balance';
     }
 
-    if (pg_credit_points_value((int) $points, $rate, $smallest) <= 0) {
+    if (pg_credit_points_take((int) $points, $rate, $smallest)['value'] <= 0) {
         return 'small';
     }
 
@@ -163,16 +199,14 @@ function pg_credit_points_minimum($rate, $smallest)
         return 0;
     }
 
-    // round() rounds half up, so half a minor unit short of the target is
-    // already enough; step up from the estimate until the value is reached.
     $target = max(1, (int) $smallest);
-    $points = max(1, (int) floor(($target - 0.5) * $rate / 100));
+    $points = max(1, (int) ceil(($target * $rate / 100) - 1e-9));
 
-    while (pg_credit_points_value($points, $rate, $smallest) < $target) {
+    while (pg_credit_points_take($points, $rate, $smallest)['value'] < $target) {
         $points++;
     }
 
-    while (($points > 1) && (pg_credit_points_value($points - 1, $rate, $smallest) >= $target)) {
+    while (($points > 1) && (pg_credit_points_take($points - 1, $rate, $smallest)['value'] >= $target)) {
         $points--;
     }
 
@@ -195,7 +229,7 @@ function pg_credit_points_offer($balance)
     return array(
         'enabled' => $enabled,
         'points'  => $balance,
-        'value'   => $enabled ? pg_credit_points_value($balance, $settings['rate'], $settings['smallest']) : 0,
+        'value'   => $enabled ? pg_credit_points_take($balance, $settings['rate'], $settings['smallest'])['value'] : 0,
         'minimum' => $enabled ? pg_credit_points_minimum($settings['rate'], $settings['smallest']) : 0,
     );
 }
@@ -230,8 +264,9 @@ function pg_credit_points_convert($user_id, $points)
         return $answer;
     }
 
-    $points = (int) $points;
-    $value = pg_credit_points_value($points, $settings['rate'], $settings['smallest']);
+    $take = pg_credit_points_take((int) $points, $settings['rate'], $settings['smallest']);
+    $points = $take['points'];
+    $value = $take['value'];
 
     $spent = db_q(
         "UPDATE user SET user_reward_points = user_reward_points - ? WHERE user_id = ? AND user_reward_points >= ?",
@@ -281,4 +316,32 @@ function pg_credit_points_error_text($error)
     }
 
     return lang('Reward points cannot be converted to store credit.');
+}
+
+/**
+ * The reward points column for the user screen's UPDATE, with a comma after
+ * it, or '' to leave the balance alone. The screen posts the balance it was
+ * opened with beside the field; the balance is written only when staff
+ * changed the field, so a save of a record opened before a conversion or an
+ * order does not put back the points they moved.
+ *
+ * @param mixed $posted    the reward_points field
+ * @param mixed $original  the reward_points_original field (null on an older form)
+ * @return string
+ */
+function pg_credit_points_staff_sql($posted, $original)
+{
+    if (!is_scalar($posted)) {
+        return '';
+    }
+
+    $posted = trim((string) $posted);
+
+    if (is_scalar($original) && (trim((string) $original) === $posted)) {
+        return '';
+    }
+
+    $points = ctype_digit($posted) ? min((float) $posted, (float) PG_CREDIT_POINTS_MAX) : 0;
+
+    return "user_reward_points = " . number_format($points, 0, '.', '') . ",";
 }
