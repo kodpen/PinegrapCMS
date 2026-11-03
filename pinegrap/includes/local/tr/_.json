@@ -650,6 +650,7 @@
     "{var:1} day(s) overdue; the reminder threshold for this account is {var:2} days. It will be announced once it passes.": "{var:1} gün gecikmiş; bu cari için hatırlatma eşiği {var:2} gün. Eşiği geçince duyurulur.",
     "{var:1} days": "{var:1} gün",
     "{var:1} days ago": "{var:1} gün önce",
+    "{var:1} days back": "{var:1} gün geride",
     "{var:1} days left": "{var:1} gün kaldı",
     "{var:1} days off": "{var:1} tatil günü",
     "{var:1} days overdue": "{var:1} gün gecikmiş",
