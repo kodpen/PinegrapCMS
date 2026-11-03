@@ -28,7 +28,7 @@ description: External API (integration.php): find what the panel can do that the
 - X10 Calendars create/update/delete, `/calendars/locations` CRUD, `GET /calendars/events/{id}/reservations`. `calendars:*` with the role-3 row rule. Event `calendar_event.reserved`.
 - X11 `POST /forms/{id}/submissions`, its `/delete`, `GET /forms/{id}/fields`. `forms:*`. Event `form.submission.deleted`; `form.submitted` exists.
 - X12 `/design/` CRUD, `design:*`, no events:
-  - X12a ads, ad regions: PR #PRNUM (`api/api-design-ads.md`).
+  - X12a ads, ad regions: PR #6383 (`api/api-design-ads.md`).
   - X12b auto dialogs, common regions; a converted common region refuses delete as its screen does (#5516).
 
 ## What is not a step?
