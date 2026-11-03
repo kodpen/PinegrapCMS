@@ -106,6 +106,10 @@ if (!$_POST) {
     // card of their own).
     $contact_groups = db_items("SELECT id, name FROM contact_groups ORDER BY name");
 
+    // A group filled by rules may be given to an account, but no contact is
+    // imported into it.
+    $dynamic_contact_groups = pg_audience_dynamic_group_ids();
+
     $output_contact_groups = '';
     $output_contact_groups_for_contact = '';
 
@@ -114,6 +118,10 @@ if (!$_POST) {
         foreach ($contact_groups as $contact_group) {
 
             $output_contact_groups .= '<div class="form-field"><input type="checkbox" name="contact_group_' . $contact_group['id'] . '" id="contact_group_' . $contact_group['id'] . '" value="1" class="check multiselect-checkbox" /><label class="" for="contact_group_' . $contact_group['id'] . '">' . h($contact_group['name']) . '</label></div>';
+
+            if (in_array((int) $contact_group['id'], $dynamic_contact_groups, true)) {
+                continue;
+            }
 
             $output_contact_groups_for_contact .= '
             <div class="col-12 md:col-4 my-1">
@@ -530,7 +538,7 @@ if (!$_POST) {
 
     $contact_column_list .= 'user, timestamp';
 
-    $contact_groups = db_items("SELECT id FROM contact_groups");
+    $contact_groups = db_items("SELECT id FROM contact_groups WHERE " . pg_audience_hand_sql());
 
     $contact_groups_for_contact = array();
 

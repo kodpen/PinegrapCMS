@@ -1664,7 +1664,7 @@ function pg_signin_create_member($identity)
     pg_announce_contact_created($contact_id);
 
     if (defined('REGISTRATION_CONTACT_GROUP_ID')
-        && db_value("SELECT id FROM contact_groups WHERE id = '" . (int) REGISTRATION_CONTACT_GROUP_ID . "'")) {
+        && db_value("SELECT id FROM contact_groups WHERE (id = '" . (int) REGISTRATION_CONTACT_GROUP_ID . "') AND " . pg_audience_hand_sql())) {
         db(
             "INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id)
             VALUES ('" . $contact_id . "', '" . (int) REGISTRATION_CONTACT_GROUP_ID . "')");
