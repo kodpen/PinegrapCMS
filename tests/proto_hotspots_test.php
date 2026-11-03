@@ -444,6 +444,18 @@ function test_proto_hotspots_printed_before_the_designer()
 	pg_assert_contains("_pgApiPost('prototype_map', designed.request)", $source, 'the view asks the map read');
 }
 
+// The view draws arrows through the core's connect drag, on the row's tab,
+// and keeps its keys from the editor's document shortcuts.
+function test_proto_hotspots_view_draws_arrows()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+
+	pg_assert_contains('canConnect: function (from, to, port) { return _sdProtoArrowHref(from, to, port) !== null; }', $source, 'the core asks the view where an arrow may end');
+	pg_assert_contains('connected: function (from, to, port) { _sdProtoConnect(from, to, port); }', $source, 'a drawn arrow writes the link');
+	pg_assert_contains("if (e.target.closest && e.target.closest('#sd-proto')) return;", $source, 'the document shortcuts leave the view alone');
+	pg_assert_contains('var patch = node ? H.hrefPatch(node, row, href) : null;', $source, 'the node gets the collector\'s patch');
+}
+
 // The collector is a bundle of its own.
 function test_proto_hotspots_is_bundled()
 {
