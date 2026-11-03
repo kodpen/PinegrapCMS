@@ -564,6 +564,7 @@ function ws_editor_js_strings()
         'table_formula_hint'        => lang('A cell that starts with = is worked out: =B2*C2, =SUM(D2:D5) (TOPLA), + - * / and %, IF and comparisons; the names of the calculations in the same text work too (=B2*Rate). The header is row 1.'),
         'table_formula_bar'         => lang('The formula or the value of the cell'),
         'insert_to_note'            => lang('Add to the note'),
+        'insert_to_text'            => lang('Add to the text'),
         'block_calc'                => ws_js_template('Calculation · {var:1} line(s)', 1),
         'designer_calc'             => lang('Calculation'),
         'calc_placeholder'          => lang('Total = Rent + Dues'),

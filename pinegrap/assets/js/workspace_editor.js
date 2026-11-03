@@ -5391,7 +5391,7 @@
         };
 
         if (kind === 'checklist') {
-            openChecklist('', done);
+            openChecklist('', done, { insertLabel: options.insertLabel });
         } else if (kind === 'table') {
             openTable({ columns: 3, rows: 3 }, done, { insertLabel: options.insertLabel, scope: scope });
         } else if (kind === 'calc') {
@@ -6412,8 +6412,12 @@
 
     // ── The checklist window ──
 
-    function openChecklist(markup, done) {
+    // options: insertLabel, the button that adds a new list ("Add to the
+    // message" when none is given).
+    function openChecklist(markup, done, options) {
         var items = [];
+
+        options = options || {};
         var titling = titled(markup, done);
 
         markup = titling.markup;
@@ -6565,7 +6569,7 @@
             });
 
             win.finish(function () { done(lines.join('\n')); });
-        });
+        }, options.insertLabel);
 
         pgUI.dialog.on(win.node, 'shown', function () { focusRow(rows()[0]); });
         win.show();
@@ -7081,7 +7085,7 @@
         if (kind === 'table') {
             openTable(markup, done, options);
         } else if (kind === 'checklist') {
-            openChecklist(markup, done);
+            openChecklist(markup, done, options);
         } else if ((kind === 'calc') || isCalcBlock(markup)) {
             openCalc((kind === 'calc') ? '' : markup, done, options);
         } else {

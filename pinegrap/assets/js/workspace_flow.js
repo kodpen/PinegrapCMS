@@ -1291,7 +1291,7 @@
             tone = 'warning';
         }
 
-        return el('span', 'badge rounded-pill wsf-status text-bg-' + tone + (small ? ' wsf-status-sm' : ''), text);
+        return el('span', 'badge rounded-pill wsf-status theme-' + tone + (small ? ' wsf-status-sm' : ''), text);
     }
 
     function listEntry(flow) {
@@ -1359,13 +1359,33 @@
     // Before another flow opens: what is still unsaved is saved. Changes
     // that cannot be saved (a save that failed, a draft changed on another
     // screen) are left behind only when the person says so.
-    function leaveFlow() {
+    // next: the flow opened instead (the same one is not left behind).
+    function leaveFlow(next) {
         return flush().then(function () {
             if (!state.flow || !drafting() || !(state.dirty || state.saveError || state.conflict)) {
+                dropUntouched(next);
                 return true;
             }
 
             return K.ask(t('fl_leave_ask'), t('fl_leave'), true);
+        });
+    }
+
+    // A blank canvas left as it was made - never published, still
+    // untitled, nothing drawn on it - is not kept: leaving it deletes it
+    // without asking, so New flow tried and left adds no empty row.
+    function dropUntouched(next) {
+        var flow = state.flow;
+        var graph = flow ? draftOf() : null;
+
+        if (!flow || (+flow.id === +next) || !flow.manage || (flow.status !== 'draft') || (flow.version > 0) || (flow.name !== t('fl_untitled'))
+            || graph.nodes.length || graph.edges.length || (graph.notes || []).length) {
+            return;
+        }
+
+        state.flows = state.flows.filter(function (item) { return item.id !== flow.id; });
+        K.api('ws_flow_bin', { flow_id: flow.id }).catch(function () {
+            // Kept after all: it is an ordinary draft in the list.
         });
     }
 
@@ -1378,7 +1398,7 @@
     // its title and line, how it starts, how many boxes and data threads it
     // has, and Use.
     function showGallery(into) {
-        leaveFlow().then(function (go) {
+        leaveFlow(into).then(function (go) {
             if (!go) {
                 refocus();
                 return;
@@ -2325,7 +2345,7 @@
 
     // fallback: the flow opened instead when this one cannot be.
     function open(id, fallback) {
-        return leaveFlow().then(function (go) {
+        return leaveFlow(id).then(function (go) {
             if (!go) {
                 refocus();
                 return false;
@@ -2648,6 +2668,12 @@
             var pause = K.button('btn btn-sm btn-outline theme-secondary', t('fl_pause'), 'bi-pause-circle');
             pause.addEventListener('click', function () { act('ws_flow_pause', pause, t('fl_paused')); });
             ui.bar.appendChild(pause);
+        } else if ((flow.status === 'paused') && flow.manage) {
+            // Live again on the version it was paused at; Publish would make
+            // the same draft a new version.
+            var resume = K.button('btn btn-sm btn-outline theme-secondary', t('fl_resume'), 'bi-play-circle');
+            resume.addEventListener('click', function () { act('ws_flow_resume', resume, t('fl_resumed')); });
+            ui.bar.appendChild(resume);
         }
 
         moreMenu();
