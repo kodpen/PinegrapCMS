@@ -341,3 +341,31 @@ function test_layout_form_convert_every_starter_layout()
 		pg_assert_same(array(), $res['missing'], "layout $id: every field drawn");
 	}
 }
+
+// The generated layout guards an SMS question with isset($field['<id>']): the
+// designed form hides that question itself, so the guarded markup is kept in
+// its place and nothing is reported as left out.
+function test_layout_form_convert_keeps_sms_question_guard()
+{
+	$code = '<div class="row">' . "\n"
+		. '<label for="401"><?=$field[\'401\'][\'label\']?></label><input type="text" name="401" id="401">' . "\n"
+		. '<?php if (isset($field[\'402\'])): ?>' . "\n"
+		. '<div class="sms"><input type="checkbox" name="402" value="1"> <?=$field[\'402\'][\'label\']?></div>' . "\n"
+		. '<?php endif ?>' . "\n"
+		. '<label for="403"><?=$field[\'403\'][\'label\']?></label><input type="text" name="403" id="403">' . "\n"
+		. '</div>';
+	$fields = array(
+		_test_lfc_field(401, 'name', 'Name', 'text box'),
+		_test_lfc_field(402, 'sms', 'Send me SMS', 'check box', array('contact_field' => 'opt_in_sms', 'options' => array(_test_lfc_option('1', 'Yes')))),
+		_test_lfc_field(403, 'city', 'City', 'text box'),
+	);
+
+	$res = pg_layout_form_convert($code, $fields, array('page_id' => 9));
+	pg_assert_true($res['ok']);
+	pg_assert_same(array(), $res['dropped'], 'nothing left out');
+	pg_assert_same(array(), $res['missing'], 'the question is drawn where the layout put it');
+
+	$names = array();
+	foreach (_test_lfc_tag($res['tree'], 'input') as $n) $names[] = _test_lfc_attr($n, 'name');
+	pg_assert_same(array('name', 'sms', 'city'), $names, 'in the layout order');
+}
