@@ -30,3 +30,41 @@ function test_container_dimension_must_be_a_positive_number()
 		pg_assert_same(false, pg_container_dimension_positive($value), var_export($value, true) . ' is refused');
 	}
 }
+
+function test_container_number_check_holds_values_to_their_columns()
+{
+	$dimension = pg_container_dimension_max();
+
+	// Length, width and height: decimal(12,4) unsigned, greater than zero.
+	foreach (array('12', '0.0001', '99999999.9999', ' 3 ') as $value) {
+		pg_assert_same('', pg_container_number_check($value, $dimension, true), var_export($value, true) . ' is a dimension');
+	}
+	foreach (array('0', '0.00004', '-2', 'abc', '') as $value) {
+		pg_assert_same('number', pg_container_number_check($value, $dimension, true), var_export($value, true) . ' is not a dimension');
+	}
+	foreach (array('1000000000', '99999999.99996') as $value) {
+		pg_assert_same('max', pg_container_number_check($value, $dimension, true), var_export($value, true) . ' is above the column');
+	}
+
+	// Weight: zero or more, blank allowed by the caller; a non-strict
+	// sql_mode stored -2 and "abc" as 0 with "The container has been saved".
+	pg_assert_same('', pg_container_number_check('0', $dimension, false), '0 is a weight');
+	pg_assert_same('', pg_container_number_check('2.25', $dimension, false), '2.25 is a weight');
+	pg_assert_same('number', pg_container_number_check('-2', $dimension, false), '-2 is not a weight');
+	pg_assert_same('number', pg_container_number_check('abc', $dimension, false), 'abc is not a weight');
+
+	// Cost: int(10) unsigned in cents.
+	$cost = pg_container_cost_max();
+	pg_assert_same('', pg_container_number_check('42949672.95', $cost, false), 'the largest cost is kept');
+	pg_assert_same('', pg_container_number_check('11,25', $cost, false), 'a comma decimal is read');
+	pg_assert_same('max', pg_container_number_check('99999999', $cost, false), 'a cost above the column is refused');
+	pg_assert_same('number', pg_container_number_check('-5', $cost, false), 'a negative cost is refused');
+}
+
+function test_container_measure_is_formatted_without_trailing_zeros()
+{
+	pg_assert_same('9.5', pg_container_format_measure('9.5000'), 'trailing zeros go');
+	pg_assert_same('12', pg_container_format_measure('12.0000'), 'a whole number has no decimal point');
+	pg_assert_same('11.811', pg_container_format_measure('11.8110'), 'four places are kept');
+	pg_assert_same('1,234.5', pg_container_format_measure('1234.5'), 'thousands are grouped');
+}
