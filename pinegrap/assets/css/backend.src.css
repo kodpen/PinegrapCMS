@@ -1089,8 +1089,15 @@ select.form-control.form-control-sm:not([multiple], [size]:not([size="1"])) {
 .table {
   --bs-table-bg: var(--bs-card-bg);
 }
+/* A table in a card starts at the card's edge (the 3rem of .table is for
+   tables on the page), and .mb-0 lets an edge-to-edge table in a
+   card-body p-0 sit on the card's bottom. */
 .card .table {
+  margin-top: 0;
   margin-bottom: 1.5rem !important;
+}
+.card .table.mb-0 {
+  margin-bottom: 0 !important;
 }
 
 .table > :not(caption) > * > * {

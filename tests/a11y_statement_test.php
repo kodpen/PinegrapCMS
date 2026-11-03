@@ -103,3 +103,16 @@ function test_a11y_statement_registered()
 	pg_assert_contains("accessibility_statement: SW_ACCESSIBILITY_STATEMENT_TOKEN_GROUPS", $js, 'has a token palette');
 	pg_assert_contains("{ accessibility_statement: 1, cart_link: 1,", $js, 'draws no Messages block');
 }
+
+function test_a11y_statement_assessment_claims_only_pages_checked()
+{
+	$a = pg_a11y_assessment_text(31, 31, true);
+	pg_assert_contains('automatic check of 31 published pages every night.', $a, 'every page, nightly');
+	pg_assert_contains('automatic check of 29 of 31 published pages every night.', pg_a11y_assessment_text(29, 31, true), 'pages not rendered are not claimed');
+	pg_assert_false(strpos(pg_a11y_assessment_text(31, 31, false), 'every night'), 'no nightly claim while the job is off');
+	pg_assert_false(strpos(pg_a11y_assessment_text(29, 31, false), 'every night'), 'nor with a short pass');
+
+	$data = array('summary' => array(), 'error_pages' => 0, 'pages' => 29, 'scope_pages' => 31, 'nightly' => false, 'last_run' => 1700000000);
+	$html = pg_a11y_statement_html(pg_a11y_statement_parts(pg_a11y_statement_clean(array()), $data, _a11y_statement_test_rules(), 'example.com'));
+	pg_assert_contains('automatic check of 29 of 31 published pages.', $html, 'the print view says it');
+}
