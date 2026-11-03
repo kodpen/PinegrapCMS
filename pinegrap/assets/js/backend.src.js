@@ -4465,8 +4465,8 @@ function get_notifications($read_mark, keep_place) {
 
 // The bell's filters (output.php, for a member of the team): everything, the
 // site's notices or what the workspace told the person. The reader's choice
-// stays for the next visit; the Workspace list's Inbox opens the bell on
-// Workspace for that once (pgBellOpen()).
+// stays for the next visit; the Workspace's old inbox address opens the bell
+// on Workspace for that once (pgBellOpen()).
 var pgBellFilters = ['all', 'site', 'workspace'];
 var pgBellFilter = pg_bell_filter_kept();
 // The folded runs the reader opened, kept across the unread poll's redraw.
@@ -4545,8 +4545,9 @@ function pg_bell_fold_button(notification_id, count) {
         + h(open ? lang('Show fewer') : lang('+{var:1} more').replace('{var:1}', String(count - 1))) + '</button>';
 }
 
-// Opens the bell on one filter: the Workspace list's Inbox asks for
-// 'workspace'. The kept choice comes back when the bell closes.
+// Opens the bell on one filter: the Workspace's old inbox address
+// (workspace.php?inbox=1) asks for 'workspace'. The kept choice comes back
+// when the bell closes.
 window.pgBellOpen = function (filter) {
     var toggle = document.getElementById('notification_toggle');
 
