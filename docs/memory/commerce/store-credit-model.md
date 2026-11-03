@@ -12,7 +12,7 @@ module: store_credit
 - `pg_credit_ready()`: the columns exist (`pg_schema_has()`); every reader and writer asks it (upgrade bridge).
 - `pg_credit_issue($user_id, $amount, $kind, $reason, $expires, $issued_by)`: amount an int in minor units, kind not `gift`, expiry in the future or 0, the user must exist; code from `generate_gift_card_code()`, never shown to the customer. Returns the card id or 0. Checks: `pg_credit_issue_check()` (pure).
 - `pg_credit_cards($user_id)` open cards oldest expiry first; `pg_credit_balance($user_id)` their sum; both use `pg_credit_open_sql()` (balance > 0, not expired).
-- `pg_credit_pick($cards, $amount, $now)` (pure): soonest expiry first, never-expiring last, ties by id; a card with balance 0 (spent or voided) or `expires_at <= now` is never picked; the last card gives only what is left. SC2 writes the result into `applied_gift_cards`.
+- `pg_credit_pick($cards, $amount, $now)` (pure): soonest expiry first, never-expiring last, ties by id; a card with balance 0 (spent or voided) or `expires_at <= now` is never picked; the last card gives only what is left. The checkout does not use it: it applies every open card and lets the redemption take what is needed (`store-credit-checkout.md`).
 - `pg_credit_points_value($points, $points_per_unit, $smallest)` (pure): `round($points * 100 / rate)`, 0 for no rate or under the smallest; SC3 passes the settings.
 - `pg_credit_void($card_id, $reason)`: balance to 0 `WHERE balance = <read>` (an order spending meanwhile makes it fail), a note line "Store credit voided on <date>: <reason>"; only cards with a `user_id`.
 

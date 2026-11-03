@@ -148,6 +148,8 @@
     "Days of the calendar": "Takvimin günleri",
     "Days of the week": "Haftanın günleri",
     "Days off": "Tatil günleri",
+    "Days off and special hours": "İzin günleri ve özel saatler",
+    "Days off and special hours of {var:1}": "{var:1} için izin günleri ve özel saatler",
     "Days overdue": "Gecikme (gün)",
     "Days overdue (number)": "Gecikme günü (sayı)",
     "Days overdue before this account's invoices are announced. 0 uses the store threshold, currently {var:1} days.": "Bu carinin faturaları vadeden bu kadar gün sonra duyurulur. 0 mağaza eşiğini kullanır, şu an {var:1} gün.",

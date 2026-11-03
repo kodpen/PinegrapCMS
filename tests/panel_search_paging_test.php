@@ -87,7 +87,7 @@ function test_panel_search_reads_a_fixed_cap_best_first()
 {
 	$php = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/search.php');
 	pg_assert_contains('$per_limit = PG_PANEL_SEARCH_PER_TYPE;', $php, 'limit does not grow with the offset');
-	pg_assert_same(17, substr_count($php, 'LIMIT $per_limit'), 'every type reads the cap');
-	pg_assert_same(16, substr_count($php, '" . $rank('), 'every type but orders ordered by $rank');
+	pg_assert_same(18, substr_count($php, 'LIMIT $per_limit'), 'every type reads the cap');
+	pg_assert_same(17, substr_count($php, '" . $rank('), 'every type but orders ordered by $rank');
 	pg_assert_contains("ORDER BY CASE WHEN orders.order_number = '\$s_order_exact'", $php, 'orders ranked by number first');
 }

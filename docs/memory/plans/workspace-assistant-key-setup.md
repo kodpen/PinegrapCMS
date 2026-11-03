@@ -28,12 +28,12 @@ description: Plan (2026-10-23; steps 1-3 (#1462, #1523, #1726) and question 6 do
 2. Claude's prompt also uses `design:write` (proposals; the editor needs it, `pg_design_ai_scopes()`) and `translations:write` (job queue), both also live writes: (a) left out, the card says what fails, (b) added. Answer: a.
 3. Pinegrap AI: (a) no secret (cannot sign in), no reset, (b) a secret, a REST/MCP door nothing uses. Answer: a.
 4. A hand-linked key: (a) kept, reset offered (its other users stop too), Create only with no row linked, (b) replaced. Answer: a.
-Open: 5. Pinegrap AI: (a) measure first, (b) change limits → a; ai.pinegrap.com answered 502 on 2026-10-23/24.
+5. Pinegrap AI: (a) measure first, (b) change limits → a; call limit 500 s since 2026-11-03 (workspace/workspace-ai-call-timeout.md).
 6. Rows of a higher-ranked owner in Application Access. Decided (owner, 2026-10-28): refused (Designer 1 above Manager 2). Done in slice 5 (api/application-access-keys.md).
 
 ## What could explain "Pinegrap AI worked inefficiently"? (open)
-- Not the key. Nobody picks the model (`ws_ai_model()`: the first GET /models lists); `WS_AI_MAX_STEPS` 8; past `WS_AI_BUDGET` 20 s the next call waits for an open screen or hourly job; timeout 55 s; `max_tokens` 3000; 20-30 context messages; `ws_ai_tools()`, `ws_ai_system_prompt()` size.
+- Not the key. Nobody picks the model (`ws_ai_model()`: the first GET /models lists); `WS_AI_MAX_STEPS` 8; past `WS_AI_BUDGET` 20 s the next call waits for an open screen or hourly job; timeout 500 s; `max_tokens` 3000; 20-30 context messages; `ws_ai_tools()`, `ws_ai_system_prompt()` size.
 - Measure `ws_ai_requests` (agent `ai`): `ai_steps`, `ai_attempts`, `claimed_at` to `answered_at`, `error`, `ai_state` size; tokens not kept. Briefing: workspace/workspace-claude-bootstrap.md.
 
 ## Where to start?
-- Slice 4 (waits on question 5). The sheet shows `ws_claude_routine_prompt()`, a bootstrap since #2736 (workspace/workspace-claude-bootstrap.md); the config link fits plans/workspace-agent-handles.md.
+- Slice 4 (waits on question 5's measures). The sheet shows `ws_claude_routine_prompt()`, a bootstrap since #2736 (workspace/workspace-claude-bootstrap.md); the config link fits plans/workspace-agent-handles.md.
