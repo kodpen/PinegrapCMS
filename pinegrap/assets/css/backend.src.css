@@ -12911,6 +12911,13 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
 @supports (height: 100dvh) {
   .ws-head-menu { max-height: calc(100dvh - 9rem); }
 }
+/* The share notice above the tabs: the sentence starts from no width, so it
+   stays beside its icon instead of wrapping onto a row of its own (a phone
+   showed the icon alone on the first line). */
+.ws-share-bar-text {
+  flex: 1 1 0;
+  min-width: 0;
+}
 .ws-avatars {
   display: inline-flex;
 }
