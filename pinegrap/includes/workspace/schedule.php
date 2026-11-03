@@ -772,6 +772,11 @@ function ws_event_save_check($viewer, $data)
 
     $department_id = (int) ($data['department_id'] ?? 0);
 
+    // A department item that names no department applies to nobody.
+    if (($scope === 'department') && (($department_id <= 0) || !ws_department($department_id))) {
+        return $fail(lang('Choose the department.'), 'department_id');
+    }
+
     if (($scope === 'department') && !$viewer['settings'] && !in_array($department_id, ws_lead_departments($viewer['id']), true)) {
         return $fail(lang('Only the department\'s lead can plan for the whole department.'), 'scope');
     }

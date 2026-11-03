@@ -19825,8 +19825,14 @@
         peopleRow.appendChild(formRow(t('scope_people'), people));
         body.appendChild(peopleRow);
 
+        // A department item needs its department: no empty choice, and a
+        // lead who is no settings holder is offered the departments they lead.
         var deptRow = el('div');
-        var dept = select(departmentOptions(), event ? event.department_id : 0);
+        var deptChoices = departmentOptions().slice(1).filter(function (option) {
+            return rights.settings || rights.leads.indexOf(option[0]) !== -1
+                || (event && String(event.department_id) === String(option[0]));
+        });
+        var dept = select(deptChoices, event && event.department_id ? event.department_id : (rights.leads.length ? rights.leads[0] : (deptChoices.length ? deptChoices[0][0] : 0)));
         dept.id = nextId('ws-ev-dept-');
         deptRow.appendChild(formRow(t('department'), dept));
         body.appendChild(deptRow);
@@ -20006,13 +20012,18 @@
                         return;
                     }
 
+                    remove.disabled = true;
                     api('ws_event_delete', { event_id: event.id }).then(function () {
+                        remove.disabled = false;
                         hideOffcanvas(node);
 
                         if (onDone) {
                             onDone();
                         }
-                    }).catch(fail);
+                    }).catch(function (error) {
+                        remove.disabled = false;
+                        fail(error);
+                    });
                 });
             });
             footer.appendChild(remove);
@@ -20025,6 +20036,9 @@
         if (!event || event.can_edit) {
             var save = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('save'), 'bi-check2');
             save.addEventListener('click', function () {
+                // One click makes one item: a second click while the request
+                // runs would post another insert.
+                save.disabled = true;
                 api('ws_event_save', {
                     id: event ? event.id : 0,
                     kind: kind.value,
@@ -20041,13 +20055,17 @@
                     meeting_url: meeting ? meeting.value.trim() : undefined,
                     contact_id: (customer && customer.changed) ? customer.id : undefined
                 }).then(function () {
+                    save.disabled = false;
                     hideOffcanvas(node);
                     toast(t('plan_saved'), 'success');
 
                     if (onDone) {
                         onDone();
                     }
-                }).catch(fail);
+                }).catch(function (error) {
+                    save.disabled = false;
+                    fail(error);
+                });
             });
             footer.appendChild(save);
         }
