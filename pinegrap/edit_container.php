@@ -142,10 +142,10 @@ if (!$_POST) {
             SET
                 name = '" . escape($liveform->get_field_value('name')) . "',
                 enabled = '" . escape($liveform->get_field_value('enabled')) . "',
-                length = '" . escape($liveform->get_field_value('length')) . "',
-                width = '" . escape($liveform->get_field_value('width')) . "',
-                height = '" . escape($liveform->get_field_value('height')) . "',
-                weight = '" . escape($liveform->get_field_value('weight')) . "',
+                length = '" . escape(pg_container_figure($liveform->get_field_value('length'))) . "',
+                width = '" . escape(pg_container_figure($liveform->get_field_value('width'))) . "',
+                height = '" . escape(pg_container_figure($liveform->get_field_value('height'))) . "',
+                weight = '" . escape(pg_container_figure($liveform->get_field_value('weight'))) . "',
                 cost = '" . escape($cost) . "',
                 last_modified_user_id = '" . USER_ID . "',
                 last_modified_timestamp = UNIX_TIMESTAMP()

@@ -68,3 +68,10 @@ function test_container_measure_is_formatted_without_trailing_zeros()
 	pg_assert_same('11.811', pg_container_format_measure('11.8110'), 'four places are kept');
 	pg_assert_same('1,234.5', pg_container_format_measure('1234.5'), 'thousands are grouped');
 }
+
+function test_container_figure_is_the_stored_decimal()
+{
+	pg_assert_same('2.5000', pg_container_figure('2,5'), 'a decimal comma is read');
+	pg_assert_same('11.8110', pg_container_figure('11.811'), 'four places');
+	pg_assert_same('0', pg_container_figure(''), 'blank is 0');
+}
