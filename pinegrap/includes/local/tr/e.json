@@ -709,6 +709,7 @@
     "Enter a valid e-mail address.": "Geçerli bir e-posta adresi girin.",
     "Enter a whole amount without separators, from 0 to 1000000000.": "0 ile 1000000000 arasında, ayraçsız bir tam tutar girin.",
     "Enter a whole number greater than the last order number ({var:1}).": "Son sipariş numarasından ({var:1}) büyük bir tam sayı girin.",
+    "Enter a whole number of days from 1 to 3650.": "1 ile 3650 arasında tam bir gün sayısı girin.",
     "Enter a whole number of days, 0 or more.": "0 veya daha büyük bir tam gün sayısı girin.",
     "Enter a whole number on each line.": "Her satıra bir tam sayı girin.",
     "Enter a whole number.": "Bir tam sayı girin.",
