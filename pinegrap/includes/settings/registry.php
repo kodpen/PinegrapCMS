@@ -102,7 +102,7 @@ function pg_settings_categories()
             ),
             'keywords' => array(
                 'pgset-organization' => pg_settings_keywords(lang('organization, company, name, address, logo, support, email, tax number, tax office, vkn, seller')),
-                'pgset-server'   => pg_settings_keywords(lang('hostname, domain, ip, ssl, https, secure mode, secure, proxy')),
+                'pgset-server'   => pg_settings_keywords(lang('hostname, domain, ip, proxy')),
                 'pgset-software' => pg_settings_keywords(lang('software, language, licence, license, subscription, error, debug')),
                 'pgset-datetime' => pg_settings_keywords(lang('date, time, timezone, format')),
             ),
@@ -141,7 +141,7 @@ function pg_settings_categories()
                 'pgset-signature' => lang('Signature Time Stamp'),
             ),
             'keywords' => array(
-                'pgset-features' => pg_settings_keywords(lang('feature, cart, comment, blog, calendar, form, ads, sharing, search, performance, mobile, prefetch, speculation rules, preload')),
+                'pgset-features' => pg_settings_keywords(lang('feature, badge, calendar, form, ads, auto dialog, sharing, social, workspace, search, performance, mobile, prefetch, speculation rules, preload')),
                 'pgset-search-tuning' => pg_settings_keywords(lang('search, synonym, synonyms, promoted, recommended, pinned result')),
                 'pgset-images'   => pg_settings_keywords(lang('image, photo, optimization, webp, avif, responsive, quality, size, upload, watermark')),
                 'pgset-revisions' => pg_settings_keywords(lang('revision, revisions, history, version, versions, restore, retention, page, designer')),
@@ -550,6 +550,79 @@ function pg_settings_refuse_lists($key, $liveform)
     }
 
     return $liveform->check_form_errors();
+}
+
+
+/**
+ * What a settings page posted, by the name of the control that sent it, so a
+ * refused save can put it back into the form it redraws
+ * (pgSettingsRestore(), backend.src.js). Every value is a list: a name can
+ * be posted more than once. A list of plain values ("x[]") is given under
+ * both "x[]" and "x[0]", "x[1]", ..., so a control named either way finds
+ * it. The token, the decoy field and the save button are left out. Pure.
+ *
+ * @param array $post $_POST
+ * @return array control name => list of strings
+ */
+function pg_settings_typed_values($post)
+{
+    $typed = array();
+    $skip  = array('token' => true, 'fake_user' => true, 'submitted_button_field' => true, 'submit_save' => true);
+
+    $walk = function ($name, $value) use (&$walk, &$typed) {
+
+        if (!is_array($value)) {
+            $typed[$name][] = (string) $value;
+            return;
+        }
+
+        $list = ($value !== array()) && (array_keys($value) === range(0, count($value) - 1));
+
+        foreach ($value as $key => $item) {
+
+            if ($list && !is_array($item)) {
+                $typed[$name . '[]'][] = (string) $item;
+            }
+
+            $walk($name . '[' . $key . ']', $item);
+        }
+    };
+
+    foreach ((array) $post as $name => $value) {
+
+        if (!isset($skip[(string) $name])) {
+            $walk((string) $name, $value);
+        }
+    }
+
+    return $typed;
+}
+
+
+/**
+ * The posted values that may be printed back into the page: a password or a
+ * file control of the drawn markup is left out, so a secret typed into a
+ * refused save never travels back in the page source. Pure.
+ *
+ * @param array  $typed pg_settings_typed_values()
+ * @param string $html  the drawn cards
+ * @return array
+ */
+function pg_settings_typed_restorable($typed, $html)
+{
+    $typed = is_array($typed) ? $typed : array();
+
+    if (preg_match_all('/<input\b[^>]*>/i', (string) $html, $inputs)) {
+
+        foreach ($inputs[0] as $tag) {
+
+            if (preg_match('/\btype\s*=\s*["\']?(password|file)\b/i', $tag) && preg_match('/\bname\s*=\s*"([^"]*)"/i', $tag, $name)) {
+                unset($typed[html_entity_decode($name[1], ENT_QUOTES, 'UTF-8')]);
+            }
+        }
+    }
+
+    return $typed;
 }
 
 
