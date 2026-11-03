@@ -841,6 +841,12 @@ function erp_bank_statement_upload($cash_account_id, $path, $file_name, $user_id
         return array('success' => false, 'id' => 0, 'error' => $read['error']);
     }
 
+    // A file with nothing a bank writes (a text file, a contact list) stayed
+    // in the list for good as "Columns to choose".
+    if (!erp_bank_read_has_movement($read)) {
+        return array('success' => false, 'id' => 0, 'error' => lang('The file holds no line with a date and an amount. Take in the statement the bank gave you.'));
+    }
+
     // The columns chosen for this bank account last time are offered again.
     $last = db_value("SELECT mapping FROM erp_bank_statements WHERE cash_account_id = '" . (int) $cash_account_id . "' AND mapping IS NOT NULL ORDER BY id DESC LIMIT 1");
 
@@ -856,6 +862,118 @@ function erp_bank_statement_upload($cash_account_id, $path, $file_name, $user_id
     return ($ok === false)
         ? array('success' => false, 'id' => 0, 'error' => erp_db_error())
         : array('success' => true, 'id' => (int) mysqli_insert_id(db::$con), 'error' => '');
+}
+
+/**
+ * Whether a file read by erp_bank_read_file() holds at least one dated
+ * amount (erp_bank_cells_are_movement()). A CSV counts when any separator
+ * the column screen offers reads one, since the operator may pick another
+ * split than the guess.
+ *
+ * @param array $read  erp_bank_read_file()'s result
+ * @return bool
+ */
+function erp_bank_read_has_movement($read)
+{
+    $splits = array();
+
+    if (isset($read['csv_lines'])) {
+        foreach (erp_bank_csv_separators() as $separator) {
+            if ($separator !== '') {
+                $splits[] = erp_bank_csv_split((array) $read['csv_lines'], $separator);
+            }
+        }
+    } else {
+        $splits[] = (array) ($read['rows'] ?? array());
+    }
+
+    foreach ($splits as $rows) {
+        foreach ($rows as $cells) {
+            if (erp_bank_cells_are_movement($cells)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Why a statement cannot be deleted, or ''.
+ *
+ * A recorded line wrote a till movement for it and a matched line points at
+ * one: deleting the statement would cut the movement off from the bank line
+ * it came from. New and set-aside lines go with the statement.
+ *
+ * @param array  $lines     erp_bank_statement_lines rows: doc_date, amount, status
+ * @param string $currency  the bank account's currency
+ * @return string
+ */
+function erp_bank_statement_delete_refusal($lines, $currency)
+{
+    $kept = array();
+
+    foreach ((array) $lines as $line) {
+        if (in_array((string) ($line['status'] ?? ''), array('recorded', 'matched'), true)) {
+            $kept[] = prepare_form_data_for_output((string) $line['doc_date'], 'date', false) . ' ' . erp_money_out_currency((int) $line['amount'], (string) $currency);
+        }
+    }
+
+    if (!$kept) {
+        return '';
+    }
+
+    return lang(array(
+        'string' => 'The statement cannot be deleted: these lines are recorded or matched to the books: {var:1}',
+        'vars' => implode('; ', $kept),
+    ));
+}
+
+/**
+ * Delete a statement with its new and set-aside lines, when none of its
+ * lines is recorded or matched (erp_bank_statement_delete_refusal()).
+ *
+ * @param int $statement_id
+ * @return array ['success' => bool, 'error' => string]
+ */
+function erp_bank_statement_delete($statement_id)
+{
+    $statement = erp_bank_statement($statement_id);
+
+    if ($statement === null) {
+        return array('success' => false, 'error' => lang('The statement could not be found.'));
+    }
+
+    if (!erp_tx_begin()) {
+        return array('success' => false, 'error' => lang('Could not start a database transaction.'));
+    }
+
+    // Locked, so a line recorded at the same moment is either seen here or
+    // finds its statement gone.
+    $lines = (array) db_items("SELECT id, doc_date, amount, status FROM erp_bank_statement_lines
+        WHERE statement_id = '" . (int) $statement['id'] . "' ORDER BY doc_date ASC, id ASC FOR UPDATE");
+
+    if (($refusal = erp_bank_statement_delete_refusal($lines, (string) $statement['till_currency'])) !== '') {
+        erp_tx_rollback();
+        return array('success' => false, 'error' => $refusal);
+    }
+
+    $ok = (db("DELETE FROM erp_bank_statement_lines WHERE statement_id = '" . (int) $statement['id'] . "' AND status IN ('new', 'ignored')") !== false)
+        && (db("DELETE FROM erp_bank_statements WHERE id = '" . (int) $statement['id'] . "'") !== false);
+
+    if (!$ok) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return array('success' => false, 'error' => $error);
+    }
+
+    if (!erp_tx_commit()) {
+        $error = erp_db_error();
+        erp_tx_rollback();
+        return array('success' => false, 'error' => $error);
+    }
+
+    return array('success' => true, 'error' => '');
 }
 
 /**

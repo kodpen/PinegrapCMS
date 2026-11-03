@@ -1646,6 +1646,7 @@
     "erp allocation was removed from payment (#{var:1})": "erp tahsisi ödemeden (#{var:1}) kaldırıldı",
     "erp allocation was removed from receipt (#{var:1})": "erp tahsisi tahsilattan (#{var:1}) kaldırıldı",
     "erp audit trail was exported": "erp denetim izi dışa aktarıldı",
+    "erp bank statement (#{var:1}) was deleted": "erp banka ekstresi (#{var:1}) silindi",
     "erp bank statement (#{var:1}) was taken in": "erp banka ekstresi (#{var:1}) içeri alındı",
     "erp bank statement (#{var:1}): the match of line #{var:2} was undone": "erp banka ekstresi (#{var:1}): #{var:2} numaralı satırın eşleşmesi kaldırıldı",
     "erp bank statement (#{var:1}): {var:2} suggested line(s) recorded": "erp banka ekstresi (#{var:1}): önerilen {var:2} satır kaydedildi",
