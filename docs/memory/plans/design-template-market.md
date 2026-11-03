@@ -30,7 +30,7 @@ description: Plan for the Marketplace template (pinegrap-market): makers' shops 
 
 - 6 Standard: `standard.php` (contact, inbox, conversation, newsletter, Journal blog with maker stories, blog post, search, error); test `…_standard_test.php`.
 
-- 7 Account and staff: `account.php`; test `…_account_test.php`.
+- 7 Done (#6300). Account and staff: `account.php`; test `…_account_test.php`.
 
 - 8 Assembly: `pinegrap-market.php` (order 77, icon `bi-shop`, look and palette, group `newsletter`, folders, `pmk-` styles, search map), shared tests' lists, `designer/design-template-market.md`, plan deleted; PR body names `[NEW] Added the Marketplace design template`.
 
