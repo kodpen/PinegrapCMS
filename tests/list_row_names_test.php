@@ -104,7 +104,7 @@ function test_list_row_names_order_row()
 
 function test_list_row_names_page_seo_links()
 {
-	$source = list_row_names_source('view_pages.php');
+	$source = list_row_names_source('includes/fn/page_list.php');
 	pg_assert_same(2, substr_count($source, 'aria-label="\' . h(pg_seo_link_name($page)) . \'"'), 'name-cell bar and SEO column badge');
 }
 
@@ -118,7 +118,7 @@ function test_list_row_names_folder_access_mark()
 
 	pg_assert_same('', pg_folder_access_mark('nonsense'));
 
-	foreach (array('view_pages.php' => '$page') as $path => $var) {
+	foreach (array('includes/fn/page_list.php' => '$page') as $path => $var) {
 		pg_assert_contains('pg_folder_list_name(' . $var . '[\'folder_name\'], ' . $var . '[\'folder_access_control_type\'])', list_row_names_source($path), $path);
 	}
 }

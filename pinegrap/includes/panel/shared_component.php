@@ -360,6 +360,19 @@ function pg_panel_shared_component($request, $action)
             respond(array('status' => 'success'));
             break;
 
+        // ── HOME ROWS ────────────────────────────────────────────────────
+        // The rows of the designs home's shared components panel, asked
+        // when it first opens (pg_designer_components_card() prints only
+        // the button and the count). Full designer only, as the panel.
+        case 'home_rows':
+            if (!pg_designer_is_full($user)) {
+                respond(array('status' => 'error', 'message' => lang('Permission denied.')));
+            }
+            require_once(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
+            $sc_home = pg_designer_components_rows();
+            respond(array('status' => 'success', 'total' => $sc_home['total'], 'html' => $sc_home['html']));
+            break;
+
         // ── DELETE MANY ──────────────────────────────────────────────────
         // The palette's and the designs home's bulk delete, any number of
         // rows. A row a saved page still places is kept unless the request

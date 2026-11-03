@@ -151,9 +151,11 @@ function pg_legal_document_render($template, array $text, array $html = array())
 
     // [[positive ^^field^^ positive||negative]]: the field named in the
     // positive part decides. Without a negative part an empty field removes
-    // the whole bracket.
+    // the whole bracket. No part reaches past a closing ]]: a bracket
+    // without a field is no condition and stays as written, rather than
+    // running on to the next bracket's field.
     $template = preg_replace_callback(
-        '/\[\[(.*?\^\^(.*?)\^\^.*?)(\|\|(.*?))?\]\]/s',
+        '/\[\[((?:(?!\]\]).)*?\^\^((?:(?!\]\]).)*?)\^\^(?:(?!\]\]|\|\|).)*?)(\|\|((?:(?!\]\]).)*?))?\]\]/s',
         function ($match) use ($is_filled) {
             if ($is_filled($match[2])) {
                 return $match[1];

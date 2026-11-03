@@ -301,6 +301,24 @@ $sms_question_dropped = array_diff_key($fields, pg_cf_drop_sms_question(
     (($connect_to_contact != 'false') && !empty($contact_mobile_phone)) ? array('mobile_phone' => $contact_mobile_phone) : array(),
     $send_to_query));
 
+// The fields "Shown when" hid from the visitor, because the field the rule
+// names was not given one of its answers (pg_cf_shown_when_hidden()): such a
+// field is neither required nor checked, its posted value is dropped and it
+// writes nothing to the contact. The browser disabled it already; anything
+// posted for it anyway is not an answer.
+$shown_when_values = array();
+foreach ($fields as $field) {
+    $shown_when_values[$field['id']] = pg_cf_rule_value($liveform, $field);
+}
+$shown_when_hidden = pg_cf_shown_when_hidden($fields, $shown_when_values);
+foreach ($fields as $field) {
+    if (!isset($shown_when_hidden[$field['id']])) continue;
+    if ($field['type'] == 'file upload') {
+        $_FILES[$field['id']] = array('name' => '', 'type' => '', 'tmp_name' => '', 'error' => UPLOAD_ERR_NO_FILE, 'size' => 0);
+    }
+    $liveform->assign_field_value($field['id'], '');
+}
+
 // loop through all fields in order to validate fields
 foreach ($fields as $field_key => $field) {
     // if the field is an office use only field and we need to deal with office use only fields
@@ -312,6 +330,7 @@ foreach ($fields as $field_key => $field) {
             || ($field['office_use_only'] == 0)
         )
         && !isset($sms_question_dropped[$field_key])
+        && !isset($shown_when_hidden[$field['id']])
     ) {
         // if field is required and visitor clicked submit button,
         // then validate field
@@ -798,7 +817,7 @@ if ($liveform->check_form_errors() == false) {
                 (string) $form_data_type)) or output_error('Query failed.');
             
             // if this field is connected to a contact field, and if connect to contact is on, prepare SQL for updating contact
-            if (($field['contact_field']) && ($connect_to_contact != 'false')) {
+            if (($field['contact_field']) && ($connect_to_contact != 'false') && !isset($shown_when_hidden[$field['id']])) {
                 // Only a choice the visitor saw holds the visitor's answer.
                 // An office-use-only field is filled by staff in edit mode
                 // or carries its default, a designed hidden input is

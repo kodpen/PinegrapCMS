@@ -61,6 +61,12 @@
     var UNDRAWABLE = ['text', 'image', 'sticker', 'redact'];
     var PHONE = '(max-width: 599.98px)';
 
+    // Rows under the play bar (the tracks part): { key, node, update, note },
+    // each called on the editor. key() joins the bar's key, node() is put
+    // under the bar (null for none), update() runs with the playhead, note()
+    // goes under a phase's fields in the panel (null for none).
+    Editor.motionDocks = [];
+
     function seconds(ms) {
         return X.decimal(ms / 1000) + ' ' + t('motionSecondsUnit');
     }
@@ -131,7 +137,7 @@
         }
 
         if (!layers.length) {
-            body.appendChild(el('p', { class: 'pgie-note', text: this.sel.length ? t('motionStill') : t('motionPick') }));
+            this.motionEmpty(body);
             this.motionWhole(body);
             return;
         }
@@ -201,6 +207,38 @@
         this.motionWhole(body);
     };
 
+    // Nothing that may move is selected: the layers to pick from, or, with
+    // none yet, a text or a sticker to add.
+    Editor.prototype.motionEmpty = function (body) {
+        var self = this, tools = this.tools.list, start = el('div', { class: 'pgie-actions pgie-mstart' });
+        var movable = this.doc.layers.some(function (l) { return (STILL.indexOf(l.type) < 0) && !l.hidden; });
+
+        if (this.sel.length) {
+            body.appendChild(el('p', { class: 'pgie-note', text: t('motionStill') }));
+            return;
+        }
+
+        if (movable && this.layerList) {
+            body.appendChild(el('p', { class: 'pgie-note', text: t('motionPick') }));
+            this.layerList(body);
+            return;
+        }
+
+        body.appendChild(el('p', { class: 'pgie-note', text: t('motionNothing') }));
+
+        if ((tools.indexOf('text') >= 0) && this.addTextMiddle) {
+            start.appendChild(button('pgie-btn', t('textAdd'), 'text', function () { self.addTextMiddle(); }, true));
+        }
+
+        if (tools.indexOf('sticker') >= 0) {
+            start.appendChild(button('pgie-btn', t('motionAddSticker'), 'sticker', function () { self.pickTool('sticker'); }, true));
+        }
+
+        if (start.childNodes.length) {
+            body.appendChild(start);
+        }
+    };
+
     Editor.prototype.motionFields = function (body, l, phase, cur) {
         var self = this, end = this.motionEnd();
 
@@ -242,6 +280,14 @@
         }
 
         body.appendChild(el('p', { class: 'pgie-note pgie-msays', text: this.motionSays(l) }));
+
+        Editor.motionDocks.forEach(function (d) {
+            var n = d.note.call(self);
+
+            if (n) {
+                body.appendChild(n);
+            }
+        });
     };
 
     // A time slider in steps of a tenth of a second.
@@ -386,7 +432,7 @@
 
     // The bar under the stage, or first in the sheet on a phone.
     Editor.prototype.renderMotion = function () {
-        var onPhone = window.matchMedia && window.matchMedia(PHONE).matches;
+        var self = this, onPhone = window.matchMedia && window.matchMedia(PHONE).matches;
         var wanted = (this.tool === 'motion') && !onPhone, had = !!this.stageBar;
 
         if (this.tool !== 'motion') {
@@ -397,7 +443,7 @@
 
         // Drawn again only when what it shows changed: a zoom redraws the
         // view, and a scrub in progress must keep its slider.
-        var key = wanted ? [this.motionEnd(), this.playing, this.motionRepeat, JSON.stringify(this.doc.layers.map(function (l) { return l.anim || 0; }))].join('|') : '';
+        var key = wanted ? [this.motionEnd(), this.playing, this.motionRepeat, JSON.stringify(this.doc.layers.map(function (l) { return l.anim || 0; }))].concat(Editor.motionDocks.map(function (d) { return d.key.call(self); })).join('|') : '';
 
         if (this.stageBar && (key !== this.stageBarKey)) {
             this.stageBar.remove();
@@ -405,7 +451,12 @@
         }
 
         if (wanted && !this.stageBar) {
-            this.stageBar = this.motionBar();
+            this.stageBar = el('div', { class: 'pgie-mdock' }, [this.motionBar()].concat(Editor.motionDocks.map(function (d) { return d.node.call(self); })));
+            // The dock sits on the stage: a press, a double click or a wheel
+            // on it is its own, not the stage's (select, drag, zoom).
+            ['pointerdown', 'dblclick', 'wheel'].forEach(function (type) {
+                self.stageBar.addEventListener(type, function (e) { e.stopPropagation(); });
+            });
             this.stageBarKey = key;
             this.stage.appendChild(this.stageBar);
         }
@@ -447,9 +498,13 @@
         e.scrub.value = String(now);
         e.scrub.setAttribute('aria-valuetext', clockText(now));
         e.clock.textContent = clockText(now);
+
+        Editor.motionDocks.forEach(function (d) { d.update.call(this); }, this);
     };
 
     Editor.prototype.togglePlay = function () {
+        this.previewEnd = null;
+
         if (this.playing) {
             this.pause();
         } else {
@@ -480,6 +535,14 @@
             last = now;
             end = self.motionEnd();
 
+            // A preview of one phase ends at rest (motionPreview()).
+            if ((self.previewEnd !== null) && (self.time >= self.previewEnd)) {
+                self.previewEnd = null;
+                self.stopMotion();
+                self.render();
+                return;
+            }
+
             if (self.time >= end) {
                 if (self.motionRepeat) {
                     self.time = self.time % end;
@@ -500,12 +563,15 @@
     };
 
     Editor.prototype.pause = function () {
+        this.previewEnd = null;
         this.playing = false;
         window.cancelAnimationFrame(this.raf);
         this.render();
     };
 
     Editor.prototype.seek = function (ms) {
+        this.previewEnd = null;
+
         if (this.playing) {
             this.playing = false;
             window.cancelAnimationFrame(this.raf);
@@ -534,20 +600,31 @@
         }
     };
 
-    // A changed phase shows at once: the playhead moves to where it runs.
+    // A changed phase plays once, from its start to its end (one cycle of a
+    // loop), and every layer is then at rest again: the change shows without
+    // leaving the layer at a moment before its entrance, where it is hidden.
+    // Another change while it plays starts it again; Play, a scrub or Pause
+    // end it.
     Editor.prototype.motionPreview = function (phase) {
         var l = this.motionLayers()[0];
 
-        if (!l || this.playing) {
+        if (!l || (this.playing && (this.previewEnd === null))) {
             return;
         }
 
-        var sp = M.motionSpans(l, this.motionEnd());
-        var at = (phase === 'out') ? sp.outStart : ((phase === 'loop') ? sp.loopStart : sp.inStart);
+        var sp = M.motionSpans(l, this.motionEnd()), a = l.anim || {};
+        var from = (phase === 'out') ? sp.outStart : ((phase === 'loop') ? sp.loopStart : sp.inStart);
+        var to = (phase === 'out') ? sp.outEnd : ((phase === 'loop') ? Math.min(sp.loopEnd, sp.loopStart + (Number(a.loop && a.loop.ms) || 0)) : sp.inEnd);
 
-        if ((at !== null) && (at !== undefined)) {
-            this.seek(at);
+        if ((from === null) || (from === undefined) || !(to > from)) {
+            return;
         }
+
+        window.cancelAnimationFrame(this.raf);
+        this.playing = false;
+        this.time = from;
+        this.previewEnd = to;
+        this.play();
     };
 
     // ---- the stage at the playhead ----
@@ -703,6 +780,7 @@
     Editor.inits.push(function () {
         this.time = null;
         this.playing = false;
+        this.previewEnd = null;
         this.raf = 0;
         this.motionTab = 'in';
         this.motionRepeat = true;

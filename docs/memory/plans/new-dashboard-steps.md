@@ -16,13 +16,11 @@ description: Steps N1-N14 and the visual pass V of plans/new-dashboard.md: size,
 - N10 Pipeline and queue. Screens 02, 03.
   - N10d (S) `visitmap` as question 2 decided. Held: a raw `visitors` count clashes with the `visitors/` key rules; architect issue #4896.
 
-- N12 (M) Goals, pins, notes, performance, subscriptions. Screens 01, 04, 18, 19. Cut in three.
-  - N12c (S) `subs`, hidden until the vendor licence client answers (`plans/kodpen-vendor-api-client-steps.md`, P8).
-
 - N14 (M) Phone, keyboard and close-out. Screen 20. After N2-N13.
   - Phone pass (390x844, 844x390, touch), keyboard and screen reader, reduced motion, forced colours, every screen in light and dark.
 
 - V (visual pass, owner 2026-11-01). After N14. One step per screen group, M each.
+  - Taken by the owner's local agent that drew the screens (owner, 2026-11-03); cloud workers do not claim V steps.
   - V0 (S): hover and focus figures for the charts N4-N8 drew (`pg_dash.js` helpers). done (#5054); `ui/dashboard-v2-chart-tips.md`.
   - V1 01 top, V2 03/04 cards, V3 05-09 edit and gallery, V4 12-14 looks, V5 16-19 shop and other cards, V6 20 phone: the screen opened in the sandbox beside its picture, every difference in colour, spacing, type, radius, shadow and icon fixed. The System Status gauge (SVG and animation) stays as it is.
   - Each V PR carries before/after/picture shots and asks the owner through an approval issue (`workflow/architect-asking.md`).

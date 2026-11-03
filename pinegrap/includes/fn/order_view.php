@@ -323,6 +323,17 @@ function pg_order_view_owner_matches($order_user_id, $user_id)
 }
 
 /**
+ * The heading cell of the shipped quantity column on the customer's view
+ * order screen, the word in the visitor's language.
+ *
+ * @return string
+ */
+function pg_order_view_shipped_heading_cell()
+{
+    return '<th style="text-align: left">(' . h(lang('Shipped')) . ')</th>';
+}
+
+/**
  * A ship or delivery date typed on the order screen, as the column stores it.
  * Day, month and a four-digit year split by '.', '/', '-' or ',' (the dotted
  * form is how a date is written in Turkey), in the site's order of day and

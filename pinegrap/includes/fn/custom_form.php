@@ -2109,6 +2109,18 @@ function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0,
                 $set_attr($tree['props']['_attrs'], 'data-pg-required-answers',
                     json_encode($cf_rules['required_when']['answers'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
             }
+            // A field shown only for some answers of another: every control
+            // of it (each box of a group too) names that field's control and
+            // the answers, for pg_cf_validation_script() to hide the field's
+            // row and disable its controls at load and on every change. A
+            // required field carries it too: while hidden it is not required
+            // (custom_form.php drops its value and skips its checks).
+            $cf_shown = pg_cf_rule_other_field($cf_rules, $map, 'shown_when');
+            if ($cf_shown !== null && (int)$cf_shown['id'] !== $field_id) {
+                $set_attr($tree['props']['_attrs'], 'data-pg-shown-when', (string)(int)$cf_shown['id']);
+                $set_attr($tree['props']['_attrs'], 'data-pg-shown-answers',
+                    json_encode($cf_rules['shown_when']['answers'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+            }
 
             // A field's kind draws its control: a number field takes decimal
             // numbers, an image field offers images; a reference pick list
@@ -2484,15 +2496,49 @@ function pg_cf_validation_script()
          . 'if(!img){img=document.createElement("img");img.className="img-thumbnail d-block mt-2";img.alt="";'
          . 'img.style.maxHeight="12rem";input.insertAdjacentElement("afterend",img);}'
          . 'url=URL.createObjectURL(file);img.src=url;img.hidden=false;});});'
+         // A field shown only for some answers of another
+         // (data-pg-shown-when names that field's control, posted as its id
+         // or id[]): while none of them is chosen its row is hidden and its
+         // controls disabled, so they are neither checked nor posted. The
+         // row is the largest box around the control holding no control of
+         // another field, up to the form or a step. Worked out from "all
+         // shown" on every change and at load (a cached page never keeps a
+         // stale branch): a hidden field answers nothing, so a field it
+         // shows is hidden too. Bound before the rule below, which then
+         // reads a hidden field as no answer. Only a control this switch
+         // disabled is enabled again.
+         . 'var norm=function(v){return String(v).trim().toLowerCase();};'
+         . 'var shown={},names=[];'
+         . 'Array.prototype.forEach.call(form.querySelectorAll("[data-pg-shown-when]"),function(c){'
+         . 'if(!c.name)return;var r=shown[c.name];'
+         . 'if(!r){r=shown[c.name]={on:c.getAttribute("data-pg-shown-when"),answers:[],rows:[]};names.push(c.name);'
+         . 'try{r.answers=JSON.parse(c.getAttribute("data-pg-shown-answers")||"[]").map(norm);}catch(x){}}'
+         . 'var row=c,p=c.parentElement;'
+         . 'while(p&&p!==form&&!(p.tagName==="FIELDSET"&&p.hasAttribute("data-pg-step"))){'
+         . 'if(Array.prototype.some.call(p.querySelectorAll("input,select,textarea"),function(o){return o.name&&o.name!==c.name;}))break;'
+         . 'row=p;p=p.parentElement;}'
+         . 'if(r.rows.indexOf(row)===-1)r.rows.push(row);});'
+         . 'if(names.length){var syncShown=function(){var off={},more=true;'
+         . 'var holds=function(r){var on=false;Array.prototype.forEach.call(form.elements,function(o){'
+         . 'if((o.name!==r.on&&o.name!==r.on+"[]")||off[o.name])return;if((o.type==="radio"||o.type==="checkbox")&&!o.checked)return;'
+         . 'var vals=(o.tagName==="SELECT")?Array.prototype.filter.call(o.options,function(p){return p.selected;}).map(function(p){return p.value;}):[o.value];'
+         . 'vals.forEach(function(v){if(r.answers.indexOf(norm(v))!==-1)on=true;});});return on;};'
+         . 'while(more){more=false;names.forEach(function(n){if(!off[n]&&!holds(shown[n])){off[n]=true;more=true;}});}'
+         . 'names.forEach(function(n){var h=!!off[n];shown[n].rows.forEach(function(row){row.hidden=h;});'
+         . 'Array.prototype.forEach.call(form.elements,function(o){if(o.name!==n)return;'
+         . 'if(h){if(!o.disabled){o.disabled=true;o.setAttribute("data-pg-shown-off","");}}'
+         . 'else if(o.hasAttribute("data-pg-shown-off")){o.disabled=false;o.removeAttribute("data-pg-shown-off");}});});};'
+         . 'form.addEventListener("change",syncShown);form.addEventListener("input",syncShown);syncShown();}'
          // A field required only for some answers of another
          // (data-pg-required-when names that field's control, posted as its
          // id or id[]) is required while one of them is chosen, compared
          // without case or surrounding spaces as the server compares them.
+         // A disabled control (hidden by the switch above) is no answer.
          . 'Array.prototype.forEach.call(form.querySelectorAll("[data-pg-required-when]"),function(c){'
-         . 'var id=c.getAttribute("data-pg-required-when"),norm=function(v){return String(v).trim().toLowerCase();},answers=[];'
+         . 'var id=c.getAttribute("data-pg-required-when"),answers=[];'
          . 'try{answers=JSON.parse(c.getAttribute("data-pg-required-answers")||"[]").map(norm);}catch(x){}'
          . 'var sync=function(){var on=false;Array.prototype.forEach.call(form.elements,function(o){'
-         . 'if(o.name!==id&&o.name!==id+"[]")return;if((o.type==="radio"||o.type==="checkbox")&&!o.checked)return;'
+         . 'if((o.name!==id&&o.name!==id+"[]")||o.disabled)return;if((o.type==="radio"||o.type==="checkbox")&&!o.checked)return;'
          . 'var vals=(o.tagName==="SELECT")?Array.prototype.filter.call(o.options,function(p){return p.selected;}).map(function(p){return p.value;}):[o.value];'
          . 'vals.forEach(function(v){if(answers.indexOf(norm(v))!==-1)on=true;});});c.required=on;};'
          . 'form.addEventListener("change",sync);form.addEventListener("input",sync);sync();});});};'
@@ -2502,9 +2548,10 @@ function pg_cf_validation_script()
 
 /**
  * A field's visitor rules (form_fields.rules) in their one shape: an array
- * with `min_date` => 'today' (a date control only) and/or `required_when` =>
- * array('field' => <other field's name>, 'answers' => array(...)). Anything
- * else is dropped; no rule is an empty array.
+ * with `min_date` => 'today' (a date control only), and `required_when`
+ * and/or `shown_when`, each array('field' => <other field's name>,
+ * 'answers' => array(...)). Anything else is dropped; no rule is an empty
+ * array.
  *
  * The other field is named the way the design names it, never by its row id
  * (a re-sync may renumber it), and is looked up when the form is checked.
@@ -2525,8 +2572,11 @@ function pg_cf_rules_clean($rules, $type = '')
     if (isset($rules['min_date']) && $rules['min_date'] === 'today' && ($type === '' || $type === 'date')) {
         $out['min_date'] = 'today';
     }
-    if (isset($rules['required_when']) && is_array($rules['required_when'])) {
-        $rw    = $rules['required_when'];
+    // `required_when` and `shown_when` share one shape: another field's
+    // name and the answers of it the rule holds for.
+    foreach (array('required_when', 'shown_when') as $kind) {
+        if (!isset($rules[$kind]) || !is_array($rules[$kind])) continue;
+        $rw    = $rules[$kind];
         $field = pg_cf_clean_field_name((isset($rw['field']) && is_scalar($rw['field'])) ? (string)$rw['field'] : '');
         $given = isset($rw['answers']) ? $rw['answers'] : array();
         if (is_string($given)) $given = preg_split('/\r\n|\r|\n/', $given);
@@ -2537,7 +2587,7 @@ function pg_cf_rules_clean($rules, $type = '')
             if ($a !== '' && !in_array($a, $answers, true)) $answers[] = $a;
         }
         if ($field !== '' && !empty($answers)) {
-            $out['required_when'] = array('field' => $field, 'answers' => $answers);
+            $out[$kind] = array('field' => $field, 'answers' => $answers);
         }
     }
     return $out;
@@ -2559,23 +2609,41 @@ function pg_cf_rules_today()
 }
 
 /**
- * The field a `required_when` rule depends on, among the form's field rows
- * (each with `name`), compared without case; null when the rule names no
- * field or the field is gone or renamed, and then the rule asks nothing.
+ * The field a `required_when` (or, with $kind, `shown_when`) rule depends
+ * on, among the form's field rows (each with `name`), compared without case;
+ * null when the rule names no field or the field is gone or renamed, and
+ * then the rule asks nothing.
  */
-function pg_cf_rule_other_field($rules, $fields)
+function pg_cf_rule_other_field($rules, $fields, $kind = 'required_when')
 {
-    if (!isset($rules['required_when']['field'])) return null;
-    $want = mb_strtolower((string)$rules['required_when']['field'], 'UTF-8');
+    if (!isset($rules[$kind]['field'])) return null;
+    $want = mb_strtolower((string)$rules[$kind]['field'], 'UTF-8');
     foreach ((array)$fields as $f) {
         if (is_array($f) && isset($f['name']) && mb_strtolower((string)$f['name'], 'UTF-8') === $want) return $f;
     }
     return null;
 }
 
+// Whether a value (a list for a box group or a multi-select) is one of a
+// rule's answers, trimmed and without case on both sides.
+function pg_cf_rule_answers_match($answers, $value)
+{
+    $want = array();
+    foreach ((array)$answers as $a) $want[] = mb_strtolower(trim((string)$a), 'UTF-8');
+    foreach ((array)$value as $v) {
+        if (is_scalar($v) && in_array(mb_strtolower(trim((string)$v), 'UTF-8'), $want, true)) return true;
+    }
+    return false;
+}
+
 /**
- * Which visitor rule a field's value breaks: '' (none), 'min_date' or
- * 'required'.
+ * Which visitor rule a field's value breaks: '' (none), 'hidden',
+ * 'min_date' or 'required'.
+ *
+ * $shown is the value of the field `shown_when` names, null when that field
+ * does not exist (or is not given): a field whose `shown_when` answers it
+ * does not hold is 'hidden', on submit and on save for later alike; it is
+ * neither required nor kept (custom_form.php, pg_cf_shown_when_hidden()).
  *
  * $value is the field's value, an ISO date (Y-m-d) for a date field, or an
  * array for a box group. $other is the value of the field `required_when`
@@ -2584,9 +2652,13 @@ function pg_cf_rule_other_field($rules, $fields)
  * business, and a value that is no ISO date the type check's. `required_when`
  * holds only for a submission ($submit), as a field's own `required` does.
  */
-function pg_cf_rule_verdict($rules, $value, $other, $today, $submit)
+function pg_cf_rule_verdict($rules, $value, $other, $today, $submit, $shown = null)
 {
     $rules = is_array($rules) ? $rules : array();
+    if ($shown !== null && isset($rules['shown_when']['answers'])
+        && !pg_cf_rule_answers_match($rules['shown_when']['answers'], $shown)) {
+        return 'hidden';
+    }
     $empty = is_array($value)
         ? (count(array_filter($value, function ($v) { return trim((string)$v) !== ''; })) === 0)
         : (trim((string)$value) === '');
@@ -2597,14 +2669,60 @@ function pg_cf_rule_verdict($rules, $value, $other, $today, $submit)
         return 'min_date';
     }
 
-    if ($submit && $empty && $other !== null && isset($rules['required_when']['answers'])) {
-        $answers = array();
-        foreach ((array)$rules['required_when']['answers'] as $a) $answers[] = mb_strtolower(trim((string)$a), 'UTF-8');
-        foreach ((array)$other as $o) {
-            if (is_scalar($o) && in_array(mb_strtolower(trim((string)$o), 'UTF-8'), $answers, true)) return 'required';
-        }
+    if ($submit && $empty && $other !== null && isset($rules['required_when']['answers'])
+        && pg_cf_rule_answers_match($rules['required_when']['answers'], $other)) {
+        return 'required';
     }
     return '';
+}
+
+/**
+ * The fields of a submission that `shown_when` hides, as id => true.
+ *
+ * $fields are the form's field rows (`id`, `name`, `type`, `rules`), $values
+ * the posted values by field id (a list for a box group). A field is hidden
+ * when the field its rule names exists and its answer is not one of the
+ * rule's; a hidden field answers nothing, so a field shown by it is hidden
+ * as well. Worked out from "all shown" and only ever hiding more, so two
+ * fields that show each other cannot flip back and forth. Pure.
+ */
+function pg_cf_shown_when_hidden($fields, $values)
+{
+    $fields = array_values(array_filter((array)$fields, 'is_array'));
+    $rules  = array();
+    foreach ($fields as $i => $f) {
+        $r = pg_cf_rules_clean(isset($f['rules']) ? $f['rules'] : '', isset($f['type']) ? (string)$f['type'] : '');
+        if (isset($r['shown_when'])) $rules[$i] = $r;
+    }
+
+    $hidden = array();
+    do {
+        $changed = false;
+        foreach ($rules as $i => $r) {
+            $id = (string)$fields[$i]['id'];
+            if (isset($hidden[$id])) continue;
+            $other = pg_cf_rule_other_field($r, $fields, 'shown_when');
+            if ($other === null) continue;
+            $oid   = (string)$other['id'];
+            $shown = (isset($hidden[$oid]) || !isset($values[$oid])) ? '' : $values[$oid];
+            if (pg_cf_rule_verdict($r, '', null, '', false, $shown) === 'hidden') {
+                $hidden[$id] = true;
+                $changed = true;
+            }
+        }
+    } while ($changed);
+    return $hidden;
+}
+
+// A field's value in a site submission: the posted value (a list for a box
+// group), the chosen file's name for an upload, '' when nothing came.
+function pg_cf_rule_value($liveform, $row)
+{
+    if ((string)$row['type'] === 'file upload') {
+        return (isset($_FILES[$row['id']]['name']) && is_string($_FILES[$row['id']]['name'])) ? $_FILES[$row['id']]['name'] : '';
+    }
+    $v = $liveform->get_field_value($row['id']);
+    return ($v === null) ? '' : $v;
 }
 
 /**
@@ -2624,20 +2742,12 @@ function pg_cf_check_rules($liveform, $field, $fields, $submit)
     $rules = pg_cf_rules_clean(isset($field['rules']) ? $field['rules'] : '', (string)$field['type']);
     if (empty($rules) || $liveform->check_field_error($field['id'])) return;
 
-    $value_of = function ($row) use ($liveform) {
-        if ((string)$row['type'] === 'file upload') {
-            return (isset($_FILES[$row['id']]['name']) && is_string($_FILES[$row['id']]['name'])) ? $_FILES[$row['id']]['name'] : '';
-        }
-        $v = $liveform->get_field_value($row['id']);
-        return ($v === null) ? '' : $v;
-    };
-
-    $value = $value_of($field);
+    $value = pg_cf_rule_value($liveform, $field);
     if ((string)$field['type'] === 'date' && is_string($value) && trim($value) !== '') {
         $value = prepare_form_data_for_input($value, 'date');
     }
     $other_row = pg_cf_rule_other_field($rules, $fields);
-    $other     = ($other_row !== null) ? $value_of($other_row) : null;
+    $other     = ($other_row !== null) ? pg_cf_rule_value($liveform, $other_row) : null;
 
     $verdict = pg_cf_rule_verdict($rules, $value, $other, pg_cf_rules_today(), $submit);
     if ($verdict === '') return;

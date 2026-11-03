@@ -8,7 +8,7 @@ description: Steps PX1-PX4 of plans/page-experiments.md: the experiment model an
 - S under 400 product lines, M about 1,000. Tests in `tests/experiments_<topic>_test.php` (pure functions, red first), memory under `designer/` and `visitors/`, texts through `tr_add.php`, `php tools/build_js.php` after a bundled script, `node --check` on `style_designer.src.js`.
 
 ## Which steps are there?
-- PX1 (M) Model and bucket. `free` after questions 1-2.
+- PX1 (M) Model and bucket. Done in #6141.
   - Migration sub-step for the three tables (`install_create_table()`, in `get_tables()`, rerun twice). New `includes/fn/experiments.php`: statuses (draft, running, paused, ended) and transitions, `pg_experiment_for_page($page_id)` (one running experiment per page, cached per request), `pg_experiment_draw($weights, $random)` (pure), `pg_experiment_bucket_read()` and `_write()` on the `pg_exp` cookie (`<experiment id>:<key>` pairs, 90 days, `SameSite=Lax`, the cookie's name in `pg_page_cache_set_cookie_names()` and in `pg_consent_catalogue()` as functional), `pg_experiment_request_excluded()` (bots by the firewall's verdict, staff sessions, the designer, Preview, prototype play). Tests: the draw over fixed randoms and weights, the cookie round trip, the exclusions. Memory: `designer/page-experiments-model.md`.
 
 - PX2 (M) Serving and the cache. After PX1.

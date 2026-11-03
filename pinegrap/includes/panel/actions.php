@@ -193,6 +193,7 @@ function pg_panel_actions()
         'submitted_form_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_submitted_form_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'contact_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_contact_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'product_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_product_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
+        'page_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_page_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'commission_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_commission_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'commission_profile_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_commission_profile_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'site_log_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_site_log_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),

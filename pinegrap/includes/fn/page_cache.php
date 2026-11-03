@@ -189,7 +189,8 @@ function pg_page_cache_strip_token($html, $token)
 
 /**
  * The names of the cookies a list of response headers sets, as
- * headers_list() gives them.
+ * headers_list() gives them, without the experiment bucket (pg_exp), which
+ * keeps a page cacheable.
  *
  * @param array $headers
  * @return array
@@ -199,7 +200,9 @@ function pg_page_cache_set_cookie_names(array $headers)
     $names = array();
 
     foreach ($headers as $header) {
-        if (preg_match('/^set-cookie:\s*([^=;\s]+)\s*=/i', (string) $header, $match)) {
+        // The experiment bucket (pg_exp) is not a personal cookie: the page
+        // cache keeps one copy per variant.
+        if (preg_match('/^set-cookie:\s*([^=;\s]+)\s*=/i', (string) $header, $match) && ($match[1] !== 'pg_exp')) {
             $names[] = $match[1];
         }
     }
@@ -1466,7 +1469,7 @@ function pg_page_cache_panel_sub_actions()
             'key' => 'sub_action',
             'dirty' => array('create', 'from_designer_region', 'from_common_region', 'update', 'content_update', 'set_content_editable', 'update_config',
                 'rename', 'delete', 'delete_many'),
-            'clean' => array('list', 'usage_all', 'prefetch', 'get', 'list_custom_forms',
+            'clean' => array('list', 'usage_all', 'prefetch', 'get', 'home_rows', 'list_custom_forms',
                 'list_form_item_view_pages', 'list_calendars', 'list_calendar_event_pages',
                 'list_product_groups', 'list_folders', 'list_catalog_pages', 'list_catalog_listing_pages',
                 'list_catalog_detail_pages', 'list_shopping_cart_pages', 'list_all_pages', 'list_form_fields', 'template_layouts', 'starter_layouts'),

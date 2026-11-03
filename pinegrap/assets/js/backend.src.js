@@ -1890,7 +1890,7 @@ $(document).ready(function () {
 
 
     options["fnInitComplete"] = function () {
-        datatable.columns.adjust();
+        // The table is printed hidden; a measure before show() reads nothing.
         $('table.chart').show();
 
 
@@ -1911,14 +1911,12 @@ $(document).ready(function () {
             }
         });
         $("table.dataTable #select_all").prop("checked", false);
-        datatable.columns.adjust();
 
-        // A list paged on the server would ask for the same page again.
-        // false keeps the page: a bare draw() puts the list back on page 1
-        // and would throw away the page restored from history.state.
-        if (!options.serverSide) {
-            datatable.draw(false);
-        }
+        // One measure, now that the table is visible. No draw() after it:
+        // the first draw already opened on the page restored from
+        // history.state (displayStart), and every draw re-measures the
+        // scrollX head.
+        datatable.columns.adjust();
 
         // DataTables names its pager landmark "pagination" in English
         // whatever the language; the panel language's file names it.
@@ -2048,9 +2046,8 @@ $(document).ready(function () {
         datatable.tables().every(function () {
             pgListHeadingCopies(this);
         });
-        $(window).on("resize", function () {
-            datatable.columns.adjust();
-        });
+        // No window resize listener: with scrollX, DataTables watches its
+        // own wrapper width with a throttled ResizeObserver.
     }
     //software search no longer available, if there is query paramater in url, search it in datatable, and remove query paramater from url.
     if (window.location.href.indexOf('?query=') > 0 || window.location.href.indexOf('&query=') > 0) {
@@ -2101,11 +2098,10 @@ $(document).ready(function () {
     pg_shortcuts_init();
 
     check_unread_notifications('onload_check');
-    setInterval(function () {
-        //this interval is auto check for notifications.
-        // we set this default 30 sec(30 * 1000).
+    // The bell's count every 20 seconds while the tab is in sight.
+    pg_poll_while_visible(function () {
         check_unread_notifications('scheduled_check');
-    }, 20 * 1000); // 60 * 1000 = 1min.
+    }, 20 * 1000);
 
 
 
@@ -9746,6 +9742,41 @@ function pg_background_calls_allowed() {
     return true;
 }
 
+/**
+ * Calls poll every ms milliseconds while the tab is visible. A hidden tab
+ * sends nothing; when it comes back into sight poll runs once at once and
+ * the interval starts again. The caller makes the first call on load.
+ */
+function pg_poll_while_visible(poll, ms) {
+    var timer = null;
+
+    function start() {
+        if (timer === null) {
+            timer = window.setInterval(poll, ms);
+        }
+    }
+
+    function stop() {
+        if (timer !== null) {
+            window.clearInterval(timer);
+            timer = null;
+        }
+    }
+
+    document.addEventListener('visibilitychange', function () {
+        if (document.hidden) {
+            stop();
+        } else if (timer === null) {
+            poll();
+            start();
+        }
+    });
+
+    if (!document.hidden) {
+        start();
+    }
+}
+
 /* ════════════════════════════════════════════════════════════════════════
    USER ONLINE HEARTBEAT (Runs on all backend pages)
 ════════════════════════════════════════════════════════════════════════ */
@@ -9771,10 +9802,9 @@ function pg_background_calls_allowed() {
         });
     }
 
-    // First heartbeat on load
+    // First heartbeat on load, then every 50 seconds while the tab is in sight.
     sendHeartbeat();
-    // Then every 50 seconds
-    setInterval(sendHeartbeat, 50000);
+    pg_poll_while_visible(sendHeartbeat, 50000);
 })();
 
 /* ════════════════════════════════════════════════════════════════════════
