@@ -826,7 +826,7 @@ function pg_product_list_row($product, $view, $context)
     $cells = array(
         'id' => pg_list_cell(
             '<a class="pg-link-body-emphasis text-decoration-none" data-pg-open href="edit_product.php?id=' . $id . '">' . h($product['name']) . '</a>'
-            . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" aria-label="' . h(pg_seo_link_name($product)) . '" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=product&amp;id=' . $id . get_token_query_string_field() . '" data-pg-seo-bar="product:' . $id . '">' . pg_seo_render_bar($product) . '</a>',
+            . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" aria-label="' . h(pg_seo_link_name($product)) . '" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=product&amp;id=' . $id . get_token_query_string_field() . '" data-pg-seo-bar="product:' . (int) $id . '">' . pg_seo_render_bar($product) . '</a>',
             $list_cells['name']['class'],
             array('data-pg-cell' => 'name')),
     );
