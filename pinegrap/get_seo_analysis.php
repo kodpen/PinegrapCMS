@@ -69,7 +69,13 @@ if (!in_array($type, array('page', 'product', 'product_group')) || !$id) {
 if ($type == 'page') {
     $seo_page_folder = db_value("SELECT page_folder FROM page WHERE page_id = '" . (int) $id . "'");
 
-    if (($seo_page_folder === NULL) || !check_edit_access($seo_page_folder)) {
+    // A page that does not exist is not a refusal: it is answered like a
+    // missing product and leaves nothing in the site log.
+    if ($seo_page_folder === NULL) {
+        exit(lang('Sorry, we could not find that record.'));
+    }
+
+    if (!check_edit_access($seo_page_folder)) {
         log_activity(lang('access denied to SEO detail because user does not have access to page'), $_SESSION['sessionusername']);
         exit(lang('Access denied.'));
     }
@@ -142,8 +148,14 @@ if (!$record) {
 // The buttons at the foot of the panel replace only the checklist wrapper, so
 // they ask for that on its own. The name and the edit link above it do not
 // change and re-sending them would put a second copy inside the first.
+//
+// The badge and the bar are sent beside it in templates: the handler copies
+// them into the other score indicators of the record on the screen (the card
+// badge, the list row) so none keeps the old score.
 if (($_GET['fragment'] ?? '') === 'checklist') {
-    echo pg_seo_render_checklist($record, $type, $id);
+    echo pg_seo_render_checklist($record, $type, $id)
+        . '<template data-seo-slot="badge">' . pg_seo_render_badge($record) . '</template>'
+        . '<template data-seo-slot="bar">' . pg_seo_render_bar($record) . '</template>';
     exit;
 }
 

@@ -2703,7 +2703,9 @@ function pg_seo_render_checklist($row, $type = '', $id = 0)
     $bar_class = ($color['class'] !== '') ? ' bg-' . $color['class'] : '';
     $bar_style = 'width:' . $score . '%' . (($color['style'] !== '') ? ';background-color:' . $color['style'] : '');
     $text_class = ($color['class'] !== '') ? ' fg-' . $color['class'] : '';
-    $text_style = ($color['style'] !== '') ? ' style="color:' . $color['style'] . '"' : '';
+    // The fill colour reads 2.36:1 as text on the light ground; the band ink
+    // is the text shade (pg_seo_render_bar() does the same).
+    $text_style = ($color['style'] !== '') ? ' style="color:' . $color['ink'] . '"' : '';
 
     // Speed rows are kept apart from the rest. They describe how the page is
     // delivered rather than what is written on it, and they are measured from
@@ -2808,7 +2810,7 @@ function pg_seo_render_checklist($row, $type = '', $id = 0)
     // this record. The name and the edit link that get_seo_analysis.php puts
     // above it are deliberately outside: they do not change.
     return
-        '<div class="mt-3 pg_seo_panel_wrap">
+        '<div class="mt-3 pg_seo_panel_wrap"' . (($type && $id) ? ' data-seo-record="' . h($type . ':' . (int) $id) . '"' : '') . '>
             <div class="d-flex align-items-center gap-3 mb-3">
                 <span class="fw-bold' . $text_class . '"' . $text_style . '>' . $score . '/100</span>
                 <div class="progress flex-grow-1" style="height:6px"><div class="progress-bar' . $bar_class . '" style="' . h($bar_style) . '"></div></div>
@@ -2928,6 +2930,23 @@ function pg_seo_render_run_script()
                 } else {
                     wrap.innerHTML = html;
                 }
+
+                // The other score indicators of the record on this screen
+                // (the card badge, the bar and badge of a list row) take the
+                // new score from the templates sent beside the panel.
+                var record = fresh ? fresh.getAttribute("data-seo-record") : null;
+
+                if (record) {
+                    Array.prototype.forEach.call(holder.querySelectorAll("template[data-seo-slot]"), function (template) {
+                        var slot = template.getAttribute("data-seo-slot");
+
+                        Array.prototype.forEach.call(document.querySelectorAll("[data-seo-record][data-seo-slot]"), function (target) {
+                            if ((target.getAttribute("data-seo-record") === record) && (target.getAttribute("data-seo-slot") === slot)) {
+                                target.innerHTML = template.innerHTML;
+                            }
+                        });
+                    });
+                }
             })
             .catch(function (error) {
                 Array.prototype.forEach.call(buttons, function (button) { button.disabled = false; });
@@ -3016,6 +3035,14 @@ function pg_seo_render_detail_offcanvas()
             });
     });
     </script>';
+}
+
+// Attributes that mark an element holding a record's score badge or bar, so
+// the refresh buttons can redraw it (pg_seo_render_run_script()). The slot
+// names which of the two the element holds.
+function pg_seo_slot_attributes($type, $id, $slot)
+{
+    return ' data-seo-record="' . h($type . ':' . (int) $id) . '" data-seo-slot="' . h($slot) . '"';
 }
 
 // Compact badge for the SEO column of list screens: the score in the band

@@ -8404,7 +8404,10 @@ function initSeoCounters(rules) {
             describedBy.push(counterId);
             $input.attr("aria-describedby", describedBy.join(" "));
         }
-        var len = $input.val().length, cls, icon, said;
+        // Measured the way the SEO score measures it (seo.php): the value
+        // without what PHP trim() strips, counted in code points, so the
+        // counter and the checklist never disagree on the same text.
+        var len = Array.from(String($input.val() || "").replace(/^[ \t\n\r\0\x0B]+|[ \t\n\r\0\x0B]+$/g, "")).length, cls, icon, said;
         var range = function (text) {
             return text.replace("{var:1}", len).replace("{var:2}", min).replace("{var:3}", max);
         };

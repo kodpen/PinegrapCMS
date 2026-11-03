@@ -4400,10 +4400,11 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             'seo_analysis_current' => $v('seo_analysis_current', 0),
         );
 
-        $output_seo_badge = '<span class="ms-auto">' . pg_seo_render_badge($seo_row) . '</span>';
+        $output_seo_badge = '<span class="ms-auto"' . pg_seo_slot_attributes('product', $seo_record_id, 'badge') . '>' . pg_seo_render_badge($seo_row) . '</span>';
         $output_seo_checklist = '
                                     <div class="col-12">
                                         ' . pg_seo_render_checklist($seo_row, 'product', $seo_record_id) . '
+                                        ' . pg_seo_render_run_script() . '
                                     </div>';
     }
 

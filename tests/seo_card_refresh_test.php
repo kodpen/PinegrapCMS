@@ -89,7 +89,7 @@ function test_seo_card_refresh_updates_every_score_of_the_record()
 
 function test_seo_card_slot_attributes()
 {
-	require_once(dirname(__DIR__) . '/pinegrap/seo.php');
+	require_once(PG_FUNCTIONS_DIR . '/seo.php');
 
 	pg_assert_same(' data-seo-record="page:12" data-seo-slot="badge"', pg_seo_slot_attributes('page', 12, 'badge'));
 	pg_assert_same(' data-seo-record="product_group:7" data-seo-slot="bar"', pg_seo_slot_attributes('product_group', '7', 'bar'));

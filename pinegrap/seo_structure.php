@@ -1736,6 +1736,12 @@ function pg_seo_analyze_record($type, $id)
         return FALSE;
     }
 
+    // The link step inside the record passes runs only when the link code
+    // is loaded. The batch and the nightly job load it themselves; a single
+    // record (the panel button, a save) has to as well, or its links, their
+    // findings and its link score are never refreshed.
+    require_once(dirname(__FILE__) . '/seo_links.php');
+
     if ($type === 'page') {
         $table = 'page';
         $id_column = 'page_id';
