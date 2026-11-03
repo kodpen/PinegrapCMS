@@ -618,6 +618,7 @@
     "health": "saglik",
     "heart, cardiologist, ECG, EKG, blood pressure, cholesterol": "kalp, kardiyolog, EKG, tansiyon, kolesterol, efor",
     "height": "yükseklik",
+    "held by {var:1}": "{var:1} tarafından tutuluyor",
     "help, support, bug, crash, problem, refund, subscription": "yardım, destek, hata, çökme, sorun, iade, abonelik",
     "help, support, bug, problem": "yardım, destek, hata, sorun",
     "help-center": "yardim-merkezi",
