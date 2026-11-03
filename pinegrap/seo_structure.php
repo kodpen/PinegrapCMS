@@ -1749,6 +1749,11 @@ function pg_seo_analyze_record($type, $id)
         return FALSE;
     }
 
+    // The page and catalog passes resolve the record's links only when the
+    // link step is loaded; the nightly batch loads it itself, and this one
+    // record must store the same link findings and link score.
+    require_once(dirname(__FILE__) . '/seo_links.php');
+
     db(
         "UPDATE `" . $table . "`
         SET

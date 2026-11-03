@@ -24,7 +24,7 @@ description: Steps VA1-VA6 of plans/voice-to-assistants.md: deaf hint, keyless h
   - Where an assistant's answer is written (Claude's answer route, Pinegrap AI, MCP agents), an answer to a recording gets its sound from `ws_voice_speak()` on the same message.
   - Without a speech service, the asker's browser reads the answer aloud (`speakAnswer()`). This applies in channels and discussions alike, and the answer's text stays as it is.
 
-- VA5 (M) "Send a voice message". After VA3.
+- VA5 (M) "Send a voice message". Done, #5918 (`workspace/workspace-voice-message-route.md`).
   - `POST /workspace/messages/voice` and its MCP tool take `channel_id` or `thread_id`, `text`, and optionally `reply_to` and `voice`.
   - The route has a dry run, a `ws_voice_message_check()` shared with the panel and the `workspace:write` scope. It answers `voice_unavailable` when no speech service is set.
   - Claude's instructions, Pinegrap AI's tools and the site's MCP server (the Claude and ChatGPT connectors) offer it. `workspace-api-endpoint-rules.md` applies.

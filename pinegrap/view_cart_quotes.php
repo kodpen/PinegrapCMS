@@ -111,7 +111,7 @@ foreach ($rows as $row) {
                 <td class="align-middle text-start col-reorder-none action-buttons">' . $actions . '</td>
                 <td class="align-middle" data-order="' . $id . '"><a href="view_cart_quotes.php?id=' . $id . '" aria-label="' . h(lang('Cart quote') . ' #' . $id) . '">#' . $id . '</a><div class="small fg-secondary">' . h((string) $row['token_hint']) . '…</div></td>
                 <td class="align-middle">' . $output_contact . '</td>
-                <td class="align-middle">' . h(lang(array('string' => '{var:1} item(s)', 'vars' => array($quantity)))) . (($names !== '') ? '<div class="small fg-secondary" style="white-space: normal; min-width: 12rem; max-width: 24rem">' . h($names) . '</div>' : '') . '</td>
+                <td class="align-middle">' . h(lang(array('string' => '{var:1} product(s)', 'vars' => array($quantity)))) . (($names !== '') ? '<div class="small fg-secondary" style="white-space: normal; min-width: 12rem; max-width: 24rem">' . h($names) . '</div>' : '') . '</td>
                 <td class="align-middle"><span class="' . h($badges[$state] ?? 'badge theme-secondary') . '">' . h(pg_cart_quote_state_label($state)) . '</span>' . $output_order . '</td>
                 <td class="align-middle" data-order="' . (int) $row['valid_until'] . '">' . h(((int) $row['valid_until'] > 0) ? date('d.m.Y', (int) $row['valid_until']) : lang('No end')) . '</td>
                 <td class="align-middle" data-order="' . (int) $row['created_at'] . '">' . h(date('d.m.Y H:i', (int) $row['created_at'])) . '<div class="small fg-secondary">' . h((string) $row['creator']) . '</div></td>

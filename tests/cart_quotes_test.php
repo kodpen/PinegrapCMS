@@ -46,6 +46,17 @@ function test_cart_quote_token_parts_keep_a_hash_and_a_short_hint()
 	pg_assert_true(strlen($parts['hint']) <= 8, 'fits token_hint VARCHAR(8)');
 }
 
+function test_cart_quote_state_label_has_its_own_status_words()
+{
+	// "Ordered" is a quantity column heading elsewhere; a quote's status says
+	// an order was placed from it.
+	pg_assert_same('Open', pg_cart_quote_state_label('open'));
+	pg_assert_same('Order placed', pg_cart_quote_state_label('ordered'));
+	pg_assert_same('Expired', pg_cart_quote_state_label('expired'));
+	pg_assert_same('Cancelled', pg_cart_quote_state_label('cancelled'));
+	pg_assert_same('odd', pg_cart_quote_state_label('odd'), 'an unknown state is shown as it is');
+}
+
 function test_cart_quote_state_expires_an_open_quote_only()
 {
 	$now = 1760000000;

@@ -1857,6 +1857,13 @@ Rules:
   POST /workspace/tasks/{id}/notes only when a request asks for it. A record is
   changed only by proposing it in "changes", a page only by proposing it with
   POST /design/pages/{id}/proposals.
+- When a request asks in so many words for a voice message, post one with
+  POST /workspace/messages/voice and {"channel_id": channel.id, "text": "...",
+  "reply_to": message.id} (thread_id in place of channel_id in a discussion):
+  the site speaks the text with its speech service and posts it as a voice
+  message. Plain sentences, no tags, no Markdown. Then answer as in c. A 409
+  voice_unavailable answer means the site has no speech service: answer in
+  words and say so.
 - Never delete anything yourself: a deletion is only proposed in "changes".
 - Do not change the repository and do not open pull requests.
 PROMPT;

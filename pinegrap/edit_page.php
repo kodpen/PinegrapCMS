@@ -892,7 +892,7 @@ if (!$_POST) {
                                 <div class="col-12">
                                     <div class="card my-7">
                                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                            ' . lang('Search Engine Optimization') . '<span class="float-end">' . pg_seo_render_badge($seo_row) . '</span>
+                                            ' . lang('Search Engine Optimization') . '<span class="float-end" data-pg-seo-badge="page:' . (int) $page_id . '">' . pg_seo_render_badge($seo_row) . '</span>
                                         </div>
                                         <div class="card-body">
                                             <div class="row">

@@ -594,6 +594,26 @@ function ws_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.messages.voice',
+            'method'      => 'POST',
+            'path'        => '/workspace/messages/voice',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_messages_voice',
+            'dry_run'     => true,
+            'returns'     => 'WorkspaceMessage',
+            'status'      => 201,
+            'summary'     => 'Send a voice message',
+            'description' => 'Makes a voice message from a text and posts it: the site speaks the text with its speech service (Workspace Settings, the Spoken answers part of the Voice message transcripts card) and posts the sound as a voice message carrying no words of its own, as a recording from the panel\'s microphone is posted; the text is kept beside it as its transcript, so the player shows it and search, recaps and bells read it. Give channel_id for a channel or thread_id for a discussion the owner may post in, one of them (422 on the other). reply_to makes it an answer to a message of that channel or discussion, as Reply does in the panel (422 on reply_to when it is deleted, elsewhere or in an earlier version of the conversation). voice chooses one of the service\'s voices in place of the card\'s (alloy, coral, nova and the others of OpenAI\'s list, or another service\'s name). Tags, code blocks and Markdown marks are left out of what is spoken; a text over ' . WS_VOICE_SPEECH_MAX_CHARS . ' characters is spoken up to the sentence that fits. Who it is written as follows POST /workspace/channels/{id}/messages: the application with an application key or an OAuth connection, the person from a team devices session, with their limit of twenty messages a minute. Without a speech service the call answers 409 voice_unavailable: say it in words instead. A channel that keeps its recordings on the site (a private channel without the transcripts switch, a guest room, a channel shared with a guest) answers 409 voice_closed; the service refusing answers 503 voice_failed and nothing is posted. A dry run makes every check without calling the service, and its detail gives the characters that would be spoken, the voice and the provider. Send an Idempotency-Key so a retried call does not post twice.',
+            'params'      => array(
+                array('name' => 'channel_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The channel it goes into (GET /workspace/channels); or thread_id for a discussion.'),
+                array('name' => 'thread_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The discussion it goes into (GET /workspace/messages/{id}/thread); or channel_id for a channel.'),
+                array('name' => 'text', 'in' => 'body', 'type' => 'string', 'max_length' => 4000, 'required' => true, 'description' => 'What is said, in the language it is to be spoken in; kept as the voice message\'s transcript.'),
+                array('name' => 'reply_to', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The message it answers, in the same channel or discussion. Left out, it is a message of its own.'),
+                array('name' => 'voice', 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The voice spoken with, in place of the one set on the card.'),
+            ),
+        ),
+
+        array(
             'id'          => 'workspace.files.get',
             'method'      => 'GET',
             'path'        => '/workspace/messages/{id}/file',
