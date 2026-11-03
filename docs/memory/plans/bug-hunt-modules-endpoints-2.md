@@ -22,7 +22,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 - Endpoints `setting` (14): open
 - Endpoints `ship` (3): open
 - Endpoints `shipment` (3): open
-- Endpoints `shipping` (9): done #6086 (shipping_method, shipping_address_and_arrival: a saved-for-later line counted; shipping.php get_shipping_methods/get_delivery_date: API list values threw a TypeError); add/edit/view_shipping_methods clean. Leads: get_shipping_method.php (legacy layer, not touched) prices and validates the recipient with a saved line; the forced-methods fallback (shipping.php, get_shipping_method.php) can pick a line with no methods (largest transit 0) and offer none; view_shipping_report Before/After/Total links stop at 2000-2030
+- Endpoints `shipping` (9): done #6086
 - Endpoints `shopping` (2): open
 - Endpoints `short` (5): open
 - Endpoints `sms` (3): open
