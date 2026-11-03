@@ -145,6 +145,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_page_experiments();        // 11.0.153
 	upgrade_2026_11_0_contact_group_rules();     // 11.0.155
 	upgrade_2026_11_0_imports();                 // 11.0.156
+	upgrade_2026_11_0_bookings();                // 11.0.157
 
 }
 
@@ -4713,5 +4714,77 @@ function upgrade_2026_11_0_imports() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Import: exports of WordPress, WooCommerce and Shopify can be brought in from a file; every run keeps the list of what it made, so it can be undone for 30 days.');
+
+}
+
+// Appointment bookings (2026.11.0, 11.0.157; includes/fn/bookings.php).
+// booking_services are what can be booked (length and buffers in minutes,
+// price in minor units), booking_staff the panel users who take bookings with
+// their weekly hours and dated exceptions as JSON, bookings the appointments
+// with their times in UTC. slot_at is a copy of start_at on every row but a
+// cancelled one, where it is NULL; the unique key on (staff_id, slot_at)
+// refuses a second live row for one slot (NULLs never collide, so a cancelled
+// booking gives its slot back and keeps its real time in start_at). A
+// visitor's hold is a 'held' row until hold_until, and a second visitor's
+// INSERT on the same slot is the "just taken" answer.
+// manage_token is the sha256 of the manage link's token, never the token.
+// New tables only; nothing reads them until a service is created.
+function upgrade_2026_11_0_bookings() {
+
+	install_create_table('booking_services', "CREATE TABLE booking_services (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name            VARCHAR(100) NOT NULL DEFAULT '',
+		description     VARCHAR(255) NOT NULL DEFAULT '',
+		length_minutes  SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		buffer_before   SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		buffer_after    SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		price           INT UNSIGNED NOT NULL DEFAULT 0,
+		capacity        TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		enabled         TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		sort_order      SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('booking_staff', "CREATE TABLE booking_staff (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		service_ids  TEXT NULL,
+		hours        TEXT NULL,
+		exceptions   TEXT NULL,
+		enabled      TINYINT UNSIGNED NOT NULL DEFAULT 1,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_user (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('bookings', "CREATE TABLE bookings (
+		id            INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		service_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		staff_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		name          VARCHAR(100) NOT NULL DEFAULT '',
+		email         VARCHAR(191) NOT NULL DEFAULT '',
+		phone         VARCHAR(40) NOT NULL DEFAULT '',
+		start_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		end_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		slot_at       INT UNSIGNED NULL DEFAULT NULL,
+		status        ENUM('held','requested','confirmed','cancelled','no_show','done') NOT NULL DEFAULT 'held',
+		source        VARCHAR(20) NOT NULL DEFAULT 'site',
+		manage_token  CHAR(64) NOT NULL DEFAULT '',
+		hold_until    INT UNSIGNED NOT NULL DEFAULT 0,
+		notes         TEXT NULL,
+		created_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_staff_slot (staff_id, slot_at),
+		KEY idx_start (start_at),
+		KEY idx_user (user_id),
+		KEY idx_email (email)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Bookings: the tables of appointment services, the staff who take them and the bookings are in place; nothing changes until a service is created.');
 
 }
