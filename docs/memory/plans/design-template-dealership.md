@@ -22,7 +22,7 @@ description: Plan for the Car Dealership template (pinegrap-dealership): vehicle
 
 - 3 Vehicles: `vehicles.php` (`vehicle_new` with the Vehicles collection and samples, `vehicles` with filters, `new_cars`, `used_cars`, `vehicle` record page, the home's list widgets).
 
-- 4 Done (#6264). Test drives and trade-ins: `mail.php`, `requests.php` (`test_drive`, `test_drive_view`, `my_test_drives`, `staff_test_drives`, `tradein`, `tradein_view`, `my_tradeins`, `staff_tradeins`, `privacy`, `email_reply`, notify e-mails).
+- 4 Done (#6264). Test drives and trade-ins: `mail.php`, `requests.php` (requests, privacy, `email_reply`, e-mails); test `…_requests_test.php`.
 
 - 5 Finance: `finance_requests.php` (`finance_apply`, `finance_view`, `my_finance`, `staff_finance`, notify e-mails).
 
