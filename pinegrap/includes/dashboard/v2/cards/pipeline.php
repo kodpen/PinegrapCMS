@@ -385,7 +385,7 @@ function pg_dashboard_v2_pipeline_step($key, $user, $win)
             $points = pg_dashboard_v2_pipeline_spans('orders', 'order_date', "AND status != 'incomplete'", $edges);
             $average = (int) round((float) db_value("SELECT AVG(total) FROM orders WHERE status != 'incomplete' AND order_date >= " . (int) $start));
             return pg_dashboard_v2_pipeline_box($key, lang('Orders'), $points,
-                (array_sum($points) > 0) ? lang(array('string' => 'Average {var:1}', 'vars' => prepare_amount($average / 100))) : lang('Placed in the period'),
+                (array_sum($points) > 0) ? lang(array('string' => 'Average {var:1}', 'vars' => pg_dashboard_v2_money($average))) : lang('Placed in the period'),
                 pg_dashboard_list_url('view_orders.php', array('reset' => 'true'), $start, $stop),
                 pg_dashboard_v2_pipeline_flag(pg_dashboard_v2_pipeline_unshipped($start), '{var:1} not shipped', 'warn'));
 
