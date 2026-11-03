@@ -89,7 +89,7 @@
 [NEW] Added cart quotes: staff send a customer a link with products and quantities that fills the customer's cart at the store's prices of that day, made from the panel, the Workspace customer card or the external API, with webhook events for each change.
 [NEW] Added a regrouped Site Settings: one place per setting, a System tools screen, an Accounting category, search, and headings over the list.
 [NEW] Added the Beauty Salon design template with online booking
-[NEW] Added Pinegrap's own image editor, replacing the bundled third-party editor
+[NEW] Added Pinegrap's own image editor, replacing the bundled third-party editor, with animated layers saved as GIF
 [NEW] Added the Events and Conferences design template
 [NEW] Added the Online Courses design template
 [NEW] Added the Law Firm design template

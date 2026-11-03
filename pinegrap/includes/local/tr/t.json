@@ -5236,6 +5236,7 @@
     "This form notifies nobody: no notification address and no auto-reply.": "Bu form kimseye bildirim göndermiyor: bildirim adresi yok, otomatik yanıt kapalı.",
     "This form was drawn in the visual editor. Its fields are added, changed and removed there; a change made on this screen would be overwritten by the next design save. A field's variable (^^name^^) puts its value into the form's e-mails.": "Bu form görsel editörde çizildi. Alanları orada eklenir, değiştirilir ve silinir; bu ekranda yapılan bir değişiklik bir sonraki tasarım kaydında geri alınır. Bir alanın değişkeni (^^ad^^) o alanın değerini formun e-postalarına yazar.",
     "This form's name in the submission lists and the form pickers.": "Gönderim listelerinde ve form seçicilerinde bu formun adı.",
+    "This format holds at most {n} s. Shorten the animation to save it.": "Bu biçim en çok {n} sn tutar. Kaydetmek için animasyonu kısaltın.",
     "This format writes sales invoices only.": "Bu biçim yalnız satış faturalarını yazar.",
     "This gift card has not been redeemed yet.": "Bu hediye kartı henüz kullanılmadı.",
     "This gift card was automatically expired because order #{var:1} was cancelled. It had no expiration date.": "Bu hediye kartı, #{var:1} numaralı sipariş iptal edildiği için otomatik olarak geçersiz kılındı. Son kullanma tarihi yoktu.",

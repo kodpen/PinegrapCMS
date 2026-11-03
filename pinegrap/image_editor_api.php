@@ -36,5 +36,15 @@ if (isset($image_editor_payload['stream'])) {
     exit;
 }
 
+// Pixels made for the request and not kept (action base) are sent as they
+// are too.
+if (isset($image_editor_payload['data'], $image_editor_payload['type'])) {
+    header('Content-Type: ' . $image_editor_payload['type']);
+    header('Content-Length: ' . strlen($image_editor_payload['data']));
+    header('X-Content-Type-Options: nosniff');
+    echo $image_editor_payload['data'];
+    exit;
+}
+
 header('Content-Type: application/json; charset=utf-8');
 echo encode_json($image_editor_payload);
