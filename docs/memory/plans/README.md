@@ -51,6 +51,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - content-importers-steps-2.md: Steps IM4-IM7 of plans/content-importers.md: the WooCommerce and Shopify readers, redirects and undo, close-out; claim as [plan:content-importers] IM<n>
 - content-importers-steps.md: Steps IM1-IM3 of plans/content-importers.md: the import framework and screen, the WordPress WXR reader, pages and media fetches; claim as [plan:content-importers] IM<n>
 - content-importers.md: Plan (owner 2026-11-02): importers for WordPress (WXR), WooCommerce and Shopify (CSV): records, pages, media, comments, customers, products, old addresses as redirects; steps IM1-IM7
+- design-template-appstudio.md: Plan for the Mobile App Developer template (pinegrap-appstudio): own apps and release notes as collections, support and project requests, beta sign-up; parts in a folder; steps 1-9
+- design-template-launch.md: Plan for the Phone Launch Site template (pinegrap-launch): three models, specs and compare, the shop, trade-in and support requests; parts in a folder; steps 1-7
 - design-template-portfolio.md: Plan for the Web Designer Portfolio template (pinegrap-portfolio): case studies as a collection, services and packages, a project brief followed from the account; parts in a folder; steps 1-7
 - designer-form-logic-steps-2.md: Steps FL5-FL8 of plans/designer-form-logic.md: the payment step on the site, the staff side and API, template fees, close-out; claim as [plan:designer-form-logic] FL<n>
 - designer-form-logic-steps.md: Steps FL1-FL4 of plans/designer-form-logic.md: Shown when rules, form steps with progress, the browser draft, the fee setting and order writer; claim as [plan:designer-form-logic] FL<n>
@@ -123,6 +125,9 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - storefront-api-routes-cart.md: Storefront API design note: the cart routes (create, read, add/update/remove line, coupon, shipping choice), their scopes and the cart code each one calls instead of copying it
 - storefront-api-routes-checkout.md: Storefront API design note: checkout routes (create from cart, totals, payment intent through the payment driver layer, confirm), the totals functions they call, guest checkout
 - storefront-api-routes-customer.md: Storefront API design note: customer routes (sign-in, sign-up, refresh, sign-out, password reset, profile, orders, addresses, returns) with scopes, limits and the website code each one calls
+- table-driver-steps-2.md: Steps of the table driver plan, part 2: the browser mode, the printed lists in batches, the screens with their own DataTables code, removal of DataTables (TD9-TD14)
+- table-driver-steps.md: Steps of the table driver plan: the driver core, its parts, the server-paged, quick edit and log lists (TD1-TD8)
+- table-driver.md: Plan (owner 2026-11-03): the panel's own list table driver replacing DataTables, and the move of every table.chart screen to it, screen by screen (TD1-TD14)
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence
 - visitor-records-deferred.md: Deferred visitor-table work: more summary dimensions (monthly partitions and early IP removal are built)
 - workspace-agent-handles.md: Plan (2026-10-21, steps 1 and 5 done, 4 waits for 2): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt

@@ -21,6 +21,9 @@
  *   (window.PGLinkResolve): tab, page, broken, hidden, external, contact,
  *   anchor, with a draft flag.
  * - layout(): where the frames, rows, chips and arrows of the view go.
+ * - drawable(), hrefTo(), hrefPatch(): an arrow drawn by hand: which rows
+ *   may get one, the href its target gives, and what it writes into the
+ *   row's node (a copy of the prop that changes; null for a stale map).
  *
  * Nothing runs at load but the definition of window.PGProtoHotspots.
  * Served minified as assets/js/pg_proto_hotspots.min.js (pg_js_bundles(),
@@ -90,8 +93,9 @@
 
     // The attributes of one start tag as the browser tokenizes them, from
     // just after its name; answers the attributes and where the tag ends
-    // (after its ">"), or null when it never closes.
-    function readTag(html, at) {
+    // (after its ">"), or null when it never closes. `where` (optional)
+    // gets each attribute's value span, quotes included ({ start, end }).
+    function readTag(html, at, where) {
         var attrs = {};
         var n = html.length;
         var i = at;
@@ -119,6 +123,7 @@
 
             var name = html.substring(start, i).toLowerCase();
             var value = null;
+            var span = null;
             var j = i;
 
             while (j < n && /\s/.test(html.charAt(j))) {
@@ -142,9 +147,11 @@
                     }
 
                     value = html.substring(j + 1, close);
+                    span = { start: j, end: close + 1 };
                     i = close + 1;
                 } else if (q === '>' || j >= n) {
                     value = '';
+                    span = { start: j, end: j };
                     i = j;
                 } else {
                     var k = j;
@@ -154,12 +161,17 @@
                     }
 
                     value = html.substring(j, k);
+                    span = { start: j, end: k };
                     i = k;
                 }
             }
 
             if (!has(attrs, name)) {
                 attrs[name] = (value === null) ? null : decode(value);
+
+                if (where) {
+                    where[name] = span;
+                }
             }
         }
 
@@ -169,7 +181,8 @@
     // The links of a piece of markup in order, outside scripts, styles, text
     // areas and comments (pg_proto_html_hrefs() answers the same hrefs):
     // href, toggle (its data-bs-toggle, '' for none) and the words it shows.
-    function htmlLinks(html) {
+    // `spans` (optional) gets where each link's href value sits, in order.
+    function htmlLinks(html, spans) {
         html = String(html || '');
 
         var out = [];
@@ -198,7 +211,8 @@
             }
 
             var tagName = m[1].toLowerCase();
-            var tag = readTag(html, lt + m[0].length);
+            var where = {};
+            var tag = readTag(html, lt + m[0].length, where);
 
             if (!tag) {
                 i = lt + 1;
@@ -226,6 +240,10 @@
                     target: has(tag.attrs, 'target') ? String(tag.attrs.target || '') : '',
                     label: plainText(html.substring(tag.end, (closeAt < 0) ? n : closeAt))
                 });
+
+                if (spans) {
+                    spans.push(where.href);
+                }
             }
 
             i = tag.end;
@@ -575,6 +593,7 @@
                 port: 'h' + rows.length,
                 nodeId: spot.nodeId,
                 source: spot.source,
+                index: parseInt(spot.index, 10) || 0,
                 label: str(link.label) || str(link.href) || '#',
                 href: str(link.href),
                 mark: str(link.mark) || 'broken',
@@ -699,6 +718,108 @@
         return FRAME.head + index * FRAME.row + FRAME.row / 2;
     }
 
+    // ── Drawing an arrow ──
+
+    // The marks of the chips a link may be pointed at: what the href of
+    // such a chip means does not depend on the page it is written on.
+    var DRAW_CHIPS = { page: true, external: true, contact: true };
+
+    // Whether an arrow may be drawn from a row: a link of a tree. Classic
+    // menus, legacy regions and widget page settings stay read-only here.
+    function drawable(row) {
+        return !!row && !row.from && (row.source === 'href' || row.source === 'attrs' || row.source === 'btn' || row.source === 'text');
+    }
+
+    // The href an arrow ending on `target` writes, null where it may not
+    // end: a tab's frame gives its page name under the site path of the
+    // map read (`env.path`, '/' when it names none), a chip of a site page,
+    // another site or a contact address its own href.
+    function hrefTo(target, env) {
+        if (!isObject(target)) {
+            return null;
+        }
+
+        if (target.kind === 'page') {
+            var name = str(target.name).trim();
+            var path = (isObject(env) && typeof env.path === 'string' && env.path !== '') ? env.path : '/';
+
+            return (name === '') ? null : path + name.split('/').map(encodeURIComponent).join('/');
+        }
+
+        if (target.kind === 'chip' && DRAW_CHIPS[target.mark] && str(target.href) !== '') {
+            return str(target.href);
+        }
+
+        return null;
+    }
+
+    function attrValue(value) {
+        return '"' + String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;') + '"';
+    }
+
+    // The markup with the href of its nth link (htmlLinks() order) set to
+    // `href`, written in double quotes; the rest stays as it was. Null when
+    // the markup has no such link.
+    function setHtmlHref(html, index, href) {
+        html = String(html || '');
+
+        var spans = [];
+
+        htmlLinks(html, spans);
+
+        if (!spans[index]) {
+            return null;
+        }
+
+        return html.substring(0, spans[index].start) + attrValue(href) + html.substring(spans[index].end);
+    }
+
+    // What an arrow from `row` to `href` writes into the row's node, as
+    // { key, value } of its props (a copy, the node is not changed), or
+    // null when the node no longer holds the href the map showed (or the
+    // row is not drawable).
+    function hrefPatch(node, row, href) {
+        if (!drawable(row) || !isObject(node)) {
+            return null;
+        }
+
+        var props = propsOf(node);
+        var index = parseInt(row.index, 10) || 0;
+        var now = nodeLinks(node).filter(function (spot) {
+            return spot.source === row.source && (spot.index === index);
+        })[0];
+
+        if (!now || now.href !== str(row.href)) {
+            return null;
+        }
+
+        if (row.source === 'attrs') {
+            return {
+                key: '_attrs',
+                value: props._attrs.map(function (attr) {
+                    var copy = {};
+
+                    Object.keys(attr || {}).forEach(function (k) { copy[k] = attr[k]; });
+
+                    if (String(copy.name || '').toLowerCase() === 'href') {
+                        copy.value = href;
+                    }
+
+                    return copy;
+                })
+            };
+        }
+
+        if (row.source === 'text') {
+            var key = (node.type === 'content' && props.contentType === 'custom_html') ? 'html' : 'text';
+            var markup = setHtmlHref(props[key], index, href);
+
+            return (markup === null) ? null : { key: key, value: markup };
+        }
+
+        return { key: 'href', value: href };
+    }
+
     window.PGProtoHotspots = {
         FRAME: FRAME,
         layout: layout,
@@ -709,6 +830,10 @@
         collect: collect,
         design: design,
         markHref: markHref,
-        mark: mark
+        mark: mark,
+        drawable: drawable,
+        hrefTo: hrefTo,
+        setHtmlHref: setHtmlHref,
+        hrefPatch: hrefPatch
     };
 })();

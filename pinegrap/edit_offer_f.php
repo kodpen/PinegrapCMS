@@ -1072,8 +1072,13 @@ function _pg_offer_action_users($action_id, $except_offer_id)
 // request that dies half way leaves at most an unused rule or action row
 // (the cleanup action removes those) and never an offer pointing at a rule
 // that does not exist. Returns the offer id.
-function _pg_offer_save($clean, $user)
+//
+// $username and $activity work as for _pg_offer_delete(): the screen leaves
+// them out and the session names the operator; the API passes the account
+// that owns the application and its own activity line.
+function _pg_offer_save($clean, $user, $username = null, $activity = null)
 {
+    $who = ($username === null) ? ($_SESSION['sessionusername'] ?? '') : (string) $username;
     $offer = $clean['offer'];
     $offer_id = $offer['id'];
     $is_new = ($offer_id <= 0);
@@ -1169,17 +1174,20 @@ function _pg_offer_save($clean, $user)
     // rewritten wholesale here.
     _pg_offer_conditions_write($offer_id, $clean['conditions'], $clean['actions']);
 
-    if ($is_new) {
-        log_activity(lang(array('string' => 'offer ({var:1}) was created', 'vars' => $offer['code'])), $_SESSION['sessionusername']);
+    if ($activity !== null) {
+        log_activity($activity, $who);
+    } elseif ($is_new) {
+        log_activity(lang(array('string' => 'offer ({var:1}) was created', 'vars' => $offer['code'])), $who);
     } else {
-        log_activity(lang(array('string' => 'offer ({var:1}) was modified', 'vars' => $offer['code'])), $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => 'offer ({var:1}) was modified', 'vars' => $offer['code'])), $who);
     }
     $audit_after = _pg_offer_audit_state($offer_id);
     if ($moved_key_codes > 0) {
-        log_activity(lang(array('string' => '{var:1} key code(s) moved from offer code {var:2} to {var:3}', 'vars' => array($moved_key_codes, $old_code, $offer['code']))), $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => '{var:1} key code(s) moved from offer code {var:2} to {var:3}', 'vars' => array($moved_key_codes, $old_code, $offer['code']))), $who);
         $audit_after['key_codes_moved'] = $moved_key_codes;
     }
     pg_audit($is_new ? 'create' : 'update', 'offer', $offer_id, $audit_before, $audit_after, $offer['code']);
+    pg_announce($is_new ? 'offer.created' : 'offer.updated', array('id' => (int) $offer_id, 'code' => (string) $offer['code'], 'enabled' => (bool) $offer['enabled']));
     return $offer_id;
 }
 
@@ -1508,6 +1516,7 @@ function _pg_offer_delete($offer_id, $username = null, $activity = null)
             ? lang(array('string' => 'offer ({var:1}) was deleted', 'vars' => $offer['code']))
             : $activity,
         ($username === null) ? ($_SESSION['sessionusername'] ?? '') : $username);
+    pg_announce('offer.deleted', array('id' => (int) $offer_id, 'code' => (string) $offer['code']));
     return true;
 }
 
@@ -2143,6 +2152,7 @@ function pg_offer_editor_handle($request)
                 WHERE id = '" . e($offer_id) . "'");
             log_activity(lang(array('string' => 'offer ({var:1}) was modified', 'vars' => $offer['code'])), $_SESSION['sessionusername']);
             pg_audit('update', 'offer', $offer_id, $audit_before, _pg_offer_audit_state($offer_id), $offer['code']);
+            pg_announce('offer.updated', array('id' => (int) $offer_id, 'code' => (string) $offer['code'], 'enabled' => ($status == 'enabled')));
             $offer = db_item("SELECT * FROM offers WHERE id = '" . e($offer_id) . "'");
             $offer_status = _pg_offer_status($offer);
             respond(array(
