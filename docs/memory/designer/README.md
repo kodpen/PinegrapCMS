@@ -33,6 +33,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - address-labels-in-editor.md: City and state labels in the visual editor follow the store's default country (İlçe and İl for Turkey): the starters write its words, the canvas swaps default words; twin of the site render stamp
 - affiliate-sign-up-widget.md: The Affiliate Sign Up Form widget (classic "affiliate sign up form" page type): handler and page row, controls by name, prefill, terms, confirmation, what is left out.
 - attrs-panel-undo.md: Undo steps of the designer's Attributes panel text fields (id, prop-bound attributes, custom attribute name and value) and when its style row is written
+- audience-conditions.md: Audience conditions on page elements: the __audience_* tokens, the pg_ret cookie, personal or per country/device copies in the page cache, the editor list
 - billing-information-widget.md: The Billing Information widget (third classic checkout step): handler and page row, prefill from order and contact, parts the page turns off, helpers shared with step 1.
 - bootstrap-direct-child-canvas.md: Bootstrap direct-child selectors break on the canvas because of .sd-wrap: two-part fix (display:contents + re-applied rule), the td display:flex ban, the selected-child lift.
 - catalog-binding-disabled-no-output.md: Disabled catalog feature emits no output: _pg_catalog_binding_disabled(), designer mirror _sdCatalogBindingDisabled(), which settings disable which bindings.

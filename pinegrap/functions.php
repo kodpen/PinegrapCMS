@@ -69,6 +69,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_time_sql.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_conditions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_finish.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_facts.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_audience.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_attrs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_parts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_parts_anywhere.php');

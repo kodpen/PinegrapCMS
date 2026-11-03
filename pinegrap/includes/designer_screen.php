@@ -407,6 +407,9 @@ function pg_designer_screen_render($ctx)
             // The form's double opt-in switch exists once the 11.0.27 column
             // is there; until then pg_cf_write_form_settings() drops it.
             'doubleOptIn' => function_exists('pg_fs_ready') && pg_fs_ready(),
+            // The experiments an audience condition may read the version
+            // of, with their variant keys (page_audience.php).
+            'experiments' => function_exists('pg_audience_experiment_options') ? pg_audience_experiment_options() : array(),
         ),
     ), JSON_HEX_TAG | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 

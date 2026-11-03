@@ -589,6 +589,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
     if (strpos($content, '<!--pg-pf:') !== false || strpos($content, '{pg-r') !== false) {
         $content = pg_page_facts_apply($content, $email);
     }
+    // Every page drawn for a visit tells the browser it was here, so its
+    // next visit reads as returning (page_audience.php).
+    if (!pg_page_fact_background($email)) {
+        pg_audience_returning_touch();
+    }
     pg_page_record_end($pg_pr_prev);
 
     // ── Custom PHP marker expansion ─────────────────────────────────────────────

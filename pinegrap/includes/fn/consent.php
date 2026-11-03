@@ -465,6 +465,11 @@ function pg_consent_catalogue($content)
     // (pg_experiment_bucket_write()); written only while one runs.
     $catalogue['necessary'][] = array('pg_exp', true, lang('Keeps showing you the same version of a page while the site compares two versions of it.'));
 
+    // Every page drawn for a browser without it writes the time it was
+    // first seen (pg_audience_returning_touch()), so a page can greet a
+    // returning visitor.
+    $catalogue['necessary'][] = array('pg_ret', true, lang('Remembers that you have visited the site before, so a page can show returning visitors something of their own.'));
+
     $tracking = defined('VISITOR_TRACKING') && VISITOR_TRACKING;
 
     if ($tracking) {

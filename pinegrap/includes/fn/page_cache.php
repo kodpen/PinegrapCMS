@@ -34,6 +34,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 // here too: the router loads this module without functions.php.
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/request_scheme.php');
 
+// The audience conditions' cache rule: a page shown by country or device is
+// kept as one copy per value, which the router finds by them.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_audience.php');
+
 // Longest lifetime, in seconds, a shared cache may keep a page.
 define('PG_PAGE_CACHE_TTL_MAX', 3600);
 
@@ -202,7 +206,10 @@ function pg_page_cache_set_cookie_names(array $headers)
     foreach ($headers as $header) {
         // The experiment bucket (pg_exp) is not a personal cookie: the page
         // cache keeps one copy per variant.
-        if (preg_match('/^set-cookie:\s*([^=;\s]+)\s*=/i', (string) $header, $match) && ($match[1] !== 'pg_exp')) {
+        // Nor is the returning visitor's (pg_ret): every page drawn for a
+        // browser without one sends it, and a cacheable answer drops it.
+        if (preg_match('/^set-cookie:\s*([^=;\s]+)\s*=/i', (string) $header, $match) && ($match[1] !== 'pg_exp')
+            && ($match[1] !== PG_AUDIENCE_RETURNING_COOKIE)) {
             $names[] = $match[1];
         }
     }
@@ -564,6 +571,12 @@ function pg_page_cache_apply($content, array $context)
         header($line);
     }
 
+    // A page shown by country or device is kept by the file cache alone,
+    // one copy per value: a shared cache would keep one for everyone.
+    if (pg_audience_cache_vary()) {
+        header('Cache-Control: private, max-age=0');
+    }
+
     header('X-Pinegrap-Cache: cacheable');
 
     // A session this request started has had its cookie taken away, so
@@ -883,7 +896,8 @@ function pg_page_cache_kept_headers(array $headers)
  * then the page as it is sent. A file stored before the page was kept reads
  * back as page 0.
  *
- * @param array  $meta created, headers, page_id
+ * @param array  $meta created, headers, page_id, aud (the audience kinds the
+ *                     page is kept by, pg_audience_vary_clean())
  * @param string $body
  * @return string '' when the headers cannot be written as JSON
  */
@@ -894,6 +908,7 @@ function pg_page_cache_pack(array $meta, $body)
         'created' => (int) ($meta['created'] ?? 0),
         'headers' => array_values(pg_page_cache_kept_headers((array) ($meta['headers'] ?? array()))),
         'page_id' => max(0, (int) ($meta['page_id'] ?? 0)),
+        'aud' => pg_audience_vary_clean($meta['aud'] ?? null),
     ), JSON_UNESCAPED_SLASHES);
 
     return is_string($line) ? $line . "\n" . (string) $body : '';
@@ -904,7 +919,7 @@ function pg_page_cache_pack(array $meta, $body)
  * empty or cut file, another layout).
  *
  * @param string $raw
- * @return array|null ['meta' => [created, headers, page_id], 'body' => string]
+ * @return array|null ['meta' => [created, headers, page_id, aud], 'body' => string]
  */
 function pg_page_cache_unpack($raw)
 {
@@ -927,6 +942,7 @@ function pg_page_cache_unpack($raw)
             'created' => (int) $meta['created'],
             'headers' => pg_page_cache_kept_headers($meta['headers']),
             'page_id' => max(0, (int) ($meta['page_id'] ?? 0)),
+            'aud' => pg_audience_vary_clean($meta['aud'] ?? null),
         ),
         'body' => (string) substr($raw, $eol + 1),
     );
@@ -1094,6 +1110,16 @@ function pg_page_cache_lookup(array $config, array $server, array $cookies, $uri
     $raw = is_file($out['file']) ? @file_get_contents($out['file']) : false;
     $entry = ($raw === false) ? null : pg_page_cache_unpack($raw);
 
+    // A page shown by country or device keeps, under the address's key, only
+    // the kinds it is kept by; the visitor's copy is the one of their values.
+    // The key stays the address's: the page stores both again on a miss.
+    if (($entry !== null) && $entry['meta']['aud']) {
+        $out['file'] = pg_page_cache_file_path(pg_page_cache_directory(), $out['generation'],
+            pg_audience_cache_key($out['key'], $entry['meta']['aud'], pg_audience_request_values($entry['meta']['aud'], $server)));
+        $raw = is_file($out['file']) ? @file_get_contents($out['file']) : false;
+        $entry = ($raw === false) ? null : pg_page_cache_unpack($raw);
+    }
+
     if ($entry === null) {
         return $out;
     }
@@ -1129,6 +1155,10 @@ function pg_page_cache_send(array $lookup, $method)
 
     foreach (pg_page_cache_headers(max(0, pg_page_cache_ttl() - (int) $lookup['age'])) as $line) {
         header($line);
+    }
+
+    if (!empty($lookup['entry']['meta']['aud'])) {
+        header('Cache-Control: private, max-age=0');
     }
 
     header('X-Pinegrap-Cache: ' . (($lookup['state'] === 'hit') ? 'hit' : 'stale'));
@@ -1186,9 +1216,20 @@ function pg_page_cache_store_page($content, $page_id, $page_name)
             (defined('PATH') ? PATH : '/') . (defined('SOFTWARE_DIRECTORY') ? SOFTWARE_DIRECTORY : 'pinegrap') . '/page_view.php');
     }
 
+    $generation = defined('PG_PAGE_CACHE_GENERATION') ? PG_PAGE_CACHE_GENERATION : 0;
+    $vary = pg_audience_cache_vary();
+
+    // A page shown by country or device: the address's key holds only the
+    // kinds (no page), the copy goes under the key of this visitor's values.
+    if ($vary) {
+        pg_page_cache_write(pg_page_cache_file_path(pg_page_cache_directory(), $generation, $key),
+            pg_page_cache_pack(array('created' => time(), 'headers' => array(), 'page_id' => (int) $page_id, 'aud' => $vary), ''));
+        $key = pg_audience_cache_key($key, $vary, pg_audience_request_values($vary, $_SERVER));
+    }
+
     pg_page_cache_write(
-        pg_page_cache_file_path(pg_page_cache_directory(), defined('PG_PAGE_CACHE_GENERATION') ? PG_PAGE_CACHE_GENERATION : 0, $key),
-        pg_page_cache_pack(array('created' => time(), 'headers' => headers_list(), 'page_id' => (int) $page_id), $body));
+        pg_page_cache_file_path(pg_page_cache_directory(), $generation, $key),
+        pg_page_cache_pack(array('created' => time(), 'headers' => headers_list(), 'page_id' => (int) $page_id, 'aud' => $vary), $body));
 
     pg_page_cache_unlock();
 }
