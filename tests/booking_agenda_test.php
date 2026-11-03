@@ -190,6 +190,26 @@ function test_booking_agenda_check_new_booking()
 	pg_assert_same(array('staff_id'), array_keys(pg_booking_agenda_check($nobody, $services, $staff)));
 }
 
+// The contact rule a change to a booking shares with a new one.
+function test_booking_agenda_contact_error()
+{
+	pg_assert_same('', pg_booking_agenda_contact_error('ayse@example.com', ''));
+	pg_assert_same('', pg_booking_agenda_contact_error('', '+90 555 000 00 00'), 'a phone alone is enough');
+	pg_assert_same('', pg_booking_agenda_contact_error(' ayse@example.com ', '555'));
+	pg_assert_same(lang('Enter an e-mail address or a phone number.'), pg_booking_agenda_contact_error(' ', ' '), 'neither');
+	pg_assert_same(lang('Enter a valid e-mail address.'), pg_booking_agenda_contact_error('ayse@', '555'), 'a bad address with a phone');
+
+	pg_assert_contains('pg_booking_agenda_contact_error($email, $phone)', (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_booking.php'), 'the edit screen applies it');
+}
+
+function test_booking_agenda_source_label()
+{
+	pg_assert_same(lang('Online booking'), pg_booking_agenda_source_label('site'));
+	pg_assert_same(lang('Panel'), pg_booking_agenda_source_label('panel'));
+	pg_assert_same(lang('API'), pg_booking_agenda_source_label('api'));
+	pg_assert_same('import', pg_booking_agenda_source_label('import'), 'an unknown value as stored');
+}
+
 function test_booking_agenda_status_moves_offered()
 {
 	pg_assert_same(array('confirmed', 'cancelled'), pg_booking_agenda_moves('requested'));

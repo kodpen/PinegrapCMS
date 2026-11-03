@@ -161,8 +161,12 @@ if ($_POST) {
         $liveform->mark_error('name', lang('Enter the customer\'s name.'));
     }
 
-    if (($email !== '') && (filter_var($email, FILTER_VALIDATE_EMAIL) === false)) {
-        $liveform->mark_error('email', lang('Enter a valid e-mail address.'));
+    // The same rule as a new booking: a valid address, and an address or a
+    // phone to reach the customer.
+    $contact_error = pg_booking_agenda_contact_error($email, $phone);
+
+    if ($contact_error !== '') {
+        $liveform->mark_error('email', $contact_error);
     }
 
     if ($liveform->check_form_errors()) {
@@ -421,7 +425,7 @@ $facts = array(
     lang('Time')    => h(pg_booking_agenda_time($booking['start_at'], true)) . ' – ' . h(pg_booking_agenda_time($booking['end_at'])),
     lang('Service') => h($service_name),
     lang('Staff')   => h($staff_name),
-    lang('Source')  => h((string) $booking['source']),
+    lang('Source')  => h(pg_booking_agenda_source_label($booking['source'])),
     lang('Created') => h(pg_booking_agenda_time($booking['created_at'], true)),
 );
 
