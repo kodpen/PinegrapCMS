@@ -47,9 +47,6 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 - Endpoints `key` (5): done #6092
 - Endpoints `login` (4): taken by KZ: #4594; the rest clean
 - Endpoints `logout` (2): clean #6092
-- Endpoints `mail` (2): open
-- Endpoints `manifest` (2): open
-- Endpoints `marketplace` (3): open
 - Endpoints `membership` (5): #6094 (Google sign-up); rest clean
 - Endpoints `menu` (7): done #4673
 - Endpoints `my` (4): done #4653
