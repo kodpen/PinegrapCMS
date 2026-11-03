@@ -354,10 +354,7 @@ function pg_email_campaign_delivery_problem($campaign_id)
     $row = db_item(
         "SELECT last_error, COUNT(*) AS number
         FROM email_recipients
-        WHERE
-            (email_campaign_id = '" . $campaign_id . "')
-            AND (last_error != '')
-            AND ((complete = '0') OR (failed = '1'))
+        WHERE " . pg_email_campaign_problem_where($campaign_id) . "
         GROUP BY last_error
         ORDER BY number DESC
         LIMIT 1");
@@ -375,4 +372,23 @@ function pg_email_campaign_delivery_problem($campaign_id)
             AND (complete = '0')");
 
     return $problem;
+}
+
+/**
+ * The recipients whose delivery error the reason line counts: waiting or
+ * given up with a stored error and at least one attempt. A recipient the
+ * send gate skipped (pg_email_campaign_suppressed_set(): attempts = 0)
+ * is left out: the summary counts it on its own line, and its "bounced or
+ * complained" text outnumbered and hid the SMTP error the line offers to
+ * fix. Pure.
+ *
+ * @param int $campaign_id
+ * @return string SQL condition
+ */
+function pg_email_campaign_problem_where($campaign_id)
+{
+    return "(email_campaign_id = '" . (int) $campaign_id . "')
+            AND (last_error != '')
+            AND ((complete = '0') OR (failed = '1'))
+            AND (attempts > 0)";
 }
