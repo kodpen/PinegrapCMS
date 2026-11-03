@@ -57,6 +57,14 @@ function pg_email_campaign_mail_properties($campaign, $to, $to_name, $subject, $
         $properties['bounce_ref'] = pg_mail_bounce_ref('campaign', $campaign_id);
     }
 
+    // A booking's mail carries the booking as a calendar file, read at the
+    // send (includes/fn/booking_messages.php).
+    $ics = function_exists('pg_booking_ics_attachment') ? pg_booking_ics_attachment($campaign) : null;
+
+    if ($ics) {
+        $properties['attachments'] = array($ics);
+    }
+
     return $properties;
 }
 
