@@ -314,7 +314,8 @@ function pg_import_product_images($import, $related, $urls, &$notes)
     $names = array();
 
     foreach ($urls as $url) {
-        $stored = pg_import_media_fetch($import, $related, $url, array('images_only' => true));
+        // By name: the media fetch comes with its own file, which a site may not have yet.
+        $stored = call_user_func('pg_import_media_fetch', $import, $related, $url, array('images_only' => true));
 
         if (!empty($stored['ok'])) {
             $names[] = (string) $stored['name'];
