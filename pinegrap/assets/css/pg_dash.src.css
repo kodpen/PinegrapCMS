@@ -1079,8 +1079,11 @@
     display: none;
   }
 
+  /* A .card: Bootstrap sets the column direction, under which the text
+     block's 18rem basis became its height. */
   .pg-dash-bar {
     display: flex;
+    flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
     gap: 1rem 1.5rem;
@@ -1199,14 +1202,26 @@
     border-radius: var(--pg-radius);
   }
 
+  /* At least 24 px a side (WCAG 2.5.8), 32 px under a finger. */
   .pg-dash-action-remove {
     display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.5rem;
+    min-height: 1.5rem;
     padding: .25rem;
     border: 0;
     border-radius: var(--pg-radius-sm);
     background: color-mix(in srgb, var(--pg-danger) 18%, transparent);
     color: inherit;
     font-size: .75rem;
+  }
+
+  @media (pointer: coarse) {
+    .pg-dash-action-remove {
+      min-width: 2rem;
+      min-height: 2rem;
+    }
   }
 
   .pg-dash-action-add {

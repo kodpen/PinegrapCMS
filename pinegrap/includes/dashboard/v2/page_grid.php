@@ -217,6 +217,10 @@ function pg_dashboard_v2_edit_strings()
 /**
  * The grid, empty until the script draws the cards, and its configuration.
  *
+ * Not a live region: every card drawn or refreshed would be read out whole.
+ * Moves, additions and removals are announced one sentence at a time
+ * through pgAnnounce().
+ *
  * @param array      $user
  * @param array|null $row
  * @param array|null $look
@@ -225,7 +229,7 @@ function pg_dashboard_v2_edit_strings()
 function pg_dashboard_v2_grid($user, $row = null, $look = null)
 {
     return '
-        <div class="pg-dash-grid" id="pg_dash_grid" aria-live="polite"></div>
+        <div class="pg-dash-grid" id="pg_dash_grid"></div>
         <script type="application/json" id="pg_dash_config">' . pg_dashboard_v2_json(pg_dashboard_v2_config($user, $row, $look)) . '</script>';
 }
 
