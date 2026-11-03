@@ -9400,6 +9400,20 @@
             if (menu) {
                 actions.replaceChild(self.channelMenu(), menu);
             }
+
+            // The box names the channel; a rename in the channel settings
+            // reaches it here as well (a discussion's box names none).
+            if (self.input && !self.isThread) {
+                var placeholder = t('composer_placeholder', channel.name);
+
+                if (self.input.tagName === 'TEXTAREA') {
+                    self.input.placeholder = placeholder;
+                } else {
+                    self.input.setAttribute('data-placeholder', placeholder);
+                }
+
+                self.input.setAttribute('aria-label', placeholder);
+            }
         },
 
         // ── Messages ──
