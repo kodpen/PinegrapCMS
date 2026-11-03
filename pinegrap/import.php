@@ -69,7 +69,7 @@ include_once('liveform.class.php');
 $liveform = new liveform('import');
 
 $screen_url = PATH . SOFTWARE_DIRECTORY . '/import.php';
-$import_id = (int) ($_REQUEST['id'] ?? 0);
+$import_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $import = ($import_id > 0) ? pg_import_get($import_id) : null;
 
 if (($import_id > 0) && ($import === null)) {
@@ -336,7 +336,7 @@ if ($import === null) {
             <td>' . h($kinds[$row['kind']] ?? $row['kind']) . '</td>
             <td>' . h($status_labels[$row['status']] ?? $row['status']) . '</td>
             <td class="text-end">' . h(pg_format_number($totals['made'], 0)) . '</td>
-            <td>' . h(get_absolute_time(array('timestamp' => (int) $row['created_at']))) . '</td>
+            <td>' . h(get_absolute_time(array('timestamp' => (int) $row['created_at'], 'format' => 'plain_text'))) . '</td>
         </tr>';
     }
 

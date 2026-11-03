@@ -146,6 +146,7 @@ function get_help_url($properties = array())
         'view_short_links'    => 'pages-cont#short-links',
         'view_not_found_log'  => 'pages-cont#short-links',
         'import_short_links'  => 'pages-cont#short-links',
+        'import'              => 'pages-cont#import',
         'add_short_link'      => 'pages-cont#create-edit-short-link',
         'edit_short_link'     => 'pages-cont#create-edit-short-link',
         'view_auto_dialogs'   => 'pages-cont#auto-dialogs',
