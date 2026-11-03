@@ -30,6 +30,21 @@ if (!defined('ERP_MAX_QUANTITY')) {
 }
 
 /**
+ * Whether typed text is an amount and nothing else: an optional leading
+ * minus, then digits with dots, commas or spaces between them ('-12,50',
+ * '1.250,00', '1 250,00'). erp_kurus() drops whatever else is there, so a
+ * screen that writes the amount asks this first: '12abc' would read 12,00
+ * and '1e3' 13,00.
+ *
+ * @param string $text
+ * @return bool
+ */
+function erp_amount_text_valid($text)
+{
+    return preg_match('/^-?[0-9]+([.,\s]+[0-9]+)*$/', trim(str_replace("\xC2\xA0", ' ', (string) $text))) === 1;
+}
+
+/**
  * Read an amount typed by an operator and return whole kurus.
  *
  * Accepts both separators in either role: 1.234,56 and 1,234.56 both mean the
