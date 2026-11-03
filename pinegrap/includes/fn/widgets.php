@@ -8669,7 +8669,10 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
 
     // "Step" breaks split the controls into fieldsets shown one at a time;
     // a form without one is left exactly as it was.
-    $cf_steps = pg_cf_apply_steps($tree_decoded);
+    // A stepped form keeps its answers in the browser through a reload,
+    // except in the editor's Preview and the SEO pass.
+    $cf_draft_key = ($mode === 'background' || pg_seo_rendering()) ? '' : pg_cf_draft_key($form_page_id);
+    $cf_steps = pg_cf_apply_steps($tree_decoded, $cf_draft_key);
 
     // Render the full tree (loop_area present but hidden)
     $rendered = trim(_render_tree_node($tree_decoded, 0, 0));

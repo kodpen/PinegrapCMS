@@ -176,9 +176,56 @@ function test_custom_form_steps_script()
 function test_custom_form_steps_render_wiring()
 {
 	$src = (string)file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets.php');
-	pg_assert_true(strpos($src, 'pg_cf_apply_steps($tree_decoded)') !== false, 'the renderer groups the steps');
+	pg_assert_true(strpos($src, 'pg_cf_apply_steps($tree_decoded, $cf_draft_key)') !== false, 'the renderer groups the steps');
 	pg_assert_true(strpos($src, 'pg_cf_steps_script()') !== false, 'and adds the script to a stepped form');
 	$js = (string)file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_true(strpos($js, "step:       { label: _sdT('Step')") !== false, 'the palette offers a Step break');
 	pg_assert_true(strpos($js, "['form_step',") !== false, 'the Section binding list names it');
+}
+
+// ── Browser draft ──────────────────────────────────────────────────────
+
+function test_custom_form_steps_draft_key()
+{
+	pg_assert_same('pg-cf-draft:form:12', pg_cf_draft_key(12), 'page id and record kind');
+	pg_assert_same('pg-cf-draft:item:12', pg_cf_draft_key('12', 'item'), 'another kind');
+	pg_assert_same('pg-cf-draft:form:12', pg_cf_draft_key(12, 'x"<'), 'an odd kind falls back to form');
+	pg_assert_same('', pg_cf_draft_key(0), 'no page, no draft');
+}
+
+function test_custom_form_steps_draft_markup()
+{
+	$tree = _test_cf_steps_tree(array(_test_cf_steps_break('One'), _test_cf_steps_input('a'), _test_cf_steps_break('Two'), _test_cf_steps_input('b')));
+	pg_cf_apply_steps($tree, 'pg-cf-draft:form:7');
+	$html = _render_tree_node($tree, 0, 0);
+	pg_assert_true(strpos($html, 'data-pg-draft="pg-cf-draft:form:7"') !== false, 'the key rides on the progress line');
+	pg_assert_true(strpos($html, 'data-pg-step-restart') !== false, 'a Start over button');
+
+	$tree = _test_cf_steps_tree(array(_test_cf_steps_break('One'), _test_cf_steps_input('a'), _test_cf_steps_break('Two'), _test_cf_steps_input('b')));
+	pg_cf_apply_steps($tree);
+	$html = _render_tree_node($tree, 0, 0);
+	pg_assert_true(strpos($html, 'data-pg-draft') === false, 'no key (Preview), no draft');
+	pg_assert_true(strpos($html, 'data-pg-step-restart') === false, 'and no Start over');
+}
+
+function test_custom_form_steps_draft_script()
+{
+	$src = (string)file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/custom_form_steps.php');
+	$start = strpos($src, 'function pg_cf_steps_script()');
+	$js = substr($src, $start);
+	pg_assert_true(strpos($js, 'sessionStorage') !== false, 'kept in sessionStorage');
+	pg_assert_true(strpos($js, 'localStorage') === false, 'never in localStorage');
+	foreach (array('"file"', '"password"', '"hidden"', 'cc-', '.captcha', '[data-pg-signature]') as $never) {
+		pg_assert_true(strpos($js, $never) !== false, 'kept out of the draft: ' . $never);
+	}
+	pg_assert_true(strpos($js, 'defaultPrevented') !== false, 'cleared only by a submission that goes');
+	pg_assert_true(strpos($js, 'removeItem') !== false, 'cleared on submit and on Start over');
+	pg_assert_true(strpos($js, 'frameElement') !== false, 'off inside an editor frame');
+}
+
+function test_custom_form_steps_draft_wiring()
+{
+	$src = (string)file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets.php');
+	pg_assert_true(strpos($src, 'pg_cf_apply_steps($tree_decoded, $cf_draft_key)') !== false, 'the renderer passes the draft key');
+	pg_assert_true(strpos($src, "\$mode === 'background' || pg_seo_rendering()") !== false, 'no draft in the editor Preview or the SEO pass');
 }

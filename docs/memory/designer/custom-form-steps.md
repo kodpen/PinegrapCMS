@@ -1,6 +1,6 @@
 ---
 name: custom-form-steps
-description: Steps of a designed form (FL2): the palette "Step" break (section form_step), pg_cf_apply_steps() fieldsets, Back/Next, progress line, pg_cf_steps_script(), what a form without a break gets
+description: Steps of a designed form (FL2, FL3): the Step break (section form_step), pg_cf_apply_steps() fieldsets, Back/Next, progress, pg_cf_steps_script(), the sessionStorage draft and Start over
 module: custom_form_steps
 ---
 
@@ -17,7 +17,12 @@ module: custom_form_steps
 - The history is never touched (no `pushState`): the browser's back key leaves the page as before.
 - On submit a failing control in another step brings that step forward (capture listener) before `pg_cf_validation_script()` focuses it. That script focuses `input/select/textarea:invalid` only: a fieldset holding an invalid control matches `:invalid` and takes no focus.
 
+## What does the browser draft keep?
+- `pg_cf_draft_key($page_id, $kind)` = `pg-cf-draft:<form|item>:<page id>`; the renderer passes it to `pg_cf_apply_steps()` except in the editor's Preview (`$mode === 'background'`) and the SEO pass, and the progress `<nav>` carries it as `data-pg-draft` with a hidden "Start over" button. A single-step form has no draft.
+- The script saves the answers and the shown step to `sessionStorage` (never `localStorage`) on every input, change and Next/Back, and restores them at load unless the server refilled a refused submission (`aria-invalid`), then fires `change` so the rule scripts re-read the form. Never kept: file, password and hidden inputs (a signature's value, tokens), `autocomplete="cc-*"` card fields, the CAPTCHA box (`.captcha`, its honeypot included) and a signature pad.
+- A submission that is not prevented and "Start over" (reset, `change`, then the draft removed: the save listener would write it back otherwise) clear it. Off inside a same-site frame (`window.frameElement`): the editor canvas and prototype play.
+
 ## Tests?
-- `tests/custom_form_steps_test.php`: breaks at the start, in the middle, at the end, none, in a row, nested container, single step, tree untouched without a break, escaping, script once, renderer and palette wiring.
+- `tests/custom_form_steps_test.php`: breaks at the start, in the middle, at the end, none, in a row, nested container, single step, tree untouched without a break, escaping, script once, renderer and palette wiring, the draft key, markup with and without it, what the draft never keeps.
 
 Related: docs/memory/designer/custom-form-render.md, docs/memory/designer/designer-form-palette-and-fields.md

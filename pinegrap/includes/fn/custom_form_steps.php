@@ -19,6 +19,19 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+/**
+ * The sessionStorage key of a stepped form's browser draft: the form's page
+ * id and the record kind ('form', or 'item' for a collection), '' when there
+ * is no page. An unknown kind counts as 'form'.
+ */
+function pg_cf_draft_key($page_id, $kind = 'form')
+{
+    $page_id = (int)$page_id;
+    if ($page_id <= 0) return '';
+    if (!in_array($kind, array('form', 'item'), true)) $kind = 'form';
+    return 'pg-cf-draft:' . $kind . ':' . $page_id;
+}
+
 // Is $node a step break (the palette's "Step", bound to section form_step)?
 function pg_cf_is_step_break($node)
 {
@@ -76,20 +89,23 @@ function pg_cf_step_groups($children)
  * Groups the first container of $tree that holds step breaks into step
  * fieldsets, with the progress line before them and Back / Next in each.
  * Returns the number of steps (0: no break, the tree is left as it was).
+ * With $draft_key (pg_cf_draft_key()) the answers are kept in the browser
+ * through a reload and a "Start over" button clears them; without it (the
+ * editor's Preview) nothing is kept.
  *
  * The progress line and the buttons are drawn hidden: the script shows them
  * and hides every step but the current one, so a browser without script
  * sees the whole form and can still send it. Breaks in a second container
  * are dropped, never shown as stray headings.
  */
-function pg_cf_apply_steps(&$tree)
+function pg_cf_apply_steps(&$tree, $draft_key = '')
 {
     if (!is_array($tree) || empty($tree['children']) || !is_array($tree['children'])) return 0;
 
     $groups = pg_cf_step_groups($tree['children']);
     if ($groups === null) {
         foreach ($tree['children'] as $i => $child) {
-            $n = pg_cf_apply_steps($tree['children'][$i]);
+            $n = pg_cf_apply_steps($tree['children'][$i], $draft_key);
             if ($n > 0) {
                 // Only the first container is stepped.
                 for ($j = $i + 1; $j < count($tree['children']); $j++) _pg_cf_drop_step_breaks($tree['children'][$j]);
@@ -109,7 +125,7 @@ function pg_cf_apply_steps(&$tree)
 
     if ($total > 1) {
         $kids[] = array('type' => 'content', 'children' => array(), 'props' => array(
-            'contentType' => 'custom_html', 'html' => _pg_cf_steps_progress_html($groups['steps'])));
+            'contentType' => 'custom_html', 'html' => _pg_cf_steps_progress_html($groups['steps'], $draft_key)));
     }
     foreach ($groups['steps'] as $i => $s) {
         $inner = array();
@@ -146,11 +162,12 @@ function _pg_cf_drop_step_breaks(&$node)
 
 // The progress line: the step titles as a list with aria-current on the
 // shown one, and "Step 1 of 4" read out on every change.
-function _pg_cf_steps_progress_html($steps)
+function _pg_cf_steps_progress_html($steps, $draft_key = '')
 {
     $total = count($steps);
     $count = lang(array('string' => 'Step {var:1} of {var:2}', 'vars' => array('%1', '%2')));
-    $html  = '<nav class="pg-cf-progress mb-3" data-pg-step-progress hidden aria-label="' . h(lang('Form steps')) . '">'
+    $html  = '<nav class="pg-cf-progress mb-3" data-pg-step-progress hidden aria-label="' . h(lang('Form steps')) . '"'
+           . ($draft_key !== '' ? ' data-pg-draft="' . h($draft_key) . '"' : '') . '>'
            . '<p class="small text-body-secondary mb-1" data-pg-step-count data-pg-step-text="' . h($count) . '" aria-live="polite">'
            . h(str_replace(array('%1', '%2'), array('1', (string)$total), $count)) . '</p>'
            . '<div class="progress mb-2" role="presentation"><div class="progress-bar" data-pg-step-bar style="width: '
@@ -161,7 +178,12 @@ function _pg_cf_steps_progress_html($steps)
         $html .= '<li class="list-inline-item' . ($i === 0 ? ' fw-semibold' : ' text-body-secondary') . '"'
                . ($i === 0 ? ' aria-current="step"' : '') . '>' . h($title) . '</li>';
     }
-    return $html . '</ol></nav>';
+    $html .= '</ol>';
+    // Shown by the script while a draft is kept.
+    if ($draft_key !== '') {
+        $html .= '<button type="button" class="btn btn-link btn-sm px-0 mt-1" data-pg-step-restart hidden>' . h(lang('Start over')) . '</button>';
+    }
+    return $html . '</nav>';
 }
 
 // Back and Next under a step; the last step has no Next, its own submit
@@ -189,6 +211,15 @@ function _pg_cf_steps_nav_html($index, $total)
  * so the browser's back key leaves the page as it always did. On submit a
  * control that fails in another step brings that step forward first, so the
  * validation script can focus it.
+ *
+ * Browser draft (the progress line carries data-pg-draft): the answers and
+ * the shown step are kept in sessionStorage under that key on every change
+ * and restored at load, unless the server refilled a refused submission.
+ * Never kept: file, password and hidden inputs (a signature's value, the
+ * form's tokens), card fields (autocomplete cc-*), the CAPTCHA box and a
+ * signature pad. A submission that goes (not prevented) and "Start over"
+ * remove it. Off inside a same-site frame: the editor's canvas and its
+ * prototype play.
  */
 function pg_cf_steps_script()
 {
@@ -200,6 +231,29 @@ function pg_cf_steps_script()
          . 'var steps=Array.prototype.filter.call(form.querySelectorAll("fieldset[data-pg-step]"),function(s){return s.closest("form")===form;});'
          . 'if(steps.length<2||form.getAttribute("data-pg-stepped"))return;form.setAttribute("data-pg-stepped","1");'
          . 'var prog=form.querySelector("[data-pg-step-progress]"),cur=0;'
+         // The draft: key, store (null when sessionStorage is refused) and
+         // the controls it may hold.
+         . 'var key=prog?prog.getAttribute("data-pg-draft"):"",store=null,restart=prog?prog.querySelector("[data-pg-step-restart]"):null;'
+         . 'var framed=false;try{framed=!!window.frameElement;}catch(x){}'
+         . 'if(key&&!framed){try{store=window.sessionStorage;store.getItem(key);}catch(x){store=null;}}'
+         . 'var keep=function(c){var t=(c.type||"").toLowerCase(),ac=(c.getAttribute("autocomplete")||"").toLowerCase();'
+         . 'return !!c.name&&["file","password","hidden","submit","button","reset","image"].indexOf(t)===-1'
+         . '&&ac.indexOf("cc-")!==0&&!c.closest(".captcha,[data-pg-signature]");};'
+         . 'var save=function(){if(!store)return;var d={step:cur,v:{}};Array.prototype.forEach.call(form.elements,function(c){'
+         . 'if(!keep(c))return;var l=d.v[c.name]||(d.v[c.name]=[]);'
+         . 'if(c.type==="checkbox"||c.type==="radio"){if(c.checked)l.push(c.value);}'
+         . 'else if(c.tagName==="SELECT"){Array.prototype.forEach.call(c.options,function(o){if(o.selected)l.push(o.value);});}'
+         . 'else{l.push(c.value);}});'
+         . 'try{store.setItem(key,JSON.stringify(d));}catch(x){}if(restart)restart.hidden=false;};'
+         . 'var drop=function(){if(!store)return;try{store.removeItem(key);}catch(x){}if(restart)restart.hidden=true;};'
+         . 'var load=function(){if(!store)return null;var d=null;try{d=JSON.parse(store.getItem(key)||"null");}catch(x){}'
+         . 'if(!d||typeof d.v!=="object")return null;var seen={};'
+         . 'Array.prototype.forEach.call(form.elements,function(c){if(!keep(c)||!Object.prototype.hasOwnProperty.call(d.v,c.name))return;'
+         . 'var l=d.v[c.name];if(!Array.isArray(l))return;'
+         . 'if(c.type==="checkbox"||c.type==="radio"){c.checked=l.indexOf(c.value)!==-1;}'
+         . 'else if(c.tagName==="SELECT"){Array.prototype.forEach.call(c.options,function(o){o.selected=l.indexOf(o.value)!==-1;});}'
+         . 'else{var n=seen[c.name]||0;seen[c.name]=n+1;if(n<l.length)c.value=l[n];}});'
+         . 'if(restart)restart.hidden=false;form.dispatchEvent(new Event("change"));return d;};'
          . 'var usable=function(c){return !c.disabled&&c.type!=="hidden"&&!c.closest("[hidden]:not(fieldset[data-pg-step])");};'
          . 'var show=function(i,focus){cur=i;steps.forEach(function(s,k){s.hidden=(k!==i);});'
          . 'if(prog){var t=prog.querySelector("[data-pg-step-count]");'
@@ -216,14 +270,23 @@ function pg_cf_steps_script()
          . 'Array.prototype.forEach.call(form.querySelectorAll("[data-pg-step-nav]"),function(n){n.hidden=false;});'
          . 'form.addEventListener("click",function(e){var btn=e.target.closest("[data-pg-step-next],[data-pg-step-back]");'
          . 'if(!btn||!form.contains(btn))return;var k=index(btn);if(k<0)return;'
-         . 'if(btn.hasAttribute("data-pg-step-back")){if(k>0)show(k-1,true);return;}'
+         . 'if(btn.hasAttribute("data-pg-step-back")){if(k>0){show(k-1,true);save();}return;}'
          . 'var bad=Array.prototype.filter.call(steps[k].elements,function(c){return usable(c)&&c.willValidate&&!c.checkValidity();})[0];'
          . 'steps[k].classList.add("was-validated");'
          . 'if(bad){bad.reportValidity();if(bad.focus)bad.focus();return;}'
-         . 'if(k<steps.length-1)show(k+1,true);});'
+         . 'if(k<steps.length-1){show(k+1,true);save();}});'
          . 'form.addEventListener("submit",function(){var bad=Array.prototype.filter.call(form.elements,function(c){'
          . 'return !c.disabled&&c.willValidate&&!c.checkValidity();})[0];if(bad){var k=index(bad);if(k>=0&&k!==cur)show(k,false);}},true);'
-         . 'var refused=form.querySelector("[aria-invalid=true]"),start=refused?index(refused):0;show(start<0?0:start,false);'
+         . 'form.addEventListener("submit",function(e){if(!e.defaultPrevented)drop();});'
+         // The change event lets the rule scripts re-read the emptied
+         // form; the draft goes after it, or the save listener writes it back.
+         . 'if(restart)restart.addEventListener("click",function(){form.reset();'
+         . 'steps.forEach(function(s){s.classList.remove("was-validated");});form.classList.remove("was-validated");'
+         . 'form.dispatchEvent(new Event("change"));drop();show(0,true);});'
+         . 'var refused=form.querySelector("[aria-invalid=true]"),draft=refused?null:load(),start=refused?index(refused):0;'
+         . 'if(draft&&typeof draft.step==="number"&&draft.step>=0&&draft.step<steps.length)start=draft.step;'
+         . 'show(start<0?0:start,false);'
+         . 'form.addEventListener("input",save);form.addEventListener("change",save);'
          . '});};'
          . 'if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",bind);}else{bind();}'
          . '})();</script>';

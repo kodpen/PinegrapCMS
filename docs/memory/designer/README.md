@@ -97,7 +97,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - custom-form-render.md: custom_form visitor-facing behaviour: hide-from-visitor (office_use_only) and pg_cf_apply_field_bindings render rules (name/id, select options, required, defaults).
 - custom-form-rich-text.md: Rich-text text areas on designed forms: three-state _cf.wysiwyg, one editor per live page, aria-required, filtered prefill, rich seeding, open items.
 - custom-form-settings-shortcut.md: Designer custom_form: "Form settings" shortcut from any node inside the widget, new page form seeded with the site address, silent-form warning in the panel and after publish.
-- custom-form-steps.md: Steps of a designed form (FL2): the palette "Step" break (section form_step), pg_cf_apply_steps() fieldsets, Back/Next, progress line, pg_cf_steps_script(), what a form without a break gets
+- custom-form-steps.md: Steps of a designed form (FL2, FL3): the Step break (section form_step), pg_cf_apply_steps() fieldsets, Back/Next, progress, pg_cf_steps_script(), the sessionStorage draft and Start over
 - custom-form-sync.md: custom_form field derivation on the server, per-page ids map and its PHP round-trip trap, name/group rules (_cfEnsureNames), RSS roles per widget.
 - custom-form-translate-switch.md: Per-field "Include in translation" switch of custom forms (form_fields.translate_values, step 11.0.26): three-state _cf.translate, extraction and render skip, legacy screens, stale store and pages
 - custom-form-url-prefill.md: A designed form control filled from a named page-address parameter (props._cf.url_param, ?post=…): where it is stored, names and value rules, order of sources, option matching, what never takes it
