@@ -1334,7 +1334,7 @@
     }
 
     // The blocks of a stored text (parseBlocks()) as the box's nodes.
-    function markupNodes(blocks, labels) {
+    function markupNodes(blocks, labels, removeLabel) {
         var fragment = document.createDocumentFragment();
 
         blocks.forEach(function (block, index) {
@@ -1362,7 +1362,7 @@
                 fragment.appendChild(el('hr', 'ws-rule'));
                 fragment.appendChild(el('br'));
             } else {
-                fragment.appendChild(blockNode(block.kind, block.markup));
+                fragment.appendChild(blockNode(block.kind, block.markup, removeLabel));
                 fragment.appendChild(el('br'));
             }
         });
@@ -1637,7 +1637,7 @@
         return CALC_LANGUAGES.indexOf(language) !== -1;
     }
 
-    function blockNode(kind, markup) {
+    function blockNode(kind, markup, removeLabel) {
         var summary = blockSummary(kind, markup);
         var card = el('span', 'ws-rich-block ws-rich-block-' + kind);
 
@@ -1656,7 +1656,7 @@
 
         card.appendChild(words);
 
-        var remove = button('ws-rich-block-remove', '', 'bi-x-lg', t('block_remove'));
+        var remove = button('ws-rich-block-remove', '', 'bi-x-lg', removeLabel || t('block_remove'));
         remove.setAttribute('data-block-remove', '1');
         card.appendChild(remove);
 
@@ -4453,7 +4453,7 @@
             }
 
             node.innerHTML = '';
-            node.appendChild(markupNodes(blocks, labels));
+            node.appendChild(markupNodes(blocks, labels, this.options.removeLabel));
 
             this.tidy();
             this.caretToEnd();
@@ -4652,7 +4652,7 @@
                 // As nodes: insertHTML at the box level next to a list is
                 // drawn into the list.
                 var list = item.parentNode;
-                var card = blockNode(kind, markup);
+                var card = blockNode(kind, markup, this.options.removeLabel);
                 var end = el('br');
 
                 this.node.insertBefore(card, list.nextSibling);
@@ -4661,7 +4661,7 @@
             } else {
                 var before = this.beforeCaret();
                 var holder = el('span');
-                var fresh = blockNode(kind, markup);
+                var fresh = blockNode(kind, markup, this.options.removeLabel);
 
                 fresh.setAttribute('data-ws-new', '1');
                 holder.appendChild(fresh);
@@ -4818,7 +4818,7 @@
             range.deleteContents();
 
             var words = blocks.every(function (block) { return block.kind === 'text'; });
-            var fragment = markupNodes(blocks, labels || {});
+            var fragment = markupNodes(blocks, labels || {}, self.options.removeLabel);
             var last = fragment.lastChild;
             var item = words ? null : boundaryItem(node, range.startContainer, range.startOffset);
 
@@ -4858,7 +4858,7 @@
                 if (markup === '') {
                     card.remove();
                 } else {
-                    card.replaceWith(blockNode(kind, markup));
+                    card.replaceWith(blockNode(kind, markup, self.options.removeLabel));
                 }
 
                 self.tidy();
@@ -5391,13 +5391,13 @@
         };
 
         if (kind === 'checklist') {
-            openChecklist('', done);
+            openChecklist('', done, { insertLabel: options.insertLabel });
         } else if (kind === 'table') {
             openTable({ columns: 3, rows: 3 }, done, { insertLabel: options.insertLabel, scope: scope });
         } else if (kind === 'calc') {
             openCalc('', done, { insertLabel: options.insertLabel, scope: scope });
         } else {
-            openCode('', done);
+            openCode('', done, { insertLabel: options.insertLabel });
         }
     }
 
@@ -6412,7 +6412,7 @@
 
     // ── The checklist window ──
 
-    function openChecklist(markup, done) {
+    function openChecklist(markup, done, options) {
         var items = [];
         var titling = titled(markup, done);
 
@@ -6565,7 +6565,7 @@
             });
 
             win.finish(function () { done(lines.join('\n')); });
-        });
+        }, (options || {}).insertLabel);
 
         pgUI.dialog.on(win.node, 'shown', function () { focusRow(rows()[0]); });
         win.show();
@@ -6575,7 +6575,7 @@
 
     var LANGUAGES = ['php', 'js', 'ts', 'html', 'css', 'sql', 'json', 'bash', 'python', 'xml', 'yaml', 'text'];
 
-    function openCode(markup, done) {
+    function openCode(markup, done, options) {
         var language = '';
         var code = '';
         var titling = titled(markup, done);
@@ -6644,7 +6644,7 @@
             win.finish(function () {
                 done((body.trim() === '') ? '' : '```' + name + '\n' + body.replace(/^(\s*)```/gm, '$1​```') + '\n```');
             });
-        });
+        }, (options || {}).insertLabel);
 
         pgUI.dialog.on(win.node, 'shown', function () { area.focus(); });
         win.show();

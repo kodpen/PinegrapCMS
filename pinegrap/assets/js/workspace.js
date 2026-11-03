@@ -3680,6 +3680,7 @@
             placeholder: options.placeholder || '',
             previews: !!options.previews,
             slashInserts: options.slashInserts,
+            removeLabel: options.removeLabel,
             headings: !!options.headings,
             pasteFiles: options.pasteFiles,
             onInput: function () {
@@ -24163,6 +24164,8 @@
                 previews: true,
                 // "/" lists the inserts of the box (PGWsEditor).
                 slashInserts: { insertLabel: t('insert_to_note') },
+                // A card's remove button speaks of the note, not a message.
+                removeLabel: t('block_remove_note'),
                 // Headings and rules, which a note draws and a message does not.
                 headings: true,
                 // A picture pasted into the note is attached, as a dropped one.
