@@ -119,7 +119,7 @@ function test_dealership_home_places_the_other_parts()
 		if (isset($n['props']['templateWidget'])) $widgets[] = $n['props']['templateWidget'];
 		if (isset($n['props']['templateShared'])) $shared[] = $n['props']['templateShared'];
 	}
-	foreach (array('home_vehicles', 'google_reviews', 'home_posts', 'newsletter_band') as $w) {
+	foreach (array('home_featured', 'home_used', 'google_reviews', 'home_posts', 'newsletter_band') as $w) {
 		pg_assert_true(in_array($w, $widgets, true), "home places widget $w");
 	}
 	foreach (array('account_bar', 'header', 'test_drive_band', 'footer') as $s) {

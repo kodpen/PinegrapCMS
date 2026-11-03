@@ -620,7 +620,7 @@ $test_drive_band = function () use ($el, $heading, $para, $link, $container, $ro
             $row(array(
                 $col(array(
                     $heading('h2', lang('Found the one?'), 'pdl-display h2 fw-bold mb-2'),
-                    $para(lang('Book a test drive at a time that suits you, and bring your car: we value it while you drive.'), 'opacity-75 mb-0'),
+                    $para(lang('Book a test drive at a time that suits you, and bring your car: we value it while you drive.'), 'mb-0'),
                 ), '', '8'),
                 $col(array(
                     $el('div', 'd-flex flex-wrap gap-2 justify-content-lg-end', lang('Buttons'), array(
