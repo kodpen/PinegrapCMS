@@ -21,6 +21,7 @@ description: Plan (owner 2026-11-03, started): classic designs moved to the visu
 - Sizes about 1,000 product lines; texts through `tr_add.php`; each step writes its memory file and tests; claim as `[plan:legacy-to-designer] LD<n>`.
 
 ## Open questions?
+- LD2 waits on #6251 (where the bulk run executes; widgets in it or not).
 - None; the owner said start on 2026-11-03. LD1 and LD4 are `free`, claimed as `[plan:legacy-to-designer] LD<n>` (`feature-plans-2026-11.md` rules); LD2, LD3 and LD5 open as their "after" steps land.
 
 ## Where to start?
