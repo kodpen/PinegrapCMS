@@ -10,13 +10,16 @@
  * stream (CompressionStream) in acTL, fcTL and fdAT; animated WebP from the
  * browser's still WebP frames (OffscreenCanvas) in a VP8X, ANIM and ANMF
  * RIFF. APNG and WebP keep each later frame's changed rectangle and merge a
- * frame that repeats the one before into its delay.
+ * frame that repeats the one before into its delay. Video through the
+ * platform's VideoEncoder (WebCodecs): H.264 in an MP4 with its index first,
+ * or VP9 in a WebM with its cues first, both from their own muxers.
  *
  * Runs as a worker (messages below), on the page where a site's policy
  * refuses the worker (window.PgImageEncode), and under Node for the tests
  * (module.exports): the same object in each.
  *
- * Messages in:  { type: 'begin', format, width, height, fps, loop, dither, count }
+ * Messages in:  { type: 'begin', format, width, height, fps, loop, dither, count,
+ *                 bitrate, codecs }   (the last two for video)
  *               { type: 'sample', data }   (an ArrayBuffer of RGBA)
  *               { type: 'estimate' }       -> { type: 'estimate', header, frame }
  *               { type: 'frame', data }    -> { type: 'framed', index }
@@ -35,7 +38,7 @@
     // Pixels taken from the samples to build the palette: enough for the
     // colours of a picture, few enough to sort quickly.
     var SAMPLE_PIXELS = 120000;
-    var MIME = { gif: 'image/gif', apng: 'image/png', webp: 'image/webp' };
+    var MIME = { gif: 'image/gif', apng: 'image/png', webp: 'image/webp', mp4: 'video/mp4', webm: 'video/webm' };
 
     // ---- palette ----
 
@@ -909,6 +912,324 @@
         return this.writer.end();
     };
 
+    // ---- video: MP4 and WebM muxers, the WebCodecs encoder ----
+
+    // An ISO box: size, type, then the parts (byte lists or Uint8Arrays).
+    function box(type, parts) {
+        var body = join(parts), out = new Uint8Array(8 + body.length);
+
+        out.set(u32(8 + body.length), 0);
+        out.set([type.charCodeAt(0), type.charCodeAt(1), type.charCodeAt(2), type.charCodeAt(3)], 4);
+        out.set(body, 8);
+
+        return out;
+    }
+
+    // A full box: version 0 and flags before the parts.
+    function fullBox(type, flags, parts) {
+        return box(type, [[0, (flags >> 16) & 255, (flags >> 8) & 255, flags & 255]].concat(parts));
+    }
+
+    function zeros(n) {
+        return new Uint8Array(n);
+    }
+
+    // The unity matrix of mvhd and tkhd.
+    var MATRIX = [].concat(u32(0x10000), u32(0), u32(0), u32(0), u32(0x10000), u32(0), u32(0), u32(0), u32(0x40000000));
+
+    // An MP4 of H.264 samples, the index (moov) before the data so a player
+    // starts before the whole file is in: one track, one chunk, a constant
+    // frame duration. samples: { data, key }; avcc: the decoder
+    // configuration record WebCodecs hands with the first chunk.
+    function mp4File(w, h, fps, samples, avcc) {
+        var scale = 90000, delta = Math.round(scale / fps), dur = delta * samples.length, ms = Math.round(dur / 90);
+        var sizes = [], keys = [];
+
+        samples.forEach(function (s, i) {
+            sizes = sizes.concat(u32(s.data.length));
+
+            if (s.key) {
+                keys = keys.concat(u32(i + 1));
+            }
+        });
+
+        var name = 'Pinegrap'.split('').map(function (c) { return c.charCodeAt(0); });
+        var avc1 = box('avc1', [zeros(6), u16(1), zeros(16), u16(w), u16(h), u32(0x480000), u32(0x480000), u32(0), u16(1),
+            [name.length].concat(name), zeros(31 - name.length), u16(0x18), [255, 255], box('avcC', [avcc])]);
+
+        function moov(offset) {
+            var stbl = box('stbl', [
+                fullBox('stsd', 0, [u32(1), avc1]),
+                fullBox('stts', 0, [u32(1), u32(samples.length), u32(delta)]),
+                fullBox('stss', 0, [u32(keys.length / 4), keys]),
+                fullBox('stsc', 0, [u32(1), u32(1), u32(samples.length), u32(1)]),
+                fullBox('stsz', 0, [u32(0), u32(samples.length), sizes]),
+                fullBox('stco', 0, [u32(1), u32(offset)])
+            ]);
+            var minf = box('minf', [fullBox('vmhd', 1, [zeros(8)]), box('dinf', [fullBox('dref', 0, [u32(1), fullBox('url ', 1, [])])]), stbl]);
+            var mdia = box('mdia', [
+                fullBox('mdhd', 0, [u32(0), u32(0), u32(scale), u32(dur), u16(0x55c4), u16(0)]),
+                fullBox('hdlr', 0, [u32(0), [0x76, 0x69, 0x64, 0x65], zeros(12), name, [0]]),
+                minf
+            ]);
+            var tkhd = fullBox('tkhd', 3, [u32(0), u32(0), u32(1), u32(0), u32(ms), zeros(8), u16(0), u16(0), u16(0), u16(0), MATRIX, u32(w * 65536), u32(h * 65536)]);
+
+            return box('moov', [
+                fullBox('mvhd', 0, [u32(0), u32(0), u32(1000), u32(ms), u32(0x10000), u16(0x100), zeros(10), MATRIX, zeros(24), u32(2)]),
+                box('trak', [tkhd, mdia])
+            ]);
+        }
+
+        var ftyp = box('ftyp', [[0x69, 0x73, 0x6f, 0x6d], u32(0x200), [0x69, 0x73, 0x6f, 0x6d, 0x69, 0x73, 0x6f, 0x32, 0x61, 0x76, 0x63, 0x31, 0x6d, 0x70, 0x34, 0x31]]);
+        var head = moov(0).length, data = join(samples.map(function (s) { return s.data; }));
+
+        return join([ftyp, moov(ftyp.length + head + 8), u32(8 + data.length), [0x6d, 0x64, 0x61, 0x74], data]);
+    }
+
+    // An EBML number as bytes: an element ID as written, a size as a
+    // variable-length integer (len bytes, else the fewest).
+    function ebmlSize(n, len) {
+        len = len || 1;
+
+        while ((len < 8) && (n >= Math.pow(2, 7 * len) - 1)) {
+            len++;
+        }
+
+        var out = [];
+
+        for (var i = len - 1; i >= 0; i--) {
+            out.push(Math.floor(n / Math.pow(2, 8 * i)) & 255);
+        }
+
+        out[0] |= 1 << (8 - len);
+
+        return out;
+    }
+
+    function ebmlId(id) {
+        var out = [];
+
+        while (id > 0) {
+            out.unshift(id & 255);
+            id = Math.floor(id / 256);
+        }
+
+        return out;
+    }
+
+    // An element: ID, size, payload (parts, a number as an unsigned integer
+    // of the fewest bytes or of len, or a string).
+    function ebml(id, value, len) {
+        var body;
+
+        if (typeof value === 'number') {
+            body = [];
+
+            do {
+                body.unshift(value & 255);
+                value = Math.floor(value / 256);
+            } while ((value > 0) || (body.length < (len || 1)));
+        } else if (typeof value === 'string') {
+            body = value.split('').map(function (c) { return c.charCodeAt(0); });
+        } else {
+            body = join(value);
+        }
+
+        return join([ebmlId(id), ebmlSize(body.length), body]);
+    }
+
+    function float64(v) {
+        var b = new Uint8Array(8);
+
+        new DataView(b.buffer).setFloat64(0, v);
+
+        return b;
+    }
+
+    // A WebM of VP9 frames: the header, Info, Tracks, the Cues before the
+    // Clusters (each starts at a key frame, at most every 30 s by its
+    // 16-bit block times) so a player seeks without reading to the end.
+    function webmFile(w, h, fps, frames) {
+        var clusters = [], cur = null;
+
+        frames.forEach(function (f, i) {
+            var ms = Math.round(i * 1000 / fps);
+
+            if (!cur || (f.key && (ms - cur.ms > 0)) || (ms - cur.ms > 30000)) {
+                cur = { ms: ms, blocks: [] };
+                clusters.push(cur);
+            }
+
+            cur.blocks.push(ebml(0xa3, [[0x81], [((ms - cur.ms) >> 8) & 255, (ms - cur.ms) & 255, f.key ? 0x80 : 0], f.data]));
+        });
+
+        clusters = clusters.map(function (c) {
+            return { ms: c.ms, bytes: ebml(0x1f43b675, [ebml(0xe7, c.ms)].concat(c.blocks)) };
+        });
+
+        var header = ebml(0x1a45dfa3, [ebml(0x4286, 1), ebml(0x42f7, 1), ebml(0x42f2, 4), ebml(0x42f3, 8), ebml(0x4282, 'webm'), ebml(0x4287, 4), ebml(0x4285, 2)]);
+        var info = ebml(0x1549a966, [ebml(0x2ad7b1, 1000000), ebml(0x4d80, 'Pinegrap'), ebml(0x5741, 'Pinegrap'), ebml(0x4489, [float64(frames.length * 1000 / fps)])]);
+        var tracks = ebml(0x1654ae6b, [ebml(0xae, [ebml(0xd7, 1), ebml(0x73c5, 1), ebml(0x83, 1), ebml(0x86, 'V_VP9'), ebml(0x23e383, Math.round(1e9 / fps)),
+            ebml(0xe0, [ebml(0xb0, w), ebml(0xba, h)])])]);
+
+        // Positions from the Segment's data; written at 8 bytes each, the
+        // Cues' size does not depend on them.
+        function cues(at) {
+            return ebml(0x1c53bb6b, clusters.map(function (c) {
+                var pos = at;
+
+                at += c.bytes.length;
+
+                return ebml(0xbb, [ebml(0xb3, c.ms), ebml(0xb7, [ebml(0xf7, 1), ebml(0xf1, pos, 8)])]);
+            }));
+        }
+
+        var before = info.length + tracks.length, body = join([info, tracks, cues(before + cues(0).length)].concat(clusters.map(function (c) { return c.bytes; })));
+
+        return join([header, ebmlId(0x18538067), ebmlSize(body.length, 8), body]);
+    }
+
+    // Transparent pixels over white: a video has no alpha.
+    function flatten(rgba) {
+        for (var i = 0; i < rgba.length; i += 4) {
+            var a = rgba[i + 3];
+
+            if (a < 255) {
+                rgba[i] = 255 - (((255 - rgba[i]) * a + 127) / 255 | 0);
+                rgba[i + 1] = 255 - (((255 - rgba[i + 1]) * a + 127) / 255 | 0);
+                rgba[i + 2] = 255 - (((255 - rgba[i + 2]) * a + 127) / 255 | 0);
+                rgba[i + 3] = 255;
+            }
+        }
+
+        return rgba;
+    }
+
+    // MP4 (H.264) or WebM (VP9) through WebCodecs: the first of opts.codecs
+    // the browser's VideoEncoder takes at this size, a key frame every two
+    // seconds, at most a few frames queued. opts.codec ({ VideoEncoder,
+    // VideoFrame }) stands in for the platform in a test.
+    function VideoEnc(opts, format) {
+        var api = opts.codec || root;
+
+        this.format = format;
+        this.mime = MIME[format];
+        this.w = Math.max(2, opts.width | 0);
+        this.h = Math.max(2, opts.height | 0);
+        this.fps = Math.max(1, Math.round(Number(opts.fps) || 30));
+        this.bitrate = Math.max(1, Number(opts.bitrate) || 2000000);
+        this.codecs = opts.codecs || [];
+        this.Encoder = api.VideoEncoder;
+        this.Frame = api.VideoFrame;
+        this.chunks = [];
+        this.desc = null;
+        this.failure = null;
+        this.enc = null;
+        this.count = 0;
+    }
+
+    VideoEnc.prototype.sample = function () {};
+
+    // From the bit rate: a container's few hundred bytes and a frame's share.
+    VideoEnc.prototype.estimate = function () {
+        return { header: 1000, frame: Math.round(this.bitrate / 8 / this.fps) };
+    };
+
+    VideoEnc.prototype.config = function (codec) {
+        var c = { codec: codec, width: this.w, height: this.h, bitrate: this.bitrate, framerate: this.fps };
+
+        if (this.format === 'mp4') {
+            c.avc = { format: 'avc' };
+        }
+
+        return c;
+    };
+
+    VideoEnc.prototype.open = function () {
+        var self = this, list = this.codecs.slice();
+
+        if (typeof this.Encoder !== 'function') {
+            return Promise.reject(new Error('no video encoder'));
+        }
+
+        function next() {
+            var codec = list.shift();
+
+            if (!codec) {
+                throw new Error('no video codec for ' + self.w + 'x' + self.h);
+            }
+
+            return self.Encoder.isConfigSupported(self.config(codec)).then(function (r) {
+                return (r && r.supported) ? codec : next();
+            }, next);
+        }
+
+        return next().then(function (codec) {
+            self.enc = new self.Encoder({
+                output: function (chunk, meta) {
+                    var data = new Uint8Array(chunk.byteLength);
+
+                    chunk.copyTo(data);
+                    self.chunks.push({ data: data, key: chunk.type === 'key' });
+
+                    if (meta && meta.decoderConfig && meta.decoderConfig.description && !self.desc) {
+                        var d = meta.decoderConfig.description;
+
+                        self.desc = new Uint8Array(d.buffer ? d.buffer.slice(d.byteOffset, d.byteOffset + d.byteLength) : d.slice(0));
+                    }
+                },
+                error: function (err) { self.failure = err; }
+            });
+            self.enc.configure(self.config(codec));
+        });
+    };
+
+    VideoEnc.prototype.frame = function (rgba) {
+        var self = this, i = this.count++;
+
+        return (this.enc ? Promise.resolve() : this.open()).then(function () {
+            if (self.failure) {
+                throw self.failure;
+            }
+
+            var f = new self.Frame(flatten(rgba), { format: 'RGBX', codedWidth: self.w, codedHeight: self.h, timestamp: Math.round(i * 1e6 / self.fps), duration: Math.round(1e6 / self.fps) });
+
+            self.enc.encode(f, { keyFrame: i % (2 * self.fps) === 0 });
+            f.close();
+
+            return self.drain();
+        });
+    };
+
+    // Waits while more than a few frames are queued in the encoder.
+    VideoEnc.prototype.drain = function () {
+        var self = this;
+
+        if (this.enc.encodeQueueSize <= 3) {
+            return Promise.resolve();
+        }
+
+        return new Promise(function (go) { setTimeout(go, 5); }).then(function () { return self.drain(); });
+    };
+
+    VideoEnc.prototype.end = function () {
+        var self = this;
+
+        if (!this.enc) {
+            return Promise.reject(new Error('no frames'));
+        }
+
+        return this.enc.flush().then(function () {
+            self.enc.close();
+
+            if (self.failure) {
+                throw self.failure;
+            }
+
+            return (self.format === 'mp4') ? mp4File(self.w, self.h, self.fps, self.chunks, self.desc || new Uint8Array(0)) : webmFile(self.w, self.h, self.fps, self.chunks);
+        });
+    };
+
     // ---- the encoder a page or the worker drives ----
 
     // opts: width, height, fps, loop (plays, 0 forever), dither.
@@ -1056,8 +1377,13 @@
         this.post = function () {};
     };
 
-    // An encoder for opts.format (gif, apng, webp; GIF by default).
+    // An encoder for opts.format (gif, apng, webp, mp4, webm; GIF by
+    // default).
     function create(opts) {
+        if ((opts.format === 'mp4') || (opts.format === 'webm')) {
+            return new VideoEnc(opts, opts.format);
+        }
+
         return ((opts.format === 'apng') || (opts.format === 'webp')) ? new TrueEncoder(opts, opts.format) : new Encoder(opts);
     }
 
@@ -1065,6 +1391,7 @@
         palette: palette, nearest: nearest, quantize: quantize, changed: changed, delayAt: delayAt, loopCount: loopCount,
         lzw: lzw, GifWriter: GifWriter, Encoder: Encoder, crc32: crc32, pngRows: pngRows, ApngWriter: ApngWriter,
         riffChunks: riffChunks, WebpWriter: WebpWriter, msAt: msAt, TrueEncoder: TrueEncoder,
+        mp4File: mp4File, webmFile: webmFile, flatten: flatten, VideoEnc: VideoEnc,
         create: create,
         session: function (post) { return new Session(post); },
         MIME: MIME
