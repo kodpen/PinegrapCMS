@@ -42,7 +42,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 - `image_editor`: open
 - `imap_client`: done #6020
 - `innodb`: open
-- `lang`: open
+- `lang`: done #6045 (placeholder values re-scanned; rest reviewed: language pick, source, cache, log/staff language)
 - `lang_files`: open
 - `language_redirect`: open
 - `layout_convert`: open
