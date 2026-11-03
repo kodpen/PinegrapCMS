@@ -1489,7 +1489,7 @@ function pg_page_cache_panel_sub_actions()
                 'explorer_folder_access_get', 'explorer_access_user_search', 'explorer_delete_check', 'explorer_folder_settings_get',
                 'explorer_bulk_page_options', 'explorer_bulk_file_options', 'explorer_shared_list',
                 'explorer_files_design', 'explorer_file_get', 'explorer_office_preview',
-                'explorer_file_usage', 'explorer_backups_list', 'explorer_backup_zip',
+                'explorer_file_usage', 'explorer_page_usage', 'explorer_backups_list', 'explorer_backup_zip',
                 'explorer_backup_rename', 'explorer_backup_copy', 'explorer_backup_delete',
                 'explorer_backup_upload', 'explorer_backup_chmod',
                 'explorer_erp_tree', 'explorer_erp_list', 'explorer_short_links_list',
