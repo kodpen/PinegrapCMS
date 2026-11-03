@@ -202,7 +202,15 @@ function api_webhook_events() {
 		'form.submitted'       => 'A visitor submitted a form',
 		// The order's completion when the payment service confirmed it, or the
 		// payment staff recorded for an offline one.
-		'form.paid'            => 'The fee of a designed form\'s record was paid'
+		'form.paid'            => 'The fee of a designed form\'s record was paid',
+		// An order line that reserved a calendar event, once its order is
+		// placed (includes/fn/order_completion.php,
+		// pg_order_complete_line_reservation()): id is the event's;
+		// recurrence_number, quantity, order_item_id, order_id, order_number
+		// and contact_id follow. GET /calendars/events/{id}/reservations lists
+		// them. A cancellation does not give the spots back and is not
+		// announced here (order.cancelled is).
+		'calendar_event.reserved' => 'A placed order reserved spots on a calendar event (a cart that is not ordered yet is not announced)'
 	);
 
 	// A module announces its own events from its own file. The core list wins a
