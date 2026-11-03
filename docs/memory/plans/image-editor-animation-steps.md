@@ -28,7 +28,7 @@ description: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion,
 - AN6 (M) Video. Done (#6314, `ui/image-editor-video-export.md`).
   - WebCodecs with the MP4 and WebM muxers, the MediaRecorder fallback, the limits.
 
-- AN7a (M) Scenes. In progress (#PR, `ui/image-editor-scenes.md`).
+- AN7a (M) Scenes. In progress (#6409, `ui/image-editor-scenes.md`).
   - `doc.scenes` on a canvas, the strip under the play bar, the scene panel (duration, transition and its time, duplicate, delete, move), transitions in Save animation's frames across scenes, the validator's cap on scenes and their layers, a canvas animation tied to its canvas (#6229 review).
 
 - AN7b (S) Scenes on the stage. `free` after AN7a.
