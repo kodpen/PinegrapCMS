@@ -8,7 +8,7 @@ description: Steps SC1-SC4 of plans/store-credit.md: the customer-bound card mod
 - S under 400 product lines, M about 1,000. Tests in `tests/store_credit_<topic>_test.php` (pure functions, red first), memory under `commerce/`, texts through `tr_add.php`.
 
 ## Which steps are there?
-- SC1 (M) Model. Done in PR #SC1PR.
+- SC1 (M) Model. Done in PR #6156.
   - Migration sub-step (`install_add_column()` ×4, rerun twice). New `includes/fn/store_credit.php`: `pg_credit_kinds()`, `pg_credit_issue($user_id, $amount, $kind, $reason, $expires, $issued_by)` (a `gift_cards` row with a generated code the customer never needs), `pg_credit_balance($user_id)`, `pg_credit_cards($user_id)` (open cards, oldest expiry first), `pg_credit_void($card_id, $reason)`, `pg_credit_pick($cards, $amount)` (pure: which cards cover an amount), `pg_credit_points_value($points)` (pure, minor units, `round()`), the audit-trail lines. Tests: the pick order, the rounding at the smallest unit, a voided card never picked. Memory: `commerce/store-credit-model.md`.
 
 - SC2 (M) Checkout. After SC1.
