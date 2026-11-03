@@ -103,6 +103,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-not-built-on-purpose.md: What the ERP deliberately does not do today (auto matching, e-waybill, order split, payment link, payout imports, bank API, legal income statement) and what the Paraşüt driver has not seen live.
 - erp-number-input-and-display.md: How the ERP reads typed quantities, amounts and rates and writes figures back: decimal comma by store country, separators by panel language, percent text, CSV delimiter, paper size.
 - erp-order-cancel-and-refund.md: How a cancelled or refunded order reaches the ERP: the order card's two reverse steps, cancel or return invoice, the money owed per order (4.66), the card refund by line, orders writes.
+- erp-order-card-invoice-cancel-rules.md: The order documents card's invoice cancel (cash right with allocations, confirm), re-invoicing after a cancel (the note moves over) and its notices.
 - erp-order-charges-vat.md: Order shipping, surcharge and instalment charge on the invoice (VAT with the goods on each rate's sum); the checkout's and the invoice's kurus lower for an out-of-reach rate total (9.99 shows 9.98)
 - erp-order-documents-flow.md: The order screen's documents card (includes/erp/order_flow.php): the four documents, step states, the one Next button, and why a step only calls its own screen's function.
 - erp-order-invoice-header.md: An order's invoice header: header-only order amounts, charge lines and gift card, subtotal and grand_total, and the status and total checks that refuse before a number is spent.
