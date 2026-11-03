@@ -272,6 +272,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - short-link-recycle-bin.md: How short links treat a product, product group, page or file in the Recycle Bin (lists, save checks on every entry point), where a deleted short link goes, and posted lists on the short link screens.
 - stock-locations-completion.md: Stock per location at sales, scans and the inventory API: the order's location, the checkout check, completion, barcode screens, the API location parameter, location keys on stock events
 - stock-locations-model.md: Stock per location: the three tables and two columns (11.0.162), the sum rule, the writer pg_stock_change()/pg_stock_set(), the no-locations path, seeding on the first location
+- stock-locations-screens.md: Stock per location on the panel: product screen boxes per location, the quick stock cells refused, the two bulk edits at one location, stock:<location> import and export columns
 - stock-quantity-column-bound.md: Panel stock writers refuse or skip a count past PG_INVENTORY_QUANTITY_MAX (the INT UNSIGNED top) instead of letting MySQL cut it (#4711)
 - store-credit-checkout.md: Store credit at checkout (PR #6234): open cards applied as applied_gift_cards rows before the totals, the "Use my store credit" box and per-order opt-out, the name on receipts
 - store-credit-model.md: Store credit as a gift card bound to a customer (2026.11.0, 11.0.159): gift_cards user_id/kind/reason/issued_by/expires_at, pg_credit_* writer and readers, pick order, points value, void, audit line

@@ -155,6 +155,7 @@ description: Generated from the module field of the memory files: each includes/
 - `sms_campaigns`: [[sms-campaign-limit-and-labels]], [[sms-campaigns]]
 - `sms_codes`: [[sms-codes]]
 - `speculation`: [[speculation-prefetch]], [[speculation-prefetch-left-out]]
+- `stock_location_screens`: [[stock-locations-screens]]
 - `stock_locations`: [[stock-locations-model]]
 - `stock_notify`: [[back-in-stock-notices]]
 - `stock_sales`: [[stock-locations-completion]]
