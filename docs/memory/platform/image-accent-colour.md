@@ -11,4 +11,4 @@ module: image
 ## How are palette images and transparency read?
 - A palette image (GIF, 8-bit PNG) answers `imagecolorat()` with a palette index: the colour is looked up with `imagecolorsforindex()`. Reading the index as RGB gave every such picture `#000000`.
 - Fully transparent pixels (alpha 127, or a GIF's transparent index) are skipped: a logo on a transparent background gives the logo's colour, not black.
-- Tests: `tests/image_dominant_colour_test.php`; the WebP cases in `tests/image_webp_read_test.php` (`gd-webp-read.md`).
+- PR #6055. Tests: `tests/image_dominant_colour_test.php`; the WebP cases in `tests/image_webp_read_test.php` (`gd-webp-read.md`).

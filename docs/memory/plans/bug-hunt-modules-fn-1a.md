@@ -38,7 +38,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 - `geo`: done #5975
 - `google_analytics`: open
 - `google_reviews`: done #6019
-- `image`: open
+- `image`: #6055
 - `image_editor`: open
 - `imap_client`: done #6020
 - `innodb`: open
