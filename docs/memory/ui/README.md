@@ -297,6 +297,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-accessible-names.md: Names screen readers get in the panel: translated aria-labels, labels that point at a field, the one required marker, chip and select2 inputs, the settings autofill decoy, user-coloured badges (#2063)
 - panel-avatar-sites.md: Where the panel draws people as the Bootstrap 6 Avatar (step B9j slices) and where the picture of letters (pg_initials_avatar_url()) stays
 - panel-avatar.md: The panel Avatar (pg_avatar_markup()): letters on eight theme tones, grey square for a nameless login, presence dot, no empty src; initials and tone on person briefs
+- panel-background-polls.md: Every panel page's background polls (bell count, heartbeat, sitemap check): session lock released, timers paused in a hidden tab, the lazy My Account link, the idle settings bar
 - panel-cloudflare-email-obfuscation.md: Panel body wrapped in <!--email_off--> so Cloudflare Email Obfuscation does not show staff "[email protected]"; which functions, what stays protected, the Cloudflare-side rule
 - panel-code-fields.md: Code fields on panel screens: pg_code_editor_attach(), loading through pgCodeEditorUse(), the settings dialog, releasing editors, the rich text source mode, the colour scheme
 - panel-colour-tokens.md: B10 colours (#4836): panel surfaces on Bootstrap 6's gray scale (dark one step lighter), text and lines Bootstrap 6's own, the v5 accent names dropped, plain fills kept for the charts

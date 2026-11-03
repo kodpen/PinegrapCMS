@@ -2624,7 +2624,9 @@ function pg_account_menu($user, $options = array())
                             <li><hr class="menu-divider"></li>';
 
     // ── The account's own places ────────────────────────────────────────
-    $output .= $row(get_page_type_url('my account'), 'bi-person', lang('My Account'), $parent_target);
+    // The account page is found only when the link is followed: the lookup
+    // can scan every designed page's tree (my_account_link.php).
+    $output .= $row($software_url . '/my_account_link.php', 'bi-person', lang('My Account'), $parent_target);
 
     // Connected applications (connected_apps.php), offered while the site has
     // an OAuth application switched on: that is when a person can have one.

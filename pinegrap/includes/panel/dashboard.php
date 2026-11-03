@@ -46,6 +46,9 @@ if (!defined('PG_PANEL_ACTIONS')) {
 function pg_panel_user_online_check($request, $action)
 {
     validate_token();
+    // A heartbeat from every panel page; who_is_online() only reads the
+    // session, so its file lock is released before the database work.
+    session_write_close();
 
     if (USER_LOGGED_IN && defined('DB_CONNECTED')) {
         who_is_online(50);
@@ -74,6 +77,9 @@ function pg_panel_sitemap_check($request, $action)
     }
 
     validate_token();
+    // Fired from every panel page and may wait on the search engines' ping;
+    // nothing below writes the session, so its file lock is released here.
+    session_write_close();
 
     if (defined('DB_CONNECTED')) {
         $current_timestamp = time();
