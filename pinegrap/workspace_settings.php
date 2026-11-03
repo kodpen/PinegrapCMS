@@ -82,9 +82,10 @@ function ws_settings_mask($days)
  * @param int    $mask
  * @param string $id_prefix
  * @param string $label  the group's accessible name, "Working days" when empty
+ * @param bool   $disabled  shown but not changeable
  * @return string
  */
-function ws_settings_days_html($name, $mask, $id_prefix, $label = '')
+function ws_settings_days_html($name, $mask, $id_prefix, $label = '', $disabled = false)
 {
     $output = '<div class="btn-group btn-group-sm ws-days" role="group" aria-label="' . h(($label !== '') ? $label : lang('Working days')) . '">';
 
@@ -92,7 +93,7 @@ function ws_settings_days_html($name, $mask, $id_prefix, $label = '')
         $id = $id_prefix . '_' . $day;
 
         $output .= '<input type="checkbox" class="btn-check" name="' . h($name) . '[]" value="' . $day . '" id="' . h($id) . '" autocomplete="off"'
-            . (($mask & (1 << ($day - 1))) ? ' checked' : '') . '>'
+            . (($mask & (1 << ($day - 1))) ? ' checked' : '') . ($disabled ? ' disabled' : '') . '>'
             . '<label class="btn btn-outline theme-secondary" for="' . h($id) . '">' . h($label) . '</label>';
     }
 
@@ -306,6 +307,12 @@ if ($_POST) {
                 $person_id = (int) $person_id;
 
                 if (!isset($candidates[$person_id]) || !is_array($row)) {
+                    continue;
+                }
+
+                // A row of a higher rank is drawn read-only; one posted anyway
+                // is left as it is.
+                if (!ws_settings_may_edit_person($viewer['role'], $candidates[$person_id]['role'])) {
                     continue;
                 }
 
@@ -585,6 +592,10 @@ foreach ($candidates as $person) {
         }
     }
 
+    // A higher rank's row is shown, not changed (ws_settings_may_edit_person()).
+    $locked = !ws_settings_may_edit_person($viewer['role'], $person['role']);
+    $locked_attr = $locked ? ' disabled' : '';
+
     $output_people .= '
         <tr' . ($person['excluded'] ? ' class="opacity-50"' : '') . '>
             <td>
@@ -596,14 +607,14 @@ foreach ($candidates as $person) {
                     </div>
                 </div>
             </td>
-            <td><input class="form-control form-control-sm" type="text" name="people[' . $person_id . '][title]" maxlength="100" value="' . h($person['title']) . '" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Job title'), $person['name'])))) . '"></td>
-            <td style="width:6rem"><input class="form-control form-control-sm" type="text" inputmode="decimal" name="people[' . $person_id . '][day_hours]" value="' . h(ws_settings_hours($day)) . '" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Hours a day'), $person['name'])))) . '"></td>
-            <td>' . ws_settings_days_html('people[' . $person_id . '][workdays]', $mask, 'ws_p' . $person_id, lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Working days'), $person['name'])))) . '</td>
+            <td><input class="form-control form-control-sm" type="text" name="people[' . $person_id . '][title]" maxlength="100" value="' . h($person['title']) . '"' . $locked_attr . ' aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Job title'), $person['name'])))) . '"></td>
+            <td style="width:6rem"><input class="form-control form-control-sm" type="text" inputmode="decimal" name="people[' . $person_id . '][day_hours]" value="' . h(ws_settings_hours($day)) . '"' . $locked_attr . ' aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Hours a day'), $person['name'])))) . '"></td>
+            <td>' . ws_settings_days_html('people[' . $person_id . '][workdays]', $mask, 'ws_p' . $person_id, lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Working days'), $person['name']))), $locked) . '</td>
             <td class="text-center">
                 <div class="form-field d-inline-block mb-0">
                     <div class="switch"><input class="" type="checkbox" name="people[' . $person_id . '][excluded]" value="1" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Not in the team'), $person['name'])))) . '"'
                         . ($person['excluded'] ? ' checked' : '')
-                        . (($person_id === (int) $viewer['id']) ? ' disabled' : '') . '></div>
+                        . ((($person_id === (int) $viewer['id']) || $locked) ? ' disabled' : '') . '></div>
                 </div>
             </td>
         </tr>';
