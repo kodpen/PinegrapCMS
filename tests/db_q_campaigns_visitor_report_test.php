@@ -194,6 +194,12 @@ function test_db_q_campaigns_visitor_report_values_fit_placeholders()
 				continue;
 			}
 
+			// A query built by the recipient rule has its one placeholder
+			// pinned by email_campaign_recipients_test.php.
+			if (preg_match('/pg_email_campaign_(recipient|group_count)_query\(/', $call['sql'])) {
+				continue;
+			}
+
 			$literals = db_q_campaigns_visitor_report_test_literals($call['sql']);
 
 			pg_assert_false(

@@ -1748,6 +1748,7 @@
     "{var:1}, founder": "{var:1}, kurucu",
     "{var:1}, founder of the boutique": "{var:1}, butiğin kurucusu",
     "{var:1}, in {var:2}": "{var:1}, {var:2} kanalında",
+    "{var:1}, opted in {var:2}": "{var:1}, izinli {var:2}",
     "{var:1}, stock count not changed": "{var:1}, stok sayısı değişmedi",
     "{var:1}, stock now {var:2}": "{var:1}, stok şimdi {var:2}",
     "{var:1}, the product no longer tracks stock": "{var:1}, ürün artık stok takip etmiyor",
