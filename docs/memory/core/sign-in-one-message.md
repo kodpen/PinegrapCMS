@@ -19,5 +19,9 @@ module: auth
 ## What stays as it was?
 - Lockouts and the question screen (`pg_login_throttle_guard()`, `pg_login_captcha_gate()`, `pg_login_record_failure()` before the message), WAF counters, MFA, remember-me, passkeys.
 
+## What does the forgot password form take as the address?
+- One string: `pg_password_reset_email()` turns a posted `email[]` array into '' (the required error), before the rate limit and the lookup. Before, the array reached `e()`: a TypeError and an error page on PHP 8.
+
 ## Tests?
 - `tests/login_refusal_test.php`: the message names neither half, the hint, the dummy hash's cost matches `password_hash()` on this PHP, the dummy never accepts.
+- `tests/signin_test.php`: `test_signin_password_reset_email_is_one_address`.
