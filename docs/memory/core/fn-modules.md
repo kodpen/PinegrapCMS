@@ -144,7 +144,7 @@ description: Generated from the module field of the memory files: each includes/
 - `sms_codes`: [[sms-codes]]
 - `speculation`: [[speculation-prefetch]], [[speculation-prefetch-left-out]]
 - `stock_notify`: [[back-in-stock-notices]]
-- `store_credit`: [[store-credit-model]]
+- `store_credit`: [[store-credit-checkout]], [[store-credit-model]]
 - `store_currencies`: [[api-store-currency-writes]]
 - `store_regions`: [[api-store-country-state-writes]]
 - `store_zones`: [[api-store-zone-writes]]

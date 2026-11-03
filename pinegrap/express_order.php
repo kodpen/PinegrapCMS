@@ -369,6 +369,12 @@ if (
     $order_submitted = true;
 }
 
+// A changed "Use my store credit" choice is written and the page shown again
+// with the new totals: a purchase is never charged for a total not seen.
+if (!$is_gateway_return && pg_credit_checkout_take_post((int) ($_SESSION['ecommerce']['order_id'] ?? 0), $_POST)) {
+    $order_submitted = false;
+}
+
 // if the order has not been submitted yet, then update order items
 if ($order_submitted == false) {
     // The form posts its quantities and donation amounts as lists keyed by item
