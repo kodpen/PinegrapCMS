@@ -1104,6 +1104,7 @@
     "Every request, newest first, with its status.": "Bütün talepler, en yenisi üstte, durumlarıyla.",
     "Every request, newest first: check for a conflict, set the status and answer under each.": "Tüm talepler, en yenisi önce: çıkar çatışmasını kontrol edin, durumu belirleyin ve her birinin altından yanıtlayın.",
     "Every revision younger than this, however many there are. 1 to {var:1}.": "Bundan yeni her sürüm, kaç tane olursa olsun. 1 ile {var:1} arası.",
+    "Every room looks at the sea or the garden. Choose a kind of room or a view to narrow the list.": "Her oda denize ya da bahçeye bakar. Listeyi daraltmak için bir oda türü ya da manzara seçin.",
     "Every run": "Her çalıştırmada",
     "Every sale invoiced, every purchase entered.": "Her satış faturalandı, her alış girildi.",
     "Every save becomes a new version. Texts and shapes are kept as layers, so they can be changed later.": "Her kayıt yeni bir sürüm olur. Metinler ve şekiller katman olarak saklanır; sonradan değiştirilebilir.",
