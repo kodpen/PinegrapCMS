@@ -12819,6 +12819,32 @@ window.pgCodeEditorReady = function (markup, done) {
             return;
         }
 
+        // A ticked box that deletes something (Remove on a language) asks
+        // first; Cancel leaves the dialog as it is, nothing posted.
+        var asking = window.pgConfirmTicked ? window.pgConfirmTicked(form) : null;
+
+        if (asking) {
+            asking.then(function (yes) {
+                if (yes) {
+                    send(button);
+                }
+            });
+            return;
+        }
+
+        send(button);
+    }
+
+
+    /**
+     * @param {?{name: string, value: string}} [button] as save()
+     */
+    function send(button) {
+
+        if (!pane || working()) {
+            return;
+        }
+
         harden();
 
         // The card button that started this, by name. A serializer never
@@ -13290,6 +13316,82 @@ $(function () {
 
     $(window).on('hashchange', function () {
         pgSettingsModal.fromHash(window.location.hash);
+    });
+});
+
+
+/**
+ * The question a ticked box asks before its form is sent.
+ *
+ * A checkbox carrying data-pg-confirm-ticked holds the sentence to ask while it
+ * is ticked (Remove on a target language, which deletes its translations);
+ * data-pg-confirm-title and data-pg-confirm-ok give the dialog's title and
+ * button. Several ticked boxes are asked about in one dialog.
+ *
+ * @param {HTMLFormElement} form
+ * @return {?Promise<boolean>} null when nothing ticked asks anything
+ */
+window.pgConfirmTicked = function (form) {
+
+    var ticked = form ? form.querySelectorAll('input[type="checkbox"][data-pg-confirm-ticked]:checked:not(:disabled)') : [];
+
+    if (!ticked.length) {
+        return null;
+    }
+
+    var sentences = [];
+
+    for (var i = 0; i < ticked.length; i++) {
+        sentences.push(ticked[i].getAttribute('data-pg-confirm-ticked'));
+    }
+
+    if (typeof window.pgConfirm === 'function') {
+        return window.pgConfirm({
+            title: ticked[0].getAttribute('data-pg-confirm-title') || null,
+            message: sentences.join(' '),
+            confirmText: ticked[0].getAttribute('data-pg-confirm-ok') || null,
+            variant: 'danger'
+        });
+    }
+
+    return Promise.resolve(window.confirm(sentences.join(' ')));
+};
+
+
+// A settings page posts its form natively; a ticked box that asks first holds
+// the submit until the answer. The settings dialog asks in its own save().
+$(document).on('submit', 'form', function (event) {
+
+    var form = this;
+
+    if (form.closest('#pg_settings_modal') || form.hasAttribute('data-pg-confirmed')) {
+        form.removeAttribute('data-pg-confirmed');
+        return;
+    }
+
+    var asking = window.pgConfirmTicked(form);
+
+    if (!asking) {
+        return;
+    }
+
+    event.preventDefault();
+
+    var submitter = (event.originalEvent && event.originalEvent.submitter) || null;
+
+    asking.then(function (yes) {
+
+        if (!yes) {
+            return;
+        }
+
+        form.setAttribute('data-pg-confirmed', '');
+
+        if (typeof form.requestSubmit === 'function') {
+            form.requestSubmit(submitter && submitter.form === form ? submitter : undefined);
+        } else {
+            form.submit();
+        }
     });
 });
 

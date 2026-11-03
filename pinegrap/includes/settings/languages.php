@@ -108,7 +108,7 @@ foreach ($translation_languages as $translation_code => $translation_row) {
                                     <label class="" for="tr_auto_' . h($translation_code) . '">' . lang('Translate on save') . '</label>
                                 </div>' : '') . '
                                 <div class="form-field mb-0 ms-3">
-                                    <input value="1" class="check" type="checkbox" id="tr_remove_' . h($translation_code) . '" name="' . $translation_name . '[remove]" aria-describedby="tr_remove_hint"/>
+                                    <input value="1" class="check" type="checkbox" id="tr_remove_' . h($translation_code) . '" name="' . $translation_name . '[remove]" aria-describedby="tr_remove_hint" data-pg-confirm-ticked="' . h(lang(array('string' => 'The language {var:1} will be removed with all its translations, its update history and its own glossary terms. This cannot be undone.', 'vars' => array($translation_label . ' (' . $translation_code . ')')))) . '" data-pg-confirm-title="' . h(lang('Remove language')) . '" data-pg-confirm-ok="' . h(lang('Remove')) . '"/>
                                     <label class="fg-danger" for="tr_remove_' . h($translation_code) . '">' . lang('Remove') . '</label>
                                 </div>
                             </div>

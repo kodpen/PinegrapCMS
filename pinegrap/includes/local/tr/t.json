@@ -2851,6 +2851,7 @@
     "The language packs: installed, or install one by hand.": "Dil paketleri: yüklü olanlar, ya da elle yükleyin.",
     "The language the pages are written in, the languages they are served in, and the engines that translate them.": "Sayfaların yazıldığı dil, sunuldukları diller ve onları çeviren motorlar.",
     "The language the pages are written in. It is separate from the panel language and starts out equal to it.": "Sayfaların yazıldığı dil. Panel dilinden ayrıdır ve başlangıçta ona eşittir.",
+    "The language {var:1} will be removed with all its translations, its update history and its own glossary terms. This cannot be undone.": "{var:1} dili tüm çevirileri, güncelleme geçmişi ve kendi sözlük terimleriyle birlikte kaldırılacak. Bu işlem geri alınamaz.",
     "The languages of the country the visitor is in, whatever their browser asks for.": "Tarayıcısı ne isterse istesin, ziyaretçinin bulunduğu ülkenin dilleri.",
     "The languages the visitor's browser asks for, in their order of preference; when the site is served in none of them, the languages of the country the visitor is in.": "Ziyaretçinin tarayıcısının istediği diller, tercih sırasıyla; site bunların hiçbirinde yayınlanmıyorsa ziyaretçinin bulunduğu ülkenin dilleri.",
     "The languages the visitor's browser asks for. Where the visitor is plays no part.": "Ziyaretçinin tarayıcısının istediği diller. Ziyaretçinin nerede olduğu hesaba katılmaz.",
