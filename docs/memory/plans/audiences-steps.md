@@ -8,7 +8,7 @@ description: Steps AU1-AU6 of plans/audiences.md: rule model and SQL builder, re
 - S under 400 product lines, M about 1,000. Tests in `tests/audiences_<topic>_test.php` (pure functions, red first), memory under `core/`, texts through `tr_add.php`.
 
 ## Which steps are there?
-- AU1 (M) Rule model and SQL builder. Done in #PRNUM (`core/audiences-rules.md`; the source column is on `contacts_contact_groups_xref`).
+- AU1 (M) Rule model and SQL builder. Done in #6158 (`core/audiences-rules.md`; the source column is on `contacts_contact_groups_xref`).
   - Migration sub-step: `contact_groups.kind`, `contact_groups.rules`, `users_contact_groups_xref.source` (`install_add_column()`, rerun twice). New `includes/fn/audiences.php`: `pg_audience_conditions()` (the catalogue: key, label, operators, value kind, which table it reads), `pg_audience_rules_clean($rules)` (one shape, unknown keys dropped, bounds), `pg_audience_sql($rules)` (pure: returns the SELECT of contact ids with placeholders through `db_q()`, one sub-query per condition family: contacts, consent_log, orders, subscriptions, forms, visitor summary, xref), `pg_audience_count($rules)`. Tests: every condition compiles, the all/any nesting, a rule with no condition selects nobody, placeholders never carry raw text. Memory: `core/audiences-rules.md`.
 
 - AU2 (M) Recompute job. After AU1.
