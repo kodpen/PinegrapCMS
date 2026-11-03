@@ -113,10 +113,10 @@ if ($mode === 'autoupgrade') {
 
     $liveform_welcome = new liveform('welcome');
 
-    log_activity(lang('Software Updated Successfull'), $_SESSION['sessionusername']);
+    log_activity(lang('Software updated successfully'), $_SESSION['sessionusername']);
 
     // Add notice to liveform
-    $liveform_welcome->add_notice(lang('Software Updated Successfull'));
+    $liveform_welcome->add_notice(lang('Software updated successfully'));
 
     // Update database to mark update as completed
     db("UPDATE config SET software_update_available = 0");
@@ -148,31 +148,16 @@ if (!defined('SOFTWARE_UPDATE_AVAILABLE')) {
 include_once('liveform.class.php');
 $liveform = new liveform('software_update');
 
-if ($software_update_check['error'] === 'curl_missing') {
+// A check that has no answer, or one that was not asked because update checks
+// are off in data/config.php, says why on the settings screen.
+// software_update_check() already wrote the Site Log line of a failed check.
+if ($software_update_check['error'] !== '') {
+    $liveform->remove_form();
+
     $liveform = new liveform('settings');
-    $liveform->mark_error('update', lang('Software update check could not communicate with the software update server, because cURL is not installed, so it is not known if there is a software update available.'));
+    $liveform->mark_error('update', pg_update_check_error_text($software_update_check));
     header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('maintenance', 'pgset-channel'));
     exit();
-}
-
-if ($software_update_check['error'] === 'curl_error') {
-    $curl_errno = $software_update_check['curl_errno'];
-    $curl_error = $software_update_check['curl_error'];
-    log_activity(lang(array('string'=>'software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: {var:1}. cURL Error Message: {var:2}.','vars'=>array($curl_errno,$curl_error) )) );
-
-	$liveform = new liveform('settings');
-	$liveform->mark_error('update', lang(array('string'=>'software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: {var:1}. cURL Error Message: {var:2}.','vars'=>array($curl_errno,$curl_error) )));
-	header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('maintenance', 'pgset-channel'));
-	exit();
-}
-
-if ($software_update_check['error'] === 'invalid_response') {
-    log_activity(lang('software update check received an invalid response from the software update server, so it is not known if there is a software update available'), $_SESSION['sessionusername']);
-
-	$liveform = new liveform('settings');
-	$liveform->mark_error('update', lang('software update check received an invalid response from the software update server, so it is not known if there is a software update available') );
-	header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('maintenance', 'pgset-channel'));
-	exit();
 }
 
 // The Kodpen API's answer (includes/fn/vendor_api.php): a release blocked
@@ -192,7 +177,6 @@ if (isset($software_update_check['decision'])) {
     }
 }
 
-// No response when update checks are off and the Kodpen API was not asked.
 $new_version = is_array($response) ? trim((string) $response['version']) : '';
 $old_version = VERSION;
 
@@ -229,7 +213,7 @@ pg_page_shell([
         'extra classes'=>'setting',
         'icon'=>'setting',
         'heading'=>lang('Software Updater'),
-        'heading_description' => lang('Get new files from update server and Update Software.'),
+        'heading_description' => lang('Get the new files from the update server and update the software.'),
     ]) . '
 <main id="content" class="container-fluid">
 <script>
@@ -314,8 +298,8 @@ pg_page_shell([
         <div class="col-12 md:col-8 md:offset-2">
 			<div class="card my-12 border-4">
 				<div class="card-body">
-					<h4 class="fg-success text-center"><span class="material-icons" style="line-height:1em;font-size:4em;" aria-hidden="true">browser_updated</span><br/>' . lang('A new Update has been found!') . '</h4>
-                    <div class="text-center"><span class="fg-secondary h4">'. $old_version . '</span> <span class="material-icons h2" aria-hidden="true">arrow_right_alt</span> <span class="fg-primary fw-bold h2 fg-success">'. $new_version . '</span></div>
+					<h4 class="fg-success text-center"><span class="material-icons" style="line-height:1em;font-size:4em;" aria-hidden="true">browser_updated</span><br/>' . lang('A new update has been found!') . '</h4>
+                    <div class="text-center"><span class="fg-secondary h4">' . h($old_version) . '</span> <span class="material-icons h2" aria-hidden="true">arrow_right_alt</span> <span class="fg-primary fw-bold h2 fg-success">' . h($new_version) . '</span></div>
                     
                     <div class="progress">
                       <div class="progress-bar progress-bar-striped" role="progressbar" aria-label="' . h(lang('Update')) . '" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%"></div>
@@ -331,7 +315,7 @@ pg_page_shell([
 		</div>
         <div class="col-12 md:col-8 md:offset-2">
             <div class="alert theme-warning">
-                <p class="form-text">' . lang('New files received from the update service will be replaced with software files. If changes have been made specifically for you, contact your server administrator before updating.') . '</p>' . (pg_update_backup_enabled() ? '
+                <p class="form-text">' . lang('The software files are replaced with the new files received from the update service. If changes have been made specifically for you, contact your server administrator before updating.') . '</p>' . (pg_update_backup_enabled() ? '
                 <p class="form-text mb-0">' . lang('The files that are replaced and the database are backed up first (data/backups/pre-update-….zip). Repair Software can roll the files back to it.') . '</p>' : '') . '
             </div>
         </div>

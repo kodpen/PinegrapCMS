@@ -1637,6 +1637,8 @@ function pg_extract_archive($archive_path, $destination)
  *   curl_missing      cURL is not installed
  *   curl_error        the server could not be reached ('curl_errno',
  *                     'curl_error')
+ *   http_error        the server answered with a status outside 2xx
+ *                     ('http_status')
  *   invalid_response  the answer named no version
  *
  * Once PG_VENDOR_API_V1 is on, the Kodpen API is asked instead
@@ -1646,7 +1648,8 @@ function pg_extract_archive($archive_path, $destination)
  *
  * @param string $mode 'update', or 'repair' for Repair Software
  * @return array('ok' => bool, 'version' => string, 'error' => string,
- *               'curl_errno' => int, 'curl_error' => string)
+ *               'curl_errno' => int, 'curl_error' => string,
+ *               'http_status' => int)
  */
 function pg_update_server_version($mode = 'update')
 {
@@ -1656,6 +1659,7 @@ function pg_update_server_version($mode = 'update')
         'error' => '',
         'curl_errno' => 0,
         'curl_error' => '',
+        'http_status' => 0,
     );
 
     if (!function_exists('curl_init')) {
@@ -1717,6 +1721,15 @@ function pg_update_server_version($mode = 'update')
         return $result;
     }
 
+    // An error page (a 500 with an HTML or text body) is the server's
+    // failure, not an answer to read.
+    $result['http_status'] = (int) $answer['status'];
+
+    if (!$answer['ok']) {
+        $result['error'] = 'http_error';
+        return $result;
+    }
+
     $response = decode_json($answer['body']);
 
     if (!is_array($response) || !isset($response['version'])) {
@@ -1728,6 +1741,47 @@ function pg_update_server_version($mode = 'update')
     $result['version'] = trim((string) $response['version']);
 
     return $result;
+}
+
+/**
+ * The sentence that tells why an update check has no answer, for the Site
+ * Log and the screen: one wording for the scheduled and the manual check.
+ *
+ * No database or network access.
+ *
+ * @param array $details 'error' ('curl_missing', 'curl_error', 'http_error',
+ *                       'invalid_response' or 'checks_off'), 'curl_errno',
+ *                       'curl_error', 'http_status'
+ * @return string        '' for no error
+ */
+function pg_update_check_error_text($details)
+{
+    $error = isset($details['error']) ? (string) $details['error'] : '';
+
+    switch ($error) {
+        case 'curl_missing':
+            return lang('Software update check could not communicate with the software update server, because cURL is not installed, so it is not known if there is a software update available.');
+
+        case 'curl_error':
+            $errno = isset($details['curl_errno']) ? (int) $details['curl_errno'] : 0;
+
+            return lang(array(
+                'string' => 'Software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: {var:1}. cURL Error Message: {var:2}.',
+                'vars' => array($errno, isset($details['curl_error']) ? (string) $details['curl_error'] : ''))) . pg_curl_tls_hint($errno);
+
+        case 'http_error':
+            return lang(array(
+                'string' => 'The software update server answered with HTTP {var:1}, so it is not known if there is a software update available.',
+                'vars' => array(isset($details['http_status']) ? (int) $details['http_status'] : 0)));
+
+        case 'invalid_response':
+            return lang('Software update check received an invalid response from the software update server, so it is not known if there is a software update available.');
+
+        case 'checks_off':
+            return lang('Software update checks are turned off in data/config.php (SOFTWARE_UPDATE_CHECK), so the update server was not asked.');
+    }
+
+    return '';
 }
 
 /**

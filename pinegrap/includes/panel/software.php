@@ -405,7 +405,7 @@ function pg_panel_software_update($request, $action)
                 }
 
                 if ($server['error'] === 'curl_error') {
-                    log_activity(lang(array('string' => 'software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($server['curl_errno'], $server['curl_error']))));
+                    log_activity(pg_update_check_error_text($server));
                     respond(array(
                         'status' => 'error',
                         'message' => lang('No access to the update server.') . pg_curl_tls_hint($server['curl_errno'], true)
@@ -413,7 +413,7 @@ function pg_panel_software_update($request, $action)
                 }
 
                 if ($server['error'] !== '') {
-                    log_activity(lang('software update check received an invalid response from the software update server, so it is not known if there is a software update available'));
+                    log_activity(pg_update_check_error_text($server));
                     respond(array(
                         'status' => 'error',
                         'message' => lang('No response from the update server.')
@@ -455,9 +455,7 @@ function pg_panel_software_update($request, $action)
             }
 
             if ($server['error'] === 'curl_error') {
-                log_activity(
-                    lang(array('string' => 'software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($server['curl_errno'], $server['curl_error'])))
-                );
+                log_activity(pg_update_check_error_text($server));
                 //return error json output
                 $response = array(
                     'status' => 'error',
@@ -467,8 +465,17 @@ function pg_panel_software_update($request, $action)
                 exit();
             }
 
+            // An error page (HTTP 500 and the like) names its status.
+            if ($server['error'] === 'http_error') {
+                log_activity(pg_update_check_error_text($server));
+                respond(array(
+                    'status' => 'error',
+                    'message' => lang(array('string' => 'The update server answered with HTTP {var:1}.', 'vars' => array($server['http_status'])))
+                ));
+            }
+
             if ($server['error'] === 'invalid_response') {
-                log_activity(lang('software update check received an invalid response from the software update server, so it is not known if there is a software update available'));
+                log_activity(pg_update_check_error_text($server));
                 //return error json output
                 $response = array(
                     'status' => 'error',

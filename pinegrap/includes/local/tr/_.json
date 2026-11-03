@@ -1659,6 +1659,7 @@
     "{var:1} — part of {var:2}": "{var:1} — {var:2} parçası",
     "{var:1} — records of {var:2}": "{var:1} — {var:2} kayıtları",
     "{var:1} — runs {var:2} version(s) again": "{var:1} — {var:2} sürüm yeniden koşulur",
+    "{var:1} — {var:2} version(s)": "{var:1} — {var:2} sürüm",
     "{var:1} → you · {var:2}": "{var:1} → siz · {var:2}",
     "{var:1} → {var:2} · engine": "{var:1} → {var:2} · motor",
     "{var:1} → {var:2} · engine: {var:3}": "{var:1} → {var:2} · motor: {var:3}",
