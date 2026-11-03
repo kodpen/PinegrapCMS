@@ -23,7 +23,7 @@ description: Plan for the Web Designer Portfolio template (pinegrap-portfolio): 
 
 - 3 Done (#6168). `work.php`: `work`, `project`, `project_new`; widgets `work_list`, `project_detail`, `project_more`, `home_projects` (the home's three featured); helpers `$work_…`.
 
-- 4 Briefs: `mail.php`, `briefs.php` (`brief`, `brief_view`, `my_briefs`, `staff_briefs`, `privacy`, `email_reply`, notify e-mails).
+- 4 Done (#6172). Briefs: `mail.php` (e-mail builders only, reads only `parts.php`; step 6 builds on it), `briefs.php`; test `…_briefs_test.php`.
 
 - 5 Standard: `standard.php` (contact, inbox, conversation, newsletter, blog as "Journal", blog post, search, error); test `…_standard_test.php`.
 
