@@ -763,7 +763,7 @@ function pg_list_table_html(array $source, array $page, $label)
     }
 
     $output .= '</tbody></table>';
-    $output .= '<p class="pg-list-table-empty text-body-secondary"' . ($page['rows'] ? ' hidden' : '') . '>' . h(lang('No records found.')) . '</p>';
+    $output .= '<p class="pg-list-table-empty fg-secondary"' . ($page['rows'] ? ' hidden' : '') . '>' . h(lang('No records found.')) . '</p>';
     $output .= '<div class="visually-hidden" aria-live="polite" data-pg-list-live></div>';
 
     return $output . '</div>';

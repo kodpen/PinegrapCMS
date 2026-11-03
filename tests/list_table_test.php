@@ -250,7 +250,7 @@ function test_list_table_html_first_batch()
 	pg_assert_contains('data-pg-col="price" class="pg-list-col-money text-end" data-pg-sortable="1" aria-sort="descending"', $html);
 	pg_assert_contains('data-pg-col="name" class="pg-list-col-text" data-pg-sortable="1" style="width: 20rem"', $html);
 	pg_assert_contains('data-pg-col="notes" class="pg-list-col-text" hidden>', $html);
-	pg_assert_contains('<p class="pg-list-table-empty text-body-secondary" hidden>', $html);
+	pg_assert_contains('<p class="pg-list-table-empty fg-secondary" hidden>', $html);
 	pg_assert_contains('aria-live="polite"', $html);
 	pg_assert_false(strpos($html, 'item.price') !== false, 'no SQL in the markup');
 	pg_assert_false(strpos($html, 'item.site') !== false, 'no SQL condition in the markup');
@@ -258,7 +258,7 @@ function test_list_table_html_first_batch()
 	$browser = pg_list_table_html(pg_test_list_table_source(array(), array('all' => true)), array('rows' => array(), 'next' => null, 'total' => 0), 'Items');
 
 	pg_assert_contains('data-pg-list-mode="browser"', $browser);
-	pg_assert_contains('<p class="pg-list-table-empty text-body-secondary">', $browser, 'empty line shown');
+	pg_assert_contains('<p class="pg-list-table-empty fg-secondary">', $browser, 'empty line shown');
 }
 
 function test_list_table_selection_parse_ids()
