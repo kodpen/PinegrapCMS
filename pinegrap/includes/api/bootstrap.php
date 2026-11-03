@@ -54,6 +54,7 @@ require_once($pg_api_directory . '/resources/product_groups.php');
 require_once($pg_api_directory . '/resources/orders.php');
 require_once($pg_api_directory . '/resources/cart_quotes.php');
 require_once($pg_api_directory . '/resources/customers.php');
+require_once($pg_api_directory . '/resources/subscriptions.php');
 require_once($pg_api_directory . '/resources/pages.php');
 require_once($pg_api_directory . '/resources/folders.php');
 require_once($pg_api_directory . '/resources/menus.php');

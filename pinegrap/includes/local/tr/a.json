@@ -1985,6 +1985,7 @@
     "Advice you can act on, without jargon, in Turkish or in English.": "Türkçe ya da İngilizce, jargonsuz ve uygulanabilir danışmanlık.",
     "Advises start-ups and family companies on their contracts, their brands and their software.": "Girişimlere ve aile şirketlerine sözleşmeleri, markaları ve yazılımları konusunda danışmanlık verir.",
     "Affiliate": "Ortak",
+    "Affiliate ({var:1}) was approved through the API by the application {var:2} (key {var:3}).": "Satış ortağı ({var:1}) {var:2} uygulaması tarafından API üzerinden onaylandı (anahtar {var:3}).",
     "Affiliate / Company Name": "Ortaklık / Firma Adı",
     "Affiliate Approval Needed": "Ortaklık Onayı Gerekiyor",
     "Affiliate Code": "Ortaklık Kodu",

@@ -133,7 +133,7 @@ function db_q_commerce_tail_test_files()
 		'view_gift_cards.php' => 0,
 		'edit_recurring_commission_profile.php' => 2,
 		'edit_products.php' => 2,
-		'edit_commission.php' => 2,
+		'edit_commission.php' => 1,
 		'catalog_detail.php' => 2,
 		'barcode_increase_inventory.php' => 2,
 		'barcode_decrease_inventory.php' => 2,

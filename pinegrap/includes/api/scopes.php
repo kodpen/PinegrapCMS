@@ -75,10 +75,12 @@ function api_scope_groups() {
 		// removes it.
 		'gift_cards' => array('label' => 'Gift Cards', 'read' => 'gift_cards:read', 'write' => 'gift_cards:write'),
 
-		// What the affiliate program owes its affiliates. Read only: the
-		// status is moved on the commissions screen, and the paying happens
-		// outside the site.
-		'commissions' => array('label' => 'Commissions', 'read' => 'commissions:read', 'write' => ''),
+		// What the affiliate program owes its affiliates. Writing moves a
+		// commission's status as the commissions screen does (pending,
+		// payable, ineligible, paid); the paying happens outside the site.
+		// Approving an affiliate is the contact screen's right and sits
+		// under customers:write.
+		'commissions' => array('label' => 'Commissions', 'read' => 'commissions:read', 'write' => 'commissions:write'),
 
 		'files'     => array('label' => 'Files',      'read' => 'files:read',     'write' => 'files:write'),
 
@@ -288,8 +290,9 @@ function api_owner_scopes($owner) {
 		$scopes[] = 'key_codes:read';
 		$scopes[] = 'key_codes:write';
 
-		// The commissions screen opens to the same people.
+		// The commissions screen opens to the same people, and its edit too.
 		$scopes[] = 'commissions:read';
+		$scopes[] = 'commissions:write';
 
 	}
 

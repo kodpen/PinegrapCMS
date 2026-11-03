@@ -23,6 +23,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 
 - api-calendar-event-move.md: External API POST /calendars/events/{id}: what moving an event (start, end, all_day) does to its cancelled repeats and its room bookings
 - api-catalogue-writes.md: External API writes to products, groups, pages and key codes: the screen's create function, list fields that replace, barcode, SEO rescoring, Recycle Bin deletes, key code vs offer code
+- api-commission-writes.md: POST /commissions/{id} status (commissions:write) through the screen's write, GET /commissions/recurring-profiles, POST /affiliates/{id}/approve (customers:write), their events
 - api-connected-accounts-usage.md: Connected accounts at work: mail through Gmail or Microsoft 365, cloud backups to Drive, OneDrive or Dropbox, a Connect button inside a settings form, response headers, what api_http_request() refuses
 - api-connected-accounts.md: The site as an OAuth client (connected accounts, includes/fn/connect.php, 2026.4.10, model A): provider and purpose files, the Connect button, tokens and provider calls, refresh, service tokens
 - api-currency-symbol.md: External API currency symbol is plain text (₺, €), not the HTML entity the currency screen stores (&#8378;, &euro;): one rule, api_currency_symbol_text(), for GET /meta and GET /store/currencies
@@ -59,6 +60,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-seo-not-found.md: GET /seo/not-found (seo.not_found, scope seo:read): the 404 log over the external API and MCP, its sorts and keyset cursor, the fields, and how a client turns a row into a redirect
 - api-store-shipping-method-writes.md: Shipping method writes (store:write): write path shared with the screens, typed fields to columns, base rate tiers, days and times, zones, excluded dates, events
 - api-store-zone-writes.md: Shipping zone and tax zone writes (store:write): shared write functions the zone screens call too, partial updates, country and state input, zone.* and tax_zone.* events
+- api-subscriptions-list.md: GET /subscriptions and /subscriptions/{id} (customers:read): every store-run subscription with its customer, the filters, updated_since on subscriptions.updated_at, the user-role row rule
 - api-team-devices-switch.md: The Team devices switch in Settings › API (includes/api/device_switch.php): which device application a save starts, widens, makes or disables, the ceiling, expiry, why off keeps the rows
 - api-text-field-limits.md: External API text limits must fit their varchar column (the non-strict session cuts in silence): product and group limits, and the test against the setup SQL
 - api-user-role-rows.md: Which rows an external API owner with the user role (3) reaches: contact groups, customers, campaigns, calendars, forms and submissions, 404 outside, the tests that guard it

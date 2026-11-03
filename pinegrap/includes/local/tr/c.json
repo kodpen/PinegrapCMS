@@ -1471,6 +1471,7 @@
     "Commercial contracts and terms of trade": "Ticari sözleşmeler ve satış koşulları",
     "Commercial litigation": "Ticari davalar",
     "Commission": "Komisyon",
+    "Commission ({var:1}) was set to {var:2} through the API by the application {var:3} (key {var:4}).": "Komisyon ({var:1}) {var:3} uygulaması tarafından API üzerinden {var:2} durumuna alındı (anahtar {var:4}).",
     "Commission Rate": "Komisyon Oranı",
     "Commission Rate Limit": "Komisyon Oranı Limiti",
     "Commission {var:1} %": "Komisyon %{var:1}",

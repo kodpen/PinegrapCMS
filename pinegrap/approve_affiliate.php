@@ -102,91 +102,28 @@ validate_token_field();
 
 include_once('liveform.class.php');
 
-// A repeated approval (the request e-mail opened twice, two tabs) changes
-// nothing and sends no second welcome e-mail.
-if ($already_approved) {
-    $liveform = new liveform('view_contact');
+// The approval the external API shares (includes/fn/contacts.php): the
+// code, the mark, the key code for the group offer, the welcome e-mail and
+// the event. A repeated approval (the request e-mail opened twice, two tabs)
+// changes nothing and sends no second welcome e-mail.
+$approval = pg_affiliate_approve($contact_id, $user['id']);
+
+if ($approval === false) {
+    output_error('Query failed.');
+}
+
+if ($approval === null) {
+    output_error(lang('The contact for the affiliate could not be found.'));
+}
+
+$liveform = new liveform('view_contact');
+
+if ($approval === 'already_approved') {
     $liveform->add_notice(lang('The contact is already an approved affiliate.'));
     header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_contact.php?id=' . $contact_id);
     exit();
 }
 
-// if there is an existing affiliate code
-if ($existing_affiliate_code) {
-    $affiliate_code = $existing_affiliate_code;
-    
-// else there is not an existing affiliate code, so generate code
-} else {
-    $affiliate_code = generate_affiliate_code();
-}
-
-$audit_before = pg_audit_fetch('contacts', $contact_id);
-
-// update contact to be approved and update affiliate code
-$query = "UPDATE contacts
-         SET
-            affiliate_approved = '1',
-            affiliate_code = ?,
-            user = ?,
-            timestamp = UNIX_TIMESTAMP()
-         WHERE id = ?";
-$result = db_q($query, array((string) $affiliate_code, (string) $user['id'], (string) $contact_id)) or output_error('Query failed.');
-
-pg_audit_record('update', 'contacts', $contact_id, $audit_before);
-
-// if there is a group offer, then determine if we need to add a key code for group offer for this affiliate
-if (AFFILIATE_GROUP_OFFER_ID != 0) {
-    // check if offer exists and get offer code
-    $query = "SELECT code FROM offers WHERE id = ?";
-    $result = db_q($query, array((string) AFFILIATE_GROUP_OFFER_ID)) or output_error('Query failed.');
-    
-    // if an offer was found, then continue to check if a key code should be added for group offer
-    if (mysqli_num_rows($result) > 0) {
-        $offer = mysqli_fetch_assoc($result);
-        
-        // check if a key code already exists for this group offer and affiliate
-        $query =
-            "SELECT id
-            FROM key_codes
-            WHERE
-                (code = ?)
-                AND (offer_code = ?)";
-        $result = db_q($query, array((string) $affiliate_code, (string) $offer['code'])) or output_error('Query failed.');
-        
-        // if a key code does not already exist for this group offer and affiliate, then create key code
-        if (mysqli_num_rows($result) == 0) {
-            $query =
-                "INSERT INTO key_codes (
-                    code,
-                    offer_code,
-                    enabled,
-                    user,
-                    timestamp)
-                VALUES (
-                    ?,
-                    ?,
-                    '1',
-                    ?,
-                    UNIX_TIMESTAMP())";
-            $result = db_q($query, array((string) $affiliate_code, (string) $offer['code'], (string) $user['id'])) or output_error('Query failed.');
-        }
-    }
-}
-
-// store values in session, so they are accessible on affiliate welcome screen
-$_SESSION['software']['affiliate_welcome']['affiliate_code'] = $affiliate_code;
-
-email(array(
-    'to' => $email_address,
-    'bcc' => AFFILIATE_EMAIL_ADDRESS,
-    'from_name' => ORGANIZATION_NAME,
-    'from_email_address' => EMAIL_ADDRESS,
-    'subject' => lang('Welcome to the Affiliate Program'),
-    'format' => 'html',
-    'body' => get_affiliate_welcome_screen()));
-
-// add notice to view contact screen
-$liveform = new liveform('view_contact');
 $liveform->add_notice(lang('The affiliate has been approved.'));
 
 header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/edit_contact.php?id=' . $contact_id);
