@@ -533,6 +533,7 @@
     "Payment Tab": "Ödeme Sekmesi",
     "Payment Table": "Ödeme Tablosu",
     "Payment Term (days)": "Vade (Gün)",
+    "Payment awaits the customer's confirmation": "Ödeme müşterinin onayını bekliyor",
     "Payment block, whole block (filled by backend)": "Ödeme bloğu, tüm blok (arka uç doldurur)",
     "Payment cancelled": "Ödeme iptal edildi",
     "Payment could not be initiated. Please try again.": "Ödeme başlatılamadı. Lütfen tekrar deneyiniz.",

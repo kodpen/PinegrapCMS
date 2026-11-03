@@ -4054,7 +4054,7 @@
     "The subscription could not be found.": "Abonelik bulunamadı.",
     "The subscription has no stored card.": "Aboneliğin kayıtlı kartı yok.",
     "The subscription is already paused.": "Abonelik zaten duraklatılmış.",
-    "The subscription is charged again from its next charge date.": "Abonelikten sonraki ödeme tarihinden itibaren yeniden ödeme alınır.",
+    "The subscription is charged again from its next charge date.": "Abonelik, sonraki ödeme tarihinden itibaren yeniden ücretlendirilir.",
     "The subscription key under Settings › General is not entered.": "Ayarlar › Genel altındaki abonelik anahtarı girilmemiş.",
     "The subscription key under Site Settings › General › Software is not entered.": "Site Ayarları › Genel › Yazılım altındaki abonelik anahtarı girilmemiş.",
     "The subscription to {var:1} was removed.": "{var:1} aboneliği kaldırıldı.",
