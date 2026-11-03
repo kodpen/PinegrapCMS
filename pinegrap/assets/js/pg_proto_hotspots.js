@@ -274,6 +274,27 @@
         return (/^[1-9][0-9]{0,9}$/.test(id) || /^tab:./.test(id)) ? id : '';
     }
 
+    // Whether a link outside a widget may be kept by page id ('__page_link',
+    // the Bind Data panel's page choice): a link of its own the site draws
+    // as <a> (a content link, a btn drawn as <a>, a semantic a), whatever its
+    // href holds or is bound to now; never a Bootstrap toggle.
+    function pageLinkable(node) {
+        if (!isObject(node)) {
+            return false;
+        }
+
+        var type = str(node.type);
+        var props = propsOf(node);
+
+        if (String(attrOf(props, 'data-bs-toggle') || '').trim() !== '') {
+            return false;
+        }
+
+        return (type === 'content' && props.contentType === 'link')
+            || (type === 'component' && props.componentType === 'btn' && (str(props.btnElement) || 'a') === 'a')
+            || (type === 'semantic' && str(props.tag).toLowerCase() === 'a');
+    }
+
     // The links of one node itself (its children not included). A link kept
     // by page id ('__page_link') carries `bound` (boundPage()) and
     // `pageLink`; its href is the typed one, the fallback.
@@ -1201,6 +1222,7 @@
         LIMITS: LIMITS,
         htmlLinks: htmlLinks,
         nodeLinks: nodeLinks,
+        pageLinkable: pageLinkable,
         collect: collect,
         design: design,
         markHref: markHref,
