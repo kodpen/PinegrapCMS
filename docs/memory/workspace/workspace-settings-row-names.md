@@ -15,6 +15,6 @@ description: Workspace Settings rows name their person or department, hours boxe
 - The `$copy` closure in `includes/workspace/claude.php` takes an optional fourth `$label` that becomes the field's `aria-label`, for a field with no `<label for>` beside it: the guide's routine prompt and domain (`claude_setup.php`).
 
 ## Can two active departments share a name?
-- No. Saving a department refuses a name another active one holds, and Bring it back refuses the same way ("There is already a department with this name. Rename one of them first."): before the fix an archived department brought back beside a new one of its name made two active departments of one name (bug hunt of the workspace endpoints, PR #PRNUM).
+- No. Saving a department refuses a name another active one holds, and Bring it back refuses the same way ("There is already a department with this name. Rename one of them first."): before the fix an archived department brought back beside a new one of its name made two active departments of one name (bug hunt of the workspace endpoints, PR #6120).
 
 Test: `tests/workspace_settings_names_test.php`.

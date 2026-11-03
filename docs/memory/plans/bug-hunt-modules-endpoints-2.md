@@ -40,5 +40,5 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 - Endpoints `view` (2): open
 - Endpoints `visitor` (3): open
 - Endpoints `waf` (4: view_waf_log, waf, waf_ranges_job, waf_unban): done (#4601, #4620)
-- Endpoints `workspace` (21): #PRNUM (settings: Bring it back keeps department names unique); rest clean
+- Endpoints `workspace` (21): #6120 (settings: Bring it back keeps department names unique); rest clean
 - Endpoints `zone` (3): open
