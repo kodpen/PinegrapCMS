@@ -97,8 +97,7 @@ if (!$_POST) {
     $liveform->add_fields_to_session();
 
     if ($liveform->get_field_value('submit_delete') == 'Delete') {
-        db("DELETE FROM ship_date_adjustments WHERE id = '" . escape($liveform->get_field_value('id')) . "'");
-
+        pg_store_ship_date_adjustment_delete($liveform->get_field_value('id')) or output_error('Query failed.');
         log_activity(lang(array('string' => 'ship date adjustment ({var:1}) was deleted', 'vars' => array($ship_date_adjustment['zip_code_prefix']))), $_SESSION['sessionusername']);
         $liveform->remove_form();
         $liveform_view = new liveform('view_ship_date_adjustments');
@@ -117,15 +116,7 @@ if (!$_POST) {
 
         $adjustment = pg_ship_date_adjustment_form_adjustment($liveform->get_field_value('adjustment_days'), $liveform->get_field_value('adjustment_type'));
 
-        db(
-            "UPDATE ship_date_adjustments
-            SET
-                zip_code_prefix = '" . escape($liveform->get_field_value('zip_code_prefix')) . "',
-                shipping_method_id = '" . escape($liveform->get_field_value('shipping_method_id')) . "',
-                adjustment = '" . escape($adjustment) . "',
-                last_modified_user_id = '" . USER_ID . "',
-                last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($liveform->get_field_value('id')) . "'");
+        pg_store_ship_date_adjustment_save($liveform->get_field_value('id'), $liveform->get_field_value('zip_code_prefix'), $liveform->get_field_value('shipping_method_id'), $adjustment, USER_ID) or output_error('Query failed.');
 
         log_activity(lang(array('string' => 'ship date adjustment ({var:1}) was modified', 'vars' => array($ship_date_adjustment['zip_code_prefix']))), $_SESSION['sessionusername']);
         $liveform->remove_form();

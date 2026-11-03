@@ -1071,6 +1071,7 @@
     "{var:1} movement(s) between {var:2} and {var:3}": "{var:2} – {var:3} arasında {var:1} hareket",
     "{var:1} ms at its fastest": "en hızlı hâlinde {var:1} ms",
     "{var:1} must be a date, in ISO-8601 or YYYY-MM-DD form.": "{var:1} bir tarih olmalıdır (ISO-8601 veya YYYY-AA-GG biçiminde).",
+    "{var:1} must be a day in YYYY-MM-DD form.": "{var:1} YYYY-AA-GG biçiminde bir gün olmalı.",
     "{var:1} must be a list of country codes.": "{var:1} bir ülke kodları listesi olmalıdır.",
     "{var:1} must be a list of dates as YYYY-MM-DD.": "{var:1}, YYYY-AA-GG biçiminde tarihlerin listesi olmalıdır.",
     "{var:1} must be a list of ids.": "{var:1} bir kimlik listesi olmalıdır.",
