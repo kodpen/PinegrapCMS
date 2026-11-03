@@ -66,7 +66,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `forms`: open
 
-- `geo`: open
+- `geo`: taken by bughunt-geo (Elçin V10 worker)
 
 - `google_analytics`: open
 
