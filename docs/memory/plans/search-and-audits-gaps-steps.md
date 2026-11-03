@@ -8,7 +8,7 @@ description: Steps SG1-SG3 of plans/search-and-audits-gaps.md: the three jobs on
 - S under 400 product lines, M about 1,000. Texts through `tr_add.php`; tests red first.
 
 ## Which steps are there?
-- SG1 (S) A new install switches the three jobs on. `free`.
+- SG1 (S) A new install switches the three jobs on. Done (#6350).
   - `install/index.php`, beside the starter defaults (after the WebP switch, under `get_starter_site_language($install_directory_path) !== ''`, both columns checked with `install_column_exists()`): `job_dispatch_enabled = 1` and `job_dispatch` = the stored list plus `update_search_index`, `seo_analyze_job` and `seo_a11y_job` in catalogue order (`pg_search_audits_switch_list()` over `pg_search_audits_dispatchable()`, or a pure helper on them), one install step naming them and Site Settings › Updates and maintenance › Cron Jobs. No upgrade step: a running site and a restored backup keep their switch; SEO scores stay off (the decision names three). Tests: the list (order, nothing doubled, names already there kept) and the wiring in the starter branch. Memory: `platform/starter-site-defaults.md` (which jobs a new site runs), a line in `platform/search-and-audits-screen.md`.
 
 - SG2 (M) Parts inside an index item. `free`.
