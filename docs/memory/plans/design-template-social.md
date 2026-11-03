@@ -27,7 +27,7 @@ description: Plan for the Social Community template (pinegrap-social): a photo c
 
 - 4 Done (#6342). Posts: `posts.php` (`post_new`, `explore`, `tag`, `post`, `my_posts`, `saved`, `home_*_posts`).
 
-- 5 Reports and mail: `mail.php`, `reports.php` (`report`, `report_view`, `my_reports`, `staff_reports`, `staff_report` with `report_notes`, `staff_posts`, `email_reply`, `email_comment`, notify e-mails).
+- 5 Done (#6340). Reports and mail: `mail.php`, `reports.php`; test `…_reports_test.php`.
 
 - 6 Standard: `standard.php` (contact, inbox, conversation, newsletter, blog "Community News", blog post, search, error); test `…_standard_test.php`.
 
