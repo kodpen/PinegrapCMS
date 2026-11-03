@@ -600,6 +600,7 @@ $explorer_lang = array(
     'bulk_quantity_value' => lang('Set to this quantity'),
     'bulk_quantity_increase' => lang('Increase by'),
     'bulk_quantity_decrease' => lang('Decrease by'),
+    'stock_location' => lang('Location'),
     'bulk_tax_label' => lang('Tax rate'),
     'bulk_tax_set' => lang('Set the tax rate to the value below'),
     'bulk_tax_zone' => lang('Follow the tax zone (clear the product rate)'),
@@ -14448,6 +14449,24 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 return html;
             }
 
+            // The location a quantity change goes to, on a site that keeps
+            // stock per location; the default is first and preselected.
+            function stockLocationSelect() {
+
+                var locations = response.stock_locations || [];
+
+                if (locations.length === 0) { return ''; }
+
+                var html = '<label class="form-label mt-3" for="bulk_quantity_location">' + esc(L.stock_location) + '</label>' +
+                    '<select id="bulk_quantity_location" class="form-control">';
+
+                locations.forEach(function (location) {
+                    html += '<option value="' + location.id + '">' + esc(location.name) + '</option>';
+                });
+
+                return html + '</select>';
+            }
+
             function zoneChecks(name, label) {
 
                 // The caption names the list as a group, so each zone is read with
@@ -14489,7 +14508,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 ]) +
                 bulkCompanion('bulk_quantity_wrap',
                     '<label class="form-label" for="bulk_quantity_value">' + esc(L.quantity) + '</label>' +
-                    '<input type="number" step="1" min="0" id="bulk_quantity_value" class="form-control" />') +
+                    '<input type="number" step="1" min="0" id="bulk_quantity_value" class="form-control" />' +
+                    stockLocationSelect()) +
                 '<hr />' +
                 bulkSelect('bulk_tax_method', L.bulk_tax_label, [
                     ['set', L.bulk_tax_set],
@@ -14549,6 +14569,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
                 if (set.price_method) { set.price_value = document.getElementById('bulk_price_value').value; }
                 if (set.quantity_mode) { set.quantity_value = document.getElementById('bulk_quantity_value').value; }
+                if (set.quantity_mode && document.getElementById('bulk_quantity_location')) { set.quantity_location = document.getElementById('bulk_quantity_location').value; }
                 if (set.tax_method === 'set') { set.tax_value = document.getElementById('bulk_tax_value').value; }
 
                 var allow = zoneValues('allow_zones');

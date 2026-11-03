@@ -187,6 +187,19 @@ function pg_explorer_bulk_product_new_quantity($current_quantity, $mode, $value)
     return $new_quantity;
 }
 
+// The locations the bulk panels offer for a quantity change, as id and
+// name, default first; empty on a site without stock locations.
+function pg_explorer_bulk_stock_location_options()
+{
+    $options = array();
+
+    foreach (pg_stock_screen_locations() as $location) {
+        $options[] = array('id' => (int) $location['id'], 'name' => (string) $location['name']);
+    }
+
+    return $options;
+}
+
 // The out_of_stock assignment(s) of one product's bulk stock edit, by the
 // rule every other stock writer follows (pg_product_out_of_stock_sql()):
 // tracked with nothing left is marked, stamped only on the way in; anything
@@ -295,6 +308,9 @@ function pg_explorer_handle_bulk_product_options($type, $request, $user)
         // ("&#8378;"), and the panel escapes what it prints, so a
         // symbol sent as an entity would be shown as its own source.
         'currency_symbol' => html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES, 'UTF-8'),
+        // The locations a quantity change can go to, default first; empty
+        // on a site without stock locations, which keeps the one total.
+        'stock_locations' => pg_explorer_bulk_stock_location_options(),
         'groups' => $bulk_groups));
 }
 
@@ -360,6 +376,10 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
     $bulk_inventory = (isset($set['inventory']) && in_array((string) $set['inventory'], array('0', '1'), true)) ? (string) $set['inventory'] : '';
     $bulk_quantity_mode = isset($set['quantity_mode']) ? (string) $set['quantity_mode'] : '';
     $bulk_quantity_value = isset($set['quantity_value']) ? trim((string) $set['quantity_value']) : '';
+    // With stock locations a quantity change goes to one location (0 = the
+    // default) through the writer, which keeps the total the sum.
+    $bulk_by_location = (bool) pg_stock_screen_locations();
+    $bulk_quantity_location = (int) (isset($set['quantity_location']) ? $set['quantity_location'] : 0);
     $bulk_tax_method = isset($set['tax_method']) ? (string) $set['tax_method'] : '';
     $bulk_allow_zones = (isset($set['allow_zones']) && is_array($set['allow_zones'])) ? $set['allow_zones'] : array();
     $bulk_disallow_zones = (isset($set['disallow_zones']) && is_array($set['disallow_zones'])) ? $set['disallow_zones'] : array();
@@ -520,6 +540,9 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
             if (pg_inventory_quantity_too_large($new_quantity)) {
                 $quantity_too_large++;
                 $new_quantity = null;
+            } elseif ($bulk_by_location) {
+                // Written by location after the row, and the mark with it.
+                $new_quantity = null;
             } else {
                 $sql_parts[] = "inventory_quantity = '" . e($new_quantity) . "'";
             }
@@ -606,7 +629,9 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
             ? db_item("SELECT inventory, inventory_quantity FROM products WHERE id = '" . e($product_id) . "'")
             : null;
 
-        if ((count($sql_parts) > 0) || ($bulk_tax_sql !== '')) {
+        $location_write = $bulk_by_location && ($bulk_quantity_mode !== '');
+
+        if ((count($sql_parts) > 0) || ($bulk_tax_sql !== '') || $location_write) {
 
             $audit_before = pg_audit_fetch('products', $product_id);
             db(
@@ -618,6 +643,20 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
                     user = '" . e($user['id']) . "'
                 WHERE id = '" . e($product_id) . "'");
             pg_audit_record('update', 'products', $product_id, $audit_before);
+
+            // The quantity at the chosen location, once tracking is written.
+            // A product that does not track stock has no rows and is left
+            // alone, a bundle follows its components; one the change would
+            // take past the top is counted.
+            if ($location_write && !pg_bundle_ids_among(array((int) $product_id))) {
+                $location_result = pg_stock_bulk_write($product_id, $bulk_quantity_location, $bulk_quantity_mode, $bulk_quantity_value, 'bulk_edit');
+
+                if ($location_result['error'] === 'too_many') {
+                    $quantity_too_large++;
+                }
+
+                pg_stock_refresh_out_of_stock($product_id);
+            }
 
             // A bundle's stock (and a summed price) is worked out from its
             // components: whatever this edit wrote there is put back

@@ -252,3 +252,4 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/calendar_writes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipping_methods.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/vat_check.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/stock_locations.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/stock_location_screens.php');

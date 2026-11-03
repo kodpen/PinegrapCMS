@@ -288,6 +288,16 @@ function pg_products_export_table($where = '', $order = 'name ASC')
         $headings[] = 'sfu_' . $field;
     }
 
+    // One stock:<location name> column per location on a site that keeps
+    // stock per location, last, read back by import_products.php. Every
+    // location, enabled or not, so a file brought back sets them all.
+    $stock_locations = (function_exists('pg_stock_has_locations') && pg_stock_has_locations()) ? pg_stock_locations() : array();
+    $stock_rows = $stock_locations ? pg_stock_rows_by_product() : array();
+
+    foreach (pg_stock_export_headings($stock_locations) as $heading) {
+        $headings[] = $heading;
+    }
+
     $select = array('id');
 
     foreach ($columns as $column) {
@@ -318,6 +328,14 @@ function pg_products_export_table($where = '', $order = 'name ASC')
 
         foreach ($update_fields as $field) {
             $row[] = isset($by_product[$product['id']]['update'][$field]) ? $by_product[$product['id']]['update'][$field] : '';
+        }
+
+        if ($stock_locations) {
+            $product_rows = isset($stock_rows[(int) $product['id']]) ? $stock_rows[(int) $product['id']] : array();
+
+            foreach (pg_stock_export_cells($stock_locations, $product_rows, $product) as $cell) {
+                $row[] = $cell;
+            }
         }
 
         $rows[] = $row;
