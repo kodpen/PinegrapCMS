@@ -5699,11 +5699,15 @@ function _render_component_html($props, $pad, $kids = '')
 // An href bound to '__page_link' (a link to another page with a record's
 // values) is a sentinel the form list and form detail renderers expand per
 // link before drawing (pg_sw_page_link_bindings()). One still standing here
-// was drawn by a path that does not expand it (another widget kind, a shared
-// component nested inside the widget), so it prints '#' like the canvas and
-// is no token: an unanswered token would be swept to href="", which opens
-// the current address. An href bound to '__ref' (a field of a record the
-// record points at, pg_coll_ref_bindings()) is the same kind of sentinel.
+// inside a widget was drawn by a path that does not expand it (another widget
+// kind), so it prints '#' like the canvas and is no token: an unanswered
+// token would be swept to href="", which opens the current address. An href
+// bound to '__ref' (a field of a record the record points at,
+// pg_coll_ref_bindings()) is the same kind of sentinel. Outside a widget (a
+// page tree, a shared component, one placed in a widget's layout) a
+// '__page_link' keeps the typed href as its fallback and names its page in
+// data-pg-page-link, which the drawn page swaps for the page's current
+// address (pg_page_link_expand()): the saved body outlives a rename.
 function _apply_bindings($props, $rich_text = false)
 {
     if (empty($props['_bindings']) || !is_array($props['_bindings'])) return $props;
@@ -5714,6 +5718,7 @@ function _apply_bindings($props, $rich_text = false)
     static $renderable_props = array('text' => 1, 'html' => 1, 'src' => 1, 'alt' => 1, 'href' => 1, 'value' => 1);
     $formats = (isset($props['_bindFormats']) && is_array($props['_bindFormats'])) ? $props['_bindFormats'] : array();
     $bind_pairs = array();
+    $page_link  = null;
     foreach ($props['_bindings'] as $prop_name => $field_name) {
         if (!$field_name) continue;
         // Sanitize: field tokens are [a-z0-9_-]. The hyphen is kept: a form
@@ -5721,6 +5726,10 @@ function _apply_bindings($props, $rich_text = false)
         // no field and printed nothing.
         $safe = preg_replace('/[^a-z0-9_\-]/i', '', (string)$field_name);
         if ($safe === '') continue;
+        if ($prop_name === 'href' && $safe === '__page_link' && !_pg_page_link_in_widget()) {
+            $page_link = pg_page_link_bound_id($props);
+            continue;
+        }
         if ($prop_name === 'href' && ($safe === '__page_link' || $safe === '__ref')) {
             $props['href'] = '#';
             continue;
@@ -5762,7 +5771,90 @@ function _apply_bindings($props, $rich_text = false)
         }));
         $props['_attrs'][] = array('name' => 'data-pg-bind', 'value' => implode(';', $bind_pairs));
     }
+    if ($page_link !== null) {
+        $attrs = (isset($props['_attrs']) && is_array($props['_attrs'])) ? $props['_attrs'] : array();
+        $attrs = array_values(array_filter($attrs, function ($a) {
+            return !(is_array($a) && isset($a['name']) && $a['name'] === 'data-pg-page-link');
+        }));
+        if ($page_link > 0) $attrs[] = array('name' => 'data-pg-page-link', 'value' => (string)$page_link);
+        $props['_attrs'] = $attrs;
+    }
     return $props;
+}
+
+// Whether a system widget is being drawn: a '__page_link' still standing
+// inside one prints '#' (its renderer did not expand it).
+function _pg_page_link_in_widget()
+{
+    return function_exists('pg_sw_finish_active') && pg_sw_finish_active();
+}
+
+// The page a link outside a widget is kept by (_bindParams.href.page_id), 0
+// when it names none or a tab not yet saved. The typed href stays the
+// link's fallback.
+function pg_page_link_bound_id($props)
+{
+    $spec = (isset($props['_bindParams']['href']) && is_array($props['_bindParams']['href'])) ? $props['_bindParams']['href'] : array();
+    $page_id = isset($spec['page_id']) ? $spec['page_id'] : 0;
+    if (is_int($page_id)) return max(0, $page_id);
+    return (is_string($page_id) && ctype_digit($page_id)) ? (int)$page_id : 0;
+}
+
+// The pages the links of drawn HTML are kept by (data-pg-page-link on an
+// <a> tag), each once, in the order met.
+function pg_page_link_ids($html)
+{
+    $html = (string)$html;
+    if (stripos($html, 'data-pg-page-link=') === false) return array();
+    if (!preg_match_all('/<a\b[^>]*\sdata-pg-page-link="(\d+)"/i', $html, $m)) return array();
+    $ids = array();
+    foreach ($m[1] as $id) {
+        $id = (int)$id;
+        if ($id > 0 && !in_array($id, $ids, true)) $ids[] = $id;
+    }
+    return $ids;
+}
+
+// Drawn HTML with each link kept by page id pointing at the page's current
+// address ($bases: page id => address, '' for a page missing or in the
+// bin), so a rename reaches the link without the saved body or tree being
+// written again. A page with no address keeps the typed href. The marker
+// attribute goes either way; it is dropped from any other tag too. Attribute
+// values in the body are escaped, so a tag ends at the first '>'.
+function pg_page_link_expand_html($html, $bases)
+{
+    $html = (string)$html;
+    if (stripos($html, 'data-pg-page-link=') === false) return $html;
+    $bases = is_array($bases) ? $bases : array();
+    return preg_replace_callback('/<([a-z][a-z0-9-]*)\b[^>]*\sdata-pg-page-link="(\d+)"[^>]*>/i', function ($m) use ($bases) {
+        $tag = preg_replace('/\sdata-pg-page-link="\d+"/i', '', $m[0]);
+        $id  = (int)$m[2];
+        if (strtolower($m[1]) !== 'a' || !isset($bases[$id]) || (string)$bases[$id] === '') return $tag;
+        $href = h((string)$bases[$id]);
+        $done = 0;
+        $tag  = preg_replace_callback('/(\shref=)"[^"]*"/i', function ($h) use ($href) {
+            return $h[1] . '"' . $href . '"';
+        }, $tag, 1, $done);
+        if (!$done) $tag = substr($tag, 0, 2) . ' href="' . $href . '"' . substr($tag, 2);
+        return $tag;
+    }, $html);
+}
+
+// The page's links kept by page id pointed at the pages' current addresses
+// (pg_page_link_expand_html()), the pages read in one query
+// (pg_sw_page_link_resolve()).
+function pg_page_link_expand($html)
+{
+    $ids = pg_page_link_ids($html);
+    if (!$ids) return pg_page_link_expand_html($html, array());
+    $links = array();
+    foreach ($ids as $id) $links[$id] = array('page_id' => $id, 'params' => array(), 'base' => '');
+    $bases = array();
+    if (function_exists('pg_sw_page_link_resolve')) {
+        pg_sw_page_link_resolve($links);
+        foreach ($links as $id => $link) $bases[$id] = $link['base'];
+    }
+    return pg_page_link_expand_html($html, $bases);
 }
 
 /**
