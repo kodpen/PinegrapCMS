@@ -25,7 +25,7 @@ description: Steps OS1-OS7 of plans/object-storage.md: SigV4 client, backup targ
 - OS5 (M) Workspace and ERP attachments. After OS3 and question 1.
   - Workspace channel files and note canvases (`workspace_file_save.php`, `ws_file_preview()`) and ERP attachments follow the same row rule and copy function; previews stay in the derivative cache (`api/api-file-endpoints.md`). Memory: `workspace/workspace-files-object-storage.md`.
 
-- OS6 (S) Health. After OS3.
+- OS6 (S) Health. Done (#5933).
   - Ops alert `storage_unreachable` (once a day, after N failed calls in an hour), the Test button's last result on the card, the job's failures on the System Status screen; erasure and export unchanged (bytes are deleted where they are). Memory: `platform/object-storage-health.md`.
 
 - OS7 (S) Close-out. After OS1-OS6.

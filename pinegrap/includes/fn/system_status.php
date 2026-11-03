@@ -1898,6 +1898,7 @@ function get_system_status_checks()
         'Incoming E-mail'          => 'Mailboxes',
         'e-Fatura Threshold'       => 'e-Fatura',
         'WebP At Own Address'      => 'WebP',
+        'Object Storage'           => 'Storage',
     );
 
     // The three checks that answer "can someone get in": files that have been
@@ -1934,6 +1935,7 @@ function get_system_status_checks()
         'Google Merchant Center',
         'Incoming E-mail',
         'e-Fatura Threshold',
+        'Object Storage',
     );
 
     // Records one check. Named $makeIcon still, and still called as
@@ -3593,6 +3595,58 @@ function get_system_status_checks()
                     $alerts_href
                 );
             }
+        }
+    }
+
+    // Object storage (includes/fn/object_storage_health.php)
+    //
+    // A tile only while a store is set up and switched on. Reported, not
+    // scored: calls that could not reach it in the last hour, else files the
+    // move job left on the disk after its attempts, else reachable.
+    if (function_exists('pg_os_health_recent') && pg_os_ready(pg_os_settings())) {
+
+        $storage_href = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_maintenance.php#pgset-storage';
+        $storage_recent = pg_os_health_recent(time());
+        $storage_move = pg_os_health_move_failures(pg_file_move_state_normalize(json_decode((string) pg_config_text('object_storage_move'), true)), pg_file_move_attempts());
+
+        if ($storage_recent['count'] >= pg_os_health_threshold()) {
+            $output .= $makeIcon(
+                'bi-cloud-slash',
+                'fg-danger',
+                'Object Storage',
+                'Calls to the object storage failed in the last hour. Files already there are not served until it answers again.',
+                lang(array('string' => '{var:1} failed in 1 hour', 'vars' => pg_format_number($storage_recent['count'], 0))),
+                $storage_href,
+                array(array('label' => $storage_recent['message'], 'state' => 'fail', 'when' => ''))
+            );
+        } elseif ($storage_move['given_up'] > 0) {
+            $storage_detail = array();
+
+            foreach ($storage_move['given_up_ids'] as $storage_id) {
+                $storage_name = (string) db_value("SELECT name FROM files WHERE id = '" . (int) $storage_id . "'");
+                $storage_detail[] = array('label' => ($storage_name !== '') ? $storage_name : '#' . $storage_id, 'state' => 'warn', 'when' => '');
+            }
+
+            $output .= $makeIcon(
+                'bi-cloud-arrow-up',
+                'fg-warning',
+                'Object Storage',
+                'Some files could not be moved to the object storage after three attempts and stay on the disk. The Site Log names each one.',
+                lang(array('string' => '{var:1} left on the disk', 'vars' => pg_format_number($storage_move['given_up'], 0))),
+                $storage_href,
+                $storage_detail
+            );
+        } else {
+            $output .= $makeIcon(
+                'bi-cloud-check',
+                'fg-success',
+                'Object Storage',
+                'The object storage answered every call in the last hour.',
+                ($storage_move['failing'] > 0)
+                    ? lang(array('string' => '{var:1} being retried', 'vars' => pg_format_number($storage_move['failing'], 0)))
+                    : lang('Reachable'),
+                $storage_href
+            );
         }
     }
 

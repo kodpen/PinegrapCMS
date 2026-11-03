@@ -153,6 +153,8 @@
     "Last saved: {var}": "Son kayıt: {var}",
     "Last seen": "Son görülme",
     "Last sent": "Son gönderim",
+    "Last test {var:1}: failed. {var:2}": "Son test {var:1}: başarısız. {var:2}",
+    "Last test {var:1}: passed.": "Son test {var:1}: başarılı.",
     "Last updated": "Son güncelleme",
     "Last updated:": "Son güncelleme:",
     "Last uploads": "Son yüklenenler",

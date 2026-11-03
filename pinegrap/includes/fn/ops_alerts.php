@@ -105,6 +105,11 @@ function pg_ops_alert_codes()
             'type'  => 'warning',
             'url'   => 'view_log.php',
         ),
+        'storage_unreachable' => array(
+            'label' => lang('The object storage cannot be reached'),
+            'type'  => 'error',
+            'url'   => 'settings_maintenance.php#pgset-storage',
+        ),
         'cert_expiring' => array(
             'label' => lang('The SSL certificate is about to expire'),
             'type'  => 'error',
@@ -1197,6 +1202,34 @@ function pg_ops_alerts_check_webhooks($now)
 }
 
 /**
+ * Object storage: calls of the last hour that could not reach the store
+ * (pg_os_health_recent()), counted while a store is set up and switched on.
+ *
+ * @param int $now
+ * @return string the code of the problem found, '' for none; pg_ops_alert()
+ *                decides whether it is told again
+ */
+function pg_ops_alerts_check_storage($now)
+{
+    if (!function_exists('pg_os_health_recent') || !pg_os_ready(pg_os_settings())) {
+        return '';
+    }
+
+    $recent = pg_os_health_recent($now);
+
+    if ($recent['count'] < pg_os_health_threshold()) {
+        return '';
+    }
+
+    pg_ops_alert('storage_unreachable', lang(array(
+        'string' => '{var:1} call(s) to the object storage failed in the last hour. The last one: {var:2}',
+        'vars'   => array($recent['count'], $recent['message']),
+    )));
+
+    return 'storage_unreachable';
+}
+
+/**
  * The host whose certificate is checked: the site's host name without its
  * port, lower case. '' for a name that has no public certificate to check -
  * an IP address, localhost, a name without a dot.
@@ -1398,6 +1431,7 @@ function pg_ops_alert_sources()
         'mail'        => 'pg_ops_alerts_check_mail',
         'mail_reputation' => 'pg_ops_alerts_check_mail_reputation',
         'webhooks'    => 'pg_ops_alerts_check_webhooks',
+        'storage'     => 'pg_ops_alerts_check_storage',
         // Last: the only one that may wait on the network, for up to ten
         // seconds once a day.
         'certificate' => 'pg_ops_alerts_check_certificate',
