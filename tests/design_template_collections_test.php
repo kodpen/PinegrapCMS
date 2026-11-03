@@ -80,6 +80,7 @@ function test_design_template_collection_forms()
 {
 	$expected = array(
 		'hello-pinegrap'      => array('blog_category_new', 'blog_new', 'staff_entry'),
+		'pinegrap-appstudio'  => array('app_new', 'blog_new', 'release_new', 'staff_entry'),
 		'pinegrap-bookshop'   => array('blog_new', 'event_new', 'staff_entry'),
 		'pinegrap-boutique'   => array('blog_new', 'staff_entry'),
 		'pinegrap-cafe'       => array('blog_new', 'event_new', 'menu_new', 'staff_entry'),
