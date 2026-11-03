@@ -214,6 +214,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/experiments.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/experiments_sheet.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/experiments_results.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/visitor_insights.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/visitor_periods.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/privacy.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/audit.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/audit_view.php');
