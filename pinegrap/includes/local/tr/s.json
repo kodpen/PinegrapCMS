@@ -3273,6 +3273,7 @@
     "System health is sitting at a reasonable {var:1}%.": "Sistem sağlığı %{var:1} ile makul bir yerde.",
     "System health is usually pulled down by the security checks first, so I would start there.": "Sistem sağlığını genelde ilk olarak güvenlik kontrolleri aşağı çeker, ben oradan başlardım.",
     "System health is usually pulled down by {var:1} first, so I would start there.": "Sistem sağlığını genelde ilk olarak {var:1} aşağı çeker, ben oradan başlardım.",
+    "System region": "Sistem bölgesi",
     "System sans-serif": "Sistem tırnaksız",
     "System status": "Sistem durumu",
     "System tools": "Sistem Araçları",

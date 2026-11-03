@@ -70,6 +70,7 @@ description: Generated from the module field of the memory files: each includes/
 - `language_redirect`: [[language-redirect-matching]]
 - `layout_convert`: [[layout-form-converter]]
 - `layouts`: [[layout-code-tab]], [[layout-editor-classic]]
+- `legacy_to_designer`: [[legacy-to-designer-report]]
 - `legal_documents`: [[order-documents-address]]
 - `link_resolve`: [[designer-prototype-viewer]], [[link-resolve-letter-case]], [[seo-link-graph-self-links]]
 - `list_paging`: [[list-label-sort]], [[list-page-number]], [[server-paged-lists]]

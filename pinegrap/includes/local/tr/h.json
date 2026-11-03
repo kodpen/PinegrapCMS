@@ -590,6 +590,7 @@
     "health": "saglik",
     "heart, cardiologist, ECG, EKG, blood pressure, cholesterol": "kalp, kardiyolog, EKG, tansiyon, kolesterol, efor",
     "height": "yükseklik",
+    "held by {var:1}": "{var:1} tarafından tutuluyor",
     "help-center": "yardim-merkezi",
     "hidden": "gizli",
     "hidden, removed, missing topic, moderation": "gizlendi, kaldırıldı, kayıp konu, moderasyon",

@@ -149,7 +149,7 @@ function pg_ltd_pages_by_style($pages, $folder_styles)
 /**
  * A style's state in the report. 'blocked': the designer refuses to open
  * it (the refusal is the reason). 'attention': it opens, but something
- * needs a look first (PHP in its code, a page somebody holds, a common
+ * needs a look first (PHP in its code, which the importer does not keep, a page somebody holds, a common
  * region tag with no row, the style open in the designer right now).
  * 'ready' otherwise. Notes say what stays classic after the move (dynamic
  * regions, custom layouts) or that no page uses the style; they never
@@ -179,4 +179,139 @@ function pg_ltd_style_state($facts)
     if ((int)($f['locked'] ?? 0) > 0)     $reasons[] = 'locked';
     if ((int)($f['open'] ?? 0) > 0)       $reasons[] = 'open';
     return array('state' => $reasons ? 'attention' : 'ready', 'reasons' => $reasons, 'notes' => $notes);
+}
+
+/**
+ * The readiness report: one entry per classic style, by name. Reads the
+ * styles, folders, pages (binned ones left out), common regions, page
+ * region counts and the designer's live page locks and presence.
+ *
+ * @return array  list of array('id', 'name', 'type', 'theme', 'refusal',
+ *                'php', 'regions' (pg_ltd_region_counts()), 'own', 'folder'
+ *                (page rows), 'trees' (pages already drawn from a tree),
+ *                'page_regions', 'custom_layouts', 'locked' (page rows
+ *                with 'holder'), 'open' (user names with the style open),
+ *                'state', 'reasons', 'notes')
+ */
+function pg_ltd_report()
+{
+    $styles = db_items(
+        "SELECT style.style_id, style.style_name, style.style_type, style.style_layout, style.style_code,
+                files.name AS theme_name
+         FROM style
+         LEFT JOIN files ON style.theme_id = files.id
+         WHERE style.style_layout <> 'visual_designer'
+         ORDER BY style.style_name ASC, style.style_id ASC");
+    $styles = is_array($styles) ? $styles : array();
+    if (!$styles) return array();
+
+    $folders = db_items("SELECT folder_id, folder_parent, folder_style, folder_level FROM folder");
+    $folder_styles = pg_classic_style_folder_styles(is_array($folders) ? $folders : array());
+
+    $tree_ready = pg_multi_page_design_ready();
+    $region_counts = array();
+    foreach ((array)db_items("SELECT pregion_page, COUNT(*) AS n FROM pregion GROUP BY pregion_page") as $r) {
+        $region_counts[(int)$r['pregion_page']] = (int)$r['n'];
+    }
+    $rows = db_items(
+        "SELECT page_id, page_name, page_folder, page_style, page_type, layout_type"
+        . ($tree_ready ? ", (page_tree_json IS NOT NULL AND page_tree_json <> '') AS has_tree" : ", 0 AS has_tree") . "
+         FROM page
+         WHERE 1" . pg_designer_not_binned_sql() . "
+         ORDER BY page_name ASC, page_id ASC");
+    $pages = array();
+    foreach ((is_array($rows) ? $rows : array()) as $r) {
+        $id = (int)$r['page_id'];
+        $pages[] = array(
+            'page_id'       => $id,
+            'page_name'     => (string)$r['page_name'],
+            'page_folder'   => (int)$r['page_folder'],
+            'page_style'    => (int)$r['page_style'],
+            'has_tree'      => (bool)(int)$r['has_tree'],
+            'custom_layout' => (string)$r['layout_type'] === 'custom' && check_if_page_type_supports_layout((string)$r['page_type']),
+            'page_regions'  => isset($region_counts[$id]) ? $region_counts[$id] : 0,
+        );
+    }
+    $by_style = pg_ltd_pages_by_style($pages, $folder_styles);
+
+    $cregions = array();
+    foreach ((array)db_items("SELECT cregion_id, cregion_name, cregion_designer_type FROM cregion") as $r) {
+        $cregions[(string)$r['cregion_name']] = array('id' => (int)$r['cregion_id'], 'designer' => (string)$r['cregion_designer_type'] === 'yes');
+    }
+    $converted = pg_common_region_converted_ids();
+
+    // Who holds a page, and who has a style open, in the designer now.
+    $holders = array();
+    $open = array();
+    require_once(PG_FUNCTIONS_DIR . '/includes/designer_collab.php');
+    if (pg_collab_ready()) {
+        $cut = time() - PG_COLLAB_STALE;
+        foreach ((array)db_items("SELECT l.page_id, u.user_username FROM designer_page_lock l
+                                  LEFT JOIN user u ON u.user_id = l.user_id
+                                  WHERE l.last_seen >= '$cut'") as $r) {
+            $holders[(int)$r['page_id']] = (string)$r['user_username'];
+        }
+        foreach ((array)db_items("SELECT DISTINCT p.style_id, u.user_username FROM designer_presence p
+                                  LEFT JOIN user u ON u.user_id = p.user_id
+                                  WHERE p.last_seen >= '$cut'") as $r) {
+            $open[(int)$r['style_id']][] = (string)$r['user_username'];
+        }
+    }
+
+    $out = array();
+    foreach ($styles as $s) {
+        $id = (int)$s['style_id'];
+        $tags = pg_ltd_style_tags((string)$s['style_code']);
+        $regions = pg_ltd_region_counts($tags['regions'], $cregions, $converted);
+        $own = isset($by_style[$id]) ? $by_style[$id]['own'] : array();
+        $folder = isset($by_style[$id]) ? $by_style[$id]['folder'] : array();
+
+        $trees = 0;
+        $page_regions = 0;
+        $custom_layouts = 0;
+        $locked = array();
+        foreach (array_merge($own, $folder) as $p) {
+            if ($p['has_tree']) {
+                ++$trees;
+                continue;
+            }
+            $page_regions += $p['page_regions'];
+            if ($p['custom_layout']) ++$custom_layouts;
+            if (isset($holders[$p['page_id']])) {
+                $p['holder'] = $holders[$p['page_id']];
+                $locked[] = $p;
+            }
+        }
+        $refusal = pg_classic_style_refusal($s);
+        $state = pg_ltd_style_state(array(
+            'refusal'        => $refusal,
+            'php'            => $tags['php'],
+            'locked'         => count($locked),
+            'open'           => isset($open[$id]) ? count($open[$id]) : 0,
+            'missing'        => count($regions['missing']),
+            'dynamic'        => isset($regions['counts']['dynamic']) ? $regions['counts']['dynamic'] : 0,
+            'custom_layouts' => $custom_layouts,
+            'pages'          => count($own) + count($folder),
+        ));
+        $out[] = array(
+            'id'             => $id,
+            'name'           => (string)$s['style_name'],
+            'type'           => (string)$s['style_type'],
+            'theme'          => (string)$s['theme_name'],
+            'refusal'        => $refusal,
+            'php'            => $tags['php'],
+            'regions'        => $regions,
+            'own'            => $own,
+            'folder'         => $folder,
+            'trees'          => $trees,
+            'page_regions'   => $page_regions,
+            'custom_layouts' => $custom_layouts,
+            'locked'         => $locked,
+            'open'           => isset($open[$id]) ? $open[$id] : array(),
+            'state'          => $state['state'],
+            'reasons'        => $state['reasons'],
+            'notes'          => $state['notes'],
+        );
+    }
+    return $out;
 }
