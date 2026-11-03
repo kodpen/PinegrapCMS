@@ -816,6 +816,7 @@
     "No channels yet.": "Henüz kanal yok.",
     "No charger in the box: it comes separately, so a drawer of old chargers does not grow.": "Kutuda şarj adaptörü yok: ayrı satılır, böylece eski adaptörlerle dolu çekmece büyümez.",
     "No cheque or note here.": "Burada çek ya da senet yok.",
+    "No choice of {var:1} matches: {var:2}": "{var:1} alanında eşleşen seçenek yok: {var:2}",
     "No claim reached the court; every settlement was signed at mediation.": "Hiçbir talep mahkemeye taşınmadı; tüm anlaşmalar arabuluculukta imzalandı.",
     "No clashes in the next two weeks.": "Önümüzdeki iki haftada çakışma yok.",
     "No clear answer came from the payment service ({var:1}). Check the payment on the service's own screen before trying again.": "Ödeme hizmetinden net bir cevap gelmedi ({var:1}). Yeniden denemeden önce ödemeyi hizmetin kendi ekranında kontrol edin.",
