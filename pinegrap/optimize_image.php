@@ -85,7 +85,12 @@ function optimize_image($file_id, $mode = 'optimize') {
             'message' => lang(array('string'=>'Sorry, that image ({var:1}) has already been optimized.','vars'=>$file['name'] )) );
     }
 
-    $file['path'] = FILE_DIRECTORY_PATH . '/' . $file['name'];
+    // Processed in the file directory; a stored file is brought there first.
+    $file['path'] = function_exists('pg_file_make_local') ? pg_file_make_local($file['name']) : '';
+
+    if ($file['path'] === '') {
+        $file['path'] = FILE_DIRECTORY_PATH . '/' . $file['name'];
+    }
 
     $settings = pg_image_settings();
 

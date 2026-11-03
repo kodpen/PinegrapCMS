@@ -474,10 +474,13 @@ function pg_file_local_copy($file_id)
         return '';
     }
 
-    if (pg_file_storage($row) === 'local') {
-        $path = FILE_DIRECTORY_PATH . '/' . $row['name'];
+    // A local file under the name wins for a stored row too: a replace door
+    // or an editor save wrote new bytes there, and the general job sets the
+    // row back to local (pg_file_storage_reconcile_run()).
+    $local = FILE_DIRECTORY_PATH . '/' . $row['name'];
 
-        return is_file($path) ? $path : '';
+    if (is_file($local) || (pg_file_storage($row) === 'local')) {
+        return is_file($local) ? $local : '';
     }
 
     $directory = pg_file_cache_directory();
@@ -486,8 +489,7 @@ function pg_file_local_copy($file_id)
     clearstatcache(true, $path);
 
     if (is_file($path) && ((int) @filesize($path) === (int) $row['size'])) {
-        // The modification time is the last use the sweep goes by.
-        @touch($path);
+        pg_file_cache_used($path);
 
         return $path;
     }
@@ -522,6 +524,139 @@ function pg_file_local_copy($file_id)
 
 
 /**
+ * A path a reader opens for a file it knows by its stored name (files.name):
+ * the file in the file directory when it is there, which is every file that
+ * never moved (design and theme files, .css, .js) at the cost of one stat;
+ * otherwise pg_file_local_copy() of the row with that name.
+ *
+ * @param string $name files.name
+ * @return string '' when there is no such file or its bytes cannot be had
+ */
+function pg_file_reader_path($name)
+{
+    $name = (string) $name;
+
+    if (!defined('FILE_DIRECTORY_PATH') || ($name === '') || (pg_basename($name) !== $name)) {
+        return '';
+    }
+
+    $local = FILE_DIRECTORY_PATH . '/' . $name;
+
+    if (is_file($local)) {
+        return $local;
+    }
+
+    if (!pg_file_storage_ready()) {
+        return '';
+    }
+
+    $id = (int) db_value("SELECT id FROM files WHERE name = '" . e($name) . "' AND storage = 's3' LIMIT 1");
+
+    return ($id > 0) ? pg_file_local_copy($id) : '';
+}
+
+
+/**
+ * The file in the file directory for a door that changes the bytes in place
+ * (rotate, optimize): a stored file's cached copy is copied there first.
+ * The general job then sets the row back to local and sends the new bytes
+ * (pg_file_storage_reconcile_run()).
+ *
+ * @param string $name files.name
+ * @return string the local path, or '' when the bytes cannot be had
+ */
+function pg_file_make_local($name)
+{
+    $source = pg_file_reader_path($name);
+
+    if ($source === '') {
+        return '';
+    }
+
+    $local = FILE_DIRECTORY_PATH . '/' . $name;
+
+    if ($source === $local) {
+        return $local;
+    }
+
+    // Copied beside the name and renamed, so get_file.php never sends half.
+    $partial = $local . '.' . (function_exists('getmypid') ? getmypid() : uniqid()) . '.tmp';
+
+    if (!@copy($source, $partial) || !@rename($partial, $local)) {
+        @unlink($partial);
+
+        return '';
+    }
+
+    return $local;
+}
+
+
+/**
+ * The path a file's bytes are at on this disk now, without fetching: the
+ * file in the file directory, else the cached copy of a stored file. For a
+ * pass that walks many files (a sweep, a list) and must not download them.
+ *
+ * @param array $row files row with id, name, type
+ * @return string '' when neither is there
+ */
+function pg_file_present_path(array $row)
+{
+    if (!defined('FILE_DIRECTORY_PATH') || !isset($row['name']) || ((string) $row['name'] === '')) {
+        return '';
+    }
+
+    $local = FILE_DIRECTORY_PATH . '/' . $row['name'];
+
+    if (is_file($local)) {
+        return $local;
+    }
+
+    if (!isset($row['id']) || ((int) $row['id'] < 1)) {
+        return '';
+    }
+
+    $copy = pg_file_cache_directory() . '/' . pg_file_cache_name($row['id'], isset($row['type']) ? $row['type'] : '');
+
+    return is_file($copy) ? $copy : '';
+}
+
+
+/**
+ * Marks a cached copy as used now. Only the access time moves: the
+ * modification time stays the time it was fetched, which a derivative's
+ * signature (pg_image_derivative_target()) reads, so a copy that is used
+ * keeps the derivatives made from it. pg_file_cache_sweep() takes the later
+ * of the two as the last use.
+ *
+ * @param string $path
+ * @return void
+ */
+function pg_file_cache_used($path)
+{
+    $mtime = @filemtime($path);
+
+    if ($mtime !== false) {
+        @touch($path, (int) $mtime, time());
+    }
+}
+
+
+/**
+ * A cached copy's last use: the later of its fetch (modification time) and
+ * its last read (access time, set by pg_file_cache_used()). Pure.
+ *
+ * @param int|false $mtime
+ * @param int|false $atime
+ * @return int
+ */
+function pg_file_cache_last_use($mtime, $atime)
+{
+    return max((int) $mtime, (int) $atime);
+}
+
+
+/**
  * How many bytes the copies may take together before the oldest used go.
  *
  * @return int
@@ -537,7 +672,7 @@ function pg_file_cache_cap()
  * recently used until the rest fit under the cap. A '.part' file older
  * than a day is a fetch that died. Pure.
  *
- * @param array $entries path => array(size, mtime)
+ * @param array $entries path => array(size, last use: pg_file_cache_last_use())
  * @param int $cap bytes
  * @param int $now
  * @return array paths to delete
@@ -615,7 +750,7 @@ function pg_file_cache_sweep()
             continue;
         }
 
-        $entries[$path] = array((int) @filesize($path), (int) @filemtime($path));
+        $entries[$path] = array((int) @filesize($path), pg_file_cache_last_use(@filemtime($path), @fileatime($path)));
     }
 
     $freed = 0;

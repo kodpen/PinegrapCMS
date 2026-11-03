@@ -46,7 +46,7 @@ description: Generated from the module field of the memory files: each includes/
 - `errors`: [[fn-module-errors-mail-backup-consent]]
 - `events`: [[workspace-flows-event-depth]]
 - `explorer_side`: [[explorer-menu-tree]]
-- `file_storage`: [[file-object-storage]]
+- `file_storage`: [[file-object-storage]], [[file-object-storage-readers]]
 - `files`: [[edit-file-header]], [[name-length-refusal]], [[settings-public-image-pickers]], [[stored-file-name-upload-rule]]
 - `forms`: [[csv-import-headings]], [[explorer-page-type-name]], [[form-data-output-escape-flag]], [[form-view-newest-comment-cut]], [[forms-api-request-checks]], [[report-dynamic-date-filter]]
 - `geo`: [[country-names-in-addresses]], [[panel-script-number-format]]

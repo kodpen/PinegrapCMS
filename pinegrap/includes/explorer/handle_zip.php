@@ -109,9 +109,10 @@ function pg_explorer_handle_zip_create($type, $request, $user)
                 continue;
             }
 
-            $source = FILE_DIRECTORY_PATH . '/' . $file['name'];
+            // A stored file goes in from its cached copy.
+            $source = pg_file_reader_path($file['name']);
 
-            if (is_file($source) && is_readable($source)) {
+            if (($source !== '') && is_file($source) && is_readable($source)) {
                 $zip->addFile($source, $file['name']);
                 $added++;
             } else {
