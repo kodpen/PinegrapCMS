@@ -60,7 +60,7 @@ function pg_explorer_handle_paste($type, $request, $user)
             case 'file':
 
                 $file = db_item(
-                    "SELECT id, name, folder, description, design, optimized, image_width, image_height, optimization_percent
+                    "SELECT id, name, folder, description, design, attachment, optimized, image_width, image_height, optimization_percent
                     FROM files
                     WHERE id = '" . e($item_id) . "'");
 
@@ -89,6 +89,8 @@ function pg_explorer_handle_paste($type, $request, $user)
                     break;
                 }
 
+                // A submitted form's upload stays one in the copy
+                // (pg_explorer_copy_folder() does the same).
                 $new_name = get_unique_name(array('name' => prepare_file_name($file['name']), 'type' => 'file'));
                 $new_path = FILE_DIRECTORY_PATH . '/' . $new_name;
 
@@ -107,6 +109,7 @@ function pg_explorer_handle_paste($type, $request, $user)
                         type,
                         size,
                         design,
+                        attachment,
                         optimized,
                         image_width,
                         image_height,
@@ -120,6 +123,7 @@ function pg_explorer_handle_paste($type, $request, $user)
                         '" . e($file_extension) . "',
                         '" . e(filesize($new_path)) . "',
                         '" . e($file['design']) . "',
+                        '" . (int) $file['attachment'] . "',
                         '" . e($file['optimized']) . "',
                         " . (($file['image_width'] !== null && $file['image_width'] !== '') ? "'" . e($file['image_width']) . "'" : "NULL") . ",
                         " . (($file['image_height'] !== null && $file['image_height'] !== '') ? "'" . e($file['image_height']) . "'" : "NULL") . ",
