@@ -9,7 +9,7 @@ description: update_search_index.php as a resumable pass (stages, cursor file, s
 - Every row a pass writes carries its start time (`$timestamp = started`), so the sweep after the last stage removes only rows older than the pass, however many runs it took.
 
 ## What happens to the item a run ended inside?
-- `pg_search_index_begin()` (pure): when the item is the one the cursor names as `current`, it is skipped, counted as passed and named in the pass's failure line ("A run ended while reading it"); the pass never stops at the same item twice.
+- `pg_search_index_begin()` (pure): when the item is the one the cursor names as `current`, a paused item resumes, a death inside a part skips only that part, a death outside any part skips the item, keeps its rows and names it ("A run ended while reading it"); the pass never stops at the same place twice. Parts, pause and marker: [[search-index-item-parts]].
 
 ## How long does one run work?
 - Dispatched: `pg_cron_time_left(SEO_ANALYZE_TIME_BUDGET)`; unfinished, `pg_cron_due_again('update_search_index', 60)` and no `pg_cron_ran()` (no `_done` marker until the sweep). Panel window: `SEO_ANALYZE_BUTTON_BUDGET` (20 s) per request; the page says the stage and submits a POST of `continue=1` with the form token until the pass is done. Command line (crontab): no budget, the whole pass in one run.

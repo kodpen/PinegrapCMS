@@ -113,6 +113,13 @@ function ws_flow_draft_proposal_input($change)
             $graph[$part] = $sent[$part];
         }
 
+        // Boxes sent all in one place - none given, as an assistant writes
+        // them, or the same x and y - are laid out from the start, as Pinegrap
+        // AI's are; boxes with places of their own keep them.
+        if (ws_flow_draft_unplaced($graph['nodes'])) {
+            $graph = ws_flow_auto_layout(ws_flow_graph_normalize($graph), array());
+        }
+
         $data['graph'] = $graph;
     }
 
@@ -125,6 +132,25 @@ function ws_flow_draft_proposal_input($change)
         'home'  => max(0, (int) ($sent['channel_id'] ?? 0)),
         'notes' => ($reason !== '') ? array($reason) : array(),
     );
+}
+
+/**
+ * Are these boxes all in one place, with more than one of them (pure)? A box
+ * with no x or y stands at 0, 0.
+ *
+ * @param array $nodes the boxes, as sent
+ * @return bool
+ */
+function ws_flow_draft_unplaced($nodes)
+{
+    $places = array();
+
+    foreach ((array) $nodes as $node) {
+        $node = is_array($node) ? $node : array();
+        $places[ws_flow_coord($node['x'] ?? 0) . ',' . ws_flow_coord($node['y'] ?? 0)] = true;
+    }
+
+    return (count((array) $nodes) > 1) && (count($places) === 1);
 }
 
 /**
