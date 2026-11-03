@@ -1,6 +1,6 @@
 ---
 name: api-experiments
-description: The experiments API resource (PX7, #PR): list, get with per-variant figures and the z-test, start/pause/end through pg_experiment_sheet_move(), experiments:read/write for roles 0-1, experiment.started/ended
+description: The experiments API resource (PX7): list, get with figures and the z-test, start/pause/end via the sheet move, experiments:read/write for roles 0-1, two events
 ---
 
 ## Which routes are there?
