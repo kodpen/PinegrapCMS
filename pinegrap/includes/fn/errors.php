@@ -99,9 +99,10 @@ function pg_error_record($errno, $errstr, $errfile = '', $errline = 0)
 
     if ($reported) {
         $level = pg_error_level_name($errno);
+        $key = pg_error_once_key($errno, $errfile, $errline, $errstr);
 
-        if ($level === 'fatal') {
-            $record = pg_error_once('fatal|' . $errfile . ':' . $errline . '|' . $errstr);
+        if (strpos($key, 'fatal|') === 0) {
+            $record = pg_error_once($key);
         } else {
             $record = pg_error_flood_allows($errfile . ':' . $errline);
         }
@@ -158,6 +159,31 @@ function pg_error_flood_allows($key)
 }
 
 /**
+ * The key an error is recorded once under in this request.
+ *
+ * An error that ends the request when no handler takes it (E_USER_ERROR,
+ * E_RECOVERABLE_ERROR) is seen twice: by the error handler, then by the
+ * shutdown handler through error_get_last(). Both use this key, so it is
+ * written once. Anything else is keyed by file:line for the flood limit.
+ *
+ * @param int $errno
+ * @param string $file
+ * @param int|string $line
+ * @param string $message
+ * @return string
+ */
+function pg_error_once_key($errno, $file, $line, $message)
+{
+    $fatal = E_ERROR | E_PARSE | E_CORE_ERROR | E_COMPILE_ERROR | E_USER_ERROR | E_RECOVERABLE_ERROR;
+
+    if ((int) $errno & $fatal) {
+        return 'fatal|' . $file . ':' . (int) $line . '|' . $message;
+    }
+
+    return 'flood|' . $file . ':' . (int) $line;
+}
+
+/**
  * True the first time a key is seen in this request.
  *
  * Also keeps a fatal error from being written twice: an E_USER_ERROR goes
@@ -191,7 +217,7 @@ function pg_error_once($key)
  */
 function pg_error_uncaught($throwable)
 {
-    pg_error_once('fatal|' . $throwable->getFile() . ':' . $throwable->getLine() . '|' . $throwable->getMessage());
+    pg_error_once(pg_error_once_key(E_ERROR, $throwable->getFile(), $throwable->getLine(), $throwable->getMessage()));
 
     pg_error_write(pg_error_entry(
         'fatal',
@@ -263,7 +289,7 @@ function pg_error_shutdown()
         return;
     }
 
-    if (!pg_error_once('fatal|' . $error['file'] . ':' . $error['line'] . '|' . $error['message'])) {
+    if (!pg_error_once(pg_error_once_key((int) $error['type'], $error['file'], $error['line'], $error['message']))) {
         return;
     }
 

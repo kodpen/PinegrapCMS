@@ -90,6 +90,20 @@ function test_errors_level_name()
 	pg_assert_same('error', pg_error_level_name(123456));
 }
 
+// The error handler and the shutdown handler must agree on which errors end
+// the request, or an unhandled E_RECOVERABLE_ERROR is written twice: once by
+// the handler under its file:line key, again by error_get_last().
+function test_errors_once_key_shared_with_shutdown()
+{
+	$fatal = 'fatal|/srv/a.php:12|Object could not be converted';
+
+	pg_assert_same($fatal, pg_error_once_key(E_RECOVERABLE_ERROR, '/srv/a.php', 12, 'Object could not be converted'));
+	pg_assert_same($fatal, pg_error_once_key(E_USER_ERROR, '/srv/a.php', 12, 'Object could not be converted'));
+	pg_assert_same($fatal, pg_error_once_key(E_ERROR, '/srv/a.php', '12', 'Object could not be converted'));
+	pg_assert_same('flood|/srv/a.php:12', pg_error_once_key(E_WARNING, '/srv/a.php', 12, 'Undefined variable'));
+	pg_assert_same('flood|/srv/a.php:12', pg_error_once_key(E_DEPRECATED, '/srv/a.php', 12, 'Old call'));
+}
+
 // Secret-bearing parameters are masked, everything else is left as it came.
 function test_errors_mask_url()
 {
