@@ -548,6 +548,11 @@ function ws_settings_refused_script($fields)
 
             if (typeof value === 'string') {
                 field.value = value;
+
+                // Fields that hang on a choice follow it (the mailbox form).
+                if (field.tagName === 'SELECT') {
+                    field.dispatchEvent(new Event('change', {bubbles: true}));
+                }
             }
         });
 
