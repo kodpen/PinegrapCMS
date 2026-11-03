@@ -19,8 +19,9 @@ description: Steps AU1-AU6 of plans/audiences.md: rule model and SQL builder, re
 - AU4 (S) Readers and doors. After AU1. Done in #6249 (`core/audiences-doors.md`).
 
 - AU4b (S) Rows the recompute cannot reach. Done in #6307 (`core/audiences-recompute.md`, `core/audiences-doors.md`).
-  - `merge_contacts()` (`includes/fn/contacts.php`, the two delete/re-insert blocks of group rows) keeps each row's `source` (or re-inserts only `hand` rows), so a merged contact's `rule` row stays `rule`.
-  - A static group turned dynamic keeps its members only until the first recompute: the recompute (or the switch) removes or converts its non-`rule` rows. Tests: the merge's re-insert keeps `source`; the diff drops non-rule rows of a dynamic group. Memory: `core/audiences-doors.md` (the two "open, step AU4b" lines), `core/audiences-recompute.md`.
+
+- AU4c (S) Switch review screen. After AU3 (#6223) lands; touches its files (`contact_group_form.php`, `edit_contact_group.php`).
+  - Decided in #6319: when a group is switched to dynamic, show the count of its hand, form and product rows ("1,240 by hand, 30 from forms, 12 from products") from `pg_audience_switch_review()` and offer remove them or turn them into `rule` rows; default touches nothing. Run the chosen action's statements after the switch is saved. Memory: `core/audiences-doors.md`, `ui/contact-group-rules.md`.
 
 - AU5 (S) Audience token. After AU2 and PX6.
   - `{audience:group:<id>}` of `page-experiments.md` resolves a dynamic group through the xref as any group (nothing new to compute at request time); a "joined a group" campaign-profile trigger and the Flows event start name dynamic groups in their pick lists with their kind. Memory: `designer/audience-conditions.md` grows.
