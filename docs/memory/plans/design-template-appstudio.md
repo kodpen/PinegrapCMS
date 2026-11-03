@@ -25,7 +25,7 @@ description: Plan for the Mobile App Developer template (pinegrap-appstudio): ow
 
 - 4 Done (#6195). Releases and beta: `releases.php` (also `home_releases`); test `…_releases_test.php`.
 
-- 5 Support: `mail.php`, `support.php` (`support`, `support_view`, `my_tickets`, `staff_tickets`, `privacy`, `email_reply`, notify e-mails).
+- 5 Done (#6198). Support: `mail.php`, `support.php` (support, its page, lists, privacy, e-mails).
 
 - 6 Done (#6194). Projects: `projects.php` (`hire`, `project_view`, `my_projects`, `staff_projects`, e-mails).
 
