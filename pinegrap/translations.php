@@ -189,11 +189,18 @@ $verdicts = $index_watch ? pg_tr_page_verdicts($language) : array();
 $rows = array();
 $total_rows = 0;
 $total_pages = 1;
+// The counts of the chips: the selected page's or group's texts, the whole
+// site's otherwise.
+$scope_stats = $site_stats;
 
 if ($language !== '') {
 
     $owner_where = ($page_id > 0) ? pg_tr_owner_where(pg_tr_page_owners($page_id)) : (($group !== '') ? pg_tr_owner_where(pg_tr_scope_owners('group:' . $group)) : pg_tr_owner_where(array()));
     $where = array('u.string_id > 0');
+
+    if (($page_id > 0) || ($group !== '')) {
+        $scope_stats = pg_tr_language_stats($language, $owner_where);
+    }
 
     if ($owner_where !== '') {
         $where[] = '(' . $owner_where . ')';
@@ -352,10 +359,10 @@ $output_language_menu .= '<li><hr class="menu-divider"></li>'
 $output_chips = '';
 
 foreach (array(
-    'all'        => array(lang('All'), $site_stats['total']),
-    'pending'    => array(lang('Pending'), $site_stats['pending']),
-    'machine'    => array(lang('Machine'), $site_stats['machine']),
-    'reviewed'   => array(lang('Reviewed'), $site_stats['reviewed']),
+    'all'        => array(lang('All'), $scope_stats['total']),
+    'pending'    => array(lang('Pending'), $scope_stats['pending']),
+    'machine'    => array(lang('Machine'), $scope_stats['machine']),
+    'reviewed'   => array(lang('Reviewed'), $scope_stats['reviewed']),
     'suspicious' => array(lang('Suspicious'), null),
     'blocking'   => ($index_watch || ($filter === 'blocking')) ? array(lang('Keeping pages out of search'), null) : null,
 ) as $key => $chip) {
@@ -364,14 +371,14 @@ foreach (array(
     }
 
     $output_chips .= '<a class="chip' . (($key === $filter) ? ' active" aria-current="true' : '') . '" href="' . h($url(array('filter' => $key, 'p' => 0))) . '">' . h($chip[0])
-        . (($chip[1] !== null) ? ' <span class="opacity-75">' . (int) $chip[1] . '</span>' : '') . '</a>';
+        . (($chip[1] !== null) ? ' <span class="opacity-75 pg-tr-chip-count" data-state="' . h($key) . '">' . (int) $chip[1] . '</span>' : '') . '</a>';
 }
 
 // The page list.
 $output_pages = '';
 $output_pages .= '<a class="list-group-item list-group-item-action d-flex align-items-center gap-3' . (($page_id === 0) ? ' active" aria-current="page' : '') . '" href="' . h($url(array('page_id' => 0, 'p' => 0))) . '">'
     . '<i class="bi bi-collection" aria-hidden="true"></i><span class="flex-grow-1 text-truncate">' . lang('All pages') . '</span>'
-    . '<span class="small opacity-75">' . (int) $site_stats['translated'] . '/' . (int) $site_stats['total'] . '</span></a>';
+    . '<span class="small opacity-75"><span class="pg-tr-all-done">' . (int) $site_stats['translated'] . '</span>/' . (int) $site_stats['total'] . '</span></a>';
 
 foreach ($pages as $row) {
     $pid = (int) $row['page_id'];
@@ -495,7 +502,9 @@ foreach ($rows as $row) {
 
 if (($language !== '') && !$rows) {
     $output_rows = '<div class="py-12 text-center fg-secondary">'
-        . (($site_stats['total'] === 0)
+        // Nothing at all in the page or group (no filter or search hides
+        // anything): it has not been scanned yet.
+        . ((($scope_stats['total'] === 0) && ($search === '') && ($filter === 'all'))
             ? lang(array('string' => 'No text has been scanned yet. Press "{var:1}": the pages are read and their texts are listed here.', 'vars' => h($update_button_label)))
             : lang('No text matches the filter.'))
         . '</div>';
@@ -780,9 +789,9 @@ echo pg_page_shell(array(
             </button>
             <label class="visually-hidden" for="pg_tr_engine">' . lang('Translation engine') . '</label>
             <select class="form-control form-control-sm w-auto rounded-pill no-popover" id="pg_tr_engine" data-bs-toggle="tooltip" title="' . h(lang(array('string' => '{var:1} → {var:2} · engine', 'vars' => array($source, $language)))) . '">' . $output_engine_options . '</select>
-            ' . (($review_all_shown > 0) ? '<button type="button" class="btn btn-sm btn-text theme-secondary no-popover" id="pg_tr_review_all" data-bs-toggle="tooltip" title="' . h(lang('Mark every machine translation here as reviewed in one go')) . '">
-                <i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . lang('Approve all') . ' <span class="opacity-75">' . (int) $review_all_shown . '</span>
-            </button>' : '') . '
+            <button type="button" class="btn btn-sm btn-text theme-secondary no-popover' . (($review_all_shown > 0) ? '' : ' d-none') . '" id="pg_tr_review_all" data-bs-toggle="tooltip" title="' . h(lang('Mark every machine translation here as reviewed in one go')) . '">
+                <i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . lang('Approve all') . ' <span class="opacity-75 pg-tr-review-all-shown">' . (int) $review_all_shown . '</span>
+            </button>
             <div class="pg-toolbar-grow pg-chips">' . $output_chips . '</div>
             <form class="pg-toolbar-search" method="get" action="' . h($self) . '" role="search">
                 <input type="hidden" name="language" value="' . h($language) . '"/>
@@ -825,7 +834,7 @@ echo pg_page_shell(array(
                 <div class="card mb-5">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Pages') . '</span>
-                        <span class="small fg-secondary">' . (int) $site_stats['reviewed'] . ' ' . lang('reviewed') . '</span>
+                        <span class="small fg-secondary"><span class="pg-tr-reviewed-total">' . (int) $site_stats['reviewed'] . '</span> ' . lang('reviewed') . '</span>
                     </div>
                     <div class="list-group list-group-flush pg-tr-pages">' . $output_pages . '</div>
                 </div>' . (($output_groups !== '') ? '
@@ -916,7 +925,7 @@ echo pg_page_shell(array(
                         <p class="small fg-secondary">' . lang('The machine translations of the texts shown here are marked as reviewed, as the engine gave them.') . '</p>
                         <div class="form-field mb-1">
                             <input value="1" class="check pg-tr-review-all-flagged" type="checkbox" id="pg_tr_review_all_flagged"' . (($review_all_flagged > 0) ? '' : ' disabled="disabled"') . '/>
-                            <label class="" for="pg_tr_review_all_flagged">' . lang('Approve the ones flagged suspicious as well') . ' <span class="opacity-75">' . (int) $review_all_flagged . '</span></label>
+                            <label class="" for="pg_tr_review_all_flagged">' . lang('Approve the ones flagged suspicious as well') . ' <span class="opacity-75 pg-tr-review-all-flagged-count">' . (int) $review_all_flagged . '</span></label>
                         </div>
                         <p class="small fg-secondary ms-7 mb-5">' . lang('An answer that repeats the source text, or whose length is out of proportion to it, is flagged suspicious.') . (($review_all_flagged > 0) ? ' <a href="' . h($url(array('filter' => 'suspicious', 'p' => 0))) . '">' . lang('Show the suspicious ones') . '</a>' : '') . '</p>
                         <p class="fw-semibold mb-0 pg-tr-review-all-count"></p>
