@@ -23,7 +23,8 @@ if (!defined('PG_DASHBOARD_V2')) {
  * The dates a period covers and the dates it is compared with.
  *
  * @param int $period  0 today, 1 last 7 days, 2 last 30 days
- * @param int $compare 0 none, 1 the period before, 2 the same dates a year ago
+ * @param int $compare 0 the period before, 1 the same dates a year ago, 2 none
+ *                     (the edit mode's Compare: previous period, last year, off)
  * @param int $now
  * @return array dates (Y-m-d, oldest first), compare (same length, or empty),
  *               before (the period before, for the change figure), hourly
@@ -49,7 +50,7 @@ function pg_dashboard_v2_visitor_dates($period, $compare, $now)
     return array(
         'dates'   => $dates,
         'before'  => $before,
-        'compare' => ($compare === 1) ? $before : (($compare === 2) ? $last_year : array()),
+        'compare' => ($compare === 0) ? $before : (($compare === 1) ? $last_year : array()),
         'hourly'  => ($count === 1),
     );
 }
@@ -160,8 +161,8 @@ function pg_dashboard_v2_card_visitors($user, $period, $compare)
     );
 
     $compare_names = array(
-        1 => ($period === 0) ? lang('Yesterday') : lang('Previous period'),
-        2 => lang('Last year'),
+        0 => ($period === 0) ? lang('Yesterday') : lang('Previous period'),
+        1 => lang('Last year'),
     );
 
     $rows = array();

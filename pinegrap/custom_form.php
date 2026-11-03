@@ -19,7 +19,19 @@
 // this script processes a submitted custom form
 include('init.php');
 
+// The visitor is back from a payment service's 3-D Secure or hosted page for
+// a form's fee: the service's request carries no form token
+// (includes/fn/form_payment_step.php).
+if (isset($_GET['mode']) && is_string($_GET['mode']) && ($_GET['mode'] !== 'paypal_express_checkout_return') && pg_payment_is_return_mode($_GET['mode'])) {
+    pg_form_payment_return((int) ($_GET['page_id'] ?? 0));
+}
+
 validate_token_field();
+
+// The payment alone of a record saved unpaid: a retry, or a new submission.
+if (isset($_POST['pg_form_pay']) || isset($_POST['pg_form_pay_discard'])) {
+    pg_form_payment_retry((int) ((isset($_POST['page_id']) && is_string($_POST['page_id'])) ? $_POST['page_id'] : 0));
+}
 
 check_banned_ip_addresses('submit custom form');
 
@@ -490,6 +502,10 @@ foreach ($fields as $field_key => $field) {
         }
     }
 }
+
+// The fee a submission of a form with a payment step owes, checked with the
+// answers before anything is stored (null: none).
+$form_fee = ($action == 'submit') ? pg_form_payment_check($liveform, (int) $_POST['page_id'], $fields, $shown_when_hidden) : null;
 
 // The protections below hold every submission but staff's
 // (pg_user_has_panel_access()); saving for later writes nothing to anyone.
@@ -1493,7 +1509,8 @@ if ($liveform->check_form_errors() == false) {
     }
 
     // If the submitter email is enabled, then send it to the submitter and possibly a watcher.
-    if ($submitter_email == 1) {
+    // A record that owes a fee is unpaid yet: no e-mail until it is paid.
+    if (($submitter_email == 1) && ($form_fee === null)) {
         // Prepare array to store email address for submitter and
         // any watcher that was added through the hidden add watcher feature.
         $submitter_and_watcher_email_addresses = array();
@@ -1646,7 +1663,7 @@ if ($liveform->check_form_errors() == false) {
     }
     
     // if an administrator e-mail is enabled and there is an e-mail address to e-mail, then send e-mail
-    if (($administrator_email == 1) && (($administrator_email_to_email_address != '') || ($administrator_email_bcc_email_address != '') || (count($administrator_email_addresses) > 0))) {
+    if (($administrator_email == 1) && ($form_fee === null) && (($administrator_email_to_email_address != '') || ($administrator_email_bcc_email_address != '') || (count($administrator_email_addresses) > 0))) {
         
         // if there is a to e-mail address and it has not already been added to the array, then add it
         if (($administrator_email_to_email_address != '') && (in_array($administrator_email_to_email_address, $administrator_email_addresses) == false)) {
@@ -1887,6 +1904,13 @@ if ($liveform->check_form_errors() == false) {
         'contact_id'     => ((int) $contact_id > 0) ? (int) $contact_id : null
     ));
     
+    // The fee: the record is saved unpaid, its order written and charged.
+    // Returns once the order is completed; a payment page or a refusal (the
+    // form's page then shows the payment alone) ends the request.
+    if ($form_fee !== null) {
+        pg_form_payment_start((int) $_POST['page_id'], (int) $form_id, $reference_code, $form_fee, (int) $contact_id, $submitter_email_address, (int) $user_id, $send_to);
+    }
+
     // if this is a quiz custom form, then verify that user has passed quiz
     if ($quiz == 1) {
         // if quiz score is less than the quiz pass percentage, then prepare notice and send user back to custom form

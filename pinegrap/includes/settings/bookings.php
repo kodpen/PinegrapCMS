@@ -77,7 +77,7 @@ $booking_switch = function ($name, $id, $label, $checked, $help = '') {
 
 if (!$booking_ready) {
 
-    $pg_settings_cards[] = $booking_card('pgset-booking-services', lang('Services'), $booking_not_ready);
+    $pg_settings_cards[] = $booking_card('pgset-booking-services', lang('Bookable services'), $booking_not_ready);
     $pg_settings_cards[] = $booking_card('pgset-booking-staff', lang('Staff'), $booking_not_ready);
     $pg_settings_cards[] = $booking_card('pgset-booking-policy', lang('Booking rules'), $booking_not_ready);
     $pg_settings_cards[] = $booking_card('pgset-booking-texts', lang('Booking widget texts'), $booking_not_ready);
@@ -110,7 +110,7 @@ $booking_service_block = function ($key, $service, $legend) use ($booking_separa
                                     <input type="text" name="' . $name . '[name]" id="' . $id . '_name" class="form-control" value="' . h($service['name']) . '" maxlength="100"/>
                                 </div>
                                 <div class="pg-f-xs">
-                                    <label for="' . $id . '_length" class="form-label">' . lang('Length') . '</label>
+                                    <label for="' . $id . '_length" class="form-label">' . lang('Duration') . '</label>
                                     <label class="form-control form-adorn form-adorn-end">
                                         <span class="form-adorn-text" aria-hidden="true">' . lang('min') . '</span>
                                         <input type="number" name="' . $name . '[length]" id="' . $id . '_length" class="form-ghost" value="' . (int) $service['length_minutes'] . '" min="5" max="1440" step="5" inputmode="numeric" style="text-align: right;"/>
@@ -138,7 +138,7 @@ $booking_service_block = function ($key, $service, $legend) use ($booking_separa
                                     </label>
                                 </div>
                                 <div class="pg-f-xs">
-                                    <label for="' . $id . '_order" class="form-label">' . lang('Order') . '</label>
+                                    <label for="' . $id . '_order" class="form-label">' . lang('Display order') . '</label>
                                     <input type="number" name="' . $name . '[order]" id="' . $id . '_order" class="form-control" value="' . (int) $service['sort_order'] . '" min="0" max="65535" inputmode="numeric"/>
                                 </div>
                                 <div class="col-12">
@@ -178,7 +178,7 @@ $output_booking_services .= '
                         <div class="form-text">' . lang('Type a name in New service and save to add it.') . '</div>
                     </div>';
 
-$pg_settings_cards[] = $booking_card('pgset-booking-services', lang('Services'), $output_booking_services);
+$pg_settings_cards[] = $booking_card('pgset-booking-services', lang('Bookable services'), $output_booking_services);
 
 // ── Staff ──
 // Each staff member: the switch, their services, the weekly hours as two
@@ -260,7 +260,7 @@ foreach ($booking_staff as $user_id => $member) {
                                     </div>
                                 </div>
                                 <div class="col-12">
-                                    <label for="' . $id . '_services" class="form-label">' . lang('Services') . '</label>
+                                    <label for="' . $id . '_services" class="form-label">' . lang('Bookable services') . '</label>
                                     <select multiple data-pg-combobox name="' . $name . '[services][]" id="' . $id . '_services" class="form-control" data-placeholder="' . h(lang('Choose the services')) . '">' . $options . '</select>
                                 </div>
                                 <div class="col-12">
@@ -404,7 +404,7 @@ $output_booking_policy =
                     </div>
                     <div class="pg-f-sm">
                         <label for="booking_reminder_hours" class="form-label">' . lang('Reminders') . '</label>
-                        <input type="text" name="booking_reminder_hours" id="booking_reminder_hours" class="form-control" value="' . h(implode(', ', $booking_policy['reminder_hours'])) . '" maxlength="20" inputmode="numeric"/>
+                        <input type="text" name="booking_reminder_hours" id="booking_reminder_hours" class="form-control" value="' . h(implode(', ', $booking_policy['reminder_hours'])) . '" maxlength="20" spellcheck="false" autocomplete="off"/>
                         <div class="form-text">' . lang('Hours before the start a reminder is sent, separated by commas; at most three, between 1 and 168. Empty sends none.') . '</div>
                     </div>'
     . $booking_switch('booking_reschedule', 'booking_reschedule', lang('Visitors may move their booking'), $booking_policy['reschedule'],

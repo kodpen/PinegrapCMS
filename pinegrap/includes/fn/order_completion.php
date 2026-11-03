@@ -906,8 +906,11 @@ function pg_order_complete($order_id, array $values, array $documents = array(),
     // A cart quote whose link filled this cart is now ordered.
     pg_cart_quote_order_completed($order_id);
 
-    // A designed form's record whose fee this order charged is now paid.
-    pg_form_payment_mark_paid($order_id);
+    // A designed form's record whose fee this order charged is now paid; an
+    // offline payment (no paid_at yet) leaves it unpaid.
+    if ((int) ($values['paid_at'] ?? 0) > 0) {
+        pg_form_payment_mark_paid($order_id);
+    }
 
     // Keep the checkout documents with the order as the customer saw them,
     // now that the order has its number. Only reads the order; its totals are
@@ -3992,4 +3995,34 @@ function pg_order_complete_commission($order_id, $affiliate_code, $affiliate_rat
                 UNIX_TIMESTAMP())",
             array((string) $affiliate_code, (string) $order_id, (string) $product['order_item_id'], (string) $product_commission, (string) pg_order_recurring_commission_start($product['recurring_payment_period'], $product['recurring_start_date'], time()), (string) mb_strtolower($product['recurring_payment_period']), (string) $product['recurring_number_of_payments'], (string) $product['product_name'], (string) $product['short_description'], (string) $user_id, (string) $user_id)) or output_error('Query failed.');
     }
+}
+
+/**
+ * Why a Next Order Number typed on the Commerce settings screen is refused,
+ * or '' when it may be stored: a whole number above every order number
+ * already given, so the counter never hands out a number twice
+ * (orders.order_number has no unique index; invoices and e-documents take
+ * it). The column is a BIGINT UNSIGNED; at most 18 digits keep the value
+ * inside PHP's integer.
+ *
+ * @param string $posted
+ * @param int $last_order_number MAX(orders.order_number), 0 without orders
+ * @return string
+ */
+function pg_next_order_number_refusal($posted, $last_order_number)
+{
+    $posted = trim((string) $posted);
+    $last = max(0, (int) $last_order_number);
+
+    if (
+        ($posted === '')
+        || !ctype_digit($posted)
+        || (strlen(ltrim($posted, '0')) > 18)
+        || ((int) $posted < 1)
+        || ((int) $posted <= $last)
+    ) {
+        return lang(array('string' => 'Enter a whole number greater than the last order number ({var:1}).', 'vars' => array($last)));
+    }
+
+    return '';
 }

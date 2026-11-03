@@ -3728,9 +3728,10 @@ function output_menu($properties = false)
 
         // VISITORS > Analystics
         // if an external web stats link is supplied in the settings, then prepare link to web stats
-        if ((defined('STATS_URL') == true) && (STATS_URL != '')) {
+        // Only a web address is linked, escaped: the setting is free text.
+        if ((defined('STATS_URL') == true) && preg_match('#^https?://#i', (string) STATS_URL)) {
             $menu_items[6]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-            $menu_items[6]['data-bs-content'] .= '<a href=\'' . STATS_URL . '\' target=\'_blank\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-arrow-up-right bi-me-2\'>' . lang('Website Analytics') . '</a>';
+            $menu_items[6]['data-bs-content'] .= '<a href=\'' . h(STATS_URL) . '\' target=\'_blank\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-arrow-up-right bi-me-2\'>' . lang('Website Analytics') . '</a>';
         }
     }
 

@@ -122,10 +122,10 @@ print
 
     pg_page_shell(
         array(
-            'title'=> lang('All Visitor Reports'),
+            'title'=> lang('Saved visitor reports'),
             'extra classes'=>'visitor',
             'icon'=>'visitor', 
-            'heading'=> lang('All Visitor Reports'),
+            'heading'=> lang('Saved visitor reports'),
             'heading_description' => lang('Create real-time reports on all website visitor activities.'),
             'cancel'=>false
         )
@@ -139,7 +139,7 @@ print
            
             ' . pg_screen_toolbar(array(
                 'primary'   => array('label' => lang('Create'), 'url' => 'view_visitor_report.php', 'icon' => 'bi-plus-circle'),
-                'secondary' => $output_web_statistics_link,
+                'secondary' => array(array('label' => lang('Overview'), 'url' => 'visitors.php', 'icon' => 'bi-graph-up'), $output_web_statistics_link),
                 'search'    => pg_list_sort_menu('view_visitor_reports.php', $sort_columns, $sort_levels, $sort_default),
             )) . '
             <div class="card my-7">
