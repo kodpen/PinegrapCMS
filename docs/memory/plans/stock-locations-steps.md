@@ -11,7 +11,7 @@ description: Steps SL1-SL3 of plans/stock-locations.md: tables and the sum-keepi
 - SL1 (M) Tables, model, the writer. Done in #6369.
   - Migration sub-step with `install_create_table()` for `stock_locations`, `product_stock`, `stock_moves` and the two columns (in `get_tables()`, rerun twice); no data step: rows appear when the operator adds a location (the first add creates the default location and one row per tracked product from its total). New `includes/fn/stock_locations.php`: `pg_stock_locations()`, `pg_stock_default_location()`, `pg_stock_rows($product_id)`, `pg_stock_set($product_id, $location_id, $quantity, $reason, $ref)` and `pg_stock_change($product_id, $location_id, $delta, ...)` (one UPDATE with the guard, the move row, then the sum into `products.inventory_quantity` in the same transaction), `pg_stock_has_locations()` (one cached read, so a site without locations pays nothing). Tests: the sum after each writer call, a negative delta refused, the no-locations path. Memory: `commerce/stock-locations-model.md`.
 
-- SL2 (M) Product screens, bulk, import and export. After SL1.
+- SL2 (M) Product screens, bulk, import and export. Done in #6422.
   - `product_builder.php` and the stock box of the catalog: one quantity per enabled location when locations exist (the total shown read-only), the variant rows the same; `products-bulk-change-stock-bin-price.md`'s bulk change takes a location; `import_products.php` and the export read and write `stock:<location name>` columns beside the old quantity column (the old column alone fills the default location). Memory: `commerce/stock-locations-screens.md`.
 
 - SL3 (M) Completion, scans, the API decrement. After SL1.
