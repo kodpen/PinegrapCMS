@@ -36,9 +36,7 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 - Endpoints `theme` (6): done #4725, #4739, #4764; lead: theme_designer Cancel calls an undefined `theme_designer_cancel_confirm()`
 - Endpoints `translation` (3): open
 - Endpoints `user` (5): done #4489, #4505 (add_user, edit_user, delete_users, import_users, view_users)
-- Endpoints `verified` (3): open
-- Endpoints `view` (2): open
-- Endpoints `visitor` (3): open
+- Endpoints `verified` (3), `visitor` (6): clean; `view` (2): #6116 (order view shipped heading via lang())
 - Endpoints `waf` (4: view_waf_log, waf, waf_ranges_job, waf_unban): done (#4601, #4620)
 - Endpoints `workspace` (21): open
 - Endpoints `zone` (3): open
