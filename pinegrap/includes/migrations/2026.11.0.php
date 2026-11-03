@@ -141,6 +141,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ai_fetch_daily();          // 11.0.150
 	upgrade_2026_11_0_product_preorder();        // 11.0.151
 	upgrade_2026_11_0_file_storage();            // 11.0.152
+	upgrade_2026_11_0_store_credit();            // 11.0.155
 
 }
 
@@ -4558,5 +4559,23 @@ function upgrade_2026_11_0_file_storage() {
 	}
 
 	install_note('Files: each file records whether its bytes are on the web server or in the object store; every existing file stays on the web server.');
+
+}
+
+// Store credit (2026.11.0, 11.0.155; includes/fn/store_credit.php): a gift
+// card bound to a customer. Every existing card keeps user_id 0 and kind
+// 'gift', so it stays a plain gift card. expires_at is the moment the card
+// stops (unix time, 0 = never); expiration_date is still what the checkout
+// reads, and the writer fills both.
+function upgrade_2026_11_0_store_credit() {
+
+	install_add_column('gift_cards', 'user_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('gift_cards', 'kind', "ENUM('gift','points','refund','manual') NOT NULL DEFAULT 'gift'");
+	install_add_column('gift_cards', 'reason', "VARCHAR(255) NOT NULL DEFAULT ''");
+	install_add_column('gift_cards', 'issued_by', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_column('gift_cards', 'expires_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('gift_cards', 'idx_user', "INDEX idx_user (user_id)");
+
+	install_note('Gift cards: a card can belong to a customer as store credit, with where it came from, why it was issued and when it expires.');
 
 }

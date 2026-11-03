@@ -2875,6 +2875,8 @@
     "Store Number": "Mağaza Numarası",
     "Store Reply": "Mağaza Cevabı",
     "Store Staff Bar": "Mağaza Personel Çubuğu",
+    "Store credit": "Mağaza kredisi",
+    "Store credit voided on {var:1}: {var:2}": "Mağaza kredisi {var:1} tarihinde iptal edildi: {var:2}",
     "Store default": "Mağaza varsayılanı",
     "Store e-mail address": "Mağaza e-posta adresi",
     "Store each piece on its own, in a small pouch or a lined box, so the chains do not tangle and the stones do not scratch each other.": "Zincirler dolanmasın, taşlar birbirini çizmesin diye her parçayı ayrı ayrı, küçük bir kesede ya da astarlı bir kutuda saklayın.",
