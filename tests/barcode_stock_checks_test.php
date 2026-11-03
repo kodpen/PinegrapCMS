@@ -138,3 +138,16 @@ function test_barcode_stock_screens_say_what_they_search()
 
 	pg_assert_contains('$code = is_scalar($code) ? trim((string) $code) : \'\';', barcode_stock_checks_test_body('includes/fn/ecommerce.php', 'pg_barcode_scan_product'), 'lookup trims');
 }
+
+// A scan on a product with stock tracking off still writes the count, and
+// the success line and the table row say tracking is off (#5788).
+function test_barcode_stock_screens_warn_on_an_untracked_product()
+{
+	foreach (array('barcode_increase_inventory.php', 'barcode_decrease_inventory.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+
+		pg_assert_contains("lang('Stock tracking is off for this product; the count is used when tracking is turned on.')", $source, $file . ': warning text');
+		pg_assert_contains('String(response.data.inventory) !== "1"', $source, $file . ': read from the answer');
+		pg_assert_contains("'inventory' => \$inventory,", $source, $file . ': answer carries the flag');
+	}
+}

@@ -61,13 +61,13 @@ function pg_calendar_form_validate_name($liveform, $id)
         return;
     }
 
-    if ($id === null) {
-        $result = db_q("SELECT id FROM calendars WHERE (name = ?)", array((string) $liveform->get_field_value('name'))) or output_error('Query failed.');
-    } else {
-        $result = db_q("SELECT id FROM calendars WHERE (name = ?) AND (id != ?)", array((string) $liveform->get_field_value('name'), (string) $id)) or output_error('Query failed.');
+    $taken = pg_calendar_name_taken($liveform->get_field_value('name'), (int) $id);
+
+    if ($taken === null) {
+        output_error('Query failed.');
     }
 
-    if (mysqli_num_rows($result) > 0) {
+    if ($taken) {
         $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
     }
 }

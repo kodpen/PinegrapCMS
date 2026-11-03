@@ -8,7 +8,7 @@ description: Steps SL1-SL3 of plans/stock-locations.md: tables and the sum-keepi
 - S under 400 product lines, M about 1,000. Tests in `tests/stock_locations_<topic>_test.php` (pure functions, red first), memory under `commerce/`, texts through `tr_add.php`.
 
 ## Which steps are there?
-- SL1 (M) Tables, model, the writer. `free` after question 1.
+- SL1 (M) Tables, model, the writer. Done in #6369.
   - Migration sub-step with `install_create_table()` for `stock_locations`, `product_stock`, `stock_moves` and the two columns (in `get_tables()`, rerun twice); no data step: rows appear when the operator adds a location (the first add creates the default location and one row per tracked product from its total). New `includes/fn/stock_locations.php`: `pg_stock_locations()`, `pg_stock_default_location()`, `pg_stock_rows($product_id)`, `pg_stock_set($product_id, $location_id, $quantity, $reason, $ref)` and `pg_stock_change($product_id, $location_id, $delta, ...)` (one UPDATE with the guard, the move row, then the sum into `products.inventory_quantity` in the same transaction), `pg_stock_has_locations()` (one cached read, so a site without locations pays nothing). Tests: the sum after each writer call, a negative delta refused, the no-locations path. Memory: `commerce/stock-locations-model.md`.
 
 - SL2 (M) Product screens, bulk, import and export. After SL1.

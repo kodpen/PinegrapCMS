@@ -94,7 +94,8 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - custom-form-field-rules.md: Visitor rules of a designed form field (form_fields.rules, step 11.0.135, PR #3737): "Not before today" and "Required when", where they are written and checked, the staff exemption, Cafe and Clinic.
 - custom-form-model.md: custom_form widget model: controls are the fields (no field list), column sources, props._cf record, form_source page vs existing.
 - custom-form-options-and-rules.md: custom_form options live on the element, page_type is not the form marker (pg_form_page_sql), validation, confirmation, email body, CAPTCHA, migration, legacy field screens read-only.
-- custom-form-payment.md: Fee of a designed form (plan designer-form-logic FL4-FL6): the setting's shape and store, pg_form_fee() rules, the fee order, forms.order_id and paid_at, the Payment rows
+- custom-form-payment-staff.md: Paid state of a designed form's record for staff and integrations: the badge, the order link, Record an offline payment, the API fields, form.paid
+- custom-form-payment.md: Fee of a designed form (plan designer-form-logic FL4-FL6): the setting's shape and store, pg_form_fee() rules, the fee order, forms.order_id and paid_at
 - custom-form-render.md: custom_form visitor-facing behaviour: hide-from-visitor (office_use_only) and pg_cf_apply_field_bindings render rules (name/id, select options, required, defaults).
 - custom-form-rich-text.md: Rich-text text areas on designed forms: three-state _cf.wysiwyg, one editor per live page, aria-required, filtered prefill, rich seeding, open items.
 - custom-form-settings-shortcut.md: Designer custom_form: "Form settings" shortcut from any node inside the widget, new page form seeded with the site address, silent-form warning in the panel and after publish.
@@ -275,6 +276,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing
 - layout-widget-offer.md: Y5 widget offer beside a custom layout: page type to widget kind, carried settings, the panel buttons that place it and remove the region, why no 301
 - legacy-region-preview.md: The canvas preview of a classic page's system region drawn by its custom layout (designer/legacy_region_preview): who sees it, the markers, the background render, read only, when it is asked again
+- legacy-to-designer-bulk-run.md: The bulk move of classic styles to the visual designer (LD2): the dry run on the report screen, the server twins of the editor steps it uses, what stays, the run still to come (LD2b)
 - legacy-to-designer-report.md: The "Move to the visual designer" readiness report (LD1): what it lists per classic style, how the state is worked out, what it does not do
 - link-button-inline-children.md: Spans and icons inside a link or button: two ways to hold them, why an inline edit keeps a link's markup, which drops a button accepts, where the label prints beside children.
 - link-target-in-attrs.md: A link's window and rel: props first, _attrs when the prop is empty (link and button link, server and canvas alike), the selection-time fold, starter trees and templates, page bodies drawn before

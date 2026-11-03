@@ -165,6 +165,8 @@ function api_form_field_present($row, $options = array()) {
 // One submission, with its values.
 function api_form_submission_present($row, $values) {
 
+	$state = pg_form_payment_state($row);
+
 	return array(
 		'id'                => (int)$row['id'],
 		'form_id'           => (int)$row['page_id'],
@@ -180,6 +182,10 @@ function api_form_submission_present($row, $values) {
 		// Last changed, by the visitor finishing it or by staff editing it in
 		// the panel - what updated_since filters on.
 		'updated_at'        => api_time(isset($row['last_modified_timestamp']) ? $row['last_modified_timestamp'] : 0),
+		// The fee of a designed form (includes/fn/form_payments.php): null
+		// for a record without one; the number once the order is completed.
+		'order_number'      => api_form_submission_order_number($row),
+		'paid'              => ($state === 'none') ? null : ($state === 'paid'),
 		'values'            => $values
 	);
 
@@ -533,8 +539,35 @@ function api_form_submissions($params) {
 
 }
 
-// The submission columns every reader of one submission selects.
+// The fee order's number, null without a fee order or before the order is
+// completed (an incomplete order's number is 0).
+function api_form_submission_order_number($row) {
+
+	if (pg_form_payment_state($row) === 'none') {
+
+		return null;
+
+	}
+
+	$number = isset($row['order_number']) ? (string)$row['order_number'] : '';
+
+	return (($number !== '') && ($number !== '0')) ? $number : null;
+
+}
+
+// The submission columns every reader of one submission selects; the fee
+// columns only once the upgrade added them.
 function api_form_submission_select() {
+
+	if (pg_form_payment_ready()) {
+
+		return "SELECT forms.id, forms.page_id, forms.reference_code, forms.complete,
+				forms.contact_id, forms.quiz_score, forms.submitted_timestamp, forms.last_modified_timestamp,
+				forms.order_id, forms.paid_at, orders.order_number
+			FROM forms
+			LEFT JOIN orders ON orders.id = forms.order_id";
+
+	}
 
 	return "SELECT forms.id, forms.page_id, forms.reference_code, forms.complete,
 			forms.contact_id, forms.quiz_score, forms.submitted_timestamp, forms.last_modified_timestamp
@@ -785,6 +818,8 @@ function api_form_submission_schema() {
 		'submitted_at'      => 'string?',
 		'submitted_at_unix' => 'integer',
 		'updated_at'        => 'string?',
+		'order_number'      => 'string?',
+		'paid'              => 'boolean?',
 		'values'            => array(array(
 			'field_id' => 'integer',
 			'name'     => 'string',

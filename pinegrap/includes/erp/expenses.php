@@ -682,8 +682,8 @@ function erp_expense_payment_refusal($expense, $payment, &$field = null)
         return $refusal;
     }
 
-    if ($paid_date > date('Y-m-d')) {
-        return lang('The payment cannot be dated after today.');
+    if (($refusal = erp_till_future_date_refusal($paid_date)) !== '') {
+        return $refusal;
     }
 
     if ($paid_date < (string) $expense['expense_date']) {

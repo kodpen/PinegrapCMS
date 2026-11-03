@@ -44,6 +44,24 @@ if ($_POST) {
 
     $action = (string) ($_POST['erp_action'] ?? '');
 
+    // A wrong file, or one taken into the wrong bank account, is cleared
+    // while nothing of it is in the books; a recorded or matched line keeps it.
+    if ($action === 'delete') {
+        if ($readonly) {
+            go($self);
+        }
+
+        $deleted = erp_bank_statement_delete($statement_id);
+
+        if (!$deleted['success']) {
+            $liveform->mark_error('_error', h($deleted['error']));
+            go($self);
+        }
+
+        log_activity(lang(array('string' => 'erp bank statement (#{var:1}) was deleted', 'vars' => $statement_id)), $_SESSION['sessionusername']);
+        go(PATH . SOFTWARE_DIRECTORY . '/erp_bank_statements.php');
+    }
+
     // A CSV's lines are split again on the separator chosen; the columns are
     // then chosen on the new split.
     if ($action === 'separator') {
@@ -176,6 +194,7 @@ $post_form = function ($fields, $button, $class, $attributes = '') use ($stateme
 $output_body = '';
 // A screen-wide action, drawn in the toolbar under the heading.
 $output_toolbar = '';
+$output_toolbar_primary = '';
 
 if ((string) $statement['status'] === 'mapping') {
     // Choosing the columns: the first lines of the file as they are, with a
@@ -374,10 +393,17 @@ if ((string) $statement['status'] === 'mapping') {
             </div>';
 
     if ($suggested > 0 && !$readonly) {
-        $output_toolbar = pg_screen_toolbar(array(
-            'primary' => $post_form('<input type="hidden" name="erp_action" value="record_suggested" />', '<i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Record the {var:1} suggested line(s)', 'vars' => $suggested))), 'btn-solid theme-success', ' data-erp-send-once'),
-        ));
+        $output_toolbar_primary = $post_form('<input type="hidden" name="erp_action" value="record_suggested" />', '<i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Record the {var:1} suggested line(s)', 'vars' => $suggested))), 'btn-solid theme-success', ' data-erp-send-once');
     }
+}
+
+if (!$readonly) {
+    $output_toolbar = pg_screen_toolbar(array(
+        'primary' => $output_toolbar_primary,
+        'secondary' => '<form method="post" action="erp_bank_statement.php" class="d-inline-flex">' . get_token_field()
+            . '<input type="hidden" name="id" value="' . $statement_id . '" /><input type="hidden" name="erp_action" value="delete" />'
+            . '<button type="submit" class="btn btn-sm btn-text theme-danger" data-confirm-content="' . h(lang('Delete this statement and its lines still to do or set aside? A statement with a recorded or matched line cannot be deleted.')) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . h(lang('Delete statement')) . '</button></form>',
+    ));
 }
 
 echo

@@ -705,8 +705,9 @@ function pg_geo_country_name($code)
 }
 
 /**
- * A stored country as the panel and the site name it: the stored (English)
- * name through lang() when the shards know it ("Turkey" becomes "Türkiye"),
+ * A stored country as the panel and the site name it: a name the
+ * administrator edited (pg_geo_country_name_unedited() false) as stored;
+ * otherwise the stored (English) name through lang() when the shards know it ("Turkey" becomes "Türkiye"),
  * else the name intl gives for its ISO code in the current language
  * (pg_geo_country_name(): "Aland Islands" becomes "Åland Adaları"), else the
  * stored name. The stored name and code stay what they are: zones, orders
@@ -720,6 +721,12 @@ function pg_geo_country_label($name, $code = '')
 {
     $name = trim((string) $name);
     $code = strtoupper(trim((string) $code));
+
+    // A name the administrator changed on Edit Country is what they want
+    // shown and searched (#2657: a wrong country is corrected there).
+    if (($name !== '') && preg_match('/^[A-Z]{2}$/', $code) && !pg_geo_country_name_unedited($name, $code)) {
+        return $name;
+    }
 
     if ($name !== '') {
         $translated = (string) lang($name);
@@ -742,6 +749,76 @@ function pg_geo_country_label($name, $code = '')
     }
 
     return $name;
+}
+
+/**
+ * Whether a stored country name is one a site ships or intl gives for its
+ * code, not one an administrator typed: the shipped English name, a known
+ * alias, its translation in the current language (pg_sales_map_iso_code()),
+ * or intl's English or Turkish name. Compared without case, accents, spaces
+ * or punctuation, so the old "Turkey" and the new "Türkiye" seeds both count.
+ *
+ * @param string $name countries.name
+ * @param string $code countries.code
+ * @return bool true for a blank name; false without a two-letter code
+ */
+function pg_geo_country_name_unedited($name, $code)
+{
+    $name = trim((string) $name);
+    $code = strtoupper(trim((string) $code));
+
+    if ($name === '') {
+        return true;
+    }
+
+    if (!preg_match('/^[A-Z]{2}$/', $code)) {
+        return false;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/sales_map.php');
+
+    if (pg_sales_map_iso_code($name) === $code) {
+        return true;
+    }
+
+    $key = pg_sales_map_normalize($name);
+
+    if (class_exists('Locale')) {
+        foreach (array('en', 'tr') as $locale) {
+            $intl = Locale::getDisplayRegion('und_' . $code, $locale);
+
+            if (is_string($intl) && ($intl !== $code) && (pg_sales_map_normalize($intl) === $key)) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Rows whose 'label' another row also has (without case) get " (CODE)"
+ * after it, so a list or picker tells them apart; the others stay.
+ *
+ * @param array $rows each with 'label' and 'code'
+ * @return array
+ */
+function pg_geo_label_disambiguate(array $rows)
+{
+    $counts = array();
+
+    foreach ($rows as $row) {
+        $key = mb_strtolower((string) $row['label'], 'UTF-8');
+        $counts[$key] = ($counts[$key] ?? 0) + 1;
+    }
+
+    foreach ($rows as $i => $row) {
+        if (($counts[mb_strtolower((string) $row['label'], 'UTF-8')] > 1) && ((string) $row['code'] !== '')) {
+            $rows[$i]['label'] = $row['label'] . ' (' . strtoupper((string) $row['code']) . ')';
+        }
+    }
+
+    return $rows;
 }
 
 /**

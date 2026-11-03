@@ -872,7 +872,7 @@ if (!$_POST) {
                                             <div class="row">
                                                 <div class="col-12 md:col-6 my-3">
                                                     <label for="folder" class="form-label">' . lang('Folder') . '</label>
-                                                    <select class="form-control" id="folder" name="folder">' . select_folder($form_values['folder']) . '</select>
+                                                    <select class="form-control" id="folder" name="folder">' . pg_page_select_folder($form_values['folder']) . '</select>
                                                     <div class="form-text">' . lang('Page Access Control, Design &amp; Common Content') . '</div>
                                                 </div>
                                             </div>

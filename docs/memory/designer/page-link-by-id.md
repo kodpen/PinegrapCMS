@@ -18,9 +18,11 @@ description: A link outside a widget kept by page id (__page_link, #6233): fallb
 - A link in a widget tree with page id 0 shows as its typed href, though the site prints `#` there.
 
 ## How does the panel show it?
-- `_sdBoundHrefNotice()` outside a widget: `_sdPageLinkNotice()` names the page (`_sdPageLinkName()`: tabs, else the loaded page list, never fetched for it) and a "Type an address instead" button (`data-sd-page-unlink`) that drops the binding and keeps the address.
+- `_sdBoundHrefNotice()` outside a widget (in the Link panel): `_sdPageLinkNotice()` names the page (`_sdPageLinkName()`: tabs, else the loaded page list, never fetched for it) and a "Type an address instead" button (`data-sd-page-unlink`) that drops the binding and keeps the address.
 
-## What is left?
-- Bind Data offering a page outside widgets; `pg_link_resolve()` itself stays href-only (bound links are marked before it).
+## How does Bind Data offer it outside a widget?
+- `_sdPageRecordBindRows()` (Bind Data outside a widget and a placed part) gives the URL row of a link `PGProtoHotspots.pageLinkable()` allows (content link, btn drawn as `<a>`, semantic `a`; no `data-bs-toggle`) the option "A page of this site" on every page; the page's record values move under "This page's record" beside it. Chosen, `_sdPageLinkPageRow()` puts a page select (`.sd-sw-plink-page`, `_swPageOptions()`: tabs, then the site's pages) and a note (choose / gone / kept by id) under it.
+- `_setBinding()` seeds `{page_id: 0, params: []}` outside a widget (a widget or part still starts one empty value row). The typed href is not changed: it is the fallback. `_sdPageLinkEdit()` marks the shared component outside a widget (`_sdSharedMarkEdited()`).
+- `pg_link_resolve()` itself stays href-only (bound links are marked before it).
 
 Tests: `tests/page_link_by_id_test.php`, `proto_hotspots_test.php` (`bound`), `prototype_map_test.php`.
