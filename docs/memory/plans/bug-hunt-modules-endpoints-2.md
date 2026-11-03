@@ -20,8 +20,6 @@ description: Module list of plans/bug-hunt.md, part 4: root endpoint groups opti
 - Endpoints `search` (5): #6064 (simple search); rest clean
 - Endpoints `seo` (8): open
 - Endpoints `setting` (14): open
-- Endpoints `ship` (3): open
-- Endpoints `shipment` (3): open
 - Endpoints `shipping` (9): open
 - Endpoints `shopping` (2): open
 - Endpoints `short` (5): open
