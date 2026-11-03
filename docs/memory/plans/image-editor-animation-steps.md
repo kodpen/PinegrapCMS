@@ -30,6 +30,7 @@ description: Steps AN0-AN11 of plans/image-editor-animation.md: screens, motion,
 
 - AN7 (M) Scenes. After AN3.
   - `doc.scenes`, the strip, transitions, the timeline and exports across scenes; the validator's cap on scenes and their layers goes in one at a time with the save-path steps.
+  - Left by AN4 (#6229 review): a canvas animation names source 0, so a replace from one canvas may name another canvas's animation as its target; tie it to its own canvas (record the canvas file, and have `pg_image_editor_animation_open()` open it as a canvas).
 
 - AN8 (M) Present and PDF. After AN7.
   - Present mode in the editor (full screen; click, Space, arrow keys, swipe); the PDF writer; video and GIF of all scenes. No live-site viewer (question 1).
