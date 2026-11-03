@@ -20,6 +20,7 @@ module: list_table
 
 ## Which lists are on it?
 - Pages (`view_pages`, `pg_page_list_source()`): `ui/page-list-paging.md`.
+- Users (`view_users`, `pg_user_list_source()`, #6325): columns per view from `pg_user_list_columns($filter)`; the default view sorts by Last Modified through a hidden column of that name; `created` is `user.user_created` (0 for old accounts, so they stay in). Delete Selected posts `selection` + `list_params` to `delete_users.php` (`pg_user_list_selected_ids()`), which still skips the last administrator (the driver has no unselectable row). The `user_list_rows` action is gone.
 
 ## How does a screen hand its bulk actions over?
 - `pg_list_table_html()`'s fourth argument is the screen's bulk buttons, printed in the bar's `.pg-list-table-actions` (shown only while rows are selected).

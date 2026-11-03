@@ -6432,6 +6432,7 @@
     "Too many return requests in a short time. Please try again later.": "Kısa sürede çok fazla iade isteği yapıldı. Lütfen daha sonra yeniden deneyin.",
     "Too many signed-in devices": "Çok fazla açık cihaz",
     "Too many submissions. Please try again later.": "Çok fazla gönderim yapıldı. Lütfen daha sonra yeniden deneyin.",
+    "Too many users are selected. Select fewer users and try again.": "Çok fazla kullanıcı seçildi. Daha az kullanıcı seçip yeniden deneyin.",
     "Too many verification attempts. Please wait ten minutes.": "Çok fazla doğrulama denemesi yapıldı. Lütfen on dakika bekleyin.",
     "Too many wrong passwords. Try again in {var:1} minutes.": "Çok fazla yanlış parola girildi. {var:1} dakika sonra yeniden deneyin.",
     "Too wide for InnoDB": "InnoDB için fazla geniş",

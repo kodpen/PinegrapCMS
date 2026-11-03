@@ -4,7 +4,6 @@
  *
  * Panel actions - the rows of the big list screens, one page at a time.
  *
- *   user_list_rows             a page of the users list (view_users.php)
  *   submitted_form_list_rows   a page of the submitted forms list
  *                              (view_submitted_forms.php)
  *   contact_list_rows          a page of the contacts list (view_contacts.php)
@@ -24,7 +23,8 @@
  *                              (mail_queue.php?tab=sms)
  *   list_table_rows            a batch of rows of a list drawn by the list
  *                              table driver (includes/fn/list_table.php):
- *                              the pages list (view_pages.php)
+ *                              the pages list (view_pages.php) and the
+ *                              users list (view_users.php)
  *   booking_list_rows          a page of the bookings agenda's list view
  *                              (view_bookings.php?view=list)
  *
@@ -42,39 +42,6 @@
 
 if (!defined('PG_PANEL_ACTIONS')) {
     exit;
-}
-
-function pg_panel_user_list_rows($request, $action)
-{
-    // Kept global: helpers read the session user through `global $user`;
-    // see includes/panel/actions.php.
-    global $user;
-
-    // The general gate has checked the session (any_role). The screen's own
-    // gate is validate_area_access($user, 'manager'), answered here in JSON.
-    $user = validate_user();
-
-    if ((int) $user['role'] > 2) {
-        http_response_code(403);
-        respond(array('status' => 'error', 'message' => lang('Access denied')));
-    }
-
-    validate_token();
-
-    require_once(PG_FUNCTIONS_DIR . '/includes/fn/user_list.php');
-
-    $view = pg_user_list_view($user, pg_user_list_filter($request['filter'] ?? ''));
-    $page = pg_user_list_page(
-        $view,
-        pg_list_search_terms($request['search'] ?? ''),
-        pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100));
-
-    if ($page === false) {
-        http_response_code(500);
-        respond(array('status' => 'error', 'message' => lang('Query failed.')));
-    }
-
-    return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
 }
 
 function pg_panel_submitted_form_list_rows($request, $action)

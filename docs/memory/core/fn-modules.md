@@ -165,7 +165,7 @@ description: Generated from the module field of the memory files: each includes/
 - `translate`: [[error-screen-language-and-status]]
 - `tree_search`: [[tree-search]]
 - `update`: [[ca-store-choice]], [[migration-screen]]
-- `user_list`: [[server-paged-lists]], [[user-list-folder-filters]], [[user-screens-names-and-dates]]
+- `user_list`: [[user-list-folder-filters]], [[user-screens-names-and-dates]]
 - `variant_set_copy`: [[product-group-copy]]
 - `vat_check`: [[eu-vat-check]]
 - `vendor_api`: [[vendor-api-client]]

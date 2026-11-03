@@ -189,7 +189,6 @@ function pg_panel_actions()
         // only asks for the session.
         'get_form' => array('file' => 'content.php', 'handler' => 'pg_panel_get_form', 'exempt' => false, 'any_role' => true, 'token' => false, 'write' => false),
         'get_forms' => array('file' => 'content.php', 'handler' => 'pg_panel_get_forms', 'exempt' => false, 'any_role' => true, 'token' => false, 'write' => false),
-        'user_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_user_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'submitted_form_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_submitted_form_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'contact_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_contact_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         // Refresh now of a contact group filled by rules: every role with the
