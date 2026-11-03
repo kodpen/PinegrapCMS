@@ -6,8 +6,8 @@ module: backup
 
 ## How does a typed name become a folder?
 - `pg_backup_folder_name()` maps Latin letters to ASCII and turns everything outside `A-Za-z0-9_-` into `_`, `/` and `\` included, then collapses `_` runs, cuts to `PG_BACKUP_NAME_MAX` (100) and trims `_`. The Backup Name field has the same `maxlength`.
-- Before #5955 it took `pg_basename()` first, so `yedek 03/11/2026` became `2026` and `… <b>x</b>` became `b`; the character class alone already kept the path inside `data/backups/`.
-- Before #5956 there was no length limit: a long name made `mkdir()` fail on Windows paths while the step still said success.
+- Before #6012 it took `pg_basename()` first, so `yedek 03/11/2026` became `2026` and `… <b>x</b>` became `b`; the character class alone already kept the path inside `data/backups/`.
+- Before #6012 there was no length limit: a long name made `mkdir()` fail on Windows paths while the step still said success.
 
 ## Which names are refused?
 - `pg_backup_name_reserved()`: `english_default`, `turkish_default` (the starter sites), `pg_backup_is_auto_name()` names, and `pre_upgrade_` / `pre-update-` prefixes, without case. Every `software_backup` step refuses them, so no request can clear a starter site's files.
@@ -22,4 +22,4 @@ module: backup
 - `pg_backup_taken_time()`: a folder's `sql.sql` time, else the folder's or archive's own. The folder's own time moves when Download writes `<name>.zip` into it. `backup_list()` returns name => time; `pg_backup_list_order()` sorts newest first, then by name (the DataTables sorting of `table.chart` is off).
 
 ## What does a folder without sql.sql show?
-- An "Incomplete" badge and no Download button. A delete that removed the files but not the folder leaves one; the warning is one line naming the backup and how many entries were refused, never a server path (#5959).
+- An "Incomplete" badge and no Download button. A delete that removed the files but not the folder leaves one; the warning is one line naming the backup and how many entries were refused, never a server path (#6012).
