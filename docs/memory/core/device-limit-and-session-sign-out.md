@@ -15,14 +15,14 @@ for a sign-in that is refused anyway. `pg_device_limit_evictable()` runs the
 query; `pg_device_limit_revoke_oldest()` revokes what it returns.
 `device_limit.php` counts the same list for "the oldest N will be signed
 out", and refuses at once with the "locked by the site owner" message when
-the list is empty. Before #5977 the newest `limit − 1` rows were kept whatever
+the list is empty. Before #6007 the newest `limit − 1` rows were kept whatever
 their lock, so a locked older session made the screen close nothing (or one
 device) and then refuse.
 
 ## What ends with a session besides its token?
 
 Its device notifications (`push_subscriptions.auth_selector`).
-`pg_auth_token_revoke()` deletes them for one token; since #5978
+`pg_auth_token_revoke()` deletes them for one token; since #6007
 `pg_auth_token_revoke_user()` (password change/reset/set, "Sign out all
 sessions", "Sign out of all devices") reads the selectors it is about to delete
 and deletes their subscriptions first; with `$respect_pin` a locked session
@@ -31,7 +31,7 @@ collations never matter.
 
 ## Which Sessions screen buttons confirm?
 
-Every row's Sign out carries `data-confirm-content` (#5979); on the "This
+Every row's Sign out carries `data-confirm-content` (#6007); on the "This
 device" row the text says the panel session ends too, as the bulk "Sign out
 all sessions" on the user screen does.
 
@@ -41,10 +41,10 @@ The operation is "lock" everywhere (button, badge, tooltip); Lock and Unlock
 have their own tooltip. Headings are sentence case ("All sessions",
 "Notification subscriptions" → "Bildirim abonelikleri"). `?user=<id>` heads
 the table "Sessions of <name>" with the trail "All sessions › <name>"; an
-unknown id adds no empty crumb and keeps "All sessions" (#5981).
+unknown id adds no empty crumb and keeps "All sessions" (#6007).
 
 ## How are POST fields read?
 
 A field sent as `name[]` reads as empty: `view_sessions.php` reads through
 `$post_text()`, `account_security.php` and `device_limit.php` check
-`is_scalar()` (#5980).
+`is_scalar()` (#6007).
