@@ -396,6 +396,7 @@
     "Edited {var:1}": "Düzenlendi: {var:1}",
     "Editing": "Düzenleme",
     "Editing a scheduled message. Esc to stop.": "Zamanlanmış bir mesajı düzenliyorsunuz. Vazgeçmek için Esc.",
+    "Editing the animation {var:1}: its frames are drawn from {var:2}.": "{var:1} animasyonu düzenleniyor: kareleri {var:2} dosyasından çiziliyor.",
     "Editing your message. Esc to stop.": "Mesajınızı düzenliyorsunuz. Vazgeçmek için Esc.",
     "Edition": "Edisyon",
     "Edition name shown in backend footer.": "Yönetim paneli altbilgisinde gösterilen sürüm adı.",
