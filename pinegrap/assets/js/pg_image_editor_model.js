@@ -3048,10 +3048,30 @@
 
     // The formats the Save animation dialog offers, with their limits:
     // longest edges (never past the picture's), the default edge, the
-    // longest animation in ms and the frame rates.
+    // longest animation in ms and the frame rates; needs names what the
+    // browser must have (animFormats()), dither whether it is offered.
     var ANIM_FORMATS = {
-        gif: { mime: 'image/gif', ext: 'gif', edges: [240, 320, 480, 640, 800], edge: 480, maxMs: 15000, rates: [10, 15, 20, 25], rate: 15 }
+        gif: { mime: 'image/gif', ext: 'gif', edges: [240, 320, 480, 640, 800], edge: 480, maxMs: 15000, rates: [10, 15, 20, 25], rate: 15, dither: true },
+        apng: { mime: 'image/png', ext: 'png', edges: [240, 320, 480, 640, 800, 1080], edge: 480, maxMs: 15000, rates: [10, 15, 20, 25], rate: 15, needs: 'deflate' },
+        webp: { mime: 'image/webp', ext: 'webp', edges: [240, 320, 480, 640, 800, 1080], edge: 480, maxMs: 15000, rates: [10, 15, 20, 25], rate: 15, needs: 'webp' }
     };
+
+    // The formats a browser with caps ({ deflate, webp }) can make.
+    function animFormats(caps) {
+        return Object.keys(ANIM_FORMATS).filter(function (k) { return !ANIM_FORMATS[k].needs || !!(caps && caps[ANIM_FORMATS[k].needs]); });
+    }
+
+    // The settings on switching to format: the edge and the rate kept
+    // inside its limits.
+    function animSwitch(set, format) {
+        var f = ANIM_FORMATS[format] || ANIM_FORMATS.gif, top = f.edges[f.edges.length - 1];
+
+        return Object.assign({}, set, {
+            format: ANIM_FORMATS[format] ? format : 'gif',
+            edge: Math.min(Number(set.edge) || f.edge, top),
+            fps: (f.rates.indexOf(set.fps) >= 0) ? set.fps : f.rate
+        });
+    }
 
     // Repeat choices: forever (0), once, three times, and the document's own.
     function animLoops(loop) {
@@ -3129,7 +3149,7 @@
     }
 
     var RENDER = {
-        ANIM_FORMATS: ANIM_FORMATS, animLoops: animLoops, animDefaults: animDefaults, animSize: animSize, animEdges: animEdges,
+        ANIM_FORMATS: ANIM_FORMATS, animFormats: animFormats, animSwitch: animSwitch, animLoops: animLoops, animDefaults: animDefaults, animSize: animSize, animEdges: animEdges,
         animFrames: animFrames, animSamples: animSamples, animEstimate: animEstimate, animName: animName
     };
 

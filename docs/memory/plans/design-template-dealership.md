@@ -20,7 +20,7 @@ description: Plan for the Car Dealership template (pinegrap-dealership): vehicle
 
 - 2 Public pages: `pages_public.php` (home, service, finance, about, visit, FAQ).
 
-- 3 Vehicles: `vehicles.php` (`vehicle_new` with the Vehicles collection and samples, `vehicles` with filters, `new_cars`, `used_cars`, `vehicle` record page, the home's list widgets).
+- 3 Done (#6265). Vehicles: `vehicles.php`; home widgets `home_featured`, `home_used`.
 
 - 4 Test drives and trade-ins: `mail.php`, `requests.php` (`test_drive`, `test_drive_view`, `my_test_drives`, `staff_test_drives`, `tradein`, `tradein_view`, `my_tradeins`, `staff_tradeins`, `privacy`, `email_reply`, notify e-mails).
 

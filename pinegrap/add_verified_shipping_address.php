@@ -80,19 +80,7 @@ if (!$_POST) {
 
     $values = pg_verified_shipping_address_form_values($liveform);
 
-    db(
-        "INSERT INTO verified_shipping_addresses (
-            " . implode(",\n            ", array_keys($values)) . ",
-            created_user_id,
-            created_timestamp,
-            last_modified_user_id,
-            last_modified_timestamp)
-        VALUES (
-            '" . implode("',\n            '", array_map('escape', $values)) . "',
-            '" . $user['id'] . "',
-            UNIX_TIMESTAMP(),
-            '" . $user['id'] . "',
-            UNIX_TIMESTAMP())");
+    pg_store_verified_address_save(0, $values, $user['id']) or output_error('Query failed.');
 
     $name = pg_verified_shipping_address_form_name($values['company'], $values['address_1']);
 

@@ -78,6 +78,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $action = isset($_POST['action']) && is_string($_POST['action']) ? $_POST['action'] : '';
 
+    // The results screen (experiments.php) posts its buttons here and is
+    // shown again after the change.
+    $back = $self;
+
+    if ((($_POST['return'] ?? '') === 'results') && isset($_POST['experiment_id']) && is_scalar($_POST['experiment_id']) && ((int) $_POST['experiment_id'] > 0)) {
+        $back = 'experiments.php?id=' . (int) $_POST['experiment_id'];
+    }
+
     if ($action === 'create') {
         $liveform->add_fields_to_session();
         $clean = pg_experiment_sheet_clean($_POST);
@@ -100,19 +108,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        go(PATH . SOFTWARE_DIRECTORY . '/' . $self);
+        go(PATH . SOFTWARE_DIRECTORY . '/' . $back);
     }
 
     $experiment = pg_experiment_sheet_get(isset($_POST['experiment_id']) && is_scalar($_POST['experiment_id']) ? (int) $_POST['experiment_id'] : 0);
 
     if (!$experiment || ((int) $experiment['page_id'] !== (int) $live['page_id'])) {
         $liveform->add_error(lang('The experiment was not found.'));
-        go(PATH . SOFTWARE_DIRECTORY . '/' . $self);
+        go(PATH . SOFTWARE_DIRECTORY . '/' . $back);
     }
 
     if (!in_array($action, pg_experiment_sheet_actions($experiment['status']), true)) {
         $liveform->add_error(lang('The experiment cannot make that change now.'));
-        go(PATH . SOFTWARE_DIRECTORY . '/' . $self);
+        go(PATH . SOFTWARE_DIRECTORY . '/' . $back);
     }
 
     if ($action === 'delete') {
@@ -136,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $liveform->add_error($done['error']);
     }
 
-    go(PATH . SOFTWARE_DIRECTORY . '/' . $self);
+    go(PATH . SOFTWARE_DIRECTORY . '/' . $back);
 }
 
 // ---- Experiments ------------------------------------------------------------
@@ -253,7 +261,7 @@ foreach ($experiments as $experiment) {
     $output_experiments .= '
             <div class="card my-7">
                 <div class="card-header d-flex flex-wrap align-items-center gap-3">
-                    <span class="fw-bold">' . h($experiment['name']) . '</span>
+                    <a class="fw-bold" href="' . h('experiments.php?id=' . (int) $experiment['id']) . '">' . h($experiment['name']) . '</a>
                     <span class="badge ' . ($theme !== '' ? 'theme-' . $theme : 'bg-1 fg-body border') . '">' . h($status_labels[$status]) . '</span>
                     <span class="small fg-secondary">' . h(lang(array('string' => 'Goal: {var:1}', 'vars' => $goal))) . '</span>
                     <span class="small fg-secondary">' . implode(' &middot; ', $dates) . '</span>
@@ -337,6 +345,7 @@ echo $shell() . '
             <nav id="button_bar" class="pg-toolbar my-3" aria-label="' . h(lang('Button Bar')) . '">
                 <a class="btn btn-sm btn-text theme-secondary" href="' . h(pg_page_edit_url_by_id($live['page_id'])) . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Edit the live page')) . '</a>
                 <a class="btn btn-sm btn-text theme-secondary" href="' . h(OUTPUT_PATH . encode_url_path($live['page_name'])) . '" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h(lang('View the page')) . '</a>
+                <a class="btn btn-sm btn-text theme-secondary" href="experiments.php"><i class="bi bi-bar-chart-line me-1" aria-hidden="true"></i>' . h(lang('All experiments')) . '</a>
                 <div class="pg-toolbar-grow"></div>
             </nav>
             ' . $output_form . $output_experiments . '
