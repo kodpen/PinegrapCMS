@@ -67,8 +67,8 @@ function test_content_lists_folder_and_home_ligatures()
 
 function test_content_lists_row_checkboxes_named()
 {
+	// The pages list selects by row on the list table driver: no checkboxes.
 	$expect = array(
-		'includes/fn/page_list.php' => '$page[\'page_name\']',
 		'view_design_files.php' => '$file[\'name\']',
 		'view_fields.php' => '$name',
 	);

@@ -6311,6 +6311,7 @@
     "Too many failed sign-in attempts. Please wait {var:1} minutes, or sign in on the website once, and try again.": "Çok fazla başarısız giriş denemesi. {var:1} dakika bekleyin ya da bir kez web sitesinden giriş yapın, sonra yeniden deneyin.",
     "Too many items for one return.": "Tek bir iade için çok fazla ürün var.",
     "Too many keywords": "Anahtar kelime sayısı fazla",
+    "Too many pages are selected. Select fewer pages and try again.": "Çok fazla sayfa seçildi. Daha az sayfa seçip yeniden deneyin.",
     "Too many pairing codes were made in the last hour. Please wait and try again.": "Son bir saatte çok fazla eşleştirme kodu oluşturuldu. Lütfen bekleyip tekrar deneyin.",
     "Too many paragraphs were changed at once. Save at most {var:1} paragraphs at a time.": "Bir seferde çok fazla paragraf değişti. Her seferinde en çok {var:1} paragraf kaydedin.",
     "Too many password reset requests. Please wait {var:1} minutes and try again.": "Çok fazla şifre sıfırlama isteği. Lütfen {var:1} dakika bekleyip tekrar deneyin.",

@@ -44,7 +44,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_list_table_definitions()
 {
-    return array();
+    return array(
+        'view_pages' => array('file' => 'includes/fn/page_list.php', 'source' => 'pg_page_list_source'),
+    );
 }
 
 /**
@@ -745,12 +747,14 @@ function pg_list_table_texts()
  * cursor of the next batch and the count ride on data attributes for the
  * browser part (assets/js/pg_list_table.js).
  *
- * @param array  $source pg_list_table_source()
- * @param array  $page   pg_list_table_page() of the first batch
- * @param string $label  the list's name for assistive technology
+ * @param array  $source  pg_list_table_source()
+ * @param array  $page    pg_list_table_page() of the first batch
+ * @param string $label   the list's name for assistive technology
+ * @param string $actions the screen's bulk action buttons for the selection
+ *                        bar (markup, escaped by the screen)
  * @return string
  */
-function pg_list_table_html(array $source, array $page, $label)
+function pg_list_table_html(array $source, array $page, $label, $actions = '')
 {
     $columns = $source['columns'];
     $json = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_UNICODE;
@@ -767,7 +771,7 @@ function pg_list_table_html(array $source, array $page, $label)
     // The selection bar stays above the rows; the rows scroll in their own
     // box under a sticky heading row, so the list fills the window.
     $output .= '<div class="pg-list-table-bar" hidden><span class="pg-list-table-count" aria-live="polite"></span>'
-        . '<span class="pg-list-table-actions"></span></div>';
+        . '<span class="pg-list-table-actions">' . $actions . '</span></div>';
     $output .= '<div class="pg-list-table-scroll" tabindex="-1">';
     $output .= '<table class="table pg-list-table-grid" role="table" aria-label="' . h($label) . '">';
     $output .= '<thead role="rowgroup"><tr role="row">';
