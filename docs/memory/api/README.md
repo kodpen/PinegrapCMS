@@ -30,7 +30,7 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-customer-consents.md: GET /customers/{id}/consents (the consent_log rows of a customer and its accounts) and the customer.consent_changed webhook announced by pg_consent_log_record(); what is left out and why
 - api-customer-subscriptions.md: GET /customers/{id}/subscriptions, the pause/resume/cancel moves with dry_run (PR #4399), and the subscription.* webhooks announced from pg_subscription_mail_send()
 - api-database-unavailable.md: External API and MCP 503 database_unavailable (a lost database connection, with Retry-After) versus 503 service_unavailable (a feature waiting for its database update)
-- api-datetime-end-bound.md: External API datetime end bounds (to, *_to): a date-only YYYY-MM-DD counts that day whole, to 23:59:59 in the site's time zone; a value with a time stays that moment (PR #4091)
+- api-datetime-end-bound.md: External API datetime parameters: only the documented forms are read (no relative words or rolled-over days); a bare day as an end bound (to, *_to) counts to 23:59:59 site time (PR #4091)
 - api-device-pairing.md: Pairing a team device with a QR code (device_pairing.php, POST /auth/pair, table api_device_pairings): code storage, who may make one, the exchange, limits, revocation
 - api-device-refresh-rotation.md: Refresh-token exchange (api_device_rotate_pair, devices and OAuth): next pair derived from the presented token so concurrent refreshes agree; conditional UPDATE; 60 s grace from the first exchange
 - api-device-sessions.md: The three external API callers (application key, team devices session, OAuth connection): who the owner is, which scopes each holds, public token routes, account scopes, owner rights, revocation

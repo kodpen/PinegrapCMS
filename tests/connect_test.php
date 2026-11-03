@@ -135,12 +135,35 @@ function test_connect_endpoint_fills_the_tenant()
 		'a domain');
 
 	pg_assert_same(
-		'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+		'',
 		pg_connect_endpoint($microsoft, array('options' => array('tenant' => '../evil?x=')), 'authorize_url'),
-		'anything else falls back');
+		'anything else gives no address, never the open common directory');
 
 	pg_assert_same('', pg_connect_endpoint($microsoft, array(), 'revoke_url'), 'no revoke endpoint');
 	pg_assert_same('https://oauth2.googleapis.com/token', pg_connect_endpoint(pg_connect_provider('google'), array(), 'token_url'), 'Google has no tenant');
+}
+
+function test_connect_tenant_option_is_checked()
+{
+	$option = pg_connect_provider('microsoft')['options']['tenant'];
+
+	foreach (array('common', 'organizations', 'consumers', 'contoso.onmicrosoft.com', '9188040d-6c67-4c5b-b112-36a304b66dad') as $good) {
+		pg_assert_true(pg_connect_option_valid($option, $good), 'valid: ' . $good);
+	}
+
+	foreach (array('contoso_corp', 'pg test', '<b>x</b>', '-common', '../evil') as $bad) {
+		pg_assert_true(!pg_connect_option_valid($option, $bad), 'refused: ' . $bad);
+	}
+
+	pg_assert_true(pg_connect_option_valid(array('label' => 'x'), 'any text'), 'an option without a pattern takes anything');
+	pg_assert_true(pg_connect_app_options_valid('microsoft', array('tenant' => 'common')), 'stored common');
+	pg_assert_true(!pg_connect_app_options_valid('microsoft', array('tenant' => 'contoso_corp')), 'stored typo');
+	pg_assert_true(pg_connect_app_options_valid('dropbox', array('tenant' => 'contoso_corp')), 'a provider without options');
+
+	$app = array('client_id' => 'id', 'client_secret' => 'secret', 'options' => array(), 'enabled' => true);
+
+	pg_assert_true(pg_connect_app_ready($app), 'ready without the flag');
+	pg_assert_true(!pg_connect_app_ready($app + array('options_valid' => false)), 'an invalid option is not ready');
 }
 
 function test_connect_authorize_url_carries_the_request()
