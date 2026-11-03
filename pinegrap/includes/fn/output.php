@@ -296,7 +296,7 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
     <link rel="stylesheet" type="text/css" href="' . h(CONTROL_PANEL_STYLESHEET_URL) . '" />
     ' . $assistant_snippet . '
     ' . pg_js_bundle_tags('assets/js/backend.min.js', false) . '
-    <style>' . CUSTOM_CSS . '</style>';
+    <style>' . pg_style_tag_css(CUSTOM_CSS) . '</style>';
 
 
 }
