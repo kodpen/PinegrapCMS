@@ -34,7 +34,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `db_maintenance`: open
 
-- `design_templates_custom`: open
+- `design_templates_custom`: #5976
 
 - `design_themes`: open
 
