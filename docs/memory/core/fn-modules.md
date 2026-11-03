@@ -61,7 +61,7 @@ description: Generated from the module field of the memory files: each includes/
 - `imap_client`: [[mail-imap-client]]
 - `innodb`: [[panel-script-number-format]]
 - `lang`: [[lang-loader]], [[lang-placeholders]]
-- `lang_files`: [[lang-files]]
+- `lang_files`: [[lang-file-writes]], [[lang-files]]
 - `layout_convert`: [[layout-form-converter]]
 - `layouts`: [[layout-code-tab]], [[layout-editor-classic]]
 - `legal_documents`: [[order-documents-address]]
