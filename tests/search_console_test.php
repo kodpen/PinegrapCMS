@@ -238,3 +238,12 @@ function test_gsc_link_makes_cached_pages_old_before_google_reads_the_tag()
 	pg_assert_true($bump !== false, 'the page cache is made old');
 	pg_assert_true(($bump > $write) && ($bump < $verify), 'after the code is written, before Google is asked to verify');
 }
+
+function test_gsc_comparable_needs_the_whole_period_before()
+{
+	pg_assert_true(pg_gsc_comparable('2026-04-01', '2026-07-14'), 'read long before the period');
+	pg_assert_true(pg_gsc_comparable('2026-07-14', '2026-07-14'), 'read from its first day');
+	pg_assert_true(!pg_gsc_comparable('2026-07-24', '2026-07-14'), 'its first ten days never read');
+	pg_assert_true(!pg_gsc_comparable('', '2026-07-14'), 'nothing read');
+	pg_assert_true(!pg_gsc_comparable('2026-04-01', ''), 'no period');
+}
