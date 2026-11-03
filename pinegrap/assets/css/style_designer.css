@@ -6437,5 +6437,19 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-proto .sd-proto-chip.sd-proto-mark-broken { border-color: #ff6b6b; }
 .sd-proto .pgc-edge.sd-proto-edge-broken .pgc-edge-line { stroke: #ff6b6b; stroke-dasharray: 6 4; }
 .sd-proto .pgc-edge.sd-proto-edge-tab .pgc-edge-line { stroke: var(--sd-accent); }
+/* The target menu of a link row (_sdProtoMenuOpen()). */
+.sd-proto-menu {
+    position: absolute; z-index: 2; width: 260px; max-height: 50%; overflow-y: auto;
+    padding: 4px 0; border: 1px solid var(--sd-panel-border); border-radius: 6px;
+    background: #2a2f36; box-shadow: 0 6px 18px rgba(0,0,0,.45);
+}
+.sd-proto-menu-head { padding: 4px 10px; font-size: .7rem; color: var(--sd-text-muted); }
+.sd-proto-menu-item {
+    display: flex; align-items: center; gap: 6px; width: 100%;
+    padding: 5px 10px; border: 0; background: none; color: var(--sd-text);
+    font-size: .75rem; text-align: left; cursor: pointer;
+}
+.sd-proto-menu-item:hover, .sd-proto-menu-item:focus-visible { background: rgba(255,255,255,.08); outline: none; }
+.sd-proto-menu-item[aria-checked="true"] { color: var(--sd-accent); font-weight: 600; }
 /* Read out by a screen reader only. */
 .sd-proto-sr { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

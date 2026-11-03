@@ -67533,10 +67533,11 @@ const StyleDesigner = (function () {
     // all three are printed before this script.
     // An arrow drawn from a link row's port to a tab's frame or to a chip of
     // a site page, another site or a contact address writes that link's
-    // href (_sdProtoConnect()): on the row's tab, opened first, so its lock,
+    // href (_sdProtoConnect(); from the keyboard L on the row picks the
+    // target from a list, _sdProtoMenuOpen()): on the row's tab, opened first, so its lock,
     // undo history and content rights answer; the normal Save writes it.
     // Classic menus and regions stay read-only.
-    var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {} };
+    var _sdProto = { open: false, ui: null, canvas: null, items: [], byId: {}, layout: null, view: { x: 40, y: 40, k: 1 }, seq: 0, selected: null, env: {}, warned: {}, menu: null };
 
     var SD_PROTO_MARKS = {
         tab: { icon: 'bi-file-earmark-arrow-right', text: function () { return _sdT('Opens a page of this design'); } },
@@ -67694,10 +67695,18 @@ const StyleDesigner = (function () {
                 }
                 var row = event.target.closest ? event.target.closest('.sd-proto-row') : null;
                 if (row && (event.key === 'Enter' || event.key === ' ')) { _sdProtoOpenRow(row); return true; }
+                // L, the context menu key or Shift+F10: where the link goes,
+                // chosen from a list (the keyboard's way to draw its arrow).
+                var menuKey = (name === 'l' && !event.ctrlKey && !event.metaKey && !event.shiftKey) || event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey);
+                if (row && menuKey) return _sdProtoMenuOpen(row);
                 return false;
             }
         });
         _sdProto.canvas.bind();
+        // A press outside the target menu closes it.
+        ui.root.addEventListener('pointerdown', function (event) {
+            if (_sdProto.menu && !_sdProto.menu.el.contains(event.target)) _sdProtoMenuClose(false);
+        }, true);
         return ui;
     }
 
@@ -67738,6 +67747,7 @@ const StyleDesigner = (function () {
 
     function _sdProtoClose() {
         if (!_sdProto.open) return;
+        _sdProtoMenuClose(false);
         _sdProto.open = false;
         _sdProto.seq++;
         if (_sdProto.canvas) _sdProto.canvas.cancel();
@@ -67830,6 +67840,10 @@ const StyleDesigner = (function () {
             r.setAttribute('role', 'button');
             r.setAttribute('data-row', String(i));
             r.title = row.href || '';
+            if (window.PGProtoHotspots.drawable(row)) {
+                r.title += (r.title ? ' · ' : '') + _sdT('L: choose where this link goes');
+                r.setAttribute('aria-keyshortcuts', 'L');
+            }
             r.appendChild(_sdProtoMarkIcon(row.mark));
             r.appendChild(_sdProtoEl('span', 'sd-proto-label', row.from ? row.from + ' › ' + row.label : row.label));
             if (row.draft) r.appendChild(_sdProtoEl('span', 'sd-proto-draft', _sdT('Draft')));
@@ -67857,6 +67871,7 @@ const StyleDesigner = (function () {
         var first = !_sdProto.layout;
         var l = H.layout(marked, _sdProtoSaved());
 
+        _sdProtoMenuClose(false);
         _sdProto.layout = l;
         _sdProto.items = l.frames.concat(l.chips);
         _sdProto.byId = {};
@@ -68000,6 +68015,95 @@ const StyleDesigner = (function () {
         } else {
             sdToast(esc(_sdT('This page is on the site: the changed link goes live when you click Publish.')), 'info', 6000);
         }
+    }
+
+    // The keyboard's way to draw a row's arrow: a menu of the tab frames
+    // and chips its link may be pointed at (PGProtoHotspots.drawTargets()),
+    // the current one checked; a choice goes through _sdProtoConnect() like
+    // a drawn arrow. Arrows, Home and End move, Escape closes and gives the
+    // focus back to the row. Answers whether it opened.
+    function _sdProtoMenuOpen(rowEl) {
+        var H = window.PGProtoHotspots;
+        var box = rowEl.closest('[data-node]');
+        var item = box ? _sdProto.byId[box.getAttribute('data-node')] : null;
+        var row = item && item.rows ? item.rows[parseInt(rowEl.getAttribute('data-row'), 10) || 0] : null;
+        if (!row || !H.drawable(row)) return false;
+        _sdProtoMenuClose(false);
+
+        var ui = _sdProto.ui;
+        var list = H.drawTargets(_sdProto.layout, _sdProto.env).filter(function (t) {
+            return _sdProtoArrowHref(item, _sdProto.byId[t.id], row.port) !== null;
+        });
+        var el = _sdProtoEl('div', 'sd-proto-menu');
+        el.setAttribute('role', 'menu');
+        el.setAttribute('aria-label', _sdT('Where this link goes'));
+        var head = _sdProtoEl('div', 'sd-proto-menu-head', _sdT('Where this link goes'));
+        head.setAttribute('role', 'presentation');
+        el.appendChild(head);
+        if (!list.length) {
+            var none = _sdProtoEl('div', 'sd-proto-empty', _sdT('No page or address to point it at'));
+            none.setAttribute('role', 'presentation');
+            el.appendChild(none);
+        }
+        list.forEach(function (t) {
+            var target = _sdProto.byId[t.id];
+            var b = _sdProtoEl('button', 'sd-proto-menu-item');
+            b.type = 'button';
+            b.tabIndex = -1;
+            b.title = t.href;
+            b.setAttribute('role', 'menuitemradio');
+            b.setAttribute('aria-checked', t.href === row.href ? 'true' : 'false');
+            b.appendChild(_sdProtoMarkIcon(target.kind === 'page' ? 'tab' : target.mark));
+            b.appendChild(_sdProtoEl('span', 'sd-proto-label', target.kind === 'page' ? _sdProtoFrameName(target) : _sdProtoChipText(target)));
+            b.addEventListener('click', function () {
+                _sdProtoMenuClose(true);
+                _sdProtoConnect(item, target, row.port);
+            });
+            el.appendChild(b);
+        });
+        el.addEventListener('keydown', function (event) {
+            var items = Array.prototype.slice.call(el.querySelectorAll('.sd-proto-menu-item'));
+            var at = items.indexOf(document.activeElement);
+            var go = -1;
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                event.stopPropagation();
+                _sdProtoMenuClose(true);
+                return;
+            }
+            if (event.key === 'Tab') { _sdProtoMenuClose(false); return; }
+            if (event.key === 'ArrowDown') go = (at + 1) % items.length;
+            else if (event.key === 'ArrowUp') go = (at <= 0 ? items.length : at) - 1;
+            else if (event.key === 'Home') go = 0;
+            else if (event.key === 'End') go = items.length - 1;
+            if (go >= 0 && items[go]) {
+                event.preventDefault();
+                items[go].focus();
+            }
+        });
+        ui.root.appendChild(el);
+        _sdProto.menu = { el: el, rowEl: rowEl };
+
+        // Under the row, or above it when it would leave the view.
+        var r = rowEl.getBoundingClientRect();
+        var o = ui.root.getBoundingClientRect();
+        var top = r.bottom - o.top + 2;
+        if (top + el.offsetHeight > o.height) top = Math.max(4, r.top - o.top - el.offsetHeight - 2);
+        el.style.left = Math.max(4, Math.min(r.left - o.left, o.width - el.offsetWidth - 4)) + 'px';
+        el.style.top = top + 'px';
+
+        var first = el.querySelector('.sd-proto-menu-item[aria-checked="true"]') || el.querySelector('.sd-proto-menu-item');
+        if (!first) el.tabIndex = -1;
+        (first || el).focus({ preventScroll: true });
+        return true;
+    }
+
+    function _sdProtoMenuClose(refocus) {
+        var m = _sdProto.menu;
+        if (!m) return;
+        _sdProto.menu = null;
+        if (m.el.parentNode) m.el.parentNode.removeChild(m.el);
+        if (refocus && m.rowEl.isConnected) m.rowEl.focus({ preventScroll: true });
     }
 
     // A row's element selected on the canvas: its tab opened first (a

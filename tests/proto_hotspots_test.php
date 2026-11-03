@@ -484,6 +484,8 @@ function test_proto_hotspots_view_draws_arrows()
 	pg_assert_contains('connected: function (from, to, port) { _sdProtoConnect(from, to, port); }', $source, 'a drawn arrow writes the link');
 	pg_assert_contains("if (e.target.closest && e.target.closest('#sd-proto')) return;", $source, 'the document shortcuts leave the view alone');
 	pg_assert_contains('var patch = node ? H.hrefPatch(node, row, href) : null;', $source, 'the node gets the collector\'s patch');
+	pg_assert_contains('if (row && menuKey) return _sdProtoMenuOpen(row);', $source, 'L on a row opens its target menu');
+	pg_assert_contains('_sdProtoConnect(item, target, row.port);', $source, 'a menu choice goes the drawn arrow\'s way');
 }
 
 // The collector is a bundle of its own.
