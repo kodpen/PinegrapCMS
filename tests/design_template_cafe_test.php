@@ -153,6 +153,7 @@ function test_design_template_cafe_price_hint()
 function test_design_template_cafe_clinic_privacy_page()
 {
 	$consents = array(
+		'pinegrap-appstudio' => array('ma-st-consent', 'ma-pj-consent', 'ma-beta-consent'),
 		'pinegrap-cafe'   => array('cf-res-consent', 'cf-quote-consent'),
 		'pinegrap-clinic' => array('cl-appt-consent'),
 		'pinegrap-courses' => array('pco-enrol-consent'),
