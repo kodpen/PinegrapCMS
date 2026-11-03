@@ -252,6 +252,16 @@ function test_layout_form_convert_select_date_and_missing()
 	$date = _test_lfc_tag($res['tree'], 'input')[0];
 	pg_assert_same('date', _test_lfc_attr($date, 'type'));
 	pg_assert_same('2026-10-27', _test_lfc_attr($date, 'value'));
+
+	// A default in the site's format becomes the ISO the native input holds.
+	$iso_code = '<input type="text" name="126" id="126"><input type="text" name="127" id="127"><input type="text" name="128" id="128">';
+	$iso = pg_layout_form_convert($iso_code, array(
+		_test_lfc_field(126, 'day', 'Day', 'date', array('default_value' => '27/10/2026')),
+		_test_lfc_field(127, 'start', 'Start', 'date and time', array('default_value' => '27/10/2026 5:05 PM')),
+		_test_lfc_field(128, 'hour', 'Hour', 'time', array('default_value' => '5:05 PM')),
+	), array('page_id' => 5));
+	$inputs = _test_lfc_tag($iso['tree'], 'input');
+	pg_assert_same(array('2026-10-27', '2026-10-27T17:05', '17:05'), array_map(function ($n) { return _test_lfc_attr($n, 'value'); }, $inputs), 'defaults in ISO');
 	pg_assert_same(array(124, 125), $res['missing'], 'fields the layout does not draw');
 	$names = array_keys(_pg_cf_controls($res['tree'], 5));
 	pg_assert_same(array('salutation', 'game_date', 'winner'), $names, 'added after the drawn ones');
@@ -330,4 +340,32 @@ function test_layout_form_convert_every_starter_layout()
 		}
 		pg_assert_same(array(), $res['missing'], "layout $id: every field drawn");
 	}
+}
+
+// The generated layout guards an SMS question with isset($field['<id>']): the
+// designed form hides that question itself, so the guarded markup is kept in
+// its place and nothing is reported as left out.
+function test_layout_form_convert_keeps_sms_question_guard()
+{
+	$code = '<div class="row">' . "\n"
+		. '<label for="401"><?=$field[\'401\'][\'label\']?></label><input type="text" name="401" id="401">' . "\n"
+		. '<?php if (isset($field[\'402\'])): ?>' . "\n"
+		. '<div class="sms"><input type="checkbox" name="402" value="1"> <?=$field[\'402\'][\'label\']?></div>' . "\n"
+		. '<?php endif ?>' . "\n"
+		. '<label for="403"><?=$field[\'403\'][\'label\']?></label><input type="text" name="403" id="403">' . "\n"
+		. '</div>';
+	$fields = array(
+		_test_lfc_field(401, 'name', 'Name', 'text box'),
+		_test_lfc_field(402, 'sms', 'Send me SMS', 'check box', array('contact_field' => 'opt_in_sms', 'options' => array(_test_lfc_option('1', 'Yes')))),
+		_test_lfc_field(403, 'city', 'City', 'text box'),
+	);
+
+	$res = pg_layout_form_convert($code, $fields, array('page_id' => 9));
+	pg_assert_true($res['ok']);
+	pg_assert_same(array(), $res['dropped'], 'nothing left out');
+	pg_assert_same(array(), $res['missing'], 'the question is drawn where the layout put it');
+
+	$names = array();
+	foreach (_test_lfc_tag($res['tree'], 'input') as $n) $names[] = _test_lfc_attr($n, 'name');
+	pg_assert_same(array('name', 'sms', 'city'), $names, 'in the layout order');
 }

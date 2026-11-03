@@ -7,7 +7,7 @@ description: Shop templates (store, boutique, bookshop 1.2.0, hello 2.6.0) on th
 - `post_comments` on blog_post, under the post (journal entry) view: oldest, featured `first`, threaded, max_depth 2, 20 a page; Reply, Share, the follow box.
 - `conversation_replies` on conversation, under the conversation view: oldest, featured `none`, flat, all on one page; no Reply, Share or follow box (two sides: the sender gets the submitter e-mail of each answer, the staff the page's staff mail; a designed record page counts as `form item view` in `add_comment.php`). The record view's `submitter_only` access hides the thread and refuses a post for anyone else ([[comments-widget-contract]]).
 - `email_comment` (`$mail_comment_tree`, flat, featured none) on email_reply, right before the System region, which stays ([[comments-widget-email]]).
-- `product_reviews`: starter tree ([[comments-widget-product-page]]); unchanged in the three shops, new in hello.
+- `product_reviews` ([[comments-widget-product-page]]): since store/boutique 1.2.2, bookshop 1.3.3, hello 2.6.1 (#4812) its own `$comment_thread()` with review words ("Review this product", "Submit review", "Stop new reviews"; Turkish "değerlendirme"), Reply, Share and the follow box. The page's label is `Review` ("Değerlendirme"); the starter's fixed "comment" words mixed two terms in one box.
 - The fixed `comments_block` region is gone; `$comments_section($name, $widget_key)` places the widget in the reading column.
 - Store 1.2.0 (#4467), boutique 1.2.0 (#4482), bookshop 1.2.0, hello 2.6.0 ([[design-template-hello]]). Decision: owner, 2026-11-01 (`workflow/decisions-made-product-16.md`).
 
@@ -23,5 +23,5 @@ description: Shop templates (store, boutique, bookshop 1.2.0, hello 2.6.0) on th
 - Nothing: rows are never reused; a 1.1.x site (hello 2.5.x) keeps the block on blog_post and conversation. Make designable there gives the editor's widget, not this layout.
 
 ## How was it checked?
-- `tests/design_template_shop_comments_test.php`, per template in its table: no fixed block in any tree, the four comments widgets and their options, each thread under its view, flags of the thread mode, pure draws for a member, a visitor and staff, the e-mail card's order, link, draw and installer preview.
+- `tests/design_template_shop_comments_test.php`, per template in its table: no fixed block in any tree, the four comments widgets and their options, the reviews' words in English and Turkish, each thread under its view, flags of the thread mode, pure draws for a member, a visitor and staff, the e-mail card's order, link, draw and installer preview.
 - No running instance.

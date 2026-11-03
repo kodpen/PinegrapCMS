@@ -73,6 +73,8 @@ if (($_GET['export'] ?? '') === 'csv') {
             short_links.destination_type,
             short_links.url,
             short_links.tracking_code,
+            short_links.page_id,
+            short_links.file_id,
             " . (pg_short_link_redirects_ready() ? "short_links.redirect_code," : "") . "
             page.page_name,
             product_groups.address_name AS product_group_address_name,
@@ -109,6 +111,8 @@ $query =
         short_links.id,
         short_links.name,
         short_links.destination_type,
+        short_links.page_id,
+        short_links.file_id,
         " . (pg_short_link_modes_ready() ? "short_links.link_mode, short_links.token_hint, short_links.expires_at, short_links.used_at," : "") . "
         " . (pg_short_link_redirects_ready() ? "short_links.redirect_code, short_links.is_pattern," : "") . "
         page.page_name,
@@ -143,6 +147,18 @@ if ($short_links) {
     foreach ($short_links as $short_link) {
         $output_destination_type = isset($destination_type_names[$short_link['destination_type']]) ? $destination_type_names[$short_link['destination_type']] : '';
         $output_destination = '';
+
+        // A destination in the Recycle Bin shows the name it had, marked,
+        // never its parked pgbin_ name.
+        $binned_original = pg_short_link_binned_original($short_link);
+
+        if ($binned_original !== '') {
+            if ($short_link['destination_type'] === 'file') {
+                $short_link['file_name'] = $binned_original;
+            } else {
+                $short_link['page_name'] = $binned_original;
+            }
+        }
 
         switch ($short_link['destination_type']) {
             case 'page':
@@ -183,6 +199,10 @@ if ($short_links) {
             )
         ) {
             $output_destination .= '?t=' . h(urlencode($short_link['tracking_code']));
+        }
+
+        if ($binned_original !== '') {
+            $output_destination .= ' [' . h(lang('IN RECYCLE BIN')) . ']';
         }
 
         $created_username = '';

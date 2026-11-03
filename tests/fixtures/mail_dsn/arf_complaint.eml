@@ -1,0 +1,39 @@
+From: <staff@hotmail.com>
+To: <fbl@example.com>
+Date: Mon, 2 Nov 2026 20:00:00 +0000
+Subject: complaint about message from 198.51.100.10
+MIME-Version: 1.0
+Content-Type: multipart/report; report-type=feedback-report;
+	boundary="part1_13d.2e68ed54_boundary"
+
+--part1_13d.2e68ed54_boundary
+Content-Type: text/plain; charset="US-ASCII"
+
+This is an email abuse report for an email message received from IP
+198.51.100.10 on Mon, 2 Nov 2026 19:55:00 +0000.
+
+--part1_13d.2e68ed54_boundary
+Content-Type: message/feedback-report
+
+Feedback-Type: abuse
+User-Agent: SomeGenerator/1.0
+Version: 1
+Original-Mail-From: <bounces+{TOKEN}@example.com>
+Arrival-Date: Mon, 2 Nov 2026 19:55:00 +0000
+Source-IP: 198.51.100.10
+Reported-Domain: example.com
+
+--part1_13d.2e68ed54_boundary
+Content-Type: message/rfc822
+Content-Disposition: inline
+
+Return-Path: <bounces+{TOKEN}@example.com>
+From: <news@example.com>
+To: <angry.reader@hotmail.com>
+Subject: Spring newsletter
+Message-ID: <news-9@example.com>
+Date: Mon, 2 Nov 2026 19:50:00 +0000
+
+Spring offers.
+
+--part1_13d.2e68ed54_boundary--

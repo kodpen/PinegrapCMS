@@ -729,7 +729,9 @@ function pg_proto_tag_pattern()
  */
 function pg_proto_tag_attributes($inner)
 {
-    preg_match_all('~([^\s"\'<>/=`]+)(?:\s*=\s*("[^"]*"|\'[^\']*\'|[^\s"\'<>=`]+))?~', (string) $inner, $matches, PREG_SET_ORDER);
+    // An unquoted value runs to the next space, as the browser tokenizes it:
+    // "=", "<" and "`" in it are part of the value (href=/shop?r=12).
+    preg_match_all('~([^\s"\'<>/=`]+)(?:\s*=\s*("[^"]*"|\'[^\']*\'|[^\s"\'>][^\s>]*))?~', (string) $inner, $matches, PREG_SET_ORDER);
 
     $attributes = array();
 

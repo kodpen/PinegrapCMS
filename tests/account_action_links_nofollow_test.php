@@ -109,7 +109,7 @@ function test_account_set_password_messages_link_to_a_new_email()
 	$forgot = '/forgot-password?send_to=/a&b';
 	foreach (array('missing', 'invalid', 'expired') as $reason) {
 		$message = pg_set_password_token_message($reason, $forgot);
-		pg_assert_contains('<a href="/forgot-password?send_to=/a&amp;b">request a new email</a>', $message, $reason . ' links to a new e-mail');
+		pg_assert_contains('<a class="alert-link" href="/forgot-password?send_to=/a&amp;b">request a new email</a>', $message, $reason . ' links to a new e-mail, coloured by its alert');
 	}
 	pg_assert_contains('missing from the address', pg_set_password_token_message('missing', $forgot), 'missing');
 	pg_assert_contains('has expired', pg_set_password_token_message('expired', $forgot), 'expired');

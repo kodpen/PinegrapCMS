@@ -186,7 +186,9 @@ if ($canvas) {
     $picture['extension'] = 'png';
 } else {
     $stored_name = (string) db_value("SELECT name FROM files WHERE id = '" . (int) $message['file_id'] . "'");
-    $picture = pg_image_editor_render(FILE_DIRECTORY_PATH . '/' . $stored_name, $request);
+    // The editor reads the picture it was opened on, which may be a copy of
+    // a file in the object store; the result is posted as a new file.
+    $picture = pg_image_editor_render(pg_file_reader_path($stored_name), $request);
 }
 
 unset($request);
@@ -196,6 +198,8 @@ if ($picture['error'] !== '') {
 }
 
 $extension = $picture['extension'];
+// A canvas has no redaction to burn in.
+$redacted = !empty($picture['redacted']);
 $mime = array('jpg' => 'jpeg', 'png' => 'png', 'webp' => 'webp', 'gif' => 'gif');
 $data = 'data:image/' . $mime[$extension] . ';base64,' . base64_encode($picture['data']);
 unset($picture);
@@ -204,7 +208,7 @@ $name = ws_file_edit_name($message['file_name'], $extension);
 $as = (($_GET['as'] ?? '') === 'replace') ? 'replace' : 'send';
 
 if ($as === 'replace') {
-    $result = ws_message_file_replace($viewer, $message, $channel, $name, $data);
+    $result = ws_message_file_replace($viewer, $message, $channel, $name, $data, $redacted);
     $message_id = (int) $message['id'];
 } else {
     $result = ws_message_file_send($viewer, $message, $channel, $name, $data);

@@ -86,9 +86,11 @@ function pg_dashboard_v2_look_attributes($look)
  *
  * @param array      $user   the row validate_user() returned
  * @param array|null $status get_system_status_checks()'s answer; read when null
+ * @param bool       $off    the person hid the card: drawn hidden, so the
+ *                           edit mode can show it again
  * @return string HTML
  */
-function pg_dashboard_v2_status($user, $status = null)
+function pg_dashboard_v2_status($user, $status = null, $off = false)
 {
     if (!isset($user['role']) || ($user['role'] >= 3)) {
         return '';
@@ -108,7 +110,7 @@ function pg_dashboard_v2_status($user, $status = null)
         : '';
 
     return '
-        <section class="card pg-dash-card pg-dash-status" id="pg_dash_status" aria-labelledby="pg_dash_status_title">
+        <section class="card pg-dash-card pg-dash-status" id="pg_dash_status"' . ($off ? ' data-off="1" hidden' : '') . ' aria-labelledby="pg_dash_status_title">
             <div class="pg-dash-status-head">
                 <h2 class="pg-dash-status-title" id="pg_dash_status_title"><span class="pg-dash-status-icon" aria-hidden="true"><i class="bi bi-activity"></i></span>' . h(lang('System Status')) . '</h2>
                 ' . $details . '

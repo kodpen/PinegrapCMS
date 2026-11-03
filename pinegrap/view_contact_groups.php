@@ -38,21 +38,8 @@ $keys_and_values = '';
 $all_contact_groups = 0;
 $my_contact_groups = 0;
 
-// If a screen was passed and it is a positive integer, then use it.
-// These checks are necessary in order to avoid SQL errors below for a bogus screen value.
-if (
-    isset($_REQUEST['screen'])
-    and $_REQUEST['screen']
-    and is_numeric($_REQUEST['screen'])
-    and $_REQUEST['screen'] > 0
-    and $_REQUEST['screen'] == round($_REQUEST['screen'])
-) {
-    $screen = (int) $_REQUEST['screen'];
-
-// Otherwise, use the default, which is the first screen.
-} else {
-    $screen = 1;
-}
+// The page asked for, a whole number of 1 or more (pg_list_page_number()).
+$screen = pg_list_page_number($_REQUEST['screen'] ?? '');
 
 // The columns this list sorts by, in the order the table shows them.
 // pg_list_state() keeps the choice in the session as a code, so it survives
@@ -71,16 +58,10 @@ $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 $list_state = pg_list_state('view_contact_groups', $sort_columns, $sort_default);
 $sort_levels = $list_state['sorts'];
 
-// What each sort code orders by. Only codes pg_list_state() let through
-// reach pg_list_order_by(), and it writes nothing but these.
-$order_by = pg_list_order_by($sort_levels, array(
-    'name'          => 'contact_groups.name',
-    'subscription'  => 'contact_groups.email_subscription',
-    'type'          => 'contact_groups.email_subscription_type',
-    'description'   => 'contact_groups.description',
-    'created'       => 'contact_groups.created_timestamp',
-    'last_modified' => 'contact_groups.last_modified_timestamp',
-));
+// What each sort code orders by (the type and the description on the value
+// the row shows). Only codes pg_list_state() let through reach
+// pg_list_order_by(), and it writes nothing but these.
+$order_by = pg_list_order_by($sort_levels, pg_contact_group_list_order_map());
 
 // get all contact groups
 $query =

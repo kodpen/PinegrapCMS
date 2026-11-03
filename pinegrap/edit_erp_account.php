@@ -188,8 +188,17 @@ if (!$_POST) {
     // A sales quote is written to a customer, so a pure supplier gets no quote links.
     $show_quotes = function_exists('erp_quotes_ready') && erp_quotes_ready() && ((string) $account['kind'] !== 'supplier');
 
-    // A purchase order goes to a supplier, so a pure customer gets no order links.
-    $show_purchase_orders = function_exists('erp_purchase_orders_ready') && erp_purchase_orders_ready() && ((string) $account['kind'] !== 'customer');
+    // Account prices apply to sales only (invoices, quotes, the store), so a
+    // pure supplier gets no link to them, like the quote links.
+    $show_prices = function_exists('erp_price_lists_ready') && erp_price_lists_ready() && ((string) $account['kind'] !== 'supplier');
+
+    // A purchase order goes to a supplier, so a pure customer gets no new
+    // order (erp_purchase_order_account_refusal()); its list still shows the
+    // orders written to it before it became a customer only.
+    $purchase_orders_on = function_exists('erp_purchase_orders_ready') && erp_purchase_orders_ready();
+    $can_order = $purchase_orders_on && ((string) $account['kind'] !== 'customer');
+    $show_purchase_orders = $can_order || ($purchase_orders_on
+        && ((int) db_value("SELECT COUNT(*) FROM erp_purchase_orders WHERE account_id = '" . (int) $account_id . "'") > 0));
 
     echo
     pg_page_shell([
@@ -213,13 +222,13 @@ if (!$_POST) {
 
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                         <a class="btn btn-sm btn-outline theme-secondary" href="erp_reconciliation.php?id=' . $account_id . '"><i class="bi bi-envelope-paper me-1"></i>' . lang('Reconciliation Letter') . '</a>
-                        ' . ((function_exists('erp_price_lists_ready') && erp_price_lists_ready()) ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_account_prices.php?account_id=' . $account_id . '"><i class="bi bi-tags me-1" aria-hidden="true"></i>' . lang('Account prices') . (((($price_count = erp_account_price_count($account_id)) > 0) || ((float) ($account['discount_rate'] ?? 0) > 0)) ? ' <span class="badge theme-secondary">' . (($price_count > 0) ? (int) $price_count : h(erp_percent_text($account['discount_rate']))) . '</span>' : '') . '</a>' : '') . '
+                        ' . ($show_prices ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_account_prices.php?account_id=' . $account_id . '"><i class="bi bi-tags me-1" aria-hidden="true"></i>' . lang('Account prices') . (((($price_count = erp_account_price_count($account_id)) > 0) || ((float) ($account['discount_rate'] ?? 0) > 0)) ? ' <span class="badge theme-secondary">' . (($price_count > 0) ? (int) $price_count : h(erp_percent_text($account['discount_rate']))) . '</span>' : '') . '</a>' : '') . '
                         <a class="btn btn-sm btn-outline theme-secondary" href="erp_invoices.php?filter=open&amp;account_id=' . $account_id . '"><i class="bi bi-receipt me-1" aria-hidden="true"></i>' . lang('Open invoices') . '</a>
                         ' . (!(defined('USER_ERP_READONLY') && USER_ERP_READONLY) ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_manual_invoice.php?account_id=' . $account_id . (((string) $account['kind'] === 'supplier') ? '&amp;direction=purchase' : '') . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('New Invoice') . '</a>' : '') . '
                         ' . ($show_quotes ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_quotes.php?account_id=' . $account_id . '"><i class="bi bi-file-earmark-text me-1" aria-hidden="true"></i>' . lang('Quotes') . '</a>' : '') . '
                         ' . (($show_quotes && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_quote.php?account_id=' . $account_id . '"><i class="bi bi-file-earmark-plus me-1" aria-hidden="true"></i>' . lang('New quote') . '</a>' : '') . '
                         ' . ($show_purchase_orders ? '<a class="btn btn-sm btn-outline theme-secondary" href="erp_purchase_orders.php?account_id=' . $account_id . '"><i class="bi bi-cart-check me-1" aria-hidden="true"></i>' . lang('Purchase orders') . '</a>' : '') . '
-                        ' . (($show_purchase_orders && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_purchase_order.php?account_id=' . $account_id . '"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang('New purchase order') . '</a>' : '') . '
+                        ' . (($can_order && !(defined('USER_ERP_READONLY') && USER_ERP_READONLY)) ? '<a class="btn btn-sm btn-outline theme-secondary" href="add_erp_purchase_order.php?account_id=' . $account_id . '"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang('New purchase order') . '</a>' : '') . '
                         ' . $output_card_sync . '
                         ' . $output_workspace_button . '
                     </nav>

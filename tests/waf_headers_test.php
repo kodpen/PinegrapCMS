@@ -71,3 +71,19 @@ function test_waf_headers_not_added_outside_iis()
 {
 	pg_assert_false(waf_server_adds_header('X-Content-Type-Options'));
 }
+
+// Policy reports are listed most reported first and, at an equal count, most
+// recently seen first, so the newest violations are the last to be cut.
+function test_waf_csp_report_order()
+{
+	$entries = array(
+		array('d' => 'a', 'n' => 1, 'l' => 100),
+		array('d' => 'b', 'n' => 3, 'l' => 50),
+		array('d' => 'c', 'n' => 1, 'l' => 300),
+		array('d' => 'd', 'n' => 3, 'l' => 70),
+	);
+
+	usort($entries, 'waf_csp_report_compare');
+
+	pg_assert_same(array('d', 'b', 'c', 'a'), array_column($entries, 'd'));
+}

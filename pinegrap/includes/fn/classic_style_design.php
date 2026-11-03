@@ -246,12 +246,14 @@ function pg_classic_style_region_lookup()
  * @return array  'error' ('' when opened), 'pages' (pg_designer_load_pages()
  *                rows with tree_json and converted = 1), 'css', 'js', 'fonts'
  *                (the assets panel lists, JSON), 'warnings', 'folder_pages'
- *                (pg_classic_style_folder_pages())
+ *                (pg_classic_style_folder_pages()), 'frame_tree' (the
+ *                page tree placing the frame, JSON, for the editor's blank
+ *                tab when no page names the style as its own)
  */
 function pg_classic_style_design_open($style_id, $user)
 {
     $style_id = (int)$style_id;
-    $out = array('error' => '', 'pages' => array(), 'css' => '', 'js' => '', 'fonts' => '', 'warnings' => array(), 'folder_pages' => array());
+    $out = array('error' => '', 'pages' => array(), 'css' => '', 'js' => '', 'fonts' => '', 'warnings' => array(), 'folder_pages' => array(), 'frame_tree' => '');
 
     if ((int)$user['role'] > 1) {
         $out['error'] = lang('Only a designer can open a classic style in the visual designer.');
@@ -297,6 +299,9 @@ function pg_classic_style_design_open($style_id, $user)
     $out['fonts'] = $frame['fonts'] ? encode_json($frame['fonts']) : '';
     $out['warnings'] = $frame['warnings'];
     $out['folder_pages'] = pg_classic_style_folder_pages($style_id);
+    // With no page of its own the editor opens a blank tab: it starts with
+    // this tree, so the frame is on the canvas (pg_designer_blank_page()).
+    $out['frame_tree'] = $tree_json;
     return $out;
 }
 
@@ -385,7 +390,7 @@ function pg_classic_style_folder_pages_field($pages)
         $items .= '<li>' . h((string)$p['page_name']) . '</li>';
     }
     return '
-            <div class="alert theme-secondary py-3 small mb-0" id="sd-classic-folder-pages">
+            <div class="alert theme-secondary py-3 small mb-0 shadow sd-classic-folder-pages" id="sd-classic-folder-pages">
                 <div class="form-field mb-0">
                     <input class="check" type="checkbox" id="sd-classic-folder-pages-on" name="classic_folder_pages" value="1" form="style_designer_form" checked>
                     <label for="sd-classic-folder-pages-on">' . h(count($pages) === 1

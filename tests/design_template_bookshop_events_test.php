@@ -186,6 +186,7 @@ function test_bookshop_events_lists()
 function test_bookshop_events_no_fixed_dates()
 {
 	$tpl = _bookshop_events_tpl();
+	$months = '(?:January|February|March|April|May|June|July|August|September|October|November|December)';
 	$trees = array();
 	foreach ($tpl['pages'] as $p) {
 		$trees['page ' . $p['key']] = $p['tree'];
@@ -197,6 +198,72 @@ function test_bookshop_events_no_fixed_dates()
 		$trees['shared ' . $key] = $s['tree'];
 	}
 	foreach ($trees as $where => $tree) {
-		pg_assert_false((bool) preg_match('/\b20\d\d-\d\d-\d\d/', json_encode($tree)), $where . ': no fixed date');
+		$json = json_encode($tree);
+		pg_assert_false((bool) preg_match('/\b20\d\d-\d\d-\d\d/', $json), $where . ': no fixed date');
+		pg_assert_false((bool) preg_match('/\b\d{1,2} ' . $months . '\b|\b' . $months . ' \d{1,2}\b/', $json), $where . ': no day and month name');
 	}
+}
+
+// The contact form's fields: name => the control's node.
+function _bookshop_events_contact_fields()
+{
+	$fields = array();
+	foreach (_bookshop_events_nodes(_bookshop_events_tpl()['widgets']['contact_form']['tree']) as $n) {
+		$tag = isset($n['props']['tag']) ? $n['props']['tag'] : '';
+		$name = _bookshop_events_attr($n, 'name');
+		if (in_array($tag, array('input', 'select', 'textarea'), true) && $name !== null) {
+			$fields[$name] = $n;
+		}
+	}
+	return $fields;
+}
+
+// Reserve a seat opens the contact page with the reservation topic chosen
+// and the event's title in the message: the row's link sends ?topic= as
+// fixed text and ?event= from the record, and the contact form's two fields
+// read them.
+function test_bookshop_events_reserve_link()
+{
+	$tpl = _bookshop_events_tpl();
+	pg_assert_true(version_compare($tpl['version'], '1.3.3', '>='), 'the version moved');
+
+	$links = array();
+	foreach (_bookshop_events_nodes($tpl['widgets']['events_list']['tree']) as $n) {
+		if (isset($n['props']['_bindings']['href'])) {
+			$links[] = $n;
+		}
+	}
+	pg_assert_same(1, count($links), 'one bound link in the row');
+	if (count($links) !== 1) {
+		return;
+	}
+	$link = $links[0]['props'];
+	pg_assert_same('__page_link', $link['_bindings']['href'], 'a link to another page with the row\'s values');
+	pg_assert_same('{{tab:contact}}', $link['_bindParams']['href']['page_id'], 'the contact page');
+
+	$topic = lang('Reserving a seat at an event');
+	$spec = pg_sw_page_link_spec(array('page_id' => 5) + $link['_bindParams']['href']);
+	pg_assert_same(array(
+		array('name' => 'topic', 'text' => $topic),
+		array('name' => 'event', 'token' => 'title'),
+	), $spec['params'], 'the topic as fixed text, the event from its title');
+
+	$fields = _bookshop_events_contact_fields();
+	pg_assert_same('topic', isset($fields['topic']['props']['_cf']['url_param']) ? $fields['topic']['props']['_cf']['url_param'] : '', 'the topic reads ?topic=');
+	pg_assert_same('event', isset($fields['message']['props']['_cf']['url_param']) ? $fields['message']['props']['_cf']['url_param'] : '', 'the message reads ?event=');
+	$options = array();
+	foreach (isset($fields['topic']['children']) ? $fields['topic']['children'] : array() as $option) {
+		$options[] = (string) _bookshop_events_attr($option, 'value');
+	}
+	pg_assert_same($topic, pg_cf_match_option($topic, $options), 'the topic sent is one the pick list offers');
+
+	// After the renderer's pre-pass the row's <a> prints the link's token.
+	$tree = $links[0];
+	pg_assert_same(array('__page_link_0'), array_keys(pg_sw_page_link_bindings($tree)));
+	pg_assert_contains('href="^^__page_link_0^^"', _render_tree_node($tree, 0), 'the row\'s link takes the address');
+
+	// One row's address: the topic and the event's title, encoded once.
+	$links = array('__page_link_0' => array('page_id' => 5, 'params' => $spec['params'], 'base' => '/contact'));
+	$values = pg_sw_page_link_values($links, array(), array('title' => array('data' => 'Poems & Prose')), array());
+	pg_assert_same(h('/contact?topic=' . rawurlencode($topic) . '&event=Poems%20%26%20Prose'), $values['__page_link_0']);
 }

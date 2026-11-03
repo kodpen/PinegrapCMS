@@ -13,7 +13,8 @@ description: Option fields of forms: the site refuses a value outside the list, 
 - Allowed: an empty value; values compared exactly, spaces around either side aside; a nested array is refused.
 - Not checked: reference / product / page fields (`pg_coll_check_field()` holds them), and a field with no option rows (a designed check box without a `value` posts "on" and stores no option).
 - Symptom fixed (#4227): a hand-made request stored any value, which went to exports, e-mails and lists.
-- Tests: `tests/form_option_values_test.php`.
+- Custom shipping and billing forms (`submit_custom_form()`, used by express order, shipping address and billing information) apply the same check through `pg_cf_option_value_error()`; before that a hand-made request stored any value in the order's `form_data` (bug hunt fix).
+- Tests: `tests/form_option_values_test.php`, `tests/custom_form_shipping_options_test.php`.
 
 ## Where does a check box group's hidden field go?
 - Before the `<fieldset>`, never right after the `<legend>`: Bootstrap 6 floats the legend and clears only its next sibling, so a hidden input there let the first option fall beside the legend at 0 px on the card's right edge and scrolled the page sideways (#4225). It still comes before the boxes, so PHP keeps their array.

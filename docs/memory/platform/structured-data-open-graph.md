@@ -15,10 +15,10 @@ description: Rules for JSON-LD and Open Graph (2026.4.4): no invented data, json
 - The SEO save (`includes/settings/seo.save.php`) marks invalid site JSON-LD (`mark_error('custom_jsonld')`, dialog `status: 'invalid'`) before the IndexNow file or a column is written. Why (PR #490): `output_error` gave the dialog a 500 after the IndexNow file was already written.
 
 ## Which rules apply to OG images and merchant data?
-- In the `media` field the value decides (`pg_resolve_submitted_form_og_image`): the field may link to rich text/video too; a video address does NOT go into og:image.
+- In the `media` field the value decides (`pg_resolve_submitted_form_og_image`): a video address is NOT og:image; in rich text the first http(s) `<img>`, a pasted `data:` one is skipped (#4870).
 - Merchant parts (`pg_product_merchant_jsonld_parts`) only when `shippable = 1` and `MERCHANT_COUNTRY` is filled; both production paths (legacy block, `_pg_build_product_jsonld`) go through the same helper.
 - OG image resolvers use `SELECT *`: `files.image_width/height` came in 4.4, naming the columns breaks the query on an old DB.
-- Every resolved image address passes `pg_normalize_url_slashes()`. Stored content can carry double-slash addresses (`http://host//x.jpg`); IIS forgives, but emitted markup must have a single form. A new OG / JSON-LD address source must pass it too.
+- Every resolved image address passes `pg_normalize_url_slashes()`. Stored content can carry double-slash addresses (`http://host//x.jpg`); emitted markup must have one form. A new OG / JSON-LD address source must pass it too.
 
 ## Where is the setting and when is JSON-LD not emitted?
 - The `strutured_data` key is in the SEO card (not in E-Ticaret - there it was invisible on a site with e-commerce off). Only settings that produce structured data (site JSON-LD, merchant) are tied to the key with `collapse-switcher`; the share image/logo that feeds OG is NOT tied.

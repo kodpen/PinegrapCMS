@@ -242,6 +242,44 @@ function pg_search_fulltext_items($sql, array $params)
 }
 
 /**
+ * How long a search index run that the dispatcher did not start holds the
+ * job's lock: a panel window request works within its budget and takes the
+ * catalogue's lock (null); a command-line run does the whole pass in one
+ * process and holds the job for up to four hours. Pure.
+ *
+ * @param bool $web The run answers an HTTP request.
+ * @return int|null Seconds, or null for the catalogue's lock.
+ */
+function pg_search_index_claim_seconds($web)
+{
+    return $web ? null : 14400;
+}
+
+/**
+ * Whether a search index run asked for over HTTP from the panel may start: a
+ * POST carrying the session's form token. A GET, or a POST without the
+ * token, is what a cross-site link or form sends, and would start a crawl in
+ * a manager's session. Pure.
+ *
+ * @param mixed $method        The request method.
+ * @param mixed $posted_token  The token field of the POST body.
+ * @param mixed $session_token The token kept in the session.
+ * @return bool
+ */
+function pg_search_index_web_request_valid($method, $posted_token, $session_token)
+{
+    if (!is_string($method) || (strtoupper($method) !== 'POST')) {
+        return false;
+    }
+
+    if (!is_string($posted_token) || !is_string($session_token) || ($session_token === '')) {
+        return false;
+    }
+
+    return hash_equals($session_token, $posted_token);
+}
+
+/**
  * The closing sweep of a search index run: every row older than the run's
  * start goes. Older, not different: a run started later has rewritten its
  * rows with its own, newer time, and an earlier run that ends first must

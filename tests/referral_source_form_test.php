@@ -80,12 +80,73 @@ function test_referral_source_screens_refuse_blank_values()
 
 	foreach ($queries as $file => $query) {
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
-		$check = strpos($source, 'pg_referral_source_form_error($values)');
+		$check = strpos($source, 'pg_referral_source_form_error($values, $others)');
 		pg_assert_true($check !== false, $file . ' refuses a blank name or code');
 		pg_assert_true($check < strpos($source, '$result = db_q($query, array($values[\'name\']'), $file . ' refuses them before the save');
 	}
 
 	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_referral_source.php');
 	pg_assert_contains('<button type="submit" name="submit_delete" value="Delete" formnovalidate', $edit, 'Delete is not blocked by an empty required box');
-	pg_assert_true(strpos($edit, 'pg_referral_source_form_error($values)') > strpos($edit, 'DELETE FROM referral_sources WHERE id = ?'), 'Delete is never refused for a blank value');
+	pg_assert_true(strpos($edit, 'pg_referral_source_form_error($values, $others)') > strpos($edit, 'DELETE FROM referral_sources WHERE id = ?'), 'Delete is never refused for a blank value');
+}
+
+function test_referral_source_form_error_sort_order_range()
+{
+	$base = array('name' => 'Radio', 'code' => 'RAD');
+
+	foreach (array('', '0', '7', '999') as $ok) {
+		pg_assert_same('', pg_referral_source_form_error($base + array('sort_order' => $ok)), 'sort order "' . $ok . '" is accepted');
+	}
+
+	foreach (array('1000', '-5', 'abc', '12,50', '1.5', '40000') as $bad) {
+		pg_assert_contains(lang('Sort Order'), pg_referral_source_form_error($base + array('sort_order' => $bad)), 'sort order "' . $bad . '" is refused');
+	}
+}
+
+function test_referral_source_form_error_duplicate_name_or_code()
+{
+	$others = array(
+		array('name' => 'Radio', 'code' => 'RAD'),
+		array('name' => 'Friend', 'code' => 'FRI'),
+	);
+
+	pg_assert_same('', pg_referral_source_form_error(array('name' => 'Search', 'code' => 'SEA', 'sort_order' => ''), $others), 'a new name and code');
+	pg_assert_contains('RAD', pg_referral_source_form_error(array('name' => 'Radio ads', 'code' => 'rad', 'sort_order' => ''), $others), 'a code of another source is refused, case aside');
+	pg_assert_contains('Friend', pg_referral_source_form_error(array('name' => 'FRIEND', 'code' => 'NEW', 'sort_order' => ''), $others), 'a name of another source is refused, case aside');
+	pg_assert_same('', pg_referral_source_form_error(array('name' => 'Radio', 'code' => 'RAD', 'sort_order' => '')), 'no other sources given, nothing to clash with');
+}
+
+function test_referral_source_form_sort_order_value()
+{
+	pg_assert_same(0, pg_referral_source_sort_order(''), 'an empty sort order is 0');
+	pg_assert_same(25, pg_referral_source_sort_order('025'), 'leading zeros dropped');
+}
+
+function test_referral_source_form_card_texts_and_bounds()
+{
+	$create = pg_referral_source_form_card(null);
+	$edit = pg_referral_source_form_card(array('name' => 'A', 'code' => 'B', 'sort_order' => '1'));
+
+	pg_assert_contains(lang('New Referral Source Information'), $create, 'create card heading');
+	pg_assert_contains(lang('Referral Source Information'), $edit, 'edit card heading');
+	pg_assert_true(strpos($edit, lang('New Referral Source Information')) === false, 'edit does not say new');
+	pg_assert_true(strpos($create, 'Order Preview Page') === false && strpos($create, lang('Order Preview Page Display Options')) === false, 'no order preview group heading');
+	pg_assert_contains('min="0" max="999"', $create, 'the sort order box carries its range for the +/- buttons');
+	pg_assert_contains('data-inputmask-alias="integer" data-inputmask-allowMinus="false"', $create, 'whole numbers only');
+}
+
+function test_referral_source_screens_check_others_and_notice()
+{
+	foreach (array('add_referral_source.php', 'edit_referral_source.php') as $file) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_contains('pg_referral_source_form_error($values, $others)', $source, $file . ' checks the other sources');
+		pg_assert_contains("new liveform('view_referral_sources')", $source, $file . ' leaves a notice for the list');
+	}
+
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_referral_source.php');
+	pg_assert_contains('WHERE id <> ?', $edit, 'edit leaves its own row out of the clash check');
+
+	$list = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_referral_sources.php');
+	pg_assert_contains("'sort_order'", $list, 'the list sorts by sort order');
+	pg_assert_contains('output_notices()', $list, 'the list prints the notices');
 }

@@ -28,6 +28,30 @@ function test_site_log_actor_without_user()
 	pg_assert_same(lang('Scheduled job'), pg_log_actor('UNKNOWN', ''));
 	pg_assert_same(lang('Scheduled job'), pg_log_actor(null, null));
 	pg_assert_same(lang('Unknown'), pg_log_actor('', '198.51.100.7'));
+	pg_assert_same(lang('System'), pg_log_actor('SYSTEM', ''), 'background writers store the literal SYSTEM');
+	pg_assert_same(lang('System'), pg_log_actor('SYSTEM', '198.51.100.7'));
+}
+
+// Clearing a log: administrators, or everyone when mass deletion is on.
+function test_log_clear_allowed()
+{
+	pg_assert_true(pg_log_clear_allowed(false, 0));
+	pg_assert_false(pg_log_clear_allowed(false, 1));
+	pg_assert_false(pg_log_clear_allowed(false, 2));
+	pg_assert_false(pg_log_clear_allowed(false, null), 'no role is no right');
+	pg_assert_true(pg_log_clear_allowed(true, 2));
+}
+
+// A search term is cut by characters, never in the middle of a letter.
+function test_log_search_term()
+{
+	pg_assert_same('abc', pg_log_search_term('  abc '));
+	pg_assert_same('', pg_log_search_term(array('x')), 'an array is no term');
+	pg_assert_same('', pg_log_search_term(null));
+	$term = pg_log_search_term('a' . str_repeat('ş', 250), 200);
+	pg_assert_same(200, mb_strlen($term, 'UTF-8'));
+	pg_assert_same('a' . str_repeat('ş', 199), $term);
+	pg_assert_true(mb_check_encoding($term, 'UTF-8'));
 }
 
 // Outside a page drawn in another language the line is lang()'s, and the

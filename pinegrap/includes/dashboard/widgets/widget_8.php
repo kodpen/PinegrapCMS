@@ -20,29 +20,7 @@ if (!defined('PG_DASHBOARD_WIDGETS')) {
 function pg_dashboard_widget_8($request, $user)
 {
     if ((ECOMMERCE == true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))) {
-        $orders = array();
-        $query = "SELECT
-                orders.id ,
-                orders.order_number,
-                orders.status,
-                user.user_username as username,
-                contacts.first_name,
-                contacts.last_name,
-                orders.tracking_code,
-                orders.total,
-                orders.order_date as timestamp
-            FROM orders
-            LEFT JOIN user ON orders.user_id = user.user_id
-            LEFT JOIN contacts ON orders.contact_id = contacts.id
-            WHERE orders.status != 'incomplete'
-            ORDER BY orders.order_date DESC
-            LIMIT 50";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-        // loop through the result in order to prepare array of items
-        while ($row = mysqli_fetch_assoc($result)) {
-            $orders[] = $row;
-        }
+        $orders = pg_dashboard_recent_orders(50);
 
         $output_order_rows = '';
 
@@ -53,42 +31,8 @@ function pg_dashboard_widget_8($request, $user)
             foreach ($orders as $order) {
                 $output_link_url = 'view_order.php?id=' . $order['id'];
 
-                $name = '';
-
-                // if there is a username then use that for the name
-                if ($order['username'] != '') {
-                    $name = $order['username'];
-
-                    // else there is not a username, so use contact name
-
-                } else {
-                    // if there is a first name, then add it to the name
-                    if ($order['first_name'] != '') {
-                        $name .= $order['first_name'];
-                    }
-
-                    // if there is a last name, then add it to the name
-                    if ($order['last_name'] != '') {
-                        // if the name is not blank, then add space
-                        if ($name != '') {
-                            $name .= ' ';
-                        }
-
-                        $name .= $order['last_name'];
-                    }
-                }
-
-                // if the name is blank, then set it to placeholder
-                if ($name == '') {
-                    $name = '[' . lang('Visitor') . ']';
-                }
-
-                $id = $order['id'];
-                $shipped = false;
-                if (ECOMMERCE_SHIPPING == true) {
-                    $ship_result = db_q("SELECT id FROM shipping_tracking_numbers WHERE order_id = ? LIMIT 1", array((string) $id)) or output_error('Query failed.');
-                    $shipped = (bool) mysqli_fetch_assoc($ship_result);
-                }
+                $name = $order['name'];
+                $shipped = $order['shipped'];
                 $ship_icon_color = $shipped ? '#10b981' : '#a1a1a1';
                 $ship_title = $shipped ? lang('Shipped') : lang('Not shipped yet');
 
@@ -248,4 +192,85 @@ function pg_dashboard_widget_8($request, $user)
         );
         return $response;
     }
+}
+
+/**
+ * The latest orders past the cart, newest first, each with the name to show
+ * (username, else the contact's name, else "[Visitor]") and whether a
+ * tracking number was recorded for it. Shared by this card and the new
+ * dashboard's Orders card.
+ *
+ * @param int $limit
+ * @return array[] id, order_number, status, total (minor units), timestamp,
+ *                 name, shipped
+ */
+function pg_dashboard_recent_orders($limit)
+{
+    $orders = array();
+    $query = "SELECT
+            orders.id ,
+            orders.order_number,
+            orders.status,
+            user.user_username as username,
+            contacts.first_name,
+            contacts.last_name,
+            orders.tracking_code,
+            orders.total,
+            orders.order_date as timestamp
+        FROM orders
+        LEFT JOIN user ON orders.user_id = user.user_id
+        LEFT JOIN contacts ON orders.contact_id = contacts.id
+        WHERE orders.status != 'incomplete'
+        ORDER BY orders.order_date DESC
+        LIMIT " . (int) $limit;
+    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+    // loop through the result in order to prepare array of items
+    while ($row = mysqli_fetch_assoc($result)) {
+        $orders[] = $row;
+    }
+
+    foreach ($orders as $index => $order) {
+        $name = '';
+
+        // if there is a username then use that for the name
+        if ($order['username'] != '') {
+            $name = $order['username'];
+
+            // else there is not a username, so use contact name
+
+        } else {
+            // if there is a first name, then add it to the name
+            if ($order['first_name'] != '') {
+                $name .= $order['first_name'];
+            }
+
+            // if there is a last name, then add it to the name
+            if ($order['last_name'] != '') {
+                // if the name is not blank, then add space
+                if ($name != '') {
+                    $name .= ' ';
+                }
+
+                $name .= $order['last_name'];
+            }
+        }
+
+        // if the name is blank, then set it to placeholder
+        if ($name == '') {
+            $name = '[' . lang('Visitor') . ']';
+        }
+
+        $id = $order['id'];
+        $shipped = false;
+        if (ECOMMERCE_SHIPPING == true) {
+            $ship_result = db_q("SELECT id FROM shipping_tracking_numbers WHERE order_id = ? LIMIT 1", array((string) $id)) or output_error('Query failed.');
+            $shipped = (bool) mysqli_fetch_assoc($ship_result);
+        }
+
+        $orders[$index]['name'] = $name;
+        $orders[$index]['shipped'] = $shipped;
+    }
+
+    return $orders;
 }

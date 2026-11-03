@@ -6,6 +6,7 @@ module: errors, mail_queue, backup, consent
 
 ## What does `errors` (the central error log) do?
 - `pg_error_install()` is installed in `init.php`. Exceptions/fatals/warnings are written as JSON lines to `data/temp/php_errors.log`; `view_log.php` displays it.
+- An error that ends the request unhandled (E_USER_ERROR, E_RECOVERABLE_ERROR) is seen by the error handler and again by the shutdown handler; both dedupe on `pg_error_once_key()`, so it is written once. Symptom it fixed: every unhandled E_RECOVERABLE_ERROR (PHP 7) was written twice.
 - The handler only records (`return false`) and never touches the DB. Code that installs a temporary `set_error_handler` MUST restore with `restore_error_handler()`, otherwise logging is silent for that request.
 
 ## What does `mail_queue` (the outgoing mail queue) do?

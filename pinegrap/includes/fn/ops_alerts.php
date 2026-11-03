@@ -90,6 +90,11 @@ function pg_ops_alert_codes()
             'url'   => 'mail_queue.php',
             'direct' => true,
         ),
+        'mail_reputation' => array(
+            'label' => lang('Too many e-mails bounce or are marked as spam'),
+            'type'  => 'warning',
+            'url'   => 'smtp_settings.php#mail_domain_card',
+        ),
         'webhook_failing' => array(
             'label' => lang('An event address stopped answering'),
             'type'  => 'warning',
@@ -99,6 +104,11 @@ function pg_ops_alert_codes()
             'label' => lang('A payment service reported a payment to check'),
             'type'  => 'warning',
             'url'   => 'view_log.php',
+        ),
+        'storage_unreachable' => array(
+            'label' => lang('The object storage cannot be reached'),
+            'type'  => 'error',
+            'url'   => 'settings_maintenance.php#pgset-storage',
         ),
         'cert_expiring' => array(
             'label' => lang('The SSL certificate is about to expire'),
@@ -223,6 +233,37 @@ function pg_ops_alert_due($last_sent, $now, $window = 86400)
     }
 
     return (abs((int) $now - $last_sent) >= (int) $window);
+}
+
+/**
+ * A webhook address as an alert shows it: scheme and host (and port) only.
+ *
+ * Slack, Discord and Zapier carry the secret in the path, and an alert text
+ * goes to the bell, the mail, device banners and System Status, so the path,
+ * query, fragment and any user:password part are cut; '/…' marks that there
+ * was more. The full address stays on the webhook's own edit screen. Pure.
+ *
+ * @param string $url
+ * @return string 'https://hooks.example.com/…', or '…' for no absolute address
+ */
+function pg_ops_alert_mask_url($url)
+{
+    $parts = @parse_url(trim((string) $url));
+
+    if (!is_array($parts) || empty($parts['scheme']) || empty($parts['host'])) {
+        return '…';
+    }
+
+    $masked = strtolower($parts['scheme']) . '://' . strtolower($parts['host'])
+        . (isset($parts['port']) ? ':' . (int) $parts['port'] : '');
+
+    $path = isset($parts['path']) ? $parts['path'] : '';
+
+    if ((($path !== '') && ($path !== '/')) || isset($parts['query']) || isset($parts['fragment'])) {
+        $masked .= '/…';
+    }
+
+    return $masked;
 }
 
 /**
@@ -540,6 +581,16 @@ function pg_ops_alert($code, $detail = '')
             } catch (\Throwable $e) {
                 $result['email'] = false;
             }
+        }
+    }
+
+    // Slack, Teams and Telegram targets that carry this code, through the
+    // outbound queue.
+    if (function_exists('pg_notify_ops_alert')) {
+        try {
+            pg_notify_ops_alert($code, $detail);
+        } catch (\Throwable $e) {
+            // A chat target must not stop the alert's own record.
         }
     }
 
@@ -1086,6 +1137,39 @@ function pg_ops_alerts_check_mail($now)
 }
 
 /**
+ * Mail reputation: the bounce or complaint rate of the last 30 days over the
+ * limits mailbox providers throttle at (5 % bounces, 0.3 % complaints), once
+ * at least PG_MAIL_REPUTATION_MIN_SENDS were sent. Before the bounce table
+ * exists nothing is counted, so nothing is told.
+ *
+ * @param int $now
+ * @return string the code of the problem found, '' for none; pg_ops_alert()
+ *                decides whether it is told again
+ */
+function pg_ops_alerts_check_mail_reputation($now)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/mail_domain_health.php');
+
+    if (!function_exists('pg_mail_bounces_ready') || !pg_mail_bounces_ready()) {
+        return '';
+    }
+
+    $counts = pg_mail_reputation_counts($now);
+    $rates = pg_mail_reputation_rates($counts['sent'], $counts['bounces'], $counts['complaints']);
+
+    if (!$rates['over']) {
+        return '';
+    }
+
+    pg_ops_alert('mail_reputation', lang(array(
+        'string' => 'Last 30 days, {var:1} e-mail(s) sent: {var:2}. Mailbox providers may send the site\'s mail to spam.',
+        'vars'   => array($rates['sent'], implode(', ', pg_mail_reputation_alert_parts($rates))),
+    )));
+
+    return 'mail_reputation';
+}
+
+/**
  * Webhooks: an event address that stopped answering and is no longer tried.
  *
  * The dispatcher marks a subscription failing after six failures in a row and
@@ -1111,10 +1195,38 @@ function pg_ops_alerts_check_webhooks($now)
 
     pg_ops_alert('webhook_failing', lang(array(
         'string' => '{var:1} event address(es) stopped answering and are no longer sent to: {var:2}',
-        'vars'   => array($total, implode(', ', (array) $urls)),
+        'vars'   => array($total, implode(', ', array_map('pg_ops_alert_mask_url', (array) $urls))),
     )));
 
     return 'webhook_failing';
+}
+
+/**
+ * Object storage: calls of the last hour that could not reach the store
+ * (pg_os_health_recent()), counted while a store is set up and switched on.
+ *
+ * @param int $now
+ * @return string the code of the problem found, '' for none; pg_ops_alert()
+ *                decides whether it is told again
+ */
+function pg_ops_alerts_check_storage($now)
+{
+    if (!function_exists('pg_os_health_recent') || !pg_os_ready(pg_os_settings())) {
+        return '';
+    }
+
+    $recent = pg_os_health_recent($now);
+
+    if ($recent['count'] < pg_os_health_threshold()) {
+        return '';
+    }
+
+    pg_ops_alert('storage_unreachable', lang(array(
+        'string' => '{var:1} call(s) to the object storage failed in the last hour. The last one: {var:2}',
+        'vars'   => array($recent['count'], $recent['message']),
+    )));
+
+    return 'storage_unreachable';
 }
 
 /**
@@ -1317,7 +1429,9 @@ function pg_ops_alert_sources()
         'errors'      => 'pg_ops_alerts_check_errors',
         'disk'        => 'pg_ops_alerts_check_disk',
         'mail'        => 'pg_ops_alerts_check_mail',
+        'mail_reputation' => 'pg_ops_alerts_check_mail_reputation',
         'webhooks'    => 'pg_ops_alerts_check_webhooks',
+        'storage'     => 'pg_ops_alerts_check_storage',
         // Last: the only one that may wait on the network, for up to ten
         // seconds once a day.
         'certificate' => 'pg_ops_alerts_check_certificate',

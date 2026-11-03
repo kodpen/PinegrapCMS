@@ -127,16 +127,72 @@ function test_license_v1_key_normal_form_and_alphabet()
 
 function test_license_v1_card_shows_type_and_site_rights()
 {
-	pg_assert_contains(lang('Premium'), pg_license_card_details('premium', 1, 1), 'premium');
-	pg_assert_contains(lang('Enterprise'), pg_license_card_details('enterprise', 3, 5), 'enterprise');
-	pg_assert_contains(lang('Demo'), pg_license_card_details('demo', 1, 1), 'demo');
-	pg_assert_contains('3 / 5', pg_license_card_details('enterprise', 3, 5), 'the site rights as sent');
-	pg_assert_contains('0 / 1', pg_license_card_details('premium', 0, 1), 'none held');
-	pg_assert_contains('partner', pg_license_card_details('partner', 2, 10), 'an unknown type by its code');
-	pg_assert_contains('&lt;b&gt;', pg_license_card_details('<b>', 1, 1), 'escaped');
-	pg_assert_same(false, strpos(pg_license_card_details('', 1, 1), 'pg-lic-type'), 'no type: no type line');
-	pg_assert_same(false, strpos(pg_license_card_details('premium', null, null), ' / '), 'no counts: no sites line');
-	pg_assert_same('', pg_license_card_details('', null, null), 'nothing at all');
+	pg_assert_same(lang('Premium'), pg_license_type_name('premium'), 'premium');
+	pg_assert_same(lang('Enterprise'), pg_license_type_name('enterprise'), 'enterprise');
+	pg_assert_same(lang('Demo'), pg_license_type_name('demo'), 'demo');
+	pg_assert_same('partner', pg_license_type_name('partner'), 'an unknown type by its code');
+	pg_assert_same('&lt;b&gt;', pg_license_type_name('<b>'), 'escaped');
+	pg_assert_same('', pg_license_type_name(''), 'no type');
+	pg_assert_same('', pg_license_type_name(null), 'not a string');
+
+	pg_assert_contains('3 / 5', pg_license_card_details(3, 5), 'the site rights as sent');
+	pg_assert_contains('0 / 1', pg_license_card_details(0, 1), 'none held');
+	pg_assert_same('', pg_license_card_details(null, null), 'no counts: nothing');
+	pg_assert_same('', pg_license_card_details(1, null), 'one count missing: nothing');
+}
+
+// The card's row names the type it holds, so a Demo or Enterprise licence
+// never reads "Premium"; without a type (the old server, an unusable answer)
+// it keeps the paid licence's name (#4928).
+function test_license_v1_card_title_names_the_type()
+{
+	pg_assert_same('Pinegrap ' . lang('Demo') . ' · ' . lang('Active'), pg_license_card_title('demo', lang('Active')), 'demo');
+	pg_assert_same('Pinegrap ' . lang('Enterprise') . ' · ' . lang('Active'), pg_license_card_title('enterprise', lang('Active')), 'enterprise');
+	pg_assert_same('Pinegrap ' . lang('Premium') . ' · ' . lang('Suspended'), pg_license_card_title('premium', lang('Suspended')), 'premium');
+	pg_assert_same(false, strpos(pg_license_card_title('demo', 'x'), 'Premium'), 'a demo licence is not called Premium');
+	pg_assert_same(false, strpos(pg_license_card_title('enterprise', 'x'), 'Premium'), 'an enterprise licence is not called Premium');
+	pg_assert_same('Pinegrap Premium™ · x', pg_license_card_title('', 'x'), 'no type: the name as before');
+	pg_assert_same('Pinegrap &lt;i&gt; · &lt;s&gt;', pg_license_card_title('<i>', '<s>'), 'escaped');
+}
+
+// The expiry date is written in the panel's language and the site's date
+// order, like the panel's other dates: "Sal 1 Ara 2026", not "01 Dec 2026"
+// (#4929). Run in a PHP process of its own with the panel in Turkish.
+function test_license_v1_expiry_date_follows_the_panel_language()
+{
+	if (!function_exists('exec') || !defined('PHP_BINARY') || (PHP_BINARY === '')) {
+		pg_assert_true(true, 'PHP cannot be started again');
+		return;
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pglicexp');
+
+	if ($file === false) {
+		pg_assert_true(true, 'no temporary file');
+		return;
+	}
+
+	$script = <<<'PHP'
+define('SOFTWARE_LANGUAGE', 'tr');
+define('DATE_FORMAT', 'day_month');
+define('TIME_FORMAT', 'twenty_four_hours');
+date_default_timezone_set('Europe/Istanbul');
+require $pg_dir . '/functions.php';
+
+echo json_encode(array('text' => pg_license_expiry_text(new DateTime('2026-12-01'))));
+PHP;
+
+	file_put_contents($file, '<?php' . "\n" . '$pg_dir = ' . var_export(PG_FUNCTIONS_DIR, true) . ";\n" . $script . "\n");
+
+	$lines = array();
+	$code = 1;
+	@exec(escapeshellarg(PHP_BINARY) . ' -d display_errors=stderr -d error_reporting=-1 ' . escapeshellarg($file) . ' 2>&1', $lines, $code);
+	@unlink($file);
+
+	$result = json_decode(implode("\n", $lines), true);
+
+	pg_assert_same(0, $code, implode("\n", $lines));
+	pg_assert_same('Sal 1 Ara 2026', is_array($result) ? ($result['text'] ?? null) : null, 'Turkish, day first');
 }
 
 function test_license_v1_error_texts()

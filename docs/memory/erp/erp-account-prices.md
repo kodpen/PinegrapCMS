@@ -5,6 +5,8 @@ description: ERP account prices (4.94) in the line editor and, with erp_storefro
 
 ## What are account prices? (`includes/erp/price_lists.php`, 2026.4.4 step 4.94)
 - Terms agreed with one account, sales only: a price per product (`erp_account_prices.price`, replaces the list price) or a per-product discount (`discount_rate`), and an account-wide discount for everything else (`erp_accounts.discount_rate`). `erp_account_price_terms($account_id, $product_id)` gives them; kept in the catalogue's price basis. Edited on `erp_account_prices.php`.
+- A supplier-only account gets no Account prices button on its card (like the quote links, #5890); opened directly, the screen warns the terms apply to sales only. Stored terms stay.
+- The account-wide discount is read by `erp_account_discount_rate_parse()`: digits with one decimal mark, 0 to 100, empty for none; anything else is refused and the stored value kept (`erp_fx_rate_in()` dropped the minus: -5 saved 5, `abc` saved 0).
 
 ## How does the line editor use them?
 - `erp_product_for_line()` carries them as `account_terms`; `assets/js/erp_invoice_editor.js` applies them on sales only (invoices and quotes): an own price fills the unit price, a discount the discount box. The store's campaign is then left off: agreed terms stand in for it and never stack. The line stays editable.

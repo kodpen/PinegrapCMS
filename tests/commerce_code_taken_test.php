@@ -122,10 +122,10 @@ function test_state_card_prints_the_code_error_next_to_the_field()
 function test_country_and_state_screens_check_the_code_before_writing()
 {
 	$pins = array(
-		'add_country.php' => array('pg_country_form_code_error($values[\'code\'], null, null)', 'INSERT INTO countries'),
-		'edit_country.php' => array('pg_country_form_code_error($values[\'code\'], (string) $row[\'code\'], $id)', 'UPDATE countries SET'),
-		'add_state.php' => array('pg_state_form_code_error($values, null, null)', 'INSERT INTO states'),
-		'edit_state.php' => array('pg_state_form_code_error($values, $row, $id)', 'UPDATE states SET'),
+		'add_country.php' => array('pg_country_form_code_error($values[\'code\'], null, null)', 'pg_store_country_save('),
+		'edit_country.php' => array('pg_country_form_code_error($values[\'code\'], (string) $row[\'code\'], $id)', 'pg_store_country_save('),
+		'add_state.php' => array('pg_state_form_code_error($values, null, null)', 'pg_store_state_save('),
+		'edit_state.php' => array('pg_state_form_code_error($values, $row, $id)', 'pg_store_state_save('),
 	);
 
 	foreach ($pins as $file => $pin) {

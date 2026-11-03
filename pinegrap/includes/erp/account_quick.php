@@ -60,7 +60,7 @@ function erp_account_quick_create($user, $data)
     if ($tax['error'] !== '') {
         $errors['tax_number'] = $tax['error'];
     } elseif ($tax_number !== '') {
-        $existing = db_item("SELECT id, title FROM erp_accounts WHERE tax_number = '" . escape($tax_number) . "' LIMIT 1");
+        $existing = erp_account_by_tax_number($tax_number);
         if ($existing) {
             $errors['tax_number'] = lang(array('string' => 'This number already belongs to the account “{var:1}”. Search for it instead.', 'vars' => array($existing['title'])));
         }

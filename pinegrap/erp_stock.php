@@ -72,6 +72,17 @@ foreach ($products as $row) {
         </tr>';
 }
 
+// A product with no cost yet is not among the costed products: its name
+// comes from the products table, and a product that is gone says so.
+if (($product_id > 0) && ($product_title === '')) {
+    $product_row = db_item("SELECT name AS product_sku, short_description AS product_name FROM products WHERE id = '" . $product_id . "' LIMIT 1");
+    $product_title = is_array($product_row) ? erp_stock_product_label($product_row) : '';
+
+    if ($product_title === '') {
+        $product_title = lang('Product not found.');
+    }
+}
+
 $output_moves = '';
 
 foreach ($moves as $move) {
@@ -148,7 +159,7 @@ pg_page_shell(array(
         'cancel' => ($product_id > 0) ? array('enable' => 'true', 'url' => 'erp_stock.php', 'title' => lang('Stock and cost')) : false,
         'breadcrumb' => ($product_id > 0) ? array(
             array('label' => lang('Stock and cost'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_stock.php'),
-            array('label' => ($product_title !== '') ? $product_title : ('#' . $product_id)),
+            array('label' => $product_title),
         ) : array(),
     )) . '
 <main id="content" class="container-fluid">
@@ -200,7 +211,7 @@ pg_page_shell(array(
             <div class="card my-7" id="erp_stock_moves">
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold d-flex flex-wrap justify-content-between align-items-center gap-3">
                     <span>' . (($product_id > 0)
-                        ? h(lang(array('string' => 'Movements: {var:1}', 'vars' => ($product_title !== '') ? $product_title : ('#' . $product_id))))
+                        ? h(lang(array('string' => 'Movements: {var:1}', 'vars' => $product_title)))
                         : lang('Stock movements')) . '</span>
                 </div>
                 <div class="card-body p-0 table-responsive">

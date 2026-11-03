@@ -26,9 +26,14 @@
  *   array(
  *     'available'  => bool,        // a newer version was announced
  *     'response'   => array|null,  // decoded server response, null on failure
- *     'error'      => string,      // '', 'curl_missing', 'curl_error' or 'invalid_response'
+ *     'error'      => string,      // '', 'checks_off', 'curl_missing', 'curl_error',
+ *                                  // 'http_error' or 'invalid_response'
  *     'curl_errno' => int,
- *     'curl_error' => string)
+ *     'curl_error' => string,
+ *     'http_status' => int)        // the status of an http_error answer
+ * With update checks off in data/config.php (SOFTWARE_UPDATE_CHECK false)
+ * nothing is asked: the answer is the checks_off error. A failed check
+ * writes one Site Log line (pg_update_check_error_text()).
  * and, from the Kodpen API, 'decision' (pg_vendor_release_offer()): what the
  * answer offers, blocked or refused releases included.
  */
@@ -39,14 +44,20 @@ function software_update_check($return_details = false)
         'response' => null,
         'error' => '',
         'curl_errno' => 0,
-        'curl_error' => '');
+        'curl_error' => '',
+        'http_status' => 0);
+
+    if (defined('SOFTWARE_UPDATE_CHECK') && (SOFTWARE_UPDATE_CHECK != true)) {
+        $details['error'] = 'checks_off';
+        return $return_details ? $details : false;
+    }
 
     // Update the config table to remember that the check has been completed today.
     db("UPDATE config SET last_software_update_check_timestamp = UNIX_TIMESTAMP()");
 
     if (!function_exists('curl_init')) {
-        log_activity(lang('daily software update check could not communicate with the software update server, because cURL is not installed, so it is not known if there is a software update available'));
         $details['error'] = 'curl_missing';
+        log_activity(pg_update_check_error_text($details));
         return $return_details ? $details : false;
     }
 
@@ -54,13 +65,8 @@ function software_update_check($return_details = false)
     // A release that is an update, or one blocked behind a stepping stone,
     // raises the flag and the notification; an answer that offers nothing
     // clears them; an unusable answer takes the error path of an unanswered
-    // request. With update checks off in data/config.php nothing is asked.
-    // The screen reads the decision (pg_vendor_release_offer()).
+    // request. The screen reads the decision (pg_vendor_release_offer()).
     if (PG_VENDOR_API_V1 === true) {
-        if (defined('SOFTWARE_UPDATE_CHECK') && (SOFTWARE_UPDATE_CHECK != true)) {
-            return $return_details ? $details : false;
-        }
-
         $server = pg_update_server_version('update');
 
         $details['curl_errno'] = $server['curl_errno'];
@@ -69,11 +75,9 @@ function software_update_check($return_details = false)
         db("DELETE FROM notifications WHERE action = 'software_update'");
 
         if ($server['error'] !== '') {
-            log_activity(($server['error'] === 'curl_error')
-                ? 'daily software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: ' . $server['curl_errno'] . '. cURL Error Message: ' . $server['curl_error'] . '.' . pg_curl_tls_hint($server['curl_errno'])
-                : 'daily software update check received an invalid response from the software update server, so it is not known if there is a software update available');
-
             $details['error'] = $server['error'];
+            log_activity(pg_update_check_error_text($details));
+
             return $return_details ? $details : false;
         }
 
@@ -132,98 +136,92 @@ function software_update_check($return_details = false)
         'connect_timeout' => 10,
         'forbid_reuse'    => true,
     ));
-    $curl_errno = $answer['errno'];
-    $curl_error = $answer['error'];
-    $response = ($answer['errno'] === 0) ? $answer['body'] : false;
+    $details['curl_errno'] = $answer['errno'];
+    $details['curl_error'] = $answer['error'];
 
-    if ($response === false) {
+    // A failed request, an error page (a 500 with an HTML or text body) and an
+    // answer that names no version each say so in the Site Log with their
+    // own reason.
+    $response = null;
 
-        $query = "DELETE FROM notifications WHERE action = 'software_update'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
-
-        log_activity(lang(array(
-            'string' => 'daily software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: {var:1}. cURL Error Message: {var:2}.{var:3}',
-            'vars' => array($curl_errno, $curl_error, pg_curl_tls_hint($curl_errno)))));
+    if ($answer['errno'] !== 0) {
         $details['error'] = 'curl_error';
-        $details['curl_errno'] = $curl_errno;
-        $details['curl_error'] = $curl_error;
-        return $return_details ? $details : false;
+    } elseif (!$answer['ok']) {
+        $details['error'] = 'http_error';
+        $details['http_status'] = (int) $answer['status'];
+    } else {
+        $response = decode_json($answer['body']);
+
+        if (!is_array($response) || !isset($response['version'])) {
+            $details['error'] = 'invalid_response';
+        }
     }
 
-    $response = decode_json($response);
+    if ($details['error'] !== '') {
+        db("DELETE FROM notifications WHERE action = 'software_update'");
+        log_activity(pg_update_check_error_text($details));
 
-
-    if (!isset($response['version'])) {
-
-        $query = "DELETE FROM notifications WHERE action = 'software_update'";
-        $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
-
-        log_activity(lang('daily software update check received an invalid response from the software update server, so it is not known if there is a software update available'));
-        $details['error'] = 'invalid_response';
         return $return_details ? $details : false;
     }
 
     $details['response'] = $response;
 
+    // The answer replaces the "update available" notification: without this
+    // every check, and every opening of the Software Updater, added one more
+    // row to the bell while an update waited, and an answer that offers
+    // nothing left the old one standing.
+    db("DELETE FROM notifications WHERE action = 'software_update'");
 
+    // figure out if new version is greater than old version
 
-    // If the software update check is not disabled in the config.php file,
-    // then continue to determine if there is a software update.
-    if (
-        (defined('SOFTWARE_UPDATE_CHECK') == FALSE)
-        || (SOFTWARE_UPDATE_CHECK == TRUE)
-    ) {
-        // figure out if new version is greater than old version
+    $new_version = trim($response['version']);
+    $new_version_parts = explode('.', $new_version);
 
-        $new_version = trim($response['version']);
-        $new_version_parts = explode('.', $new_version);
+    $old_version = VERSION;
+    $old_version_parts = explode('.', $old_version);
 
-        $old_version = VERSION;
-        $old_version_parts = explode('.', $old_version);
+    // assume that new version is not greater than old version, until we find out otherwise
+    $new_version_is_greater_than_old_version = FALSE;
 
-        // assume that new version is not greater than old version, until we find out otherwise
-        $new_version_is_greater_than_old_version = FALSE;
+    // if the major number of the new version is greater than the major number of the old version,
+    // then the new version is greater than the old version
+    if ($new_version_parts[0] > $old_version_parts[0]) {
+        $new_version_is_greater_than_old_version = TRUE;
 
-        // if the major number of the new version is greater than the major number of the old version,
+        // else if the major number of the new version is equal to the major number of the old version,
+        // then continue to check
+    } elseif ($new_version_parts[0] == $old_version_parts[0]) {
+        // if the minor number of the new version is greater than the minor number of the old version,
         // then the new version is greater than the old version
-        if ($new_version_parts[0] > $old_version_parts[0]) {
+        if ($new_version_parts[1] > $old_version_parts[1]) {
             $new_version_is_greater_than_old_version = TRUE;
 
-            // else if the major number of the new version is equal to the major number of the old version,
+            // else if the minor number of the new version is equal to the minor number of the old version,
             // then continue to check
-        } elseif ($new_version_parts[0] == $old_version_parts[0]) {
-            // if the minor number of the new version is greater than the minor number of the old version,
+        } elseif ($new_version_parts[1] == $old_version_parts[1]) {
+            // if the maintenance number of the new version is greater than the maintenance number of the old version,
             // then the new version is greater than the old version
-            if ($new_version_parts[1] > $old_version_parts[1]) {
+            if ($new_version_parts[2] > $old_version_parts[2]) {
                 $new_version_is_greater_than_old_version = TRUE;
-
-                // else if the minor number of the new version is equal to the minor number of the old version,
-                // then continue to check
-            } elseif ($new_version_parts[1] == $old_version_parts[1]) {
-                // if the maintenance number of the new version is greater than the maintenance number of the old version,
-                // then the new version is greater than the old version
-                if ($new_version_parts[2] > $old_version_parts[2]) {
-                    $new_version_is_greater_than_old_version = TRUE;
-                }
             }
         }
-
-        // assume that there is not an available software update until we find out otherwise
-        $software_update_available = 0;
-
-        // if the new version is greater than the old version, then there is an available software update
-        if ($new_version_is_greater_than_old_version == TRUE) {
-            $software_update_available = 1;
-            create_notification(array('action' => 'software_update', 'type' => 'success', 'user' => '[SOFTWARE]', 'title' => 'available'));
-        }
-
-        // update database to remember whether there is a software update available or not
-        db("UPDATE config SET software_update_available = '" . $software_update_available . "'");
-
-        // Set value to boolean so we can return it later.
-        settype($software_update_available, 'boolean');
-
     }
+
+    // assume that there is not an available software update until we find out otherwise
+    $software_update_available = 0;
+
+    // if the new version is greater than the old version, then there is an available software update
+    if ($new_version_is_greater_than_old_version == TRUE) {
+        $software_update_available = 1;
+        create_notification(array('action' => 'software_update', 'type' => 'success', 'user' => '[SOFTWARE]', 'title' => 'available'));
+    }
+
+    // update database to remember whether there is a software update available or not
+    db("UPDATE config SET software_update_available = '" . $software_update_available . "'");
+
+    // Set value to boolean so we can return it later.
+    settype($software_update_available, 'boolean');
+
 
     // If messages were included in the response, then deal with them.
     if (isset($response['messages']) == true) {

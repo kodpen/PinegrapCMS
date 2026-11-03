@@ -49,7 +49,7 @@ function erp_drawer_markup($type)
 <dialog class="drawer drawer-end pg-erp-drawer" id="erp_drawer" aria-labelledby="erp_drawer_title" data-erp-drawer-type="' . h($type) . '" data-erp-drawer-url="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/get_erp_drawer.php') . '" data-erp-drawer-error="' . h(lang('The details could not be loaded.')) . '" data-erp-drawer-loading="' . h(lang('Loading...')) . '">
     <div class="drawer-header border-bottom gap-3">
         <h5 class="drawer-title text-break me-auto" id="erp_drawer_title"></h5>
-        <a class="btn btn-sm btn-outline theme-secondary d-none" id="erp_drawer_open" href="#"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . lang('Open in full') . '</a>
+        <a class="btn btn-sm btn-outline theme-secondary d-none flex-shrink-0" id="erp_drawer_open" href="#" title="' . lang('Open in full') . '" aria-label="' . lang('Open in full') . '"><i class="bi bi-box-arrow-up-right sm:me-1" aria-hidden="true"></i><span class="d-none sm:d-inline">' . lang('Open in full') . '</span></a>
         <button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . lang('Close') . '"></button>
     </div>
     <div class="drawer-body" id="erp_drawer_body"></div>
@@ -333,8 +333,13 @@ function erp_drawer_invoice($invoice_id)
     // The e-document, only where there is one to speak of.
     $output_edoc = '';
 
+    // A cancelled invoice that never went out has nothing to send, as in the
+    // list's e-document column.
+    $edoc_never_sent = ((string) ($invoice['edoc_status'] ?? 'none') === 'none');
+
     if (erp_edoc_installed() && !$is_draft && ((string) $invoice['direction'] === 'sales')
-        && ((erp_edoc_active() !== '') || ((string) ($invoice['edoc_status'] ?? 'none') !== 'none'))) {
+        && !($edoc_never_sent && ((string) $invoice['status'] === 'cancelled'))
+        && ((erp_edoc_active() !== '') || !$edoc_never_sent)) {
         $labels = erp_edoc_status_labels();
         $edoc_status = (string) ($invoice['edoc_status'] ?? 'none');
         $label = $labels[$edoc_status] ?? array($edoc_status, 'secondary');
@@ -398,7 +403,7 @@ function erp_drawer_waybill($waybill_id)
         lang('Address') => h($address),
         lang('Account') => ((int) $waybill['account_id'] > 0) ? '<a href="edit_erp_account.php?id=' . (int) $waybill['account_id'] . '" class="pg-link-body-emphasis">' . h((string) $waybill['account_title']) . '</a>' : '',
         lang('Date') => h(prepare_form_data_for_output((string) $waybill['issue_date'], 'date')),
-        lang('Ship Date') => ((string) $waybill['ship_date'] > '0000-00-00') ? h(prepare_form_data_for_output((string) $waybill['ship_date'], 'date')) : '',
+        lang('Shipment Date') => ((string) $waybill['ship_date'] > '0000-00-00') ? h(prepare_form_data_for_output((string) $waybill['ship_date'], 'date')) : '',
         lang('Carrier') => h(trim((string) $waybill['carrier_title'] . (((string) $waybill['carrier_vkn'] !== '') ? ' · ' . $waybill['carrier_vkn'] : ''))),
         lang('Plate') => h((string) $waybill['plate']),
         lang('Order') => erp_order_link_html($waybill['order_id'], $waybill['order_number'], $waybill['order_exists'] !== null, 'pg-link-body-emphasis'),

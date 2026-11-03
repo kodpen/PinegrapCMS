@@ -216,7 +216,9 @@ function pg_sa_flags($has_recipient, $multi_recipient, $has_arrival_dates, $has_
  * classic page's software.init_country() does: the pick list named `state`
  * for a country with states, the text box for any other, and the zip code
  * required for a country that requires one. Both controls carry
- * data-pg-sa-state; the label moves to the one shown.
+ * data-pg-sa-state and data-pg-sa-for (the state's name), so a form with
+ * several addresses (the checkout: each recipient and the billing address)
+ * switches each pair on its own; the label moves to the one shown.
  *
  * @param string $form_id
  * @param array  $states   country code => list of [code, name]
@@ -231,8 +233,9 @@ function pg_sa_state_script($form_id, $states, $zip, $prefix = '')
     return '<script>(function(){'
         . 'var f=document.getElementById(' . encode_json((string)$form_id) . ');if(!f)return;'
         . 'var d=' . $data . ';'
-        . 'var c=f.querySelector("select[name=' . $prefix . 'country]"),t=f.querySelector("[data-pg-sa-state=text]"),'
-        .   'l=f.querySelector("[data-pg-sa-state=list]"),z=f.querySelector("input[name=' . $prefix . 'zip_code]");'
+        . 'var c=f.querySelector("select[name=' . $prefix . 'country]"),'
+        .   't=f.querySelector("[data-pg-sa-state=text][data-pg-sa-for=\""+d.name+"\"]"),'
+        .   'l=f.querySelector("[data-pg-sa-state=list][data-pg-sa-for=\""+d.name+"\"]"),z=f.querySelector("input[name=' . $prefix . 'zip_code]");'
         . 'if(!c)return;'
         . 'function lab(from,to){if(!from||!to||!from.id||!to.id)return;'
         .   'f.querySelectorAll("label[for=\""+from.id+"\"]").forEach(function(x){x.htmlFor=to.id;});}'
@@ -540,19 +543,22 @@ function _pg_sa_name_arrival_row(&$tree, $date_id)
 // Mark the two state controls (the text box and the pick list, both named
 // $name: `state`, `billing_state` on the billing step) for the script, fill the pick list with the country's states and
 // leave unnamed and hidden the one the country does not use, so the form
-// posts the right one before the script runs.
+// posts the right one before the script runs. data-pg-sa-for keeps the
+// name, which the unused control loses, so the script finds its own pair.
 function _pg_sa_state_controls(&$tree, $value, $country_states, $name = 'state')
 {
     $use_list = !empty($country_states);
-    _pg_member_edit_control($tree, $name, function (&$node) use ($value, $country_states, $use_list) {
+    $chosen = pg_sa_state_pick((string)$value, (array)$country_states);
+    _pg_member_edit_control($tree, $name, function (&$node) use ($value, $country_states, $use_list, $chosen, $name) {
         $is_list = strtolower((string)$node['props']['tag']) === 'select';
         _pg_member_set_attr($node, 'data-pg-sa-state', $is_list ? 'list' : 'text');
+        _pg_member_set_attr($node, 'data-pg-sa-for', (string)$name);
         if ($is_list) {
             $kids = array(array('type' => 'semantic', 'props' => array('tag' => 'option', 'text' => '',
                 '_attrs' => array(array('name' => 'value', 'value' => ''))), 'children' => array()));
             foreach ((array)$country_states as $s) {
                 $attrs = array(array('name' => 'value', 'value' => (string)$s[0]));
-                if ((string)$s[0] === (string)$value) $attrs[] = array('name' => 'selected', 'value' => '');
+                if ((string)$s[0] === $chosen) $attrs[] = array('name' => 'selected', 'value' => '');
                 $kids[] = array('type' => 'semantic', 'props' => array('tag' => 'option', 'text' => (string)$s[1], '_attrs' => $attrs), 'children' => array());
             }
             $node['children'] = $kids;
@@ -567,6 +573,83 @@ function _pg_sa_state_controls(&$tree, $value, $country_states, $name = 'state')
             _pg_member_set_attr($node, 'hidden', null);
         }
     });
+}
+
+/**
+ * The state code the pick list chooses for a stored value: the code itself,
+ * else the code of a state whose name matches (case and outer spacing
+ * ignored), so a state typed into the text box before the form had a list
+ * ("İstanbul") is still chosen; '' when none matches.
+ *
+ * @param string $value          the stored or posted state
+ * @param array  $country_states list of [code, name]
+ * @return string
+ */
+function pg_sa_state_pick($value, $country_states)
+{
+    $value = trim((string)$value);
+    if ($value === '') return '';
+    $lower = function ($s) { return function_exists('mb_strtolower') ? mb_strtolower($s, 'UTF-8') : strtolower($s); };
+    foreach ((array)$country_states as $s) {
+        if ((string)$s[0] === $value) return (string)$s[0];
+    }
+    foreach ((array)$country_states as $s) {
+        if ($lower(trim((string)$s[1])) === $lower($value)) return (string)$s[0];
+    }
+    return '';
+}
+
+/**
+ * Gives a saved tree whose state is only a text box (account profile and
+ * address book designed before they had the pick list) the pick list the
+ * starters now draw: a hidden <select> of the same name right after the
+ * text box, its id the box's with `_list`, so _pg_sa_state_controls() and
+ * the state script (pg_sa_state_script()) can switch between them. A tree
+ * that already has a pick list of that name, or no text box, is left as it is.
+ *
+ * @param array  $tree
+ * @param string $name the state control's name (`state`, `business_state`)
+ * @return bool whether the pick list was added
+ */
+function pg_sa_state_list_fit(&$tree, $name)
+{
+    $has_list = false;
+    $has_text = false;
+    $scan = function ($node) use (&$scan, $name, &$has_list, &$has_text) {
+        if (!is_array($node)) return;
+        if (_pg_member_control_name($node) === $name) {
+            $tag = strtolower((string)$node['props']['tag']);
+            if ($tag === 'select') $has_list = true;
+            elseif ($tag === 'input') $has_text = true;
+        }
+        if (!empty($node['children']) && is_array($node['children'])) {
+            foreach ($node['children'] as $c) $scan($c);
+        }
+    };
+    $scan($tree);
+    if ($has_list || !$has_text) return false;
+    return _pg_sa_state_list_insert($tree, $name);
+}
+
+// Insert the pick list after the first text box named $name (pg_sa_state_list_fit()).
+function _pg_sa_state_list_insert(&$node, $name)
+{
+    if (!is_array($node) || empty($node['children']) || !is_array($node['children'])) return false;
+    foreach ($node['children'] as $i => $child) {
+        if (_pg_member_control_name($child) === $name && strtolower((string)$child['props']['tag']) === 'input') {
+            $props = array('tag' => 'select', 'cssClass' => 'form-select',
+                '_attrs' => array(array('name' => 'name', 'value' => $name), array('name' => 'hidden', 'value' => '')));
+            if (!empty($child['props']['id'])) $props['id'] = (string)$child['props']['id'] . '_list';
+            $list = array('type' => 'semantic', 'props' => $props, 'children' => array());
+            array_splice($node['children'], $i + 1, 0, array($list));
+            return true;
+        }
+    }
+    foreach ($node['children'] as &$c) {
+        if (_pg_sa_state_list_insert($c, $name)) return true;
+    }
+    unset($c);
+    return false;
 }
 
 // ============================================================================

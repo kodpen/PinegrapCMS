@@ -772,7 +772,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
 
         if (!$site_icon_matched) {
-            $site_icon_options .= pg_stored_file_option($site_icon, pg_stored_file_exists($site_icon));
+            $site_icon_options .= pg_public_image_stored_option($site_icon);
         }
 
         $output_site_icon_picker = '
@@ -817,11 +817,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
 
         if (!$og_value_matched) {
-            $og_image_options .= pg_stored_file_option($og_default_image, pg_stored_file_exists($og_default_image));
+            $og_image_options .= pg_public_image_stored_option($og_default_image);
         }
 
         if (!$logo_value_matched) {
-            $logo_image_options .= pg_stored_file_option($organization_logo, pg_stored_file_exists($organization_logo));
+            $logo_image_options .= pg_public_image_stored_option($organization_logo);
         }
 
         // The icon the panel wears once it is installed on a phone or a desktop.
@@ -845,7 +845,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             }
 
             if (!$app_icon_matched) {
-                $app_icon_options .= pg_stored_file_option($app_icon, pg_stored_file_exists($app_icon));
+                $app_icon_options .= pg_public_image_stored_option($app_icon);
             }
 
             $output_app_icon_picker = '
@@ -864,7 +864,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
         if ($og_default_forms) {
             $og_default_forms_notice = '
-                                            <div class="form-text fg-warning"><span class="bi bi-exclamation-triangle-fill me-1"></span>' . lang(array('string' => 'The record pages of these forms have no media field and share this picture: {var:1}. Choose a Share Image Field in their form settings.', 'vars' => array(h(implode(', ', $og_default_forms))))) . '</div>';
+                                            <div class="form-text fg-warning"><span class="bi bi-exclamation-triangle-fill me-1"></span>' . lang(array('string' => 'The record pages of these forms have no media field and share this picture: {var:1}. Choose a Share Image Field in their form settings.', 'vars' => array(h(pg_record_forms_sharing_default_image_text($og_default_forms))))) . '</div>';
         }
 
         $output_share_image_pickers = '
@@ -2426,6 +2426,18 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $ops_alert_disk_percent = isset($row['ops_alert_disk_percent']) ? (int) $row['ops_alert_disk_percent'] : 10;
     $ops_alert_mail_failures = isset($row['ops_alert_mail_failures']) ? (int) $row['ops_alert_mail_failures'] : 10;
     $ops_alert_cert_days = isset($row['ops_alert_cert_days']) ? (int) $row['ops_alert_cert_days'] : 14;
+
+    // Chat notifications card: the Slack, Teams and Telegram targets, read
+    // from their sealed entry. The address and the token are never drawn
+    // back; the card shows where a target sends (scheme and host) only.
+    $notify_ready = function_exists('pg_notify_targets') && pg_connect_schema_ready() && pg_connect_can_seal();
+    $notify_targets = $notify_ready ? pg_notify_targets(true) : array();
+    $notify_job_on = function_exists('pg_cron_job_is_enabled') && pg_cron_job_is_enabled('api_webhook_job');
+
+    // Storage card: the S3-compatible object store, one sealed connect_apps
+    // entry (includes/fn/object_storage.php). The secret is never drawn back.
+    $object_storage_ready = function_exists('pg_os_settings') && pg_connect_schema_ready() && pg_connect_can_seal();
+    $object_storage = $object_storage_ready ? pg_os_settings() : array();
 
     // Maintenance mode card (2026.11.0, 11.0.7). The end time goes into a
     // datetime-local box, which takes the site's own time zone.

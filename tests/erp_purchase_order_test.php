@@ -186,20 +186,25 @@ function test_erp_purchase_order_receipt_state()
 	pg_assert_same('none', erp_purchase_order_receipt_state(array()));
 }
 
-// Sent from anything but a cancelled order, cancelled from anything but one
-// that is already over, open again only from cancelled.
+// Sent from anything but a cancelled order or one whose goods have all come,
+// cancelled from anything but one that is already over, open again only from
+// cancelled.
 function test_erp_purchase_order_status_refusal()
 {
 	$order = function ($status) {
 		return array('status' => $status);
 	};
 
-	foreach (array('open', 'sent', 'partial', 'received') as $status) {
+	foreach (array('open', 'sent', 'partial') as $status) {
 		pg_assert_same('', erp_purchase_order_status_refusal($order($status), 'sent'), 'sent from ' . $status);
+	}
+
+	foreach (array('open', 'sent', 'partial', 'received') as $status) {
 		pg_assert_true(erp_purchase_order_status_refusal($order($status), 'open') !== '', 'open from ' . $status);
 	}
 
 	pg_assert_true(erp_purchase_order_status_refusal($order('cancelled'), 'sent') !== '');
+	pg_assert_true(erp_purchase_order_status_refusal($order('received'), 'sent') !== '');
 
 	foreach (array('open', 'sent', 'partial') as $status) {
 		pg_assert_same('', erp_purchase_order_status_refusal($order($status), 'cancelled'), 'cancelled from ' . $status);
@@ -209,6 +214,22 @@ function test_erp_purchase_order_status_refusal()
 	pg_assert_true(erp_purchase_order_status_refusal($order('cancelled'), 'cancelled') !== '');
 	pg_assert_same('', erp_purchase_order_status_refusal($order('cancelled'), 'open'));
 	pg_assert_true(erp_purchase_order_status_refusal($order('open'), 'received') !== '');
+}
+
+// A supplier, or an account kept as both, can be ordered from; a customer
+// only is refused unless the stored order was already written to it.
+function test_erp_purchase_order_account_refusal()
+{
+	$account = function ($id, $kind) {
+		return array('id' => $id, 'kind' => $kind);
+	};
+
+	pg_assert_same('', erp_purchase_order_account_refusal($account(5, 'supplier')));
+	pg_assert_same('', erp_purchase_order_account_refusal($account(5, 'both')));
+	pg_assert_true(erp_purchase_order_account_refusal($account(5, 'customer')) !== '', 'new order to a customer');
+	pg_assert_true(erp_purchase_order_account_refusal($account(5, 'customer'), 9) !== '', 'moved to a customer');
+	pg_assert_same('', erp_purchase_order_account_refusal($account(5, 'customer'), 5), 'kept account');
+	pg_assert_true(erp_purchase_order_account_refusal(null) !== '', 'no account');
 }
 
 // A draft is made only while something is left to put on one.

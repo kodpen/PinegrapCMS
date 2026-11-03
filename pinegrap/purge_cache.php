@@ -31,7 +31,9 @@ $purge = pg_purge_caches();
 log_activity(lang(array('string' => 'Cache purged ({var:1}).', 'vars' => array($purge['message']))), $_SESSION['sessionusername']);
 
 include_once('liveform.class.php');
-$liveform = new liveform('settings');
+// Back to the System tools screen the job is started from, which prints the
+// notice left for it.
+$liveform = new liveform('system_tools');
 $liveform->add_notice(lang(array('string' => 'Cache cleared: {var:1}', 'vars' => array($purge['message']))));
-header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url());
+header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/system_tools.php');
 exit();

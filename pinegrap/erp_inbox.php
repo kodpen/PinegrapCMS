@@ -55,6 +55,9 @@ if ($_POST) {
                 $liveform->add_notice(lang('There are more documents in that range than one read takes. Read the rest with a narrower range.'));
             }
         } else {
+            // Offer the refused range again, so it can be corrected.
+            $liveform->assign_field_value('from', $from);
+            $liveform->assign_field_value('to', $to);
             $liveform->mark_error('_error', h($result['error']));
         }
 
@@ -93,6 +96,13 @@ $default_to = date('Y-m-d');
 $default_from = preg_match('/^\d{4}-\d{2}-\d{2}$/', $read_to)
     ? date('Y-m-d', max(strtotime($read_to . ' -7 days'), strtotime('-' . ERP_EDOC_INBOX_MAX_DAYS . ' days')))
     : date('Y-m-d', strtotime('-30 days'));
+
+// A range the provider read refused comes back as it was entered.
+$is_date = function ($value) {
+    return is_string($value) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $value);
+};
+$fetch_from = $is_date($liveform->get_field_value('from')) ? $liveform->get_field_value('from') : $default_from;
+$fetch_to = $is_date($liveform->get_field_value('to')) ? $liveform->get_field_value('to') : $default_to;
 
 $output_rows = '';
 
@@ -160,11 +170,12 @@ if ($provider !== '') {
                     <input type="hidden" name="erp_action" value="fetch" />
                     <input type="hidden" name="state" value="' . h($state) . '" />
                     <span class="d-inline-flex align-items-center gap-1">
-                        <input type="date" data-pg-date name="from" value="' . h($default_from) . '" class="form-control form-control-sm w-auto" aria-label="' . lang('Start date') . '" required />
+                        <input type="date" data-pg-date name="from" value="' . h($fetch_from) . '" max="' . h($default_to) . '" class="form-control form-control-sm w-auto" aria-label="' . lang('Start date') . '" required />
                         <span class="fg-secondary">&ndash;</span>
-                        <input type="date" data-pg-date name="to" value="' . h($default_to) . '" class="form-control form-control-sm w-auto" aria-label="' . lang('End date') . '" required />
+                        <input type="date" data-pg-date name="to" value="' . h($fetch_to) . '" max="' . h($default_to) . '" class="form-control form-control-sm w-auto" aria-label="' . lang('End date') . '" required />
                     </span>
                     <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 text-nowrap"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . lang('Read from the provider') . '</button>
+                    <span class="small fg-secondary">' . lang(array('string' => 'Read at most {var:1} days at a time.', 'vars' => ERP_EDOC_INBOX_MAX_DAYS)) . '</span>
                 </form>') . '
                 ' . (($read_at > 0)
                     ? '<span class="small fg-secondary">' . lang(array('string' => 'Last read {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d H:i:s', $read_at), 'date and time'))) . '</span>'

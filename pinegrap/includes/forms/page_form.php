@@ -36,12 +36,17 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *                            back to the defaults of an empty record.
  * @param array  $user        The signed-in user (validate_user())
  * @param int    $page_id     The page being edited, 0 for a new page
+ * @param bool   $lazy_pickers Untyped page pickers carry only their stored
+ *                            page and fill from one template when opened
+ *                            (select_page()); for the screens that print
+ *                            every type's fields at once
  * @return array  'selector'   the page type card,
  *                'properties' the System Options card,
  *                'wysiwyg'    the rich-text editor code for its message fields
  */
-function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, $page_id = 0)
+function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, $page_id = 0, $lazy_pickers = false)
 {
+    pg_page_picker_lazy($lazy_pickers);
 
     $layout_type_row_style = 'display: none';
 
@@ -1385,7 +1390,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             <div class="col-12 sm:col-6 my-3" id="express_order_custom_field_1_label_row" style="' . $express_order_custom_field_1_label_row_style . '">
                 <div class="border-1 border p-3 my-3 rounded-4">
                     <label for="express_order_custom_field_1_label" class="form-label">' . lang('Custom Field #1 Label') . '</label>
-                    <input value="' . h($express_order_properties['custom_field_1_label'] ?? '') . '" type="text" name="express_order_custom_field_1_label" id="express_order_custom_field_1_label" maxlength="50" class="form-control" />
+                    <input value="' . h($express_order_properties['custom_field_1_label'] ?? '') . '" type="text" name="express_order_custom_field_1_label" id="express_order_custom_field_1_label" maxlength="255" class="form-control" />
                     <div class="form-field ms-1 mt-3">
                         <div class="switch"><input class="" type="checkbox" name="express_order_custom_field_1_required" id="express_order_custom_field_1_required" value="1"' . $express_order_custom_field_1_required_checked . ' /></div>
                         <label class="" for="express_order_custom_field_1_required">' . lang('Required') . '</label>
@@ -1823,7 +1828,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 <select class="form-control" name="order_preview_terms_page_id" id="order_preview_terms_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . select_page(($order_preview_properties['terms_page_id'] ?? '')) . '</select>
             </div>
             <div class="col-12 sm:col-6 lg:col-4 my-3" id="order_preview_submit_button_label_row" style="' . $order_preview_submit_button_label_row_style . '">
-                <label class="form-label" for="order_preview_submit_button_label">'. lang('Update Button Label') . '</label>
+                <label class="form-label" for="order_preview_submit_button_label">'. lang('Purchase Now Button Label') . '</label>
                 <input value="' . h($order_preview_properties['submit_button_label'] ?? '') . '" type="text" id="order_preview_submit_button_label" name="order_preview_submit_button_label" class="form-control" maxlength="50" >
             </div>';
 
@@ -2808,6 +2813,11 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             </div>
         </div>';
 
+    if ($lazy_pickers) {
+        pg_page_picker_lazy(false);
+        $output_page_type_properties .= pg_page_picker_template();
+    }
+
     return array(
         'selector' => $output_page_type_selector,
         'properties' => $output_page_type_properties,
@@ -3706,24 +3716,61 @@ function pg_page_form_save_type_links($page_type, $page_id, $user)
  * The name a page is saved under, as both screens clean it: spaces and
  * ampersands become underscores. Catalog and catalog detail pages take part
  * of their address from the item after the page name, so their name may not
- * hold a forward slash.
+ * hold a forward slash. A name longer than the page_name column (100
+ * characters) is refused: the session is not strict, so the column would cut
+ * it and the page could end up with the name of another page.
  *
  * @param string $name       The trimmed posted name
  * @param string $page_type  The type the page is saved as
- * @return array  'name' the cleaned name, 'error' a message or ''
+ * @return array  'name' the cleaned name, 'error' a message or '',
+ *                'too_long' whether the error is the length
  */
 function pg_page_form_clean_name($name, $page_type)
 {
     $error = '';
+    $too_long = false;
 
     if ((($page_type == 'catalog') || ($page_type == 'catalog detail')) && (mb_strpos($name, '/') !== false)) {
         $error = lang('The page name for catalog and catalog detail pages cannot contain forward slashes. Please type in a new name for the page.');
+    } elseif (mb_strlen((string) $name, 'UTF-8') > 100) {
+        $too_long = true;
+        $error = lang(array('string' => 'The page name can be at most {var:1} characters long.', 'vars' => array(100)));
     }
 
     return array(
         'name' => str_replace(array(' ', '&'), '_', $name),
         'error' => $error,
+        'too_long' => $too_long,
     );
+}
+
+/**
+ * The name mass_edit.php saves a page under, by the rules the page screens
+ * apply: trimmed and cleaned (pg_page_form_clean_name()). Null when the
+ * page screens would refuse it: blank once trimmed, or a forward slash in a
+ * catalog or catalog detail page name. Pure.
+ *
+ * @param mixed  $name      The posted or replaced name
+ * @param string $page_type The page's type
+ * @return string|null
+ */
+function pg_page_form_bulk_name($name, $page_type)
+{
+    if (!is_scalar($name)) {
+        return null;
+    }
+
+    $name = trim((string) $name);
+
+    if ($name === '') {
+        return null;
+    }
+
+    $clean = pg_page_form_clean_name($name, (string) $page_type);
+
+    // A name that is only too long is returned: mass_edit.php checks the
+    // length itself and names the skipped page as too long.
+    return (($clean['error'] === '') || $clean['too_long']) ? $clean['name'] : null;
 }
 
 /**
@@ -3962,4 +4009,108 @@ function pg_page_form_designer_redirect($page_type, $posted, $current = null)
     }
 
     return false;
+}
+
+/**
+ * The link to another page in the Edit Page info line (Next Page, Skip
+ * Page): the name escaped as text, its address encoded and escaped. A page
+ * name may hold < > and quotes, so it is never written into the markup as
+ * it is. Pure.
+ *
+ * @param string $name The page name
+ * @param string $base The site's output path (OUTPUT_PATH)
+ * @return string
+ */
+function pg_page_subnav_link($name, $base = null)
+{
+    if ($base === null) {
+        $base = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
+    }
+
+    return '<a href="' . h($base . encode_url_path((string) $name)) . '">' . h((string) $name) . '</a>';
+}
+
+/**
+ * Where Edit Page goes after a rename and what it says there
+ * (pg_short_link_page_renamed_messages()). With nothing to say the save goes
+ * where it was going. Otherwise the messages are filed under the form of the
+ * panel screen it opens (pg_redirect_notice_form()); a site page shows no
+ * panel notice, so the save comes back to Edit Page instead. The messages are
+ * escaped: the liveform prints notices as markup and a name may hold < >.
+ * Pure.
+ *
+ * @param array  $said     array('notes' => string[], 'warnings' => string[])
+ * @param string $location Where the save was going
+ * @param string $edit_url Edit Page for this page, its send_to kept
+ * @return array 'location', 'form' ('' for none), 'notes', 'warnings'
+ */
+function pg_page_rename_notice($said, $location, $edit_url)
+{
+    $notes = array_map('h', array_values((array) ($said['notes'] ?? array())));
+    $warnings = array_map('h', array_values((array) ($said['warnings'] ?? array())));
+
+    if (!$notes && !$warnings) {
+        return array('location' => $location, 'form' => '', 'notes' => array(), 'warnings' => array());
+    }
+
+    $form = pg_redirect_notice_form($location);
+
+    if ($form === '') {
+        $form = 'edit_page';
+        $location = $edit_url;
+    }
+
+    return array('location' => $location, 'form' => $form, 'notes' => $notes, 'warnings' => $warnings);
+}
+
+/**
+ * The number boxes of the System Options a save refuses, as field id =>
+ * message: a quiz pass percentage outside 0-100, a day count that is not a
+ * whole number of 0 or more (trial, private access and offer length, read
+ * only while their switch is on) and a photo gallery thumbnail size below
+ * 1. An empty box is left to the stored default. The session is not strict,
+ * so these values would otherwise be cut by their columns without a word
+ * (TINYINT keeps 127 of a percentage of 150, UNSIGNED keeps 0 of -5). Pure.
+ *
+ * @param string $page_type
+ * @param array  $source The submitted fields
+ * @return array
+ */
+function pg_page_form_number_errors($page_type, $source)
+{
+    $errors = array();
+    $value = function ($name) use ($source) {
+        $value = $source[$name] ?? '';
+
+        return is_scalar($value) ? trim((string) $value) : 'x';
+    };
+    $whole = function ($typed) {
+        return preg_match('/^\d{1,9}$/', $typed) === 1;
+    };
+
+    if ($page_type == 'custom form') {
+        $percentage = $value('custom_form_quiz_pass_percentage');
+
+        if (($value('custom_form_quiz') === '1') && ($percentage !== '') && (!$whole($percentage) || ((int) $percentage > 100))) {
+            $errors['custom_form_quiz_pass_percentage'] = lang('The quiz pass percentage must be a whole number from 0 to 100.');
+        }
+
+        foreach (array('membership', 'private', 'offer') as $switch) {
+            $days = $value('custom_form_' . $switch . '_days');
+
+            if (($value('custom_form_' . $switch) === '1') && ($days !== '') && !$whole($days)) {
+                $errors['custom_form_' . $switch . '_days'] = lang('The number of days must be a whole number of 0 or more.');
+            }
+        }
+    }
+
+    if ($page_type == 'photo gallery') {
+        $size = $value('photo_gallery_thumbnail_max_size');
+
+        if (($size !== '') && (!$whole($size) || ((int) $size < 1))) {
+            $errors['photo_gallery_thumbnail_max_size'] = lang('The thumbnail size must be a whole number of 1 or more.');
+        }
+    }
+
+    return $errors;
 }

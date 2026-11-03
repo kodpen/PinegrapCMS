@@ -308,6 +308,18 @@ function test_shipment_label_svg_fonts_name_the_unicode_files()
 	pg_assert_same('<svg font-family="/f/DejaVuSans"></svg>', pg_shipment_label_svg_fonts('<svg font-family="sans-serif"></svg>', '/f'), 'the root keeps its own');
 }
 
+// A CSS family list with quoted names (as SVG exporters write it) is
+// replaced whole: no core PDF font is left for a Turkish letter, and no
+// quoted name is left glued to the path.
+function test_shipment_label_svg_fonts_replace_quoted_css_families()
+{
+	pg_assert_contains('style="font-family:/f/DejaVuSansMono"', pg_shipment_label_svg_fonts('<svg font-family="x"><text style="font-family:\'Courier New\', monospace">ş</text></svg>', '/f'));
+	pg_assert_contains('style="font-family: /f/DejaVuSans;font-size:9px"', pg_shipment_label_svg_fonts('<svg font-family="x"><text style="font-family: \'Arial\';font-size:9px">ş</text></svg>', '/f'));
+	pg_assert_contains('text{font-family:/f/DejaVuSerif}', pg_shipment_label_svg_fonts('<svg font-family="x"><style>text{font-family:"Times New Roman"}</style></svg>', '/f'));
+	pg_assert_contains('style=\'font-family:/f/DejaVuSansMono\'', pg_shipment_label_svg_fonts('<svg font-family="x"><text style=\'font-family:"Courier New"\'>ş</text></svg>', '/f'));
+	pg_assert_contains('style="font-family:/f/DejaVuSans">', pg_shipment_label_svg_fonts('<svg font-family="x"><text style="font-family:Arial">"ş"</text></svg>', '/f'), 'an unquoted family ends at the attribute');
+}
+
 // A request's return label: only on an approved request, one active label
 // per request (a second press finds it and never calls the service again),
 // a label of another request on the same address does not stop it, and the

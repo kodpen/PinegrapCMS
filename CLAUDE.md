@@ -131,7 +131,7 @@ decision questions.
    at most 6 of the 20.
    `gh api 'repos/kodpen/pinegrapcms/pulls?state=open&per_page=100' --jq '[.[]|select(.draft|not)|select(.head.ref|startswith("merge-train")|not)]|length'`
 9. **Coordinators.** One coordinator per account starts its cloud workers within
-   the account's quota, 4 to 8 workers each (`coordinator-limits.md`); it writes
+   the account's quota, 4 to 10 workers each (`coordinator-limits.md`); it writes
    no code and merges nothing. It tells the owner when the merging session
    seems stopped (`coordinator.md`). The test coordinator on the owner's
    local account starts no workers: it tests and opens `bug` issues, which
@@ -146,8 +146,9 @@ decision questions.
    PR, turns the PR back to draft and ends the session
    (`workflow/session-lifecycle.md`): a later session continues the branch
    from the decision; what memory already answers is not a question. The architect session analyses it, decides a technical question
-   itself, asks the owner a schema or product-behaviour question as a
-   selectable list (label `erdal`, in Turkish), records the decision and
+   itself, asks the owner a schema or product-behaviour question in its
+   own window with the AskUserQuestion tool, as a selectable list in
+   Turkish (label `erdal` on the issue), records the decision and
    brings it to the PR as a comment. The issue is the only way to ask: no question to the
    owner in a session's reply or PR body, and no `erdal` label but the
    architect's. Everything else is a session's own call, never asked:

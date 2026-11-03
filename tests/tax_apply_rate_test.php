@@ -115,9 +115,10 @@ function test_tax_apply_rate_no_float_round_of_a_rate()
 		pg_assert_false((bool) preg_match('~\bround\s*\([^;]*rate~i', $code), $function);
 	}
 
-	// The till (includes/local_sale.php, add_order.php) is not loaded here:
-	// its files are read as text, comments left out.
-	foreach (array('/includes/local_sale.php', '/add_order.php') as $file) {
+	// The till (includes/local_sale.php, includes/fn/local_order.php,
+	// add_order.php) is not loaded here: its files are read as text,
+	// comments left out.
+	foreach (array('/includes/local_sale.php', '/includes/fn/local_order.php', '/add_order.php') as $file) {
 		$code = '';
 
 		foreach (token_get_all((string) file_get_contents(PG_FUNCTIONS_DIR . $file)) as $token) {

@@ -170,7 +170,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
 
     pg_csv_download_start('forms.csv');
 
-    echo '"form_name","reference_code","status","address_name","tracking_code","affiliate_code","http_referer","ip_address","submitted","last_modified","member_id","form_editor"';
+    // The import recognises these leading columns (pg_submitted_form_import_fixed_columns()).
+    echo '"' . implode('","', pg_submitted_form_export_columns()) . '"';
 
     // check if custom form is a quiz
     $query =
@@ -369,6 +370,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         // delete views for this submitted form that the form view directory feature uses
         pg_sfv_delete_views('submitted_form_id', $form['id']);
 
+        // delete the record's comments, their attachments, watchers and counters
+        pg_comment_delete_record_thread($form['id']);
+
         $custom_forms_for_log[$form['page_id']] = $form['form_name'];
 
         $number_of_forms++;
@@ -530,7 +534,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                 // get fields for custom form, so user can enter a filter for fields
                 $query = "SELECT
                             form_fields.id,
-                            form_fields.name
+                            form_fields.name,
+                            form_fields.label
                          FROM form_fields
                          WHERE (form_fields.page_id = ?) AND (form_fields.type != 'information') AND (form_fields.type != 'file upload')
                          ORDER BY form_fields.sort_order";
@@ -538,11 +543,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
 
                 while ($row = mysqli_fetch_assoc($result)) {
                     $field_id = $row['id'];
-                    $field_name = $row['name'];
+                    $field_label = pg_submitted_form_list_field_label($row['label'], $row['name']);
 
                     $output_form_fields .=
                     '<div class="col-12 sm:col-6 md:col-12 my-1">
-                        <label for="form_field_' . $field_id . '" class="form-label">' . h($custom_form['name']) . ' :: ' . h($field_name) . '</label>
+                        <label for="form_field_' . $field_id . '" class="form-label" title="' . h($field_label['title']) . '">' . h($custom_form['name']) . ' :: ' . h($field_label['text']) . '</label>
                         <input type="text" id="form_field_' . $field_id . '" name="form_field_' . $field_id . '" class="form-control" value="' . h($_SESSION['software']['forms']['view_submitted_forms']['form_field_' . $field_id] ?? '') . '" />
                     </div>';
                 }

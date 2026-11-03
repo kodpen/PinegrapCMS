@@ -31,15 +31,22 @@ include_once('liveform.class.php');
 $liveform = new liveform('view_performance_log');
 
 // ---- Reset (clear all log data) -------------------------------------------
-// Admin-only TRUNCATE on the perf_log table. Goes through the standard
+// TRUNCATE on the perf_log table, allowed by the activity log's rule for
+// deleting logs (pg_log_clear_allowed()). Goes through the standard
 // CSRF-token + POST pattern so a stray GET URL can't wipe diagnostics.
 // We TRUNCATE rather than DELETE because the table has no foreign-key
 // dependencies and TRUNCATE resets AUTO_INCREMENT in one step.
 // perf_stats arrives with an upgrade; the reset and the screen both ask here.
 $table_exists = pg_schema_has('perf_stats');
 
+$can_clear = pg_log_clear_allowed(MASS_DELETION, defined('USER_ROLE') ? USER_ROLE : null);
+
 if (isset($_POST['submit_clear'])) {
     validate_token_field();
+    if (!$can_clear) {
+        log_activity(lang('access denied because user attempted to access area for higher role'), $_SESSION['sessionusername']);
+        output_error(lang('Access denied') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
     if ($table_exists) {
         mysqli_query(db::$con, "TRUNCATE perf_stats") or output_error('Query failed.');
         mysqli_query(db::$con, "TRUNCATE perf_log") or output_error('Query failed.');
@@ -79,11 +86,10 @@ $area_options = array(
 $area = isset($_GET['area']) && is_string($_GET['area']) && isset($area_options[$_GET['area']]) ? $_GET['area'] : '';
 
 // Free-text search across request_url + script_name. Trim to drop accidental whitespace,
-// cap length to keep query plans sane on a heavily indexed table.
-$search = (isset($_GET['search']) && is_string($_GET['search'])) ? trim($_GET['search']) : '';
-if (strlen($search) > 200) {
-    $search = substr($search, 0, 200);
-}
+// cap length to keep query plans sane on a heavily indexed table. The cap counts
+// characters, so a multi-byte letter is never cut in half (a broken byte sequence
+// printed back as an empty box).
+$search = pg_log_search_term(isset($_GET['search']) ? $_GET['search'] : '', 200);
 
 $where = "WHERE log_timestamp >= " . (int) $start_timestamp;
 if ($area !== '') {
@@ -412,7 +418,7 @@ if ($memory_result && mysqli_num_rows($memory_result) > 0) {
 $recent_rows = '';
 if ($recent_slow_result && mysqli_num_rows($recent_slow_result) > 0) {
     while ($r = mysqli_fetch_assoc($recent_slow_result)) {
-        $when = date('Y-m-d H:i:s', (int) $r['log_timestamp']);
+        $when = prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $r['log_timestamp']), 'date and time');
         $label = ($r['area'] === 'frontend' && $r['request_url'] !== '')
             ? $r['request_url']
             : $r['script_name'];
@@ -505,7 +511,7 @@ echo '
         'search'   => '<form action="view_performance_log.php" method="get" class="pg-toolbar-filter disable_shortcut d-inline-flex flex-wrap row-gap-2 gap-2 align-items-center" role="search">
             <div class="input-group input-group-sm w-auto flex-nowrap">
                 <label for="perf_log_search" class="input-group-text" title="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i><span class="visually-hidden">' . lang('Search') . '</span></label>
-                <input type="search" id="perf_log_search" name="search" value="' . h($search) . '" class="form-control form-control-sm w-auto" placeholder="' . h(lang('Search by page...')) . '">
+                <input type="search" id="perf_log_search" name="search" value="' . h($search) . '" class="form-control form-control-sm w-auto" maxlength="200" placeholder="' . h(lang('Search by page...')) . '">
             </div>
             <div class="input-group input-group-sm w-auto flex-nowrap">
                 <label for="perf_log_range" class="input-group-text" title="' . h(lang('Time Range')) . '"><i class="bi bi-clock-history" aria-hidden="true"></i><span class="visually-hidden">' . lang('Time Range') . '</span></label>
@@ -517,7 +523,7 @@ echo '
             </div>
             <button type="submit" class="btn btn-sm btn-solid theme-primary" aria-label="' . h(lang('Search')) . '"><i class="bi bi-search" aria-hidden="true"></i></button>
         </form>',
-        'overflow' => '<button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="dialog" data-bs-target="#perf-log-clear-modal" title="' . h(lang('Clear all performance log data')) . '" aria-label="' . h(lang('Clear all performance log data')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>',
+        'overflow' => $can_clear ? '<button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="dialog" data-bs-target="#perf-log-clear-modal" title="' . h(lang('Clear all performance log data')) . '" aria-label="' . h(lang('Clear all performance log data')) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>' : '',
     ), array('class' => 'mb-5')) . '
     <div class="row">
         <div class="col-12">
@@ -637,7 +643,7 @@ echo '
                                 <th>' . lang('Time') . '</th>
                                 <th>' . lang('Area') . '</th>
                                 <th>' . lang('Page') . '</th>
-                                <th>' . lang('Method') . '</th>
+                                <th>' . lang('HTTP method') . '</th>
                                 <th class="text-end">' . lang('Status') . '</th>
                                 <th class="text-end">' . lang('Duration') . '</th>
                                 <th class="text-end">' . lang('Peak Memory') . '</th>

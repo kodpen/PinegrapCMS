@@ -66,7 +66,10 @@ function pg_dashboard_v2_periods()
 function pg_dashboard_v2_cards()
 {
     // The cards whose function exists.
-    $built = array('visitors', 'engagement');
+    $built = array('visitors', 'engagement', 'gsearch', 'ga', 'content', 'comments', 'files', 'activity', 'firewall', 'team', 'mytasks', 'waiting', 'week', 'calendars', 'queue', 'pipeline', 'goals', 'notes', 'flows');
+    $built = array_merge($built, array('shop', 'salesmap', 'orders', 'offers', 'fx', 'ops'));
+    $built[] = 'ai';
+    $built = array_merge($built, array('pins', 'perf'));
 
     $card = function ($title, $icon, $category, $width, $period, $gate) {
         return array(
@@ -100,7 +103,7 @@ function pg_dashboard_v2_cards()
         'visitmap'   => $card(lang('Visitor map'), 'bi-geo-alt', 'visitors', 'S', 2, 'visitors'),
         'engagement' => $card(lang('Online Engagement'), 'bi-broadcast-pin', 'visitors', 'S', null, 'staff'),
         'gsearch'    => $card(lang('Google Search'), 'bi-google', 'visitors', 'S', 1, 'gsearch'),
-        'ga'         => $card(lang('Google Analytics'), 'bi-bar-chart-line', 'visitors', 'M', 1, 'ga'),
+        'ga'         => $card(lang('Google Analytics'), 'bi-bar-chart-line', 'visitors', 'M', null, 'ga'),
         // Security
         'firewall'   => $card(lang('Firewall'), 'bi-shield-check', 'security', 'S', 0, 'staff'),
         // Team
@@ -111,7 +114,7 @@ function pg_dashboard_v2_cards()
         'calendars'  => $card(lang('Calendars'), 'bi-calendar3', 'team', 'S', null, 'calendars'),
         // Ecommerce
         'shop'       => $card(lang('Ecommerce Summary'), 'bi-cash-stack', 'shop', 'M', 2, 'shop_summary'),
-        'salesmap'   => $card(lang('Sales Map'), 'bi-map', 'shop', 'M', 2, 'shop_reports'),
+        'salesmap'   => $card(lang('Sales Map'), 'bi-map', 'shop', 'M', null, 'shop_reports'),
         'ops'        => $card(lang('Operations Desk'), 'bi-clipboard-check', 'shop', 'M', null, 'shop'),
         'orders'     => $card(lang('Orders'), 'bi-cart4', 'shop', 'S', null, 'shop'),
         'offers'     => $card(lang('Offers'), 'bi-tag', 'shop', 'S', null, 'shop'),

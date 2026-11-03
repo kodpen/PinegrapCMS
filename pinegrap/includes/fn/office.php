@@ -1242,7 +1242,7 @@ function pg_office_docx_run(&$state, $run)
                     }
 
                     $val = strtolower((string) pg_office_attr($property, 'val'));
-                    $on = !in_array($val, array('0', 'false', 'none'), true);
+                    $on = !in_array($val, array('0', 'false', 'off', 'none'), true);
 
                     switch ($property->localName) {
                         case 'b':

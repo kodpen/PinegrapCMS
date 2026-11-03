@@ -46,6 +46,38 @@ define('PG_DI_MAX_HTML', 8 * 1024 * 1024);
 // ── Public entry points ─────────────────────────────────────────────────────
 
 /**
+ * The refusal of an import request, or null when it may run. The endpoint
+ * answers the designer's fetch() in JSON, so it asks this before
+ * validate_user() (a login redirect) and validate_token_field() (an HTML
+ * page); both stay behind it.
+ *
+ * @param bool  $logged_in     USER_LOGGED_IN
+ * @param int   $role          USER_ROLE (0 administrator, 1 designer, ...)
+ * @param mixed $session_token The token kept in the session
+ * @param mixed $posted_token  The posted token
+ * @return array|null  array(HTTP status, message)
+ */
+function pg_designer_import_refusal($logged_in, $role, $session_token, $posted_token)
+{
+    if (!$logged_in) {
+        return array(401, lang('Your session has expired. Reload the page and sign in again.'));
+    }
+
+    if ((int) $role > 1) {
+        return array(403, lang('Access denied.'));
+    }
+
+    $session_token = is_string($session_token) ? $session_token : '';
+    $posted_token = is_string($posted_token) ? $posted_token : '';
+
+    if (($session_token === '') || !hash_equals($session_token, $posted_token)) {
+        return array(403, lang('Your session expired. Reload the page and try again.'));
+    }
+
+    return null;
+}
+
+/**
  * Import a ZIP archive.
  *
  * @param string $zip_path     Path to the uploaded archive (tmp file is fine)
@@ -96,6 +128,13 @@ function pg_designer_import_zip($zip_path, $project_name, $user, $opts = array()
         $res['errors'][] = lang('The archive contains nothing that can be imported.');
         return $res;
     }
+    // Refused before any folder or file is written: an archive without a
+    // page used to leave its folders and files behind in the File Manager.
+    if (!pg_di_entries_have_html($entries)) {
+        $zip->close();
+        $res['errors'][] = lang('The archive contains no HTML page.');
+        return $res;
+    }
 
     // Strip a common leading directory ("mysite/index.html" → "index.html")
     // so folders in the file manager start at the project, not at the ZIP's
@@ -119,6 +158,9 @@ function pg_designer_import_zip($zip_path, $project_name, $user, $opts = array()
     $ctx = new stdClass();
     $ctx->user_id    = (int)$user['id'];
     $ctx->folders    = array();
+    // What this import writes, so a refused import can take it back
+    // (pg_designer_import_undo()).
+    $ctx->created    = array('folders' => array(), 'files' => array());
     $ctx->root_id    = pg_di_folder_path(array('Import', $project_name), $ctx);
     $ctx->project    = $project_name;
     $ctx->keep_framework = $keep_framework;
@@ -209,10 +251,58 @@ function pg_designer_import_zip($zip_path, $project_name, $user, $opts = array()
     $res['fonts'] = pg_di_dedupe_fonts($res['fonts']);
     $res['folder_id']    = $ctx->root_id;
     $res['folder_label'] = 'Import / ' . $project_name;
+    $res['created']      = $ctx->created;
     if (empty($res['pages'])) {
-        $res['errors'][] = lang('The archive contains no HTML page.');
+        // Every page was unreadable: nothing of the import stays.
+        $res['errors'][] = lang('None of the pages in the archive could be read.');
+        pg_designer_import_undo($res);
     }
     return $res;
+}
+
+// True when one of the classified archive entries is an HTML page. Pure.
+function pg_di_entries_have_html($entries)
+{
+    foreach ((array) $entries as $e) {
+        if (is_array($e) && isset($e['type']) && $e['type'] === 'html') {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
+ * Take back what a refused import wrote: its files (disk and row) and the
+ * folders it created, newest first, each only while nothing else is in it.
+ * Clears $res['created'], so a second call does nothing.
+ *
+ * @param array $res pg_designer_import_zip()'s result
+ */
+function pg_designer_import_undo(&$res)
+{
+    $created = isset($res['created']) && is_array($res['created']) ? $res['created'] : array();
+    $res['created'] = array('folders' => array(), 'files' => array());
+
+    foreach ((isset($created['files']) ? $created['files'] : array()) as $f) {
+        $id = (int) $f['id'];
+        if ($id <= 0) continue;
+        db("DELETE FROM files WHERE id = '$id'");
+        $name = pg_basename((string) $f['name']);
+        if ($name !== '' && is_file(FILE_DIRECTORY_PATH . '/' . $name)) {
+            @unlink(FILE_DIRECTORY_PATH . '/' . $name);
+        }
+    }
+
+    foreach (array_reverse(isset($created['folders']) ? $created['folders'] : array()) as $folder_id) {
+        $folder_id = (int) $folder_id;
+        if ($folder_id <= 0) continue;
+        if ((int) db_value("SELECT COUNT(*) FROM folder WHERE folder_parent = '$folder_id'") > 0) continue;
+        if ((int) db_value("SELECT COUNT(*) FROM files WHERE folder = '$folder_id'") > 0) continue;
+        if ((int) db_value("SELECT COUNT(*) FROM page WHERE page_folder = '$folder_id'") > 0) continue;
+        db("DELETE FROM folder WHERE folder_id = '$folder_id'");
+    }
+
+    $res['folder_id'] = 0;
 }
 
 /**
@@ -1657,6 +1747,7 @@ function pg_di_folder_path($segments, $ctx)
             db("INSERT INTO folder (folder_name, folder_parent, folder_level, folder_order, folder_user, folder_timestamp)
                 VALUES ('" . e(mb_substr($seg, 0, 100)) . "', '$parent', '$level', '0', '" . (int)$ctx->user_id . "', UNIX_TIMESTAMP())");
             $found = (int)mysqli_insert_id(db::$con);
+            if ($found > 0 && isset($ctx->created)) $ctx->created['folders'][] = $found;
         } else {
             $level++;
         }
@@ -1706,6 +1797,8 @@ function pg_di_store_file($path, $content, $ctx)
     db("INSERT INTO files (name, folder, description, type, size, design, user, timestamp)
         VALUES ('" . e($name) . "', '" . (int)$folder_id . "', '', '" . e(substr($ext, 0, 4)) . "',
                 '" . (int)strlen($content) . "', '$design', '" . (int)$ctx->user_id . "', UNIX_TIMESTAMP())");
+    $file_id = (int)mysqli_insert_id(db::$con);
+    if (isset($ctx->created)) $ctx->created['files'][] = array('id' => $file_id, 'name' => $name);
 }
 
 // Peel a wrapper directory shared by every entry ("site/", "dist/").

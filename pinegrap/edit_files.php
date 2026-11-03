@@ -23,10 +23,10 @@ ini_set('memory_limit', '-1');
 include('init.php');
 
 include_once('liveform.class.php');
-// The screen that posted the form names itself in "from". It is both the
-// liveform the notices are left for and the screen the user is sent back to,
-// so only the two screens that post here are accepted.
-$from = in_array($_POST['from'] ?? '', array('view_files', 'view_design_files'), true) ? $_POST['from'] : 'view_files';
+// The screen the form is posted from: the design files list, the only one
+// left (the File Manager edits a selection of files itself). It is both the
+// liveform the notices are left for and the screen the user is sent back to.
+$from = 'view_design_files';
 $liveform = new liveform($from);
 $user = validate_user();
 validate_area_access($user, 'user');
@@ -178,6 +178,13 @@ if (!$_POST) {
     
     // if at least one file was selected then continue
     if ($_POST['files']) {
+
+        // A document the ERP module keeps has no folder, which the folder
+        // right below lets staff write to: it is refused by name, before any
+        // file of the list is moved or deleted.
+        if (pg_files_include_erp_document((array) $_POST['files'])) {
+            output_error(lang('ERP documents are read-only in the file manager.'));
+        }
 
         $number_of_files = 0;
         $number_of_images = 0;

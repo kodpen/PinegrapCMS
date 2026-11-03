@@ -42,22 +42,18 @@ if (!$_POST) {
         )
     ) . '
 <main id="content" class="container-fluid">
-            <div class="row">
-            <div class="col-12">
-                
                 <form name="form" action="add_contact.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
-                    ' . pg_contact_form_name_row(array(), true, '') . '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                    ' . pg_contact_form_layout(
+                        pg_contact_form_name_card(array(), true) . '
+                            <div class="card mb-7">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('New Contact\'s Subscriber Information') . '
-                                </div>
-                                <div class="card-body" >
+                                </h2>
+                                <div class="card-body">
                                     <div class="row">
-                                        <div class="col-12 md:col-4 my-3">
+                                        <div class="col-12 md:col-6 my-3">
                                             <label for="email_address" class="form-label">' . lang('Email') . '</label>
                                             <input type="text" name="email_address" autocomplete="off" id="email_address" class="form-control text-end" maxlength="100" inputmode="email" data-inputmask-alias="email" />
                                         </div>
@@ -70,20 +66,13 @@ if (!$_POST) {
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-                    ' . pg_contact_form_detail_cards(array(), true, '', pg_contact_form_group_cells($contact_groups, array())) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
-                            </div>
-                        </div>
-                    </nav>
+                            ' . pg_contact_form_detail_cards(array(), true, '', pg_contact_form_group_cells($contact_groups, array())),
+                        pg_contact_form_picture_card(true, ''),
+                        '
+                                        <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>'
+                    ) . '
                 </form>
-            </div>
-        </div>
-    
+
     <script>
         // The photo x removes its item from an inline handler. This listener
         // runs first, in the capture phase, and moves focus to Change Image,
@@ -93,7 +82,7 @@ if (!$_POST) {
             if (photos) {
                 photos.addEventListener("click", function (event) {
                     if (event.target.closest(".item .card-header button[onclick]")) {
-                        photos.parentNode.querySelector(".card-footer button").focus();
+                        photos.closest(".card").querySelector(".card-footer button").focus();
                     }
                 }, true);
             }
@@ -114,25 +103,7 @@ if (!$_POST) {
     // get all contact groups, so that contact can be added to selected contact groups
     $contact_groups = pg_contact_form_all_groups();
 
-    // if user has user role, then check to make sure that at least one group was selected for contact
-    if ($user['role'] == 3) {
-        // assume no contact groups were selected, until we find out otherwise
-        $contact_group_selected = false;
-
-        // loop through all contact groups
-        foreach ($contact_groups as $contact_group) {
-            // if contact group was selected for contact to be added to and user has access to contact group, take note
-            if ((($_POST['contact_group_' . $contact_group['id']] ?? '') == 1) && (validate_contact_group_access($user, $contact_group['id']) == true)) {
-                $contact_group_selected = true;
-                break;
-            }
-        }
-
-        // if no contact groups were selected, then output error
-        if ($contact_group_selected == false) {
-            output_error(lang('Please select at least one contact group for the contact') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
-        }
-    }
+    pg_contact_form_check($user, $contact_groups, $_POST);
 
     $columns = pg_contact_form_columns($_POST, $user['id']) + pg_contact_form_affiliate_columns($_POST, $affiliate_code);
 

@@ -1,23 +1,28 @@
 ---
 name: loading-curtain
-description: Loading curtain printed by pg_preloader_markup() on every panel screen: structure, PRIVATE_LABEL, logo ids, Visual Editor hold, exit curtain, four ways out, exclusions.
+description: Panel transitions (pg_preloader_markup()): arrival curtain after 120 ms and held screens, the leaving bar after 150 ms until pagehide, what never shows it, the download cookie
 ---
 
-## Where and how is the curtain printed?
-- `pg_preloader_markup()` (`includes/fn/output.php`) prints inside `output_header()` right after `<body>`. Markup, style hook and script come **together**: the curtain stands before any stylesheet or script below loads, since nothing else can be trusted at that point.
-- **The curtain is not an image.** Page's own background (`--pg-bg-body`) + a thin top bar + centered brand + three dots. It appears dozens of times an hour; anything with its own personality tires by the third visit. The center block is 300 ms delayed: a fast page shows only the bar, the logo does not flash twice a minute.
-- **With `PRIVATE_LABEL` on, no brand is printed**, only the three dots: that mode rests on the software never naming itself; the curtain is no exception.
-- **The brand comes from `pg_logo_svg($id_suffix)`**; no second copy (header and curtain share the same eight-kilobyte path list). Both copies are on the same page, so gradient ids take a suffix, added in **a single `preg_replace` pass**: `str_replace` with arrays runs each pair over the whole string in turn, and the second pass re-enters the first's output (`pgLogoGradient-plIcon-pl`).
-- Classes are in the *Loading curtain* block at the end of `assets/css/backend.src.css`; never write a screen-specific second curtain.
+## Where and how is it printed?
+- `pg_preloader_markup()` (`includes/fn/output.php`) prints inside `output_header()` right after `<body>`: the curtain `#pg-preloader`, the leaving bar `.pg-leave-bar` and their inline script together, before any stylesheet or script below loads. CSS is the *Loading curtain and leaving bar* block of `assets/css/backend.src.css` (run `php tools/build_css.php`); never a screen's own second curtain.
+- Excluded: `toolbar.php` (the strip above the edited site) and `output_header_secure()` (in-modal picker screens).
 
-## When does it drop and when does it show again?
-- **No artificial floor.** The criterion is DOM ready. A screen still building after ready DOM (Visual Editor) sets `window.pgPreloaderHold = true` and calls `window.pgPreloaderDone()` when painted.
-- **It shows on exit too:** link clicks and form submits call `pgPreloaderShow()`. Filters: `target`, `download`, `data-bs-toggle`, `data-pg-menu-panel` (a main menu row that opens its panel, `main-menu-panels.md`), `data-pg-no-curtain` on a link a script answers in place (the Workspace list on the channel screen; the listener runs first, so it cannot see that script's `preventDefault`), `#`/`javascript:`/`mailto:`, external origin, fragment-only change, modifier keys, links the settings dialog answers (`pgSettingsModal.asked()`).
-- Both listeners run on the document in the capture phase, before the form's own handler can cancel the submit: a form that never leaves the page (sent over Ajax, like the settings dialog's) carries `data-pg-no-curtain`.
-- **There must be four ways out of a stuck curtain:** DOM ready / first interaction after a redirect that never happens / timeout / if the script never ran, the CSS animation. The first `hide()` proves the script ran and **removes** that animation; if the `forwards` fill stayed, on a long-open page the curtain could never open again.
+## What does arrival show?
+- The light transitions are an owner decision (#6080, `workflow/decisions-made-product-21.md`). The curtain (page background + thin top bar) is transparent for its first 120 ms and fades in over 100 ms; `hide()` on DOM ready pins the reached opacity and fades out in 100 ms. A screen ready within 120 ms shows nothing.
+- A screen still building after DOM ready (Visual Editor, `designer_screen.php`) sets `window.pgPreloaderHold = true` and calls `window.pgPreloaderDone()` when painted; the script marks that curtain `is-hold`, and **only a held curtain draws the mark** (logo, or the dots alone with `PRIVATE_LABEL`), 300 ms late. Everyday transitions never show the logo.
+- A list screen (`table.chart`, hidden until DataTables shows it) is held without `is-hold`: on DOM ready the curtain stays when `table.chart` and `jQuery.fn.DataTable` exist; `pgListCurtainDone()` (`backend.src.js`) lifts it after `fnInitComplete`, on `error.dt` or a throw. Fixed #6073 (lifted 0.7-1.7 s early).
+- Ways out: DOM ready, `pgPreloaderDone()`, the 9 s timer (stored in `timer`, cleared by the first `hide()`; it ran unstored before and cut exit curtains short, #6056), and the 10 s CSS failsafe animation in case the script never ran (`hide()` removes it).
+- Reduced motion keeps every delay (a delay is not motion) and drops fades and loops (#6057).
 
-## Where is it excluded?
-- `toolbar.php` (the strip above the edited site) and `output_header_secure()` (in-modal picker screens).
+## What does leaving show?
+- No curtain. 150 ms after a navigation starts `html.pg-is-leaving` shows `.pg-leave-bar` and `cursor: progress`; the old page stays visible and usable. Nothing takes them down while the navigation runs (no timer, no wheel/key/click exit, #6058); the page leaving (`pagehide`) ends them, and a `pageshow` from the back/forward cache resets them.
+- Trigger: the Navigation API `navigate` event (every way of leaving: links, forms, `location.href`, `history.go()`, `form.submit()`, #6059), skipping hash changes, same-document entries, `<a download>`, other origins and a `sourceElement` inside `[data-pg-no-curtain]`. Without the Navigation API, `beforeunload` starts it; click/submit listeners only mark `data-pg-no-curtain`, `mailto:`-like and external links to skip.
+- Never shown: a link or form opening another window (`target`, a submitter's `formtarget`, #6061: they do not navigate this window); a click or submit whose handler cancelled it (`confirm()` → Cancel, #6062: the 150 ms check reads `defaultPrevented`); a navigation whose `beforeunload` asked for a prompt (read after the dispatch; a confirmed one shows nothing either).
+- Downloads (#6060): every answer with `Content-Disposition: attachment` gets a 60 s `pg_download` cookie through `pg_download_marker_hook()` (`pg_header_callback_add()`, registered in `init.php` after `session_start()`); the bar polls `document.cookie` every 400 ms, drops the cookie and stops. Export links need no attribute.
 
-## Do the bar and dots keep running behind a done curtain?
-- No. `.pg-preloader.is-done` pauses `.pg-preloader-bar i` and `.pg-preloader-dots i` (`animation-play-state: paused`), so a hidden curtain does not keep the compositor busy (#3592, #3676). Not `animation: none`: `pgPreloaderShow()` takes `is-done` off again on a link click and the loops must carry on at once, and the mark, which rests at opacity 0 until its delayed fade-in, is left alone.
+## Brand and ids?
+- With `PRIVATE_LABEL` on, no brand is printed, only the dots.
+- The brand comes from `pg_logo_svg($id_suffix)`; header and curtain share one path list, gradient ids get the suffix in **one `preg_replace` pass** (array `str_replace` re-enters its own output: `pgLogoGradient-plIcon-pl`).
+
+## Do loops run behind a done curtain?
+- No. `.is-done` pauses the bar and dot loops (#3592, #3676); the leaving bar is `display: none` until wanted.

@@ -25,4 +25,4 @@ module: subscriptions
 ## How was it verified?
 - `tests/payment_iyzico_test.php` (stand-in HTTP client), `tests/subscriptions_test.php`. No iyzico sandbox run: the card management page's request and answer follow iyzico's documentation, not a recorded exchange.
 
-Related: commerce/subscriptions.md, commerce/payment-driver-iyzico.md, plans/subscriptions-iyzico-stripe.md
+Related: commerce/subscriptions.md, commerce/payment-driver-iyzico.md, commerce/subscriptions-decisions.md

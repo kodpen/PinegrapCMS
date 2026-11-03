@@ -331,103 +331,165 @@ function get_random_string($properties = array())
 // they can edit.
 function select_page($page_id = '', $page_type = '')
 {
+    $options = pg_select_page_options($page_id, $page_type);
+
+    // The Create Page and Edit Page screens print a picker for every page
+    // type, hidden until its type is chosen; an untyped one listing every
+    // page was printed twenty-odd times. There it carries only its stored
+    // page, and the list comes from one template once it is opened
+    // (pg_page_picker_template()).
+    if (($page_type === '' || $page_type === null) && pg_page_picker_lazy()) {
+        return pg_page_select_lazy_html($options);
+    }
+
+    return pg_page_select_options_html($options);
+}
+
+// The options of select_page() as array('id', 'label', 'selected') rows, in
+// page name order, with the archived and bin marks of the stored page.
+function pg_select_page_options($page_id = '', $page_type = '')
+{
     global $user;
     $folders_that_user_has_access_to = array();
     // if user is a basic user, then get folders that user has access to
-    if ($user['role'] == 3) {
+    if (isset($user['role']) && $user['role'] == 3) {
         $folders_that_user_has_access_to = get_folders_that_user_has_access_to($user['id']);
     }
     // A posted value can be anything; only a whole id is kept.
     $keep_id = is_scalar($page_id) ? (int) $page_id : 0;
     $bin_folders = ($keep_id > 0) ? array_flip(pg_recycle_bin_folder_ids()) : array();
-    $where_values = array();
-    // if a page type was given, prepare to only return pages with that page type
-    if ($page_type) {
-        // If multiple page types were passed in an array, then prepare filter for all of them.
-        if (is_array($page_type)) {
-            $where = "WHERE (";
-            foreach ($page_type as $key => $type) {
-                if ($key != 0) {
-                    $where .= "OR ";
-                }
-                $where .= "(page.page_type = ?) ";
-                $where_values[] = (string) $type;
-            }
-            $where .= ")";
-            // Otherwise only one page type was passed, so prepare single filter.
-        } else {
-            $where = "WHERE page.page_type = ?";
-            $where_values[] = (string) $page_type;
-        }
-    } else {
-        $where = '';
-    }
-    // if there is not already a where statement, then output the starting where part
-    if ($where == '') {
-        $where .= 'WHERE ';
-        // else there is already a where statement, so add an and
-    } else {
-        $where .= ' AND ';
-    }
-    if ($keep_id > 0) {
-        $where .= '((folder.folder_archived = "0") OR (page.page_id = ?))';
-        $where_values[] = (string) $keep_id;
-    } else {
-        $where .= '(folder.folder_archived = "0")';
-    }
-    // get pages
-    $query = "SELECT
 
-            page.page_id as id,
-
-            page.page_name as name,
-
-            page.page_folder as folder_id,
-
-            folder.folder_archived
-
-        FROM page
-
-        LEFT JOIN folder ON page.page_folder = folder.folder_id
-
-        $where
-
-        ORDER BY page.page_name";
-    $result = db_q($query, $where_values) or output_error(lang('Query failed.'));
-    $pages = array();
-    // loop through all pages so they can be added to array
-    while ($row = mysqli_fetch_assoc($result)) {
-        $pages[] = $row;
-    }
-    $output = '';
-    // loop through all pages so their options can be outputted
-    foreach ($pages as $page) {
+    $options = array();
+    foreach (pg_select_page_rows($page_type) as $page) {
         // if user has access to folder that page is in, then output option
-        if (check_folder_access_in_array($page['folder_id'], $folders_that_user_has_access_to) == true) {
-            $kept = ((int) $page['id'] === $keep_id);
-            $status = pg_page_option_status((string) $page['folder_archived'] !== '0', isset($bin_folders[(int) $page['folder_id']]), true, $kept);
-            if ($status === 'skip') {
-                continue;
-            }
-            $page_name = $page['name'];
-            if ($status === 'bin') {
-                require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
-                $original = pg_recycle_parked_original($page_name, $page['id']);
-                $page_name = (($original !== '') ? $original : $page_name) . ' [' . lang('IN RECYCLE BIN') . ']';
-            } elseif ($status === 'archived') {
-                $page_name .= ' [' . lang('ARCHIVED') . ']';
-            }
-            // if this page should be selected, then select it
-            if ($kept) {
-                $selected = ' selected="selected"';
-            } else {
-                $selected = '';
-            }
-            // output option
-            $output .= '<option value="' . $page['id'] . '"' . $selected . '>' . h($page_name) . '</option>';
+        if (check_folder_access_in_array($page['folder_id'], $folders_that_user_has_access_to) != true) {
+            continue;
         }
+        $kept = ((int) $page['id'] === $keep_id);
+        $status = pg_page_option_status((string) $page['folder_archived'] !== '0', isset($bin_folders[(int) $page['folder_id']]), true, $kept);
+        if ($status === 'skip') {
+            continue;
+        }
+        $page_name = $page['name'];
+        if ($status === 'bin') {
+            require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');
+            $original = pg_recycle_parked_original($page_name, $page['id']);
+            $page_name = (($original !== '') ? $original : $page_name) . ' [' . lang('IN RECYCLE BIN') . ']';
+        } elseif ($status === 'archived') {
+            $page_name .= ' [' . lang('ARCHIVED') . ']';
+        }
+        $options[] = array('id' => (int) $page['id'], 'label' => (string) $page_name, 'selected' => $kept);
+    }
+    return $options;
+}
+
+// The pages of $page_type (one type, a list of types, or '' for every page),
+// archived folders included, ordered by name. Read once per request for each
+// type list: a page form asks for the same list many times.
+function pg_select_page_rows($page_type = '')
+{
+    static $cache = array();
+    $types = array();
+    if ($page_type) {
+        foreach ((array) $page_type as $type) {
+            $types[] = (string) $type;
+        }
+    }
+    $key = implode("\n", $types);
+    if (isset($cache[$key])) {
+        return $cache[$key];
+    }
+    $where = $types ? 'WHERE page.page_type IN (' . implode(', ', array_fill(0, count($types), '?')) . ')' : '';
+    $result = db_q(
+        "SELECT
+            page.page_id as id,
+            page.page_name as name,
+            page.page_folder as folder_id,
+            folder.folder_archived
+        FROM page
+        LEFT JOIN folder ON page.page_folder = folder.folder_id
+        $where
+        ORDER BY page.page_name", $types) or output_error(lang('Query failed.'));
+    $rows = array();
+    while ($row = mysqli_fetch_assoc($result)) {
+        $rows[] = $row;
+    }
+    return $cache[$key] = $rows;
+}
+
+// $options (array('id', 'label', 'selected') rows) as <option> markup. Pure.
+function pg_page_select_options_html(array $options)
+{
+    $output = '';
+    foreach ($options as $option) {
+        $output .= '<option value="' . (int) $option['id'] . '"' . (!empty($option['selected']) ? ' selected="selected"' : '') . '>' . h($option['label']) . '</option>';
     }
     return $output;
+}
+
+// An untyped picker that waits for the page list: its selected option, so
+// the form sends the stored page unopened, and a hidden, disabled marker the
+// filling script looks for. Pure.
+function pg_page_select_lazy_html(array $options)
+{
+    $kept = array();
+    foreach ($options as $option) {
+        if (!empty($option['selected'])) {
+            $kept[] = $option;
+        }
+    }
+    return '<option value="" hidden disabled data-pg-page-fill></option>' . pg_page_select_options_html($kept);
+}
+
+// Whether untyped page pickers wait for the template: $on switches it, the
+// call answers the setting in force. Set while pg_page_form_type_fields()
+// draws for the Create Page and Edit Page screens.
+function pg_page_picker_lazy($on = null)
+{
+    static $lazy = false;
+    if ($on !== null) {
+        $lazy = (bool) $on;
+    }
+    return $lazy;
+}
+
+// The template holding every page a lazy picker offers, and the script that
+// fills a picker from it when it is first focused or pressed. The stored
+// page keeps its own option when the list has none for it (an archived or
+// binned page); otherwise the list's option is selected in its place.
+function pg_page_picker_template()
+{
+    return '<template id="pg_page_picker_options">' . pg_page_select_options_html(pg_select_page_options()) . '</template>
+        <script>
+        (function () {
+            var template = document.getElementById("pg_page_picker_options");
+            if (!template) return;
+            function fill(select) {
+                var marker = select.querySelector("option[data-pg-page-fill]");
+                if (!marker) return;
+                var value = select.value;
+                var list = template.content.cloneNode(true);
+                marker.parentNode.removeChild(marker);
+                if (value !== "") {
+                    var same = list.querySelector("option[value=\"" + parseInt(value, 10) + "\"]");
+                    if (same) {
+                        var stored = select.querySelector("option[value=\"" + parseInt(value, 10) + "\"]");
+                        if (stored) stored.parentNode.removeChild(stored);
+                        same.setAttribute("selected", "selected");
+                    }
+                }
+                select.appendChild(list);
+                select.value = value;
+            }
+            function onEvent(event) {
+                var target = event.target;
+                if (target && target.tagName === "SELECT") fill(target);
+            }
+            ["focusin", "mousedown", "touchstart"].forEach(function (type) {
+                document.addEventListener(type, onEvent, true);
+            });
+        })();
+        </script>';
 }
 // outputs the form's <select> page list for selecting a custom form: the
 // labels of the Forms screen (a repeated form name gets its page name,
@@ -951,8 +1013,6 @@ function get_product_group_options($product_group_id = 0, $parent_product_group_
 function get_ad_region_options()
 {
     global $user;
-    // Setup first option
-    $ad_region_options[''] = '';
     $sql_join = '';
     $where = '';
     $where_values = array();
@@ -971,11 +1031,32 @@ function get_ad_region_options()
         $where
         ORDER BY name";
     $result = db_q($query, $where_values) or output_error(lang('Query failed.'));
-    // loop through each ad region and add it to array
+    $rows = array();
     while ($row = mysqli_fetch_assoc($result)) {
-        $ad_region_options[h($row['name'])] = $row['id'];
+        $rows[] = $row;
     }
-    return $ad_region_options;
+    return pg_ad_region_option_list($rows);
+}
+/**
+ * The Ad Region pick list from (id, name) rows: a blank first entry, then
+ * escaped name => id. The label is the array key, so a region whose name
+ * an earlier one already uses (stored before names were capped at the
+ * column's length) gets its id after the name instead of replacing it.
+ *
+ * @param array $rows  Rows with 'id' and 'name', in display order
+ * @return array
+ */
+function pg_ad_region_option_list(array $rows)
+{
+    $options = array('' => '');
+    foreach ($rows as $row) {
+        $label = h($row['name']);
+        if (array_key_exists($label, $options)) {
+            $label .= ' (#' . $row['id'] . ')';
+        }
+        $options[$label] = $row['id'];
+    }
+    return $options;
 }
 // get an array of states for pick lists
 function get_state_options()
@@ -1000,7 +1081,8 @@ function get_state_options()
     $query = "SELECT
             states.id,
             states.name,
-            countries.name as country_name
+            countries.name as country_name,
+            countries.code as country_code
         FROM states
         LEFT JOIN countries ON states.country_id = countries.id
         ORDER BY
@@ -1014,16 +1096,10 @@ function get_state_options()
     }
     $state_options = array();
     $state_options[''] = '';
-    // loop through each state in order to prepare options
-    foreach ($states as $state) {
-        // if foreign states exist, then output state label with country name prefix in order to prevent confusion
-        if ($foreign_states == true) {
-            $output_state_label = h($state['country_name']) . ': ' . h($state['name']);
-            // else foreign states do not exist, so just use state name for label
-        } else {
-            $output_state_label = h($state['name']);
-        }
-        $state_options[$output_state_label] = $state['id'];
+    // With foreign states the label carries the country, named in the
+    // current language and ordered by that name, like the list's filter.
+    foreach (pg_geo_state_option_labels($states, $foreign_states) as $option) {
+        $state_options[h($option['label'])] = $option['id'];
     }
     return $state_options;
 }
@@ -1679,11 +1755,59 @@ function pg_log_actor($user, $ip)
 {
     $user = (string) $user;
 
+    // Background writers (backups, operations alerts, recurring invoices,
+    // outbound webhooks) store the literal SYSTEM.
+    if ($user === 'SYSTEM') {
+        return lang('System');
+    }
+
     if (($user !== '') && ($user !== 'UNKNOWN')) {
         return $user;
     }
 
     return ((string) $ip === '') ? lang('Scheduled job') : lang('Unknown');
+}
+
+/**
+ * Whether a user may clear a log for good (the Site Log's delete controls,
+ * the Performance Log's clear action): administrators, or every user who can
+ * open the screen when mass deletion is on.
+ *
+ * @param mixed $mass_deletion The MASS_DELETION setting.
+ * @param mixed $role          The user's role number (USER_ROLE), null when unknown.
+ * @return bool
+ */
+function pg_log_clear_allowed($mass_deletion, $role)
+{
+    if ($mass_deletion == true) {
+        return true;
+    }
+
+    return ($role !== null) && ((int) $role < 1);
+}
+
+/**
+ * A log screen's search term from the request: trimmed and cut to $max
+ * characters. The cut counts characters, so a multi-byte letter is never
+ * split (a broken byte sequence is printed back by h() as an empty box).
+ *
+ * @param mixed $value The request value; anything but a string is no term.
+ * @param int   $max   The most characters kept.
+ * @return string
+ */
+function pg_log_search_term($value, $max = 200)
+{
+    if (!is_string($value)) {
+        return '';
+    }
+
+    $value = trim($value);
+
+    if (mb_strlen($value, 'UTF-8') > $max) {
+        $value = mb_substr($value, 0, $max, 'UTF-8');
+    }
+
+    return $value;
 }
 function get_number_of_contacts($contact_group, $require_email = false)
 {
@@ -1721,8 +1845,9 @@ function validate_date($date)
         return checkdate((int)$iso[2], (int)$iso[3], (int)$iso[1]);
     }
 
-    // if format of date is valid
-    if (preg_match('/(\d{1,2})[-,\/](\d{1,2})[-,\/](\d{4})/', $date, $date_parts) == 1) {
+    // The whole value is the date in the site's day and month order; a
+    // date found inside longer text ('5/5/20271') was stored with a wrong year.
+    if (is_scalar($date) && (preg_match('/^\s*(\d{1,2})[-,\/](\d{1,2})[-,\/](\d{4})\s*$/', (string) $date, $date_parts) == 1)) {
         $year = $date_parts[3];
         if (DATE_FORMAT == 'month_day') {
             $month = $date_parts[1];
@@ -1732,7 +1857,7 @@ function validate_date($date)
             $day = $date_parts[1];
         }
         // if date is valid (i.e. does the day exist for the month)
-        if (checkdate($month, $day, $year) == true) {
+        if (checkdate((int) $month, (int) $day, (int) $year) == true) {
             return true;
         } else {
             return false;
@@ -1741,9 +1866,54 @@ function validate_date($date)
         return false;
     }
 }
+/**
+ * A date typed into a panel field as an ISO date (YYYY-MM-DD), '' when it
+ * is no real date. Reads ISO itself and the site's day and month order
+ * (DATE_FORMAT) with any of the separators people type: '/', '-', ',' and
+ * '.', so the Turkish "31.12.2026" is read too. The year has four digits:
+ * "31/12/27" stood for the year 0027. prepare_form_data_for_input() turned
+ * a dotted or impossible date into text MySQL stored as 0000-00-00 or
+ * refused in a comparison.
+ *
+ * @param mixed $text the typed value
+ * @return string
+ */
+function pg_date_input_iso($text)
+{
+    if (!is_scalar($text)) {
+        return '';
+    }
+
+    $text = trim((string) $text);
+
+    if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})$/', $text, $parts)) {
+        list(, $year, $month, $day) = $parts;
+    } elseif (preg_match('/^(\d{1,2})\s*[-,\/.]\s*(\d{1,2})\s*[-,\/.]\s*(\d{4})$/', $text, $parts)) {
+        $year = $parts[3];
+
+        if (defined('DATE_FORMAT') && (DATE_FORMAT == 'month_day')) {
+            list(, $month, $day) = $parts;
+        } else {
+            list(, $day, $month) = $parts;
+        }
+    } else {
+        return '';
+    }
+
+    if (((int) $year < 1) || !checkdate((int) $month, (int) $day, (int) $year)) {
+        return '';
+    }
+
+    return sprintf('%04d-%02d-%02d', $year, $month, $day);
+}
 function validate_date_and_time($date_and_time)
 {
-    $date_and_time_parts = explode(' ', $date_and_time, 2);
+    // An ISO date and time ('2026-10-26T17:00'), as an <input
+    // type="datetime-local"> of a designed form or product form posts it.
+    if (preg_match('/^\s*(\d{4}-\d{1,2}-\d{1,2})[T ](\d{1,2}:\d{2}(?::\d{2})?)\s*$/', (string)$date_and_time, $iso)) {
+        return validate_date($iso[1]) && (pg_time_24_hour_parts($iso[2]) !== null);
+    }
+    $date_and_time_parts = explode(' ', (string)$date_and_time, 2) + array('', '');
     $date = $date_and_time_parts[0];
     $time = $date_and_time_parts[1];
     if ((validate_date($date) == true) && (validate_time($time) == true)) {
@@ -1972,7 +2142,9 @@ function select_country($country_id = '')
 
 /**
  * The option tags of select_country() from rows with 'id', 'label' and
- * 'default_selected', in the order given.
+ * 'default_selected', in the order given. A country id that matches no row
+ * (the country was deleted) gets an empty, selected "Select a country"
+ * option first, so the browser does not select the first country instead.
  *
  * @param array      $rows
  * @param int|string $country_id The selected country; '' selects the default one
@@ -1981,12 +2153,19 @@ function select_country($country_id = '')
 function pg_country_select_options($rows, $country_id = '')
 {
     $output = '';
+    $matched = false;
 
     foreach ($rows as $row) {
-        $selected = (((string) $row['id'] === (string) $country_id) || (($row['default_selected'] == 1) && ((string) $country_id === '')))
+        $match = ((string) $row['id'] === (string) $country_id);
+        $matched = $matched || $match;
+        $selected = ($match || (($row['default_selected'] == 1) && ((string) $country_id === '')))
             ? ' selected="selected"'
             : '';
         $output .= '<option value="' . h($row['id']) . '"' . $selected . '>' . h($row['label']) . '</option>';
+    }
+
+    if (!$matched && ((string) $country_id !== '')) {
+        $output = '<option value="" selected="selected">' . h(lang('Select a country')) . '</option>' . $output;
     }
 
     return $output;
@@ -2240,7 +2419,7 @@ function select_contact_field($selected_contact_field = '')
     );
     $contact_fields[] = array(
         'value' => 'title',
-        'name' => lang('Title')
+        'name' => lang('Job Title')
     );
     $contact_fields[] = array(
         'value' => 'department',
@@ -2945,6 +3124,28 @@ function get_page_type_name($page_type)
 
     return isset($names[$page_type]) ? $names[$page_type] : null;
 }
+
+/**
+ * The type a File Manager page item shows beside "Page": the panel-language
+ * name of a non-standard type ('custom form' -> "Custom Form"), '' for a
+ * standard page, and the stored code itself for a type no name is known for,
+ * so the column is never drawn empty.
+ *
+ * @param  string $page_type stored page.page_type
+ * @return string
+ */
+function pg_explorer_page_type_name($page_type)
+{
+    $page_type = (string) $page_type;
+
+    if (($page_type === '') || ($page_type === 'standard')) {
+        return '';
+    }
+
+    $name = get_page_type_name($page_type);
+
+    return ($name !== null) ? $name : $page_type;
+}
 function get_currency_name_from_code($currency_code)
 {
     // if the currency code is not blank, then get name from code
@@ -3391,6 +3592,45 @@ function pg_form_input_time_parts($text)
 
     return array('', (string) $parts[0], sprintf('%02d', $parts[1]), '');
 }
+/**
+ * The value a native <input type="date">, "datetime-local" or "time" takes
+ * for a stored, default or typed value: ISO ('2026-10-26',
+ * '2026-10-26T17:05', '17:05'). A browser drops any other text from such an
+ * input, so a default in the site's format ('26/10/2026', '5:05 PM') or a
+ * stored 'Y-m-d H:i' is converted; text that is no date or time is
+ * returned as it is.
+ *
+ * @param string $value
+ * @param string $type  the input's type: date, datetime-local or time
+ * @return string
+ */
+function pg_native_date_value($value, $type)
+{
+    $value = trim((string)$value);
+    $type = strtolower((string)$type);
+    if ($value === '') return '';
+
+    if ($type === 'date') {
+        if (preg_match('/^\d{4}-\d{1,2}-\d{1,2}/', $value, $m) && validate_date($m[0])) {
+            return (string)prepare_form_data_for_input($m[0], 'date');
+        }
+        // The date part of a site date and time ('26/10/2026 5:05 PM').
+        $date = preg_split('/\s+/', $value)[0];
+        return validate_date($date) ? (string)prepare_form_data_for_input($date, 'date') : $value;
+    }
+    if ($type === 'datetime-local') {
+        if (!validate_date_and_time($value)) {
+            // A date alone is midnight, as the date-and-time control reads it.
+            if (preg_match('/\s/', $value) || !validate_date($value)) return $value;
+            $value .= ' 00:00';
+        }
+        return str_replace(' ', 'T', (string)prepare_form_data_for_input($value, 'date and time'));
+    }
+    if ($type === 'time') {
+        return validate_time($value) ? (string)prepare_form_data_for_input($value, 'time') : $value;
+    }
+    return $value;
+}
 function prepare_form_data_for_input($data, $type)
 {
     if ($data) {
@@ -3401,7 +3641,7 @@ function prepare_form_data_for_input($data, $type)
                 if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})$/', trim((string)$data), $iso)) {
                     return sprintf('%04d-%02d-%02d', $iso[1], $iso[2], $iso[3]);
                 }
-                $date_parts = preg_split('/[-,\/]/', $data);
+                $date_parts = preg_split('/[-,\/]/', trim((string) $data));
 
                 // A value that is not in a date format does not split into three parts.
                 $date_parts = $date_parts + array('', '', '');
@@ -3420,6 +3660,12 @@ function prepare_form_data_for_input($data, $type)
                 return $year . '-' . $month . '-' . $day;
                 break;
             case 'date and time':
+                // Already ISO ('2026-10-26T17:00', as an <input
+                // type="datetime-local"> posts it, or with a space): read
+                // the site's way it was stored as '0026-10-2026 17:00'.
+                if (preg_match('/^\s*(\d{4})-(\d{1,2})-(\d{1,2})[T ](\d{1,2}):(\d{2})/', (string)$data, $iso)) {
+                    return sprintf('%04d-%02d-%02d %02d:%02d', $iso[1], $iso[2], $iso[3], $iso[4], $iso[5]);
+                }
                 // Parts missing from a value that is not in a date and time
                 // format (e.g. a search term) count as empty.
                 $date_and_time_parts = explode(' ', $data, 2) + array('', '');

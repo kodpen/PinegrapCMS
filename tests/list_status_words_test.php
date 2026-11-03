@@ -100,3 +100,21 @@ function test_overdue_expense_has_a_badge()
 		pg_assert_contains("(\$overdue ? ' <span class=\"badge theme-danger\">' . lang('Overdue') . '</span>' : '')", list_status_words_source($file), $file . ' says Overdue');
 	}
 }
+
+function test_list_status_word_shipping_methods()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipping_methods.php');
+
+	$now = '2026-11-02 12:00:00';
+	$method = array('status' => 'enabled', 'start_time' => '2026-01-01 00:00:00', 'end_time' => '2099-12-31 23:59:00');
+
+	pg_assert_same('', pg_shipping_method_list_state($method, $now), 'offered at checkout');
+	pg_assert_same('Disabled', pg_shipping_method_list_state(array('status' => 'disabled') + $method, $now), 'switched off');
+	pg_assert_same('Inactive', pg_shipping_method_list_state(array('start_time' => '2026-12-01 00:00:00') + $method, $now), 'not started yet');
+	pg_assert_same('Inactive', pg_shipping_method_list_state(array('end_time' => '2026-10-01 00:00:00') + $method, $now), 'ended');
+
+	$source = list_status_words_source('view_shipping_methods.php');
+	pg_assert_contains('pg_list_status_word(lang(\'Disabled\'))', $source, 'the list writes Disabled under the name');
+	pg_assert_contains('pg_list_status_word(lang(\'Inactive\'))', $source, 'and Inactive outside the dates');
+	pg_assert_contains('$has_service ?', $source, 'Service and Real-Time Rate are drawn only while a method has a service');
+}

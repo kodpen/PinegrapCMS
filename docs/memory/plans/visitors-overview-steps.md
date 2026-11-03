@@ -4,7 +4,7 @@ description: Steps V1-V4 of plans/visitors-overview.md, the foundations: shell a
 ---
 
 ## How are the steps taken?
-- Sizes: S under 400 product lines, M about 700, L about 1,000. Claim with a draft `[plan:visitors-overview] V<n> — <topic>`; read `visitors-overview-design.md` and `-data.md` first, then the memory the plan names. `free` is claimable now; "After Vn" once Vn is merged. Sections V5-V11: `visitors-overview-steps-2.md`; V12-V16: `-steps-3.md`; who takes what: `visitors-overview-workers.md`.
+- Sizes: S under 400 product lines, M about 700, L about 1,000. Claim with a draft `[plan:visitors-overview] V<n> — <topic>`; read `visitors-overview-design.md` and `-data.md` first, then the memory the plan names. `free` is claimable now; "After Vn" once Vn is merged. Sections V5-V11: `visitors-overview-steps-2.md`; V12-V17: `-steps-3.md`; who takes what: `visitors-overview-workers.md`.
 
 - V1 (L) Shell, period and menu. `free`.
   - `visitors.php`, `includes/visitors/shell.php`, `includes/fn/visitor_periods.php`, `assets/js/pg_visitors.src.js` and `.min.js`, `assets/css/pg_visitors.src.css` and `.min.css` with the empty section blocks, both registered in their bundle lists; the period bar with the compare switch and the custom range (`pgDatePicker`); the section loader; the menu, panel search and help entries (`-design.md`). With no section file yet the screen shows the period bar and one line saying the sections are coming. `tests/visitor_periods_test.php`: bounds of every preset, Monday weeks, a DST change, a custom range, the same-hour cut, bad input. Memory: `ui/visitors-screen.md`.

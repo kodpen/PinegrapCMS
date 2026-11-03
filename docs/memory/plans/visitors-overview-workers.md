@@ -5,8 +5,8 @@ description: How two coordinators' workers take plans/visitors-overview.md: the 
 
 ## Which steps run side by side?
 - Wave 1 (now): V1, V2 and V3, three workers on different files (`visitors.php` with the shell and period; `visitor_figures.php` with the API resource; `visitor_retention.php` with the saved-report condition).
-- Wave 2, as each lands: V13 and V15 after V3; V4 after V2 and V3; V5, V6, V8 and V11 after V1 and V2; V9 after V1 alone; V7 after V4; V10 after V2 and V9; V12 after V5, V6 and V9. With V1-V3 in, eleven steps are open at once; a coordinator keeps at most six (Working mode 8), so two coordinators cover the wave.
-- Wave 3: V14 after V2, V4 and V10; V16 alone, after everything.
+- Wave 2, as each lands: V13 and V15 after V3; V4 after V2 and V3; V5, V6, V8 and V11 after V1 and V2; V9 after V1 alone; V7 after V4; V10 after V2 and V9; V12 after V5, V6 and V9; V17 after V1. With V1-V3 in, twelve steps are open at once; a coordinator keeps at most six (Working mode 8), so two coordinators cover the wave.
+- Wave 3: V14 after V2, V4 and V10; V16 alone, after everything else.
 - The two coordinators split the open steps by number, odd and even, and take the other's leftovers when their own are gone; a step is taken only when no draft holds it (Claim work, step 1). No free step: `coordinator-no-plans.md`.
 
 ## What does a step own, and what may it not touch?

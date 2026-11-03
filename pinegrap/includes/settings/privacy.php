@@ -220,3 +220,53 @@ if ($legal_documents_ready) {
         </div>
     </div>';
 }
+
+// ── Accessibility Statement ──
+// The fixed texts of the statement the Accessibility Statement widget and
+// view_accessibility.php?statement=1 draw (includes/fn/widgets_accessibility.php);
+// the conformance and the known limitations come from the nightly report.
+// One config_text row as JSON, so the card needs only that table.
+if (pg_schema_has('config_text')) {
+    $a11y_statement = pg_a11y_statement_settings();
+    $a11y_statement_limits = pg_a11y_statement_fields();
+    $a11y_statement_field = function ($field, $label, $help, $rows) use ($a11y_statement, $a11y_statement_limits) {
+        $id = 'a11y_statement_' . $field;
+        $control = ($rows > 1)
+            ? '<textarea class="form-control" id="' . $id . '" name="' . $id . '" rows="' . (int) $rows . '" maxlength="' . (int) $a11y_statement_limits[$field] . '">' . h($a11y_statement[$field]) . '</textarea>'
+            : '<input type="text" class="form-control" id="' . $id . '" name="' . $id . '" maxlength="' . (int) $a11y_statement_limits[$field] . '" value="' . h($a11y_statement[$field]) . '"/>';
+
+        return '
+                                        <div class="col-12">
+                                            <label class="form-label" for="' . $id . '">' . h($label) . '</label>
+                                            ' . $control . '
+                                            <div class="form-text">' . h($help) . '</div>
+                                        </div>';
+    };
+
+    $pg_settings_cards[] = '
+                        <div id="pgset-a11y-statement" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Accessibility Statement') . '
+                                </div>
+                                <div class="card-body">
+                                    <input type="hidden" name="a11y_statement_card" value="1"/>
+                                    <div class="row gy-5">
+                                        <div class="col-12">
+                                            <div class="form-text">' . h(lang('The EU Accessibility Act asks for a statement on the site. Place the Accessibility Statement widget on a page in the visual editor: it shows these texts with the conformance and the known limitations of the nightly accessibility report.')) . ' <a href="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_accessibility.php?statement=1') . '" target="_blank" rel="noopener">' . h(lang('Print the statement')) . '</a></div>
+                                        </div>'
+        . $a11y_statement_field('organisation', lang('Organisation Name'), lang('Who makes the statement. Empty: the site name.'), 1)
+        . $a11y_statement_field('scope', lang('Scope'), lang('What the statement applies to, such as the site address and its online shop. Empty: the site name.'), 2)
+        . $a11y_statement_field('contact', lang('Contact Address'), lang('An e-mail address, telephone number or postal address for accessibility questions.'), 2)
+        . $a11y_statement_field('feedback', lang('Feedback Mechanism'), lang('How visitors report a barrier and how soon they get an answer.'), 3)
+        . $a11y_statement_field('enforcement', lang('Enforcement Procedure'), lang('The authority a visitor may turn to when the answer does not satisfy them, with its address. Empty: the section is left out.'), 3) . '
+                                        <div class="pg-f-sm">
+                                            <label class="form-label" for="a11y_statement_date">' . lang('Statement Date') . '</label>
+                                            <input type="date" class="form-control" id="a11y_statement_date" name="a11y_statement_date" value="' . h($a11y_statement['date']) . '"/>
+                                            <div class="form-text">' . h(lang('When the statement was prepared or last reviewed. Empty: today.')) . '</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>';
+}

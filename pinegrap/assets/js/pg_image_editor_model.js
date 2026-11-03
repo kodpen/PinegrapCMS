@@ -150,15 +150,15 @@
     // ---- tools ----
 
     var PROFILES = {
-        photo: ['select', 'crop', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector'],
-        canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'image', 'vector', 'frame'],
+        photo: ['select', 'crop', 'artboard', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'motion'],
+        canvas: ['select', 'artboard', 'draw', 'text', 'sticker', 'image', 'vector', 'frame', 'motion'],
         annotate: ['arrow', 'rect', 'text', 'pen', 'redact'],
         optimise: ['export']
     };
 
     // Tools a caller may name: the rail's and the marking tools of the mini
     // bar (one draw kind each).
-    var TOOLS = ['select', 'crop', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'artboard', 'image', 'export',
+    var TOOLS = ['select', 'crop', 'adjust', 'draw', 'text', 'redact', 'sticker', 'frame', 'vector', 'artboard', 'image', 'export', 'motion',
         'arrow', 'line', 'rect', 'ellipse', 'pen'];
 
     // The tools of one call: the caller's list (known names, first mention
@@ -363,7 +363,7 @@
 
     // Layers whose content a turn or a flip of the picture does not turn:
     // only their place follows it.
-    var UPRIGHT = ['text', 'sticker', 'image'];
+    var UPRIGHT = ['text', 'sticker', 'image', 'glyph'];
 
     function sourceTurns(doc) {
         var g = doc.geometry, src = doc.source || { width: 0, height: 0 };
@@ -990,6 +990,26 @@
         }
 
         return (after[index] && (after[index].cls === was.cls)) ? index : -1;
+    }
+
+    // The label key of the panel's title: the layers list when it is open;
+    // Select names what is selected (the layers' one type, else "Selection")
+    // and, with nothing selected, the list (a canvas shows the canvas first);
+    // any other tool its own name. types: the selected layers' types.
+    function panelTitle(tool, types, artboard, layersOpen) {
+        if (layersOpen) {
+            return 'layers';
+        }
+
+        if (tool !== 'select') {
+            return 'tool_' + tool;
+        }
+
+        if (!types || !types.length) {
+            return artboard ? 'tool_artboard' : 'layers';
+        }
+
+        return types.every(function (type) { return type === types[0]; }) ? 'layer_' + types[0] : 'selection';
     }
 
     // ---- the tools' own maths ----
@@ -1911,7 +1931,7 @@
     var BOARD_PRESETS = [['square', 1080, 1080], ['portrait', 1080, 1350], ['story', 1080, 1920], ['share', 1200, 630], ['banner', 1920, 600]];
 
     // The New image dialog's backgrounds.
-    var BOARD_BACKGROUNDS = [['#ffffff', 'colorWhite'], ['transparent', 'colorTransparent'], ['#1a1c1e', 'colorBlack'], ['#e3f2fd', 'boardLightBlue']];
+    var BOARD_BACKGROUNDS = [['#ffffff', 'colorWhite'], ['transparent', 'colorTransparent'], ['#000000', 'colorBlack'], ['#e3f2fd', 'boardLightBlue']];
 
     function boardSide(v) {
         return Math.round(clamp(Number(v) || 0, SIZE_MIN, SIZE_MAX));
@@ -2001,14 +2021,218 @@
         return d;
     }
 
+    // -- a picture's canvas --
+
+    // doc.canvas on a picture: { l, t, r, b, background }, how far the
+    // canvas reaches past each side of the crop box (below 0 trims it), in
+    // the rotated space's units; null when the canvas is the crop box. What
+    // the picture does not cover takes the background.
+    function canvasBox(doc) {
+        var c = cropBox(doc), m = doc.canvas;
+
+        return m ? { x: c.x - m.l, y: c.y - m.t, w: c.w + m.l + m.r, h: c.h + m.t + m.b } : c;
+    }
+
+    // Frames that may lie outside the picture, growing the canvas:
+    // [band in parts of the shorter side (per width step, plus a base), left,
+    // right, top and bottom in bands] as frameShape() draws them inward.
+    var FRAME_OUT = { line: [0.002, 0, 1, 1, 1, 1], thick: [0.008, 0, 1, 1, 1, 1], polaroid: [0.004, 0.03, 1, 1, 1, 3.8] };
+
+    function frameOutward(frame) {
+        return !!frame && !!frame.outside && FRAME_OUT.hasOwnProperty(frame.kind);
+    }
+
+    // The sides an outward frame adds around box: the grown box is one whose
+    // inward frame (frameShape()) has box as its hole. The band is a part c of
+    // the grown box's shorter side, so with W = w + (l + r) * band it is
+    // c * w / (1 - c * (l + r)) for the width, the same for the height, and
+    // the smaller of the two.
+    function framePads(frame, box) {
+        var f = FRAME_OUT[frame.kind], c = f[1] + f[0] * clamp(Number(frame.width) || 4, 1, 10);
+        var band = Math.min(c * box.w / (1 - c * (f[2] + f[3])), c * box.h / (1 - c * (f[4] + f[5])));
+
+        return { l: band * f[2], r: band * f[3], t: band * f[4], b: band * f[5] };
+    }
+
+    // The box a save draws, in the rotated space: an artboard's board, else
+    // the picture's canvas grown by an outward frame.
+    function saveBox(doc) {
+        if (doc.artboard) {
+            return { x: 0, y: 0, w: doc.artboard.width, h: doc.artboard.height };
+        }
+
+        var box = canvasBox(doc), p;
+
+        if (frameOutward(doc.frame)) {
+            p = framePads(doc.frame, box);
+            box = { x: box.x - p.l, y: box.y - p.t, w: box.w + p.l + p.r, h: box.h + p.t + p.b };
+        }
+
+        return box;
+    }
+
+    // Where a picture's save lays it: the canvas in whole pixels of the
+    // output (w, h), the picture's top left on it (x, y) and the fill; null
+    // when the canvas is the picture's own. The server's extend step
+    // (pg_image_edit_extend()).
+    function saveLayout(doc) {
+        if (doc.artboard || (!doc.canvas && !frameOutward(doc.frame))) {
+            return null;
+        }
+
+        var b = saveBox(doc), c = cropBox(doc), out = outputSize(doc), sx = out.w / c.w, sy = out.h / c.h;
+        var fill = doc.canvas ? doc.canvas.background : doc.frame.color;
+
+        return {
+            w: Math.round(clamp(b.w * sx, 1, SIZE_MAX)), h: Math.round(clamp(b.h * sy, 1, SIZE_MAX)),
+            x: Math.round((c.x - b.x) * sx), y: Math.round((c.y - b.y) * sy),
+            fill: /^#[0-9a-f]{6}$/i.test(fill || '') ? fill : 'transparent'
+        };
+    }
+
+    // The size a save writes.
+    function saveSize(doc) {
+        var l = saveLayout(doc);
+
+        return doc.artboard ? { w: doc.artboard.width, h: doc.artboard.height } : (l ? { w: l.w, h: l.h } : outputSize(doc));
+    }
+
+    // doc with its picture's canvas moved to r (in the canvas box's units,
+    // as boardDrag() gives it): whole units on each side, at least SIZE_MIN
+    // and at most SIZE_MAX across. The layers stay: they lie in the rotated
+    // space, not on the canvas. A canvas back on the crop box with a white
+    // background is none.
+    function applyCanvas(doc, r) {
+        var d = clone(doc), c = cropBox(doc), b = canvasBox(doc);
+        var x = b.x + Math.round(r.x), y = b.y + Math.round(r.y), w = boardSide(r.w), h = boardSide(r.h);
+        var m = { l: c.x - x, t: c.y - y, r: x + w - c.x - c.w, b: y + h - c.y - c.h, background: doc.canvas ? doc.canvas.background : '#ffffff' };
+
+        ['l', 't', 'r', 'b'].forEach(function (k) { m[k] = Math.round(m[k] * 1000) / 1000; });
+        d.canvas = (!m.l && !m.t && !m.r && !m.b && (m.background === '#ffffff')) ? null : m;
+
+        return d;
+    }
+
     var ARTBOARD = {
         BOARD_PRESETS: BOARD_PRESETS, BOARD_BACKGROUNDS: BOARD_BACKGROUNDS, boardSide: boardSide, boardPreset: boardPreset,
-        boardDrag: boardDrag, boardAnchored: boardAnchored, boardAround: boardAround, applyBoard: applyBoard
+        boardDrag: boardDrag, boardAnchored: boardAnchored, boardAround: boardAround, applyBoard: applyBoard,
+        canvasBox: canvasBox, FRAME_OUT: FRAME_OUT, frameOutward: frameOutward, framePads: framePads, saveBox: saveBox,
+        saveLayout: saveLayout, saveSize: saveSize, applyCanvas: applyCanvas
     };
 
     // -- export (pg_image_editor_export.js) --
 
-    var EXPORT = {};
+    // The export panel's formats: keep writes the file's own; another is
+    // saved as a copy, so a file's bytes always match its name's extension.
+    var EXPORT_FORMATS = ['keep', 'jpeg', 'webp', 'avif', 'png'];
+
+    // Longest edges offered; 0 keeps the size.
+    var EXPORT_EDGES = [0, 2560, 1920, 1280, 1080];
+
+    // A file's own format from its name: jpeg, png, webp, avif, gif or ''.
+    function fileFormat(name) {
+        var m = /\.([a-z0-9]+)(?:[?#].*)?$/i.exec(String(name || '')), ext = m ? m[1].toLowerCase() : '';
+
+        return { jpg: 'jpeg', jpeg: 'jpeg', png: 'png', webp: 'webp', avif: 'avif', gif: 'gif' }[ext] || '';
+    }
+
+    // The format a save writes: the chosen one, or the file's own for keep.
+    function exportFormat(choice, own) {
+        return ((choice === 'keep') || (EXPORT_FORMATS.indexOf(choice) < 0)) ? (own || '') : choice;
+    }
+
+    // The settings as a save starts: the file's own format at the editor's
+    // quality and size, as before there was a panel.
+    function exportDefaults() {
+        return { format: 'keep', quality: 92, edge: 0, colors: false, progressive: true, camera: false, srgb: false };
+    }
+
+    // w x h brought within a longest edge; never enlarged.
+    function exportSize(w, h, edge) {
+        var k = (edge > 0) ? Math.min(1, edge / Math.max(w, h, 1)) : 1;
+
+        return { w: Math.max(1, Math.round(w * k)), h: Math.max(1, Math.round(h * k)) };
+    }
+
+    // The mode a save takes: a replace that would change the format is a
+    // copy (the file keeps its format and its address).
+    function exportMode(mode, choice, own) {
+        return ((mode === 'replace') && (exportFormat(choice, own) !== own)) ? 'copy' : mode;
+    }
+
+    // What the save request carries: null when the settings change nothing.
+    function exportRequest(ex, own) {
+        var format = exportFormat(ex.format, own), out = {};
+
+        if (format !== own) {
+            out.format = format;
+        }
+
+        if (Math.round(ex.quality) !== 92) {
+            out.quality = Math.round(clamp(Number(ex.quality) || 92, 40, 100));
+        }
+
+        if (ex.edge > 0) {
+            out.edge = ex.edge;
+        }
+
+        if (ex.colors && (format === 'png')) {
+            out.colors = 256;
+        }
+
+        // A JPEG is written progressive unless asked otherwise.
+        if ((ex.progressive === false) && (format === 'jpeg')) {
+            out.progressive = false;
+        }
+
+        // Camera details (never the location) go from a JPEG into a JPEG.
+        if (ex.camera && exportCamera(format, own)) {
+            out.camera = true;
+        }
+
+        if (ex.srgb) {
+            out.srgb = true;
+        }
+
+        return Object.keys(out).length ? out : null;
+    }
+
+    // Whether camera details can be kept: a JPEG saved as a JPEG.
+    function exportCamera(format, own) {
+        return (own === 'jpeg') && (format === 'jpeg');
+    }
+
+    // The panel's result card: after against before as a signed percent
+    // (negative is lighter) and the bar's width in percent (3-100).
+    function exportChange(before, after) {
+        if (!(before > 0) || !(after > 0)) {
+            return null;
+        }
+
+        return { percent: Math.round((after / before - 1) * 100), bar: Math.max(3, Math.min(100, Math.round(after / before * 1000) / 10)) };
+    }
+
+    // A file size for the result card: B, KB with no decimals, MB with one;
+    // sep is the panel's decimal separator.
+    function exportBytes(n, sep) {
+        n = Math.max(0, Math.round(Number(n) || 0));
+
+        if (n < 1024) {
+            return n + ' B';
+        }
+
+        if (n < 1024 * 1024) {
+            return Math.round(n / 1024) + ' KB';
+        }
+
+        return String(Math.round(n / 104857.6) / 10).replace('.', sep || '.') + ' MB';
+    }
+
+    var EXPORT = {
+        EXPORT_FORMATS: EXPORT_FORMATS, EXPORT_EDGES: EXPORT_EDGES, fileFormat: fileFormat, exportFormat: exportFormat,
+        exportDefaults: exportDefaults, exportSize: exportSize, exportMode: exportMode, exportRequest: exportRequest,
+        exportChange: exportChange, exportBytes: exportBytes, exportCamera: exportCamera
+    };
 
     // -- vector pen and nodes (pg_image_editor_vector.js) --
 
@@ -2258,6 +2482,913 @@
         moveKnot: moveKnot, moveHandle: moveHandle, nearestOnPath: nearestOnPath, splitAt: splitAt, shapeKnots: shapeKnots
     };
 
+    // -- SVG open and save (pg_image_editor_svg.js) --
+
+    // A length of an SVG root (px, unitless or pt/in/cm/mm), or 0 for a
+    // percentage or nothing.
+    function svgLength(value) {
+        var m = /^\s*([0-9]*\.?[0-9]+(?:e[-+]?[0-9]+)?)\s*(px|pt|pc|in|cm|mm)?\s*$/i.exec(String(value || ''));
+        var unit = { px: 1, pt: 4 / 3, pc: 16, 'in': 96, cm: 96 / 2.54, mm: 96 / 25.4 };
+
+        return m ? Number(m[1]) * (m[2] ? unit[m[2].toLowerCase()] : 1) : 0;
+    }
+
+    // The numbers of a list attribute (viewBox, points, a transform's).
+    function svgNumbers(value) {
+        return (String(value || '').match(/[-+]?(?:[0-9]*\.[0-9]+|[0-9]+\.?)(?:e[-+]?[0-9]+)?/gi) || []).map(Number);
+    }
+
+    // An SVG root's artboard (w, h, whole pixels within the editor's sizes)
+    // and the matrix from its user space (the view box) to the artboard;
+    // the view box fits centred, keeping its ratio.
+    function svgRoot(width, height, viewBox) {
+        var vb = svgNumbers(viewBox), w = svgLength(width), h = svgLength(height);
+
+        vb = ((vb.length === 4) && (vb[2] > 0) && (vb[3] > 0)) ? vb : null;
+
+        if (!w && !h) {
+            w = vb ? vb[2] : 300;
+            h = vb ? vb[3] : 150;
+        } else if (!w) {
+            w = vb ? h * vb[2] / vb[3] : h;
+        } else if (!h) {
+            h = vb ? w * vb[3] / vb[2] : w;
+        }
+
+        var aw = Math.round(clamp(w, SIZE_MIN, SIZE_MAX)), ah = Math.round(clamp(h, SIZE_MIN, SIZE_MAX));
+
+        if (!vb) {
+            return { w: aw, h: ah, m: scale(aw / w, ah / h) };
+        }
+
+        var k = Math.min(aw / vb[2], ah / vb[3]);
+
+        return { w: aw, h: ah, m: mul(translate((aw - vb[2] * k) / 2, (ah - vb[3] * k) / 2), mul(scale(k), translate(-vb[0], -vb[1]))) };
+    }
+
+    // A transform attribute as a matrix.
+    function svgTransform(value) {
+        var m = [1, 0, 0, 1, 0, 0], re = /(matrix|translate|scale|rotate|skewX|skewY)\s*\(([^)]*)\)/g, f;
+
+        while ((f = re.exec(String(value || ''))) !== null) {
+            var n = svgNumbers(f[2]), step = null;
+
+            if ((f[1] === 'matrix') && (n.length === 6)) {
+                step = n;
+            } else if (f[1] === 'translate') {
+                step = translate(n[0] || 0, n[1] || 0);
+            } else if (f[1] === 'scale') {
+                step = scale((n[0] === undefined) ? 1 : n[0], (n[1] === undefined) ? n[0] : n[1]);
+            } else if (f[1] === 'rotate') {
+                step = (n.length >= 3) ? mul(translate(n[1], n[2]), mul(rotate(n[0] || 0), translate(-n[1], -n[2]))) : rotate(n[0] || 0);
+            } else if (f[1] === 'skewX') {
+                step = [1, 0, Math.tan((n[0] || 0) * Math.PI / 180), 1, 0, 0];
+            } else if (f[1] === 'skewY') {
+                step = [1, Math.tan((n[0] || 0) * Math.PI / 180), 0, 1, 0, 0];
+            }
+
+            if (step) {
+                m = mul(m, step);
+            }
+        }
+
+        return m;
+    }
+
+    // A box of the element's own space at least a unit wide and high, so a
+    // straight line still has a box to scale.
+    function svgOwnBox(b) {
+        var box = { x: b.x, y: b.y, w: b.w, h: b.h };
+
+        if (!(box.w >= 1)) {
+            box.x -= (1 - (box.w || 0)) / 2;
+            box.w = 1;
+        }
+
+        if (!(box.h >= 1)) {
+            box.y -= (1 - (box.h || 0)) / 2;
+            box.h = 1;
+        }
+
+        return box;
+    }
+
+    // A layer's box (x, y, w, h, rot, mirror) for an element whose own box
+    // vb is drawn through matrix m; null when m skews, as a box cannot.
+    function svgPlace(vb, m) {
+        var a = m[0], b = m[1], c = m[2], d = m[3], sx = Math.hypot(a, b), det = a * d - b * c;
+
+        if ((sx < 1e-9) || (Math.abs(det) < 1e-12) || (Math.abs(a * c + b * d) > 1e-6 * sx * Math.hypot(c, d))) {
+            return null;
+        }
+
+        var rot = Math.atan2(b, a) * 180 / Math.PI, mirror = det < 0, sy = Math.abs(det) / sx;
+
+        if (mirror) {
+            rot += 180;
+        }
+
+        rot = ((rot + 540) % 360) - 180;
+
+        var w = vb.w * sx, h = vb.h * sy, centre = apply(m, vb.x + vb.w / 2, vb.y + vb.h / 2);
+        var box = { x: centre[0] - w / 2, y: centre[1] - h / 2, w: w, h: h, rot: Math.round(rot * 1e6) / 1e6 };
+
+        if (mirror) {
+            box.mirror = true;
+        }
+
+        return box;
+    }
+
+    // The matrix that draws an SVG layer's element (its own box vb) into the
+    // layer's box: turned around the box's centre, mirrored inside it.
+    function svgMatrix(l) {
+        var vb = l.vb, m = translate(l.x, l.y);
+
+        if (l.rot) {
+            m = mul(m, mul(translate(l.w / 2, l.h / 2), mul(rotate(l.rot), translate(-l.w / 2, -l.h / 2))));
+        }
+
+        if (l.mirror) {
+            m = mul(m, [-1, 0, 0, 1, l.w, 0]);
+        }
+
+        return mul(m, mul(scale(l.w / vb.w, l.h / vb.h), translate(-vb.x, -vb.y)));
+    }
+
+    // The same as a transform attribute.
+    function svgMatrixText(m) {
+        return 'matrix(' + m.map(function (n) { return Math.round(n * 1e6) / 1e6; }).join(' ') + ')';
+    }
+
+    // Text for an attribute value or a text node.
+    function svgEscape(s) {
+        return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // A whole SVG file: its size, the root's id (which its style rules are
+    // scoped to), the artboard's fill, the kept definitions and the layers'
+    // markup, in order.
+    function svgFile(w, h, background, defs, bodies, id) {
+        var fill = (background && (background !== 'transparent')) ? '<rect width="' + w + '" height="' + h + '" fill="' + svgEscape(background) + '"/>' : '';
+
+        return '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink"' + (id ? ' id="' + svgEscape(id) + '"' : '') + ' width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '">'
+            + (defs || '') + fill + bodies.join('') + '</svg>';
+    }
+
+    var SVG = {
+        svgLength: svgLength, svgNumbers: svgNumbers, svgRoot: svgRoot, svgTransform: svgTransform, svgOwnBox: svgOwnBox,
+        svgPlace: svgPlace, svgMatrix: svgMatrix, svgMatrixText: svgMatrixText, svgEscape: svgEscape, svgFile: svgFile
+    };
+
+    // ---- motion (pg_image_editor_motion.js) ----
+    //
+    // A layer's anim is { in, loop, out }, each absent or { kind, ms, delay,
+    // ease, dir }; the document's motion is { duration, loop, base }. Times
+    // are ms; offsets are rotated-space units; a null playhead is the rest
+    // state, which is what editing and a still save always see.
+
+    var MOTION_IN = ['fade', 'slide', 'rise', 'pop', 'zoom', 'wipe', 'spin', 'type', 'draw'];
+    var MOTION_LOOP = ['pulse', 'float', 'spin', 'blink', 'wiggle', 'swing'];
+    var MOTION_DIRS = ['left', 'up', 'right', 'down'];
+    var MOTION_EASES = ['linear', 'out', 'in', 'in-out', 'back', 'bounce'];
+    var MOTION_BASES = ['none', 'zoomin', 'zoomout', 'panleft', 'panright'];
+    var MOTION_MIN = 1000, MOTION_MAX = 60000, MOTION_DEFAULT = 5000;
+
+    // A direction as the unit step it moves by.
+    var MOTION_STEP = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
+    // The side a wipe moving that way starts its reveal from.
+    var MOTION_SIDE = { left: 'right', right: 'left', up: 'bottom', down: 'top' };
+    var MOTION_BACK = { left: 'right', right: 'left', up: 'down', down: 'up' };
+
+    function easeAt(name, p) {
+        p = clamp(p, 0, 1);
+
+        switch (name) {
+            case 'out':
+                return 1 - Math.pow(1 - p, 3);
+            case 'in':
+                return p * p * p;
+            case 'in-out':
+                return (p < 0.5) ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
+            case 'back':
+                return (p >= 1) ? 1 : 1 + 2.70158 * Math.pow(p - 1, 3) + 1.70158 * Math.pow(p - 1, 2);
+            case 'bounce':
+                return bounceOut(p);
+        }
+
+        return p;
+    }
+
+    function bounceOut(p) {
+        var n = 7.5625, d = 2.75;
+
+        if (p < 1 / d) {
+            return n * p * p;
+        }
+
+        if (p < 2 / d) {
+            p -= 1.5 / d;
+            return n * p * p + 0.75;
+        }
+
+        if (p < 2.5 / d) {
+            p -= 2.25 / d;
+            return n * p * p + 0.9375;
+        }
+
+        p -= 2.625 / d;
+
+        return n * p * p + 0.984375;
+    }
+
+    function motionRest() {
+        return { opacity: 1, x: 0, y: 0, scale: 1, rot: 0, clip: null, draw: 1, chars: null };
+    }
+
+    // A fresh phase of a kind, as the panel adds it.
+    function newMotion(phase, kind) {
+        return {
+            kind: kind,
+            ms: (phase === 'loop') ? 1500 : 800,
+            delay: 0,
+            ease: (kind === 'pop') ? 'back' : ((phase === 'loop') ? 'in-out' : 'out'),
+            dir: 'up'
+        };
+    }
+
+    function motionMs(a, fallback) {
+        var ms = Number(a && a.ms);
+
+        return (ms > 0) ? ms : fallback;
+    }
+
+    function motionDelay(a) {
+        var d = Number(a && a.delay);
+
+        return (d > 0) ? d : 0;
+    }
+
+    // When each phase runs on a timeline of end ms; null for a phase the
+    // layer does not have.
+    function motionSpans(l, end) {
+        var a = (l && l.anim) || {}, sp = { inStart: null, inEnd: null, loopStart: null, loopEnd: null, outStart: null, outEnd: null };
+
+        if (a['in'] && a['in'].kind) {
+            sp.inStart = motionDelay(a['in']);
+            sp.inEnd = sp.inStart + motionMs(a['in'], 800);
+        }
+
+        if (a.out && a.out.kind) {
+            sp.outEnd = Math.max(0, end - motionDelay(a.out));
+            sp.outStart = Math.max(0, sp.outEnd - motionMs(a.out, 800));
+        }
+
+        if (a.loop && a.loop.kind) {
+            sp.loopStart = ((sp.inEnd === null) ? 0 : sp.inEnd) + motionDelay(a.loop);
+            sp.loopEnd = (sp.outStart === null) ? end : sp.outStart;
+        }
+
+        return sp;
+    }
+
+    // An in kind at eased progress e (0 hidden or away, 1 at rest).
+    function motionEnter(l, kind, e, dir, started) {
+        var st = motionRest(), step = MOTION_STEP[dir] || MOTION_STEP.up;
+        var w = Math.abs(Number(l.w) || 0), h = Math.abs(Number(l.h) || 0);
+        var along = step[0] ? w : h, sign = (dir === 'left') ? -1 : 1;
+        var n;
+
+        switch (kind) {
+            case 'fade':
+                st.opacity = e;
+                break;
+            case 'slide':
+                st.x = -step[0] * along * (1 - e);
+                st.y = -step[1] * along * (1 - e);
+                st.opacity = started ? 1 : 0;
+                break;
+            case 'rise':
+                st.x = -step[0] * along * 0.25 * (1 - e);
+                st.y = -step[1] * along * 0.25 * (1 - e);
+                st.opacity = e;
+                break;
+            case 'pop':
+                st.scale = 0.3 + 0.7 * e;
+                st.opacity = clamp(e * 2, 0, 1);
+                break;
+            case 'zoom':
+                st.scale = 1.5 - 0.5 * e;
+                st.opacity = e;
+                break;
+            case 'wipe':
+                st.clip = (e < 1) ? { side: MOTION_SIDE[dir] || 'bottom', f: e } : null;
+                break;
+            case 'spin':
+                st.rot = -sign * 180 * (1 - e);
+                st.scale = 0.5 + 0.5 * e;
+                st.opacity = e;
+                break;
+            case 'draw':
+                st.draw = e;
+                break;
+            case 'type':
+                n = Array.from(String(l.text || '')).length;
+                st.chars = (e >= 1) ? null : Math.floor(e * n + 1e-9);
+                break;
+        }
+
+        return st;
+    }
+
+    // A loop kind at phase f of its period (0 and 1 at rest).
+    function motionLoop(l, kind, f, dir) {
+        var st = motionRest(), c = (1 - Math.cos(2 * Math.PI * f)) / 2, step = MOTION_STEP[dir] || MOTION_STEP.up;
+        var amp = (step[0] ? Math.abs(Number(l.w) || 0) : Math.abs(Number(l.h) || 0)) * 0.08;
+
+        switch (kind) {
+            case 'pulse':
+                st.scale = 1 + 0.08 * c;
+                break;
+            case 'float':
+                st.x = step[0] * amp * c;
+                st.y = step[1] * amp * c;
+                break;
+            case 'spin':
+                st.rot = ((dir === 'left') ? -1 : 1) * 360 * f;
+                break;
+            case 'blink':
+                st.opacity = 1 - 0.8 * c;
+                break;
+            case 'wiggle':
+                st.rot = 6 * Math.sin(4 * Math.PI * f);
+                break;
+            case 'swing':
+                st.rot = 12 * Math.sin(2 * Math.PI * f);
+                break;
+        }
+
+        return st;
+    }
+
+    function motionCompose(a, b) {
+        return {
+            opacity: a.opacity * b.opacity,
+            x: a.x + b.x,
+            y: a.y + b.y,
+            scale: a.scale * b.scale,
+            rot: a.rot + b.rot,
+            clip: b.clip || a.clip,
+            draw: Math.min(a.draw, b.draw),
+            chars: (a.chars === null) ? b.chars : ((b.chars === null) ? a.chars : Math.min(a.chars, b.chars))
+        };
+    }
+
+    // The layer at playhead t (ms) on a timeline of end ms: in, then the
+    // loop between the end of in and the start of out, then out; composed.
+    function motionAt(l, t, end) {
+        var st = motionRest(), a = l && l.anim, sp, p;
+
+        if ((t === null) || (t === undefined) || !a) {
+            return st;
+        }
+
+        sp = motionSpans(l, end);
+
+        if ((sp.inStart !== null) && (t < sp.inEnd)) {
+            p = (t - sp.inStart) / (sp.inEnd - sp.inStart);
+            st = motionCompose(st, motionEnter(l, a['in'].kind, easeAt(a['in'].ease, p), a['in'].dir, t > sp.inStart));
+        }
+
+        if ((sp.loopStart !== null) && (t >= sp.loopStart) && (t < sp.loopEnd)) {
+            p = ((t - sp.loopStart) % motionMs(a.loop, 1500)) / motionMs(a.loop, 1500);
+            st = motionCompose(st, motionLoop(l, a.loop.kind, p, a.loop.dir));
+        }
+
+        if ((sp.outStart !== null) && (t >= sp.outStart)) {
+            p = (sp.outEnd > sp.outStart) ? (t - sp.outStart) / (sp.outEnd - sp.outStart) : 1;
+            st = motionCompose(st, motionEnter(l, a.out.kind, 1 - easeAt(a.out.ease, p), MOTION_BACK[a.out.dir] || 'down', p < 1));
+        }
+
+        return st;
+    }
+
+    // The document's motion with its defaults: 5 s, repeat forever, no base move.
+    function docMotion(doc) {
+        var m = (doc && doc.motion) || {}, d = Math.round(Number(m.duration) || MOTION_DEFAULT), loop = Math.round(Number(m.loop) || 0);
+
+        return {
+            duration: clamp(d, MOTION_MIN, MOTION_MAX),
+            loop: (loop > 0) ? loop : 0,
+            base: (MOTION_BASES.indexOf(m.base) >= 0) ? m.base : 'none'
+        };
+    }
+
+    // The base move of the picture under the layers at t: a scale around the
+    // centre and a shift as fractions of the document's size.
+    function baseAt(base, t, end) {
+        var p = (end > 0) ? clamp(t / end, 0, 1) : 0;
+
+        switch (base) {
+            case 'zoomin':
+                return { scale: 1 + 0.15 * p, x: 0, y: 0 };
+            case 'zoomout':
+                return { scale: 1.15 - 0.15 * p, x: 0, y: 0 };
+            case 'panleft':
+                return { scale: 1.12, x: 0.05 - 0.1 * p, y: 0 };
+            case 'panright':
+                return { scale: 1.12, x: -0.05 + 0.1 * p, y: 0 };
+        }
+
+        return { scale: 1, x: 0, y: 0 };
+    }
+
+    // Whether any layer moves.
+    function hasMotion(doc) {
+        return ((doc && doc.layers) || []).some(function (l) {
+            var a = l.anim;
+
+            return !!(a && ((a['in'] && a['in'].kind) || (a.loop && a.loop.kind) || (a.out && a.out.kind)));
+        });
+    }
+
+    var MOTION = {
+        MOTION_IN: MOTION_IN, MOTION_LOOP: MOTION_LOOP, MOTION_DIRS: MOTION_DIRS, MOTION_EASES: MOTION_EASES, MOTION_BASES: MOTION_BASES,
+        MOTION_MIN: MOTION_MIN, MOTION_MAX: MOTION_MAX, easeAt: easeAt, newMotion: newMotion, motionSpans: motionSpans, motionAt: motionAt,
+        docMotion: docMotion, baseAt: baseAt, hasMotion: hasMotion
+    };
+
+    // -- tracks (pg_image_editor_tracks.js) --
+    //
+    // A row per layer under the play bar: a bar per phase from M.motionSpans(),
+    // dragged whole (its delay) or by an end (its length). Times are ms.
+
+    var TRACK_STEP = 100, TRACK_FINE = 10, TRACK_MIN = 100;
+
+    // A layer's bars in time order: { phase, from, to }; the loop has no end grip.
+    function trackBars(l, end) {
+        var sp = motionSpans(l, end), bars = [];
+
+        if (sp.inStart !== null) {
+            bars.push({ phase: 'in', from: sp.inStart, to: sp.inEnd });
+        }
+
+        if ((sp.loopStart !== null) && (sp.loopEnd > sp.loopStart)) {
+            bars.push({ phase: 'loop', from: sp.loopStart, to: sp.loopEnd });
+        }
+
+        if (sp.outStart !== null) {
+            bars.push({ phase: 'out', from: sp.outStart, to: sp.outEnd });
+        }
+
+        return bars;
+    }
+
+    // The times a dragged end snaps to: the start, the end and every bar's
+    // ends of the other layers, sorted, once each.
+    function trackTargets(layers, end, skipId) {
+        var seen = [0, end];
+
+        (layers || []).forEach(function (l) {
+            if (l.id === skipId) {
+                return;
+            }
+
+            trackBars(l, end).forEach(function (b) {
+                seen.push(b.from, b.to);
+            });
+        });
+
+        return seen.filter(function (n, i) { return seen.indexOf(n) === i; }).sort(function (a, b) { return a - b; });
+    }
+
+    // The nearest target within slack ms, or null.
+    function trackNear(ms, targets, slack) {
+        var best = null;
+
+        (targets || []).forEach(function (n) {
+            if ((Math.abs(n - ms) <= slack) && ((best === null) || (Math.abs(n - ms) < Math.abs(best - ms)))) {
+                best = n;
+            }
+        });
+
+        return best;
+    }
+
+    // A time on the grid: a tenth of a second, a hundredth with fine (Shift).
+    function trackRound(ms, fine) {
+        var step = fine ? TRACK_FINE : TRACK_STEP;
+
+        return Math.round(ms / step) * step;
+    }
+
+    // One end moved to ms: another bar's end within slack, else the grid.
+    function trackSnap(ms, targets, slack, fine) {
+        var near = fine ? null : trackNear(ms, targets, slack);
+
+        return (near === null) ? trackRound(ms, fine) : near;
+    }
+
+    // The phase patch ({ delay, ms } or { delay }) for a drag of dt ms on
+    // layer l as it was at the press: grip 'move' shifts the bar, 'start'
+    // and 'end' move one end. Clamped to the timeline and a 0.1 s bar; null
+    // for a phase the layer lacks. opts: { targets, slack, fine }.
+    function trackEdit(l, phase, grip, dt, end, opts) {
+        var o = opts || {}, sp = motionSpans(l, end), a = (l && l.anim && l.anim[phase]) || null;
+        var from = sp[phase + 'Start'], to = sp[phase + 'End'], len, nf, nt, s1, s2, base;
+
+        if (!a || (from === null)) {
+            return null;
+        }
+
+        // A loop runs to the exit: only its start moves.
+        if (phase === 'loop') {
+            base = (sp.inEnd === null) ? 0 : sp.inEnd;
+            nf = clamp(trackSnap(from + dt, o.targets, o.slack || 0, o.fine), base, Math.max(base, to - TRACK_MIN));
+
+            return { delay: Math.max(0, nf - base) };
+        }
+
+        len = to - from;
+
+        if (grip === 'move') {
+            nf = from + dt;
+            nt = to + dt;
+            s1 = o.fine ? null : trackNear(nf, o.targets, o.slack || 0);
+            s2 = o.fine ? null : trackNear(nt, o.targets, o.slack || 0);
+
+            if ((s1 !== null) && ((s2 === null) || (Math.abs(s1 - nf) <= Math.abs(s2 - nt)))) {
+                nf = s1;
+            } else if (s2 !== null) {
+                nf = s2 - len;
+            } else {
+                nf = trackRound(nf, o.fine);
+            }
+
+            nf = clamp(nf, 0, Math.max(0, end - len));
+            nt = nf + len;
+        } else if (grip === 'start') {
+            nt = to;
+            nf = clamp(trackSnap(from + dt, o.targets, o.slack || 0, o.fine), 0, Math.max(0, to - TRACK_MIN));
+        } else {
+            nf = from;
+            nt = clamp(trackSnap(to + dt, o.targets, o.slack || 0, o.fine), Math.min(end, from + TRACK_MIN), end);
+        }
+
+        if (phase === 'in') {
+            return { delay: Math.round(nf), ms: Math.round(nt - nf) };
+        }
+
+        return { delay: Math.round(end - nt), ms: Math.round(nt - nf) };
+    }
+
+    var TRACKS = { TRACK_STEP: TRACK_STEP, trackBars: trackBars, trackTargets: trackTargets, trackSnap: trackSnap, trackEdit: trackEdit };
+
+    // -- frames and animation files (pg_image_editor_render.js) --
+
+    // The formats the Save animation dialog offers, with their limits:
+    // longest edges (never past the picture's), the default edge, the
+    // longest animation in ms and the frame rates.
+    var ANIM_FORMATS = {
+        gif: { mime: 'image/gif', ext: 'gif', edges: [240, 320, 480, 640, 800], edge: 480, maxMs: 15000, rates: [10, 15, 20, 25], rate: 15 }
+    };
+
+    // Repeat choices: forever (0), once, three times, and the document's own.
+    function animLoops(loop) {
+        var list = [0, 1, 3];
+
+        loop = Math.max(0, Math.round(Number(loop) || 0));
+
+        if (list.indexOf(loop) < 0) {
+            list.push(loop);
+        }
+
+        return list.sort(function (a, b) { return (a === 0) ? -1 : ((b === 0) ? 1 : a - b); });
+    }
+
+    // The settings the dialog starts from; small (a phone with little
+    // memory) starts at the smallest edge.
+    function animDefaults(doc, format, small) {
+        var f = ANIM_FORMATS[format] || ANIM_FORMATS.gif;
+
+        return { format: ANIM_FORMATS[format] ? format : 'gif', edge: small ? f.edges[0] : f.edge, fps: f.rate, loop: docMotion(doc).loop, dither: true };
+    }
+
+    // The frame size for out (the save's size) at a longest edge, never
+    // larger than out; whole pixels, at least 1.
+    function animSize(out, edge) {
+        var long = Math.max(out.w, out.h), k = Math.min(1, Math.max(1, Number(edge) || long) / long);
+
+        return { w: Math.max(1, Math.round(out.w * k)), h: Math.max(1, Math.round(out.h * k)) };
+    }
+
+    // The edges the dialog offers for out: those under its longest edge,
+    // and that edge itself when it is shorter than the largest.
+    function animEdges(out, format) {
+        var f = ANIM_FORMATS[format] || ANIM_FORMATS.gif, long = Math.max(out.w, out.h);
+        var list = f.edges.filter(function (e) { return e < long; });
+
+        if (long <= f.edges[f.edges.length - 1]) {
+            list.push(long);
+        }
+
+        return list.length ? list : [long];
+    }
+
+    // How many frames one play of ms holds at fps.
+    function animFrames(ms, fps) {
+        return Math.max(1, Math.round(Math.max(0, Number(ms) || 0) * fps / 1000));
+    }
+
+    // n frame numbers spread evenly over count, each once: the samples the
+    // palette and the estimate come from.
+    function animSamples(count, n) {
+        var out = [];
+
+        for (var k = 0; k < Math.min(n, count); k++) {
+            var i = Math.floor((k + 0.5) * count / Math.min(n, count));
+
+            if (out.indexOf(i) < 0) {
+                out.push(i);
+            }
+        }
+
+        return out;
+    }
+
+    // The file's size from the encoder's header and average frame.
+    function animEstimate(header, frame, count) {
+        return Math.round((Number(header) || 0) + (Number(frame) || 0) * Math.max(0, count) + 1);
+    }
+
+    // The file name: the picture's name with the format's extension.
+    function animName(name, ext) {
+        var base = String(name || '').replace(/^.*[\\/]/, '').replace(/\.[^.]*$/, '');
+
+        return (base || 'animation') + '.' + ext;
+    }
+
+    var RENDER = {
+        ANIM_FORMATS: ANIM_FORMATS, animLoops: animLoops, animDefaults: animDefaults, animSize: animSize, animEdges: animEdges,
+        animFrames: animFrames, animSamples: animSamples, animEstimate: animEstimate, animName: animName
+    };
+
+    // -- access (pg_image_editor_access.js) --
+
+    // A letter picks a tool of the call: the first of its tools the call
+    // has, so A is Adjust on the rail and Arrow on the mini bar.
+    var KEY_TOOLS = {
+        v: ['select'], c: ['crop'], a: ['adjust', 'arrow'], d: ['draw'], t: ['text'], r: ['redact'], u: ['rect'], s: ['sticker'],
+        f: ['frame'], p: ['vector', 'pen'], b: ['artboard'], i: ['image'], e: ['export'], l: ['line'], o: ['ellipse'],
+        m: ['motion']
+    };
+
+    function toolForKey(key, list) {
+        var k = String(key || '').toLowerCase(), i;
+
+        if (!list || !KEY_TOOLS.hasOwnProperty(k)) {
+            return null;
+        }
+
+        for (i = 0; i < KEY_TOOLS[k].length; i++) {
+            if (list.indexOf(KEY_TOOLS[k][i]) >= 0) {
+                return KEY_TOOLS[k][i];
+            }
+        }
+
+        return null;
+    }
+
+    // The letter that picks tool id in a call with these tools, upper case,
+    // or '' when another tool of the call takes it first.
+    function toolKey(id, list) {
+        var keys = Object.keys(KEY_TOOLS), i;
+
+        for (i = 0; i < keys.length; i++) {
+            if ((KEY_TOOLS[keys[i]].indexOf(id) >= 0) && (toolForKey(keys[i], list || [id]) === id)) {
+                return keys[i].toUpperCase();
+            }
+        }
+
+        return '';
+    }
+
+    // Tab in a box that keeps the focus: the next control (back: the one
+    // before), round from the last to the first; -1 with none. From outside
+    // the list Tab starts at the first, Shift+Tab at the last.
+    function trapFocus(count, index, back) {
+        if (!(count > 0)) {
+            return -1;
+        }
+
+        if ((index < 0) || (index >= count)) {
+            return back ? count - 1 : 0;
+        }
+
+        return (index + (back ? count - 1 : 1)) % count;
+    }
+
+    // A layer's angle under a two-finger twist: its angle at the start plus
+    // the turn of the line between the fingers (radians, from and to),
+    // within -180 to 180, held on a right angle or a half one within 4
+    // degrees, to a tenth of a degree.
+    function twistAngle(rot, from, to) {
+        var a = (Number(rot) || 0) + ((to - from) * 180 / Math.PI), near;
+
+        a = ((a % 360) + 360) % 360;
+        a = (a > 180) ? a - 360 : a;
+        near = Math.round(a / 45) * 45;
+
+        if (Math.abs(a - near) <= 4) {
+            a = near;
+        }
+
+        a = Math.round(a * 10) / 10;
+
+        return (a <= -180) ? a + 360 : (a === 0 ? 0 : a);
+    }
+
+    // The help sheet's groups for a call's tools: { title, rows: [{ keys,
+    // label }] }, keys as tokens (Mod is Ctrl, or Cmd on a Mac; Space,
+    // Delete, Arrows and Drag are named by the sheet), title and label as
+    // label keys. Layer keys show only with a tool that makes layers, Enter
+    // only with Crop.
+    var KEY_NOLAYERS = ['crop', 'adjust', 'export'];
+
+    function keyMap(list) {
+        list = list || [];
+
+        var tools = [], layers = list.some(function (id) { return KEY_NOLAYERS.indexOf(id) < 0; });
+        var groups = [];
+
+        list.forEach(function (id) {
+            var k = toolKey(id, list);
+
+            if (k) {
+                tools.push({ keys: [k], label: 'tool_' + id });
+            }
+        });
+
+        if (tools.length) {
+            groups.push({ title: 'keysTools', rows: tools });
+        }
+
+        groups.push({ title: 'keysEdit', rows: [
+            { keys: ['Mod', 'Z'], label: 'undo' },
+            { keys: ['Mod', 'Shift', 'Z'], label: 'redo' },
+            { keys: ['Mod', 'S'], label: 'save' }
+        ].concat((list.indexOf('crop') >= 0) ? [{ keys: ['Enter'], label: 'keyApply' }] : [], [
+            { keys: ['Esc'], label: 'keyEscape' },
+            { keys: ['?'], label: 'keyHelp' }
+        ]) });
+
+        if (layers) {
+            groups.push({ title: 'keysLayers', rows: [
+                { keys: ['Arrows'], label: 'keyNudge' },
+                { keys: ['Shift', 'Arrows'], label: 'keyNudgeMore' },
+                { keys: ['Delete'], label: 'keyDelete' },
+                { keys: ['Mod', 'D'], label: 'keyDuplicate' },
+                { keys: ['Mod', 'C'], label: 'keyCopy' },
+                { keys: ['Mod', 'V'], label: 'keyPaste' },
+                { keys: ['Mod', 'A'], label: 'keySelectAll' }
+            ] });
+        }
+
+        groups.push({ title: 'keysView', rows: [
+            { keys: ['+'], label: 'zoomIn' },
+            { keys: ['-'], label: 'zoomOut' },
+            { keys: ['0'], label: 'zoomFit' },
+            { keys: ['1'], label: 'zoomActual' },
+            { keys: ['Space', 'Drag'], label: 'keyPan' }
+        ] });
+
+        groups.push({ title: 'keysTouch', rows: [
+            { keys: [], label: 'touchPan' },
+            { keys: [], label: 'touchFit' }
+        ].concat(layers ? [{ keys: [], label: 'touchTwist' }] : []) });
+
+        return groups;
+    }
+
+    var ACCESS = { KEY_TOOLS: KEY_TOOLS, toolForKey: toolForKey, toolKey: toolKey, trapFocus: trapFocus, twistAngle: twistAngle, keyMap: keyMap };
+
+    // -- Google Fonts choice of the Text tool (pg_image_editor_fonts.js) --
+
+    // The catalogue's families (window.PgGoogleFonts) whose name holds the
+    // query, any letter case, in one category or all, in catalogue order:
+    // [{ family, category }].
+    function fontSearch(catalogue, query, category) {
+        var q = String(query || '').trim().toLowerCase(), out = [];
+
+        ((catalogue && catalogue.order) || []).forEach(function (key) {
+            if (category && (key !== category)) {
+                return;
+            }
+
+            (catalogue.categories[key] || []).forEach(function (family) {
+                if (!q || (family.toLowerCase().indexOf(q) >= 0)) {
+                    out.push({ family: family, category: key });
+                }
+            });
+        });
+
+        return out;
+    }
+
+    // The last five families used, newest first, each once; a name that is
+    // not a plain family leaves the list as it was.
+    function fontRecent(list, family) {
+        var name = textFamilyName(family), keep = Array.isArray(list) ? list.filter(function (f) {
+            return (typeof f === 'string') && (textFamilyName(f) === f) && (f !== '');
+        }) : [];
+
+        if (!name || (name !== family)) {
+            return keep.slice(0, 5);
+        }
+
+        return [name].concat(keep.filter(function (f) { return f !== name; })).slice(0, 5);
+    }
+
+    var GFONTS = { fontSearch: fontSearch, fontRecent: fontRecent };
+
+    // -- Icons and emoji of the Sticker tool (pg_image_editor_glyph.js) --
+
+    // A glyph layer: { type: 'glyph', set: 'bi'|'emoji', code, color, x, y,
+    // w, h, rot, opacity }. An icon's code is its Bootstrap Icons code point,
+    // an emoji's code the emoji itself.
+    var EMOJI = {
+        order: ['smileys', 'people', 'nature', 'food', 'travel', 'activities', 'objects', 'symbols'],
+        categories: {
+            smileys: ['😀', '😃', '😄', '😁', '😆', '😅', '😂', '🤣', '😊', '😇', '🙂', '😉', '😍', '🥰', '😘', '😋', '😜', '🤪', '😎', '🤩', '🥳', '😏', '😢', '😭', '😡', '😱', '🤔', '🤗', '😴', '🙄', '😬', '🤯'],
+            people: ['👋', '👍', '👎', '👏', '🙌', '🙏', '🤝', '💪', '✌️', '🤞', '👌', '🤙', '👉', '👈', '👆', '👇', '✋', '👀', '👶', '🧒', '👩', '👨', '🧓', '👵', '👴', '👮', '👷', '🧑‍🍳', '🧑‍🎓', '🧑‍💻', '🧑‍🎨', '🏃'],
+            nature: ['🐶', '🐱', '🐭', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🦋', '🐝', '🐞', '🐢', '🐟', '🐬', '🐳', '🌵', '🌲', '🌳', '🌴', '🌱', '🍀', '🌸', '🌻', '🌹', '🌷', '🍁', '🌈', '☀️', '🌙', '⭐', '❄️'],
+            food: ['🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍒', '🍑', '🥝', '🥑', '🍅', '🥕', '🌽', '🥐', '🍞', '🧀', '🥚', '🍳', '🍔', '🍟', '🍕', '🌭', '🥙', '🌮', '🍝', '🍣', '🍰', '🎂', '🍩', '🍪', '🍫', '🍦', '☕', '🍵', '🥤', '🍷', '🍺', '🥂'],
+            travel: ['🚗', '🚕', '🚌', '🚑', '🚒', '🚓', '🚚', '🚲', '🛵', '🏍️', '🚆', '✈️', '🚀', '🚢', '⛵', '🚦', '🗺️', '🧭', '🏔️', '🏕️', '🏖️', '🏝️', '🏠', '🏡', '🏢', '🏥', '🏫', '🏛️', '🕌', '⛪', '🗼', '🌉'],
+            activities: ['⚽', '🏀', '🏈', '⚾', '🎾', '🏐', '🏓', '🏸', '🥊', '🎯', '⛳', '🎳', '🚴', '🏊', '🧘', '🏆', '🥇', '🥈', '🥉', '🏅', '🎉', '🎊', '🎈', '🎁', '🎄', '🎃', '🎨', '🎬', '🎤', '🎧', '🎸', '🎮'],
+            objects: ['📱', '💻', '⌨️', '🖨️', '📷', '🎥', '📺', '📻', '⏰', '⌛', '💡', '🔦', '🔋', '🔌', '💰', '💳', '💎', '🔧', '🔨', '⚙️', '🔑', '🔒', '📦', '✉️', '📅', '📌', '📎', '✏️', '📝', '📚', '🛒', '🎀'],
+            symbols: ['❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '💔', '💯', '✅', '☑️', '✔️', '❌', '❗', '❓', '⚠️', '🚫', '⛔', '♻️', '🔥', '✨', '⚡', '💥', '💫', '🆕', '🆓', '🆗', '🔝', '🔴', '🟢', '🔵']
+        }
+    };
+
+    // The icons (a Bootstrap Icons name => code point map) whose name holds
+    // the query, any case, spaces read as dashes; names starting with it
+    // first, then the rest, each group by name: [{ name, code }], at most
+    // limit of them and the total in found.
+    function iconSearch(map, query, limit) {
+        var q = String(query || '').trim().toLowerCase().replace(/\s+/g, '-'), first = [], rest = [];
+
+        Object.keys(map || {}).sort().forEach(function (name) {
+            var at = q ? name.indexOf(q) : 0, code = Number(map[name]);
+
+            if ((at < 0) || !(code > 0)) {
+                return;
+            }
+
+            (at === 0 ? first : rest).push({ name: name, code: code });
+        });
+
+        var all = first.concat(rest);
+
+        return { icons: all.slice(0, (limit > 0) ? limit : all.length), found: all.length };
+    }
+
+    // The last eight emoji used, newest first, each once; only short
+    // strings count.
+    function emojiRecent(list, emoji) {
+        var ok = function (e) { return (typeof e === 'string') && (e !== '') && (e.length <= 16); };
+        var keep = Array.isArray(list) ? list.filter(ok) : [];
+
+        if (!ok(emoji)) {
+            return keep.slice(0, 8);
+        }
+
+        return [emoji].concat(keep.filter(function (e) { return e !== emoji; })).slice(0, 8);
+    }
+
+    // The characters a glyph layer draws: an icon's code point or the emoji;
+    // '' for anything else.
+    function glyphText(l) {
+        if (!l) {
+            return '';
+        }
+
+        if (l.set === 'bi') {
+            var code = Number(l.code);
+
+            return ((code > 0) && (code <= 0x10ffff)) ? String.fromCodePoint(code) : '';
+        }
+
+        return ((l.set === 'emoji') && (typeof l.code === 'string')) ? l.code.slice(0, 16) : '';
+    }
+
+    // A glyph's font size in its box: the box's shorter side, so a stretched
+    // box keeps the glyph's own shape.
+    function glyphSize(l) {
+        return Math.max(1, Math.min(Number(l.w) || 0, Number(l.h) || 0));
+    }
+
+    var GLYPH = { EMOJI: EMOJI, iconSearch: iconSearch, emojiRecent: emojiRecent, glyphText: glyphText, glyphSize: glyphSize };
+
     var api = {
         mul: mul, inv: inv, apply: apply, translate: translate, scale: scale, rotate: rotate, clamp: clamp,
         flipRot: flipRot, coverScale: coverScale, fitZoom: fitZoom, centred: centred, fitView: fitView, zoomAt: zoomAt,
@@ -2269,12 +3400,12 @@
         colorMatrix: colorMatrix, applyColor: applyColor, vignetteStops: vignetteStops, sharpenKernel: sharpenKernel,
         newId: newId, corners: corners, bounds: bounds, local: local, hitLayer: hitLayer, insideBox: insideBox, resizeBox: resizeBox, angleTo: angleTo,
         align: align, distribute: distribute, snapBox: snapBox, reorder: reorder,
-        ownsKey: ownsKey, focusMatch: focusMatch
+        ownsKey: ownsKey, focusMatch: focusMatch, panelTitle: panelTitle
     };
 
     // A name taken twice would hide a function: the model refuses to load,
     // so the tests stop it.
-    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR].forEach(function (part) {
+    [DRAW, TEXT, STICKER, REDACT, VERSIONS, ARTBOARD, EXPORT, VECTOR, SVG, MOTION, TRACKS, RENDER, ACCESS, GFONTS, GLYPH].forEach(function (part) {
         Object.keys(part).forEach(function (name) {
             if (api.hasOwnProperty(name)) {
                 throw new Error('PgImageEditorModel: ' + name + ' is named twice');

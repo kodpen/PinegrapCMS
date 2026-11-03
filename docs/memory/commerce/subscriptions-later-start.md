@@ -21,4 +21,4 @@ module: subscriptions
 ## Tested?
 - `tests/subscriptions_test.php` (start date, mixed order rows, refusal on store mode only), `tests/subscriptions_renewal_test.php` (series from the start date). No live gateway run.
 
-Related: commerce/subscriptions.md, commerce/subscriptions-iyzico.md, commerce/subscriptions-stripe.md, plans/subscriptions-iyzico-stripe.md
+Related: commerce/subscriptions.md, commerce/subscriptions-iyzico.md, commerce/subscriptions-stripe.md, commerce/subscriptions-decisions.md

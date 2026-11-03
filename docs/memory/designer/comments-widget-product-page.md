@@ -20,7 +20,7 @@ module: comments
 
 ## What do the canvas, the templates and the markup add? (2c2)
 - Canvas: `_sdCommentsProductViewPage(p)` (same rule, `_swTabHasWidget()`) makes `_sdCommentsPageThread()` answer `product`; Preview says "On this product page it shows the reviews…".
-- The store, boutique, bookshop and hello product page: comments on with stars, sign-in, auto-publish, staff mail; a "Reviews" section (col-lg-8, centred) with widget `product_reviews` (kind `comments`, newest, featured `none`, flat, 10 a page, starter tree, shop only).
+- The store, boutique, bookshop and hello product page: comments on with stars, sign-in, auto-publish, staff mail; a "Reviews" section (col-lg-8, centred) with widget `product_reviews` (kind `comments`, newest, featured `none`, flat, 10 a page, its own review-worded tree, shop only).
 - `aggregateRating` in `_pg_build_product_jsonld()` only when `pg_comment_product_view_rating_shown()` (pure `pg_comment_rating_markup_decision()`): comments and stars on, a comments widget on the page, the address thread is this product's (a select group's thread counts in no rating).
 
 ## What is left as it was?

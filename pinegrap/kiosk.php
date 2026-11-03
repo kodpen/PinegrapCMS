@@ -24,8 +24,48 @@ $default_dialog_message = lang('Do you want to continue?');
 $default_continue_button_label = lang('Continue');
 $default_logout_button_label = lang('Exit');
 
+// The session token, read as logout.php reads it: a link planted on a page
+// elsewhere does not carry it, so it can neither sign a user out nor put a
+// signed-in session into kiosk mode (whose timer signs out).
+$session_token = (string) ($_SESSION['software']['token'] ?? '');
+$request_token = (isset($_REQUEST['token']) && is_string($_REQUEST['token'])) ? $_REQUEST['token'] : '';
+$token_ok = ($session_token !== '') && hash_equals($session_token, $request_token);
+$kiosk_on = (($_SESSION['software']['kiosk']['enabled'] ?? '') == true);
+
 switch ($_GET['action'] ?? '') {
     default:
+        // A signed-in session is asked first; the form repeats the link's
+        // settings with the token. A kiosk normally starts signed out, and its
+        // own logout comes back here with a fresh session.
+        if (!$token_ok && pg_session_signed_in()) {
+            $output_fields = '';
+            foreach (array('url', 'inactivity_time', 'dialog_time', 'dialog_message', 'continue_button_label', 'logout_button_label') as $name) {
+                if (is_string($_GET[$name] ?? null) && ($_GET[$name] !== '')) {
+                    $output_fields .= '<input type="hidden" name="' . $name . '" value="' . h($_GET[$name]) . '">';
+                }
+            }
+
+            print output_header_secure(array('title' => lang('Kiosk mode'), 'icon' => 'account')) . '
+                <div class="container py-12">
+                    <div class="row justify-content-center">
+                        <div class="col-12 md:col-6 lg:col-4">
+                            <div class="card">
+                                <div class="card-body text-center">
+                                    <p>' . lang('Turn on kiosk mode in this browser? You will be signed out after a time without activity.') . '</p>
+                                    <form method="get" action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/kiosk.php">
+                                        ' . $output_fields . '
+                                        <input type="hidden" name="token" value="' . h($session_token) . '">
+                                        <button type="submit" class="btn btn-solid theme-primary">' . lang('Turn on kiosk mode') . '</button>
+                                        <a href="javascript:history.go(-1)" class="btn btn-outline theme-secondary">' . lang('Cancel') . '</a>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>' . output_footer_secure();
+            exit();
+        }
+
         // Only accept a same-origin redirect target. pg_safe_back_url()
         // passes relative paths and absolute URLs on this host, and rejects
         // off-site hosts, protocol-relative "//host" and javascript:/data:
@@ -69,7 +109,9 @@ switch ($_GET['action'] ?? '') {
         }
 
         // If a dialog message was passed in the query string, then store value in session.
-        if (($_GET['dialog_message'] ?? '') != '') {
+        // Only a string is kept: escape_javascript() returns an array unchanged, so an
+        // array (?dialog_message[]=x) printed "Array" on every page of the session.
+        if (is_string($_GET['dialog_message'] ?? null) && ($_GET['dialog_message'] !== '')) {
             $_SESSION['software']['kiosk']['dialog_message'] = $_GET['dialog_message'];
 
         // Otherwise store default value in session.
@@ -78,7 +120,7 @@ switch ($_GET['action'] ?? '') {
         }
 
         // If a continue button label was passed in the query string, then store value in session.
-        if (($_GET['continue_button_label'] ?? '') != '') {
+        if (is_string($_GET['continue_button_label'] ?? null) && ($_GET['continue_button_label'] !== '')) {
             $_SESSION['software']['kiosk']['continue_button_label'] = $_GET['continue_button_label'];
             
         // Otherwise store default value in session.
@@ -87,7 +129,7 @@ switch ($_GET['action'] ?? '') {
         }
 
         // If a logout button label was passed in the query string, then store value in session.
-        if (($_GET['logout_button_label'] ?? '') != '') {
+        if (is_string($_GET['logout_button_label'] ?? null) && ($_GET['logout_button_label'] !== '')) {
             $_SESSION['software']['kiosk']['logout_button_label'] = $_GET['logout_button_label'];
             
         // Otherwise store default value in session.
@@ -110,6 +152,13 @@ switch ($_GET['action'] ?? '') {
         break;
 
     case 'logout':
+        // Only a kiosk session is restarted here, and a signed-in one only
+        // with the token (the kiosk script sends it). Anything else is the
+        // ordinary logout, which asks first when the token is missing.
+        if (!$kiosk_on || (!$token_ok && pg_session_signed_in())) {
+            go(PATH . SOFTWARE_DIRECTORY . '/logout.php');
+        }
+
         // Remember kiosk properties before we clear session, so we can re-init session
         // with those values after we are done clearing the session.
         $url = ($_SESSION['software']['kiosk']['url'] ?? '');

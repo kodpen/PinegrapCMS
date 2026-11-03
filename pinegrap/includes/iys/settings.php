@@ -147,7 +147,7 @@ function pg_iys_settings_fields()
                                         <div class="col-12">
                                             <div class="form-field">
                                                 <div class="switch"><input type="checkbox" name="iys_enabled" id="iys_enabled" value="1"' . ($app['enabled'] ? ' checked="checked"' : '') . ' class="collapse-switcher" data-bs-target="#iys_row"/></div>
-                                                <label class="" for="iys_enabled">' . lang('İYS consent sync') . '<br/><span class="form-text">' . lang('Every day, the e-mail and SMS marketing answers people give on this site are sent to İYS (İleti Yönetim Sistemi), and the refusals they give through İYS are brought back: an e-mail refusal stops e-mail campaigns to that address, an SMS refusal stops marketing SMS to that number. A consent İYS does not know stays valid; only a refusal held in İYS stops sending.') . '</span></label>
+                                                <label class="" for="iys_enabled">' . lang('İYS consent sync') . '</label><div class="form-text">' . lang('Every day, the e-mail and SMS marketing answers people give on this site are sent to İYS (İleti Yönetim Sistemi), and the refusals they give through İYS are brought back: an e-mail refusal stops e-mail campaigns to that address, an SMS refusal stops marketing SMS to that number. A consent İYS does not know stays valid; only a refusal held in İYS stops sending.') . '</div>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0" id="iys_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
@@ -220,7 +220,7 @@ function pg_iys_settings_fields()
                                                         <div class="col-12">
                                                             <div class="form-field">
                                                                 <div class="switch"><input type="checkbox" name="iys_email" id="iys_email" value="1"' . ($app['email'] ? ' checked="checked"' : '') . ' class=""/></div>
-                                                                <label class="" for="iys_email">' . lang('E-mail and SMS') . '<br/><span class="form-text">' . lang('Sync e-mail and SMS consents, and leave out of marketing every address and number İYS holds a refusal for. Switched off, neither channel is synced.') . '</span></label>
+                                                                <label class="" for="iys_email">' . lang('E-mail and SMS') . '</label><div class="form-text">' . lang('Sync e-mail and SMS consents, and leave out of marketing every address and number İYS holds a refusal for. Switched off, neither channel is synced.') . '</div>
                                                             </div>
                                                         </div>
                                                     </div>

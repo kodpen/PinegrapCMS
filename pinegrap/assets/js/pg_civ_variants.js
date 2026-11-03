@@ -90,7 +90,13 @@
         // Disable Add to Cart until a complete variant is picked. We mark
         // EVERY add_to_cart-bound submit button (the designer may have
         // multiple — e.g. one in the toolbar, one in a sticky footer).
-        var addBtns = form ? form.querySelectorAll('button[type="submit"]') : [];
+        // Only buttons that submit this form: the "Notify me" button sits
+        // inside it in the page but belongs to the back-in-stock request
+        // form (form="pg-stock-notify-…"), and must stay usable exactly
+        // when the variant is out of stock.
+        var addBtns = form ? Array.prototype.filter.call(form.querySelectorAll('button[type="submit"]'), function (b) {
+            return b.form === form;
+        }) : [];
         addBtns.forEach(function (b) {
             // Only disable submits that look like add-to-cart (the form's
             // PRIMARY action). If the designer added unrelated submits we'd

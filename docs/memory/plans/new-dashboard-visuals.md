@@ -4,8 +4,8 @@ description: The new dashboard design the owner asked for on 2026-11-01: its 22 
 ---
 
 ## Where are they and how are they read?
-- `docs/memory/plans/new-dashboard/NN-name.jpg`, 1280 px wide (single cards and panels narrower), Turkish labels, the design's dark look with sample data. They fix layout and behaviour; colours and spacing come from the panel's tokens and the current card styles, in light and dark (`new-dashboard-data.md`).
-- The System Status card shows the current gauge (widget 2's, at the sandbox's score), which the owner chose on 2026-11-01 over the prototype's dot half ring (`new-dashboard-top.md`).
+- `docs/memory/plans/new-dashboard/NN-name.jpg`, 1280 px wide (single cards and panels narrower), Turkish labels, the design's dark look with sample data. They fix layout and behaviour now, and the look (colours, spacing, type, radius, shadows) in the visual pass V of `new-dashboard-steps.md` (owner, 2026-11-01); until then a step keeps its look plain on the panel's tokens, in light and dark.
+- The System Status card shows the current gauge (widget 2's SVG and animation, at the sandbox's score), which the owner chose on 2026-11-01 over the prototype's dot half ring (`new-dashboard-top.md`); V keeps it.
 - The design's top bar is left out of every screen. The row with "Yeni pano" and "Panoyu düzenle" at the top is the planned switch row (`new-dashboard-top.md`); it is not in the prototype.
 - `plans/new-dashboard/prototype/Main.dc.html`: the prototype source (a design-canvas component; it needs that runtime and its map pictures, not here). Read it for labels, sample rows, presets, the edit logic and the card list: `data()` and `renderVals()`.
 

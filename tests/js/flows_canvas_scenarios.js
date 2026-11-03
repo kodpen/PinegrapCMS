@@ -852,6 +852,8 @@ module.exports = [
         run: async (h) => {
             await h.open();
             h.ok('one start: the palette offers no second', await h.page((harness, text) => harness.find({ text: text, within: '#ws-root .wsf-palette' }).disabled, h.t('fl_add_manual')));
+            h.ok('nor a start of another kind', await h.page((harness, text) => harness.find({ text: text, within: '#ws-root .wsf-palette' }).disabled, h.t('fl_kind_schedule')));
+            h.ok('the palette is laid out start, steps, end, then the value boxes', JSON.stringify(await h.page(() => Array.prototype.map.call(document.querySelectorAll('#ws-root .wsf-palette-stage'), (stage) => stage.className.replace(/.*wsf-stage-/, '')))) === JSON.stringify(['first', 'steps', 'last', 'aside']));
             await h.click({ text: h.t('fl_add_task'), within: PALETTE });
             await h.waitFor('a new box, selected', (harness) => harness.state().selected && (harness.state().selected.id === 'task_3'), 3000);
             h.same('it has the focus', (await focus(h)).node, 'task_3');

@@ -74,6 +74,7 @@ function pg_user_list_filters($role, $modules = null)
     }
 
     $filters = array(
+        'default' => lang('Roles and Permissions'),
         'all_my_users' => lang('All My Users'),
         'my_registered_users' => lang('My Registered Users'),
         'my_private_users' => lang('My Private Users'),
@@ -129,6 +130,41 @@ function pg_user_list_filter($filter)
     $known[] = 'all_site_managers';
 
     return in_array($filter, $known, true) ? $filter : 'all_my_users';
+}
+
+/**
+ * The condition, heading and subheading of a named filter. The folder filters
+ * ask aclfolder in a subquery, so the list still reads one row per user and an
+ * administrator, designer or manager (every folder) is listed without a
+ * folder right of their own.
+ *
+ * @param string $filter pg_user_list_filter()'s answer
+ * @return array|null array(condition, heading, subheading); null for
+ *                    'default' and 'all_my_users'
+ */
+function pg_user_list_filter_rule($filter)
+{
+    $folder_right = function ($rights) {
+        return "((user.user_role < '3') OR EXISTS (SELECT 1 FROM aclfolder WHERE (aclfolder.aclfolder_user = user.user_id) AND (aclfolder.aclfolder_rights = '" . $rights . "')))";
+    };
+
+    $rules = array(
+        'my_registered_users' => array('(user.user_contact > 0)', lang('My Registered Users'), lang('All my users created through website registration.')),
+        'my_private_users' => array($folder_right('1'), lang('My Private Users'), lang('All my users that have access to view one or more private folders.')),
+        'my_member_users' => array("(contacts.member_id != '')", lang('My Member Users'), lang('All my users that are associated with a contact that contains a member id.')),
+        'my_content_managers' => array($folder_right('2'), lang('My Content Managers'), lang('All my users that have edit access to at least one folder.')),
+        'my_calendar_managers' => array("((user.user_role < 3) OR (user.user_manage_calendars = 'yes'))", lang('My Calendar Managers'), lang('All my users that can add events to at least one calendar.')),
+        'my_submitted_forms_managers' => array("((user.user_role < 3) OR (user.user_manage_forms = 'yes'))", lang('My Submitted Forms Managers'), lang('All my users that can view and edit data collected by at least one custom form.')),
+        'my_visitor_report_managers' => array("((user.user_role < 3) OR (user.user_manage_visitors = 'yes'))", lang('My Visitor Report Managers'), lang('All my users that can view and edit all visitor reports.')),
+        'my_contact_managers' => array("((user.user_role < 3) OR (user.user_manage_contacts = 'yes'))", lang('My Contact Managers'), lang('All my users that can view and edit all contacts in at least one contact group.')),
+        'my_campaign_managers' => array("((user.user_role < 3) OR (user.user_manage_emails = 'yes'))", lang('My Campaign Managers'), lang('All my users that can send e-mail campaigns to one or more contact groups.')),
+        'my_commerce_managers' => array("((user.user_role < 3) OR (user.user_manage_ecommerce = 'yes'))", lang('My Commerce Managers'), lang('All my users that can view and edit all products, product groups, offers, and orders.')),
+        'all_site_managers' => array('(user.user_role < 3)', lang('All Site Managers'), lang('All users that can update site settings, and create or import other users and grant them privileges.')),
+        'all_site_designers' => array('(user.user_role < 2)', lang('All Site Designers'), lang('All users that can update site settings, site designs, and create or import site managers.')),
+        'all_site_administrators' => array('(user.user_role < 1)', lang('All Site Administrators'), lang('All site administrator user accounts.')),
+    );
+
+    return $rules[(string) $filter] ?? null;
 }
 
 /**
@@ -279,37 +315,15 @@ function pg_user_list_view($user, $filter)
     // Where the rows come from, and the condition of the filter.
     $select_id = 'user.user_id';
     $from = 'user';
-    $join_user = '';
     $conditions = array();
-    $heading = lang('All My Users');
-    $subheading = lang('All users that I have access too.');
+    $heading = $is_default ? lang('Roles and Permissions') : lang('All My Users');
+    $subheading = $is_default ? lang('All users that I have access to, with their roles and permissions.') : lang('All users that I have access to.');
 
-    $filter_rules = array(
-        'my_registered_users' => array('(user.user_contact IS NOT NULL)', lang('My Registered Users'), lang('All my users created through website registration.')),
-        'my_private_users' => array("((user.user_role < '3') OR (aclfolder.aclfolder_rights = '1'))", lang('My Private Users'), lang('All my users that have access to view one or more private folders.')),
-        'my_member_users' => array("(contacts.member_id != '')", lang('My Member Users'), lang('All my users that are associated with a contact that contains a member id.')),
-        'my_content_managers' => array("((user.user_role < '3') OR (aclfolder.aclfolder_rights = '2'))", lang('My Content Managers'), lang('All my users that have edit access to at least one folder.')),
-        'my_calendar_managers' => array("((user.user_role < 3) OR (user.user_manage_calendars = 'yes'))", lang('My Calendar Managers'), lang('All my users that can add events to at least one calendar.')),
-        'my_submitted_forms_managers' => array("((user.user_role < 3) OR (user.user_manage_forms = 'yes'))", lang('My Submitted Forms Managers'), lang('All my users that can view and edit data collected by at least one custom form.')),
-        'my_visitor_report_managers' => array("((user.user_role < 3) OR (user.user_manage_visitors = 'yes'))", lang('My Visitor Report Managers'), lang('All my users that can view and edit all visitor reports.')),
-        'my_contact_managers' => array("((user.user_role < 3) OR (user.user_manage_contacts = 'yes'))", lang('My Contact Managers'), lang('All my users that can view and edit all contacts in at least one contact group.')),
-        'my_campaign_managers' => array("((user.user_role < 3) OR (user.user_manage_emails = 'yes'))", lang('My Campaign Managers'), lang('All my users that can send e-mail campaigns to one or more contact groups.')),
-        'my_commerce_managers' => array("((user.user_role < 3) OR (user.user_manage_ecommerce = 'yes'))", lang('My Commerce Managers'), lang('All my users that can view and edit all products, product groups, offers, and orders.')),
-        'all_site_managers' => array('(user.user_role < 3)', lang('All Site Managers'), lang('All users that can update site settings, and create or import other users and grant them privileges.')),
-        'all_site_designers' => array('(user.user_role < 2)', lang('All Site Designers'), lang('All users that can update site settings, site designs, and create or import site managers.')),
-        'all_site_administrators' => array('(user.user_role < 1)', lang('All Site Administrators'), lang('All site administrator user accounts.')),
-    );
+    $rule = pg_user_list_filter_rule($filter);
 
-    if (isset($filter_rules[$filter])) {
-        list($condition, $heading, $subheading) = $filter_rules[$filter];
+    if ($rule !== null) {
+        list($condition, $heading, $subheading) = $rule;
         $conditions[] = $condition;
-    }
-
-    // The folder filters read aclfolder, one row per folder right.
-    if (($filter == 'my_private_users') || ($filter == 'my_content_managers')) {
-        $select_id = 'DISTINCT user.user_id';
-        $from = 'aclfolder';
-        $join_user = 'LEFT JOIN user ON aclfolder.aclfolder_user = user.user_id';
     }
 
     // An administrator sees every user, anyone else only the users with
@@ -333,8 +347,7 @@ function pg_user_list_view($user, $filter)
             contacts.suffix as contact_suffix';
     }
 
-    $joins = $join_user
-        . ($is_site_staff_filter ? '' : ' LEFT JOIN contacts ON user.user_contact = contacts.id')
+    $joins = ($is_site_staff_filter ? '' : ' LEFT JOIN contacts ON user.user_contact = contacts.id')
         . ' LEFT JOIN user AS user_2 ON user.user_user = user_2.user_id'
         . ($is_default ? '' : ' LEFT JOIN page AS start_page ON start_page.page_id = user.user_home');
 

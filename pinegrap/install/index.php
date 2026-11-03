@@ -6245,11 +6245,12 @@ else {
 		}, generate_encryption_key());
 
 		// A host whose own certificate store cannot verify HTTPS gets the
-		// bundled root list (data/cacert.pem), so updates, Pinegrap AI and
-		// payment calls work from the first request. One HEAD request with a
-		// five-second limit; a probe that reaches nothing at all says nothing
-		// about the store and leaves the setting out. The System Status
-		// widget checks the same thing later and offers the same line.
+		// bundled root list (data/cacert.pem) as the CURL_CA_BUNDLE override,
+		// so updates, Pinegrap AI and payment calls work from the first
+		// request, before the site's own probe (pg_ca_bundle_probe_run())
+		// has run. One HEAD request with a five-second limit; a probe that
+		// reaches nothing at all says nothing about the store and leaves
+		// the setting out: the site then chooses on its own.
 		if (function_exists('curl_init') && is_file(dirname(CONFIG_FILE_PATH) . '/cacert.pem')) {
 			$ca_probe = curl_init('https://curl.se/ca/cacert.pem');
 			curl_setopt_array($ca_probe, array(
@@ -6426,6 +6427,21 @@ else {
 			$install_expected_steps++;
 
 			add_install_step(lang('Pictures larger than 2560 px are shrunk on upload'), lang('Site Settings › Features › Image Optimization'));
+
+		}
+
+		// A new site answers a JPEG or PNG with its WebP copy at its own address
+		// (bit 4 of image_derivative_formats, includes/image_negotiation.php),
+		// where WebP is offered. The upgrade above left it off, as it is on every
+		// upgraded site. Only a starter site: a restored backup keeps the switch
+		// it was taken with.
+		if ((get_starter_site_language($install_directory_path) !== '') && (install_column_exists('config', 'image_derivative_formats'))) {
+
+			db("UPDATE config SET image_derivative_formats = image_derivative_formats | 4 WHERE (image_derivative_formats & 1) = 1");
+
+			$install_expected_steps++;
+
+			add_install_step(lang('Pictures are sent as WebP at their own address to browsers that read it'), lang('Site Settings › Features › Image Optimization'));
 
 		}
 
@@ -8932,6 +8948,9 @@ function get_tables() {
 		'erp_waybill_items',
 		'erp_waybills',
 		'excluded_transit_dates',
+		'experiment_hourly',
+		'experiment_variants',
+		'experiments',
 		'express_order_pages',
 		'file_versions',
 		'files',
@@ -8949,9 +8968,12 @@ function get_tables() {
 		'form_view_directory_pages',
 		'forms',
 		'gift_cards',
+		'import_items',
+		'imports',
 		'key_codes',
 		'log',
 		'login_regions',
+		'mail_bounces',
 		'mail_outbox',
 		'marketplace_accounts',
 		'marketplace_categories',
@@ -8966,6 +8988,8 @@ function get_tables() {
 		'messages',
 		'next_order_number',
 		'not_found_log',
+		'site_search_daily',
+		'ai_fetch_daily',
 		'oauth_clients',
 		'oauth_codes',
 		'offer_actions',
@@ -8988,6 +9012,7 @@ function get_tables() {
 		'order_returns',
 		'orders',
 		'page',
+		'page_vitals_hourly',
 		'photo_gallery_pages',
 		'pregion',
 		'preview_styles',

@@ -260,9 +260,11 @@ function ws_note_export_attachments($note)
 
     foreach ((array) db_items("SELECT name FROM files WHERE folder = '" . $folder_id . "' ORDER BY id") as $file) {
         $name = (string) $file['name'];
-        $path = FILE_DIRECTORY_PATH . '/' . $name;
 
-        if (($name === '') || !is_file($path)) {
+        // The export packs the bytes: a file in the object store is fetched.
+        $path = ($name !== '') ? pg_file_reader_path($name) : '';
+
+        if ($path === '') {
             continue;
         }
 

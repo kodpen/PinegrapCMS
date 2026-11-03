@@ -150,6 +150,10 @@ function test_country_select_options()
 		'<option value="7" selected="selected">Almanya</option><option value="3">Türkiye</option>',
 		pg_country_select_options($rows, '7'),
 		'the given country selected instead of the default');
+	pg_assert_same(
+		'<option value="" selected="selected">' . h(lang('Select a country')) . '</option><option value="7">Almanya</option><option value="3">Türkiye</option>',
+		pg_country_select_options($rows, '99999'),
+		'a country id that matches no row selects an empty choice, not the first or the default country');
 }
 
 // The ERP account form's country select and the address book screen name and

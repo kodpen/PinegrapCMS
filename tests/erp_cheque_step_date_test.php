@@ -27,6 +27,18 @@ function test_erp_cheque_step_date_not_before_the_cheque()
 	pg_assert_contains(lang('Please enter a valid date.'), erp_cheque_step_date_refusal('1/10/2026', '2026-11-01'), 'a malformed date is refused');
 }
 
+// A date of the right shape that is not on the calendar is refused: the
+// screen passes a posted Y-m-d through untouched, and the till movement got
+// a day that does not exist.
+function test_erp_cheque_step_date_not_on_the_calendar()
+{
+	foreach (array('2026-02-30', '2026-13-01', '2026-00-10', '2026-04-31', '2026-11-00') as $date) {
+		pg_assert_contains(lang('Please enter a valid date.'), erp_cheque_step_date_refusal($date, '2026-01-01'), 'refused: ' . $date);
+	}
+
+	pg_assert_same('', erp_cheque_step_date_refusal('2028-02-29', '2026-01-01'), 'a leap day is a day');
+}
+
 // The step itself asks, so the screen and the API get the same refusal.
 function test_erp_cheque_step_asks_the_date_refusal()
 {

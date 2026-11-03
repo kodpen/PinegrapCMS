@@ -6,7 +6,6 @@
  *
  *   database_deep_check       the full CHECK TABLE sweep
  *   server_config_repair      writes the missing web.config / .htaccess rules
- *   ca_bundle_config_repair   points CURL_CA_BUNDLE at the bundled cacert.pem
  *   write_permissions_repair  opens the folders and files the server cannot
  *                             write
  *   purge_cache               clears the caches without leaving the dashboard
@@ -179,49 +178,6 @@ function pg_panel_server_config_repair($request, $action)
                 ))
                 : ''),
         'summary' => lang('Done'),
-    ));
-}
-
-function pg_panel_ca_bundle_config_repair($request, $action)
-{
-    // Point CURL_CA_BUNDLE in data/config.php at the bundled
-    // data/cacert.pem, from the System Status widget. What is written and
-    // how is pg_ca_bundle_config_repair() in includes/fn/update.php.
-    //
-    // Administrator only: this writes the configuration file, which
-    // holds the database password.
-    $user = validate_user();
-
-    if ((int) $user['role'] !== 0) {
-        respond(array(
-            'status' => 'error',
-            'message' => lang('Access denied.'),
-        ));
-    }
-
-    // A write from the panel session needs the session token like every
-    // other one; a password-authenticated API request is waived inside
-    // validate_token().
-    validate_token();
-
-    $ca_config_result = pg_ca_bundle_config_repair();
-
-    if ($ca_config_result['status'] === 'success') {
-        log_activity(lang('CURL_CA_BUNDLE was pointed at data/cacert.pem from the dashboard.'), $_SESSION['sessionusername']);
-    }
-
-    // The widget renders from a ten-minute cache and would keep the row
-    // red until it expired.
-    $ca_config_cache = PG_FUNCTIONS_DIR . '/data/temp/system_status_cache.json';
-
-    if (file_exists($ca_config_cache)) {
-        @unlink($ca_config_cache);
-    }
-
-    respond(array(
-        'status' => ($ca_config_result['status'] === 'error') ? 'error' : 'success',
-        'message' => $ca_config_result['message'],
-        'summary' => ($ca_config_result['status'] === 'error') ? lang('Failed') : lang('Done'),
     ));
 }
 

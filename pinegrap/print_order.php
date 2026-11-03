@@ -30,6 +30,14 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM orders WHERE id = '" . $i
 include_once('liveform.class.php');
 $liveform = new liveform('view_order');
 
+// The payment period, number of payments and start date columns only when
+// the order has a recurring line: otherwise they are three empty cells on
+// every printed row.
+$print_order_recurring = ((int) db_value("SELECT COUNT(*) FROM order_items WHERE order_id = '" . $id . "' AND recurring_payment_period != ''") > 0);
+$output_recurring_headings = $print_order_recurring
+    ? '<th>' . lang('Payment Period') . '</th><th>' . lang('Number of Payments') . '</th><th>' . lang('Start Date') . '</th>'
+    : '';
+
 
 $query = "SELECT
             orders.*,
@@ -47,7 +55,7 @@ $query = "SELECT
          LEFT JOIN user ON orders.user_id = user.user_id
          LEFT JOIN contacts ON orders.contact_id = contacts.id
          WHERE orders.id = ?";
-$result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
+$result = db_q($query, array((string) $id)) or output_error('Query failed.');
 $row = mysqli_fetch_assoc($result);
 $status = $row['status'];
 $order_number = $row['order_number'] ?? '';
@@ -312,7 +320,7 @@ if ($gift_card_discount > 0) {
         FROM applied_gift_cards
         WHERE order_id = ?
         ORDER BY id ASC";
-    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
+    $result = db_q($query, array((string) $id)) or output_error('Query failed.');
     
     $applied_gift_cards = array();
     
@@ -531,7 +539,7 @@ if (AFFILIATE_PROGRAM and $affiliate_code) {
         </div>';
 }
 $output_custom_billing_information = '';
-$output_custom_billing_form = get_submitted_form_content_without_form_fields(array('type' => 'custom_billing_form', 'order_id' => $_GET['id'], 'style' => 'padding: 10px'));
+$output_custom_billing_form = get_submitted_form_content_without_form_fields(array('type' => 'custom_billing_form', 'order_id' => $id, 'style' => 'padding: 10px'));
 if ($output_custom_billing_form != '') {
     $output_custom_billing_information =
         '<div class="card mt-5 border-0 bg-transparent">
@@ -575,7 +583,7 @@ $query = "SELECT
          LEFT JOIN shipping_methods ON ship_tos.shipping_method_id = shipping_methods.id
          WHERE order_items.order_id = ?
          ORDER BY ship_to_id";
-$result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
+$result = db_q($query, array((string) $id)) or output_error('Query failed.');
 $ship_tos = array();
 // assume that there are no real ship tos until we find out that there is one
 $ship_to_exists = false;
@@ -605,7 +613,7 @@ if ($ship_to_exists == true) {
             (order_id = ?)
             AND (ship_to_id != '0')
         ORDER BY id ASC";
-    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
+    $result = db_q($query, array((string) $id)) or output_error('Query failed.');
     
     // initialize array that will be used for storing custom shipping form data for ship tos
     $ship_tos_for_custom_fields = array();
@@ -809,9 +817,7 @@ if ($ship_to_exists == true) {
                             <th>' . lang('Shipped Qty') . '</th>
                             <th>' . lang('Price') . '</th>
                             <th>' . lang('Total') . '</th>
-                            <th>' . lang('Payment Period') . '</th>
-                            <th>' . lang('Number of Payments') . '</th>
-                            <th>' . lang('Start Date') . '</th>
+                            ' . $output_recurring_headings . '
                             ' . $output_custom_field_1_heading . '
                             ' . $output_custom_field_2_heading . '
                             ' . $output_custom_field_3_heading . '
@@ -841,7 +847,7 @@ if ($ship_to_exists == true) {
                  FROM order_items
                  LEFT JOIN products ON order_items.product_id = products.id
                  WHERE order_id = ? AND ship_to_id = ?";
-        $result = db_q($query, array((string) $_GET['id'], (string) $ship_tos[$key]['ship_to_id'])) or output_error('Query failed.');
+        $result = db_q($query, array((string) $id, (string) $ship_tos[$key]['ship_to_id'])) or output_error('Query failed.');
         
         $order_items = array();
         
@@ -1101,7 +1107,7 @@ if ($ship_to_exists == true) {
             
             // if there is a form to output, then prepare form row
             if (($output_forms != '') || ($output_gift_cards != '')) {
-                $colspan = 8;
+                $colspan = $print_order_recurring ? 8 : 5;
                 // If there is an extra column for the first custom product field, the add one to the colspan.
                 if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
                     $colspan++;
@@ -1138,9 +1144,7 @@ if ($ship_to_exists == true) {
                         <td>' . $output_shipped_quantity . '</td>
                         <td style="text-align: right">' . prepare_amount($product_price) . '</td>
                         <td style="text-align: right">' . prepare_amount($product_total) . '</td>
-                        <td>' . $output_recurring_payment_period . '</td>
-                        <td>' . $output_recurring_number_of_payments . '</td>
-                        <td>' . $output_recurring_start_date . '</td>
+                        ' . ($print_order_recurring ? '<td>' . $output_recurring_payment_period . '</td><td>' . $output_recurring_number_of_payments . '</td><td>' . $output_recurring_start_date . '</td>' : '') . '
                         ' . $output_custom_field_1_cell . '
                         ' . $output_custom_field_2_cell . '
                         ' . $output_custom_field_3_cell . '
@@ -1197,9 +1201,7 @@ if ($ship_to_exists == true) {
                 <th>' . lang('Qty') . '</th>
                 <th>' . lang('Price') . '</th>
                 <th>' . lang('Total') . '</th>
-                <th>' . lang('Payment Period') . '</th>
-                <th>' . lang('Number of Payments') . '</th>
-                <th>' . lang('Start Date') . '</th>
+                ' . $output_recurring_headings . '
                 ' . $output_custom_field_1_heading . '
                 ' . $output_custom_field_2_heading . '
                 ' . $output_custom_field_3_heading . '
@@ -1227,7 +1229,7 @@ if ($ship_to_exists == true) {
              FROM order_items
              LEFT JOIN products ON order_items.product_id = products.id
              WHERE order_id = ?";
-    $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
+    $result = db_q($query, array((string) $id)) or output_error('Query failed.');
     
     $order_items = array();
     
@@ -1470,7 +1472,7 @@ if ($ship_to_exists == true) {
         
         // if there is a form to output, then prepare form row
         if (($output_forms != '') || ($output_gift_cards != '')) {
-            $colspan = 7;
+            $colspan = $print_order_recurring ? 7 : 4;
             // If there is an extra column for the first custom product field, the add one to the colspan.
             if (ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL != '') {
                 $colspan++;
@@ -1506,9 +1508,7 @@ if ($ship_to_exists == true) {
                     <td>' . $quantity . '</td>
                     <td style="text-align: right">' . prepare_amount($product_price) . '</td>
                     <td style="text-align: right">' . prepare_amount($product_total) . '</td>
-                    <td>' . $output_recurring_payment_period . '</td>
-                    <td>' . $output_recurring_number_of_payments . '</td>
-                    <td>' . $output_recurring_start_date . '</td>
+                    ' . ($print_order_recurring ? '<td>' . $output_recurring_payment_period . '</td><td>' . $output_recurring_number_of_payments . '</td><td>' . $output_recurring_start_date . '</td>' : '') . '
                     ' . $output_custom_field_1_cell . '
                     ' . $output_custom_field_2_cell . '
                     ' . $output_custom_field_3_cell . '

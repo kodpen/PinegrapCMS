@@ -785,3 +785,24 @@ function test_ai_write_image_alt_script()
 	pg_assert_contains('id="sd-prop-img-src"', $designer, 'src field');
 	pg_assert_contains('ai.imageReady()', $designer, 'shown when the model reads images');
 }
+
+// A page's text as it is drawn: a designer page's tree with each page region
+// tag holding the Nth row, a classic page's rows one after the other.
+function test_ai_write_page_html_fills_regions()
+{
+	pg_assert_same('<h1>Top</h1><p>One</p><p>Mid</p><p>Two</p>',
+		pg_ai_write_page_html('<h1>Top</h1><pregion></pregion><p>Mid</p><PREGION></PREGION>', array('<p>One</p>', '<p>Two</p>')),
+		'each tag takes its row in order');
+	pg_assert_same('<p>A</p>|',
+		pg_ai_write_page_html('<pregion></pregion>|<pregion></pregion>', array('<p>A</p>')),
+		'a tag with no row stays empty');
+	pg_assert_same('<p>$1 \\1</p>',
+		pg_ai_write_page_html('<pregion></pregion>', array('<p>$1 \\1</p>')),
+		'a row is no replacement pattern');
+	pg_assert_same('<p>Tree</p>',
+		pg_ai_write_page_html('<p>Tree</p>', array('<p>Unread</p>')),
+		'a tree without the tag reads no row');
+	pg_assert_same("<p>A</p>\n<p>B</p>",
+		pg_ai_write_page_html('  ', array('<p>A</p>', '<p>B</p>')),
+		'a classic page: its rows');
+}

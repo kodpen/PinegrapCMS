@@ -55,21 +55,8 @@ if (!$_POST) {
 
     $filter = ($_SESSION['software']['view_products']['filter'] ?? '');
 
-    // If a screen was passed and it is a positive integer, then use it.
-    // These checks are necessary in order to avoid SQL errors below for a bogus screen value.
-    if (
-        isset($_REQUEST['screen'])
-        and $_REQUEST['screen']
-        and is_numeric($_REQUEST['screen'])
-        and $_REQUEST['screen'] > 0
-        and $_REQUEST['screen'] == round($_REQUEST['screen'])
-    ) {
-        $screen = (int) $_REQUEST['screen'];
-
-    // Otherwise, use the default, which is the first screen.
-    } else {
-        $screen = 1;
-    }
+    // The page asked for, a whole number of 1 or more (pg_list_page_number()).
+    $screen = pg_list_page_number($_REQUEST['screen'] ?? '');
 
     // The full product list's sort columns.
     $sort_codes = array('id', 'short_description', 'enabled', 'price', 'taxable', 'product_form', 'selection_type', 'default_quantity', 'shippable', 'recurring_payment', 'inventory_quantity', 'last_modified', 'custom_field_1', 'custom_field_2', 'custom_field_3', 'custom_field_4');
@@ -1604,8 +1591,11 @@ if (!$_POST) {
         $result = db_q("SELECT * FROM products WHERE id = ?", array((string) $id)) or output_error(lang('Query failed'));
         $row                   = mysqli_fetch_assoc($result);
         $original_product_name = $row['name'];
+        // The original's code with its last letter swapped, made unique as it
+        // is: cutting the "[1]" off the original's unique name gave a code a
+        // second run, or another original ending the same, already held.
         $product_name          = get_unique_name(array(
-            'name' => $row['name'],
+            'name' => pg_duplicate_products_base_name($row['name'], $newletter),
             'type' => 'product'
         ));
         // An emptied field or a value that is not a count of at least one falls
@@ -1617,8 +1607,8 @@ if (!$_POST) {
 
         $lettertodelete = (int) $lettertodelete;
 
-        $product_name = substr($product_name, 0, -4) . $newletter;
-        $short_description = substr($row['short_description'], 0, -$lettertodelete) . $newletter;
+        // Letters, not bytes: a Turkish description keeps whole letters.
+        $short_description = pg_duplicate_products_description($row['short_description'], $lettertodelete, $newletter);
         $row['address_name'] = '';
         // if the address name is NOT blank then use that value for the address name
         if ($row['address_name'] != '') {

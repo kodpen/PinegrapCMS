@@ -78,7 +78,7 @@ $remember = !empty($pending['remember']);
 // A submitted choice.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     validate_token_field();
-    $choice = isset($_POST['pg_device_action']) ? (string) $_POST['pg_device_action'] : '';
+    $choice = (isset($_POST['pg_device_action']) && is_scalar($_POST['pg_device_action'])) ? (string) $_POST['pg_device_action'] : '';
 
     // Cancel: sign in nowhere, drop the pending record, back to sign in. The
     // strict device limit means an over-limit visitor who declines does not get
@@ -96,9 +96,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($limit > 0) {
         pg_device_limit_revoke_oldest($user_id, $limit - 1);
 
-        // Nothing could be freed because every slot is pinned: the confirmation
-        // was accepted but there is still no room, so the sign-in does not
-        // happen. Saying it plainly beats signing a device in over the limit.
+        // Nothing could be freed because too many slots are pinned (nothing
+        // was signed out then): the confirmation was accepted but there is
+        // still no room, so the sign-in does not happen. Saying it plainly
+        // beats signing a device in over the limit.
         if (pg_device_limit_exceeded($user_id)) {
             unset($_SESSION['software']['device_limit_pending']);
             output_error(lang('The devices on this account were locked by the site owner, so none could be signed out. Please ask the site owner for help.'));
@@ -129,7 +130,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // No choice yet: show the confirmation.
 $limit    = pg_device_limit();
 $active   = pg_auth_token_count($user_id);
-$to_close = max(1, $active - $limit + 1);
+// Counted the way the confirm action chooses them: unpinned sessions only.
+$to_close = ($limit > 0) ? count(pg_device_limit_evictable($user_id, $limit - 1)) : 0;
+
+// Pinned sessions leave no room to free, so offering to sign the others out
+// would promise what the confirm action cannot do.
+if (($limit > 0) && ($to_close === 0) && pg_device_limit_exceeded($user_id)) {
+    unset($_SESSION['software']['device_limit_pending']);
+    output_error(lang('The devices on this account were locked by the site owner, so none could be signed out. Please ask the site owner for help.'));
+}
 
 $content = pg_secure_card('bi-phone', lang('Too many signed-in devices'),
     '<p class="mb-5">' . h(lang(array(

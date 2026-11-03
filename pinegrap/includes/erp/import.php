@@ -642,6 +642,13 @@ function erp_import_normalize_row($cells, $mapping, $defaults)
         $account['state'] = '';
     }
 
+    // Kept the way the card form and the API keep it: digits for a Turkish
+    // number. A refused one stays as written for the row's error.
+    $tax = erp_tax_number_check($account['tax_number'], (string) $account['country_code']);
+    if ($tax['error'] === '') {
+        $account['tax_number'] = $tax['value'];
+    }
+
     // Guessed only when the file does not say. In Turkey the length tells:
     // a VKN has ten digits, a person's TCKN eleven. Elsewhere a row that
     // carries a tax number is taken to be a business.
@@ -723,9 +730,9 @@ function erp_import_validate_row($account)
 function erp_import_find_existing($account)
 {
     if ($account['tax_number'] !== '') {
-        $id = (int) db_value("SELECT id FROM erp_accounts WHERE tax_number = '" . escape($account['tax_number']) . "' ORDER BY id ASC LIMIT 1");
-        if ($id > 0) {
-            return array('id' => $id, 'by' => 'tax_number');
+        $found = erp_account_by_tax_number($account['tax_number']);
+        if (is_array($found)) {
+            return array('id' => (int) $found['id'], 'by' => 'tax_number');
         }
     }
 
@@ -759,7 +766,7 @@ function erp_import_find_existing($account)
 function erp_import_file_key($account)
 {
     if ($account['tax_number'] !== '') {
-        return 't:' . $account['tax_number'];
+        return 't:' . strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $account['tax_number']));
     }
 
     if ($account['email'] !== '') {

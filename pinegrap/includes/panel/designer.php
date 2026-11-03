@@ -209,7 +209,7 @@ function pg_panel_designer($request, $action)
         $content_ok = array('presence', 'leave', 'lock_release', 'note_save', 'notes_fetch',
                             'page_load', 'seo_check', 'import_fragment',
                             'form_fields', 'preview_widgets', 'widget_ghosts',
-                            'revisions_list', 'revision_get');
+                            'revisions_list', 'revision_get', 'prototype_map');
         if (pg_designer_access($user) === PG_DESIGNER_ACCESS_NONE
             || !in_array($sub, $content_ok, true)) {
             respond(array('status' => 'error', 'message' => lang('Permission denied.')));
@@ -1110,6 +1110,15 @@ function pg_panel_designer($request, $action)
         // design's links, a new one, a link's address shown again, and
         // revoking one. Designers only, like the Schedule section: the
         // list above does not open them to a content-level operator.
+        // What the links of a design lead to, for the Prototype view
+        // (includes/fn/prototype_map.php): read-only, and a content-level
+        // operator is told nothing about pages hidden from them.
+        case 'prototype_map':
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype.php');
+            require_once(PG_FUNCTIONS_DIR . '/includes/fn/prototype_map.php');
+            respond(pg_proto_map($request, $user));
+            break;
+
         case 'prototype_links':
         case 'prototype_link_create':
         case 'prototype_link_address':
@@ -1185,8 +1194,8 @@ function pg_panel_designer_file($request, $action)
             if (!in_array($df_type, array('css', 'js', 'json'), true)) {
                 respond(array('status' => 'error', 'message' => 'Invalid file type.'));
             }
-            // Folder is required — view_files.php joins on folder.folder_id
-            // and excludes rows where the join misses, so a folder=0 file
+            // Folder is required — the file lists join on folder.folder_id
+            // and leave out rows where the join misses, so a folder=0 file
             // is invisible in the file manager. Reject the create instead
             // of silently writing an unreachable file.
             if ($df_folder <= 0) {

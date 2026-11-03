@@ -581,16 +581,24 @@ function api_customers_subscriptions($params) {
 }
 
 // The columns a subscription is presented with, the product's name from the
-// first order's line (the name it was bought under) or the product. The card
-// token is never read here.
+// first order's line (the name it was bought under) or the product, and the
+// customer: the account's contact record, the name and address on the first
+// order (the account's address when the order has none). The card token and
+// the payment service's ids are never read here. GET /subscriptions reads
+// the same columns (includes/api/resources/subscriptions.php).
 function api_customer_subscriptions_select_sql() {
 
 	return "SELECT s.id, s.user_id, s.product_id, s.order_id, s.status, s.period, s.amount, s.currency,
-			s.next_charge_at, s.retry_count, s.card_last4, s.created_at, s.cancelled_at, s.ended_at,
-			COALESCE(oi.product_name, p.name, '') AS product_name
+			s.next_charge_at, s.retry_count, s.card_last4, s.created_at, s.updated_at, s.cancelled_at, s.ended_at,
+			COALESCE(oi.product_name, p.name, '') AS product_name,
+			COALESCE(u.user_contact, 0) AS customer_id,
+			TRIM(CONCAT(COALESCE(o.billing_first_name, ''), ' ', COALESCE(o.billing_last_name, ''))) AS customer_name,
+			COALESCE(NULLIF(o.billing_email_address, ''), u.user_email, '') AS customer_email
 		FROM subscriptions AS s
 		LEFT JOIN order_items AS oi ON oi.id = s.order_item_id
-		LEFT JOIN products AS p ON p.id = s.product_id";
+		LEFT JOIN products AS p ON p.id = s.product_id
+		LEFT JOIN orders AS o ON o.id = s.order_id
+		LEFT JOIN user AS u ON u.user_id = s.user_id";
 
 }
 
@@ -613,6 +621,11 @@ function api_subscription_present($row) {
 		'product_id'     => (int)$row['product_id'],
 		'product_name'   => (string)$row['product_name'],
 		'order_id'       => (int)$row['order_id'],
+		// The contact record of the account, for GET /customers/{id}; null
+		// for an account that is no contact.
+		'customer_id'    => ((int)($row['customer_id'] ?? 0) > 0) ? (int)$row['customer_id'] : null,
+		'customer_name'  => ((string)($row['customer_name'] ?? '') !== '') ? (string)$row['customer_name'] : null,
+		'customer_email' => ((string)($row['customer_email'] ?? '') !== '') ? (string)$row['customer_email'] : null,
 		'status'         => (string)$row['status'],
 		'period'         => (string)$row['period'],
 		'amount'         => (int)$row['amount'],
@@ -635,6 +648,9 @@ function api_subscription_schema() {
 		'product_id'     => 'integer',
 		'product_name'   => 'string',
 		'order_id'       => 'integer',
+		'customer_id'    => 'integer?',
+		'customer_name'  => 'string?',
+		'customer_email' => 'string?',
 		'status'         => 'string',
 		'period'         => 'string',
 		'amount'         => 'integer',

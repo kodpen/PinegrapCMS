@@ -2134,7 +2134,7 @@ function get_express_order($properties) {
                                                 </td>
                                             </tr>
                                             <tr>
-                                                <td><label for="' . $prefix . 'zip_code">Zip / Postal Code<span id="' . $prefix . 'zip_code_required" style="display: none">*</span></label></td>
+                                                <td><label for="' . $prefix . 'zip_code">' . h(lang('Zip / Postal Code')) . '<span id="' . $prefix . 'zip_code_required" style="display: none">*</span></label></td>
                                                 <td>' .
                                                     $form->output_field(array(
                                                         'type' => 'text',
@@ -3966,7 +3966,7 @@ function get_express_order($properties) {
                 $offer['upsell_action_url'] = PATH . encode_url_path(get_page_name($offer['upsell_action_page_id']));
 
                 if ($offer['upsell_action_button_label'] == '') {
-                    $offer['upsell_action_button_label'] = 'More Info';
+                    $offer['upsell_action_button_label'] = lang('More Info');
                 }
             }
 
@@ -4885,7 +4885,8 @@ function get_express_order($properties) {
                                 // (e.g. the form has not been submitted by the customer),
                                 // then set default value.
                                 if (!$form->field_in_session($html_name)) {
-                                    $value_from_query_string = trim(isset($_GET['value_' . $field['id']]) ? $_GET['value_' . $field['id']] : '');
+                                    // An array (value_<id>[]=) is not a value for one field, so it counts as not passed.
+                                    $value_from_query_string = trim((isset($_GET['value_' . $field['id']]) && is_string($_GET['value_' . $field['id']])) ? $_GET['value_' . $field['id']] : '');
 
                                     // If a default value was passed in the query string,
                                     // then use that.
@@ -5935,7 +5936,7 @@ function get_express_order($properties) {
                             $threedsecure = true;
                             //if this is iyzico payment than prepare to output 3Dsecure payment checkbox to disabled and checked.
                             if(ECOMMERCE_IYZIPAY_THREEDS){
-                                $threedsecure_required = ' checked disabled style="cursor:help;" title="3DSecure is required" ';
+                                $threedsecure_required = ' checked disabled style="cursor:help;" title="' . h(lang('3D Secure is required')) . '" ';
                             }
                                                         
                         break;

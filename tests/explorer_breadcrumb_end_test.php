@@ -69,10 +69,11 @@ function test_explorer_breadcrumb_end_follows_resize_and_scroll()
 
 	pg_assert_contains('if (window.ResizeObserver) {', $source, 'a ResizeObserver is used where the browser has one');
 	pg_assert_true(
-		(bool) preg_match('/new ResizeObserver\(\s*showBreadcrumbEnd\s*\)\.observe\(\s*document\.getElementById\(\'explorer_breadcrumb\'\)\s*\)/', $source),
-		'the ResizeObserver on #explorer_breadcrumb calls showBreadcrumbEnd()'
+		(bool) preg_match('/new ResizeObserver\(\s*refitBreadcrumb\s*\)\.observe\(\s*document\.getElementById\(\'explorer_breadcrumb\'\)\s*\)/', $source),
+		'the ResizeObserver on #explorer_breadcrumb calls refitBreadcrumb()'
 	);
-	pg_assert_contains("window.addEventListener('resize', showBreadcrumbEnd);", $source, 'a window resize falls back to showBreadcrumbEnd()');
+	pg_assert_contains("window.addEventListener('resize', refitBreadcrumb);", $source, 'a window resize falls back to refitBreadcrumb()');
+	pg_assert_contains('showBreadcrumbEnd();', explorer_breadcrumb_end_function('refitBreadcrumb'), 'refitBreadcrumb() ends scrolled to the last crumb');
 	pg_assert_true(
 		(bool) preg_match("/getElementById\('explorer_breadcrumb'\)\.addEventListener\('scroll', function[^}]*is-scrolled[^}]*\}, true\);/s", $source),
 		'one capture-phase scroll listener on #explorer_breadcrumb toggles is-scrolled'

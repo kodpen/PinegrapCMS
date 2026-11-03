@@ -172,13 +172,16 @@ if (!$_POST) {
         $stop_year = date('Y');
 
     } else {
-        // Default to ~31 days ago. A range passed in the address replaces it part
-        // by part: mktime() below throws a TypeError for a missing, non-numeric or
-        // oversized value, so such a part keeps its default instead of breaking the page.
+        // Default to the "Last 30 Days" quick range (today and the 29 days
+        // before), so its button shows as chosen on a first visit. A range
+        // passed in the address replaces it part by part: mktime() below
+        // throws a TypeError for a missing, non-numeric or oversized value, so
+        // such a part keeps its default instead of breaking the page.
+        $default_start = strtotime('-29 days', mktime(0, 0, 0, date('m'), date('d'), date('Y')));
         $date_range = array(
-            'start_month' => date('m', time() - 2678400),
-            'start_day'   => date('d', time() - 2678400),
-            'start_year'  => date('Y', time() - 2678400),
+            'start_month' => date('m', $default_start),
+            'start_day'   => date('d', $default_start),
+            'start_year'  => date('Y', $default_start),
             'stop_month'  => date('m'),
             'stop_day'    => date('d'),
             'stop_year'   => date('Y'),
@@ -632,7 +635,11 @@ if (!$_POST) {
         </div>
     <style>@layer custom {
         /* Clipped log messages: show the first few lines and fade out the rest. */
-        .pg-log-msg { white-space: normal; }
+        /* The list cells do not wrap and DataTables pins each column to the
+           width it measures, so a long word or line would pin the description
+           column wider than the screen: the message wraps anywhere and is
+           capped, and the IP column stays in view. */
+        .pg-log-msg { white-space: normal; overflow-wrap: anywhere; max-width: 40rem; }
         .pg-log-msg-code { font-family: var(--pg-font-mono); font-size: .8125rem; }
         .pg-log-clip { position: relative; max-height: 4.8em; overflow: hidden; }
         .pg-log-clip::after {

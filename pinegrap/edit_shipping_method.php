@@ -56,25 +56,23 @@ if (!$_POST) {
         ]) . '
 <main id="content" class="container-fluid">
     ' . get_date_picker_format() . get_date_time_picker_format() . get_time_picker_format() . pg_fields_script() . '
-            <div class="row">
-            <div class="col-12">
-                
-                <form name="form" action="edit_shipping_method.php" method="post">
-                    ' . get_token_field() . '
-                    ' . pg_shipping_method_form_cards(pg_shipping_method_form_row_values($shipping_method, implode(',', $excluded_transit_dates)), pg_shipping_method_zone_options_for($id)) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
-                                <button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . h(implode(' ', array_map('lang', pg_shipping_method_form_delete_confirm(...pg_shipping_method_form_delete_counts($id))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>
-                            </div>
+    <form name="form" action="edit_shipping_method.php" method="post">
+        ' . get_token_field() . '
+        <input type="hidden" name="id" value="' . $id . '">
+        <div class="row">
+            ' . pg_shipping_method_form_cards(pg_shipping_method_form_row_values($shipping_method, implode(',', $excluded_transit_dates)), pg_shipping_method_zone_options_for($id)) . '
+            <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                    <div class="container">
+                        <div class="btn-group flex-wrap justify-content-center">
+                            <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                            <button type="submit" name="submit_delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . h(implode(' ', array_map('lang', pg_shipping_method_form_delete_confirm(...pg_shipping_method_form_delete_counts($id))))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang(array('string'=>'Delete') ) . '</span></button>
                         </div>
-                    </nav>
-                    <input type="hidden" name="id" value="' . $id . '">
-                </form>
+                    </div>
+                </nav>
             </div>
         </div>
-    
+    </form>
 </main>' .
     output_footer();
 
@@ -84,41 +82,17 @@ if (!$_POST) {
 
     validate_token_field();
 
-    // The zones and excluded dates go in both cases: a delete drops them, a
-    // save writes them again.
-    db_q("DELETE FROM shipping_methods_zones_xref WHERE shipping_method_id = ?", array($id)) or output_error('Query failed.');
-    db_q("DELETE FROM excluded_transit_dates WHERE shipping_method_id = ?", array($id)) or output_error('Query failed.');
-
     // if shipping method was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
-        db_q("DELETE FROM shipping_methods WHERE id = ?", array($id)) or output_error('Query failed.');
-        db_q("DELETE FROM offer_actions_shipping_methods_xref WHERE shipping_method_id = ?", array($id)) or output_error('Query failed.');
-        db_q("DELETE FROM shipping_cutoffs WHERE shipping_method_id = ?", array($id)) or output_error('Query failed.');
-        db_q("DELETE FROM ship_date_adjustments WHERE shipping_method_id = ?", array($id)) or output_error('Query failed.');
+        pg_shipping_method_delete($id, (string) ($_POST['name'] ?? '')) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'shipping method ({var:1}) was deleted','vars'=>$_POST['name'])), $_SESSION['sessionusername']);
-        
+
     // else shipping method was not selected for delete
     } else {
         $columns = pg_shipping_method_form_columns($_POST);
-        $columns['user'] = (string) $user['id'];
 
-        $assignments = array();
-
-        foreach (array_keys($columns) as $column) {
-            $assignments[] = $column . ' = ?';
-        }
-
-        $parameters = array_values($columns);
-        $parameters[] = $id;
-
-        // update shipping method
-        db_q(
-            "UPDATE shipping_methods SET " . implode(', ', $assignments) . ", timestamp = UNIX_TIMESTAMP()
-            WHERE id = ?",
-            $parameters) or output_error('Query failed.');
-
-        pg_shipping_method_save_links($id, $_POST);
+        pg_shipping_method_save($id, $columns, (array) ($_POST['allowed_zones'] ?? array()), pg_shipping_method_excluded_dates($_POST['excluded_transit_dates'] ?? ''), (int) $user['id']) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'shipping method ({var:1}) was modified','vars'=>$columns['name'])), $_SESSION['sessionusername']);
     }

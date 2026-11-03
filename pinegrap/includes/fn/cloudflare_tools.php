@@ -6,6 +6,8 @@
  * GraphQL answer failed, the reason to show for it, and the analytics cards
  * built from the GraphQL reads. A GraphQL error arrives as HTTP 200 with an
  * "errors" list and data null, so a 200 alone does not mean the read worked.
+ * Also the Cache Rule that keeps a copy of a picture per format (WebP at a
+ * picture's own address) and the edge check that confirms it.
  * Loaded by cloudflare.php only.
  *
  * @author      Erdal Güral (Kodpen)
@@ -194,8 +196,343 @@ function pg_cloudflare_analytics_card($totals, $area)
                 ? pg_format_number(($totals['cached_bytes'] / $totals['bandwidth']) * 100, 2) . ' %'
                 : '0 %';
         case 'cached_bytes':
-            return pg_format_number($totals['cached_bytes'] / 1024 / 1024, 2) . ' MB';
+            return pg_format_number($totals['cached_bytes'] / 1000 / 1000, 2) . ' MB';
         default:
             return '';
     }
+}
+
+/**
+ * The dates and group limit of an analytics day read. A preset period runs
+ * from N days ago to today, which is N + 1 dates; the limit counts them all,
+ * so Cloudflare does not leave one date out (it returns the groups in no set
+ * order). A custom range keeps its own dates.
+ *
+ * @param int         $days       the preset period's length
+ * @param string|null $start_date Y-m-d of a custom range, or null
+ * @param string|null $end_date   Y-m-d of a custom range, or null
+ * @param int         $now        the current time
+ * @return array start, end (Y-m-d) and limit (the number of dates, at least 1)
+ */
+function pg_cloudflare_analytics_range($days, $start_date, $end_date, $now)
+{
+    if (is_string($start_date) && is_string($end_date) && ($start_date !== '') && ($end_date !== '')) {
+        $start = $start_date;
+        $end   = $end_date;
+    } else {
+        $start = date('Y-m-d', strtotime('-' . (int) $days . ' days', (int) $now));
+        $end   = date('Y-m-d', (int) $now);
+    }
+
+    // Counted on UTC midnights, so a clock change in the range does not
+    // leave a 23- or 25-hour day.
+    $from = strtotime($start . ' 00:00:00 UTC');
+    $to   = strtotime($end . ' 00:00:00 UTC');
+    $limit = (($from !== false) && ($to !== false)) ? (int) round(($to - $from) / 86400) + 1 : 1;
+
+    return array('start' => $start, 'end' => $end, 'limit' => max(1, $limit));
+}
+
+/**
+ * The ref that marks the Cache Rule Pinegrap writes for WebP at a picture's
+ * own address, so the rule is found again among the zone's other rules.
+ *
+ * @return string
+ */
+function pg_cloudflare_image_vary_ref()
+{
+    return 'pinegrap_webp_same_address';
+}
+
+/**
+ * The Cache Rule (phase http_request_cache_settings) that makes Cloudflare
+ * keep one copy of a JPEG or PNG per format: Accept is normalised to
+ * image/webp or nothing, so a browser that reads WebP and one that does not
+ * each get their own cached copy (get_file.php answers with Vary: Accept).
+ * Other headers named in Vary pass through as Cloudflare treats them.
+ * The extensions are the ones get_file.php negotiates.
+ *
+ * @return array
+ */
+function pg_cloudflare_image_vary_rule()
+{
+    return array(
+        'ref'         => pg_cloudflare_image_vary_ref(),
+        'description' => 'Pinegrap: WebP at the picture\'s own address',
+        'expression'  => '(http.request.uri.path.extension in {"jpg" "jpeg" "jpe" "png"})',
+        'action'      => 'set_cache_settings',
+        'action_parameters' => array(
+            'cache' => true,
+            'vary'  => array(
+                'default' => array('action' => 'passthrough'),
+                'headers' => array(
+                    'accept' => array('action' => 'normalize', 'media_types' => array('image/webp'))))),
+        'enabled'     => true);
+}
+
+/**
+ * Whether a rule Cloudflare holds does what pg_cloudflare_image_vary_rule()
+ * asks: same expression and action, enabled, Accept normalised with
+ * image/webp among its media types.
+ *
+ * @param mixed $rule a rule of the entrypoint ruleset
+ * @return bool
+ */
+function pg_cloudflare_image_vary_rule_current($rule)
+{
+    $wanted = pg_cloudflare_image_vary_rule();
+
+    if (!is_array($rule)
+        || (($rule['expression'] ?? '') !== $wanted['expression'])
+        || (($rule['action'] ?? '') !== $wanted['action'])
+        || (isset($rule['enabled']) && ($rule['enabled'] !== true))) {
+        return false;
+    }
+
+    $accept = $rule['action_parameters']['vary']['headers']['accept'] ?? null;
+
+    return is_array($accept)
+        && (($accept['action'] ?? '') === 'normalize')
+        && is_array($accept['media_types'] ?? null)
+        && in_array('image/webp', $accept['media_types'], true);
+}
+
+/**
+ * What writing the rule takes, from the read of the zone's
+ * http_request_cache_settings entrypoint ({status, json} of cf_request()):
+ * create (no entrypoint yet, HTTP 404: PUT it with the rule), add (POST the
+ * rule to the ruleset), update (PATCH the rule found by its ref), none (it is
+ * in place) or failed (the read failed: no permission, no answer).
+ *
+ * @param array $answer
+ * @return array do, ruleset_id, rule_id
+ */
+function pg_cloudflare_image_vary_plan($answer)
+{
+    $plan = array('do' => 'failed', 'ruleset_id' => '', 'rule_id' => '');
+
+    if (is_array($answer) && (($answer['status'] ?? 0) === 404)) {
+        $plan['do'] = 'create';
+        return $plan;
+    }
+
+    if (pg_cloudflare_answer_failed($answer)) {
+        return $plan;
+    }
+
+    $ruleset = $answer['json']['result'] ?? null;
+    $ruleset_id = is_array($ruleset) ? ($ruleset['id'] ?? '') : '';
+
+    // A ruleset id is hex; anything else is refused before it can become
+    // part of an API path.
+    if (!is_string($ruleset_id) || !preg_match('/^[a-f0-9]{32}$/', $ruleset_id)) {
+        return $plan;
+    }
+
+    $plan['ruleset_id'] = $ruleset_id;
+    $plan['do'] = 'add';
+
+    foreach ((is_array($ruleset['rules'] ?? null) ? $ruleset['rules'] : array()) as $rule) {
+
+        if (!is_array($rule) || (($rule['ref'] ?? '') !== pg_cloudflare_image_vary_ref())) {
+            continue;
+        }
+
+        if (pg_cloudflare_image_vary_rule_current($rule)) {
+            $plan['do'] = 'none';
+            return $plan;
+        }
+
+        $rule_id = $rule['id'] ?? '';
+
+        if (is_string($rule_id) && preg_match('/^[a-f0-9]{32}$/', $rule_id)) {
+            $plan['do'] = 'update';
+            $plan['rule_id'] = $rule_id;
+        }
+
+        return $plan;
+    }
+
+    return $plan;
+}
+
+/**
+ * The last value of a header in a raw header block (pg_curl_run() with
+ * response_headers), '' when it is not there. After a redirect or a 100
+ * Continue the block holds several answers; the last one counts.
+ *
+ * @param string $headers
+ * @param string $name
+ * @return string
+ */
+function pg_cloudflare_header_value($headers, $name)
+{
+    $value = '';
+    $name = strtolower((string) $name);
+
+    foreach (preg_split('/\r?\n/', (string) $headers) as $line) {
+
+        $colon = strpos($line, ':');
+
+        if (($colon !== false) && (strtolower(trim(substr($line, 0, $colon))) === $name)) {
+            $value = trim(substr($line, $colon + 1));
+        }
+    }
+
+    return $value;
+}
+
+/**
+ * The verdict of the edge check: three fetches of one picture through
+ * Cloudflare at a fresh address, Accept naming WebP, then not, then naming it
+ * again. Each answer is array(status, type (Content-Type without parameters),
+ * cloudflare (a CF-Ray came back)).
+ *
+ * ok when the first and third got WebP and the second the original;
+ * unreachable when one was not answered with 200 and a picture; not_proxied
+ * when no answer came through Cloudflare; no_webp when the first got no WebP
+ * (the switch is off or the server made none); shared when one reader got
+ * the other's copy: the edge keeps one copy for every browser.
+ *
+ * @param array $answers
+ * @return string
+ */
+function pg_cloudflare_image_vary_verdict($answers)
+{
+    if (!is_array($answers) || (count($answers) !== 3)) {
+        return 'unreachable';
+    }
+
+    $answers = array_values($answers);
+    $proxied = false;
+
+    foreach ($answers as $answer) {
+
+        if (!is_array($answer) || (($answer['status'] ?? 0) !== 200)) {
+            return 'unreachable';
+        }
+
+        if (!empty($answer['cloudflare'])) {
+            $proxied = true;
+        }
+    }
+
+    if (!$proxied) {
+        return 'not_proxied';
+    }
+
+    $type = function ($answer) {
+        return strtolower(trim(explode(';', (string) ($answer['type'] ?? ''))[0]));
+    };
+    $webp = function ($answer) use ($type) {
+        return $type($answer) === 'image/webp';
+    };
+
+    // A page (a login form, an error page) answered with 200 is no picture.
+    foreach ($answers as $answer) {
+        if (strpos($type($answer), 'image/') !== 0) {
+            return 'unreachable';
+        }
+    }
+
+    if (!$webp($answers[0])) {
+        return 'no_webp';
+    }
+
+    if ($webp($answers[1]) || !$webp($answers[2])) {
+        return 'shared';
+    }
+
+    return 'ok';
+}
+
+/**
+ * The edge check behind the "CDN keeps a copy per format" confirmation: one
+ * public JPEG or PNG with a lighter WebP copy (made here first, so the check
+ * does not wait for an encode slot) is fetched three times through the
+ * site's own address at a fresh ?pg_vary_check= address, Accept naming WebP,
+ * then not, then naming it again (pg_cloudflare_image_vary_verdict()).
+ *
+ * The check address is negotiated by get_file.php before the confirmation is
+ * set (pg_image_vary_check_asked()); its own query keeps it out of the cache
+ * entries visitors read.
+ *
+ * @return array verdict (an answer of pg_cloudflare_image_vary_verdict(), or
+ *               no_sample when no picture fits), file (its name), reason
+ *               (why a fetch failed, not escaped)
+ */
+function pg_cloudflare_image_vary_check()
+{
+    $result = array('verdict' => 'no_sample', 'file' => '', 'reason' => '');
+
+    $settings = pg_image_delivery();
+    $directory = pg_image_derivative_directory();
+
+    // The newest public pictures first: a folder that is not public would
+    // answer a login page.
+    $rows = db_items(
+        "SELECT id, name, folder
+        FROM files
+        WHERE type IN ('jpg', 'jpeg', 'jpe', 'png') AND attachment = '0' AND folder > 0
+        ORDER BY id DESC
+        LIMIT 30");
+
+    $sample = null;
+
+    foreach ((array) $rows as $row) {
+
+        $path = FILE_DIRECTORY_PATH . '/' . $row['name'];
+
+        if (pg_file_withheld($row['name']) || (get_access_control_type($row['folder']) !== 'public') || !is_file($path)) {
+            continue;
+        }
+
+        $derivative = pg_image_derivative((int) $row['id'], $path, array('width' => 0, 'format' => 'webp'), $directory, $settings);
+
+        if ($derivative['status'] === 'derivative') {
+            $sample = $row;
+            break;
+        }
+    }
+
+    if ($sample === null) {
+        return $result;
+    }
+
+    $result['file'] = $sample['name'];
+
+    // Through the edge: the site's public address, https as Cloudflare
+    // serves it.
+    $url = 'https://' . HOSTNAME_SETTING . PATH . encode_url_path($sample['name'])
+        . '?pg_vary_check=' . bin2hex(random_bytes(8));
+
+    $answers = array();
+
+    foreach (array('image/webp,image/*,*/*;q=0.8', 'image/*,*/*;q=0.8', 'image/webp,image/*,*/*;q=0.8') as $accept) {
+
+        $answer = pg_curl_run('GET', $url, array(
+            'headers'          => array('Accept: ' . $accept),
+            'response_headers' => true,
+            'timeout'          => 20,
+            'max_size'         => 52428800));
+
+        if (!$answer['ok'] && ($result['reason'] === '')) {
+            $result['reason'] = ($answer['status'] > 0)
+                ? lang(array('string' => 'Cloudflare answered with HTTP {var:1}.', 'vars' => $answer['status']))
+                : (string) $answer['error'];
+        }
+
+        $answers[] = array(
+            'status'     => (int) $answer['status'],
+            'type'       => (string) $answer['content_type'],
+            'cloudflare' => (pg_cloudflare_header_value($answer['headers'] ?? '', 'cf-ray') !== ''));
+    }
+
+    $result['verdict'] = pg_cloudflare_image_vary_verdict($answers);
+
+    if (($result['verdict'] === 'unreachable') && ($result['reason'] === '')) {
+        $result['reason'] = lang('The address did not answer with the picture.');
+    }
+
+    return $result;
 }

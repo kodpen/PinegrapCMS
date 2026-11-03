@@ -43,7 +43,7 @@ function test_auto_detail_page_is_shared_and_checks_access()
 {
 	$src = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets.php');
 	pg_assert_contains('function pg_sw_auto_catalog_detail_page(', $src);
-	foreach (array('_pg_sw_search_collect', 'pg_sw_catalog_detail_page_name') as $name) {
+	foreach (array('_pg_sw_search_collect_one', 'pg_sw_catalog_detail_page_name') as $name) {
 		$start = strpos($src, 'function ' . $name . '(');
 		pg_assert_true($start !== false, $name);
 		$end = strpos($src, "\nfunction ", (int) $start + 10);

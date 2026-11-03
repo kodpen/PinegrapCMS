@@ -37,32 +37,78 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // and turning the mode off is how a locked-out site is recovered.
     //
     // check_if_request_is_secure() is the one definition of "is this HTTPS"
-    // (direct TLS, or forwarded headers only under TRUST_PROXY_SSL_HEADERS).
-    // pg_request_is_https() is deliberately not used here: it honours the
-    // forwarded headers without the opt-in, so a proxy that terminates SSL in
-    // front of a plain-HTTP origin (Cloudflare "Flexible") would pass the check
-    // and the saved setting would loop the site. Two messages, because the two
-    // situations have different fixes: the forwarded headers say whether a
-    // proxy is involved at all.
+    // (direct TLS, or forwarded headers from a peer on Trusted Proxies, a
+    // Cloudflare edge or under TRUST_PROXY_SSL_HEADERS). pg_request_is_https()
+    // is deliberately not used here: it reads the forwarded headers without
+    // the peer check, so a proxy that terminates SSL in front of a plain-HTTP
+    // origin (Cloudflare "Flexible") would pass the check and the saved
+    // setting would loop the site.
+    //
+    // When the headers say https but the peer is not trusted yet, the peer's
+    // own address can be listed in the same save (pg_https_peer_offer(): a
+    // loopback or private peer, never a public one or its network). The box
+    // under Secure Mode says so on the screen; with it ticked, the entries go
+    // into the Trusted Proxies list written below, the peer is checked against
+    // that list, and the save goes on. Otherwise the message names the peer
+    // and the entries, and nothing is written.
+    $waf_secure_mode_entries = array();
+
     if (($url_scheme === 'https://') && (URL_SCHEME !== 'https://') && !check_if_request_is_secure()) {
 
         $secure_mode_test_link = '<a class="alert-link" href="https://' . h(HOSTNAME_SETTING) . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/test_secure_mode.php" target="_blank">' . lang('Secure Mode test page') . '</a>';
 
-        if (check_proxy_ssl_headers()) {
-            $liveform->add_error(lang(array(
-                'string' => 'Secure Mode was not enabled: a proxy or CDN reports HTTPS, but this server itself sees plain HTTP, so SSL is being terminated in front of it (for example Cloudflare Flexible SSL). Enable TRUST_PROXY_SSL_HEADERS in the config file, or switch the proxy to Full (end-to-end) mode. Then check what this server sees on the {var:1} and save this setting from a session opened over HTTPS.',
-                'vars'   => $secure_mode_test_link)));
-        } else {
-            $liveform->add_error(lang(array(
-                'string' => 'Secure Mode was not enabled: this request did not arrive over HTTPS, so no encrypted connection is reaching this server. Install an SSL certificate first. Then check what this server sees on the {var:1} and save this setting from a session opened over HTTPS.',
-                'vars'   => $secure_mode_test_link)));
+        $secure_mode_claimed = pg_forwarded_https($_SERVER);
+        $secure_mode_peer = isset($_SERVER['REMOTE_ADDR']) ? (string) $_SERVER['REMOTE_ADDR'] : '';
+        $secure_mode_offer = $secure_mode_claimed ? pg_https_peer_offer($secure_mode_peer) : array('kind' => '', 'entries' => array());
+
+        // The list column arrives with the firewall's schema step; before it
+        // nothing can be listed here, and the message says to list the proxy.
+        $secure_mode_offer_ready = $secure_mode_offer['entries']
+            && function_exists('waf_table_has_column')
+            && waf_table_has_column('config', 'waf_trusted_proxies')
+            && function_exists('waf_proxy_list_on_save');
+
+        $secure_mode_trusted = false;
+
+        if ($secure_mode_offer_ready && post_value('secure_mode_trust_proxy')) {
+            // The list as the save below will store it, offered entries
+            // included, checked against the peer before anything is written.
+            $secure_mode_list = waf_proxy_list_on_save(
+                trim((string) post_value('waf_trusted_proxies')) . ',' . implode(',', $secure_mode_offer['entries']),
+                (string) db_value("SELECT waf_trusted_proxies FROM config"));
+
+            if (pg_https_peer_trusted($secure_mode_peer, $secure_mode_list)) {
+                $secure_mode_trusted = true;
+                $waf_secure_mode_entries = $secure_mode_offer['entries'];
+            }
         }
 
-        // Nothing is written. The caller redirects on $url_scheme, and the
-        // scheme this request arrived on is the only one known to work.
-        $url_scheme = URL_SCHEME;
+        if (!$secure_mode_trusted) {
 
-        return;
+            if (!$secure_mode_claimed) {
+                $liveform->add_error(lang(array(
+                    'string' => 'Secure Mode was not enabled: this request did not arrive over HTTPS, so no encrypted connection is reaching this server. Install an SSL certificate first. Then check what this server sees on the {var:1} and save this setting from a session opened over HTTPS.',
+                    'vars'   => $secure_mode_test_link)));
+            } elseif ($secure_mode_offer_ready) {
+                $liveform->add_error(lang(array(
+                    'string' => 'Secure Mode was not enabled: this request reached the server through a proxy at {var:1} that reports HTTPS but is not listed under Trusted Proxies. Tick "Add this proxy to Trusted Proxies" under Secure Mode to list {var:2} and turn Secure Mode on in one step. The {var:3} shows what this server sees.',
+                    'vars'   => array(h($secure_mode_peer), h(implode(', ', $secure_mode_offer['entries'])), $secure_mode_test_link))));
+            } elseif ($secure_mode_offer['kind'] === 'public') {
+                $liveform->add_error(lang(array(
+                    'string' => 'Secure Mode was not enabled: a CDN or load balancer at {var:1} reports HTTPS, but this server itself sees plain HTTP and that address is not listed under Trusted Proxies. List all of its published address ranges there first (Cloudflare is recognised on its own), or switch it to Full (end-to-end) mode. Then check what this server sees on the {var:2} and save this setting again.',
+                    'vars'   => array(h($secure_mode_peer), $secure_mode_test_link))));
+            } else {
+                $liveform->add_error(lang(array(
+                    'string' => 'Secure Mode was not enabled: a proxy at {var:1} reports HTTPS, but this server itself sees plain HTTP and that address is not listed under Trusted Proxies. List it there first, or switch the proxy to Full (end-to-end) mode. Then check what this server sees on the {var:2} and save this setting again.',
+                    'vars'   => array(h($secure_mode_peer), $secure_mode_test_link))));
+            }
+
+            // Nothing is written. The caller redirects on $url_scheme, and the
+            // scheme this request arrived on is the only one known to work.
+            $url_scheme = URL_SCHEME;
+
+            return;
+        }
     }
 
     // ── The operator's own address ──────────────────────────────────────
@@ -196,6 +242,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         // vendor header is named; one already stored keeps its reading.
         $waf_post_proxies = trim((string) post_value('waf_trusted_proxies'));
 
+        // The peer the Secure Mode offer above listed goes in with the list.
+        if ($waf_secure_mode_entries) {
+            $waf_post_proxies = trim($waf_post_proxies . ',' . implode(',', $waf_secure_mode_entries), ',');
+        }
+
         if (function_exists('waf_proxy_list_on_save')) {
             $waf_post_proxies = waf_proxy_list_on_save($waf_post_proxies, (string) db_value("SELECT waf_trusted_proxies FROM config"));
         }
@@ -271,6 +322,14 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             block_unknown_bots = '" . escape(post_value('block_unknown_bots')) . "',
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
+
+    // The proxy the one-step offer under Secure Mode listed is on record: the
+    // category's own log line says only that the settings changed.
+    if ($waf_secure_mode_entries) {
+        log_activity(lang(array(
+            'string' => 'Secure Mode was turned on and the proxy at {var:1} was added to Trusted Proxies as {var:2}',
+            'vars'   => array(h($secure_mode_peer), h(implode(', ', $waf_secure_mode_entries))))), $_SESSION['sessionusername']);
+    }
 
 
     // ── IP allow / block lists ───────────────────────────────────────────

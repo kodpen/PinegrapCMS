@@ -136,6 +136,7 @@ function api_schema() {
 				array('name' => 'height',            'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
 				array('name' => 'hs_code',           'in' => 'body', 'type' => 'string', 'nullable' => true, 'max_length' => 16, 'description' => 'The Harmonized System code or a national tariff number declared on labels of parcels sent abroad: digits in groups split by single dots, such as 6109.10, up to 16 characters. null or an empty value means none, so the label service\'s shop default is used.'),
 				array('name' => 'origin_country',    'in' => 'body', 'type' => 'string', 'nullable' => true, 'max_length' => 2, 'description' => 'The ISO 3166-1 alpha-2 code of the country the goods were made in, any country rather than only those the shop ships to. null or an empty value means none, so the label service\'s shop default is used.'),
+				array('name' => 'preorder_date',     'in' => 'body', 'type' => 'string', 'nullable' => true, 'description' => 'The day the stock is expected and a pre-order ships from, YYYY-MM-DD and after today: the product is sold on pre-order until then, with the back order turned on. null or an empty value ends the pre-order; the back order stays as it is.'),
 				array('name' => 'notes',             'in' => 'body', 'type' => 'string', 'max_length' => 2000),
 				array('name' => 'details',           'in' => 'body', 'type' => 'string', 'max_length' => 20000, 'description' => 'The long detail text the product page shows under the description.'),
 				array('name' => 'google_product_category', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The Google product category, for a marketplace or shopping feed that asks for one.'),
@@ -184,6 +185,7 @@ function api_schema() {
 				array('name' => 'height',            'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999999.9999),
 				array('name' => 'hs_code',           'in' => 'body', 'type' => 'string', 'nullable' => true, 'max_length' => 16, 'description' => 'The Harmonized System code or a national tariff number declared on labels of parcels sent abroad: digits in groups split by single dots, such as 6109.10, up to 16 characters. null or an empty value means none, so the label service\'s shop default is used.'),
 				array('name' => 'origin_country',    'in' => 'body', 'type' => 'string', 'nullable' => true, 'max_length' => 2, 'description' => 'The ISO 3166-1 alpha-2 code of the country the goods were made in, any country rather than only those the shop ships to. null or an empty value means none, so the label service\'s shop default is used.'),
+				array('name' => 'preorder_date',     'in' => 'body', 'type' => 'string', 'nullable' => true, 'description' => 'The day the stock is expected and a pre-order ships from, YYYY-MM-DD and after today: the product is sold on pre-order until then, with the back order turned on. null or an empty value ends the pre-order; the back order stays as it is.'),
 				array('name' => 'notes',             'in' => 'body', 'type' => 'string', 'max_length' => 2000),
 				array('name' => 'details',           'in' => 'body', 'type' => 'string', 'max_length' => 20000, 'description' => 'The long detail text the product page shows under the description.'),
 				array('name' => 'google_product_category', 'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The Google product category, for a marketplace or shopping feed that asks for one.'),
@@ -620,6 +622,28 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'orders.create',
+			'method'  => 'POST',
+			'path'    => '/orders',
+			'scope'   => 'orders:write',
+			'handler' => 'api_orders_create',
+			'dry_run' => true,
+			'status'  => 201,
+			'returns' => 'LocalSale',
+			'summary' => 'Record a counter sale',
+			'description' => 'A local sale, the order Add Local Order on the order screens completes, rung up by the application\'s owner: type local, no shipping address, the products at their catalogue price with their VAT. The lines are checked the way the till checks its cart - a product switched off, or more units of a product that tracks its stock than it has (lines of one product counted together), is refused with 422 naming the product, and nothing is written. Then the order is numbered, the stock goes down, order.created is announced and, with the ERP module on, the invoice is issued (walk-in sales to the walk-in account) and the money recorded in the till or bank account given, when the owner holds the ERP cash right. Once the order exists it stays complete: an invoice or payment that could not be recorded comes back in warnings, with the order. Send an Idempotency-Key: a retried call then answers the first sale instead of selling twice. A dry run makes every check and answers the line count, units, total and customer.',
+			'params'  => array(
+				array('name' => 'items',          'in' => 'body', 'type' => 'list', 'of' => array('product_id' => 'integer', 'quantity' => 'integer'), 'max_items' => 100, 'required' => true, 'description' => 'Objects of {product_id, quantity}: quantity a whole number from 1 to 9999. A product named twice is one line of both quantities.'),
+				array('name' => 'contact_id',     'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The customer (GET /customers). Left out with account_id, the sale is a walk-in sale.'),
+				array('name' => 'account_id',     'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'An ERP account to bill instead of a contact; only with the ERP module on.'),
+				array('name' => 'payment_method', 'in' => 'body', 'type' => 'enum', 'values' => array('cash', 'card', 'transfer', 'cheque', 'other', 'later', 'split'), 'description' => 'How the customer paid; later (the default) records no money. With the ERP module off it is not recorded anywhere.'),
+				array('name' => 'till_id',        'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The ERP till or bank account the payment goes to; without it the invoice stays open with a warning.'),
+				array('name' => 'received',       'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Cash handed over, in minor units: less than the total is refused. Not stored.'),
+				array('name' => 'payment_parts',  'in' => 'body', 'type' => 'list', 'of' => array('method' => 'string', 'till_id' => 'integer', 'amount' => 'integer'), 'max_items' => 2, 'description' => 'With split only: up to two {method (cash, card, transfer, cheque or other), till_id, amount in minor units}; what they leave stays owed on the account. Needs the ERP module and the owner\'s ERP cash right.')
+			)
+		),
+
+		array(
 			'id'      => 'orders.get',
 			'method'  => 'GET',
 			'path'    => '/orders/{id}',
@@ -757,6 +781,63 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Returns ------------------------------------------------------ */
+
+		array(
+			'id'      => 'returns.list',
+			'method'  => 'GET',
+			'path'    => '/returns',
+			'scope'   => 'orders:read',
+			'handler' => 'api_returns_list',
+			'returns' => array('list' => 'OrderReturn'),
+			'summary' => 'Return requests',
+			'description' => 'Every return request of every order, newest first, as the panel\'s Returns screen lists them, cursor paged. Each is the OrderReturn GET /orders/{id}/returns answers: the order lines it sends back, its status, when each status was reached, the refund and whether it came in time. status=open gives the ones still to be dealt with (requested, approved, shipped, received), the panel\'s default; one status gives that one. A site not yet updated to the version that keeps returns has an empty list.',
+			'params'  => array(
+				array('name' => 'status',   'in' => 'query', 'type' => 'enum', 'values' => array('open', 'requested', 'approved', 'rejected', 'shipped', 'received', 'refunded', 'closed')),
+				array('name' => 'order_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the returns of this order.'),
+				array('name' => 'limit',    'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',   'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'returns.get',
+			'method'  => 'GET',
+			'path'    => '/returns/{id}',
+			'scope'   => 'orders:read',
+			'handler' => 'api_returns_get',
+			'returns' => 'OrderReturn',
+			'summary' => 'One return request',
+			'description' => 'One return request with its lines, as GET /returns lists it.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'returns.update',
+			'method'  => 'POST',
+			'path'    => '/returns/{id}',
+			'scope'   => 'orders:write',
+			'handler' => 'api_returns_update',
+			'dry_run' => true,
+			'returns' => 'OrderReturn',
+			'summary' => 'Move a return request',
+			'description' => 'One move of the return\'s panel screen, made by the application\'s owner, with what the screen does after it. approve (from requested): the customer is mailed the carrier and code to send the goods with; without carrier and carrier_code the screen\'s suggestion is used (the delivery\'s carrier, else the site\'s default, else the latest approval\'s, and that carrier\'s latest code), a carrier sent without its code takes that carrier\'s latest code. reject (from requested): note is required, the customer is mailed it. ship (from approved): the goods are on their way back, with tracking_number; an empty carrier keeps the approval\'s. receive (from approved or shipped): the goods are back. close (from any status but rejected and closed): the case is settled outside these steps; a request closed before the goods were sent frees its lines to be asked for again. refund (from received): amount in minor units and method: driver gives the money back through the order\'s payment service (more than 0), manual records money given back another way (0 marks it refunded when the order screen already paid it back), with an optional reference; never more than is left to refund on the order; the customer is mailed for an amount over 0; the return invoice of an ERP order is issued on the panel. A field the action does not read is refused. Announced: order.return.approved, order.return.received, order.return.refunded. status_was, the status the caller last saw, refuses the move with 409 return_changed when the return has moved since. 409 return_not_movable: the action does not start from the return\'s status. 409 return_changed: another move came first. 409 return_in_progress: another return of the order is being saved; send the call again in a moment. 409 refund_driver_unavailable: the order\'s payment cannot be refunded through its service; refund it another way and record it with manual. 409 refund_refused: the payment service refused the refund, the return stays received; message has the service\'s words. A driver refund whose answer was unclear (no answer in time, an unreadable one) keeps the return refunded with refund.unclear true and answers 200: the money may have gone back, so check the payment service\'s own screen before anything else.',
+			'params'  => array(
+				array('name' => 'id',              'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'action',          'in' => 'body', 'type' => 'enum', 'values' => array('approve', 'reject', 'ship', 'receive', 'close', 'refund'), 'required' => true, 'description' => 'The move to make.'),
+				array('name' => 'status_was',      'in' => 'body', 'type' => 'enum', 'values' => array('requested', 'approved', 'rejected', 'shipped', 'received', 'refunded', 'closed'), 'description' => 'The status the caller last saw. When sent and the return has another one, nothing is done (409 return_changed).'),
+				array('name' => 'note',            'in' => 'body', 'type' => 'string', 'max_length' => 2000, 'description' => 'approve, reject: the words to the customer. Required with reject.'),
+				array('name' => 'carrier',         'in' => 'body', 'type' => 'string', 'max_length' => 32, 'nullable' => true, 'description' => 'approve, ship: the carrier the goods go back with, a carrier key the site knows, such as yurtici, or the carrier\'s name.'),
+				array('name' => 'carrier_code',    'in' => 'body', 'type' => 'string', 'max_length' => 64, 'nullable' => true, 'description' => 'approve: the code the customer gives the carrier.'),
+				array('name' => 'tracking_number', 'in' => 'body', 'type' => 'string', 'max_length' => 100, 'nullable' => true, 'description' => 'ship: the tracking number of the parcel sent back.'),
+				array('name' => 'amount',          'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'refund: required, minor units. 1999 is 19.99.'),
+				array('name' => 'method',          'in' => 'body', 'type' => 'enum', 'values' => array('driver', 'manual'), 'description' => 'refund: required. driver: through the order\'s payment service; manual: money given back another way, recorded.'),
+				array('name' => 'reference',       'in' => 'body', 'type' => 'string', 'max_length' => 255, 'nullable' => true, 'description' => 'refund with manual: a reference of the transfer. A driver refund keeps the service\'s own refund id.')
+			)
+		),
+
 		/* ----- Cart quotes -------------------------------------------------- */
 
 		array(
@@ -808,7 +889,7 @@ function api_schema() {
 			'summary' => 'Make a cart quote',
 			'description' => 'Makes a quote as the new cart quote screen does and answers it with link: the address to send the customer. The link is answered here only, never again: only its hash is kept, and a lost link is replaced with POST /cart-quotes/{id}/link. Opening the link shows the products and quantities, never whom the quote is for; the customer\'s button puts them into the cart at that day\'s prices. Each product must be in the catalogue, switched on and no donation (422 naming lines otherwise); its stock is weighed when the link is used. A retry answered from its Idempotency-Key record carries link null. Announced as cart_quote.created.',
 			'params'  => array(
-				array('name' => 'lines',       'in' => 'body', 'type' => 'list', 'of' => array('product_id' => 'integer', 'quantity' => 'integer'), 'max_items' => PG_CART_QUOTE_MAX_LINES, 'required' => true, 'description' => 'Objects of {product_id, quantity}, at most ' . PG_CART_QUOTE_MAX_LINES . ' products: quantity a whole number of at least 1. A product sent twice is one line with the quantities added up, at most ' . PG_CART_QUOTE_MAX_QUANTITY . '.'),
+				array('name' => 'lines',       'in' => 'body', 'type' => 'list', 'of' => array('product_id' => 'integer', 'quantity' => 'integer'), 'max_items' => PG_CART_QUOTE_MAX_LINES, 'required' => true, 'description' => 'Objects of {product_id, quantity}, at most ' . PG_CART_QUOTE_MAX_LINES . ' products: quantity a whole number from 1 to ' . PG_CART_QUOTE_MAX_QUANTITY . '. A product sent twice is one line with the quantities added up; a quantity or a sum past ' . PG_CART_QUOTE_MAX_QUANTITY . ' is refused, never cut down.'),
 				array('name' => 'contact_id',  'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The contact the quote is for (GET /customers). Left out, it is made for nobody named.'),
 				array('name' => 'valid_until', 'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'The last day the link works, through the end of that day in the site\'s time zone; not a day already over. Left out, 30 days from today; an empty string or null, no end.')
 			)
@@ -926,6 +1007,125 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'store.shipping_methods.create',
+			'method'  => 'POST',
+			'path'    => '/store/shipping-methods',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_shipping_methods_create',
+			'dry_run' => true,
+			'returns' => 'StoreShippingMethod',
+			'status'  => 201,
+			'summary' => 'Create a shipping method',
+			'description' => 'Creates a shipping method, as the shipping method screen does. Only name is required: a new method is enabled, offered every day for street addresses and PO boxes with no time window, handled and in transit on weekdays, and ships nowhere until zone_ids names a zone. Announces shipping_method.created.',
+			'params'  => array(
+				array('name' => 'name',            'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'What checkout shows, at most 50 characters.'),
+				array('name' => 'description',     'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'code',            'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The store\'s own code for the method.'),
+				array('name' => 'enabled',         'in' => 'body', 'type' => 'bool'),
+				array('name' => 'protected',       'in' => 'body', 'type' => 'bool', 'description' => 'Offered to the store\'s own staff only, never to a visitor.'),
+				array('name' => 'available_from',  'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'When checkout starts offering it; null for always. Read on the site\'s clock.'),
+				array('name' => 'available_until', 'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'When checkout stops offering it; null for always. Not before available_from.'),
+				array('name' => 'offered_on',      'in' => 'body', 'type' => 'list', 'of' => array('day' => 'string', 'until' => 'string'), 'max_items' => 7, 'description' => 'Objects of {day, until}: the weekdays (mon … sun) it is offered on, each until a cut-off time HH:MM or null for all day. Replaces the list.'),
+				array('name' => 'street_address',  'in' => 'body', 'type' => 'bool', 'description' => 'Offered for a street address.'),
+				array('name' => 'po_box',          'in' => 'body', 'type' => 'bool', 'description' => 'Offered for a PO box.'),
+				array('name' => 'base_rates',      'in' => 'body', 'type' => 'list', 'of' => array('from_subtotal' => 'integer', 'rate' => 'integer'), 'max_items' => 4, 'description' => 'Objects of {from_subtotal, rate} in minor units: one tier from_subtotal 0, and up to three more that apply from a higher recipient subtotal on. Replaces the tiers.'),
+				array('name' => 'primary_weight_rate',   'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units per unit of primary weight.'),
+				array('name' => 'secondary_weight_rate', 'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units per unit of secondary weight.'),
+				array('name' => 'item_rate',             'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units per item.'),
+				array('name' => 'first_item_excluded',   'in' => 'body', 'type' => 'object', 'description' => '{primary_weight, secondary_weight, item} booleans: the first item is not charged that rate. Keys left out keep their value.'),
+				array('name' => 'realtime_service',      'in' => 'body', 'type' => 'enum', 'values' => pg_shipping_method_services(), 'nullable' => true, 'description' => 'The carrier service whose live rate it can charge; null for none.'),
+				array('name' => 'realtime_rate',         'in' => 'body', 'type' => 'bool', 'description' => 'Charge the service\'s live rate. Kept off without a service, or with a FedEx service, as on the screen.'),
+				array('name' => 'handling_days',   'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 65535),
+				array('name' => 'handling_on',     'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 7, 'description' => 'Weekdays (mon … sun) orders are handled on. Replaces the list.'),
+				array('name' => 'transit_days',    'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 65535),
+				array('name' => 'transit_on',      'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 7, 'description' => 'Weekdays (mon … sun) parcels travel on. Replaces the list.'),
+				array('name' => 'transit_on_saturday', 'in' => 'body', 'type' => 'bool'),
+				array('name' => 'transit_on_sunday',   'in' => 'body', 'type' => 'bool'),
+				array('name' => 'adjust_transit_for_country', 'in' => 'body', 'type' => 'bool'),
+				array('name' => 'end_of_day',      'in' => 'body', 'type' => 'string', 'nullable' => true, 'max_length' => 5, 'description' => 'HH:MM: orders after it are handled the next day; null for none.'),
+				array('name' => 'carrier_title',   'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The carrier\'s legal name for e-waybills.'),
+				array('name' => 'carrier_tax_number', 'in' => 'body', 'type' => 'string', 'max_length' => 11, 'description' => 'The carrier\'s tax number, cleaned as the screen cleans it.'),
+				array('name' => 'zone_ids',        'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 500, 'description' => 'The shipping zones it ships to (GET /store/zones). Replaces the list; a method in no zone ships nowhere.'),
+				array('name' => 'excluded_transit_dates', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 1000, 'description' => 'YYYY-MM-DD days nothing is in transit. Replaces the list.'),
+			)
+		),
+
+		array(
+			'id'      => 'store.shipping_methods.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/store/shipping-methods/{id}',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_shipping_methods_update',
+			'dry_run' => true,
+			'returns' => 'StoreShippingMethod',
+			'summary' => 'Change a shipping method',
+			'description' => 'Only what is sent is changed; a sent list replaces the stored one. Announces shipping_method.updated. PATCH is accepted as well; on an IIS server send POST.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',            'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'What checkout shows, at most 50 characters.'),
+				array('name' => 'description',     'in' => 'body', 'type' => 'string', 'max_length' => 255),
+				array('name' => 'code',            'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The store\'s own code for the method.'),
+				array('name' => 'enabled',         'in' => 'body', 'type' => 'bool'),
+				array('name' => 'protected',       'in' => 'body', 'type' => 'bool', 'description' => 'Offered to the store\'s own staff only, never to a visitor.'),
+				array('name' => 'available_from',  'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'When checkout starts offering it; null for always. Read on the site\'s clock.'),
+				array('name' => 'available_until', 'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'When checkout stops offering it; null for always. Not before available_from.'),
+				array('name' => 'offered_on',      'in' => 'body', 'type' => 'list', 'of' => array('day' => 'string', 'until' => 'string'), 'max_items' => 7, 'description' => 'Objects of {day, until}: the weekdays (mon … sun) it is offered on, each until a cut-off time HH:MM or null for all day. Replaces the list.'),
+				array('name' => 'street_address',  'in' => 'body', 'type' => 'bool', 'description' => 'Offered for a street address.'),
+				array('name' => 'po_box',          'in' => 'body', 'type' => 'bool', 'description' => 'Offered for a PO box.'),
+				array('name' => 'base_rates',      'in' => 'body', 'type' => 'list', 'of' => array('from_subtotal' => 'integer', 'rate' => 'integer'), 'max_items' => 4, 'description' => 'Objects of {from_subtotal, rate} in minor units: one tier from_subtotal 0, and up to three more that apply from a higher recipient subtotal on. Replaces the tiers.'),
+				array('name' => 'primary_weight_rate',   'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units per unit of primary weight.'),
+				array('name' => 'secondary_weight_rate', 'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units per unit of secondary weight.'),
+				array('name' => 'item_rate',             'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units per item.'),
+				array('name' => 'first_item_excluded',   'in' => 'body', 'type' => 'object', 'description' => '{primary_weight, secondary_weight, item} booleans: the first item is not charged that rate. Keys left out keep their value.'),
+				array('name' => 'realtime_service',      'in' => 'body', 'type' => 'enum', 'values' => pg_shipping_method_services(), 'nullable' => true, 'description' => 'The carrier service whose live rate it can charge; null for none.'),
+				array('name' => 'realtime_rate',         'in' => 'body', 'type' => 'bool', 'description' => 'Charge the service\'s live rate. Kept off without a service, or with a FedEx service, as on the screen.'),
+				array('name' => 'handling_days',   'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 65535),
+				array('name' => 'handling_on',     'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 7, 'description' => 'Weekdays (mon … sun) orders are handled on. Replaces the list.'),
+				array('name' => 'transit_days',    'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 65535),
+				array('name' => 'transit_on',      'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 7, 'description' => 'Weekdays (mon … sun) parcels travel on. Replaces the list.'),
+				array('name' => 'transit_on_saturday', 'in' => 'body', 'type' => 'bool'),
+				array('name' => 'transit_on_sunday',   'in' => 'body', 'type' => 'bool'),
+				array('name' => 'adjust_transit_for_country', 'in' => 'body', 'type' => 'bool'),
+				array('name' => 'end_of_day',      'in' => 'body', 'type' => 'string', 'nullable' => true, 'max_length' => 5, 'description' => 'HH:MM: orders after it are handled the next day; null for none.'),
+				array('name' => 'carrier_title',   'in' => 'body', 'type' => 'string', 'max_length' => 255, 'description' => 'The carrier\'s legal name for e-waybills.'),
+				array('name' => 'carrier_tax_number', 'in' => 'body', 'type' => 'string', 'max_length' => 11, 'description' => 'The carrier\'s tax number, cleaned as the screen cleans it.'),
+				array('name' => 'zone_ids',        'in' => 'body', 'type' => 'list', 'of' => 'integer', 'max_items' => 500, 'description' => 'The shipping zones it ships to (GET /store/zones). Replaces the list; a method in no zone ships nowhere.'),
+				array('name' => 'excluded_transit_dates', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 1000, 'description' => 'YYYY-MM-DD days nothing is in transit. Replaces the list.'),
+			)
+		),
+
+		array(
+			'id'      => 'store.shipping_methods.delete',
+			'method'  => 'DELETE',
+			'path'    => '/store/shipping-methods/{id}',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_shipping_methods_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a shipping method',
+			'description' => 'Deletes the method outright, as the shipping method screen does, with its zones, excluded dates, cut-offs, ship date adjustments and the offer actions that named it. Orders keep the name they were shipped with. Cannot be undone. Announces shipping_method.deleted.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+			)
+		),
+
+		array(
+			'id'      => 'store.shipping_methods.delete_post',
+			'method'  => 'POST',
+			'path'    => '/store/shipping-methods/{id}/delete',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_shipping_methods_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a shipping method, addressed as a POST',
+			'description' => 'The same delete as DELETE /store/shipping-methods/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+			)
+		),
+
+		array(
 			'id'      => 'store.zones',
 			'method'  => 'GET',
 			'path'    => '/store/zones',
@@ -950,6 +1150,178 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'store.zones.get',
+			'method'  => 'GET',
+			'path'    => '/store/zones/{id}',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_zones_get',
+			'returns' => 'StoreZone',
+			'summary' => 'One shipping zone',
+			'description' => 'The shipping zone as the list gives it.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+			)
+		),
+
+		array(
+			'id'      => 'store.zones.create',
+			'method'  => 'POST',
+			'path'    => '/store/zones',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_zones_create',
+			'dry_run' => true,
+			'returns' => 'StoreZone',
+			'status'  => 201,
+			'summary' => 'Create a shipping zone',
+			'description' => 'Creates a shipping zone, as the zone screen does: a name, the rates it adds to what a shipping method charges for an address in it, and the countries and states it covers. A shipping method ships to it once its zone_ids name it (the shipping method screen). Announces zone.created.',
+			'params'  => array(
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'At most 50 characters.'),
+				array('name' => 'base_rate',             'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units added to the shipping method\'s base rate for an address in the zone.'),
+				array('name' => 'primary_weight_rate',   'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units added per unit of primary weight.'),
+				array('name' => 'secondary_weight_rate', 'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units added per unit of secondary weight.'),
+				array('name' => 'item_rate',             'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units added per item.'),
+				array('name' => 'country_codes', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 300, 'description' => 'ISO codes of the countries the zone covers, as GET /store/countries lists them. Replaces the list; [] covers none. An unknown code is refused with 422.'),
+				array('name' => 'states',        'in' => 'body', 'type' => 'list', 'of' => array('country_code' => 'string', 'code' => 'string'), 'max_items' => 1000, 'description' => 'Objects of {country_code, code} naming the states the zone covers, as GET /store/countries lists them. Replaces the list; [] covers none. An unknown state is refused with 422.'),
+			)
+		),
+
+		array(
+			'id'      => 'store.zones.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/store/zones/{id}',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_zones_update',
+			'dry_run' => true,
+			'returns' => 'StoreZone',
+			'summary' => 'Change a shipping zone',
+			'description' => 'Only what is sent is changed; a sent country_codes or states list replaces the stored one. Announces zone.updated. PATCH is accepted as well; on an IIS server send POST.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'At most 50 characters.'),
+				array('name' => 'base_rate',             'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units added to the shipping method\'s base rate for an address in the zone.'),
+				array('name' => 'primary_weight_rate',   'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units added per unit of primary weight.'),
+				array('name' => 'secondary_weight_rate', 'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units added per unit of secondary weight.'),
+				array('name' => 'item_rate',             'in' => 'body', 'type' => 'money', 'min' => 0, 'max' => 2147483647, 'description' => 'Minor units added per item.'),
+				array('name' => 'country_codes', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 300, 'description' => 'ISO codes of the countries the zone covers, as GET /store/countries lists them. Replaces the list; [] covers none. An unknown code is refused with 422.'),
+				array('name' => 'states',        'in' => 'body', 'type' => 'list', 'of' => array('country_code' => 'string', 'code' => 'string'), 'max_items' => 1000, 'description' => 'Objects of {country_code, code} naming the states the zone covers, as GET /store/countries lists them. Replaces the list; [] covers none. An unknown state is refused with 422.'),
+			)
+		),
+
+		array(
+			'id'      => 'store.zones.delete',
+			'method'  => 'DELETE',
+			'path'    => '/store/zones/{id}',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_zones_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a shipping zone',
+			'description' => 'Deletes the zone outright, as the zone screen does: it is taken off the shipping methods and products that named it, and a method or product left with no zone ships nowhere until it gets one. Cannot be undone. Announces zone.deleted.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+			)
+		),
+
+		array(
+			'id'      => 'store.zones.delete_post',
+			'method'  => 'POST',
+			'path'    => '/store/zones/{id}/delete',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_zones_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a shipping zone, addressed as a POST',
+			'description' => 'The same delete as DELETE /store/zones/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+			)
+		),
+
+		array(
+			'id'      => 'store.tax_zones.get',
+			'method'  => 'GET',
+			'path'    => '/store/tax-zones/{id}',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_tax_zones_get',
+			'returns' => 'StoreTaxZone',
+			'summary' => 'One tax zone',
+			'description' => 'The tax zone as the list gives it.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+			)
+		),
+
+		array(
+			'id'      => 'store.tax_zones.create',
+			'method'  => 'POST',
+			'path'    => '/store/tax-zones',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_tax_zones_create',
+			'dry_run' => true,
+			'returns' => 'StoreTaxZone',
+			'status'  => 201,
+			'summary' => 'Create a tax zone',
+			'description' => 'Creates a tax zone, as the tax zone screen does: a name, its rate and the countries and states it covers. Products and offers tax an address in it once they name the zone. Announces tax_zone.created.',
+			'params'  => array(
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'At most 50 characters.'),
+				array('name' => 'rate', 'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 100, 'description' => 'A percentage with up to three decimals: 18 is 18%. Required on create.'),
+				array('name' => 'country_codes', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 300, 'description' => 'ISO codes of the countries the zone covers, as GET /store/countries lists them. Replaces the list; [] covers none. An unknown code is refused with 422.'),
+				array('name' => 'states',        'in' => 'body', 'type' => 'list', 'of' => array('country_code' => 'string', 'code' => 'string'), 'max_items' => 1000, 'description' => 'Objects of {country_code, code} naming the states the zone covers, as GET /store/countries lists them. Replaces the list; [] covers none. An unknown state is refused with 422.'),
+			)
+		),
+
+		array(
+			'id'      => 'store.tax_zones.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/store/tax-zones/{id}',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_tax_zones_update',
+			'dry_run' => true,
+			'returns' => 'StoreTaxZone',
+			'summary' => 'Change a tax zone',
+			'description' => 'Only what is sent is changed; a sent country_codes or states list replaces the stored one. Announces tax_zone.updated. PATCH is accepted as well; on an IIS server send POST.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'At most 50 characters.'),
+				array('name' => 'rate', 'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 100, 'description' => 'A percentage with up to three decimals: 18 is 18%. Required on create.'),
+				array('name' => 'country_codes', 'in' => 'body', 'type' => 'list', 'of' => 'string', 'max_items' => 300, 'description' => 'ISO codes of the countries the zone covers, as GET /store/countries lists them. Replaces the list; [] covers none. An unknown code is refused with 422.'),
+				array('name' => 'states',        'in' => 'body', 'type' => 'list', 'of' => array('country_code' => 'string', 'code' => 'string'), 'max_items' => 1000, 'description' => 'Objects of {country_code, code} naming the states the zone covers, as GET /store/countries lists them. Replaces the list; [] covers none. An unknown state is refused with 422.'),
+			)
+		),
+
+		array(
+			'id'      => 'store.tax_zones.delete',
+			'method'  => 'DELETE',
+			'path'    => '/store/tax-zones/{id}',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_tax_zones_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a tax zone',
+			'description' => 'Deletes the tax zone outright with its countries and states, as the tax zone screen does; an address it covered is taxed by no zone. Cannot be undone. Announces tax_zone.deleted.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+			)
+		),
+
+		array(
+			'id'      => 'store.tax_zones.delete_post',
+			'method'  => 'POST',
+			'path'    => '/store/tax-zones/{id}/delete',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_tax_zones_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a tax zone, addressed as a POST',
+			'description' => 'The same delete as DELETE /store/tax-zones/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+			)
+		),
+
+		array(
 			'id'      => 'store.countries',
 			'method'  => 'GET',
 			'path'    => '/store/countries',
@@ -964,6 +1336,175 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'store.countries.get',
+			'method'  => 'GET',
+			'path'    => '/store/countries/{id}',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_countries_get',
+			'returns' => 'StoreCountry',
+			'summary' => 'One country and its states',
+			'description' => 'One country as GET /store/countries lists it.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'store.countries.create',
+			'method'  => 'POST',
+			'path'    => '/store/countries',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_countries_create',
+			'dry_run' => true,
+			'returns' => 'StoreCountry',
+			'status'  => 201,
+			'summary' => 'Create a country',
+			'description' => 'Adds a country an address can name, as the country screen does; it can then be put into shipping and tax zones. A blank name or code is 422; a code another country has is 409 code_taken.',
+			'params'  => array(
+				array('name' => 'name',                    'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'The name the address forms show.'),
+				array('name' => 'code',                    'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'The code orders and checkout match, usually the ISO 3166 code (TR, US). No other country may have it: 409 code_taken.'),
+				array('name' => 'zip_code_required',       'in' => 'body', 'type' => 'bool', 'description' => 'Whether an address in the country needs a postal code.'),
+				array('name' => 'transit_adjustment_days', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999999999, 'description' => 'Days added to the delivery estimate of a shipment to the country.'),
+				array('name' => 'default',                 'in' => 'body', 'type' => 'bool', 'description' => 'true makes it the country the address forms select first and takes the switch off every other country.')
+			)
+		),
+
+		array(
+			'id'      => 'store.countries.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/store/countries/{id}',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_countries_update',
+			'dry_run' => true,
+			'returns' => 'StoreCountry',
+			'summary' => 'Change a country',
+			'description' => 'Only the fields sent change. A new code another country has is 409 code_taken; keeping the stored code is never refused. PATCH is accepted as well; on an IIS server send POST.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',                    'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The name the address forms show.'),
+				array('name' => 'code',                    'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The code orders and checkout match, usually the ISO 3166 code (TR, US). No other country may have it: 409 code_taken.'),
+				array('name' => 'zip_code_required',       'in' => 'body', 'type' => 'bool', 'description' => 'Whether an address in the country needs a postal code.'),
+				array('name' => 'transit_adjustment_days', 'in' => 'body', 'type' => 'int', 'min' => 0, 'max' => 999999999, 'description' => 'Days added to the delivery estimate of a shipment to the country.'),
+				array('name' => 'default',                 'in' => 'body', 'type' => 'bool', 'description' => 'true makes it the country the address forms select first and takes the switch off every other country.')
+			)
+		),
+
+		array(
+			'id'      => 'store.countries.delete',
+			'method'  => 'DELETE',
+			'path'    => '/store/countries/{id}',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_countries_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a country',
+			'description' => 'Deletes the country outright with its states, as the country screen does: they leave every shipping and tax zone (a zone left with no country or state covers nothing), and the verified shipping addresses of its states are deleted. Orders keep the code they were written with. Cannot be undone.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'store.countries.delete_post',
+			'method'  => 'POST',
+			'path'    => '/store/countries/{id}/delete',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_countries_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a country, addressed as a POST',
+			'description' => 'The same delete as DELETE /store/countries/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'store.states.get',
+			'method'  => 'GET',
+			'path'    => '/store/states/{id}',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_states_get',
+			'returns' => 'StoreCountryState',
+			'summary' => 'One state',
+			'description' => 'One state with its country. country_code is null when the country is gone.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'store.states.create',
+			'method'  => 'POST',
+			'path'    => '/store/states',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_states_create',
+			'dry_run' => true,
+			'returns' => 'StoreCountryState',
+			'status'  => 201,
+			'summary' => 'Create a state',
+			'description' => 'Adds a state or province to a country, as the state screen does. A blank name or code, or no country, is 422; a code another state of the country has is 409 code_taken.',
+			'params'  => array(
+				array('name' => 'name',         'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'The name the address forms show.'),
+				array('name' => 'code',         'in' => 'body', 'type' => 'string', 'max_length' => 50, 'required' => true, 'description' => 'The code orders and checkout match. No other state of the same country may have it: 409 code_taken.'),
+				array('name' => 'country_id',   'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The country it belongs to (GET /store/countries). Required on create unless country_code is sent.'),
+				array('name' => 'country_code', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The country by its code, instead of country_id.')
+			)
+		),
+
+		array(
+			'id'      => 'store.states.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/store/states/{id}',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_states_update',
+			'dry_run' => true,
+			'returns' => 'StoreCountryState',
+			'summary' => 'Change a state',
+			'description' => 'Only the fields sent change; country_id or country_code moves it to another country. A new code (or country) whose code another state of that country has is 409 code_taken. PATCH is accepted as well; on an IIS server send POST.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',         'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The name the address forms show.'),
+				array('name' => 'code',         'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The code orders and checkout match. No other state of the same country may have it: 409 code_taken.'),
+				array('name' => 'country_id',   'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The country it belongs to (GET /store/countries). Required on create unless country_code is sent.'),
+				array('name' => 'country_code', 'in' => 'body', 'type' => 'string', 'max_length' => 50, 'description' => 'The country by its code, instead of country_id.')
+			)
+		),
+
+		array(
+			'id'      => 'store.states.delete',
+			'method'  => 'DELETE',
+			'path'    => '/store/states/{id}',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_states_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a state',
+			'description' => 'Deletes the state outright, as the state screen does: it leaves every shipping and tax zone and its verified shipping addresses are deleted. Cannot be undone.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'store.states.delete_post',
+			'method'  => 'POST',
+			'path'    => '/store/states/{id}/delete',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_states_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a state, addressed as a POST',
+			'description' => 'The same delete as DELETE /store/states/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+
+		array(
 			'id'      => 'store.currencies',
 			'method'  => 'GET',
 			'path'    => '/store/currencies',
@@ -973,6 +1514,104 @@ function api_schema() {
 			'summary' => 'Currencies',
 			'description' => 'The currencies a visitor can see prices in, the base currency first. exchange_rate is how much of the currency one unit of the base currency buys. Orders are always charged in the base currency. One page.',
 			'params'  => array()
+		),
+
+		array(
+			'id'      => 'store.currencies.get',
+			'method'  => 'GET',
+			'path'    => '/store/currencies/{id}',
+			'scope'   => 'orders:read',
+			'handler' => 'api_store_currencies_get',
+			'returns' => 'StoreCurrency',
+			'summary' => 'One currency',
+			'description' => 'One currency as GET /store/currencies lists it.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'store.currencies.create',
+			'method'  => 'POST',
+			'path'    => '/store/currencies',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_currencies_create',
+			'dry_run' => true,
+			'returns' => 'StoreCurrency',
+			'status'  => 201,
+			'summary' => 'Create a currency',
+			'description' => 'Adds a currency visitors can see prices in, as the currency screen does. A blank name, a code that is not three letters or a rate of zero is 422; a code another currency has is 409 code_taken. Announces currency.created.',
+			'params'  => array(
+				array('name' => 'name',          'in' => 'body', 'type' => 'string', 'max_length' => 100, 'required' => true, 'description' => 'The name the currency picker shows.'),
+				array('name' => 'code',          'in' => 'body', 'type' => 'string', 'max_length' => 3, 'required' => true, 'description' => 'The three-letter ISO 4217 code (USD, EUR), taken in capitals; the rate refresh matches currencies by it. Anything else is 422; a code another currency has is 409 code_taken.'),
+				array('name' => 'symbol',        'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'The symbol prices are shown with, as plain text (€, ₺). At most 10 characters once stored; < > & and quotes count as their escaped form.'),
+				array('name' => 'exchange_rate', 'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999.99999, 'description' => 'How much of the currency one unit of the base currency buys, kept to five decimals. Above zero for a currency that is not the base; ignored for the base, which is 1.'),
+				array('name' => 'base',          'in' => 'body', 'type' => 'bool', 'description' => 'true makes it the base currency prices are kept in and orders are charged in, and takes the switch off the previous base. The base cannot be switched off: make another currency the base instead (422).')
+			)
+		),
+
+		array(
+			'id'      => 'store.currencies.rates',
+			'method'  => 'POST',
+			'path'    => '/store/currencies/rates',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_currencies_rates',
+			'dry_run' => true,
+			'returns' => array('requested' => 'string[]', 'updated' => 'integer', 'failed' => 'string[]', 'reached' => 'boolean'),
+			'summary' => 'Refresh the exchange rates',
+			'description' => 'Does what the Update Exchange Rates button and the scheduled job do: asks the exchange rate services for every currency but the base (and the accounting module\'s document currencies) and writes the rates they give. requested lists the codes asked for, failed those no service answered (their rates stay as they were), reached is false when no service could be reached. Each currency whose rate moved announces currency.updated.',
+			'params'  => array()
+		),
+
+		array(
+			'id'      => 'store.currencies.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/store/currencies/{id}',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_currencies_update',
+			'dry_run' => true,
+			'returns' => 'StoreCurrency',
+			'summary' => 'Change a currency',
+			'description' => 'Only the fields sent change. A new code another currency has is 409 code_taken; keeping the stored code is never refused. Announces currency.updated. PATCH is accepted as well; on an IIS server send POST.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'name',          'in' => 'body', 'type' => 'string', 'max_length' => 100, 'description' => 'The name the currency picker shows.'),
+				array('name' => 'code',          'in' => 'body', 'type' => 'string', 'max_length' => 3, 'description' => 'The three-letter ISO 4217 code (USD, EUR), taken in capitals; the rate refresh matches currencies by it. Anything else is 422; a code another currency has is 409 code_taken.'),
+				array('name' => 'symbol',        'in' => 'body', 'type' => 'string', 'max_length' => 10, 'description' => 'The symbol prices are shown with, as plain text (€, ₺). At most 10 characters once stored; < > & and quotes count as their escaped form.'),
+				array('name' => 'exchange_rate', 'in' => 'body', 'type' => 'decimal', 'min' => 0, 'max' => 99999.99999, 'description' => 'How much of the currency one unit of the base currency buys, kept to five decimals. Above zero for a currency that is not the base; ignored for the base, which is 1.'),
+				array('name' => 'base',          'in' => 'body', 'type' => 'bool', 'description' => 'true makes it the base currency prices are kept in and orders are charged in, and takes the switch off the previous base. The base cannot be switched off: make another currency the base instead (422).')
+			)
+		),
+
+		array(
+			'id'      => 'store.currencies.delete',
+			'method'  => 'DELETE',
+			'path'    => '/store/currencies/{id}',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_currencies_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a currency',
+			'description' => 'Deletes the currency outright, as the currency screen does; orders keep the code they were written with. The base currency is refused with 409 base_currency: make another currency the base first. Announces currency.deleted. Cannot be undone.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'store.currencies.delete_post',
+			'method'  => 'POST',
+			'path'    => '/store/currencies/{id}/delete',
+			'scope'   => 'store:write',
+			'handler' => 'api_store_currencies_delete',
+			'dry_run' => true,
+			'returns' => array('id' => 'integer', 'deleted' => 'boolean'),
+			'summary' => 'Delete a currency, addressed as a POST',
+			'description' => 'The same delete as DELETE /store/currencies/{id}, for clients that cannot send DELETE.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
 		),
 
 		array(
@@ -1407,6 +2046,39 @@ function api_schema() {
 		),
 
 		array(
+			'id'      => 'commissions.recurring_profiles.list',
+			'method'  => 'GET',
+			'path'    => '/commissions/recurring-profiles',
+			'scope'   => 'commissions:read',
+			'handler' => 'api_commission_recurring_profiles_list',
+			'returns' => array('list' => 'CommissionRecurringProfile'),
+			'summary' => 'Recurring commission profiles',
+			'description' => 'The profiles a recurring commission is written from: one is made at checkout for a recurring product bought with an affiliate\'s code, and while it is enabled the daily check writes one commission per period (monthly or yearly) from its start date, commission_limit times in all (null: without limit). Money is in minor units. enabled is switched on the profiles screen; disabled_by_cancel marks one the order\'s cancellation switched off. Cursor paged and ordered by when each profile last changed, so updated_since picks up the ones switched since the last sync. affiliate_contact_id is the affiliate\'s record under GET /customers/{id}. Read only: the profile is made by the checkout and switched on its own screen.',
+			'params'  => array(
+				array('name' => 'affiliate_code', 'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Only the profiles of this affiliate.'),
+				array('name' => 'enabled',        'in' => 'query', 'type' => 'bool', 'description' => 'Only the profiles that still write commissions, or only the switched-off ones.'),
+				array('name' => 'order_id',       'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the profiles made for this order.'),
+				array('name' => 'updated_since',  'in' => 'query', 'type' => 'datetime', 'description' => 'Only profiles written or changed at or after this moment.'),
+				array('name' => 'limit',          'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',         'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'commissions.recurring_profiles.get',
+			'method'  => 'GET',
+			'path'    => '/commissions/recurring-profiles/{id}',
+			'scope'   => 'commissions:read',
+			'handler' => 'api_commission_recurring_profiles_get',
+			'returns' => 'CommissionRecurringProfile',
+			'summary' => 'One recurring commission profile',
+			'description' => 'The same fields as the list, for one profile.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
 			'id'      => 'commissions.get',
 			'method'  => 'GET',
 			'path'    => '/commissions/{id}',
@@ -1415,6 +2087,40 @@ function api_schema() {
 			'returns' => 'Commission',
 			'summary' => 'One affiliate commission',
 			'description' => 'The same fields as the list, for one commission.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'commissions.update',
+			'method'  => 'POST',
+			'also_accepts' => array('PATCH'),
+			'path'    => '/commissions/{id}',
+			'scope'   => 'commissions:write',
+			'handler' => 'api_commissions_update',
+			'dry_run' => true,
+			'returns' => 'Commission',
+			'summary' => 'Set a commission\'s status',
+			'description' => 'The move the commissions screen makes: pending, payable, ineligible or paid, nothing else changes. Paying the affiliate happens outside the site; set paid once it has. The mark an order\'s cancellation left on the commission is cleared, so restoring the order no longer gives the status back. A status that moved is announced as commission.status_changed; the same status again writes who and when and announces nothing. PATCH is accepted as well; on an IIS server send POST.',
+			'params'  => array(
+				array('name' => 'id',     'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'status', 'in' => 'body', 'type' => 'enum', 'values' => array('pending', 'payable', 'ineligible', 'paid'), 'required' => true, 'description' => 'The status to set.')
+			)
+		),
+
+		/* ----- Affiliates --------------------------------------------------- */
+
+		array(
+			'id'      => 'affiliates.approve',
+			'method'  => 'POST',
+			'path'    => '/affiliates/{id}/approve',
+			'scope'   => 'customers:write',
+			'handler' => 'api_affiliates_approve',
+			'dry_run' => true,
+			'returns' => 'Affiliate',
+			'summary' => 'Approve a contact as an affiliate',
+			'description' => 'What the approval link in the affiliate sign-up e-mail does: the contact (id as under GET /customers/{id}) is marked approved, its affiliate code is kept or made, it gets a key code for the affiliate group offer when the site has one, the welcome e-mail is sent and affiliate.approved is announced. The customers row rule applies: an application whose owner has the user role reaches only the customers of the contact groups given to that account, 404 for the rest. 409 affiliate_already_approved for an approved affiliate (the link would approve it again and send the welcome once more; this does not), 409 affiliate_program_off while the affiliate program is switched off, 422 for a contact without an e-mail address. The commission rate, the name and the code stay the contact screen\'s to write.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
@@ -1873,6 +2579,76 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Subscriptions ------------------------------------------------ */
+
+		array(
+			'id'      => 'subscriptions.list',
+			'method'  => 'GET',
+			'path'    => '/subscriptions',
+			'scope'   => 'customers:read',
+			'handler' => 'api_subscriptions_list',
+			'returns' => array('list' => 'Subscription'),
+			'summary' => 'Subscriptions',
+			'description' => 'Every subscription the store charges from a stored card, as the subscriptions screen lists them, with the same fields as GET /customers/{id}/subscriptions and the customer on each: customer_id is the account\'s contact record (null for an account that is no contact), the name and e-mail those of the first order. Cursor paged and ordered by when each subscription last changed (a status move, a renewal, a card change), so updated_since picks up the ones that moved since the last sync. The customers row rule applies: an application whose owner has the user role reaches only the subscriptions of the customers in the contact groups given to that account. Subscriptions of the older card gateways\' recurring profiles are not listed; a site without subscriptions answers an empty list. The moves are POST /customers/{id}/subscriptions/{subscription_id}/pause, /resume and /cancel.',
+			'params'  => array(
+				array('name' => 'status',        'in' => 'query', 'type' => 'enum', 'values' => array('active', 'past_due', 'paused', 'cancelled', 'ended')),
+				array('name' => 'customer_id',   'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the subscriptions of this customer record.'),
+				array('name' => 'product_id',    'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the subscriptions of this product.'),
+				array('name' => 'order_id',      'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the subscriptions started by this order.'),
+				array('name' => 'updated_since', 'in' => 'query', 'type' => 'datetime', 'description' => 'Only subscriptions made or changed at or after this moment.'),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'subscriptions.get',
+			'method'  => 'GET',
+			'path'    => '/subscriptions/{id}',
+			'scope'   => 'customers:read',
+			'handler' => 'api_subscriptions_get',
+			'returns' => 'Subscription',
+			'summary' => 'One subscription',
+			'description' => 'The same fields as the list, for one subscription; 404 for one outside the customers row rule.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		/* ----- Users ------------------------------------------------------- */
+
+		array(
+			'id'      => 'users.list',
+			'method'  => 'GET',
+			'path'    => '/users',
+			'scope'   => 'users:read',
+			'handler' => 'api_users_list',
+			'returns' => array('list' => 'User'),
+			'summary' => 'Panel users',
+			'description' => 'The accounts of the panel as the users screen lists them, for an HR, single sign-on or audit system: role (administrator, designer, manager, user), the rights stored on the account, the contact record it is linked to (customer_id, as under GET /customers/{id}), when it was last online, whether it signs in with a second factor (two_step: an authenticator app, passkeys, and whether its role is required to have one) and whether it is linked to a Google account. Roles 0 to 2 hold the module rights by their role; the permissions are what is stored for the user role, which they decide. No password, password hint, token, PIN, key or second-factor secret is ever answered. An application whose owner is an administrator reaches every account; one whose owner is a designer only the managers and users, as on the users screen. Cursor paged by id; there is no updated_since, as a sign-in or a second-factor change does not move updated_at.',
+			'params'  => array(
+				array('name' => 'role',        'in' => 'query', 'type' => 'enum', 'values' => array('administrator', 'designer', 'manager', 'user')),
+				array('name' => 'email',       'in' => 'query', 'type' => 'string', 'max_length' => 100, 'description' => 'Only the account with this e-mail address.'),
+				array('name' => 'customer_id', 'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the account linked to this customer record.'),
+				array('name' => 'limit',       'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',      'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'users.get',
+			'method'  => 'GET',
+			'path'    => '/users/{id}',
+			'scope'   => 'users:read',
+			'handler' => 'api_users_get',
+			'returns' => 'User',
+			'summary' => 'One panel user',
+			'description' => 'The same fields as the list, for one account; 404 for one the owner does not reach (a designer\'s application asking for an administrator or another designer).',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Operations --------------------------------------------------- */
 
 		array(
@@ -1950,6 +2726,40 @@ function api_schema() {
 				array('name' => 'from',  'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
 				array('name' => 'to',    'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
 				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50)
+			)
+		),
+
+		array(
+			'id'      => 'reports.ai_visibility',
+			'method'  => 'GET',
+			'path'    => '/reports/ai-visibility',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_ai_visibility',
+			'returns' => 'AiVisibilityReport',
+			'summary' => 'AI assistants and AI search: fetches, pages and the visits they sent',
+			'description' => 'How AI assistants see the site, from the daily counter the firewall keeps. bots lists every AI user fetcher and AI search indexer the firewall knows (kind agent or search) with its fetches in the window and whether the firewall lets it in, plus unverified: requests that claimed one of those names from an address its operator does not publish, a count only. days gives the fetches per day and bot, days without fetches left out. top_pages are the pages each verified bot fetched most, at most limit per bot. unfetched_pages are the public pages the sitemap lists that no verified bot fetched in the window: total counts them all, pages lists the first fifty by name. robots_ai_rules and llms_txt say whether robots.txt carries the AI section and whether llms.txt is served. referrals are the visits whose referrer was an AI assistant (chatgpt.com, perplexity.ai, gemini.google.com, claude.ai and others) by assistant, with their page views, forms submitted, orders completed and the completed order total in minor units; days older than the visitor retention period come from the daily summary and summary_to names the last of them (null when none). Only requests the firewall let through are counted, and nothing while the firewall is off. Defaults to the last thirty days; a window is at most 400 days. 503 service_unavailable until the database update has created the counter.',
+			'params'  => array(
+				array('name' => 'from',  'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',    'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'limit', 'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 50, 'default' => 10, 'description' => 'Top pages per bot.')
+			)
+		),
+
+		array(
+			'id'      => 'reports.vitals',
+			'method'  => 'GET',
+			'path'    => '/reports/vitals',
+			'scope'   => 'visitors:read',
+			'handler' => 'api_reports_vitals',
+			'returns' => 'VitalsReport',
+			'summary' => 'Page speed measured in visitors\' browsers',
+			'description' => 'Largest Contentful Paint and Interaction to Next Paint in milliseconds and Cumulative Layout Shift times 1000, as visitors\' browsers measured them on the site\'s pages, from the hourly rollup: the site over the window, each day of it that has measurements, and the slowest pages. Each figure gives its samples, an estimated 75th percentile (from the good / needs-work / poor counts and the sum; the rating Google gives a page follows it), the mean, and the share of samples in each rating (good up to 2500 ms, 200 ms and 100; poor above 4000 ms, 500 ms and 250). views counts the measurements sent; INP has fewer samples when visitors did not interact. Nothing about a visitor is kept. Defaults to the last thirty days; a window is at most 400 days. 503 service_unavailable until the database update that adds the rollup has run.',
+			'params'  => array(
+				array('name' => 'from',   'in' => 'query', 'type' => 'datetime', 'description' => 'First day of the window. Defaults to twenty-nine days before to.'),
+				array('name' => 'to',     'in' => 'query', 'type' => 'datetime', 'description' => 'Last day of the window, counted whole. Defaults to today.'),
+				array('name' => 'device', 'in' => 'query', 'type' => 'enum', 'values' => array('desktop', 'mobile', 'tablet'), 'description' => 'One width class instead of all: mobile under 768 px, tablet under 1024 px.'),
+				array('name' => 'order',  'in' => 'query', 'type' => 'enum', 'values' => array('lcp', 'inp', 'cls', 'views'), 'default' => 'lcp', 'description' => 'How pages are ranked: the highest 75th percentile of that figure first, or the most measurements.'),
+				array('name' => 'limit',  'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 100, 'default' => 10, 'description' => 'How many pages.')
 			)
 		),
 
@@ -2450,7 +3260,7 @@ function api_schema() {
 			'handler' => 'api_comments_list',
 			'returns' => array('list' => 'Comment'),
 			'summary' => 'Comments',
-			'description' => 'What visitors wrote, newest first. status: published, pending (held for a person to publish) or scheduled (published at publish_at; cancel_if_newer drops it when a newer comment comes first). item_type and item_id say what a comment is about when it is not the page itself: a form record (submitted_form), a calendar event, a product group or a product. parent_id is the comment a reply answers: null for a comment that answers none, and for a reply whose comment was removed. verified: a product review written by a customer who bought the product (only such reviews count in a product\'s rating); store_reply and store_reply_at: the store\'s answer under it, null without one. Cursor paged.',
+			'description' => 'What visitors wrote, newest first. status: published, pending (held for a person to publish) or scheduled (published at publish_at; cancel_if_newer drops it when a newer comment comes first). item_type and item_id say what a comment is about when it is not the page itself: a form record (submitted_form), a calendar event, a product group or a product. parent_id is the comment a reply answers: null for a comment that answers none, and for a reply whose comment was removed. verified: a product review written by a customer who bought the product (only such reviews count in a product\'s rating); store_reply and store_reply_at: the store\'s answer under it, null without one. kind: comment, question (a visitor\'s question about a product) or answer (the store\'s answer to the question named in answer_of; null for any other kind). Cursor paged.',
 			'params'  => array(
 				array('name' => 'page_id',       'in' => 'query', 'type' => 'int', 'min' => 1),
 				array('name' => 'item_type',     'in' => 'query', 'type' => 'enum', 'values' => array('page', 'submitted_form', 'calendar_event', 'product_group', 'product'), 'description' => 'page: comments about the page itself.'),
@@ -2459,6 +3269,7 @@ function api_schema() {
 				array('name' => 'status',        'in' => 'query', 'type' => 'enum', 'values' => array('all', 'published', 'pending', 'scheduled'), 'default' => 'all'),
 				array('name' => 'featured',      'in' => 'query', 'type' => 'bool'),
 				array('name' => 'verified',      'in' => 'query', 'type' => 'bool', 'description' => 'true: reviews from verified purchases only; false: every other comment.'),
+				array('name' => 'kind',          'in' => 'query', 'type' => 'enum', 'values' => array('comment', 'question', 'answer'), 'description' => 'question: product questions; answer: the store\'s answers to them.'),
 				array('name' => 'q',             'in' => 'query', 'type' => 'string', 'max_length' => 190, 'description' => 'Matches the name or the message.'),
 				array('name' => 'created_since', 'in' => 'query', 'type' => 'datetime'),
 				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),

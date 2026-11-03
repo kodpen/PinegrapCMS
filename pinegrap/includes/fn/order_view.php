@@ -6,8 +6,9 @@
  * only when there is a value, the stored address type and country code as
  * the panel names them, the district only when it differs from the city,
  * the requested arrival date as the customer chose it
- * at the checkout, the text of the contact link, and the printed order's
- * shipping card (print_order.php).
+ * at the checkout, the text of the contact link, the printed order's
+ * shipping card (print_order.php), and the shipping input the screen and
+ * update_order() check (ship and delivery dates, shipped quantity).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -297,4 +298,120 @@ function pg_print_order_tracking_text(array $parcels)
     }
 
     return implode('<br />', $lines);
+}
+
+/**
+ * Whether the signed-in account owns the order, for the customer's order
+ * history endpoints and the view order screen. A visitor who is not signed in
+ * finds no account row (null), and a guest order belongs to account 0: a
+ * loose comparison takes "0" and null as equal, which handed every guest order
+ * to every visitor. Account 0 owns nothing.
+ *
+ * @param mixed $order_user_id the order's user_id column
+ * @param mixed $user_id       the signed-in account's id, null when none
+ * @return bool
+ */
+function pg_order_view_owner_matches($order_user_id, $user_id)
+{
+    if (!is_scalar($order_user_id) || !is_scalar($user_id)) {
+        return false;
+    }
+
+    $user_id = (int) $user_id;
+
+    return ($user_id > 0) && ((int) $order_user_id === $user_id);
+}
+
+/**
+ * The heading cell of the shipped quantity column on the customer's view
+ * order screen, the word in the visitor's language.
+ *
+ * @return string
+ */
+function pg_order_view_shipped_heading_cell()
+{
+    return '<th style="text-align: left">(' . h(lang('Shipped')) . ')</th>';
+}
+
+/**
+ * A ship or delivery date typed on the order screen, as the column stores it.
+ * Day, month and a four-digit year split by '.', '/', '-' or ',' (the dotted
+ * form is how a date is written in Turkey), in the site's order of day and
+ * month, or an ISO date. A two-digit year, a day that does not exist or any
+ * other text is refused rather than saved as year 0026 or 0000-00-00.
+ *
+ * @param mixed $text        the posted field
+ * @param bool  $month_first DATE_FORMAT is 'month_day'
+ * @return array ok => bool, date => 'Y-m-d', or '' for an empty field
+ */
+function pg_order_ship_date_parse($text, $month_first)
+{
+    $text = is_scalar($text) ? trim((string) $text) : '';
+
+    if ($text === '') {
+        return array('ok' => true, 'date' => '');
+    }
+
+    if (preg_match('/^(\d{4})-(\d{1,2})-(\d{1,2})$/', $text, $parts) === 1) {
+        $year = (int) $parts[1];
+        $month = (int) $parts[2];
+        $day = (int) $parts[3];
+    } elseif (preg_match('/^(\d{1,2})[.\/,-](\d{1,2})[.\/,-](\d{4})$/', $text, $parts) === 1) {
+        $year = (int) $parts[3];
+        $month = (int) ($month_first ? $parts[1] : $parts[2]);
+        $day = (int) ($month_first ? $parts[2] : $parts[1]);
+    } else {
+        return array('ok' => false, 'date' => '');
+    }
+
+    if (($year < 1000) || !checkdate($month, $day, $year)) {
+        return array('ok' => false, 'date' => '');
+    }
+
+    return array('ok' => true, 'date' => sprintf('%04d-%02d-%02d', $year, $month, $day));
+}
+
+/**
+ * Whether a delivery date does not come before the ship date. Either one
+ * empty (or the column's 0000-00-00) has nothing to compare.
+ *
+ * @param string $ship_date     Y-m-d
+ * @param string $delivery_date Y-m-d
+ * @return bool
+ */
+function pg_order_ship_dates_in_order($ship_date, $delivery_date)
+{
+    $ship_date = (string) $ship_date;
+    $delivery_date = (string) $delivery_date;
+
+    if (in_array($ship_date, array('', '0000-00-00'), true) || in_array($delivery_date, array('', '0000-00-00'), true)) {
+        return true;
+    }
+
+    return strcmp($delivery_date, $ship_date) >= 0;
+}
+
+/**
+ * A line's shipped quantity as update_order() writes it. An empty value
+ * hides the quantity (show 0); otherwise a whole number from 0 to the
+ * ordered quantity. A negative, decimal or larger value is refused: the
+ * unsigned column would turn -2 into 0 and 1.5 into 2 without a word.
+ *
+ * @param mixed $value   the posted value
+ * @param mixed $ordered order_items.quantity
+ * @return array ok => bool, show => 0|1, quantity => int
+ */
+function pg_order_shipped_quantity($value, $ordered)
+{
+    $value = is_scalar($value) ? trim((string) $value) : '';
+
+    if ($value === '') {
+        return array('ok' => true, 'show' => 0, 'quantity' => 0);
+    }
+
+    if ((preg_match('/^\d{1,9}$/', $value) !== 1) || ((int) $value > max(0, (int) $ordered))) {
+        return array('ok' => false, 'show' => 0, 'quantity' => 0);
+    }
+
+    return array('ok' => true, 'show' => 1, 'quantity' => (int) $value);
 }

@@ -106,7 +106,7 @@ $booking_pages[] = array(
                         'notify_email' => '{{site_email}}'),
     'tree'     => $page(array(
         $widget('appointment_detail'),
-        $comments_section(lang('Messages')),
+        $comments_section(lang('Messages'), 'appointment_messages'),
     ), false),
 );
 
@@ -183,8 +183,11 @@ $booking_pages[] = array_merge($mail_settings, array(
     'tree'  => $mail_page(array($widget('email_appointment_client'))),
 ));
 // A new message or reply: sent to the client of a booking, the sender of a
-// conversation and the visitors watching a page. The System region carries
-// the comment and a "View or Reply" button.
+// conversation and the visitors watching a page. Its Comments widget draws
+// the comment in the card of mail.php, with its "View or Reply" button; the
+// System region after it keeps the fixed comment and its own button for an
+// e-mail the widget does not draw (a card edited so it lost its link to the
+// comment).
 $booking_pages[] = array_merge($mail_settings, array(
     'key'   => 'email_reply',
     'name'  => lang('email-new-reply'),
@@ -192,6 +195,7 @@ $booking_pages[] = array_merge($mail_settings, array(
     'tree'  => $mail_page(array(
         $mail_heading(lang('There is a new message')),
         $mail_para(lang('Something new was written on a page you follow: your booking, a conversation or a post. You can read it below and answer it on the page.')),
+        $widget('email_comment'),
         array('type' => 'region', 'props' => array('regionType' => 'system', 'regionName' => ''), 'children' => array()),
     )),
 ));
@@ -213,11 +217,11 @@ $appointment_row = function ($staff = false) use ($el, $span, $icon, $bind) {
             $span(' ', '', lang('Text')),
             $span(lang('Cooper'), '', lang('Last Name'), $bind('last_name')),
             $span(' · ', 'text-body-secondary', lang('Text')),
-            $span(lang('Cut & Blow-dry'), 'text-body-secondary fw-normal', lang('Service'), $bind('service')),
+            $span(lang('Cut & Blow-dry'), 'text-body-secondary fw-normal', lang('Treatment'), $bind('service')),
         ));
     } else {
         $details[] = $el('span', 'd-inline-flex align-items-center gap-1', lang('Messages'), array($icon('bi-chat-left-text'), $span('0', '', lang('Reply Count'), $bind('number_of_comments'))));
-        $title = $span(lang('Cut & Blow-dry'), 'fw-semibold', lang('Service'), $bind('service'));
+        $title = $span(lang('Cut & Blow-dry'), 'fw-semibold', lang('Treatment'), $bind('service'));
     }
     return $el('a', 'list-group-item list-group-item-action p-3', lang('Booking'), array(
         $el('div', 'd-flex flex-wrap align-items-center justify-content-between gap-2 mb-1', lang('Top Line'), array(
@@ -231,7 +235,7 @@ $appointment_row = function ($staff = false) use ($el, $span, $icon, $bind) {
 // The lines of a booking, for both e-mails.
 $mail_booking = function () use ($mail_box, $mail_line, $span, $bind) {
     return $mail_box(array(
-        $mail_line(lang('Service'), array($span(lang('Cut & Blow-dry'), '', lang('Service'), $bind('service')))),
+        $mail_line(lang('Treatment'), array($span(lang('Cut & Blow-dry'), '', lang('Treatment'), $bind('service')))),
         $mail_line(lang('Stylist'), array($span(lang('No preference'), '', lang('Stylist'), $bind('stylist')))),
         $mail_line(lang('Preferred Date'), array($span('2026-11-20', '', lang('Date'), $bind('preferred_date')))),
         $mail_line(lang('Preferred Time'), array($span(lang('Afternoon (15:00–18:00)'), '', lang('Time'), $bind('preferred_time')))),
@@ -260,8 +264,8 @@ $booking_widgets = array(
         'tree'   => $widget_root(array(
             $form_step(1, lang('What would you like?')),
             $row(array(
-                $col(array($field('sl-book-service', lang('Service'), $select('sl-book-service', 'service', lang('Choose a service…'), $service_titles))), '6'),
-                $col(array($field('sl-book-stylist', lang('Stylist'), $select('sl-book-stylist', 'stylist', '', $team_choices, true, lang('No preference')))), '6'),
+                $col(array($field('sl-book-service', lang('Treatment'), $select('sl-book-service', 'service', lang('Choose a service…'), $service_titles, true, '', array('url_param' => 'service')))), '6'),
+                $col(array($field('sl-book-stylist', lang('Stylist'), $select('sl-book-stylist', 'stylist', '', $team_choices, true, lang('No preference'), array('url_param' => 'stylist')))), '6'),
             ), '3'),
             $radios('sl-book-first', 'first_visit', lang('Have you been to us before?'), array(
                 array(lang('First time with us'), lang('First time with us')),
@@ -279,10 +283,10 @@ $booking_widgets = array(
                 $col(array($field('sl-book-email', lang('Email'), $input('sl-book-email', 'email', 'email', 'email', true, array('contact_field' => 'email_address')))), '6'),
                 $col(array($field('sl-book-phone', lang('Phone'), $input('sl-book-phone', 'tel', 'phone', 'tel', true, array('contact_field' => 'mobile_phone')))), '6'),
             ), '3'),
-            $field('sl-book-notes', lang('Anything we should know?'), $textarea('sl-book-notes', 'notes', 4, false), 'mb-3',
+            $field('sl-book-notes', lang('Anything we should know?'), $textarea('sl-book-notes', 'notes', 4, false, array('url_param' => 'notes')), 'mb-3',
                 lang('An allergy, the look you have in mind or a picture from the lookbook.')),
             $field('sl-book-status', lang('Status'), $select('sl-book-status', 'status', '', array(
-                lang('Requested'), lang('Confirmed'), lang('Completed'), lang('Cancelled'),
+                lang('Requested'), lang('Confirmed'), lang('Appointment completed'), lang('Appointment cancelled'),
             ), false, lang('Requested'), array('office_use_only' => true))),
             $agree('sl-book-consent', 'consent', lang('I agree that the salon keeps these details to arrange my visits, as its privacy notice explains.'), true),
             $captcha(),
@@ -374,6 +378,39 @@ $booking_widgets = array(
                     ), '', '8'),
                 ), '', 'center'),
             ), 'py-5'),
+        )),
+    ),
+
+    // The messages about a booking: the booking page's own Comments widget,
+    // which shows them only to whoever may read the booking above it. Oldest
+    // first, one after another, all on one page, never pinned. No Reply,
+    // Share or follow box: the booking has two sides, its client is e-mailed
+    // every answer and the salon every new message.
+    'appointment_messages' => array(
+        'page'   => 'appointment_view',
+        'slug'   => lang('comments'),
+        'config' => array(
+            'regionType' => 'comments',
+            'order'      => 'oldest',
+            'featured'   => 'none',
+            'layout'     => 'flat',
+            'max_depth'  => 1,
+            'per_page'   => 0,
+        ),
+        'tree'   => $comment_thread(array(
+            'title'     => lang('Messages'),
+            'empty'     => lang('No messages yet. Write to us here about your booking.'),
+            'heading'   => lang('Write to us'),
+            'label'     => lang('Your message'),
+            'sign_in'   => lang('Sign in to write to us.'),
+            'submit'    => lang('Send message'),
+            'watch_box' => '',
+            'follow'    => '',
+            'unfollow'  => '',
+            'close'     => lang('Stop new messages'),
+            'reopen'    => lang('Allow new messages'),
+            'reply'     => false,
+            'watch'     => false,
         )),
     ),
 
@@ -492,6 +529,23 @@ $booking_widgets = array(
                 ), $mail_style('margin:0')),
             ), array_merge($mail_style('border-top:1px solid #f3d9e4;padding-top:16px'), $show_when('has_new_account'))),
         )),
+    ),
+
+    // The comment of the reply e-mail, drawn for the comment the e-mail is
+    // about, flat and alone. The pages that name the e-mail keep their
+    // comment settings.
+    'email_comment' => array(
+        'page'   => 'email_reply',
+        'slug'   => lang('comments'),
+        'config' => array(
+            'regionType' => 'comments',
+            'order'      => 'oldest',
+            'featured'   => 'none',
+            'layout'     => 'flat',
+            'max_depth'  => 1,
+            'per_page'   => 0,
+        ),
+        'tree'   => $mail_comment_tree,
     ),
 );
 

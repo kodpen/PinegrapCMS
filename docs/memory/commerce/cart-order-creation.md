@@ -1,6 +1,6 @@
 ---
 name: cart-order-creation
-description: When the visitor's order row is created (first real cart write, never a page view), and why the designer cart and express order widgets create none on view.
+description: When the visitor's order row is created (first real cart write, never a page view), why the designer cart and express order widgets create none on view, and which page they record as the cart page.
 ---
 
 ## When is a visitor's order row created?
@@ -17,3 +17,8 @@ description: When the visitor's order row is created (first real cart write, nev
 - Rows already written stay; the fix deletes nothing.
 
 Test: `tests/cart_widget_no_order_test.php`. Related: docs/memory/commerce/order-reference-code-link.md, docs/memory/commerce/cart-express-order-warnings.md
+
+## Which page does a cart widget record as the visitor's cart page?
+- The shopping cart widget writes `$_SESSION['ecommerce']['shopping_cart_page_id']`, the express order widget `express_order_page_id`; each clears the other. `pg_sw_cart_url()` (the cart link) and `remove_item_from_cart.php` read them.
+- The id is `_pg_cart_widget_page_id()`: the page `$_GET['page']` names, else `pg_rendered_page()`. The home page at the site root has no name in the address.
+- Before #5140 the shopping cart widget had no fallback: a cart on the home page was never recorded, and the cart link kept leading to an express order page seen earlier. The express order widget already had it.

@@ -524,7 +524,7 @@ function pg_ai_write_facts($record, $record_id)
     }
 
     if ($record === 'page') {
-        $page = db_item("SELECT page.page_tree_code, folder.folder_name
+        $page = db_item("SELECT page.page_tree_code, page.page_style, page.page_folder, folder.folder_name
             FROM page
             LEFT JOIN folder ON page.page_folder = folder.folder_id
             WHERE page.page_id = '" . $record_id . "' LIMIT 1");
@@ -537,15 +537,20 @@ function pg_ai_write_facts($record, $record_id)
             $facts['folder'] = (string) $page['folder_name'];
         }
 
-        // A page of a visual design keeps its markup as one block; a classic
-        // page in its regions.
-        $html = (string) $page['page_tree_code'];
+        // A page of a visual design keeps its markup as one block, which may
+        // still print the page's regions; a classic page is its regions.
+        // The regions are read as the page draws them: from the collection
+        // of the page's style.
+        $tree = (string) $page['page_tree_code'];
+        $rows = array();
 
-        if (trim($html) === '') {
-            $html = implode("\n", (array) db_values("SELECT pregion_content FROM pregion
-                WHERE pregion_page = '" . $record_id . "' AND collection = 'a'
-                ORDER BY pregion_order ASC"));
+        if ((trim($tree) === '') || (stripos($tree, '<pregion></pregion>') !== false)) {
+            $rows = (array) db_values("SELECT pregion_content FROM pregion
+                WHERE pregion_page = '" . $record_id . "' AND collection = '" . e(pg_ai_write_page_collection($page)) . "'
+                ORDER BY pregion_order ASC");
         }
+
+        $html = pg_ai_write_page_html($tree, $rows);
 
         if (trim($html) !== '') {
             $facts = array_merge($facts, array_filter(pg_ai_write_html_digest($html), 'strlen'));
@@ -553,6 +558,51 @@ function pg_ai_write_facts($record, $record_id)
     }
 
     return $facts;
+}
+
+/**
+ * The collection of page regions a page draws: its style's, the page's own
+ * style or else its folder's; 'a' when no style is found.
+ *
+ * @param array $page page_style, page_folder
+ * @return string
+ */
+function pg_ai_write_page_collection($page)
+{
+    $style_id = (int) ($page['page_style'] ?? 0);
+
+    if (($style_id <= 0) && function_exists('get_style')) {
+        $style_id = (int) get_style((int) ($page['page_folder'] ?? 0));
+    }
+
+    $collection = ($style_id > 0) ? (string) db_value("SELECT collection FROM style WHERE style_id = '" . $style_id . "' LIMIT 1") : '';
+
+    return ($collection !== '') ? $collection : 'a';
+}
+
+/**
+ * A page's markup as the site draws it: a visual design's tree with each
+ * page region tag holding the next row, or, for a classic page (no tree),
+ * its rows one after the other. A tag without a row stays empty.
+ *
+ * @param string $tree page.page_tree_code
+ * @param array  $rows pregion_content in pregion_order
+ * @return string
+ */
+function pg_ai_write_page_html($tree, $rows)
+{
+    $tree = (string) $tree;
+    $rows = array_values(array_map('strval', (array) $rows));
+
+    if (trim($tree) === '') {
+        return implode("\n", $rows);
+    }
+
+    $index = 0;
+
+    return (string) preg_replace_callback('#<pregion></pregion>#i', function () use ($rows, &$index) {
+        return $rows[$index++] ?? '';
+    }, $tree);
 }
 
 /* ---------------------------------------------------------------------------

@@ -100,7 +100,9 @@ if (!$_POST) {
         $form_page_type,
         $form_layout_type,
         pg_page_form_redraw_type_properties(pg_page_form_new_page_properties(), $form_page_type, $posted),
-        $user);
+        $user,
+        0,
+        true);
     $output_wysiwyg_editor_code = $page_type_fields['wysiwyg'];
 
     echo
@@ -193,7 +195,7 @@ if (!$_POST) {
                                                 <div class="col-12 my-3" id="sitemap_row">
                                                     <div class="form-field">
                                                         <div class="switch"><input class="" type="checkbox" id="sitemap" name="sitemap" value="1"' . (($form_values['sitemap'] == 1) ? ' checked="checked"' : '') . '></div>
-                                                        <label class="" for="sitemap">' . lang('Include in Site Map?') . '</label>
+                                                        <label class="" for="sitemap">' . lang('Include in Site Map') . '</label>
                                                     </div>
                                                 </div>
                                                 ' . $output_noindex_rows . '
@@ -260,6 +262,9 @@ if (!$_POST) {
     if ($_POST['type'] == 'custom form') {
         pg_page_form_refuse($liveform_add_page, pg_page_type_custom_form_errors(0), $form_url);
     }
+
+    // A number box out of its range would be cut by its column without a word.
+    pg_page_form_refuse($liveform_add_page, pg_page_form_number_errors($_POST['type'], $_POST), $form_url);
 
     $sql_style_fields = "";
     $sql_style_values = "";

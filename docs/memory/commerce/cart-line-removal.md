@@ -21,3 +21,6 @@ description: How a line leaves the cart (quantity 0 on the designer or classic c
 - Classic cart: X (requires Y) set to 0 with Checkout pressed at once added Y with "X requires Y" and sent the shopper back to the cart.
 
 Related: docs/memory/commerce/cart-widget-rows-and-groups.md, docs/memory/commerce/offer-discounted-units.md
+
+## Which line does adding a product raise? (PR #6030)
+- Only the shopper's own line: `add_order_item()` finds it (`added_by_offer = '0'`) and updates its quantity or donation price by its id. Before, the UPDATEs matched by product and recipient, so an offer's gift line of the same product in the same recipient was raised too; the AJAX add (`add_to_cart.php`, no offer pass) showed the extra gift units in the mini-cart's count and total (`offer-gift-lines.md`).

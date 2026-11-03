@@ -52,7 +52,7 @@ $lesson_nav = function ($course_key, $current = '') use ($courses, $el, $heading
             $items[] = $el('a', 'list-group-item list-group-item-action d-flex align-items-center gap-2 small' . ($is_current ? ' active' : ''), $l['title'], array(
                 $icon($l['key'] === $first ? 'bi-unlock' : 'bi-play-circle'),
                 $span($l['title'], 'flex-grow-1', lang('Lesson Title')),
-                $span(sprintf(lang('%d min'), $l['minutes']), 'text-nowrap opacity-75', lang('Length')),
+                $span(sprintf(lang('%d min'), $l['minutes']), 'text-nowrap', lang('Length')),
             ), array_merge(array('href' => '{{page:lesson_' . $l['key'] . '}}'), $is_current ? array('_attrs' => array(array('name' => 'aria-current', 'value' => 'page'))) : array()));
         }
         $groups[] = $el('div', 'mb-3', $m['title'], array(

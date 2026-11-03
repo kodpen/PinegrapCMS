@@ -26,7 +26,7 @@ Table structures and SQL pitfalls.
 - comments-author-index.md: comments.idx_author (created_user_id, created_timestamp), 2026.11.0 step 11.0.36: why it exists, what reads it, how the step pauses, how it was checked
 - comments-table.md: The comments table: thread key, 2026.11.0 columns (reviews 11.0.14, parent_id 11.0.31), indexes and their readers, copy cost on MyISAM, code that copies or exports rows.
 - common-region-queries.md: Classic pages read <cregion> rows through pg_common_regions(): one query per nesting level per request, how a name finds its row (collation, lowest id), what the output must keep
-- config-table-no-varchar.md: Rule that the config table gets no new VARCHAR columns (TEXT only), the InnoDB row-size reasons, the test that enforces it, and config_text for new long texts.
+- config-table-no-varchar.md: The config table takes no new column since 11.0.145 (before that no VARCHAR, TEXT only): the InnoDB row-size reasons, the test that enforces it, config_text for new settings.
 - content-tables.md: Columns, joins and edit-screen URLs for page, pregion, cregion, dregion, forms/form_data, style, ads and comments; the form_data.id vs forms.id trap.
 - date-column-empty-comparison.md: Why DATE columns (ship_date, expiration_date, arrival_date) must be compared to '0000-00-00' and never to '', and what happens under strict mode and PHP 8.1.
 - db-helpers-and-error-contract.md: The db helpers (db, db_value, db_values, db_item, db_items, e, escape_like) and what a failed query does: helpers end the request, raw mysqli_query() and db_q() return false.
@@ -58,9 +58,12 @@ Table structures and SQL pitfalls.
 - db-q-placeholder-helper.md: db_q($sql, $params) and its binder pg_db_bind(): how each ? is filled, what is refused, why it returns false like mysqli_query() instead of ending the request, the new-code rule.
 - designer-page-queries.md: Queries per designer-built page (2026-11-01 sandbox measure, four design templates): what repeated, the request-scope reads that removed it (PR #4403), what is left, why no fragment cache yet
 - files-type-column-width.md: files.type is four characters wide, so long extensions are stored cut (webmanifest as webm); the file manager reads the kind from the name instead; which views still read the column
+- filter-on-form-data-rows.md: A filter on a submitted form's answers is an EXISTS condition, never a join: a check box group keeps one form_data row per ticked box.
+- innodb-conversion-marker.md: How pg_innodb_convert_table() remembers a MyISAM-to-InnoDB conversion that died, and why an aborted table survives the next table's conversion
 - menu-tree-queries.md: Classic menus (get_menu_content(), get_menu_sequence()) read a menu once per request through pg_menu_tree(): two queries, printing order, children counted across menus, what the output must keep
 - orders-table-write-traps.md: Three traps when INSERTing into orders (reference_code, payment_method ENUM, order_date), the next_order_number table lock and where it is taken, and the orders.type values and list filter.
 - slug-generation.md: Which function builds address/slug names for forms, products, files and pages, the two transliteration tables, the lowercase-order rule, and the files.name invariant.
 - sql-silent-wrong-results.md: SQL that runs without an error but reads or writes the wrong thing: an INT or DATE compared to '', SET order, SELECT * replaced by a column list, columns a migration adds, table-specific traps.
+- submitted-form-delete-thread.md: What deleting a submitted form removes besides forms/form_data (comments, attachments, notifications, watchers, counters), the shared helper and the three delete paths.
 - table-engines-and-row-size.md: Table engines since 2026.4.8 (InnoDB, MyISAM left over the limits), why a write over several tables validates first, InnoDB's 8126-byte row rule, pg_innodb_row_estimate(), maintenance code.
 - widget-pages-index.md: How pg_sw_widget_pages() finds the pages carrying a system widget type: one read of the page trees per request into a sharedId map instead of a LIKE scan per component (#4459)

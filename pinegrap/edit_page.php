@@ -248,7 +248,7 @@ if (!$_POST) {
                 $output_subnav_next_page = ' | ' . lang('Next Page') . ': ' . lang('None');
             // else output name
             } else {
-                $output_subnav_next_page = ' | ' . lang('Next Page') . ': <a href="' . OUTPUT_PATH . $next_page_name . '">' . $next_page_name . '</a>';
+                $output_subnav_next_page = ' | ' . lang('Next Page') . ': ' . pg_page_subnav_link($next_page_name);
             }
         } else if((isset($page_type_properties['add_button_next_page_id']) && (($page_type_properties['add_button_next_page_id'] ?? '') != 0))) {
             // Get the next page name and output the next page. 
@@ -258,7 +258,7 @@ if (!$_POST) {
                 $output_subnav_next_page = ' | ' . lang('Next Page') . ': ' . lang('None');
             // else output name
             } else {
-                $output_subnav_next_page = ' | ' . lang('Next Page') . ': <a href="' . OUTPUT_PATH . $next_page_name . '">' . $next_page_name . '</a>';
+                $output_subnav_next_page = ' | ' . lang('Next Page') . ': ' . pg_page_subnav_link($next_page_name);
             }
         } else {
             // If no next page set the variable to blank.
@@ -268,7 +268,7 @@ if (!$_POST) {
         if((isset($page_type_properties['skip_button_next_page_id']) && (($page_type_properties['skip_button_next_page_id'] ?? '') != 0))) {
             // Get the next page name and output the next page.
             $skip_page_name = get_page_name(($page_type_properties['skip_button_next_page_id'] ?? ''));
-            $output_subnav_skip_page = ' | ' . lang('Skip Page') . ': <a href="' . OUTPUT_PATH . $skip_page_name . '">' . $skip_page_name . '</a>';
+            $output_subnav_skip_page = ' | ' . lang('Skip Page') . ': ' . pg_page_subnav_link($skip_page_name);
         } else {
             // If no next page set the variable to blank.
             $output_subnav_skip_page = '';
@@ -515,7 +515,8 @@ if (!$_POST) {
             $form_layout_type,
             pg_page_form_redraw_type_properties($page_type_properties, $form_page_type, $posted),
             $user,
-            $page_id);
+            $page_id,
+            true);
 
         $output_page_type_selector = $page_type_fields['selector'];
         $output_page_type_properties = $page_type_fields['properties'];
@@ -715,9 +716,10 @@ if (!$_POST) {
 
 
 
-    if ($comments_label == '') {
-        $comments_label = 'Comment';
-    }
+    // An empty label is shown in the site's language (get_comment_label());
+    // the field stays empty, with that word as its placeholder, so a save
+    // does not store the English default.
+    $comments_label = pg_comment_label_stored($comments_label);
 
     // if allow new comments is on or if comments are disabled, then check the checkbox
     if (($comments_allow_new_comments == '1') || ($comments == '0')) {
@@ -828,6 +830,7 @@ if (!$_POST) {
             <div class="col-12">
                 ' . $liveform->output_errors() . '
                 ' . $liveform->output_notices() . '
+                ' . $liveform->get_warnings() . '
                 ' . $output_button_bar . '
                 <form name="form" action="edit_page.php" method="post">
                     ' . get_token_field() . '
@@ -887,10 +890,10 @@ if (!$_POST) {
                                     </div>
                                 </div>
                                 ' . $output_page_type_properties . '
-                                <div class="col-12 xl:col-6 mb-12">
-                                    <div class="card my-7 h-100">
+                                <div class="col-12">
+                                    <div class="card my-7">
                                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                            ' . lang('Search Engine Optimization') . '<span class="float-end">' . pg_seo_render_badge($seo_row) . '</span>
+                                            ' . lang('Search Engine Optimization') . '<span class="float-end" data-pg-seo-badge="page:' . (int) $page_id . '">' . pg_seo_render_badge($seo_row) . '</span>
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
@@ -920,8 +923,8 @@ if (!$_POST) {
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-12 xl:col-6 mb-12">
-                                    <div class="card my-7 h-100">
+                                <div class="col-12">
+                                    <div class="card my-7">
                                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                             ' . lang('Site Search') . '
                                         </div>
@@ -966,7 +969,7 @@ if (!$_POST) {
                                                             <div class="row">
                                                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                                                     <label for="comments_label" class="form-label">' . lang('Comment Label') . '</label>
-                                                                    <input value="' . h($comments_label) . '" type="text" name="comments_label" id="comments_label" class="form-control" maxlength="100"/>
+                                                                    <input value="' . h($comments_label) . '" type="text" name="comments_label" id="comments_label" class="form-control" maxlength="100" placeholder="' . h(lang('Comment')) . '"/>
                                                                 </div>
                                                                 <div class="col-12 md:col-6 lg:col-8 my-3">
                                                                     <label for="comments_message" class="form-label">' . lang('Add Comment Message') . '</label>
@@ -1226,6 +1229,10 @@ if (!$_POST) {
         $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         pg_audit_record('delete', 'page', $page_id, $audit_before);
+        // A page deleted from the bin leaves no restore record behind.
+        if (function_exists('pg_recycle_forget')) {
+            pg_recycle_forget('page', $page_id);
+        }
         
         // delete regions
         $query = "DELETE FROM pregion WHERE pregion_page = ?";
@@ -1489,6 +1496,12 @@ if (!$_POST) {
         // of them, and keeps the stored ones.
         if ($_POST['type'] == 'custom form') {
             pg_page_form_refuse($liveform, pg_page_type_custom_form_errors((int) $_POST['id'], $may_save_page_type), $form_url);
+        }
+
+        // A number box out of its range would be cut by its column without a
+        // word; read only when this save writes the type's fields.
+        if ($may_save_page_type) {
+            pg_page_form_refuse($liveform, pg_page_form_number_errors($_POST['type'], $_POST), $form_url);
         }
 
         // The comments moderator is one address, checked while comments are
@@ -1760,9 +1773,13 @@ if (!$_POST) {
         // A new name is a new address: a redirect of the page's own that held
         // the name goes, and the old name sends visitors here when a manager
         // left the box under the name on.
+        // What became of the old address is said on the next screen
+        // (pg_page_rename_notice()).
+        $renamed_said = array('notes' => array(), 'warnings' => array());
+
         if ((string) $name !== (string) $current_page_name) {
-            pg_short_link_page_renamed($page_id, $current_page_name, $name,
-                ($user['role'] < 3) && (($_POST['name_redirect'] ?? '') == 1), $user['id'], $current_page_folder);
+            $renamed_said = pg_short_link_page_renamed_messages(pg_short_link_page_renamed($page_id, $current_page_name, $name,
+                ($user['role'] < 3) && (($_POST['name_redirect'] ?? '') == 1), $user['id'], $current_page_folder), PATH);
         }
 
         // If this page is a custom form, and pretty URLs were disabled before this update,
@@ -1828,11 +1845,31 @@ if (!$_POST) {
         ));
 
         if ($form_type !== false) {
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $_POST['id'] . $form_type . '&send_to=' . urlencode($send_to));
-            
+            $location = URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $_POST['id'] . $form_type . '&send_to=' . urlencode($send_to);
+
         // else we don't need to forward the user to the form designer so forward the user to the page
         } else {
-            header('Location: ' . URL_SCHEME . HOSTNAME . pg_safe_redirect_path($send_to));
+            $location = URL_SCHEME . HOSTNAME . pg_safe_redirect_path($send_to);
         }
+
+        // A site page shows no panel notice, so a save with something to
+        // say about the old address comes back to this screen; its back
+        // arrow still leads where the save was going.
+        $rename_notice = pg_page_rename_notice($renamed_said, $location,
+            URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . (int) $_POST['id'] . '&send_to=' . urlencode($send_to));
+
+        if ($rename_notice['form'] !== '') {
+            $liveform_next = new liveform($rename_notice['form']);
+
+            foreach ($rename_notice['notes'] as $note) {
+                $liveform_next->add_notice($note);
+            }
+
+            foreach ($rename_notice['warnings'] as $warning) {
+                $liveform_next->add_warning($warning);
+            }
+        }
+
+        header('Location: ' . $rename_notice['location']);
     }
 }

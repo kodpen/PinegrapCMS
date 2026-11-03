@@ -489,7 +489,7 @@ $standard_widgets = array(
                             $el('div', 'alert alert-secondary d-flex flex-wrap align-items-center gap-2 small mt-5 mb-0', lang('Note'), array(
                                 $icon('bi-ticket-perforated'),
                                 $span(lang('Coming to the next event?'), '', lang('Text')),
-                                $link(lang('Register'), '{{page:registration}}', 'fw-semibold'),
+                                $link(lang('Register'), '{{page:registration}}', 'alert-link'),
                             )),
                         ), $show_when('record_found')),
                     ), '', '8'),

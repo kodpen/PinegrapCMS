@@ -4,8 +4,9 @@
  *
  * Design template "Beauty Salon", its e-mail builders: the frame every
  * e-mail page is drawn in, its header and footer (shared components), the
- * heading, paragraph, button, detail line, box and greeting. Included after
- * parts.php in the same scope.
+ * heading, paragraph, button, detail line, box and greeting, and the
+ * comment card of the reply e-mail. Included after parts.php in the same
+ * scope.
  *
  * E-mail programs drop linked stylesheets, so the few rules that shape an
  * e-mail are written on the elements next to the Bootstrap classes, and a
@@ -66,6 +67,44 @@ $mail_greeting = function () use ($el, $span, $bind, $mail_style) {
         $span(lang('Jane'), '', lang('First Name'), $bind('first_name')),
     ), $mail_style('margin:0 0 16px'));
 };
+
+// The comment an e-mail is about, in a box: who wrote it and when, its
+// stars, the comment it answers, its words and its file, then its View or
+// Reply button. The button is bound to the comment's own address, with no
+// flag over it: an e-mail whose card has no such link keeps the fixed
+// comment the System region carries. No form, no control; every colour
+// written for mail programs that drop the stylesheet, with its fallback
+// inside var().
+$mail_comment_tree = $widget_root(array(
+    $el('div', '', lang('Comment List'), array(
+        $loop(array(
+            $mail_box(array(
+                $el('p', 'mb-1', lang('Name Line'), array(
+                    $span(lang('Jane Cooper'), 'fw-semibold', lang('Name'), array_merge($bind('__comment_name'), $mail_style('font-weight:600;color:#3b1d2c'))),
+                    $span('·', '', lang('Separator'), array('_attrs' => array($attr('aria-hidden', 'true'), $attr('style', 'color:#6b5560;margin:0 6px')))),
+                    $span(lang('Date'), 'text-body-secondary', lang('Date'), array_merge($bind('__comment_date'), $mail_style('color:#6b5560'))),
+                ), $mail_style('margin:0 0 8px')),
+                $el('div', '', lang('Stars'), pg_sw_part_comment_stars(), array_merge(
+                    $show_when('comment_has_rating'), $mail_style('color:#b45309;margin:0 0 8px'))),
+                $el('blockquote', '', lang('Quote'), array(
+                    $el('p', 'small mb-1', lang('In reply to'), array(
+                        $span(lang('In reply to'), 'me-1', lang('Label'), $mail_style('margin-right:4px')),
+                        $span(lang('Jane Cooper'), 'fw-semibold', lang('Name'), $bind('__comment_parent_name')),
+                    ), $mail_style('font-size:13px;margin:0 0 4px')),
+                    $el('p', 'mb-0 pg-hide-if-empty', lang('Quoted text'), array(), array_merge(
+                        array('text' => lang('Quoted text'), '_bindings' => array('text' => '__comment_quote')), $mail_style('margin:0'))),
+                ), array_merge($show_when('comment_has_quote'),
+                    $mail_style('margin:0 0 12px;padding:0 0 0 12px;border-left:3px solid #f3d9e4;color:#6b5560'))),
+                $el('div', '', lang('Message'), array(), array('text' => lang('Comment text'), '_bindings' => array('text' => '__comment_message_html'))),
+                $el('p', 'small mt-2 mb-0', lang('Attachment'), array(
+                    $link('file.pdf', '#', '', array($attr('style', 'color:#be185d;color:var(--bs-link-color,#be185d)')),
+                        array('target' => '_blank', 'rel' => 'noopener', '_bindings' => array('href' => '__comment_file_url', 'text' => '__comment_file_name'))),
+                ), array_merge($show_when('comment_has_file'), $mail_style('font-size:13px;margin:8px 0 0'))),
+            ), lang('Comment')),
+            $mail_button(lang('View or Reply'), '#', array('_bindings' => array('href' => '__comment_url'))),
+        )),
+    )),
+));
 
 // The e-mail pages' settings: a private folder, out of the search and the
 // sitemap.

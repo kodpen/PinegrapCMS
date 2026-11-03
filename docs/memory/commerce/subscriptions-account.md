@@ -11,7 +11,7 @@ module: subscriptions_account
 ## Which actions, from which status?
 - `pg_subscription_customer_actions()`: active → pause, cancel, update_card; past_due → cancel, update_card (no pause: it would stop the 1/3/7 retries of an unpaid period); paused → resume, cancel, update_card; cancelled/ended → none. A move is offered only when `pg_subscription_transition_allowed()` allows it.
 - Each form posts to `subscription_action.php` (POST only, form token, signed in) with `id`, `action`, `send_to` (the page's path, `pg_safe_redirect_path()`). Notices go to the `my_account` liveform.
-- `pg_subscription_customer_action($user_id, $id, $action, $return_url, $io)`: the row read by id is refused as `not_found` unless its `user_id` is the customer (no hint the id exists); moves go through `pg_subscription_store_move()` (shared with the operator's screen, `subscriptions-operator-screen.md`) and `pg_subscription_set_status($id, $to, 'customer')`, which writes event `status_<to>` (and the cancel mail). A move lost to a concurrent one answers `refused`.
+- `pg_subscription_customer_action($user_id, $id, $action, $return_url, $io)`: the row read by id is refused as `not_found` unless its `user_id` is the customer (no hint the id exists); moves go through `pg_subscription_store_move()` (shared with the operator's screen, `subscriptions-operator-screen.md`) and `pg_subscription_set_status($id, $to, 'customer', <status read>)`, which writes event `status_<to>` (and the cancel mail). A move lost to a concurrent one answers `refused`: set_status refuses a row whose status is no longer the one the action was checked against, so a pause checked on an active row never lands on a row a failed renewal moved to past_due meanwhile (that would stop the retries; fixed in #5154).
 - update_card: the driver's `update_card()` with `return_url` = the page; only an https answer redirects (303), with event `card_update_opened`.
 
 ## How does cancel at period end work? (#3183: no proration)
@@ -22,4 +22,4 @@ module: subscriptions_account
 ## Tested?
 - `tests/subscriptions_account_test.php` (stand-in io: ownership, each allowed/refused move, events, shared card, card page, period end, section forms). Not run on a database or against a live service.
 
-Related: commerce/subscriptions.md, commerce/subscriptions-renewal.md, commerce/subscriptions-stripe.md, api/api-customer-subscriptions.md (the same moves over the API), plans/subscriptions-iyzico-stripe.md
+Related: commerce/subscriptions.md, commerce/subscriptions-renewal.md, commerce/subscriptions-stripe.md, api/api-customer-subscriptions.md (the same moves over the API), commerce/subscriptions-decisions.md

@@ -532,15 +532,24 @@ function pg_order_complete_from_payment($order_id, $status, array $paid = array(
     // The recipient that gave up the shipping's minor units at checkout
     // (pg_order_charges_reachable()) keeps the cost the order was charged,
     // as submit_order() writes it before its completion.
-    $result = db_q("SELECT SUM(shipping_cost) AS shipping FROM ship_tos WHERE order_id = ?", array((string) $order_id)) or output_error('Query failed.');
-    $row = mysqli_fetch_assoc($result);
-    $shipping_less = (int) ($row['shipping'] ?? 0) - (int) $order['shipping'];
+    // Rows and sum come from one statement, and the write is a compare-and-
+    // set on the value read: of two payment callbacks for the same order
+    // (both pass the incomplete check above, before pg_order_complete()'s
+    // lock), only one lowers the recipient.
+    $result = db_q("SELECT id, shipping_cost FROM ship_tos WHERE order_id = ?", array((string) $order_id)) or output_error('Query failed.');
+    $ship_to_rows = array();
 
-    if ($shipping_less > 0) {
+    while ($row = mysqli_fetch_assoc($result)) {
+        $ship_to_rows[] = $row;
+    }
+
+    $shipping_step = pg_order_shipping_less_step($ship_to_rows, (int) $order['shipping']);
+
+    if ($shipping_step !== null) {
         db_q(
-            "UPDATE ship_tos SET shipping_cost = shipping_cost - ?
-            WHERE order_id = ? AND shipping_cost >= ?
-            ORDER BY id DESC LIMIT 1", array((string) $shipping_less, (string) $order_id, (string) $shipping_less)) or output_error('Query failed.');
+            "UPDATE ship_tos SET shipping_cost = ?
+            WHERE id = ? AND order_id = ? AND shipping_cost = ?",
+            array((string) $shipping_step['to'], (string) $shipping_step['id'], (string) $order_id, (string) $shipping_step['from'])) or output_error('Query failed.');
     }
 
     $now = time();
@@ -581,6 +590,46 @@ function pg_order_complete_from_payment($order_id, $status, array $paid = array(
     pg_erp_auto_invoice($order_id, 'order_paid', true);
 
     return array('status' => 'completed', 'order_number' => $order_number);
+}
+
+/**
+ * The ship_tos row that gives up the shipping's minor units the order was not
+ * charged (pg_order_charges_reachable()): the newest recipient whose cost
+ * covers the difference between the rows' sum and the order's shipping, with
+ * its cost before and after, or null when the rows do not exceed the order.
+ * Pure.
+ *
+ * @param array $rows           id and shipping_cost of the order's ship_tos
+ * @param int   $order_shipping orders.shipping
+ * @return array|null id, from, to
+ */
+function pg_order_shipping_less_step(array $rows, $order_shipping)
+{
+    $sum = 0;
+
+    foreach ($rows as $row) {
+        $sum += (int) $row['shipping_cost'];
+    }
+
+    $less = $sum - (int) $order_shipping;
+
+    if ($less <= 0) {
+        return null;
+    }
+
+    $chosen = null;
+
+    foreach ($rows as $row) {
+        if (((int) $row['shipping_cost'] >= $less) && (($chosen === null) || ((int) $row['id'] > (int) $chosen['id']))) {
+            $chosen = $row;
+        }
+    }
+
+    if ($chosen === null) {
+        return null;
+    }
+
+    return array('id' => (int) $chosen['id'], 'from' => (int) $chosen['shipping_cost'], 'to' => (int) $chosen['shipping_cost'] - $less);
 }
 
 /**
@@ -1556,7 +1605,9 @@ function pg_order_extended_until($end, $days, $quantity, $today)
 {
     $from = ((string) $end <= (string) $today) ? $today : $end;
 
-    return date('Y-m-d', strtotime($from) + ($days * $quantity * 86400));
+    // Counted in calendar days: a day the clocks go back has 25 hours, so
+    // whole 86400-second days from midnight would end on the day before.
+    return date('Y-m-d', strtotime('+' . ((int) $days * (int) $quantity) . ' day', strtotime($from)));
 }
 
 /**
@@ -3568,8 +3619,28 @@ function pg_order_complete_gift_cards($order_id, $order_number, $required_amount
             $gift_card = mysqli_fetch_assoc($result) ?: array('id' => '');
 
             // Deleted, or its balance went down meanwhile (another order
-            // submitted at the same moment): the card is removed.
-            if (($gift_card['id'] == '') || ($gift_card['balance'] < $amount)) {
+            // submitted at the same moment): the card is removed. The read
+            // alone cannot see an order completing between it and the
+            // decrement, so the decrement only runs while the balance still
+            // covers the amount and a refused one is the same failure.
+            $redeemed = false;
+
+            if (($gift_card['id'] != '') && ($gift_card['balance'] >= $amount)) {
+                db_q(
+                    "UPDATE gift_cards
+                    SET
+                        balance = balance - ?,
+                        last_modified_user_id = ?,
+                        last_modified_timestamp = UNIX_TIMESTAMP()
+                    WHERE (id = ?) AND (balance >= ?)",
+                    array((int) round($amount), (string) $actor, (string) $gift_card['id'], (int) round($amount))) or output_error('Query failed.');
+
+                // Affected rows count changed rows only: a zero amount may
+                // change none and is still redeemed.
+                $redeemed = ($amount <= 0) || !(mysqli_affected_rows(db::$con) < 1);
+            }
+
+            if (!$redeemed) {
                 $gift_card_errors[] = array(
                     'gift_card_code' => $applied_gift_card['code'],
                     'amount' => $amount,
@@ -3580,15 +3651,6 @@ function pg_order_complete_gift_cards($order_id, $order_number, $required_amount
                 db_q("DELETE FROM applied_gift_cards WHERE id = ?", array((string) $applied_gift_card['id'])) or output_error('Query failed.');
 
             } else {
-                db_q(
-                    "UPDATE gift_cards
-                    SET
-                        balance = balance - ?,
-                        last_modified_user_id = ?,
-                        last_modified_timestamp = UNIX_TIMESTAMP()
-                    WHERE id = ?",
-                    array((int) round($amount), (string) $actor, (string) $gift_card['id'])) or output_error('Query failed.');
-
                 $result = db_q("SELECT balance FROM gift_cards WHERE id = ?", array((string) $gift_card['id'])) or output_error('Query failed.');
                 $row = mysqli_fetch_assoc($result);
                 $new_balance = isset($row['balance']) ? $row['balance'] : '';
@@ -3820,7 +3882,8 @@ function pg_order_commission(array $products, $affiliate_rate, $discount, $subto
 function pg_order_recurring_commission_start($period, $start_date, $now)
 {
     if ($start_date <= date('Y-m-d', $now)) {
-        return date('Y-m-d', $now + 86400 * (($period == 'Yearly') ? 365 : 30));
+        // Calendar days, so a clock change on the way moves no date.
+        return date('Y-m-d', strtotime('+' . (($period == 'Yearly') ? 365 : 30) . ' day', $now));
     }
 
     return date('Y-m-d', strtotime($start_date));

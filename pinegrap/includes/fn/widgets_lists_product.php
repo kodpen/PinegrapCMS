@@ -357,11 +357,15 @@ function pg_sw_list_crumb_rows_listing($groups, $root_url, $group_link_base)
 // catalog page when both are known, else words), then the product's
 // $product_name (null: none) as where the visitor is. On a group shown as
 // one product ($on_group) that group is where the visitor is and no
-// product follows.
-function pg_sw_list_crumb_rows_item($groups, $catalog_root_url, $on_group, $product_name)
+// product follows. $root_label (the widget's catalog_root_label, already
+// translated) replaces "Main Catalog" when it is not blank, so a catalog
+// page called Tickets is named as such.
+function pg_sw_list_crumb_rows_item($groups, $catalog_root_url, $on_group, $product_name, $root_label = '')
 {
     $catalog_root_url = (string)$catalog_root_url;
-    $out = array(pg_sw_list_crumb_row(lang('Main Catalog'), $catalog_root_url, $catalog_root_url !== '' ? 'link' : 'text'));
+    $root_label = trim((string)$root_label);
+    if ($root_label === '') $root_label = lang('Main Catalog');
+    $out = array(pg_sw_list_crumb_row($root_label, $catalog_root_url, $catalog_root_url !== '' ? 'link' : 'text'));
     $groups = array_values(is_array($groups) ? $groups : array());
     $last = count($groups) - 1;
     foreach ($groups as $i => $g) {

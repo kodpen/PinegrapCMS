@@ -943,7 +943,6 @@ if (!empty($_SERVER['HTTP_HOST'])) {
             (defined('REQUIRE_SECURE_MODE') === false)
             || (REQUIRE_SECURE_MODE !== false)
         )
-        && ($secure_mode !== 'false')
     ) {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             output_error(
@@ -952,13 +951,15 @@ if (!empty($_SERVER['HTTP_HOST'])) {
             );
 
             // Redirect loop guard. A proxy or CDN is telling us the visitor already
-            // arrived over HTTPS, but TRUST_PROXY_SSL_HEADERS is off so that claim was
-            // not honoured above. Redirecting to HTTPS would come straight back to this
-            // point over the proxy's plain HTTP leg and loop forever - the classic
-            // Cloudflare "Flexible" SSL lockout. Stop and explain instead.
+            // arrived over HTTPS, but the peer that said so is not trusted (not on
+            // Trusted Proxies, not a Cloudflare edge, no TRUST_PROXY_SSL_HEADERS),
+            // so that claim was not honoured above. Redirecting to HTTPS would come
+            // straight back to this point over the proxy's plain HTTP leg and loop
+            // forever - the classic Cloudflare "Flexible" SSL lockout. Stop and
+            // explain instead.
         } elseif (check_proxy_ssl_headers() === true) {
             output_error(
-                lang('Secure Mode is enabled and your connection appears to be secure, but this server cannot verify it because SSL is terminated by a proxy or CDN (for example Cloudflare Flexible SSL). Enable TRUST_PROXY_SSL_HEADERS in the config file, or turn off Secure Mode.'),
+                lang('Secure Mode is enabled and your connection appears to be secure, but this server cannot verify it, because SSL is terminated by a proxy or CDN (for example Cloudflare Flexible SSL) that is not listed under Trusted Proxies in the Firewall settings. List the proxy there, or turn off Secure Mode.'),
                 500
             );
         } else {
@@ -972,13 +973,16 @@ if (!empty($_SERVER['HTTP_HOST'])) {
             exit();
         }
 
-        // Otherwise if the request is secure, and the secure_mode query string value is set to false,
-        // then redirect visitor to non-secure URL.
+        // Otherwise, on a site without Secure Mode, a secure request asking for
+        // secure_mode=false is sent to the plain address. A Secure Mode site never
+        // sends a visitor to http (the parameter is ignored there), and the switch
+        // is temporary: a 301 would stay cached in the visitor's browser.
     } elseif (
-        ($secure_request === true)
+        (URL_SCHEME !== 'https://')
+        && ($secure_request === true)
         && ($secure_mode === 'false')
     ) {
-        header('Location: http://' . HOSTNAME_SETTING . (defined('PG_SECURE_MODE_REDIRECT_URL') ? PG_SECURE_MODE_REDIRECT_URL : REQUEST_URL), true, 301);
+        header('Location: http://' . HOSTNAME_SETTING . (defined('PG_SECURE_MODE_REDIRECT_URL') ? PG_SECURE_MODE_REDIRECT_URL : REQUEST_URL), true, 302);
         exit();
     }
 
@@ -1024,6 +1028,12 @@ if (!empty($_SERVER['HTTP_HOST'])) {
         // (includes/fn/page_cache.php).
         if (function_exists('pg_page_cache_watch_session')) {
             pg_page_cache_watch_session();
+        }
+
+        // A download answer tells the panel page that asked for it to stop
+        // its leaving bar (includes/fn/output.php, pg_preloader_markup()).
+        if (function_exists('pg_download_marker_watch')) {
+            pg_download_marker_watch();
         }
     }
 }

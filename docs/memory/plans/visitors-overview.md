@@ -1,6 +1,6 @@
 ---
 name: visitors-overview
-description: Plan (owner 2026-11-01): the Visitors section as one overview screen on the rollups and a daily summary written every day, Search Console joined to the pages; steps V1-V16 in the -steps files
+description: Plan (owner 2026-11-01): the Visitors section as one overview screen on the rollups and a daily summary written every day, Search Console joined to the pages; steps V1-V17 in the -steps files
 ---
 
 ## What is wrong now?
@@ -18,9 +18,9 @@ description: Plan (owner 2026-11-01): the Visitors section as one overview scree
 
 ## Which files hold the rest?
 - `visitors-overview-design.md`: files and ownership, the period, the section contract, menu, access. `visitors-overview-data.md`: which table answers what, the day split, the channel rule, the page join.
-- `visitors-overview-steps.md` (V1-V4), `-steps-2.md` (V5-V11), `-steps-3.md` (V12-V16). `visitors-overview-workers.md`: how two coordinators' workers take them.
+- `visitors-overview-steps.md` (V1-V4), `-steps-2.md` (V5-V11), `-steps-3.md` (V12-V17). `visitors-overview-workers.md`: how two coordinators' workers take them.
 
-## Which questions are decided? (owner 2026-11-01; `workflow/decisions-made-product-18.md`, the ENUM in `decisions-made-schema-8.md`)
+## Which questions are decided? (owner 2026-11-01; `workflow/decisions-made-product-22.md`, the ENUM in `decisions-made-schema-9.md`)
 1. One page with sections and deep links, not a screen per section.
 2. The daily summary runs every day, independent of the retention period; the summary switch stays, retention alone decides what is removed.
 3. The channel rule is completed and the search-engine list brought up to date; the ENUM is widened by appending.

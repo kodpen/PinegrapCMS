@@ -73,5 +73,8 @@ function test_report_request_values_shipping_report_filters()
 
 	$loop = substr($source, 0, (int) $store);
 	pg_assert_true(strpos($loop, "in_array(\$value, array('any', 'unshipped', 'shipped'), true)") !== false, 'view_shipping_report: status not checked');
-	pg_assert_true(strpos($loop, 'validate_date($value)') !== false, 'view_shipping_report: date not checked');
+	// The dates are never stored one at a time: pg_shipping_report_period()
+	// takes them as a pair (tests/shipping_report_period_test.php).
+	pg_assert_true(strpos($loop, "if ((\$key == 'start_date') || (\$key == 'end_date')) {\n            continue;") !== false, 'view_shipping_report: dates stored one at a time');
+	pg_assert_contains('pg_shipping_report_period(', $source, 'view_shipping_report: period not checked as a pair');
 }

@@ -1,0 +1,11 @@
+{
+  "addressComponents": [
+    {"longText": "12", "shortText": "12", "types": ["street_number"], "languageCode": "tr"},
+    {"longText": "Moda Caddesi", "shortText": "Moda Cd.", "types": ["route"], "languageCode": "tr"},
+    {"longText": "Caferağa", "shortText": "Caferağa", "types": ["administrative_area_level_4", "political"], "languageCode": "tr"},
+    {"longText": "Kadıköy", "shortText": "Kadıköy", "types": ["administrative_area_level_2", "political"], "languageCode": "tr"},
+    {"longText": "İstanbul", "shortText": "İstanbul", "types": ["administrative_area_level_1", "political"], "languageCode": "tr"},
+    {"longText": "Türkiye", "shortText": "TR", "types": ["country", "political"], "languageCode": "tr"},
+    {"longText": "34710", "shortText": "34710", "types": ["postal_code"], "languageCode": "tr"}
+  ]
+}

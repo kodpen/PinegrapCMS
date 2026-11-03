@@ -225,6 +225,20 @@ function test_seo_ai_crawlers_llms_content()
 		'nothing else to say');
 }
 
+// A backslash in a title is escaped too: left alone, a title ending in one
+// would escape the closing bracket and the link would never end.
+function test_seo_ai_crawlers_llms_title_backslash()
+{
+	$content = pg_llms_txt_content(
+		array('name' => 'Acme', 'description' => ''),
+		array(array('title' => 'Drive C:\\', 'url' => 'https://example.com/drive', 'description' => '')),
+		'',
+		'https://example.com/sitemap.xml',
+		'Pages');
+
+	pg_assert_true(strpos($content, "- [Drive C:\\\\](https://example.com/drive)\n") !== false, 'backslash doubled before the closing bracket');
+}
+
 // One line, at most the length asked, an ellipsis where it was cut.
 function test_seo_ai_crawlers_llms_line()
 {

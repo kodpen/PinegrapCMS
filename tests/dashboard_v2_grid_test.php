@@ -21,6 +21,12 @@ require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/run.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/page_grid.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/visitors.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/engagement.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/queue.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/shop.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/salesmap.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/orders.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/offers.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/fx.php');
 
 // Unknown ids, repeats and non-arrays are dropped; period and compare are
 // held to 0-2, and a card without a period takes 0.
@@ -48,7 +54,7 @@ function test_dashboard_v2_cards_asked_cleans_the_request()
 // answers denied without loading its file.
 function test_dashboard_v2_card_run_denies()
 {
-	pg_assert_same('denied', pg_dashboard_v2_card_run('goals', array('id' => 1, 'role' => 0), 0, 0)['status'], 'not built');
+	pg_assert_same('denied', pg_dashboard_v2_card_run('subs', array('id' => 1, 'role' => 0), 0, 0)['status'], 'not built');
 	pg_assert_same('denied', pg_dashboard_v2_card_run('engagement', array('id' => 1, 'role' => 3, 'manage_visitors' => 1), 0, 0)['status'], 'gate');
 	pg_assert_same('denied', pg_dashboard_v2_card_run('nope', array('id' => 1, 'role' => 0), 0, 0)['status'], 'unknown');
 }
@@ -62,6 +68,7 @@ function test_dashboard_v2_built_cards_have_functions()
 	foreach ($cards as $id => $card) {
 		if ($card['built']) {
 			pg_assert_true(is_file(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/' . $id . '.php'), $id . ' file');
+			require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/cards/' . $id . '.php');
 			pg_assert_true(function_exists('pg_dashboard_v2_card_' . $id), $id . ' function');
 		}
 	}

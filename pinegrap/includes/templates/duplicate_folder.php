@@ -25,18 +25,12 @@ if (!defined('PG_INIT_LOADED')) {
 				<div class="col-12 sm:col-12 text-center md:text-start">
 					<nav class="navigation" aria-label="breadcrumb">
 						<ol class="breadcrumb justify-content-center md:justify-content-start ">
-							<?php if(isset($_GET['send_to']) && ($_GET['send_to'] ?? '') != ''): ?>
-								<li class="breadcrumb-item"><a class="pg-link-secondary " href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/explorer.php"><?=lang('Explorer')?></a></li>
-								<li class="breadcrumb-item"><a class="pg-link-secondary " href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/edit_folder.php?id=<?=h($_GET['id'] ?? '')?>&send_to=<?=h($_GET['send_to'] ?? '')?>"><?=lang('Edit Folder')?></a></li>
-							<?php else:?>
-								<li class="breadcrumb-item"><a class="pg-link-secondary " href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/view_folders.php"><?=lang('All Folders')?></a></li>
-								<li class="breadcrumb-item"><a class="pg-link-secondary " href="<?=OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY?>/edit_folder.php?id=<?=h($_GET['id'] ?? '')?>"><?=lang('Edit Folder')?></a></li>
-							<?php endif;?>
+							<li class="breadcrumb-item"><a class="pg-link-secondary " href="<?=h($back_url)?>"><?=lang('File Manager')?></a></li>
 							<li class="breadcrumb-item active" aria-current="page"><?=lang('Duplicate Folder')?></li>
 						</ol>
 					</nav>
 					<h2 class="d-inline-block text-break header-content-for-add-page">[<?=h($folder['name'])?>]</h2>
-					<p class="form-text mt-0"><?=lang('Press Duplicate to duplicate this folder and pages directly inside of it.  Optionally, you may configure content that you want the system to find and replace in the new duplicated items.')?></p>
+					<p class="form-text mt-0"><?=lang('Duplicate creates a new folder with a copy of each page directly inside this one. Files and sub-folders are not copied; use Duplicate in the File Manager to copy the whole folder. With Find & Replace on, the words in each row are replaced in the new folder name and in the copied pages.')?></p>
 				</div>
 			</div>
 			<form method="post">
@@ -72,7 +66,6 @@ if (!defined('PG_INIT_LOADED')) {
 															</div>
 														</div>
 														<?php endfor ?>
-														<input type="hidden" name="find_replace">
 													</div>
 												</div>
 											</div>

@@ -184,7 +184,7 @@ function test_stock_notify_item_view_renderer()
 	pg_assert_contains('name="send_to"', $view, 'back to the product page');
 	pg_assert_contains("strpos(\$_civ_html, 'form=\"' . \$_civ_notify_form . '\"')", $view, 'only when a control is drawn');
 	pg_assert_contains("data-pg-stock-notify=\"' . h(\$_civ_notify_form)", $view, 'the widget form names it for the variant script');
-	pg_assert_contains("\$_civ_v_v   = '9';", $view, 'the variant script is fetched again');
+	pg_assert_contains("\$_civ_v_v   = '10';", $view, 'the variant script is fetched again');
 
 	$close = strpos($view, ". '</form>'\n         . \$_civ_notify_html");
 	pg_assert_true($close !== false, 'printed after the add-to-cart form, never inside it');
@@ -200,6 +200,18 @@ function test_stock_notify_item_view_variant_script()
 	pg_assert_contains("el.hidden = String(p.out_of_stock) !== '1'", $apply, 'shown only for one out of stock');
 	pg_assert_contains("form.getAttribute('data-pg-stock-notify')", $apply, 'finds the request form');
 	pg_assert_contains('notifyPid.value = String(p.id)', $apply, 'and gives it the variant');
+}
+
+// The variant script enables and disables only the add-to-cart form's own
+// submit buttons: the "Notify me" button sits inside that form in the page
+// but belongs to the request form (form="pg-stock-notify-…"), and was
+// disabled exactly when the chosen variant was out of stock.
+function test_stock_notify_item_view_variant_script_leaves_the_notify_button()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_civ_variants.js');
+
+	pg_assert_contains("var addBtns = form ? Array.prototype.filter.call(form.querySelectorAll('button[type=\"submit\"]'), function (b) {\n            return b.form === form;\n        }) : [];", $js, 'only buttons that submit the add-to-cart form');
+	pg_assert_true(strpos($js, "var addBtns = form ? form.querySelectorAll('button[type=\"submit\"]') : [];") === false, 'not every submit button inside it');
 }
 
 // The designer offers the flag and the two bindings, and its starter carries

@@ -117,10 +117,27 @@ function pg_cart_quote_state(array $quote, $now)
 }
 
 /**
+ * Is this a quantity one line may hold: a whole number from 1 to
+ * PG_CART_QUOTE_MAX_QUANTITY, given as an int or a string of digits. Pure.
+ *
+ * @param mixed $quantity
+ * @return bool
+ */
+function pg_cart_quote_quantity_valid($quantity)
+{
+    if (!is_int($quantity) && !(is_string($quantity) && preg_match('/^\d{1,9}$/', $quantity))) {
+        return false;
+    }
+
+    return ((int) $quantity >= 1) && ((int) $quantity <= PG_CART_QUOTE_MAX_QUANTITY);
+}
+
+/**
  * The lines a form or the API sends, made fit to keep: a product id and a
- * whole quantity of at least one, each product once (quantities of a
- * repeated product added up, up to the largest quantity), at most
- * PG_CART_QUOTE_MAX_LINES lines. Pure.
+ * whole quantity from 1 to PG_CART_QUOTE_MAX_QUANTITY, each product once
+ * (quantities of a repeated product added up; a sum past the largest
+ * quantity is refused like a single quantity past it, never cut down), at
+ * most PG_CART_QUOTE_MAX_LINES lines. Pure.
  *
  * @param mixed $given list of [product_id, quantity]
  * @return array lines (list of product_id, quantity), problem: '' | empty | quantity | many
@@ -141,13 +158,18 @@ function pg_cart_quote_lines_clean($given)
             return array('lines' => array(), 'problem' => 'quantity');
         }
 
-        if ((!is_int($quantity) && !(is_string($quantity) && preg_match('/^\d+$/', $quantity))) || ((int) $quantity < 1)) {
+        if (!pg_cart_quote_quantity_valid($quantity)) {
             return array('lines' => array(), 'problem' => 'quantity');
         }
 
         $product = (int) $product;
         $sum = (isset($lines[$product]) ? $lines[$product] : 0) + (int) $quantity;
-        $lines[$product] = min($sum, PG_CART_QUOTE_MAX_QUANTITY);
+
+        if ($sum > PG_CART_QUOTE_MAX_QUANTITY) {
+            return array('lines' => array(), 'problem' => 'quantity');
+        }
+
+        $lines[$product] = $sum;
     }
 
     if (!$lines) {
@@ -264,8 +286,14 @@ function pg_cart_quote_create_refusal($contact_id, $contact_found, array $clean,
         return array('code' => 'lines_too_many', 'field' => 'lines', 'error' => lang(array('string' => 'A cart quote holds at most {var:1} products.', 'vars' => PG_CART_QUOTE_MAX_LINES)));
     }
 
+    if ($clean['problem'] === 'empty') {
+        return array('code' => 'lines_invalid', 'field' => 'lines', 'error' => lang('Add at least one product.'));
+    }
+
     if ($clean['problem'] !== '') {
-        return array('code' => 'lines_invalid', 'field' => 'lines', 'error' => lang('Add at least one product with a quantity of one or more.'));
+        return array('code' => 'lines_invalid', 'field' => 'lines', 'error' => lang(array(
+            'string' => 'Each product needs a whole quantity from 1 to {var:1}.',
+            'vars'   => PG_CART_QUOTE_MAX_QUANTITY)));
     }
 
     foreach ($clean['lines'] as $line) {
@@ -753,12 +781,35 @@ function pg_cart_quote_state_label($state)
 {
     $labels = array(
         'open'      => lang('Open'),
-        'ordered'   => lang('Ordered'),
+        'ordered'   => lang('Order placed'),
         'expired'   => lang('Expired'),
         'cancelled' => lang('Cancelled'),
     );
 
     return isset($labels[$state]) ? $labels[$state] : (string) $state;
+}
+
+/**
+ * A quote's products for the list: the first $shown as "name × quantity",
+ * then how many more, so one long quote keeps the list's other columns on
+ * the screen. Pure.
+ *
+ * @param array $lines  list of name, quantity (pg_cart_quote_panel_rows())
+ * @param int   $shown
+ * @return string
+ */
+function pg_cart_quote_lines_summary(array $lines, $shown = 3)
+{
+    $names = array();
+
+    foreach (array_slice($lines, 0, max(1, (int) $shown)) as $line) {
+        $names[] = $line['name'] . ' × ' . (int) $line['quantity'];
+    }
+
+    $text = implode(', ', $names);
+    $more = count($lines) - count($names);
+
+    return ($more > 0) ? $text . ' ' . lang(array('string' => 'and {var:1} more', 'vars' => $more)) : $text;
 }
 
 /**
@@ -768,7 +819,7 @@ function pg_cart_quote_state_label($state)
  * @param int $contact_id only this contact's (0 for every quote)
  * @param int $limit
  * @param int $quote_id   only this quote (0 for every quote)
- * @return array[] cart_quotes row + contact_name, creator, lines
+ * @return array[] cart_quotes row + contact_name, contact_found, creator, lines
  */
 function pg_cart_quote_panel_rows($contact_id = 0, $limit = PG_CART_QUOTE_PANEL_LIMIT, $quote_id = 0)
 {
@@ -786,7 +837,7 @@ function pg_cart_quote_panel_rows($contact_id = 0, $limit = PG_CART_QUOTE_PANEL_
         $where[] = "q.id = '" . (int) $quote_id . "'";
     }
 
-    $rows = (array) db_items("SELECT q.*, c.first_name, c.last_name, c.company, u.user_username AS creator
+    $rows = (array) db_items("SELECT q.*, c.id AS contact_found, c.first_name, c.last_name, c.company, u.user_username AS creator
         FROM cart_quotes AS q
         LEFT JOIN contacts AS c ON c.id = q.contact_id
         LEFT JOIN user AS u ON u.user_id = q.created_by
@@ -823,6 +874,9 @@ function pg_cart_quote_panel_rows($contact_id = 0, $limit = PG_CART_QUOTE_PANEL_
         $person = trim(trim((string) $row['first_name']) . ' ' . trim((string) $row['last_name']));
 
         $rows[$index]['contact_name'] = ($person !== '') ? $person : trim((string) $row['company']);
+        // A deleted contact leaves its id on the quote: the list names it so
+        // and links nowhere.
+        $rows[$index]['contact_found'] = ((int) $row['contact_found'] > 0);
         $rows[$index]['lines'] = isset($lines[(int) $row['id']]) ? $lines[(int) $row['id']] : array();
     }
 

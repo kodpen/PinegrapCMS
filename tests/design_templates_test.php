@@ -94,6 +94,22 @@ function test_design_templates_tokenize_tree_drops_editor_state()
 	)), $out);
 }
 
+// The team's notes on a node (props._notes with its author and time) are
+// the editor's own and go: a template carries no staff names to the sites
+// it is opened on. A note inside a widget's or a component's tree goes too.
+function test_design_templates_tokenize_tree_drops_notes()
+{
+	$tree = array('type' => 'root', 'props' => array(), 'children' => array(
+		array('type' => 'content', 'props' => array('contentType' => 'paragraph', 'text' => 'x',
+			'_notes' => 'Ask Ayse for the new photo', '_notes_by' => 'Ayse Demir', '_notes_at' => 1760000000), 'children' => array(
+			array('type' => 'semantic', 'props' => array('tag' => 'div', '_notes' => 'nested'), 'children' => array()),
+		)),
+	));
+	$out = pg_dtc_tokenize_tree($tree, _test_dtc_ctx());
+	pg_assert_same(array('contentType' => 'paragraph', 'text' => 'x'), $out['children'][0]['props'], 'note, author and time gone');
+	pg_assert_same(array('tag' => 'div'), $out['children'][0]['children'][0]['props'], 'nested note gone');
+}
+
 // The address of a page of the design: alone, with a query, with a fragment;
 // one that only starts the same way is not touched.
 function test_design_templates_tokenize_string_page_addresses()

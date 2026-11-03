@@ -92,6 +92,44 @@ function test_site_datetime_library_stylesheet_is_the_release_file()
 	pg_assert_contains('[data-vc=time]', $css, 'and its time row');
 }
 
+function test_site_datetime_native_inputs()
+{
+	foreach (array('<input type="date">', '<input class="form-control" type=date name="d">', "<input type='datetime-local'/>", '<input TYPE="time" >', "<input\ntype=\"date\">") as $native) {
+		pg_assert_same(1, preg_match(pg_site_datetime_native_pattern(), $native), $native . ' is a native date input');
+	}
+	foreach (array('<input type="datetime">', '<input type="date-x">', '<input data-type="date">', '<p type="date">', '<input type="text" value="type=date">') as $other) {
+		pg_assert_same(0, preg_match(pg_site_datetime_native_pattern(), $other), $other . ' is not one');
+	}
+
+	$page = '<html><head></head><body><form><input type="date" name="d" value="2026-10-26"></form></body></html>';
+	$once = pg_site_datetime_inject($page);
+	pg_assert_contains('id="pg-datetime-site-css"', $once, 'a page with only a native date input gets the control');
+	pg_assert_contains('pg_fields.js', $once, 'and the hooks, which hook the input');
+	pg_assert_same($once, pg_site_datetime_inject($once), 'once');
+
+	$text = '<html><head></head><body><input type="text" name="q"></body></html>';
+	pg_assert_same($text, pg_site_datetime_inject($text), 'a page without one is left as it is');
+}
+
+function test_site_datetime_express_order_posts_iso()
+{
+	$eo = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_express_order.php');
+	pg_assert_false(strpos($eo, 'inp.value = isoToServerDate('), 'the submit writes no site text into a date input, which the browser drops');
+	pg_assert_contains('inp.disabled = false; refreshField(inp);', $eo, 'the box over a custom arrival date follows its input being switched on');
+	pg_assert_contains('inp.disabled = true; refreshField(inp);', $eo, 'and off');
+}
+
+function test_site_datetime_starter_time_hints_follow_the_clock()
+{
+	foreach (array('english_default', 'turkish_default') as $site) {
+		foreach (array(248, 256, 476, 497) as $id) {
+			$code = (string) file_get_contents(PG_FUNCTIONS_DIR . '/data/backups/' . $site . '/layouts/' . $id . '.php');
+			pg_assert_same(2, substr_count($code, "<?=h((pg_time_format_code() === 'H:i') ? lang('(Format: HH:mm)') : lang('(Format: h:mm AM/PM)'))?>"), $site . ' ' . $id . ': the time rows\' hint follows the clock');
+			pg_assert_false((bool) preg_match('/\((Format|Biçim): [hs]:(mm|dd) AM\/PM\)\s*</u', $code), $site . ' ' . $id . ': no fixed 12-hour hint');
+		}
+	}
+}
+
 function test_site_datetime_bind_marker()
 {
 	pg_assert_same('', pg_site_datetime_bind(array()), 'no ids, no marker');

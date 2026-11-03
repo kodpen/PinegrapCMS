@@ -51,7 +51,7 @@ function test_contact_list_names_labels_point_at_their_field()
 {
 	$source = contact_list_names_test_source();
 
-	pg_assert_contains('<label for="expiration_date" class="form-label">\' . lang(\'Expiration Date\')', $source);
+	pg_assert_contains('<label for="expiration_date" class="form-label">\' . lang(\'Membership Expiration Date\')', $source);
 	pg_assert_same(1, substr_count($source, '<label for="member_id"'), 'Member ID has one label');
 	pg_assert_true(strpos($source, '$output_opt_status = lang(\'Opt-In\');') === false, 'My Subscribers shows the status in a box the label names');
 	pg_assert_contains('id="opt_in_status" name="fake_opt_in_status"', $source);

@@ -41,6 +41,45 @@ function pg_imported_page_take_title($content)
     return array($title, ($stripped === null) ? $content : $stripped);
 }
 
+/**
+ * The pattern that finds a tag of an imported page and reads one of its
+ * attributes: group 0 is the whole tag, group 1 the attribute's value. The
+ * attribute must stand on its own (white space before its name), so
+ * data-src or data-href is never read for src or href, and the first such
+ * attribute of the tag is the one read.
+ *
+ * @param string $tag        tag name, e.g. img
+ * @param string $attribute  attribute name, e.g. src
+ * @return string
+ */
+function pg_imported_tag_pattern($tag, $attribute)
+{
+    return '/<\s*' . preg_quote($tag, '/') . '(?=[\s>\/])[^>]*?\s' . preg_quote($attribute, '/') . '\s*=\s*["\'](.*?)["\'].*?>/is';
+}
+
+/**
+ * A tag of an imported page with one attribute given a new value, written in
+ * double quotes. Only the attribute itself changes, once: an attribute whose
+ * name ends in the same word (data-src for src) keeps its value. The value
+ * is taken literally (already escaped for HTML by the caller).
+ *
+ * @param string $html_tag
+ * @param string $attribute
+ * @param string $value
+ * @return string
+ */
+function pg_imported_tag_set_attribute($html_tag, $attribute, $value)
+{
+    $html_tag = (string) $html_tag;
+    $pattern = '/(?<=\s)' . preg_quote($attribute, '/') . '\s*=\s*(["\']).*?\1/is';
+
+    $result = preg_replace_callback($pattern, function () use ($attribute, $value) {
+        return $attribute . '="' . $value . '"';
+    }, $html_tag, 1);
+
+    return ($result === null) ? $html_tag : $result;
+}
+
 // Helper: resolve a relative URL against a base URL.
 // Uses resolve_url_for_scan() if available (import_design.php), otherwise falls back to url_to_absolute().
 function resolve_url_for_update($base, $relative)
@@ -78,21 +117,21 @@ function update_imported_items($imported_items)
                 $content = preg_replace('/<link\s+[^>]*rel\s*=\s*["\']\s*canonical\s*["\'].*?>/is', '', $content);
                 $content = preg_replace('/<meta\s+[^>]*property\s*=\s*["\']\s*og:url\s*["\'].*?>/is', '', $content);
 
-                preg_match_all('/<\s*img\s+[^>]*src\s*=\s*["\'](.*?)["\'].*?>/is', $content, $matches, PREG_SET_ORDER);
+                preg_match_all(pg_imported_tag_pattern('img', 'src'), $content, $matches, PREG_SET_ORDER);
 
                 foreach ($matches as $match) {
                     $old_content = $match[0];
                     $old_url = unhtmlspecialchars(trim($match[1]));
                     $item_url = resolve_url_for_update($base_url, $old_url);
                     $item_url_without_bookmark = strtok($item_url, '#');
-                    $item_name = $imported_items[$item_url_without_bookmark]['name'];
+                    $item_name = $imported_items[$item_url_without_bookmark]['name'] ?? '';
 
                     // If an imported item was not found for the item URL,
                     // then let's remove the query string also and see if we can find
                     // an imported item for this url without the query string.
                     if ($item_name == '') {
                         $item_url_without_query = strtok($item_url_without_bookmark, '?');
-                        $item_name = $imported_items[$item_url_without_query]['name'];
+                        $item_name = $imported_items[$item_url_without_query]['name'] ?? '';
                     }
 
                     // If an item name was found, or the old URL starts with "http://"
@@ -111,27 +150,27 @@ function update_imported_items($imported_items)
                             $new_url = h(get_protocol_relative_url($old_url));
                         }
 
-                        $new_content = preg_replace('/src\s*=\s*["\'].*?["\']/is', 'src="' . $new_url . '"', $old_content);
+                        $new_content = pg_imported_tag_set_attribute($old_content, 'src', $new_url);
 
                         $content = str_replace($old_content, $new_content, $content);
                     }
                 }
 
-                preg_match_all('/<\s*link\s+[^>]*href\s*=\s*["\'](.*?)["\'].*?>/is', $content, $matches, PREG_SET_ORDER);
+                preg_match_all(pg_imported_tag_pattern('link', 'href'), $content, $matches, PREG_SET_ORDER);
 
                 foreach ($matches as $match) {
                     $old_content = $match[0];
                     $old_url = unhtmlspecialchars(trim($match[1]));
                     $item_url = resolve_url_for_update($base_url, $old_url);
                     $item_url_without_bookmark = strtok($item_url, '#');
-                    $item_name = $imported_items[$item_url_without_bookmark]['name'];
+                    $item_name = $imported_items[$item_url_without_bookmark]['name'] ?? '';
 
                     // If an imported item was not found for the item URL,
                     // then let's remove the query string also and see if we can find
                     // an imported item for this url without the query string.
                     if ($item_name == '') {
                         $item_url_without_query = strtok($item_url_without_bookmark, '?');
-                        $item_name = $imported_items[$item_url_without_query]['name'];
+                        $item_name = $imported_items[$item_url_without_query]['name'] ?? '';
                     }
                     
                     // If an item name was found, or the old URL starts with "http://"
@@ -150,27 +189,27 @@ function update_imported_items($imported_items)
                             $new_url = h(get_protocol_relative_url($old_url));
                         }
 
-                        $new_content = preg_replace('/href\s*=\s*["\'].*?["\']/is', 'href="' . $new_url . '"', $old_content);
+                        $new_content = pg_imported_tag_set_attribute($old_content, 'href', $new_url);
 
                         $content = str_replace($old_content, $new_content, $content);
                     }
                 }
 
-                preg_match_all('/<\s*script\s+[^>]*src\s*=\s*["\'](.*?)["\'].*?>/is', $content, $matches, PREG_SET_ORDER);
+                preg_match_all(pg_imported_tag_pattern('script', 'src'), $content, $matches, PREG_SET_ORDER);
 
                 foreach ($matches as $match) {
                     $old_content = $match[0];
                     $old_url = unhtmlspecialchars(trim($match[1]));
                     $item_url = resolve_url_for_update($base_url, $old_url);
                     $item_url_without_bookmark = strtok($item_url, '#');
-                    $item_name = $imported_items[$item_url_without_bookmark]['name'];
+                    $item_name = $imported_items[$item_url_without_bookmark]['name'] ?? '';
 
                     // If an imported item was not found for the item URL,
                     // then let's remove the query string also and see if we can find
                     // an imported item for this url without the query string.
                     if ($item_name == '') {
                         $item_url_without_query = strtok($item_url_without_bookmark, '?');
-                        $item_name = $imported_items[$item_url_without_query]['name'];
+                        $item_name = $imported_items[$item_url_without_query]['name'] ?? '';
                     }
 
                     // If an item name was found, or the old URL starts with "http://"
@@ -189,27 +228,27 @@ function update_imported_items($imported_items)
                             $new_url = h(get_protocol_relative_url($old_url));
                         }
 
-                        $new_content = preg_replace('/src\s*=\s*["\'].*?["\']/is', 'src="' . $new_url . '"', $old_content);
+                        $new_content = pg_imported_tag_set_attribute($old_content, 'src', $new_url);
 
                         $content = str_replace($old_content, $new_content, $content);
                     }
                 }
 
-                preg_match_all('/<\s*source\s+[^>]*src\s*=\s*["\'](.*?)["\'].*?>/is', $content, $matches, PREG_SET_ORDER);
+                preg_match_all(pg_imported_tag_pattern('source', 'src'), $content, $matches, PREG_SET_ORDER);
 
                 foreach ($matches as $match) {
                     $old_content = $match[0];
                     $old_url = unhtmlspecialchars(trim($match[1]));
                     $item_url = resolve_url_for_update($base_url, $old_url);
                     $item_url_without_bookmark = strtok($item_url, '#');
-                    $item_name = $imported_items[$item_url_without_bookmark]['name'];
+                    $item_name = $imported_items[$item_url_without_bookmark]['name'] ?? '';
 
                     // If an imported item was not found for the item URL,
                     // then let's remove the query string also and see if we can find
                     // an imported item for this url without the query string.
                     if ($item_name == '') {
                         $item_url_without_query = strtok($item_url_without_bookmark, '?');
-                        $item_name = $imported_items[$item_url_without_query]['name'];
+                        $item_name = $imported_items[$item_url_without_query]['name'] ?? '';
                     }
 
                     // If an item name was found, or the old URL starts with "http://"
@@ -228,27 +267,27 @@ function update_imported_items($imported_items)
                             $new_url = h(get_protocol_relative_url($old_url));
                         }
 
-                        $new_content = preg_replace('/src\s*=\s*["\'].*?["\']/is', 'src="' . $new_url . '"', $old_content);
+                        $new_content = pg_imported_tag_set_attribute($old_content, 'src', $new_url);
 
                         $content = str_replace($old_content, $new_content, $content);
                     }
                 }
 
-                preg_match_all('/<\s*embed\s+[^>]*src\s*=\s*["\'](.*?)["\'].*?>/is', $content, $matches, PREG_SET_ORDER);
+                preg_match_all(pg_imported_tag_pattern('embed', 'src'), $content, $matches, PREG_SET_ORDER);
 
                 foreach ($matches as $match) {
                     $old_content = $match[0];
                     $old_url = unhtmlspecialchars(trim($match[1]));
                     $item_url = resolve_url_for_update($base_url, $old_url);
                     $item_url_without_bookmark = strtok($item_url, '#');
-                    $item_name = $imported_items[$item_url_without_bookmark]['name'];
+                    $item_name = $imported_items[$item_url_without_bookmark]['name'] ?? '';
 
                     // If an imported item was not found for the item URL,
                     // then let's remove the query string also and see if we can find
                     // an imported item for this url without the query string.
                     if ($item_name == '') {
                         $item_url_without_query = strtok($item_url_without_bookmark, '?');
-                        $item_name = $imported_items[$item_url_without_query]['name'];
+                        $item_name = $imported_items[$item_url_without_query]['name'] ?? '';
                     }
 
                     // If an item name was found, or the old URL starts with "http://"
@@ -267,27 +306,27 @@ function update_imported_items($imported_items)
                             $new_url = h(get_protocol_relative_url($old_url));
                         }
 
-                        $new_content = preg_replace('/src\s*=\s*["\'].*?["\']/is', 'src="' . $new_url . '"', $old_content);
+                        $new_content = pg_imported_tag_set_attribute($old_content, 'src', $new_url);
 
                         $content = str_replace($old_content, $new_content, $content);
                     }
                 }
 
-                preg_match_all('/<\s*object\s+[^>]*data\s*=\s*["\'](.*?)["\'].*?>/is', $content, $matches, PREG_SET_ORDER);
+                preg_match_all(pg_imported_tag_pattern('object', 'data'), $content, $matches, PREG_SET_ORDER);
 
                 foreach ($matches as $match) {
                     $old_content = $match[0];
                     $old_url = unhtmlspecialchars(trim($match[1]));
                     $item_url = resolve_url_for_update($base_url, $old_url);
                     $item_url_without_bookmark = strtok($item_url, '#');
-                    $item_name = $imported_items[$item_url_without_bookmark]['name'];
+                    $item_name = $imported_items[$item_url_without_bookmark]['name'] ?? '';
 
                     // If an imported item was not found for the item URL,
                     // then let's remove the query string also and see if we can find
                     // an imported item for this url without the query string.
                     if ($item_name == '') {
                         $item_url_without_query = strtok($item_url_without_bookmark, '?');
-                        $item_name = $imported_items[$item_url_without_query]['name'];
+                        $item_name = $imported_items[$item_url_without_query]['name'] ?? '';
                     }
                     
                     // If an item name was found, or the old URL starts with "http://"
@@ -306,13 +345,13 @@ function update_imported_items($imported_items)
                             $new_url = h(get_protocol_relative_url($old_url));
                         }
 
-                        $new_content = preg_replace('/data\s*=\s*["\'].*?["\']/is', 'data="' . $new_url . '"', $old_content);
+                        $new_content = pg_imported_tag_set_attribute($old_content, 'data', $new_url);
 
                         $content = str_replace($old_content, $new_content, $content);
                     }
                 }
 
-                preg_match_all('/<\s*a\s+[^>]*href\s*=\s*["\'](.*?)["\'].*?>/is', $content, $matches, PREG_SET_ORDER);
+                preg_match_all(pg_imported_tag_pattern('a', 'href'), $content, $matches, PREG_SET_ORDER);
 
                 foreach ($matches as $match) {
                     $old_content = $match[0];
@@ -326,14 +365,14 @@ function update_imported_items($imported_items)
 
                     $item_url = resolve_url_for_update($base_url, $item_url);
                     $item_url_without_bookmark = strtok($item_url, '#');
-                    $item_name = $imported_items[$item_url_without_bookmark]['name'];
+                    $item_name = $imported_items[$item_url_without_bookmark]['name'] ?? '';
 
                     // If an imported item was not found for the item URL,
                     // then let's remove the query string also and see if we can find
                     // an imported item for this url without the query string.
                     if ($item_name == '') {
                         $item_url_without_query = strtok($item_url_without_bookmark, '?');
-                        $item_name = $imported_items[$item_url_without_query]['name'];
+                        $item_name = $imported_items[$item_url_without_query]['name'] ?? '';
                     }
 
                     // If an item name was found, then update the URL.
@@ -346,7 +385,7 @@ function update_imported_items($imported_items)
                             $bookmark = '#' . $bookmark;
                         }
 
-                        $new_content = preg_replace('/href\s*=\s*["\'].*?["\']/is', 'href="{path}' . h(encode_url_path($item_name) . $bookmark) . '"', $old_content);
+                        $new_content = pg_imported_tag_set_attribute($old_content, 'href', '{path}' . h(encode_url_path($item_name) . $bookmark));
 
                         $content = str_replace($old_content, $new_content, $content);
                     }
@@ -365,14 +404,14 @@ function update_imported_items($imported_items)
                     $old_url = $match[1];
                     $item_url = resolve_url_for_update($base_url, trim($old_url));
                     $item_url_without_bookmark = strtok($item_url, '#');
-                    $item_name = $imported_items[$item_url_without_bookmark]['name'];
+                    $item_name = $imported_items[$item_url_without_bookmark]['name'] ?? '';
 
                     // If an imported item was not found for the item URL,
                     // then let's remove the query string also and see if we can find
                     // an imported item for this url without the query string.
                     if ($item_name == '') {
                         $item_url_without_query = strtok($item_url_without_bookmark, '?');
-                        $item_name = $imported_items[$item_url_without_query]['name'];
+                        $item_name = $imported_items[$item_url_without_query]['name'] ?? '';
                     }
                     
                     // If an item name was found, or the old URL starts with "http://"
@@ -414,14 +453,14 @@ function update_imported_items($imported_items)
                     $old_url = $match[1];
                     $item_url = resolve_url_for_update($base_url, trim($old_url));
                     $item_url_without_bookmark = strtok($item_url, '#');
-                    $item_name = $imported_items[$item_url_without_bookmark]['name'];
+                    $item_name = $imported_items[$item_url_without_bookmark]['name'] ?? '';
 
                     // If an imported item was not found for the item URL,
                     // then let's remove the query string also and see if we can find
                     // an imported item for this url without the query string.
                     if ($item_name == '') {
                         $item_url_without_query = strtok($item_url_without_bookmark, '?');
-                        $item_name = $imported_items[$item_url_without_query]['name'];
+                        $item_name = $imported_items[$item_url_without_query]['name'] ?? '';
                     }
                     
                     // If an item name was found, or the old URL starts with "http://"
@@ -465,7 +504,7 @@ function update_imported_items($imported_items)
                     // We just want to deal with files in js content.
                     if (mb_strpos($old_url, '{path}') === false) {
                         $item_url = resolve_url_for_update($base_url, $old_url);
-                        $item_name = $imported_items[$item_url]['name'];
+                        $item_name = $imported_items[$item_url]['name'] ?? '';
                         
                         // If an item name was found, or the old URL starts with "http://"
                         // then change the URL in the content.

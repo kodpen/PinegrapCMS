@@ -212,6 +212,18 @@ function pg_design_theme_header($meta)
     return '/*! pg-theme ' . json_encode($meta, JSON_UNESCAPED_UNICODE) . ' */';
 }
 
+// A name made safe to stand inside a /* ... */ comment. One pass of
+// str_replace('*/', '') would turn "**//" into "*/", so it repeats until
+// none is left.
+function pg_design_theme_comment_text($text)
+{
+    $text = (string)$text;
+    while (strpos($text, '*/') !== false) {
+        $text = str_replace('*/', '', $text);
+    }
+    return $text;
+}
+
 function pg_design_theme_read_header($file_name)
 {
     $path = FILE_DIRECTORY_PATH . '/' . $file_name;
@@ -528,7 +540,7 @@ function pg_design_palette_css($primary, $secondary, $title = '')
         foreach ($vars as $k => $v) $css .= '    ' . $k . ': ' . $v . ";\n";
         return $css . "}\n";
     };
-    return "/* Pinegrap colour palette" . ($title !== '' ? ': ' . str_replace('*/', '', $title) : '') . ". Generated from "
+    return "/* Pinegrap colour palette" . ($title !== '' ? ': ' . pg_design_theme_comment_text($title) : '') . ". Generated from "
         . _pg_theme_hex($p) . ' and ' . _pg_theme_hex($s) . ". */\n"
         . $block(":root,\n[data-bs-theme=light]", array_merge($pl, $sl))
         . "\n"
@@ -733,7 +745,7 @@ function pg_design_custom_look_css($base, $controls, $name)
 
     $name = trim((string)$name);
     $css  = pg_design_theme_header(array('kind' => 'look', 'name' => $name, 'base' => $base, 'controls' => (object)$pick)) . "\n"
-          . '/* Pinegrap look "' . str_replace('*/', '', $name) . '", made in the visual editor from ' . $looks[$base]['name'] . ". */\n"
+          . '/* Pinegrap look "' . pg_design_theme_comment_text($name) . '", made in the visual editor from ' . $looks[$base]['name'] . ". */\n"
           . ":root,\n[data-bs-theme] {\n";
     foreach ($t as $k => $v) {
         // Every value comes from a look file or the table above; the check

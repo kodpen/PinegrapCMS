@@ -487,9 +487,9 @@ function _test_forum_two_sided_threads()
 			'empty' => lang('No notes yet.'),
 			'heading' => lang('Add a note'),
 			'sign_in' => lang('Sign in to reply.'),
-			'submit' => lang('Add note'),
-			'close' => lang('Stop new comments'),
-			'reopen' => lang('Allow new comments'),
+			'submit' => lang('Add a note'),
+			'close' => lang('Stop new notes'),
+			'reopen' => lang('Allow new notes'),
 		),
 	);
 }
@@ -864,8 +864,10 @@ function test_forum_template_loads()
 	// recent replies and the comment e-mails drawn by it; 1.2.0: the board
 	// page's latest replies, held to the board by a record filter; 1.3.0:
 	// the inbox, desk and report threads on the Comments widget, and the
-	// blog; 1.3.1: the conversation's answers labelled replies.
-	pg_assert_same('1.3.1', $tpl['version'], 'version 1.3.1');
+	// blog; 1.3.1: the conversation's answers labelled replies; 1.3.2:
+	// readable alert links; 1.3.3: the report notes' own button words, a
+	// guide's byline as its author; 1.3.4: the masthead's links from xl.
+	pg_assert_same('1.3.4', $tpl['version'], 'version 1.3.4');
 	pg_assert_same('bootstrap5', $tpl['framework'], 'framework');
 	pg_assert_same(90, $tpl['order'], 'order');
 	pg_assert_same('bi-chat-square-text', $tpl['icon'], 'icon');
@@ -1467,6 +1469,19 @@ function test_forum_one_vocabulary()
 	foreach (array('forum', 'docs', 'guidelines', 'search') as $key) {
 		pg_assert_true(substr_count($masthead, '"{{page:' . $key . '}}"') >= 2, 'the masthead links ' . $key . ' in the bar and the drawer');
 	}
+	// Five main links, the theme, the language, the sign-in and Start a
+	// topic do not fit one row at lg with a long site name: the bar shows
+	// its links from xl, the menu button stays up to xl.
+	$by_label = array();
+	foreach (_test_forum_nodes($tpl['shared']['masthead']['tree']) as $n) {
+		if (isset($n['props']['_label'])) {
+			$by_label[$n['props']['_label']] = isset($n['props']['cssClass']) ? ' ' . $n['props']['cssClass'] . ' ' : '';
+		}
+	}
+	pg_assert_contains(' d-none d-xl-block ', $by_label[lang('Main Links')] ?? '', 'the main links from xl');
+	pg_assert_contains(' d-xl-none ', $by_label[lang('Menu Button')] ?? '', 'the menu button up to xl');
+	pg_assert_contains(' me-auto me-xl-3 ', $by_label[lang('Brand')] ?? '', 'the brand pushes the account links right up to xl');
+	pg_assert_false(strpos(implode('', $by_label), '-lg-') !== false, 'nothing in the masthead switches at lg');
 	preg_match_all('/\{\{page:([a-z0-9_]+)\}\}/', $masthead . json_encode($tpl['shared']['footer']['tree']), $m);
 	foreach (array_unique($m[1]) as $key) {
 		pg_assert_true(isset($pages[$key]), 'a menu link names a page: ' . $key);
@@ -3006,9 +3021,9 @@ function test_forum_css()
 		$families[] = $font['family'];
 	}
 	pg_assert_same(array('Figtree', 'JetBrains Mono'), $families, 'Figtree and JetBrains Mono');
-	$picker = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
+	$picker = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_google_fonts.js');
 	foreach ($families as $family) {
-		pg_assert_contains("'" . $family . "'", $picker, $family . ' is in the font picker');
+		pg_assert_true(strpos($picker, "'" . $family . "'") !== false, $family . ' is in the font picker');
 	}
 	pg_assert_contains('code,kbd,pre,samp{font-family:var(--pf-mono)}', $own, 'code is set in the mono font');
 
@@ -3688,6 +3703,7 @@ function test_forum_blog_form()
 	pg_assert_same(lang('The post is published.'), $form['confirmation_message'], 'its confirmation');
 	pg_assert_same('{{tab:blog}}', $form['confirmation_page_id'], 'sent, it opens the blog');
 	pg_assert_same('cover_image', $form['share_image_field'], 'the cover is the picture a shared post shows');
+	pg_assert_same('field:byline', $pages['doc_new']['form']['schema_author'] ?? null, 'a guide\'s structured-data author is the byline the page shows');
 	pg_assert_false(isset($form['notify_page_id']) || isset($form['confirm_page_id']), 'a post sends no e-mail');
 
 	$w = $tpl['widgets']['blog_form'];

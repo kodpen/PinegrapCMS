@@ -421,3 +421,123 @@ function api_visitor_breakdown_schema() {
 	);
 
 }
+
+// What AI assistants and AI search indexers fetched, what the site tells
+// them, and the visits their answers sent (includes/fn/ai_visibility.php).
+function api_reports_ai_visibility($params) {
+
+	if (!function_exists('pg_ai_visibility_ready') || !pg_ai_visibility_ready()) {
+
+		api_fail(503, 'service_unavailable', lang('The database has not been upgraded yet. Run the software update first.'));
+
+	}
+
+	$window = api_visitors_window($params, 400);
+
+	$limit = isset($params['limit']) ? (int)$params['limit'] : 10;
+
+	$settings = pg_ai_crawler_settings();
+
+	$days = pg_ai_fetches_by_day($window['first'], $window['last']);
+
+	$bots = array();
+
+	foreach (pg_ai_fetch_bot_totals($days, pg_ai_bot_policy($settings)) as $bot) {
+
+		$bots[] = array(
+			'bot'              => $bot['bot'],
+			'kind'             => $bot['kind'],
+			'fetches'          => (int)$bot['fetches'],
+			'firewall_allowed' => (bool)$bot['firewall_allowed']
+		);
+
+	}
+
+	$top_pages = array();
+
+	foreach (pg_ai_top_pages($window['first'], $window['last'], $limit) as $row) {
+
+		$top_pages[] = array(
+			'bot'       => $row['bot'],
+			'page_id'   => (int)$row['page_id'],
+			'page_name' => (string)$row['page_name'],
+			'label'     => (string)$row['label'],
+			'url'       => (string)$row['url'],
+			'fetches'   => (int)$row['fetches']
+		);
+
+	}
+
+	$unfetched = pg_ai_unfetched_pages($window['first'], $window['last'], 50);
+
+	$referrals = pg_ai_referrals($window['first'], $window['last']);
+
+	$assistants = array();
+
+	foreach ($referrals['assistants'] as $row) {
+
+		$assistants[] = array_merge(array('assistant' => $row['assistant']), api_ai_referral_figures($row));
+
+	}
+
+	api_ok(array(
+		'from'            => $window['first'],
+		'to'              => $window['last'],
+		'bots'            => $bots,
+		'days'            => $days,
+		'top_pages'       => $top_pages,
+		'unfetched_pages' => array('total' => (int)$unfetched['total'], 'pages' => $unfetched['pages']),
+		'robots_ai_rules' => !empty($settings['rules']),
+		'llms_txt'        => !empty($settings['llms']),
+		'referrals'       => array(
+			'totals'     => api_ai_referral_figures($referrals['totals']),
+			'assistants' => $assistants,
+			'summary_to' => $referrals['summary_to']
+		)
+	));
+
+}
+
+function api_ai_referral_figures($row) {
+
+	return array(
+		'visits'           => (int)$row['visits'],
+		'page_views'       => (int)$row['page_views'],
+		'forms_submitted'  => (int)$row['forms_submitted'],
+		'orders_completed' => (int)$row['orders_completed'],
+		'order_total'      => api_money($row['order_total'])
+	);
+
+}
+
+function api_ai_referral_figures_schema() {
+
+	return array(
+		'visits'           => 'integer',
+		'page_views'       => 'integer',
+		'forms_submitted'  => 'integer',
+		'orders_completed' => 'integer',
+		'order_total'      => 'integer'
+	);
+
+}
+
+function api_ai_visibility_report_schema() {
+
+	return array(
+		'from'            => 'string',
+		'to'              => 'string',
+		'bots'            => array(array('bot' => 'string', 'kind' => 'string', 'fetches' => 'integer', 'firewall_allowed' => 'boolean')),
+		'days'            => array(array('day' => 'string', 'bot' => 'string', 'fetches' => 'integer')),
+		'top_pages'       => array(array('bot' => 'string', 'page_id' => 'integer', 'page_name' => 'string', 'label' => 'string', 'url' => 'string', 'fetches' => 'integer')),
+		'unfetched_pages' => array('total' => 'integer', 'pages' => array(array('page_id' => 'integer', 'page_name' => 'string'))),
+		'robots_ai_rules' => 'boolean',
+		'llms_txt'        => 'boolean',
+		'referrals'       => array(
+			'totals'     => api_ai_referral_figures_schema(),
+			'assistants' => array(array_merge(array('assistant' => 'string'), api_ai_referral_figures_schema())),
+			'summary_to' => 'string?'
+		)
+	);
+
+}

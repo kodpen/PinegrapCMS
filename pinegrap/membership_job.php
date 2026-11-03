@@ -1,6 +1,6 @@
 <?php
 /**
- * PineGrap - Enterprise Website Platform
+ * Pinegrap - Enterprise Website Platform
  *
  * Originally developed as LiveSite by Camelback Web Architects.
  * Since 2017, maintained and evolved by Erdal Güral (Kodpen) under the name PineGrap.
@@ -17,6 +17,14 @@
  */
 
 require('init.php');
+
+// The scheduler (CLI or the job.php dispatcher) has no session. A web request
+// must come from a signed-in manager, the same gate the scheduled jobs
+// settings sit behind; without it anybody could start the job from a browser.
+if (!pg_cron_is_background_run()) {
+    $user = validate_user();
+    validate_area_access($user, 'manager');
+}
 
 // A job also when a signed-in manager opens it: its contact lines name no one.
 pg_audit_as_job(true);

@@ -54,6 +54,30 @@ function test_workspace_overview_lead_says_the_counts_or_that_all_is_read()
 	pg_assert_same(array('1 new message', '1 task due today or overdue'), ws_home_lead(array('messages' => 1, 'mentions' => -2, 'due' => 1)), 'a count below one says nothing');
 }
 
+function test_workspace_overview_lead_opens_with_a_capital()
+{
+	pg_assert_same(array('Bugüne kadar bitmesi gereken 8 görev'), ws_home_lead_capitalised(array('bugüne kadar bitmesi gereken 8 görev')), 'a part starting with a word opens the line');
+	pg_assert_same(array('Çok', 'bugüne kadar'), ws_home_lead_capitalised(array('çok', 'bugüne kadar')), 'only the line\'s first letter');
+	pg_assert_same(array('2 yeni mesaj', 'bugüne kadar'), ws_home_lead_capitalised(array('2 yeni mesaj', 'bugüne kadar')), 'a count opens the line as it is');
+	pg_assert_same(array(), ws_home_lead_capitalised(array()), 'nothing');
+}
+
+function test_workspace_overview_panel_heading_follows_the_view()
+{
+	$headings = ws_channels_screen_headings();
+
+	foreach (array('channel', 'home', 'scheduled_actions', 'scheduled_messages') as $key) {
+		pg_assert_true(isset($headings[$key]['heading'], $headings[$key]['description']), $key . ' has a heading and a description');
+	}
+
+	pg_assert_same('Today', $headings['home']['heading'], 'Today is called Today');
+	pg_assert_true(strpos(workspace_overview_test_method('showHome'), "screenHeading('home');") !== false, 'Today sets its heading');
+	pg_assert_true(strpos(workspace_overview_test_method('showScheduled'), "screenHeading(staff ? 'scheduled_actions' : 'scheduled_messages');") !== false, 'the scheduled lists set theirs');
+
+	$page = (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace.php');
+	pg_assert_true(strpos($page, "'headings'     => \$headings,") !== false, 'the screen hands the headings to the script');
+}
+
 function test_workspace_overview_calendar_rows_by_the_hour()
 {
 	$start = strtotime('2026-10-31 00:00:00');

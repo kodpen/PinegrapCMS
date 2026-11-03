@@ -136,7 +136,7 @@ function pg_merchant_account_credentials($state)
     return array(
         'connection_id' => (int) $state['connection_id'],
         'account'       => $state['account'],
-        'country'       => $state['country'],
+        'country'       => pg_merchant_push_label($state),
     );
 }
 

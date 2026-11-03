@@ -71,8 +71,9 @@ function test_required_boxes_forms_marked_required()
 
 function test_required_boxes_forms_swapping_boxes_stay_optional()
 {
-	// The dimension boxes sit in inch/cm groups swapped with d-none, and the
-	// state box is a combobox: a required hidden box would block the save.
+	// The dimension boxes sit in inch/cm groups swapped with d-none (the
+	// container script sets required on the shown group only), and the state
+	// box is a combobox: a required hidden box would block the save.
 	$fields = array(
 		'includes/forms/container_form.php' => array('length', 'width', 'height'),
 		'includes/forms/verified_shipping_address_form.php' => array('state_id'),

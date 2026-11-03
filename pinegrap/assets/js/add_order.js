@@ -142,7 +142,12 @@
 
     // "2500", "2.500", "2500,5" and "1,666.20" all read as people meant them:
     // the last separator followed by one or two digits is the decimal one.
+    // A minus is not an amount received: the box reads as nothing taken
+    // rather than the figure without its sign.
     function parseAmount(value) {
+        if (String(value || '').indexOf('-') > -1) {
+            return 0;
+        }
         var text = String(value || '').replace(/[^\d.,]/g, '');
         if (text === '') {
             return 0;
@@ -770,12 +775,37 @@
 
     /* ── Adding products ──────────────────────────────────────────────── */
 
+    // The quantity for the next product: a whole number from 1 to 9999, as a
+    // line's own box takes it, or null. 1.5, 0 and 10000 are refused rather
+    // than cut to 1 or 9999 behind the operator's back; an empty box is 1.
     function qtyValue() {
-        var value = parseInt(el.qty.value, 10);
-        return (isNaN(value) || value < 1) ? 1 : Math.min(value, 9999);
+        var raw = String(el.qty.value).trim();
+        if ((raw === '') && !(el.qty.validity && el.qty.validity.badInput)) {
+            return 1;
+        }
+        if (!/^\d{1,4}$/.test(raw) || (parseInt(raw, 10) < 1)) {
+            return null;
+        }
+        return parseInt(raw, 10);
+    }
+
+    // Shows why the next product's quantity is refused and puts the cursor
+    // in its box; true when it is fine.
+    function qtyOk() {
+        if (qtyValue() !== null) {
+            return true;
+        }
+        productError(t.qtyInvalid);
+        beep();
+        el.qty.focus();
+        el.qty.select();
+        return false;
     }
 
     function addItem(what, quantity) {
+        if ((quantity === null) && !qtyOk()) {
+            return;
+        }
         newSale();
         productError('');
         what.quantity = quantity || 1;
@@ -854,7 +884,7 @@
     }
 
     var productList = combo(el.product, el.results, function (item) {
-        if (!item) {
+        if (!item || !qtyOk()) {
             return;
         }
         el.product.value = '';
@@ -908,6 +938,10 @@
     function addFromBox() {
         var code = el.product.value.trim();
         var picked = productList.current();
+
+        if ((picked || (code !== '')) && !qtyOk()) {
+            return;
+        }
 
         clearTimeout(productTimer);
         productTicket++;
@@ -982,15 +1016,24 @@
         if (button.hasAttribute('data-sale-inc')) {
             send('set_qty', { item_id: button.getAttribute('data-sale-inc'), quantity: current + 1 });
         } else if (button.hasAttribute('data-sale-dec')) {
-            send('set_qty', { item_id: button.getAttribute('data-sale-dec'), quantity: current - 1 });
+            send('set_qty', { item_id: button.getAttribute('data-sale-dec'), quantity: Math.max(0, current - 1) });
         } else if (button.hasAttribute('data-sale-rm')) {
             send('set_qty', { item_id: button.getAttribute('data-sale-rm'), quantity: 0 }, { toast: true });
         }
     });
 
+    // A whole number from 0 (remove the line) to 9999. Anything else (empty,
+    // a letter, a minus, 12,50, 99999) puts the box back to its quantity with
+    // a warning, never removes the line or cuts the figure.
     function sendQty(input) {
-        var value = parseInt(input.value, 10);
-        send('set_qty', { item_id: input.getAttribute('data-sale-qty'), quantity: isNaN(value) ? 0 : value });
+        var value = String(input.value).trim();
+        if (!/^\d{1,4}$/.test(value)) {
+            input.value = input.defaultValue;
+            input.removeAttribute('data-sale-sent');
+            toast(t.qtyInvalid, 'warning');
+            return;
+        }
+        send('set_qty', { item_id: input.getAttribute('data-sale-qty'), quantity: value });
     }
 
     el.rows.addEventListener('change', function (event) {
@@ -1017,7 +1060,7 @@
             }
         } else if ((event.key === 'ArrowUp') || (event.key === 'ArrowDown')) {
             event.preventDefault();
-            var value = (parseInt(input.value, 10) || 0) + ((event.key === 'ArrowUp') ? 1 : -1);
+            var value = Math.max(0, (parseInt(input.value, 10) || 0) + ((event.key === 'ArrowUp') ? 1 : -1));
             send('set_qty', { item_id: input.getAttribute('data-sale-qty'), quantity: value });
         }
     });
@@ -1327,8 +1370,27 @@
 
     /* ── Completing the sale ──────────────────────────────────────────── */
 
+    // How much the cash received falls short of the total, in cents; 0 when
+    // the box is empty (the whole total taken) or covers it. The server
+    // refuses the same (local_sale_cash_short()).
+    function cashShort() {
+        if ((state.method !== 'cash') || !el.received) {
+            return 0;
+        }
+        var received = parseAmount(el.received.value);
+        return (received > 0) ? Math.max(0, state.total - received) : 0;
+    }
+
     function complete() {
         if (state.done || state.completing || ((state.count === 0) && (state.pending === 0))) {
+            return;
+        }
+        var missing = cashShort();
+        if (missing > 0) {
+            toast(fill(t.cashShort, [money(missing)]), 'warning');
+            beep();
+            el.received.focus();
+            el.received.select();
             return;
         }
         state.completing = true;

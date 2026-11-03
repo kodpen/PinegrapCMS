@@ -77,3 +77,15 @@ function test_seo_pages_summary_screen_rows()
 	pg_assert_contains('pg_seo_pages_summary(', $block);
 	pg_assert_false(strpos($source, 'SUM(sitemap = 1)') !== false);
 }
+
+// A score marked stale by a change counts with the never-scored ones, as the
+// "SEO Score Not Calculated" filter lists both.
+function test_seo_pages_summary_counts_stale_scores()
+{
+	$stale = _seo_pages_summary_row(0, 0, 0, 100, true);
+	$stale['seo_analysis_current'] = '0';
+	$current = _seo_pages_summary_row(0, 0, 0, 100, true);
+	$current['seo_analysis_current'] = '1';
+
+	pg_assert_same(1, pg_seo_pages_summary(array($stale, $current))['not_calculated']);
+}

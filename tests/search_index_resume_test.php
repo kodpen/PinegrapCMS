@@ -106,5 +106,5 @@ function test_search_index_resume_wiring()
 	pg_assert_contains("if (\$search_index_done) {", $end);
 
 	// The panel window asks for the next request while the pass is unfinished.
-	pg_assert_contains('update_search_index.php?continue=1', $src);
+	pg_assert_contains('<input type="hidden" name="continue" value="1">', $src);
 }

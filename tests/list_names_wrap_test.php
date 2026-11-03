@@ -32,8 +32,7 @@ function test_list_names_wrap_folder_name()
 function test_list_names_wrap_folder_cells()
 {
 	$cells = array(
-		'view_files.php' => '<td class="align-middle text-start text-wrap \' . $file[\'folder_access_control_type\'] . \'">\' . pg_folder_list_name($file[\'folder_name\'], $file[\'folder_access_control_type\']) . \'</td>',
-		'view_pages.php' => '<td class="align-middle text-start text-wrap \' . $page[\'folder_access_control_type\'] . \'">\' . pg_folder_list_name($page[\'folder_name\'], $page[\'folder_access_control_type\']) . \'</td>',
+		'includes/fn/page_list.php' => 'pg_list_cell(pg_folder_list_name($page[\'folder_name\'], $page[\'folder_access_control_type\']), \'align-middle text-start text-wrap \' . $page[\'folder_access_control_type\'])',
 		'view_design_files.php' => '<td class="align-middle text-start text-wrap">\' . pg_folder_list_name($file[\'folder_name\']) . \'</td>',
 		'view_themes.php' => '<td class="align-middle text-start text-wrap \' . $folder_access_control_type . \'">\' . pg_folder_list_name($file[\'folder_name\']) . \'<span class="badge',
 	);
@@ -47,7 +46,7 @@ function test_list_names_wrap_folder_cells()
 function test_list_names_wrap_text_cells()
 {
 	$wrap = '<div class="text-wrap text-break" style="max-width:20rem;">';
-	foreach (array('view_files.php', 'view_design_files.php') as $path) {
+	foreach (array('view_design_files.php') as $path) {
 		$source = list_names_wrap_source($path);
 		pg_assert_contains($wrap . '\' . nl2br(h($file[\'description\'])) . \'</div></td>', $source, $path);
 		pg_assert_false(strpos($source, 'width:200px') !== false, $path . ': no 200px description box');
@@ -60,7 +59,9 @@ function test_list_names_wrap_text_cells()
 	pg_assert_contains('<td title="\' . h(pg_liveform_message_text($label_or_information)) . \'"><span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;">\' . $label_or_information . \'</span></td>', $fields);
 
 	$shipping = list_names_wrap_source('view_shipping_methods.php');
-	pg_assert_contains('<td class="align-middle chart_label \' . $status_color_class . \'">' . $wrap . '\' . h($name) . \'</div></td>', $shipping);
-	pg_assert_contains('<td class="align-middle">' . $wrap . '\' . h($description) . \'</div></td>', $shipping);
+	// The name and message wrap with a floor width, so DataTables does not
+	// squeeze them to a word per line next to one-line columns.
+	pg_assert_contains('<td class="align-middle chart_label \' . $status_color_class . \'"><div class="text-wrap text-break" style="min-width:12rem;max-width:20rem;">\' . h($name) . \'</div>\' . $output_state . \'</td>', $shipping);
+	pg_assert_contains('<td class="align-middle"><div class="text-wrap text-break" style="min-width:15rem;max-width:24rem;">\' . h($description) . \'</div></td>', $shipping);
 	pg_assert_false(strpos($shipping, 'text-nowrap text-truncate') !== false, 'shipping: no truncated cells');
 }

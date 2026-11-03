@@ -114,3 +114,62 @@ function test_key_code_import_row()
 	$read = pg_key_code_import_row(array(str_repeat('ğ', 50), 'OFFER'), $columns, 'day_month');
 	pg_assert_same('', $read['error'], '50 letters fit, whatever their bytes');
 }
+
+function test_key_code_import_row_takes_the_formula_guard_off()
+{
+	$columns = array(0 => 'code', 1 => 'offer_code', 2 => 'notes');
+
+	// The export guards a cell that starts with = + - @, so the file read
+	// back unchanged must give the stored text again.
+	$read = pg_key_code_import_row(array("'=1+1 pg-test", "'+OFFER", "'=2+3"), $columns, 'day_month');
+	pg_assert_same('', $read['error'], 'a guarded export reads');
+	pg_assert_same(array('code' => '=1+1 pg-test', 'offer_code' => '+OFFER', 'notes' => '=2+3'), $read['values'], 'the apostrophe the export added is dropped');
+
+	$read = pg_key_code_import_row(array("'ABC", 'OFFER', "it's"), $columns, 'day_month');
+	pg_assert_same("'ABC", $read['values']['code'], 'an apostrophe before no formula sign stays');
+}
+
+function test_key_code_import_row_names_the_flag_column_by_its_label()
+{
+	$columns = array(0 => 'code', 1 => 'enabled', 2 => 'single_use');
+
+	$read = pg_key_code_import_row(array('ABC', 'maybe'), $columns, 'day_month');
+	pg_assert_contains('Enabled', $read['error'], 'the enabled column by its label');
+	pg_assert_same(false, strpos($read['error'], 'enabled column') !== false, 'not by its database name');
+
+	$read = pg_key_code_import_row(array('ABC', '1', 'maybe'), $columns, 'day_month');
+	pg_assert_contains('Single-Use', $read['error'], 'the single use column by its label');
+}
+
+function test_key_code_export_line_guards_text_cells()
+{
+	$line = pg_key_code_export_line(array(
+		'code' => '=1+1 pg-test',
+		'offer_code' => '@OFFER',
+		'enabled' => '1',
+		'expiration_date' => '0000-00-00',
+		'notes' => '=2+3 "quoted"',
+		'single_use' => '0',
+		'report' => 'key_code',
+		'last_modified_timestamp' => 0,
+		'last_modified_username' => '-admin',
+	));
+
+	pg_assert_contains('"\'=1+1 pg-test","\'@OFFER","1","","\'=2+3 ""quoted""","0","key_code",', $line, 'text cells guarded and quoted, empty date for no expiry');
+	pg_assert_contains('"\'-admin"' . "\n", $line, 'the user name guarded');
+
+	$line = pg_key_code_export_line(array('code' => 'ABC', 'offer_code' => 'O', 'enabled' => '0', 'expiration_date' => '2027-06-15', 'notes' => '', 'single_use' => '1', 'report' => 'offer_code', 'last_modified_timestamp' => 0, 'last_modified_username' => null));
+	pg_assert_contains('"ABC","O","0","2027-06-15","","1","offer_code",', $line, 'a plain row as before');
+}
+
+function test_key_code_import_screen_skips_an_offers_own_code()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/import_key_codes.php');
+
+	pg_assert_contains("This is an offer\\'s own code.", $source, 'a code that is an offer\'s own code is refused with the form\'s words');
+	pg_assert_contains('aria-hidden="true">file_upload', $source, 'the button icon is not read out');
+	pg_assert_contains('key_code, offer_code', $source, 'the screen names the columns it reads');
+
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/view_key_codes.php');
+	pg_assert_contains('pg_key_code_export_line(', $source, 'the export writes guarded lines');
+}

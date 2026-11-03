@@ -16,7 +16,7 @@ description: Steps V5-V11 of plans/visitors-overview.md, the sections: traffic, 
   - `includes/visitors/sources.php`: the channel split as one stacked bar and a list with shares and changes; referring hosts, search engines with their terms, UTM source, medium and campaign, tracking and affiliate codes as top lists from `pg_visitor_breakdown()`, each with the previous period's figure; a line saying which days came from the summary.
 
 - V8 (M) Content section. After V1 and V2.
-  - `includes/visitors/content.php`: most viewed pages, products, groups and forms (`visitor_content_hourly`, labels and links as widget 5), landing pages with their visits, forms and orders (`landing_page_name` breakdown, the home page folded), site search terms; each with the previous period's figure.
+  - `includes/visitors/content.php`: most viewed pages, products, groups and forms (`visitor_content_hourly`, labels and links as widget 5), landing pages with their visits, forms and orders (`landing_page_name` breakdown, the home page folded); each with the previous period's figure.
 
 - V9 (M) Google search section. After V1.
   - `includes/visitors/google.php`: linked: clicks, impressions, click rate and average position with changes over the period ending on the latest day with figures (said under the tiles), clicks and impressions by day, top queries and top pages (`pg_gsc_top()`), opportunities: queries whose impressions are above the period's median and whose click rate is under half the site's, and queries at positions 8-20 with impressions, each linking to the query in Search Console; not linked: the small card (decision 6) with one explaining line and a link to `search_console.php`. `search_console.php` is not changed.

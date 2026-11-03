@@ -10,10 +10,10 @@ description: Workspace canvas (E16, #4762): New canvas in a channel's Insert men
 
 ## How is a canvas saved?
 - `save.url` with an artboard sends the PNG the editor draws (`picture`, `drawArtboard()`) in place of the overlay, and `name` (core `send()`). `ws_canvas_picture()` checks it against the artboard size (`pg_image_editor_take_png()`) and recompresses it.
-- The document is kept beside the file written as a `file_versions` row, source `new` (`ws_canvas_keep()`): the canvas's file, or the new file a replace or a sent copy wrote. One that may not be kept (a pasted picture, over 1 MB: `pg_file_versions_doc_storable()`) leaves only the picture.
+- The document is kept beside the file written as a `file_versions` row, source `new` (`ws_canvas_keep()`, a wrapper of `pg_image_editor_canvas_keep()` that Files shares): the canvas's file, or the new file a replace or a sent copy wrote. One that may not be kept (a pasted picture, over 1 MB: `pg_file_versions_doc_storable()`) leaves only the picture.
 
 ## How does it open again?
-- "Edit the picture" on a message first asks `workspace_file_save.php?message=<id>` `{action: 'canvas'}`: `ws_canvas_open_doc()` answers the newest version's document while the file still holds its pixels and it is a canvas (`ws_canvas_is_doc()`: v 1, artboard, no source), else null.
+- "Edit the picture" on a message first asks `workspace_file_save.php?message=<id>` `{action: 'canvas'}`: `ws_canvas_open_doc()` (= `pg_image_editor_canvas_open_doc()`) answers the newest version's document while the file still holds its pixels and it is a canvas (`ws_canvas_is_doc()`: v 1, artboard, no source), else null.
 - With a document the editor opens `{blank: doc.artboard, doc}`: `M.canvasOpenDoc()` gives the editor's document, texts and shapes editable, and the New image dialog is not asked. Save with an artboard document on `?message=` replaces or sends the canvas as a picture does.
 
 ## What is left?

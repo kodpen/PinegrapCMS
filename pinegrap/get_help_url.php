@@ -92,8 +92,6 @@ function get_help_url($properties = array())
 
         // File Manager
         'view_folders'     => 'folders',
-        'add_folder'       => 'folders#create-edit-folder',
-        'edit_folder'      => 'folders#create-edit-folder',
         'create_file'      => 'folders#create-edit-folder',
         'duplicate_folder' => 'folders#duplicate-folder',
 
@@ -148,6 +146,7 @@ function get_help_url($properties = array())
         'view_short_links'    => 'pages-cont#short-links',
         'view_not_found_log'  => 'pages-cont#short-links',
         'import_short_links'  => 'pages-cont#short-links',
+        'import'              => 'pages-cont#import',
         'add_short_link'      => 'pages-cont#create-edit-short-link',
         'edit_short_link'     => 'pages-cont#create-edit-short-link',
         'view_auto_dialogs'   => 'pages-cont#auto-dialogs',
@@ -155,20 +154,6 @@ function get_help_url($properties = array())
         'edit_auto_dialog'    => 'pages-cont#create-edit-auto-dialog',
 
         // Files
-        'view_files' => array(
-            ''                      => 'files',
-            'all_my_files'          => 'files',
-            'all_my_archived_files' => 'files#archived-files',
-            'my_photos'             => 'files#photos',
-            'my_documents'          => 'files#browsing-by-type',
-            'my_media'              => 'files#browsing-by-type',
-            'my_attachments'        => 'files#browsing-by-type',
-            'my_public_files'       => 'files#browsing-by-access',
-            'my_guest_files'        => 'files#browsing-by-access',
-            'my_registration_files' => 'files#browsing-by-access',
-            'my_member_files'       => 'files#browsing-by-access',
-            'my_private_files'      => 'files#browsing-by-access',
-        ),
         'add_file'          => 'files#upload-files',
         'edit_file'         => 'files#edit-file',
         'editor_edit_file'  => 'files#edit-file',
@@ -195,6 +180,9 @@ function get_help_url($properties = array())
         'view_visitor_report'  => 'visitors#create-edit-visitor-report',
         'view_visitor'         => 'visitors#visit-details',
         'search_console'       => 'visitors#google-search-console',
+        'visitor_search'       => 'visitors#site-search',
+        'visitor_vitals'       => 'visitors#page-speed',
+        'visitor_ai'           => 'visitors#ai-visibility',
         'view_accessibility'   => 'seo#accessibility-check',
         'search_audits'        => 'seo#seo-checks',
 

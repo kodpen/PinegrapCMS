@@ -1,0 +1,12 @@
+{
+  "addressComponents": [
+    {"longText": "1600", "shortText": "1600", "types": ["street_number"]},
+    {"longText": "Amphitheatre Parkway", "shortText": "Amphitheatre Pkwy", "types": ["route"]},
+    {"longText": "Suite 4", "shortText": "Suite 4", "types": ["subpremise"]},
+    {"longText": "Mountain View", "shortText": "Mountain View", "types": ["locality", "political"]},
+    {"longText": "Santa Clara County", "shortText": "Santa Clara County", "types": ["administrative_area_level_2", "political"]},
+    {"longText": "California", "shortText": "CA", "types": ["administrative_area_level_1", "political"]},
+    {"longText": "United States", "shortText": "US", "types": ["country", "political"]},
+    {"longText": "94043", "shortText": "94043", "types": ["postal_code"]}
+  ]
+}

@@ -99,6 +99,11 @@ function test_output_period_nav_steps_by_the_unit()
 	pg_assert_same(1, substr_count($html, 'menu-item pg-link-body-emphasis active'), 'one unit marked');
 	pg_assert_contains('Oct 10 &amp; on', $html, 'range text as given');
 	pg_assert_contains('class="d-inline-block d-none"', $html, 'extra class');
+
+	// The contacts list reads its view only from the address: every link keeps it.
+	$html = pg_period_nav('view_contacts.php', $day('2026-10-10'), $periods, 'x', '', array('filter' => 'my_subscribers'));
+	pg_assert_contains('href="view_contacts.php?filter=my_subscribers&amp;start_month=10&amp;start_day=09&amp;start_year=2026', $html, 'previous day keeps the view');
+	pg_assert_same(6, substr_count($html, 'filter=my_subscribers'), 'arrows and the four menu items keep the view');
 }
 
 // A cancel address read from the request stays a string inside the button's
@@ -205,7 +210,7 @@ function test_output_license_card_refusals_of_the_kodpen_api()
 	}
 
 	pg_assert_contains(lang('Suspended'), output_test_license_card(array('status' => 'error', 'error_code' => 'suspended', 'type' => 'premium', 'sites_used' => 1, 'sites_total' => 1)), 'suspended state');
-	pg_assert_contains(lang('Premium'), output_test_license_card(array('status' => 'error', 'error_code' => 'suspended', 'type' => 'premium', 'sites_used' => 1, 'sites_total' => 1)), 'a suspended licence keeps its type');
+	pg_assert_contains('Pinegrap ' . lang('Demo') . ' · ' . lang('Suspended'), output_test_license_card(array('status' => 'error', 'error_code' => 'suspended', 'type' => 'demo', 'sites_used' => 1, 'sites_total' => 1)), 'a suspended licence keeps its type');
 	pg_assert_contains(lang('Buy License'), output_test_license_card(array('status' => 'error', 'error_code' => 'seats_full')), 'no free right: buy one');
 	pg_assert_same(false, strpos(output_test_license_card(array('status' => 'error', 'error_code' => 'access_blocked')), lang('Buy License')), 'closed access: nothing to buy');
 
@@ -223,12 +228,14 @@ function test_output_license_card_shows_type_and_site_rights()
 	$html = output_test_license_card(array('status' => 'success', 'expiration_date_formatted' => $valid, 'countdown' => 200,
 		'type' => 'enterprise', 'sites_used' => 3, 'sites_total' => 5));
 
-	pg_assert_contains(lang('Enterprise'), $html, 'the type');
+	pg_assert_contains('<span class="pg-lic-label">Pinegrap ' . lang('Enterprise') . ' · ' . lang('Active') . '</span>', $html, 'the type on the row');
+	pg_assert_same(false, strpos($html, 'Pinegrap Premium'), 'an enterprise licence is not called Premium');
 	pg_assert_contains('3 / 5', $html, 'the site rights');
 	pg_assert_contains(lang('Active'), $html, 'still active');
 
 	$old = output_test_license_card(array('status' => 'success', 'expiration_date_formatted' => $valid, 'countdown' => 200, 'source' => null));
-	pg_assert_same(false, strpos($old, 'pg-lic-type'), 'an answer of the old server: no type line');
+	pg_assert_contains('<span class="pg-lic-label">Pinegrap Premium™ · ' . lang('Active') . '</span>', $old, 'an answer of the old server: the name as before');
+	pg_assert_same(0, substr_count((string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/output.php'), "format('d M Y')"), 'the card writes no English month name');
 }
 
 // With the switch on, a state without source 'v1' is asked again at once;
@@ -243,4 +250,28 @@ function test_output_license_check_v1_branch_behind_the_switch()
 	pg_assert_contains('$decoded = pg_license_map_v1($answer);', $source, 'read by the mapping');
 	pg_assert_contains('if (pg_license_key_valid($license_key)) {', $source, 'a key outside the alphabet is not sent');
 	pg_assert_contains("'https://www.kodpen.com/api2?", $source, 'the old server while the switch is off');
+}
+
+function test_output_page_fact_page_encodes_the_name_and_names_a_missing_page()
+{
+	pg_assert_same(
+		array('label' => 'Next Page', 'text' => 'Sizes_#2?_100%', 'url' => '/site/Sizes_%232%3F_100%25'),
+		pg_page_fact_page('Next Page', 'Sizes_#2?_100%', '/site/'),
+		'a name with # ? % links to that page');
+	pg_assert_same('/blog/2026/post', pg_page_fact_page('Next Page', 'blog/2026/post', '/')['url'], 'slashes stay');
+	pg_assert_same(
+		array('label' => 'Skip Page', 'text' => '[' . lang('Not Set') . ']'),
+		pg_page_fact_page('Skip Page', '', '/'),
+		'a deleted page is not set, with no link to the home page');
+	pg_assert_same('[' . lang('Not Set') . ']', pg_page_fact_page('Skip Page', null, '/')['text'], 'null name');
+}
+
+function test_output_page_title_escapes_markup_and_keeps_entities()
+{
+	pg_assert_same('Connect &lt;/title&gt;&lt;script&gt;x()&lt;/script&gt; - ', pg_output_page_title('Connect </title><script>x()</script>'), 'a registered client name cannot end the title');
+	pg_assert_same('Orders &amp; Carts - ', pg_output_page_title('Orders &amp; Carts'), 'an entity is not escaped twice');
+	pg_assert_same('Orders &amp; Carts - ', pg_output_page_title('Orders & Carts'), 'a bare ampersand is escaped');
+	pg_assert_same('Login - ', pg_output_page_title('Login'), 'plain title');
+	pg_assert_same('', pg_output_page_title(''), 'no title');
+	pg_assert_same('', pg_output_page_title(null), 'missing title');
 }

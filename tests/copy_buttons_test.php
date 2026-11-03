@@ -61,7 +61,13 @@ function test_copy_buttons_status_region()
 	foreach (copy_buttons_screens() as $screen) {
 		$source = copy_buttons_source($screen[1]);
 
-		pg_assert_contains('class="visually-hidden" role="status" aria-live="polite"', $source, $screen[1]);
+		// Connected accounts shows its status: a refused copy has to be
+		// seen, not only heard.
+		$region = ($screen[1] === 'connections.php')
+			? 'class="form-text mb-5 connections-copy-status" role="status" aria-live="polite"'
+			: 'class="visually-hidden" role="status" aria-live="polite"';
+
+		pg_assert_contains($region, $source, $screen[1]);
 		pg_assert_contains("data-copied=\"' . h(lang('Copied')) . '\"", $source, $screen[1]);
 		pg_assert_contains($refused, $source, $screen[1]);
 	}

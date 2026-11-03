@@ -63,7 +63,7 @@ function test_order_history_messages_translated()
 function test_order_view_screen_returns()
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/get_view_order_screen_content.php');
-	$owner = strpos($source, 'if ($order_user_id != $user_id) {');
+	$owner = strpos($source, 'if (!pg_order_view_owner_matches($order_user_id, $user_id)) {');
 	// The whole gate: USER_ID owns the order, and the page is not an e-mail.
 	$visible = strpos($source, "if (pg_return_classic_visible(defined('USER_ID') ? USER_ID : 0, \$order_user_id, !empty(\$render_context['email']))) {");
 	$block = strpos($source, '$output_returns = pg_return_classic_block($order_id, REQUEST_URL);');

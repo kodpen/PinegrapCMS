@@ -93,11 +93,18 @@
             svg.removeChild(svg.firstChild);
         }
 
+        // Each layer in a <g> of its own, by id: the motion part
+        // (pg_image_editor_motion.js) moves, fades and clips the group.
+        this.layerGroups = {};
+
         this.doc.layers.forEach(function (l) {
-            var n = l.hidden ? null : self.layerNode(l);
+            var n = l.hidden ? null : self.layerNode(l), g;
 
             if (n) {
-                svg.appendChild(n);
+                g = document.createElementNS(SVGNS, 'g');
+                g.appendChild(n);
+                svg.appendChild(g);
+                self.layerGroups[l.id] = g;
             }
         });
     };
@@ -451,7 +458,9 @@
     };
 
     // A picture file as a layer in the middle of the canvas, at most 60 % of
-    // it; one larger than 2000 px is kept at that size.
+    // it; one larger than 2000 px is kept at that size, one in another type
+    // than PNG or JPEG as a PNG (a save keeps it as a file, fileName naming
+    // it).
     Editor.prototype.addPicture = function (file) {
         var self = this, reader = new FileReader();
 
@@ -461,7 +470,7 @@
             img.onload = function () {
                 var src = String(reader.result), w = img.naturalWidth, h = img.naturalHeight, k = Math.min(1, 2000 / Math.max(w, h));
 
-                if (k < 1) {
+                if ((k < 1) || !/^data:image\/(png|jpeg);/.test(src)) {
                     var canvas = document.createElement('canvas');
 
                     canvas.width = Math.round(w * k);
@@ -474,7 +483,7 @@
                     var vr = self.viewRect(), fit = Math.min(1, 0.6 * vr.w / w, 0.6 * vr.h / h), lw = w * fit, lh = h * fit;
 
                     self.toSelect();
-                    self.addLayers([{ type: 'image', src: src, x: vr.x + (vr.w - lw) / 2, y: vr.y + (vr.h - lh) / 2, w: lw, h: lh, rot: 0, opacity: 1 }], 0);
+                    self.addLayers([{ type: 'image', src: src, fileName: file.name || '', x: vr.x + (vr.w - lw) / 2, y: vr.y + (vr.h - lh) / 2, w: lw, h: lh, rot: 0, opacity: 1 }], 0);
                 });
             };
             img.src = String(reader.result);
@@ -579,6 +588,30 @@
                 act('duplicate', t('duplicate'), function () { self.addLayers(self.selected(), 10); }),
                 act('trash', t('delete'), function () { self.removeLayers(); }, !free.length)
             ]));
+
+            // The list is the rail's Layers button's, and Select's with
+            // nothing selected: the selection's own panel ends here.
+            return;
+        }
+
+        this.layerList(body);
+    };
+
+    // The icon beside a layer's name in the list, by its type.
+    var LAYER_ICONS = {
+        image: 'image', text: 'text', sticker: 'sticker', glyph: 'sticker', redact: 'redact', path: 'vector', svg: 'vector',
+        pen: 'pen', rect: 'rect', ellipse: 'ellipse', arrow: 'arrow', line: 'line'
+    };
+
+    // Every layer, the top one first, with show and hide and lock; a press
+    // on a name selects it (Shift adds). Select's panel with nothing
+    // selected and the rail's Layers button show it.
+    Editor.prototype.layerList = function (body) {
+        var self = this;
+
+        if (!this.doc.layers.length) {
+            body.appendChild(el('p', { class: 'pgie-note', text: t('noLayers') }));
+            return;
         }
 
         var list = el('ul', { class: 'pgie-layerlist', 'aria-label': t('layers') });
@@ -596,9 +629,15 @@
             };
 
             list.appendChild(el('li', { class: 'pgie-lrow' + (on ? ' on' : '') + (l.hidden ? ' off' : '') }, [
-                el('button', { type: 'button', class: 'pgie-lname', 'aria-pressed': on ? 'true' : 'false', text: self.layerName(l), onclick: function (e) {
+                el('button', { type: 'button', class: 'pgie-lname', 'aria-pressed': on ? 'true' : 'false', onclick: function (e) {
+                    // From a tool that does not select, Select takes over so
+                    // the chosen layer gets its handles.
+                    if (Editor.selectTools.indexOf(self.tool) < 0) {
+                        self.tool = 'select';
+                    }
+
                     self.select(e.shiftKey ? ((on ? self.sel.filter(function (id) { return id !== l.id; }) : self.sel.concat([l.id]))) : [l.id]);
-                } }),
+                } }, [X.icon(LAYER_ICONS[l.type] || 'draw'), el('span', { text: self.layerName(l) })]),
                 flag('hidden', l.hidden ? t('show') : t('hide'), l.hidden ? 'eyeoff' : 'eye'),
                 flag('locked', l.locked ? t('unlock') : t('lock'), l.locked ? 'lock' : 'unlock')
             ]));
@@ -614,19 +653,21 @@
             return null;
         }
 
-        var out = M.outputSize(this.doc), canvas = document.createElement('canvas');
+        var out = M.saveSize(this.doc), canvas = document.createElement('canvas');
 
         canvas.width = out.w;
         canvas.height = out.h;
-        this.paintLayers(canvas.getContext('2d'), M.cropBox(this.doc), out.w, out.h);
+        this.paintLayers(canvas.getContext('2d'), M.saveBox(this.doc), out.w, out.h);
 
         return canvas.toDataURL('image/png');
     };
 
     // Each visible layer onto g, the box of the rotated space drawn at w x h:
-    // its type paints it in rotated-space units, its opacity set.
-    Editor.prototype.paintLayers = function (g, box, w, h) {
-        var self = this, sx = w / box.w, sy = h / box.h;
+    // its type paints it in rotated-space units, its opacity set. With a
+    // time (ms) each layer is painted as it moves then (paintMoving(), the
+    // render part); without one, at rest.
+    Editor.prototype.paintLayers = function (g, box, w, h, time) {
+        var self = this, sx = w / box.w, sy = h / box.h, timed = (time !== undefined) && (time !== null) && !!this.paintMoving;
 
         this.doc.layers.forEach(function (l) {
             var type = kind(l);
@@ -638,7 +679,12 @@
             g.save();
             g.setTransform(sx, 0, 0, sy, -box.x * sx, -box.y * sy);
             g.globalAlpha = (l.opacity === undefined) ? 1 : l.opacity;
-            type.paint.call(self, g, l);
+            if (timed) {
+                self.paintMoving(g, l, time, type);
+            } else {
+                type.paint.call(self, g, l);
+            }
+
             g.restore();
         });
     };
@@ -663,5 +709,34 @@
     Editor.hints.select = 'hintSelect';
     Editor.pointers.select = { down: Editor.prototype.startDrag, move: Editor.prototype.moveDrag, up: Editor.prototype.endDrag, double: Editor.prototype.editLayer };
     Editor.keys.push(Editor.prototype.layerKey);
+
+    // The rail's Layers button: the list from any tool; a second press,
+    // another tool or Escape closes it. A crop being drawn is kept first,
+    // as leaving the tool keeps it.
+    Editor.prototype.toggleLayers = function (open) {
+        var show = (open === undefined) ? !this.layersOpen : !!open;
+
+        if (show && this.cropping()) {
+            this.applyCrop();
+        }
+
+        this.layersOpen = show;
+        this.sheetOpen = show || (this.tool !== 'select') || (this.sel.length > 0);
+        this.render();
+    };
+
+    Editor.inits.push(function () {
+        this.layersOpen = false;
+    });
+
+    Editor.escapes.unshift(function () {
+        if (!this.layersOpen) {
+            return false;
+        }
+
+        this.toggleLayers(false);
+
+        return true;
+    });
     Editor.views.push(Editor.prototype.renderLayers, Editor.prototype.renderSelection);
 }(window.PgImageEditor.parts));

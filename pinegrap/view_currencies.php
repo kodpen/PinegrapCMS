@@ -81,6 +81,10 @@ while ($row = mysqli_fetch_assoc($result)) {
     $currencies[] = $row;
 }
 
+// The name and the symbol are shown translated and decoded, so the order
+// is settled on what the screen shows, in the panel language's alphabet.
+$currencies = pg_currency_list_sort($currencies, $sort_levels);
+
 $output_rows = '';
 
 // if there is at least one result to display
@@ -89,7 +93,9 @@ if ($currencies) {
 
         $output_base_check_mark = '';
         if ($currency['base'] == 1) {
-            $output_base_check_mark = '<span class="material-icons">task_alt</span>';
+            // An icon drawn by CSS: no glyph name in the cell's text, which
+            // the list search and screen readers would otherwise pick up.
+            $output_base_check_mark = '<i class="bi bi-check-circle" aria-hidden="true"></i><span class="visually-hidden">' . lang('Yes') . '</span>';
         }
 
         $created_username = '';
@@ -107,6 +113,14 @@ if ($currencies) {
 
         $output_link_url = 'edit_currency.php?id=' . $currency['id'];
 
+        // The stored rate is units of this currency per 1 base unit; the
+        // reverse (1 USD = 49,95 TRY) is how a rate is usually quoted.
+        $output_inverse_rate = '';
+
+        if (($currency['base'] != 1) && ((float) $currency['exchange_rate'] > 0)) {
+            $output_inverse_rate = '<small class="d-block fg-secondary">1 ' . h($currency['code']) . ' = ' . pg_format_number(1 / (float) $currency['exchange_rate'], 4) . ' ' . h((string) BASE_CURRENCY_CODE) . '</small>';
+        }
+
 
     
 
@@ -120,7 +134,7 @@ if ($currencies) {
                 <td class="align-middle text-center">' . $output_base_check_mark . '</td>
                 <td class="align-middle text-center">' . h($currency['code']) . '</td>
                 <td class="align-middle text-center">' . $currency['symbol'] . '</td>
-                <td class="align-middle text-start">' . pg_format_number((float) $currency['exchange_rate'], 5) . '</td>
+                <td class="align-middle text-start">' . pg_format_number((float) $currency['exchange_rate'], 5) . $output_inverse_rate . '</td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' => $currency['created_timestamp'])) . $created_username . '</td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' => $currency['last_modified_timestamp'])) . $last_modified_username . '</td>
             </tr>';

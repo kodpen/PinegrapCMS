@@ -22,6 +22,7 @@ $user = validate_user();
 validate_ecommerce_access($user);
 
 include_once('liveform.class.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/container_form.php');
 $liveform = new liveform('view_containers');
 
 // The columns this list sorts by, in the order the table shows them.
@@ -79,11 +80,14 @@ $containers = db_items(
 
 $output_rows = '';
 
-$output_checkmark = '<span class="material-icons">task_alt</span>';
+// The icon is hidden from screen readers and from the table search; the
+// word beside it says the state.
+$output_checkmark = '<i class="bi bi-check-circle" aria-hidden="true"></i><span class="visually-hidden">' . lang('Yes') . '</span>';
+$output_no = '<span class="visually-hidden">' . lang('No') . '</span>';
 
 foreach ($containers as $container) {
 
-    $output_enabled = '';
+    $output_enabled = $output_no;
 
     if ($container['enabled']) {
         $output_enabled = $output_checkmark;
@@ -92,25 +96,25 @@ foreach ($containers as $container) {
     $output_length = '';
 
     if ($container['length'] > 0) {
-        $output_length = ($container['length'] * 1) . '&Prime;';
+        $output_length = pg_container_format_measure($container['length']) . ' ' . lang('in');
     }
 
     $output_width = '';
 
     if ($container['width'] > 0) {
-        $output_width = ($container['width'] * 1) . '&Prime;';
+        $output_width = pg_container_format_measure($container['width']) . ' ' . lang('in');
     }
 
     $output_height = '';
 
     if ($container['height'] > 0) {
-        $output_height = ($container['height'] * 1) . '&Prime;';
+        $output_height = pg_container_format_measure($container['height']) . ' ' . lang('in');
     }
 
     $output_weight = '';
 
     if ($container['weight'] > 0) {
-        $output_weight = ($container['weight'] * 1) . ' lb';
+        $output_weight = pg_container_format_measure($container['weight']) . ' ' . lang('lbs');
     }
 
     $output_cost = '';

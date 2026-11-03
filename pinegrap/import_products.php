@@ -75,8 +75,8 @@ if (!$_POST) {
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12  my-3">
-                                            <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'class'=>'form-control w-auto', 'required'=>'required')) . '
+                                            <label for="file" class="form-label">' . lang('Select the file to upload') . '</label>
+                                            ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'class'=>'form-control w-auto', 'accept'=>'.csv,.xlsx,.ods', 'required'=>'required')) . '
                                             <div class="form-text">' . lang('A .csv, .xlsx or .ods file. The first row holds the column names.') . '</div>
                                             ' . pg_upload_limit_hint() . '
                                         </div>
@@ -94,7 +94,7 @@ if (!$_POST) {
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="submit_import_products" name="submit_import_products" value="Import Products" class="btn my-1  btn-solid theme-success " onclick="if(document.getElementById(\'update_existing_products\').checked == true){event.preventDefault(); var b=this; pgConfirm({title:\'' . lang('Warning') . '\', message:\'' . lang('WARNING: If an existing product has the same name as a product in the import file, then the existing product data will be replaced.') . '\', confirmText:\'' . lang('Import Products') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'warning\'}).then(function(ok){if(ok){b.disabled=true;b.form.appendChild(Object.assign(document.createElement(\'input\'),{type:\'hidden\',name:\'submit_import_products\',value:\'Import Products\'}));b.form.submit();}}); return false;}"><span class="material-icons me-3">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import Products') ) . '</span></button>
+                                <button type="submit" id="submit_import_products" name="submit_import_products" value="Import Products" class="btn my-1  btn-solid theme-success " onclick="if(document.getElementById(\'update_existing_products\').checked == true){event.preventDefault(); if(!this.form.reportValidity()){return false;} var b=this; pgConfirm({title:\'' . lang('Warning') . '\', message:\'' . lang('WARNING: If an existing product has the same name as a product in the import file, then the existing product data will be replaced.') . '\', confirmText:\'' . lang('Import Products') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'warning\'}).then(function(ok){if(ok){b.disabled=true;b.form.appendChild(Object.assign(document.createElement(\'input\'),{type:\'hidden\',name:\'submit_import_products\',value:\'Import Products\'}));b.form.submit();}}); return false;}"><span class="material-icons me-3">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import Products') ) . '</span></button>
                             </div>
                         </div>
                     </nav>
@@ -111,8 +111,8 @@ if (!$_POST) {
 } else {
     validate_token_field();
     
-    // if no file was uploaded
-    if (!$_FILES['file']['name']) {
+    // No file chosen, or a request that carries no file field at all.
+    if (empty($_FILES['file']['name'])) {
         $liveform->mark_error('file', lang('Please select a file.'));
         
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_products.php');
@@ -186,42 +186,14 @@ if (!$_POST) {
         exit();
     }
 
-    $submit_form_fields = array();
-    $column_names = array();
+    // The headings by position: a submit form column (e.g. sfc_example) is
+    // kept for later and holds its place, so every other column is read from
+    // its own cell (pg_products_import_headings()).
+    $headings_read = pg_products_import_headings($columns, 'convert_column_name');
+    $submit_form_fields = $headings_read['submit_form_fields'];
+    $column_names = $headings_read['column_names'];
     // Headings the import does not know, named in the result.
-    $unknown_headings = array();
-    
-    // create array with column field names
-    foreach ($columns as $key => $value) {
-        $prefix = substr($value, 0, 4);
-
-        // If this column is a submit form field (e.g. sfc_example), then store it for later.
-        if (($prefix == 'sfc_') || ($prefix == 'sfu_')) {
-            $field_name = substr($value, 4);
-
-            if ($field_name != '') {
-                if ($prefix == 'sfc_') {
-                    $action = 'create';
-                } else {
-                    $action = 'update';
-                }
-
-                $submit_form_fields[] = array(
-                    'name' => $field_name,
-                    'action' => $action,
-                    'column' => $key);
-            }
-
-        // Otherwise this is a normal column, so deal with it in the general way.
-        } else {
-            $column_name = convert_column_name($value);
-            $column_names[] = $column_name;
-
-            if ($column_name === false) {
-                $unknown_headings[] = $value;
-            }
-        }
-    }
+    $unknown_headings = $headings_read['unknown_headings'];
 
     // Assume that columns do not exist until we find out otherwise.
     $address_name_column_exists = false;
@@ -307,6 +279,25 @@ if (!$_POST) {
 
     $inventory_quantity_position = array_search('inventory_quantity', $column_names, true);
 
+    // The name and short description columns, by position: a row whose cell
+    // is longer than its varchar(100) column is left out whole and named in
+    // the result. Cut to 100 it was stored under a name the file does not
+    // hold, so the next import of the same file added the product again.
+    $text_positions = array();
+
+    foreach (array('name', 'short_description') as $text_column) {
+        $text_position = array_search($text_column, $column_names, true);
+
+        if ($text_position !== false) {
+            $text_positions[$text_column] = $text_position;
+        }
+    }
+
+    // A tax rate cell that is no number or lies outside 0..100 leaves the
+    // row out: parse_tax_rate() would store 100 for 150 and follow the zone
+    // for a word, neither of which the file says.
+    $tax_rate_position = array_search('tax_rate', $column_names, true);
+
     // A file with a tracking or a stock column sets the out-of-stock mark of
     // each product it writes, as the product screens do.
     $stock_columns_in_file = in_array('inventory', $column_names, true) || ($inventory_quantity_position !== false);
@@ -317,8 +308,19 @@ if (!$_POST) {
     $marketplace_product_ids = array();
 
     $rows_not_amounts = array();
+    $rows_price_too_large = array();
     $rows_not_numbers = array();
+    $rows_decimal_too_large = array();
+    $rows_quantity_not_whole = array();
     $rows_not_customs = array();
+    $rows_quantity_too_large = array();
+    $rows_text_too_long = array();
+    $rows_tax_rate_not_valid = array();
+    // Rows of products in the Recycle Bin, never written: Edit Product,
+    // Modify Selected and the Catalog Manager leave a binned product alone
+    // too. Before the bin's upgrade step there is no recycled column.
+    $rows_binned = array();
+    $bin_ready = pg_catalog_bin_ready();
     // Rows of products already on file, left as they are because Update
     // Existing Products is off.
     $rows_left_alone = array();
@@ -339,9 +341,27 @@ if (!$_POST) {
             // The row is named by its number among the rows read (the header
             // is 1; a spreadsheet's empty rows are not written to the CSV, so
             // they are not counted) and by its name, which finds it in any
-            // file. The message is HTML, so the name is escaped.
+            // file. The message is HTML, so the name is escaped. Each list
+            // below names its own reason, so the operator knows what to fix.
+            $row_label = $row_number . ' (' . htmlspecialchars((string) $row[$name_key], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ')';
+
+            if (pg_products_import_row_text_too_long($row, $text_positions)) {
+                $rows_text_too_long[] = $row_label;
+                continue;
+            }
+
+            if (($tax_rate_position !== false) && (pg_tax_rate_problem(pg_products_import_row_value($row, $tax_rate_position)) !== '')) {
+                $rows_tax_rate_not_valid[] = $row_label;
+                continue;
+            }
+
             if ($row_read['refused']) {
-                $rows_not_amounts[] = $row_number . ' (' . htmlspecialchars((string) $row[$name_key], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ')';
+                if ($row_read['too_large']) {
+                    $rows_price_too_large[] = $row_label;
+                } else {
+                    $rows_not_amounts[] = $row_label;
+                }
+
                 continue;
             }
 
@@ -354,16 +374,41 @@ if (!$_POST) {
                 $row_quantity = pg_products_mass_quantity_value($quantity_cell);
             }
 
-            if (pg_products_import_row_decimals_refused($row, $decimal_positions)
-                || (($quantity_cell !== '') && ($row_quantity === null))) {
-                $rows_not_numbers[] = $row_number . ' (' . htmlspecialchars((string) $row[$name_key], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ')';
+            $decimals_problem = pg_products_import_row_decimals_problem($row, $decimal_positions);
+
+            if ($decimals_problem === 'too_large') {
+                $rows_decimal_too_large[] = $row_label;
+                continue;
+            }
+
+            if ($decimals_problem === 'not_number') {
+                $rows_not_numbers[] = $row_label;
+                continue;
+            }
+
+            // A stock cell with a fraction or a minus sign ("1,5", "-3") is a
+            // number, just not a count; anything else is not a number.
+            if (($quantity_cell !== '') && ($row_quantity === null)) {
+                if (pg_products_import_quantity_refusal($quantity_cell) === 'not_whole') {
+                    $rows_quantity_not_whole[] = $row_label;
+                } else {
+                    $rows_not_numbers[] = $row_label;
+                }
+
+                continue;
+            }
+
+            // A count past what products.inventory_quantity holds leaves the
+            // row out: MySQL would store the column's top without a word.
+            if (($row_quantity !== null) && pg_inventory_quantity_too_large($row_quantity)) {
+                $rows_quantity_too_large[] = $row_label;
                 continue;
             }
 
             $customs_row = pg_product_customs_import_row($row, $customs_positions);
 
             if ($customs_row === false) {
-                $rows_not_customs[] = $row_number . ' (' . htmlspecialchars((string) $row[$name_key], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ')';
+                $rows_not_customs[] = $row_label;
                 continue;
             }
 
@@ -378,7 +423,7 @@ if (!$_POST) {
                     full_description,
                     details,
                     seo_analysis_current,
-                    address_name
+                    address_name" . ($bin_ready ? ', recycled' : '') . "
                 FROM products
                 WHERE name = ?";
             $result = db_q($query, array((string) $row[$name_key])) or output_error('Query failed.');
@@ -391,6 +436,14 @@ if (!$_POST) {
                 $details = $row_2['details'];
                 $seo_analysis_current = $row_2['seo_analysis_current'];
                 $address_name = $row_2['address_name'];
+
+                // A code a binned product still holds cannot be given to a
+                // new one either, so the row is left out whatever Update
+                // Existing Products says.
+                if ($bin_ready && ((int) $row_2['recycled'] === 1)) {
+                    $rows_binned[] = $row_label;
+                    continue;
+                }
 
                 $new_address_name = '';
                 
@@ -453,7 +506,7 @@ if (!$_POST) {
 
                             // if this column is address_name, then prepare address name
                             if ($column_name == 'address_name') {
-                                $column_value = prepare_catalog_item_address_name($column_value, $product_id);
+                                $column_value = prepare_catalog_item_address_name($column_value, $product_id, 'product');
                                 $new_address_name = $column_value;
                             }
 
@@ -607,7 +660,7 @@ if (!$_POST) {
                             $sql_seo_analysis_current
                             user = '" . $user['id'] . "',
                             timestamp = UNIX_TIMESTAMP()
-                        WHERE name = '" . escape($row[$name_key]) . "'";
+                        WHERE id = '" . (int) $product_id . "'";
                     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 
                     if ($stock_columns_in_file) {
@@ -967,6 +1020,14 @@ if (!$_POST) {
         $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because a price, compare-at price or extra shipping cost in them is not an amount: {var:1}.', 'vars' => array($rows_listed))));
     }
 
+    // Rows left out because a money cell is more than the price columns hold,
+    // with that top in the base currency.
+    if ($rows_price_too_large) {
+        $rows_listed = implode(', ', array_slice($rows_price_too_large, 0, 50)) . ((count($rows_price_too_large) > 50) ? ', ...' : '');
+        $price_top = h(pg_money_text(PG_PRODUCT_PRICE_MAX / 100, defined('BASE_CURRENCY_SYMBOL') ? BASE_CURRENCY_SYMBOL : ''));
+        $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because a price, compare-at price or extra shipping cost in them is too large (at most {var:1}): {var:2}.', 'vars' => array($price_top, $rows_listed))));
+    }
+
     // Rows left out because a weight, dimension, commission limit or stock
     // quantity cell is not a number.
     if ($rows_not_numbers) {
@@ -974,10 +1035,49 @@ if (!$_POST) {
         $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because a weight, length, width, height, commission rate limit or stock quantity in them is not a number: {var:1}.', 'vars' => array($rows_listed))));
     }
 
+    // Rows left out because a weight or a dimension is more than its column
+    // holds.
+    if ($rows_decimal_too_large) {
+        $rows_listed = implode(', ', array_slice($rows_decimal_too_large, 0, 50)) . ((count($rows_decimal_too_large) > 50) ? ', ...' : '');
+        $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because a weight, length, width or height in them is too large: {var:1}.', 'vars' => array($rows_listed))));
+    }
+
+    // Rows left out because their stock quantity has a fraction or a minus
+    // sign.
+    if ($rows_quantity_not_whole) {
+        $rows_listed = implode(', ', array_slice($rows_quantity_not_whole, 0, 50)) . ((count($rows_quantity_not_whole) > 50) ? ', ...' : '');
+        $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because their stock quantity is not a whole number of zero or more: {var:1}.', 'vars' => array($rows_listed))));
+    }
+
+    // Rows left out because their stock quantity is more than the column holds.
+    if ($rows_quantity_too_large) {
+        $rows_listed = implode(', ', array_slice($rows_quantity_too_large, 0, 50)) . ((count($rows_quantity_too_large) > 50) ? ', ...' : '');
+        $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because their stock quantity is too large: {var:1}.', 'vars' => array($rows_listed))));
+    }
+
     // Rows left out because an HS code or a country of origin cannot be stored.
     if ($rows_not_customs) {
         $rows_listed = implode(', ', array_slice($rows_not_customs, 0, 50)) . ((count($rows_not_customs) > 50) ? ', ...' : '');
         $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because their HS code or country of origin is not valid: {var:1}.', 'vars' => array($rows_listed))));
+    }
+
+    // Rows left out because their name or short description is longer than
+    // its column.
+    if ($rows_text_too_long) {
+        $rows_listed = implode(', ', array_slice($rows_text_too_long, 0, 50)) . ((count($rows_text_too_long) > 50) ? ', ...' : '');
+        $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because their name or short description is longer than 100 characters: {var:1}.', 'vars' => array($rows_listed))));
+    }
+
+    // Rows left out because their tax rate is no number from 0 to 100.
+    if ($rows_tax_rate_not_valid) {
+        $rows_listed = implode(', ', array_slice($rows_tax_rate_not_valid, 0, 50)) . ((count($rows_tax_rate_not_valid) > 50) ? ', ...' : '');
+        $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because their tax rate is not a number from 0 to 100: {var:1}.', 'vars' => array($rows_listed))));
+    }
+
+    // Rows left out because their product is in the Recycle Bin.
+    if ($rows_binned) {
+        $rows_listed = implode(', ', array_slice($rows_binned, 0, 50)) . ((count($rows_binned) > 50) ? ', ...' : '');
+        $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because their product is in the Recycle Bin: {var:1}.', 'vars' => array($rows_listed))));
     }
 
     if (pg_csv_headings_text($unknown_headings) !== '') {

@@ -1,11 +1,15 @@
 ---
 name: api-datetime-end-bound
-description: External API datetime end bounds (to, *_to): a date-only YYYY-MM-DD counts that day whole, to 23:59:59 in the site's time zone; a value with a time stays that moment (PR #4091)
+description: External API datetime parameters: only the documented forms are read (no relative words or rolled-over days); a bare day as an end bound (to, *_to) counts to 23:59:59 site time (PR #4091)
 ---
 
 ## What does `to=2026-10-20` mean?
 - Every `datetime` parameter named `to` or ending in `_to` is an end bound. A bare `YYYY-MM-DD` there counts to 23:59:59 of that day in the site's time zone (`date_default_timezone_get()`, set by init.php). An ISO-8601 value with a time, or a unix stamp, stays that exact moment.
 - Start bounds (`from`, `*_since`) read a bare day as its 00:00; exclusive bounds (`*_before`) are not end bounds and stay that moment.
+
+## Which values does a datetime parameter take?
+- `api_time_split()` (`includes/api/time.php`) reads only: a unix integer; a day `YYYY-MM-DD` or basic `YYYYMMDD`; a day with a time (`T` or space, seconds and fraction optional) and an optional zone (`Z`, `+hh:mm`, `+hhmm`, `+hh`). No zone means the site's zone. Anything else is 422.
+- Eight digits are a basic ISO day, never a 1970 unix stamp. A day the calendar lacks (`2026-02-30`), an hour over 23 and relative words (`next monday`) are refused. Before, `strtotime()` took them in silence and filters returned the wrong rows (issue #5986).
 
 ## Where is it done?
 - Once, in the parameter reader: `api_validate_value()` (`includes/api/router.php`), case `datetime`, picks `api_time_parse_end_bound()` when `api_param_is_end_bound($name)` (both in `includes/api/time.php`), else `api_time_parse()`. MCP tool calls pass the same reader.

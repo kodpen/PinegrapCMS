@@ -79,5 +79,8 @@ function test_order_page_known_steps_stop_before_the_order()
 // form is not turned away with page_id 0.
 function test_order_page_known_express_order_widget_names_rendered_page()
 {
-	pg_assert_contains("if (\$_eo_page_id <= 0) {\n        \$_eo_page_id = (int)pg_rendered_page();", file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_cart.php'));
+	$src = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_cart.php');
+	pg_assert_contains("\$_eo_page_id = _pg_cart_widget_page_id(", $src);
+	pg_assert_contains("LIMIT 1\") : 0,\n        pg_rendered_page()\n    );\n    if (\$_eo_page_id > 0) {", $src);
+	pg_assert_same(7, _pg_cart_widget_page_id(0, 7), 'no name in the address: the rendered page');
 }

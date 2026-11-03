@@ -319,6 +319,22 @@ function test_order_completion_extended_until()
 	pg_assert_same('2026-11-20', pg_order_extended_until('', 10, 1, '2026-11-10'), 'no end yet starts from today');
 }
 
+function test_order_completion_extended_until_over_a_clock_change()
+{
+	// A day the clocks go back has 25 hours: counting days as 86400 seconds
+	// from midnight ends an hour short, on the day before.
+	$zone = date_default_timezone_get();
+	date_default_timezone_set('Europe/Berlin');
+
+	try {
+		pg_assert_same('2026-11-09', pg_order_extended_until('', 30, 1, '2026-10-10'), 'thirty days over the autumn clock change');
+		pg_assert_same('2026-10-25', pg_order_extended_until('', 1, 1, '2026-10-24'), 'one day bought the day before the clock change');
+		pg_assert_same('2026-11-09', pg_order_recurring_commission_start('Monthly', '2026-10-10', strtotime('2026-10-10 00:30:00')), 'a monthly start over the clock change');
+	} finally {
+		date_default_timezone_set($zone);
+	}
+}
+
 function test_order_completion_folder_access_extends()
 {
 	pg_assert_true(pg_order_folder_access_extends('', ''), 'no access yet');
@@ -895,4 +911,39 @@ function test_order_completion_payment_records_the_installment_difference()
 	foreach (array('total', 'installment_charges', 'payment_installment') as $column) {
 		pg_assert_true(in_array($column, pg_order_complete_columns(), true), $column . ' is a completion column');
 	}
+}
+
+// Two orders redeeming one gift card at the same moment both read a balance
+// that covers them; the decrement itself must refuse the second one, or the
+// unsigned balance stops at 0 and the card pays twice.
+function test_order_completion_gift_card_redemption_guards_the_balance()
+{
+	$body = order_completion_test_function_text(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php', 'pg_order_complete_gift_cards');
+	$update = substr($body, (int) strpos($body, '"UPDATE gift_cards'));
+	$update = substr($update, 0, (int) strpos($update, 'output_error'));
+
+	pg_assert_true(strpos($update, 'AND (balance >= ?)') !== false, 'the decrement runs only while the balance covers the amount');
+	pg_assert_true(preg_match('/UPDATE gift_cards.*?mysqli_affected_rows\(db::\$con\) < 1/s', $body) === 1, 'a decrement that changed no row is a failed card');
+}
+
+// The recipient that gives up the shipping's minor units is lowered by a
+// compare-and-set read from one snapshot, so two payment callbacks of the
+// same order cannot both lower it.
+function test_order_completion_shipping_less_step()
+{
+	$rows = array(
+		array('id' => '4', 'shipping_cost' => '500'),
+		array('id' => '9', 'shipping_cost' => '550'),
+		array('id' => '7', 'shipping_cost' => '20'),
+	);
+
+	pg_assert_same(array('id' => 9, 'from' => 550, 'to' => 500), pg_order_shipping_less_step($rows, 1020), 'the newest recipient that covers the difference');
+	pg_assert_same(array('id' => 4, 'from' => 500, 'to' => 470), pg_order_shipping_less_step(array($rows[0], $rows[2]), 490), 'a recipient that cannot cover it is skipped');
+	pg_assert_same(null, pg_order_shipping_less_step($rows, 1070), 'the sum is the order\'s shipping: nothing to lower');
+	pg_assert_same(null, pg_order_shipping_less_step($rows, 2000), 'the order holds more: nothing to lower');
+	pg_assert_same(null, pg_order_shipping_less_step(array(), 0));
+
+	$body = order_completion_test_function_text(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php', 'pg_order_complete_from_payment');
+	pg_assert_true(strpos($body, 'shipping_cost = shipping_cost -') === false, 'no relative decrement a second callback would repeat');
+	pg_assert_true(preg_match('/UPDATE ship_tos SET shipping_cost = \?\s+WHERE id = \? AND order_id = \? AND shipping_cost = \?/', $body) === 1, 'the write only lands while the row still holds the value read');
 }

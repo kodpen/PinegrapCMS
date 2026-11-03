@@ -61,3 +61,31 @@ function test_mail_html_to_text_repeat_call_declares_no_function()
 		pg_assert_false(function_exists('convert_html_to_text_' . $name . '_callback'), $name);
 	}
 }
+
+// The case changes reach the text only: a link inside bold or a heading keeps
+// its address as written, since a path or a signed query is case-sensitive.
+function test_mail_html_to_text_capitals_keep_link_addresses()
+{
+	pg_assert_same(
+		"\n\nGO (https://example.com/Track?t=aB)",
+		convert_html_to_text('<p><strong><a href="https://example.com/Track?t=aB">go</a></strong></p>'),
+		'bold link');
+	pg_assert_same(
+		"\n\nSEE (https://example.com/Page)\n\n",
+		convert_html_to_text('<h2><a href="https://example.com/Page">see</a></h2>'),
+		'heading link');
+}
+
+// <b> and <i> are those tags alone: <body>, <blockquote>, <img> and
+// <iframe> start with the same letters.
+function test_mail_html_to_text_b_and_i_are_whole_tag_names()
+{
+	pg_assert_same(
+		"Hello there, your order is READY",
+		convert_html_to_text('<body style="margin:0">Hello there, your order is <b>ready</b></body>'),
+		'body before a bold word');
+	pg_assert_same(
+		"\n\nHi _there_",
+		convert_html_to_text('<p><img src="a.png" alt="">Hi <i>there</i></p>'),
+		'image before an italic word');
+}

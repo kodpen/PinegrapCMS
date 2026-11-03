@@ -47,9 +47,13 @@ function test_panel_refusal_email_campaign_popup_framed()
 // The cancelled sentence goes through lang() with its existing key.
 function test_panel_refusal_email_campaign_cancelled_translated()
 {
-	$source = file_get_contents(PG_FUNCTIONS_DIR . '/send_email_campaign.php');
+	// The refusal is built by pg_email_campaign_send_refusal() and printed
+	// by the send window's popup error.
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_send.php');
+	$window = file_get_contents(PG_FUNCTIONS_DIR . '/send_email_campaign.php');
 
-	pg_assert_true(strpos($source, "output_error_in_popup(lang('The e-mail campaign may not be sent because it is cancelled.  Please update the status in order to send the e-mail campaign.'))") !== false, 'cancelled sentence passed through lang()');
+	pg_assert_true(strpos($source, "return lang('The e-mail campaign may not be sent because it is cancelled.  Please update the status in order to send the e-mail campaign.');") !== false, 'cancelled sentence passed through lang()');
+	pg_assert_true(strpos($window, 'output_error_in_popup(h($send_refusal))') !== false, 'the window prints the refusal');
 }
 
 // The packing slip's missing recipient is translated and answers 404.

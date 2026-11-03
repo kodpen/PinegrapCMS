@@ -205,9 +205,9 @@
         ['row_add', 'fl_kind_row_add'],
         ['row_set', 'fl_kind_row_set'],
         ['approval', 'fl_kind_approval'],
+        ['end', 'fl_add_end'],
         ['constants', 'fl_kind_constants'],
-        ['value', 'fl_kind_value'],
-        ['end', 'fl_add_end']
+        ['value', 'fl_kind_value']
     ];
 
     // The flow list's filter chips: every flow, the four ways to start,
@@ -221,14 +221,28 @@
         ['draft', 'fl_chip_draft']
     ];
 
-    // The palette's groups in their order, with their headings.
+    // The palette's groups in their order, with their headings. The End box
+    // is a group of its own here (paletteGroupOf()); on the canvas it keeps
+    // the logic group's colour.
     var PALETTE_GROUPS = [
         ['start', 'fl_group_start'],
-        ['values', 'fl_group_values'],
-        ['logic', 'fl_group_logic'],
-        ['people', 'fl_group_people'],
         ['message', 'fl_group_message'],
-        ['system', 'fl_group_system']
+        ['people', 'fl_group_people'],
+        ['logic', 'fl_group_logic'],
+        ['system', 'fl_group_system'],
+        ['end', 'fl_add_end'],
+        ['values', 'fl_group_values']
+    ];
+
+    // The palette's sections in the order a flow is built: what starts it,
+    // the steps after it, what ends it, and the value boxes, which stand
+    // outside the order (no arrow joins them). Each: its key, its number
+    // ('' for none), its heading, its hint and its groups.
+    var PALETTE_STAGES = [
+        ['first', '1', 'fl_stage_first', 'fl_stage_first_hint', ['start']],
+        ['steps', '2', 'fl_stage_steps', 'fl_stage_steps_hint', ['message', 'people', 'logic', 'system']],
+        ['last', '3', 'fl_stage_last', 'fl_stage_last_hint', ['end']],
+        ['aside', '', 'fl_stage_aside', 'fl_stage_aside_hint', ['values']]
     ];
 
     // The box whose line icon stands for a way to start in the flow list.
@@ -964,7 +978,9 @@
         table.appendChild(el('thead')).appendChild(head);
         ui.rows = el('tbody');
         table.appendChild(ui.rows);
-        ui.flows.appendChild(table);
+        // The table scrolls in its own box on a narrow main area, so the
+        // page never scrolls sideways and the last column stays reachable.
+        ui.flows.appendChild(el('div', 'table-responsive wsf-flow-scroll')).appendChild(table);
         ui.flowsNone = el('p', 'small fg-secondary wsf-flows-none d-none');
         ui.flows.appendChild(ui.flowsNone);
 
@@ -1171,7 +1187,10 @@
         var row = el('tr', 'wsf-flow-row');
         var name = el('th', 'wsf-flow-name');
         var link = el('button', 'wsf-flow-open', flow.name);
-        var starts = el('td', 'wsf-flow-start');
+        var startCell = el('td', 'wsf-flow-start');
+        // The icon and sentence sit side by side in a wrapper: the cell
+        // itself stays a table cell, as tall as its row.
+        var starts = startCell.appendChild(el('div', 'wsf-flow-start-in'));
         var stateCell = el('td');
         var last = el('td', 'wsf-flow-last');
         var channel = el('td', '', flow.channel_name ? '#' + flow.channel_name : '—');
@@ -1212,11 +1231,11 @@
             last.appendChild(el('span', 'fg-secondary', t('fl_list_never')));
         }
 
-        [[starts, 'fl_col_start'], [stateCell, 'fl_col_state'], [last, 'fl_flag_last'], [channel, 'fl_col_channel']].forEach(function (cell) {
+        [[startCell, 'fl_col_start'], [stateCell, 'fl_col_state'], [last, 'fl_flag_last'], [channel, 'fl_col_channel']].forEach(function (cell) {
             cell[0].setAttribute('data-label', t(cell[1]));
         });
 
-        [name, starts, stateCell, last, channel].forEach(function (cell) {
+        [name, startCell, stateCell, last, channel].forEach(function (cell) {
             row.appendChild(cell);
         });
 
@@ -3936,7 +3955,7 @@
         add.insertBefore(K.flowIcon(item[0], 'me-1'), add.firstChild);
 
         // One box starts a flow; a second would be a problem to fix.
-        if ((item[0] === 'manual') && startNode()) {
+        if (startTaken(item[0])) {
             add.disabled = true;
             add.title = t('fl_one_start');
         }
@@ -3962,6 +3981,17 @@
         return state.graph.nodes.filter(function (node) { return KINDS[node.kind] && (KINDS[node.kind].group === 'start'); })[0] || null;
     }
 
+    // Is this a box that starts a flow, while the flow has one already?
+    function startTaken(kind) {
+        return !!(KINDS[kind] && (KINDS[kind].group === 'start') && startNode());
+    }
+
+    // The palette group a kind of box is listed under: its colour group,
+    // but the End box under its own, the last section of the palette.
+    function paletteGroupOf(kind) {
+        return (kind === 'end') ? 'end' : (KINDS[kind] ? KINDS[kind].group : '');
+    }
+
     // The palette's groups in their order, each with the items whose name
     // holds every word searched for; a group with none is left out.
     function paletteGroups(items, query) {
@@ -3973,18 +4003,41 @@
                 items: items.filter(function (item) {
                     var name = K.foldText(t(item[1]));
 
-                    return KINDS[item[0]] && (KINDS[item[0]].group === group[0]) && words.every(function (word) { return name.indexOf(word) !== -1; });
+                    return (paletteGroupOf(item[0]) === group[0]) && words.every(function (word) { return name.indexOf(word) !== -1; });
                 })
             };
         }).filter(function (group) { return group.items.length > 0; });
     }
 
-    // A group's heading; the start group names the flow's start once it
-    // has one.
-    function paletteHeading(group) {
-        var start = (group === 'start') ? startNode() : null;
+    // The palette's sections in their order, each with its groups that
+    // paletteGroups() kept; a section with none is left out.
+    function paletteStages(groups) {
+        return PALETTE_STAGES.map(function (stage) {
+            return {
+                stage: stage[0],
+                number: stage[1],
+                heading: stage[2],
+                groups: groups.filter(function (group) { return stage[4].indexOf(group.group) !== -1; })
+            };
+        }).filter(function (stage) { return stage.groups.length > 0; });
+    }
 
-        return start ? t('fl_palette_this_flow', t(kindOf(start).name)) : t(PALETTE_GROUPS.filter(function (item) { return item[0] === group; })[0][1]);
+    // A section's hint; once the flow has a start, the first section's says
+    // how to start it another way.
+    function stageHint(stage) {
+        if ((stage === 'first') && startNode()) {
+            return t('fl_stage_first_taken');
+        }
+
+        return t(PALETTE_STAGES.filter(function (item) { return item[0] === stage; })[0][3]);
+    }
+
+    // The first section's line naming the box that starts this flow, '' while
+    // it has none.
+    function stageStart() {
+        var start = startNode();
+
+        return start ? t('fl_palette_this_flow', t(kindOf(start).name)) : '';
     }
 
     // The editor's left column: Start from a template (while the flow is
@@ -4019,32 +4072,68 @@
         drawPaletteGroups();
     }
 
+    // The sections, numbered in the order a flow is built, each with its
+    // hint; the steps section names its groups, a section of one group does
+    // not (its heading says it).
     function drawPaletteGroups() {
-        var groups = paletteGroups(paletteItems(), state.paletteQuery);
+        var stages = paletteStages(paletteGroups(paletteItems(), state.paletteQuery));
 
         K.clear(ui.paletteGroups);
         ui.paletteStart = null;
 
-        groups.forEach(function (group) {
-            var wrap = el('div', 'wsf-palette-group wsf-group-' + group.group);
-            var head = el('h3', 'wsf-palette-head', paletteHeading(group.group));
+        stages.forEach(function (stage) {
+            var section = el('div', 'wsf-palette-stage wsf-stage-' + stage.stage);
+            var head = el('h3', 'wsf-palette-stage-head');
+            var hint = el('p', 'wsf-palette-stage-hint', stageHint(stage.stage));
 
-            head.id = 'wsf-palette-' + group.group;
-            wrap.setAttribute('role', 'group');
-            wrap.setAttribute('aria-labelledby', head.id);
-            wrap.appendChild(head);
+            head.id = 'wsf-palette-stage-' + stage.stage;
 
-            if (group.group === 'start') {
-                ui.paletteStart = head;
+            if (stage.number) {
+                var number = el('span', 'wsf-palette-stage-num', stage.number);
+
+                number.setAttribute('aria-hidden', 'true');
+                head.appendChild(number);
             }
 
-            group.items.forEach(function (item) {
-                wrap.appendChild(paletteButton(item, 'btn btn-sm btn-text theme-secondary wsf-palette-item', true));
+            head.appendChild(el('span', '', t(stage.heading)));
+            hint.id = head.id + '-hint';
+            section.setAttribute('role', 'group');
+            section.setAttribute('aria-labelledby', head.id);
+            section.setAttribute('aria-describedby', hint.id);
+            section.appendChild(head);
+
+            // The box that starts this flow, named over the hint; both change
+            // when a start box is placed or removed, and so do the start
+            // boxes that may be added.
+            if (stage.stage === 'first') {
+                ui.paletteStart = el('p', 'wsf-palette-stage-now', stageStart());
+                ui.paletteStart.classList.toggle('d-none', !ui.paletteStart.textContent);
+                section.appendChild(ui.paletteStart);
+            }
+
+            section.appendChild(hint);
+
+            stage.groups.forEach(function (group) {
+                var wrap = el('div', 'wsf-palette-group wsf-group-' + ((group.group === 'end') ? 'logic' : group.group));
+
+                if (stage.groups.length > 1) {
+                    var title = el('h4', 'wsf-palette-head', t(PALETTE_GROUPS.filter(function (item) { return item[0] === group.group; })[0][1]));
+
+                    title.id = 'wsf-palette-' + group.group;
+                    wrap.setAttribute('role', 'group');
+                    wrap.setAttribute('aria-labelledby', title.id);
+                    wrap.appendChild(title);
+                }
+
+                group.items.forEach(function (item) {
+                    wrap.appendChild(paletteButton(item, 'btn btn-sm btn-text theme-secondary wsf-palette-item', true));
+                });
+                section.appendChild(wrap);
             });
-            ui.paletteGroups.appendChild(wrap);
+            ui.paletteGroups.appendChild(section);
         });
 
-        if (!groups.length) {
+        if (!stages.length) {
             ui.paletteGroups.appendChild(el('p', 'small fg-secondary', t('fl_palette_none')));
         }
     }
@@ -8101,9 +8190,10 @@
         if (structure) {
             // The first box placed, or the last one removed, takes the
             // template entry away or brings it back; a start box placed or
-            // removed renames the start group.
+            // removed changes the first section's hint and which start boxes
+            // may be added.
             if ((!!ui.palette.querySelector('.wsf-palette-template') !== templateOffered())
-                || (ui.paletteStart && (ui.paletteStart.textContent !== paletteHeading('start')))) {
+                || (ui.paletteStart && (ui.paletteStart.textContent !== stageStart()))) {
                 drawPalette();
             }
 

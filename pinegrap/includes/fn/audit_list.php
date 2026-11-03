@@ -234,7 +234,7 @@ function pg_audit_list_row(array $line, array $live, array $query, $role = null)
     // What: the record's name links to its whole history; the icon opens it.
     $name = ((string) $line['label'] !== '') ? pg_audit_view_record_name($type, $line['label']) : (($id > 0) ? '#' . $id : pg_audit_view_label('type', $type));
     $record = '<div class="small fg-secondary">' . h(pg_audit_view_label('type', $type)) . (($id > 0) ? ' #' . $id : '') . '</div>';
-    $record .= '<a class="text-break" href="' . h(pg_audit_list_link($query, array('type' => $type, 'id' => $id, 'q' => ''))) . '" title="' . h(lang('Show the history of this record')) . '">' . h($name) . '</a>';
+    $record .= '<a class="pg-audit-record-name" href="' . h(pg_audit_list_link($query, array('type' => $type, 'id' => $id, 'q' => ''))) . '" title="' . h(lang('Show the history of this record')) . '">' . h($name) . '</a>';
 
     $open = pg_audit_view_record_url($type, $id);
 
@@ -262,7 +262,7 @@ function pg_audit_list_row(array $line, array $live, array $query, $role = null)
         pg_list_cell(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $line['created_at']), 'date and time'), 'text-nowrap'),
         pg_list_cell($who, ''),
         pg_list_cell('<a href="' . h(pg_audit_list_link($query, array('action' => (string) $line['action']))) . '" class="pg-link-body-emphasis">' . h(pg_audit_view_label('action', $line['action'])) . '</a>', 'text-nowrap'),
-        pg_list_cell($record, '', array('style' => 'min-width:12rem')),
+        pg_list_cell('<div class="pg-audit-record">' . $record . '</div>', '', array('style' => 'min-width:12rem')),
         pg_list_cell($changes, '', array('style' => 'min-width:16rem')),
         pg_list_cell(h($line['ip']) . $request, 'small text-nowrap'),
     ));

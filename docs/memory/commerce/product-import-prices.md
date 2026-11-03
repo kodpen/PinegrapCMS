@@ -4,11 +4,11 @@ description: Product import price cells (price, extra shipping, compare-at): one
 ---
 
 ## Which reader takes a price cell?
-- `pg_products_import_price_cents()` for `price`, `extra_shipping_cost` and `compare_at_price`, in minor units, or `null` when the cell is not an amount.
+- `pg_products_import_price_cents()` for `price`, `extra_shipping_cost` and `compare_at_price`, in minor units, or `null` when refused; `pg_products_import_price_read()` adds why (`product-import-row-refusals.md`).
 - A bare number as a spreadsheet stores it (`^\d+(\.\d+)?` with an optional exponent: `1499.99`, `1799.988` from `=B2*1,2`, Excel's 17-digit `1799.9879999999998`, `1E+3`; a .xlsx `<v>` or .ods value) is read as that number and rounded: `round((float) $v * 100)`.
 - Anything else is typed text: a currency symbol or code before or after (`₺15,00`, `15,00 TL`), spaces or apostrophes grouping digits, a decimal comma. The figure follows the product screen's rule, `pg_pb_price_figure()` (the figure behind `pg_pb_price_to_cents()`): the last separator with 1-2 digits after it is the decimal point (`12,50` 1250, `1.234,56` 123456, `1,234` 123400, `1.234 TL` 123400).
 - A bare figure with only a dot is a decimal point even with three digits (`1.234` is 1.23): a stored number looks so, and it was the old rule. Dot-grouped thousands need a decimal comma (`1.234,00`) or a symbol or code.
-- `null`: words or other characters (`12/50`), a minus sign, no digit, more than 15 digits, more than the INT top (2147483647). The top is checked on the float before the int cast: on 32-bit PHP the cast wraps `25.000.000,00` to a negative figure.
+- `null`: words or other characters (`12/50`), a minus sign, no digit (not an amount); more than 15 digits or above the INT top 2147483647 (too large). The top is checked on the float before the int cast: on 32-bit PHP the cast wraps `25.000.000,00` to a negative figure.
 
 ## Where do the readers live?
 - The three `pg_products_import_*` readers below end `includes/fn/ecommerce.php` (moved from `import_products_f.php`, PR #1349; older spreadsheet readers stay there). `pg_pb_price_figure()` is in `product_builder.php`, not loaded by `functions.php`: a caller requires it.
@@ -18,7 +18,7 @@ description: Product import price cells (price, extra shipping, compare-at): one
 - A function because `import_products.php` keeps each header column's position in a script variable `${column}_key`: a loop there with `$price_key` overwrote the price column's position, so a row whose last money cell was empty (any export without a compare-at price) lost its price. No script variable there may end in `_key`.
 
 ## What happens to a row whose cell is not an amount?
-- The whole row is left out (not created, not updated) and named in an error on the product list after the import ("These rows were not imported because a price, compare-at price or extra shipping cost in them is not an amount: …", up to 50), as `number (name)`, e.g. `4 (KALEM-01)`. The number counts rows the importer reads (header 1; a spreadsheet's empty rows are skipped), so the name finds the row. The name is HTML-escaped. The rest of the file is imported.
+- The whole row is left out (not created, not updated) and named in an error on the product list after the import ("…is not an amount: …"; a too-large one has its own list, `product-import-row-refusals.md`), up to 50, as `number (name)`, e.g. `4 (KALEM-01)`. The number counts rows the importer reads (header 1; a spreadsheet's empty rows are skipped), so the name finds the row. The name is HTML-escaped. The rest of the file is imported.
 - An empty cell leaves the column as it is. A compare-at price starting with `-` leaves the stored one alone; `0` takes it off; the amount is judged by `pg_compare_at_price_value()` (product-compare-at-price.md).
 
 ## What was wrong before? (#749, PR #1262)
@@ -27,4 +27,4 @@ description: Product import price cells (price, extra shipping, compare-at): one
 - New products warned `Undefined variable $address_name_key` / `$short_description_key` / `$submit_form_key` when those columns were missing; those cells are now read with `pg_products_import_row_value()` (`''` for a missing column or a short row).
 
 ## How is it checked?
-- `tests/import_products_test.php` (price cents incl. the 32-bit top, row prices with the export header, row value, where the readers are defined). Not run on a live instance: the import loop needs a database.
+- `tests/import_products_test.php`: price cents incl. the 32-bit top, row prices with the export header, row value, where the readers live.

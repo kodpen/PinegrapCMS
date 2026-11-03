@@ -377,6 +377,23 @@ function test_events_tickets_catalog_and_shop_pages()
 	foreach ($d['passes'] as $p) $pass_skus[] = $p['sku'];
 	pg_assert_same($pass_skus, $skus, 'a product for every pass');
 
+	// A pass card shows its product's price: the same figure for the base
+	// currency, in that currency (#4822: the card said $149, the shop
+	// ₺5.999,00).
+	$currency = defined('BASE_CURRENCY_CODE') ? strtoupper((string)BASE_CURRENCY_CODE) : 'USD';
+	$symbol = defined('BASE_CURRENCY_SYMBOL') ? (string)BASE_CURRENCY_SYMBOL : '$';
+	$i = 0;
+	foreach ($d['passes'] as $key => $pass) {
+		$prices = $group['products'][$i++]['price'];
+		$amount = isset($prices[$currency]) ? $prices[$currency] : $prices['USD'];
+		pg_assert_same(pg_money_text($amount, $symbol), $pass['price'], "pass $key: card price is the product's");
+	}
+	// The sample events' prices are free or in the same currency.
+	foreach ($d['samples'] as $e) {
+		pg_assert_true($e['price'] === lang('Free') || strpos($e['price'], html_entity_decode($symbol, ENT_QUOTES | ENT_HTML5, 'UTF-8')) !== false, $e['title'] . ': price in the base currency');
+	}
+	pg_assert_contains($d['passes']['day']['price'], end($d['samples'])['price'], 'the conference starts at the day pass');
+
 	// The tickets page is there without the shop; every other page and
 	// widget of the shop needs it, and the tickets page places the listing.
 	$keys = array();
@@ -407,6 +424,11 @@ function test_events_tickets_catalog_and_shop_pages()
 	$cart = $t['widgets']['cart']['config'];
 	pg_assert_same('{{tab:checkout}}', $cart['next_page_id_with_shipping']);
 	pg_assert_same('{{tab:checkout}}', $cart['next_page_id_without_shipping']);
+	// The ticket product's breadcrumb starts at the tickets page by its
+	// name, not at "Main Catalog".
+	$detail = $t['widgets']['product_detail']['config'];
+	pg_assert_same('{{tab:tickets}}', $detail['catalog_listing_page_id']);
+	pg_assert_same(lang('Tickets'), $detail['catalog_root_label']);
 	$checkout = $t['widgets']['checkout']['config'];
 	pg_assert_same('{{tab:order}}', $checkout['next_page_id']);
 	pg_assert_same('{{tab:email_order}}', $checkout['order_receipt_email_page_id']);
@@ -473,4 +495,19 @@ function test_events_headings_never_skip_a_level()
 		}
 	}
 	pg_assert_true($checked > 50, 'headings found');
+}
+
+// The events page, menu, footer, form and help topic of the Events and
+// Bookshop templates use the "Events" key, which reads "Etkinlikler" as the
+// rest of those sites do; the API and firewall screens use their own keys so
+// they keep the technical "Olaylar".
+function test_events_key_reads_as_site_events_in_turkish()
+{
+	$map = pg_test_language_map('tr');
+	pg_assert_same('Etkinlikler', $map['Events'], 'Events is the site word');
+	pg_assert_same('Webhook olayları', $map['Webhook events'], 'API events keep their word');
+	pg_assert_same('Kayıtlı olaylar', $map['Logged events'], 'firewall events keep their word');
+	foreach (array('api_settings.php', 'includes/api/console_view.php', 'view_waf_log.php') as $file) {
+		pg_assert_true(strpos(file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), "lang('Events')") === false, "$file uses its own key");
+	}
 }

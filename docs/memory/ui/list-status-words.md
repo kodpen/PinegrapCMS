@@ -14,6 +14,7 @@ module: output
 - Edit Product Group, products in the group (`edit_product_group.php`) and the rows offered for it, preloaded (`pg_product_group_form_unselected_rows()`) and Ajax-loaded (`includes/panel/commerce.php`): Disabled under a disabled product's name. The three places stay alike.
 - All Key Codes: `pg_key_code_list_cells()` now returns `html` for the `code` cell, the escaped code plus the reason it does not work today: Disabled, else Expired (the code's own date), else No offer has this code (`offer_status` null from the LEFT JOIN: the key code's offer code matches no offer), else Offer not running (the offer is off or outside its dates). The template prints that html, so the quick-edit answer repaints the reason through `paint()` with no JS change.
 - All Shipping Arrival Dates: Inactive under the name outside the date window; the Status badge still says Enabled there.
+- All Shipping Methods (#5560): `pg_shipping_method_list_state($row, $now)` (`includes/fn/shipping_methods.php`) gives Disabled when switched off, Inactive outside the start and end time; the list prints it under the red name. The list has no Status column, so the colour was the only sign. Its Service and Real-Time Rate columns are drawn only while a method has a service (`pg_shipping_method_list_has_service()`, #5564).
 - All Gift Cards: Expired, else No balance, under the red code badge.
 - ERP Expenses list and Expense screen: an Overdue badge after Unpaid when the due date has passed, as on the cheques list.
 

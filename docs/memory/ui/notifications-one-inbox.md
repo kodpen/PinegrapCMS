@@ -1,6 +1,6 @@
 ---
 name: notifications-one-inbox
-description: The bell as the panel's one inbox (#3817): All, Site, Workspace filters, a flow's runs folded, the meeting call, pgBellOpen(), the Workspace list's Inbox opening it with no count of its own
+description: The bell as the panel's one inbox (#3817): All, Site, Workspace filters, a flow's runs folded, the meeting call, pgBellOpen(), the Workspace list's Inbox opening it with the row's count
 ---
 
 ## What does the bell show for a member of the team?
@@ -17,7 +17,7 @@ description: The bell as the panel's one inbox (#3817): All, Site, Workspace fil
 
 ## How does the Workspace list's Inbox open it?
 - `workspace_side.js` `toBell()`: a click calls `window.pgBellOpen('workspace')`, which sets the filter for this opening and clicks the bell in a `setTimeout`: clicked at once, the Inbox click still on its way up closed the bell as a click outside it (and the open had marked everything read). The kept choice comes back when the bell closes. A page without the bell falls back to the screen's own hook or the link (`workspace.php?view=home&inbox=1`, the drawer).
-- The Inbox entry shows no count: the bell's is the one. The Workspace row of the main menu keeps its badge (`paintRowBadge()`).
+- The Inbox entry carries the Workspace row's count (`ws_inbox_unread_count()`, `data.inbox`), the same figure as the row's badge (`paintRowBadge()`): with no count there, the owner saw a red badge on the row and nothing in the opened panel that said what it was (2026-11-01). The bell's Workspace chip counts the same rows.
 
 ## Why?
 - Owner (2026-10-31, `workflow/decisions-made-workspace-5.md`): since 4.83 every Workspace inbox row was also a bell row, so one item showed in two lists with two counts. `ws_inbox` stays the store for the API, sync and push; the panel is 26rem wide for the sentence and the filters.

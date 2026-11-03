@@ -22,7 +22,7 @@ module: bundles
 - A sum-priced bundle takes no typed price: API bulk prices (status `bundle`), the Products list quick price (code `bundle`) and the Catalog Manager's refuse it (`pg_bundle_price_is_summed()`). `pg_bundle_refresh_for()` skips the edited bundle itself, so a typed value would stay until a component changed.
 
 ## How is a bundle sold? (#2691)
-- Counter sale (`local_sale_complete()`): a bundle line calls `pg_bundle_take_stock()`: one `order_item_components` row per component (unit_cost from `erp_product_costs.avg_cost`), each tracked component goes down; `$stock_left` is shared.
+- Counter sale (`pg_local_order_complete()`): a bundle line calls `pg_bundle_take_stock()`: one `order_item_components` row per component (unit_cost from `erp_product_costs.avg_cost`), each tracked component goes down; `$stock_left` is shared.
 - Marketplace import (`mp_order_take_stock()`) the same, source `marketplace`; cancel restock (`mp_order_return_stock()`) returns the snapshot's components (`pg_bundle_return_stock()`).
 - Checkout (#2826): `pg_order_complete_line_stock()` sends a line passing `pg_bundle_sale_takes_components()` (pure) to `pg_bundle_take_stock(..., 'checkout', $stock_left)` before the plain decrement.
 - `check_inventory()`: a cart holding a bundle goes to `pg_bundle_check_inventory()`: every line against one stock pool (`pg_bundle_cart_allowance()`, id order).

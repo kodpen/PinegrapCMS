@@ -25,6 +25,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 // anything is written; the sealed key is stored after the API columns.
 $google_reviews_post = pg_grev_settings_check($_POST, $liveform);
 
+// API uploads are not filed in the Workspace's folders nor in the Recycle
+// Bin (pg_settings_folder_choice_ok()): they would show up as a
+// conversation's files.
+if (!pg_settings_folder_choice_ok((int) post_value('api_upload_folder_id'))) {
+    $liveform->mark_error('api_upload_folder_id', lang('Choose a folder outside the Workspace and the Recycle Bin.'));
+}
+
 if ($liveform->check_form_errors()) {
     return;
 }

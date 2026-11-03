@@ -34,8 +34,10 @@ function update_product_group_status($properties) {
     }
 
     // Get all the product groups that need to be updated, which includes this
-    // product group and all child product groups.
-    $product_groups = get_product_groups(array('id' => $id));
+    // product group and all child product groups. A group in the Recycle Bin
+    // is left out: binning switched it off because the storefront reads only
+    // enabled, and a restore brings back its own earlier state.
+    $product_groups = get_product_groups(array('id' => $id, 'live' => true));
 
     $items = array();
 
@@ -95,7 +97,7 @@ function update_product_group_status($properties) {
             $sql_product_groups .= " OR ";
         }
 
-        $sql_product_groups .= "(product_group = '" . e($product_group['id']) . "')";
+        $sql_product_groups .= "(products_groups_xref.product_group = '" . e($product_group['id']) . "')";
 
         // Add this product group to the SQL that we will use further below
         // to check if a product is enabled in a different product group scope.
@@ -103,11 +105,14 @@ function update_product_group_status($properties) {
 
     }
 
-    // Get all the products in this group and child groups, so we can update them.
+    // Get all the products in this group and child groups, so we can update
+    // them. A binned product keeps its group row for the restore, so the bin
+    // is filtered on the product itself; it stays switched off.
     $products = db_items(
-        "SELECT DISTINCT(product) AS id
+        "SELECT DISTINCT(products_groups_xref.product) AS id
         FROM products_groups_xref
-        WHERE $sql_product_groups");
+        LEFT JOIN products ON products_groups_xref.product = products.id
+        WHERE ($sql_product_groups)" . pg_catalog_bin_live_sql('products'));
 
     // The rows as they were, so the products the loop below changes each get
     // an audit line.

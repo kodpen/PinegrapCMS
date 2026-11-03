@@ -122,13 +122,15 @@ function db_q_zones_currencies_jobs_test_calls($path)
 function db_q_zones_currencies_jobs_test_files()
 {
 	return array(
-		'edit_tax_zone.php' => 4,
-		'includes/forms/tax_zone_form.php' => 4,
-		'edit_state.php' => 6,
-		'edit_currency.php' => 4,
+		'edit_tax_zone.php' => 0,
+		'includes/forms/tax_zone_form.php' => 2,
+		'includes/fn/store_zones.php' => 12,
+		'edit_state.php' => 1,
+		'edit_currency.php' => 2,
 		'update_currency.php' => 3,
-		'add_zone.php' => 3,
-		'add_shipping_method.php' => 1,
+		'add_zone.php' => 0,
+		'add_shipping_method.php' => 0,
+		'includes/fn/shipping_methods.php' => 8,
 		'add_arrival_date.php' => 2,
 		'add_product_group.php' => 2,
 		'edit_orders.php' => 2,

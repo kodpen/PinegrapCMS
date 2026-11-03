@@ -81,6 +81,24 @@ if (!$_POST) {
 		}
 	}
 
+    // A stock process with no figure, a tax rate to set with none or one
+    // outside 0..100, or a zone both allowed and disallowed stops the whole
+    // change before any product is touched, with its own message.
+    if (($_POST['action'] ?? '') === 'edit') {
+        $mass_edit_problem = pg_products_mass_edit_problem($_POST);
+        $mass_edit_messages = array(
+            'quantity_missing' => lang('Enter an inventory quantity.'),
+            'tax_rate_missing' => lang('Enter a tax rate, or choose to follow the tax zone.'),
+            'tax_rate_range' => lang('Enter a tax rate between 0 and 100.'),
+            'zones_overlap' => lang('A shipping zone cannot be both allowed and disallowed.'),
+        );
+
+        if ($mass_edit_problem !== '') {
+            $liveform->add_error($mass_edit_messages[$mass_edit_problem]);
+            go(PATH . SOFTWARE_DIRECTORY . '/view_products.php');
+        }
+    }
+
     // The stock quantity is read once, the panel's way (1.200 on a Turkish
     // panel is twelve hundred), with the Catalog Manager's reader. A figure
     // that is not a whole count of zero or more stops the whole change
@@ -98,6 +116,13 @@ if (!$_POST) {
 
         if ($quantity_value === null) {
             $liveform->add_error(lang('Enter an inventory quantity.'));
+            go(PATH . SOFTWARE_DIRECTORY . '/view_products.php');
+        }
+
+        // Past what products.inventory_quantity holds: MySQL would store the
+        // column's top without a word.
+        if (pg_inventory_quantity_too_large($quantity_value)) {
+            $liveform->add_error(lang(array('string' => '{var:1} is too large.', 'vars' => array(lang('Inventory Quantity')))));
             go(PATH . SOFTWARE_DIRECTORY . '/view_products.php');
         }
     }
@@ -133,6 +158,7 @@ if (!$_POST) {
 
                     $number_of_unchanged_price_products = 0;
                     $number_of_too_large_price_products = 0;
+                    $number_of_too_large_quantity_products = 0;
                     $number_of_price_changed_products = 0;
                     $number_of_binned_products = 0;
                     $change_besides_price = pg_products_mass_change_besides_price($_POST, $quantity_value);
@@ -251,8 +277,23 @@ if (!$_POST) {
                         // Catalog Manager's rule: never below zero.
                         if ($quantity_value !== null) {
                             $inventory_quantity = (int) ($stock_stored['inventory_quantity'] ?? 0);
-                            $new_inventory_quantity = (int) pg_explorer_bulk_product_new_quantity($inventory_quantity, $quantity_process, $quantity_value);
-                            $sql_inventory_quantity = "inventory_quantity = '" . $new_inventory_quantity . "',";
+                            $new_inventory_quantity = pg_explorer_bulk_product_new_quantity($inventory_quantity, $quantity_process, $quantity_value);
+
+                            // An increase past what the column holds keeps the
+                            // stock as it is and is counted, not cut to the top.
+                            if (pg_inventory_quantity_too_large($new_inventory_quantity)) {
+                                $number_of_too_large_quantity_products++;
+                                $new_inventory_quantity = null;
+
+                                // Nothing else was asked for this product: it
+                                // is neither written nor counted as updated.
+                                if (($sql_new_prices === '') && !pg_products_mass_change_besides_price($_POST, null)) {
+                                    continue;
+                                }
+                            } else {
+                                $new_inventory_quantity = (int) $new_inventory_quantity;
+                                $sql_inventory_quantity = "inventory_quantity = '" . $new_inventory_quantity . "',";
+                            }
                         }
 
                         // Stock tracking on or off, when it was chosen.
@@ -273,12 +314,10 @@ if (!$_POST) {
                         } elseif ($tax_rate_method === 'set') {
                             $new_tax_rate = parse_tax_rate($_POST['edit_tax_rate_value'] ?? '');
 
+                            // A missing or out-of-range rate was refused above
+                            // (pg_products_mass_edit_problem()).
                             if ($new_tax_rate !== NULL) {
                                 $sql_tax_rate = "tax_rate = '" . e($new_tax_rate) . "',";
-                            } else {
-                                // Asking to set a rate and giving none is a mistake, not an
-                                // instruction to clear: clearing has its own option.
-                                $liveform->mark_error('Update Error', lang('Enter a tax rate, or choose to follow the tax zone.'));
                             }
                         }
 
@@ -397,6 +436,10 @@ if (!$_POST) {
                         $liveform->add_error(lang(array('string' => '{var:1} product(s) were not changed because they are in the Recycle Bin.', 'vars' => array($number_of_binned_products))));
                     }
 
+                    if ($number_of_too_large_quantity_products > 0) {
+                        $liveform->add_error(lang(array('string' => '{var:1} product(s) kept their stock quantity because the new quantity would be too large.', 'vars' => array($number_of_too_large_quantity_products))));
+                    }
+
                     // If at least one product was modified, then log activity.
                     if ($number_of_products > 0) {
                         // Each change is a verb-free phrase; the count and
@@ -444,6 +487,10 @@ if (!$_POST) {
                             $liveform->add_notice(h($message));
                         }
                     }
+                } elseif (!$price_value_refused) {
+                    // Nothing was chosen: the list comes back with a word
+                    // rather than silently, as if something had changed.
+                    $liveform->add_error(lang('Select a field to change.'));
                 }
                 
                 break;

@@ -220,6 +220,9 @@ echo pg_page_shell(array(
 <style>
 ' . api_console_css() . '
 .doc-cred { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* Long addresses break inside the line on a phone instead of widening the page. */
+.doc-cred > div { min-width: 0; max-width: 100%; }
+.doc-cred code { overflow-wrap: anywhere; word-break: break-word; }
 @media (max-width: 768px) {
 	.doc-cred > .ms-auto { margin-left: 0 !important; width: 100%; flex-wrap: wrap; }
 	.doc-cred select { min-width: 0 !important; width: 100%; }

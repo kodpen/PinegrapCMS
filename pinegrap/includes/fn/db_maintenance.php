@@ -701,8 +701,32 @@ function pg_db_health_report()
 }
 
 /**
+ * The bytes a table's files take, free space included, from its catalog row.
+ *
+ * MyISAM and Aria report the holes deleted rows left inside the data file as
+ * DATA_FREE, and DATA_LENGTH is the whole data file, so the free space is
+ * already counted in 'bytes'. InnoDB reports the free extents of the
+ * tablespace beside the pages DATA_LENGTH and INDEX_LENGTH count. No
+ * database access.
+ *
+ * @param array $row pg_db_table_catalog() row
+ * @return float
+ */
+function pg_db_table_file_bytes($row)
+{
+    $bytes = isset($row['bytes']) ? (float) $row['bytes'] : 0.0;
+    $free = isset($row['free']) ? (float) $row['free'] : 0.0;
+
+    if (isset($row['engine']) && in_array($row['engine'], array('myisam', 'aria'), true)) {
+        return max($bytes, $free);
+    }
+
+    return $bytes + $free;
+}
+
+/**
  * The tables worth an OPTIMIZE: at least 10 MB of free space inside them,
- * and that space at least a fifth of the file. Below 10 MB the gain is not
+ * and that space at least a fifth of the file (pg_db_table_file_bytes()). Below 10 MB the gain is not
  * worth rewriting a table for - InnoDB keeps a few MB of free extents in
  * every tablespace by itself - and a large table with a small share of free
  * space is rewritten whole for a few per cent.
@@ -733,9 +757,8 @@ function pg_db_optimize_candidates($catalog, $facts = array())
         }
 
         $free = isset($row['free']) ? (float) $row['free'] : 0.0;
-        $bytes = isset($row['bytes']) ? (float) $row['bytes'] : 0.0;
 
-        if (($free >= $minimum_free) && ($free >= $minimum_share * ($bytes + $free))) {
+        if (($free >= $minimum_free) && ($free >= $minimum_share * pg_db_table_file_bytes($row))) {
             $candidates[] = (string) $table;
         }
     }
@@ -846,7 +869,7 @@ function pg_db_table_findings($catalog, $pending, $health, $facts)
             'level' => 'warning',
             'text' => lang(array(
                 'string' => '{var:1} holds {var:2} of free space ({var:3} %); OPTIMIZE TABLE gives it back',
-                'vars' => array($table, pg_innodb_size_label($free), pg_format_number(100 * $free / max(1, $catalog[$table]['bytes'] + $free), 0)),
+                'vars' => array($table, pg_innodb_size_label($free), pg_format_number(100 * $free / max(1, pg_db_table_file_bytes($catalog[$table])), 0)),
             )),
             'bytes' => $free,
         );

@@ -11,8 +11,12 @@ module: cron
 
 ## What does an unfinished pass do at the end of its tick?
 - `pg_cron_due_again($name, 60)`: `last_run_at` moved back to `now - interval + 60` (`pg_cron_due_again_stamp()`, never later than now), so the job is due in a minute instead of after its interval. `pg_cron_dispatch_finished()` keeps that time instead of stamping the tick.
-- Jobs that waited longer still go first in their lane (`pg_cron_pick()`, smallest `last_run_at`). Between lanes the job due longer (last run plus interval) goes first, light on a tie (`pg_cron_lane_choice()`): compared on last run, a heavy pass asking to come back every minute carried a day-old stamp and won every tick while the light jobs waited.
+- The job due longer (last run plus interval) goes first, in its lane (`pg_cron_pick()`, catalogue order on a tie; the legacy dispatcher too) and between lanes (`pg_cron_lane_choice()`, light on a tie). Compared on last run, a pass asking to come back every minute carried a day-old stamp and won every tick: first over the light jobs, then (until the bug-hunt fix) over the hourly search index in the heavy lane for the whole structure or accessibility pass.
 - `seo_a11y_job` and `seo_analyze_job` lock for 600 s, not the default hour: a tick works one budget.
+
+## Whose lock does `pg_cron_release()` clear?
+- Only the one this request's `pg_cron_claim()` took: the claim keeps the `locked_until` it wrote (`pg_cron_lock_stamp()`) and the release clears the row only while it still carries that stamp (`pg_cron_release_query()`, pure). No owner column: a later claim can only take an expired lock and writes a stamp at least a minute ahead, so stamps never repeat.
+- Why (bug hunt): a run that outlasted its lock cleared the lock of the second run that had claimed it after expiry, letting a third start beside it. A release without a claim in the same request now does nothing.
 
 ## How do the health screens tell a finished run from a stamped tick?
 - The dispatcher stamps the job's row after every tick, finished, crashed or declined (`pg_cron_stamp()`), so the rotation moves. Only `pg_cron_ran()`, called by the job at its real end, also writes `<job>_done` (dispatched, not inline jobs: `pg_cron_done_marker()`).
@@ -22,4 +26,4 @@ module: cron
 ## Where does the accessibility pass keep its place?
 - `data/temp/seo_a11y.json` written after every page, not only when the budget runs out: a killed process carries on after the last page checked.
 
-Test: `tests/cron_resume_test.php`.
+Tests: `tests/cron_resume_test.php`, `tests/cron_test.php`.

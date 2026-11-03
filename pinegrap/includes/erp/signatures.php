@@ -176,9 +176,9 @@ function erp_signature_image_matches($record)
         return false;
     }
 
-    $path = FILE_DIRECTORY_PATH . '/' . basename((string) $record['file_name']);
+    $path = pg_file_reader_path(basename((string) $record['file_name']));
 
-    return is_file($path) && hash_equals((string) $record['image_hash'], (string) hash_file('sha256', $path));
+    return ($path !== '') && hash_equals((string) $record['image_hash'], (string) hash_file('sha256', $path));
 }
 
 /**
@@ -291,9 +291,9 @@ function erp_signature_document_block($doc_type, $doc_id, $current_hash)
     // The PDF renderer fetches nothing remote, and the file is served to the
     // ERP right only, so the drawing travels inside the document.
     $data_uri = '';
-    $path = FILE_DIRECTORY_PATH . '/' . basename((string) $record['file_name']);
+    $path = ((string) $record['file_name'] !== '') ? pg_file_reader_path(basename((string) $record['file_name'])) : '';
 
-    if (((string) $record['file_name'] !== '') && is_file($path)) {
+    if ($path !== '') {
         $bytes = @file_get_contents($path);
         if (is_string($bytes) && ($bytes !== '')) {
             $data_uri = 'data:image/png;base64,' . base64_encode($bytes);

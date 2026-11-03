@@ -35,22 +35,38 @@ function convert_html_to_text($html)
     $content = preg_replace('/<title[^>]*>.*?<\/title>/i', '', $content);
     $content = preg_replace('/<script[^>]*>.*?<\/script>/i', '', $content);
     $content = preg_replace('/<style[^>]*>.*?<\/style>/i', '', $content);
-    $content = preg_replace_callback('/<h[123][^>]*>(.+?)<\/h[123]>/i', function ($matches) {
-        return "\n\n" . mb_strtoupper($matches[1]) . "\n\n";
+    // Capitals and title case change the text only, never a tag: a link
+    // inside bold or a heading keeps its address (paths and signed queries
+    // are case-sensitive).
+    $text_case = function ($html, $case) {
+        $pieces = preg_split('/(<[^>]*>)/', $html, -1, PREG_SPLIT_DELIM_CAPTURE);
+
+        foreach ($pieces as $index => $piece) {
+            if (($index % 2) === 0) {
+                $pieces[$index] = ($case === 'upper') ? mb_strtoupper($piece) : ucwords($piece);
+            }
+        }
+
+        return implode('', $pieces);
+    };
+    // A tag name is matched whole: <b> is not <body> or <blockquote>, <i> is
+    // not <img> or <iframe>, <em> is not <embed>.
+    $content = preg_replace_callback('/<h[123](?:\s[^>]*)?>(.+?)<\/h[123]>/i', function ($matches) use ($text_case) {
+        return "\n\n" . $text_case($matches[1], 'upper') . "\n\n";
     }, $content);
-    $content = preg_replace_callback('/<h[456][^>]*>(.+?)<\/h[456]>/i', function ($matches) {
-        return "\n\n" . ucwords($matches[1]) . "\n\n";
+    $content = preg_replace_callback('/<h[456](?:\s[^>]*)?>(.+?)<\/h[456]>/i', function ($matches) use ($text_case) {
+        return "\n\n" . $text_case($matches[1], 'title') . "\n\n";
     }, $content);
     $content = preg_replace('/<p[^>]*>/i', "\n\n", $content);
     $content = preg_replace('/<br[^>]*>/i', "\n", $content);
-    $content = preg_replace_callback('/<b[^>]*>(.+?)<\/b>/i', function ($matches) {
-        return mb_strtoupper($matches[1]);
+    $content = preg_replace_callback('/<b(?:\s[^>]*)?>(.+?)<\/b>/i', function ($matches) use ($text_case) {
+        return $text_case($matches[1], 'upper');
     }, $content);
-    $content = preg_replace_callback('/<strong[^>]*>(.+?)<\/strong>/i', function ($matches) {
-        return mb_strtoupper($matches[1]);
+    $content = preg_replace_callback('/<strong(?:\s[^>]*)?>(.+?)<\/strong>/i', function ($matches) use ($text_case) {
+        return $text_case($matches[1], 'upper');
     }, $content);
-    $content = preg_replace('/<i[^>]*>(.+?)<\/i>/i', '_\\1_', $content);
-    $content = preg_replace('/<em[^>]*>(.+?)<\/em>/i', '_\\1_', $content);
+    $content = preg_replace('/<i(?:\s[^>]*)?>(.+?)<\/i>/i', '_\\1_', $content);
+    $content = preg_replace('/<em(?:\s[^>]*)?>(.+?)<\/em>/i', '_\\1_', $content);
     $content = preg_replace('/(<ul[^>]*>|<\/ul>)/i', "\n\n", $content);
     $content = preg_replace('/(<ol[^>]*>|<\/ol>)/i', "\n\n", $content);
     $content = preg_replace('/<link[^>]*>/i', '', $content);
@@ -60,8 +76,8 @@ function convert_html_to_text($html)
     $content = preg_replace('/(<table[^>]*>|<\/table>)/i', "\n\n", $content);
     $content = preg_replace('/(<tr[^>]*>|<\/tr>)/i', "\n", $content);
     $content = preg_replace('/<td[^>]*>(.+?)<\/td>/i', "\t\t\\1\n", $content);
-    $content = preg_replace_callback('/<th[^>]*>(.+?)<\/th>/i', function ($matches) {
-        return "\t\t" . mb_strtoupper($matches[1]) . "\n";
+    $content = preg_replace_callback('/<th[^>]*>(.+?)<\/th>/i', function ($matches) use ($text_case) {
+        return "\t\t" . $text_case($matches[1], 'upper') . "\n";
     }, $content);
     $content = preg_replace('/&nbsp;/i', ' ', $content);
     $content = preg_replace('/&quot;/i', '"', $content);
@@ -1905,6 +1921,11 @@ function email($properties)
             $connection = (!$smtp && (($type === 'system') || ($type === 'campaign'))) ? pg_mail_connection($type) : null;
         }
 
+        // A sending service's API (includes/fn/mail_transport.php) takes
+        // what no server or account of the message's own, and no connected
+        // account chosen for its kind, sends; 'smtp' keeps the server below.
+        $transport = (!$smtp && !$connection) ? pg_mail_transport() : 'smtp';
+
         // SMTP config
         if ($smtp) {
             $smtp_secret = pg_connect_unseal(isset($smtp['secret']) ? (string) $smtp['secret'] : '');
@@ -1923,6 +1944,9 @@ function email($properties)
             $mail->Password = (string) $smtp_secret['password'];
             $mail->Timeout = 15;
         } elseif ($connection) {
+            $mail->isSMTP();
+        } elseif ($transport !== 'smtp') {
+            // Built as for SMTP; handed to the service's API at the end.
             $mail->isSMTP();
         } elseif ($type === 'system' && defined('SYSTEM_SMTP_HOSTNAME') && SYSTEM_SMTP_HOSTNAME !== '') {
             $mail->isSMTP();
@@ -2008,6 +2032,14 @@ function email($properties)
 
         $mail->setFrom($header_from, $from_name);
         $mail->Sender = pg_mail_envelope_sender($mail, $header_from);
+
+        // VERP: a queued or campaign message to one recipient carries a
+        // signed token in its return path, so the bounce mailbox can tell
+        // whose delivery failed (includes/fn/mail_bounces.php). Not through
+        // a connected account, whose provider sets its own return path.
+        if (!$connection && !empty($properties['bounce_ref']) && function_exists('pg_mail_bounce_return_path_for')) {
+            $mail->Sender = pg_mail_bounce_envelope($mail->Sender, pg_mail_bounce_return_path_for((string) $properties['bounce_ref'], $to));
+        }
         if (!empty($header_reply_to)) {
             $mail->addReplyTo($header_reply_to);
         }
@@ -2090,8 +2122,9 @@ function email($properties)
             $mail->CharSet = 'utf-8';
         }
 
-        // DKIM
-        if (file_exists(FILE_DIRECTORY_PATH . '/dkim.key')) {
+        // DKIM. A sending service signs with the key of the domain set up
+        // with it.
+        if (($transport === 'smtp') && file_exists(FILE_DIRECTORY_PATH . '/dkim.key')) {
             $mail->DKIM_domain = (defined('DKIM_DOMAIN') && DKIM_DOMAIN) ? DKIM_DOMAIN : substr(strrchr(EMAIL_ADDRESS, '@'), 1);
             $mail->DKIM_private = FILE_DIRECTORY_PATH . '/dkim.key';
             $mail->DKIM_selector = (defined('DKIM_SELECTOR') && DKIM_SELECTOR) ? DKIM_SELECTOR : 'pinegrap';
@@ -2118,6 +2151,30 @@ function email($properties)
             if ($error !== '') {
                 $mail->ErrorInfo = $error;
                 throw new Exception($error);
+            }
+
+            return true;
+        }
+
+        if ($transport !== 'smtp') {
+            $delivery = pg_mail_transport_deliver($transport, pg_mail_transport_message($mail, $type, pg_mail_transport_raw($transport)));
+
+            if (!$delivery['ok']) {
+                $permanent = $delivery['permanent'];
+                $mail->ErrorInfo = $delivery['error'];
+                throw new Exception($delivery['error']);
+            }
+
+            // The copy a caller keeps (a sent folder): the message as SMTP
+            // would have carried it. It is sent already, so a failure to
+            // build the copy only leaves it out.
+            if (!empty($properties['keep_mime'])) {
+                try {
+                    $mail->preSend();
+                    pg_mail_last_sent_mime($mail->getSentMIMEMessage());
+                } catch (Exception $e) {
+                    pg_mail_last_sent_mime('');
+                }
             }
 
             return true;

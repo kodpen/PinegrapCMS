@@ -17,6 +17,26 @@
 if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
+// The Featured Order box of Edit Featured & New Items: '' when it is empty
+// (the item is not featured), the order as an int when it is a whole number
+// from 0 to 65535 (featured_sort_order is smallint unsigned), false
+// otherwise. MySQL would store 'abc' or -5 as 0 and '12,50' as 12 without a
+// word, so the screen refuses them instead.
+function pg_featured_sort_order_value($value)
+{
+    $value = trim((string) $value);
+
+    if ($value === '') {
+        return '';
+    }
+
+    if (!preg_match('/^[0-9]{1,5}$/', $value) || (int) $value > 65535) {
+        return false;
+    }
+
+    return (int) $value;
+}
+
 // The quantity a product enters the cart with when the visitor gives none
 // (a checked or auto-selected product, a quick add, a donation without a
 // quantity box): products.default_quantity, at least 1. The column is NULL on
@@ -72,7 +92,9 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
     $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $product_id, (string) $ship_to_id, (string) $calendar_event_id, (string) $recurrence_number)) or output_error(lang('Query failed.'));
     // if product has already been added to order, update order item
     if (mysqli_num_rows($result) > 0) {
-        // get order item id
+        // The shopper's own line found above; the update goes to it by id, so
+        // a gift line an offer put in the same recipient for the same product
+        // (added_by_offer = 1) keeps its quantity and price.
         $row = mysqli_fetch_assoc($result);
         $order_item_id = $row['id'];
         // if this product is a donation product, update price
@@ -80,25 +102,15 @@ function add_order_item($product_id, $quantity, $donation_amount, $ship_to, $add
             $query = "UPDATE order_items
                 SET
                     price = (price + ?)
-                WHERE
-                    (order_id = ?)
-                    AND (product_id = ?)
-                    AND (ship_to_id = ?)
-                    AND (calendar_event_id = ?)
-                    AND (recurrence_number = ?)" . pg_order_item_active_sql();
-            $result = db_q($query, array((string) $donation_amount, (string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $product_id, (string) $ship_to_id, (string) $calendar_event_id, (string) $recurrence_number)) or output_error(lang('Query failed.'));
+                WHERE id = ?";
+            $result = db_q($query, array((string) $donation_amount, (string) $order_item_id)) or output_error(lang('Query failed.'));
             // else this product is not a donation product, so update quantity
         } else {
             $query = "UPDATE order_items
                 SET
                     quantity = (quantity + ?)
-                WHERE
-                    (order_id = ?)
-                    AND (product_id = ?)
-                    AND (ship_to_id = ?)
-                    AND (calendar_event_id = ?)
-                    AND (recurrence_number = ?)" . pg_order_item_active_sql();
-            $result = db_q($query, array((string) $quantity, (string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $product_id, (string) $ship_to_id, (string) $calendar_event_id, (string) $recurrence_number)) or output_error(lang('Query failed.'));
+                WHERE id = ?";
+            $result = db_q($query, array((string) $quantity, (string) $order_item_id)) or output_error(lang('Query failed.'));
             // if there is a ship to for this order item
             if ($ship_to_id) {
                 // get ship to information
@@ -3255,6 +3267,26 @@ function pg_product_price_too_large($minor)
 }
 
 /**
+ * The largest stock count products.inventory_quantity holds: an INT UNSIGNED.
+ * The session is not strict, so MySQL would store this top for anything
+ * larger without a word; every stock writer refuses a larger count first.
+ */
+define('PG_INVENTORY_QUANTITY_MAX', 4294967295);
+
+/**
+ * True when a stock count is more than products.inventory_quantity holds,
+ * compared as a float, so a count past the integer range of a 32-bit build
+ * is not wrapped before the check.
+ *
+ * @param int|float|string $quantity
+ * @return bool
+ */
+function pg_inventory_quantity_too_large($quantity)
+{
+    return ((float) $quantity > PG_INVENTORY_QUANTITY_MAX);
+}
+
+/**
  * The price a bulk product edit (edit_products.php) gives a product.
  *
  * Methods: '1' decrease by an amount, '2' increase by an amount, '3' decrease
@@ -3356,6 +3388,36 @@ function parse_tax_rate($raw)
 }
 
 
+/**
+ * Why a typed tax rate cannot be stored as it is, or '' when it can (empty
+ * included: it follows the tax zone). 'not_number' for text that is no
+ * number, 'out_of_range' for one below 0 or above 100. parse_tax_rate()
+ * holds such a value to the bound; a screen or an import that must not
+ * store a rate nobody typed asks here first.
+ *
+ * @param  mixed $raw
+ * @return string  '', 'not_number' or 'out_of_range'
+ */
+function pg_tax_rate_problem($raw)
+{
+    $raw = str_replace(',', '.', trim((string) $raw));
+
+    if ($raw === '') {
+        return '';
+    }
+
+    if (!is_numeric($raw)) {
+        return 'not_number';
+    }
+
+    if (((float) $raw < 0) || ((float) $raw > 100)) {
+        return 'out_of_range';
+    }
+
+    return '';
+}
+
+
 
 /**
  * Site Settings' card surcharge percentage as
@@ -3407,10 +3469,7 @@ function pg_parse_commission_rate($raw)
 
 /**
  * One cell of a contact row in the contact or user importer, trimmed, as the
- * contacts column stores it. affiliate_commission_rate (decimal(5,2)
- * unsigned) goes through pg_parse_commission_rate(), as Site Settings reads
- * its rate: a ';' CSV from a Turkish spreadsheet writes "12,5", which the
- * non-strict session would cut to 12.00. Empty stays 0.00.
+ * contacts column stores it (pg_import_contact_value() without its problem).
  *
  * @param string $column_name contacts column
  * @param mixed  $value
@@ -3418,15 +3477,161 @@ function pg_parse_commission_rate($raw)
  */
 function pg_import_contact_cell($column_name, $value)
 {
-    $value = trim((string) $value);
+    $read = pg_import_contact_value($column_name, $value);
 
-    if ($column_name === 'affiliate_commission_rate') {
-        return pg_parse_commission_rate($value);
-    }
-
-    return $value;
+    return $read['value'];
 }
 
+/**
+ * The yes/no columns of a contact row and what an empty or unknown cell is
+ * stored as: 0, so a contact is never opted in or approved on a guess.
+ *
+ * @return array column => true
+ */
+function pg_import_contact_yes_no_columns()
+{
+    return array('opt_in' => true, 'affiliate_approved' => true);
+}
+
+/**
+ * A yes/no cell as 1 or 0: 1/0, yes/no, y/n, true/false, on/off and the
+ * Turkish evet/hayır, e/h, in any case; null for anything else.
+ *
+ * @param string $value the trimmed cell
+ * @return int|null
+ */
+function pg_import_yes_no($value)
+{
+    $word = function_exists('pg_list_search_fold') ? pg_list_search_fold($value) : mb_strtolower($value, 'UTF-8');
+
+    if (in_array($word, array('1', 'yes', 'y', 'true', 'on', 'evet', 'e', 'x'), true)) {
+        return 1;
+    }
+
+    if (in_array($word, array('0', 'no', 'n', 'false', 'off', 'hayir', 'h', '-'), true)) {
+        return 0;
+    }
+
+    return null;
+}
+
+/**
+ * One cell of a contact row read for the contacts column, with the problem
+ * the result names for its line. The cell is trimmed and loses the
+ * apostrophe the export's formula guard put in front of = + - @
+ * (pg_csv_formula_unguard()), so an export imports back unchanged.
+ * - affiliate_commission_rate: pg_parse_commission_rate() ("12,5" from a
+ *   Turkish spreadsheet is 12.50; empty is 0.00).
+ * - opt_in, affiliate_approved: pg_import_yes_no(); empty or unknown is 0,
+ *   an unknown one with a problem ("Evet" stored as 0 before, silently).
+ * - expiration_date: pg_date_input_iso() (site order with / - , . or ISO);
+ *   empty or unreadable is 0000-00-00 (no end), an unreadable one with a
+ *   problem ("31.12.2026" was stored as no end, silently).
+ * - a text cell longer than $max_length is cut there, with a problem (the
+ *   non-strict session cut it without a word).
+ *
+ * @param string $column_name contacts column
+ * @param mixed  $value       the cell
+ * @param int    $max_length  the column's length in characters, 0 for none
+ * @param string $heading     the file's heading, named in the problem
+ * @return array array('value' => string, 'problem' => '' or a sentence)
+ */
+function pg_import_contact_value($column_name, $value, $max_length = 0, $heading = '')
+{
+    $value = trim((string) pg_csv_formula_unguard(trim((string) $value)));
+    $heading = ($heading !== '') ? $heading : $column_name;
+
+    if ($column_name === 'affiliate_commission_rate') {
+        return array('value' => pg_parse_commission_rate($value), 'problem' => '');
+    }
+
+    if (isset(pg_import_contact_yes_no_columns()[$column_name])) {
+        if ($value === '') {
+            return array('value' => '0', 'problem' => '');
+        }
+
+        $yes = pg_import_yes_no($value);
+
+        if ($yes === null) {
+            return array('value' => '0', 'problem' => lang(array('string' => 'Column {var:1}: "{var:2}" is not yes or no, so it was imported as no.', 'vars' => array($heading, $value))));
+        }
+
+        return array('value' => (string) $yes, 'problem' => '');
+    }
+
+    if ($column_name === 'expiration_date') {
+        if (($value === '') || ($value === '0000-00-00')) {
+            return array('value' => '0000-00-00', 'problem' => '');
+        }
+
+        $date = pg_date_input_iso($value);
+
+        if ($date === '') {
+            return array('value' => '0000-00-00', 'problem' => lang(array('string' => 'Column {var:1}: "{var:2}" is not a date, so it was left empty.', 'vars' => array($heading, $value))));
+        }
+
+        return array('value' => $date, 'problem' => '');
+    }
+
+    if (((int) $max_length > 0) && (mb_strlen($value, 'UTF-8') > (int) $max_length)) {
+        return array('value' => mb_substr($value, 0, (int) $max_length, 'UTF-8'), 'problem' => lang(array('string' => 'Column {var:1}: the value was longer than {var:2} characters and was cut.', 'vars' => array($heading, (int) $max_length))));
+    }
+
+    return array('value' => $value, 'problem' => '');
+}
+
+/**
+ * The character lengths of a table's text columns from SHOW COLUMNS rows:
+ * varchar(n) and char(n) give n; other types are left out.
+ *
+ * @param array $rows SHOW COLUMNS rows (Field, Type)
+ * @return array column => length
+ */
+function pg_import_column_lengths($rows)
+{
+    $lengths = array();
+
+    foreach ((array) $rows as $row) {
+        if (isset($row['Field'], $row['Type']) && preg_match('/^(?:var)?char\((\d+)\)/i', (string) $row['Type'], $match)) {
+            $lengths[(string) $row['Field']] = (int) $match[1];
+        }
+    }
+
+    return $lengths;
+}
+
+/**
+ * The file's columns kept for the insert: the first heading for each
+ * contacts column; a later one that names the same column (Outlook writes
+ * both "Title" and "Job Title") is left out, as the insert named the column
+ * twice and MySQL refused the whole import.
+ *
+ * @param array $column_names file column index => contacts column or false
+ * @return array array('columns' => index => column, 'repeated' => list of
+ *               indexes left out for repeating a column)
+ */
+function pg_import_unique_columns($column_names)
+{
+    $columns = array();
+    $taken = array();
+    $repeated = array();
+
+    foreach ((array) $column_names as $key => $column) {
+        if ($column === false) {
+            continue;
+        }
+
+        if (isset($taken[$column])) {
+            $repeated[] = $key;
+            continue;
+        }
+
+        $taken[$column] = true;
+        $columns[$key] = $column;
+    }
+
+    return array('columns' => $columns, 'repeated' => $repeated);
+}
 
 /**
  * The reward program goal (points) typed in Site Settings as
@@ -7941,8 +8146,9 @@ function pg_format_number($amount, $decimals = 2)
 /**
  * A stored currency name for display. The starter data stores the names
  * below in English (the Turkish starter data too), so they go through lang();
- * a name the site owner wrote is printed as written. The stored value is
- * never changed.
+ * the Turkish starter data spells the first one 'US Dolar', read as the same
+ * currency. A name the site owner wrote is printed as written. The stored
+ * value is never changed.
  *
  * @param string $name
  * @return string
@@ -7953,6 +8159,7 @@ function pg_currency_label($name)
 
     switch ($name) {
         case 'US Dollar':
+        case 'US Dolar':
             return lang('US Dollar');
         case 'British pound':
             return lang('British pound');
@@ -7967,6 +8174,78 @@ function pg_currency_label($name)
     }
 
     return $name;
+}
+
+/**
+ * The rows of the currency list (view_currencies.php) in the order of its
+ * sort levels, as the screen shows them: the name by its displayed label
+ * (pg_currency_label()) and the symbol by its character, not the stored
+ * HTML entity, both in the panel language's alphabet
+ * (pg_geo_label_compare()). Other columns compare by value. Rows that tie
+ * on every level keep their order.
+ *
+ * @param array $rows   currencies rows (name, base, code, symbol,
+ *                      exchange_rate, created_timestamp,
+ *                      last_modified_timestamp)
+ * @param array $levels list of array('sort' => code, 'order' => 'asc'|'desc'),
+ *                      as pg_list_state() returns them
+ * @return array
+ */
+function pg_currency_list_sort(array $rows, array $levels)
+{
+    $numeric = array(
+        'base' => 'base',
+        'exchange_rate' => 'exchange_rate',
+        'created' => 'created_timestamp',
+        'last_modified' => 'last_modified_timestamp',
+    );
+
+    $key = function ($row, $code) use ($numeric) {
+        switch ($code) {
+            case 'name':
+                return pg_currency_label((string) ($row['name'] ?? ''));
+            case 'symbol':
+                return html_entity_decode((string) ($row['symbol'] ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            case 'code':
+                return (string) ($row['code'] ?? '');
+        }
+
+        return (float) ($row[$numeric[$code]] ?? 0);
+    };
+
+    $keyed = array();
+
+    foreach (array_values($rows) as $index => $row) {
+        $keyed[] = array($index, $row);
+    }
+
+    usort($keyed, function ($a, $b) use ($levels, $numeric, $key) {
+        foreach ($levels as $level) {
+            $code = (string) ($level['sort'] ?? '');
+
+            if (!in_array($code, array('name', 'symbol', 'code'), true) && !isset($numeric[$code])) {
+                continue;
+            }
+
+            $x = $key($a[1], $code);
+            $y = $key($b[1], $code);
+            $compare = is_string($x) ? pg_geo_label_compare($x, $y) : ($x <=> $y);
+
+            if ($compare !== 0) {
+                return ((($level['order'] ?? '') === 'desc') ? -1 : 1) * (($compare < 0) ? -1 : 1);
+            }
+        }
+
+        return $a[0] <=> $b[0];
+    });
+
+    $sorted = array();
+
+    foreach ($keyed as $pair) {
+        $sorted[] = $pair[1];
+    }
+
+    return $sorted;
 }
 
 /**
@@ -9588,6 +9867,45 @@ function pg_product_copy_extra_sql($row, $ai_fields)
 
     return array('columns' => $columns, 'values' => $values);
 }
+
+/**
+ * The product code a bulk copy (duplicate_products.php) asks for: the
+ * original's code with its last letter replaced by the typed letter or word.
+ * The letter is cut by characters, so a Turkish last letter (Ş, Ç) is not
+ * split into a broken byte. A code that would come out empty keeps the
+ * original. The caller still makes the result unique (get_unique_name()).
+ *
+ * @param string $name     the original's product code
+ * @param string $new_text the letter or word typed on the screen
+ * @return string
+ */
+function pg_duplicate_products_base_name($name, $new_text)
+{
+    $name = (string) $name;
+    $base = mb_substr($name, 0, max(0, mb_strlen($name, 'UTF-8') - 1), 'UTF-8') . (string) $new_text;
+
+    return ($base === '') ? $name : $base;
+}
+
+/**
+ * The short description a bulk copy (duplicate_products.php) writes: the
+ * original's text minus its last $count letters, plus the typed letter or
+ * word. Letters are counted as characters, so a Turkish text loses exactly
+ * the letters asked for and is never left with half of a two-byte letter.
+ *
+ * @param string $text     the original's short description
+ * @param int    $count    the letters to remove, at least 1
+ * @param string $new_text the letter or word typed on the screen
+ * @return string
+ */
+function pg_duplicate_products_description($text, $count, $new_text)
+{
+    $text = (string) $text;
+    $keep = max(0, mb_strlen($text, 'UTF-8') - max(1, (int) $count));
+
+    return mb_substr($text, 0, $keep, 'UTF-8') . (string) $new_text;
+}
+
 function duplicate_product($id)
 {
     // get original product's info
@@ -10642,7 +10960,7 @@ function pg_key_code_quick_update($key_code_id, $field, $value, $user_id)
 
         log_activity(
             lang(array(
-                'string' => 'key code ({var:1}) was changed on the key code list: {var:2} from "{var:3}" to "{var:4}"',
+                'string' => 'Key code ({var:1}) was changed on the key code list: {var:2} from "{var:3}" to "{var:4}".',
                 'vars'   => array((string) $current['code'], $columns[$field]['label'], $columns[$field]['options'][$previous], $columns[$field]['options'][$enabled]),
             )),
             $_SESSION['sessionusername'] ?? '');
@@ -10826,7 +11144,10 @@ function pg_key_code_import_row($row, $columns, $date_format)
     $error = '';
 
     foreach ($columns as $index => $column) {
-        $cell = (is_array($row) && isset($row[$index])) ? trim((string) $row[$index]) : '';
+        // The export guards a text cell starting with = + - @ with an
+        // apostrophe; it is taken off so an unchanged export reads back as
+        // stored.
+        $cell = (is_array($row) && isset($row[$index])) ? pg_csv_formula_unguard(trim((string) $row[$index])) : '';
 
         switch ($column) {
             case 'code':
@@ -10849,7 +11170,7 @@ function pg_key_code_import_row($row, $columns, $date_format)
                 $flag = pg_key_code_import_flag($cell);
 
                 if ($flag === false) {
-                    $error = ($error !== '') ? $error : lang(array('string' => '"{var:1}" in the {var:2} column is neither yes nor no.', 'vars' => array($cell, $column)));
+                    $error = ($error !== '') ? $error : lang(array('string' => '"{var:1}" in the {var:2} column is neither yes nor no.', 'vars' => array($cell, ($column === 'enabled') ? lang('Enabled') : lang('Single-Use'))));
                 } else if ($flag !== null) {
                     $values[$column] = $flag;
                 }
@@ -10882,6 +11203,32 @@ function pg_key_code_import_row($row, $columns, $date_format)
     }
 
     return array('values' => $values, 'error' => $error);
+}
+
+/**
+ * One line of the key code export: the columns import_key_codes.php reads
+ * back, every cell quoted. The text cells (code, offer code, notes, user
+ * name) carry the formula guard: a code or note starting with = + - @ ran as
+ * a formula in Excel, and an affiliate code is typed by a visitor.
+ * pg_key_code_import_row() takes the guard off again.
+ *
+ * @param array $key_code a key_codes row with last_modified_username
+ * @return string
+ */
+function pg_key_code_export_line($key_code)
+{
+    $expiration_date = ((string) $key_code['expiration_date'] !== '0000-00-00') ? (string) $key_code['expiration_date'] : '';
+
+    return
+        '"' . csv_cell($key_code['code']) . '",' .
+        '"' . csv_cell($key_code['offer_code']) . '",' .
+        '"' . $key_code['enabled'] . '",' .
+        '"' . $expiration_date . '",' .
+        '"' . csv_cell($key_code['notes']) . '",' .
+        '"' . $key_code['single_use'] . '",' .
+        '"' . $key_code['report'] . '",' .
+        '"' . pg_csv_export_time($key_code['last_modified_timestamp']) . '",' .
+        '"' . csv_cell($key_code['last_modified_username']) . '"' . "\n";
 }
 
 /**
@@ -10926,7 +11273,9 @@ function pg_gift_card_list_cells($gift_card)
     $username = (string) ($gift_card['last_modified_username'] ?? '');
 
     return array(
-        'notes'         => array('html' => nl2br(h((string) $gift_card['notes'])), 'class' => 'align-middle'),
+        // Wrapped in a box of its own width: the list's cells do not wrap,
+        // so a long note pushed the other columns off the screen.
+        'notes'         => array('html' => '<div class="text-wrap text-break" style="max-width:20rem;">' . nl2br(h((string) $gift_card['notes'])) . '</div>', 'class' => 'align-middle text-wrap'),
         'last_modified' => array(
             'html'  => get_relative_time(array('timestamp' => $gift_card['last_modified_timestamp']))
                 . (($username !== '') ? ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($username)))) : ''),
@@ -11029,6 +11378,14 @@ function get_product_groups($properties)
         $level = 0;
     }
     $status = $properties['status'] ?? '';
+    // 'live' leaves the groups in the Recycle Bin (and so everything under
+    // them) out of the subtree.
+    $live = !empty($properties['live']);
+    // The groups above this one on the walk. A parent_id ring, which a
+    // hand-edited database or an old save could leave behind, would otherwise
+    // recurse until the request dies.
+    $seen = $properties['seen'] ?? array();
+    $seen[(int) $id] = true;
     // Get info for this product group.
     $product_group = db_item("SELECT
 
@@ -11066,13 +11423,20 @@ function get_product_groups($properties)
 
             $sql_display_type
 
+            " . ($live ? pg_catalog_bin_live_sql('product_groups') : '') . "
+
         ORDER BY sort_order, name");
-    foreach ($child_product_groups as $product_group) {
+    foreach ((array) $child_product_groups as $product_group) {
+        if (isset($seen[(int) $product_group['id']])) {
+            continue;
+        }
         $product_groups = array_merge($product_groups, get_product_groups(array(
             'id' => $product_group['id'],
             'level' => $level + 1,
             'display_type' => $display_type,
-            'status' => $status
+            'status' => $status,
+            'live' => $live,
+            'seen' => $seen
         )));
     }
     return $product_groups;
@@ -12420,12 +12784,12 @@ function pg_carrier_number_field($value)
     if (pg_erp_store_country() === 'TR') {
         return '<label for="carrier_vkn" class="form-label">' . lang('Carrier VKN') . '</label>
             <input value="' . $value . '" type="text" name="carrier_vkn" id="carrier_vkn" class="form-control" maxlength="11" inputmode="numeric" />
-            <div class="form-text text-end">' . lang('Tax number of the carrier (10 digits) or ID number (11 digits)') . '</div>';
+            <div class="form-text">' . lang('Tax number of the carrier (10 digits) or ID number (11 digits)') . '</div>';
     }
 
     return '<label for="carrier_vkn" class="form-label">' . lang('Carrier tax number') . '</label>
         <input value="' . $value . '" type="text" name="carrier_vkn" id="carrier_vkn" class="form-control" maxlength="' . pg_carrier_number_width() . '" />
-        <div class="form-text text-end">' . lang('The tax number of the carrier, as it prints it on its own invoices.') . '</div>';
+        <div class="form-text">' . lang('The tax number of the carrier, as it prints it on its own invoices.') . '</div>';
 }
 
 /**
@@ -12939,7 +13303,7 @@ function pg_product_image_cell_content($key, $image_name, $name, $short_descript
         . ' data-pg-lb-src="' . h(PATH . encode_url_path($image_name)) . '"'
         . ' data-pg-lb-alt="' . h($caption) . '" data-pg-lb-caption="' . h($caption) . '"'
         . ' aria-label="' . h(lang('View images')) . '">'
-        . '<img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" alt="" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(PATH . encode_url_path($image_name)) . '" />'
+        . '<img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" alt="" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . h(pg_image_panel_thumb_url(PATH . encode_url_path($image_name))) . '" />'
         . '</button>';
 
     $index = 1;
@@ -13025,51 +13389,74 @@ function pg_product_more_images($product_ids)
 // Needs product_builder.php for the typed reader.
 function pg_products_import_price_cents($value)
 {
+    return pg_products_import_price_read($value)['cents'];
+}
+
+/**
+ * A price cell of an import file read as pg_products_import_price_cents()
+ * reads it, with the reason a refused cell is refused, so the import names
+ * the real one. 'too_large' is an amount the price columns cannot hold:
+ * above PG_PRODUCT_PRICE_MAX minor units (21.474.836,47), or more than
+ * fifteen digits, as on the product screen (pg_pb_price_above_column_top()).
+ * A cell that is not an amount at all is refused with 'too_large' false.
+ *
+ * @param mixed $value
+ * @return array  'cents' (int, or null when refused), 'too_large' (bool)
+ */
+function pg_products_import_price_read($value)
+{
+    $refused = array('cents' => null, 'too_large' => false);
+    $too_large = array('cents' => null, 'too_large' => true);
     $value = trim((string) $value);
 
     if (preg_match('/^\d+(\.\d+)?([eE][+-]?\d+)?$/', $value)) {
 
         $amount = round(((float) $value) * 100);
 
-        if (!is_finite($amount) || ($amount > 2147483647)) {
-            return null;
+        if (!is_finite($amount) || pg_product_price_too_large($amount)) {
+            return $too_large;
         }
 
-        return (int) $amount;
+        return array('cents' => (int) $amount, 'too_large' => false);
     }
 
     // A symbol or a code before or after the figure, and spaces or
     // apostrophes that group its digits, are left out; whatever else is
     // there makes it not an amount.
     if (!preg_match('/^[\p{Sc}\p{L}\s\x{00A0}\x{202F}]*([0-9.,][0-9.,\s\x{00A0}\x{202F}\'\x{2019}]*)[\p{Sc}\p{L}\s\x{00A0}\x{202F}]*$/u', $value, $matches)) {
-        return null;
+        return $refused;
     }
 
     $figure = (string) preg_replace('/[^0-9.,]/', '', $matches[1]);
     $digits = strlen((string) preg_replace('/[^0-9]/', '', $figure));
 
-    if (($digits === 0) || ($digits > 15)) {
-        return null;
+    if ($digits === 0) {
+        return $refused;
+    }
+
+    if ($digits > 15) {
+        return $too_large;
     }
 
     // Bounded as a float, before the int cast: on a 32-bit build the cast
     // would wrap an amount above the top into a wrong or negative price.
     $amount = round(((float) pg_pb_price_figure($figure)) * 100);
 
-    if (!is_finite($amount) || ($amount > 2147483647)) {
-        return null;
+    if (!is_finite($amount) || pg_product_price_too_large($amount)) {
+        return $too_large;
     }
 
-    return (int) $amount;
+    return array('cents' => (int) $amount, 'too_large' => false);
 }
 
 // The money cells of one import row, read before the database is touched.
 // $money_positions maps each money column the header has (price,
 // extra_shipping_cost, compare_at_price) to its position. Returns
-// array('prices' => array(column => minor units), 'refused' => bool): an
-// empty cell (or spaces alone) is left out, as is a compare_at_price that
-// starts with a minus sign, which leaves the stored one alone; a cell that is
-// not an amount refuses the whole row.
+// array('prices' => array(column => minor units), 'refused' => bool,
+// 'too_large' => bool): an empty cell (or spaces alone) is left out, as is a
+// compare_at_price that starts with a minus sign, which leaves the stored one
+// alone; a cell that is not an amount, or is one the price columns cannot
+// hold ('too_large'), refuses the whole row.
 //
 // A function of its own because the importer keeps each header column's
 // position in a script variable named <column>_key: a loop there with a
@@ -13085,16 +13472,16 @@ function pg_products_import_row_prices($row, $money_positions)
             continue;
         }
 
-        $cents = pg_products_import_price_cents($cell);
+        $read = pg_products_import_price_read($cell);
 
-        if ($cents === null) {
-            return array('prices' => array(), 'refused' => true);
+        if ($read['cents'] === null) {
+            return array('prices' => array(), 'refused' => true, 'too_large' => $read['too_large']);
         }
 
-        $prices[$money_column] = $cents;
+        $prices[$money_column] = $read['cents'];
     }
 
-    return array('prices' => $prices, 'refused' => false);
+    return array('prices' => $prices, 'refused' => false, 'too_large' => false);
 }
 
 // The column name an import file's heading stands for: trimmed, lower-cased
@@ -13106,6 +13493,57 @@ function pg_import_heading($heading)
     $heading = mb_strtolower(trim((string) $heading), 'UTF-8');
 
     return (string) preg_replace('/[\s\-]+/u', '_', $heading);
+}
+
+/**
+ * The heading row of a product import, read into the three lists the import
+ * loop uses. column_names is indexed by the file's column position, so
+ * ${name}_key and every array_search() over it point at the row cell of that
+ * column: a submit form column (sfc_/sfu_) and an unknown heading hold their
+ * place as false. A submit form column left out of the list moved every
+ * column after it one cell to the left, and a file with sfc_ columns first
+ * stored a form value as the product name.
+ *
+ * @param array    $headings the file's first row
+ * @param callable $convert  heading to products column, or false
+ * @return array column_names, submit_form_fields, unknown_headings
+ */
+function pg_products_import_headings($headings, $convert)
+{
+    $column_names = array();
+    $submit_form_fields = array();
+    $unknown_headings = array();
+
+    foreach (array_values((array) $headings) as $position => $heading) {
+        $heading = (string) $heading;
+        $prefix = substr($heading, 0, 4);
+
+        if (($prefix == 'sfc_') || ($prefix == 'sfu_')) {
+            $field_name = (string) substr($heading, 4);
+
+            if ($field_name != '') {
+                $submit_form_fields[] = array(
+                    'name' => $field_name,
+                    'action' => ($prefix == 'sfc_') ? 'create' : 'update',
+                    'column' => $position);
+            }
+
+            $column_names[$position] = false;
+            continue;
+        }
+
+        $column_name = call_user_func($convert, $heading);
+        $column_names[$position] = $column_name;
+
+        if ($column_name === false) {
+            $unknown_headings[] = $heading;
+        }
+    }
+
+    return array(
+        'column_names' => $column_names,
+        'submit_form_fields' => $submit_form_fields,
+        'unknown_headings' => $unknown_headings);
 }
 
 // The text of one column of a CSV row: '' when the file has no such column
@@ -13153,22 +13591,22 @@ function pg_products_import_decimal_cell($column_name, $value)
 }
 
 /**
- * Whether a product import row is left out because one of its weight,
- * length, width, height or commission_rate_limit cells is not a number.
+ * Why a product import row is left out for one of its weight, length,
+ * width, height or commission_rate_limit cells, or '' when none refuses it.
  * $decimal_positions maps those columns to their position in the row. A
  * number is digits with "." or "," as decimal point or grouping (spaces
  * group too: "1 234,5"), or a spreadsheet's exponent form; an empty cell
  * leaves the column as it is. Words, a unit ("1,5 kg") or a minus sign
- * (the columns are unsigned) refuse the row, as do weight and dimensions
- * above decimal(12,4)'s top: the non-strict session would store 0 or the
- * top without a word. A commission rate above 999.99 is held to it, as on
- * the product screen.
+ * (the columns are unsigned) are 'not_number'; weight and dimensions above
+ * decimal(12,4)'s top are 'too_large': the non-strict session would store 0
+ * or the top without a word. A commission rate above 999.99 is held to it,
+ * as on the product screen. The first refused cell gives the reason.
  *
  * @param array $row
  * @param array $decimal_positions column => position
- * @return bool
+ * @return string  '', 'not_number' or 'too_large'
  */
-function pg_products_import_row_decimals_refused($row, $decimal_positions)
+function pg_products_import_row_decimals_problem($row, $decimal_positions)
 {
     foreach ($decimal_positions as $decimal_column => $decimal_position) {
         $cell = str_replace(' ', '', trim(pg_products_import_row_value($row, $decimal_position)));
@@ -13179,16 +13617,53 @@ function pg_products_import_row_decimals_refused($row, $decimal_positions)
 
         if (!preg_match('/^\d+(\.\d+)?[eE][+-]?\d+$/', $cell)
             && !preg_match('/^[0-9.,]*[0-9][0-9.,]*$/', $cell)) {
-            return true;
+            return 'not_number';
         }
 
         if (($decimal_column !== 'commission_rate_limit')
             && ((float) pg_products_import_decimal_cell($decimal_column, $cell) > 99999999.9999)) {
+            return 'too_large';
+        }
+    }
+
+    return '';
+}
+
+/**
+ * Whether a product import row's name or short description is longer than
+ * its varchar(100) column. The non-strict session would cut it without a
+ * word, and the name is the key the next import finds the product by: a cut
+ * name never matches the file's again, so every import added another
+ * product. Counted in characters, as the column counts them.
+ *
+ * @param array $row
+ * @param array $text_positions column => position
+ * @return bool
+ */
+function pg_products_import_row_text_too_long($row, $text_positions)
+{
+    foreach ($text_positions as $text_position) {
+        if (mb_strlen(pg_products_import_row_value($row, $text_position), 'UTF-8') > 100) {
             return true;
         }
     }
 
     return false;
+}
+
+/**
+ * Why a product import's stock quantity cell that is not a whole count of
+ * zero or more (pg_products_mass_quantity_value() gave null) is refused:
+ * 'not_whole' for a number with a fraction or a minus sign ("1,5", "-3"),
+ * read with the separators pg_normalize_amount() reads, 'not_number' for
+ * anything else ("ten", "5 pcs").
+ *
+ * @param mixed $cell
+ * @return string  'not_whole' or 'not_number'
+ */
+function pg_products_import_quantity_refusal($cell)
+{
+    return is_numeric(pg_normalize_amount(trim((string) $cell))) ? 'not_whole' : 'not_number';
 }
 
 /**
@@ -13256,7 +13731,9 @@ function pg_barcode_scan_choice($barcode_of, $code_of)
  */
 function pg_barcode_scan_product($code)
 {
-    $code = is_scalar($code) ? (string) $code : '';
+    // A typed code with a blank around it is the same code, as the counter
+    // sale screen reads it.
+    $code = is_scalar($code) ? trim((string) $code) : '';
 
     $barcode_of = (int) db_value("SELECT product_id FROM product_barcodes WHERE barcode = '" . e($code) . "' LIMIT 1");
 

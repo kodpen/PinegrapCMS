@@ -12,8 +12,11 @@
  * one, and a background). The Canvas tool drags the board by its edges and
  * corners, sets its size on a nine-point anchor, fits it to the layers or
  * the selection: the artwork stays where it is and the board slides over
- * it. The Image tool adds pictures as layers, from this computer, Files, a
- * drop or the clipboard.
+ * it. On a picture the same tool grows or trims its canvas around the crop
+ * box (doc.canvas, the rest in a fill), which the server's save lays the
+ * picture on; an outward frame grows it too. The Image tool adds pictures as
+ * layers, from this computer, Files, a drop or the clipboard; a save keeps
+ * those from this computer as files in the target folder.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -25,6 +28,7 @@
     'use strict';
 
     var Editor = X.Editor, M = X.M, t = X.t, el = X.el, section = X.section, button = X.button;
+    var SVGNS = X.SVGNS;
 
     var HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
     var ANCHORS = [[0, 0, 'anchorTopLeft'], [0.5, 0, 'anchorTop'], [1, 0, 'anchorTopRight'], [0, 0.5, 'anchorLeft'], [0.5, 0.5, 'anchorCenter'],
@@ -32,10 +36,37 @@
 
     // ---- the board ----
 
+    // The board in the rotated space: an artboard's, a picture's canvas
+    // (without an outward frame); null before a picture has loaded.
+    Editor.prototype.boardBox = function () {
+        if (this.doc.artboard) {
+            return { x: 0, y: 0, w: this.doc.artboard.width, h: this.doc.artboard.height };
+        }
+
+        return (this.ready && this.doc.source) ? M.canvasBox(this.doc) : null;
+    };
+
+    // The board's fill: an artboard's background, a picture canvas's.
+    Editor.prototype.boardFill = function () {
+        return this.doc.artboard ? this.doc.artboard.background : (this.doc.canvas ? this.doc.canvas.background : '#ffffff');
+    };
+
     // The board moved to r (in its own units, M.applyBoard()): one undo
     // step. A view the user zoomed or moved keeps the artwork where it is on
-    // the screen; a fitted view fits the new board.
+    // the screen; a fitted view fits the new board. On a picture the layers
+    // stay and the canvas moves (M.applyCanvas()); followBoard() keeps the
+    // view.
     Editor.prototype.setBoard = function (r) {
+        if (!this.doc.artboard) {
+            var canvas = M.applyCanvas(this.doc, r).canvas;
+
+            if (!M.sameDocument(canvas, this.doc.canvas || null)) {
+                this.change(function (doc) { doc.canvas = canvas; });
+            }
+
+            return;
+        }
+
         var next = M.applyBoard(this.doc, r), v = this.view;
 
         if ((next.artboard.width === this.doc.artboard.width) && (next.artboard.height === this.doc.artboard.height) && !Math.round(r.x) && !Math.round(r.y)) {
@@ -57,14 +88,30 @@
 
     // A size typed in or a preset: placed by the anchor.
     Editor.prototype.setBoardSize = function (w, h) {
-        var a = this.doc.artboard;
+        var b = this.boardBox();
 
-        this.setBoard(M.boardAnchored(a.width, a.height, w, h, this.board.anchor[0], this.board.anchor[1]));
+        this.setBoard(M.boardAnchored(b.w, b.h, w, h, this.board.anchor[0], this.board.anchor[1]));
     };
 
-    // The board around the visible layers, or the selected ones.
+    // The content's box in the board's units: the visible layers, or the
+    // selected ones; on a picture with the crop box (the picture) too.
+    Editor.prototype.contentBox = function (selected) {
+        var b = this.boardBox(), r = M.boardAround(selected ? this.selected() : this.doc.layers), c;
+
+        if (!b) {
+            return null;
+        }
+
+        if (!this.doc.artboard && !selected) {
+            c = M.cropBox(this.doc);
+            r = r ? { x: Math.min(r.x, c.x), y: Math.min(r.y, c.y), w: Math.max(r.x + r.w, c.x + c.w) - Math.min(r.x, c.x), h: Math.max(r.y + r.h, c.y + c.h) - Math.min(r.y, c.y) } : c;
+        }
+
+        return r ? { x: r.x - b.x, y: r.y - b.y, w: r.w, h: r.h } : null;
+    };
+
     Editor.prototype.fitBoard = function (selected) {
-        var r = M.boardAround(selected ? this.selected() : this.doc.layers);
+        var r = this.contentBox(selected);
 
         if (r) {
             this.setBoard(r);
@@ -72,7 +119,14 @@
     };
 
     Editor.prototype.setBoardBackground = function (color, live) {
-        this.change(function (doc) { doc.artboard.background = color; }, 'board-background', live);
+        this.change(function (doc) {
+            if (doc.artboard) {
+                doc.artboard.background = color;
+            } else {
+                doc.canvas = doc.canvas || { l: 0, t: 0, r: 0, b: 0, background: '#ffffff' };
+                doc.canvas.background = color;
+            }
+        }, 'board-background', live);
 
         if (!live) {
             this.history.key = null;
@@ -82,7 +136,7 @@
     // The dashed board and its handles over the stage while the Canvas tool
     // is on: the board as it is, or as a drag would leave it, with its size.
     Editor.prototype.renderBoard = function () {
-        var a = this.doc.artboard, b = this.board, on = !!a && (this.tool === 'artboard') && !b.dialog;
+        var a = this.doc.artboard, b = this.board, box = this.boardBox(), on = !!box && (this.tool === 'artboard') && !b.dialog && !this.cropping();
 
         if (a) {
             this.frame.style.background = (a.background === 'transparent') ? '' : a.background;
@@ -105,10 +159,10 @@
             return;
         }
 
-        var r = b.ghost || { x: 0, y: 0, w: a.width, h: a.height }, v = this.view, k = v.k, st = b.el.style;
+        var r = b.ghost || { x: 0, y: 0, w: box.w, h: box.h }, v = this.view, k = v.k, st = b.el.style, vr = this.viewRect();
 
-        st.left = (v.x + r.x * k) + 'px';
-        st.top = (v.y + r.y * k) + 'px';
+        st.left = (v.x + (box.x - vr.x + r.x) * k) + 'px';
+        st.top = (v.y + (box.y - vr.y + r.y) * k) + 'px';
         st.width = (r.w * k) + 'px';
         st.height = (r.h * k) + 'px';
         b.size.textContent = Math.round(r.w) + ' × ' + Math.round(r.h) + ' px';
@@ -116,7 +170,7 @@
 
     Editor.pointers.artboard = {
         down: function (e) {
-            var h = this.doc.artboard && e.target && e.target.getAttribute && e.target.getAttribute('data-h');
+            var h = this.boardBox() && e.target && e.target.getAttribute && e.target.getAttribute('data-h');
 
             if (!h || !this.board.el || !this.board.el.contains(e.target)) {
                 return;
@@ -132,9 +186,9 @@
             }
         },
         move: function (e) {
-            var d = this.drag, a = this.doc.artboard, k = this.view.k;
+            var d = this.drag, a = this.boardBox(), k = this.view.k;
 
-            this.board.ghost = M.boardDrag(a.width, a.height, d.h, (e.clientX - d.x) / k, (e.clientY - d.y) / k, e.shiftKey, e.altKey);
+            this.board.ghost = M.boardDrag(a.w, a.h, d.h, (e.clientX - d.x) / k, (e.clientY - d.y) / k, e.shiftKey, e.altKey);
             this.renderBoard();
         },
         up: function () {
@@ -156,7 +210,7 @@
     // Canvas size, then (the Canvas tool) the anchor, fitting and the
     // presets, then the background.
     Editor.prototype.boardSection = function (body, full) {
-        var self = this, a = this.doc.artboard, b = this.board;
+        var self = this, box = this.boardBox(), a = { width: Math.round(box.w), height: Math.round(box.h) }, b = this.board;
         var w = el('input', { type: 'number', class: 'pgie-input', min: '16', max: '8000', value: String(a.width), 'aria-label': t('width') });
         var h = el('input', { type: 'number', class: 'pgie-input', min: '16', max: '8000', value: String(a.height), 'aria-label': t('height') });
         var commit = function () { self.setBoardSize(w.value, h.value); };
@@ -183,7 +237,7 @@
                 this.sel.length ? button('pgie-btn', t('fitSelection'), 'fit', function () { self.fitBoard(true); }, true) : null
             ]);
 
-            fits.firstChild.disabled = !M.boardAround(this.doc.layers);
+            fits.firstChild.disabled = !this.contentBox(false);
             body.appendChild(section(t('anchor'), el('div', { class: 'pgie-boardrow' }, [grid, fits])));
 
             var chips = el('div', { class: 'pgie-chips' }), now = M.boardPreset(a.width, a.height);
@@ -195,13 +249,200 @@
             body.appendChild(section(t('boardPresets'), chips));
         }
 
-        body.appendChild(X.swatches(t('boardBackground'), a.background, function (color, live) { self.setBoardBackground(color, live); }, { transparent: true }));
+        body.appendChild(X.swatches(t('boardBackground'), this.boardFill(), function (color, live) { self.setBoardBackground(color, live); }, { transparent: true }));
     };
 
     Editor.panels.artboard = function (body) {
-        if (this.doc.artboard) {
+        if (this.boardBox()) {
             this.boardSection(body, true);
         }
+    };
+
+    // ---- a picture's canvas ----
+
+    // What the canvas adds around the picture, in its fill, under the
+    // layers: the save box less the crop box (a checker for transparent).
+    Editor.prototype.renderMat = function () {
+        var b = this.board, show = this.ready && !!this.doc.source && !this.cropping() && !!M.saveLayout(this.doc);
+
+        this.placeVignette(show);
+
+        if (!b.mat) {
+            if (!show) {
+                return;
+            }
+
+            b.mat = document.createElementNS(SVGNS, 'svg');
+            b.mat.setAttribute('class', 'pgie-mat');
+            b.mat.setAttribute('aria-hidden', 'true');
+            b.mat.innerHTML = '<defs><pattern id="' + this.fxId + '-mat" patternUnits="userSpaceOnUse"><rect fill="#ffffff"/><path fill="#d5dbe1"/></pattern></defs><path fill-rule="evenodd"/>';
+            this.frame.insertBefore(b.mat, this.layersSvg);
+        }
+
+        b.mat.style.display = show ? '' : 'none';
+
+        if (!show) {
+            return;
+        }
+
+        var vr = this.viewRect(), c = M.cropBox(this.doc), x0 = Math.max(vr.x, c.x), y0 = Math.max(vr.y, c.y);
+        var x1 = Math.min(vr.x + vr.w, c.x + c.w), y1 = Math.min(vr.y + vr.h, c.y + c.h), fill = this.boardFill(), q = 10 / this.view.k;
+        var d = 'M' + vr.x + ' ' + vr.y + 'h' + vr.w + 'v' + vr.h + 'h' + (-vr.w) + 'Z';
+        var pattern = b.mat.firstChild.firstChild;
+
+        if ((x1 > x0) && (y1 > y0)) {
+            d += 'M' + x0 + ' ' + y0 + 'H' + x1 + 'V' + y1 + 'H' + x0 + 'Z';
+        }
+
+        b.mat.setAttribute('viewBox', [vr.x, vr.y, vr.w, vr.h].join(' '));
+        b.mat.lastChild.setAttribute('d', d);
+        b.mat.lastChild.setAttribute('fill', (fill === 'transparent') ? 'url(#' + this.fxId + '-mat)' : fill);
+        pattern.setAttribute('width', 2 * q);
+        pattern.setAttribute('height', 2 * q);
+        pattern.firstChild.setAttribute('width', 2 * q);
+        pattern.firstChild.setAttribute('height', 2 * q);
+        pattern.lastChild.setAttribute('d', 'M0 0h' + q + 'v' + q + 'h' + (-q) + 'ZM' + q + ' ' + q + 'h' + q + 'v' + q + 'h' + (-q) + 'Z');
+    };
+
+    // The vignette belongs to the picture's adjustments: over the crop box
+    // only, as the save draws it, when the canvas reaches past it.
+    Editor.prototype.placeVignette = function (on) {
+        var st = this.vignette.style, vr, c, k;
+
+        if (!on) {
+            st.left = st.top = st.width = st.height = '';
+            return;
+        }
+
+        vr = this.viewRect();
+        c = M.cropBox(this.doc);
+        k = this.view.k;
+        st.left = ((c.x - vr.x) * k) + 'px';
+        st.top = ((c.y - vr.y) * k) + 'px';
+        st.width = (c.w * k) + 'px';
+        st.height = (c.h * k) + 'px';
+    };
+
+    // The shown box changed by the canvas or an outward frame (an edit, undo,
+    // redo): a fitted view fits it, another keeps the artwork where it is on
+    // the screen. True when the view was drawn again.
+    Editor.prototype.followBoard = function () {
+        if (!this.ready || !this.doc.source) {
+            return false;
+        }
+
+        var vr = this.viewRect(), last = this.board.last, crop = this.cropping(), v = this.view;
+
+        this.board.last = { crop: crop, x: vr.x, y: vr.y, w: vr.w, h: vr.h };
+
+        if (!last || crop || last.crop || ((last.x === vr.x) && (last.y === vr.y) && (last.w === vr.w) && (last.h === vr.h))) {
+            return false;
+        }
+
+        if (this.fitMode) {
+            this.fit();
+        } else {
+            this.view = { k: v.k, x: v.x + (vr.x - last.x) * v.k, y: v.y + (vr.y - last.y) * v.k };
+            this.renderView();
+        }
+
+        return true;
+    };
+
+    // The Frame panel on a picture: a line, a thick line or a polaroid may
+    // lie outside it, growing the canvas.
+    var framePanel = Editor.panels.frame;
+
+    Editor.panels.frame = function (body) {
+        var self = this, fr = this.doc.frame;
+
+        framePanel.call(this, body);
+
+        if (this.doc.source && fr && M.FRAME_OUT.hasOwnProperty(fr.kind)) {
+            var box = el('input', { type: 'checkbox' });
+
+            box.checked = !!fr.outside;
+            box.addEventListener('change', function () { self.setFrame({ outside: box.checked }); });
+            body.appendChild(el('label', { class: 'pgie-check' }, [box, el('span', { text: t('frameOutside') })]));
+        }
+    };
+
+    // A file saved before as a canvas opens from its document (the open
+    // answer's canvas and doc), its layers editable, with the canvas's
+    // tools and no New image dialog.
+    var openFile = Editor.prototype.openFile;
+
+    Editor.prototype.openFile = function (r) {
+        var doc = (r && r.canvas && !this.opts.src) ? M.canvasOpenDoc(r.doc) : null;
+
+        if (!doc) {
+            openFile.call(this, r);
+            return;
+        }
+
+        this.versionCount = Number(r.versions) || 0;
+        this.versionBase = 0;
+        this.doc = doc;
+        this.layersDirty = true;
+
+        if (!this.tools.mini) {
+            this.tools = M.resolveTools('canvas', this.opts.tools);
+            this.tool = this.tools.list[0];
+            this.renderTools();
+        }
+
+        if (this.renderVersionCount) {
+            this.renderVersionCount();
+        }
+
+        this.frame.style.background = (doc.artboard.background === 'transparent') ? '' : doc.artboard.background;
+        this.frame.classList.toggle('pgie-checker', doc.artboard.background === 'transparent');
+        this.setReady();
+        this.render();
+    };
+
+    // A picture's save lays it on its canvas (extend); a canvas reopened
+    // from its file names it for a replace or a copy (the core sends its
+    // PNG, picture); pictures from this computer go along to be kept as files
+    // (pictures) in the target folder: not for a picture's copy, which
+    // keeps no document.
+    Editor.saveHooks.push(function (body, mode) {
+        var layout = (mode !== 'new') ? M.saveLayout(this.doc) : null, list = [];
+
+        if (layout) {
+            body.extend = layout;
+        }
+
+        if (this.doc.artboard && ((mode === 'replace') || (mode === 'copy'))) {
+            body.file_id = this.opts.fileId;
+        }
+
+        if ((mode === 'replace') || (mode === 'new') || ((mode === 'copy') && this.doc.artboard)) {
+            this.doc.layers.forEach(function (l) {
+                if ((l.type === 'image') && !l.fileId && /^data:image\/(png|jpeg);base64,/.test(l.src || '')) {
+                    list.push({ id: l.id, data: l.src, name: l.fileName || '' });
+                }
+            });
+        }
+
+        if (list.length) {
+            body.pictures = list;
+        }
+    });
+
+    // The files a save kept: their layers point at them from now on.
+    Editor.prototype.takePictures = function (saved) {
+        if (!saved || (typeof saved !== 'object')) {
+            return;
+        }
+
+        this.doc.layers.forEach(function (l) {
+            if (Object.prototype.hasOwnProperty.call(saved, l.id) && saved[l.id]) {
+                l.src = saved[l.id].url;
+                l.fileId = saved[l.id].id;
+                delete l.fileName;
+            }
+        });
     };
 
     // Select with nothing selected on a canvas: the canvas first, then the
@@ -407,7 +648,9 @@
     Editor.inits.push(function () {
         // anchor: where a typed size keeps the board; ghost: the board while
         // a handle is dragged; dialog: the New image dialog while it is open.
-        this.board = { anchor: [0.5, 0.5], ghost: null, el: null, size: null, dialog: null, ask: !!this.opts.blank && !this.tools.mini, bound: false };
+        // mat: a picture canvas's fill; last: the box last shown.
+        this.board = { anchor: [0.5, 0.5], ghost: null, el: null, size: null, dialog: null, ask: !!this.opts.blank && !this.tools.mini, bound: false,
+            mat: null, last: null };
     });
 
     Editor.views.push(function () {
@@ -421,6 +664,11 @@
             this.openNewImage();
         }
 
+        if (this.followBoard()) {
+            return;
+        }
+
+        this.renderMat();
         this.renderBoard();
     });
 

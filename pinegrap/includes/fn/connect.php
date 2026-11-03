@@ -336,9 +336,59 @@ function pg_connect_access_key($provider, $scopes)
 }
 
 /**
+ * The pattern of a directory (tenant) name: common, organizations,
+ * consumers, a domain or a directory ID.
+ *
+ * @return string
+ */
+function pg_connect_tenant_pattern()
+{
+    return '/^[A-Za-z0-9][A-Za-z0-9.-]{0,99}$/';
+}
+
+/**
+ * Whether an application option's value fits the option's 'pattern', when
+ * the provider file gives one.
+ *
+ * @param array  $option one entry of a provider's 'options'
+ * @param string $value
+ * @return bool
+ */
+function pg_connect_option_valid($option, $value)
+{
+    return !isset($option['pattern']) || (bool) preg_match($option['pattern'], (string) $value);
+}
+
+/**
+ * Whether every option of a stored application fits its provider file.
+ *
+ * @param string $provider_key
+ * @param array  $options
+ * @return bool
+ */
+function pg_connect_app_options_valid($provider_key, $options)
+{
+    $providers = pg_connect_providers();
+
+    if (!isset($providers[$provider_key]['options']) || !is_array($providers[$provider_key]['options'])) {
+        return true;
+    }
+
+    foreach ($providers[$provider_key]['options'] as $option_key => $option) {
+        if (isset($options[$option_key]) && ((string) $options[$option_key] !== '') && !pg_connect_option_valid($option, $options[$option_key])) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
  * An endpoint of a provider, with {tenant} filled in from the application's
- * options (Microsoft). A tenant that is not a word, a GUID or a domain falls
- * back to the provider's default.
+ * options (Microsoft). An empty tenant is the provider's default; one that is
+ * not a word, a GUID or a domain gives '' rather than the default, so a typo
+ * never opens a directory-only application to every account
+ * (pg_connect_app_ready() is false for it too).
  *
  * @param array  $provider
  * @param array  $app      what pg_connect_app() returned
@@ -355,8 +405,10 @@ function pg_connect_endpoint($provider, $app, $name)
 
     $tenant = (is_array($app) && isset($app['options']['tenant'])) ? trim((string) $app['options']['tenant']) : '';
 
-    if (!preg_match('/^[A-Za-z0-9][A-Za-z0-9.-]{0,99}$/', $tenant)) {
+    if ($tenant === '') {
         $tenant = isset($provider['default_tenant']) ? (string) $provider['default_tenant'] : 'common';
+    } elseif (!pg_connect_option_valid(array('pattern' => pg_connect_tenant_pattern()), $tenant)) {
+        return '';
     }
 
     return str_replace('{tenant}', rawurlencode($tenant), $url);
@@ -547,6 +599,30 @@ function pg_connect_return_path($return)
     }
 
     return 'connections.php';
+}
+
+/**
+ * Whether a connection may be renewed by a new connection attempt: same
+ * provider and the requesting owner's own row (user 0 for the site's, the
+ * person's id for a personal one). Anything else would put another account's
+ * name into the provider's sign-in screen (login_hint) and its purposes into
+ * the new permission.
+ *
+ * @param array|null $existing what pg_connect_account() returned
+ * @param string     $provider_key
+ * @param string     $owner   'site' or 'person'
+ * @param int        $user_id the signed-in person
+ * @return bool
+ */
+function pg_connect_renewal_allowed($existing, $provider_key, $owner, $user_id)
+{
+    if (!is_array($existing) || !isset($existing['provider'], $existing['user_id'])) {
+        return false;
+    }
+
+    $owner_id = ($owner === 'person') ? (int) $user_id : 0;
+
+    return ((string) $existing['provider'] === (string) $provider_key) && ((int) $existing['user_id'] === $owner_id);
 }
 
 /**
@@ -741,6 +817,7 @@ function pg_connect_app($provider_key)
             'client_secret' => isset($secret['client_secret']) ? (string) $secret['client_secret'] : '',
             'secret_stored' => ((string) $row['secret'] !== ''),
             'options'       => is_array($options) ? $options : array(),
+            'options_valid' => pg_connect_app_options_valid($provider_key, is_array($options) ? $options : array()),
             'enabled'       => ((int) $row['enabled'] === 1),
             'source'        => 'connect',
         );
@@ -758,6 +835,7 @@ function pg_connect_app($provider_key)
 function pg_connect_app_ready($app)
 {
     return is_array($app) && $app['enabled'] && ($app['client_id'] !== '')
+        && (!isset($app['options_valid']) || $app['options_valid'])
         && (($app['client_secret'] !== '') || pg_connect_app_public($app));
 }
 
@@ -808,6 +886,15 @@ function pg_connect_app_save($provider_key, $client_id, $client_secret, $options
 
     if (($client_secret !== null) && ((string) $client_secret !== '')) {
         $secret['client_secret'] = (string) $client_secret;
+    } elseif (!is_array($existing)) {
+        // Google's first row saved from the form that showed the Sign in with
+        // Google application: the same client ID keeps that application's
+        // secret, or the row would hide a working fallback behind an empty one.
+        $fallback = ($provider_key === 'google') ? pg_signin_google_app() : null;
+
+        if (is_array($fallback) && ($fallback['client_secret'] !== '') && (trim((string) $client_id) === $fallback['client_id'])) {
+            $secret['client_secret'] = $fallback['client_secret'];
+        }
     }
 
     $sealed = $secret ? pg_connect_seal($secret) : '';
@@ -828,6 +915,17 @@ function pg_connect_app_save($provider_key, $client_id, $client_secret, $options
     return true;
 }
 
+/**
+ * Removes a provider's own application, so Google falls back to the Sign in
+ * with Google application again. Connected accounts stay.
+ *
+ * @param string $provider_key
+ * @return void
+ */
+function pg_connect_app_remove($provider_key)
+{
+    db("DELETE FROM connect_apps WHERE provider = '" . e($provider_key) . "'");
+}
 
 /* ---------------------------------------------------------------------------
    Connections (connect_accounts)
@@ -1376,7 +1474,7 @@ function pg_connect_start($provider_key, $purpose_key, $owner, $user, $return, $
     if ($connection_id > 0) {
         $existing = pg_connect_account($connection_id);
 
-        if (is_array($existing) && ($existing['provider'] === $provider_key)) {
+        if (pg_connect_renewal_allowed($existing, $provider_key, $owner, (int) $user['id'])) {
             // A provider that names no account has no account to hint at.
             $login_hint = (isset($provider['identity']) && ($provider['identity'] === false)) ? '' : $existing['label'];
 

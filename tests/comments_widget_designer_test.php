@@ -424,7 +424,8 @@ function test_comments_widget_designer_js_field_lists()
 }
 
 // The editor screen has a hidden input for every setting, and both page
-// lists it sends carry every one.
+// lists it sends carry every one: the saved pages' list in the screen and
+// the blank tab (pg_designer_blank_page()).
 function test_comments_widget_designer_screen_wiring()
 {
 	if (!comments_widget_designer_test_has('pg_comment_editor_keys')) {
@@ -433,14 +434,15 @@ function test_comments_widget_designer_screen_wiring()
 
 	$screen = comments_widget_designer_test_source('includes/designer_screen.php');
 	$parts = explode('$js_pages[] = array(', $screen);
-	pg_assert_same(3, count($parts), 'two page lists');
+	pg_assert_same(2, count($parts), 'one page list in the screen');
+	$literals = array(substr($parts[1], 0, (int) strpos($parts[1], "\n        );")));
+
+	$blank = pg_designer_blank_page(0, null);
 
 	foreach (array_keys(pg_comment_editor_keys()) as $key) {
 		pg_assert_contains('<input type="hidden" name="' . $key . '"', $screen, 'hidden input ' . $key);
-		for ($i = 1; $i < count($parts); $i++) {
-			$literal = substr($parts[$i], 0, (int) strpos($parts[$i], "\n        );"));
-			pg_assert_contains("'" . $key . "'", $literal, 'page list ' . $i . ' carries ' . $key);
-		}
+		pg_assert_contains("'" . $key . "'", $literals[0], 'the saved pages\' list carries ' . $key);
+		pg_assert_true(array_key_exists($key, $blank), 'the blank tab carries ' . $key);
 	}
 }
 
@@ -1305,6 +1307,14 @@ function test_comments_widget_designer_census_facts()
 	pg_assert_same(1, pg_comments_page_census_facts($top(array(9 => 2)), $components)['widgets'], 'a header placed twice counts its widget once');
 	pg_assert_same(1, pg_comments_page_census_facts($top(array(5 => 1), 1), $components)['blocks'], 'a block on the page');
 	pg_assert_same(1, pg_comments_page_census_facts($top(array(20 => 1)), $components)['blocks'], 'a block in a product widget');
+	// A product page with a comments widget on it: the Catalog Detail drops
+	// its own Reviews block, so the first Publish of a shop template's
+	// product page warns of nothing (#4901).
+	$product_page = pg_comments_page_census_facts($top(array(20 => 1, 5 => 1)), $components);
+	pg_assert_same(0, $product_page['blocks'], 'the product widget block is dropped beside a widget on the page');
+	pg_assert_same(array(), pg_comments_save_warning_codes($product_page + array('comments_on' => true)), 'no warning on the product page');
+	pg_assert_same(1, pg_comments_page_census_facts($top(array(20 => 1, 9 => 1)), $components)['blocks'], 'a widget only in a header: the product widget does not see it, its block counts');
+	pg_assert_same(1, pg_comments_page_census_facts($top(array(20 => 1, 5 => 1), 1), $components)['blocks'], 'a block on the page itself still counts');
 	pg_assert_true(pg_comments_page_census_facts($top(array(40 => 1)), $components)['nested_record'], 'a record widget in a header');
 	pg_assert_false(pg_comments_page_census_facts($top(array(30 => 1)), $components)['nested_record'], 'a record widget on the page');
 	pg_assert_true(pg_comments_page_census_facts($top(array(30 => 1)), $components)['top_record'], 'which decides the thread');

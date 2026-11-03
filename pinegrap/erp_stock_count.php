@@ -56,7 +56,7 @@ if ($_POST) {
         $scanned = erp_stock_count_scan($count_id, (string) ($_POST['code'] ?? ''), $quantity, !empty($_POST['set']));
 
         if ($scanned['success']) {
-            $liveform->add_notice(h(lang(array('string' => '{var:1}: {var:2} counted.', 'vars' => array($scanned['product'], $scanned['counted'])))));
+            $liveform->add_notice(h(lang(array('string' => '{var:1}: {var:2} counted.', 'vars' => array($scanned['product'], erp_quantity_text($scanned['counted']))))));
         } else {
             $liveform->mark_error('code', h($scanned['error']));
         }
@@ -128,17 +128,19 @@ foreach ($items as $item) {
 
     $output_rows .= '
         <tr>
-            <td>' . h($name) . ((trim((string) $item['product_sku']) !== '' && trim((string) $item['product_sku']) !== trim($name)) ? '<div class="small fg-secondary font-monospace">' . h((string) $item['product_sku']) . '</div>' : '') . '</td>
-            <td class="text-end" data-sort="' . $system . '">' . $system . '</td>
+            <td class="text-wrap text-break" style="max-width:14rem">' . h($name) . ((trim((string) $item['product_sku']) !== '' && trim((string) $item['product_sku']) !== trim($name)) ? '<div class="small fg-secondary font-monospace">' . h((string) $item['product_sku']) . '</div>' : '') . '</td>
+            <td class="text-end" data-sort="' . $system . '">' . h(erp_quantity_text($system)) . '</td>
             <td style="width:9rem" data-sort="' . (int) $item['counted'] . '">' . ($open
                 ? '<input type="text" class="form-control form-control-sm text-end" name="counted[' . (int) $item['product_id'] . ']" value="' . (int) $item['counted'] . '" inputmode="numeric" maxlength="7" aria-label="' . h(lang('Counted')) . '" />'
-                : '<span class="d-block text-end">' . (int) $item['counted'] . '</span>') . '</td>
-            <td class="text-end fw-semibold ' . (($diff < 0) ? 'fg-danger' : (($diff > 0) ? 'fg-success' : 'fg-secondary')) . '" data-sort="' . $diff . '">' . (($diff > 0) ? '+' : '') . $diff . '</td>
+                : '<span class="d-block text-end">' . h(erp_quantity_text((int) $item['counted'])) . '</span>') . '</td>
+            <td class="text-end fw-semibold ' . (($diff < 0) ? 'fg-danger' : (($diff > 0) ? 'fg-success' : 'fg-secondary')) . '" data-sort="' . $diff . '">' . (($diff > 0) ? '+' : '') . h(erp_quantity_text($diff)) . '</td>
         </tr>';
 }
 
 if ($output_rows === '') {
-    $output_rows = '<tr data-pg-sort-fixed><td colspan="4" class="text-center fg-secondary py-7">' . lang('Nothing counted yet. Scan a barcode or type a product code above.') . '</td></tr>';
+    // Only an open count the user can change has the scan form above.
+    $output_rows = '<tr data-pg-sort-fixed><td colspan="4" class="text-center fg-secondary py-7">'
+        . ($open ? lang('Nothing counted yet. Scan a barcode or type a product code above.') : lang('There is no product on this count.')) . '</td></tr>';
 }
 
 $form_action = function ($action, $label, $class, $icon, $confirm) use ($count_id) {
@@ -155,7 +157,11 @@ pg_page_shell([
     'heading' => h((string) $count['title']) . ' <span class="badge theme-' . h($status[1]) . ' ms-1 align-middle fs-md">' . h($status[0]) . '</span>',
     'heading_description' => $applied
         ? lang('Applied: the stock of the products below was set to what was counted. The stock column is what the store had before.')
-        : lang('Scan each piece, or type a code and a quantity. The stock column is what the store has now; applying sets it to what was counted.'),
+        : (((string) $count['status'] === 'cancelled')
+            ? lang('This count was cancelled; no stock was changed.')
+            : ($open
+                ? lang('Scan each piece, or type a code and a quantity. The stock column is what the store has now; applying sets it to what was counted.')
+                : lang('This count is open; you can view it but not change it. The stock column is what the store has now.'))),
     'cancel' => array('enable' => 'true', 'url' => 'erp_stock_counts.php'),
     'breadcrumb' => array(
         array('label' => lang('Stock counts'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_stock_counts.php'),
@@ -177,7 +183,8 @@ pg_page_shell([
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $count_id . '" />
                 <input type="hidden" name="erp_action" value="scan" />
-                <div class="card-body row g-3 align-items-end">
+                <div class="card-body">
+                    <div class="row g-3 align-items-end">
                     <div class="col-12 md:col-6">
                         <label class="form-label" for="code">' . lang('Barcode or product code') . '</label>
                         <label class="form-control form-control-lg form-adorn">
@@ -195,6 +202,7 @@ pg_page_shell([
                             <label class="" for="set">' . lang('Set the count to this quantity') . '</label>
                         </div>
                         <button type="submit" class="btn btn-solid theme-primary w-100">' . lang('Add to the count') . '</button>
+                    </div>
                     </div>
                 </div>
             </form>' : '') . '
@@ -216,7 +224,7 @@ pg_page_shell([
                             <tbody>' . $output_rows . '</tbody>
                         </table>
                     </div>
-                    <div class="form-text px-5 pb-5">' . h(lang(array('string' => '{var:1} product(s) on the count; {var:2} piece(s) of difference in all. Products not on the count are left as they are.', 'vars' => array(count($items), $total_diff)))) . '</div>
+                    <div class="form-text px-5 pb-5">' . h(lang(array('string' => '{var:1} product(s) on the count; {var:2} piece(s) of difference in all. Products not on the count are left as they are.', 'vars' => array(count($items), erp_quantity_text($total_diff))))) . '</div>
                 </div>
                 ' . ($open ? '<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">

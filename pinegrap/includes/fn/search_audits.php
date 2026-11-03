@@ -208,26 +208,52 @@ function pg_search_audits_switch($job, $on)
 }
 
 /**
- * The longest piece of a translated log line that does not come from its
- * values, to find the line again whatever the language put first. Pure.
+ * A LIKE pattern that finds a translated log line again: every literal piece
+ * around its values, in their order, with LIKE's wildcards escaped. One piece
+ * alone also finds other lines that share it (in Turkish "erişilebilirlik
+ * denetimi" starts both the failure line and "ran the accessibility check").
+ * Pure; the caller escapes the result for SQL.
  *
  * @param string $text   The line translated with every value set to $marker.
  * @param string $marker
- * @return string '' when no piece is long enough to be told apart.
+ * @return string '' when the pieces are too short to tell the line apart.
  */
-function pg_search_audits_log_needle($text, $marker)
+function pg_search_audits_log_like($text, $marker)
 {
-    $best = '';
+    $pieces = array();
+    $length = 0;
 
     foreach (explode($marker, (string) $text) as $piece) {
         $piece = trim($piece, " \t\n\r\0\x0B:;,.()");
 
-        if (mb_strlen($piece) > mb_strlen($best)) {
-            $best = $piece;
+        if ($piece !== '') {
+            $pieces[] = addcslashes($piece, '%_\\');
+            $length += mb_strlen($piece);
         }
     }
 
-    return (mb_strlen($best) >= 8) ? $best : '';
+    return ($length >= 8) ? '%' . implode('%', $pieces) . '%' : '';
+}
+
+/**
+ * The oldest Site Log line an engine's card shows: the start of the last
+ * finished pass when the pass's cursor knows it (lines before it belong to
+ * an earlier run), never more than eight days back. Pure.
+ *
+ * @param int        $now
+ * @param array|null $state The pass's cursor file (pg_a11y_state_path()).
+ * @return int Unix time.
+ */
+function pg_search_audits_log_since($now, $state)
+{
+    $since = (int) $now - (8 * 86400);
+
+    if (is_array($state)) {
+        $start = isset($state['last_started']) ? (int) $state['last_started'] : (isset($state['started']) ? (int) $state['started'] : 0);
+        $since = max($since, $start);
+    }
+
+    return $since;
 }
 
 /**
@@ -257,16 +283,18 @@ function pg_search_audits_log_lines($key)
     $where = array();
 
     foreach ($patterns as $pattern) {
-        $needle = pg_search_audits_log_needle($pattern, $marker);
+        $like = pg_search_audits_log_like($pattern, $marker);
 
-        if ($needle !== '') {
-            $where[] = "(log_description LIKE '%" . e(addcslashes($needle, '%_\\')) . "%')";
+        if ($like !== '') {
+            $where[] = "(log_description LIKE '" . e($like) . "')";
         }
     }
 
     if (!$where) {
         return array();
     }
+
+    $since = pg_search_audits_log_since(time(), ($key === 'a11y') ? json_decode((string) @file_get_contents(pg_a11y_state_path()), true) : null);
 
     // The newest lines only: a key range on the primary key keeps the read
     // short on a log that holds six months.
@@ -279,7 +307,7 @@ function pg_search_audits_log_lines($key)
         FROM log
         WHERE
             (log_id > " . max(0, $top - 50000) . ")
-            AND (log_timestamp >= " . (time() - (8 * 86400)) . ")
+            AND (log_timestamp >= " . $since . ")
             AND (" . implode(' OR ', $where) . ")
         ORDER BY log_id DESC
         LIMIT 3") as $row) {
@@ -293,13 +321,18 @@ function pg_search_audits_log_lines($key)
 /**
  * How far an engine's current pass is.
  *
- * @param string $key Engine key.
- * @return array{unfinished:bool,percent:int|null,text:string,failures:string[]}
+ * The SEO score and structure passes keep no cursor: their waiting records
+ * are a pass under way only while one runs; otherwise they are records
+ * edited since their last check, which the next run takes ('changed').
+ *
+ * @param string $key     Engine key.
+ * @param bool   $running The job's lock is held or the screen drives a run.
+ * @return array{unfinished:bool,percent:int|null,text:string,changed:string,failures:string[]}
  *         failures: items the current pass could not read, named.
  */
-function pg_search_audits_progress($key)
+function pg_search_audits_progress($key, $running = false)
 {
-    $progress = array('unfinished' => false, 'percent' => null, 'text' => '', 'failures' => array());
+    $progress = array('unfinished' => false, 'percent' => null, 'text' => '', 'changed' => '', 'failures' => array());
 
     if ($key === 'index') {
         $state = pg_search_index_state_read();
@@ -350,10 +383,12 @@ function pg_search_audits_progress($key)
                 : "SELECT COUNT(*) FROM `" . $table . "` WHERE (seo_struct_current = 0) OR (seo_struct_checked_at < `" . $columns['timestamp'] . "`)");
         }
 
-        if ($waiting > 0) {
+        if (($waiting > 0) && $running) {
             $progress['unfinished'] = true;
             $progress['percent'] = pg_search_audits_percent($total - $waiting, $total);
             $progress['text'] = lang(array('string' => '{var:1} of {var:2} records waiting.', 'vars' => array($waiting, $total)));
+        } elseif ($waiting > 0) {
+            $progress['changed'] = lang(array('string' => '{var:1} of {var:2} records changed since their last check; the next run checks them.', 'vars' => array($waiting, $total)));
         }
 
         if ($key === 'structure') {
@@ -525,9 +560,11 @@ function pg_search_audits_tick($key, $budget, $start)
  * @param array  $done   pg_cron_health_last_runs().
  * @param bool|null $selected Whether the job is switched on, when this request
  *        has just changed it (JOB_DISPATCH still holds the list it started with).
- * @return array
+ * @param bool $driving The screen is running this pass with Run now: between
+ *        its requests no lock is held, and the card is still drawn as running.
+ * @return array 'status' is the job's own state; 'running' also counts $driving.
  */
-function pg_search_audits_engine_state($key, $engine, $rows, $done, $selected = null)
+function pg_search_audits_engine_state($key, $engine, $rows, $done, $selected = null, $driving = false)
 {
     $jobs = pg_cron_jobs();
     $job = $engine['job'];
@@ -538,15 +575,18 @@ function pg_search_audits_engine_state($key, $engine, $rows, $done, $selected = 
 
     $status = pg_search_audits_status($now, isset($jobs[$job]['interval']) ? (int) $jobs[$job]['interval'] : 86400, $master && $selected, (int) $row['locked_until'], (int) $row['last_run_at']);
 
+    $running = $driving || ($status['state'] === 'running');
+
     return array(
         'key'       => $key,
         'job'       => $job,
         'engine'    => $engine,
         'status'    => $status,
+        'running'   => $running,
         'master'    => $master,
         'selected'  => $selected,
         'last_done' => isset($done[$job]) ? (int) $done[$job] : 0,
-        'progress'  => pg_search_audits_progress($key),
+        'progress'  => pg_search_audits_progress($key, $running),
         'log'       => pg_search_audits_log_lines($key),
     );
 }
@@ -570,7 +610,7 @@ function pg_search_audits_card($state)
         'scheduled' => array('theme-success', lang('Scheduled')),
         'off'       => array('bg-1 fg-body border', lang('Off')),
     );
-    $badge = $badges[$status['state']];
+    $badge = $badges[$state['running'] ? 'running' : $status['state']];
 
     // HTML: the relative times are <time> elements; every text is escaped here.
     $lines = array();
@@ -579,7 +619,9 @@ function pg_search_audits_card($state)
         ? lang(array('string' => 'Last full run: {var:1}.', 'vars' => array(get_relative_time(array('timestamp' => $state['last_done'])))))
         : h(lang('No full run has finished yet.'));
 
-    if ($status['state'] === 'scheduled') {
+    if ($state['running']) {
+        // A run going: when the next one is due says nothing yet.
+    } elseif ($status['state'] === 'scheduled') {
         $lines[] = lang(array('string' => 'Next run: {var:1}.', 'vars' => array(get_relative_time(array('timestamp' => $status['next'])))));
     } elseif ($status['state'] === 'due') {
         $lines[] = h(lang('Due now: it runs on the next tick of the general job.'));
@@ -601,6 +643,10 @@ function pg_search_audits_card($state)
                     <div class="progress-bar" style="width:' . $percent . '%"></div>
                 </div>
             </div>';
+    }
+
+    if ($progress['changed'] !== '') {
+        $output_progress = '<p class="small fg-secondary mt-5 mb-0">' . h($progress['changed']) . '</p>';
     }
 
     $output_failures = '';
@@ -634,7 +680,7 @@ function pg_search_audits_card($state)
         ? '<a class="btn btn-sm btn-text theme-secondary" href="' . h($engine['report']) . '"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>' . h($engine['report_label']) . '</a>'
         : '';
 
-    $running = ($status['state'] === 'running');
+    $running = $state['running'];
 
     return '
         <div class="card h-100" data-pg-audit-card="' . h($key) . '" data-pg-audit-running="' . ($running ? '1' : '0') . '" data-pg-audit-unfinished="' . ($progress['unfinished'] ? '1' : '0') . '">

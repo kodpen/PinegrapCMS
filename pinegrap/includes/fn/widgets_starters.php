@@ -384,6 +384,7 @@ function _pg_st_product_buy()
 {
     return array(
         _pg_st_value('p', 'text-danger fw-semibold mb-3', lang('Out of Stock Message'), lang('Sorry, this product is not available right now.'), '__out_of_stock_message', true),
+        _pg_st_value('p', 'text-info fw-semibold mb-3', lang('Pre-order Note'), lang('Pre-order'), '__preorder_label', true),
         _pg_st_keep('content:variant_attr'),
         _pg_st_keep('section:recipient_picker'),
         _pg_st_el('div', 'row g-2 align-items-center', lang('Add-to-Cart Group'), array(
@@ -491,6 +492,7 @@ function _pg_st_cart_item_notes()
         _pg_st_value('p', 'small text-body-secondary mb-0', lang('Unit Price'), lang('Unit price'), '__item_price'),
         _pg_st_value('p', 'small text-warning mb-0', lang('Low Stock Warning'), lang('Only 3 left'), '__item_stock_warning', true),
         _pg_st_value('p', 'small text-danger mb-0', lang('Out of Stock Message'), lang('Out of stock'), '__item_out_of_stock_message', true),
+        _pg_st_value('p', 'small text-info mb-0', lang('Pre-order Note'), lang('Pre-order'), '__item_preorder_label', true),
         _pg_st_value('div', 'small', lang('Calendar Event'), '', '__item_calendar_event', true),
     );
 }

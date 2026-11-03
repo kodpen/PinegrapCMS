@@ -34,10 +34,12 @@ function page_pickers_keep_test_function($relative, $name)
 
 function test_select_page_lets_the_selected_page_past_the_archived_rule()
 {
-	$body = page_pickers_keep_test_function('includes/fn/forms.php', 'select_page');
+	$body = page_pickers_keep_test_function('includes/fn/forms.php', 'pg_select_page_options');
+	$rows = page_pickers_keep_test_function('includes/fn/forms.php', 'pg_select_page_rows');
 
-	pg_assert_contains('(folder.folder_archived = "0") OR (page.page_id = ?)', $body, 'the selected page is listed whatever its folder');
-	pg_assert_contains('folder.folder_archived', $body, 'the folder state is read for the mark');
+	pg_assert_false(strpos($rows, 'folder_archived = ') !== false, 'the page list is read with archived folders, once for every picker');
+	pg_assert_contains('folder.folder_archived', $rows, 'the folder state is read for the mark');
+	pg_assert_contains("if (\$status === 'skip')", $body, 'only the selected page is listed whatever its folder');
 	pg_assert_contains('pg_page_option_status(', $body, 'the selected page is marked as get_page_options() marks it');
 	pg_assert_contains('pg_recycle_bin_folder_ids()', $body, 'a page in the bin is told apart from an archived one');
 	pg_assert_contains("lang('IN RECYCLE BIN')", $body, 'bin mark');

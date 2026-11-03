@@ -44,7 +44,7 @@ if ($user_id <= 0) {
     go(PATH);
 }
 
-$action = isset($_POST['pg_security_action']) ? (string) $_POST['pg_security_action'] : '';
+$action = (isset($_POST['pg_security_action']) && is_scalar($_POST['pg_security_action'])) ? (string) $_POST['pg_security_action'] : '';
 
 // The account security widget (widgets_account.php): a device row's Sign out
 // button carries the device itself, a button holding one name and one value.
@@ -127,7 +127,7 @@ if (strpos($action, 'unlink_') === 0) {
 // is the current browser's own token, end this session too - identical to
 // signing out here.
 if ($action === 'revoke_device') {
-    $selector = isset($_POST['pg_selector']) ? (string) $_POST['pg_selector'] : '';
+    $selector = (isset($_POST['pg_selector']) && is_scalar($_POST['pg_selector'])) ? (string) $_POST['pg_selector'] : '';
     if (preg_match('/^[a-f0-9]{24}$/', $selector)) {
         $owner_id = (int) db_value("SELECT user_id FROM auth_tokens WHERE selector = '" . escape($selector) . "'");
 

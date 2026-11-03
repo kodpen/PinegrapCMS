@@ -68,7 +68,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
 }
 
 $link = erp_quote_link_for_token($token);
-$quote = is_array($link) ? erp_quote((int) $link['quote_id']) : null;
+$quote = is_array($link) ? erp_quote_link_quote((int) $link['quote_id']) : null;
 $state = ($quote !== null) ? erp_quote_link_state($link, $quote, time()) : 'revoked';
 
 if ($state === 'revoked') {

@@ -23,11 +23,11 @@ Site search found no record of a visual page (only legacy list pages were); the 
 A page with a `form_item_view` is skipped in the page loop (without `?r=` it is its not-found text), even with other content (intro, a list): only its records are items. Text to be found goes on a page without a record view. Keep its search switch on; it gates its records.
 
 ## How is each record drawn?
-`get_page_content($detail, ..., array('form_id' => id))` with `$_GET['r']` set: the widget reads `?r=`, the head `form_id` (`?r=` alone gave every record the first one's title). Each record, and each list's query, runs under `pg_error_throws(true)` in `try`/`catch (Throwable)`/`finally`, restoring `?r=`, the flag and the output buffer level (a throwing PHP region leaves one open). A failure: no item, the sweep drops the old one; reported per [[search-index-run-failures]]. `$_GET['page']` is never set. A panel-button run reads records anonymously: other `logged_in`/`submitter_only` record views count the record missing; comments are published only. Per-record caches (`pg_sw_record_comment_context()`, `pg_sw_page_item()`: by `?r=` too; `pg_sw_record_passes_filters()`) clear at 256.
+`get_page_content($detail, ..., array('form_id' => id))` with `$_GET['r']` set: the widget reads `?r=`, the head `form_id` (`?r=` alone gave every record the first one's title). Each record, and each list's query, runs under `pg_error_throws(true)` in `try`/`catch (Throwable)`/`finally`, restoring `?r=`, the flag and the output buffer level (a throwing PHP region leaves one open). A failure keeps the record's last row (the sweep spares it) and is reported per [[search-index-run-failures]]. `$_GET['page']` is never set. A panel-button run reads records anonymously: other `logged_in`/`submitter_only` record views count the record missing; comments are published only. Per-record caches (`pg_sw_record_comment_context()`, `pg_sw_page_item()`: by `?r=` too; `pg_sw_record_passes_filters()`) clear at 256.
 
 ## How fresh is it?
-- Daily job (one 4 h lock for every start), the panel button, or a template install ([[site-search-query-and-freshness]]). Nothing re-indexes on save; a retracted record stays till the next run.
-- Deferred: incremental re-index (many status writers, no record id column, a save-time render runs as the editor); maybe an hourly job over `forms.last_modified_timestamp`.
+- Hourly delta of changed records and pages between daily full passes ([[search-index-resumable-pass]]), Run now on Search and audits, a template install ([[site-search-query-and-freshness]]).
+- Nothing re-indexes on save (it would render as the editor); a retracted record leaves with the next full sweep.
 
 ## What else is out of scope?
 Simple mode (starter dumps are Advanced; the settings help says so); translated items; result image; record views in a shared component; catalog/calendar detail pages; a designer list over a legacy detail page.

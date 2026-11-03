@@ -32,19 +32,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function ws_canvas_is_doc($doc)
 {
-    if (is_object($doc)) {
-        $doc = json_decode(json_encode($doc), true);
-    }
-
-    if (!is_array($doc) || (($doc['v'] ?? null) !== 1) || !empty($doc['source'])) {
-        return false;
-    }
-
-    $board = $doc['artboard'] ?? null;
-
-    return is_array($board) && isset($board['width'], $board['height'])
-        && is_numeric($board['width']) && is_numeric($board['height'])
-        && ($board['width'] >= 1) && ($board['height'] >= 1);
+    return pg_image_editor_canvas_is_doc($doc);
 }
 
 /**
@@ -57,13 +45,7 @@ function ws_canvas_is_doc($doc)
  */
 function ws_canvas_doc_json($doc)
 {
-    if (!is_object($doc) || !ws_canvas_is_doc($doc)) {
-        return '';
-    }
-
-    $json = json_encode($doc, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-    return (is_string($json) && pg_file_versions_doc_storable($json)) ? $json : '';
+    return pg_image_editor_canvas_doc_json($doc);
 }
 
 /**
@@ -141,14 +123,7 @@ function ws_canvas_picture($request)
  */
 function ws_canvas_keep($file_id, $doc, $user_id)
 {
-    $json = ws_canvas_doc_json($doc);
-    $stored = ($json !== '') ? (string) db_value("SELECT name FROM files WHERE id = '" . (int) $file_id . "'") : '';
-
-    if (($stored === '') || !pg_file_versions_ready()) {
-        return false;
-    }
-
-    return (bool) pg_file_versions_add((int) $file_id, FILE_DIRECTORY_PATH . '/' . basename($stored), $json, 'new', $user_id);
+    return pg_image_editor_canvas_keep($file_id, $doc, $user_id, 'new');
 }
 
 /**
@@ -160,20 +135,7 @@ function ws_canvas_keep($file_id, $doc, $user_id)
  */
 function ws_canvas_open_doc($file_id)
 {
-    if (!pg_file_versions_ready()) {
-        return null;
-    }
-
-    $stored = (string) db_value("SELECT name FROM files WHERE id = '" . (int) $file_id . "'");
-    $newest = ($stored !== '') ? pg_file_versions_newest((int) $file_id) : null;
-
-    if (!$newest || ((string) $newest['doc_json'] === '') || !pg_file_versions_matches_file($newest, FILE_DIRECTORY_PATH . '/' . basename($stored))) {
-        return null;
-    }
-
-    $doc = json_decode((string) $newest['doc_json']);
-
-    return (is_object($doc) && ws_canvas_is_doc($doc)) ? $doc : null;
+    return pg_image_editor_canvas_open_doc($file_id);
 }
 
 /**

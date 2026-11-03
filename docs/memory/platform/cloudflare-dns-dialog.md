@@ -14,6 +14,9 @@ description: Cloudflare Tools Add/Edit DNS Record dialogs (#3628): hidden type g
 - Whenever it is shown: A, AAAA, CNAME, TXT, MX and NS. SRV and CAA hide it, and the toggle clears `required` with it, so the browser stops a blank value instead of Cloudflare refusing it in English after the redirect.
 - Number boxes carry `min`/`max`: 0–65535 for priority, weight and port, 0–255 for CAA flags.
 
+## How does the record table print names and contents?
+- `h(truncate(…, 50))`: a TXT record's text, or a record made outside the panel, may hold markup. Before #5144 the Name and Content cells printed it raw.
+
 Pinned by `tests/cloudflare_dns_dialog_test.php`.
 
 Related: docs/memory/ui/panel-accessible-names.md

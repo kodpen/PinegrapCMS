@@ -186,3 +186,154 @@ function pg_order_export_line_tax($order_id, $item_id)
 
     return (int) ($cache['taxes'][$item_id] ?? 0);
 }
+
+/**
+ * Whether an order may go into the Paraşüt export of the orders list: only a
+ * completed or exported order is a sale. A cancelled order or an open cart
+ * would reach the accountant as a sales invoice with no customer.
+ *
+ * @param string $status orders.status
+ * @return bool
+ */
+function pg_order_parasut_exportable($status)
+{
+    return in_array((string) $status, array('complete', 'exported'), true);
+}
+
+/**
+ * The product VAT rate typed in the Paraşüt export dialog, as a percentage.
+ * Empty means 0; anything that is not a number from 0 to 100 is refused.
+ *
+ * @param mixed $raw the posted value
+ * @return float|null null when refused
+ */
+function pg_order_parasut_tax_rate($raw)
+{
+    $raw = str_replace(',', '.', trim((string) $raw));
+
+    if ($raw === '') {
+        return 0.0;
+    }
+
+    if (!is_numeric($raw)) {
+        return null;
+    }
+
+    $rate = (float) $raw;
+
+    if (($rate < 0) || ($rate > 100)) {
+        return null;
+    }
+
+    return $rate;
+}
+
+/**
+ * The card number cell of the orders CSV exports. The '#' keeps a number from
+ * being read as a number by a spreadsheet; an order without one gets an
+ * empty cell.
+ *
+ * @param string $card_number the masked or decrypted number
+ * @return string
+ */
+function pg_order_export_card_cell($card_number)
+{
+    $card_number = (string) $card_number;
+
+    return ($card_number === '') ? '' : '#' . $card_number;
+}
+
+/**
+ * A date cell of the orders CSV exports in the site's date format; an empty
+ * date ('0000-00-00') gets an empty cell instead of '0/0/0000'.
+ *
+ * @param string $date a DATE column value
+ * @return string
+ */
+function pg_order_export_date_cell($date)
+{
+    $date = trim((string) $date);
+
+    if (($date === '') || ($date === '0000-00-00')) {
+        return '';
+    }
+
+    return prepare_form_data_for_output($date, 'date');
+}
+
+/**
+ * The country codes whose name, as the panel shows it, contains the text of
+ * the orders list's Country filter ("Türkiye" finds TR on a Turkish panel,
+ * while countries.name holds "Turkey"). Case is ignored.
+ *
+ * @param string $term   the filter text
+ * @param array  $labels countries.code => the name in the panel's language
+ * @return array codes
+ */
+function pg_order_country_codes_by_label($term, array $labels)
+{
+    $term = pg_order_country_fold($term);
+
+    if ($term === '') {
+        return array();
+    }
+
+    $codes = array();
+
+    foreach ($labels as $code => $label) {
+        if (mb_strpos(pg_order_country_fold($label), $term) !== false) {
+            $codes[] = (string) $code;
+        }
+    }
+
+    return $codes;
+}
+
+/**
+ * Text folded for the country filter's match: trimmed and lower case, the
+ * Turkish dotted and dotless I folded alike ("TÜRKİYE", "türkiye").
+ *
+ * @param string $text
+ * @return string
+ */
+function pg_order_country_fold($text)
+{
+    $text = str_replace(array('İ', 'I', 'ı'), 'i', trim((string) $text));
+
+    return mb_strtolower($text, 'UTF-8');
+}
+
+/**
+ * The SQL condition that adds the codes of the countries whose shown name
+ * matches the filter text (pg_order_country_codes_by_label()) to a Country
+ * filter of the orders list, read from the site's countries table once per
+ * request; '' when no name matches.
+ *
+ * @param string $column the column holding the stored code, e.g. orders.billing_country
+ * @param string $term   the filter text
+ * @return string ' OR (column IN (...))' or ''
+ */
+function pg_order_country_filter_sql($column, $term)
+{
+    static $labels = null;
+
+    if ($labels === null) {
+        $labels = array();
+
+        foreach ((array) db_items("SELECT code, name FROM countries") as $row) {
+            $code = strtoupper(trim((string) $row['code']));
+
+            if ($code !== '') {
+                $labels[$code] = pg_geo_country_label($row['name'], $code);
+            }
+        }
+    }
+
+    $codes = pg_order_country_codes_by_label($term, $labels);
+
+    if (empty($codes)) {
+        return '';
+    }
+
+    return " OR (" . $column . " IN ('" . implode("', '", array_map('escape', $codes)) . "'))";
+}

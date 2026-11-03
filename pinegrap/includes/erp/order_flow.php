@@ -287,6 +287,11 @@ function erp_order_flow_state($order_id)
     if ($provider === '' && (!is_array($invoice) || ((string) ($invoice['edoc_status'] ?? 'none') === 'none'))) {
         $step['state'] = 'unavailable';
         $step['reason'] = lang('No e-document provider is selected on the E-Invoice card of the commerce settings; the invoice stays a PDF.');
+    } elseif ((!is_array($invoice) || ((string) $invoice['status'] === 'draft')) && ((string) $order['status'] === 'cancelled')) {
+        // A cancelled order is not invoiced (the invoice step says so), so
+        // nothing is waiting to be made official either.
+        $step['state'] = 'unavailable';
+        $step['reason'] = lang('The order was cancelled; this document is not made for it.');
     } elseif (!is_array($invoice) || ((string) $invoice['status'] === 'draft')) {
         $step['reason'] = lang('Made official once the invoice is issued.');
     } else {
@@ -612,8 +617,19 @@ function erp_order_flow_reverse_steps($order, $invoice, $account, $provider_labe
     } elseif (erp_order_flow_returned_in_full($grand, $returned, count($returns))) {
         $step['state'] = 'done';
         $step['title'] = lang('Returned in full');
+    } elseif ($cancelled_order && !$locked && !empty($cancellable['ok']) && empty($returns)
+        && (erp_order_flow_cancel_refusal(erp_invoice_receipt_count($invoice_id), erp_order_flow_can_cash()) !== '')) {
+        // Cancelling takes the invoice's allocations off first, which moves
+        // money about on paper: the same cash right the invoice screen's
+        // "remove allocation" asks for.
+        $step['state'] = 'blocked';
+        $step['reason'] = erp_order_flow_cancel_refusal(erp_invoice_receipt_count($invoice_id), false);
+        $step['links'][] = array('label' => lang('View'), 'url' => 'edit_erp_invoice.php?id=' . $invoice_id);
     } elseif ($cancelled_order && !$locked && !empty($cancellable['ok']) && empty($returns)) {
         $step['action'] = 'invoice_cancel';
+        // Cancelling cannot be undone, so the button asks first, the way the
+        // invoice screen's cancel button does.
+        $step['confirm'] = erp_order_flow_cancel_confirm((string) $invoice['full_number'], !empty($cancellable['manual']), $has_edoc ? $provider_label : '');
         if (!$has_edoc && ($provider_label === '')) {
             // Without an e-document provider the invoice is paper: whether
             // it is official depends on whether the customer has it.
@@ -771,6 +787,93 @@ function erp_order_flow_money($order, $invoice)
 }
 
 /**
+ * Whether the user holding this request has the ERP cash right.
+ *
+ * @return bool
+ */
+function erp_order_flow_can_cash()
+{
+    return defined('USER_MANAGE_ERP_CASH') && USER_MANAGE_ERP_CASH;
+}
+
+/**
+ * Why the card may not cancel an invoice: its allocations are taken off
+ * first, which takes the cash right (the invoice screen's "remove
+ * allocation" asks for it too).
+ *
+ * @param int  $allocations  Allocations on the invoice, gift cards left out
+ * @param bool $can_cash
+ * @return string  '' when it may
+ */
+function erp_order_flow_cancel_refusal($allocations, $can_cash)
+{
+    if (((int) $allocations <= 0) || $can_cash) {
+        return '';
+    }
+
+    return lang('Money is allocated to this invoice; taking it off before the cancel needs the cash right. A user who has it can cancel the invoice here.');
+}
+
+/**
+ * The question the card's cancel button asks: the invoice screen's wording.
+ *
+ * @param string $full_number
+ * @param bool   $manual          The provider's own screen let it go
+ * @param string $provider_label  The provider that holds it, '' for none
+ * @return string
+ */
+function erp_order_flow_cancel_confirm($full_number, $manual, $provider_label)
+{
+    if ($manual) {
+        return lang(array('string' => 'Cancel {var:1} here too? Do it only once it has been taken back at {var:2}. It keeps its number and stays in the register as cancelled; this cannot be undone.', 'vars' => array($full_number, $provider_label)));
+    }
+
+    if ($provider_label !== '') {
+        return lang(array('string' => 'Cancel {var:1}? It is taken back at {var:2} first (a draft is deleted there, an e-Archive document is cancelled at the tax office), then it stays in the register here as cancelled. This cannot be undone.', 'vars' => array($full_number, $provider_label)));
+    }
+
+    return lang(array('string' => 'Cancel {var:1}? It keeps its number and stays in the register as cancelled. This cannot be undone.', 'vars' => $full_number));
+}
+
+/**
+ * Whether the order's delivery note is tied to a newly written invoice: one
+ * tied to none, or to an invoice since cancelled, is not invoiced.
+ *
+ * @param int         $invoice_id  The note's invoice_id
+ * @param string|null $status      That invoice's status, null when missing
+ * @return bool
+ */
+function erp_order_flow_waybill_takes_invoice($invoice_id, $status)
+{
+    return ((int) $invoice_id <= 0) || ($status === null) || ($status === false) || ((string) $status === 'cancelled');
+}
+
+/**
+ * The notice for what a delivery note wrote onto its invoice: only what was
+ * written (erp_waybill_write_back() writes the date and the carrier apart).
+ *
+ * @param array $written_back
+ * @return string  '' when nothing went onto the invoice
+ */
+function erp_order_flow_written_back_message($written_back)
+{
+    $date = isset($written_back['invoice_shipment_date']);
+    $carrier = isset($written_back['invoice_carrier']);
+
+    if ($date && $carrier) {
+        return lang('The shipment date and the carrier were written onto the invoice, which had none.');
+    }
+    if ($date) {
+        return lang('The shipment date was written onto the invoice, which had none.');
+    }
+    if ($carrier) {
+        return lang('The carrier was written onto the invoice, which had none.');
+    }
+
+    return '';
+}
+
+/**
  * The words of the button that runs a step.
  *
  * @return array  action => [label, icon]
@@ -833,12 +936,18 @@ function erp_order_flow_run($order_id, $action, $user_id = 0)
             // and what the note knows (ship date, carrier) goes onto the
             // invoice where it is still empty - the same write-back a note
             // written after the invoice does.
-            if (is_array($state['waybill']) && ((int) $state['waybill']['invoice_id'] === 0)) {
-                erp_query("UPDATE erp_waybills SET invoice_id = '" . (int) $result['invoice_id'] . "', updated_at = '" . time() . "'
-                    WHERE id = '" . (int) $state['waybill']['id'] . "' AND invoice_id = 0");
-                $written_back = erp_waybill_write_back((int) $state['waybill']['id']);
-                if (isset($written_back['invoice_shipment_date']) || isset($written_back['invoice_carrier'])) {
-                    $messages[] = lang('The shipment date and the carrier were written onto the invoice, which had none.');
+            // A note still tied to a cancelled invoice is not invoiced
+            // (erp_waybill_invoice_state()), so the new invoice takes it over.
+            if (is_array($state['waybill'])) {
+                $old_invoice_id = (int) $state['waybill']['invoice_id'];
+                $old_status = ($old_invoice_id > 0) ? db_value("SELECT status FROM erp_invoices WHERE id = '" . $old_invoice_id . "' LIMIT 1") : null;
+                if (erp_order_flow_waybill_takes_invoice($old_invoice_id, $old_status)) {
+                    erp_query("UPDATE erp_waybills SET invoice_id = '" . (int) $result['invoice_id'] . "', updated_at = '" . time() . "'
+                        WHERE id = '" . (int) $state['waybill']['id'] . "' AND invoice_id = '" . $old_invoice_id . "'");
+                    $written = erp_order_flow_written_back_message(erp_waybill_write_back((int) $state['waybill']['id']));
+                    if ($written !== '') {
+                        $messages[] = $written;
+                    }
                 }
             }
 
@@ -869,9 +978,9 @@ function erp_order_flow_run($order_id, $action, $user_id = 0)
             }
             log_activity(pg_log_lang(array('string' => 'erp delivery note ({var:1}) was created', 'vars' => $result['full_number'])));
             $messages = array(lang(array('string' => 'Delivery note {var:1} created.', 'vars' => $result['full_number'])));
-            $written_back = (array) ($result['written_back'] ?? array());
-            if (isset($written_back['invoice_shipment_date']) || isset($written_back['invoice_carrier'])) {
-                $messages[] = lang('The shipment date and the carrier were written onto the invoice, which had none.');
+            $written = erp_order_flow_written_back_message((array) ($result['written_back'] ?? array()));
+            if ($written !== '') {
+                $messages[] = $written;
             }
             return array('success' => true, 'error' => '', 'messages' => $messages);
 
@@ -885,6 +994,11 @@ function erp_order_flow_run($order_id, $action, $user_id = 0)
             // receipt spent wholly on this invoice is tied to the order
             // instead, so the refund step still knows it came in for it.
             $cancel_id = $invoice_id;
+
+            $refusal = erp_order_flow_cancel_refusal(erp_invoice_receipt_count($cancel_id), erp_order_flow_can_cash());
+            if ($refusal !== '') {
+                return array('success' => false, 'messages' => array(), 'error' => $refusal);
+            }
 
             // The provider first: a draft there is deleted, a document there
             // must have been let go. If it will not, nothing changes here.
@@ -966,12 +1080,12 @@ function erp_order_flow_card($order_id, $state = null)
     );
 
     $form_id = 'erp_order_flow_form';
-    $button = function ($action, $primary, $label = '') use ($actions, $form_id) {
+    $button = function ($action, $primary, $label = '', $confirm = '') use ($actions, $form_id) {
         $words = $actions[$action];
         if ($label !== '') {
             $words[0] = $label;
         }
-        return '<button type="submit" form="' . $form_id . '" name="erp_step" value="' . h($action) . '" class="btn btn-sm ' . ($primary ? 'btn-solid theme-primary rounded-pill px-5' : 'btn-outline theme-secondary') . '"><i class="bi ' . $words[1] . ' me-1" aria-hidden="true"></i>' . h($words[0]) . '</button>';
+        return '<button type="submit" form="' . $form_id . '" name="erp_step" value="' . h($action) . '"' . (($confirm !== '') ? ' data-confirm-content="' . h($confirm) . '"' : '') . ' class="btn btn-sm ' . ($primary ? 'btn-solid theme-primary rounded-pill px-5' : 'btn-outline theme-secondary') . '"><i class="bi ' . $words[1] . ' me-1" aria-hidden="true"></i>' . h($words[0]) . '</button>';
     };
 
     $output_steps = '';
@@ -1018,8 +1132,8 @@ function erp_order_flow_card($order_id, $state = null)
         // instead of squeezing it to nothing.
         $output_step_buttons = ''
             . (!empty($step['print']) ? '<div class="text-nowrap"><a class="btn btn-sm btn-outline theme-primary" href="' . h($step['print']['url']) . '" target="_blank" rel="noopener"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . h($step['print']['label']) . '</a></div>' : '')
-            . ((($step['action'] !== '') && !$is_next) ? '<div class="text-nowrap">' . $button($step['action'], false, (string) ($step['action_label'] ?? '')) . '</div>' : '')
-            . (($is_next && ($step['action'] !== '')) ? '<div class="text-nowrap">' . $button($step['action'], true, (string) ($step['action_label'] ?? '')) . '</div>' : '')
+            . ((($step['action'] !== '') && !$is_next) ? '<div class="text-nowrap">' . $button($step['action'], false, (string) ($step['action_label'] ?? ''), (string) ($step['confirm'] ?? '')) . '</div>' : '')
+            . (($is_next && ($step['action'] !== '')) ? '<div class="text-nowrap">' . $button($step['action'], true, (string) ($step['action_label'] ?? ''), (string) ($step['confirm'] ?? '')) . '</div>' : '')
             . (!empty($step['goto']) ? '<div class="text-nowrap"><a href="' . h($step['goto']['url']) . '" class="btn btn-sm ' . ($is_next ? 'btn-solid theme-primary rounded-pill px-5' : 'btn-outline theme-secondary') . '"><i class="bi ' . h($step['goto']['icon']) . ' me-1" aria-hidden="true"></i>' . h($step['goto']['label']) . '</a></div>' : '')
             . $disabled;
 
@@ -1049,7 +1163,7 @@ function erp_order_flow_card($order_id, $state = null)
 <div class="card mb-7 pg-print-none" id="erp_order_documents">
     <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
         <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Invoice and delivery documents') . '</span>
-        ' . ($all_done ? '<span class="small fg-success"><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . lang('Every document is done.') : '') . '
+        ' . ($all_done ? '<span class="small fg-success"><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . lang('Every document is done.') . '</span>' : '') . '
     </div>
     <ul class="list-group list-group-flush">' . $output_steps . '
     </ul>

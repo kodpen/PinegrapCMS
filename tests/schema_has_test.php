@@ -147,3 +147,115 @@ function test_schema_has_replaces_show_columns_probes()
 		pg_assert_true(stripos($source, 'SHOW COLUMNS') === false, $file . ' has no SHOW COLUMNS probe');
 	}
 }
+
+// What another request wrote to the file is kept beside this request's
+// answers; this request's answer wins for a table both know, and a table
+// this request forgot is not brought back.
+function test_schema_has_merge_keeps_other_requests_tables()
+{
+	$ours = array('tables' => array('page' => array('page_id', 'page_name'), 'orders' => array('id')), 'missing' => array('user_mfa'));
+	$stored = array(
+		'tables' => array('contacts' => array('id'), 'orders' => array('old'), 'user_mfa' => array('id'), 'style' => array('style_id')),
+		'missing' => array('waf_rate', 'page', 'gone'),
+	);
+
+	$merged = pg_schema_cache_merge($ours, $stored, array('style', 'gone'));
+
+	pg_assert_same(true, pg_schema_cache_lookup($merged, 'contacts'), 'their table');
+	pg_assert_same(false, pg_schema_cache_lookup($merged, 'waf_rate'), 'their missing table');
+	pg_assert_same(true, pg_schema_cache_lookup($merged, 'page', 'page_name'), 'our table, not their missing');
+	pg_assert_same(true, pg_schema_cache_lookup($merged, 'orders', 'id'), 'our columns win');
+	pg_assert_same(false, pg_schema_cache_lookup($merged, 'orders', 'old'), 'their columns of our table dropped');
+	pg_assert_same(false, pg_schema_cache_lookup($merged, 'user_mfa'), 'our missing, not their table');
+	pg_assert_same(null, pg_schema_cache_lookup($merged, 'style'), 'a forgotten table');
+	pg_assert_same(null, pg_schema_cache_lookup($merged, 'gone'), 'a forgotten missing table');
+	pg_assert_same(1, count(array_keys($merged['missing'], 'user_mfa', true)), 'listed once');
+}
+
+// A file that is not a cache adds nothing.
+function test_schema_has_merge_ignores_bad_file()
+{
+	$ours = array('tables' => array('page' => array('page_id')), 'missing' => array());
+
+	pg_assert_same($ours, pg_schema_cache_merge($ours, null));
+	pg_assert_same($ours, pg_schema_cache_merge($ours, array('tables' => 'x', 'missing' => array(array('y'), 5))));
+}
+
+// The cache file written while one is already there is replaced, merged with
+// what it held.
+function test_schema_has_cache_file_write_replaces_existing()
+{
+	$file = sys_get_temp_dir() . '/pg_schema_write_' . getmypid() . '.json';
+	file_put_contents($file, json_encode(array('tables' => array('contacts' => array('id')), 'missing' => array('waf_rate'))));
+
+	$written = pg_schema_cache_file_write($file, array('tables' => array('page' => array('page_id')), 'missing' => array()), array());
+
+	pg_assert_true($written !== null, 'written');
+	$stored = json_decode((string) file_get_contents($file), true);
+	pg_assert_same(true, pg_schema_cache_lookup($stored, 'page'), 'ours');
+	pg_assert_same(true, pg_schema_cache_lookup($stored, 'contacts'), 'theirs');
+	pg_assert_same(false, pg_schema_cache_lookup($stored, 'waf_rate'), 'their missing');
+	pg_assert_same(true, pg_schema_cache_lookup($written, 'contacts'), 'the merge returned');
+	pg_assert_same(array(), glob($file . '.*.tmp'), 'no temporary file left');
+
+	@unlink($file);
+}
+
+// Runs $test with a db class whose connection is set, and with what
+// pg_schema_has() knows set to $cache (no file), restoring both after.
+function pg_test_schema_has_with_cache(array $cache, callable $test)
+{
+	if (!class_exists('db')) {
+		class db
+		{
+			public static $con;
+		}
+	}
+
+	$state = &pg_schema_cache_state();
+	$saved_state = $state;
+	$saved_con = db::$con;
+	$state = array('loaded' => true, 'file' => '', 'cache' => $cache);
+	db::$con = new stdClass();
+
+	try {
+		$test();
+	} finally {
+		db::$con = $saved_con;
+		$state = $saved_state;
+	}
+}
+
+// waf_table_has_column() asks pg_schema_has() once it is loaded, so its
+// answer comes from the file cache, not a SHOW COLUMNS query each request.
+function test_schema_has_waf_column_probe_uses_cache()
+{
+	require_once(PG_FUNCTIONS_DIR . '/waf.php');
+
+	pg_test_schema_has_with_cache(
+		array('tables' => array('ws_channels' => array('id', 'kind')), 'missing' => array('erp_accounts')),
+		function () {
+			pg_assert_same(true, waf_table_has_column('ws_channels', 'kind'), 'known column');
+			pg_assert_same(false, waf_table_has_column('ws_channels', 'k_nd'), 'exact name, no wildcard');
+			pg_assert_same(false, waf_table_has_column('erp_accounts', 'id'), 'missing table');
+		}
+	);
+}
+
+// pg_mfa_table_exists() reads both tables through pg_schema_has().
+function test_schema_has_mfa_tables_use_cache()
+{
+	pg_test_schema_has_with_cache(
+		array('tables' => array('user_mfa' => array('id'), 'user_mfa_recovery' => array('id')), 'missing' => array()),
+		function () {
+			pg_assert_same(true, pg_mfa_table_exists(), 'both tables');
+		}
+	);
+
+	pg_test_schema_has_with_cache(
+		array('tables' => array('user_mfa' => array('id')), 'missing' => array('user_mfa_recovery')),
+		function () {
+			pg_assert_same(false, pg_mfa_table_exists(), 'one missing');
+		}
+	);
+}

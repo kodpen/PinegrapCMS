@@ -119,23 +119,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Key Codes') {
 
     // Loop through the key codes in order to output CSV data.
     foreach ($key_codes as $key_code) {
-
-        $expiration_date = '';
-
-        if ($key_code['expiration_date'] != '0000-00-00') {
-            $expiration_date = $key_code['expiration_date'];
-        }
-
-        echo
-            '"' . escape_csv($key_code['code']) . '",' .
-            '"' . escape_csv($key_code['offer_code']) . '",' .
-            '"' . $key_code['enabled'] . '",' .
-            '"' . $expiration_date . '",' .
-            '"' . escape_csv($key_code['notes']) . '",' .
-            '"' . $key_code['single_use'] . '",' .
-            '"' . $key_code['report'] . '",' .
-            '"' . pg_csv_export_time($key_code['last_modified_timestamp']) . '",' .
-            '"' . escape_csv($key_code['last_modified_username']) . '"' . "\n";
+        echo pg_key_code_export_line($key_code);
     }
 
     exit;

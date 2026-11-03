@@ -221,12 +221,13 @@ function erp_expense_recurrences($active_only = true)
  *                         write the next ones as paid), cash_account_id,
  *                         payment_method, end_date (Y-m-d or '')
  * @param int   $user_id
- * @return array ['success' => bool, 'id' => int, 'error' => string]
+ * @return array ['success' => bool, 'id' => int, 'error' => string,
+ *               'field' => string]: field names the option the error is about
  */
 function erp_expense_recurrence_create($expense_id, $options, $user_id = 0)
 {
-    $fail = function ($message) {
-        return array('success' => false, 'id' => 0, 'error' => $message);
+    $fail = function ($message, $field = '') {
+        return array('success' => false, 'id' => 0, 'error' => $message, 'field' => $field);
     };
 
     if (!erp_expense_recurring_ready()) {
@@ -285,6 +286,14 @@ function erp_expense_recurrence_create($expense_id, $options, $user_id = 0)
 
     $next = erp_expense_recurring_first_date((string) $expense['expense_date'], $every, $day, $resume, date('Y-m-d'));
 
+    // An end before the first one would save a repeat that never writes.
+    if (($end_date !== '0000-00-00') && ($next > $end_date)) {
+        return $fail(lang(array(
+            'string' => 'The end date must be on or after {var:1}, the date of the first repeat.',
+            'vars' => prepare_form_data_for_output($next, 'date', false),
+        )), 'repeat_end');
+    }
+
     // What the next one is made of: the amount as the receipt printed it, so
     // the tax is worked out again at the same rate.
     $ok = db("INSERT INTO erp_expense_recurrences SET
@@ -306,7 +315,7 @@ function erp_expense_recurrence_create($expense_id, $options, $user_id = 0)
             payment_method = '" . escape($method) . "',
             next_date = '" . escape($next) . "',
             end_date = '" . escape($end_date) . "',
-            status = '" . ((($end_date !== '0000-00-00') && ($next > $end_date)) ? 'stopped' : 'active') . "',
+            status = 'active',
             created_by = '" . (int) $user_id . "',
             created_at = '" . time() . "',
             updated_at = '" . time() . "'");
@@ -319,7 +328,7 @@ function erp_expense_recurrence_create($expense_id, $options, $user_id = 0)
 
     db("UPDATE erp_expenses SET recurrence_id = '" . $id . "' WHERE id = '" . (int) $expense['id'] . "'");
 
-    return array('success' => true, 'id' => $id, 'error' => '');
+    return array('success' => true, 'id' => $id, 'error' => '', 'field' => '');
 }
 
 /**

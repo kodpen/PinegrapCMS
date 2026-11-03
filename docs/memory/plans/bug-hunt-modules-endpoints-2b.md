@@ -1,0 +1,41 @@
+---
+name: bug-hunt-modules-endpoints-2b
+description: Module list of plans/bug-hunt.md, part 5: the single root endpoints (one file per area word), six to a line, each line with its state
+---
+
+## Which single endpoints are hunted?
+- Endpoints view_accessibility, update_address_book, allow_or_disallow_new_comments, approve_affiliate, view_audit_log, backups: done #5130 (backups: a folder backup's download served the archive of an earlier version after an update; rest clean)
+
+- Endpoints browse_catalog_menu, cancel_order, carrier_webhook, chat, clean_up, clear_theme_designer_session: done #5142 (clean_up: names in the delete list printed raw; rest clean)
+
+- Endpoints cloudflare, confirm_subscription, connected_apps, connections, consent_answer, view_countries: done #5144, #5161 (cloudflare: DNS table printed record names and contents raw; analytics day reads dropped one date, array dates a TypeError; confirm_subscription, connected_apps, connections, consent_answer, view_countries clean; init.php ?secure_mode=false question #5146)
+
+- Endpoints create_file, get_cross_sell_items, csp_report, view_currencies, database_engine, developer_lock: done #5166 (developer_lock: the PIN could be guessed without a limit; rest clean)
+
+- Endpoints do, excel_reader2, update_exchange_rates, edit_featured_and_new_items, feed, functions: done #5174 (do: missing or array parameters gave PHP 8 warnings and TypeErrors, an array page_id broke the later registration; excel_reader2 bundled, functions a loader, rest clean; add_watcher from any link is by design)
+
+- Endpoints health, get_help_url, update_imported_items, index, init, integration: done #5121 (update_imported_items: data-src rewritten with the src address; health, get_help_url, index, integration clean; leads: init.php ?secure_mode=false skips the forced https redirect and 301s an https request to http, a product question (#5146); also #5100 get_form_item_view/get_file submitter e-mail match, #5110 kiosk array text)
+
+- Endpoints iys_job, edit_javascript, job, kiosk, legal_document, liveform.class: done #5074 (job: page revisions sweep twice per tick; rest clean; lead: kiosk keeps an array dialog_message or button label, shown as "Array")
+
+- Endpoints get_llms.txt, local_sale, view_log, mailchimp, mass_edit, mcp: done #4987, #5051 (mass_edit; get_llms.txt, local_sale, view_log, mailchimp, mcp clean)
+
+- Endpoints mfa, migration, myself_upsell, mysqldump, view_not_found_log, oauth: clean (mysqldump bundled)
+
+- Endpoints add_or_remove_watcher, organize_contacts, print_packing_slip, passkey, set_password, payment_callback: done #5015 (add_or_remove_watcher: submission without an e-mail field matched a member with none; rest clean)
+
+- Endpoints pclzip.lib, view_performance_log, get_photo_gallery, pi, private_label, prototype: done #4773 (pclzip.lib bundled, rest clean)
+
+- Endpoints purge_cache, push_job, reload_theme, reserve_calendar_event, reset_password, retrieve_order: done (#4672, #4691, #4740)
+
+- Endpoints get_robots.txt, router, send_email_campaign, view_sessions, get_set_password, shipworks: done (#4655)
+
+- Endpoints si, signature_receipt, signin, get_site_icon, get_sitemap_info, get_sitemap.xml: done #4758 (rest clean)
+
+- Endpoints smtp_settings, stock_notify, submit_order, test_secure_mode, add_to_cart, toolbar: done #4600, #4607, #4618 (stock_notify, test_secure_mode, toolbar: nothing found)
+
+- Endpoints track_shipment, get_update_address_book, url_to_absolute, variant_set_action, welcome, wishlist: done (#4604: get_update_address_book array id and missing row; track_shipment token and throttle, url_to_absolute RFC 3986 cases, variant_set_action set check, welcome role ladder and output, wishlist token and redirect checked)
+
+- Endpoints import_zip: done (#4640: page title over several lines or with attributes; upload refusal, archive ceilings, blocked names, entry paths, escaping of skipped names, CSRF and area gate checked)
+
+- Leads clear_theme_designer_session, browse_catalog_menu, get_shopping_cart: done #6157 (array file_id fatal, previous_url_id encoded, upsell label lang())

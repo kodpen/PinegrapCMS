@@ -819,7 +819,7 @@ function get_order_preview($properties) {
                         // update grand shipping total
                         $grand_shipping += $shipping_cost;
 
-                        $shipping_description = 'Shipping Method: ' . $shipping_method_name;
+                        $shipping_description = h(lang('Shipping Method')) . ': ' . $shipping_method_name;
 
                         // get arrival date information
                         $query = "SELECT name, custom FROM arrival_dates WHERE id = ?";
@@ -829,7 +829,7 @@ function get_order_preview($properties) {
                         if (mysqli_num_rows($result) > 0) {
                             $row = mysqli_fetch_assoc($result);
                             
-                            $shipping_description .= '; Requested Arrival Date: ';
+                            $shipping_description .= '; ' . h(lang('Requested Arrival Date')) . ': ';
 
                             // if selected arrival date had a custom field, use actual date in description
                             if ($row['custom'] == 1) {
@@ -1373,13 +1373,13 @@ function get_order_preview($properties) {
         }
 
         if ($billing_fax_number) {
-            $output_billing_information .= 'Fax: ' . h($billing_fax_number) . '<br />';
+            $output_billing_information .= h(lang('Fax')) . ': ' . h($billing_fax_number) . '<br />';
         }
 
         $output_billing_information .= h($billing_email_address) . '<br />';
         
         if ($po_number) {
-            $output_billing_information .= 'PO Number: ' . h($po_number) . '<br />';
+            $output_billing_information .= h(lang('PO Number')) . ': ' . h($po_number) . '<br />';
         }
         
         if (ECOMMERCE_TAX_EXEMPT == true) {
@@ -3171,7 +3171,7 @@ function get_order_preview($properties) {
                             $threedsecure = true;
                             //if this is iyzico payment than prepare to output 3Dsecure payment checkbox to disabled and checked.
                             if(ECOMMERCE_IYZIPAY_THREEDS){
-                                $threedsecure_required = ' checked disabled style="cursor:help;" title="3DSecure is required" ';
+                                $threedsecure_required = ' checked disabled style="cursor:help;" title="' . h(lang('3D Secure is required')) . '" ';
                             }
                                                         
                         break;

@@ -37,23 +37,21 @@ if (!$_POST) {
         ]) . '
 <main id="content" class="container-fluid">
     ' . get_date_picker_format() . get_date_time_picker_format() . get_time_picker_format() . pg_fields_script() . '
-            <div class="row">
-            <div class="col-12">
-                
-                <form name="form" action="add_shipping_method.php" method="post">
-                    ' . get_token_field() . '
-                    ' . pg_shipping_method_form_cards(pg_shipping_method_form_new_values(), pg_shipping_method_zone_options_for(0)) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
-                        <div class="container">
-                            <div class=" btn-group flex-wrap justify-content-center">
-                                <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
-                            </div>
+    <form name="form" action="add_shipping_method.php" method="post">
+        ' . get_token_field() . '
+        <div class="row">
+            ' . pg_shipping_method_form_cards(pg_shipping_method_form_new_values(), pg_shipping_method_zone_options_for(0)) . '
+            <div class="col-12 order-3 position-sticky" style="bottom:0; z-index:3;">
+                <nav class="buttons navigation text-center mb-7" aria-label="' . h(lang('data edit buttons')) . '">
+                    <div class="container">
+                        <div class="btn-group flex-wrap justify-content-center">
+                            <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1 btn-solid theme-success"><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
                         </div>
-                    </nav>
-                </form>
+                    </div>
+                </nav>
             </div>
         </div>
-    
+    </form>
 </main>' .
     output_footer();
 
@@ -64,15 +62,8 @@ if (!$_POST) {
     validate_token_field();
 
     $columns = pg_shipping_method_form_columns($_POST);
-    $columns['user'] = (int) $user['id'];
 
-    // create shipping method
-    db_q(
-        "INSERT INTO shipping_methods (" . implode(', ', array_keys($columns)) . ", timestamp)
-        VALUES (" . implode(', ', array_fill(0, count($columns), '?')) . ", UNIX_TIMESTAMP())",
-        array_values($columns)) or output_error('Query failed.');
-
-    pg_shipping_method_save_links(mysqli_insert_id(db::$con), $_POST);
+    pg_shipping_method_save(0, $columns, (array) ($_POST['allowed_zones'] ?? array()), pg_shipping_method_excluded_dates($_POST['excluded_transit_dates'] ?? ''), (int) $user['id']) or output_error('Query failed.');
 
     log_activity(lang(array('string'=>'shipping method ({var:1}) was created','vars'=>$columns['name'])), $_SESSION['sessionusername']);
 

@@ -322,6 +322,21 @@ function test_designer_search_index_failure_note_truncates()
 // Both catch blocks count the failure and keep a note with its kind; the
 // run's Site Log line and the finish window count every kind together
 // (tests/search_index_isolation_test.php).
+// A record whose render throws keeps its last row (the sweep spares it), as a
+// page, an event and a classic record do.
+function test_designer_search_index_failed_record_keeps_row()
+{
+	$source = _designer_search_index_source('update_search_index.php');
+	$start  = strpos($source, '$search_index_run[\'stage\'] = \'records\';');
+	$files  = strpos($source, '// Get files that should be included in search index.');
+	$branch = substr($source, $start, $files - $start);
+	$note   = strpos($branch, "\$record['reference_code'], \$throwable->getMessage(), 200, lang('Record')");
+	pg_assert_true($note !== false);
+	$catch  = strrpos(substr($branch, 0, $note), 'catch (Throwable $throwable) {');
+	pg_assert_true($catch !== false);
+	pg_assert_contains('pg_search_index_keep_item($url, $timestamp);', substr($branch, $catch, $note - $catch));
+}
+
 function test_designer_search_index_failures_reported()
 {
 	$source = _designer_search_index_source('update_search_index.php');

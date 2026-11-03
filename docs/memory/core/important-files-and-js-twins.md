@@ -8,7 +8,7 @@ Paths are relative to pinegrap/.
 - `init.php`: bootstrap (DB, constants, session, error reporting). `router.php`: URL routing.
 - `functions.php`: the manifest that loads the `includes/fn/` modules (`functions-php-split-rules.md`). `liveform.class.php`: form validation and session handling.
 - `api.php`: the panel's JSON endpoint (`panel-action-table.md`). `settings_pane.php`: the settings dialog's endpoint.
-- `view_folders.php`: File Manager. `view_files.php`, `view_design_files.php`: file and design file lists. `find_and_replace.php`: bulk find-replace (rewritten).
+- `view_folders.php`: File Manager (folders and files; the folder screens and the classic files list are retired, #4889). `view_design_files.php`: design file list. `find_and_replace.php`: bulk find-replace (rewritten).
 - `data/config.php`: live config (defines; `init-constants-and-config-file.md`). `data/config(default).php`: default config template. `edit_config.php` is gone.
 - `includes/local/tr/`: the Turkish translation as sorted shards; keys go in with `php tools/tr_add.php` (`lang-files.md`).
 - `install/index.php`: install screen; delegates upgrades to `includes/migrations/runner.php`. `includes/migrations/`: version history (`versions.php`), one schema file per version, `legacy.php`, `runner.php`.

@@ -68,6 +68,16 @@ function pg_dashboard_v2_card_engagement($user, $period, $compare)
 
     $recent = array_sum($bars);
 
+    // Bar 0 is the oldest minute.
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/v2/tips.php');
+    $ago = array();
+    for ($i = 0; $i < $minutes; $i++) {
+        $ago[] = lang(array('string' => '{var:1} minutes ago', 'vars' => $minutes - $i));
+    }
+    $tips = pg_dashboard_v2_tips($ago, $bars, function ($n) {
+        return lang(array('string' => '{var:1} visit{suffix:1}', 'vars' => pg_format_number($n, 0)));
+    });
+
     return array('status' => 'success', 'data' => array(
         'figure'     => $active,
         'headline'   => ($active === 1)
@@ -76,6 +86,7 @@ function pg_dashboard_v2_card_engagement($user, $period, $compare)
         'note'       => lang(array('string' => '{var:1} visit{suffix:1} in the last 30 minutes', 'vars' => pg_format_number($recent, 0))),
         'bars'       => $bars,
         'bars_label' => lang('Visits per minute, last 30 minutes'),
+        'tips'       => $tips,
         'rows_title' => lang('Pages they came in on'),
         'rows'       => $rows,
         'empty'      => (($active === 0) && ($recent === 0)) ? lang('Nobody is on the site right now.') : '',

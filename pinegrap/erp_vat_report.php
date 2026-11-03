@@ -261,7 +261,7 @@ foreach (array_slice($report['documents'], 0, $shown_limit) as $item) {
             <td class="text-nowrap" data-sort="' . h(str_replace('-', '', $item['date'])) . '">' . h(prepare_form_data_for_output($item['date'], 'date', false)) . '</td>
             <td class="text-nowrap"><a class="pg-link-body-emphasis" href="' . h($url) . '">' . h($number) . '</a>' . $marks . '</td>
             <td>' . h($labels[$item['kind']]) . '</td>
-            <td>' . h($item['account']) . (($item['tax_number'] !== '') ? '<div class="small fg-secondary font-monospace">' . h($item['tax_number']) . '</div>' : '') . '</td>
+            <td class="text-wrap text-break" style="min-width:10rem;max-width:280px">' . h($item['account']) . (($item['tax_number'] !== '') ? '<div class="small fg-secondary font-monospace">' . h($item['tax_number']) . '</div>' : '') . '</td>
             <td class="text-end text-nowrap">' . h(implode(', ', $rates)) . '</td>
             <td class="text-end" data-sort="' . (int) $item['net'] . '">' . $money($item['net']) . '</td>
             <td class="text-end fw-semibold" data-sort="' . (int) $item['vat'] . '">' . $money($item['vat']) . '</td>
@@ -297,23 +297,10 @@ if ((int) $report['orders']['count'] > 0) {
 
 // The period picker.
 $range = $period['range'];
-$output_month_options = '';
-for ($i = 0; $i < 24; $i++) {
-    $month = date('Y-m', strtotime(date('Y-m-01') . ' -' . $i . ' month'));
-    $output_month_options .= '<option value="' . h($month) . '"' . ((($range === 'month') && (substr($period['from'], 0, 7) === $month)) ? ' selected' : '') . '>'
-        . h(get_month_name_from_number(substr($month, 5, 2)) . ' ' . substr($month, 0, 4)) . '</option>';
-}
-$output_quarter_options = '';
-for ($i = 0; $i < 8; $i++) {
-    $first = date('Y-m-01', strtotime(date('Y') . '-' . sprintf('%02d', ((int) ceil(date('n') / 3) - 1) * 3 + 1) . '-01 -' . ($i * 3) . ' month'));
-    $quarter = (int) ceil(((int) substr($first, 5, 2)) / 3);
-    $value = substr($first, 0, 4) . '-Q' . $quarter;
-    $output_quarter_options .= '<option value="' . h($value) . '"' . ((($range === 'quarter') && ($period['from'] === $first)) ? ' selected' : '') . '>' . h(lang(array('string' => '{var:1} / Q{var:2}', 'vars' => array(substr($first, 0, 4), $quarter)))) . '</option>';
-}
-$output_year_options = '';
-for ($year = (int) date('Y'); $year >= (int) date('Y') - 5; $year--) {
-    $output_year_options .= '<option value="' . $year . '"' . ((($range === 'year') && ($period['from'] === $year . '-01-01')) ? ' selected' : '') . '>' . $year . '</option>';
-}
+$period_options = erp_profit_period_options($period);
+$output_month_options = $period_options['month'];
+$output_quarter_options = $period_options['quarter'];
+$output_year_options = $period_options['year'];
 
 $range_options = '';
 foreach (array('month' => lang('Month'), 'quarter' => lang('Quarter'), 'year' => lang('Year'), 'dates' => lang('From - to')) as $key => $label) {
@@ -342,7 +329,8 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
 
             <form method="get" action="erp_vat_report.php" class="card my-7" id="erp_vat_period">
-                <div class="card-body row g-3 align-items-end">
+                <div class="card-body">
+                    <div class="row g-3 align-items-end">
                     <div class="col-6 md:col-2">
                         <label class="form-label small fg-secondary mb-1" for="range">' . lang('Period') . '</label>
                         <select class="form-control form-control-sm" id="range" name="range">' . $range_options . '</select>
@@ -361,17 +349,18 @@ pg_page_shell([
                     </div>
                     <div class="col-6 md:col-2" data-range="dates"' . (($range === 'dates') ? '' : ' hidden') . '>
                         <label class="form-label small fg-secondary mb-1" for="from">' . lang('Start date') . '</label>
-                        <input type="date" data-pg-date class="form-control form-control-sm" id="from" name="from" value="' . h($period['from']) . '" />
+                        <input type="date" data-pg-date class="form-control form-control-sm" id="from" name="from" min="' . ERP_PROFIT_FIRST_YEAR . '-01-01" max="' . ERP_PROFIT_LAST_YEAR . '-12-31" value="' . h($period['from']) . '" />
                     </div>
                     <div class="col-6 md:col-2" data-range="dates"' . (($range === 'dates') ? '' : ' hidden') . '>
                         <label class="form-label small fg-secondary mb-1" for="to">' . lang('End date') . '</label>
-                        <input type="date" data-pg-date class="form-control form-control-sm" id="to" name="to" value="' . h($period['to']) . '" />
+                        <input type="date" data-pg-date class="form-control form-control-sm" id="to" name="to" min="' . ERP_PROFIT_FIRST_YEAR . '-01-01" max="' . ERP_PROFIT_LAST_YEAR . '-12-31" value="' . h($period['to']) . '" />
                     </div>
                     <div class="col-12 md:col-auto">
                         <button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Show') . '</button>
                         <a class="btn btn-sm btn-outline theme-secondary" href="' . $export_url . '"><i class="bi bi-file-earmark-spreadsheet me-1" aria-hidden="true"></i>' . lang('Excel') . '</a>
                     </div>
                     <div class="col-12 small fg-secondary">' . h(prepare_form_data_for_output($period['from'], 'date', false) . ' – ' . prepare_form_data_for_output($period['to'], 'date', false)) . '</div>
+                    </div>
                 </div>
             </form>
 
@@ -435,8 +424,10 @@ pg_page_shell([
             <div class="card my-5">
                 <div class="card-header bg-reset border-0 d-flex flex-wrap align-items-center gap-3">
                     <span class="text-uppercase h5 fg-primary fw-bold mb-0 me-auto">' . lang('Documents of the period') . '</span>
-                    <label class="small fg-secondary" for="erp_vat_kind">' . lang('Document type') . '</label>
-                    <select class="form-control form-control-sm w-auto" id="erp_vat_kind">' . $kind_options . '</select>
+                    <span class="d-flex align-items-center gap-2">
+                        <label class="small fg-secondary text-nowrap" for="erp_vat_kind">' . lang('Document type') . '</label>
+                        <select class="form-control form-control-sm w-auto" id="erp_vat_kind">' . $kind_options . '</select>
+                    </span>
                 </div>
                 <div class="card-body p-0 table-responsive" style="max-height:40rem;scroll-padding-top:2.5rem">
                     <table class="table table-sm table-hover align-middle mb-0" data-pg-sort id="erp_vat_documents">

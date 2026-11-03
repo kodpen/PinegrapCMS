@@ -75,11 +75,12 @@ function pg_dashboard_widget_9($request, $user)
 }
 
 /**
- * Orders paid for and not yet sent.
+ * Which orders the shipping lane looks at: the window and the conditions
+ * both its queries add, shared with the Next up card's count.
  *
- * @return array label, icon, color, count, sub, late, body
+ * @return array window_days, sql (to append after a WHERE)
  */
-function pg_dashboard_ops_shipping()
+function pg_dashboard_ops_shipping_scope()
 {
     // What counts as outstanding
     // --------------------------
@@ -124,7 +125,23 @@ function pg_dashboard_ops_shipping()
     // so a row does not drop off mid-morning.
     $window_days = 30;
     $since = pg_dashboard_days_back(strtotime(date('Y-m-d')), $window_days);
-    $sql_window = " AND (orders.order_date >= " . (int) $since . ")";
+
+    return array(
+        'window_days' => $window_days,
+        'sql'         => " AND (orders.order_date >= " . (int) $since . ")" . $sql_saved_for_later,
+    );
+}
+
+/**
+ * The orders waiting to be sent, summed: what the lane's strip and the Next
+ * up card count.
+ *
+ * @return array orders, packages, value (minor units), oldest, late, window_days
+ */
+function pg_dashboard_ops_shipping_summary()
+{
+    $scope = pg_dashboard_ops_shipping_scope();
+    $sql_scope = $scope['sql'];
 
     // Per order rather than per recipient: orders.total must be summed once
     // per order or a multi-recipient order would count its value twice.
@@ -146,22 +163,43 @@ function pg_dashboard_ops_shipping()
             WHERE
                 (orders.status IN ('complete', 'exported'))
                 AND (orders.type = 'online')
-                $sql_window
-                $sql_saved_for_later
+                $sql_scope
             GROUP BY orders.id
             HAVING pending_quantity > 0
         ) AS pending");
 
-    $order_count   = (int) ($summary['order_count'] ?? 0);
-    $package_count = (int) ($summary['package_count'] ?? 0);
-    $pending_value = (int) ($summary['pending_value'] ?? 0);
-    $oldest        = (int) ($summary['oldest'] ?? 0);
+    $orders = (int) ($summary['order_count'] ?? 0);
+    $oldest = (int) ($summary['oldest'] ?? 0);
+
+    return array(
+        'orders'      => $orders,
+        'packages'    => (int) ($summary['package_count'] ?? 0),
+        'value'       => (int) ($summary['pending_value'] ?? 0),
+        'oldest'      => $oldest,
+        // Two days is where a parcel stops being today's packing and starts
+        // being one that was left behind.
+        'late'        => (($orders > 0) && ($oldest > 0) && ($oldest < (time() - 172800))),
+        'window_days' => $scope['window_days'],
+    );
+}
+
+/**
+ * The parcels waiting to be sent, oldest first, one row per recipient:
+ * the lane's rows and the Operations Desk card's.
+ *
+ * @param int $limit
+ * @return array ship_to_id, ship_to_name, shipping_method_code,
+ *               shipping_method_name, order_id, order_number, order_date,
+ *               pending_quantity
+ */
+function pg_dashboard_ops_shipments($limit)
+{
+    $scope = pg_dashboard_ops_shipping_scope();
+    $sql_scope = $scope['sql'];
 
     // Grouped per recipient because the carrier lives on ship_tos: one order
-    // going to two addresses can leave by two carriers. One row over the cap
-    // is fetched to know whether to offer the full list.
-    $row_limit = 10;
-    $shipments = db_items(
+    // going to two addresses can leave by two carriers.
+    return db_items(
         "SELECT
             ship_tos.id AS ship_to_id,
             MAX(ship_tos.ship_to_name) AS ship_to_name,
@@ -179,12 +217,31 @@ function pg_dashboard_ops_shipping()
             (orders.status IN ('complete', 'exported'))
             AND (orders.type = 'online')
             AND (ship_tos.complete = '1')
-            $sql_window
-            $sql_saved_for_later
+            $sql_scope
         GROUP BY ship_tos.id, orders.id
         HAVING pending_quantity > 0
         ORDER BY MAX(orders.order_date) ASC, ship_tos.id ASC
-        LIMIT " . ($row_limit + 1));
+        LIMIT " . max(1, (int) $limit));
+}
+
+/**
+ * Orders paid for and not yet sent.
+ *
+ * @return array label, icon, color, count, sub, late, body
+ */
+function pg_dashboard_ops_shipping()
+{
+    $scope = pg_dashboard_ops_shipping_scope();
+    $window_days = $scope['window_days'];
+    $shipping = pg_dashboard_ops_shipping_summary();
+
+    $order_count   = $shipping['orders'];
+    $package_count = $shipping['packages'];
+    $pending_value = $shipping['value'];
+
+    // One row over the cap is fetched to know whether to offer the full list.
+    $row_limit = 10;
+    $shipments = pg_dashboard_ops_shipments($row_limit + 1);
 
     $more = (count($shipments) > $row_limit);
     $shipments = array_slice($shipments, 0, $row_limit);
@@ -257,7 +314,7 @@ function pg_dashboard_ops_shipping()
         $meter .= '<span' . (($slot < min($package_count, 12)) ? ' class="is-on"' : '') . '></span>';
     }
 
-    $late = (($order_count > 0) && ($oldest > 0) && ($oldest < (time() - 172800)));
+    $late = $shipping['late'];
 
     $sub = ($order_count > 0)
         ? h(lang(array(
@@ -281,44 +338,61 @@ function pg_dashboard_ops_shipping()
 }
 
 /**
- * Cancelled orders whose money has not gone back yet.
+ * The refund states that mean money has not gone back yet, as an SQL list.
  *
- * cancel_order.php is customer-facing self-service. A customer cancels; the
- * gateway's automatic refund either fails or was never possible for that
- * payment method; process_order_cancellation() writes
- * orders.refund_status = 'manual_required'. The cancellation email has
- * already promised the customer a manual refund, so this lane is the
- * reminder to keep that promise.
- *
- * @return array label, icon, color, count, sub, body
+ * @return string
  */
-function pg_dashboard_ops_refunds()
+function pg_dashboard_ops_refund_states_sql()
 {
     // All three states mean money has not gone back yet; only 'refunded'
     // and '' are settled. No orders.status test: refund_status is written by
     // the cancellation path alone, and the condition would push the planner
     // off idx_refund_status for nothing.
-    $states = "('manual_required', 'failed', 'pending')";
+    return "('manual_required', 'failed', 'pending')";
+}
 
+/**
+ * The cancelled orders still owed money back, summed: what the lane's strip
+ * and the Next up card count. The caller checks orders.refund_status exists.
+ *
+ * @return array count, owed (minor units, base currency), oldest
+ */
+function pg_dashboard_ops_refund_summary()
+{
     // One sum of what each order still owes (pg_order_cancel_refund_owed():
     // the payment money only when a payment arrived, plus the gift card
     // part), in the store's base currency, the unit every payment driver
     // charges. orders.currency_code is only the currency the visitor was
     // shown prices in, so it does not split the money.
+    $summary = db_item(
+        "SELECT COUNT(*) AS orders_count, SUM(" . pg_order_cancel_refund_owed_sql(pg_schema_has('orders', 'paid_at'), pg_schema_has('orders', 'refunded_amount')) . ") AS orders_total, MIN(order_date) AS oldest
+         FROM orders
+         WHERE refund_status IN " . pg_dashboard_ops_refund_states_sql());
+
+    return array(
+        'count'  => (int) ($summary['orders_count'] ?? 0),
+        'owed'   => (int) round((float) ($summary['orders_total'] ?? 0)),
+        'oldest' => (int) ($summary['oldest'] ?? 0),
+    );
+}
+
+/**
+ * The cancelled orders still owed money back, the oldest first: the lane's
+ * rows and the Operations Desk card's. The caller checks
+ * orders.refund_status exists.
+ *
+ * @param int $limit
+ * @return array orders rows, with what pg_order_cancel_refund_owed() reads
+ */
+function pg_dashboard_ops_refund_list($limit)
+{
+    $states = pg_dashboard_ops_refund_states_sql();
     $has_paid_at = pg_schema_has('orders', 'paid_at');
     $has_refunded_amount = pg_schema_has('orders', 'refunded_amount');
 
-    $summary = db_item(
-        "SELECT COUNT(*) AS orders_count, SUM(" . pg_order_cancel_refund_owed_sql($has_paid_at, $has_refunded_amount) . ") AS orders_total, MIN(order_date) AS oldest
-         FROM orders
-         WHERE refund_status IN " . $states);
-
-    $count = (int) ($summary['orders_count'] ?? 0);
-    $oldest = (int) ($summary['oldest'] ?? 0);
-
     // Oldest first: the customer who has waited longest is the one closest
     // to opening a dispute.
-    $rows = db_items(
+    return db_items(
         "SELECT
             orders.id,
             orders.order_number,
@@ -334,7 +408,28 @@ function pg_dashboard_ops_refunds()
          FROM orders
          WHERE orders.refund_status IN " . $states . "
          ORDER BY orders.cancelled_at ASC, orders.id ASC
-         LIMIT 10");
+         LIMIT " . max(1, (int) $limit));
+}
+
+/**
+ * Cancelled orders whose money has not gone back yet.
+ *
+ * cancel_order.php is customer-facing self-service. A customer cancels; the
+ * gateway's automatic refund either fails or was never possible for that
+ * payment method; process_order_cancellation() writes
+ * orders.refund_status = 'manual_required'. The cancellation email has
+ * already promised the customer a manual refund, so this lane is the
+ * reminder to keep that promise.
+ *
+ * @return array label, icon, color, count, sub, body
+ */
+function pg_dashboard_ops_refunds()
+{
+    $summary = pg_dashboard_ops_refund_summary();
+    $count = $summary['count'];
+    $oldest = $summary['oldest'];
+
+    $rows = pg_dashboard_ops_refund_list(10);
 
     $output_rows = '';
     $urgent = false;
@@ -379,7 +474,7 @@ function pg_dashboard_ops_refunds()
     $sub = h(lang('Nothing owed'));
 
     if ($count > 0) {
-        $sub = pg_format_money(((float) $summary['orders_total']) / 100, BASE_CURRENCY_SYMBOL);
+        $sub = pg_format_money(((float) $summary['owed']) / 100, BASE_CURRENCY_SYMBOL);
     }
 
     return array(
@@ -394,19 +489,57 @@ function pg_dashboard_ops_refunds()
 }
 
 /**
- * Products out of stock, and the ones about to be.
+ * The condition of a product running low, or '' when the shop has set no
+ * threshold.
  *
- * @return array label, icon, color, count, sub, body
+ * @return string
  */
-function pg_dashboard_ops_stock()
+function pg_dashboard_ops_low_stock_where()
+{
+    // Running low, only where the shop has set a threshold of its own: a
+    // made-up line would call a shop that keeps two of everything short of
+    // stock every day. Products on backorder never run out, and ones that do
+    // not track stock have no level to run low on.
+    if (!defined('ECOMMERCE_LOW_STOCK_THRESHOLD') || ((int) ECOMMERCE_LOW_STOCK_THRESHOLD <= 0)) {
+        return '';
+    }
+
+    return "inventory = '1' AND backorder != '1'
+            AND inventory_quantity BETWEEN 1 AND " . (int) ECOMMERCE_LOW_STOCK_THRESHOLD;
+}
+
+/**
+ * Products out of stock and running low, counted: what the lane's strip and
+ * the Next up card count.
+ *
+ * @return array out, low
+ */
+function pg_dashboard_ops_stock_counts()
 {
     // Not filtered on inventory, so it agrees with the products list's own
     // out of stock filter: a product can be marked out of stock without
     // inventory tracking. Products in the Recycle Bin are left out, as that
     // list leaves them out of its rows and its count.
-    $count = (int) db_value("SELECT COUNT(*) FROM products WHERE out_of_stock = '1'" . pg_catalog_bin_live_sql('products'));
+    $out = (int) db_value("SELECT COUNT(*) FROM products WHERE out_of_stock = '1'" . pg_catalog_bin_live_sql('products'));
 
-    $rows = db_items(
+    $low_where = pg_dashboard_ops_low_stock_where();
+    $low = ($low_where !== '')
+        ? (int) db_value("SELECT COUNT(*) FROM products WHERE " . $low_where . pg_catalog_bin_live_sql('products'))
+        : 0;
+
+    return array('out' => $out, 'low' => $low);
+}
+
+/**
+ * Products out of stock, the latest first: the lane's rows and the
+ * Operations Desk card's.
+ *
+ * @param int $limit
+ * @return array id, name, short_description, image_name, price, timestamp
+ */
+function pg_dashboard_ops_out_of_stock_list($limit)
+{
+    return db_items(
         "SELECT
             products.id,
             products.name,
@@ -417,30 +550,32 @@ function pg_dashboard_ops_stock()
         FROM products
         WHERE products.out_of_stock = '1'" . pg_catalog_bin_live_sql('products') . "
         ORDER BY products.out_of_stock_timestamp DESC
-        LIMIT 8");
+        LIMIT " . max(1, (int) $limit));
+}
 
-    // Running low, only where the shop has set a threshold of its own: a
-    // made-up line would call a shop that keeps two of everything short of
-    // stock every day. Products on backorder never run out, and ones that do
-    // not track stock have no level to run low on.
-    $low_count = 0;
+/**
+ * Products out of stock, and the ones about to be.
+ *
+ * @return array label, icon, color, count, sub, body
+ */
+function pg_dashboard_ops_stock()
+{
+    $counts = pg_dashboard_ops_stock_counts();
+    $count = $counts['out'];
+
+    $rows = pg_dashboard_ops_out_of_stock_list(8);
+
+    $low_count = $counts['low'];
     $low_rows = array();
+    $low_where = pg_dashboard_ops_low_stock_where();
 
-    if (defined('ECOMMERCE_LOW_STOCK_THRESHOLD') && ((int) ECOMMERCE_LOW_STOCK_THRESHOLD > 0)) {
-
-        $low_where = "inventory = '1' AND backorder != '1'
-            AND inventory_quantity BETWEEN 1 AND " . (int) ECOMMERCE_LOW_STOCK_THRESHOLD;
-
-        $low_count = (int) db_value("SELECT COUNT(*) FROM products WHERE " . $low_where . pg_catalog_bin_live_sql('products'));
-
-        if ($low_count > 0) {
-            $low_rows = db_items(
-                "SELECT id, name, short_description, image_name, inventory_quantity
-                 FROM products
-                 WHERE " . $low_where . pg_catalog_bin_live_sql('products') . "
-                 ORDER BY inventory_quantity ASC, id ASC
-                 LIMIT 5");
-        }
+    if (($low_where !== '') && ($low_count > 0)) {
+        $low_rows = db_items(
+            "SELECT id, name, short_description, image_name, inventory_quantity
+             FROM products
+             WHERE " . $low_where . pg_catalog_bin_live_sql('products') . "
+             ORDER BY inventory_quantity ASC, id ASC
+             LIMIT 5");
     }
 
     // A picture deleted in the File Manager leaves image_name behind; the

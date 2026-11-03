@@ -296,6 +296,12 @@ if (!$_POST) {
 
     $liveform->add_fields_to_session();
 
+    // The button pressed in this request. The session keeps the entry of a
+    // button pressed before a validation error, so asking it would count that
+    // older button as pressed again.
+    $save_for_later_clicked = isset($_POST['save_for_later_button']);
+    $complete_clicked = isset($_POST['complete_button']);
+
     // get all fields for this form
     $fields = db_items(
         "SELECT
@@ -326,7 +332,7 @@ if (!$_POST) {
         // If field is required and the user clicked the complete button, then require the field.
         // Required fields are not enforced for the save for later button, so that a partially
         // filled in submitted form can still be stored.
-        if ($field['required'] and $liveform->field_in_session('complete_button')) {
+        if ($field['required'] and $complete_clicked) {
             $error_message = '';
 
             if ($field['label']) {
@@ -364,7 +370,7 @@ if (!$_POST) {
     if ($liveform->check_form_errors() == false) {
 
         // If the save for later button was clicked, then mark the form as incomplete.
-        if ($liveform->field_in_session('save_for_later_button')) {
+        if ($save_for_later_clicked) {
             $new_complete = 0;
 
         // Otherwise the complete button was clicked, so mark the form as complete.
@@ -398,6 +404,9 @@ if (!$_POST) {
         $result = db_q($query, array((string) $page_id, (string) $new_complete, (string) $user['id'], (string) $reference_code, (string) $user['id'])) or output_error('Query failed.');
 
         $form_id = mysqli_insert_id(db::$con);
+
+        // The signatures drawn on the form, stored after the loop.
+        $signature_pending = array();
 
         // Loop through all fields in order to save data for each one.
         foreach ($fields as $field) {
@@ -440,40 +449,21 @@ if (!$_POST) {
 
             // A signature is written through its own path: the drawing becomes a
             // file, form_data points at it, and the record that gives it meaning
-            // is written beside it. The document is read again here because the
-            // field list above drops information fields, and that is where a
-            // contract is written.
+            // is written beside it. The row is written without a file here; the
+            // record is written once every answer is stored
+            // (pg_signature_store_pending()), because the document it is bound
+            // to is the answers as stored.
             } else if (($field['type'] == 'signature') && function_exists('pg_signature_ready') && pg_signature_ready()) {
                 $signature_png = pg_signature_png_from_data_url($liveform->get_field_value($field['id']));
                 $signature_file_id = false;
 
                 if ($signature_png !== false) {
-                    $signature_document = db_items(
-                        "SELECT id, name, label, type, required, information
-                        FROM form_fields
-                        WHERE page_id = '" . escape($page_id) . "'
-                        ORDER BY sort_order ASC");
-
-                    $signature_values = array();
-
-                    foreach ($fields as $signature_source) {
-                        if ($signature_source['type'] == 'signature') {
-                            continue;
-                        }
-
-                        $signature_values[$signature_source['id']] = $liveform->get_field_value($signature_source['id']);
-                    }
-
-                    $signature_file_id = pg_signature_store(
-                        $form_id,
-                        $field['id'],
-                        $signature_png,
-                        array(
-                            'page_id' => $page_id,
-                            'document_hash' => pg_signature_document_hash($page_id, $signature_document, $signature_values, $field['label']),
-                            'consent_text' => $field['label'],
-                            'strokes' => pg_signature_clean_strokes(isset($_POST[$field['id'] . '_strokes']) ? $_POST[$field['id'] . '_strokes'] : ''),
-                        ));
+                    $signature_pending[] = array(
+                        'field_id' => $field['id'],
+                        'label' => $field['label'],
+                        'png' => $signature_png,
+                        'strokes' => pg_signature_clean_strokes(isset($_POST[$field['id'] . '_strokes']) ? $_POST[$field['id'] . '_strokes'] : ''),
+                    );
                 }
 
                 db(
@@ -492,6 +482,10 @@ if (!$_POST) {
             } else {
                 pg_submitted_form_save_value($liveform, $form_id, $field);
             }
+        }
+
+        if ($signature_pending) {
+            pg_signature_store_pending($form_id, $page_id, $signature_pending);
         }
 
         // If pretty URLs are enabled, then update address name.
@@ -513,7 +507,7 @@ if (!$_POST) {
         log_activity(lang(array('string'=>'submitted form (form name: {var:1}, reference code: {var:2}) was created','vars'=>array($form_name,$reference_code))), $_SESSION['sessionusername']);
 
         // If the save for later button was clicked.
-        if ($liveform->field_in_session('save_for_later_button')) {
+        if ($save_for_later_clicked) {
             $message = lang('The form has been created and saved for later.');
 
         // Otherwise the complete button was clicked.

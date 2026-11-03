@@ -63,6 +63,15 @@ function erp_list_names_wrap_pins()
 		'erp_stock.php' => array(
 			'<td style="max-width:280px" class="text-wrap text-break align-middle">\' . h($name)',
 		),
+		'erp_stock_minimums.php' => array(
+			'<td class="align-middle text-wrap text-break" style="max-width:14rem">\' . h(erp_stock_product_label($row))',
+		),
+		'erp_stock_counts.php' => array(
+			'<td class="text-wrap text-break" style="max-width:280px"><a class="pg-link-body-emphasis fw-semibold" href="erp_stock_count.php?id=',
+		),
+		'erp_stock_count.php' => array(
+			'<td class="text-wrap text-break" style="max-width:14rem">\' . h($name)',
+		),
 		'erp_account_sync.php' => array(
 			'return \'<div class="text-wrap text-break">\' . h(((string) $row[\'title\'] !== \'\')',
 			'<td style="max-width:320px" class="align-middle text-wrap text-break"><a class="pg-link-body-emphasis" href="edit_erp_account.php?id=\' . (int) $row[\'a_id\'] . \'">',

@@ -25,6 +25,13 @@
  *    pinch, Space and the zoom keys; the drags the adapter's own kinds
  *    make (a data thread), its listeners removed again by destroy().
  *
+ * A box is 208 x 80 unless the adapter's size() says otherwise; an arrow
+ * leaves a box's middle or one of its named ports (a row inside it), ends
+ * on a box or another target, its id kept as given (an index or a stable
+ * name), and arrows into one box may spread over its left edge (spread()).
+ * Nothing runs at load but the definition of window.PGGraphCanvas, so the
+ * script may be printed with or without defer, before its user.
+ *
  * Its texts (keys pgc_*) come from pg_graph_canvas_js_strings()
  * (includes/fn/graph_canvas.php) through the adapter's text().
  *
@@ -46,6 +53,8 @@
     var BOX_H = 80;
     var ZOOM_MIN = 0.25;
     var ZOOM_MAX = 2;
+    // The lowest zoom a host may ask for (a map of whole pages).
+    var ZOOM_FLOOR = 0.05;
     var SVG_NS = 'http://www.w3.org/2000/svg';
     // Undo goes back at most HISTORY_MAX steps; a change that is not
     // structural made within HISTORY_FOLD ms of the one before it (typing,
@@ -79,6 +88,39 @@
         var dx = Math.max(48, Math.abs(x2 - x1) / 2);
 
         return { d: 'M' + x1 + ' ' + y1 + ' C' + (x1 + dx) + ' ' + y1 + ' ' + (x2 - dx) + ' ' + y2 + ' ' + x2 + ' ' + y2, mx: (x1 + x2) / 2, my: (y1 + y2) / 2 };
+    }
+
+    // The size { w, h } of a box: the host's size(item) when it gives one,
+    // else 208 x 80.
+    function sizeOf(host, item) {
+        var size = (host && host.size) ? host.size(item) : null;
+
+        return { w: (size && size.w) || BOX_W, h: (size && size.h) || BOX_H };
+    }
+
+    // Where the arrows into each box end when they spread over its left
+    // edge: list holds one { to, y } per arrow (the box it goes to, the
+    // height it leaves at); each gets { slot, slots }, its place among the
+    // arrows into that box ordered by height (ties keep their order) and
+    // how many there are.
+    function spread(list) {
+        var groups = {};
+
+        list.forEach(function (item, index) {
+            (groups[item.to] = groups[item.to] || []).push(index);
+        });
+
+        var out = list.map(function () { return { slot: 0, slots: 1 }; });
+
+        Object.keys(groups).forEach(function (to) {
+            var group = groups[to].slice().sort(function (a, b) { return (list[a].y - list[b].y) || (a - b); });
+
+            group.forEach(function (index, slot) {
+                out[index] = { slot: slot, slots: group.length };
+            });
+        });
+
+        return out;
     }
 
     function freeId(prefix, list) {
@@ -153,7 +195,12 @@
     // host.ui.viewport, host.ui.layer and host.ui.zoomLabel; host.view()
     // reads the view { x, y, k }, host.view(view) puts a new one in its
     // place; host.items() lists the boxes ({ x, y }) fit() brings into sight.
+    // Optional: host.size(item) a box's { w, h } (else 208 x 80), and
+    // host.zoomMin and host.zoomMax (else 0.25 and 2; never below 0.05).
     function viewport(host) {
+        var zoomMin = Math.max(ZOOM_FLOOR, host.zoomMin || ZOOM_MIN);
+        var zoomMax = host.zoomMax || ZOOM_MAX;
+
         function apply() {
             var ui = host.ui;
             var v = host.view();
@@ -173,7 +220,7 @@
         function zoomAt(clientX, clientY, factor) {
             var rect = host.ui.viewport.getBoundingClientRect();
             var v = host.view();
-            var k = clamp(v.k * factor, ZOOM_MIN, ZOOM_MAX);
+            var k = clamp(v.k * factor, zoomMin, zoomMax);
             var px = clientX - rect.left;
             var py = clientY - rect.top;
 
@@ -202,9 +249,9 @@
 
             var minX = Math.min.apply(null, items.map(function (item) { return item.x; }));
             var minY = Math.min.apply(null, items.map(function (item) { return item.y; }));
-            var maxX = Math.max.apply(null, items.map(function (item) { return item.x + BOX_W; }));
-            var maxY = Math.max.apply(null, items.map(function (item) { return item.y + BOX_H; }));
-            var k = clamp(Math.min((rect.width - 96) / Math.max(1, maxX - minX), (rect.height - 96) / Math.max(1, maxY - minY)), ZOOM_MIN, 1.25);
+            var maxX = Math.max.apply(null, items.map(function (item) { return item.x + sizeOf(host, item).w; }));
+            var maxY = Math.max.apply(null, items.map(function (item) { return item.y + sizeOf(host, item).h; }));
+            var k = clamp(Math.min((rect.width - 96) / Math.max(1, maxX - minX), (rect.height - 96) / Math.max(1, maxY - minY)), zoomMin, Math.min(1.25, zoomMax));
 
             host.view({ x: (rect.width - (maxX - minX) * k) / 2 - minX * k, y: (rect.height - (maxY - minY) * k) / 2 - minY * k, k: k });
             apply();
@@ -225,10 +272,11 @@
             var left = item.x * v.k + v.x;
             var top = item.y * v.k + v.y;
             var margin = 32;
+            var size = sizeOf(host, item);
 
-            if ((left < margin) || (top < margin) || (left + BOX_W * v.k > rect.width - margin) || (top + BOX_H * v.k > rect.height - margin)) {
-                v.x = rect.width / 2 - (item.x + BOX_W / 2) * v.k;
-                v.y = rect.height / 2 - (item.y + BOX_H / 2) * v.k;
+            if ((left < margin) || (top < margin) || (left + size.w * v.k > rect.width - margin) || (top + size.h * v.k > rect.height - margin)) {
+                v.x = rect.width / 2 - (item.x + size.w / 2) * v.k;
+                v.y = rect.height / 2 - (item.y + size.h / 2) * v.k;
                 apply();
             }
         }
@@ -263,7 +311,7 @@
         // The pinch's two pointers moved: the point under their middle at
         // the start stays under it, scaled by how far apart they are now.
         function pinchMove(pinch, points) {
-            var k = clamp(pinch.view.k * Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y) / pinch.d, ZOOM_MIN, ZOOM_MAX);
+            var k = clamp(pinch.view.k * Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y) / pinch.d, zoomMin, zoomMax);
             var rect = host.ui.viewport.getBoundingClientRect();
             var cx = (points[0].x + points[1].x) / 2 - rect.left;
             var cy = (points[0].y + points[1].y) / 2 - rect.top;
@@ -403,8 +451,9 @@
     // One canvas: its boxes, ports and arrows, a box moved and an arrow
     // drawn by the pointer, its pan, zoom, pinch and keys, and the pointer
     // plumbing its user builds on. The adapter gives:
-    //  - ui (viewport, layer, zoomLabel), view(next) and items() as
-    //    viewport() takes them; ui.boxes (the boxes' parent), ui.svg (the
+    //  - ui (viewport, layer, zoomLabel), view(next), items(), and the
+    //    optional size(item), zoomMin and zoomMax as viewport() takes them
+    //    (a box with a size() is drawn at it); ui.boxes (the boxes' parent), ui.svg (the
     //    arrows'), ui.temp (the path of an arrow being drawn) and ui.live
     //    (a polite live region);
     //  - text(key, ...): a text of pg_graph_canvas_js_strings(), its holes
@@ -418,11 +467,21 @@
     //    ({ type: 'edge', id: index }) was pressed;
     //  - placed(element): a box (or what the adapter places with place())
     //    was put at its place;
-    //  - edges(): the boxes moved, the arrows are drawn again;
+    //  - edges() (optional): the boxes moved, the arrows are drawn again;
+    //    without it only the arrows of the box moved are (reroute());
     //  - moved(item): a box was dragged to a new place;
-    //  - canConnect(from, to) and connected(from, to): whether an arrow
-    //    may go from one box to another, and an arrow drawn from a box's
-    //    out port released on a box (to is null on no box of the graph);
+    //  - canConnect(from, to, port) and connected(from, to, port): whether
+    //    an arrow may go from one box (its named port, else null) to a
+    //    target, and an arrow drawn from an out port released on a target
+    //    (to is null on none of the graph);
+    //  - targets and target(element) (optional): a selector of what an
+    //    arrow may end on beside a box (an end chip), and the item of such
+    //    an element (else item() of its data-node);
+    //  - portAt(item, name) (optional): where a named port of a box sits,
+    //    { y } from the box's top edge (else read from the row holding the
+    //    [data-port] dot inside the box);
+    //  - thumb(item, holder) (optional): a box drawn with options.thumb
+    //    gets its picture put into holder once it first comes into sight;
     //  - ownClicks: a selector of what keeps its own clicks and keys (a link
     //    on a box): the canvas takes no pointer and no key from it;
     //  - classes (optional, each name else its CLASSES default, styled by
@@ -456,7 +515,8 @@
         edge: 'pgc-edge',
         selected: 'pgc-selected',
         target: 'pgc-target',
-        hidden: 'pgc-hidden'
+        hidden: 'pgc-hidden',
+        thumb: 'pgc-thumb'
     };
 
     function merge(base, over) {
@@ -471,13 +531,16 @@
 
     function create(adapter) {
         var ui = adapter.ui;
-        var view = viewport({ ui: ui, view: adapter.view, items: adapter.items });
+        var view = viewport({ ui: ui, view: adapter.view, items: adapter.items, size: adapter.size, zoomMin: adapter.zoomMin, zoomMax: adapter.zoomMax });
         var pointers = {};
         var pinch = null;
         var drag = null;
         var space = false;
         var bound = [];
         var classes = merge(CLASSES, adapter.classes);
+        // The arrows drawn by id, to draw the ones of a box moved again.
+        var drawn = {};
+        var watcher = null;
 
         function text() {
             return adapter.text.apply(null, arguments);
@@ -493,18 +556,76 @@
 
         // ── Boxes and arrows ──
 
-        function port(side) {
+        function size(item) {
+            return sizeOf(adapter, item);
+        }
+
+        // A port dot: side 'in' or 'out'; a named one (a row's) carries its
+        // name in data-port and sits in the middle of the row it is put in.
+        function port(side, name) {
             var dot = document.createElement('span');
 
             dot.className = classes.port + ' ' + classes.port + '-' + side;
             dot.setAttribute('aria-hidden', 'true');
 
+            if (name) {
+                dot.setAttribute('data-port', name);
+            }
+
             return dot;
+        }
+
+        function boxOf(item) {
+            return ui.boxes.querySelector('[data-node="' + String(item.id).replace(/"/g, '') + '"]');
+        }
+
+        // Where an arrow leaves a box: the middle of its right edge, or the
+        // middle of the row holding its named port; a port not drawn (a row
+        // folded away) leaves from the middle.
+        function from(item, name) {
+            var box = size(item);
+            var y = box.h / 2;
+            var at = null;
+
+            if (name && adapter.portAt) {
+                at = adapter.portAt(item, name);
+            } else if (name) {
+                var node = boxOf(item);
+                var dot = node ? node.querySelector('[data-port="' + String(name).replace(/"/g, '') + '"]') : null;
+                var row = dot ? dot.parentNode : null;
+
+                if (row && row.offsetParent) {
+                    var top = 0;
+
+                    for (var el = row; el && (el !== node); el = el.offsetParent) {
+                        top += el.offsetTop;
+                    }
+
+                    at = { y: top + row.offsetHeight / 2 };
+                }
+            }
+
+            if (at && (typeof at.y === 'number')) {
+                y = at.y;
+            }
+
+            return { x: item.x + box.w, y: item.y + y };
+        }
+
+        // Where an arrow ends on a target: the middle of its left edge, or
+        // its place among the arrows into it (slot of slots).
+        function into(item, slot, slots) {
+            var box = size(item);
+
+            return { x: item.x, y: item.y + ((slots > 1) ? box.h * (slot + 1) / (slots + 1) : box.h / 2) };
         }
 
         // A box of the graph at its place: focusable, named for a screen
         // reader, its in port first, fill(box) its content, its out port
-        // last. options: { className, into, out, fill }.
+        // last. options: { className, into, out, fill, thumb }; thumb puts a
+        // holder for the box's picture before the content (adapter.thumb()
+        // fills it once the box is in sight). A box the adapter sizes is
+        // drawn at its size.
         function box(item, options) {
             var node = document.createElement('div');
 
@@ -515,8 +636,19 @@
             node.setAttribute('data-node', item.id);
             node.setAttribute('data-refocus', 'box-' + item.id);
 
+            if (adapter.size) {
+                var dims = size(item);
+
+                node.style.width = dims.w + 'px';
+                node.style.height = dims.h + 'px';
+            }
+
             if (options.into) {
                 node.appendChild(port('in'));
+            }
+
+            if (options.thumb && adapter.thumb) {
+                thumb(item, node.appendChild(document.createElement('div')));
             }
 
             if (options.fill) {
@@ -547,23 +679,99 @@
             }
         }
 
-        // An arrow from one box's right edge to another's left one, its
-        // index in data-edge, a wide invisible path over it to press; its
-        // group is added to ui.svg. Its path and middle are returned.
-        function edge(index, from, to) {
-            var path = curve(from.x + BOX_W, from.y + BOX_H / 2, to.x, to.y + BOX_H / 2);
+        // A box's picture holder, filled by the adapter once it is in sight
+        // (at once where the browser cannot tell).
+        function thumb(item, holder) {
+            holder.className = classes.thumb;
+            holder.setAttribute('aria-hidden', 'true');
+
+            if (!window.IntersectionObserver) {
+                adapter.thumb(item, holder);
+                return;
+            }
+
+            if (!watcher) {
+                watcher = new window.IntersectionObserver(function (entries) {
+                    entries.forEach(function (entry) {
+                        var target = entry.target.pgcThumb;
+
+                        if (entry.isIntersecting && target) {
+                            delete entry.target.pgcThumb;
+                            watcher.unobserve(entry.target);
+                            adapter.thumb(target, entry.target);
+                        }
+                    });
+                }, { root: ui.viewport });
+            }
+
+            holder.pgcThumb = item;
+            watcher.observe(holder);
+        }
+
+        function route(one) {
+            var start = from(one.from, one.options.port);
+            var end = into(one.to, one.options.slot || 0, one.options.slots || 1);
+
+            return curve(start.x, start.y, end.x, end.y);
+        }
+
+        // An arrow from a box's right edge (or its named port) to a target's
+        // left one, its id (an index, or a stable name) in data-edge, a wide
+        // invisible path over it to press; its group is added to ui.svg.
+        // options: { port, slot, slots } (spread()). Its path and middle are
+        // returned.
+        function edge(id, source, target, options) {
+            var one = { from: source, to: target, options: options || {} };
+            var path = route(one);
             var group = svgEl('g', classes.edge);
             var line = svgEl('path', classes.edge + '-line');
             var hit = svgEl('path', classes.edge + '-hit');
 
-            group.setAttribute('data-edge', String(index));
+            group.setAttribute('data-edge', String(id));
             line.setAttribute('d', path.d);
             hit.setAttribute('d', path.d);
             group.appendChild(line);
             group.appendChild(hit);
             ui.svg.appendChild(group);
+            one.group = group;
+            drawn[String(id)] = one;
 
             return { group: group, path: path };
+        }
+
+        // The arrows from or into the boxes of these ids drawn again where
+        // they now are (a box moved), the others left as they are. An arrow
+        // whose group left ui.svg is forgotten.
+        function reroute(ids) {
+            var wanted = {};
+
+            ids.forEach(function (id) { wanted[String(id)] = true; });
+
+            Object.keys(drawn).forEach(function (key) {
+                var one = drawn[key];
+
+                if (one.group.parentNode !== ui.svg) {
+                    delete drawn[key];
+                    return;
+                }
+
+                if (wanted[String(one.from.id)] || wanted[String(one.to.id)]) {
+                    var path = route(one);
+
+                    one.group.children[0].setAttribute('d', path.d);
+                    one.group.children[1].setAttribute('d', path.d);
+                }
+            });
+        }
+
+        // The boxes moved: the adapter draws the arrows again, else only
+        // those of the box moved are.
+        function rerouted(item) {
+            if (adapter.edges) {
+                adapter.edges();
+            } else {
+                reroute([item.id]);
+            }
         }
 
         // What is selected ({ type, id }, null for nothing) marked on the
@@ -592,11 +800,28 @@
             window.setTimeout(function () { ui.live.textContent = message; }, 30);
         }
 
+        // The target under the pointer: its element and its item.
+        function targetAt(clientX, clientY) {
+            var under = document.elementFromPoint(clientX, clientY);
+            var over = closest(under, adapter.targets ? '[data-node], ' + adapter.targets : '[data-node]');
+
+            if (!over) {
+                return { element: null, item: null };
+            }
+
+            return { element: over, item: (adapter.target && (over.getAttribute('data-node') === null)) ? adapter.target(over) : adapter.item(over.getAttribute('data-node')) };
+        }
+
         function clearTargets() {
             Array.prototype.forEach.call(ui.boxes.querySelectorAll('.' + classes.target), function (node) { node.classList.remove(classes.target); });
         }
 
         // ── The core's drags ──
+
+        // An arrow's id as edge() was given it: a number for an index.
+        function edgeId(raw) {
+            return /^\d+$/.test(raw) ? parseInt(raw, 10) : raw;
+        }
 
         // A press the adapter left: an arrow from a box's out port, a box
         // moved, an arrow selected, else the canvas panned.
@@ -605,9 +830,12 @@
             var node = closest(target, '.' + classes.box + '[data-node]');
             var arrow = closest(target, '.' + classes.edge);
 
-            if (adapter.editable() && node && closest(target, '.' + classes.port + '-out')) {
+            var out = node ? closest(target, '.' + classes.port + '-out') : null;
+
+            if (adapter.editable() && out) {
                 next.kind = 'connect';
                 next.from = adapter.item(node.getAttribute('data-node'));
+                next.port = out.getAttribute('data-port');
                 event.preventDefault();
             } else if (node) {
                 next.kind = adapter.editable() ? 'move' : 'none';
@@ -622,7 +850,7 @@
                 node.focus({ preventScroll: true });
             } else if (arrow) {
                 next.kind = 'none';
-                adapter.select({ type: 'edge', id: parseInt(arrow.getAttribute('data-edge'), 10) });
+                adapter.select({ type: 'edge', id: edgeId(arrow.getAttribute('data-edge')) });
                 ui.viewport.focus({ preventScroll: true });
             } else {
                 next.kind = 'pan';
@@ -637,22 +865,21 @@
                 current.item.x = coord(current.ix + dx / v.k);
                 current.item.y = coord(current.iy + dy / v.k);
                 place(current.node, current.item);
-                adapter.edges();
+                rerouted(current.item);
                 return true;
             }
 
             if (current.kind === 'connect') {
                 var at = view.point(event.clientX, event.clientY);
-                var under = document.elementFromPoint(event.clientX, event.clientY);
-                var over = closest(under, '[data-node]');
-                var to = over ? adapter.item(over.getAttribute('data-node')) : null;
+                var start = from(current.from, current.port);
+                var aim = targetAt(event.clientX, event.clientY);
 
-                ui.temp.setAttribute('d', curve(current.from.x + BOX_W, current.from.y + BOX_H / 2, at.x, at.y).d);
+                ui.temp.setAttribute('d', curve(start.x, start.y, at.x, at.y).d);
                 ui.temp.classList.remove(classes.hidden);
                 clearTargets();
 
-                if (to && adapter.canConnect(current.from, to)) {
-                    over.classList.add(classes.target);
+                if (aim.item && adapter.canConnect(current.from, aim.item, current.port || null)) {
+                    aim.element.classList.add(classes.target);
                 }
 
                 return true;
@@ -664,14 +891,13 @@
 
         function releaseOwn(event, done) {
             if (done.kind === 'connect') {
-                var under = document.elementFromPoint(event.clientX, event.clientY);
-                var over = closest(under, '[data-node]');
+                var aim = targetAt(event.clientX, event.clientY);
 
                 ui.temp.classList.add(classes.hidden);
                 clearTargets();
 
-                if (over && (event.type === 'pointerup')) {
-                    adapter.connected(done.from, adapter.item(over.getAttribute('data-node')));
+                if (aim.element && (event.type === 'pointerup')) {
+                    adapter.connected(done.from, aim.item, done.port || null);
                 }
 
                 return true;
@@ -825,7 +1051,7 @@
                 done.item.x = done.ix;
                 done.item.y = done.iy;
                 place(done.node, done.item);
-                adapter.edges();
+                rerouted(done.item);
             }
 
             adapter.cancel(done);
@@ -901,6 +1127,12 @@
             pointers = {};
             pinch = null;
             drag = null;
+            drawn = {};
+
+            if (watcher) {
+                watcher.disconnect();
+                watcher = null;
+            }
         }
 
         return {
@@ -908,6 +1140,9 @@
             box: box,
             place: place,
             edge: edge,
+            reroute: reroute,
+            port: port,
+            size: size,
             mark: mark,
             announce: announce,
             bind: bind,
@@ -927,7 +1162,9 @@
         BOX_H: BOX_H,
         ZOOM_MIN: ZOOM_MIN,
         ZOOM_MAX: ZOOM_MAX,
+        ZOOM_FLOOR: ZOOM_FLOOR,
         snap: snap,
+        spread: spread,
         clamp: clamp,
         svgEl: svgEl,
         curve: curve,

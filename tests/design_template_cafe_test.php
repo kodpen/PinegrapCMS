@@ -155,7 +155,10 @@ function test_design_template_cafe_clinic_privacy_page()
 	$consents = array(
 		'pinegrap-cafe'   => array('cf-res-consent', 'cf-quote-consent'),
 		'pinegrap-clinic' => array('cl-appt-consent'),
+		'pinegrap-courses' => array('pco-enrol-consent'),
 		'pinegrap-events' => array('ev-reg-consent'),
+		'pinegrap-law'    => array('lw-con-consent', 'lw-app-consent'),
+		'pinegrap-realestate' => array('re-vw-consent', 're-va-consent'),
 		'pinegrap-salon'  => array('sl-book-consent'),
 	);
 	foreach ($consents as $id => $boxes) {
@@ -193,7 +196,7 @@ function _test_tpl_cafe_threads()
 function test_design_template_cafe_comment_widgets()
 {
 	$tpl = _tpl_threads_tpl('pinegrap-cafe');
-	pg_assert_same('1.1.0', $tpl['version'], 'the version moved');
+	pg_assert_same('1.1.2', $tpl['version'], 'the version moved');
 	_tpl_threads_check_no_fixed_block('pinegrap-cafe', array(
 		'conversation_replies' => 'comments', 'email_comment' => 'comments', 'post_comments' => 'comments',
 		'quote_messages' => 'comments', 'reservation_messages' => 'comments',

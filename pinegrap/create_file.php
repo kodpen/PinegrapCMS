@@ -40,9 +40,9 @@ if (!$_POST) {
         'icon'=>'file',
         'heading'=>lang('Create File'),
         'heading_description' => lang('Create a new editable file'),
-        'cancel'=>array('enable'=>'true','url'=>'view_files.php'),
+        'cancel'=>array('enable'=>'true','url'=>'view_folders.php?view=files'),
         'breadcrumb' => array(
-            array('label' => lang('All My Files'), 'url' => 'view_files.php'),
+            array('label' => lang('File Manager'), 'url' => 'view_folders.php?view=files'),
             array('label' => lang('Create File')),
         ),
     )) . '
@@ -238,10 +238,10 @@ if (!$_POST) {
 
     log_activity(lang(array('string'=>'file ({var:1}) was created','vars'=>$name)), $_SESSION['sessionusername']);
 
-    // The notice must be attached to the form rendered by view_files.php.
-    $liveform_view_files = new liveform('view_files');
-    $liveform_view_files->add_notice(lang('The file was created successfully.'));
-    header('Location: view_files.php');
+    // The notice is left for the File Manager, which prints it (view_folders.php).
+    $liveform_view_folders = new liveform('view_folders');
+    $liveform_view_folders->add_notice(lang('The file was created successfully.'));
+    header('Location: view_folders.php?view=files');
     exit();
 }
 ?>
