@@ -1448,6 +1448,8 @@
     "{var:1} row(s) brought back.": "{var:1} satır geri alındı.",
     "{var:1} row(s) put aside. They stay listed under \"Put aside\" and can be brought back.": "{var:1} satır kenara ayrıldı. \"Kenara ayrıldı\" sekmesinde durur ve geri alınabilir.",
     "{var:1} rows": "{var:1} satır",
+    "{var:1} rows changed": "{var:1} satır değiştirildi",
+    "{var:1} rows could not be changed": "{var:1} satır değiştirilemedi",
     "{var:1} rows from “{var:2}”": "“{var:2}” dosyasından {var:1} satır",
     "{var:1} rows loaded": "{var:1} satır yüklendi",
     "{var:1} rows were imported.": "{var:1} satır içe aktarıldı.",
