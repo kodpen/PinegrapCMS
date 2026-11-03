@@ -63,7 +63,7 @@ if ($_POST) {
         go($self_url . '?tab=sms');
     }
 
-    $mail_queue_action = pg_mail_queue_ready() ? (string) ($_POST['mail_action'] ?? '') : '';
+    $mail_queue_action = (pg_mail_queue_ready() && isset($_POST['mail_action']) && is_string($_POST['mail_action'])) ? $_POST['mail_action'] : '';
 
     if ($mail_queue_action === 'run_now') {
 
