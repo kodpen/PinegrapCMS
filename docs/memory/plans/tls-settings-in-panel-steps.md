@@ -32,5 +32,5 @@ description: Steps TP1-TP4 of plans/tls-settings-in-panel.md: scheme helper, Sec
   - `pg_ca_bundle_config_repair()` and its button are removed. The System Status CA row says which store is in use and why, and the TLS hint points there.
   - Tests: the chooser matrix.
 
-- TP4 (S) Workspace Claude notices an address change. `free`
+- TP4 (S) Workspace Claude notices an address change. Done, #5829.
   - `ws_claude_bootstrap_prompt()` sends its Site API with the instructions call, and the version is bumped. The instructions name the current Site API. The settings card warns when the sent address differs from `ws_claude_api_base()`.
