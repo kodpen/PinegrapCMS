@@ -3052,17 +3052,20 @@ function get_system_status_checks()
     //
     // Reported, not scored: an upgraded site has the switch off until the
     // operator turns it on, which is a choice, not a fault. Yellow when it is
-    // on and still sends the original: the server writes no WebP, or the
-    // panel came through a CDN nobody confirmed keeps a copy per format.
+    // on and the server writes no WebP, or the panel came through a CDN
+    // nobody confirmed keeps a copy per format: pictures then go private
+    // (the edge keeps no copy) or, when the self-test found the edge keeps
+    // private answers too, as the original.
     if (function_exists('pg_image_delivery_ready') && pg_image_delivery_ready()) {
 
-        require_once(PG_FUNCTIONS_DIR . '/includes/image_negotiation.php');
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/image_vary_check.php');
 
         $webp_written = pg_image_derivative_formats(pg_image_derivative_directory());
         $webp_state = pg_image_same_address_state(
             pg_image_delivery()['same_address'],
             !empty($webp_written['webp']),
-            pg_image_behind_proxy($_SERVER));
+            pg_image_behind_proxy($_SERVER),
+            pg_image_same_address_mode(pg_image_vary_state()));
         $webp_href = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/settings_features.php#pgset-images';
 
         if ($webp_state === 'off') {
@@ -3083,13 +3086,22 @@ function get_system_status_checks()
                 lang('No WebP'),
                 $webp_href
             );
-        } elseif ($webp_state === 'cdn') {
+        } elseif ($webp_state === 'private') {
             $output .= $makeIcon(
                 'bi-filetype-jpg',
                 'fg-warning',
                 'WebP At Own Address',
-                'WebP at the picture\'s own address is on, but this site is reached through a CDN that is not confirmed to keep a copy per format, so requests through it get the original. Set up the CDN to cache pictures per Accept value, then confirm it in Image Optimization.',
-                lang('CDN not confirmed'),
+                'WebP is sent; the CDN keeps no copy of pictures until confirmed. This site is reached through a CDN that is not confirmed to keep a copy per format, so pictures go out private and each first view reaches the server. A daily check confirms the CDN by itself once it keeps a copy per Accept value.',
+                lang('Private'),
+                $webp_href
+            );
+        } elseif ($webp_state === 'original') {
+            $output .= $makeIcon(
+                'bi-filetype-jpg',
+                'fg-warning',
+                'WebP At Own Address',
+                'WebP at the picture\'s own address is on, but the CDN in front of this site keeps pictures marked private too, so requests through it get the original until a daily check finds it keeps a copy per format. Set up the CDN to cache pictures per Accept value.',
+                lang('Original'),
                 $webp_href
             );
         } else {
