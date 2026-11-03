@@ -22,7 +22,11 @@ module: form_payments
 - `pg_form_payment_order_write($record_id, $fee, $contact)`: an incomplete order (site currency, billing from the contact fields, `subtotal` = `total` = the fee, `offline_payment_allowed` only when the form and the store allow it), one `order_items` line of the fee product, quantity 1, no tax or shipping on top: the visitor pays the figure shown. Columns from `pg_form_payment_order_columns()` (pure). A record that already has an order keeps it, so a retry charges the same order. `orders.notes` untouched.
 - `pg_order_complete()` calls `pg_form_payment_mark_paid($order_id)` after the order number is given, for every order: `UPDATE forms SET paid_at = ? WHERE order_id = ? AND paid_at = 0`, so a second completion message changes nothing and an order without a record costs one indexed update.
 - System fields `order_number` (the completed order's number) and `paid` ("Paid" or '') join `get_standard_fields_for_view()` once the columns exist.
-- Not yet: the payment step on the site and the confirmation mail when paid (FL5), the badge, filter, offline record and API (FL6).
+- `pg_order_complete()` marks the record only when the completion writes `paid_at` > 0: an offline order completes unpaid (#6368).
+- Not yet: the confirmation mails when paid (sent by no path now; a record owing a fee gets none at submit), the badge, filter, offline record and API (FL6).
+
+## How does the site take the payment?
+- `custom-form-payment-step.md` (FL5, #6368).
 
 ## Where does the designer set it?
 - Custom Form Settings, last rows (`_cfPaymentRows()`): the fee product (`list_fee_products`, the first 2000 by name), the amount source, the field and min/max in major units (stored in minor units), offline. Drawn only when `formMeta.payment` (store on and columns there). Written as one `payment` object (`.sd-cf-pay` handler).
