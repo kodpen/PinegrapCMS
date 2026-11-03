@@ -54,6 +54,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - design-template-dealership.md: Plan for the Car Dealership template (pinegrap-dealership): vehicles as a collection with filters, test drive, trade-in and finance requests followed from the account; parts in a folder; steps 1-8
 - design-template-hotel.md: Plan for the Hotel template (pinegrap-hotel): rooms as a collection with rates, booking and event enquiries followed from the account, gift vouchers in the shop; parts in a folder; steps 1-9
 - design-template-market.md: Plan for the Marketplace template (pinegrap-market): makers' shops as a Sellers collection beside the store's catalog, seller applications and order help; parts in a folder; steps 1-8
+- design-template-social.md: Plan for the Social Community template (pinegrap-social): a photo community on member-sent Posts and Profiles collections, comments, tags, saved posts; steps 1-8, likes held (#6296)
 - designer-form-logic-steps-2.md: Steps FL5-FL8 of plans/designer-form-logic.md: the payment step on the site, the staff side and API, template fees, close-out; claim as [plan:designer-form-logic] FL<n>
 - designer-form-logic-steps.md: Steps FL1-FL4 of plans/designer-form-logic.md: Shown when rules, form steps with progress, the browser draft, the fee setting and order writer; claim as [plan:designer-form-logic] FL<n>
 - designer-form-logic.md: Plan (owner 2026-11-02): designed forms get Shown-when rules, steps with progress, and a payment step that places a one-line order through the payment drivers; steps FL1-FL8
