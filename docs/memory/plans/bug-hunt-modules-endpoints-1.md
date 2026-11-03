@@ -37,7 +37,7 @@ description: Module list of plans/bug-hunt.md, part 3: root endpoint groups acco
 - Endpoints `field` (4): clean (OV; add_field, edit_field, delete_fields, view_fields)
 - Endpoints `file` (6): done #5407 (OV; edit_files ERP rows; add_file, edit_file, get_file ERP and key gates, get_files_for_picker clean)
 - Endpoints `find` (2): clean #6027
-- Endpoints `folder` (8): #6027 (folder view listed form uploads); rest taken by AR
+- Endpoints `folder` (8): #6027 (folder view listed form uploads), #6066 (copies dropped the upload mark); rest clean
 - Endpoints `forgot` (2): taken by AR
 - Endpoints `form` (6, and get_form_view_directory_screen_content): done #4571, #4582
 - Endpoints `generate` (3): open

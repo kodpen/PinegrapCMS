@@ -469,7 +469,7 @@ function pg_explorer_copy_folder($source_id, $target_parent_id, $user, &$errors,
 
     // Files.
     $files = db_items(
-        "SELECT id, name, description, type, design, optimized, image_width, image_height, optimization_percent
+        "SELECT id, name, description, type, design, attachment, optimized, image_width, image_height, optimization_percent
         FROM files
         WHERE folder = '" . e($source_id) . "'");
 
@@ -491,6 +491,9 @@ function pg_explorer_copy_folder($source_id, $target_parent_id, $user, &$errors,
                 continue;
             }
 
+            // A submitted form's upload stays one in the copy (attachment):
+            // get_file.php keeps refusing it to visitors without edit
+            // access, where a plain row would serve it to everyone.
             $new_file_name = get_unique_name(array('name' => prepare_file_name($file['name']), 'type' => 'file'));
             $new_path = FILE_DIRECTORY_PATH . '/' . $new_file_name;
 
@@ -507,6 +510,7 @@ function pg_explorer_copy_folder($source_id, $target_parent_id, $user, &$errors,
                     type,
                     size,
                     design,
+                    attachment,
                     optimized,
                     image_width,
                     image_height,
@@ -520,6 +524,7 @@ function pg_explorer_copy_folder($source_id, $target_parent_id, $user, &$errors,
                     '" . e(mb_strtolower(pathinfo($new_file_name, PATHINFO_EXTENSION))) . "',
                     '" . e(filesize($new_path)) . "',
                     '" . e($file['design']) . "',
+                    '" . (int) $file['attachment'] . "',
                     '" . e($file['optimized']) . "',
                     " . (($file['image_width'] !== null && $file['image_width'] !== '') ? "'" . e($file['image_width']) . "'" : "NULL") . ",
                     " . (($file['image_height'] !== null && $file['image_height'] !== '') ? "'" . e($file['image_height']) . "'" : "NULL") . ",
