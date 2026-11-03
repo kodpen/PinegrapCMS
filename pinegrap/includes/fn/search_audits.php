@@ -8,7 +8,8 @@
  * its scheduled job switch, and one bounded tick of Run now
  * (search_audits_run.php).
  *
- * Loaded by the screen and its run endpoint, not by functions.php.
+ * Loaded by the screen, its run endpoint and the installer, not by
+ * functions.php.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -153,6 +154,39 @@ function pg_search_audits_switch_list($current, $name, $on, $dispatchable)
     }
 
     return implode(',', $list);
+}
+
+/**
+ * The jobs a new site runs from its first day: the search index, the HTML
+ * structure check and the accessibility check. The SEO score job stays off.
+ *
+ * @return string[]
+ */
+function pg_search_audits_new_site_jobs()
+{
+    return array('update_search_index', 'seo_analyze_job', 'seo_a11y_job');
+}
+
+/**
+ * The dispatch list with the new-site jobs added. Pure.
+ *
+ * The names already there are kept, nothing is doubled and the list is in
+ * catalogue order, filtered against the dispatchable jobs
+ * (pg_search_audits_switch_list()).
+ *
+ * @param string   $current      The stored list, comma separated.
+ * @param string[] $dispatchable Names of the catalogue's dispatchable jobs, in order.
+ * @return string
+ */
+function pg_search_audits_new_site_list($current, $dispatchable)
+{
+    $list = (string) $current;
+
+    foreach (pg_search_audits_new_site_jobs() as $job) {
+        $list = pg_search_audits_switch_list($list, $job, true, $dispatchable);
+    }
+
+    return $list;
 }
 
 /**

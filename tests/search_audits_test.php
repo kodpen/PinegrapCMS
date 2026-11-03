@@ -77,6 +77,21 @@ function test_search_audits_switch_list()
 	pg_assert_same('update_search_index', pg_search_audits_switch_list('update_search_index', 'update_search_index', true, $jobs), 'already on');
 }
 
+// A new install adds the index, structure and accessibility jobs to the
+// stored list in catalogue order, keeps what was there and doubles nothing;
+// the SEO score job stays off.
+function test_search_audits_new_site_list()
+{
+	$jobs = array('email_campaign_job', 'update_search_index', 'seo_score_job', 'seo_analyze_job', 'seo_a11y_job');
+
+	pg_assert_same(array('update_search_index', 'seo_analyze_job', 'seo_a11y_job'), pg_search_audits_new_site_jobs());
+	pg_assert_same('update_search_index,seo_analyze_job,seo_a11y_job', pg_search_audits_new_site_list('', $jobs), 'empty list');
+	pg_assert_same('email_campaign_job,update_search_index,seo_analyze_job,seo_a11y_job', pg_search_audits_new_site_list('seo_a11y_job,email_campaign_job', $jobs), 'kept and ordered');
+	pg_assert_same('update_search_index,seo_analyze_job,seo_a11y_job', pg_search_audits_new_site_list('update_search_index,seo_analyze_job,seo_a11y_job', $jobs), 'nothing doubled');
+	pg_assert_same('email_campaign_job,update_search_index,seo_score_job,seo_analyze_job,seo_a11y_job', pg_search_audits_new_site_list('seo_score_job,email_campaign_job', $jobs), 'a chosen score job kept');
+	pg_assert_same('update_search_index,seo_a11y_job', pg_search_audits_new_site_list('', array('update_search_index', 'seo_a11y_job')), 'only dispatchable names');
+}
+
 // Every literal piece of the translated line, in its order, so a line that
 // shares only one piece with another (the Turkish failure line and the
 // "ran the accessibility check" line) is not taken for it.

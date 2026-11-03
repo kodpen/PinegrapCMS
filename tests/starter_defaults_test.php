@@ -78,3 +78,23 @@ function test_starter_defaults_data_step_empties_only_stock_script()
 	pg_assert_true(strpos($step, 'WHERE BINARY social_networking_code IN') !== false, 'only a byte-identical stock script is emptied');
 	pg_assert_true(strpos($step, 'title') === false && strpos($step, 'arrival_dates') === false, 'the title and arrival names are not migrated');
 }
+
+// A starter-site install switches the general job's dispatch on with the
+// index, structure and accessibility jobs; a restored backup keeps its own.
+function test_starter_defaults_install_switches_jobs_on()
+{
+	$source = starter_defaults_source('install/index.php');
+
+	$start = strpos($source, "install_column_exists('config', 'job_dispatch_enabled')");
+	pg_assert_true($start !== false, 'the installer checks job_dispatch_enabled');
+
+	$block = substr($source, (int) strrpos(substr($source, 0, (int) $start), 'if ('), 1600);
+
+	pg_assert_true(strpos($block, "get_starter_site_language(\$install_directory_path) !== ''") !== false, 'only a starter site');
+	pg_assert_true(strpos($block, "install_column_exists('config', 'job_dispatch')") !== false, 'the list column is checked');
+	pg_assert_true(strpos($block, 'pg_search_audits_new_site_list(') !== false, 'the list comes from the pure helper');
+	pg_assert_true(strpos($block, 'pg_search_audits_dispatchable()') !== false, 'filtered against the catalogue');
+	pg_assert_true(strpos($block, 'job_dispatch_enabled = 1') !== false, 'the master switch goes on');
+	pg_assert_true(strpos($block, "lang('Site Settings › Updates and maintenance › Cron Jobs')") !== false, 'the step names where the switch is');
+	pg_assert_true(strpos($source, "includes/fn/search_audits.php") !== false, 'the installer loads the helper module');
+}

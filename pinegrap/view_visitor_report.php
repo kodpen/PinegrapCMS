@@ -779,7 +779,10 @@ if (!$_POST) {
     // that reaches back past the period still has its totals. The summary
     // answers the date changer's window with year / month / day and at most
     // one other grouping; a filter, or a grouping the summary does not hold,
-    // reads the rows alone and says the older days are missing.
+    // reads the rows alone and says the older days are missing. The first
+    // raw day is where the rows are complete (pg_visitor_rows_from()): the
+    // summary holds the later days too, but this screen filters and lists
+    // single visits, so it reads the rows wherever they are all there.
     $summary_groupings = array();
 
     for ($i = 1; $i <= 3; $i++) {
@@ -791,7 +794,7 @@ if (!$_POST) {
 
     $summary_rows = array();
     $summary_notice = '';
-    $summary_raw_from = pg_visitor_summary_raw_from();
+    $summary_raw_from = pg_visitor_rows_from();
 
     if (($summary_raw_from > 0) && ($date_filter_exists == false) && ($start_timestamp < $summary_raw_from)) {
 

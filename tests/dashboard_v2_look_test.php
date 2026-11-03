@@ -95,3 +95,23 @@ function test_dashboard_v2_chart_tip_names_its_colours()
 	pg_assert_true((bool) preg_match('/html\[data-bs-theme="dark"\] \.pg-dash-tip \{[^}]*background: #[0-9a-f]{6};[^}]*color: #[0-9a-f]{6};/', $css), 'dark page');
 	pg_assert_false((bool) preg_match('/\.pg-dash-tip \{[^}]*var\(--pgd-/', $css), 'no palette token in the figure box');
 }
+
+// A 2560 px screen gave three cards of 760 px, and five columns stretched the
+// greeting and the wide cards across it. The parts stop at 118rem, centred,
+// and the columns follow the dashboard's own width (the rail may be open);
+// the window decides only where container queries are missing.
+function test_dashboard_v2_grid_follows_the_dashboard_width()
+{
+	$css = pg_test_dashboard_v2_look_css();
+
+	pg_assert_contains("  .pg-dash {\n    container: pgdash / inline-size;\n  }", $css, 'the dashboard is the query container');
+	pg_assert_contains("  .pg-dash > * {\n    max-width: 118rem;\n    margin-inline: auto;\n  }", $css, 'its parts stop at 118rem, centred');
+	foreach (array(2 => '38rem', 3 => '58rem', 4 => '94rem') as $columns => $width) {
+		pg_assert_true((bool) preg_match('/@container pgdash \(min-width: ' . preg_quote($width, '/') . '\) \{\s*\.pg-dash-grid \{\s*grid-template-columns: repeat\(' . $columns . ', /', $css), $columns . ' columns from ' . $width);
+	}
+	pg_assert_true((bool) preg_match('/@container pgdash \(min-width: 38rem\) \{[^@]*\[data-width="M"\] \{\s*grid-column: span 2;/', $css), 'M spans two only beside a second column');
+
+	$fallback = '/  @supports not \(container-type: inline-size\) \{.*?\n  \}\n/s';
+	pg_assert_same(1, preg_match($fallback, $css), 'one fallback for browsers without container queries');
+	pg_assert_false((bool) preg_match('/@media \([^)]*width[^)]*\) \{\s*\.pg-dash-(grid|tiles|top)\b/', preg_replace($fallback, '', $css)), 'no window-width rule for the grid, tiles or top outside it');
+}
