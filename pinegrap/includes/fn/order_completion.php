@@ -1087,12 +1087,17 @@ function pg_order_complete_lines($order_id, array $lines, array $order)
     // the first one left, not from the stock read before the loop.
     $stock_left = array();
 
+    // The location the order takes its units from, stored on the order (0
+    // and nothing written when the site keeps no stock per location).
+    $stock_location_id = pg_stock_order_location_save($order_id);
+    $stock_ref = (string) ($order['order_number'] ?? $order_id);
+
     foreach ($lines as $product) {
         $quantity = $product['quantity'];
         $contact_group_id = $product['contact_group_id'];
 
         // Stock and a calendar event's spots.
-        pg_order_complete_line_stock($product, $stock_left, $actor);
+        pg_order_complete_line_stock($product, $stock_left, $actor, $stock_location_id, $stock_ref);
         pg_order_complete_line_reservation($product, $contact_id);
 
         // if contact group has not already been added to array, add it to array
@@ -1651,11 +1656,20 @@ function pg_order_folder_access_extends($rights, $expiration_date)
  * @param array  $line       an order line joined to its product: order_item_id,
  *                           product_id, product_name, short_description,
  *                           quantity, inventory, inventory_quantity
+ * With stock per location the units come off the order's location only
+ * (pg_stock_sale_take()); the total and the out-of-stock flag follow from
+ * the rows.
+ *
+ * @param array  $line       an order line joined to its product: order_item_id,
+ *                           product_id, product_name, short_description,
+ *                           quantity, inventory, inventory_quantity
  * @param array  $stock_left product id => stock left, carried between lines
  * @param string $actor      user name on the out-of-stock notification
+ * @param int    $location_id the order's location, 0 without locations
+ * @param string $ref        the order number, kept on the stock move
  * @return void
  */
-function pg_order_complete_line_stock(array $line, array &$stock_left, $actor)
+function pg_order_complete_line_stock(array $line, array &$stock_left, $actor, $location_id = 0, $ref = '')
 {
     $product_id = $line['product_id'];
 
@@ -1663,7 +1677,7 @@ function pg_order_complete_line_stock(array $line, array &$stock_left, $actor)
     // sold with (includes/fn/bundles.php); its own cached stock follows from
     // the refresh the components' announcements run.
     if (pg_bundle_sale_takes_components($product_id, $line['order_item_id'] ?? 0, pg_bundle_ids_among(array($product_id)))) {
-        pg_bundle_take_stock($line['order_item_id'], $product_id, $line['quantity'], 'checkout', $stock_left);
+        pg_bundle_take_stock($line['order_item_id'], $product_id, $line['quantity'], 'checkout', $stock_left, $location_id);
         return;
     }
 
@@ -1686,8 +1700,15 @@ function pg_order_complete_line_stock(array $line, array &$stock_left, $actor)
         return;
     }
 
-    db_q("UPDATE products SET inventory_quantity = (inventory_quantity - ?) WHERE id = ?",
-        array((string) $line['quantity'], (string) $product_id)) or output_error('Query failed.');
+    $sale = pg_stock_sale_take($product_id, $line['quantity'], $location_id, 'checkout', $ref);
+
+    if ($sale === null) {
+        db_q("UPDATE products SET inventory_quantity = (inventory_quantity - ?) WHERE id = ?",
+            array((string) $line['quantity'], (string) $product_id)) or output_error('Query failed.');
+    } elseif ($sale['taken'] === 0) {
+        // The location has none left: nothing is taken from another one.
+        return;
+    }
 
     // Out of stock from the stock left after this line, not from the stock
     // read before: the column is unsigned and the session sql_mode is not
@@ -1720,7 +1741,8 @@ function pg_order_complete_line_stock(array $line, array &$stock_left, $actor)
         $product_id,
         (int) $inventory_quantity,
         null,
-        'checkout');
+        'checkout',
+        ($sale === null) ? null : $sale['location']);
 }
 
 /**

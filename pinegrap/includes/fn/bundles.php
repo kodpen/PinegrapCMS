@@ -634,9 +634,11 @@ function pg_bundle_sale_takes_components($product_id, $order_item_id, $bundle_id
  * @param int    $quantity      bundles sold on the line
  * @param string $source        checkout, local_sale or marketplace
  * @param array  $stock_left    product_id => stock left, carried by the caller
+ * @param int    $location_id   the location the units come off with stock per
+ *                              location (0: the default location)
  * @return void
  */
-function pg_bundle_take_stock($order_item_id, $bundle_id, $quantity, $source, &$stock_left)
+function pg_bundle_take_stock($order_item_id, $bundle_id, $quantity, $source, &$stock_left, $location_id = 0)
 {
     $order_item_id = (int) $order_item_id;
     $quantity = max(0, (int) $quantity);
@@ -668,7 +670,13 @@ function pg_bundle_take_stock($order_item_id, $bundle_id, $quantity, $source, &$
             continue;
         }
 
-        db("UPDATE products SET inventory_quantity = (inventory_quantity - '" . ($per_bundle * $quantity) . "') WHERE id = '" . $product_id . "'");
+        $sale = pg_stock_sale_take($product_id, $per_bundle * $quantity, $location_id, $source, (string) $order_id);
+
+        if ($sale === null) {
+            db("UPDATE products SET inventory_quantity = (inventory_quantity - '" . ($per_bundle * $quantity) . "') WHERE id = '" . $product_id . "'");
+        } elseif ($sale['taken'] === 0) {
+            continue;
+        }
 
         // The column is unsigned and the session is not strict, so selling
         // through the stock leaves 0; the guard raises the warning once.
@@ -687,7 +695,8 @@ function pg_bundle_take_stock($order_item_id, $bundle_id, $quantity, $source, &$
                 'product_id' => $product_id));
         }
 
-        $stock_left[$product_id] = pg_product_stock_changed($product_id, $before, null, $source);
+        $stock_left[$product_id] = pg_product_stock_changed($product_id, $before, null, $source,
+            ($sale === null) ? null : $sale['location']);
     }
 }
 
