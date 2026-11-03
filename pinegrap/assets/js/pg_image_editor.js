@@ -397,15 +397,18 @@
 
         this.nameEl = el('div', { class: 'pgie-fname', text: name || t('dialog') });
         this.saveBox = el('div', { class: 'pgie-savebox' });
+        this.closeBtn = mini
+            ? button('pgie-btn', t('cancel'), null, function () { self.requestClose(); }, true)
+            : button('pgie-ibtn', t('close'), 'close', function () { self.requestClose(); });
 
         var top = el('header', { class: 'pgie-top' }, [
-            mini ? null : button('pgie-ibtn', t('close'), 'close', function () { self.requestClose(); }),
+            mini ? null : this.closeBtn,
             el('div', { class: 'pgie-file' }, [this.nameEl, this.meta]),
             mini ? null : el('div', { class: 'pgie-sepv' }),
             mini ? null : this.undoBtn,
             mini ? null : this.redoBtn,
             el('div', { class: 'pgie-grow' }),
-            mini ? button('pgie-btn', t('cancel'), null, function () { self.requestClose(); }, true) : null
+            mini ? this.closeBtn : null
         ].concat(Editor.topItems.map(function (item) { return mini ? null : item.call(self); }), [
             this.saveBox,
             this.fullBtn
@@ -591,9 +594,26 @@
         this.loadImage(this.opts.src || r.file.url);
     };
 
+    // A file that could not be opened: the message stays on the stage and
+    // only Close (Cancel in the mini bar) is left working; every tool, the
+    // panel and Save are switched off, as there is nothing to edit or save.
     Editor.prototype.fail = function (message) {
+        var keep = this.closeBtn;
+
         this.notice.textContent = message;
         this.notice.classList.add('pgie-error');
+        this.failed = true;
+        this.root.classList.add('pgie-failed');
+
+        Array.prototype.forEach.call(this.root.querySelectorAll('button, input, select, textarea'), function (c) {
+            if (c !== keep) {
+                c.disabled = true;
+            }
+        });
+
+        if (keep) {
+            keep.focus({ preventScroll: true });
+        }
     };
 
     Editor.prototype.loadImage = function (src) {
@@ -1238,6 +1258,11 @@
                 this.onEscape();
             }
 
+            return;
+        }
+
+        // A file that could not be opened answers only Escape (above).
+        if (this.failed) {
             return;
         }
 
