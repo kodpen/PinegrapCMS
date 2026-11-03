@@ -692,10 +692,10 @@
             nav.textContent = "";
 
             state.actions.forEach(function (key, i) {
-                var drawn = greetingCopy.querySelector('[data-shortcut="' + key + '"] .pg-btn-label');
+                var drawn = greetingCopy.querySelector('[data-shortcut="' + key + '"]');
                 var label = drawn ? drawn.textContent : config.edit.shortcuts[key].label;
-                var chip = el("span", "pg-dash-action-edit" + (i === 0 ? " pg-dash-action-main" : ""));
-                chip.appendChild(el("span", "pg-btn-label", label));
+                var chip = el("span", "pg-dash-btn pg-dash-action-edit" + (i === 0 ? " pg-dash-btn-main" : ""));
+                chip.appendChild(el("span", "pg-dash-action-label", label));
                 var drop = button("pg-dash-action-remove", "", fmt(S.remove_item, label));
                 drop.appendChild(icon("bi-x-lg"));
                 drop.addEventListener("click", function () {
@@ -713,7 +713,7 @@
             });
 
             if ((state.actions.length < 6) && spare.length) {
-                var add = button("btn btn-outline theme-secondary pg-dash-action-add", "+ " + S.add_action);
+                var add = button("pg-dash-btn pg-dash-action-add", "+ " + S.add_action);
                 add.addEventListener("click", function () {
                     state.actions.push(spare[0]);
                     greetingDirty = true;

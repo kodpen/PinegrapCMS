@@ -17,7 +17,6 @@
     "use strict";
 
     var pgDash = window.pgDash = window.pgDash || {};
-    var SVG = "http://www.w3.org/2000/svg";
 
     pgDash.renderers = pgDash.renderers || {};
 
@@ -81,40 +80,23 @@
         });
     }
 
-    // One arc from the top, as long as its share; the figure in the middle.
-    // The label says what the ring shows, and the figure is also text.
+    // One arc from the top, as long as its share, drawn by the stylesheet
+    // from --pg-dash-ring-share; the figure in the middle. The dial is the
+    // image and its label says what the ring shows; the figure is also text.
+    // A ring under 70 % ends in another colour.
     function ring(share, label, value, tone) {
-        var box = pgDash.el("span", "pg-dash-goal-ring");
-        var picture = document.createElementNS(SVG, "svg");
-        picture.setAttribute("viewBox", "0 0 36 36");
-        picture.setAttribute("role", "img");
-        picture.setAttribute("class", "pg-dash-goal-ring-svg");
-        var title = document.createElementNS(SVG, "title");
-        title.textContent = label;
-        picture.appendChild(title);
-
-        var radius = "15.915";
-        var track = document.createElementNS(SVG, "circle");
-        track.setAttribute("cx", "18");
-        track.setAttribute("cy", "18");
-        track.setAttribute("r", radius);
-        track.setAttribute("class", "pg-dash-goal-ring-track");
-        picture.appendChild(track);
-
         var part = Math.max(0, Math.min(1, share || 0)) * 100;
-        if (part > 0) {
-            var arc = document.createElementNS(SVG, "circle");
-            arc.setAttribute("cx", "18");
-            arc.setAttribute("cy", "18");
-            arc.setAttribute("r", radius);
-            arc.setAttribute("class", "pg-dash-goal-ring-arc");
-            arc.setAttribute("stroke-dasharray", part.toFixed(2) + " " + (100 - part).toFixed(2));
-            arc.setAttribute("stroke-dashoffset", "25");
-            picture.appendChild(arc);
-        }
+        var box = pgDash.el("span", "pg-dash-goal-ring");
+        var dial = pgDash.el("span", "pg-dash-goal-ring-dial");
+        dial.setAttribute("role", "img");
+        dial.setAttribute("aria-label", label);
+        dial.style.setProperty("--pg-dash-ring-share", part.toFixed(2) + "%");
 
         box.setAttribute("data-tone", tone || "");
-        box.appendChild(picture);
+        if (part < 70) {
+            box.setAttribute("data-low", "");
+        }
+        box.appendChild(dial);
         box.appendChild(pgDash.el("span", "pg-dash-goal-ring-value", value));
         return box;
     }

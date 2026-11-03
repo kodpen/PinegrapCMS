@@ -15,36 +15,182 @@
 
 @layer custom {
 
+  /* ── Palette ──────────────────────────────────────────────────────────────
+     The drawings' colours, read by every part below: the dark values are the
+     drawings' own, the light ones keep the same hues on a white card. A part
+     never picks a colour of its own, so a look changes in one place. The
+     switch row takes them too, since the old dashboard draws it as well. */
+
+  .pg-dash,
+  .pg-dash-switch {
+    --pgd-fg: #1e293b;
+    --pgd-strong: #0f172a;
+    --pgd-soft: #334155;
+    --pgd-muted: #64748b;
+    --pgd-card: #fff;
+    --pgd-line: rgba(15, 23, 42, .1);
+    --pgd-line-2: rgba(15, 23, 42, .16);
+    --pgd-fill: rgba(15, 23, 42, .03);
+    --pgd-tile: rgba(15, 23, 42, .025);
+    --pgd-tile-line: rgba(15, 23, 42, .09);
+    --pgd-field: #fff;
+    --pgd-accent: #0e7490;
+    --pgd-accent-line: rgba(14, 116, 144, .5);
+    --pgd-main: linear-gradient(90deg, #0e7490, #4f46e5 55%, #a21caf);
+    --pgd-main-glow: 0 6px 18px rgba(79, 70, 229, .22);
+    --pgd-name: linear-gradient(90deg, #0e7490, #4f46e5 50%, #a21caf);
+    --pgd-good: #047857;
+    --pgd-good-bg: rgba(16, 185, 129, .1);
+    --pgd-good-line: rgba(16, 185, 129, .32);
+    --pgd-warn: #b45309;
+    --pgd-warn-bg: rgba(245, 158, 11, .12);
+    --pgd-warn-line: rgba(245, 158, 11, .38);
+    --pgd-bad: #b91c1c;
+    --pgd-bad-bg: rgba(239, 68, 68, .09);
+    --pgd-bad-line: rgba(239, 68, 68, .32);
+    --pgd-new: #0e7490;
+    --pgd-new-bg: rgba(6, 182, 212, .1);
+    --pgd-new-line: rgba(6, 182, 212, .35);
+    --pgd-new-dot: #06b6d4;
+    --pgd-shadow: 0 12px 30px rgba(15, 23, 42, .08);
+  }
+
+  html[data-bs-theme="dark"] .pg-dash,
+  html[data-bs-theme="dark"] .pg-dash-switch {
+    --pgd-fg: #eaf2fb;
+    --pgd-strong: #fff;
+    --pgd-soft: #c7d2e0;
+    --pgd-muted: #93a3b8;
+    --pgd-card: #0f1622;
+    --pgd-line: rgba(148, 163, 184, .14);
+    --pgd-line-2: rgba(148, 163, 184, .22);
+    --pgd-fill: rgba(255, 255, 255, .03);
+    --pgd-tile: rgba(255, 255, 255, .025);
+    --pgd-tile-line: rgba(148, 163, 184, .12);
+    --pgd-field: #0b111b;
+    --pgd-accent: #67e8f9;
+    --pgd-accent-line: rgba(34, 211, 238, .55);
+    --pgd-main-glow: 0 6px 24px rgba(79, 70, 229, .35);
+    --pgd-name: linear-gradient(90deg, #67e8f9, #a5b4fc 50%, #f0abfc);
+    --pgd-good: #bbf7d0;
+    --pgd-good-bg: rgba(52, 211, 153, .1);
+    --pgd-good-line: rgba(52, 211, 153, .25);
+    --pgd-warn: #fde68a;
+    --pgd-warn-bg: rgba(251, 191, 36, .1);
+    --pgd-warn-line: rgba(251, 191, 36, .25);
+    --pgd-bad: #fecaca;
+    --pgd-bad-bg: rgba(248, 113, 113, .1);
+    --pgd-bad-line: rgba(248, 113, 113, .28);
+    --pgd-new: #a5f3fc;
+    --pgd-new-bg: rgba(34, 211, 238, .1);
+    --pgd-new-line: rgba(34, 211, 238, .32);
+    --pgd-new-dot: #22d3ee;
+    --pgd-shadow: 0 18px 40px rgba(0, 0, 0, .35);
+  }
+
+  /* The drawings' button: 40 px, an 11 px corner, a quiet border; the main one
+     carries the gradient. */
+  .pg-dash .pg-dash-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    min-height: 2.5rem;
+    padding: 0 .875rem;
+    border: 1px solid var(--pgd-line-2);
+    border-radius: .6875rem;
+    background: var(--pgd-fill);
+    color: var(--pgd-fg);
+    font-size: .875rem;
+    font-weight: 500;
+    line-height: 1.2;
+    white-space: nowrap;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .pg-dash .pg-dash-btn > .bi {
+    font-size: 1rem;
+  }
+
+  .pg-dash .pg-dash-btn:hover {
+    border-color: var(--pgd-accent-line);
+    color: var(--pgd-strong);
+  }
+
+  .pg-dash .pg-dash-btn:focus-visible {
+    outline: 2px solid var(--pg-primary-ink);
+    outline-offset: 2px;
+  }
+
+  .pg-dash .pg-dash-btn-main {
+    border: 0;
+    background: var(--pgd-main);
+    color: #fff;
+    font-weight: 700;
+    box-shadow: var(--pgd-main-glow);
+  }
+
+  .pg-dash .pg-dash-btn-main:hover {
+    color: #fff;
+    filter: brightness(1.08);
+  }
+
+  @media (forced-colors: active) {
+    .pg-dash .pg-dash-btn,
+    .pg-dash .pg-dash-btn-main {
+      border: 1px solid ButtonText;
+      background: ButtonFace;
+      color: ButtonText;
+      box-shadow: none;
+    }
+  }
+
   /* ── Switch row ───────────────────────────────────────────────────────── */
 
   .pg-dash-switch {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: .25rem .75rem;
-    margin-bottom: 1rem;
+    gap: .625rem .875rem;
+    margin-bottom: 1.25rem;
   }
 
   .pg-dash-switch-label {
     display: inline-flex;
     align-items: center;
-    gap: .5rem;
+    gap: .625rem;
     margin: 0;
     cursor: pointer;
   }
 
+  /* The drawings' toggle: 40 by 22 px, a 16 px knob, the gradient track
+     when on. */
+  .pg-dash-switch .switch {
+    --bs-switch-height: 1.375rem;
+    --bs-switch-width: 2.5rem;
+    --bs-switch-padding: .125rem;
+    margin-block: 0;
+  }
+
+  .pg-dash-switch .switch:has(input:checked) {
+    --bs-switch-indicator-bg: #fff;
+    border-color: transparent;
+    background: linear-gradient(90deg, #0e7490, #4f46e5);
+  }
+
   .pg-dash-switch-name {
-    font-weight: 600;
-    color: var(--pg-fg-emphasis);
+    font-weight: 700;
+    color: var(--pgd-strong);
   }
 
   .pg-dash-switch-hint {
-    font-size: .875rem;
-    color: var(--pg-fg-2);
+    font-size: .8125rem;
+    color: var(--pgd-muted);
   }
 
   .pg-dash-switch-end {
     display: inline-flex;
+    align-items: center;
     gap: .5rem;
     margin-inline-start: auto;
   }
@@ -54,32 +200,42 @@
   .pg-dash-top {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
   }
 
+  /* Every card of the page: the drawings' 18 px corner, 18/20 px padding,
+     14 px text. The face (flat, neon, glass, aurora) is the look's. */
   .pg-dash-card {
-    padding: 1.25rem 1.5rem;
-    border-radius: var(--pg-radius-lg);
+    --pg-accent: #6366f1;
+    padding: 1.125rem 1.25rem;
+    border: 1px solid var(--pgd-line);
+    border-radius: 1.125rem;
+    background: var(--pgd-card);
+    color: var(--pgd-fg);
+    font-size: .875rem;
+    line-height: 1.5;
   }
 
   /* ── Greeting card ────────────────────────────────────────────────────── */
 
   .pg-dash-greeting-when {
-    margin: 0 0 .25rem;
-    font-size: .875rem;
-    color: var(--pg-fg-2);
+    margin: 0 0 .375rem;
+    font-size: .8125rem;
+    color: var(--pgd-muted);
   }
 
   .pg-dash-greeting-title {
     margin: 0;
-    font-size: 1.75rem;
-    font-weight: 700;
-    color: var(--pg-fg-emphasis);
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1.15;
+    letter-spacing: -.025em;
+    color: var(--pgd-strong);
   }
 
   .pg-dash-name {
-    background: var(--clock-gradient);
+    background: var(--pgd-name);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -96,16 +252,17 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: .5rem .75rem;
+    gap: .5rem;
     margin-top: 1rem;
   }
 
   .pg-dash-since-label {
-    font-size: .75rem;
+    margin-right: .25rem;
+    font-size: .6875rem;
     font-weight: 600;
-    letter-spacing: .06em;
+    letter-spacing: .08em;
     text-transform: uppercase;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
   .pg-dash-chips,
@@ -122,55 +279,52 @@
   }
 
   .pg-dash-chip {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
     padding: .25rem .625rem;
-    border: 1px solid var(--pg-border-color);
-    border-radius: var(--pg-radius);
-    font-size: .875rem;
-    color: var(--pg-fg-body);
+    border: 1px solid var(--pgd-line-2);
+    border-radius: .5rem;
+    font-size: .8125rem;
+    line-height: 1.4;
+    color: var(--pgd-soft);
     text-decoration: none;
   }
 
   .pg-dash-chip:hover {
-    border-color: var(--pg-fg-3);
+    border-color: var(--pgd-accent-line);
+    color: var(--pgd-strong);
   }
 
   .pg-dash-chip[data-tone="good"] {
-    border-color: var(--pg-success-border-subtle);
-    background: var(--pg-success-bg-subtle);
-    color: var(--pg-success-fg-emphasis);
+    border-color: var(--pgd-good-line);
+    background: var(--pgd-good-bg);
+    color: var(--pgd-good);
   }
 
   .pg-dash-chip[data-tone="warn"] {
-    border-color: var(--pg-warning-border-subtle);
-    background: var(--pg-warning-bg-subtle);
-    color: var(--pg-warning-fg-emphasis);
+    border-color: var(--pgd-warn-line);
+    background: var(--pgd-warn-bg);
+    color: var(--pgd-warn);
+  }
+
+  .pg-dash-chip[data-tone="bad"] {
+    border-color: var(--pgd-bad-line);
+    background: var(--pgd-bad-bg);
+    color: var(--pgd-bad);
   }
 
   .pg-dash-actions {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
     gap: .5rem;
     margin-top: 1rem;
-  }
-
-  .pg-dash-action-main {
-    border: 0;
-    background: var(--clock-gradient);
-    color: #fff;
-    font-weight: 600;
-  }
-
-  .pg-dash-action-main:hover,
-  .pg-dash-action-main:focus-visible {
-    color: #fff;
-    filter: brightness(1.08);
   }
 
   .pg-dash-tiles {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: .75rem;
+    gap: .625rem;
     margin-top: 1rem;
   }
 
@@ -183,60 +337,58 @@
   .pg-dash-tile {
     display: flex;
     flex-direction: column;
-    gap: .125rem;
     height: 100%;
-    padding: .75rem .875rem;
-    border: 1px solid var(--pg-border-color);
-    border-radius: var(--pg-radius-lg);
-    color: var(--pg-fg-body);
+    padding: .625rem .75rem;
+    border: 1px solid var(--pgd-tile-line);
+    border-radius: .8125rem;
+    background: var(--pgd-tile);
+    color: var(--pgd-fg);
     text-decoration: none;
   }
 
   .pg-dash-tile:hover {
-    border-color: var(--pg-fg-3);
+    border-color: var(--pgd-accent-line);
+    color: var(--pgd-fg);
   }
 
   .pg-dash-tile-label {
-    font-size: .8125rem;
-    color: var(--pg-fg-2);
+    font-size: .75rem;
+    color: var(--pgd-muted);
   }
 
   .pg-dash-tile-value {
+    margin: .125rem 0;
+    overflow-wrap: anywhere;
     font-size: 1.5rem;
-    font-weight: 700;
+    font-weight: 800;
     line-height: 1.2;
-    color: var(--pg-fg-emphasis);
+    letter-spacing: -.02em;
+    color: var(--pgd-strong);
+    font-variant-numeric: tabular-nums;
   }
 
   .pg-dash-tile-note {
-    font-size: .8125rem;
-    color: var(--pg-fg-2);
+    font-size: .75rem;
+    color: var(--pgd-muted);
   }
 
   .pg-dash-tile-note[data-tone="good"] {
-    color: var(--pg-success-fg-emphasis);
+    color: var(--pgd-good);
   }
 
   .pg-dash-tile-note[data-tone="warn"] {
-    color: var(--pg-warning-fg-emphasis);
+    color: var(--pgd-warn);
   }
 
   .pg-dash-tile-note[data-tone="bad"] {
-    color: var(--pg-danger-fg-emphasis);
-  }
-
-  @media (forced-colors: active) {
-    .pg-dash-action-main {
-      border: 1px solid ButtonText;
-      background: ButtonFace;
-      color: ButtonText;
-    }
+    color: var(--pgd-bad);
   }
 
   /* ── System Status card ───────────────────────────────────────────────
-     Widget 2's gauge and chips (.pg-health*, .pg-check* in backend.src.css),
-     in a card about 340 px wide beside the greeting from 1000 px, under it
-     below that. A greeting alone (no status card) keeps the whole row. */
+     Widget 2's gauge (.pg-health* in backend.src.css, kept as it is) and its
+     checks as the drawings' chips, in a card about 340 px wide beside the
+     greeting from 1000 px, under it below that. The checks that are fine
+     fold behind one chip. A greeting alone keeps the whole row. */
 
   @media (min-width: 1000px) {
     .pg-dash-top:has(> .pg-dash-status) {
@@ -248,14 +400,14 @@
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    gap: .5rem;
+    gap: .75rem;
   }
 
   .pg-dash-status-head {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: .75rem;
+    gap: .625rem;
   }
 
   .pg-dash-status-title {
@@ -263,9 +415,9 @@
     align-items: center;
     gap: .625rem;
     margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--pg-fg-emphasis);
+    font-size: .9375rem;
+    font-weight: 700;
+    color: var(--pgd-strong);
   }
 
   .pg-dash-status-icon {
@@ -273,14 +425,25 @@
     place-items: center;
     width: 1.75rem;
     height: 1.75rem;
-    border-radius: var(--pg-radius);
-    background: color-mix(in srgb, var(--pg-accent) 16%, transparent);
-    color: var(--pg-accent);
+    border-radius: .5625rem;
+    background: rgba(99, 102, 241, .16);
+    color: #4f46e5;
+  }
+
+  html[data-bs-theme="dark"] .pg-dash-status-icon {
+    color: #a5b4fc;
   }
 
   .pg-dash-status-details {
     padding: 0;
-    font-size: .875rem;
+    border: 0;
+    font-size: .8125rem;
+    color: var(--pgd-accent);
+    text-decoration: none;
+  }
+
+  .pg-dash-status-details:hover {
+    color: var(--pgd-strong);
   }
 
   .pg-dash-status .pg-health {
@@ -300,59 +463,175 @@
   }
 
   .pg-dash-status-checks {
+    display: flex;
+    flex-wrap: wrap;
     justify-content: center;
     gap: .375rem;
+    margin: 0;
     padding: 0;
   }
 
-  .pg-dash-status-checks > .pg-check {
+  .pg-dash-status .pg-check {
+    gap: .375rem;
+    padding: .125rem .5625rem;
+    border: 1px solid var(--pgd-line-2);
+    border-radius: .5rem;
+    background: transparent;
     font-size: .75rem;
+    line-height: 1.5;
+    color: var(--pgd-soft);
+  }
+
+  .pg-dash-status .pg-check > i {
+    display: none;
+  }
+
+  .pg-dash-status .pg-check-value {
+    padding-left: .375rem;
+    border-left-color: currentColor;
+    opacity: .75;
+  }
+
+  .pg-dash-status .pg-check-danger {
+    border-color: var(--pgd-bad-line);
+    background: var(--pgd-bad-bg);
+    color: var(--pgd-bad);
+  }
+
+  .pg-dash-status .pg-check-warning {
+    border-color: var(--pgd-warn-line);
+    background: var(--pgd-warn-bg);
+    color: var(--pgd-warn);
+  }
+
+  .pg-dash-status .pg-check-success {
+    border-color: var(--pgd-good-line);
+    background: var(--pgd-good-bg);
+    color: var(--pgd-good);
+  }
+
+  /* The checks past the eighth: one dashed chip that opens them on a row
+     of their own and stays as the way to fold them again. It takes the tone
+     of the worst check it holds. */
+  .pg-dash-status-more {
+    display: inline-flex;
+  }
+
+  .pg-dash-status-more[open] {
+    display: flex;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: .375rem;
+  }
+
+  .pg-dash-status-more > summary {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    padding: .125rem .5625rem;
+    border: 1px dashed var(--pgd-line-2);
+    border-radius: .5rem;
+    font-size: .75rem;
+    line-height: 1.5;
+    color: var(--pgd-soft);
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .pg-dash-status-more > summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .pg-dash-status-more > summary::after {
+    content: "";
+    width: .375rem;
+    height: .375rem;
+    margin-inline-start: .125rem;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: translateY(-.0625rem) rotate(45deg);
+  }
+
+  .pg-dash-status-more[open] > summary::after {
+    transform: translateY(.125rem) rotate(-135deg);
+  }
+
+  .pg-dash-status-more > summary[data-tone="warn"] {
+    border-color: var(--pgd-warn-line);
+    color: var(--pgd-warn);
+  }
+
+  .pg-dash-status-more > summary[data-tone="bad"] {
+    border-color: var(--pgd-bad-line);
+    color: var(--pgd-bad);
+  }
+
+  .pg-dash-status-more > summary:hover {
+    border-color: var(--pgd-accent-line);
+  }
+
+  .pg-dash-status-more > summary:focus-visible {
+    outline: 2px solid var(--pg-primary-ink);
+    outline-offset: 2px;
+  }
+
+  @media (forced-colors: active) {
+    .pg-dash-status .pg-check,
+    .pg-dash-status-more > summary {
+      border-color: CanvasText;
+      background: Canvas;
+      color: CanvasText;
+    }
   }
 
   /* ── Look: card style ─────────────────────────────────────────────────
-     The page root carries the old dashboard's data-widget-theme, so the
-     strengths it sets (--pg-fx-*, backend.src.css) serve these cards too;
-     flat is the plain card. The backdrop needs no rule here: the root is
-     #content[data-panel-backdrop], which backend.src.css already draws. */
+     The drawings' four faces, each with a light twin. The page root carries
+     the old dashboard's data-widget-theme; the backdrop is drawn by
+     backend.src.css on #content[data-panel-backdrop]. Flat is the card as
+     .pg-dash-card draws it. */
 
-  .pg-dash-card {
-    --pg-accent: #6366f1;
+  [data-widget-theme="aurora"] .pg-dash-card {
+    border-color: transparent;
+    background:
+      linear-gradient(180deg, #fff, #fbfcfe) padding-box,
+      linear-gradient(140deg, rgba(6, 182, 212, .45), rgba(99, 102, 241, .22) 35%, rgba(15, 23, 42, .06) 60%, rgba(217, 70, 239, .3)) border-box;
+    box-shadow: var(--pgd-shadow), inset 0 1px 0 rgba(255, 255, 255, .6);
+  }
+
+  html[data-bs-theme="dark"] [data-widget-theme="aurora"] .pg-dash-card {
+    background:
+      linear-gradient(180deg, rgba(18, 26, 38, .92), rgba(12, 18, 28, .92)) padding-box,
+      linear-gradient(140deg, rgba(34, 211, 238, .38), rgba(99, 102, 241, .16) 35%, rgba(255, 255, 255, .05) 60%, rgba(217, 70, 239, .22)) border-box;
+    box-shadow: var(--pgd-shadow), inset 0 1px 0 rgba(255, 255, 255, .04);
   }
 
   [data-widget-theme="neon"] .pg-dash-card {
-    border-color: color-mix(in srgb, var(--pg-accent) var(--pg-fx-edge), transparent);
-    box-shadow:
-      inset 0 0 22px -14px var(--pg-accent),
-      0 8px 26px -20px color-mix(in srgb, var(--pg-accent) var(--pg-fx-lift), transparent);
+    border-color: transparent;
+    background:
+      linear-gradient(#fff, #fff) padding-box,
+      linear-gradient(120deg, #06b6d4, #6366f1 50%, #d946ef) border-box;
+    box-shadow: 0 0 18px rgba(6, 182, 212, .1), 0 0 32px rgba(217, 70, 239, .08);
+  }
+
+  html[data-bs-theme="dark"] [data-widget-theme="neon"] .pg-dash-card {
+    background:
+      linear-gradient(#0b111b, #0b111b) padding-box,
+      linear-gradient(120deg, #22d3ee, #6366f1 50%, #d946ef) border-box;
+    box-shadow: 0 0 22px rgba(34, 211, 238, .1), 0 0 40px rgba(217, 70, 239, .08);
   }
 
   [data-widget-theme="glass"] .pg-dash-card {
-    background:
-      linear-gradient(180deg, color-mix(in srgb, var(--pg-accent) var(--pg-fx-top), transparent) 0%, transparent 58%),
-      color-mix(in srgb, var(--pg-card-bg) 58%, transparent);
-    border-color: color-mix(in srgb, var(--pg-accent) var(--pg-fx-edge), transparent);
-    box-shadow:
-      inset 0 1px 0 color-mix(in srgb, #fff 40%, transparent),
-      0 6px 20px -20px color-mix(in srgb, #0f0f23 40%, transparent);
+    border-color: rgba(15, 23, 42, .08);
+    background: rgba(255, 255, 255, .62);
+    box-shadow: 0 10px 30px rgba(15, 23, 42, .08);
     backdrop-filter: blur(14px);
   }
 
   html[data-bs-theme="dark"] [data-widget-theme="glass"] .pg-dash-card {
-    background:
-      linear-gradient(180deg, color-mix(in srgb, var(--pg-accent) var(--pg-fx-top), transparent) 0%, transparent 58%),
-      color-mix(in srgb, #fff 4.5%, transparent);
-    box-shadow:
-      inset 0 1px 0 color-mix(in srgb, #fff 7%, transparent),
-      0 8px 24px -22px #000;
-  }
-
-  [data-widget-theme="aurora"] .pg-dash-card {
-    --pg-accent-shift: color-mix(in srgb, var(--pg-accent) 55%, #22d3ee);
-    background:
-      radial-gradient(74% 48% at 100% 100%, color-mix(in srgb, var(--pg-accent-shift) var(--pg-fx-two), var(--pg-card-bg)) 0%, transparent 58%),
-      radial-gradient(74% 48% at 0% 0%, color-mix(in srgb, var(--pg-accent) var(--pg-fx-one), var(--pg-card-bg)) 0%, transparent 58%),
-      var(--pg-card-bg);
-    border-color: color-mix(in srgb, var(--pg-accent) var(--pg-fx-edge), transparent);
+    border-color: rgba(255, 255, 255, .1);
+    background: rgba(255, 255, 255, .045);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
   }
 
   /* ── Look: density and lights ─────────────────────────────────────────
@@ -443,45 +722,72 @@
 
   /* ── Card frame ───────────────────────────────────────────────────────── */
 
+  /* A card's category colours its icon, as in the drawings. */
   .pg-dash-cardbox {
     --pg-dash-cat: var(--pg-primary);
+    --pgd-cat-bg: rgba(99, 102, 241, .14);
+    --pgd-cat-fg: #4f46e5;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: .875rem;
     min-width: 0;
   }
 
+  /* The colour of a card's own charts and bars. */
   .pg-dash-cardbox[data-category="content"] { --pg-dash-cat: var(--pg-info); }
   .pg-dash-cardbox[data-category="visitors"] { --pg-dash-cat: var(--pg-primary-ink); }
   .pg-dash-cardbox[data-category="security"] { --pg-dash-cat: var(--pg-danger); }
   .pg-dash-cardbox[data-category="team"] { --pg-dash-cat: var(--pg-warning); }
   .pg-dash-cardbox[data-category="shop"] { --pg-dash-cat: var(--pg-success); }
 
+  .pg-dash-cardbox[data-category="content"] { --pgd-cat-bg: rgba(217, 70, 239, .12); --pgd-cat-fg: #a21caf; }
+  .pg-dash-cardbox[data-category="visitors"] { --pgd-cat-bg: rgba(6, 182, 212, .12); --pgd-cat-fg: #0e7490; }
+  .pg-dash-cardbox[data-category="security"] { --pgd-cat-bg: rgba(16, 185, 129, .12); --pgd-cat-fg: #047857; }
+  .pg-dash-cardbox[data-category="team"] { --pgd-cat-bg: rgba(139, 92, 246, .13); --pgd-cat-fg: #6d28d9; }
+  .pg-dash-cardbox[data-category="shop"] { --pgd-cat-bg: rgba(245, 158, 11, .14); --pgd-cat-fg: #b45309; }
+  .pg-dash-cardbox[data-category="system"] { --pgd-cat-bg: rgba(100, 116, 139, .14); --pgd-cat-fg: #475569; }
+
+  html[data-bs-theme="dark"] .pg-dash-cardbox { --pgd-cat-bg: rgba(99, 102, 241, .16); --pgd-cat-fg: #a5b4fc; }
+  html[data-bs-theme="dark"] .pg-dash-cardbox[data-category="content"] { --pgd-cat-bg: rgba(217, 70, 239, .14); --pgd-cat-fg: #f0abfc; }
+  html[data-bs-theme="dark"] .pg-dash-cardbox[data-category="visitors"] { --pgd-cat-bg: rgba(34, 211, 238, .14); --pgd-cat-fg: #67e8f9; }
+  html[data-bs-theme="dark"] .pg-dash-cardbox[data-category="security"] { --pgd-cat-bg: rgba(52, 211, 153, .12); --pgd-cat-fg: #86efac; }
+  html[data-bs-theme="dark"] .pg-dash-cardbox[data-category="team"] { --pgd-cat-bg: rgba(167, 139, 250, .16); --pgd-cat-fg: #c4b5fd; }
+  html[data-bs-theme="dark"] .pg-dash-cardbox[data-category="shop"] { --pgd-cat-bg: rgba(251, 191, 36, .12); --pgd-cat-fg: #fde68a; }
+  html[data-bs-theme="dark"] .pg-dash-cardbox[data-category="system"] { --pgd-cat-bg: rgba(148, 163, 184, .14); --pgd-cat-fg: #cbd5e1; }
+
   .pg-dash-card-head {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: .5rem;
+    gap: .625rem;
   }
 
   .pg-dash-card-icon {
     display: inline-flex;
+    flex: 0 0 1.75rem;
     align-items: center;
     justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    border-radius: var(--pg-radius);
-    background: color-mix(in srgb, var(--pg-dash-cat) 16%, transparent);
-    color: var(--pg-fg-emphasis);
+    width: 1.75rem;
+    height: 1.75rem;
+    border-radius: .5625rem;
+    background: var(--pgd-cat-bg);
+    color: var(--pgd-cat-fg);
+    font-size: .875rem;
+  }
+
+  /* The assistant's icon wears the main gradient. */
+  .pg-dash-cardbox[data-card="ai"] .pg-dash-card-icon {
+    background: linear-gradient(135deg, #0e7490, #4f46e5, #a21caf);
+    color: #fff;
   }
 
   .pg-dash-card-title {
     flex: 1 1 auto;
     min-width: 0;
     margin: 0;
-    font-size: 1rem;
+    font-size: .9375rem;
     font-weight: 700;
-    color: var(--pg-fg-emphasis);
+    color: var(--pgd-strong);
   }
 
   .pg-dash-card-title:focus {
@@ -493,23 +799,69 @@
     outline-offset: 2px;
   }
 
-  .pg-dash-card-chip,
-  .pg-dash-card-badge,
-  .pg-dash-card-period {
-    padding: .125rem .5rem;
-    border: var(--pg-border-width) solid var(--pg-border-color);
-    border-radius: 999px;
+  /* A state beside the title: the drawings' chip. */
+  .pg-dash-card-chip {
+    padding: .125rem .5625rem;
+    border: 1px solid var(--pgd-line-2);
+    border-radius: .5rem;
     font-size: .75rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-soft);
     background: transparent;
   }
 
+  /* "3 new": a pill with a lit dot. */
+  .pg-dash-card-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .375rem;
+    padding: .0625rem .5625rem;
+    border: 1px solid var(--pgd-new-line);
+    border-radius: 999px;
+    background: var(--pgd-new-bg);
+    font-size: .75rem;
+    font-weight: 600;
+    color: var(--pgd-new);
+    white-space: nowrap;
+  }
+
+  .pg-dash-card-badge::before {
+    content: "";
+    width: .375rem;
+    height: .375rem;
+    border-radius: 50%;
+    background: var(--pgd-new-dot);
+    box-shadow: 0 0 8px var(--pgd-new-dot);
+  }
+
+  /* The period pill: 30 px, with the drop mark of the drawings. */
   .pg-dash-card-period {
+    display: inline-flex;
+    align-items: center;
+    gap: .375rem;
+    height: 1.875rem;
+    padding: 0 .625rem;
+    border: 1px solid var(--pgd-line-2);
+    border-radius: 999px;
+    background: var(--pgd-fill);
+    font-size: .75rem;
+    color: var(--pgd-soft);
+    white-space: nowrap;
     cursor: pointer;
   }
 
+  .pg-dash-card-period::after {
+    content: "";
+    width: .3125rem;
+    height: .3125rem;
+    margin-top: -.1875rem;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: rotate(45deg);
+  }
+
   .pg-dash-card-period:hover {
-    background: var(--pg-tint-hover);
+    border-color: var(--pgd-accent-line);
+    color: var(--pgd-strong);
   }
 
   .pg-dash-card-period:focus-visible {
@@ -517,17 +869,30 @@
     outline-offset: 2px;
   }
 
+  @media (forced-colors: active) {
+    .pg-dash-card-chip,
+    .pg-dash-card-badge,
+    .pg-dash-card-period {
+      border-color: CanvasText;
+    }
+
+    .pg-dash-card-badge::before {
+      background: CanvasText;
+      box-shadow: none;
+    }
+  }
+
   .pg-dash-card-body {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: .875rem;
     min-width: 0;
   }
 
   .pg-dash-card-empty,
   .pg-dash-card-error p {
     margin: 0;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
   .pg-dash-card-error {
@@ -537,9 +902,16 @@
     gap: .75rem;
   }
 
+  /* The link at a card's foot ("All orders"). */
   .pg-dash-card-more {
     align-self: flex-start;
-    font-size: .875rem;
+    font-size: .8125rem;
+    color: var(--pgd-accent);
+    text-decoration: none;
+  }
+
+  .pg-dash-card-more:hover {
+    color: var(--pgd-strong);
   }
 
   .pg-dash-skeleton {
@@ -591,13 +963,19 @@
   .pg-dash-fig-note[data-tone="warn"] { color: var(--pg-warning-fg-emphasis); }
   .pg-dash-fig-note[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
 
+  /* A section's kicker: 11 px capitals, spaced, 6 px over what it heads
+     (in a card body that undoes most of the body's gap). */
   .pg-dash-rows-title {
-    margin: 0 0 .5rem;
-    font-size: .75rem;
+    margin: 0 0 .375rem;
+    font-size: .6875rem;
     font-weight: 600;
-    letter-spacing: .06em;
+    letter-spacing: .08em;
     text-transform: uppercase;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
+  }
+
+  .pg-dash-card-body > .pg-dash-rows-title {
+    margin-bottom: -.5rem;
   }
 
   .pg-dash-rows-list {
@@ -1039,23 +1417,26 @@
 
   /* ── Edit mode ────────────────────────────────────────────────────────── */
 
+  /* The drawings' small square button: 34 px, a 9 px corner. */
   .pg-dash-card-edit,
   .pg-dash-grip {
     display: inline-flex;
+    flex: 0 0 2.125rem;
     align-items: center;
     justify-content: center;
-    width: 2rem;
-    height: 2rem;
+    width: 2.125rem;
+    height: 2.125rem;
     padding: 0;
-    border: var(--pg-border-width) solid transparent;
-    border-radius: var(--pg-radius);
-    background: transparent;
-    color: var(--pg-fg-2);
+    border: 1px solid var(--pgd-line-2);
+    border-radius: .5625rem;
+    background: var(--pgd-fill);
+    color: var(--pgd-soft);
   }
 
   .pg-dash-card-edit:hover,
   .pg-dash-grip:hover {
-    background: var(--pg-tint-hover);
+    border-color: var(--pgd-accent-line);
+    color: var(--pgd-strong);
   }
 
   .pg-dash-card-edit:focus-visible,
@@ -1070,7 +1451,9 @@
   }
 
   .pg-dash-grip {
-    border-color: var(--pg-border-color);
+    border-color: var(--pgd-accent-line);
+    background: var(--pgd-new-bg);
+    color: var(--pgd-accent);
     cursor: grab;
     touch-action: none;
   }
@@ -1193,13 +1576,9 @@
     outline: 2px solid var(--pg-primary-ink);
   }
 
-  .pg-dash-action-edit {
-    display: inline-flex;
-    align-items: center;
-    gap: .5rem;
-    padding: .375rem .375rem .375rem .875rem;
-    border: var(--pg-border-width) solid var(--pg-border-color);
-    border-radius: var(--pg-radius);
+  /* A shortcut in edit mode: the drawn button with its remove cross. */
+  .pg-dash .pg-dash-action-edit {
+    padding-right: .375rem;
   }
 
   /* At least 24 px a side (WCAG 2.5.8), 32 px under a finger. */
@@ -1207,14 +1586,19 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 1.5rem;
-    min-height: 1.5rem;
+    min-width: 1.625rem;
+    min-height: 1.625rem;
     padding: .25rem;
     border: 0;
-    border-radius: var(--pg-radius-sm);
-    background: color-mix(in srgb, var(--pg-danger) 18%, transparent);
-    color: inherit;
+    border-radius: .4375rem;
+    background: var(--pgd-bad-bg);
+    color: var(--pgd-bad);
     font-size: .75rem;
+  }
+
+  .pg-dash-btn-main .pg-dash-action-remove {
+    background: rgba(255, 255, 255, .18);
+    color: #fff;
   }
 
   @media (pointer: coarse) {
@@ -1224,8 +1608,9 @@
     }
   }
 
-  .pg-dash-action-add {
+  .pg-dash .pg-dash-action-add {
     border-style: dashed;
+    color: var(--pgd-accent);
   }
 
   .pg-dash-tile-edit select {
@@ -1239,12 +1624,13 @@
   .pg-dash-saved {
     display: inline-flex;
     align-items: center;
-    gap: .25rem;
-    padding: .125rem .625rem;
-    border-radius: 999px;
-    font-size: .8125rem;
-    background: color-mix(in srgb, var(--pg-success) 18%, transparent);
-    color: var(--pg-fg-emphasis);
+    gap: .375rem;
+    padding: .125rem .5625rem;
+    border: 1px solid var(--pgd-good-line);
+    border-radius: .5rem;
+    font-size: .75rem;
+    background: var(--pgd-good-bg);
+    color: var(--pgd-good);
   }
 
   @media (prefers-reduced-motion: no-preference) {
@@ -1268,7 +1654,7 @@
   .pg-dash-card-note {
     margin: 0;
     font-size: .75rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
   /* Content and design: four page sketches. */
@@ -1466,7 +1852,7 @@
   .pg-dash-item-note,
   .pg-dash-item-value {
     font-size: .75rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
     font-variant-numeric: tabular-nums;
   }
 
@@ -1601,14 +1987,15 @@
     gap: .25rem 1rem;
   }
 
-  /* Activity: filter chips and a timeline. */
-  .pg-dash-chips {
+  /* Activity: filter chips and a timeline. The greeting's since chips
+     share the class names, so these rules sit under a grid card. */
+  .pg-dash-cardbox .pg-dash-chips {
     display: flex;
     flex-wrap: wrap;
     gap: .375rem;
   }
 
-  .pg-dash-chip {
+  .pg-dash-cardbox .pg-dash-chip {
     padding: .125rem .625rem;
     border: var(--pg-border-width) solid var(--pg-border-color);
     border-radius: 999px;
@@ -1617,11 +2004,11 @@
     font-size: .8125rem;
   }
 
-  .pg-dash-chip:hover {
+  .pg-dash-cardbox .pg-dash-chip:hover {
     background: var(--pg-tint-hover);
   }
 
-  .pg-dash-chip[aria-pressed="true"] {
+  .pg-dash-cardbox .pg-dash-chip[aria-pressed="true"] {
     border-color: var(--pg-dash-cat);
     background: color-mix(in srgb, var(--pg-dash-cat) 16%, transparent);
     font-weight: 600;
@@ -1697,7 +2084,7 @@
     .pg-dash-storage-key::before,
     .pg-dash-stack-key::before,
     .pg-dash-event::before { background: CanvasText; forced-color-adjust: none; }
-    .pg-dash-chip[aria-pressed="true"] { border-width: 2px; }
+    .pg-dash-cardbox .pg-dash-chip[aria-pressed="true"] { border-width: 2px; }
   }
 
 
@@ -1756,9 +2143,9 @@
   }
 
   .pg-dash-summary [data-tone="bad"],
-  .pg-dash-item-note[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
-  .pg-dash-item-note[data-tone="warn"] { color: var(--pg-warning-fg-emphasis); }
-  .pg-dash-item-note[data-tone="good"] { color: var(--pg-success-fg-emphasis); }
+  .pg-dash-item-note[data-tone="bad"] { color: var(--pgd-bad); }
+  .pg-dash-item-note[data-tone="warn"] { color: var(--pgd-warn); }
+  .pg-dash-item-note[data-tone="good"] { color: var(--pgd-good); }
 
   .pg-dash-items {
     display: flex;
@@ -1805,7 +2192,7 @@
 
   .pg-dash-item-note {
     font-size: .75rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
   .pg-dash-item.is-done .pg-dash-item-text {
@@ -2371,7 +2758,7 @@
 
   /* ── Personal cards and Performance ──────────────────────────────────── */
 
-  /* My goals: a ring per goal, its name, figure and toned state. */
+  /* Lists of the personal cards: no bullets, no indent. */
   .pg-dash-goals,
   .pg-dash-pins,
   .pg-dash-pin-found {
@@ -2383,37 +2770,56 @@
     list-style: none;
   }
 
-  .pg-dash-goal {
-    display: flex;
-    align-items: center;
-    gap: .75rem;
+  /* A row of rings, each over its name, figure and toned state. */
+  .pg-dash-goals {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+    gap: .875rem .625rem;
   }
 
+  .pg-dash-goal {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .25rem;
+    min-width: 0;
+    text-align: center;
+  }
+
+  /* The ring: a conic arc from the top as long as the share, cyan into
+     indigo, into fuchsia under 70 %, red into orange when it is late. */
   .pg-dash-goal-ring {
+    --pg-dash-ring-from: #06b6d4;
+    --pg-dash-ring-to: #4f46e5;
+    --pg-dash-ring-track: rgba(100, 116, 139, .16);
     position: relative;
     flex: none;
-    width: 3.5rem;
-    height: 3.5rem;
-    --pg-dash-ring: var(--pg-primary);
+    width: 4.75rem;
+    height: 4.75rem;
+    margin-bottom: .25rem;
   }
 
-  .pg-dash-goal-ring[data-tone="good"] { --pg-dash-ring: var(--pg-success); }
-  .pg-dash-goal-ring[data-tone="warn"] { --pg-dash-ring: var(--pg-warning); }
-  .pg-dash-goal-ring[data-tone="bad"] { --pg-dash-ring: var(--pg-danger); }
+  .pg-dash-goal-ring[data-low] { --pg-dash-ring-to: #c026d3; }
+  .pg-dash-goal-ring[data-tone="bad"] { --pg-dash-ring-from: #ef4444; --pg-dash-ring-to: #f97316; }
 
-  .pg-dash-goal-ring-svg {
-    display: block;
-    width: 100%;
-    height: 100%;
+  html[data-bs-theme="dark"] .pg-dash-goal-ring {
+    --pg-dash-ring-from: #22d3ee;
+    --pg-dash-ring-to: #6366f1;
+    --pg-dash-ring-track: rgba(148, 163, 184, .16);
   }
 
-  .pg-dash-goal-ring-svg circle {
-    fill: none;
-    stroke-width: 3.5;
-  }
+  html[data-bs-theme="dark"] .pg-dash-goal-ring[data-low] { --pg-dash-ring-to: #d946ef; }
+  html[data-bs-theme="dark"] .pg-dash-goal-ring[data-tone="bad"] { --pg-dash-ring-from: #f87171; --pg-dash-ring-to: #fb923c; }
 
-  .pg-dash-goal-ring-track { stroke: var(--pg-tint); }
-  .pg-dash-goal-ring-arc { stroke: var(--pg-dash-ring); stroke-linecap: round; }
+  .pg-dash-goal-ring-dial {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: conic-gradient(var(--pg-dash-ring-from) 0%, var(--pg-dash-ring-to) var(--pg-dash-ring-share, 0%), var(--pg-dash-ring-track) var(--pg-dash-ring-share, 0%));
+    -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - .5625rem), #000 calc(100% - .5rem));
+    mask: radial-gradient(farthest-side, transparent calc(100% - .5625rem), #000 calc(100% - .5rem));
+  }
 
   .pg-dash-goal-ring-value {
     position: absolute;
@@ -2421,9 +2827,10 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: .75rem;
-    font-weight: 700;
-    color: var(--pg-fg-emphasis);
+    font-size: 1.0625rem;
+    font-weight: 800;
+    letter-spacing: -.02em;
+    color: var(--pgd-strong);
     font-variant-numeric: tabular-nums;
   }
 
@@ -2435,12 +2842,17 @@
     min-width: 0;
   }
 
+  .pg-dash-goal-main {
+    align-items: center;
+    gap: .125rem;
+  }
+
   .pg-dash-goal-name {
-    overflow: hidden;
-    font-weight: 600;
-    color: var(--pg-fg-emphasis);
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    max-width: 100%;
+    font-size: .8125rem;
+    line-height: 1.3;
+    color: var(--pgd-fg);
+    overflow-wrap: anywhere;
   }
 
   .pg-dash-goal-figure,
@@ -2448,10 +2860,31 @@
   .pg-dash-personal-hint,
   .pg-dash-pin-choice-note {
     font-size: .75rem;
-    color: var(--pg-fg-2);
+    color: var(--pgd-muted);
   }
 
-  .pg-dash-goal-remove,
+  .pg-dash-goal .pg-dash-item-note {
+    font-size: .75rem;
+  }
+
+  /* Remove sits in the goal's corner: shown on hover, on keyboard focus
+     and always on touch screens. */
+  .pg-dash .pg-dash-goal-remove {
+    position: absolute;
+    top: 0;
+    right: 0;
+    opacity: 0;
+  }
+
+  .pg-dash-goal:hover .pg-dash-goal-remove,
+  .pg-dash-goal:focus-within .pg-dash-goal-remove {
+    opacity: 1;
+  }
+
+  @media (hover: none) {
+    .pg-dash .pg-dash-goal-remove { opacity: 1; }
+  }
+
   .pg-dash-pin-remove { flex: none; }
 
   .pg-dash-goal-form {
@@ -2473,9 +2906,22 @@
     gap: .5rem;
   }
 
-  .pg-dash-personal-add {
+  .pg-dash .pg-dash-personal-add {
     align-self: flex-start;
-    margin-top: .5rem;
+    gap: .25rem;
+    margin-top: .25rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    font-size: .8125rem;
+    color: var(--pgd-accent);
+  }
+
+  .pg-dash .pg-dash-personal-add:hover,
+  .pg-dash .pg-dash-personal-add:focus-visible {
+    background: none;
+    color: var(--pgd-accent);
+    text-decoration: underline;
   }
 
   .pg-dash-personal-status {
@@ -2570,6 +3016,7 @@
   .pg-dash-perf .pg-dash-goal-ring {
     width: 4.5rem;
     height: 4.5rem;
+    margin-bottom: 0;
   }
 
   .pg-dash-perf-grade {
@@ -2582,7 +3029,10 @@
   .pg-dash-perf-grade[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
 
   @media (forced-colors: active) {
-    .pg-dash-goal-ring-arc { stroke: CanvasText; }
+    .pg-dash-goal-ring-dial {
+      forced-color-adjust: none;
+      background: conic-gradient(CanvasText var(--pg-dash-ring-share, 0%), GrayText var(--pg-dash-ring-share, 0%));
+    }
     .pg-dash-pin { border-color: CanvasText; }
   }
 
@@ -2828,27 +3278,35 @@
   /* ── Assistant card ───────────────────────────────────────────────────── */
 
   .pg-dash-card-chip[data-tone="good"] {
-    border-color: var(--pg-success-border-subtle);
-    background: var(--pg-success-bg-subtle);
-    color: var(--pg-success-fg-emphasis);
+    border-color: var(--pgd-good-line);
+    background: var(--pgd-good-bg);
+    color: var(--pgd-good);
   }
 
+  /* Not connected: a 44 px indigo icon, the offer, its two buttons and a
+     note. */
   .pg-dash-ai-off {
     display: flex;
     align-items: flex-start;
-    gap: .75rem;
+    gap: .875rem;
   }
 
   .pg-dash-ai-off-icon {
     display: inline-flex;
-    flex: 0 0 auto;
+    flex: 0 0 2.75rem;
     align-items: center;
     justify-content: center;
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: var(--pg-radius);
-    background: var(--pg-tint-hover);
-    color: var(--pg-fg-2);
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: .875rem;
+    background: rgba(99, 102, 241, .14);
+    color: #4f46e5;
+    font-size: 1.25rem;
+  }
+
+  html[data-bs-theme="dark"] .pg-dash-ai-off-icon {
+    background: rgba(99, 102, 241, .16);
+    color: #a5b4fc;
   }
 
   .pg-dash-ai-off-main {
@@ -2857,47 +3315,102 @@
 
   .pg-dash-ai-off-title {
     margin: 0 0 .25rem;
-    font-size: 1rem;
-    font-weight: 600;
+    font-size: .9375rem;
+    font-weight: 700;
+    color: var(--pgd-strong);
   }
 
   .pg-dash-ai-off-text {
     margin: 0 0 .75rem;
-    font-size: .875rem;
+    font-size: .8125rem;
+    color: var(--pgd-soft);
   }
 
   .pg-dash-ai-buttons {
     display: flex;
     flex-wrap: wrap;
     gap: .5rem;
-    margin-bottom: .75rem;
+    margin-bottom: .625rem;
+  }
+
+  /* The summary as Claude's message: a round gradient avatar beside a
+     bubble whose first corner is tight, its lines ruled apart, each with
+     its link word on the right. */
+  .pg-dash-ai-chat {
+    display: flex;
+    align-items: flex-start;
+    gap: .625rem;
+  }
+
+  .pg-dash-ai-avatar {
+    display: inline-flex;
+    flex: 0 0 2rem;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0e7490, #4f46e5, #a21caf);
+    color: #fff;
+    font-size: .9375rem;
+  }
+
+  .pg-dash-ai-bubble {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: .625rem .875rem;
+    border: 1px solid var(--pgd-line);
+    border-radius: .25rem .875rem .875rem .875rem;
+    background: var(--pgd-fill);
+  }
+
+  .pg-dash-ai-bubble > .pg-dash-rows-title {
+    margin: .125rem 0 0;
   }
 
   .pg-dash-ai-summary {
-    display: flex;
-    flex-direction: column;
-    gap: .25rem;
-    margin: 0 0 .75rem;
+    margin: 0;
     padding: 0;
     list-style: none;
   }
 
+  .pg-dash-ai-summary > li + li {
+    border-top: 1px solid var(--pgd-line);
+  }
+
   .pg-dash-ai-summary-line {
-    display: block;
-    padding: .375rem .5rem;
-    border-radius: var(--pg-border-radius);
-    background: var(--pg-tint);
-    color: inherit;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .25rem .75rem;
+    padding: .5rem 0;
+    color: var(--pgd-fg);
     text-decoration: none;
+  }
+
+  .pg-dash-ai-summary-text {
+    flex: 1 1 12.5rem;
+    min-width: 0;
+  }
+
+  .pg-dash-ai-summary-open {
+    font-size: .8125rem;
+    white-space: nowrap;
+    color: var(--pgd-accent);
   }
 
   .pg-dash-ai-summary-line:hover,
   .pg-dash-ai-summary-line:focus-visible {
+    color: var(--pgd-strong);
+  }
+
+  .pg-dash-ai-summary-line:hover .pg-dash-ai-summary-open,
+  .pg-dash-ai-summary-line:focus-visible .pg-dash-ai-summary-open {
     text-decoration: underline;
   }
 
   .pg-dash-ai-summary-when {
-    font-weight: 400;
+    font-weight: 600;
     text-transform: none;
   }
 
@@ -2905,28 +3418,35 @@
     display: flex;
     flex-wrap: wrap;
     gap: .5rem;
-    margin: 0 0 .5rem;
+    margin: 0 0 .25rem;
     padding: 0;
     list-style: none;
   }
 
+  .pg-dash-ai-chips > li {
+    display: flex;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  /* A proposal waiting for approval: a warn chip. */
   .pg-dash-ai-chip {
     display: inline-block;
     max-width: 100%;
     padding: .25rem .625rem;
     overflow: hidden;
-    border: var(--pg-border-width) solid var(--pg-warning-border-subtle);
-    border-radius: var(--pg-radius);
-    background: var(--pg-warning-bg-subtle);
-    font-size: .8125rem;
+    border: 1px solid var(--pgd-warn-line);
+    border-radius: .5rem;
+    background: var(--pgd-warn-bg);
+    font-size: .75rem;
     white-space: nowrap;
     text-overflow: ellipsis;
-    color: var(--pg-warning-fg-emphasis);
+    color: var(--pgd-warn);
     text-decoration: none;
   }
 
   a.pg-dash-ai-chip:hover {
-    border-color: var(--pg-warning);
+    border-color: var(--pgd-warn);
   }
 
   a.pg-dash-ai-chip:focus-visible {
@@ -2934,26 +3454,55 @@
     outline-offset: 2px;
   }
 
+  /* Give Claude a job: a 40 px field and the gradient send button. */
   .pg-dash-ai-job {
     display: flex;
     gap: .5rem;
-    margin-top: .75rem;
+    margin-top: .25rem;
   }
 
   .pg-dash-ai-input {
     flex: 1 1 auto;
     min-width: 0;
+    height: 2.5rem;
+    border: 1px solid var(--pgd-line-2);
+    border-radius: .6875rem;
+    background: var(--pgd-field);
+    color: var(--pgd-fg);
+    font-size: .8125rem;
   }
 
-  .pg-dash-ai-send {
-    flex: 0 0 auto;
+  .pg-dash-ai-input::placeholder {
+    color: var(--pgd-muted);
   }
 
-  .pg-dash-ai-status[data-tone="good"] { color: var(--pg-success-fg-emphasis); }
-  .pg-dash-ai-status[data-tone="bad"] { color: var(--pg-danger-fg-emphasis); }
+  .pg-dash .pg-dash-ai-send {
+    flex: 0 0 2.5rem;
+    width: 2.5rem;
+    height: 2.5rem;
+    padding: 0;
+    border: 0;
+    border-radius: .6875rem;
+    background: linear-gradient(135deg, #0e7490, #4f46e5, #a21caf);
+    color: #fff;
+  }
+
+  .pg-dash .pg-dash-ai-send:hover {
+    color: #fff;
+    filter: brightness(1.08);
+  }
+
+  .pg-dash-ai-job + .pg-dash-ai-status {
+    margin-top: -.375rem;
+  }
+
+  .pg-dash-ai-status[data-tone="good"] { color: var(--pgd-good); }
+  .pg-dash-ai-status[data-tone="bad"] { color: var(--pgd-bad); }
 
   @media (forced-colors: active) {
-    .pg-dash-ai-chip { border-color: CanvasText; }
+    .pg-dash-ai-chip,
+    .pg-dash-ai-bubble { border-color: CanvasText; }
+    .pg-dash .pg-dash-ai-send { border: 1px solid ButtonText; background: ButtonFace; color: ButtonText; box-shadow: none; }
   }
 
   /* ── Figures on hover and keyboard focus (pgDash.chartTips) ──────────── */

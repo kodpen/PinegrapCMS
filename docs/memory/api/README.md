@@ -46,9 +46,11 @@ External API (integration.php, includes/api/): endpoints, scopes, device and OAu
 - api-mcp-no-tool-routes.md: Which API routes carry 'mcp' => false and are no MCP tools: the polled sync, file downloads, own-words routes, Claude's queues, the person's decisions on a card, and why
 - api-mcp-server.md: The site as an MCP server (mcp.php, includes/mcp/, 2026.4.10): tools are the API's routes, which are left out, how a route runs, resources and prompts, addresses, callers, protocol generations
 - api-meta-language-timezone.md: GET /meta language and site.timezone, GET /auth/me language: which language the API's texts come in (api_text_language()) and the zone the site's days are counted in (api_meta_timezone())
+- api-notifications-group-fold.md: GET /notifications group filter (site or workspace, applied in SQL before paging) and the fold key on every Notification row, the panel bell's chips and flow-run folding (#5085)
 - api-oauth-client-compat.md: What keeps real OAuth/MCP clients (Cursor, VS Code, Gemini CLI, Codex, mcp-remote, Claude) connecting: lenient registration, app schemes, loopback matching, unknown scopes, discovery, panel guide
 - api-oauth-consent-presets.md: OAuth consent screen presets (Workspace, Store, Accounting, All, PR #1716): what each ticks, why record writes are ticked only by hand, the propose route always ticked
 - api-oauth-server.md: The site as an OAuth 2.1 server (oauth.php, includes/oauth/, 2026.4.10): api_devices tokens, the oauth app, scopes, resources, error format, CIMD clients, switching clients off, ending connections
+- api-offers-create.md: POST /offers and POST /offers/{id}/duplicate through the offer editor's validate and save: body shape, refusals before the editor, key code 409, offer.* events
 - api-openapi-declarations.md: How a route and an object are declared for the OpenAPI document: returns, field schemas beside presenters, nested nullable objects, list item types, 201/204, the panel's loader, check_api_schema.php
 - api-openapi-nullable-fields.md: When an external API field is declared nullable (string? in the resource's *_schema()), what decides it, and the tests that guard it
 - api-order-money-fields.md: The external API's order totals, the gift card and instalment amounts, and payment_installment (PR #3842)

@@ -47,7 +47,7 @@
         if ((data.buttons || []).length) {
             var buttons = el("div", "pg-dash-ai-buttons");
             data.buttons.forEach(function (button) {
-                var link = el("a", "btn btn-sm " + (button.main ? "btn-solid theme-primary" : "btn-outline theme-secondary"), button.label);
+                var link = el("a", button.main ? "pg-dash-btn pg-dash-btn-main" : "pg-dash-btn", button.label);
                 link.href = button.url;
                 buttons.appendChild(link);
             });
@@ -61,8 +61,9 @@
         body.appendChild(row);
     }
 
-    // The daily summary: its three lines, each opening the message in its
-    // channel, and when it was written.
+    // The daily summary as Claude's message: the avatar beside a bubble with
+    // the kicker (when it was written) and three lines, each opening the
+    // message in its channel.
     function summary(body, data) {
         var el = pgDash.el;
         var part = data.summary;
@@ -71,21 +72,34 @@
             return;
         }
 
+        var chat = el("div", "pg-dash-ai-chat");
+        var avatar = el("span", "pg-dash-ai-avatar");
+        avatar.setAttribute("aria-hidden", "true");
+        avatar.appendChild(el("i", "bi bi-stars"));
+        chat.appendChild(avatar);
+
+        var bubble = el("div", "pg-dash-ai-bubble");
         var head = el("h3", "pg-dash-rows-title", part.title);
         if (part.when) {
             head.appendChild(el("span", "pg-dash-ai-summary-when", " · " + part.when));
         }
-        body.appendChild(head);
+        bubble.appendChild(head);
 
         var list = el("ul", "pg-dash-ai-summary");
         part.lines.forEach(function (line) {
             var item = el("li", "");
-            var link = el("a", "pg-dash-ai-summary-line", line.text);
+            var link = el("a", "pg-dash-ai-summary-line");
             link.href = line.url;
+            link.appendChild(el("span", "pg-dash-ai-summary-text", line.text));
+            if (part.open) {
+                link.appendChild(el("span", "pg-dash-ai-summary-open", part.open));
+            }
             item.appendChild(link);
             list.appendChild(item);
         });
-        body.appendChild(list);
+        bubble.appendChild(list);
+        chat.appendChild(bubble);
+        body.appendChild(chat);
     }
 
     function proposals(body, data) {
