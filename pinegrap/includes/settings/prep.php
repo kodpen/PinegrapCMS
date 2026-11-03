@@ -65,11 +65,6 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $passkey_signin_ready = array_key_exists('passkey_signin', $row);
     $passkey_signin = $passkey_signin_ready ? (int) $row['passkey_signin'] : 0;
     $passkeys_available = function_exists('pg_passkeys_available') && pg_passkeys_available();
-    // The Encryption Key card warns before the key is reset when somebody's
-    // second factor would become unreadable by it.
-    $mfa_enabled_accounts = pg_mfa_table_exists()
-        ? (int) db_value("SELECT COUNT(*) FROM user_mfa WHERE enabled_at > 0")
-        : 0;
     $forgot_password_link = $row['forgot_password_link'];
     $oauth_google_enabled = $row['oauth_google_enabled'];
     $oauth_google_client_id = $row['oauth_google_client_id'];
@@ -1631,8 +1626,30 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $ecommerce_reset_encryption_key_disabled_message = ' (' . lang('OpenSSL is disabled') . ')';
     }
 
-    if ($mfa_enabled_accounts > 0) {
-        $ecommerce_reset_encryption_key_disabled_message .= ' ' . lang('Resetting the key also makes every two-step verification key unreadable: people who turned it on will need it reset from their user screen.');
+    // What a reset leaves unreadable: every value sealed with the key except
+    // the card numbers and gateway secrets, counted per area for the list
+    // under the switch. The save asks for the confirmation box when the list
+    // is not empty.
+    $encryption_key_reset_losses = '';
+    $encryption_key_reset_counts = pg_encryption_key_reset_counts(pg_encryption_key_reset_source());
+
+    if ($encryption_key_reset_counts) {
+        $encryption_key_reset_labels = pg_encryption_key_reset_labels();
+        $encryption_key_reset_items = '';
+
+        foreach ($encryption_key_reset_counts as $area => $count) {
+            $encryption_key_reset_items .= '<li>' . h($encryption_key_reset_labels[$area]) . ': ' . (int) $count . '</li>';
+        }
+
+        $encryption_key_reset_losses = '
+                                                <div id="ecommerce_reset_encryption_key_losses" class="mt-3">
+                                                    <div class="form-text">' . lang('These values are sealed with the current key and become unreadable after a reset; they will have to be entered again:') . '</div>
+                                                    <ul class="form-text mb-2">' . $encryption_key_reset_items . '</ul>
+                                                    <div class="form-field mb-0">
+                                                        <input value="1"' . $ecommerce_reset_encryption_key_disabled . ' class="check" type="checkbox" id="ecommerce_reset_encryption_key_confirm" name="ecommerce_reset_encryption_key_confirm"/>
+                                                        <label class="fg-danger" for="ecommerce_reset_encryption_key_confirm">' . lang('I understand these will have to be entered again') . '</label>
+                                                    </div>
+                                                </div>';
     }
     
     if ($ecommerce_paypal_express_checkout == 1) {
