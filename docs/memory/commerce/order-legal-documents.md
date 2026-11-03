@@ -9,7 +9,7 @@ description: Legal documents (pre-information form, distance sales contract): se
 - `includes/fn/legal_documents.php` (tests `tests/legal_documents_test.php`), `legal_document.php` (cart document page), store call in `submit_order.php` after the order number (PR #540), checkout part PR #559, kept copy for customer and staff PR #569.
 
 ## How does a template work?
-- `^^field^^`, `[[text ^^field^^ text]]`, `[[...||other]]` (no field: kept as written, #PRNUM); values escaped, `^^order_lines^^` is the only markup. An unknown field or >65535 bytes refuses the save. Built-ins `includes/legal_documents/<type>.<lang>.html` (tr, en); an unchanged built-in is stored as NULL.
+- `^^field^^`, `[[text ^^field^^ text]]`, `[[...||other]]` (no field: kept as written, #6112); values escaped, `^^order_lines^^` is the only markup. An unknown field or >65535 bytes refuses the save. Built-ins `includes/legal_documents/<type>.<lang>.html` (tr, en); an unchanged built-in is stored as NULL.
 - `^^order_lines^^` names each line by the product's short description, as the cart and the receipt do; the line's `product_name` (the Product ID / SKU) only when there is none or the product is gone (`pg_legal_document_item_name()`). Until #626 the documents printed the SKU.
 - Seller block from settings (`ORGANIZATION_*`, store e-mail, `ERP_SELLER_VKN`, `ERP_SELLER_TAX_OFFICE`, `ERP_WEB_ADDRESS`); MERSİS and return carrier are typed into the template.
 

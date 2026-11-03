@@ -24,4 +24,4 @@ description: Module list of plans/bug-hunt.md, part 1a2: includes/fn/ modules em
 - `language_redirect`: open
 - `layout_convert`: #6083
 - `layouts`: #6043
-- `legal_documents`: open
+- `legal_documents`: #6112
