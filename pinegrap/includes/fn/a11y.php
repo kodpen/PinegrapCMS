@@ -844,6 +844,12 @@ function pg_a11y_run($time_budget)
     $started = microtime(true);
     $state = json_decode((string) @file_get_contents(pg_a11y_state_path()), true);
     $after = (is_array($state) && isset($state['after'])) ? (int) $state['after'] : 0;
+    // When this pass began and when the last finished one did: the Search
+    // and audits card shows the failure lines from the last finished pass on.
+    $cursor = array(
+        'started'      => (is_array($state) && isset($state['after'], $state['started'])) ? (int) $state['started'] : time(),
+        'last_started' => (is_array($state) && isset($state['last_started'])) ? (int) $state['last_started'] : 0,
+    );
     $pages = pg_a11y_pages();
     $checked = 0;
     $failed = 0;
@@ -867,7 +873,7 @@ function pg_a11y_run($time_budget)
         // The place is kept after every page: a process stopped from outside
         // (a runner's time limit) carries on after the last page it checked.
         $after = $page_id;
-        @file_put_contents(pg_a11y_state_path(), json_encode(array('after' => $after)), LOCK_EX);
+        @file_put_contents(pg_a11y_state_path(), json_encode(array('after' => $after) + $cursor), LOCK_EX);
     }
 
     db(
@@ -877,7 +883,9 @@ function pg_a11y_run($time_budget)
             AND (LEFT(code, 5) = 'a11y_')
             AND (entity_id NOT IN (" . ($pages ? implode(',', array_keys($pages)) : '0') . "))");
 
-    @unlink(pg_a11y_state_path());
+    // Finished: no cursor ('after') is left, so the next run starts again
+    // from the first page; only the start of this pass is kept.
+    @file_put_contents(pg_a11y_state_path(), json_encode(array('last_started' => $cursor['started'])), LOCK_EX);
 
     return array('checked' => $checked, 'failed' => $failed, 'done' => true, 'ready' => true);
 }

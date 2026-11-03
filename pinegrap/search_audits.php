@@ -59,7 +59,9 @@ if (isset($_POST['action']) && is_string($_POST['action'])) {
     }
 
     // After a switch, JOB_DISPATCH still holds the list this request started with.
-    $state = pg_search_audits_engine_state($key, $engines[$key], pg_cron_run_rows(), pg_cron_health_last_runs(), isset($selected_now) ? $selected_now : null);
+    // driving: the screen runs this pass with Run now, so the card is drawn
+    // running between its requests; "running" answers the lock alone.
+    $state = pg_search_audits_engine_state($key, $engines[$key], pg_cron_run_rows(), pg_cron_health_last_runs(), isset($selected_now) ? $selected_now : null, !empty($_POST['driving']));
 
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store');
@@ -99,6 +101,8 @@ if (!isset($engines['index'])) {
 $script_texts = array(
     'working'  => lang('Working...'),
     'done'     => lang('Finished.'),
+    // #N# is put in by the script: the pages the whole run could not render.
+    'done_failed' => lang(array('string' => 'Finished; {var:1} could not be rendered.', 'vars' => array('#N#'))),
     'busy'     => lang('Another run of this pass is going. Try again when it has finished.'),
     'failed'   => lang('The request failed. Try again.'),
     'stopped'  => lang('Stopped after many requests; press Run now to carry on.'),
@@ -133,6 +137,9 @@ echo pg_page_shell(array(
     var texts = JSON.parse(root.getAttribute("data-pg-texts"));
     // A pass that never ends must not keep the screen asking for ever.
     var maxRequests = 500;
+    // Cards whose Run now is going: one run per card, and the card is drawn
+    // running between the requests.
+    var driving = {};
 
     function post(url, data) {
         var body = new FormData();
@@ -167,14 +174,14 @@ echo pg_page_shell(array(
     }
 
     function refresh(key) {
-        return post("search_audits.php", { action: "card", engine: key }).then(function (json) {
+        return post("search_audits.php", { action: "card", engine: key, driving: driving[key] ? "1" : "" }).then(function (json) {
             redraw(key, json);
             return json;
         });
     }
 
     // One step of the pass: the index through its own script, the others
-    // through the run endpoint. Resolves to true when the pass is done.
+    // through the run endpoint. Resolves to {done, failed}.
     function step(key, first) {
         if (key === "index") {
             return refresh(key).then(function (before) {
@@ -183,25 +190,29 @@ echo pg_page_shell(array(
             }).then(function () {
                 return refresh(key);
             }).then(function (after) {
-                return !after.unfinished;
+                return { done: !after.unfinished, failed: 0 };
             });
         }
         return post("search_audits_run.php", { engine: key, start: first ? "1" : "0" }).then(function (json) {
             if (json.message) { note(key, json.message); }
-            return refresh(key).then(function () { return json.done; });
+            return refresh(key).then(function () { return { done: json.done, failed: json.failed || 0 }; });
         });
     }
 
     function run(key) {
+        if (driving[key]) { return; }
+        driving[key] = true;
         var count = 0;
+        var failed = 0;
         var button = card(key).querySelector("[data-pg-audit-run]");
         button.disabled = true;
         note(key, texts.working);
 
         function next(first) {
-            return step(key, first).then(function (done) {
+            return step(key, first).then(function (result) {
                 count++;
-                if (done) { note(key, texts.done); return; }
+                failed += result.failed;
+                if (result.done) { note(key, failed ? texts.done_failed.replace("#N#", failed) : texts.done); return; }
                 if (count >= maxRequests) { note(key, texts.stopped); return; }
                 // The card was drawn again: keep its button busy.
                 var current = card(key).querySelector("[data-pg-audit-run]");
@@ -213,8 +224,13 @@ echo pg_page_shell(array(
         next(true).catch(function (error) {
             note(key, error.message || texts.failed);
         }).then(function () {
-            var current = card(key).querySelector("[data-pg-audit-run]");
-            if (current) { current.disabled = false; }
+            driving[key] = false;
+            // Drawn once more in the state of the job itself; the button stays off
+            // while another run holds the lock.
+            return refresh(key).catch(function () {
+                var current = card(key).querySelector("[data-pg-audit-run]");
+                if (current) { current.disabled = false; }
+            });
         });
     }
 
