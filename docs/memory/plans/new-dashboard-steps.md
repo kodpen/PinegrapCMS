@@ -20,7 +20,9 @@ description: Steps N1-N14 and the visual pass V of plans/new-dashboard.md: size,
   - Taken by the owner's local agent that drew the screens (owner, 2026-11-03); cloud workers do not claim V steps.
   - V0 (S): hover and focus figures for the charts N4-N8 drew (`pg_dash.js` helpers). done (#5054); `ui/dashboard-v2-chart-tips.md`.
   - V1 01 top, 15 the Assistant not connected, 21 and 22 the switch row on both dashboards, the card frame and the four faces: done (#6166); `ui/dashboard-v2-drawn-look.md`.
-  - V2 02-04 cards (pipeline, next up, flows; visitors, content, activity; firewall, team, week, comments, Google Search, pins, Add card), V3 05-11 edit, gallery, share and top options, V4 12-14 backdrops, compact and lights, V5 16-19 shop and other cards, V6 20 phone: the screen opened in the sandbox beside its picture, every difference in colour, spacing, type, radius, shadow and icon fixed. The System Status gauge (SVG and animation) stays as it is.
+  - V2 02-04 cards (pipeline, next up, flows; visitors, content, activity; firewall, team, week, comments, Google Search, pins, Add card) and the shared card parts: done (#6263); `ui/dashboard-v2-drawn-look.md`.
+  - V3 05-11 edit, gallery, share and top options, V4 12-14 backdrops, compact and lights, V5 16-19 shop and other cards, V6 20 phone: the screen opened in the sandbox beside its picture, every difference in colour, spacing, type, radius, shadow and icon fixed. The System Status gauge (SVG and animation) stays as it is.
+  - Where V3 starts: edit mode and the side panel (`pg_dash_edit.js`, `pg_dash_panel.js`, the "Edit mode" and "Side panel" sections of `pg_dash.src.css`), pictures 05-11; the palette and card parts are V1's and V2's.
   - Every picture belongs to one V step. A part the sandbox has no data for is drawn from the picture's texts by its own renderer and compared too; a difference kept on purpose is listed on the step's comparison page.
   - Each V PR carries before/after/picture shots and asks the owner through an approval issue (`workflow/architect-asking.md`).
   - After V6: topic files under `ui/`, the decisions moved there, this plan deleted.
