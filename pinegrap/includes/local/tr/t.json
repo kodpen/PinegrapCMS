@@ -4950,6 +4950,7 @@
     "This address is already added as @{var:1}.": "Bu adres zaten @{var:1} olarak eklenmiş.",
     "This address is not on the allow list for this application.": "Bu adres, bu uygulamanın izin listesinde değil.",
     "This address is shown only now. Copy it and send it; the first visit spends it.": "Bu adres yalnızca şimdi gösterilir. Kopyalayıp gönderin; ilk ziyaretle kullanılmış olur.",
+    "This address starts with a language directory, so a short link cannot have this name.": "Bu adres bir dil diziniyle başlıyor, bu yüzden bu ad bir kısa bağlantıya verilemez.",
     "This adds a product group, or a product, inside the group you are standing in. In All Products and All Variant Sets it offers a product on its own, because there is no one group to add it to.": "İçinde bulunduğunuz grubun altına ürün grubu ya da ürün ekler. Tüm Ürünler ve Tüm Varyantlar'da yalnızca ürün önerir, çünkü orada ekleyeceği tek bir grup yoktur.",
     "This adds things where you are standing. Inside a folder it offers a folder, a page and a file; in a view across everything it offers only what belongs there. You can also drop files, and whole folders, straight onto the screen.": "Bulunduğunuz yere ekler. Bir klasörün içindeyken klasör, sayfa ve dosya önerir; her şeyi listeleyen görünümlerde yalnızca oraya ait olanı. Ayrıca dosyaları, hatta klasörlerin tamamını, doğrudan ekranın üstüne bırakabilirsiniz.",
     "This amount is not stored; it only works out the change.": "Bu tutar kaydedilmez; yalnız para üstünü hesaplar.",
