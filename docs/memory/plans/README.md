@@ -52,6 +52,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - content-importers-steps.md: Steps IM1-IM3 of plans/content-importers.md: the import framework and screen, the WordPress WXR reader, pages and media fetches; claim as [plan:content-importers] IM<n>
 - content-importers.md: Plan (owner 2026-11-02): importers for WordPress (WXR), WooCommerce and Shopify (CSV): records, pages, media, comments, customers, products, old addresses as redirects; steps IM1-IM7
 - design-template-appstudio.md: Plan for the Mobile App Developer template (pinegrap-appstudio): own apps and release notes as collections, support and project requests, beta sign-up; parts in a folder; steps 1-9
+- design-template-dealership.md: Plan for the Car Dealership template (pinegrap-dealership): vehicles as a collection with filters, test drive, trade-in and finance requests followed from the account; parts in a folder; steps 1-8
 - design-template-launch.md: Plan for the Phone Launch Site template (pinegrap-launch): three models, specs and compare, the shop, trade-in and support requests; parts in a folder; steps 1-7
 - design-template-portfolio.md: Plan for the Web Designer Portfolio template (pinegrap-portfolio): case studies as a collection, services and packages, a project brief followed from the account; parts in a folder; steps 1-7
 - designer-form-logic-steps-2.md: Steps FL5-FL8 of plans/designer-form-logic.md: the payment step on the site, the staff side and API, template fees, close-out; claim as [plan:designer-form-logic] FL<n>
