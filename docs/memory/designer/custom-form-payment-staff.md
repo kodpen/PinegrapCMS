@@ -7,7 +7,7 @@ module: form_payments
 ## What do staff see? (#6367)
 - `edit_submitted_form.php`, for a submitted-forms manager: Payment Paid / Unpaid badge (`pg_form_payment_record()`, `pg_form_payment_state()`: none, unpaid, paid); the order's link for role < 3 or `manage_ecommerce`; "Record an offline payment" when `pg_order_awaiting_payment()` holds for the order. It posts `record_offline_payment` to the same screen, which calls `pg_order_mark_paid()` with an audit line, so the order, the ERP auto invoice and the record move together.
 
-## What does the submitted forms list show? (#PRNUM)
+## What does the submitted forms list show? (#6406)
 - Once `pg_form_payment_ready()`, `pg_submitted_form_list_source()` reads `forms.order_id`, `forms.paid_at` and adds the Payment column after Status (`pg_submitted_form_list_columns(true)`, kind badge, not sorted, so the kept sort codes stay): `pg_submitted_form_list_payment_badge()`, empty for a record without a fee order. The row adds the cell only when the record has `order_id`, so cells and columns always match.
 - The toolbar's "Unpaid" toggle (shown only once the columns exist) sets the session filter `payment` = `unpaid` / `any`; `pg_submitted_form_list_payment_condition()` adds `pg_form_payment_unpaid_where('forms')` in the simple and the advanced view alike, so Export, Delete All and a whole-list selection follow it.
 
