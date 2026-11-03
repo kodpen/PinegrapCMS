@@ -76,7 +76,7 @@ description: Module list of plans/bug-hunt.md, part 1a: includes/fn/ modules col
 
 - `image_editor`: open
 
-- `imap_client`: open
+- `imap_client`: taken by bughunt-imap-xoauth2
 
 - `innodb`: open
 
