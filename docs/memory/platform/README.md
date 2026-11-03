@@ -97,6 +97,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - import-my-site-scans.md: Import My Site keeps each scan under its own id with its folder name; long tags and names are cut before the uniqueness check; missing URL parts read as empty
 - import-records.md: Content import record and comment writers (2026.11.0): a post as a record of the mapped form, field kinds, categories and tags, author account, late featured image, comment threads, undo paths
 - import-redirects.md: Content import redirects (2026.11.0): which items keep their old address as a 301 short link, destinations, refusals, report line, CSV download, undo
+- import-screen.md: import.php screen rules: menu entry, picker choices (no Recycle Bin or Workspace, path labels), field rows by type, dry run refusals, discard and 7-day sweep, undo answers
 - import-shopify.md: Shopify products and customers CSV import (2026.11.0, #6236): rows grouped by handle, product items as WooCommerce, the contact writer, consent line, tag groups, undo
 - import-woocommerce.md: WooCommerce products CSV import (2026.11.0, #6206): reader, item shape, variable products as variant sets, categories as groups, the product writer and its undo
 - import-wordpress.md: WordPress WXR reader of the import framework: streaming walk, what each item becomes, skipped internals, comment threads, dates, shortcodes, cursor, mapping rows
