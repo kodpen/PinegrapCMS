@@ -1136,6 +1136,7 @@
     "missing": "eksik",
     "mobile page style set to {var:1}": "mobil sayfa stili {var:1} olarak ayarlandı",
     "mobile preview page style set to {var:1}": "mobil ön izleme sayfa stili {var:1} olarak ayarlandı",
+    "mode must be one of: {var:1}": "mode şunlardan biri olmalıdır: {var:1}",
     "moderation": "moderasyon",
     "moderators, hidden posts, reports, solved": "moderatörler, gizlenen gönderiler, şikâyetler, çözüldü",
     "moderators, volunteers, team": "moderatörler, gönüllüler, ekip",

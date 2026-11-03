@@ -77,6 +77,7 @@ require_once($pg_api_directory . '/resources/key_codes.php');
 require_once($pg_api_directory . '/resources/product_attributes.php');
 require_once($pg_api_directory . '/resources/files.php');
 require_once($pg_api_directory . '/resources/offers.php');
+require_once($pg_api_directory . '/resources/offers_create.php');
 require_once($pg_api_directory . '/resources/calendars.php');
 require_once($pg_api_directory . '/resources/webhooks.php');
 require_once($pg_api_directory . '/resources/design.php');

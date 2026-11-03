@@ -1040,6 +1040,7 @@
     "Result Type": "Sonuç Türü",
     "Result clicks": "Sonuç tıklamaları",
     "Result number": "Sonuç numarası",
+    "Result {var:1}: {var:2}": "Sonuç {var:1}: {var:2}",
     "Results": "Sonuçlar",
     "Results Heading": "Sonuç Başlığı Satırı",
     "Results explained by your doctor": "Sonuçlarınızı hekiminiz açıklar",

@@ -474,6 +474,7 @@
     "upload of {var:1} was refused because files of that type are not allowed": "{var:1} yüklemesi reddedildi çünkü bu türden dosyalara izin verilmiyor",
     "upload your own CSS file; good for responsive page design": "kendi CSS dosyanızı yükleyin; duyarlı sayfa tasarımı için iyi",
     "uploaded a backup archive to the installation screen and extracted it to {var:1}": "kurulum ekranına yedek arşivi yükledi ve {var:1} klasörüne çıkarttı",
+    "upsell.{var:1} must be a whole number from 0 to 2147483647.": "upsell.{var:1}, 0 ile 2147483647 arasında bir tam sayı olmalıdır.",
     "urgent": "acil",
     "us-news": "abd-haberleri",
     "use Style Designer; good for adaptive page design": "Stil Tasarımcısını kullanın; uyarlanabilir sayfa tasarımı için iyi",

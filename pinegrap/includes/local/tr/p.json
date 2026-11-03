@@ -1933,6 +1933,7 @@
     "per hour": "saatte",
     "per minute": "dakikada",
     "per person": "kişi başı",
+    "percentage must be a whole number from 0 to 100.": "percentage, 0 ile 100 arasında bir tam sayı olmalıdır.",
     "performance monitoring was turned off and its records were cleared": "performans izleme kapatıldı ve kayıtları temizlendi",
     "permissions were changed for {var:1}": "{var:1} için izinler değiştirildi",
     "person": "kişi",
