@@ -41,7 +41,7 @@ $shell = function () use (&$heading, &$crumbs) {
 };
 
 $status_labels = array(
-    'draft' => lang('Set up'),
+    'draft' => lang('Being set up'),
     'running' => lang('Running'),
     'paused' => lang('Paused'),
     'ended' => lang('Ended'),
@@ -61,7 +61,23 @@ $badge = function ($status) use ($status_labels) {
 };
 
 $percent = function ($rate) {
-    return ($rate === null) ? '&ndash;' : h(number_format($rate * 100, 1)) . '%';
+    return ($rate === null) ? '&ndash;' : h(pg_experiment_percent($rate * 100, 1));
+};
+
+// A page in the Recycle Bin carries an internal name (pgbin_…); say where it
+// is instead.
+$bin_folders = function_exists('pg_recycle_bin_folder_ids') ? array_map('intval', (array) pg_recycle_bin_folder_ids()) : array();
+
+$page_text = function ($page_name, $page_folder) use ($bin_folders) {
+    if ((string) $page_name === '') {
+        return '<span class="fg-secondary">' . h(lang('The page was deleted.')) . '</span>';
+    }
+
+    if (in_array((int) $page_folder, $bin_folders, true)) {
+        return '<span class="fg-secondary">' . h(lang('The page is in the Recycle Bin.')) . '</span>';
+    }
+
+    return h($page_name);
 };
 
 $output = '';
@@ -83,16 +99,17 @@ if (!pg_experiment_sheet_ready()) {
         $dates = array();
 
         if ((int) $row['started_at'] > 0) {
-            $dates[] = h(lang(array('string' => 'Started {var:1}', 'vars' => get_relative_time(array('timestamp' => (int) $row['started_at'])))));
+            // get_relative_time() gives a <time> element, printed as markup.
+            $dates[] = lang(array('string' => 'Started {var:1}', 'vars' => get_relative_time(array('timestamp' => (int) $row['started_at']))));
         }
 
         if ((int) $row['ended_at'] > 0) {
-            $dates[] = h(lang(array('string' => 'Ended {var:1}', 'vars' => get_relative_time(array('timestamp' => (int) $row['ended_at'])))));
+            $dates[] = lang(array('string' => 'Ended {var:1}', 'vars' => get_relative_time(array('timestamp' => (int) $row['ended_at']))));
         }
 
         $rows .= '<tr>
-            <td class="align-middle"><a href="' . h('experiments.php?id=' . (int) $row['id']) . '">' . h($row['name']) . '</a></td>
-            <td class="align-middle">' . (((string) $row['page_name'] !== '') ? h($row['page_name']) : '<span class="fg-secondary">' . h(lang('The page was deleted.')) . '</span>') . '</td>
+            <td class="align-middle text-break" style="min-width: 10rem"><a href="' . h('experiments.php?id=' . (int) $row['id']) . '">' . h($row['name']) . '</a></td>
+            <td class="align-middle text-break">' . $page_text($row['page_name'], $row['page_folder']) . '</td>
             <td class="align-middle">' . $badge($row['status']) . '</td>
             <td class="align-middle small fg-secondary">' . implode(' &middot; ', $dates) . '</td>
             <td class="align-middle text-end">' . (int) $row['views'] . '</td>
@@ -112,6 +129,9 @@ if (!pg_experiment_sheet_ready()) {
 
     $experiment = pg_experiment_sheet_get($experiment_id);
     $live = $experiment ? db_item("SELECT page_id, page_name, page_folder FROM page WHERE page_id = '" . (int) $experiment['page_id'] . "' LIMIT 1") : null;
+    // Start, publishing a variant and the sheet need the page on the site;
+    // pause, end and keeping the live page work without it.
+    $is_live = $experiment ? (bool) pg_experiment_sheet_live_page($experiment['page_id']) : false;
 
     if (!$experiment) {
         $output = '<div class="alert theme-warning my-7">' . h(lang('The experiment was not found.')) . '</div>';
@@ -158,12 +178,12 @@ if (!pg_experiment_sheet_ready()) {
             $lift = '&ndash;';
 
             if ($variant['lift'] !== null) {
-                $lift = h(($variant['lift'] >= 0 ? '+' : '') . number_format($variant['lift'] * 100, 1)) . '%';
+                $lift = h(lang(array('string' => '{var:1}%', 'vars' => ($variant['lift'] >= 0 ? '+' : '') . pg_experiment_number($variant['lift'] * 100, 1))));
             }
 
             $publish = '';
 
-            if (in_array('publish_winner', $actions, true)) {
+            if (in_array('publish_winner', $actions, true) && ($is_live || $variant['control'])) {
                 $publish = '<form method="post" action="' . h($sheet) . '" class="d-inline" onsubmit="return confirm(' . h(json_encode($variant['control']
                         ? lang('End the experiment and keep the live page as it is?')
                         : lang('Publish this variant\'s design on the live page and end the experiment?'))) . ');">'
@@ -191,13 +211,13 @@ if (!pg_experiment_sheet_ready()) {
         // The buttons of the sheet, posted there and back here.
         $buttons = '';
         $labels = array(
-            'start' => array(($status === 'paused') ? lang('Resume') : lang('Start'), 'play-fill', 'theme-primary'),
+            'start' => array(($status === 'paused') ? lang('Resume') : lang('Start the experiment'), 'play-fill', 'theme-primary'),
             'pause' => array(lang('Pause'), 'pause-fill', 'theme-secondary'),
             'end' => array(lang('End without a winner'), 'stop-fill', 'theme-secondary'),
         );
 
         foreach ($actions as $action) {
-            if (!isset($labels[$action])) {
+            if (!isset($labels[$action]) || (($action === 'start') && !$is_live)) {
                 continue;
             }
 
@@ -226,7 +246,7 @@ if (!pg_experiment_sheet_ready()) {
 
                 foreach ($results as $variant) {
                     $rate = $series['rates'][(int) $variant['id']][$d];
-                    $cells .= '<td class="text-end">' . (($rate === null) ? '&ndash;' : h(number_format($rate, 1)) . '%') . '</td>';
+                    $cells .= '<td class="text-end">' . (($rate === null) ? '&ndash;' : h(pg_experiment_percent($rate, 1))) . '</td>';
                 }
 
                 $body .= '<tr><th scope="row">' . h(get_absolute_time(array('timestamp' => strtotime($day), 'type' => 'date', 'format' => 'plain_text'))) . '</th>' . $cells . '</tr>';
@@ -243,20 +263,16 @@ if (!pg_experiment_sheet_ready()) {
                 </div>';
         }
 
-        $goal = isset($goal_labels[$experiment['goal_kind']]) ? $goal_labels[$experiment['goal_kind']] : '';
-
-        if ((string) $experiment['goal_target'] !== '') {
-            $goal .= ' (' . $experiment['goal_target'] . ')';
-        }
+        $goal = pg_experiment_goal_text($experiment, $goal_labels);
 
         $output = '
             <nav id="button_bar" class="pg-toolbar my-3" aria-label="' . h(lang('Button Bar')) . '">
                 ' . $buttons . '
-                ' . (is_array($live) ? '<a class="btn btn-sm btn-text theme-secondary" href="' . h($sheet) . '"><i class="bi bi-sliders me-1" aria-hidden="true"></i>' . h(lang('Experiments sheet of the page')) . '</a>' : '') . '
+                ' . ($is_live ? '<a class="btn btn-sm btn-text theme-secondary" href="' . h($sheet) . '"><i class="bi bi-sliders me-1" aria-hidden="true"></i>' . h(lang('Experiment settings of the page')) . '</a>' : '') . '
                 <div class="pg-toolbar-grow"></div>
             </nav>
             <p class="d-flex flex-wrap gap-3 align-items-center">' . $badge($status) . '
-                <span class="small fg-secondary">' . h(is_array($live) ? $live['page_name'] : lang('The page was deleted.')) . '</span>
+                <span class="small fg-secondary text-break min-w-0">' . (is_array($live) ? $page_text($live['page_name'], $live['page_folder']) : $page_text('', 0)) . '</span>
                 <span class="small fg-secondary">' . h(lang(array('string' => 'Goal: {var:1}', 'vars' => $goal))) . '</span></p>
             ' . ($sentences !== '' ? '<div class="card my-7"><div class="card-body">' . $sentences . '</div></div>' : '') . '
             <div class="card my-7"><div class="card-body p-0"><div class="table-responsive"><table class="table table-sm mb-0">

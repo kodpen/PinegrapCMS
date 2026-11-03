@@ -163,3 +163,10 @@ function test_experiment_chart_svg()
 	pg_assert_same(false, strpos($one, '<circle'), 'a lone point is no circle');
 	pg_assert_true(strpos($one, 'stroke-linecap="round"') !== false, 'a lone point keeps its round shape');
 }
+
+// Percentages go through the language's figure and sign format.
+function test_experiment_percent()
+{
+	pg_assert_same('37.5%', pg_experiment_percent(37.5), 'one decimal');
+	pg_assert_same('70%', pg_experiment_percent(70, 0), 'whole');
+}
