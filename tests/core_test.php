@@ -452,3 +452,11 @@ function test_core_escape_like_escapes_backslash()
 	pg_assert_same('50\\% off\\_now', escape_like('50% off_now'));
 	pg_assert_same('', escape_like(''));
 }
+
+// files.type keeps the extension as uploaded, so "JPG" is a JPEG too.
+function test_core_get_mime_type_ignores_case()
+{
+	pg_assert_same('image/jpeg', get_mime_type('JPG'));
+	pg_assert_same('video/mp4', get_mime_type(' .Mp4 '));
+	pg_assert_same('application/octet-stream', get_mime_type('exe'));
+}
