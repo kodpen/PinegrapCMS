@@ -238,8 +238,12 @@ function _pg_lfc_walk($code, $st, $depth)
             $flags = array('$captcha_question' => 'captcha', '$watcher_option' => 'watcher',
                            '$save' => 'save', '$office_use_only' => 'office');
             $kind = isset($flags[$m[1]]) ? $flags[$m[1]] : 'condition';
+            // The generator's guard around an SMS question
+            // (isset($field['<id>'])) is kept like the office-use-only one.
+            if (preg_match('/^isset\(\$field\[([\'"])\d+\1\]\)$/', $m[1])) $kind = 'office';
             // Office-use-only fields are told apart by their rows: the
-            // designed form hides them from visitors itself. The CAPTCHA
+            // designed form hides them from visitors itself (an SMS question
+            // too, pg_cf_drop_sms_question()). The CAPTCHA
             // block is kept inside a marker; its wrappers stay around the
             // CAPTCHA element (_pg_lfc_captcha()).
             $open = ($kind === 'captcha' && $keep);

@@ -22,6 +22,6 @@ description: Module list of plans/bug-hunt.md, part 1a2: includes/fn/ modules em
 - `lang`: done #6045 (placeholder values re-scanned; rest reviewed: language pick, source, cache, log/staff language)
 - `lang_files`: open
 - `language_redirect`: open
-- `layout_convert`: open
+- `layout_convert`: #PRNUM
 - `layouts`: #6043
 - `legal_documents`: open
