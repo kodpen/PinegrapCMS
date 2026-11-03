@@ -23,7 +23,7 @@ module: layouts
 ## Where do read and save live?
 - `includes/fn/layouts.php` (loaded where needed, not by the manifest): `pg_layout_read()`, `pg_layout_save()`, `pg_layout_generated()`, `pg_layout_same_as_generated()`, `pg_layout_file_name()`. `edit_page_layout.php` saves through the same action ([[layout-editor-classic]]).
 - The file is `LAYOUT_DIRECTORY_PATH/<int page id>.php`; `pg_layout_file_name()` accepts only a positive integer, so no request value reaches the path.
-- Save: a text equal to the generated one with white space removed deletes the file and sets `page.layout_modified = 0` (it follows the form's fields again); anything else writes the file and sets 1; a failed write is refused and leaves the page as it was (a modified page includes the file) (#PRNUM). Logged. Page cache: `save` dirty, `read`/`regenerate` clean.
+- Save: a text equal to the generated one with white space removed deletes the file and sets `page.layout_modified = 0` (it follows the form's fields again); anything else writes the file and sets 1; a failed write is refused and leaves the page as it was (a modified page includes the file) (#6043). Logged. Page cache: `save` dirty, `read`/`regenerate` clean.
 
 ## Hosted sites?
 - `pg_hosted()`: Ctrl+G opens the canvas; the tab is read only (`_design.layoutReadOnly`), no Regenerate, save refused with "Custom layouts are not available on this site."; read shows the generated layout, which is what `render_layout()` draws there.
