@@ -289,7 +289,6 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery_datatables_checkbox.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/lazy.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/multiselect-checkbox/jquery-multiselect-checkbox.min.js"></script>
-    <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/json2/json.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Inputmask-5.x/jquery.inputmask.min.js"></script>
     <script type="text/javascript" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Inputmask-5.x/bindings/inputmask.binding.js"></script>
     <script>window.pgCodeEditorConfig = ' . pg_code_editor_json(pg_code_editor_urls()) . ';</script>
@@ -2549,7 +2548,7 @@ function output_header($properties = false)
                     <button type="button" class="pg-searchbar-field no-popover" data-bs-toggle="dialog" data-bs-target="#SearchBox" aria-label="' . lang('Search') . '">
                         <span class="bi bi-search pg-searchbar-icon" aria-hidden="true"></span>
                         <span class="pg-searchbar-text">' . lang('Search...') . '</span>
-                        <span class="pg-searchbar-kbd" aria-hidden="true">Ctrl+K</span>
+                        <span class="pg-searchbar-kbd" aria-hidden="true"><span data-pg-mod>Ctrl</span>+K</span>
                     </button>
                 </div>';
     }
@@ -2629,8 +2628,9 @@ function output_header($properties = false)
                 ' . $output_help_button . '
                 ' . $output_settings_button . '
                 <ul class="navbar-nav">
-                    <li class="nav-item pg-menu-wrap no-arrow no-popover" title="' . lang('Notifications') . ' (Ctrl+Q | ⌘+Q)">
+                    <li class="nav-item pg-menu-wrap no-arrow no-popover" title="' . lang('Notifications') . ' (Ctrl+Q)">
                         <button type="button" id="notification_toggle" class="nav-link nav-link-sm no-popover pg-menu-caret" data-bs-toggle="menu" data-bs-display="static" data-bs-target="#notifications" data-bs-auto-close="outside" aria-expanded="false">
+                            <span class="visually-hidden">' . h(lang('Notifications')) . '</span>
                             <span class="has-notification-icon bi bi-bell"></span>
                         </button>
                         <div id="notifications" class="menu shadow p-0 bg-body backdrop mt-nav-link-sm border-dropdown-menu position-fixed end-0 top-0" tabindex="-1" aria-labelledby="notification_toggle" aria-hidden="true">
@@ -2679,7 +2679,7 @@ function output_header($properties = false)
             </nav>
         </div>
         ' . $output_software_sidebar . $output_settings_modal . '
-        <dialog class="dialog dialog-lg dialog-scrollable pg-dialog-centered shadow" id="SearchBox" aria-labelledby="SearchBoxLabel">
+        <dialog class="dialog dialog-lg dialog-scrollable pg-dialog-centered shadow" id="SearchBox" aria-label="' . h(lang('Search')) . '">
               <div class="dialog-header border-0 px-5 py-3 gap-3 ">
                 <span class="bi bi-search fs-lg fg-secondary flex-shrink-0"></span>
                 <form class="search_form disable_shortcut d-flex align-items-center flex-grow-1 position-relative" role="search">
@@ -2687,7 +2687,7 @@ function output_header($properties = false)
                     <input type="text" id="query" class="query form-control border-0 shadow-none no-popover fs-lg px-1" name="query" placeholder="' . lang('Search...') . '" value="" autocomplete="off">
                     <button type="button" class="clear btn btn-sm btn-link fg-secondary no-popover d-none position-absolute end-0 bi bi-x-lg" title="' . lang('Reset') . '"></button>
                 </form>
-                <span class="fg-secondary small flex-shrink-0 d-none md:d-inline opacity-50 user-select-none">Ctrl+K</span>
+                <span class="fg-secondary small flex-shrink-0 d-none md:d-inline opacity-50 user-select-none" aria-hidden="true"><span data-pg-mod>Ctrl</span>+K</span>
                 <button type="button" class="btn-close ms-1 flex-shrink-0" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
               </div>
               <div class="dialog-body px-5 py-5" style="min-height:200px;max-height:65vh;overflow-y:auto;">
@@ -2965,7 +2965,8 @@ function pg_account_menu($user, $options = array())
             ? 'https://forms.office.com/Pages/ResponsePage.aspx?id=DQSIkWdsW0yxEjajBLZtrQAAAAAAAAAAAAN__hpULwNUN05TSEo4UENETFJFMzhXQTVHTlhFVDVIOS4u'
             : 'https://forms.office.com/Pages/ResponsePage.aspx?id=DQSIkWdsW0yxEjajBLZtrQAAAAAAAAAAAAN__hpULwNUMDE3UktZR01OQkg4V0JBNTc4U1RXWFExOC4u';
 
-        $help .= str_replace('<a ', '<a id="feedback_link" onclick="window.open(this.href, \'PinegrapFeedback\', \'resizable=yes,status=yes,location=no,toolbar=no,menubar=no,fullscreen=no,scrollbars=yes,dependent=no\'); return false;" ', $row($feedback_url, 'bi-chat-square-heart', lang('Feedback'), '', true));
+        // A new tab like the other outside rows, not a popup window.
+        $help .= str_replace('<a ', '<a id="feedback_link" ', $row($feedback_url, 'bi-chat-square-heart', lang('Feedback'), $new_tab, true));
     } else {
         // A private label brings its own links in place of the software's.
         for ($i = 1; $i <= 5; $i++) {
@@ -3128,7 +3129,9 @@ function pg_menu_mode_button($state)
  * Not a row of the account menu any more: nobody found them there. The ?
  * key opens the dialog from anywhere outside a text field, and so does the
  * chip the search box offers for "shortcut" (backend.src.js). A <kbd> marked
- * data-pg-mod reads Ctrl and turns into the command key on an Apple device.
+ * data-pg-mod reads Ctrl and turns into the command key on an Apple device;
+ * a row whose third item is false keeps Ctrl there too (Ctrl+Q: Command+Q
+ * quits the browser on a Mac before the page sees it).
  *
  * @return string
  */
@@ -3138,7 +3141,7 @@ function pg_shortcuts_dialog()
         lang('While on the Panel') => array(
             array(array('Ctrl', 'K'), lang('Show/Hide Search Box')),
             array(array('Ctrl', 'S'), lang('Submit Form/Save')),
-            array(array('Ctrl', 'Q'), lang('Toggle Notifications')),
+            array(array('Ctrl', 'Q'), lang('Toggle Notifications'), false),
             array(array('Ctrl', 'D'), lang('Change menu view')),
             array(array('F1'), lang('Help for this screen')),
             array(array('?'), lang('Keyboard Shortcuts'))),
@@ -3159,7 +3162,7 @@ function pg_shortcuts_dialog()
             $keys = '';
 
             foreach ($shortcut[0] as $key) {
-                $keys .= '<kbd' . (($key === 'Ctrl') ? ' data-pg-mod' : '') . '>' . h($key) . '</kbd>';
+                $keys .= '<kbd' . ((($key === 'Ctrl') && (($shortcut[2] ?? true) !== false)) ? ' data-pg-mod' : '') . '>' . h($key) . '</kbd>';
             }
 
             $body .= '
@@ -3854,10 +3857,11 @@ function output_menu($properties = false)
             $menu_items[11]['color_class'] = 'ecommerce-color';
             $menu_items[11]['title'] = 'Products';
             $menu_items[11]['context'] = true;
-            $menu_items[11]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php\'' . $output_parent_target . ' data-pg-menu-label=\'' . h(lang('Products')) . '\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-seam bi-me-2\'>' . lang('All Products') . '</a>';
+            // One All Products entry, on the full list: the bare address
+            // reopens the filter last used (Out of Stock, say) under that name.
+            $menu_items[11]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?filter=all_products\'' . $output_parent_target . ' data-pg-menu-label=\'' . h(lang('Products')) . '\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-seam bi-me-2\'>' . lang('All Products') . '</a>';
             $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_product.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Product'))) . '</a>';
             $menu_items[11]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-            $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?filter=all_products\'' . $output_parent_target . ' data-pg-menu-label=\'' . h(lang('Products')) . '\' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-box-seam bi-me-2\'>' . lang('All Products') . '</a>';
             $menu_items[11]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php?filter=out_of_stock_products\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-cart-x bi-me-2\'>' . lang('All Out of Stock Products') . '</a>';
 
             // ECOMMERCE > Barcode
@@ -4752,6 +4756,13 @@ function output_menu($properties = false)
             }
         }
 
+        // A row without a panel is the page itself when active (the
+        // Dashboard); a panel row's current entry is marked by
+        // markMenuCurrent() (backend.src.js).
+        if (($active_menu_class !== '') && ($menu_panel_id === '')) {
+            $output_menu_row_panel .= ' aria-current="page"';
+        }
+
         // no-popover: the row keeps the browser's own title hint, which names
         // the icon on the rail, instead of a hover popover (pgBindTitlePopovers()).
         $menu_rows[$key] = '<a id="menu_item_' . $options['id'] . '"' . $output_menu_row_panel . ' class="list-group-item list-group-item-action border-0 no-popover' . (($menu_panel_id !== '') ? ' pg-menu-parent' : '') . $active_menu_class . '" title="' . lang($options['title']) . '" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/' . $options['href'] . '" ' . $output_parent_target . '>' . $output_menu_item_icon . '<span class="list-group-text">' . lang($options['title']) . '</span>' . $output_menu_item_badge . $output_menu_row_end . '</a>';
@@ -5126,6 +5137,11 @@ function pg_menu_tone($color_class)
 function pg_menu_panel($panel_id, $row_id, $title, $entries, $tone = '')
 {
     $tone = preg_match('/^[a-z]+$/', (string) $tone) ? ' data-pg-menu-tone="' . $tone . '"' : '';
+
+    // The entries wrap onto a second line in the panel instead of ending in
+    // an ellipsis (backend.src.css): the text-truncate utility output_menu()
+    // gives them would win over the panel's rule from its later layer.
+    $entries = str_replace(' text-truncate ', ' ', (string) $entries);
 
     return '<div id="' . $panel_id . '" class="pg-menu-panel" data-pg-menu-row="' . $row_id . '"' . $tone . ' role="group" aria-labelledby="' . $panel_id . '_title">'
         . '<div class="pg-menu-panel-head">'
@@ -5741,20 +5757,22 @@ function license_check($properties = false)
                     <div class="fg-danger small">' . lang('Expired') . ': ' . h(pg_license_expiry_text($expiration_dt)) . '</div>
                 </div>';
             } else {
-                // technical error — show diagnostic for managers+
+                // A technical error shows its diagnostic to managers and up.
+                // A key the server answered for (no_match, suspended, seats
+                // full...) has its own notice and no diagnostic.
                 $bar_diag_html = '';
-                if (isset($user['role']) && (int) $user['role'] <= 2 && ($diag['errno'] || $diag['response'] || $diag['error'])) {
+                if (isset($user['role']) && (int) $user['role'] <= 2 && (pg_license_error_notice($error_code) === '') && ($diag['errno'] || $diag['response'] || $diag['error'])) {
                     $diag_lines = array();
                     if ($diag['errno'])
                         $diag_lines[] = 'cURL errno: ' . (int) $diag['errno'];
                     if ($diag['error'])
                         $diag_lines[] = 'cURL error: ' . h($diag['error']);
                     if ($diag['response'])
-                        $diag_lines[] = 'Response: ' . h($diag['response']);
+                        $diag_lines[] = h(lang('Response')) . ': ' . h($diag['response']);
                     $bar_diag_html = '
-                    <details class="px-3 pb-1" style="font-size:.65rem">
-                        <summary class="fg-secondary" style="cursor:pointer">Diagnostic</summary>
-                        <pre class="text-start fg-danger bg-2 rounded-4 p-1 mt-1 mb-0" style="white-space:pre-wrap;word-break:break-all;font-size:.65rem">' . implode("\n", $diag_lines) . '</pre>
+                    <details class="pg-lic-diag px-3 pb-1">
+                        <summary class="fg-secondary">' . h(lang('Diagnostic')) . '</summary>
+                        <pre class="text-start fg-danger bg-2 rounded-4 p-1 mt-1 mb-0">' . implode("\n", $diag_lines) . '</pre>
                     </details>';
                 }
                 $bar_body = '

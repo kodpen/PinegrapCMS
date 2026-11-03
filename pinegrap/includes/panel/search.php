@@ -76,7 +76,7 @@ function pg_panel_backend_search($request, $action)
         $actions[] = array('label' => lang('Pages'), 'icon' => 'bi-file-earmark-text', 'url' => $base_url . '/view_pages.php', 'keys' => array('sayfa', 'sayfalar', 'page', 'pages', 'say'));
     }
     if ($gate['add_page']) {
-        $actions[] = array('label' => lang('Add Page'), 'icon' => 'bi-file-earmark-plus', 'url' => $base_url . '/add_page.php', 'keys' => array('sayfa ekle', 'page add', 'yeni sayfa', 'add page', 'sayfaekle'));
+        $actions[] = array('label' => lang(array('string' => 'Create {var:1}', 'vars' => lang('Page'))), 'icon' => 'bi-file-earmark-plus', 'url' => $base_url . '/add_page.php', 'keys' => array('sayfa ekle', 'sayfa olustur', 'page add', 'yeni sayfa', 'add page', 'create page', 'sayfaekle'));
     }
     if ($gate['folders']) {
         $actions[] = array('label' => lang('File Manager'), 'icon' => 'bi-folder2', 'url' => $base_url . '/view_folders.php', 'keys' => array('klasor', 'klasör', 'folder', 'fol', 'kla', 'dosya', 'yonetici', 'file', 'manager'));
@@ -110,7 +110,7 @@ function pg_panel_backend_search($request, $action)
     if ($gate['ecommerce']) {
         $actions[] = array('label' => lang('Orders'), 'icon' => 'bi-receipt', 'url' => $base_url . '/view_orders.php', 'keys' => array('siparis', 'siparisler', 'order', 'orders', 'ord', 'sip'));
         $actions[] = array('label' => lang('Products'), 'icon' => 'bi-box-seam', 'url' => $base_url . '/view_products.php', 'keys' => array('urun', 'urunler', 'product', 'products', 'pro', 'uru'));
-        $actions[] = array('label' => lang('Add Product'), 'icon' => 'bi-box-seam', 'url' => $base_url . '/add_product.php', 'keys' => array('urun ekle', 'add product', 'yeni urun', 'urunek'));
+        $actions[] = array('label' => lang(array('string' => 'Create {var:1}', 'vars' => lang('Product'))), 'icon' => 'bi-box-seam', 'url' => $base_url . '/add_product.php', 'keys' => array('urun ekle', 'urun olustur', 'add product', 'create product', 'yeni urun', 'urunek'));
         $actions[] = array('label' => lang('Product Groups'), 'icon' => 'bi-boxes', 'url' => $base_url . '/view_product_groups.php', 'keys' => array('urun grubu', 'grup', 'product group', 'group', 'gru'));
         $actions[] = array('label' => lang('Add Product Group'), 'icon' => 'bi-boxes', 'url' => $base_url . '/add_product_group.php', 'keys' => array('grup ekle', 'add group', 'yeni grup', 'grupekle'));
         $actions[] = array('label' => lang('Offers'), 'icon' => 'bi-percent', 'url' => $base_url . '/view_offers.php', 'keys' => array('teklif', 'teklifler', 'indirim', 'offer', 'offers', 'off', 'tek', 'ind'));
@@ -221,8 +221,8 @@ function pg_panel_backend_search($request, $action)
     // ── Design ────────────────────────────────────────────────────────────
     if ($gate['design']) {
         $actions[] = array('label' => lang('Experiments'), 'icon' => 'bi-bar-chart-line', 'url' => $base_url . '/experiments.php', 'keys' => array('deney', 'deneyler', 'ab test', 'a/b', 'experiment', 'experiments', 'varyant', 'variant'));
-        $actions[] = array('label' => lang('Styles'), 'icon' => 'bi-window', 'url' => $base_url . '/view_styles.php', 'keys' => array('stil', 'stiller', 'style', 'styles', 'stl'));
-        $actions[] = array('label' => lang('Add Style'), 'icon' => 'bi-window-plus', 'url' => $base_url . '/add_style.php', 'keys' => array('stil ekle', 'add style', 'yeni stil', 'stilekle'));
+        $actions[] = array('label' => lang('Page Styles'), 'icon' => 'bi-window', 'url' => $base_url . '/view_styles.php', 'keys' => array('stil', 'stiller', 'style', 'styles', 'stl'));
+        $actions[] = array('label' => lang(array('string' => 'Create {var:1}', 'vars' => lang('Page Style'))), 'icon' => 'bi-window-plus', 'url' => $base_url . '/add_custom_style.php', 'keys' => array('stil ekle', 'stil olustur', 'add style', 'create style', 'yeni stil', 'stilekle'));
         $actions[] = array('label' => lang('Themes'), 'icon' => 'bi-palette', 'url' => $base_url . '/view_themes.php', 'keys' => array('tema', 'theme', 'them', 'tem'));
         $actions[] = array('label' => lang('Design Files'), 'icon' => 'bi-filetype-css', 'url' => $base_url . '/view_design_files.php', 'keys' => array('tasarim dosya', 'design file', 'css', 'js', 'des', 'tas'));
         $actions[] = array('label' => lang('Common Regions'), 'icon' => 'bi-columns-gap', 'url' => $base_url . '/view_regions.php?filter=all_common_regions', 'keys' => array('ortak bolge', 'common region', 'region', 'reg', 'ort', 'common', 'bol'));
@@ -291,7 +291,10 @@ function pg_panel_backend_search($request, $action)
          LIMIT $per_limit"
     );
     foreach ($rows as $r) {
-        $add('page', $r['id'], $r['name'], $r['type'], $score_fn($r['name']));
+        // The type's name as the page list shows it; the stored code goes
+        // along for the result's icon (PAGE_ICONS, backend.src.js).
+        $page_type_name = get_page_type_name($r['type']);
+        $add('page', $r['id'], $r['name'], ($page_type_name !== null) ? $page_type_name : $r['type'], $score_fn($r['name']), array('page_type' => $r['type']));
     }
 
     // ── Files (folders the viewer may edit) ──────────────────────────────
