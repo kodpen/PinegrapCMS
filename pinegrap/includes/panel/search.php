@@ -576,6 +576,29 @@ function pg_panel_backend_search($request, $action)
         }
     }
 
+    // ── Bookings (the agenda's viewers: roles 0-2, a role-3 staff member
+    //    their own) by the customer's name or e-mail address ─────────────
+    if (pg_booking_ready()) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/booking_agenda.php');
+
+        $booking_scope = pg_booking_agenda_user_scope($user);
+
+        if ($booking_scope !== false) {
+            $rows = db_items(
+                "SELECT bookings.id, bookings.name, bookings.email, bookings.start_at
+                 FROM bookings
+                 WHERE bookings.status <> 'held'
+                   AND (bookings.name LIKE '$s' OR bookings.email LIKE '$s')" . pg_booking_agenda_scope_sql($booking_scope) . "
+                 " . $rank('bookings.name', 'bookings.start_at DESC, bookings.id') . "
+                 LIMIT $per_limit"
+            );
+            foreach ($rows as $r) {
+                $sub = pg_booking_agenda_time($r['start_at'], true) . (((string) $r['email'] !== '') ? ' · ' . $r['email'] : '');
+                $add('booking', $r['id'], $r['name'], $sub, $score_fn($r['name'], $r['email']));
+            }
+        }
+    }
+
     $page = pg_panel_search_page($results, $offset, 20);
 
     echo encode_json(array('status' => 'success', 'results' => $page['results'], 'actions' => $actions, 'has_more' => $page['has_more']));
@@ -608,7 +631,8 @@ function pg_panel_search_compare($a, $b)
     static $types = array(
         'page', 'file', 'menu', 'calendar', 'email_campaign', 'form', 'user',
         'product', 'product_group', 'offer', 'order', 'style', 'contact',
-        'common_region', 'design_region', 'login_region', 'short_link'
+        'common_region', 'design_region', 'login_region', 'short_link',
+        'booking'
     );
     if ($a['score'] != $b['score']) {
         return $a['score'] < $b['score'] ? 1 : -1;
