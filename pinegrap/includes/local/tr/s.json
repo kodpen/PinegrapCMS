@@ -305,6 +305,7 @@
     "Saves the shared component.": "Paylaşılan bileşeni kaydeder.",
     "Saves this card and then asks the authority to stamp a throwaway digest, so the answer describes what was just entered. No counter is spent beyond that one stamp.": "Bu kartı kaydeder, sonra kuruluştan tek kullanımlık bir özeti damgalamasını ister; böylece cevap az önce yazdığınız ayarlara aittir. O tek damga dışında kontör harcanmaz.",
     "Saving": "Kaydediliyor",
+    "Saving adds the panel user with every service that can be booked and Monday to Friday, 09:00 to 17:00; change them after.": "Kaydetmek panel kullanıcısını randevu alınabilen tüm hizmetler ve pazartesi-cuma 09:00-17:00 saatleriyle ekler; sonra değiştirin.",
     "Saving against the bundle's products bought one by one (with symbol)": "Paketin ürünlerini tek tek almaya göre kazanç (simgeyle)",
     "Saving burns the redaction into the image and removes its metadata. Earlier versions stay in Versions, where anyone who may edit this folder can restore them; Save as a copy leaves this file as it is.": "Kaydedince sansür görsele kalıcı işlenir ve meta verileri silinir. Önceki sürümler Sürümler'de kalır; bu klasörü düzenleyebilen herkes onları geri yükleyebilir. Kopya olarak kaydet bu dosyayı olduğu gibi bırakır.",
     "Saving the task like this causes these clashes:": "Görevi bu hâliyle kaydetmek şu çakışmalara yol açıyor:",

@@ -19,6 +19,7 @@ description: Generated from the module field of the memory files: each includes/
 - `aws_sign`: [[aws-sigv4-signing]]
 - `background_render`: [[background-render]]
 - `backup`: [[backup-folder-download-zip]], [[backup-manager-names-and-list]], [[backup-object-storage]], [[fn-module-errors-mail-backup-consent]]
+- `booking_settings`: [[booking-settings]]
 - `bookings`: [[bookings-model]]
 - `bundles`: [[product-bundles]], [[product-bundles-storefront]]
 - `calendar`: [[calendar-event-exception-endpoint]], [[calendar-location-availability]], [[calendar-view-date]]
