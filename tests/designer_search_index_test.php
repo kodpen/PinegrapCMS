@@ -344,8 +344,9 @@ function test_designer_search_index_failures_reported()
 	$files  = strpos($source, '// Get files that should be included in search index.');
 	$branch = substr($source, $start, $files - $start);
 
-	// A record list or record that fails to draw, and a host a run ended inside.
-	pg_assert_same(3, substr_count($branch, 'pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note('));
+	// A record list or record that fails to draw, a host a run ended inside
+	// outside its records, and a record a run ended inside.
+	pg_assert_same(4, substr_count($branch, 'pg_search_index_failed($index_failures, $index_failure_notes, pg_search_index_failure_note('));
 	pg_assert_contains("\$host_page['page_name'], '', \$throwable->getMessage(), 200, lang('Record list')", $branch);
 	pg_assert_contains("\$detail_page['page_name'], \$record['reference_code'], \$throwable->getMessage(), 200, lang('Record')", $branch);
 	pg_assert_false(strpos($branch, "error_log('Pinegrap: the search index left out") !== false);
