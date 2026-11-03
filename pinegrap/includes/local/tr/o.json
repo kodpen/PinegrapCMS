@@ -347,6 +347,7 @@
     "One per month, {var:1} months: {var:2} to {var:3}": "Her ay için bir tane, {var:1} ay: {var:2} – {var:3}",
     "One person is looking around the site right now.": "Şu anda bir kişi siteyi geziyor.",
     "One person on the site now": "Şu an sitede bir kişi var",
+    "One person who answers on your side within two working days": "Sizin tarafınızda iki iş günü içinde yanıt veren bir kişi",
     "One picture per screen, a plain list of projects by year and pages that load in under a second.": "Her ekranda tek görsel, yıla göre sade bir proje listesi ve bir saniyenin altında açılan sayfalar.",
     "One question or idea for each topic.": "Her konuda tek bir soru ya da fikir.",
     "One record to a row": "Satırda bir kayıt",
@@ -1584,5 +1585,6 @@
     "over the device limit": "cihaz sınırı aşıldı",
     "over {var:1} ms": "{var:1} ms üzeri",
     "overdue only": "yalnız gecikenler",
-    "owes you": "size borçlu"
+    "owes you": "size borçlu",
+    "ownership, rights, files, domain": "sahiplik, haklar, dosyalar, alan adı"
 }

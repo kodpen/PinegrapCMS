@@ -19,7 +19,7 @@ description: Plan for the Web Designer Portfolio template (pinegrap-portfolio): 
 ## Which steps are there?
 - 1 Done (#6131). Data and shared parts: `parts.php` (builders, the designer's data, sample projects, pick lists, header, footer, brief band, project, package and testimonial cards, page shells, form fields, comment thread, staff bar); test `design_template_portfolio_test.php`.
 
-- 2 Public pages: `pages_public.php` (home, services with packages, process, about, FAQ).
+- 2 Done (#6169). Home places `home_projects`, `home_posts`, `google_reviews`; class `pdp-hero`.
 
 - 3 Work: `work.php` (`project_new` with the Projects collection and its samples, `work` with category filters, `project` record page with images, facts, the story and the brief button, the list widgets the home places).
 
