@@ -8753,7 +8753,10 @@
             toggle.setAttribute('data-bs-placement', 'bottom-end');
             wrap.appendChild(toggle);
 
-            var menu = el('ul', 'menu pg-menu-end ws-head-menu');
+            var menu = el('ul', 'menu pg-menu-end');
+
+            // Kept to the screen's height on a phone (.ws-head-menu).
+            menu.classList.add('ws-head-menu');
 
             // checked (true/false) marks a choice or a switch: its state is
             // said through aria-checked (role radio for one of a set,
